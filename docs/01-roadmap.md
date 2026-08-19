@@ -1,187 +1,389 @@
-# College Baseball Dynasty: Project Roadmap
+# Playball: Project Roadmap v3
 
-**Last updated:** August 16, 2026
+**Last updated:** August 19, 2026
+**Supersedes:** v2
+**Companion doc:** `02-sim-engine-spec.md` for engine internals
+
+---
 
 ## The pitch
 
-You are the head coach of a college baseball program. Recruit high schoolers, develop them, survive the MLB draft stealing your best arms every June, work the transfer portal, and chase a national title in Omaha. Games play out at bat by at bat with text play by play. Mobile first.
+You are the head coach of a college baseball program. Recruit high schoolers, develop them, survive the MLB draft stealing your best arms every June, work the transfer portal, and chase a national title in Omaha. Games resolve at bat by at bat with text play by play, visualized on a 3D diamond. Ships to Android.
+
+## Where the project actually is
+
+**Phase 0 is done.** The simulation engine exists, runs headless, and is calibrated against real NCAA Division I numbers. It is currently plain JavaScript and needs converting to TypeScript before anything gets built on top of it.
 
 ---
 
-## Core pillars
+## Tech stack
 
-1. **The calendar is the game.** College baseball has a natural drama loop that pro sports do not: fall practice, a spring gauntlet, conference tournament, regionals, super regionals, College World Series, then a brutal June where the draft and the portal gut your roster.
-2. **You never keep your best players.** Draft eligibility after junior year (or age 21) means a star is on a three year clock. Even your recruits can get poached out of high school by MLB teams.
-3. **Weekend rotation matters more than anything.** Friday ace, Saturday guy, Sunday guy, plus a midweek arm. Managing that is the identity of a college program.
-4. **Text is a feature, not a compromise.** At bat by at bat text lets you sim fast on a phone, read the drama, and jump in for key decisions.
+| Layer | Tech |
+|-------|------|
+| Language | **TypeScript 5.x**, strict mode |
+| Build | **Vite 5** |
+| UI | **React 18** |
+| 3D | **Three.js** via **React Three Fiber** and **drei** |
+| State | **Zustand** |
+| Storage | **IndexedDB** via **idb** |
+| Heavy sim | **Web Worker** with **Comlink** |
+| Styling | **CSS Modules** with custom properties |
+| Testing | **Vitest** |
+| Mobile | **Capacitor 6**, Android target |
+
+### TypeScript
+
+Strict from day one. `strict: true`, `noUncheckedIndexedAccess: true`. Turning strict on later means fixing hundreds of errors at once, and you will not do it.
+
+The domain model is where TypeScript pays for itself immediately. A baseball sim is dozens of interlocking record types, and one mistyped field ruins a season silently.
+
+```ts
+export type Hand = 'R' | 'L';
+export type Bats = Hand | 'S';
+export type ClassYear = 'FR' | 'SO' | 'JR' | 'SR';
+export type Position = 'C'|'1B'|'2B'|'3B'|'SS'|'LF'|'CF'|'RF'|'DH'|'P';
+
+export type PAEvent =
+  | 'single' | 'double' | 'triple' | 'homerun'
+  | 'walk' | 'hbp' | 'out';
+
+export type PitchResult =
+  | 'ball' | 'called' | 'swinging' | 'foul' | 'inplay' | 'hbp';
+
+export type BattedBall = 'ground' | 'line' | 'fly' | 'popup';
+
+export interface Ratings {
+  contact: number; power: number; eye: number;
+  speed: number; fielding: number; arm: number;
+}
+
+export interface PitcherRatings {
+  stuff: number; movement: number; control: number;
+  stamina: number; groundBall: number; holdRunners: number;
+  velocity: number;
+}
+
+export interface Player {
+  readonly id: PlayerId;
+  name: string;
+  pos: Position;
+  classYear: ClassYear;
+  bats: Bats;
+  throws: Hand;
+  /** Hidden. Full platoon split size as a share of production. */
+  platoonSkill: number;
+  ratings: Ratings;
+  pitching?: PitcherRatings;
+}
+```
+
+Use branded IDs so you cannot pass a `TeamId` where a `PlayerId` belongs:
+
+```ts
+type Brand<T, B> = T & { readonly __brand: B };
+export type PlayerId = Brand<string, 'PlayerId'>;
+export type TeamId   = Brand<string, 'TeamId'>;
+```
+
+Keep every event union exhaustive and let the compiler catch the missing case when you add one:
+
+```ts
+function assertNever(x: never): never {
+  throw new Error(`Unhandled: ${JSON.stringify(x)}`);
+}
+```
+
+### Three.js, scoped
+
+This is the decision that determines whether the project ships. Three.js can absorb unlimited effort, and 3D is not where a dynasty sim's value lives. So the scope is fixed up front.
+
+**In scope: a stylized diamond diorama.**
+
+- Low poly field: dirt infield, grass, foul lines, base pads, mound. No stadium, no stands, no crowd
+- Fielders and runners as simple markers, not humanoid models. Colored capsules or discs with jersey numbers
+- Ball flight animation on contact, driven by the batted ball type the engine already produces
+- One camera easing between three fixed positions: behind the plate, high third base, and a bird's eye for baserunning
+- Everything readable on a 6 inch screen held one handed
+
+**Out of scope, permanently:** player models, animation rigs, swing and pitch mechanics, stadium geometry, crowds, weather particles, free camera replays.
+
+**The engine never learns about Three.js.** The sim emits a `PlayEvent` describing what happened. The 3D layer reads it and animates. That boundary is the whole reason this stays shippable.
+
+```ts
+export interface PlayEvent {
+  kind: 'pitch' | 'contact' | 'advance' | 'out' | 'score';
+  battedBall?: BattedBall;
+  /** Normalized field coordinates. The engine emits geometry, never visuals. */
+  landing?: { x: number; y: number };
+  runners?: Array<{ id: PlayerId; from: 0|1|2|3; to: 0|1|2|3|4 }>;
+}
+```
+
+**Mobile 3D rules, non negotiable:**
+
+| Rule | Why |
+|------|-----|
+| Cap device pixel ratio at 2 | Phones report 3 or 4 and you render four times the pixels for no visible gain |
+| `frameloop="demand"` in R3F | Render only when something moved. A static field between pitches should cost zero frames |
+| Instanced meshes for repeated geometry | One draw call for all nine fielders |
+| Bake lighting into materials | No real time shadows. They are the single biggest mobile GPU cost |
+| Lazy load the 3D bundle | Three.js is roughly 600 KB gzipped. Code split it so menus load instantly |
+| Ship a 2D fallback | A CSS diamond view. Some players will prefer it for speed and battery, and you need it while the 3D is unfinished |
+
+That last one matters more than it sounds. Build the 2D view first and treat 3D as an enhancement layer. If Three.js turns into a swamp, you still have a complete game.
+
+### Capacitor and Android
+
+Capacitor wraps the built web app in an Android WebView. Same codebase, real APK.
+
+```
+npm i @capacitor/core @capacitor/android
+npx cap init Playball com.yva.playball
+npm run build && npx cap add android && npx cap sync
+npx cap open android          opens Android Studio for the APK or AAB
+```
+
+Android specifics that will bite you if you leave them for the end:
+
+- **Hardware back button.** Android users expect it to navigate back, not close the app. Wire `App.addListener('backButton')` to your nav stack in Phase 2, not Phase 7
+- **Safe areas and gesture nav.** Use `env(safe-area-inset-*)` on the bottom navigation or the gesture bar sits on top of your buttons
+- **WebGL in a WebView** works, but runs slower than the same device's Chrome. Test on a real mid range phone early, not just the emulator and not just your own device
+- **Storage.** IndexedDB persists fine in the Android WebView. Do not use Capacitor Preferences for saves, it is a key value store meant for settings
+- **Orientation.** Lock to portrait unless the 3D view earns landscape
+- **Signing.** Generate the keystore before your first release build and back it up somewhere permanent. Lose it and you can never update the app on Play
+
+### Repo layout
+
+```
+Playball/
+  package.json
+  tsconfig.json                strict: true
+  vite.config.ts
+  capacitor.config.ts
+  index.html
+  /src
+    /engine                    pure TS. No React, no Three, no DOM
+      types.ts                 the domain model
+      ratings.ts               every baseball number lives here
+      players.ts
+      pitchModel.ts
+      engines.ts
+      game.ts
+      season.ts                Phase 1
+      progression.ts           Phase 3
+      recruiting.ts            Phase 4
+      rng.ts                   seeded xorshift
+    /state
+      store.ts                 Zustand
+      persistence.ts           IndexedDB, schema migrations
+      simWorker.ts             Web Worker
+      simClient.ts             Comlink wrapper
+    /ui
+      /screens
+      /components
+      tokens.css
+    /field
+      Field2D.tsx              the CSS fallback, built first
+      FieldScene.tsx           R3F canvas, lazy loaded
+      Diamond.tsx
+      Fielders.tsx
+      BallFlight.tsx
+    /data
+      schools.json
+      conferences.json
+      names.json
+  /tests
+    engine.test.ts
+    calibration.test.ts        the regression test that actually matters
+  /docs
+  sim.ts                       headless CLI, kept forever
+```
+
+**The one architectural rule:** nothing in `/engine` may import from `/ui`, `/state`, or `/field`. Enforce it with an ESLint boundary rule so it cannot rot. That separation is what keeps the engine testable headless and lets you sim ten thousand games from the command line.
+
+### Determinism and saves
+
+The engine uses a seeded xorshift RNG and that is worth protecting. Store the seed in the save. Same seed plus same inputs reproduces the season exactly, which buys you reproducible bug reports, replays without storing every play, and small save files.
+
+```ts
+interface SaveFile {
+  schemaVersion: 4;
+  seed: number;
+  year: number;
+  dynasty: DynastyState;
+}
+```
+
+Write a migration per version bump before you have users, not after.
+
+### Performance targets
+
+| Operation | Budget |
+|-----------|--------|
+| Single game, headless | under 5 ms |
+| Full 56 game season, one team | under 300 ms |
+| Full league season | under 3 s in a Worker, with progress |
+| Screen transition | under 100 ms |
+| 3D field, mid range Android | 30 fps sustained during ball flight |
+| Initial bundle, 3D excluded | under 250 KB gzipped |
+
+Guard these with benchmark tests. A performance regression found six months later is a rewrite.
 
 ---
 
-## Data model (first draft)
+## Design direction
 
-### Player
-```
-id, firstName, lastName, position, classYear (FR/SO/JR/SR), redshirted
-height, weight, bats, throws, hometown, stateCode
-overall, potential
-hitting: contact, power, eye, speed, fielding, arm
-pitching: velocity, movement, command, stamina, pitches[]
-development: rate, workEthic
-status: healthy | injured | suspended
-eligibility: yearsUsed, draftEligible
-morale, playingTimeExpectation
-```
+The identity comes from the sport's own paperwork, not from generic sports app conventions. College baseball's real artifact is the **scorebook**: ruled grid paper, a small diamond in every cell, notation like 6-4-3 and a backwards K, and the scorekeeper's convention of marking plays in blue or black and runs in red.
 
-### Team
-```
-id, school, nickname, conference, prestige (1 to 5)
-colors, stadiumName, stadiumCapacity
-roster[], depthChart, rotation, lineup
-coach: recruiting, development, gameManagement
-budget, facilities, academics
-```
+The 3D field lives inside that world rather than fighting it. Think a scorekeeper's diagram rendered in three dimensions: flat matte colors, visible construction, no photorealism. Chasing a realistic ballpark on a phone GPU produces something that looks cheap. A deliberately diagrammatic field looks designed.
 
-### Season
-```
-year, phase, schedule[], standings, stats, awards
-polls (top 25), rpi
-```
+| Token | Value | Use |
+|-------|-------|-----|
+| `--paper` | `#F2F0EB` | Background, the ruled page |
+| `--rule` | `#D6D2C6` | Grid lines, dividers |
+| `--graphite` | `#232326` | Primary text |
+| `--ink` | `#1F3F8F` | Ballpoint blue. Actions, active states |
+| `--scored` | `#B02B2B` | Red pencil. Runs scored, nothing else |
+| `--turf` | `#5E7A4F` | Field green, muted |
+| `--clay` | `#A8735A` | Infield dirt |
+| `--dugout` | `#14161A` | Night mode ground |
 
-### Game
-```
-homeTeam, awayTeam, date, innings[], playLog[], boxScore
-```
+The red is the discipline test. Scorekeepers use red for exactly one thing. If it starts appearing on errors, injuries, and losses, it stops meaning "a run scored" and becomes decoration.
 
----
+**Type**
 
-## Season phases
+- Display: a compressed grotesque for team names and scores, tight and large
+- Body: a neutral sans, nothing below 15px on a phone
+- Data: a monospace for the play log and every stat table. Column alignment is the entire readability of a box score
 
-| Phase | What happens |
-|-------|--------------|
-| Fall practice | Player development, position battles, scrimmages, early recruiting contact |
-| Preseason | Set rotation, lineup, captains. Rankings drop |
-| Regular season | Roughly 56 games. Midweek games plus weekend series |
-| Conference tournament | Win it or sweat the bubble |
-| NCAA tournament | 64 team field, regionals, super regionals, Omaha |
-| MLB draft | You lose juniors, seniors, and some signed recruits |
-| Portal and signings | Fill the holes. Portal in, portal out |
-| Summer | Summer leagues, development bumps, coaching carousel |
-
----
-
-## Sim engine design
-
-The heart of it. Everything else is UI wrapped around this.
-
-**At bat resolution**
-1. Compare pitcher attributes vs batter attributes, adjusted for fatigue, platoon split, count situation, park, and pressure.
-2. Roll for outcome bucket: strikeout, walk, hit by pitch, ground out, fly out, line out, single, double, triple, home run.
-3. If ball in play, roll fielding check against the responsible defender.
-4. Resolve baserunning: forced advances, tag ups, extra base attempts based on speed vs outfielder arm.
-5. Append a text line to the play log.
-
-**Pitcher fatigue**
-Stamina drains per pitch, faster with high leverage and high pitch counts. Effectiveness degrades before you get the bullpen warning. Overworking arms carries injury risk that compounds across the season.
-
-**Coach decision points**
-Pause the sim for: pitching change, pinch hit, steal attempt, bunt, intentional walk, defensive shift, mound visit. Everything else auto resolves. Add an "auto play" toggle so a full game can sim in seconds.
-
-**Calibration target**
-Your output stats should look like real college baseball, not MLB. Higher scoring, higher batting averages, more walks, more errors. Around .290 league average, roughly 6.5 runs per team per game, ERA near 5.00. Build a test harness that sims 1,000 seasons and prints league leaders so you can tune.
+**Signature element:** the live scorebook cell. As an at bat resolves, a real scorekeeping cell fills in beside the field: diamond, count, notation. It ties the 3D view back to the paper world and it is the one place to spend animation budget.
 
 ---
 
 ## Build phases
 
-### Phase 0: The engine (start here)
-Goal: sim one full nine inning game between two hardcoded rosters and print a readable play log plus a box score.
+### Phase 0: The engine — **DONE (in JavaScript)**
+- [x] Player and team structures with handedness and platoon skill
+- [x] Generalized log5 plate appearance model
+- [x] Free pitch model as a comparison engine
+- [x] Pitch level count model calibrated to D1 rates
+- [x] Baserunning, steals, errors, double plays, sacrifice flies
+- [x] Fatigue, times through the order, pitching change AI
+- [x] Text play by play and box score
+- [x] Calibration harness, platoon test, parity test
 
-- [ ] Player and team data structures
-- [ ] Random name and rating generator for filler players
-- [ ] At bat resolution function
-- [ ] Baserunning and scoring logic
-- [ ] Inning and game loop
-- [ ] Text play by play output
-- [ ] Box score generation
-- [ ] Stat tuning harness (sim 1,000 games, check the numbers)
+### Phase 0.5: TypeScript conversion — **START HERE**
+- [ ] `tsconfig.json` with strict mode on
+- [ ] `types.ts`: full domain model, branded IDs, exhaustive unions
+- [ ] Port the five engine files, fixing what strict mode surfaces
+- [ ] Port the CLI to `sim.ts`, run with `tsx`
+- [ ] Move the calibration harness into Vitest so it runs as a real test
+- [ ] Add the `PlayEvent` type and emit it from `game.ts`, ready for the 3D layer
 
-**Done when:** you can hit a button and read a believable game.
+**Done when:** `npm test` passes, calibration still hits the D1 targets, and the engine compiles clean under strict.
 
 ### Phase 1: The season
-- [ ] Schedule generator (conference series plus non conference)
-- [ ] Sim a full season, day by day
-- [ ] Standings, team stats, player stat leaders
-- [ ] Rankings and RPI approximation
+Still headless. Do not open the UI yet.
+
+- [ ] Schedule generator: conference weekend series plus midweek games
+- [ ] Day by day season loop
+- [ ] Standings, team stats, stat leaders
+- [ ] Rankings and an RPI approximation
 - [ ] Conference tournament bracket
 - [ ] NCAA tournament: regionals, supers, Omaha
 - [ ] Season awards
+- [ ] `sim.ts season` prints a full year
 
-**Done when:** you can play one full season start to finish.
+**Done when:** the stat leaders from a simmed season look like real college baseball.
 
-### Phase 2: Roster management
+### Phase 2: The app shell
+- [ ] Vite React TS scaffold, folder structure, ESLint boundary rule
+- [ ] Zustand store typed against the engine model
+- [ ] IndexedDB persistence with schema versioning
+- [ ] Web Worker plus Comlink for season simming, with a progress bar
+- [ ] Bottom navigation and the five core screens
+- [ ] Design tokens in CSS
+- [ ] **`Field2D.tsx`**: CSS diamond, play log, and the live scorebook cell
+- [ ] Android back button handling and safe area insets
+- [ ] First Capacitor build, APK running on a real phone
+
+**Done when:** you can play a full season on an Android device with no laptop involved.
+
+### Phase 3: Roster management
 - [ ] Lineup and rotation editor
 - [ ] Depth chart with position eligibility
-- [ ] Injuries and fatigue tracking
-- [ ] Player progression and regression at season end
-- [ ] Eligibility, redshirts, and graduation
+- [ ] Injuries and season long fatigue
+- [ ] Progression and regression at season end
+- [ ] Eligibility, redshirts, graduation
 - [ ] MLB draft: who leaves, who returns
 
-**Done when:** you can carry a roster into year two and it feels different.
-
-### Phase 3: Recruiting
-- [ ] Generate recruit classes by state and region
-- [ ] Scouting: hidden true ratings, scouting reveals accuracy over time
-- [ ] Interest and pitch system (playing time, development, winning, proximity, academics)
-- [ ] Weekly recruiting point budget
-- [ ] Rival schools competing for the same kids
+### Phase 4: Recruiting
+- [ ] Recruit class generation by state and region
+- [ ] Interest and pitch system: playing time, development, winning, proximity, academics
+- [ ] Weekly recruiting budget
+- [ ] Rival schools competing for the same players
 - [ ] Signing day
-- [ ] Recruits getting drafted out of high school and never showing up
+- [ ] Recruits drafted out of high school who never arrive
 - [ ] Transfer portal, both directions
 
-**Done when:** losing a recruiting battle actually stings.
+### Phase 5: The 3D field
+Deliberately late. The game is complete and playable before this starts.
 
-### Phase 4: Dynasty layer
-- [ ] Program prestige that moves with results
-- [ ] Coach attributes and skill tree
+- [ ] R3F canvas, lazy loaded and code split
+- [ ] Low poly diamond geometry with baked materials
+- [ ] Instanced fielder and runner markers
+- [ ] Ball flight driven by `PlayEvent`
+- [ ] Camera easing between three fixed positions
+- [ ] `frameloop="demand"` and DPR capping
+- [ ] 2D and 3D toggle in settings, 2D stays default until 3D beats it
+- [ ] Profile on a real mid range Android phone, hold 30 fps
+
+### Phase 6: The dynasty layer
+- [ ] Program prestige tied to results
+- [ ] Coach attributes and a skill tree
 - [ ] Job offers and the coaching carousel
 - [ ] Facilities and budget upgrades
-- [ ] Booster and athletic director expectations, getting fired
+- [ ] AD expectations and getting fired
 - [ ] Records book and program history
-- [ ] Conference realignment (optional, later)
 
-**Done when:** year five feels like the payoff of years one through four.
-
-### Phase 5: Polish
-- [ ] Mobile UI pass: bottom nav, card components, one handed use
-- [ ] Save and load, multiple dynasty files
-- [ ] Presentation: scoreboard, ticker, news feed, headlines
-- [ ] Sound optional
-- [ ] Onboarding for the first 10 minutes
+### Phase 7: Ship
+- [ ] Onboarding for the first ten minutes
+- [ ] Multiple save slots
+- [ ] News feed and headlines
+- [ ] Keystore generated and backed up
+- [ ] Play Store listing, signed AAB
+- [ ] Accessibility: focus states, reduced motion, text scaling
 
 ---
 
-## Tech decisions to lock in
+## Decisions locked
 
-| Decision | Leaning | Notes |
-|----------|---------|-------|
-| Stack | HTML/CSS/JS first, same as Liga Endesa Manager | Fastest path to a playable thing, migrate to React Native + Expo later if it earns it |
-| Storage | LocalStorage or IndexedDB | Dynasty saves get big fast, IndexedDB is safer past year three |
-| Engine separation | Keep the sim engine in pure JS with zero UI imports | Lets you test it headless and swap the front end later |
-| Data | JSON files for schools, conferences, name pools | Easy to expand and edit without touching code |
-| Art | Text and typography driven, team colors as the visual identity | No art pipeline needed, plays to the strengths of a text sim |
+| Decision | Choice |
+|----------|--------|
+| Core fantasy | Head coach dynasty |
+| Sim depth | At bat by at bat, text play by play |
+| Platform | Mobile first, Android via Capacitor |
+| Language | TypeScript, strict |
+| UI | React 18 on Vite |
+| 3D | Three.js via React Three Fiber, stylized diamond only |
+| Engine | Generalized log5 with constrained pitch sequencing |
+| Rating visibility | All visible in v1 |
+| Two way players | Skipped in v1 |
+| Schools | Fictional |
 
 ---
 
-## Open questions
+## Still open
 
-- [ ] Real schools and conferences, or fictional ones? Fictional is safer and lets you ship
-- [ ] How many teams in the world? Start with one conference, expand to a full D1 field later
-- [ ] Do you want NIL and revenue sharing as a mechanic, or skip it?
-- [ ] Single dynasty save or multiple?
-- [ ] Any interest in a "play as an alumnus returning to your alma mater" opening hook?
+- [ ] How big is the world at v1? One conference, or a full D1 field?
+- [ ] NIL and revenue sharing as a mechanic, or skip it?
+- [ ] Defensive positioning and shifts as a coach decision, or auto?
+- [ ] Park effects, and do they get 3D geometry or stay numeric?
+- [ ] iOS later, or Android only? Capacitor supports both, but iOS needs a Mac and a paid developer account
+- [ ] Verify current NCAA player and pitcher re entry rules before coding substitutions. Sources conflict and it affects bullpen logic
 
 ---
 
 ## Next action
 
-Build Phase 0. Nothing else matters until a single game sims and reads well. Get the at bat function right, sim a thousand games, and stare at the numbers until they look like college baseball.
+Phase 0.5. Convert the engine to TypeScript with strict mode on and get the calibration harness running under Vitest. It is a contained, mechanical job, and doing it now means every phase after it is typed from the start instead of retrofitted.
