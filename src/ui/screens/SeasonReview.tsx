@@ -1,0 +1,207 @@
+// SeasonReview.tsx
+// What the year came to.
+//
+// The one screen in the offseason that is purely a verdict: the record, where
+// you finished nationally and in your region, the player who carried you, and
+// what the whole thing did to the program's standing.
+//
+// Prestige is shown as the arithmetic — what it was, what the season moved it,
+// what it is now — because that number is the currency everything else in the
+// dynasty is priced in. Recruiting gates on it, jobs gate on it, and a player
+// who only ever sees the final figure never learns what moves it.
+
+import { useDynasty, useUserTeam } from '../../state/store.js';
+import { FloatingAction } from '../Sticky.js';
+import { Avatar } from '../Avatar.js';
+import { rpiOrder, standings, regularRecord } from '../../engine/season.js';
+import { overallOf } from '../../engine/ratings.js';
+import { FINISH_LABEL } from '../../engine/postseason.js';
+import type { Hitter, PlayerId } from '../../engine/types.js';
+
+export function SeasonReview() {
+  const season = useDynasty((s) => s.season);
+  const review = useDynasty((s) => s.lastReview);
+  const post = useDynasty((s) => s.lastPostseason);
+  const year = useDynasty((s) => s.year);
+  const next = useDynasty((s) => s.nextPhase);
+  const openPlayer = useDynasty((s) => s.openPlayer);
+  const openOverlay = useDynasty((s) => s.openOverlay);
+  const team = useUserTeam();
+
+  if (!season || !team) return null;
+
+  const played = regularRecord(team);
+  const nationalRank = rpiOrder(season).findIndex((r) => r.team.index === team.index) + 1;
+  const conf = standings(season, team.conference);
+  const confRank = conf.findIndex((t) => t.index === team.index) + 1;
+  const finish = post?.finish[team.index];
+
+  // The man who carried the season. Judged on production, not on rating, so it
+  // is a report of what happened rather than a second look at the roster page.
+  let mvp: { id: PlayerId; name: string; line: string } | null = null;
+  let best = -1;
+  for (const p of [...team.team.lineup, ...team.team.bench] as Hitter[]) {
+    const line = season.batting.get(p.id);
+    if (!line || line.ab < 30) continue;
+    const score = line.h + line.hr * 3 + line.rbi * 0.5 + line.bb * 0.3;
+    if (score > best) {
+      best = score;
+      mvp = {
+        id: p.id,
+        name: p.name,
+        line: `${(line.h / line.ab).toFixed(3).replace(/^0/, '')} · ${line.hr} HR · ${line.rbi} RBI`,
+      };
+    }
+  }
+  for (const p of [...team.team.rotation, ...team.team.bullpen]) {
+    const line = season.pitching.get(p.id);
+    if (!line || line.outs < 90) continue;
+    const era = (line.er * 27) / Math.max(1, line.outs);
+    const score = (line.w * 8) + Math.max(0, (6 - era) * 12);
+    if (score > best) {
+      best = score;
+      mvp = {
+        id: p.id,
+        name: p.name,
+        line: `${line.w}-${line.l} · ${era.toFixed(2)} ERA · ${line.k} K`,
+      };
+    }
+  }
+
+  const delta = review ? review.prestigeAfter - review.prestigeBefore : 0;
+
+  return (
+    <div style={{ padding: '16px 14px 24px' }}>
+      <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
+        <div className="label">{team.def.school} · {year}</div>
+        <div style={{
+          font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
+        }}>The season</div>
+      </div>
+
+      <div style={{
+        display: 'flex', marginTop: 14,
+        border: '1px solid var(--faint)', background: 'var(--paper)',
+      }}>
+        {/*
+          Every number here is a door.
+          
+          A verdict screen that only states its conclusions is a screen you read
+          once; the record is a season of games, the national rank is a table you
+          are somewhere in, and the MVP is a player. Making them tap through is
+          what turns the summary into a way into the season rather than the end
+          of it.
+        */}
+        <Tile k="RECORD" v={`${played.w}-${played.l}`} onClick={() => openOverlay('schedule')} />
+        <Tile
+          k="NATIONAL"
+          v={nationalRank > 0 ? `#${nationalRank}` : '—'}
+          onClick={() => openOverlay('rankings')}
+        />
+        <Tile
+          k={team.conference}
+          v={confRank > 0 ? `#${confRank}` : '—'}
+          onClick={() => openOverlay('standings')}
+          last
+        />
+      </div>
+
+      {finish && (
+        <div style={{
+          marginTop: 10, padding: '11px 12px',
+          background: 'var(--paper)', borderLeft: '3px solid var(--clay)',
+          font: "400 12.5px/1.5 var(--body)",
+        }}>
+          <strong>{FINISH_LABEL[finish]}</strong>
+          {post?.champion === team.index && ' — national champions.'}
+        </div>
+      )}
+
+      {mvp && (
+        <>
+          <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>TEAM MVP</div>
+          <button
+            onClick={() => openPlayer(mvp.id)}
+            style={{
+              width: '100%', textAlign: 'left', display: 'flex', gap: 12, alignItems: 'center',
+              padding: '12px', border: '1px solid var(--faint)', background: 'var(--paper)',
+            }}
+          >
+            <Avatar id={mvp.id} team={team.def.abbr} size={46} />
+            <span>
+              <span style={{
+                display: 'block', font: "700 18px/1 var(--display)", textTransform: 'uppercase',
+              }}>{mvp.name}</span>
+              <span style={{
+                display: 'block', marginTop: 4, font: "400 11.5px var(--mono)", color: 'var(--dim)',
+              }}>{mvp.line}</span>
+            </span>
+          </button>
+        </>
+      )}
+
+      {review && (
+        <>
+          <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>
+            PROGRAM PRESTIGE
+          </div>
+          <div style={{
+            padding: '14px 12px', border: '1px solid var(--faint)', background: 'var(--paper)',
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+            }}>
+              <Step k="WAS" v={String(review.prestigeBefore)} />
+              <Step
+                k="THE SEASON"
+                v={`${delta > 0 ? '+' : ''}${delta}`}
+                tone={delta > 0 ? 'var(--win)' : delta < 0 ? 'var(--clay)' : 'var(--dim)'}
+              />
+              <Step k="NOW" v={String(review.prestigeAfter)} accent />
+            </div>
+            <div style={{
+              marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--hairline)',
+              font: "400 12px/1.55 var(--body)",
+            }}>{review.message}</div>
+          </div>
+        </>
+      )}
+
+      <FloatingAction label="CONTINUE" onClick={() => void next()} />
+    </div>
+  );
+}
+
+function Tile(
+  { k, v, last, onClick }:
+  { k: string; v: string; last?: boolean; onClick?: () => void },
+) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={!onClick}
+      style={{
+        flex: 1, padding: '11px 8px', textAlign: 'left', background: 'transparent',
+        borderRight: last ? 'none' : '1px solid var(--hairline)',
+      }}
+    >
+      <div className="label">{k}</div>
+      <div style={{
+        font: "700 22px/1 var(--display)", marginTop: 4,
+        color: onClick ? 'var(--clay)' : 'var(--ink)',
+      }}>{v}</div>
+    </button>
+  );
+}
+
+function Step({ k, v, tone, accent }: { k: string; v: string; tone?: string; accent?: boolean }) {
+  return (
+    <div>
+      <div className="label">{k}</div>
+      <div style={{
+        font: `700 ${accent ? 26 : 22}px/1 var(--display)`, marginTop: 3,
+        color: tone ?? (accent ? 'var(--clay)' : 'var(--ink)'),
+      }}>{v}</div>
+    </div>
+  );
+}

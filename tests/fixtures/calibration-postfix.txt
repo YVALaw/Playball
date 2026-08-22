@@ -1,0 +1,70 @@
+PLAYBALL ENGINE CALIBRATION — POST-FIX
+Captured: 2026-08-19    Node: v24.19.0
+
+Fixed since the baseline: B1 walk-offs, B2 LEAGUE_PITCH wiring,
+B3 home field advantage, B4 Engine A swing composition,
+B6 context normalizer, B7 partial (RBI groundout + college baserunning).
+Still open: B5 (LEAGUE_K_RATE unverified), B7 remainder, T1.
+
+================================================================
+
+=== log5 engine, 2000 games ===
+metric                               sim   target   diff
+Runs per team per game              6.62     6.79    -3%
+PA per team per game               42.31    41.00     3%
+Batting average                    0.289    0.290    -0%
+On base percentage                 0.375    0.372     1%
+Home runs per team per game        0.892    0.900    -1%
+Strikeouts per team per game        8.07     8.50    -5%
+Walks per team per game             4.43     4.30     3%
+Pitches per plate appearance        3.71     3.75    -1%
+Slugging                           0.437
+Errors per team per game            1.04
+Stolen base pct                    0.719
+
+================================================================
+
+=== Platoon check, 40000 PA per matchup ===
+matchup                     AVG    SLG    BB%     K%
+LHB vs RHP (opposite)     0.273  0.423   10.9   19.3
+LHB vs LHP (same)         0.248  0.383    9.9   20.4
+RHB vs LHP (opposite)     0.273  0.425   10.8   19.6
+RHB vs RHP (same)         0.256  0.402   10.1   20.0
+
+Lefty hitter platoon gap: 26 points of AVG
+Righty hitter platoon gap: 17 points of AVG
+Both should be positive, and the lefty gap clearly larger.
+
+================================================================
+
+Win% for the better team, 4000 games per pair, home/away split evenly
+strong  weak   gap   win%   (home)  (away)
+    68     38    30   95.9%    97.1%   94.7%
+    62     44    18   84.7%    86.8%   82.6%
+    58     46    12   77.8%    80.8%   74.9%
+    57     44    13   77.1%    81.3%   72.8%
+    55     48     7   68.5%    72.3%   64.6%
+    52     50     2   58.8%    62.5%   54.9%
+
+================================================================
+
+=== ENGINE A (log5) — the shipping engine — 200000 plate appearances ===
+  First pitch strike rate     0.580   target 0.584   -1%
+  3-0 strike rate             0.609   target 0.583   5%
+  Foul share of swings        0.367   target 0.365   0%
+  Miss share of swings        0.216   target 0.215   0%
+  Pitches per PA              3.740   target 3.750   -0%
+  (3-0 counts observed: 16198)
+
+=== ENGINE B (pitch) — the comparison engine — 200000 plate appearances ===
+  First pitch strike rate     0.576   target 0.584   -1%
+  3-0 strike rate             0.657   target 0.583   13%
+  Foul share of swings        0.364   target 0.365   -0%
+  Miss share of swings        0.212   target 0.215   -1%
+  Pitches per PA              3.698   target 3.750   -1%
+  (3-0 counts observed: 9760)
+
+================================================================
+games: 20000   walk-off wins: 2085
+final margin distribution: {"1":1893,"2":113,"3":64,"4":15}
+PASS  no walk-off win exceeded a grand slam margin

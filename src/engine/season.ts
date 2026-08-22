@@ -1,0 +1,1077 @@
+// season.ts
+// The calendar is the game. A conference schedule, a day by day loop, season
+// long statistics, standings, and an RPI approximation.
+//
+// Headless and pure, like everything else in this directory. Note there are no
+// Date objects anywhere: a day is an integer offset from the start of the
+// season. Real calendar dates are a presentation concern, and keeping them out
+// of here is what lets a season replay exactly from its seed.
+
+import { makeTeam, resetNames } from './players.js';
+import { overallOf } from './ratings.js';
+import { initialPrestige } from './program.js';
+import { strategyFor, type Strategy } from './strategy.js';
+import { generateClass, type RecruitClass } from './recruiting.js';
+import { simGame, type GameResult, type TeamState } from './game.js';
+import { CONFERENCES, type ConferenceDef, type SchoolDef } from '../data/schools.js';
+import { teamId } from './types.js';
+import type {
+  EngineName, HitLine, Hitter, PitchLine, Pitcher, PlayerId, Rng, Team, TeamId,
+} from './types.js';
+
+// ---------------------------------------------------------------------------
+// Shape of a season
+// ---------------------------------------------------------------------------
+
+export interface SeasonConfig {
+  /** Three game weekend series against a conference opponent. */
+  seriesRounds: number;
+  /** Single midweek games against a team from another conference. */
+  nonConferenceGames: number;
+  engine: EngineName;
+}
+
+/**
+ * 33 games: seven three-game conference series (21) plus twelve non-conference
+ * midweek games.
+ *
+ * Seven series against a seven team field is a **full round robin**, and that is
+ * the whole reason the world is eight conferences of eight rather than sixteen of
+ * twelve. Under the old shape you played eight of eleven possible opponents, so
+ * three teams in your own conference went unplayed every year — you could not
+ * build a history with a league you only partly met. Now you play all seven,
+ * every season, and after three years you know them.
+ *
+ * The non-conference games are not flavour. A league that only played itself
+ * would be eight sealed islands: every conference would post identical aggregate
+ * records, RPI would have nothing to compare, and there would be no honest basis
+ * for an at-large national field. Crossing conferences is what makes strength of
+ * schedule a real quantity.
+ *
+ * The midweek arm — rotation slot 3 — starts all twelve non-conference games, so
+ * the Friday/Saturday/Sunday/midweek rotation the mockup shows is real.
+ */
+export const DEFAULT_SEASON: SeasonConfig = {
+  seriesRounds: 7,
+  nonConferenceGames: 12,
+  engine: 'log5',
+};
+
+/**
+ * How many games a season is, from the config rather than from how many have
+ * been played so far. The board's target has to be a full-season number on day
+ * one — scaling it by games played meant the target crept upward all year and
+ * was only correct on the final day.
+ */
+export const seasonLength = (config: SeasonConfig): number =>
+  config.seriesRounds * 3 + config.nonConferenceGames;
+
+/** The record a board actually judges: regular season only. */
+export const regularRecord = (t: TeamRecord): { w: number; l: number } =>
+  ({ w: t.rw ?? t.w, l: t.rl ?? t.l });
+
+export interface ScheduledGame {
+  home: number;
+  away: number;
+  conference: boolean;
+  /** Rotation slot that starts. 0,1,2 across a weekend; 3 is the midweek arm. */
+  slot: number;
+}
+
+export interface GameDay {
+  /** Days since opening day. */
+  day: number;
+  week: number;
+  kind: 'series' | 'midweek';
+  label: string;
+  games: ScheduledGame[];
+}
+
+export interface TeamRecord {
+  id: TeamId;
+  index: number;
+  def: SchoolDef;
+  /** Conference id, e.g. 'PAC'. */
+  conference: string;
+  /**
+   * How this coach plays. Every program gets one — an aggressive coach steals and
+   * pulls starters early, a conservative one bunts and plays for a run. Without
+   * it 64 programs are one program repeated.
+   */
+  strategy: Strategy;
+  /**
+   * What the school is, as opposed to what this year's roster is. Seeded from
+   * quality and then moves with results — slowly, so a blue blood survives a bad
+   * season and one good year does not remake a cellar program.
+   */
+  prestige: number;
+  team: Team;
+  w: number;
+  l: number;
+  /**
+   * The regular season record, frozen the moment bracket play starts.
+   *
+   * `w`/`l` keep counting through the postseason, which is right for a record
+   * book and wrong for a board review: judged on the running total, a deep
+   * tournament run *raised* the coach's win target retroactively, so succeeding
+   * moved the goalposts roughly as fast as it moved the coach. Undefined until a
+   * postseason has been played; callers fall back to `w`/`l`.
+   */
+  rw?: number;
+  rl?: number;
+  cw: number;
+  cl: number;
+  rs: number;
+  ra: number;
+  gp: number;
+  /** Positive is a winning streak, negative a losing one. */
+  streak: number;
+  /** Team indices faced, once per game. Feeds strength of schedule. */
+  opponents: number[];
+}
+
+export interface BattingSeason extends HitLine { g: number }
+export interface PitchingSeason extends PitchLine {
+  g: number; gs: number; w: number; l: number; sv: number;
+}
+
+/** One player's line in a single game. */
+export interface BoxLine {
+  id: PlayerId;
+  name: string;
+  slot: string;
+  /** "2-4, HR, 3 RBI" for a hitter; "6.0 IP, 2 ER, 7 K" for an arm. */
+  line: string;
+}
+
+/**
+ * A finished game, in enough detail to read afterwards.
+ *
+ * Kept **only for the games the user's program played**. A full season is a
+ * thousand games across the league and storing every line would put tens of
+ * thousands of rows in a save to serve a screen nobody opens — you want to look
+ * back at your own games, not at a Tuesday in the Mountain conference.
+ */
+export interface BoxScore {
+  day: number;
+  home: number;
+  away: number;
+  homeRuns: number;
+  awayRuns: number;
+  innings: number;
+  homeBatting: BoxLine[];
+  awayBatting: BoxLine[];
+  homePitching: BoxLine[];
+  awayPitching: BoxLine[];
+}
+
+export interface GameSummary {
+  day: number;
+  home: number;
+  away: number;
+  homeRuns: number;
+  awayRuns: number;
+  conference: boolean;
+  innings: number;
+}
+
+export interface SeasonState {
+  config: SeasonConfig;
+  rng: Rng;
+  teams: TeamRecord[];
+  schedule: GameDay[];
+  /** Next unplayed day in the schedule. */
+  dayIndex: number;
+  /**
+   * Rotates the pairings each year. Without it every season is the same
+   * schedule — you would open against the same opponent in perpetuity, and a
+   * dynasty would never see a different corner of its own conference.
+   */
+  scheduleRotation: number;
+  /**
+   * The day each pitcher last threw. Relief work is handed out longest-rested
+   * first, which is the only thing stopping one arm from carrying the whole
+   * bullpen — before this, five of six relievers finished a season with zero
+   * innings while the first threw ninety.
+   */
+  lastPitched: Map<PlayerId, number>;
+  batting: Map<PlayerId, BattingSeason>;
+  pitching: Map<PlayerId, PitchingSeason>;
+  results: GameSummary[];
+  /**
+   * Box scores for the user's games, by day. See BoxScore for why only his.
+   *
+   * `captureBoxFor` is the team to keep them for — set by the app once a job is
+   * taken, because a season is built before anybody has chosen one.
+   */
+  boxScores: Record<number, BoxScore>;
+  captureBoxFor: number | null;
+  /**
+   * The recruiting class in front of the program right now.
+   *
+   * Carried on the season rather than the offseason because that is when
+   * recruiting happens — a coach works a board all year, he is not handed a list
+   * in June. Effort spent during the season is what signing day resolves.
+   */
+  recruiting: RecruitClass;
+  /**
+   * Team indices in final regular season order, recorded the moment the
+   * schedule runs out.
+   *
+   * This has to be a snapshot rather than something recomputed on demand.
+   * `standings()` breaks ties on overall record and run differential, and
+   * postseason games move both — so asking for the table again after the
+   * tournament would quietly return a different regular season than the one
+   * that was actually played, and seeding would disagree with itself.
+   */
+  finalOrder: number[] | null;
+}
+
+// ---------------------------------------------------------------------------
+// Schedule
+// ---------------------------------------------------------------------------
+
+/**
+ * Circle method. Team 0 is fixed and everyone else rotates around it, which
+ * produces a different full pairing of the league on every round.
+ */
+export function roundPairs(round: number, teamCount: number): Array<[number, number]> {
+  if (teamCount % 2 !== 0) throw new Error('roundPairs needs an even team count');
+  const rest: number[] = [];
+  for (let i = 1; i < teamCount; i++) rest.push(i);
+  const k = ((round % rest.length) + rest.length) % rest.length;
+  const rotated = [...rest.slice(k), ...rest.slice(0, k)];
+  const list = [0, ...rotated];
+  const pairs: Array<[number, number]> = [];
+  for (let i = 0; i < teamCount / 2; i++) {
+    pairs.push([list[i] as number, list[teamCount - 1 - i] as number]);
+  }
+  return pairs;
+}
+
+/**
+ * A week is seven days. The weekend series runs Friday through Sunday (days 4,
+ * 5, 6); midweek games land on Wednesday (day 2) of the weeks that have one.
+ * Home and away swap on alternate rounds so the season stays even.
+ */
+interface Fixture {
+  day: number;
+  week: number;
+  kind: 'series' | 'midweek';
+  a: number;
+  b: number;
+}
+
+/**
+ * Who hosts.
+ *
+ * There is no neat formula for this. The circle method pins team 0 and rotates
+ * everyone else around it, so any rule keyed on the round or on a team's
+ * position in the pairing list correlates with the rotation and produces wildly
+ * lopsided home schedules — alternating on round and position gave one team 31
+ * home games and another 1.
+ *
+ * So assign explicitly: walk the fixtures in date order and give home field to
+ * whichever team has hosted less so far, a whole series at a time since a
+ * weekend series is played at one venue. Deterministic, and it lands every team
+ * within a game of an even split. Now that home field advantage is real, an
+ * uneven home schedule would quietly distort the standings.
+ */
+type Placed = Fixture & { home: number; away: number };
+
+const fixtureWeight = (f: Fixture): number => (f.kind === 'series' ? 3 : 1);
+
+function assignHosts(fixtures: readonly Fixture[], teamCount: number): Placed[] {
+  const hosted = new Array<number>(teamCount).fill(0);
+
+  // First pass, greedy in date order: whoever has hosted less takes the venue.
+  const placed: Placed[] = fixtures.map((f) => {
+    const w = fixtureWeight(f);
+    const [home, away] = (hosted[f.b] ?? 0) < (hosted[f.a] ?? 0) ? [f.b, f.a] : [f.a, f.b];
+    hosted[home] = (hosted[home] ?? 0) + w;
+    return { ...f, home, away };
+  });
+
+  // Greedy alone gets stuck: by late season the teams that could fix an
+  // imbalance are not the ones still playing each other, and one team ends up
+  // four games light on home dates. So repair it — walk the fixtures and flip
+  // any venue where flipping moves both teams closer to an even split. Squared
+  // deviation, so a big imbalance outweighs several small ones. Deterministic,
+  // and it converges in a handful of sweeps.
+  const totalGames = hosted.reduce((a, b) => a + b, 0);
+  const target = totalGames / teamCount;
+  const cost = (n: number): number => (n - target) ** 2;
+
+  for (let sweep = 0; sweep < 50; sweep++) {
+    let improved = false;
+    for (const f of placed) {
+      const w = fixtureWeight(f);
+      const h = hosted[f.home] ?? 0;
+      const a = hosted[f.away] ?? 0;
+      if (cost(h - w) + cost(a + w) < cost(h) + cost(a)) {
+        hosted[f.home] = h - w;
+        hosted[f.away] = a + w;
+        const swap = f.home;
+        f.home = f.away;
+        f.away = swap;
+        improved = true;
+      }
+    }
+    if (!improved) break;
+  }
+
+  return placed;
+}
+
+/** Which team indices belong to each conference, in world order. */
+export interface WorldShape {
+  conferences: Array<{ id: string; teams: number[] }>;
+}
+
+export function worldFromConferences(defs: readonly ConferenceDef[]): WorldShape {
+  let next = 0;
+  return {
+    conferences: defs.map((c) => ({
+      id: c.id,
+      teams: c.schools.map(() => next++),
+    })),
+  };
+}
+
+/**
+ * A week is seven days: a non-conference game on Tuesday, a conference series
+ * Friday through Sunday.
+ *
+ * Conference series come from a circle-method round robin inside each
+ * conference. Non-conference games use the same method one level up — the
+ * conferences themselves are paired against each other, and within a paired
+ * couple the nth team of one plays a rotating team of the other. That keeps
+ * every school playing on every date and stops anyone drawing the same
+ * non-conference opponent twice.
+ */
+export function buildSchedule(
+  config: SeasonConfig,
+  world: WorldShape,
+  rotation = 0,
+): GameDay[] {
+  const seriesLabels = ['Series opener', 'Game two', 'Series finale'];
+  const confCount = world.conferences.length;
+  const fixtures: Fixture[] = [];
+
+  const weeks = Math.max(config.seriesRounds, config.nonConferenceGames);
+  for (let week = 0; week < weeks; week++) {
+    const base = week * 7;
+
+    if (week < config.nonConferenceGames) {
+      if (confCount % 2 !== 0) throw new Error('non-conference play needs an even number of conferences');
+      for (const [ca, cb] of roundPairs(week, confCount)) {
+        const a = world.conferences[ca];
+        const b = world.conferences[cb];
+        if (!a || !b) continue;
+        const size = Math.min(a.teams.length, b.teams.length);
+        for (let i = 0; i < size; i++) {
+          fixtures.push({
+            day: base + 1,
+            week: week + 1,
+            kind: 'midweek',
+            a: a.teams[i] as number,
+            b: b.teams[(i + week + rotation) % size] as number,  // rotate so nobody repeats
+          });
+        }
+      }
+    }
+
+    if (week < config.seriesRounds) {
+      for (const conf of world.conferences) {
+        for (const [x, y] of roundPairs(week + rotation, conf.teams.length)) {
+          fixtures.push({
+            day: base + 4,
+            week: week + 1,
+            kind: 'series',
+            a: conf.teams[x] as number,
+            b: conf.teams[y] as number,
+          });
+        }
+      }
+    }
+  }
+
+  fixtures.sort((x, y) => x.day - y.day);
+
+  const teamCount = world.conferences.reduce((n, c) => n + c.teams.length, 0);
+  const placed = assignHosts(fixtures, teamCount);
+
+  const byDay = new Map<number, GameDay>();
+  const dayFor = (day: number, week: number, kind: GameDay['kind'], label: string): GameDay => {
+    let d = byDay.get(day);
+    if (!d) { d = { day, week, kind, label, games: [] }; byDay.set(day, d); }
+    return d;
+  };
+
+  for (const f of placed) {
+    if (f.kind === 'midweek') {
+      dayFor(f.day, f.week, 'midweek', 'Midweek').games.push({
+        home: f.home, away: f.away, conference: false, slot: 3,
+      });
+      continue;
+    }
+    for (let g = 0; g < 3; g++) {
+      dayFor(f.day + g, f.week, 'series', seriesLabels[g] as string).games.push({
+        home: f.home, away: f.away, conference: true, slot: g,
+      });
+    }
+  }
+
+  return [...byDay.values()].sort((x, y) => x.day - y.day);
+}
+
+// ---------------------------------------------------------------------------
+// Building and running a season
+// ---------------------------------------------------------------------------
+
+export function createSeason(
+  rng: Rng,
+  config: SeasonConfig = DEFAULT_SEASON,
+  conferences: readonly ConferenceDef[] = CONFERENCES,
+): SeasonState {
+  // Fresh world, fresh name pool. See the note in calibration.ts: leaving this
+  // out makes a second season in the same process generate different players.
+  resetNames();
+
+  const teams: TeamRecord[] = [];
+  for (const conf of conferences) {
+    for (const def of conf.schools) {
+      teams.push({
+        id: teamId(def.abbr),
+        index: teams.length,
+        def,
+        conference: conf.id,
+        strategy: strategyFor(teams.length),
+        prestige: initialPrestige(def.prestige),
+        team: makeTeam(rng, `${def.school} ${def.nickname}`, def.quality),
+        w: 0, l: 0, cw: 0, cl: 0, rs: 0, ra: 0, gp: 0, streak: 0,
+        opponents: [],
+      });
+    }
+  }
+
+  return {
+    config,
+    rng,
+    teams,
+    schedule: buildSchedule(config, worldFromConferences(conferences), 0),
+    dayIndex: 0,
+    scheduleRotation: 0,
+    lastPitched: new Map(),
+    batting: new Map(),
+    pitching: new Map(),
+    results: [],
+    boxScores: {},
+    captureBoxFor: null,
+    recruiting: generateClass(0, teams.length, rng),
+    finalOrder: null,
+  };
+}
+
+/**
+ * Next year, same programs.
+ *
+ * Carries the rosters forward — whatever `advanceOffseason` left behind — and
+ * resets everything that belongs to the season just finished: records, streaks,
+ * statistics, schedule. Deliberately does not touch the name pool, because the
+ * world is continuous now and a returning junior must keep his name.
+ */
+export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config): SeasonState {
+  // Coerced rather than trusted: a non-finite rotation silently degrades the
+  // schedule into the same pairing every round instead of throwing.
+  const rotation = (Number.isFinite(prev.scheduleRotation) ? prev.scheduleRotation : 0) + 1;
+  const teams: TeamRecord[] = prev.teams.map((t) => ({
+    ...t,
+    w: 0, l: 0, cw: 0, cl: 0, rs: 0, ra: 0, gp: 0, streak: 0,
+    // Last June's frozen regular season record goes with last June. It is
+    // spread in from the previous team otherwise, and `regularRecord` prefers
+    // it over the live one — so a brand new season opened showing last year's
+    // 22-11 above a schedule of games nobody had played yet.
+    rw: undefined, rl: undefined,
+    opponents: [],
+  }));
+
+  const world: WorldShape = { conferences: [] };
+  for (const t of teams) {
+    let conf = world.conferences.find((c) => c.id === t.conference);
+    if (!conf) { conf = { id: t.conference, teams: [] }; world.conferences.push(conf); }
+    conf.teams.push(t.index);
+  }
+
+  return {
+    config,
+    rng: prev.rng,
+    teams,
+    schedule: buildSchedule(config, world, rotation),
+    dayIndex: 0,
+    scheduleRotation: rotation,
+    lastPitched: new Map(),
+    batting: new Map(),
+    pitching: new Map(),
+    results: [],
+    // Last year's box scores belong to last year.
+    boxScores: {},
+    captureBoxFor: prev.captureBoxFor,
+    // A new class every year. Last year's board is spent.
+    recruiting: generateClass(prev.recruiting.year + 1, teams.length, prev.rng),
+    finalOrder: null,
+  };
+}
+
+function battingFor(season: SeasonState, id: PlayerId): BattingSeason {
+  let line = season.batting.get(id);
+  if (!line) {
+    line = { g: 0, ab: 0, r: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, hbp: 0, sb: 0, cs: 0 };
+    season.batting.set(id, line);
+  }
+  return line;
+}
+
+function pitchingFor(season: SeasonState, id: PlayerId): PitchingSeason {
+  let line = season.pitching.get(id);
+  if (!line) {
+    line = { g: 0, gs: 0, w: 0, l: 0, sv: 0, outs: 0, h: 0, r: 0, er: 0, bb: 0, k: 0, hr: 0, pitches: 0, bf: 0 };
+    season.pitching.set(id, line);
+  }
+  return line;
+}
+
+/**
+ * Fold one game's box score into the season totals.
+ *
+ * The decision rules are approximations, not the scorer's rulebook: the starter
+ * takes the win or the loss, and a save goes to a reliever who finished a win of
+ * three runs or fewer. Real scoring hangs the win on whoever was pitching when
+ * the lead changed for good, which needs a leverage trail the engine does not
+ * keep yet.
+ */
+interface Decision {
+  winner: Pitcher | null;
+  loser: Pitcher | null;
+}
+
+function foldSide(
+  season: SeasonState,
+  side: TeamState,
+  won: boolean,
+  margin: number,
+  decision: Decision,
+): void {
+  for (const line of side.batting.values()) {
+    const s = battingFor(season, line.player.id);
+    s.g += 1;
+    s.ab += line.ab; s.r += line.r; s.h += line.h; s.d += line.d; s.t += line.t;
+    s.hr += line.hr; s.rbi += line.rbi; s.bb += line.bb; s.k += line.k;
+    s.hbp += line.hbp; s.sb += line.sb; s.cs += line.cs;
+  }
+
+  for (const line of side.pitching.values()) {
+    const s = pitchingFor(season, line.player.id);
+    s.g += 1;
+    s.outs += line.outs; s.h += line.h; s.r += line.r; s.er += line.er;
+    s.bb += line.bb; s.k += line.k; s.hr += line.hr;
+    s.pitches += line.pitches; s.bf += line.bf;
+    if (line.player === side.starter) s.gs += 1;
+  }
+
+  // The decision goes to the pitcher of record, not the starter. Falls back to
+  // the starter only if the game somehow produced no lead change — a shutout
+  // where the winner scored first and never trailed still records one, so this
+  // is defensive rather than routine.
+  const credited = won
+    ? decision.winner ?? side.starter
+    : decision.loser ?? side.starter;
+  const line = pitchingFor(season, credited.id);
+  if (won) line.w += 1; else line.l += 1;
+
+  // A save needs a reliever who finished a close win he did not win himself.
+  if (won && side.pitcher !== side.starter && side.pitcher !== credited && margin <= 3) {
+    pitchingFor(season, side.pitcher.id).sv += 1;
+  }
+}
+
+export interface PlayOptions {
+  /** Record the text log and PlayEvent stream for this game. */
+  capture?: boolean;
+  onCapture?: (result: GameResult) => void;
+  /** Counts toward the conference race. Postseason games do not. */
+  conference?: boolean;
+  /** Rotation slot for both sides. */
+  slot?: number;
+  day?: number;
+  /** Whether the result moves records and streaks. Statistics always accumulate. */
+  standings?: boolean;
+  /** Appended to season.results. Off for exhibition or replay use. */
+  record?: boolean;
+}
+
+/**
+ * Play one game and fold it into the season. Shared by the regular season and
+ * the postseason so both accumulate statistics the same way — NCAA season
+ * totals include tournament play, and two code paths would drift.
+ */
+/**
+ * Relief order for one game: longest rested first, ties broken by quality so a
+ * manager reaches for his best available arm rather than an arbitrary one.
+ *
+ * Deliberately simple. A real bullpen is organised by leverage and role, which
+ * needs the closer concept and a save situation to hand — worth doing, and not
+ * a reason to leave five pitchers idle in the meantime.
+ */
+function restedFirst(season: SeasonState, team: TeamRecord): Pitcher[] {
+  const day = season.schedule[season.dayIndex]?.day ?? season.dayIndex;
+  return [...team.team.bullpen].sort((a, b) => {
+    const restA = day - (season.lastPitched.get(a.id) ?? -99);
+    const restB = day - (season.lastPitched.get(b.id) ?? -99);
+    if (restA !== restB) return restB - restA;
+    return overallOf(b) - overallOf(a);
+  });
+}
+
+/**
+ * A day off.
+ *
+ * Pinch hitting alone leaves a bench bat with a handful of plate appearances
+ * across a whole season — technically present, practically invisible. Real
+ * programs rest regulars: a backup catcher starts eight or ten games, a fourth
+ * outfielder spells the corners. That is where a reserve's numbers come from.
+ *
+ * One regular sits on roughly a third of days. Over 33 games that is about
+ * eleven starts spread across four reserves, which is what a bench looks like.
+ * The replacement takes the spot of whoever plays his position, so the lineup
+ * stays coherent rather than putting a catcher in centre field.
+ */
+function restedLineup(team: Team, rng: Rng): readonly Hitter[] | undefined {
+  if (team.bench.length === 0) return undefined;
+
+  // A regular sits on most days, two on some. Weekend series are three games in
+  // three days and college rosters are not deep enough to run nine men through
+  // all of it — the back end of a series is where reserves play.
+  const resting = rng() < 0.55 ? (rng() < 0.30 ? 2 : 1) : 0;
+  if (resting === 0) return undefined;
+
+  const lineup = [...team.lineup];
+  const used = new Set<number>();
+
+  for (let i = 0; i < resting; i++) {
+    const pool = team.bench.filter((h) => !lineup.includes(h));
+    const sub = pool[Math.floor(rng() * pool.length)];
+    if (!sub) break;
+
+    // Replace whoever plays his position, so the lineup stays coherent rather
+    // than putting a catcher in centre field.
+    const same = lineup.findIndex((h, idx) => h.pos === sub.pos && !used.has(idx));
+    let spot = same;
+    if (spot < 0) {
+      do { spot = Math.floor(rng() * lineup.length); } while (used.has(spot));
+    }
+    used.add(spot);
+    lineup[spot] = sub;
+  }
+
+  return lineup;
+}
+
+export function playGame(
+  season: SeasonState,
+  homeIndex: number,
+  awayIndex: number,
+  opts: PlayOptions = {},
+): GameSummary {
+  const home = season.teams[homeIndex];
+  const away = season.teams[awayIndex];
+  if (!home || !away) throw new Error('unknown team index');
+
+  const conference = opts.conference ?? true;
+  const slot = opts.slot ?? 0;
+
+  const homeLineup = restedLineup(home.team, season.rng);
+  const awayLineup = restedLineup(away.team, season.rng);
+
+  const result = simGame(home.team, away.team, season.rng, {
+    engine: season.config.engine,
+    homeStarter: slot,
+    awayStarter: slot,
+    ...(homeLineup ? { homeLineup } : {}),
+    ...(awayLineup ? { awayLineup } : {}),
+    homeStrategy: home.strategy,
+    awayStrategy: away.strategy,
+    homeBullpen: restedFirst(season, home),
+    awayBullpen: restedFirst(season, away),
+    verbose: opts.capture ?? false,
+    playEvents: opts.capture ?? false,
+  });
+  if (opts.capture) opts.onCapture?.(result);
+
+  // Whoever threw is unavailable for a while. Recorded for both sides.
+  const today = opts.day ?? season.dayIndex;
+  for (const side of [result.home, result.away]) {
+    for (const line of side.pitching.values()) {
+      if (line.outs > 0 || line.bf > 0) season.lastPitched.set(line.player.id, today);
+    }
+  }
+
+  return recordResult(season, homeIndex, awayIndex, result, opts);
+}
+
+/**
+ * Fold a finished game into the season: records, standings, statistics, and the
+ * pitcher of record. Called for simulated games and for games the manager played
+ * himself, so a hand-managed win counts exactly like any other.
+ */
+/** A hitter's day, the way a newspaper would set it. */
+function battingLines(side: GameResult['home']): BoxLine[] {
+  const out: BoxLine[] = [];
+  for (const l of side.batting.values()) {
+    if (l.ab === 0 && l.bb === 0 && l.hbp === 0) continue;
+    const extras: string[] = [];
+    if (l.d) extras.push(`${l.d} 2B`);
+    if (l.t) extras.push(`${l.t} 3B`);
+    if (l.hr) extras.push(`${l.hr} HR`);
+    if (l.rbi) extras.push(`${l.rbi} RBI`);
+    if (l.bb) extras.push(`${l.bb} BB`);
+    if (l.k) extras.push(`${l.k} K`);
+    if (l.sb) extras.push(`${l.sb} SB`);
+    out.push({
+      id: l.player.id, name: l.player.name, slot: l.player.pos,
+      line: `${l.h}-${l.ab}${extras.length ? ', ' + extras.join(', ') : ''}`,
+    });
+  }
+  return out;
+}
+
+/** And an arm's. */
+function pitchingLines(side: GameResult['home']): BoxLine[] {
+  const out: BoxLine[] = [];
+  for (const l of side.pitching.values()) {
+    if (l.outs === 0 && l.bf === 0) continue;
+    const ip = `${Math.floor(l.outs / 3)}.${l.outs % 3}`;
+    out.push({
+      id: l.player.id, name: l.player.name, slot: l.player.role,
+      line: `${ip} IP, ${l.h} H, ${l.r} R, ${l.er} ER, ${l.bb} BB, ${l.k} K`,
+    });
+  }
+  return out;
+}
+
+export function recordResult(
+  season: SeasonState,
+  homeIndex: number,
+  awayIndex: number,
+  result: GameResult,
+  opts: PlayOptions = {},
+): GameSummary {
+  const home = season.teams[homeIndex];
+  const away = season.teams[awayIndex];
+  if (!home || !away) throw new Error('unknown team index');
+  const conference = opts.conference ?? true;
+
+  const hr = result.home.runs;
+  const ar = result.away.runs;
+  const homeWon = hr > ar;
+  const margin = Math.abs(hr - ar);
+
+  // Keep the full lines for the user's games, wherever the game came from —
+  // simulated, or managed pitch by pitch. Both arrive here.
+  const keepFor = season.captureBoxFor;
+  if (keepFor !== null && (homeIndex === keepFor || awayIndex === keepFor)) {
+    const day = opts.day ?? season.dayIndex;
+    season.boxScores[day] = {
+      day, home: homeIndex, away: awayIndex,
+      homeRuns: hr, awayRuns: ar, innings: result.innings,
+      homeBatting: battingLines(result.home),
+      awayBatting: battingLines(result.away),
+      homePitching: pitchingLines(result.home),
+      awayPitching: pitchingLines(result.away),
+    };
+  }
+
+  if (opts.standings ?? true) {
+    home.gp += 1; away.gp += 1;
+    home.rs += hr; home.ra += ar;
+    away.rs += ar; away.ra += hr;
+    home.opponents.push(away.index);
+    away.opponents.push(home.index);
+
+    const winner = homeWon ? home : away;
+    const loser = homeWon ? away : home;
+    winner.w += 1; loser.l += 1;
+    if (conference) { winner.cw += 1; loser.cl += 1; }
+    winner.streak = winner.streak > 0 ? winner.streak + 1 : 1;
+    loser.streak = loser.streak < 0 ? loser.streak - 1 : -1;
+  }
+
+  const decision: Decision = {
+    winner: result.winningPitcher,
+    loser: result.losingPitcher,
+  };
+  foldSide(season, result.home, homeWon, margin, decision);
+  foldSide(season, result.away, !homeWon, margin, decision);
+
+  const summary: GameSummary = {
+    day: opts.day ?? -1,
+    home: homeIndex,
+    away: awayIndex,
+    homeRuns: hr,
+    awayRuns: ar,
+    conference,
+    innings: result.innings,
+  };
+  if (opts.record ?? true) season.results.push(summary);
+  return summary;
+}
+
+/** Sim every game on the next scheduled day. Returns that day's summaries. */
+export interface DayOptions {
+  /**
+   * Hold this team's game back instead of simulating it. The rest of the world
+   * still plays — the schedule does not wait while you manage.
+   */
+  hold?: number;
+  /**
+   * Capture the full play by play for this team's game, so it can be watched
+   * rather than just read as a final score. Only one game per day is captured —
+   * building a log for all 96 would cost far more than it is worth.
+   */
+  watch?: number;
+  onCapture?: (result: GameResult) => void;
+}
+
+export function simNextDay(season: SeasonState, opts: DayOptions = {}): GameSummary[] {
+  const day = season.schedule[season.dayIndex];
+  if (!day) return [];
+  season.dayIndex += 1;
+
+  const summaries: GameSummary[] = [];
+  for (const g of day.games) {
+    if (opts.hold !== undefined && (g.home === opts.hold || g.away === opts.hold)) continue;
+    const watched = opts.watch !== undefined
+      && (g.home === opts.watch || g.away === opts.watch);
+    summaries.push(playGame(season, g.home, g.away, {
+      conference: g.conference,
+      slot: g.slot,
+      day: day.day,
+      capture: watched,
+      ...(watched && opts.onCapture ? { onCapture: opts.onCapture } : {}),
+    }));
+  }
+
+  // The schedule just ran out. Freeze the regular season order before any
+  // postseason game can move a tiebreaker.
+  if (seasonComplete(season) && season.finalOrder === null) {
+    season.finalOrder = standings(season).map((t) => t.index);
+  }
+
+  return summaries;
+}
+
+export function seasonComplete(season: SeasonState): boolean {
+  return season.dayIndex >= season.schedule.length;
+}
+
+export function simSeason(season: SeasonState): void {
+  while (!seasonComplete(season)) simNextDay(season);
+}
+
+// ---------------------------------------------------------------------------
+// Standings and rankings
+// ---------------------------------------------------------------------------
+
+const pct = (w: number, l: number): number => (w + l === 0 ? 0 : w / (w + l));
+
+export function winPct(t: TeamRecord): number { return pct(t.w, t.l); }
+export function confPct(t: TeamRecord): number { return pct(t.cw, t.cl); }
+
+/**
+ * Conference race order: conference record first, then overall, then run
+ * differential. Pass a conference id for one league's table; omit it for the
+ * whole world, which is really only useful as a stable ordering to filter from.
+ */
+export function standings(season: SeasonState, conference?: string): TeamRecord[] {
+  const pool = conference === undefined
+    ? season.teams
+    : season.teams.filter((t) => t.conference === conference);
+  return [...pool].sort((a, b) =>
+    confPct(b) - confPct(a) ||
+    b.w - a.w ||
+    (b.rs - b.ra) - (a.rs - a.ra));
+}
+
+/** Every conference id in the world, in world order. */
+export function conferenceIds(season: SeasonState): string[] {
+  const seen: string[] = [];
+  for (const t of season.teams) if (!seen.includes(t.conference)) seen.push(t.conference);
+  return seen;
+}
+
+/**
+ * RPI, the NCAA's own formula: a quarter your record, half your opponents',
+ * a quarter your opponents' opponents'. It rewards a hard schedule, which is
+ * why teams schedule up. This is the real weighting, computed over conference
+ * play only, since that is the whole world at the moment.
+ */
+export function rpi(season: SeasonState, index: number): number {
+  const team = season.teams[index];
+  if (!team) return 0;
+
+  const owp = average(team.opponents.map((o) => winPct(season.teams[o] as TeamRecord)));
+  const oowp = average(team.opponents.map((o) => {
+    const opp = season.teams[o] as TeamRecord;
+    return average(opp.opponents.map((oo) => winPct(season.teams[oo] as TeamRecord)));
+  }));
+
+  return 0.25 * winPct(team) + 0.50 * owp + 0.25 * oowp;
+}
+
+function average(xs: readonly number[]): number {
+  if (xs.length === 0) return 0;
+  return xs.reduce((a, b) => a + b, 0) / xs.length;
+}
+
+/** Teams ordered by RPI, best first. */
+export function rpiOrder(season: SeasonState): Array<{ team: TeamRecord; rpi: number }> {
+  return season.teams
+    .map((team) => ({ team, rpi: rpi(season, team.index) }))
+    .sort((a, b) => b.rpi - a.rpi);
+}
+
+// ---------------------------------------------------------------------------
+// Statistical leaders
+// ---------------------------------------------------------------------------
+
+export interface LeaderRow {
+  id: PlayerId;
+  name: string;
+  team: string;
+  value: number;
+  detail: string;
+}
+
+export const battingAverage = (s: BattingSeason): number => (s.ab === 0 ? 0 : s.h / s.ab);
+export const onBase = (s: BattingSeason): number => {
+  const pa = s.ab + s.bb + s.hbp;
+  return pa === 0 ? 0 : (s.h + s.bb + s.hbp) / pa;
+};
+export const slugging = (s: BattingSeason): number => {
+  if (s.ab === 0) return 0;
+  const singles = s.h - s.d - s.t - s.hr;
+  return (singles + s.d * 2 + s.t * 3 + s.hr * 4) / s.ab;
+};
+export const inningsPitched = (s: PitchingSeason): number => s.outs / 3;
+export const era = (s: PitchingSeason): number => {
+  const ip = inningsPitched(s);
+  return ip === 0 ? 0 : (s.er * 9) / ip;
+};
+export const whip = (s: PitchingSeason): number => {
+  const ip = inningsPitched(s);
+  return ip === 0 ? 0 : (s.h + s.bb) / ip;
+};
+
+/** Where each player plays, built once so leaderboards can name a team. */
+function teamLookup(season: SeasonState): Map<PlayerId, string> {
+  const map = new Map<PlayerId, string>();
+  for (const t of season.teams) {
+    const roster = [...t.team.lineup, ...t.team.bench, ...t.team.rotation, ...t.team.bullpen];
+    for (const p of roster) map.set(p.id, t.def.abbr);
+  }
+  return map;
+}
+
+function nameLookup(season: SeasonState): Map<PlayerId, string> {
+  const map = new Map<PlayerId, string>();
+  for (const t of season.teams) {
+    const roster = [...t.team.lineup, ...t.team.bench, ...t.team.rotation, ...t.team.bullpen];
+    for (const p of roster) map.set(p.id, p.name);
+  }
+  return map;
+}
+
+export interface LeaderOptions {
+  limit?: number;
+  /** Minimum plate appearances for rate stats. Keeps a 3-for-5 bench bat off the top. */
+  minPA?: number;
+  /** Minimum innings for pitching rate stats. */
+  minIP?: number;
+  /**
+   * Restrict the whole pool to one team before ranking.
+   *
+   * This has to happen before the cut, not after. Ranking the nation and then
+   * filtering to one roster returns almost nothing, because a given program
+   * rarely has anybody in the national top five.
+   */
+  team?: string;
+}
+
+export interface Leaderboards {
+  average: LeaderRow[];
+  homeRuns: LeaderRow[];
+  rbi: LeaderRow[];
+  stolenBases: LeaderRow[];
+  era: LeaderRow[];
+  strikeouts: LeaderRow[];
+  wins: LeaderRow[];
+}
+
+export function leaders(season: SeasonState, opts: LeaderOptions = {}): Leaderboards {
+  const limit = opts.limit ?? 5;
+  const teams = teamLookup(season);
+  const names = nameLookup(season);
+
+  // The NCAA's own qualifiers: 2.0 plate appearances per team game for a
+  // batting title, 1.0 inning per team game for an ERA title. (MLB is stricter
+  // at 3.1 and 1.0.) Without the innings rule a reliever with twenty good
+  // innings outranks an ace with a hundred, which is not an ERA champion.
+  const gamesPlayed = Math.max(...season.teams.map((t) => t.gp), 1);
+
+  // The NCAA qualifier scales with games played, which is right at the end of a
+  // season and useless at the start of one: six games in it admits a hitter who
+  // is 10-for-17 and puts .588 at the top of the leaderboard. A floor keeps
+  // early season boards honest — nobody leads the nation on seventeen at bats.
+  const MIN_PA_FLOOR = 40;
+  const MIN_IP_FLOOR = 15;
+  const minPA = opts.minPA ?? Math.max(MIN_PA_FLOOR, Math.floor(gamesPlayed * 2.0));
+  const minIP = opts.minIP ?? Math.max(MIN_IP_FLOOR, Math.floor(gamesPlayed * 1.0));
+
+  const row = (id: PlayerId, value: number, detail: string): LeaderRow => ({
+    id,
+    name: names.get(id) ?? String(id),
+    team: teams.get(id) ?? '---',
+    value,
+    detail,
+  });
+
+  const onTeam = (id: PlayerId): boolean =>
+    opts.team === undefined || teams.get(id) === opts.team;
+
+  const bat = [...season.batting.entries()].filter(([id]) => onTeam(id));
+  const pit = [...season.pitching.entries()].filter(([id]) => onTeam(id));
+
+  const qualifiedBat = bat.filter(([, s]) => s.ab + s.bb + s.hbp >= minPA);
+  const qualifiedPit = pit.filter(([, s]) => inningsPitched(s) >= minIP);
+
+  const top = <T>(
+    rows: Array<[PlayerId, T]>,
+    value: (s: T) => number,
+    detail: (s: T) => string,
+    ascending = false,
+  ): LeaderRow[] =>
+    rows
+      .map(([id, s]) => row(id, value(s), detail(s)))
+      .sort((a, b) => (ascending ? a.value - b.value : b.value - a.value))
+      .slice(0, limit);
+
+  return {
+    average: top(qualifiedBat, battingAverage, (s) => `${s.h}-for-${s.ab}`),
+    homeRuns: top(bat, (s) => s.hr, (s) => `${s.rbi} RBI`),
+    rbi: top(bat, (s) => s.rbi, (s) => `${s.hr} HR`),
+    stolenBases: top(bat, (s) => s.sb, (s) => `${s.cs} CS`),
+    era: top(qualifiedPit, era, (s) => `${inningsPitched(s).toFixed(1)} IP`, true),
+    strikeouts: top(pit, (s) => s.k, (s) => `${inningsPitched(s).toFixed(1)} IP`),
+    wins: top(pit, (s) => s.w, (s) => `${s.l} L, ${era(s).toFixed(2)} ERA`),
+  };
+}

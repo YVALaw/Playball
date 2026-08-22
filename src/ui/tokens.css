@@ -1,0 +1,153 @@
+/* tokens.css
+ * The design, lifted from design/Dynasty Mobile.dc.html.
+ *
+ * That mockup is the source of truth for how Playball looks — palette,
+ * typography, spacing. The "Design direction" section of 01-roadmap.md describes
+ * a different, scorekeeper's-page scheme that was never adopted and is marked
+ * stale there. Where the two disagree, this file follows the mockup.
+ */
+
+:root {
+  --field: #f2ece0;   /* screen background, the ruled page */
+  --paper: #fbf7ee;   /* cards, panels, table surfaces */
+  --ink: #1c2430;     /* primary text, bottom nav */
+  --navy: #223247;    /* top app bar */
+  --clay: #a8442a;    /* the accent: active states, rules, alerts */
+  --win: #3f6b46;
+  --loss: #a8442a;
+
+  --dim: rgba(28, 36, 48, 0.55);
+  --faint: rgba(28, 36, 48, 0.2);
+  --hairline: rgba(28, 36, 48, 0.12);
+  --cream: #f6f1e6;
+  --cream-dim: rgba(246, 241, 230, 0.62);
+
+  --display: 'Big Shoulders Display', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --body: 'Source Sans 3', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+/* This is a phone app being looked at on whatever screen you happen to have.
+ *
+ * Left to itself the layout stretches to the window: a 412px design spread
+ * across 1100px, with a 34px nav bar marooned at the bottom of a wide grey
+ * field. So pin it to a phone-sized frame and centre it, exactly as the mockup
+ * does with its device bezel.
+ *
+ * On a real handset the viewport is smaller than the caps and the frame simply
+ * fills the screen, so this costs nothing where it matters. */
+#root {
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+}
+
+.app-frame {
+  /* Modals inside the app position against this frame, not the window, so a
+     sheet covers the phone rather than the whole desktop background. */
+  position: relative;
+  width: 100%;
+  max-width: 430px;
+  height: 100%;
+  max-height: 940px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--field);
+  position: relative;
+}
+
+/* Only lift the frame off the backdrop when there is actually a backdrop to lift
+   it off — on a phone it is edge to edge and a shadow would be invisible anyway. */
+@media (min-width: 460px) and (min-height: 700px) {
+  .app-frame {
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+  }
+}
+
+body {
+  background: var(--ink);
+  color: var(--ink);
+  font-family: var(--body);
+  /* The phone is the target. Stop the pull-to-refresh rubber band and the
+     double-tap zoom that make a native-feeling app feel like a web page. */
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The play log and every stat table are monospace on purpose: column alignment
+   is the entire readability of a box score. */
+.mono { font-family: var(--mono); }
+.display { font-family: var(--display); }
+
+/* Labels: small, wide-tracked, upper. Used for every column head and tag. */
+.label {
+  font: 500 8.5px var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(28, 36, 48, 0.5);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Scrollbars off — this is a phone surface. */
+::-webkit-scrollbar { width: 0; height: 0; }
+
+/* ---------------------------------------------------------------------------
+   Bottom sheets
+   ---------------------------------------------------------------------------
+   Every sheet in the app — the job offer, the recruit card, the pinch hit and
+   bullpen pickers — appeared fully formed on the frame it was opened. That reads
+   as a glitch rather than a panel: there is no moment that connects the tap to
+   the thing that arrived, so it feels like the screen changed under you.
+
+   The scrim fades and the panel rises from the edge it is anchored to, which is
+   the same motion the platform sheets use and the reason they feel like objects.
+   Deliberately quick: 220ms is long enough to be followed and short enough that
+   somebody working a recruiting board never waits on it.
+*/
+@keyframes sheet-rise {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes scrim-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.sheet-scrim {
+  animation: scrim-in 170ms ease-out both;
+}
+
+.sheet {
+  animation: sheet-rise 220ms cubic-bezier(0.22, 0.85, 0.28, 1) both;
+  /* Promoted so a phone animates the panel on the compositor rather than
+     repainting a full screen of text every frame. */
+  will-change: transform;
+}
+
+/* Somebody who has asked the system to stop moving things gets the panel, not
+   the motion. */
+@media (prefers-reduced-motion: reduce) {
+  .sheet-scrim,
+  .sheet {
+    animation: none;
+  }
+}

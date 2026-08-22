@@ -12,7 +12,22 @@ You are the head coach of a college baseball program. Recruit high schoolers, de
 
 ## Where the project actually is
 
-**Phase 0 is done.** The simulation engine exists, runs headless, and is calibrated against real NCAA Division I numbers. It is currently plain JavaScript and needs converting to TypeScript before anything gets built on top of it.
+**Phase 0 is mostly done, and unverified.** The simulation engine exists and runs headless. It is currently plain JavaScript and needs converting to TypeScript before anything gets built on top of it.
+
+**The calibration claim checks out.** As of August 19, 2026 the harness has actually been run. Runs per team per game land at 6.84 against a 6.79 target, home runs and pitches per plate appearance are exact, and nothing is off by more than 7%. The platoon model produces the right split sizes in the right direction. Full output in `tests/fixtures/calibration-baseline.txt`.
+
+**But it has real defects.** Three bugs and four gaps against its own spec:
+
+- A walk-off bug — the bottom half plays to three outs regardless of score
+- Pitch-level D1 constants that are documented in `ratings.js` and wired to nothing
+- No home field advantage at all. Measured: the better team wins at the same rate home and away
+- No individual fielders, no catcher in the engine, no pitch types, no AI decision layer
+
+Walks run 7% high and plate appearances 5% high — the two numbers worth chasing, and they are related.
+
+Performance is not a concern: roughly 2,500 full games per second.
+
+See the defect register in `04-implementation-plan.md`. Phases 0.4 and 0.6 close the gap.
 
 ---
 
@@ -55,6 +70,8 @@ export type BattedBall = 'ground' | 'line' | 'fly' | 'popup';
 export interface Ratings {
   contact: number; power: number; eye: number;
   speed: number; fielding: number; arm: number;
+  /** Strat-O-Matic style, lower is better. 1 is a defensive star. */
+  range: number; errorRate: number;
 }
 
 export interface PitcherRatings {
@@ -221,7 +238,7 @@ Write a migration per version bump before you have users, not after.
 | Operation | Budget |
 |-----------|--------|
 | Single game, headless | under 5 ms |
-| Full 56 game season, one team | under 300 ms |
+| Full 33 game season, one team | under 200 ms |
 | Full league season | under 3 s in a Worker, with progress |
 | Screen transition | under 100 ms |
 | 3D field, mid range Android | 30 fps sustained during ball flight |
@@ -231,7 +248,17 @@ Guard these with benchmark tests. A performance regression found six months late
 
 ---
 
-## Design direction
+## Design direction — **STALE, DO NOT BUILD FROM THIS**
+
+> This section was not updated for v3 and does not describe the app's design.
+>
+> **The design is `design/Dynasty Mobile.dc.html`.** The mockup is the source of truth
+> for palette, typography, layout, and interaction. Port it as-is. Where this section
+> and the mockup disagree, the mockup wins — including on color, where this section's
+> scorebook palette was never adopted.
+>
+> Kept below only as an idea file. The one piece still worth stealing is the live
+> scorebook cell described at the end, which the mockup does not have.
 
 The identity comes from the sport's own paperwork, not from generic sports app conventions. College baseball's real artifact is the **scorebook**: ruled grid paper, a small diamond in every cell, notation like 6-4-3 and a backwards K, and the scorekeeper's convention of marking plays in blue or black and runs in red.
 
@@ -262,17 +289,25 @@ The red is the discipline test. Scorekeepers use red for exactly one thing. If i
 
 ## Build phases
 
-### Phase 0: The engine — **DONE (in JavaScript)**
+### Phase 0: The engine — **PROTOTYPE (in JavaScript)**
 - [x] Player and team structures with handedness and platoon skill
 - [x] Generalized log5 plate appearance model
 - [x] Free pitch model as a comparison engine
-- [x] Pitch level count model calibrated to D1 rates
-- [x] Baserunning, steals, errors, double plays, sacrifice flies
+- [~] Pitch level count model — built, but the D1 constants in `ratings.js` are wired to nothing
+- [~] Baserunning, steals, errors, double plays, sacrifice flies — steals are first-to-second only and ignore the catcher, who does not exist in the engine
 - [x] Fatigue, times through the order, pitching change AI
 - [x] Text play by play and box score
-- [x] Calibration harness, platoon test, parity test
+- [~] Calibration harness, platoon test, parity test — written, never run
+- [ ] Walk-off handling — the bottom half plays to three outs regardless of score
+- [ ] Individual fielders with range and error ratings
+- [ ] AI decision layer on a run expectancy matrix
 
-### Phase 0.5: TypeScript conversion — **START HERE**
+### Phase 0.4: Stabilize the JavaScript engine — **START HERE**
+Install Node, capture a measured baseline, fix the known bugs, recalibrate. See
+`04-implementation-plan.md`. This must land before the TypeScript port, so that a
+post-port calibration difference can only mean the port broke something.
+
+### Phase 0.5: TypeScript conversion
 - [ ] `tsconfig.json` with strict mode on
 - [ ] `types.ts`: full domain model, branded IDs, exhaustive unions
 - [ ] Port the five engine files, fixing what strict mode surfaces
@@ -368,22 +403,28 @@ Deliberately late. The game is complete and playable before this starts.
 | 3D | Three.js via React Three Fiber, stylized diamond only |
 | Engine | Generalized log5 with constrained pitch sequencing |
 | Rating visibility | All visible in v1 |
-| Two way players | Skipped in v1 |
+| Two way players | Skipped in v1, added later |
 | Schools | Fictional |
+| World size | 12 teams, one conference. Schedule generator parameterized by team count so the world can grow |
+| Season length | 33 games — a single round robin, every opponent three times |
+| Individual fielders | **In v1.** Range and error ratings per player, spray direction, a real catcher |
+| Pitch arsenals | Deferred past v1 |
+| Defensive shifts | Coach decision, per the mockup: Straight / Situational / Full shift |
+| Re-entry | Once a player is substituted out he cannot return. Hitters and pitchers alike |
+| The mockup | `design/Dynasty Mobile.dc.html` is the app's layout. Port it to the stack, keeping the screens and interaction model exactly |
 
 ---
 
 ## Still open
 
-- [ ] How big is the world at v1? One conference, or a full D1 field?
 - [ ] NIL and revenue sharing as a mechanic, or skip it?
-- [ ] Defensive positioning and shifts as a coach decision, or auto?
 - [ ] Park effects, and do they get 3D geometry or stay numeric?
 - [ ] iOS later, or Android only? Capacitor supports both, but iOS needs a Mac and a paid developer account
-- [ ] Verify current NCAA player and pitcher re entry rules before coding substitutions. Sources conflict and it affects bullpen logic
 
 ---
 
 ## Next action
 
-Phase 0.5. Convert the engine to TypeScript with strict mode on and get the calibration harness running under Vitest. It is a contained, mechanical job, and doing it now means every phase after it is typed from the start instead of retrofitted.
+Phase 0.4. Install Node, run the calibration harness for the first time, and commit its output as a measured baseline. Then fix the walk-off bug and wire up the dead pitch constants, and recalibrate.
+
+Phase 0.5 follows immediately: convert the engine to TypeScript with strict mode on and get the harness running under Vitest as a regression test against that baseline. It is a contained, mechanical job, and doing it while the engine is still under a thousand lines means every phase after it is typed from the start instead of retrofitted.

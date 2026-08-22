@@ -1,1 +1,41 @@
-{"name":"college-baseball-dynasty","type":"module","version":"0.1.0"}
+{
+  "name": "playball",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "description": "College baseball dynasty. Headless sim engine plus a mobile front end.",
+  "scripts": {
+    "sim": "tsx sim.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run test",
+    "calibrate": "tsx sim.ts calibrate --n 2000",
+    "pitch-level": "tsx tests/pitch-level-check.ts",
+    "parity-sweep": "tsx tests/parity-sweep.ts",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "goldens": "tsx tests/record-goldens.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@types/three": "^0.185.4",
+    "@vitejs/plugin-react": "^4.7.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.21",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "@react-three/fiber": "^9.7.0",
+    "comlink": "^4.4.2",
+    "idb": "^8.0.3",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "three": "^0.185.1",
+    "zustand": "^5.0.15"
+  }
+}

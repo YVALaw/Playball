@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "//": "node.exe directly rather than npm: Node was installed mid-session, so it is not on the PATH this process inherited, and npm.cmd shells out to `node` by name.",
+      "name": "playball",
+      "runtimeExecutable": "C:/Program Files/nodejs/node.exe",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js", "--port", "5173", "--strictPort"],
+      "port": 5173
+    }
+  ]
+}

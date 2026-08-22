@@ -1,0 +1,279 @@
+// liveGame.ts
+// Managing a game one plate appearance at a time.
+//
+// This is the Out of the Park style quick manage the roadmap's mockup lays out:
+// you make a call on every trip to the plate — swing away, hit and run, bunt,
+// steal on offence; work him, sink it, pitch around, put him on when you are in
+// the field — and you carry it through nine innings rather than dipping in for
+// scripted moments.
+//
+// It does NOT reimplement the game. `createHalfInning` in game.ts is the single
+// implementation of what a plate appearance does, and both this and the fast
+// simulation drive it. The only thing that differs is who decides when to step.
+
+import { createHalfInning, TeamState, RULES, type SimOptions } from './game.js';
+import type { GameResult } from './game.js';
+import { ENGINES } from './engines.js';
+import type {
+  EngineFn, Hitter, Pitcher, PlayerId, PlayEvent, Rng, Tactic, Team,
+} from './types.js';
+
+/** What the manager is being asked, and what he can answer. */
+export interface Decision {
+  side: 'offense' | 'defense';
+  inning: number;
+  half: 'top' | 'bottom';
+  outs: number;
+  bases: [boolean, boolean, boolean];
+  awayRuns: number;
+  homeRuns: number;
+  batter: Hitter;
+  pitcher: Pitcher;
+  /**
+   * Who is standing where, with identity. The booleans above say a base is
+   * occupied; this says *which runner* is on it, which is what lets the diamond
+   * animate a specific man from first to third rather than blinking two lamps.
+   */
+  runners: Array<{ id: PlayerId; name: string; base: 1 | 2 | 3 }>;
+  /** Calls that make sense right now, with the ones that do not left out. */
+  options: TacticOption[];
+}
+
+export interface TacticOption {
+  tactic: Tactic;
+  label: string;
+  /** What the call does, or why it is not available right now. */
+  note: string;
+  available: boolean;
+}
+
+export interface LiveGame {
+  /** Null when the game is over or it is not your turn to decide. */
+  readonly pending: Decision | null;
+  /**
+   * What happened on the last plate appearance, for the field to animate.
+   * Cleared and rebuilt on every step, so it is always just the latest play.
+   */
+  readonly lastPlay: readonly PlayEvent[];
+  readonly over: boolean;
+  readonly log: readonly string[];
+  readonly result: GameResult;
+  /** Answer the pending decision and play on to the next one. */
+  submit: (tactic: Tactic) => void;
+  /** Hand the rest of the game to the computer. */
+  finish: () => void;
+  /** Send a bench bat up in place of the man due. */
+  pinchHit: (hitter: Hitter) => boolean;
+  /** Go to the bullpen. */
+  changePitcher: (arm: Pitcher) => boolean;
+  /** Who is available off the bench and in the pen. */
+  readonly benchAvailable: readonly Hitter[];
+  readonly bullpenAvailable: readonly Pitcher[];
+}
+
+export interface LiveOptions extends SimOptions {
+  /** Which dugout you are sitting in. */
+  managing: 'home' | 'away';
+}
+
+/**
+ * Every call is always listed, with the unavailable ones greyed and carrying the
+ * reason. Hiding them made the panel resize on almost every pitch, and it left
+ * the manager guessing at his own options — a sacrifice that silently vanishes
+ * teaches nothing, whereas "two outs already" teaches the rule.
+ */
+const opt = (
+  tactic: Tactic, label: string, note: string, available: boolean, why: string,
+): TacticOption => ({ tactic, label, note: available ? note : why, available });
+
+const OFFENSE = (bases: [boolean, boolean, boolean], outs: number): TacticOption[] => {
+  const [first, second, third] = bases;
+  const anyOn = first || second || third;
+  return [
+    opt('swing', 'SWING AWAY', 'let him hit', true, ''),
+    opt('hitrun', 'HIT AND RUN', 'runner goes with the pitch',
+      first && outs < 2, !first ? 'nobody on first' : 'two outs already'),
+    opt('bunt', 'SAC BUNT', 'trade an out to move him up',
+      (first || second) && outs < 2,
+      !(first || second) ? 'nobody to move up' : 'two outs already'),
+    opt('contact', 'PLAY FOR CONTACT', 'ball in the air scores him',
+      third && outs < 2, !third ? 'no runner on third' : 'two outs already'),
+    opt('steal', 'STEAL', 'send him on his own',
+      (first && !second) || (second && !third),
+      !anyOn ? 'nobody on' : 'next bag is occupied'),
+  ];
+};
+
+const DEFENSE = (bases: [boolean, boolean, boolean], outs: number): TacticOption[] => {
+  const [first, second, third] = bases;
+  return [
+    opt('pitch', 'PITCH', 'let him work', true, ''),
+    opt('groundball', 'PITCH FOR GROUND', 'sink it, get two', true, ''),
+    opt('around', 'PITCH AROUND', 'nothing over the plate', true, ''),
+    opt('infieldIn', 'INFIELD IN', 'cut the run off at the plate',
+      third && outs < 2,
+      !third ? 'no runner on third' : 'two outs already'),
+    // Putting a man on only makes sense with first open and a force to set up.
+    opt('ibb', 'WALK HIM', 'first base is open',
+      !first && (second || third) && outs < 2,
+      first ? 'first base is taken' : !(second || third) ? 'nobody on' : 'two outs already'),
+  ];
+};
+
+export function createLiveGame(
+  homeTeam: Team,
+  awayTeam: Team,
+  rng: Rng,
+  opts: LiveOptions,
+): LiveGame {
+  const engine: EngineFn = ENGINES[opts.engine ?? 'log5'];
+  const log: string[] = [];
+  const say = (s: string): void => { log.push(s); };
+
+  const home = new TeamState(homeTeam, true, opts.homeStarter ?? 0, opts.homeBullpen);
+  const away = new TeamState(awayTeam, false, opts.awayStarter ?? 0, opts.awayBullpen);
+  const mine = opts.managing === 'home' ? home : away;
+
+  // Same decision tracking the fast path uses, so a managed game credits the
+  // pitcher of record by the same rule.
+  let leadHolder: TeamState | null = null;
+  let creditTo: Pitcher | null = null;
+  let blameTo: Pitcher | null = null;
+  const onScore = (bat: TeamState, fld: TeamState): void => {
+    if (bat.runs <= fld.runs) return;
+    if (leadHolder === bat) return;
+    leadHolder = bat;
+    creditTo = bat.pitcher;
+    blameTo = fld.pitcher;
+  };
+
+  // The field layer animates from these. A managed game emits them for one plate
+  // appearance at a time rather than accumulating a whole game's worth: the
+  // manager only ever needs to see the play that just happened.
+  let events: PlayEvent[] = [];
+
+  let inning = 1;
+  let half: 'top' | 'bottom' = 'top';
+  let current: ReturnType<typeof createHalfInning> | null = null;
+  let over = false;
+  let auto = false;
+
+  const bat = (): TeamState => (half === 'top' ? away : home);
+  const fld = (): TeamState => (half === 'top' ? home : away);
+
+  const openHalf = (): void => {
+    say(`\n--- ${half === 'top' ? 'Top' : 'Bottom'} ${inning} --- (${away.runs}-${home.runs})`);
+    current = createHalfInning(
+      bat(), fld(), inning, engine, rng, say,
+      half === 'bottom' && inning >= 9, events, onScore,
+      true,   // a human is managing: no automatic pinch hitting
+    );
+  };
+
+  const closeHalf = (): void => {
+    const side = bat();
+    side.lineScore.push(side.runs - (side.lineScore.reduce((a, b) => a + b, 0)));
+    current = null;
+
+    if (RULES.decided(half, inning, home, away, opts.runRule !== false)) { over = true; return; }
+    if (half === 'top') { half = 'bottom'; } else { half = 'top'; inning += 1; }
+    if (inning > 30) over = true;
+  };
+
+  /** Play until the manager has something to answer, or the game ends. */
+  const advance = (): void => {
+    for (let guard = 0; guard < 5000 && !over; guard++) {
+      if (!current) {
+        if (half === 'bottom' && RULES.skipBottom(inning, home, away)) { over = true; return; }
+        openHalf();
+      }
+      // Your turn: stop and ask, unless you have handed it over.
+      if (!auto && (bat() === mine || fld() === mine)) return;
+      if (current?.step()) closeHalf();
+    }
+  };
+
+  const decision = (): Decision | null => {
+    if (over || auto || !current) return null;
+    const offense = bat() === mine;
+    if (!offense && fld() !== mine) return null;
+
+    const b = bat();
+    const batter = b.order[b.spot];
+    const pitcher = fld().pitcher;
+    if (!batter) return null;
+
+    const bases = current.bases.map(Boolean) as [boolean, boolean, boolean];
+    const runners = current.bases.flatMap((r, i) =>
+      r ? [{ id: r.id, name: r.name, base: (i + 1) as 1 | 2 | 3 }] : []);
+    return {
+      runners,
+      side: offense ? 'offense' : 'defense',
+      inning, half,
+      outs: current.outs,
+      bases,
+      awayRuns: away.runs,
+      homeRuns: home.runs,
+      batter,
+      pitcher,
+      options: offense ? OFFENSE(bases, current.outs) : DEFENSE(bases, current.outs),
+    };
+  };
+
+  advance();
+
+  return {
+    get pending() { return decision(); },
+    get lastPlay() { return events; },
+    get over() { return over; },
+    get log() { return log; },
+    get result(): GameResult {
+      const homeWon = home.runs > away.runs;
+      const winnerIs = homeWon ? home : away;
+      return {
+        home, away, innings: inning, log, playEvents: [],
+        winningPitcher: leadHolder === winnerIs ? creditTo : null,
+        losingPitcher: leadHolder === winnerIs ? blameTo : null,
+      };
+    },
+    get benchAvailable() { return mine.team.bench; },
+    get bullpenAvailable() { return mine.relief.slice(mine.penIndex); },
+
+    submit(tactic) {
+      if (over || !current) return;
+      // Only the play that just happened, so the field animates one thing.
+      events.length = 0;
+      if (current.step(tactic)) closeHalf();
+      advance();
+    },
+
+    finish() {
+      auto = true;
+      advance();
+    },
+
+    pinchHit(hitter) {
+      if (over || bat() !== mine) return false;
+      const b = bat();
+      const idx = b.spot;
+      const outgoing = b.order[idx];
+      if (!outgoing || !mine.team.bench.includes(hitter)) return false;
+      b.order[idx] = hitter;
+      // He is used up, and the man he replaced is done for the day.
+      mine.team.bench.splice(mine.team.bench.indexOf(hitter), 1);
+      say(`   Pinch hitter: ${hitter.name} bats for ${outgoing.name}.`);
+      return true;
+    },
+
+    changePitcher(arm) {
+      if (over || fld() !== mine) return false;
+      const idx = mine.relief.indexOf(arm);
+      if (idx < mine.penIndex) return false;
+      mine.penIndex = idx + 1;
+      mine.pitcher = arm;
+      mine.pitcherPitches = 0;
+      say(`   Pitching change: ${arm.name} (${arm.throws}HP) enters.`);
+      return true;
+    },
+  };
+}

@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet"><style>body{margin:0;background:#e6e0d3;font-family:'Source Sans 3',system-ui,sans-serif}a{color:#a8442a;text-decoration:none}a:hover{color:#c1543a}::-webkit-scrollbar{width:0}</style></helmet>
+<div style="width:100%;display:flex;align-items:flex-start;justify-content:center;padding:24px 0">
+<x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="{{ devW }}" height="{{ devH }}" style="width:412px;height:892px" hint-size="428px,908px">
+<div style="height:100%;display:flex;flex-direction:column;min-height:0;background:#f2ece0;color:#1c2430;font-family:'Source Sans 3',system-ui,sans-serif">
+
+<div style="flex:none;height:58px;box-sizing:border-box;padding:0 14px;display:flex;align-items:center;gap:10px;background:#223247;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.09) 0 1px,transparent 1px 7px);border-bottom:3px solid #a8442a">
+<sc-if value="{{ canBack }}" hint-placeholder-val="{{ false }}"><div onClick="{{ back }}" style="width:24px;height:24px;flex:none;border:1px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font:600 12px 'IBM Plex Mono',monospace;color:#f2ece0;cursor:pointer">&#8592;</div></sc-if>
+<div style="flex:1;min-width:0">
+<div style="font:800 21px/0.95 'Big Shoulders Display',sans-serif;letter-spacing:.02em;color:#f6f1e6;text-transform:uppercase">Ridgemont State</div>
+<div style="font:500 9px/1.4 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(246,241,230,.62);text-transform:uppercase">Kestrels &#183; Cascade Valley</div>
+</div>
+<div style="flex:none;text-align:right">
+<div style="font:800 22px/0.9 'Big Shoulders Display',sans-serif;color:#f6f1e6">{{ recOvr }}</div>
+<div style="font:400 8.5px/1.4 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(246,241,230,.55)">{{ recConf }} CVC</div>
+</div>
+</div>
+
+<div style="flex:none;height:38px;box-sizing:border-box;display:flex;background:#e7dfd0;border-bottom:1px solid rgba(28,36,48,.16)">
+<sc-for list="{{ subNav }}" as="s" hint-placeholder-count="3">
+<div onClick="{{ s.go }}" style="flex:1;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ s.bg }};border-right:1px solid rgba(28,36,48,.1);box-shadow:{{ s.sh }}">
+<span style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:{{ s.col }}">{{ s.label }}</span>
+</div>
+</sc-for>
+</div>
+
+<div style="flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;background:#f2ece0">
+
+<sc-if value="{{ isToday }}" hint-placeholder-val="{{ true }}">
+<div style="padding:12px 14px 16px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2px solid #1c2430;padding-bottom:6px">
+<div>
+<div style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(28,36,48,.55)">{{ phaseLine }}</div>
+<div style="font:800 34px/0.9 'Big Shoulders Display',sans-serif;margin-top:4px;text-transform:uppercase">{{ dateBig }}</div>
+</div>
+<div style="text-align:right;font:500 9.5px/1.6 'IBM Plex Mono',monospace;color:rgba(28,36,48,.55)">RPI {{ rpiRank }}<br>{{ streakLine }}</div>
+</div>
+<div style="display:flex;margin-top:12px;border:1px solid rgba(28,36,48,.2);background:#fbf7ee">
+<sc-for list="{{ tiles }}" as="t" hint-placeholder-count="3">
+<div style="flex:1;padding:9px 8px;border-right:1px solid rgba(28,36,48,.12)">
+<div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">{{ t.k }}</div>
+<div style="font:700 24px/1 'Big Shoulders Display',sans-serif;margin-top:2px">{{ t.v }}</div>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{ hasToday }}" hint-placeholder-val="{{ true }}">
+<div style="margin-top:12px;border:1px solid rgba(28,36,48,.2);background:#fbf7ee">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:#a8442a">
+<span style="font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#f6f1e6">{{ todayTag }}</span>
+<span style="font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(246,241,230,.75)">{{ todayGameNo }}</span>
+</div>
+<div style="display:flex;align-items:center;gap:12px;padding:12px 12px 10px">
+<div style="flex:1;min-width:0">
+<div style="font:700 22px/1 'Big Shoulders Display',sans-serif;text-transform:uppercase">{{ todayHead }}</div>
+<div style="font:400 11px/1.5 'Source Sans 3',sans-serif;color:rgba(28,36,48,.62);margin-top:4px">{{ todaySite }}</div>
+</div>
+<div style="width:52px;height:52px;flex:none;position:relative">
+<div style="position:absolute;left:11px;top:11px;width:30px;height:30px;transform:rotate(45deg);border:1px solid rgba(28,36,48,.35);background:rgba(168,68,42,.07)"></div>
+<div style="position:absolute;left:24px;top:44px;width:6px;height:6px;background:#1c2430"></div>
+<div style="position:absolute;left:44px;top:24px;width:6px;height:6px;background:rgba(28,36,48,.3)"></div>
+<div style="position:absolute;left:24px;top:4px;width:6px;height:6px;background:rgba(28,36,48,.3)"></div>
+<div style="position:absolute;left:4px;top:24px;width:6px;height:6px;background:rgba(28,36,48,.3)"></div>
+</div>
+</div>
+<div style="border-top:1px dashed rgba(28,36,48,.28);padding:9px 12px;display:flex;gap:10px">
+<sc-for list="{{ probables }}" as="p" hint-placeholder-count="2">
+<div style="flex:1;min-width:0">
+<div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">{{ p.side }}</div>
+<div style="font:600 13px/1.3 'Source Sans 3',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.name }}</div>
+<div style="font:400 10.5px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.55)">{{ p.line }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ isOff }}" hint-placeholder-val="{{ false }}">
+<div style="margin-top:12px;border:1px solid rgba(28,36,48,.2);background:#fbf7ee">
+<div style="padding:6px 10px;background:#223247;font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#f6f1e6">{{ offLabel }}</div>
+<div style="padding:11px 12px">
+<div style="font:400 12.5px/1.5 'Source Sans 3',sans-serif;color:rgba(28,36,48,.75)">{{ offNote }}</div>
+<div style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(28,36,48,.25)">
+<div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">NEXT GAME</div>
+<div style="font:700 18px/1.1 'Big Shoulders Display',sans-serif;text-transform:uppercase;margin-top:3px">{{ offNext }}</div>
+</div>
+</div>
+</div>
+</sc-if>
+<div onClick="{{ advance }}" style="margin-top:12px;height:52px;background:#1c2430;color:#f6f1e6;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid #1c2430;box-shadow:4px 4px 0 rgba(168,68,42,.85)">
+<span style="font:700 17px 'Big Shoulders Display',sans-serif;letter-spacing:.16em;text-transform:uppercase">{{ advanceLabel }}</span>
+</div>
+<div style="margin-top:16px;font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(28,36,48,.5);border-bottom:1px solid rgba(28,36,48,.18);padding-bottom:5px">LAST FIVE</div>
+<sc-for list="{{ lastFive }}" as="r" hint-placeholder-count="5">
+<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(28,36,48,.08)">
+<div style="width:18px;height:18px;flex:none;display:flex;align-items:center;justify-content:center;background:{{ r.pill }};color:#f6f1e6;font:700 10px 'IBM Plex Mono',monospace">{{ r.wl }}</div>
+<div style="width:38px;font:400 10px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.5)">{{ r.date }}</div>
+<div style="flex:1;min-width:0;font:600 12.5px 'Source Sans 3',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.opp }}</div>
+<div style="font:500 12px 'IBM Plex Mono',monospace">{{ r.score }}</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ isLive }}" hint-placeholder-val="{{ false }}">
+<div style="padding:0 0 16px">
+<div style="background:#223247;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0 1px,transparent 1px 7px);padding:11px 14px 12px;color:#f6f1e6">
+<div style="display:flex;align-items:center;gap:10px">
+<div style="flex:1;min-width:0">
+<div style="display:flex;align-items:baseline;gap:8px">
+<div style="flex:1;font:700 17px/1.1 'Big Shoulders Display',sans-serif;text-transform:uppercase;color:{{ lv.awayCol }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ lv.awayName }}</div>
+<div style="font:700 24px/1 'Big Shoulders Display',sans-serif;color:{{ lv.awayCol }}">{{ lv.awayRuns }}</div>
+</div>
+<div style="display:flex;align-items:baseline;gap:8px;margin-top:3px">
+<div style="flex:1;font:700 17px/1.1 'Big Shoulders Display',sans-serif;text-transform:uppercase;color:{{ lv.homeCol }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ lv.homeName }}</div>
+<div style="font:700 24px/1 'Big Shoulders Display',sans-serif;color:{{ lv.homeCol }}">{{ lv.homeRuns }}</div>
+</div>
+</div>
+<div style="width:1px;height:44px;background:rgba(246,241,230,.22)"></div>
+<div style="width:74px;flex:none;text-align:center">
+<div style="font:600 13px 'IBM Plex Mono',monospace;letter-spacing:.06em">{{ lv.innLabel }}</div>
+<div style="display:flex;gap:4px;justify-content:center;margin-top:6px">
+<sc-for list="{{ lv.outs }}" as="o" hint-placeholder-count="3">
+<div style="width:8px;height:8px;border:1px solid rgba(246,241,230,.55);background:{{ o.col }}"></div>
+</sc-for>
+</div>
+<div style="position:relative;width:44px;height:44px;margin:6px auto 0">
+<div style="position:absolute;left:10px;top:10px;width:24px;height:24px;transform:rotate(45deg);border:1px solid rgba(246,241,230,.3)"></div>
+<div style="position:absolute;left:34px;top:18px;width:9px;height:9px;transform:rotate(45deg);background:{{ lv.b1 }}"></div>
+<div style="position:absolute;left:18px;top:1px;width:9px;height:9px;transform:rotate(45deg);background:{{ lv.b2 }}"></div>
+<div style="position:absolute;left:1px;top:18px;width:9px;height:9px;transform:rotate(45deg);background:{{ lv.b3 }}"></div>
+</div>
+<div style="font:500 8px/1.5 'IBM Plex Mono',monospace;color:rgba(246,241,230,.72);margin-top:3px;text-align:center">
+<div>{{ lv.baseLine1 }}</div><div>{{ lv.baseLine2 }}</div>
+</div>
+</div>
+</div>
+<div style="font:400 10.5px 'IBM Plex Mono',monospace;color:rgba(246,241,230,.7);margin-top:9px;border-top:1px solid rgba(246,241,230,.18);padding-top:7px">{{ lv.situation }}</div>
+</div>
+<div style="display:flex;gap:10px;padding:11px 14px;background:#fbf7ee;border-bottom:1px solid rgba(28,36,48,.14)">
+<div style="flex:1;min-width:0">
+<div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">{{ lv.atBatLabel }}</div>
+<div style="font:700 18px/1.1 'Big Shoulders Display',sans-serif;text-transform:uppercase;margin-top:2px">{{ lv.batter }}</div>
+<div style="font:400 10px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.6);margin-top:2px">{{ lv.batterLine }}</div>
+</div>
+<div style="width:1px;background:rgba(28,36,48,.14)"></div>
+<div style="flex:1;min-width:0">
+<div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">PITCHING</div>
+<div style="font:700 18px/1.1 'Big Shoulders Display',sans-serif;text-transform:uppercase;margin-top:2px">{{ lv.pitcher }}</div>
+<div style="font:400 10px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.6);margin-top:2px">{{ lv.pitcherLine }}</div>
+</div>
+</div>
+<sc-if value="{{ lv.notFinal }}" hint-placeholder-val="{{ false }}">
+<div style="padding:10px 14px 0">
+<div style="font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#a8442a">{{ lv.sideLabel }}</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px">
+<sc-for list="{{ lvOptions }}" as="o" hint-placeholder-count="5">
+<div onClick="{{ o.act }}" style="padding:9px 10px;border:1px solid {{ o.bd }};background:{{ o.bg }};cursor:pointer">
+<div style="font:700 14px/1 'Big Shoulders Display',sans-serif;letter-spacing:.06em;color:{{ o.col }}">{{ o.label }}</div>
+<div style="font:400 9px/1.3 'IBM Plex Mono',monospace;color:{{ o.col }};opacity:.6;margin-top:3px">{{ o.note }}</div>
+</div>
+</sc-for>
+<div onClick="{{ lv.subAct }}" style="padding:9px 10px;border:1px solid #1c2430;background:#1c2430;cursor:pointer">
+<div style="font:700 14px/1 'Big Shoulders Display',sans-serif;letter-spacing:.06em;color:#f6f1e6">{{ lv.subLabel }}</div>
+<div style="font:400 9px/1.3 'IBM Plex Mono',monospace;color:rgba(246,241,230,.6);margin-top:3px">go to the bench</div>
+</div>
+</div>
+<div style="display:flex;gap:6px;margin-top:8px;padding-bottom:10px;border-bottom:1px solid rgba(28,36,48,.14)">
+<div onClick="{{ liveHalf }}" style="flex:1;text-align:center;padding:8px 0;border:1px solid rgba(28,36,48,.25);font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.1em;cursor:pointer">SIM HALF</div>
+<div onClick="{{ liveAuto }}" style="flex:1;text-align:center;padding:8px 0;border:1px solid rgba(28,36,48,.25);font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.1em;cursor:pointer">{{ lv.autoLabel }}</div>
+<div onClick="{{ liveFinal }}" style="flex:1;text-align:center;padding:8px 0;border:1px solid rgba(28,36,48,.25);font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.1em;cursor:pointer">SIM TO FINAL</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+<div style="margin:10px 14px 0;border:1px solid #1c2430;background:#fbf7ee">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:#1c2430">
+<span style="font:700 13px 'Big Shoulders Display',sans-serif;letter-spacing:.14em;color:#f6f1e6">{{ modalTitle }}</span>
+<span onClick="{{ modalClose }}" style="font:600 9.5px 'IBM Plex Mono',monospace;color:rgba(246,241,230,.7);cursor:pointer">CLOSE</span>
+</div>
+<sc-for list="{{ modalRows }}" as="m" hint-placeholder-count="4">
+<div onClick="{{ m.pick }}" style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-bottom:1px dashed rgba(28,36,48,.2);cursor:pointer">
+<div style="flex:1;min-width:0">
+<div style="font:600 13px 'Source Sans 3',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.name }}</div>
+<div style="font:400 9.5px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.55);margin-top:2px">{{ m.line }}</div>
+</div>
+<div style="font:700 17px/1 'Big Shoulders Display',sans-serif;color:#a8442a">{{ m.ovr }}</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ lv.isFinal }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;gap:6px;padding:11px 14px">
+<div onClick="{{ liveBox }}" style="flex:1;text-align:center;padding:11px 0;background:#1c2430;color:#f6f1e6;font:700 13px 'Big Shoulders Display',sans-serif;letter-spacing:.12em;cursor:pointer">SCOREBOOK</div>
+<div onClick="{{ liveDone }}" style="flex:1;text-align:center;padding:11px 0;border:1px solid rgba(28,36,48,.3);font:700 13px 'Big Shoulders Display',sans-serif;letter-spacing:.12em;cursor:pointer">BACK TO TODAY</div>
+</div>
+</sc-if>
+<div style="padding:0 14px">
+<sc-for list="{{ logRows }}" as="l" hint-placeholder-count="8">
+<div style="display:flex;gap:9px;padding:7px 6px;border-bottom:1px dotted rgba(28,36,48,.16);background:{{ l.bg }}">
+<div style="width:24px;flex:none;font:500 9.5px 'IBM Plex Mono',monospace;color:#a8442a;padding-top:2px">{{ l.inn }}</div>
+<div style="flex:1;font:{{ l.font }};line-height:1.5;color:{{ l.col }}">{{ l.text }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isWire }}" hint-placeholder-val="{{ false }}">
+<div style="padding:12px 14px 16px">
+<div style="border-top:3px double #1c2430;border-bottom:1px solid #1c2430;padding:7px 0 6px;text-align:center">
+<div style="font:800 26px/1 'Big Shoulders Display',sans-serif;letter-spacing:.06em;text-transform:uppercase">The Cascade Wire</div>
+<div style="font:400 8.5px 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(28,36,48,.5);margin-top:3px">CONFERENCE DESK &#183; {{ dateBig }}</div>
+</div>
+<sc-for list="{{ feed }}" as="blk" hint-placeholder-count="3">
+<div style="margin-top:14px">
+<div style="font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:#a8442a">{{ blk.label }}</div>
+<sc-for list="{{ blk.items }}" as="it" hint-placeholder-count="2">
+<div style="margin-top:9px;padding-top:9px;border-top:1px solid rgba(28,36,48,.14)">
+<div style="font:700 19px/1.05 'Big Shoulders Display',sans-serif;text-transform:uppercase;color:{{ it.col }}">{{ it.head }}</div>
+<div style="font:400 12px/1.55 'Source Sans 3',sans-serif;color:rgba(28,36,48,.72);margin-top:4px">{{ it.sub }}</div>
+<sc-for list="{{ it.lines }}" as="ln" hint-placeholder-count="0">
+<div style="display:flex;justify-content:space-between;gap:10px;font:400 11px/1.85 'IBM Plex Mono',monospace;color:rgba(28,36,48,.6);border-bottom:1px dotted rgba(28,36,48,.2)"><span>{{ ln.a }}</span><span>{{ ln.b }}</span></div>
+</sc-for>
+<sc-if value="{{ it.hasBox }}" hint-placeholder-val="{{ false }}"><div onClick="{{ it.open }}" style="margin-top:7px;font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#a8442a;cursor:pointer">READ THE SCOREBOOK &#8594;</div></sc-if>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ isBox }}" hint-placeholder-val="{{ false }}">
+<div style="padding:12px 14px 16px">
+<div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(28,36,48,.5)">{{ gameMeta }}</div>
+<div style="margin-top:7px;border:1px solid rgba(28,36,48,.25);background:#fbf7ee;overflow:auto">
+<div style="display:flex;background:#223247">
+<div style="width:78px;flex:none"></div>
+<sc-for list="{{ lineHeads }}" as="h" hint-placeholder-count="12">
+<div style="width:21px;flex:none;text-align:center;font:500 9px/22px 'IBM Plex Mono',monospace;color:rgba(246,241,230,.8)">{{ h.v }}</div>
+</sc-for>
+</div>
+<sc-for list="{{ lineRows }}" as="r" hint-placeholder-count="2">
+<div style="display:flex;border-top:1px solid rgba(28,36,48,.12)">
+<div style="width:78px;flex:none;padding-left:7px;font:700 15px/26px 'Big Shoulders Display',sans-serif;text-transform:uppercase;color:{{ r.col }};white-space:nowrap;overflow:hidden">{{ r.team }}</div>
+<sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="12">
+<div style="width:21px;flex:none;text-align:center;font:{{ c.font }};line-height:26px;border-left:1px solid rgba(28,36,48,.07);color:{{ c.col }}">{{ c.v }}</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+<div style="margin-top:14px;font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(28,36,48,.5);border-bottom:1px solid rgba(28,36,48,.18);padding-bottom:5px">KESTRELS BATTING &#183; AB R H RBI</div>
+<sc-for list="{{ boxRows }}" as="r" hint-placeholder-count="9">
+<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(28,36,48,.08)">
+<div style="width:16px;flex:none;font:600 11px 'IBM Plex Mono',monospace;color:#a8442a">{{ r.num }}</div>
+<div style="flex:1;min-width:0;font:600 12.5px 'Source Sans 3',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div>
+<div style="width:78px;flex:none;display:flex;justify-content:space-between;font:400 11.5px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.7)">
+<span>{{ r.ab }}</span><span>{{ r.r }}</span><span>{{ r.h }}</span><span>{{ r.rbi }}</span>
+</div>
+</div>
+</sc-for>
+<div style="margin-top:16px;font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(28,36,48,.5);border-bottom:1px solid rgba(28,36,48,.18);padding-bottom:5px">PLAY BY PLAY</div>
+<sc-for list="{{ playLog }}" as="p" hint-placeholder-count="12">
+<div style="display:flex;gap:9px;padding:6px 0;border-bottom:1px dotted rgba(28,36,48,.16);background:{{ p.bg }}">
+<div style="width:26px;flex:none;font:500 9.5px 'IBM Plex Mono',monospace;color:#a8442a;padding-top:2px">{{ p.inn }}</div>
+<div style="flex:1;font:400 12px/1.5 'Source Sans 3',sans-serif;color:rgba(28,36,48,.85)">{{ p.text }}</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ isRoster }}" hint-placeholder-val="{{ false }}">
+<div style="padding:10px 14px 16px">
+<div style="display:flex;gap:6px">
+<sc-for list="{{ rosterTabs }}" as="t" hint-placeholder-count="2">
+<div onClick="{{ t.go }}" style="flex:1;text-align:center;padding:6px 0;border:1px solid {{ t.bd }};background:{{ t.bg }};color:{{ t.col }};font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.12em;cursor:pointer">{{ t.label }}</div>
+</sc-for>
+</div>
+<div style="display:flex;gap:6px;margin-top:10px;padding-bottom:4px;border-bottom:1.5px solid #1c2430;font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(28,36,48,.5)">
+<span style="width:22px">#</span><span style="flex:1">PLAYER</span><span style="width:26px;text-align:right">OVR</span><span style="width:42px;text-align:right">{{ colA }}</span><span style="width:30px;text-align:right">{{ colB }}</span><span style="width:34px;text-align:right">{{ colC }}</span>
+</div>
+<sc-for list="{{ rosterRows }}" as="r" hint-placeholder-count="12">
+<div onClick="{{ r.open }}" style="display:flex;gap:6px;align-items:center;padding:7px 4px;background:{{ r.bg }};border-bottom:1px solid rgba(28,36,48,.08);cursor:pointer">
+<div style="width:22px;font:700 15px/1 'Big Shoulders Display',sans-serif;color:rgba(28,36,48,.7)">{{ r.num }}</div>
+<div style="flex:1;min-width:0">
+<div style="font:600 13px/1.2 'Source Sans 3',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div>
+<div style="font:400 9.5px/1.4 'IBM Plex Mono',monospace;color:rgba(28,36,48,.5);letter-spacing:.05em">{{ r.meta }}</div>
+</div>
+<div style="width:26px;text-align:right;font:600 13px 'IBM Plex Mono',monospace;color:{{ r.ovrCol }}">{{ r.ovr }}</div>
+<div style="width:42px;text-align:right;font:400 11.5px 'IBM Plex Mono',monospace">{{ r.a }}</div>
+<div style="width:30px;text-align:right;font:400 11.5px 'IBM Plex Mono',monospace">{{ r.b }}</div>
+<div style="width:34px;text-align:right;font:400 11.5px 'IBM Plex Mono',monospace">{{ r.c }}</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ isLineup }}" hint-placeholder-val="{{ false }}">
+<div style="padding:12px 14px 16px">
+<div style="border:1px solid rgba(28,36,48,.28);background:#fbf7ee">
+<div style="display:flex;align-items:baseline;justify-content:space-between;padding:7px 10px;border-bottom:1px solid rgba(28,36,48,.2);background:#e7dfd0">
+<span style="font:700 15px 'Big Shoulders Display',sans-serif;letter-spacing:.1em;text-transform:uppercase">Lineup Card</span>
+<span style="font:400 9px 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(28,36,48,.55)">{{ dateBig }}</span>
+</div>
+<sc-for list="{{ lineupRows }}" as="r" hint-placeholder-count="9">
+<div onClick="{{ r.pick }}" style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-bottom:1px dashed rgba(28,36,48,.22);background:{{ r.bg }};cursor:pointer">
+<div style="width:14px;font:700 15px/1 'Big Shoulders Display',sans-serif;color:rgba(28,36,48,.55)">{{ r.n }}</div>
+<div style="flex:1;min-width:0;font:600 13.5px 'Source Sans 3',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div>
+<div style="width:44px;text-align:right;font:400 10.5px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.55)">{{ r.line }}</div>
+<div style="width:22px;height:22px;flex:none;display:flex;align-items:center;justify-content:center;border:1px solid rgba(28,36,48,.3);font:600 10px 'IBM Plex Mono',monospace;color:#a8442a">{{ r.posNum }}</div>
+</div>
+</sc-for>
+<div style="padding:7px 10px;font:400 10.5px 'Source Sans 3',sans-serif;color:rgba(28,36,48,.6)">{{ swapHint }}</div>
+</div>
+<div style="margin-top:14px;font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(28,36,48,.5);border-bottom:1px solid rgba(28,36,48,.18);padding-bottom:5px">WEEKEND ROTATION</div>
+<sc-for list="{{ rotRows }}" as="r" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid rgba(28,36,48,.1)">
+<div style="width:34px;flex:none;font:700 15px/1 'Big Shoulders Display',sans-serif;letter-spacing:.06em;color:#a8442a">{{ r.slot }}</div>
+<div style="flex:1;min-width:0">
+<div style="font:600 13px 'Source Sans 3',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div>
+<div style="font:400 10px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.55)">{{ r.line }}</div>
+</div>
+<div onClick="{{ r.up }}" style="width:24px;height:24px;border:1px solid rgba(28,36,48,.28);display:flex;align-items:center;justify-content:center;font:600 10px 'IBM Plex Mono',monospace;cursor:pointer">&#8593;</div>
+<div onClick="{{ r.down }}" style="width:24px;height:24px;border:1px solid rgba(28,36,48,.28);display:flex;align-items:center;justify-content:center;font:600 10px 'IBM Plex Mono',monospace;cursor:pointer">&#8595;</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ isStrategy }}" hint-placeholder-val="{{ false }}">
+<div style="padding:12px 14px 16px">
+<sc-for list="{{ stratGroups }}" as="g" hint-placeholder-count="5">
+<div style="margin-bottom:14px">
+<div style="font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#a8442a">{{ g.label }}</div>
+<div style="font:400 11px/1.5 'Source Sans 3',sans-serif;color:rgba(28,36,48,.6);margin:3px 0 7px">{{ g.note }}</div>
+<div style="display:flex;gap:5px">
+<sc-for list="{{ g.opts }}" as="o" hint-placeholder-count="3">
+<div onClick="{{ o.pick }}" style="flex:1;text-align:center;padding:9px 2px;border:1px solid {{ o.bd }};background:{{ o.bg }};color:{{ o.col }};font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;cursor:pointer">{{ o.label }}</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ isSchedule }}" hint-placeholder-val="{{ false }}">
+<div style="padding:12px 14px 16px">
+<sc-for list="{{ schedMonths }}" as="m" hint-placeholder-count="3">
+<div style="margin-bottom:14px">
+<div style="font:800 20px/1 'Big Shoulders Display',sans-serif;letter-spacing:.1em;text-transform:uppercase;border-bottom:2px solid #1c2430;padding-bottom:4px">{{ m.label }}</div>
+<sc-for list="{{ m.rows }}" as="r" hint-placeholder-count="8">
+<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid rgba(28,36,48,.08)">
+<div style="width:34px;font:400 10px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.5)">{{ r.date }}</div>
+<div style="width:14px;font:400 10px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.5)">{{ r.ha }}</div>
+<div style="flex:1;min-width:0;font:600 12.5px 'Source Sans 3',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.opp }}</div>
+<div style="font:500 11.5px 'IBM Plex Mono',monospace;color:{{ r.col }}">{{ r.res }}</div>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ isStandings }}" hint-placeholder-val="{{ false }}">
+<div style="padding:12px 14px 16px">
+<div style="display:flex;gap:7px;padding-bottom:4px;border-bottom:1.5px solid #1c2430;font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(28,36,48,.5)">
+<span style="width:14px"></span><span style="flex:1">TEAM</span><span style="width:46px;text-align:right">CONF</span><span style="width:46px;text-align:right">OVR</span><span style="width:32px;text-align:right">STRK</span>
+</div>
+<sc-for list="{{ standRows }}" as="r" hint-placeholder-count="12">
+<div style="display:flex;gap:7px;align-items:center;padding:8px 4px;border-bottom:1px solid rgba(28,36,48,.08);background:{{ r.bg }}">
+<div style="width:14px;font:400 9.5px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.45)">{{ r.n }}</div>
+<div style="flex:1;min-width:0;font:600 12.5px 'Source Sans 3',sans-serif;color:{{ r.col }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.team }}</div>
+<div style="width:46px;text-align:right;font:500 11.5px 'IBM Plex Mono',monospace">{{ r.conf }}</div>
+<div style="width:46px;text-align:right;font:400 11.5px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.6)">{{ r.ovr }}</div>
+<div style="width:32px;text-align:right;font:400 10.5px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.5)">{{ r.strk }}</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ isStats }}" hint-placeholder-val="{{ false }}">
+<div style="padding:12px 14px 16px">
+<sc-for list="{{ leaderBoards }}" as="b" hint-placeholder-count="4">
+<div style="margin-bottom:14px">
+<div style="font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#a8442a;border-bottom:1px solid rgba(28,36,48,.18);padding-bottom:4px">{{ b.label }}</div>
+<sc-for list="{{ b.rows }}" as="r" hint-placeholder-count="5">
+<div onClick="{{ r.open }}" style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid rgba(28,36,48,.07);cursor:pointer">
+<div style="width:12px;font:400 9.5px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.45)">{{ r.n }}</div>
+<div style="flex:1;min-width:0;font:600 12.5px 'Source Sans 3',sans-serif;color:{{ r.col }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div>
+<div style="font:400 9.5px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.45)">{{ r.team }}</div>
+<div style="width:46px;text-align:right;font:600 12px 'IBM Plex Mono',monospace">{{ r.val }}</div>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ isBoard }}" hint-placeholder-val="{{ false }}">
+<div style="padding:12px 14px 16px">
+<div style="display:flex;align-items:baseline;justify-content:space-between">
+<span style="font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(28,36,48,.55)">RECRUITING POINTS</span>
+<span style="font:700 20px/1 'Big Shoulders Display',sans-serif;color:#a8442a">{{ rpLabel }}</span>
+</div>
+<div style="margin-top:5px;height:6px;background:#e2dacb;border:1px solid rgba(28,36,48,.18)"><div style="height:6px;background:#a8442a;width:{{ rpPct }}%"></div></div>
+<sc-for list="{{ recruits }}" as="r" hint-placeholder-count="6">
+<div style="margin-top:10px;border:1px solid rgba(28,36,48,.2);background:#fbf7ee">
+<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px dashed rgba(28,36,48,.22)">
+<div style="flex:1;min-width:0">
+<div style="font:700 18px/1 'Big Shoulders Display',sans-serif;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div>
+<div style="font:400 9.5px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.55);letter-spacing:.05em;margin-top:2px">{{ r.meta }}</div>
+</div>
+<div style="font:500 11px 'IBM Plex Mono',monospace;color:#a8442a">{{ r.stars }}</div>
+</div>
+<div style="display:flex;align-items:center;gap:10px;padding:9px 10px">
+<div style="flex:1">
+<div style="height:6px;background:#e2dacb;border:1px solid rgba(28,36,48,.16)"><div style="height:6px;background:{{ r.barCol }};width:{{ r.interest }}%"></div></div>
+<div style="font:400 9px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.5);margin-top:4px">{{ r.interestLabel }}</div>
+</div>
+<div onClick="{{ r.recruit }}" style="flex:none;padding:7px 11px;background:{{ r.btnBg }};color:{{ r.btnCol }};border:1px solid {{ r.btnBd }};font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.1em;cursor:pointer">{{ r.btn }}</div>
+</div>
+<div style="padding:0 10px 9px;font:400 11px/1.5 'Source Sans 3',sans-serif;color:rgba(28,36,48,.62)">{{ r.note }}</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ isList }}" hint-placeholder-val="{{ false }}">
+<div style="padding:12px 14px 16px">
+<sc-for list="{{ boards }}" as="b" hint-placeholder-count="3">
+<div style="margin-bottom:16px">
+<div style="font:800 20px/1 'Big Shoulders Display',sans-serif;letter-spacing:.08em;text-transform:uppercase;border-bottom:2px solid #1c2430;padding-bottom:4px">{{ b.label }}</div>
+<sc-if value="{{ b.hasNote }}" hint-placeholder-val="{{ false }}"><div style="font:400 11px/1.5 'Source Sans 3',sans-serif;color:rgba(28,36,48,.6);margin-top:6px">{{ b.note }}</div></sc-if>
+<sc-for list="{{ b.rows }}" as="r" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid rgba(28,36,48,.08)">
+<div style="width:52px;flex:none;font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:rgba(28,36,48,.5)">{{ r.k }}</div>
+<div style="flex:1;min-width:0">
+<div style="font:600 13px/1.25 'Source Sans 3',sans-serif">{{ r.v }}</div>
+<div style="font:400 9.5px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.5)">{{ r.meta }}</div>
+</div>
+<div style="font:500 10.5px 'IBM Plex Mono',monospace;color:{{ r.col }};text-align:right">{{ r.x }}</div>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ isPlayer }}" hint-placeholder-val="{{ false }}">
+<div style="padding:0 0 16px">
+<div style="padding:14px;background:#223247;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.08) 0 1px,transparent 1px 7px);color:#f6f1e6;display:flex;align-items:flex-end;gap:12px">
+<div style="flex:1;min-width:0">
+<div style="font:800 28px/0.95 'Big Shoulders Display',sans-serif;text-transform:uppercase">{{ pl.name }}</div>
+<div style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(246,241,230,.7);margin-top:4px">{{ pl.meta }}</div>
+<div style="font:400 10px 'IBM Plex Mono',monospace;color:rgba(246,241,230,.55);margin-top:2px">{{ pl.bio }}</div>
+</div>
+<div style="font:800 46px/0.8 'Big Shoulders Display',sans-serif;color:rgba(246,241,230,.85)">{{ pl.num }}</div>
+</div>
+<div style="padding:12px 14px 0;display:flex;border:1px solid rgba(28,36,48,.2);margin:12px 14px 0;background:#fbf7ee;padding:0">
+<sc-for list="{{ pl.tiles }}" as="t" hint-placeholder-count="3">
+<div style="flex:1;padding:9px 10px;border-right:1px solid rgba(28,36,48,.12)">
+<div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">{{ t.k }}</div>
+<div style="font:700 22px/1 'Big Shoulders Display',sans-serif;margin-top:2px">{{ t.v }}</div>
+</div>
+</sc-for>
+</div>
+<div style="padding:0 14px">
+<div style="margin-top:14px;font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#a8442a">SCOUTING GRADES</div>
+<sc-for list="{{ pl.bars }}" as="b" hint-placeholder-count="6">
+<div style="display:flex;align-items:center;gap:9px;margin-top:7px">
+<div style="width:60px;font:500 9.5px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:rgba(28,36,48,.6)">{{ b.k }}</div>
+<div style="flex:1;height:7px;background:#e2dacb;border:1px solid rgba(28,36,48,.16)"><div style="height:7px;background:{{ b.col }};width:{{ b.pct }}%"></div></div>
+<div style="width:22px;text-align:right;font:600 11px 'IBM Plex Mono',monospace">{{ b.v }}</div>
+</div>
+</sc-for>
+<div style="margin-top:16px;font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#a8442a">2027 SEASON</div>
+<sc-for list="{{ pl.stats }}" as="s" hint-placeholder-count="5">
+<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(28,36,48,.08)">
+<div style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:rgba(28,36,48,.55)">{{ s.k }}</div>
+<div style="font:600 12px 'IBM Plex Mono',monospace">{{ s.v }}</div>
+</div>
+</sc-for>
+<div style="margin-top:12px;font:400 11.5px/1.6 'Source Sans 3',sans-serif;color:rgba(28,36,48,.65)">{{ pl.note }}</div>
+</div>
+</div>
+</sc-if>
+
+<div style="height:10px"></div>
+</div>
+
+<div style="flex:none;display:flex;background:#1c2430;border-top:3px solid #a8442a">
+<sc-for list="{{ nav }}" as="n" hint-placeholder-count="5">
+<div onClick="{{ n.go }}" style="flex:1;padding:9px 0 11px;text-align:center;cursor:pointer;background:{{ n.bg }}">
+<div style="font:700 12px/1 'Big Shoulders Display',sans-serif;letter-spacing:.12em;color:{{ n.col }}">{{ n.label }}</div>
+</div>
+</sc-for>
+</div>
+
+</div>
+</x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:460,&quot;height&quot;:940},&quot;showRatings&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Coach view&quot;},&quot;simUnit&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Day&quot;,&quot;Series&quot;,&quot;Week&quot;],&quot;default&quot;:&quot;Day&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Sim loop&quot;},&quot;wireItems&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:4,&quot;min&quot;:2,&quot;max&quot;:6,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Sim loop&quot;}}">
+class Component extends DCLogic {
+  FIRST = ['Jake','Cole','Tyler','Brady','Mason','Owen','Luke','Gavin','Reese','Chase','Drew','Kade','Blake','Trey','Wyatt','Carson','Beau','Ryder','Nolan','Miles','Diego','Mateo','Elias','Tanner','Hudson','Bryce','Colton','Landon','Griffin','Sawyer','Camden','Jonah','Rhett','Silas','Emmett','Declan','Bennett','Roman','Cash','Zane','Micah','Grant','Wesley','Preston','Finn','Jasper','Dominic','Andres','Rafael','Marcus','Trent','Dallas','Kellan','Brooks','Tate','Holden','Corbin','Easton','Braxton','Rowan','Ezra','Julian','Santiago','Bo','Chance','Peyton','Kyler','Ryland','Dax','Nash'];
+  LAST = ['Whitfield','Barrera','Kowalski','Hendren','Vasquez','Mullen','Ashby','Traver','Delgado','Rourke','Kingsley','Pruitt','Salazar','Winslow','Bracken','Oduya','Ferris','Callahan','Marchetti','Redding','Solano','Vance','Hollis','Quintero','Baxley','Nakamura','Ellender','Crowder','Ibarra','Sutcliffe','Thibodeaux','Arrington','Vandermeer','Okafor','Lindqvist','Bellamy','Castellano','Ruvalcaba','Hargrove','Pemberton','Yamashita','Escobedo','Fairbanks','Novotny','Blackwell','Sanderson','Cavanaugh','Montoya','Kirkpatrick','Alvarado','Sheffield','Dunlap','Wexler','Zamora','Hollingsworth','Beauchamp','Trujillo','Stanfield','Aguirre','Lockhart','Duplantis','Merriweather','Osgood','Renteria','Blanchard','Kaminski','Tavares','Whitmore','Grissom','Vaughn','Halloran','Cisneros','Ledbetter','Sunderland','Aldridge','Fontenot','Radcliffe','Ybarra','Chastain','Kirby','Delacroix','Norwood','Pelletier','Strickland','Vandiver','Ashcroft','Guerrero','Hathaway','Mireles','Tillman'];
+  TOWNS = [['Modesto','CA'],['Tempe','AZ'],['Katy','TX'],['Marietta','GA'],['Bend','OR'],['Boise','ID'],['Lakeland','FL'],['Reno','NV'],['Sugar Land','TX'],['Chandler','AZ'],['Puyallup','WA'],['Wichita','KS'],['Yakima','WA'],['Roseville','CA'],['Broken Arrow','OK'],['Mesquite','TX'],['Ocala','FL'],['Provo','UT'],['Gilbert','AZ'],['Fresno','CA'],['Eugene','OR'],['Tucson','AZ'],['Frisco','TX'],['Nampa','ID']];
+  POS = ['C','1B','2B','3B','SS','LF','CF','RF','DH'];
+  POSNUM = { P:'1', C:'2', '1B':'3', '2B':'4', '3B':'5', SS:'6', LF:'7', CF:'8', RF:'9', DH:'DH' };
+  EVENTS = ['single','double','triple','homerun','walk','hbp','out'];
+  LEAGUE = { single:0.1655, double:0.0495, triple:0.006, homerun:0.0185, walk:0.105, hbp:0.015, out:0.6405 };
+  K_RATE = 0.180;
+  SPREAD = 0.62;
+  BAT_SENS = { single:{contact:0.38,speed:0.14}, double:{power:0.45,contact:0.12}, triple:{speed:1.20}, homerun:{power:0.95}, walk:{eye:0.90}, hbp:{eye:0.10} };
+  PIT_SENS = { single:{movement:-0.28,stuff:-0.12}, double:{movement:-0.38}, triple:{movement:-0.20}, homerun:{movement:-0.95}, walk:{control:-0.90}, hbp:{control:-0.55} };
+  CLAY = '#a8442a';
+  INK = '#1c2430';
+  DIM = 'rgba(28,36,48,.55)';
+  WIN = '#3f6b46';
+  LOSS = '#a8442a';
+  PAPER = '#fbf7ee';
+
+  _init = this.init();
+  state = {
+    tab:'home', screen:'today', tick:0, dayIdx:this._start, sel:null, swap:null,
+    rosterMode:'bat', rp:118,
+    strategy:{ approach:'Balanced', running:'Selective', bunt:'Rare', hook:'Standard', defense:'Straight' }
+  };
+
+  clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+  mult(r,s){ return Math.exp(((this.clamp(r,1,99)-50)/50)*s*this.SPREAD); }
+  vector(table, src){
+    const v={}; let sum=0;
+    for(const e of this.EVENTS){
+      if(e==='out') continue;
+      let m=1; const sens=table[e]||{};
+      for(const k in sens) m*=this.mult(src[k]==null?50:src[k], sens[k]);
+      v[e]=this.LEAGUE[e]*m; sum+=v[e];
+    }
+    v.out=Math.max(0.05,1-sum);
+    let tot=0; for(const e of this.EVENTS) tot+=v[e];
+    for(const e of this.EVENTS) v[e]/=tot;
+    return v;
+  }
+  platoon(b,p){
+    const bats = b.bats==='S' ? (p.throws==='R'?'L':'R') : b.bats;
+    const same = bats===p.throws;
+    const skill = (b.platoonSkill||0.06)+(p.platoonSkill||0);
+    return same ? 1-skill/2 : 1+skill/2;
+  }
+  fatigue(p,pc){ const budget=30+p.stamina*0.85; return pc<=budget?1:Math.max(0.55,1-(pc-budget)*0.0022); }
+
+  mkRng(seed){ let s=seed>>>0; return function(){ s^=s<<13; s>>>=0; s^=s>>17; s^=s<<5; s>>>=0; return s/4294967296; }; }
+  gauss(){ let u=0,v=0; while(u===0)u=this.rng(); while(v===0)v=this.rng(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+  norm(mean,sd,lo,hi){ return Math.max(lo==null?15:lo, Math.min(hi==null?95:hi, mean+this.gauss()*sd)); }
+  pick(arr){ return arr[Math.floor(this.rng()*arr.length)]; }
+  name(){
+    for(let i=0;i<300;i++){
+      const n=this.pick(this.FIRST)+' '+this.pick(this.LAST);
+      if(!this.used.has(n)){ this.used.add(n); return n; }
+    }
+    const n=this.pick(this.FIRST)+' '+this.pick(this.LAST)+' '+this.used.size; this.used.add(n); return n;
+  }
+  cls(){ const r=this.rng(); return r<0.3?'FR':r<0.56?'SO':r<0.81?'JR':'SR'; }
+
+  mkHitter(q,pos){
+    const r=this.rng();
+    const bats = r<0.62?'R':(r<0.92?'L':'S');
+    const throws = bats==='L' ? (this.rng()<0.62?'L':'R') : (this.rng()<0.08?'L':'R');
+    const town=this.pick(this.TOWNS);
+    const p={ id:'h'+(this.pid++), type:'hitter', name:this.name(), pos:pos||this.pick(this.POS), classYear:this.cls(), bats, throws,
+      num:2+Math.floor(this.rng()*42), town:town[0]+', '+town[1],
+      ht:Math.round(this.norm(72,2.4,66,79)), wt:Math.round(this.norm(196,17,155,245)),
+      platoonSkill: bats==='S'?Math.max(0,0.015+this.gauss()*0.01):(bats==='L'?0.09:0.045)+this.gauss()*(bats==='L'?0.05:0.03),
+      contact:this.norm(q,12), power:this.norm(q,14), eye:this.norm(q,12), speed:this.norm(q,15), fielding:this.norm(q,13), arm:this.norm(q,13),
+      st:{ g:0,pa:0,ab:0,h:0,d:0,t:0,hr:0,r:0,rbi:0,bb:0,k:0,sb:0 } };
+    p.overall=Math.round((p.contact*0.3+p.power*0.24+p.eye*0.16+p.speed*0.12+p.fielding*0.12+p.arm*0.06));
+    p.potential=Math.min(99,Math.round(p.overall+(p.classYear==='FR'?this.norm(11,4,2,20):p.classYear==='SO'?this.norm(7,3,1,15):this.norm(3,2,0,8))));
+    p._v=this.vector(this.BAT_SENS,p);
+    return p;
+  }
+  mkPitcher(q,role){
+    const throws=this.rng()<0.28?'L':'R';
+    const sidearm = throws==='R' && role==='RP' && this.rng()<0.10;
+    const town=this.pick(this.TOWNS);
+    const p={ id:'p'+(this.pid++), type:'pitcher', name:this.name(), pos:'P', role, classYear:this.cls(), bats:throws, throws, sidearm,
+      num:2+Math.floor(this.rng()*42), town:town[0]+', '+town[1],
+      ht:Math.round(this.norm(74,2.2,68,81)), wt:Math.round(this.norm(203,16,165,250)),
+      platoonSkill: sidearm?0.10:Math.max(0,this.gauss()*0.02),
+      stuff:this.norm(q+(role==='RP'?4:0),13), movement:this.norm(q,12), control:this.norm(q+(role==='SP'?3:-2),13),
+      stamina: role==='SP'?this.norm(68,12):this.norm(32,12),
+      groundBall:this.norm(50,15), holdRunners:this.norm(q,14),
+      velocity:Math.round(this.norm(89,3.2,79,100)), fielding:this.norm(48,12), arm:this.norm(55,10),
+      pst:{ g:0,gs:0,outs:0,h:0,er:0,bb:0,k:0,w:0,l:0,sv:0,bf:0 } };
+    p.overall=Math.round(p.stuff*0.34+p.movement*0.28+p.control*0.28+p.stamina*0.10);
+    p.potential=Math.min(99,Math.round(p.overall+(p.classYear==='FR'?this.norm(11,4,2,20):p.classYear==='SO'?this.norm(7,3,1,14):this.norm(3,2,0,8))));
+    p._v=this.vector(this.PIT_SENS,p);
+    return p;
+  }
+  mkTeam(id,school,nick,abbr,q){
+    const lineup=this.POS.map(pos=>this.mkHitter(q+this.gauss()*4,pos));
+    const bench=[0,1,2,3].map(()=>this.mkHitter(q-6));
+    const rotation=[0,1,2,3].map(()=>this.mkPitcher(q+3,'SP'));
+    const bullpen=[0,1,2,3,4].map(()=>this.mkPitcher(q,'RP'));
+    return { id, school, nick, abbr, quality:q, lineup, bench, rotation, bullpen, w:0,l:0,cw:0,cl:0, streak:0, rs:0, ra:0, gp:0 };
+  }
+
+  init(){
+    this.rng=this.mkRng(90217);
+    this.used=new Set(); this.pid=1;
+    const defs=[
+      ['Ridgemont State','Kestrels','RID',57],['Bracken State','Ravens','BRK',56],['Marbury Tech','Engineers','MBT',55],
+      ['Pinecrest State','Pioneers','PIN',53],['Calloway','Miners','CAL',52],['Verdugo','Condors','VER',51],
+      ['Oakhurst','Owls','OAK',50],['Fort Hollis','Cadets','FTH',49],['Sutter Valley','Vaqueros','SUT',47],
+      ['Granite Bay','Tide','GBY',46],['Wexford','Wolves','WEX',45],['Ludlow','Foresters','LUD',44]
+    ];
+    this.teams=defs.map((d,i)=>this.mkTeam(i,d[0],d[1],d[2],d[3]));
+    this.user=this.teams[0];
+    this.days=this.buildSchedule();
+    this.feed=[]; this.lastGame=null; this.playedGame=false;
+    this.recruits=this.buildRecruits();
+    this._start=0;
+    let i=0;
+    while(i<this.days.length && (this.user.gp<24 || !this.days[i].games.length)){ this.simDay(i, this.user.gp>=20); i++; }
+    this._start=i;
+    return null;
+  }
+
+  addDays(d,n){ const x=new Date(d.getTime()); x.setDate(x.getDate()+n); return x; }
+  roundPairs(r){
+    const n=12, ids=[]; for(let i=0;i<n;i++) ids.push(i);
+    const rest=ids.slice(1), k=r%11;
+    const rot=rest.slice(k).concat(rest.slice(0,k));
+    const list=[0].concat(rot); const pairs=[];
+    for(let i=0;i<n/2;i++) pairs.push([list[i],list[n-1-i]]);
+    return pairs;
+  }
+  buildSchedule(){
+    const days=[]; const start=new Date(2027,1,12);
+    const rest=['Bullpen day and cage work.','Travel day.','Team lift, light infield work.','Class day, no practice.','Scrimmage and situational defense.'];
+    for(let off=0;off<91;off++){
+      const w=Math.floor(off/7), k=off%7;
+      const d=this.addDays(start,off);
+      if(k<=2){
+        const pairs=this.roundPairs(w);
+        days.push({ d, conf:true, week:w+1, label:['Series opener','Game two','Series finale'][k],
+          games:pairs.map(p=>({ home:(w%2===0?p[0]:p[1]), away:(w%2===0?p[1]:p[0]) })) });
+      } else if(k===4){
+        const mid=this.roundPairs((w+5)%11);
+        days.push({ d, conf:false, week:w+1, label:'Midweek',
+          games:mid.map(p=>({ home:(w%2===0?p[1]:p[0]), away:(w%2===0?p[0]:p[1]) })) });
+      } else {
+        days.push({ d, conf:false, week:w+1, label:'Off day', rest:rest[off%rest.length], games:[] });
+      }
+    }
+    return days;
+  }
+  buildRecruits(){
+    const notes=[
+      'Committed to visit in October. Bracken State is in hard.',
+      'Wants a two way look. Coach thinks the bat plays first.',
+      'Projected top five round pick. May never reach campus.',
+      'Academic fit is the pitch here. Best grades on the board.',
+      'Rival offer on the table. Waiting on a playing time promise.',
+      'Small town arm, big jump in velocity since June.',
+      'Family lives forty minutes from campus. Proximity is your edge.'
+    ];
+    const stars=[5,4,4,4,3,3,3,3];
+    return stars.map((s,i)=>{
+      const pos=this.pick(['RHP','LHP','C','SS','OF','3B','2B']);
+      const town=this.pick(this.TOWNS);
+      return { id:'r'+i, name:this.name(), pos, stars:s, town:town[0]+', '+town[1],
+        interest:Math.round(this.norm(46-s*4,14,8,86)), rank:30+Math.floor(this.rng()*380),
+        note:notes[i%notes.length], signed:false };
+    });
+  }
+
+  pa(b,p,fat,mods){
+    const bv=b._v, pv=p._v, plat=this.platoon(b,p), L=this.LEAGUE;
+    const v={}; let tot=0;
+    for(const e of this.EVENTS){
+      let x=bv[e]*pv[e]/L[e];
+      if(e!=='out') x*=plat*fat;
+      if(mods&&mods[e]) x*=mods[e];
+      v[e]=x; tot+=x;
+    }
+    let r=this.rng()*tot, acc=0, ev='out';
+    for(const e of this.EVENTS){ acc+=v[e]; if(r<acc){ ev=e; break; } }
+    if(ev!=='out') return { e:ev };
+    const kp=this.clamp(this.K_RATE*this.mult(b.contact,-0.70)*this.mult(p.stuff,0.70)/fat,0.02,0.62);
+    if(this.rng()<kp*1.75) return { e:'out', k:true };
+    const gbBias=(mods&&mods.gb)||1;
+    const gb=0.44*this.mult(p.groundBall,0.55)*this.mult(b.power,-0.18)*gbBias;
+    const fly=0.27*this.mult(p.groundBall,-0.45)*this.mult(b.power,0.22)/gbBias;
+    const line=0.21*this.mult(b.contact,0.18);
+    const pop=0.08*this.mult(b.contact,-0.25);
+    const t=gb+fly+line+pop, rr=this.rng()*t;
+    return { e:'out', bb: rr<gb?'ground':(rr<gb+line?'line':(rr<gb+line+fly?'fly':'popup')) };
+  }
+
+  snap(list){ return list.map(p=>({ p, s:Object.assign({},p.st) })); }
+  diff(snap){ return snap.map(x=>({ p:x.p, ab:x.p.st.ab-x.s.ab, r:x.p.st.r-x.s.r, h:x.p.st.h-x.s.h, rbi:x.p.st.rbi-x.s.rbi })); }
+
+  newGame(homeId, awayId, conf, log){
+    const H=this.teams[homeId], A=this.teams[awayId];
+    const side=(t)=>{
+      const sp=t.rotation[conf ? t.gp%3 : 3];
+      return { t, runs:0, hits:0, li:0, cur:sp, sp, pc:0, outsRec:0, bpIdx:0, order:t.lineup, byInn:[], innStart:0 };
+    };
+    const h=side(H), a=side(A);
+    h.sp.pst.g++; h.sp.pst.gs++; a.sp.pst.g++; a.sp.pst.gs++;
+    for(const p of H.lineup) p.st.g++;
+    for(const p of A.lineup) p.st.g++;
+    const strat=(this.state&&this.state.strategy)||{ approach:'Balanced', hook:'Standard' };
+    return { homeId, awayId, H, A, h, a, conf, keepLog:!!log, lines:[],
+      inn:1, top:true, outs:0, bases:[null,null,null], over:false, result:null,
+      snapH:log?this.snap(H.lineup):null, snapA:log?this.snap(A.lineup):null,
+      aggro: strat.approach==='Aggressive'?0.58:strat.approach==='Patient'?0.34:0.45,
+      hookAt: strat.hook==='Quick'?15:strat.hook==='Patient'?24:18 };
+  }
+
+  note(c,txt,kind){ if(c.keepLog) c.lines.push({ inn:(c.top?'\u25b2':'\u25bc')+c.inn, text:txt, kind:kind||'play' }); }
+
+  stepPA(c){
+    if(c.over) return;
+    const off=c.top?c.a:c.h, def=c.top?c.h:c.a;
+    const t=c.tactic; c.tactic=null;
+    let mods=null, aggro=c.aggro, sacFly=0.30, gidp=0.14;
+    if(t==='hitrun'){ mods={ single:1.06, homerun:0.85, walk:0.85 }; aggro=0.9; gidp=0.05; }
+    else if(t==='contact'){ mods={ homerun:0.8, single:1.04, walk:0.9 }; sacFly=0.58; }
+    else if(t==='gb'){ mods={ gb:1.45, homerun:0.78, walk:1.1 }; gidp=0.2; }
+    else if(t==='around'){ mods={ walk:2.0, homerun:0.5, double:0.78, single:0.82 }; }
+    if(c.infieldIn){ sacFly*=0.6; gidp*=1.2; }
+    const b=off.order[off.li%9]; off.li++;
+    const p=def.cur, fat=this.fatigue(p,def.pc);
+    const res=this.pa(b,p,fat,mods);
+    if(t) this.note(c,'Call: '+this.tacticName(t)+'.','call');
+    def.pc+=this.rng()<0.5?4:3; p.pst.bf++; b.st.pa++;
+    const score=(runner,batter)=>{ off.runs++; if(runner) runner.st.r++; if(batter) batter.st.rbi++; def.cur.pst.er++; };
+    const bases=c.bases;
+    let txt=null, scored=0;
+    if(res.e==='walk'||res.e==='hbp'){
+      b.st.bb++; p.pst.bb++;
+      if(bases[0]){ if(bases[1]){ if(bases[2]){ score(bases[2],b); scored=1; } bases[2]=bases[1]; } bases[1]=bases[0]; }
+      bases[0]=b;
+      txt=b.name+(res.e==='hbp'?' is hit by a pitch.':' draws a walk.');
+    } else if(res.e==='out'){
+      c.outs++; b.st.ab++; p.pst.outs++; def.outsRec++;
+      if(res.k){ b.st.k++; p.pst.k++; txt=b.name+(this.rng()<0.5?' strikes out swinging.':' called out on strikes.'); }
+      else if(res.bb==='ground'&&bases[0]&&c.outs<3&&this.rng()<gidp){ c.outs++; p.pst.outs++; def.outsRec++; bases[0]=null; txt=b.name+' grounds into a double play, 6-4-3.'; }
+      else if(res.bb==='fly'&&bases[2]&&c.outs<3&&this.rng()<sacFly){ score(bases[2],b); scored=1; bases[2]=null; txt=b.name+' lifts a sacrifice fly to right.'; }
+      else txt=b.name+(res.bb==='ground'?' grounds out to short.':res.bb==='line'?' lines out to center.':res.bb==='popup'?' pops it up to second.':' flies out to left.');
+    } else {
+      b.st.ab++; b.st.h++; off.hits++; p.pst.h++;
+      if(res.e==='single'){
+        if(bases[2]){ score(bases[2],b); scored++; bases[2]=null; }
+        if(bases[1]){ if(this.rng()<aggro){ score(bases[1],b); scored++; } else bases[2]=bases[1]; bases[1]=null; }
+        if(bases[0]){ bases[1]=bases[0]; bases[0]=null; }
+        bases[0]=b;
+        txt=b.name+' singles '+this.pick(['through the left side','into right field','up the middle','the other way'])+'.';
+      } else if(res.e==='double'){
+        b.st.d++;
+        for(let i=2;i>=1;i--) if(bases[i]){ score(bases[i],b); scored++; bases[i]=null; }
+        if(bases[0]){ if(this.rng()<aggro){ score(bases[0],b); scored++; } else bases[2]=bases[0]; bases[0]=null; }
+        bases[1]=b;
+        txt=b.name+' doubles '+this.pick(['into the left field corner','off the wall in right','down the line'])+'.';
+      } else if(res.e==='triple'){
+        b.st.t++;
+        for(let i=2;i>=0;i--) if(bases[i]){ score(bases[i],b); scored++; bases[i]=null; }
+        bases[2]=b;
+        txt=b.name+' triples into the right center gap.';
+      } else {
+        b.st.hr++;
+        for(let i=2;i>=0;i--) if(bases[i]){ score(bases[i],b); scored++; bases[i]=null; }
+        score(null,b); b.st.r++; scored++;
+        txt=b.name+' homers to '+this.pick(['left','left center','right','dead center'])+'.';
+      }
+    }
+    if(txt){
+      const sc=scored>0?'  ('+c.A.abbr+' '+c.a.runs+', '+c.H.abbr+' '+c.h.runs+')':'';
+      this.note(c,txt+sc,scored>0?'run':'play');
+    }
+    c.lastPlay={ text:txt, batter:b.name, scored };
+    if(def.cur.role==='SP' && (def.outsRec>=c.hookAt || def.pc>105) && c.outs<3 && def.bpIdx===0){
+      def.cur=def.t.bullpen[0]; def.bpIdx=1; def.pc=0; def.cur.pst.g++;
+      this.note(c,'Pitching change. '+def.cur.name+' comes on in relief.','change');
+    } else if(def.cur.role==='RP' && def.pc>42 && def.bpIdx<4 && c.outs<3){
+      def.cur=def.t.bullpen[def.bpIdx]; def.bpIdx++; def.pc=0; def.cur.pst.g++;
+    }
+    if(c.outs>=3) this.endHalf(c);
+  }
+
+  endHalf(c){
+    const off=c.top?c.a:c.h;
+    off.byInn.push(off.runs-off.innStart);
+    c.outs=0; c.bases=[null,null,null];
+    if(c.top){
+      if(c.inn>=9 && c.h.runs>c.a.runs){ this.finalize(c); return; }
+      c.top=false; c.h.innStart=c.h.runs;
+      this.note(c,'End of the top of the '+this.ord(c.inn)+'. '+c.A.abbr+' '+c.a.runs+', '+c.H.abbr+' '+c.h.runs,'half');
+    } else {
+      if(c.inn>=9 && c.h.runs!==c.a.runs){ this.finalize(c); return; }
+      c.inn++;
+      if(c.inn>13){ this.finalize(c); return; }
+      c.top=true; c.a.innStart=c.a.runs;
+      this.note(c,'Going to the '+this.ord(c.inn)+'. '+c.A.abbr+' '+c.a.runs+', '+c.H.abbr+' '+c.h.runs,'half');
+    }
+  }
+
+  finalize(c){
+    if(c.over) return;
+    c.over=true;
+    const H=c.H, A=c.A, h=c.h, a=c.a;
+    H.gp++; A.gp++;
+    H.rs+=h.runs; H.ra+=a.runs; A.rs+=a.runs; A.ra+=h.runs;
+    const hw=h.runs>a.runs;
+    const W=hw?H:A, Lo=hw?A:H, ws=hw?h:a, ls=hw?a:h;
+    W.w++; Lo.l++; if(c.conf){ W.cw++; Lo.cl++; }
+    W.streak=W.streak>0?W.streak+1:1; Lo.streak=Lo.streak<0?Lo.streak-1:-1;
+    ws.sp.pst.w++; ls.sp.pst.l++;
+    if(ws.cur!==ws.sp) ws.cur.pst.sv++;
+    this.note(c,'Final. '+(hw?H.school:A.school)+' wins it, '+Math.max(h.runs,a.runs)+'-'+Math.min(h.runs,a.runs)+'.','final');
+    c.result={ homeId:c.homeId, awayId:c.awayId, hr:h.runs, ar:a.runs, hh:h.hits, ah:a.hits,
+      hInn:h.byInn, aInn:a.byInn, conf:c.conf, log:c.lines,
+      gameBox:{ home:c.snapH?this.diff(c.snapH):null, away:c.snapA?this.diff(c.snapA):null } };
+  }
+
+  tacticName(t){
+    return { hitrun:'bat and run', contact:'play for contact', bunt:'sacrifice bunt', steal:'steal',
+      gb:'pitch for a ground ball', around:'pitch around him', ibb:'intentional walk' }[t]||t;
+  }
+  userSide(c){ return c.homeId===0?c.h:c.a; }
+  userBatting(c){ return (c.top && c.awayId===0) || (!c.top && c.homeId===0); }
+  offSide(c){ return c.top?c.a:c.h; }
+  defSide(c){ return c.top?c.h:c.a; }
+
+  resolveSteal(c){
+    const off=this.offSide(c), def=this.defSide(c);
+    const from=c.bases[0]&&!c.bases[1]?0:(c.bases[1]&&!c.bases[2]?1:-1);
+    if(from<0) return;
+    const r=c.bases[from], p=def.cur;
+    const catcher=def.t.lineup.find(x=>x.pos==='C');
+    const prob=this.clamp(0.70*this.mult(r.speed,0.55)*this.mult(p.holdRunners,-0.30)*this.mult(catcher?catcher.arm:50,-0.35),0.12,0.94);
+    const bag=from===0?'second':'third';
+    if(this.rng()<prob){
+      c.bases[from+1]=r; c.bases[from]=null; r.st.sb++;
+      this.note(c,r.name+' steals '+bag+'.','play');
+    } else {
+      c.bases[from]=null; c.outs++; def.cur.pst.outs++; def.outsRec++;
+      this.note(c,r.name+' is caught stealing '+bag+', '+(from===0?'2-4':'2-5')+'.','play');
+      if(c.outs>=3) this.endHalf(c);
+    }
+  }
+
+  doBunt(c){
+    const off=this.offSide(c), def=this.defSide(c);
+    const b=off.order[off.li%9]; off.li++;
+    b.st.pa++;
+    this.note(c,'Call: sacrifice bunt.','call');
+    const roll=this.rng(), lead=c.bases[2]?2:(c.bases[1]?1:0);
+    if(roll<0.10){
+      b.st.ab++; b.st.h++; off.hits++; def.cur.pst.h++;
+      for(let i=2;i>=0;i--) if(c.bases[i]){ if(i===2){ off.runs++; c.bases[2].st.r++; b.st.rbi++; def.cur.pst.er++; c.bases[2]=null; } else { c.bases[i+1]=c.bases[i]; c.bases[i]=null; } }
+      c.bases[0]=b;
+      this.note(c,b.name+' beats out the bunt for a hit.','run');
+    } else if(roll<0.86){
+      b.st.ab++; c.outs++; def.cur.pst.outs++; def.outsRec++;
+      for(let i=2;i>=0;i--) if(c.bases[i]){ if(i===2){ off.runs++; c.bases[2].st.r++; b.st.rbi++; def.cur.pst.er++; c.bases[2]=null; } else { c.bases[i+1]=c.bases[i]; c.bases[i]=null; } }
+      this.note(c,b.name+' gets the bunt down. Runner moves up.','play');
+    } else {
+      b.st.ab++; c.outs++; def.cur.pst.outs++; def.outsRec++;
+      if(c.bases[lead]) c.bases[lead]=null;
+      this.note(c,'Bunt popped up, the lead runner is out. Bad call.','play');
+    }
+    if(c.outs>=3) this.endHalf(c);
+  }
+
+  doIBB(c){
+    const off=this.offSide(c), def=this.defSide(c), bases=c.bases;
+    const b=off.order[off.li%9]; off.li++;
+    b.st.pa++; b.st.bb++; def.cur.pst.bb++;
+    this.note(c,'Call: intentional walk.','call');
+    if(bases[0]){ if(bases[1]){ if(bases[2]){ off.runs++; bases[2].st.r++; def.cur.pst.er++; } bases[2]=bases[1]; } bases[1]=bases[0]; }
+    bases[0]=b;
+    this.note(c,b.name+' is waved to first.','play');
+  }
+
+  act(kind){
+    const c=this.live; if(!c||c.over) return;
+    if(kind==='steal'){ this.resolveSteal(c); }
+    else if(kind==='bunt'){ this.doBunt(c); }
+    else if(kind==='ibb'){ this.doIBB(c); }
+    else if(kind==='infield'){ c.infieldIn=!c.infieldIn; this.setState({ tick:this.state.tick+1 }); return; }
+    else { c.tactic=(kind==='swing'||kind==='pitch')?null:kind; this.stepPA(c); }
+    this.afterStep();
+  }
+  openSubs(kind){ this.setState({ modal:kind }); }
+  closeSubs(){ this.setState({ modal:null }); }
+  pinchHit(p){
+    const c=this.live, off=this.offSide(c), slot=off.li%9;
+    const outgoing=off.order[slot];
+    const bi=this.user.bench.indexOf(p);
+    if(bi>=0) this.user.bench[bi]=outgoing;
+    off.order[slot]=p; p.st.g++;
+    this.note(c,'Pinch hitter '+p.name+' bats for '+outgoing.name+'.','change');
+    this.setState({ modal:null, tick:this.state.tick+1 });
+  }
+  changePitcher(p){
+    const c=this.live, def=this.defSide(c);
+    const out=def.cur;
+    def.cur=p; def.pc=0; p.pst.g++;
+    const bi=def.t.bullpen.indexOf(p);
+    if(bi>=0) def.bpIdx=Math.max(def.bpIdx,bi+1);
+    this.note(c,'Pitching change. '+p.name+' replaces '+out.name+'.','change');
+    this.setState({ modal:null, tick:this.state.tick+1 });
+  }
+
+  finish(c){ let guard=0; while(!c.over && guard++<4000) this.stepPA(c); return c.result; }
+  simGame(homeId, awayId, conf, log){ return this.finish(this.newGame(homeId,awayId,conf,log)); }
+
+  simDay(i, collect){
+    const day=this.days[i]; if(!day||!day.games.length) return;
+    const results=day.games.map(g=>this.simGame(g.home,g.away,day.conf,collect&&(g.home===0||g.away===0)));
+    day.results=results;
+    if(collect) this.writeFeed(day,i,results);
+  }
+
+  writeFeed(day, i, results){
+    const mine=results.find(r=>r&&(r.homeId===0||r.awayId===0));
+    const items=[];
+    if(mine){
+      const isHome=mine.homeId===0;
+      const us=isHome?mine.hr:mine.ar, them=isHome?mine.ar:mine.hr;
+      const opp=this.teams[isHome?mine.awayId:mine.homeId];
+      const won=us>them;
+      const bx=(isHome?mine.gameBox.home:mine.gameBox.away)||[];
+      const star=bx.slice().sort((x,y)=>(y.h*2+y.rbi)-(x.h*2+x.rbi))[0];
+      this.lastGame=Object.assign({}, mine, { isHome, opp, won, date:this.fmtDate(day.d,true) });
+      items.push({
+        col:won?this.WIN:this.LOSS,
+        head:won?('Kestrels '+us+', '+opp.school+' '+them):(opp.school+' '+them+', Kestrels '+us),
+        sub:'Ridgemont '+(won?'takes':'drops')+' the '+(day.conf?'series game':'midweek')+' '+(isHome?'at Kestrel Field':'at '+opp.school)+'.'+(star?' '+star.p.name+' went '+star.h+' for '+star.ab+' with '+star.rbi+' driven in.':''),
+        lines:[], hasBox:!!this.playedGame, open:()=>this.setState({ tab:'home', screen:'box' })
+      });
+    }
+    const around=results.filter(r=>r&&r!==mine).slice(0,5).map(r=>({
+      a:this.teams[r.awayId].abbr+' at '+this.teams[r.homeId].abbr, b:r.ar+' - '+r.hr
+    }));
+    items.push({ col:this.INK, head:'Around the conference', sub:day.conf?'Weekend series play.':'Midweek slate.', lines:around, hasBox:false, open:null });
+    if(day.conf && i%4===0){
+      const rank=this.rpi(0)+1;
+      items.push({ col:this.INK, head:'Poll and RPI', sub:'Ridgemont State sits No. '+(rank+18)+' nationally and '+this.ord(rank)+' in the Cascade Valley by RPI.', lines:[], hasBox:false, open:null });
+    }
+    this.feed.unshift({ label:this.fmtDate(day.d,true), items });
+    this.feed=this.feed.slice(0,6);
+  }
+
+  avg(p){ return p.st.ab? ('.'+String(Math.round(p.st.h/p.st.ab*1000)).padStart(3,'0')) : '.---'; }
+  obpSlg(p){
+    const s=p.st, ab=s.ab||1, tb=s.h+s.d+2*s.t+3*s.hr;
+    return { obp:'.'+String(Math.round((s.h+s.bb)/((s.ab+s.bb)||1)*1000)).padStart(3,'0'), slg:'.'+String(Math.round(tb/ab*1000)).padStart(3,'0') };
+  }
+  era(p){ const ip=p.pst.outs/3; return ip?(Math.round(p.pst.er*9/ip*100)/100).toFixed(2):'0.00'; }
+  ipStr(p){ const o=p.pst.outs; return Math.floor(o/3)+'.'+(o%3); }
+  fmtDate(d,wire){
+    const M=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    const W=['SUN','MON','TUE','WED','THU','FRI','SAT'];
+    return wire ? M[d.getMonth()]+' '+d.getDate() : W[d.getDay()]+' '+M[d.getMonth()]+' '+d.getDate();
+  }
+  ord(n){ return n+(n===1?'st':n===2?'nd':n===3?'rd':'th'); }
+  rpi(id){
+    const sorted=this.teams.slice().sort((a,b)=>(b.w/((b.w+b.l)||1))-(a.w/((a.w+a.l)||1)));
+    return sorted.findIndex(t=>t.id===id);
+  }
+
+  hasUserGame(i){ const d=this.days[i]; return !!(d && d.games.some(g=>g.home===0||g.away===0)); }
+
+  advance(){
+    let i=this.state.dayIdx, guard=0;
+    while(i<this.days.length && !this.hasUserGame(i) && guard++<40){ this.simDay(i,true); i++; }
+    this.setState({ dayIdx:i, tick:this.state.tick+1, tab:'home', screen:'today' });
+  }
+
+  startLive(){
+    const i=this.state.dayIdx, day=this.days[i];
+    if(!day || !this.hasUserGame(i)) return;
+    const mine=day.games.find(g=>g.home===0||g.away===0);
+    this.liveIdx=i;
+    this.liveResults=day.games.map(g=>g===mine?null:this.simGame(g.home,g.away,day.conf,false));
+    this.liveSlot=day.games.indexOf(mine);
+    this.live=this.newGame(mine.home,mine.away,day.conf,true);
+    this.setState({ tab:'home', screen:'live', auto:false, tick:this.state.tick+1 });
+  }
+  stopAuto(){ if(this.timer){ clearInterval(this.timer); this.timer=null; } }
+  componentWillUnmount(){ this.stopAuto(); }
+  toggleAuto(){
+    if(this.timer){ this.stopAuto(); this.setState({ auto:false }); return; }
+    this.timer=setInterval(()=>{
+      if(!this.live || this.live.over){ this.stopAuto(); this.setState({ auto:false, tick:this.state.tick+1 }); return; }
+      this.stepPA(this.live);
+      this.afterStep();
+    },700);
+    this.setState({ auto:true });
+  }
+  afterStep(){
+    const patch={ tick:this.state.tick+1 };
+    if(this.live && this.live.over){
+      this.stopAuto(); patch.auto=false;
+      if(!this.live.committed){
+        this.live.committed=true; this.playedGame=true;
+        const day=this.days[this.liveIdx];
+        const results=this.liveResults.slice();
+        results[this.liveSlot]=this.live.result;
+        day.results=results;
+        this.writeFeed(day,this.liveIdx,results);
+        patch.dayIdx=this.liveIdx+1;
+      }
+    }
+    this.setState(patch);
+  }
+  liveStep(){ if(this.live&&!this.live.over){ this.stepPA(this.live); this.afterStep(); } }
+  liveHalf(){
+    const c=this.live; if(!c||c.over) return;
+    const inn=c.inn, top=c.top; let guard=0;
+    while(!c.over && c.inn===inn && c.top===top && guard++<80) this.stepPA(c);
+    this.afterStep();
+  }
+  liveFinal(){ if(this.live){ this.stopAuto(); this.finish(this.live); this.afterStep(); } }
+  go(tab,screen){ this.setState({ tab, screen, sel:null, swap:null }); }
+  openPlayer(p){ this.setState({ sel:p, screen:'player' }); }
+  back(){
+    const home={ home:'today', team:'roster', season:'sched', recruit:'board', program:'awards' };
+    this.setState({ screen:home[this.state.tab]||'today', sel:null });
+  }
+  pickLineup(i){
+    const s=this.state;
+    if(s.swap==null){ this.setState({ swap:i }); return; }
+    const l=this.user.lineup.slice();
+    const t=l[s.swap]; l[s.swap]=l[i]; l[i]=t;
+    this.user.lineup=l;
+    this.setState({ swap:null, tick:s.tick+1 });
+  }
+  moveRot(i,d){
+    const r=this.user.rotation.slice(), j=i+d;
+    if(j<0||j>=r.length) return;
+    const t=r[i]; r[i]=r[j]; r[j]=t;
+    this.user.rotation=r;
+    this.setState({ tick:this.state.tick+1 });
+  }
+  setStrat(k,v){ const st=Object.assign({},this.state.strategy); st[k]=v; this.setState({ strategy:st }); }
+  spend(r){
+    if(this.state.rp<12||r.signed) return;
+    r.interest=Math.min(99,r.interest+Math.round(6+this.rng()*9));
+    if(r.interest>=92) r.signed=true;
+    this.setState({ rp:this.state.rp-12, tick:this.state.tick+1 });
+  }
+
+  baseText(b){
+    const on=[b[0]&&'first',b[1]&&'second',b[2]&&'third'].filter(x=>x);
+    return on.length===3?'bases loaded':('runner'+(on.length>1?'s':'')+' on '+on.join(' and '));
+  }
+  chip(active){ return active ? { bg:this.CLAY, col:'#f6f1e6', bd:this.CLAY } : { bg:'transparent', col:'rgba(28,36,48,.6)', bd:'rgba(28,36,48,.25)' }; }
+
+  rosterData(){
+    const showR=this.props.showRatings!==false;
+    const cell=p=>({ num:String(p.num), name:p.name,
+      ovr:showR?String(p.overall):'\u2013',
+      ovrCol:p.overall>=60?this.WIN:(p.overall<48?'rgba(28,36,48,.45)':this.INK),
+      open:()=>this.openPlayer(p) });
+    if(this.state.rosterMode==='bat'){
+      const rows=this.user.lineup.concat(this.user.bench).map((p,i)=>Object.assign(cell(p),{
+        meta:this.POSNUM[p.pos]+' '+p.pos+' \u00b7 '+p.classYear+' \u00b7 '+p.bats+'/'+p.throws,
+        a:this.avg(p), b:String(p.st.hr), c:String(p.st.rbi),
+        bg:i%2?'rgba(28,36,48,.035)':'transparent' }));
+      return { rows, colA:'AVG', colB:'HR', colC:'RBI' };
+    }
+    const rows=this.user.rotation.concat(this.user.bullpen).map((p,i)=>Object.assign(cell(p),{
+      meta:p.role+' \u00b7 '+p.classYear+' \u00b7 '+p.throws+'HP \u00b7 '+p.velocity+' mph',
+      a:this.era(p), b:this.ipStr(p), c:String(p.pst.k),
+      bg:i%2?'rgba(28,36,48,.035)':'transparent' }));
+    return { rows, colA:'ERA', colB:'IP', colC:'K' };
+  }
+
+  scheduleMonths(){
+    const M=['January','February','March','April','May'], out=[];
+    this.days.forEach((day,i)=>{
+      const g=day.games.find(x=>x.home===0||x.away===0);
+      if(!g) return;
+      const isHome=g.home===0, opp=this.teams[isHome?g.away:g.home];
+      const key=M[day.d.getMonth()].toUpperCase();
+      let m=out.find(x=>x.label===key);
+      if(!m){ m={ label:key, rows:[] }; out.push(m); }
+      let res='\u2013', col=this.DIM;
+      if(i<this.state.dayIdx && day.results){
+        const r=day.results.find(x=>x.homeId===0||x.awayId===0);
+        const us=isHome?r.hr:r.ar, them=isHome?r.ar:r.hr;
+        res=(us>them?'W ':'L ')+us+'-'+them; col=us>them?this.WIN:this.LOSS;
+      } else if(i===this.state.dayIdx){ res='TODAY'; col=this.CLAY; }
+      m.rows.push({ date:this.fmtDate(day.d,true), ha:isHome?'vs':'at', opp:opp.school+' '+opp.nick, res, col });
+    });
+    return out;
+  }
+  lastFive(){
+    const out=[];
+    for(let i=this.state.dayIdx-1;i>=0&&out.length<5;i--){
+      const day=this.days[i]; if(!day.results) continue;
+      const r=day.results.find(x=>x.homeId===0||x.awayId===0); if(!r) continue;
+      const isHome=r.homeId===0, us=isHome?r.hr:r.ar, them=isHome?r.ar:r.hr;
+      const opp=this.teams[isHome?r.awayId:r.homeId];
+      out.push({ wl:us>them?'W':'L', pill:us>them?this.WIN:this.LOSS, date:this.fmtDate(day.d,true),
+        opp:(isHome?'vs ':'at ')+opp.school, score:us+'-'+them });
+    }
+    return out;
+  }
+
+  leaders(){
+    const all=[], arms=[];
+    this.teams.forEach(t=>{ t.lineup.concat(t.bench).forEach(p=>all.push({ p, t })); t.rotation.concat(t.bullpen).forEach(p=>arms.push({ p, t })); });
+    const mk=(label,list,fmt)=>({ label, rows:list.map((x,i)=>({ n:String(i+1), name:x.p.name, team:x.t.abbr, val:fmt(x.p),
+      col:x.t.id===0?this.CLAY:this.INK, open:()=>this.openPlayer(x.p) })) });
+    const qual=all.filter(x=>x.p.st.ab>=45), qArms=arms.filter(x=>x.p.pst.outs>=45);
+    return [
+      mk('KESTRELS BATTING',this.user.lineup.slice().sort((a,b)=>(b.st.h/(b.st.ab||1))-(a.st.h/(a.st.ab||1))).slice(0,5).map(p=>({ p, t:this.user })),p=>this.avg(p)),
+      mk('CONFERENCE AVERAGE',qual.slice().sort((a,b)=>(b.p.st.h/b.p.st.ab)-(a.p.st.h/a.p.st.ab)).slice(0,5),p=>this.avg(p)),
+      mk('HOME RUNS',all.slice().sort((a,b)=>b.p.st.hr-a.p.st.hr).slice(0,5),p=>String(p.st.hr)),
+      mk('RUNS BATTED IN',all.slice().sort((a,b)=>b.p.st.rbi-a.p.st.rbi).slice(0,5),p=>String(p.st.rbi)),
+      mk('EARNED RUN AVERAGE',qArms.slice().sort((a,b)=>(a.p.pst.er/a.p.pst.outs)-(b.p.pst.er/b.p.pst.outs)).slice(0,5),p=>this.era(p)),
+      mk('STRIKEOUTS',arms.slice().sort((a,b)=>b.p.pst.k-a.p.pst.k).slice(0,5),p=>String(p.pst.k))
+    ];
+  }
+
+  playerView(p){
+    if(!p) return null;
+    const ht=Math.floor(p.ht/12)+"'"+(p.ht%12)+'"';
+    const bars=(p.type==='hitter'
+      ? [['CONTACT',p.contact],['POWER',p.power],['EYE',p.eye],['SPEED',p.speed],['FIELD',p.fielding],['ARM',p.arm]]
+      : [['STUFF',p.stuff],['MOVEMENT',p.movement],['CONTROL',p.control],['STAMINA',p.stamina],['GB TILT',p.groundBall],['HOLD',p.holdRunners]]
+    ).map(b=>({ k:b[0], v:String(Math.round(b[1])), pct:String(Math.round(this.clamp(b[1],0,99))), col:b[1]>=60?this.WIN:this.CLAY }));
+    const o=p.type==='hitter'?this.obpSlg(p):{ obp:'', slg:'' };
+    const stats=p.type==='hitter'
+      ? [['GAMES / PA',p.st.g+' / '+p.st.pa],['AVG / OBP / SLG',this.avg(p)+' / '+o.obp+' / '+o.slg],['H / 2B / 3B / HR',p.st.h+' / '+p.st.d+' / '+p.st.t+' / '+p.st.hr],['R / RBI',p.st.r+' / '+p.st.rbi],['BB / K',p.st.bb+' / '+p.st.k]]
+      : [['APPEARANCES',p.pst.g+' ('+p.pst.gs+' GS)'],['W / L / SV',p.pst.w+' / '+p.pst.l+' / '+p.pst.sv],['IP / ERA',this.ipStr(p)+' / '+this.era(p)],['K / BB',p.pst.k+' / '+p.pst.bb],['HITS ALLOWED',String(p.pst.h)]];
+    const tiles=p.type==='hitter'
+      ? [['OVR',p.overall],['POT',p.potential],['AVG',this.avg(p)]]
+      : [['OVR',p.overall],['POT',p.potential],['ERA',this.era(p)]];
+    const draft=p.classYear==='JR'||p.classYear==='SR';
+    return { name:p.name, num:String(p.num),
+      meta:(p.type==='hitter'?this.POSNUM[p.pos]+' '+p.pos:p.role)+' \u00b7 '+p.classYear+' \u00b7 '+p.bats+'/'+p.throws,
+      bio:ht+', '+p.wt+' lbs \u00b7 '+p.town, tiles:tiles.map(t=>({ k:t[0], v:String(t[1]) })),
+      bars, stats:stats.map(s=>({ k:s[0], v:s[1] })),
+      note: draft
+        ? 'Draft eligible in June. Scouts have been at the last four starts, and a top ten round grade takes him out of the program.'
+        : 'Under your control through '+(p.classYear==='FR'?'2030':'2029')+'. Development is tracking '+(p.potential-p.overall>8?'ahead of':'in line with')+' his freshman projection.' };
+  }
+
+  renderVals(){
+    const s=this.state, u=this.user, day=this.days[s.dayIdx], screen=s.screen;
+    const R={};
+    R.devW=412; R.devH=892;
+    R.recOvr=u.w+'-'+u.l; R.recConf=u.cw+'-'+u.cl;
+    ['today','wire','box','roster','lineup','strategy','sched','stand','stats','board','player'].forEach(k=>{
+      R['is'+k.charAt(0).toUpperCase()+k.slice(1)]=screen===k;
+    });
+    R.isSchedule=screen==='sched'; R.isStandings=screen==='stand';
+    R.isList=screen==='portal'||screen==='draft'||screen==='awards'||screen==='history'||screen==='records';
+    R.canBack=screen==='player';
+    R.back=()=>this.back();
+
+    R.dateBig=day?this.fmtDate(day.d,false):'SEASON DONE';
+    R.phaseLine=day?('WEEK '+day.week+' \u00b7 '+(day.games.length?(day.conf?'CONFERENCE SERIES':'MIDWEEK'):day.label.toUpperCase())):'CONFERENCE TOURNAMENT';
+    R.rpiRank='#'+(this.rpi(0)+19);
+    R.streakLine=(u.streak>0?'Won ':'Lost ')+Math.abs(u.streak)+' straight';
+    R.tiles=[{ k:'OVERALL', v:u.w+'-'+u.l },{ k:'CONFERENCE', v:u.cw+'-'+u.cl },{ k:'RUN DIFF', v:(u.rs-u.ra>0?'+':'')+(u.rs-u.ra) }];
+    const g=day?day.games.find(x=>x.home===0||x.away===0):null;
+    R.hasToday=!!g;
+    R.isOff=!!day&&!g;
+    R.advanceLabel=!day?'Season complete':(g?'Play ball':'Advance to next game');
+    R.advance=()=>{ if(!day) return; if(g) this.startLive(); else this.advance(); };
+    if(R.isOff){
+      let j=s.dayIdx, guard=0;
+      while(j<this.days.length && !this.hasUserGame(j) && guard++<40) j++;
+      const nd=this.days[j], ng=nd?nd.games.find(x=>x.home===0||x.away===0):null;
+      const nopp=ng?this.teams[ng.home===0?ng.away:ng.home]:null;
+      R.offLabel=day.label.toUpperCase();
+      R.offNote=day.rest||'No game scheduled.';
+      R.offNext=nopp?((ng.home===0?'vs ':'at ')+nopp.school+' '+nopp.nick+' \u00b7 '+this.fmtDate(nd.d,true)):'Regular season complete';
+    }
+    if(g){
+      const isHome=g.home===0, opp=this.teams[isHome?g.away:g.home];
+      R.todayTag=day.conf?'TODAY \u00b7 CVC SERIES':'TODAY \u00b7 MIDWEEK';
+      R.todayGameNo='GAME '+(u.gp+1)+' OF 52';
+      R.todayHead=(isHome?'vs ':'at ')+opp.school+' '+opp.nick;
+      R.todaySite=(isHome?'Kestrel Field \u00b7 Ridgemont':opp.school+' \u00b7 road')+' \u00b7 '+(opp.w+'-'+opp.l)+' on the year';
+      const sp=u.rotation[day.conf?u.gp%3:3], osp=opp.rotation[day.conf?opp.gp%3:3];
+      R.probables=[
+        { side:'KESTRELS', name:sp.name, line:sp.pst.w+'-'+sp.pst.l+' \u00b7 '+this.era(sp)+' ERA' },
+        { side:opp.abbr, name:osp.name, line:osp.pst.w+'-'+osp.pst.l+' \u00b7 '+this.era(osp)+' ERA' }
+      ];
+    } else { R.probables=[]; }
+    R.lastFive=this.lastFive();
+    R.feed=this.feed.slice(0,this.props.wireItems||4);
+
+    const rd=this.rosterData();
+    R.rosterRows=rd.rows; R.colA=rd.colA; R.colB=rd.colB; R.colC=rd.colC;
+    R.rosterTabs=[['bat','HITTERS'],['arm','PITCHERS']].map(t=>{
+      const c=this.chip(s.rosterMode===t[0]);
+      return { label:t[1], bg:c.bg, col:c.col, bd:c.bd, go:()=>this.setState({ rosterMode:t[0] }) };
+    });
+
+    R.swapHint=s.swap==null?'Tap two spots to swap the order. Position numbers use scorebook notation.':'Now tap the spot to swap with '+u.lineup[s.swap].name+'.';
+    R.lineupRows=u.lineup.map((p,i)=>({
+      n:String(i+1), posNum:this.POSNUM[p.pos], name:p.name, line:this.avg(p),
+      bg:s.swap===i?'rgba(168,68,42,.12)':this.PAPER, pick:()=>this.pickLineup(i)
+    }));
+    const slots=['FRI','SAT','SUN','MID'];
+    R.rotRows=u.rotation.map((p,i)=>({ slot:slots[i], name:p.name,
+      line:p.pst.w+'-'+p.pst.l+' \u00b7 '+this.era(p)+' ERA \u00b7 '+this.ipStr(p)+' IP \u00b7 '+p.velocity+' mph',
+      up:()=>this.moveRot(i,-1), down:()=>this.moveRot(i,1) }));
+
+    const groups=[
+      ['approach','BASE RUNNING','How often runners try for the extra base on a hit.',['Patient','Balanced','Aggressive']],
+      ['running','STOLEN BASES','Green light policy for the top of the order.',['Never','Selective','Constant']],
+      ['bunt','SACRIFICE BUNT','Late innings, runner on first, one out.',['Never','Rare','Often']],
+      ['hook','PITCHING HOOK','When you go to the bullpen behind a starter.',['Quick','Standard','Patient']],
+      ['defense','ALIGNMENT','Shifts against pull heavy hitters.',['Straight','Situational','Full shift']]
+    ];
+    R.stratGroups=groups.map(gr=>({ label:gr[1], note:gr[2],
+      opts:gr[3].map(o=>{ const c=this.chip(s.strategy[gr[0]]===o); return { label:o.toUpperCase(), bg:c.bg, col:c.col, bd:c.bd, pick:()=>this.setStrat(gr[0],o) }; }) }));
+
+    R.schedMonths=this.scheduleMonths();
+    R.standRows=this.teams.slice().sort((a,b)=>(b.cw/((b.cw+b.cl)||1))-(a.cw/((a.cw+a.cl)||1))||b.w-a.w).map((t,i)=>({
+      n:String(i+1), team:t.school, conf:t.cw+'-'+t.cl, ovr:t.w+'-'+t.l, strk:(t.streak>0?'W':'L')+Math.abs(t.streak),
+      col:t.id===0?this.CLAY:this.INK, bg:t.id===0?'rgba(168,68,42,.08)':'transparent' }));
+    R.leaderBoards=this.leaders();
+
+    const lg=this.lastGame;
+    if(lg){
+      const A=this.teams[lg.awayId], H=this.teams[lg.homeId];
+      const innN=Math.max(lg.aInn.length,lg.hInn.length,9);
+      const heads=[]; for(let i=1;i<=innN;i++) heads.push({ v:String(i) });
+      heads.push({ v:'R' },{ v:'H' },{ v:'E' });
+      R.lineHeads=heads;
+      const mkRow=(t,inns,runs,hits,err)=>{
+        const cells=[];
+        for(let i=0;i<innN;i++) cells.push({ v:inns[i]==null?'\u00b7':String(inns[i]), font:"400 11px 'IBM Plex Mono',monospace", col:'rgba(28,36,48,.75)' });
+        cells.push({ v:String(runs), font:"600 12px 'IBM Plex Mono',monospace", col:this.INK });
+        cells.push({ v:String(hits), font:"400 11px 'IBM Plex Mono',monospace", col:'rgba(28,36,48,.75)' });
+        cells.push({ v:String(err), font:"400 11px 'IBM Plex Mono',monospace", col:'rgba(28,36,48,.75)' });
+        return { team:t.abbr+' '+t.nick.slice(0,3).toUpperCase(), cells, col:t.id===0?this.CLAY:this.INK };
+      };
+      R.lineRows=[ mkRow(A,lg.aInn,lg.ar,lg.ah,0), mkRow(H,lg.hInn,lg.hr,lg.hh,1) ];
+      R.gameMeta='FINAL \u00b7 '+lg.date+' \u00b7 '+(lg.isHome?'KESTREL FIELD':lg.opp.school.toUpperCase());
+      R.playLog=lg.log.slice(0,44).map(l=>({ inn:l.inn, text:l.text, bg:l.scored?'rgba(168,68,42,.07)':'transparent' }));
+      const bx=(lg.isHome?lg.gameBox.home:lg.gameBox.away)||[];
+      R.boxRows=bx.map((x,i)=>({ num:String(i+1), name:x.p.name, ab:String(x.ab), r:String(x.r), h:String(x.h), rbi:String(x.rbi) }));
+    } else { R.lineHeads=[]; R.lineRows=[]; R.playLog=[]; R.boxRows=[]; R.gameMeta='NO GAME PLAYED YET'; }
+
+    const c=this.live;
+    R.isLive=screen==='live';
+    if(c){
+      const off=c.top?c.a:c.h, def=c.top?c.h:c.a;
+      const batter=off.order[off.li%9], pit=def.cur;
+      R.lv={
+        awayAbbr:c.A.abbr, awayName:c.A.school, awayRuns:String(c.a.runs), awayCol:c.awayId===0?'#f2ece0':'rgba(246,241,230,.72)',
+        homeAbbr:c.H.abbr, homeName:c.H.school, homeRuns:String(c.h.runs), homeCol:c.homeId===0?'#f2ece0':'rgba(246,241,230,.72)',
+        innLabel:c.over?'FINAL':((c.top?'\u25b2 ':'\u25bc ')+this.ord(c.inn)),
+        situation:c.over?(c.result&&c.result.hr>c.result.ar?c.H.school+' wins':c.A.school+' wins'):(c.outs+(c.outs===1?' out':' out')+' \u00b7 '+(c.bases.filter(x=>x).length?this.baseText(c.bases):'bases empty')),
+        batter:c.over?(c.h.runs>c.a.runs?c.h.sp.name:c.a.sp.name):batter.name,
+        batterLine:c.over
+          ?((c.h.runs>c.a.runs?c.h.sp:c.a.sp).pst.w+'-'+(c.h.runs>c.a.runs?c.h.sp:c.a.sp).pst.l+' \u00b7 '+this.era(c.h.runs>c.a.runs?c.h.sp:c.a.sp)+' ERA')
+          :(this.POSNUM[batter.pos]+' '+batter.pos+' \u00b7 '+this.avg(batter)+' \u00b7 '+batter.st.hr+' HR \u00b7 bats '+batter.bats),
+        atBatLabel:c.over?'WINNING PITCHER':('AT BAT \u00b7 '+((off.li%9)+1)),
+        pitcher:pit.name, pitcherLine:pit.throws+'HP \u00b7 '+def.pc+' pitches \u00b7 '+this.ipStr(pit)+' IP \u00b7 '+this.era(pit)+' ERA',
+        outs:[0,1,2].map(i=>({ col:i<c.outs?this.CLAY:'transparent' })),
+        b1:c.bases[0]?this.CLAY:'rgba(28,36,48,.16)', b2:c.bases[1]?this.CLAY:'rgba(28,36,48,.16)', b3:c.bases[2]?this.CLAY:'rgba(28,36,48,.16)',
+        baseLine1:c.bases[1]?('2B '+c.bases[1].name.split(' ')[1]):'',
+        baseLine2:[c.bases[2]?('3B '+c.bases[2].name.split(' ')[1]):'',c.bases[0]?('1B '+c.bases[0].name.split(' ')[1]):''].filter(x=>x).join(' \u00b7 '),
+        isFinal:c.over, notFinal:!c.over, autoLabel:s.auto?'PAUSE':'AUTO',
+        sideLabel:this.userBatting(c)?'YOUR CALL \u00b7 AT THE PLATE':'YOUR CALL \u00b7 IN THE FIELD',
+        subLabel:this.userBatting(c)?'PINCH HIT':'NEW PITCHER',
+        subAct:()=>this.openSubs(this.userBatting(c)?'ph':'pc')
+      };
+      const on1=!!c.bases[0], on2=!!c.bases[1], on3=!!c.bases[2], any=on1||on2||on3;
+      const opt=(label,note,kind,ok,why)=>({ label, note:ok?note:(why||'unavailable'), act:ok?(()=>this.act(kind)):(()=>{}),
+        bg:ok?'#fbf7ee':'rgba(28,36,48,.04)', col:ok?this.INK:'rgba(28,36,48,.35)', bd:ok?'rgba(28,36,48,.28)':'rgba(28,36,48,.12)' });
+      R.lvOptions=this.userBatting(c)
+        ? [ opt('SWING AWAY','let him hit','swing',true),
+            opt('BAT AND RUN','runner goes with the pitch','hitrun',on1&&c.outs<2,on1?'two outs already':'nobody on first'),
+            opt('SAC BUNT','trade an out to move him up','bunt',(on1||on2)&&c.outs<2,(on1||on2)?'two outs already':'nobody to move up'),
+            opt('PLAY FOR CONTACT','ball in the air, run scores','contact',on3&&c.outs<2,on3?'two outs already':'no runner on third'),
+            opt('STEAL','send him on his own','steal',(on1&&!on2)||(on2&&!on3),any?'next bag is occupied':'nobody on') ]
+        : [ opt('PITCH','let him work','pitch',true),
+            opt('PITCH FOR GROUND','sink it, get two','gb',true),
+            opt('PITCH AROUND','nothing over the plate','around',true),
+            opt('WALK HIM','put him on, set the force','ibb',c.outs<2||!on1,'first base is taken'),
+            { label:c.infieldIn?'INFIELD IN \u00b7 ON':'INFIELD IN', note:on3?'cut the run at the plate':'no runner on third',
+              act:()=>this.act('infield'), bg:c.infieldIn?this.CLAY:'#fbf7ee',
+              col:c.infieldIn?'#f6f1e6':this.INK, bd:c.infieldIn?this.CLAY:'rgba(28,36,48,.28)' } ];
+      const bat=this.userBatting(c);
+      R.modalOpen=!!s.modal;
+      R.modalTitle=s.modal==='ph'?'BENCH':'BULLPEN';
+      R.modalClose=()=>this.closeSubs();
+      R.modalRows=(s.modal==='ph'?this.user.bench:(s.modal==='pc'?this.user.bullpen:[])).map(p=>({
+        name:p.name,
+        line:p.type==='hitter'
+          ? (this.POSNUM[p.pos]+' '+p.pos+' \u00b7 '+p.classYear+' \u00b7 '+this.avg(p)+' \u00b7 '+p.bats+' bats')
+          : (p.role+' \u00b7 '+p.throws+'HP \u00b7 '+this.era(p)+' ERA \u00b7 '+this.ipStr(p)+' IP'),
+        ovr:String(p.overall),
+        pick:()=>{ if(s.modal==='ph') this.pinchHit(p); else this.changePitcher(p); }
+      }));
+      R.logRows=c.lines.slice().reverse().slice(0,60).map(l=>({
+        inn:l.kind==='half'||l.kind==='final'?'':l.inn, text:l.text,
+        bg:l.kind==='run'?'rgba(168,68,42,.09)':(l.kind==='half'?'rgba(34,50,71,.07)':'transparent'),
+        col:l.kind==='change'?'rgba(28,36,48,.55)':(l.kind==='half'?'rgba(28,36,48,.6)':'rgba(28,36,48,.9)'),
+        font:l.kind==='run'||l.kind==='final'?"600 12.5px 'Source Sans 3',sans-serif":(l.kind==='half'?"500 10.5px 'IBM Plex Mono',monospace":"400 12.5px 'Source Sans 3',sans-serif")
+      }));
+      R.liveStep=()=>this.liveStep(); R.liveHalf=()=>this.liveHalf();
+      R.liveFinal=()=>this.liveFinal(); R.liveAuto=()=>this.toggleAuto();
+      R.liveBox=()=>this.setState({ screen:'box' }); R.liveDone=()=>this.setState({ screen:'today' });
+    } else { R.lv={ outs:[], notFinal:false, isFinal:false }; R.logRows=[]; R.lvOptions=[]; R.modalRows=[]; R.modalOpen=false; }
+
+    R.rpLabel=s.rp+'/180'; R.rpPct=String(Math.round(s.rp/180*100));
+    R.recruits=this.recruits.map(r=>{
+      const can=s.rp>=12&&!r.signed;
+      return { name:r.name, stars:'\u2605'.repeat(r.stars)+'\u2606'.repeat(5-r.stars),
+        meta:r.pos+' \u00b7 '+r.town+' \u00b7 NATL #'+r.rank,
+        interest:String(r.interest), interestLabel:r.signed?'SIGNED':(r.interest+'% INTEREST'),
+        barCol:r.signed?this.WIN:this.CLAY, btn:r.signed?'SIGNED':'SPEND 12',
+        btnBg:r.signed?'rgba(63,107,70,.14)':(can?this.CLAY:'transparent'),
+        btnCol:r.signed?this.WIN:(can?'#f6f1e6':'rgba(28,36,48,.4)'),
+        btnBd:r.signed?'rgba(63,107,70,.4)':(can?this.CLAY:'rgba(28,36,48,.25)'),
+        note:r.note, recruit:()=>this.spend(r) };
+    });
+
+    const jrs=u.lineup.concat(u.rotation).filter(p=>p.classYear==='JR'||p.classYear==='SR').slice(0,5);
+    const boardsBy={
+      portal:[
+        { label:'Portal in \u00b7 available', hasNote:true, note:'Opens after the conference tournament. Interest stays soft until a scholarship frees up.',
+          rows:[0,1,2].map(i=>{ const p=this.teams[6+i].bench[0]; return { k:this.POSNUM[p.pos]+' '+p.pos, v:p.name, meta:'from '+this.teams[6+i].school+' \u00b7 '+p.classYear, x:'WATCH', col:this.CLAY }; }) },
+        { label:'Portal out \u00b7 risk', hasNote:true, note:'Bench players with playing time complaints. Two leave if the lineup does not change.',
+          rows:u.bench.slice(0,3).map(p=>({ k:this.POSNUM[p.pos]+' '+p.pos, v:p.name, meta:p.classYear+' \u00b7 '+p.st.pa+' PA', x:p.st.pa<20?'HIGH':'MODERATE', col:p.st.pa<20?this.LOSS:this.DIM })) }
+      ],
+      draft:[
+        { label:'June draft watch', hasNote:true, note:'Juniors and seniors with pro grades. You lose them whether you want to or not.',
+          rows:jrs.map(p=>({ k:p.type==='hitter'?this.POSNUM[p.pos]+' '+p.pos:p.role, v:p.name,
+            meta:p.classYear+' \u00b7 '+(p.type==='hitter'?this.avg(p)+' AVG':this.era(p)+' ERA'),
+            x:p.overall>=62?'RD 1-3':(p.overall>=55?'RD 4-8':'RD 9+'), col:p.overall>=62?this.LOSS:this.DIM })) },
+        { label:'Signed class of 2027', hasNote:false, note:'',
+          rows:this.recruits.filter(r=>r.signed).map(r=>({ k:r.pos, v:r.name, meta:r.town, x:'SIGNED', col:this.WIN }))
+            .concat(this.recruits.some(r=>r.signed)?[]:[{ k:'\u2013', v:'No signatures yet', meta:'Work the board through the spring', x:'', col:this.DIM }]) }
+      ],
+      awards:[
+        { label:'2027 watch lists', hasNote:false, note:'', rows:(()=>{
+            const best=u.lineup.slice().sort((a,b)=>b.st.hr-a.st.hr)[0];
+            const ace=u.rotation.slice().sort((a,b)=>(a.pst.er/(a.pst.outs||1))-(b.pst.er/(b.pst.outs||1)))[0];
+            const fr=u.lineup.concat(u.bench).find(p=>p.classYear==='FR')||best;
+            const gg=u.lineup.slice().sort((a,b)=>b.fielding-a.fielding)[0];
+            return [
+              { k:'PLAYER OF YR', v:best.name, meta:best.st.hr+' HR \u00b7 '+best.st.rbi+' RBI', x:this.avg(best), col:this.DIM },
+              { k:'PITCHER OF YR', v:ace.name, meta:this.ipStr(ace)+' IP \u00b7 '+ace.pst.k+' K', x:this.era(ace), col:this.DIM },
+              { k:'FRESHMAN', v:fr.name, meta:'ballot watch', x:this.avg(fr), col:this.DIM },
+              { k:'GOLD GLOVE', v:gg.name, meta:this.POSNUM[gg.pos]+' '+gg.pos, x:String(Math.round(gg.fielding)), col:this.DIM }
+            ]; })() },
+        { label:'All conference, 2026', hasNote:false, note:'', rows:[
+          { k:'FIRST TEAM', v:'D. Rourke, RF', meta:'.341 \u00b7 14 HR', x:'2026', col:this.DIM },
+          { k:'FIRST TEAM', v:'M. Traver, RHP', meta:'9-3 \u00b7 2.61 ERA', x:'2026', col:this.DIM },
+          { k:'SECOND TEAM', v:'K. Pruitt, SS', meta:'.298 \u00b7 41 RBI', x:'2026', col:this.DIM }
+        ] }
+      ],
+      history:[
+        { label:'Season by season', hasNote:false, note:'', rows:[
+          { k:'2026', v:'38-21 \u00b7 Regional final', meta:'2nd CVC \u00b7 RPI 24', x:'NCAA', col:this.WIN },
+          { k:'2025', v:'31-25 \u00b7 Missed the field', meta:'6th CVC \u00b7 RPI 71', x:'\u2013', col:this.DIM },
+          { k:'2024', v:'44-18 \u00b7 Super regional', meta:'1st CVC \u00b7 RPI 9', x:'NCAA', col:this.WIN },
+          { k:'2023', v:'29-27 \u00b7 Missed the field', meta:'8th CVC \u00b7 RPI 88', x:'\u2013', col:this.DIM },
+          { k:'2022', v:'36-23 \u00b7 Regional', meta:'3rd CVC \u00b7 RPI 33', x:'NCAA', col:this.WIN }
+        ] },
+        { label:'Banners', hasNote:false, note:'', rows:[
+          { k:'CWS', v:'Omaha appearances', meta:'2011, 2019', x:'2', col:this.CLAY },
+          { k:'CVC TITLES', v:'Conference championships', meta:'2009, 2011, 2019, 2024', x:'4', col:this.CLAY },
+          { k:'NCAA', v:'Tournament berths', meta:'11 since 2005', x:'11', col:this.DIM }
+        ] }
+      ],
+      records:[
+        { label:'Program record book', hasNote:false, note:'', rows:[
+          { k:'MOST WINS', v:'48 wins', meta:'2019 Kestrels', x:'48', col:this.DIM },
+          { k:'SEASON HR', v:'D. Rourke', meta:'2021', x:'24', col:this.DIM },
+          { k:'SEASON AVG', v:'J. Callahan', meta:'2014 \u00b7 210 AB', x:'.412', col:this.DIM },
+          { k:'SEASON ERA', v:'M. Traver', meta:'2018 \u00b7 75 IP', x:'1.84', col:this.DIM },
+          { k:'CAREER K', v:'A. Winslow', meta:'2015-2018', x:'361', col:this.DIM },
+          { k:'DRAFT PICKS', v:'31 since 2005', meta:'4 first rounders', x:'31', col:this.DIM }
+        ] }
+      ]
+    };
+    R.boards=boardsBy[screen]||[];
+    R.pl=this.playerView(s.sel);
+
+    const tabDefault={ home:'today', team:'roster', season:'sched', recruit:'board', program:'awards' };
+    R.nav=[['home','HOME'],['team','TEAM'],['season','SEASON'],['recruit','RECRUIT'],['program','PROGRAM']].map(t=>({
+      label:t[1], col:s.tab===t[0]?'#f6f1e6':'rgba(246,241,230,.5)',
+      bg:s.tab===t[0]?'rgba(168,68,42,.85)':'transparent', go:()=>this.go(t[0],tabDefault[t[0]]) }));
+    const subs={
+      home:[['today','TODAY'],['wire','WIRE'],['box','SCOREBOOK']],
+      team:[['roster','ROSTER'],['lineup','LINEUP'],['strategy','STRATEGY']],
+      season:[['sched','SCHEDULE'],['stand','STANDINGS'],['stats','STATS']],
+      recruit:[['board','BOARD'],['portal','PORTAL'],['draft','DRAFT']],
+      program:[['awards','AWARDS'],['history','HISTORY'],['records','RECORDS']]
+    };
+    R.subNav=(subs[s.tab]||subs.home).map(x=>{
+      const on=screen===x[0];
+      const off=x[0]==='box'&&!this.playedGame;
+      return { label:x[1], bg:on?'#f2ece0':'transparent',
+        col:off?'rgba(28,36,48,.28)':(on?this.CLAY:'rgba(28,36,48,.55)'),
+        sh:on?'inset 0 -3px 0 '+this.CLAY:'none',
+        go:off?(()=>{}):(()=>this.setState({ screen:x[0], sel:null, swap:null })) };
+    });
+    return R;
+  }
+}
+</script>
+</body>
+</html>

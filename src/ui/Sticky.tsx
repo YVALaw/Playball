@@ -1,0 +1,76 @@
+// Sticky.tsx
+// The two things that should never scroll away.
+//
+// A phone screen is short and these lists are long. Reported from testing: the
+// back control disappears the moment you scroll, so getting out of a screen
+// means scrolling all the way up first — and on the offseason screens the
+// button that advances the game sits below however much content that step
+// happens to have.
+//
+// Both are solved the same way: keep the control pinned to the frame rather
+// than letting it ride the content. A control you have to go looking for is a
+// control the player has to think about, and neither of these deserves a thought.
+
+import type { ReactNode } from 'react';
+
+/**
+ * A screen with a header that stays put while the body scrolls.
+ *
+ * The alternative — one long scrolling page — puts the title, the filter and the
+ * tabs off screen the moment you start reading, which is exactly when you want
+ * them. Anything a screen is *controlled* by belongs in `header`; anything it is
+ * *made of* belongs in the body.
+ */
+export function FixedHeader(
+  { header, children }: { header: ReactNode; children: ReactNode },
+) {
+  return (
+    <div style={{
+      position: 'absolute', inset: 0,
+      display: 'flex', flexDirection: 'column', minHeight: 0,
+    }}>
+      <div style={{
+        flex: 'none', background: 'var(--field)',
+        borderBottom: '1px solid var(--faint)',
+      }}>{header}</div>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>{children}</div>
+    </div>
+  );
+}
+
+/**
+ * The button that moves the game forward, pinned to the bottom of the frame.
+ *
+ * Every step of the offseason ends in one decision, and it should be reachable
+ * without reading to the end of a list first. Floating it also means the amount
+ * of content on a step stops deciding how far away its button is — three signings
+ * and thirty signings put CONTINUE in the same place.
+ */
+export function FloatingAction(
+  { label, onClick, note }: { label: string; onClick: () => void; note?: string },
+) {
+  return (
+    <div style={{
+      position: 'sticky', bottom: 0, zIndex: 10,
+      margin: '18px -14px 0', padding: '12px 14px',
+      paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
+      background: 'linear-gradient(to top, var(--field) 68%, rgba(242,236,224,0))',
+    }}>
+      {note && (
+        <div style={{
+          marginBottom: 8, font: "400 11px/1.45 var(--body)", color: 'var(--dim)',
+          textAlign: 'center',
+        }}>{note}</div>
+      )}
+      <button
+        onClick={onClick}
+        style={{
+          width: '100%', padding: '15px 0',
+          background: 'var(--clay)', border: '1px solid var(--clay)',
+          color: 'var(--cream)', font: "700 12px var(--mono)", letterSpacing: '.14em',
+          boxShadow: '0 2px 10px rgba(28,36,48,.22)',
+        }}
+      >{label}</button>
+    </div>
+  );
+}

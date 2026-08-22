@@ -1,0 +1,85 @@
+PLAYBALL ENGINE CALIBRATION BASELINE
+Captured: 2026-08-19
+Node: v24.19.0   Engine: JavaScript, pre-TypeScript, pre-bugfix
+
+This is the PRE-FIX baseline. It includes the known walk-off bug (B1) and
+the unwired LEAGUE_PITCH constants (B2). Its purpose is to make the
+TypeScript port verifiable: the port must reproduce these numbers.
+Seeds are fixed, so these figures are exactly reproducible.
+
+================================================================
+
+=== log5 engine, 2000 games ===
+metric                               sim   target   diff
+Runs per team per game              6.84     6.79     1%
+PA per team per game               43.04    41.00     5%
+Batting average                    0.297    0.290     3%
+On base percentage                 0.384    0.372     3%
+Home runs per team per game        0.903    0.900     0%
+Strikeouts per team per game        8.15     8.50    -4%
+Walks per team per game             4.60     4.30     7%
+Pitches per plate appearance        3.75     3.75     0%
+Slugging                           0.448
+Errors per team per game            1.02
+Stolen base pct                    0.720
+
+================================================================
+
+=== ENGINE A: log5, 2000 games ===
+metric                               sim   target   diff
+Runs per team per game              6.84     6.79     1%
+PA per team per game               43.04    41.00     5%
+Batting average                    0.297    0.290     3%
+On base percentage                 0.384    0.372     3%
+Home runs per team per game        0.903    0.900     0%
+Strikeouts per team per game        8.15     8.50    -4%
+Walks per team per game             4.60     4.30     7%
+Pitches per plate appearance        3.75     3.75     0%
+Slugging                           0.448
+Errors per team per game            1.02
+Stolen base pct                    0.720
+
+=== ENGINE B: free pitch, 2000 games ===
+metric                               sim   target   diff
+Runs per team per game              6.39     6.79    -6%
+PA per team per game               42.56    41.00     4%
+Batting average                    0.285    0.290    -2%
+On base percentage                 0.381    0.372     3%
+Home runs per team per game        0.929    0.900     3%
+Strikeouts per team per game        8.77     8.50     3%
+Walks per team per game             4.29     4.30    -0%
+Pitches per plate appearance        3.72     3.75    -1%
+Slugging                           0.426
+Errors per team per game            0.94
+Stolen base pct                    0.718
+
+================================================================
+
+=== Platoon check, 40000 PA per matchup ===
+matchup                     AVG    SLG    BB%     K%
+LHB vs RHP (opposite)     0.279  0.431   11.2   19.3
+LHB vs LHP (same)         0.251  0.387    9.9   20.2
+RHB vs LHP (opposite)     0.278  0.434   10.9   19.5
+RHB vs RHP (same)         0.259  0.407   10.5   19.8
+
+Lefty hitter platoon gap: 28 points of AVG
+Righty hitter platoon gap: 18 points of AVG
+Both should be positive, and the lefty gap clearly larger.
+
+================================================================
+
+=== Parity check, 800 games, log5 engine ===
+Elite team (68 rated) vs weak team (38 rated) beat them 95.8% of the time.
+Real college baseball: a dominant team beats a bad team roughly 75 to 85 percent.
+If you see 95 percent plus, your rating spread is too wide.
+
+================================================================
+
+Win% for the better team, 4000 games per pair, home/away split evenly
+strong  weak   gap   win%   (home)  (away)
+    68     38    30   95.6%    95.3%   95.9%
+    62     44    18   86.0%    85.9%   86.1%
+    58     46    12   76.3%    76.5%   76.0%
+    57     44    13   78.5%    78.6%   78.5%
+    55     48     7   67.0%    66.5%   67.5%
+    52     50     2   56.4%    56.0%   56.9%
