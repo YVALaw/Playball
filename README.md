@@ -7,7 +7,7 @@ Mobile first, shipping to Android.
 
 ## Status
 
-**v0.6.0.** Phases 0 through 6 are done: the engine, the season, the app shell,
+**v0.6.1.** Phases 0 through 6 are done: the engine, the season, the app shell,
 roster management, recruiting, the 3D field and the dynasty layer. The whole loop
 runs — pick a job, play or simulate a 33 game season, go through the postseason a
 game at a time, hand out awards, spend coaching points, recruit a class over three
@@ -17,7 +17,7 @@ Phase 7 — shipping — has not started. No Capacitor build, no Android package
 onboarding, no save slots.
 
 The engine is calibrated multi-seed against sourced NCAA D1 rates and is within
-about 3 percent on every target. 233 tests, including determinism goldens and
+about 3 percent on every target. 234 tests, including determinism goldens and
 calibration as a regression test.
 
 | Not built yet | |

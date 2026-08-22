@@ -30,6 +30,8 @@ export function Draft() {
   const phase = useDynasty((s) => s.phase);
   const nextPhase = useDynasty((s) => s.nextPhase);
   const report = useDynasty((s) => s.lastOffseason);
+  const openPlayer = useDynasty((s) => s.openPlayer);
+  const walkOns = report?.walkOns ?? [];
   const year = useDynasty((s) => s.year);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
@@ -136,6 +138,48 @@ export function Draft() {
         </div>
       )}
 
+      {/*
+        Who filled the holes the class did not.
+
+        A scholarship you never spent does not leave the spot empty; somebody
+        walks on and plays there, and he is a long way below the players you
+        were bidding on. Showing them is the honest accounting of a class that
+        came up short.
+      */}
+      {walkOns.length > 0 && (
+        <>
+          <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>
+            WALK-ONS · {walkOns.length}
+          </div>
+          <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+            {walkOns.map((w) => (
+              <button
+                key={w.id}
+                onClick={() => openPlayer(w.id)}
+                style={{
+                  width: '100%', textAlign: 'left',
+                  display: 'grid', gridTemplateColumns: '1fr auto auto',
+                  gap: 10, alignItems: 'center', background: 'transparent',
+                  padding: '9px 11px', borderBottom: '1px solid var(--hairline)',
+                }}
+              >
+                <span style={{ font: "400 13px var(--body)" }}>{w.name}</span>
+                <span style={{
+                  font: "400 10px var(--mono)", color: 'var(--dim)',
+                }}>{w.pos} · FR</span>
+                <span style={{ font: "600 13px var(--mono)" }}>{w.overall}</span>
+              </button>
+            ))}
+          </div>
+          <div style={{
+            marginTop: 6, font: "400 11px/1.45 var(--body)", color: 'var(--dim)',
+          }}>
+            Nobody recruited them. Every scholarship you leave unspent is one of
+            these instead.
+          </div>
+        </>
+      )}
+
       {phase !== null && (
         <FloatingAction label="START NEXT SEASON" onClick={() => void nextPhase()} />
       )}
@@ -145,14 +189,19 @@ export function Draft() {
 }
 
 function DepartureRow({ d, pick, mine }: { d: Departure; pick?: number; mine: boolean }) {
+  const openPlayer = useDynasty((s) => s.openPlayer);
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: pick ? 'auto auto 1fr auto auto' : 'auto 1fr auto auto',
-      gap: 9, alignItems: 'center',
-      padding: '9px 11px', borderBottom: '1px solid var(--hairline)',
-      background: mine ? 'rgba(168,68,42,.10)' : 'transparent',
-    }}>
+    <button
+      onClick={() => openPlayer(d.id)}
+      style={{
+        width: '100%', textAlign: 'left',
+        display: 'grid',
+        gridTemplateColumns: pick ? 'auto auto 1fr auto auto' : 'auto 1fr auto auto',
+        gap: 9, alignItems: 'center',
+        padding: '9px 11px', borderBottom: '1px solid var(--hairline)',
+        background: mine ? 'rgba(168,68,42,.10)' : 'transparent',
+      }}
+    >
       {pick !== undefined && (
         <span style={{
           font: "600 11px var(--mono)", color: 'var(--dim)', minWidth: 20, textAlign: 'right',
@@ -176,7 +225,7 @@ function DepartureRow({ d, pick, mine }: { d: Departure; pick?: number; mine: bo
         color: d.reason === 'drafted' ? 'var(--win)' : 'var(--dim)', whiteSpace: 'nowrap',
       }}>{d.reason === 'drafted' ? `RD ${d.round ?? '—'}` : 'CAREER OVER'}</span>
       <span style={{ font: "600 13px var(--mono)" }}>{d.overall}</span>
-    </div>
+    </button>
   );
 }
 

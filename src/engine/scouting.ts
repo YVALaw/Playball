@@ -126,9 +126,11 @@ export function scoutedPotential(p: Player, stars: number): PotentialGrade {
   // ones a known ceiling is graded against. Same letters, because a recruit and
   // a sophomore have to be comparable on the board — that comparison is the
   // whole reason anybody takes a project over a finished player.
-  if (guess >= 80) return 'S+';
-  if (guess >= 73) return 'S';
-  if (guess >= 66) return 'A';
+  // S and S+ are meant to be the players a program remembers, so they are set
+  // where a class of five hundred produces a handful rather than a page of them.
+  if (guess >= 86) return 'S+';
+  if (guess >= 78) return 'S';
+  if (guess >= 68) return 'A';
   if (guess >= 58) return 'B';
   if (guess >= 49) return 'C';
   return 'D';

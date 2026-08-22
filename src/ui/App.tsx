@@ -24,6 +24,7 @@ import { CoachPoints } from './screens/CoachPoints.js';
 import { SigningDay } from './screens/SigningDay.js';
 import { Postseason } from './screens/Postseason.js';
 import { Rankings } from './screens/Rankings.js';
+import { JobSearch } from './screens/JobSearch.js';
 import { Draft } from './screens/Draft.js';
 import { Wire } from './screens/Wire.js';
 
@@ -42,6 +43,7 @@ export function App() {
   const live = useDynasty((s) => s.live);
   const selectedPlayer = useDynasty((s) => s.selectedPlayer);
   const overlay = useDynasty((s) => s.overlay);
+  const jobSearch = useDynasty((s) => s.jobSearch);
   const loadSlot = useDynasty((s) => s.loadSlot);
   const [checked, setChecked] = useState(false);
 
@@ -76,6 +78,21 @@ export function App() {
           flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
         }}>
           <NewGame />
+        </main>
+      </div>
+    );
+  }
+
+  // No job, no team screen. Everything else waits until you take one.
+  if (season && jobSearch) {
+    return (
+      <div className="app-frame" style={{
+        display: 'flex', flexDirection: 'column', minHeight: 0,
+      }}>
+        <main ref={mainRef} style={{
+          flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
+        }}>
+          <JobSearch />
         </main>
       </div>
     );
@@ -356,7 +373,7 @@ function Screen({ id }: { id: string }) {
     case 'sched': return <Schedule />;
     case 'stats': return <Stats />;
     case 'lineup': return <Lineup />;
-    case 'awards': return <Awards />;
+    case 'rankings': return <Rankings />;
     case 'box': return <Manage />;
     case 'history': return <History />;
     case 'records': return <Program />;

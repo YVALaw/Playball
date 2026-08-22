@@ -1,22 +1,25 @@
 // Postseason.tsx
 // June, one stage at a time.
 //
-// Reported from testing: a 25-8 season pressed one button and arrived at the
-// awards screen. The postseason had happened, somewhere, to somebody. That is
-// the single worst place in a dynasty game to elide, because the whole year is
-// an argument about whether you deserve to be here — and then you are not shown.
+// Reported from testing, twice. First: a 25-8 season pressed one button and
+// arrived at the awards screen — the postseason had happened, somewhere, to
+// somebody. Then, once it could be played: "I'm still a bit lost… I won 2 and
+// lost 2 and then it was over… we have to make it easier to understand visually
+// so that everything is clear, like a real bracket, where we see who advances
+// and who stays behind."
 //
-// Four stages, each with something to look at: your conference tournament, the
-// field being announced, your regional, and Omaha. The rest of the country is a
-// result; your own games are yours to manage, one at a time, exactly as they are
-// in the regular season.
+// So the rules are on the screen now rather than assumed. Every tournament shows
+// its full field with each team's record and whether they are still alive, every
+// game is listed with its winner, and finishing a tournament no longer skips
+// past its own result on the way to the next screen.
 
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FloatingAction } from '../Sticky.js';
 import { teamColour } from '../Avatar.js';
 import { regionalGroups } from '../../engine/postseason.js';
-import type { BracketGame, TournamentResult, Bid } from '../../engine/postseason.js';
-import type { SeasonState } from '../../engine/season.js';
+import type {
+  BracketGame, Bid, BracketState,
+} from '../../engine/postseason.js';
 
 const STAGE_TITLE: Record<string, string> = {
   conference: 'Conference tournaments',
@@ -34,12 +37,32 @@ const STAGE_LABEL: Record<string, string> = {
   done: 'FINAL',
 };
 
-const NEXT_LABEL: Record<string, string> = {
+/** The four steps, and what each one is. Shown as a rail on every stage. */
+const LADDER: { key: string; name: string; blurb: string }[] = [
+  {
+    key: 'conference', name: 'CONFERENCE',
+    blurb: 'Your conference plays a six team tournament. Double elimination: two losses and you are out. Win it and you are in the national field whatever your record says.',
+  },
+  {
+    key: 'selection', name: 'SELECTION',
+    blurb: 'The national field is announced. Sixteen teams — the eight conference champions, plus eight more chosen on RPI. Losing your conference tournament is not the end; this is the other way in.',
+  },
+  {
+    key: 'regional', name: 'REGIONALS',
+    blurb: 'The sixteen split into four regionals of four. Double elimination again, so two losses ends your season. Win your regional and you go to Omaha.',
+  },
+  {
+    key: 'omaha', name: 'OMAHA',
+    blurb: 'The four regional winners, one last double elimination. Whoever is standing at the end is national champion.',
+  },
+];
+
+/** What the button does when you play the stage. */
+const PLAY_LABEL: Record<string, string> = {
   conference: 'PLAY THE CONFERENCE TOURNAMENTS',
   selection: 'ANNOUNCE THE FIELD',
   regional: 'PLAY THE REGIONALS',
   omaha: 'PLAY OMAHA',
-  done: 'TO THE AWARDS',
 };
 
 /**
@@ -54,16 +77,16 @@ const WATCH_LABEL: Record<string, string> = {
   selection: 'ANNOUNCE THE FIELD',
   regional: 'WATCH THE REGIONALS',
   omaha: 'SEE WHO WINS IT',
-  done: 'TO THE AWARDS',
 };
 
-/** The four steps, and what each one is. Shown as a rail on every stage. */
-const LADDER: { key: string; name: string; blurb: string }[] = [
-  { key: 'conference', name: 'CONFERENCE', blurb: 'Six teams per conference, double elimination. Win it and you are in.' },
-  { key: 'selection', name: 'SELECTION', blurb: 'Sixteen teams: eight conference champions, eight at large on RPI.' },
-  { key: 'regional', name: 'REGIONALS', blurb: 'Four regionals of four, double elimination. Win yours to reach Omaha.' },
-  { key: 'omaha', name: 'OMAHA', blurb: 'The four regional winners. Last one standing is national champion.' },
-];
+/** And what it does once the stage has been played and there is a result up. */
+const CONTINUE_LABEL: Record<string, string> = {
+  conference: 'ON TO SELECTION DAY',
+  selection: 'ON TO THE REGIONALS',
+  regional: 'ON TO OMAHA',
+  omaha: 'END THE SEASON',
+  done: 'END THE SEASON',
+};
 
 const LIVE_TITLE: Record<string, string> = {
   conference: 'YOUR CONFERENCE TOURNAMENT',
@@ -90,16 +113,9 @@ export function Postseason() {
   const name = (i: number) => season.teams[i]?.def.school ?? '?';
   const abbr = (i: number) => season.teams[i]?.def.abbr ?? '?';
 
-  /** Your games in a finished bracket, which is the only part you sat through. */
-  const myGames = (t: TournamentResult | null): BracketGame[] =>
-    (t?.games ?? []).filter((g) => g.home === userTeam || g.away === userTeam);
-
   const myCup = bracket.cups.find((c) => c.conference === team.conference) ?? null;
-  const myRegional = bracket.regionals.find(
-    (r) => r.seeds.includes(userTeam),
-  ) ?? null;
+  const myRegional = bracket.regionals.find((r) => r.seeds.includes(userTeam)) ?? null;
   const inField = bracket.field.some((b) => b.team === userTeam);
-  const wonCup = myCup?.champion === userTeam;
 
   // Your tournament, mid-flight. `due` is the game waiting for you; null means a
   // bye, or that your run is over and the rest is just being played out.
@@ -107,13 +123,21 @@ export function Postseason() {
   const out = live ? live.eliminated.includes(userTeam) : false;
   const due = live && !out ? nextGame() : null;
 
-  // Whether you are still playing for something, which decides what the button
-  // is allowed to call itself.
-  const stillIn = bracket.stage === 'conference'
-    || (bracket.field.length === 0 || bracket.field.some((b) => b.team === userTeam))
-    && (bracket.regionals.length === 0 || bracket.regionals.some((r) => r.champion === userTeam));
+  // Has this stage been played? Playing it and leaving it are different
+  // presses now, and the button has to say which one it is.
+  const stagePlayed =
+    bracket.stage === 'conference' ? bracket.cups.length > 0
+    : bracket.stage === 'selection' ? bracket.field.length > 0
+    : bracket.stage === 'regional' ? bracket.regionals.length > 0
+    : bracket.stage === 'omaha' ? bracket.omaha !== null
+    : true;
 
-  const labels = stillIn ? NEXT_LABEL : WATCH_LABEL;
+  // Still playing for something?
+  const alive =
+    bracket.field.length > 0 && !inField ? false
+    : bracket.regionals.length > 0 && !bracket.regionals.some((r) => r.champion === userTeam)
+      ? false
+      : true;
 
   const action = due
     ? { label: 'PLAY THIS GAME', run: manage }
@@ -121,7 +145,12 @@ export function Postseason() {
       ? out
         ? { label: 'PLAY OUT THE TOURNAMENT', run: () => sim('rest') }
         : { label: 'ON TO YOUR NEXT GAME', run: () => sim('until') }
-      : { label: labels[bracket.stage] ?? 'CONTINUE', run: advance };
+      : stagePlayed
+        ? { label: CONTINUE_LABEL[bracket.stage] ?? 'CONTINUE', run: advance }
+        : {
+            label: (alive ? PLAY_LABEL : WATCH_LABEL)[bracket.stage] ?? 'CONTINUE',
+            run: advance,
+          };
 
   return (
     <div style={{ padding: '14px 14px 22px' }}>
@@ -136,89 +165,79 @@ export function Postseason() {
 
       {/* Your own bracket, a game at a time. */}
       {live && myBracket && (
-        <Section title={LIVE_TITLE[myBracket.kind] ?? 'YOUR BRACKET'}>
-          {(() => {
-            const played = live.games.filter(
-              (g) => g.home === userTeam || g.away === userTeam,
-            );
-            const w = played.filter((g) => g.winner === userTeam).length;
-            return (
-              <>
+        <>
+          <Section title={LIVE_TITLE[myBracket.kind] ?? 'YOUR BRACKET'}>
+            <Standing live={live} userTeam={userTeam} out={out} />
+            {due && (
+              <div style={{
+                marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--hairline)',
+              }}>
+                <div className="label">{due.round.toUpperCase()}</div>
                 <div style={{
-                  display: 'flex', alignItems: 'baseline', gap: 8,
+                  font: "700 20px/1.1 var(--display)", marginTop: 4,
+                  textTransform: 'uppercase',
                 }}>
-                  <span style={{ font: "800 26px/1 var(--display)" }}>
-                    {w}-{played.length - w}
-                  </span>
-                  <span style={{ font: "400 12px var(--body)", color: 'var(--dim)' }}>
-                    {out
-                      ? 'Knocked out. Two losses and you are done.'
-                      : live.unbeaten.includes(userTeam)
-                        ? 'Still unbeaten.'
-                        : 'One loss. The next one ends it.'}
-                  </span>
+                  {hostOf(live, due) === userTeam ? 'vs ' : 'at '}
+                  {name(due.a === userTeam ? due.b : due.a)}
                 </div>
+                <button
+                  onClick={() => sim('round')}
+                  style={{
+                    marginTop: 10, width: '100%', padding: '10px 0',
+                    background: 'transparent', border: '1px solid rgba(28,36,48,.42)',
+                    font: "700 10px var(--mono)", letterSpacing: '.12em',
+                    color: 'var(--ink)',
+                  }}
+                >SIMULATE IT INSTEAD</button>
+              </div>
+            )}
+            {!due && !out && (
+              <div style={{
+                marginTop: 8, font: "400 12px/1.5 var(--body)", color: 'var(--dim)',
+              }}>
+                A bye — the best seed left standing sits the round out. The rest of
+                the bracket plays on without you.
+              </div>
+            )}
+          </Section>
 
-                {due && (
-                  <div style={{
-                    marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--hairline)',
-                  }}>
-                    <div className="label">{due.round.toUpperCase()}</div>
-                    <div style={{
-                      font: "700 20px/1.1 var(--display)", marginTop: 4,
-                      textTransform: 'uppercase',
-                    }}>
-                      {hostOf(live, due) === userTeam ? 'vs ' : 'at '}
-                      {name(due.a === userTeam ? due.b : due.a)}
-                    </div>
-                    <button
-                      onClick={() => sim('round')}
-                      style={{
-                        marginTop: 10, width: '100%', padding: '10px 0',
-                        background: 'transparent', border: '1px solid rgba(28,36,48,.42)',
-                        font: "700 10px var(--mono)", letterSpacing: '.12em',
-                        color: 'var(--ink)',
-                      }}
-                    >SIMULATE IT INSTEAD</button>
-                  </div>
-                )}
-
-                {!due && !out && (
-                  <div style={{
-                    marginTop: 8, font: "400 12px/1.5 var(--body)", color: 'var(--dim)',
-                  }}>
-                    A bye — the best seed left standing sits the round out. The
-                    rest of the bracket plays on without you.
-                  </div>
-                )}
-
-                <Games games={played} userTeam={userTeam} season={season} />
-              </>
-            );
-          })()}
-        </Section>
-      )}
-
-      {/* Stage one is finished once the cups exist. */}
-      {myCup && (
-        <Section title={`${team.conference} TOURNAMENT`}>
-          <Verdict
-            good={wonCup}
-            text={wonCup
-              ? `${team.def.school} win the conference — an automatic bid.`
-              : myCup.seeds.includes(userTeam)
-                ? `Knocked out. ${name(myCup.champion)} took the automatic bid.`
-                : `You did not make the eight team field. ${name(myCup.champion)} won it.`}
+          <Board
+            title="THE BRACKET"
+            seeds={live.seeds}
+            games={live.games}
+            eliminated={live.eliminated}
+            champion={live.champion}
+            userTeam={userTeam}
+            name={name}
+            abbr={abbr}
           />
-          <Games games={myGames(myCup)} userTeam={userTeam} season={season} />
-        </Section>
+        </>
       )}
 
-      {bracket.stage === 'selection' && (
-        <Note>
-          Every conference champion is in. The rest of the field is chosen on RPI,
-          which is where a soft non-conference schedule finally shows up.
-        </Note>
+      {/* Stage one, finished. */}
+      {!live && myCup && (
+        <>
+          <Section title={`${team.conference} TOURNAMENT`}>
+            <Verdict
+              good={myCup.champion === userTeam}
+              text={myCup.champion === userTeam
+                ? `${team.def.school} win the conference — an automatic bid to the national field.`
+                : myCup.seeds.includes(userTeam)
+                  ? `${name(myCup.champion)} won it and take the automatic bid. You need an at-large place now, and those are handed out on selection day.`
+                  : `You did not make the six team field. ${name(myCup.champion)} won it.`}
+            />
+          </Section>
+          <Board
+            title={`${team.conference} BRACKET`}
+            seeds={myCup.seeds}
+            games={myCup.games}
+            eliminated={myCup.eliminated}
+            champion={myCup.champion}
+            userTeam={userTeam}
+            name={name}
+            abbr={abbr}
+          />
+        </>
       )}
 
       {bracket.field.length > 0 && (
@@ -226,43 +245,57 @@ export function Postseason() {
           <Verdict
             good={inField}
             text={inField
-              ? `${team.def.school} are in — ${bracket.field.find((b) => b.team === userTeam)?.kind === 'automatic' ? 'automatic bid' : 'at large'}.`
-              : 'Left out. The season ends here.'}
+              ? `${team.def.school} are in — ${bracket.field.find((b) => b.team === userTeam)?.kind === 'automatic' ? 'an automatic bid, as conference champions' : 'an at-large place, on RPI'}.`
+              : 'Left out. Sixteen teams got in and you were not one of them; the season ends here.'}
           />
-          {/*
-            Grouped into the four regionals rather than listed one to sixteen.
-            Reported from testing: "it does not look like rankings, it is
-            organized in a weird way" — because it was neither a ranking nor a
-            bracket, just sixteen tags in seed order. These are the games.
-          */}
           <Field field={bracket.field} userTeam={userTeam} name={name} abbr={abbr} />
         </Section>
       )}
 
-      {myRegional && (
-        <Section title="YOUR REGIONAL">
-          <Verdict
-            good={myRegional.champion === userTeam}
-            text={myRegional.champion === userTeam
-              ? `${team.def.school} win the regional and are going to Omaha.`
-              : `Out in the regional. ${name(myRegional.champion)} advanced.`}
+      {!live && myRegional && (
+        <>
+          <Section title="YOUR REGIONAL">
+            <Verdict
+              good={myRegional.champion === userTeam}
+              text={myRegional.champion === userTeam
+                ? `${team.def.school} win the regional and are going to Omaha.`
+                : `Out in the regional — two losses ends it. ${name(myRegional.champion)} advanced.`}
+            />
+          </Section>
+          <Board
+            title="REGIONAL BRACKET"
+            seeds={myRegional.seeds}
+            games={myRegional.games}
+            eliminated={myRegional.eliminated}
+            champion={myRegional.champion}
+            userTeam={userTeam}
+            name={name}
+            abbr={abbr}
           />
-          <Games games={myGames(myRegional)} userTeam={userTeam} season={season} />
-        </Section>
+        </>
       )}
 
-      {bracket.omaha && (
-        <Section title="OMAHA">
-          <Verdict
-            good={bracket.omaha.champion === userTeam}
-            text={bracket.omaha.champion === userTeam
-              ? `${team.def.school} are national champions.`
-              : `${name(bracket.omaha.champion)} win the national title.`}
+      {!live && bracket.omaha && (
+        <>
+          <Section title="OMAHA">
+            <Verdict
+              good={bracket.omaha.champion === userTeam}
+              text={bracket.omaha.champion === userTeam
+                ? `${team.def.school} are national champions.`
+                : `${name(bracket.omaha.champion)} win the national title.`}
+            />
+          </Section>
+          <Board
+            title="OMAHA BRACKET"
+            seeds={bracket.omaha.seeds}
+            games={bracket.omaha.games}
+            eliminated={bracket.omaha.eliminated}
+            champion={bracket.omaha.champion}
+            userTeam={userTeam}
+            name={name}
+            abbr={abbr}
           />
-          {myGames(bracket.omaha).length > 0 && (
-            <Games games={myGames(bracket.omaha)} userTeam={userTeam} season={season} />
-          )}
-        </Section>
+        </>
       )}
 
       <FloatingAction label={action.label} onClick={action.run} />
@@ -270,13 +303,160 @@ export function Postseason() {
   );
 }
 
+/** Your record in the tournament you are in, and what it means. */
+function Standing(
+  { live, userTeam, out }: { live: BracketState; userTeam: number; out: boolean },
+) {
+  const played = live.games.filter((g) => g.home === userTeam || g.away === userTeam);
+  const w = played.filter((g) => g.winner === userTeam).length;
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+      <span style={{ font: "800 26px/1 var(--display)" }}>{w}-{played.length - w}</span>
+      <span style={{ font: "400 12px var(--body)", color: 'var(--dim)' }}>
+        {out
+          ? 'Two losses. You are out.'
+          : live.unbeaten.includes(userTeam)
+            ? 'Still unbeaten. Two losses would end it.'
+            : 'One loss. The next one ends it.'}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * A tournament, whole: who is left, who went home, and every game.
+ *
+ * Double elimination does not draw as a single elimination ladder — a team can
+ * lose and still be playing — so the honest picture is the standing plus the
+ * results rather than a diagram of lines. This is what answers "how did the
+ * regional get resolved if I won 2 and lost 2".
+ */
+function Board(
+  { title, seeds, games, eliminated, champion, userTeam, name, abbr }:
+  {
+    title: string;
+    seeds: readonly number[];
+    games: readonly BracketGame[];
+    eliminated: readonly number[];
+    champion: number | null;
+    userTeam: number;
+    name: (i: number) => string;
+    abbr: (i: number) => string;
+  },
+) {
+  const record = (t: number) => {
+    const mine = games.filter((g) => g.home === t || g.away === t);
+    const w = mine.filter((g) => g.winner === t).length;
+    return { w, l: mine.length - w };
+  };
+
+  // Champion first, then whoever is still alive, then the eliminated in reverse
+  // order — the last man out ranks above the first.
+  const rank = (t: number): number => {
+    if (t === champion) return -1;
+    const i = eliminated.indexOf(t);
+    return i < 0 ? 0 : eliminated.length - i;
+  };
+  const order = [...seeds].sort(
+    (a, b) => rank(a) - rank(b) || seeds.indexOf(a) - seeds.indexOf(b),
+  );
+
+  // Games in the order they were played, grouped by round.
+  const rounds: { round: string; games: BracketGame[] }[] = [];
+  for (const g of games) {
+    const last = rounds[rounds.length - 1];
+    if (last && last.round === g.round) last.games.push(g);
+    else rounds.push({ round: g.round, games: [g] });
+  }
+
+  return (
+    <>
+      <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>{title}</div>
+      <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+        {order.map((t) => {
+          const r = record(t);
+          const gone = eliminated.includes(t);
+          const won = t === champion;
+          const mine = t === userTeam;
+          return (
+            <div key={t} style={{
+              display: 'grid', gridTemplateColumns: '22px 1fr auto auto',
+              gap: 8, alignItems: 'center',
+              padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
+              borderLeft: mine ? '3px solid var(--clay)' : '3px solid transparent',
+              background: mine ? 'rgba(168,68,42,.10)' : 'transparent',
+              opacity: gone && !mine ? 0.55 : 1,
+            }}>
+              <span style={{
+                font: "700 10px var(--mono)", color: 'var(--dim)',
+              }}>{seeds.indexOf(t) + 1}</span>
+              <span style={{
+                font: `${mine || won ? 700 : 400} 12px var(--body)`,
+                color: mine ? 'var(--clay)' : 'var(--ink)',
+                textDecoration: gone ? 'line-through' : 'none',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>{name(t)}</span>
+              <span style={{
+                font: "600 11px var(--mono)", color: 'var(--dim)',
+              }}>{r.w}-{r.l}</span>
+              <span style={{
+                font: "700 8px var(--mono)", letterSpacing: '.1em', minWidth: 52,
+                textAlign: 'right',
+                color: won ? 'var(--win)' : gone ? 'var(--dim)' : 'var(--clay)',
+              }}>{won ? 'CHAMPION' : gone ? 'OUT' : 'ALIVE'}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {rounds.map((r, i) => (
+        <div key={i} style={{ marginTop: 10 }}>
+          <div className="label" style={{ marginBottom: 4 }}>{r.round.toUpperCase()}</div>
+          <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+            {r.games.map((g, j) => (
+              <div key={j} style={{
+                display: 'grid', gridTemplateColumns: '1fr auto',
+                gap: 8, alignItems: 'baseline',
+                padding: '6px 10px', borderBottom: '1px solid var(--hairline)',
+              }}>
+                <span style={{ font: "400 11.5px var(--body)" }}>
+                  <span style={{
+                    fontWeight: 700,
+                    color: g.winner === userTeam ? 'var(--clay)' : 'var(--ink)',
+                  }}>{abbr(g.winner)}</span>
+                  <span style={{ color: 'var(--dim)' }}> beat </span>
+                  <span style={{
+                    color: g.loser === userTeam ? 'var(--clay)' : 'var(--dim)',
+                  }}>{abbr(g.loser)}</span>
+                </span>
+                <span style={{ font: "600 11px var(--mono)" }}>
+                  {Math.max(g.homeRuns, g.awayRuns)}-{Math.min(g.homeRuns, g.awayRuns)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+/** Who hosts: the better seed, which is exactly how the bracket decides it. */
+function hostOf(
+  live: { seedOf: Map<number, number> },
+  due: { a: number; b: number },
+): number {
+  const sa = live.seedOf.get(due.a) ?? Number.MAX_SAFE_INTEGER;
+  const sb = live.seedOf.get(due.b) ?? Number.MAX_SAFE_INTEGER;
+  return sa <= sb ? due.a : due.b;
+}
+
 /**
  * Where you are in June.
  *
  * Four steps, always visible, with the one you are on named and explained. The
  * postseason is the part of the year with the most rules and it was the part
- * with the least explanation on screen — "then I had a button to play the
- * regionals" is what that feels like from the other side.
+ * with the least explanation on screen.
  */
 function Ladder({ stage }: { stage: string }) {
   const at = LADDER.findIndex((l) => l.key === stage);
@@ -364,26 +544,6 @@ function Field(
   );
 }
 
-/** Who hosts: the better seed, which is exactly how the bracket decides it. */
-function hostOf(
-  live: { seedOf: Map<number, number> },
-  due: { a: number; b: number },
-): number {
-  const sa = live.seedOf.get(due.a) ?? Number.MAX_SAFE_INTEGER;
-  const sb = live.seedOf.get(due.b) ?? Number.MAX_SAFE_INTEGER;
-  return sa <= sb ? due.a : due.b;
-}
-
-function Note({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{
-      marginTop: 12, padding: '11px 12px', background: 'var(--paper)',
-      borderLeft: '3px solid var(--faint)',
-      font: "400 12px/1.55 var(--body)", color: 'var(--dim)',
-    }}>{children}</div>
-  );
-}
-
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <>
@@ -402,45 +562,5 @@ function Verdict({ good, text }: { good: boolean; text: string }) {
       color: good ? 'var(--win)' : 'var(--ink)',
       fontWeight: good ? 600 : 400,
     }}>{text}</div>
-  );
-}
-
-/**
- * Your games, in the order they were played.
- *
- * Only yours. A regional is a dozen games and eleven of them happened to other
- * people; listing them all would bury the four that were about you.
- */
-function Games(
-  { games, userTeam, season }:
-  { games: readonly BracketGame[]; userTeam: number; season: SeasonState },
-) {
-  if (games.length === 0) return null;
-  return (
-    <div style={{ marginTop: 10 }}>
-      {games.map((g, i) => {
-        const home = g.home === userTeam;
-        const us = home ? g.homeRuns : g.awayRuns;
-        const them = home ? g.awayRuns : g.homeRuns;
-        const won = us > them;
-        const other = home ? g.away : g.home;
-        return (
-          <div key={i} style={{
-            display: 'grid', gridTemplateColumns: 'auto 1fr auto',
-            gap: 8, alignItems: 'baseline',
-            padding: '7px 0', borderTop: '1px solid var(--hairline)',
-          }}>
-            <span style={{
-              font: "700 9px var(--mono)", letterSpacing: '.08em',
-              color: won ? 'var(--win)' : 'var(--clay)', minWidth: 14,
-            }}>{won ? 'W' : 'L'}</span>
-            <span style={{ font: "400 12px var(--body)" }}>
-              {home ? 'vs' : 'at'} {season.teams[other]?.def.school ?? '?'}
-            </span>
-            <span style={{ font: "600 12px var(--mono)" }}>{us}-{them}</span>
-          </div>
-        );
-      })}
-    </div>
   );
 }

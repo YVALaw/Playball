@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PlayerName } from '../PlayerName.js';
+import { overallOf } from '../../engine/ratings.js';
 import { useDynasty } from '../../state/store.js';
 import { lazy, Suspense } from 'react';
 import { Diamond } from '../Diamond.js';
@@ -75,9 +76,11 @@ export function Manage() {
   // Who crossed the plate on the last play. The engine reports it as an advance
   // to base 4, which is the only record of a man scoring — he is off the bases
   // by the time the screen sees the new state.
-  const scoredIds = useMemo(() => {
+  const scoredRunners = useMemo(() => {
     const advance = live?.lastPlay.find((e) => e.kind === 'advance');
-    return (advance?.runners ?? []).filter((r) => r.to === 4).map((r) => r.id);
+    return (advance?.runners ?? [])
+      .filter((r) => r.to === 4)
+      .map((r) => ({ id: r.id, from: r.from }));
   }, [live, version]);
 
   // A run crossing is the one moment worth announcing, so the plate flashes.
@@ -182,7 +185,7 @@ export function Manage() {
           }>
             <Diamond3D
               runners={d?.runners ?? []} scoreTick={scoreTick}
-              ball={ball} scored={{ ids: scoredIds, tick: scoreTick }} height={118}
+              ball={ball} scored={{ runners: scoredRunners, tick: scoreTick }} height={118}
             />
           </Suspense>
         </div>
@@ -312,9 +315,18 @@ export function Manage() {
       {modal && (
         <Picker
           title={modal === 'pinch' ? 'PINCH HITTER' : 'TO THE BULLPEN'}
+          // With the overall on it.
+          //
+          // Picking a reliever off a list of names is picking at random, which
+          // is not a decision — the whole point of a bullpen is that some of
+          // them are better than others and you choose when to spend them.
           rows={modal === 'pinch'
-            ? live.benchAvailable.map((h: Hitter) => ({ id: h.id, name: h.name, note: h.pos }))
-            : live.bullpenAvailable.map((p: Pitcher) => ({ id: p.id, name: p.name, note: `${p.throws}HP` }))}
+            ? live.benchAvailable.map((h: Hitter) => ({
+                id: h.id, name: h.name, note: h.pos, rating: overallOf(h),
+              }))
+            : live.bullpenAvailable.map((p: Pitcher) => ({
+                id: p.id, name: p.name, note: `${p.throws}HP`, rating: overallOf(p),
+              }))}
           onPick={(id) => {
             if (modal === 'pinch') {
               const h = live.benchAvailable.find((x) => x.id === id);
@@ -356,7 +368,7 @@ function Picker(
   { title, rows, onPick, onClose }:
   {
     title: string;
-    rows: Array<{ id: string; name: string; note: string }>;
+    rows: Array<{ id: string; name: string; note: string; rating: number }>;
     onPick: (id: string) => void;
     onClose: () => void;
   },
@@ -395,6 +407,9 @@ function Picker(
             }}
           >
             <span style={{ font: "400 13px var(--body)" }}>{r.name}</span>
+            <span style={{
+              float: 'right', font: "700 13px var(--mono)", marginLeft: 10,
+            }}>{r.rating}</span>
             <span style={{
               float: 'right', font: "400 10px var(--mono)", color: 'var(--dim)',
             }}>{r.note}</span>

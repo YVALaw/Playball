@@ -51,6 +51,21 @@ export function Program() {
     wonTitle: post?.champion === team.index,
   };
 
+  /**
+   * Whether an objective has actually been decided.
+   *
+   * Reported from testing: "the board marks things with an x when the season
+   * hasn't even been finished — I have not started the postseason and it shows
+   * that I failed to reach the national tournament". `seasonComplete` means the
+   * *schedule* is exhausted, which is the moment the postseason becomes
+   * possible, not the moment it is over. A tournament objective is open until
+   * the bracket has actually been played.
+   */
+  const settledFor = (key: string): boolean =>
+    key === 'tournament' || key === 'omaha' || key === 'conferenceTitle'
+      ? post !== null
+      : done;
+
   return (
     <div style={{ padding: '12px 14px 16px' }}>
       {/* The board meeting takes precedence over everything else on this screen. */}
@@ -171,7 +186,7 @@ export function Program() {
           <div style={{ marginTop: 10 }}>
             {expectation.objectives.map((o) => (
               <Box key={o.key} objective={o} met={objectiveMet(o, live)}
-                settled={done} wins={played.w} />
+                settled={settledFor(o.key)} wins={played.w} />
             ))}
           </div>
 

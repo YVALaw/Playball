@@ -7,14 +7,23 @@
 // sorted table, and prestige deciding nothing, which makes a dynasty pointless.
 // The tests here bound both sides.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   generateClass, aiTargets, closeWeek, resetWeeklySpend, weeklyPoints, fit, canPursue,
   PRIORITIES, RECRUITING_WEEKS, SCHOLARSHIPS, RECRUITING_BUDGET, MAX_PER_RECRUIT,
   type Pitch, type Prospect,
 } from '../src/engine/recruiting.js';
 import { makeRng } from '../src/engine/rng.js';
+import { resetNames } from '../src/engine/players.js';
 import type { Region } from '../src/data/schools.js';
+
+// Names are unique for the life of the process, so a second call to
+// generateClass with a given seed does not produce the class the first one did:
+// different names mean different ids, and ids are what the scouting noise
+// hashes. Without this reset every test in this file quietly depends on its own
+// position in the file, and a change anywhere upstream reshuffles what each one
+// is actually asserting about.
+beforeEach(resetNames);
 
 const REGIONS: Region[] = [
   'Gulf', 'Atlantic', 'Pacific', 'Heartland',

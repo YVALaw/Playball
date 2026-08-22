@@ -67,6 +67,55 @@ export const seasonLength = (config: SeasonConfig): number =>
   config.seriesRounds * 3 + config.nonConferenceGames;
 
 /** The record a board actually judges: regular season only. */
+/** One season of one player's college career, as the record book keeps it. */
+export interface CareerYear {
+  year: number;
+  classYear: string;
+  /** The program he played it for. */
+  team: string;
+  /** Hitters. */
+  ab?: number; h?: number; hr?: number; rbi?: number; bb?: number; sb?: number;
+  /** Pitchers. */
+  w?: number; l?: number; outs?: number; er?: number; k?: number;
+}
+
+/**
+ * Write one team's season into the record book.
+ *
+ * Called on the way out of a year, before the statistics are wiped. Players who
+ * never appeared are skipped: a line of zeroes is not a season.
+ */
+export function archiveSeason(season: SeasonState, teamIndex: number, year: number): void {
+  const rec = season.teams[teamIndex];
+  if (!rec) return;
+  season.careers ??= {};
+
+  const roster = [
+    ...rec.team.lineup, ...rec.team.bench, ...rec.team.rotation, ...rec.team.bullpen,
+  ];
+  for (const p of roster) {
+    const bat = season.batting.get(p.id);
+    const pit = season.pitching.get(p.id);
+    const played = (bat && bat.ab > 0) || (pit && pit.outs > 0);
+    if (!played) continue;
+
+    const row: CareerYear = {
+      year, classYear: p.classYear, team: rec.def.abbr,
+      ...(bat && bat.ab > 0
+        ? { ab: bat.ab, h: bat.h, hr: bat.hr, rbi: bat.rbi, bb: bat.bb, sb: bat.sb }
+        : {}),
+      ...(pit && pit.outs > 0
+        ? { w: pit.w, l: pit.l, outs: pit.outs, er: pit.er, k: pit.k }
+        : {}),
+    };
+
+    const list = season.careers[p.id] ?? [];
+    // A year is written once. Re-entering the offseason must not duplicate it.
+    if (list.some((r) => r.year === year)) continue;
+    season.careers[p.id] = [...list, row];
+  }
+}
+
 export const regularRecord = (t: TeamRecord): { w: number; l: number } =>
   ({ w: t.rw ?? t.w, l: t.rl ?? t.l });
 
@@ -206,6 +255,20 @@ export interface SeasonState {
    */
   boxScores: Record<number, BoxScore>;
   captureBoxFor: number | null;
+  /**
+   * What your players did, year by year, kept after the season is gone.
+   *
+   * The statistics live in maps that are wiped every June, so a junior's
+   * freshman year did not exist anywhere by the time anybody could look at it —
+   * and a dynasty game where you cannot see a player develop is asking you to
+   * take the development on faith.
+   *
+   * Your program only. This is your record book, not the country's, and keeping
+   * every line for all sixty four schools would put tens of thousands of rows
+   * through a structured clone on every autosave for the sake of somebody
+   * else's shortstop.
+   */
+  careers: Record<PlayerId, CareerYear[]>;
   /**
    * The recruiting class in front of the program right now.
    *
@@ -468,6 +531,7 @@ export function createSeason(
     results: [],
     boxScores: {},
     captureBoxFor: null,
+    careers: {},
     recruiting: generateClass(0, teams.length, rng),
     finalOrder: null,
   };
@@ -514,8 +578,11 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
     batting: new Map(),
     pitching: new Map(),
     results: [],
-    // Last year's box scores belong to last year.
+    // Last year's box scores belong to last year. The career lines do not —
+    // they are the only copy, and they carry forward for as long as the dynasty
+    // does.
     boxScores: {},
+    careers: prev.careers ?? {},
     captureBoxFor: prev.captureBoxFor,
     // A new class every year. Last year's board is spent.
     recruiting: generateClass(prev.recruiting.year + 1, teams.length, prev.rng),

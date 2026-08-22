@@ -14,6 +14,7 @@ import { overallOf } from '../../engine/ratings.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { battingAverage, onBase, slugging, era, whip, inningsPitched } from '../../engine/season.js';
 import { pct } from '../format.js';
+import type { PlayerId } from '../../engine/types.js';
 import type { Hitter, Pitcher, Player as AnyPlayer } from '../../engine/types.js';
 
 /**
@@ -197,7 +198,73 @@ export function Player() {
           ) : <Empty />
         )}
       </div>
+
+      <Career id={p.id} isPitcher={isPitcher} />
     </div>
+  );
+}
+
+/**
+ * Every year he has played here.
+ *
+ * The season maps are wiped each June, so without the record book a junior's
+ * first two years simply did not exist — which is a strange thing for a game
+ * whose whole subject is players getting better.
+ */
+function Career({ id, isPitcher }: { id: PlayerId; isPitcher: boolean }) {
+  const season = useDynasty((s) => s.season);
+  const years = season?.careers?.[id] ?? [];
+  if (years.length === 0) return null;
+
+  return (
+    <>
+      <div style={{ marginTop: 16, borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
+        <div className="label">COLLEGE CAREER</div>
+      </div>
+      <div style={{
+        marginTop: 8, border: '1px solid var(--faint)', background: 'var(--paper)',
+      }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isPitcher ? '42px 32px 1fr 46px 42px 38px' : '42px 32px 1fr 46px 34px 38px',
+          gap: 6, padding: '6px 10px', borderBottom: '1px solid var(--hairline)',
+        }}>
+          {(isPitcher
+            ? ['YEAR', 'CL', 'TEAM', 'W-L', 'ERA', 'K']
+            : ['YEAR', 'CL', 'TEAM', 'AVG', 'HR', 'RBI']
+          ).map((h) => <span key={h} className="label">{h}</span>)}
+        </div>
+        {years.map((y) => (
+          <div key={y.year} style={{
+            display: 'grid',
+            gridTemplateColumns: isPitcher ? '42px 32px 1fr 46px 42px 38px' : '42px 32px 1fr 46px 34px 38px',
+            gap: 6, alignItems: 'baseline',
+            padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
+          }}>
+            <span style={{ font: "700 12px var(--display)" }}>{y.year}</span>
+            <span style={{ font: "400 10px var(--mono)", color: 'var(--dim)' }}>{y.classYear}</span>
+            <span style={{ font: "400 10px var(--mono)", color: 'var(--dim)' }}>{y.team}</span>
+            {isPitcher ? (
+              <>
+                <span style={{ font: "500 11px var(--mono)" }}>{y.w ?? 0}-{y.l ?? 0}</span>
+                <span style={{ font: "500 11px var(--mono)" }}>
+                  {y.outs ? ((y.er ?? 0) * 27 / y.outs).toFixed(2) : '—'}
+                </span>
+                <span style={{ font: "500 11px var(--mono)" }}>{y.k ?? 0}</span>
+              </>
+            ) : (
+              <>
+                <span style={{ font: "500 11px var(--mono)" }}>
+                  {y.ab ? pct((y.h ?? 0) / y.ab) : '—'}
+                </span>
+                <span style={{ font: "500 11px var(--mono)" }}>{y.hr ?? 0}</span>
+                <span style={{ font: "500 11px var(--mono)" }}>{y.rbi ?? 0}</span>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 

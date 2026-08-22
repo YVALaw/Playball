@@ -17,6 +17,7 @@ const FINISH_COLOR: Record<Finish, string> = {
 
 export function History() {
   const history = useDynasty((s) => s.history);
+  const openPlayer = useDynasty((s) => s.openPlayer);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
   void version;
@@ -79,24 +80,63 @@ export function History() {
         </div>
 
         {[...history].reverse().map((s) => (
-          <div key={s.year} style={{
-            display: 'grid', gridTemplateColumns: '40px 52px 30px 1fr',
-            gap: 6, alignItems: 'center',
-            padding: '9px 10px', borderBottom: '1px solid var(--hairline)',
-            background: s.finish === 'champion' ? 'rgba(168,68,42,.08)' : 'transparent',
-          }}>
-            <span style={{ font: "700 13px var(--display)" }}>{s.year}</span>
-            <span style={{ font: "400 11px var(--mono)" }}>{s.w}-{s.l}</span>
-            <span style={{
-              font: "400 11px var(--mono)", color: 'var(--dim)',
-            }}>{ordinal(s.confPlace)}</span>
-            <span style={{
-              font: `${s.finish === 'champion' ? 600 : 400} 11px var(--body)`,
-              color: FINISH_COLOR[s.finish],
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          <div key={s.year}>
+            <div style={{
+              display: 'grid', gridTemplateColumns: '40px 52px 30px 1fr',
+              gap: 6, alignItems: 'center',
+              padding: '9px 10px',
+              borderBottom: (s.awards ?? []).length > 0
+                ? 'none' : '1px solid var(--hairline)',
+              background: s.finish === 'champion' ? 'rgba(168,68,42,.08)' : 'transparent',
             }}>
-              {s.wonConference ? '★ ' : ''}{FINISH_LABEL[s.finish]}
-            </span>
+              <span style={{ font: "700 13px var(--display)" }}>{s.year}</span>
+              <span style={{ font: "400 11px var(--mono)" }}>{s.w}-{s.l}</span>
+              <span style={{
+                font: "400 11px var(--mono)", color: 'var(--dim)',
+              }}>{ordinal(s.confPlace)}</span>
+              <span style={{
+                font: `${s.finish === 'champion' ? 600 : 400} 11px var(--body)`,
+                color: FINISH_COLOR[s.finish],
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {s.wonConference ? '★ ' : ''}{FINISH_LABEL[s.finish]}
+              </span>
+            </div>
+
+            {/*
+              What your own players won that year, under the year they won it.
+
+              The awards screen used to list the whole country's winners, which
+              is a list of other people's achievements filed under your program's
+              history. These are yours, and they are the reason a year is
+              remembered as more than a record.
+            */}
+            {(s.awards ?? []).length > 0 && (
+              <div style={{
+                padding: '0 10px 9px 46px', borderBottom: '1px solid var(--hairline)',
+                background: s.finish === 'champion' ? 'rgba(168,68,42,.08)' : 'transparent',
+              }}>
+                {(s.awards ?? []).map((a, i) => (
+                  <button
+                    key={`${a.id}-${i}`}
+                    onClick={() => openPlayer(a.id)}
+                    style={{
+                      display: 'block', width: '100%', textAlign: 'left',
+                      padding: '2px 0', background: 'transparent',
+                    }}
+                  >
+                    <span style={{
+                      font: "600 9px var(--mono)", letterSpacing: '.08em',
+                      color: 'var(--clay)',
+                    }}>{a.title.toUpperCase()}</span>
+                    <span style={{
+                      marginLeft: 6, font: "400 11px var(--body)",
+                      borderBottom: '1px dotted rgba(28,36,48,.35)',
+                    }}>{a.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>

@@ -232,7 +232,20 @@ function drawPriorities(stars: number, rng: Rng): Priorities {
  */
 function reachOf(stars: number, priorities: Priorities): number {
   const flexible = priorities.playingTime + priorities.proximity;
-  const tolerance = 0.6 + flexible * 3.2;
+  // How far below his own tier a recruit will look. Wanting to play, or to
+  // play near home, is what brings him down; wanting the name does not.
+  let tolerance = 0.6 + flexible * 3.2;
+
+  // The very best are the exception, and they have to be.
+  //
+  // Reported from testing: "I got the #1 recruit three times in a row without
+  // breaking a sweat" — from a three star program. A blue chip who will
+  // seriously consider anybody is not a blue chip, he is a free agent, and the
+  // whole prestige ladder collapses if the top of the board is open at the
+  // bottom of it. He still comes down for playing time, just not that far.
+  if (stars >= 5) tolerance *= 0.90;
+  else if (stars >= 4) tolerance *= 0.60;
+
   return Math.max(1, Math.min(5, Math.round(stars - tolerance)));
 }
 
@@ -451,11 +464,18 @@ export function aiTargets(
   const wants = Math.max(4, Math.min(BOARD_SLOTS, Math.max(need, BOARD_SLOTS)));
 
   // A reach, a core, and some certainty.
+  // Weighted up the board rather than down it.
+  //
+  // Reported from testing: "many of the recruits end up with nobody on him when
+  // they are even high ranking". With only fifteen percent of every board
+  // pointed at the tier above, the best players a program could legally chase
+  // went unchased while everybody piled onto the safe ones — so the player
+  // walked into an uncontested run at the top of the class.
   const plan: { stars: number; share: number }[] = [
-    { stars: tier + 1, share: 0.15 },
+    { stars: tier + 1, share: 0.30 },
     { stars: tier, share: 0.40 },
-    { stars: tier - 1, share: 0.30 },
-    { stars: tier - 2, share: 0.15 },
+    { stars: tier - 1, share: 0.20 },
+    { stars: tier - 2, share: 0.10 },
   ];
 
   const picks: Prospect[] = [];
@@ -465,8 +485,18 @@ export function aiTargets(
     const room = Math.max(1, Math.round(wants * band.share));
     const pool = available
       .filter((p) => p.stars === band.stars && !taken.has(p.id))
-      // Within a band, chase the ones who actually want what this program has.
-      .map((p) => ({ p, score: fit(p, pitch) * (0.85 + rng() * 0.3) }))
+      // Within a band, chase the ones who actually want what this program has —
+      // and notice the ones nobody else has called.
+      //
+      // Without the second half every staff in the country ranked the band the
+      // same way and piled onto the same names, which left blue chips sitting
+      // with no offers at all. A recruiting staff that misses an uncontested
+      // five star is not a staff.
+      .map((p) => {
+        const suitors = Object.values(p.points).filter((v) => v > 0).length;
+        const uncontested = suitors === 0 ? 1.45 : 1;
+        return { p, score: fit(p, pitch) * uncontested * (0.85 + rng() * 0.3) };
+      })
       .sort((a, b) => b.score - a.score);
 
     for (const { p } of pool.slice(0, room)) { picks.push(p); taken.add(p.id); }

@@ -82,7 +82,17 @@ interface Props {
    * this he vanishes mid-diamond — the run happens off screen, at exactly the
    * moment worth watching. Given here, he finishes his run home.
    */
-  scored?: { ids: readonly PlayerId[]; tick: number };
+  /**
+   * Who crossed the plate on the last play, and from where.
+   *
+   * The base comes from the engine's own advance event rather than from a
+   * snapshot of who used to be on base. The snapshot version raced and lost:
+   * `scoreTick` is bumped inside an effect, so it lands a commit *after* the
+   * runners prop changes, and by then the snapshot had already been overwritten
+   * with the post-play bases — the scoring runner was no longer in it, nobody
+   * ran home, and all you saw was the plate flash.
+   */
+  scored?: { runners: readonly { id: PlayerId; from: 0 | 1 | 2 | 3 }[]; tick: number };
   /** Height in pixels. Width fills the container. */
   height?: number;
 }
@@ -281,7 +291,7 @@ function RunnerDot(
  * has already taken him off them. He is a few hundred milliseconds of follow
  * through, and the alternative is a red dot blinking out of existence on third.
  */
-function ScoringRunner({ from, onDone }: { from: 1 | 2 | 3; onDone: () => void }) {
+function ScoringRunner({ from, onDone }: { from: 0 | 1 | 2 | 3; onDone: () => void }) {
   const ref = useRef<THREE.Mesh>(null);
   const path = useRef<THREE.Vector3[]>(
     basePath(from, 4).map((p) => new THREE.Vector3(...p)),
@@ -606,20 +616,19 @@ export function Diamond3D({
   // mid-inning places its runners rather than sprinting them all in from home.
   const aboard = useRef<Set<PlayerId>>(new Set());
   const opened = useRef(false);
-  const [finishing, setFinishing] = useState<{ key: string; from: 1 | 2 | 3 }[]>([]);
+  const [finishing, setFinishing] = useState<{ key: string; from: 0 | 1 | 2 | 3 }[]>([]);
 
   useEffect(() => {
-    const ids = scored?.ids ?? [];
-    if (ids.length > 0) {
-      const leaving = previous.current
-        .filter((r) => ids.includes(r.id))
-        .map((r) => ({ key: `${r.id}-${scored?.tick ?? 0}`, from: r.base }));
-      if (leaving.length > 0) setFinishing((f) => [...f, ...leaving]);
-    }
-    previous.current = runners;
+    const list = scored?.runners ?? [];
+    if (list.length === 0) return;
+    setFinishing((f) => [
+      ...f,
+      ...list.map((r) => ({ key: `${r.id}-${scored?.tick ?? 0}`, from: r.from })),
+    ]);
   }, [scored?.tick]);
 
-  // Keep the snapshot current even on plays where nobody scored.
+  // Who was already on base before this play. Anyone else is the batter, and he
+  // starts at the plate.
   useEffect(() => {
     previous.current = runners;
     aboard.current = new Set(runners.map((r) => r.id));

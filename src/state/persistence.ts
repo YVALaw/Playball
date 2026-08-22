@@ -61,6 +61,8 @@ export interface SaveFile {
   outcome?: unknown;
   /** The postseason of the current year, if it has been played. */
   postseason?: unknown;
+  /** True while the coach has been dismissed and has not taken a new job. */
+  jobSearch?: unknown;
   /**
    * The postseason in progress, stage by stage.
    *
@@ -120,6 +122,8 @@ export interface SaveExtras {
   history?: unknown[];
   postseason?: unknown;
   bracket?: unknown;
+  /** True while the coach has no job. Without it, a reload rehires him. */
+  jobSearch?: unknown;
   /** Optional so saves predating the dynasty layer still load. */
   coach?: unknown;
 }
@@ -157,6 +161,7 @@ export function buildSaveFile(
     coach: extras.coach,
     ...(extras.postseason ? { postseason: extras.postseason } : {}),
     ...(extras.bracket ? { bracket: extras.bracket } : {}),
+    ...(extras.jobSearch ? { jobSearch: true } : {}),
     // Where the offseason had got to. Widening `SaveExtras` alone was not
     // enough — this record is built field by field, so anything not named here
     // is silently dropped no matter what the type says it accepts.
@@ -188,6 +193,8 @@ export interface LoadedDynasty {
   postseason: unknown;
   /** The postseason in progress, if a reload landed in the middle of one. */
   bracket: unknown;
+  /** Whether the coach is currently out of a job. */
+  jobSearch: unknown;
   /** Where the offseason sequence had got to, and the verdict behind it. */
   phase: unknown;
   review: unknown;
@@ -239,6 +246,7 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     coach: file.coach,
     postseason: file.postseason ?? null,
     bracket: file.bracket ?? null,
+    jobSearch: file.jobSearch ?? false,
     phase: file.phase ?? null,
     review: file.review ?? null,
     outcome: file.outcome ?? null,

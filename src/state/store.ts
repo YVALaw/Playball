@@ -13,7 +13,7 @@
 import { create } from 'zustand';
 import {
   createSeason, simNextDay, simSeason, seasonComplete, standings, nextSeason, rpi,
-  seasonLength, regularRecord,
+  seasonLength, regularRecord, archiveSeason,
   recordResult,
   type SeasonState,
 } from '../engine/season.js';
@@ -30,6 +30,7 @@ import {
   runPostseason, freezeRegularSeason, stageConferenceTournaments, stageSelection,
   stageRegionals, stageOmaha, summarize,
   startBracket, stepBracket, nextGameFor, resultOf, pairKey,
+  seasonAwards, allConference,
   conferenceField, conferenceIds, conferenceTournament, regionalGroups,
   doubleElimination,
   type BracketState,
@@ -124,13 +125,17 @@ export interface TabDef {
 export const TABS: readonly TabDef[] = [
   { id: 'home', label: 'HOME', screens: [
     { id: 'today', label: 'TODAY' }, { id: 'wire', label: 'WIRE' }, { id: 'box', label: 'SCOREBOOK' }] },
+  // Statistics are your players, so they live with your players. Strategy is a
+  // standing policy rather than a thing you check, so it sits with the program.
+  // Awards are now part of the record books: only the ones your program won,
+  // year by year, which is the only version of that list anybody cares about.
   { id: 'team', label: 'TEAM', screens: [
-    { id: 'roster', label: 'ROSTER' }, { id: 'lineup', label: 'LINEUP' }, { id: 'strategy', label: 'STRATEGY' }] },
+    { id: 'roster', label: 'ROSTER' }, { id: 'lineup', label: 'LINEUP' }, { id: 'stats', label: 'STATS' }] },
   { id: 'season', label: 'SEASON', screens: [
-    { id: 'sched', label: 'SCHEDULE' }, { id: 'stand', label: 'STANDINGS' }, { id: 'stats', label: 'STATS' }] },
+    { id: 'sched', label: 'SCHEDULE' }, { id: 'stand', label: 'STANDINGS' }, { id: 'rankings', label: 'RANKINGS' }] },
 
   { id: 'program', label: 'PROGRAM', screens: [
-    { id: 'records', label: 'PROGRAM' }, { id: 'history', label: 'HISTORY' }, { id: 'awards', label: 'AWARDS' }] },
+    { id: 'records', label: 'PROGRAM' }, { id: 'history', label: 'HISTORY' }, { id: 'strategy', label: 'STRATEGY' }] },
 ];
 
 /** How far through the postseason we are, and what has happened so far. */
@@ -171,8 +176,18 @@ export interface SeasonRecord {
   rpi: number;
   wonConference: boolean;
   finish: Finish;
+  /** Which program you were at. A career can span more than one. */
+  school?: string;
   /** Whoever won it all that year, by school name. */
   nationalChampion: string;
+  /**
+   * What your own players won that year.
+   *
+   * Kept on the record rather than recomputed, because the season it came from
+   * is gone by the time anybody reads it — rosters are rewritten every June and
+   * the statistics go with them.
+   */
+  awards?: { title: string; name: string; id: PlayerId }[];
 }
 
 export interface DynastyStore {
@@ -182,6 +197,15 @@ export interface DynastyStore {
   lastReview: Review | null;
   /** Jobs on the table, after a firing or when you go looking. */
   offers: JobOffer[];
+  /**
+   * You have no job.
+   *
+   * Being dismissed used to set a verdict and leave you in charge of the program
+   * that dismissed you, which made the board's decision a piece of text rather
+   * than a consequence. While this is true there is no team, and the only screen
+   * is the one where you find another one.
+   */
+  jobSearch: boolean;
   /** Take one. Ends the current tenure and starts a new one. */
   acceptOffer: (team: number) => Promise<void>;
   /** Close the board meeting. */
@@ -302,6 +326,15 @@ export interface DynastyStore {
   advanceRecruitingWeek: () => void;
   /** Recruits who committed to you in the week just closed. */
   lastCommits: string[];
+  /**
+   * What the week that just closed actually did.
+   *
+   * Reported from testing: "when we tap end week there is not any real visual
+   * cue that the week advanced". The budget resets and the board reshuffles, but
+   * neither of those reads as *time passing* — and time passing is the entire
+   * pressure the recruiting window is built on.
+   */
+  lastWeek: { closed: number; yours: string[]; gone: number } | null;
 
   /** Swap two batting order spots. The engine reads team.lineup directly. */
   swapLineup: (a: number, b: number) => void;
@@ -327,6 +360,14 @@ function recordFor(state: DynastyStore): SeasonRecord | null {
 
   const table = standings(season, me.conference);
   const champions = lastPostseason?.conferenceChampions ?? [];
+
+  // Ours only. A record book listing the whole country's award winners is a
+  // list of other people's achievements filed under your program's history.
+  const mine = [
+    ...seasonAwards(season),
+    ...allConference(season).map((a) => ({ ...a, title: `All-conference ${a.position}` })),
+  ].filter((a) => a.team === me.def.abbr)
+    .map((a) => ({ title: a.title, name: a.name, id: a.id }));
   const winner = lastPostseason
     ? season.teams[lastPostseason.champion]?.def.school ?? '—'
     : '—';
@@ -338,7 +379,9 @@ function recordFor(state: DynastyStore): SeasonRecord | null {
     rpi: rpi(season, me.index),
     wonConference: champions.includes(me.index),
     finish: lastPostseason?.finish[me.index] ?? 'missed',
+    school: me.def.school,
     nationalChampion: winner,
+    awards: mine,
   };
 }
 
@@ -361,6 +404,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   progress: null,
   lastOffseason: null,
   lastCommits: [],
+  lastWeek: null,
   phase: null,
 
   start: (seed = WORLD_SEED, team?: number) => {
@@ -468,13 +512,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     }
 
     const finalWeek = recruits.week >= RECRUITING_WEEKS;
+    const closed = recruits.week;
     const commits = closeWeek(recruits, season.rng, finalWeek);
     resetWeeklySpend(recruits);
     recruits.week += 1;
 
+    const yours = commits
+      .filter((c) => c.team === userTeam)
+      .map((c) => c.prospect.player.name);
     set({
       version: version + 1,
-      lastCommits: commits.filter((c) => c.team === userTeam).map((c) => c.prospect.player.name),
+      lastCommits: yours,
+      lastWeek: { closed, yours, gone: commits.length - yours.length },
     });
   },
 
@@ -662,6 +711,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const record = recordFor(get());
     const review = get().lastReview;
 
+    // Into the record book before the statistics are wiped.
+    archiveSeason(season, get().userTeam, year);
+
     const done = (next: SeasonState, report: OffseasonReport): void => {
       const rolled = nextSeason(next);
       const coach = get().coach;
@@ -679,6 +731,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         offers: review?.fired
           ? jobOffers(coach, rolled.teams, (t) => t.prestige, get().userTeam)
           : [],
+        // Dismissed means dismissed. The world carries on without you until you
+        // take another job, and the career record is what you take with you.
+        jobSearch: review?.fired ?? false,
         history: record ? [...get().history, record] : get().history,
         busy: false,
         tab: 'home',
@@ -690,12 +745,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // The offseason itself already ran, on the way into the draft step. All that
     // is left is turning the calendar.
     done(season, get().lastOffseason ?? {
-      graduated: [], drafted: [], recruits: 0, signed: [],
+      graduated: [], drafted: [], recruits: 0, signed: [], walkOns: [],
       developmentNet: 0, improved: 0, declined: 0,
     });
   },
 
   history: [],
+  jobSearch: false,
   lastPostseason: null,
   bracket: null,
   selectedPlayer: null,
@@ -713,6 +769,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     set({
       userTeam: team,
       offers: [],
+      jobSearch: false,
       lastReview: null,
       // A new job is a clean slate with a patient board, but your reputation
       // comes with you — that is the whole point of tracking it separately.
@@ -772,68 +829,93 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, bracket, userTeam, version } = get();
     if (!season || !bracket) return;
 
+    // Playing a stage and moving past it are two different presses.
+    //
+    // Reported from testing: "once we lose it simply takes us to the selection
+    // — we have to see who wins". Computing a stage and advancing off it in the
+    // same press meant the result of the tournament you had just been knocked
+    // out of flashed past on its way to the next screen. Now the first press
+    // plays it, and the second one leaves.
     if (bracket.stage === 'conference') {
-      const me = season.teams[userTeam];
-      const mine = me ? conferenceField(season, me.conference) : null;
-      if (me && mine && mine.field.includes(userTeam)) {
-        // The rest of the country is decided now. Yours is played a round at a
-        // time so the games you are in can be handed to you rather than to the
-        // simulator, which is the whole complaint this screen exists to answer.
-        const cups = conferenceIds(season)
-          .filter((id) => id !== me.conference)
-          .map((id) => conferenceTournament(season, id));
+      if (bracket.cups.length > 0) {
+        set({ bracket: { ...bracket, stage: 'selection' }, version: version + 1 });
+      } else {
+        const me = season.teams[userTeam];
+        const mine = me ? conferenceField(season, me.conference) : null;
+        if (me && mine && mine.field.includes(userTeam)) {
+          // The rest of the country is decided now. Yours is played a round at
+          // a time so the games you are in can be handed to you.
+          const cups = conferenceIds(season)
+            .filter((id) => id !== me.conference)
+            .map((id) => conferenceTournament(season, id));
+          set({
+            bracket: { ...bracket, cups },
+            myBracket: {
+              kind: 'conference', state: startBracket(season, mine.field),
+              others: [], slot: 0, preplayed: new Map(),
+            },
+            version: version + 1,
+          });
+          return;
+        }
         set({
-          bracket: { ...bracket, cups },
-          myBracket: {
-            kind: 'conference', state: startBracket(season, mine.field),
-            others: [], slot: 0, preplayed: new Map(),
-          },
+          bracket: { ...bracket, cups: stageConferenceTournaments(season) },
           version: version + 1,
         });
-        return;
       }
-      const cups = stageConferenceTournaments(season);
-      set({ bracket: { ...bracket, stage: 'selection', cups }, version: version + 1 });
     } else if (bracket.stage === 'selection') {
-      const field = stageSelection(season, bracket.cups.map((c) => c.champion));
-      set({ bracket: { ...bracket, stage: 'regional', field }, version: version + 1 });
+      if (bracket.field.length > 0) {
+        set({ bracket: { ...bracket, stage: 'regional' }, version: version + 1 });
+      } else {
+        const field = stageSelection(season, bracket.cups.map((c) => c.champion));
+        set({ bracket: { ...bracket, field }, version: version + 1 });
+      }
     } else if (bracket.stage === 'regional') {
-      const groups = regionalGroups(bracket.field);
-      const slot = groups.findIndex((g) => g.includes(userTeam));
-      if (slot >= 0) {
-        const others = groups
-          .filter((_, i) => i !== slot)
-          .map((g) => doubleElimination(season, g));
+      if (bracket.regionals.length > 0) {
+        set({ bracket: { ...bracket, stage: 'omaha' }, version: version + 1 });
+      } else {
+        const groups = regionalGroups(bracket.field);
+        const slot = groups.findIndex((g) => g.includes(userTeam));
+        if (slot >= 0) {
+          const others = groups
+            .filter((_, i) => i !== slot)
+            .map((g) => doubleElimination(season, g));
+          set({
+            myBracket: {
+              kind: 'regional', state: startBracket(season, groups[slot] as number[]),
+              others, slot, preplayed: new Map(),
+            },
+            version: version + 1,
+          });
+          return;
+        }
         set({
-          myBracket: {
-            kind: 'regional', state: startBracket(season, groups[slot] as number[]),
-            others, slot, preplayed: new Map(),
-          },
+          bracket: { ...bracket, regionals: stageRegionals(season, bracket.field) },
           version: version + 1,
         });
-        return;
       }
-      const regionals = stageRegionals(season, bracket.field);
-      set({ bracket: { ...bracket, stage: 'omaha', regionals }, version: version + 1 });
     } else if (bracket.stage === 'omaha') {
-      const champions = bracket.regionals.map((r) => r.champion);
-      if (champions.includes(userTeam)) {
+      if (bracket.omaha !== null) {
+        set({ bracket: { ...bracket, stage: 'done' }, version: version + 1 });
+      } else {
+        const champions = bracket.regionals.map((r) => r.champion);
+        if (champions.includes(userTeam)) {
+          set({
+            myBracket: {
+              kind: 'omaha', state: startBracket(season, champions),
+              others: [], slot: 0, preplayed: new Map(),
+            },
+            version: version + 1,
+          });
+          return;
+        }
+        const omaha = stageOmaha(season, bracket.regionals);
         set({
-          myBracket: {
-            kind: 'omaha', state: startBracket(season, champions),
-            others: [], slot: 0, preplayed: new Map(),
-          },
+          bracket: { ...bracket, omaha },
+          lastPostseason: summarize(bracket.cups, bracket.field, bracket.regionals, omaha),
           version: version + 1,
         });
-        return;
       }
-      const omaha = stageOmaha(season, bracket.regionals);
-      const summary = summarize(bracket.cups, bracket.field, bracket.regionals, omaha);
-      set({
-        bracket: { ...bracket, stage: 'done', omaha },
-        lastPostseason: summary,
-        version: version + 1,
-      });
     } else {
       // Finished. The offseason takes it from here.
       set({ bracket: null, phase: 'awards', version: version + 1 });
@@ -927,8 +1009,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         ...bracket.cups,
         { ...mine, conference: me ? me.conference : '', missed },
       ];
+      // The stage does not move. Your tournament just finished and the result
+      // is the thing to look at; leaving is the next press.
       set({
-        bracket: { ...bracket, stage: 'selection', cups },
+        bracket: { ...bracket, cups },
         myBracket: null, version: version + 1,
       });
     } else if (myBracket.kind === 'regional') {
@@ -937,13 +1021,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       const regionals = [...myBracket.others];
       regionals.splice(myBracket.slot, 0, mine);
       set({
-        bracket: { ...bracket, stage: 'omaha', regionals },
+        bracket: { ...bracket, regionals },
         myBracket: null, version: version + 1,
       });
     } else {
       const summary = summarize(bracket.cups, bracket.field, bracket.regionals, mine);
       set({
-        bracket: { ...bracket, stage: 'done', omaha: mine },
+        bracket: { ...bracket, omaha: mine },
         lastPostseason: summary, myBracket: null, version: version + 1,
       });
     }
@@ -1107,6 +1191,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         history,
         postseason: lastPostseason,
         bracket: get().bracket,
+        jobSearch: get().jobSearch,
         coach: get().coach,
         phase: get().phase,
         review: get().lastReview,
@@ -1141,6 +1226,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // saved, so a reload taken mid-tournament replays that stage from the top
       // rather than resuming inside a round.
       bracket: (loaded.bracket ?? null) as PostseasonProgress | null,
+      jobSearch: Boolean(loaded.jobSearch),
       // Back to the step the offseason was on, so a reload mid-sequence resumes
       // rather than stranding the player on the dashboard with a week of
       // recruiting budget already spent and nowhere to spend the rest.

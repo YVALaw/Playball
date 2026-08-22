@@ -62,6 +62,16 @@ export interface OffseasonReport {
   recruits: number;
   /** The user's signed class, so the screen can show who was actually landed. */
   signed: Prospect[];
+  /**
+   * The bodies that filled the holes your class did not.
+   *
+   * A scholarship you never used does not leave the spot empty — somebody walks
+   * on and plays there, thirteen points worse than the program's own level.
+   * Reported from testing: "we should show the walk-ons that will be added to
+   * the team", and he is right that it is the honest accounting of a class that
+   * came up short.
+   */
+  walkOns: { id: PlayerId; name: string; pos: string; overall: number }[];
   /** Sum of overall gained across everyone who stayed. */
   developmentNet: number;
   improved: number;
@@ -91,8 +101,31 @@ function departure(p: Player, rng: Rng): DepartureReason | null {
   if (p.classYear === 'JR') {
     return rng() < draftChance(overall) ? 'drafted' : null;
   }
+
+  // The exception, and it has to exist.
+  //
+  // Reported from testing: "I had a super rookie who was doing wonders — there
+  // is no way a player like that would not be drafted once the season is
+  // finished". The real rule is three years or age twenty one, but the feeling
+  // the rule produces is the point: a genuinely special underclassman is not
+  // yours for as long as you would like. The bar is deliberately steep, so this
+  // happens to a program once in a long while rather than every June.
+  if (p.classYear === 'SO' && overall >= UNDERCLASS_BAR.SO) {
+    return rng() < draftChance(overall) * 0.35 ? 'drafted' : null;
+  }
+  if (p.classYear === 'FR' && overall >= UNDERCLASS_BAR.FR) {
+    return rng() < draftChance(overall) * 0.15 ? 'drafted' : null;
+  }
   return null;
 }
+
+/**
+ * How good an underclassman has to be before anybody drafts him.
+ *
+ * A sophomore at 70 is the best player in most conferences; a freshman at 78 is
+ * the best player in the country. Below these the draft does not touch them.
+ */
+export const UNDERCLASS_BAR = { SO: 70, FR: 78 } as const;
 
 /**
  * A year of development, applied after the class year advances.
@@ -160,7 +193,10 @@ const byOverall = <T extends Player>(xs: T[]): T[] =>
  * not matter because every program reloaded at its own quality regardless. It is
  * steeper now, and it only applies to the players nobody recruited.
  */
-function refill(team: Team, survivors: Player[], rng: Rng, signed: Player[] = []): number {
+function refill(
+  team: Team, survivors: Player[], rng: Rng, signed: Player[] = [],
+  collect?: Player[],
+): number {
   const hitters = byOverall(survivors.filter((p): p is Hitter => p.type === 'hitter'));
   const arms = byOverall(survivors.filter((p): p is Pitcher => p.type === 'pitcher'));
   let recruits = 0;
@@ -179,6 +215,7 @@ function refill(team: Team, survivors: Player[], rng: Rng, signed: Player[] = []
     if (any) { any.pos = pos; return any; }
     const p = makeHitter(rng, team.quality - WALK_ON_PENALTY + gauss(rng) * 3, { pos });
     p.classYear = 'FR';
+    collect?.push(p);
     return p;
   };
   const freshArm = (role: 'SP' | 'RP'): Pitcher => {
@@ -189,6 +226,7 @@ function refill(team: Team, survivors: Player[], rng: Rng, signed: Player[] = []
     if (any) { any.role = role; return any; }
     const p = makePitcher(rng, team.quality - WALK_ON_PENALTY + gauss(rng) * 3, { role });
     p.classYear = 'FR';
+    collect?.push(p);
     return p;
   };
 
@@ -267,7 +305,7 @@ export function advanceOffseason(
   season: SeasonState, rng: Rng, opts: OffseasonOpts = {},
 ): OffseasonReport {
   const report: OffseasonReport = {
-    graduated: [], drafted: [], recruits: 0, signed: [],
+    graduated: [], drafted: [], recruits: 0, signed: [], walkOns: [],
     developmentNet: 0, improved: 0, declined: 0,
   };
 
@@ -315,7 +353,20 @@ export function advanceOffseason(
       survivors.push(p);
     }
 
-    report.recruits += refill(team, survivors, rng, classFor.get(record.index) ?? []);
+    // Only your own walk-ons are collected. `captureBoxFor` is already the
+    // convention for "the program this save keeps books on".
+    const walkOns: Player[] = [];
+    report.recruits += refill(
+      team, survivors, rng, classFor.get(record.index) ?? [],
+      record.index === season.captureBoxFor ? walkOns : undefined,
+    );
+    for (const p of walkOns) {
+      report.walkOns.push({
+        id: p.id, name: p.name,
+        pos: p.type === 'pitcher' ? (p as Pitcher).role : p.pos,
+        overall: overallOf(p),
+      });
+    }
   }
 
   // Order the draft nationally once every program has been through.

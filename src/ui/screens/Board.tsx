@@ -97,6 +97,7 @@ export function Board() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const lastWeek = useDynasty((s) => s.lastWeek);
 
   const pitch = useMemo(() => {
     if (!season || !team) return null;
@@ -250,6 +251,35 @@ export function Board() {
           onChange={setFilters}
           onClear={() => setFilters(NO_FILTERS)}
         />
+      )}
+
+      {live && lastWeek && (
+        <div style={{
+          marginBottom: 10, border: '1px solid var(--clay)',
+          background: 'rgba(168,68,42,.10)',
+        }}>
+          <div style={{ padding: '5px 10px', background: 'var(--clay)' }}>
+            <span style={{
+              font: "700 9px var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
+            }}>WEEK {lastWeek.closed} IS OVER</span>
+          </div>
+          <div style={{ padding: '10px 11px', font: "400 12px/1.5 var(--body)" }}>
+            {lastWeek.yours.length > 0 ? (
+              <div style={{ marginBottom: 6 }}>
+                <strong>Committed to you:</strong> {lastWeek.yours.join(', ')}.
+              </div>
+            ) : (
+              <div style={{ marginBottom: 6, color: 'var(--dim)' }}>
+                Nobody committed to you this week.
+              </div>
+            )}
+            <div style={{ color: 'var(--dim)' }}>
+              {lastWeek.gone === 0
+                ? 'Nobody came off the board anywhere. Your budget is back to thirty.'
+                : `${lastWeek.gone} recruit${lastWeek.gone === 1 ? '' : 's'} signed elsewhere and ${lastWeek.gone === 1 ? 'is' : 'are'} off the board. Your budget is back to thirty.`}
+            </div>
+          </div>
+        </div>
       )}
 
       {live && (
@@ -730,6 +760,18 @@ function Overview({
               font: "800 26px/1 var(--display)", color: spent > 0 ? 'var(--clay)' : 'var(--dim)',
               minWidth: 34, textAlign: 'right',
             }}>{spent}</span>
+            {/*
+              A step down and a step up either side of it.
+
+              Reported from testing: "the bar works fine to add points but to
+              remove points it's a hassle, doesn't work most of the times". On a
+              phone a drag that starts on a thin track is ambiguous — the
+              scroller can claim it — and dragging *left* to a smaller number is
+              the fiddliest version of that. `touchAction: none` gives the
+              gesture to the slider, and the buttons mean you never have to make
+              it at all.
+            */}
+            <Step label="−" onClick={() => onSet(Math.max(0, spent - 1))} disabled={spent === 0} />
             <input
               type="range"
               min={0}
@@ -737,7 +779,12 @@ function Overview({
               step={1}
               value={spent}
               onChange={(e) => onSet(Number(e.target.value))}
-              style={{ flex: 1, accentColor: 'var(--clay)' }}
+              style={{ flex: 1, accentColor: 'var(--clay)', touchAction: 'none' }}
+            />
+            <Step
+              label="+"
+              onClick={() => onSet(Math.min(Math.min(MAX_PER_RECRUIT, spent + left), spent + 1))}
+              disabled={spent >= Math.min(MAX_PER_RECRUIT, spent + left)}
             />
             <button
               onClick={() => onSet(0)}
@@ -761,6 +808,26 @@ function Overview({
         </div>
       )}
     </>
+  );
+}
+
+/** One notch on the offer, with a target big enough to hit with a thumb. */
+function Step(
+  { label, onClick, disabled }:
+  { label: string; onClick: () => void; disabled: boolean },
+) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        flex: 'none', width: 38, height: 38,
+        background: disabled ? 'transparent' : 'var(--field)',
+        border: `1px solid ${disabled ? 'rgba(28,36,48,.14)' : 'rgba(28,36,48,.34)'}`,
+        color: disabled ? 'rgba(28,36,48,.22)' : 'var(--ink)',
+        font: "700 18px var(--mono)", lineHeight: 1,
+      }}
+    >{label}</button>
   );
 }
 

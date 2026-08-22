@@ -190,3 +190,34 @@ describe('a signed class actually arrives', () => {
     expect(t.rotation).toHaveLength(4);
   });
 });
+
+describe('the draft and underclassmen', () => {
+  it('takes exceptional freshmen and sophomores, and nobody ordinary', () => {
+    // Reported from testing: a freshman doing wonders who nobody could draft.
+    // The bar is steep on purpose — it should happen to a program rarely rather
+    // than every June — so this asserts both halves: the door exists, and it is
+    // shut for everybody who is not remarkable.
+    let season = createSeason(makeRng(918), undefined, CONFERENCES);
+    let underclassmen = 0;
+
+    for (let year = 0; year < 8; year++) {
+      simSeason(season);
+      const report = advanceOffseason(season, season.rng);
+      for (const d of report.drafted) {
+        if (d.classYear === 'FR') {
+          underclassmen += 1;
+          expect(d.overall, `a ${d.overall} freshman was drafted`).toBeGreaterThanOrEqual(78);
+        }
+        if (d.classYear === 'SO') {
+          underclassmen += 1;
+          expect(d.overall, `a ${d.overall} sophomore was drafted`).toBeGreaterThanOrEqual(70);
+        }
+      }
+      season = nextSeason(season);
+    }
+
+    // Eight years of a sixty four team league. If none of them ever produced an
+    // underclassman worth taking, the door is shut rather than narrow.
+    expect(underclassmen).toBeGreaterThan(0);
+  });
+});

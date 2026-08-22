@@ -102,12 +102,16 @@ function Board(
         {rows.map((r, i) => {
           const ours = r.team === mark;
           return (
+            // A national leaderboard is a list of strangers with, if you are
+            // lucky, one of yours somewhere in it. Finding him should not take
+            // reading the team column of thirty rows.
             <button key={r.id} onClick={() => onPick(r.id)} style={{
               width: '100%', textAlign: 'left',
               display: 'grid', gridTemplateColumns: '16px 1fr 30px 52px',
               gap: 6, alignItems: 'center',
               padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
-              background: ours ? 'rgba(168,68,42,.06)' : 'transparent',
+              borderLeft: ours ? '3px solid var(--clay)' : '3px solid transparent',
+              background: ours ? 'rgba(168,68,42,.15)' : 'transparent',
             }}>
               <span style={{ font: "400 10px var(--mono)", color: 'var(--dim)' }}>{i + 1}</span>
               <span style={{
@@ -116,7 +120,8 @@ function Board(
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{r.name}</span>
               <span style={{
-                font: "400 10px var(--mono)", color: 'var(--dim)', textAlign: 'right',
+                font: `${ours ? 700 : 400} 10px var(--mono)`,
+                color: ours ? 'var(--clay)' : 'var(--dim)', textAlign: 'right',
               }}>{r.team}</span>
               <span style={{
                 font: "600 12px var(--mono)", textAlign: 'right',
