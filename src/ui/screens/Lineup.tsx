@@ -7,7 +7,6 @@
 // the rest of the app speaks.
 
 import { useState } from 'react';
-import { PlayerName } from '../PlayerName.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { overallOf } from '../../engine/ratings.js';
 import { battingAverage, era, inningsPitched } from '../../engine/season.js';
@@ -22,6 +21,14 @@ const SCOREBOOK: Record<Position, string> = {
 /** Friday, Saturday, Sunday, then the midweek arm. */
 const SLOTS = ['FRI', 'SAT', 'SUN', 'MID'];
 
+/*
+  No tap-through to the player card here, deliberately.
+
+  The row's tap is how you move the batting order — pick one, pick another, they
+  swap — and a second meaning on the same target makes both unreliable. Reported
+  from testing: "in lineup the players should not open their profile since we
+  have to tap one and tap another to actually move the lineup around."
+*/
 export function Lineup() {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
@@ -88,10 +95,10 @@ export function Lineup() {
               <span style={{ font: "500 10px var(--mono)", color: 'var(--clay)' }}>
                 {SCOREBOOK[p.pos]}
               </span>
-              <PlayerName id={p.id} style={{
+              <span style={{
                 font: `${on ? 600 : 400} 13px var(--body)`,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{p.name}</PlayerName>
+              }}>{p.name}</span>
               <span style={{
                 font: "400 10px var(--mono)", color: 'var(--dim)', textAlign: 'right',
               }}>{overallOf(p)}</span>
@@ -123,10 +130,10 @@ export function Lineup() {
               <span style={{
                 font: "700 11px var(--display)", letterSpacing: '.1em', color: 'var(--clay)',
               }}>{SLOTS[i]}</span>
-              <PlayerName id={p.id} style={{
+              <span style={{
                 font: "400 13px var(--body)",
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{p.name}</PlayerName>
+              }}>{p.name}</span>
               <span style={{
                 font: "400 10px var(--mono)", color: 'var(--dim)', textAlign: 'right',
               }}>{overallOf(p)}</span>

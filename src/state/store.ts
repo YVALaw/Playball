@@ -18,6 +18,7 @@ import {
   type SeasonState,
 } from '../engine/season.js';
 import type { GameResult } from '../engine/game.js';
+import { playerId } from '../engine/types.js';
 import type { Hitter, Pitcher, PlayerId, Tactic } from '../engine/types.js';
 import { createLiveGame, type LiveGame } from '../engine/liveGame.js';
 import { advanceOffseason, type OffseasonReport } from '../engine/progression.js';
@@ -30,7 +31,7 @@ import {
   runPostseason, freezeRegularSeason, stageConferenceTournaments, stageSelection,
   stageRegionals, stageOmaha, summarize,
   startBracket, stepBracket, nextGameFor, resultOf, pairKey,
-  seasonAwards, allConference,
+  seasonAwards, allConference, coachOfTheYear,
   conferenceField, conferenceIds, conferenceTournament, regionalGroups,
   doubleElimination,
   type BracketState,
@@ -132,7 +133,7 @@ export const TABS: readonly TabDef[] = [
   { id: 'team', label: 'TEAM', screens: [
     { id: 'roster', label: 'ROSTER' }, { id: 'lineup', label: 'LINEUP' }, { id: 'stats', label: 'STATS' }] },
   { id: 'season', label: 'SEASON', screens: [
-    { id: 'sched', label: 'SCHEDULE' }, { id: 'stand', label: 'STANDINGS' }, { id: 'rankings', label: 'RANKINGS' }] },
+    { id: 'sched', label: 'SCHEDULE' }, { id: 'stand', label: 'STANDINGS' }, { id: 'rankings', label: 'NATIONAL' }] },
 
   { id: 'program', label: 'PROGRAM', screens: [
     { id: 'records', label: 'PROGRAM' }, { id: 'history', label: 'HISTORY' }, { id: 'strategy', label: 'STRATEGY' }] },
@@ -140,6 +141,10 @@ export const TABS: readonly TabDef[] = [
 
 /** How far through the postseason we are, and what has happened so far. */
 export interface PostseasonProgress {
+  /**
+   * 'selection' and 'done' are gone as steps but stay in the type: a save
+   * written before this change can still be sitting on one, and it has to load.
+   */
   stage: 'conference' | 'selection' | 'regional' | 'omaha' | 'done';
   cups: ConferenceTournament[];
   field: Bid[];
@@ -368,6 +373,17 @@ function recordFor(state: DynastyStore): SeasonRecord | null {
     ...allConference(season).map((a) => ({ ...a, title: `All-conference ${a.position}` })),
   ].filter((a) => a.team === me.def.abbr)
     .map((a) => ({ title: a.title, name: a.name, id: a.id }));
+
+  // And yours, when you were the one who got more out of a roster than it was
+  // worth. It goes at the top: it is the only line on the page about you.
+  const coy = coachOfTheYear(season);
+  if (coy && coy.team === me.index) {
+    mine.unshift({
+      title: 'Coach of the Year',
+      name: state.coach.name,
+      id: playerId(state.coach.name),
+    });
+  }
   const winner = lastPostseason
     ? season.teams[lastPostseason.champion]?.def.school ?? '—'
     : '—';
@@ -829,22 +845,27 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, bracket, userTeam, version } = get();
     if (!season || !bracket) return;
 
-    // Playing a stage and moving past it are two different presses.
+    // Three stages, not four, and no press that does nothing.
     //
-    // Reported from testing: "once we lose it simply takes us to the selection
-    // — we have to see who wins". Computing a stage and advancing off it in the
-    // same press meant the result of the tournament you had just been knocked
-    // out of flashed past on its way to the next screen. Now the first press
-    // plays it, and the second one leaves.
+    // Selection used to be its own step, which meant a screen whose only content
+    // was a list and whose only action was to leave — "the selection phase seems
+    // pointless since we don't really do anything there", and it was. The field
+    // is announced as the regionals open, which is where it matters. Omaha ends
+    // the postseason directly rather than passing through a 'done' stage that
+    // looked identical and took a second press to get past.
     if (bracket.stage === 'conference') {
       if (bracket.cups.length > 0) {
-        set({ bracket: { ...bracket, stage: 'selection' }, version: version + 1 });
+        set({
+          bracket: {
+            ...bracket, stage: 'regional',
+            field: stageSelection(season, bracket.cups.map((c) => c.champion)),
+          },
+          version: version + 1,
+        });
       } else {
         const me = season.teams[userTeam];
         const mine = me ? conferenceField(season, me.conference) : null;
         if (me && mine && mine.field.includes(userTeam)) {
-          // The rest of the country is decided now. Yours is played a round at
-          // a time so the games you are in can be handed to you.
           const cups = conferenceIds(season)
             .filter((id) => id !== me.conference)
             .map((id) => conferenceTournament(season, id));
@@ -862,13 +883,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           bracket: { ...bracket, cups: stageConferenceTournaments(season) },
           version: version + 1,
         });
-      }
-    } else if (bracket.stage === 'selection') {
-      if (bracket.field.length > 0) {
-        set({ bracket: { ...bracket, stage: 'regional' }, version: version + 1 });
-      } else {
-        const field = stageSelection(season, bracket.cups.map((c) => c.champion));
-        set({ bracket: { ...bracket, field }, version: version + 1 });
       }
     } else if (bracket.stage === 'regional') {
       if (bracket.regionals.length > 0) {
@@ -896,7 +910,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       }
     } else if (bracket.stage === 'omaha') {
       if (bracket.omaha !== null) {
-        set({ bracket: { ...bracket, stage: 'done' }, version: version + 1 });
+        set({ bracket: null, phase: 'awards', version: version + 1 });
       } else {
         const champions = bracket.regionals.map((r) => r.champion);
         if (champions.includes(userTeam)) {
@@ -917,7 +931,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         });
       }
     } else {
-      // Finished. The offseason takes it from here.
+      // A save written while 'selection' or 'done' still existed as stages.
       set({ bracket: null, phase: 'awards', version: version + 1 });
     }
     void get().saveNow();

@@ -9,6 +9,7 @@ import { playGame, recordResult, onBase, slugging, era, inningsPitched, standing
 import type {
   BattingSeason, GameSummary, PitchingSeason, SeasonState, TeamRecord,
 } from './season.js';
+import { overallOf } from './ratings.js';
 import type { ClassYear, PlayerId, Position } from './types.js';
 import type { GameResult } from './game.js';
 
@@ -697,6 +698,75 @@ const pitcherValue = (s: PitchingSeason): number => {
   const leagueEra = 5.0;
   return ip * Math.max(0, leagueEra - era(s)) / 9 + s.k / 45;
 };
+
+/**
+ * Coach of the Year: the man who got the most out of the least.
+ *
+ * Not the most wins — that award belongs to whoever was handed the best roster,
+ * and giving it to him says nothing. This measures wins against what a roster
+ * that good should have produced, and the baseline is drawn from the league
+ * itself rather than a constant: fit wins against roster strength across all
+ * sixty four programs, then find whoever is furthest above the line.
+ *
+ * It is self-calibrating, so it keeps working if the engine's scoring, schedule
+ * length or talent spread ever move.
+ */
+export interface CoachAward {
+  team: number;
+  school: string;
+  wins: number;
+  losses: number;
+  /** What a roster this good was worth, to one decimal. */
+  expected: number;
+  strength: number;
+}
+
+export function coachOfTheYear(season: SeasonState): CoachAward | null {
+  const strengthOf = (t: TeamRecord): number => {
+    const all: number[] = [
+      ...t.team.lineup.map((p) => overallOf(p)),
+      ...t.team.rotation.slice(0, 3).map((p) => overallOf(p)),
+    ];
+    return all.length === 0 ? 50 : all.reduce((a, b) => a + b, 0) / all.length;
+  };
+
+  const rows = season.teams.map((t) => {
+    const rec = { w: t.rw ?? t.w, l: t.rl ?? t.l };
+    return { t, strength: strengthOf(t), wins: rec.w, losses: rec.l };
+  });
+  if (rows.length < 4) return null;
+
+  const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+  const ms = mean(rows.map((r) => r.strength));
+  const mw = mean(rows.map((r) => r.wins));
+  let cov = 0;
+  let varS = 0;
+  for (const r of rows) {
+    cov += (r.strength - ms) * (r.wins - mw);
+    varS += (r.strength - ms) ** 2;
+  }
+  const slope = varS > 0 ? cov / varS : 0;
+
+  // A losing season is not an overachievement however light the roster was.
+  const eligible = rows.filter((r) => r.wins > r.losses);
+  if (eligible.length === 0) return null;
+
+  let best = eligible[0] as typeof rows[number];
+  let bestGap = -Infinity;
+  for (const r of eligible) {
+    const expected = mw + slope * (r.strength - ms);
+    const gap = r.wins - expected;
+    if (gap > bestGap || (gap === bestGap && r.wins > best.wins)) { best = r; bestGap = gap; }
+  }
+  return {
+    team: best.t.index,
+    school: best.t.def.school,
+    wins: best.wins,
+    losses: best.losses,
+    expected: Math.round((mw + slope * (best.strength - ms)) * 10) / 10,
+    strength: Math.round(best.strength),
+  };
+}
 
 export function seasonAwards(season: SeasonState): Award[] {
   const roster = rosterIndex(season);

@@ -65,9 +65,11 @@ export function FloatingAction(
       <button
         onClick={onClick}
         style={{
-          width: '100%', padding: '15px 0',
+          width: '100%', padding: '15px 10px',
           background: 'var(--clay)', border: '1px solid var(--clay)',
-          color: 'var(--cream)', font: "700 12px var(--mono)", letterSpacing: '.14em',
+          color: 'var(--cream)', font: "700 12px/1.25 var(--mono)", letterSpacing: '.1em',
+          // Long labels wrap rather than running off the end of the button.
+          whiteSpace: 'normal', overflowWrap: 'anywhere',
           boxShadow: '0 2px 10px rgba(28,36,48,.22)',
         }}
       >{label}</button>

@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest';
 import { createSeason, simSeason, standings } from '../src/engine/season.js';
 import {
   doubleElimination, bestOf, conferenceTournament, seasonAwards, allConference, runPostseason,
+  coachOfTheYear, freezeRegularSeason,
 } from '../src/engine/postseason.js';
 import { makeRng } from '../src/engine/rng.js';
 
@@ -214,5 +215,37 @@ describe('the whole postseason', () => {
       (f) => f === 'omaha' || f === 'runner-up' || f === 'champion',
     );
     expect(inOmaha).toHaveLength(4);
+  });
+});
+
+describe('coach of the year', () => {
+  it('goes to overachievement, not to the best roster', () => {
+    // The award exists because "most wins" always lands on whoever was handed
+    // the best players, which says nothing about coaching. This pins the
+    // property that makes it worth having: the winner is not simply the team
+    // with the most wins, and never a team with a losing record.
+    const s = createSeason(makeRng(606));
+    simSeason(s);
+    freezeRegularSeason(s);
+
+    const award = coachOfTheYear(s);
+    expect(award).not.toBeNull();
+    expect(award!.wins).toBeGreaterThan(award!.losses);
+
+    // He beat his roster's worth.
+    expect(award!.wins).toBeGreaterThan(award!.expected);
+
+    // And across a handful of leagues it is not always the winningest team —
+    // if it were, the measurement would be doing nothing.
+    let sameAsMostWins = 0;
+    for (const seed of [11, 202, 3003, 4004, 5005]) {
+      const w = createSeason(makeRng(seed));
+      simSeason(w);
+      freezeRegularSeason(w);
+      const a = coachOfTheYear(w);
+      const most = [...w.teams].sort((x, y) => (y.rw ?? y.w) - (x.rw ?? x.w))[0]!;
+      if (a && a.team === most.index) sameAsMostWins += 1;
+    }
+    expect(sameAsMostWins).toBeLessThan(5);
   });
 });

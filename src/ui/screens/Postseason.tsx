@@ -13,6 +13,7 @@
 // game is listed with its winner, and finishing a tournament no longer skips
 // past its own result on the way to the next screen.
 
+import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FloatingAction } from '../Sticky.js';
 import { teamColour } from '../Avatar.js';
@@ -22,18 +23,18 @@ import type {
 } from '../../engine/postseason.js';
 
 const STAGE_TITLE: Record<string, string> = {
-  conference: 'Conference tournaments',
-  selection: 'Selection day',
+  conference: 'Conference tournament',
+  selection: 'The regionals',
   regional: 'The regionals',
   omaha: 'Omaha',
   done: 'The season is over',
 };
 
 const STAGE_LABEL: Record<string, string> = {
-  conference: 'STAGE 1 OF 4',
-  selection: 'STAGE 2 OF 4',
-  regional: 'STAGE 3 OF 4',
-  omaha: 'STAGE 4 OF 4',
+  conference: 'STAGE 1 OF 3',
+  selection: 'STAGE 2 OF 3',
+  regional: 'STAGE 2 OF 3',
+  omaha: 'STAGE 3 OF 3',
   done: 'FINAL',
 };
 
@@ -44,12 +45,8 @@ const LADDER: { key: string; name: string; blurb: string }[] = [
     blurb: 'Your conference plays a six team tournament. Double elimination: two losses and you are out. Win it and you are in the national field whatever your record says.',
   },
   {
-    key: 'selection', name: 'SELECTION',
-    blurb: 'The national field is announced. Sixteen teams — the eight conference champions, plus eight more chosen on RPI. Losing your conference tournament is not the end; this is the other way in.',
-  },
-  {
     key: 'regional', name: 'REGIONALS',
-    blurb: 'The sixteen split into four regionals of four. Double elimination again, so two losses ends your season. Win your regional and you go to Omaha.',
+    blurb: 'Sixteen teams — the eight conference champions plus eight at large on RPI — split into four regionals of four. Double elimination again, so two losses ends your season. Win yours and you go to Omaha.',
   },
   {
     key: 'omaha', name: 'OMAHA',
@@ -59,9 +56,9 @@ const LADDER: { key: string; name: string; blurb: string }[] = [
 
 /** What the button does when you play the stage. */
 const PLAY_LABEL: Record<string, string> = {
-  conference: 'PLAY THE CONFERENCE TOURNAMENTS',
-  selection: 'ANNOUNCE THE FIELD',
-  regional: 'PLAY THE REGIONALS',
+  conference: 'PLAY THE TOURNAMENT',
+  selection: 'PLAY THE REGIONAL',
+  regional: 'PLAY THE REGIONAL',
   omaha: 'PLAY OMAHA',
 };
 
@@ -73,16 +70,16 @@ const PLAY_LABEL: Record<string, string> = {
  * him play is the kind of thing that makes people think the game is broken.
  */
 const WATCH_LABEL: Record<string, string> = {
-  conference: 'PLAY THE CONFERENCE TOURNAMENTS',
-  selection: 'ANNOUNCE THE FIELD',
+  conference: 'PLAY THE TOURNAMENT',
+  selection: 'WATCH THE REGIONALS',
   regional: 'WATCH THE REGIONALS',
   omaha: 'SEE WHO WINS IT',
 };
 
 /** And what it does once the stage has been played and there is a result up. */
 const CONTINUE_LABEL: Record<string, string> = {
-  conference: 'ON TO SELECTION DAY',
-  selection: 'ON TO THE REGIONALS',
+  conference: 'ON TO THE REGIONALS',
+  selection: 'ON TO OMAHA',
   regional: 'ON TO OMAHA',
   omaha: 'END THE SEASON',
   done: 'END THE SEASON',
@@ -143,7 +140,7 @@ export function Postseason() {
     ? { label: 'PLAY THIS GAME', run: manage }
     : live
       ? out
-        ? { label: 'PLAY OUT THE TOURNAMENT', run: () => sim('rest') }
+        ? { label: 'PLAY IT OUT', run: () => sim('rest') }
         : { label: 'ON TO YOUR NEXT GAME', run: () => sim('until') }
       : stagePlayed
         ? { label: CONTINUE_LABEL[bracket.stage] ?? 'CONTINUE', run: advance }
@@ -223,7 +220,7 @@ export function Postseason() {
               text={myCup.champion === userTeam
                 ? `${team.def.school} win the conference — an automatic bid to the national field.`
                 : myCup.seeds.includes(userTeam)
-                  ? `${name(myCup.champion)} won it and take the automatic bid. You need an at-large place now, and those are handed out on selection day.`
+                  ? `${name(myCup.champion)} won it and take the automatic bid. You need an at-large place now, and the national field is announced next.`
                   : `You did not make the six team field. ${name(myCup.champion)} won it.`}
             />
           </Section>
@@ -240,7 +237,7 @@ export function Postseason() {
         </>
       )}
 
-      {bracket.field.length > 0 && (
+      {bracket.field.length > 0 && !live && bracket.regionals.length === 0 && (
         <Section title="THE NATIONAL FIELD">
           <Verdict
             good={inField}
@@ -331,6 +328,18 @@ function Standing(
  * results rather than a diagram of lines. This is what answers "how did the
  * regional get resolved if I won 2 and lost 2".
  */
+/**
+ * A tournament as rounds you tab between, with the games as cards.
+ *
+ * Modelled on how a real bracket app reads: pick a round, see the matchups,
+ * winner in black with the score, loser greyed out. The whole set of results at
+ * once was accurate and unreadable — sixteen lines of "DLT beat GLP" is a log,
+ * not a bracket.
+ *
+ * The first tab is the field itself, because double elimination has no shape a
+ * ladder can draw: a team can lose and still be playing, so "who is still alive"
+ * is a fact you have to state rather than something the diagram shows.
+ */
 function Board(
   { title, seeds, games, eliminated, champion, userTeam, name, abbr }:
   {
@@ -344,6 +353,8 @@ function Board(
     abbr: (i: number) => string;
   },
 ) {
+  const [tab, setTab] = useState(0);
+
   const record = (t: number) => {
     const mine = games.filter((g) => g.home === t || g.away === t);
     const w = mine.filter((g) => g.winner === t).length;
@@ -361,7 +372,6 @@ function Board(
     (a, b) => rank(a) - rank(b) || seeds.indexOf(a) - seeds.indexOf(b),
   );
 
-  // Games in the order they were played, grouped by round.
   const rounds: { round: string; games: BracketGame[] }[] = [];
   for (const g of games) {
     const last = rounds[rounds.length - 1];
@@ -369,76 +379,162 @@ function Board(
     else rounds.push({ round: g.round, games: [g] });
   }
 
+  const tabs = ['TEAMS', ...rounds.map((r) => shortRound(r.round))];
+  const here = Math.min(tab, tabs.length - 1);
+  const shown = rounds[here - 1];
+
   return (
     <>
       <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>{title}</div>
-      <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-        {order.map((t) => {
-          const r = record(t);
-          const gone = eliminated.includes(t);
-          const won = t === champion;
-          const mine = t === userTeam;
-          return (
-            <div key={t} style={{
-              display: 'grid', gridTemplateColumns: '22px 1fr auto auto',
-              gap: 8, alignItems: 'center',
-              padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
-              borderLeft: mine ? '3px solid var(--clay)' : '3px solid transparent',
-              background: mine ? 'rgba(168,68,42,.10)' : 'transparent',
-              opacity: gone && !mine ? 0.55 : 1,
-            }}>
-              <span style={{
-                font: "700 10px var(--mono)", color: 'var(--dim)',
-              }}>{seeds.indexOf(t) + 1}</span>
-              <span style={{
-                font: `${mine || won ? 700 : 400} 12px var(--body)`,
-                color: mine ? 'var(--clay)' : 'var(--ink)',
-                textDecoration: gone ? 'line-through' : 'none',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{name(t)}</span>
-              <span style={{
-                font: "600 11px var(--mono)", color: 'var(--dim)',
-              }}>{r.w}-{r.l}</span>
-              <span style={{
-                font: "700 8px var(--mono)", letterSpacing: '.1em', minWidth: 52,
-                textAlign: 'right',
-                color: won ? 'var(--win)' : gone ? 'var(--dim)' : 'var(--clay)',
-              }}>{won ? 'CHAMPION' : gone ? 'OUT' : 'ALIVE'}</span>
-            </div>
-          );
-        })}
+
+      {/* The round strip. Scrolls sideways rather than wrapping, so the shape of
+          the tournament stays one line however deep it goes. */}
+      <div style={{
+        display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 4,
+        WebkitOverflowScrolling: 'touch',
+      }}>
+        {tabs.map((t, i) => (
+          <button
+            key={i}
+            onClick={() => setTab(i)}
+            style={{
+              flex: 'none', padding: '7px 11px', whiteSpace: 'nowrap',
+              background: i === here ? 'var(--clay)' : 'var(--paper)',
+              border: `1px solid ${i === here ? 'var(--clay)' : 'rgba(28,36,48,.22)'}`,
+              color: i === here ? 'var(--cream)' : 'var(--dim)',
+              font: "700 9px var(--mono)", letterSpacing: '.1em',
+            }}
+          >{t}</button>
+        ))}
       </div>
 
-      {rounds.map((r, i) => (
-        <div key={i} style={{ marginTop: 10 }}>
-          <div className="label" style={{ marginBottom: 4 }}>{r.round.toUpperCase()}</div>
-          <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-            {r.games.map((g, j) => (
-              <div key={j} style={{
-                display: 'grid', gridTemplateColumns: '1fr auto',
-                gap: 8, alignItems: 'baseline',
-                padding: '6px 10px', borderBottom: '1px solid var(--hairline)',
+      {here === 0 ? (
+        <div style={{
+          marginTop: 8, border: '1px solid var(--faint)', background: 'var(--paper)',
+        }}>
+          {order.map((t) => {
+            const r = record(t);
+            const gone = eliminated.includes(t);
+            const won = t === champion;
+            const mine = t === userTeam;
+            return (
+              <div key={t} style={{
+                display: 'grid', gridTemplateColumns: '22px 1fr auto auto',
+                gap: 8, alignItems: 'center',
+                padding: '9px 10px', borderBottom: '1px solid var(--hairline)',
+                borderLeft: mine ? '3px solid var(--clay)' : '3px solid transparent',
+                background: mine ? 'rgba(168,68,42,.10)' : 'transparent',
+                opacity: gone && !mine ? 0.55 : 1,
               }}>
-                <span style={{ font: "400 11.5px var(--body)" }}>
-                  <span style={{
-                    fontWeight: 700,
-                    color: g.winner === userTeam ? 'var(--clay)' : 'var(--ink)',
-                  }}>{abbr(g.winner)}</span>
-                  <span style={{ color: 'var(--dim)' }}> beat </span>
-                  <span style={{
-                    color: g.loser === userTeam ? 'var(--clay)' : 'var(--dim)',
-                  }}>{abbr(g.loser)}</span>
-                </span>
-                <span style={{ font: "600 11px var(--mono)" }}>
-                  {Math.max(g.homeRuns, g.awayRuns)}-{Math.min(g.homeRuns, g.awayRuns)}
-                </span>
+                <span style={{
+                  font: "700 10px var(--mono)", color: 'var(--dim)',
+                }}>{seeds.indexOf(t) + 1}</span>
+                <span style={{
+                  font: `${mine || won ? 700 : 400} 12.5px var(--body)`,
+                  color: mine ? 'var(--clay)' : 'var(--ink)',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{name(t)}</span>
+                <span style={{
+                  font: "600 11px var(--mono)", color: 'var(--dim)',
+                }}>{r.w}-{r.l}</span>
+                <span style={{
+                  font: "700 8px var(--mono)", letterSpacing: '.1em', minWidth: 52,
+                  textAlign: 'right',
+                  color: won ? 'var(--win)' : gone ? 'var(--dim)' : 'var(--clay)',
+                }}>{won ? 'CHAMPION' : gone ? 'OUT' : 'ALIVE'}</span>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
-      ))}
+      ) : (
+        <div style={{ marginTop: 8 }}>
+          {(shown?.games ?? []).map((g, i) => (
+            <Matchup
+              key={i}
+              game={g}
+              round={shown?.round ?? ''}
+              seeds={seeds}
+              userTeam={userTeam}
+              name={name}
+              abbr={abbr}
+            />
+          ))}
+        </div>
+      )}
     </>
   );
+}
+
+/** One game, as a card: both teams, seeds, score, winner in black. */
+function Matchup(
+  { game, round, seeds, userTeam, name, abbr }:
+  {
+    game: BracketGame; round: string; seeds: readonly number[]; userTeam: number;
+    name: (i: number) => string; abbr: (i: number) => string;
+  },
+) {
+  const rows: { team: number; runs: number }[] = [
+    { team: game.home, runs: game.homeRuns },
+    { team: game.away, runs: game.awayRuns },
+  ].sort((a, b) => b.runs - a.runs);
+
+  return (
+    <div style={{
+      marginBottom: 8, background: 'var(--paper)',
+      border: '1px solid var(--faint)',
+      boxShadow: '0 1px 3px rgba(28,36,48,.07)',
+    }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '7px 11px', borderBottom: '1px solid var(--hairline)',
+      }}>
+        <span className="label">{round}</span>
+        <span style={{
+          font: "700 9px var(--mono)", letterSpacing: '.12em', color: 'var(--dim)',
+        }}>FINAL</span>
+      </div>
+      {rows.map((r, i) => {
+        const winner = r.team === game.winner;
+        const mine = r.team === userTeam;
+        return (
+          <div key={i} style={{
+            display: 'grid', gridTemplateColumns: '30px 22px 1fr auto',
+            gap: 8, alignItems: 'center', padding: '10px 11px',
+          }}>
+            <span style={{
+              width: 26, height: 26, borderRadius: '50%',
+              background: teamColour(abbr(r.team)),
+              color: 'var(--cream)', font: "700 11px var(--mono)",
+              display: 'grid', placeItems: 'center',
+              opacity: winner ? 1 : 0.5,
+            }}>{abbr(r.team).slice(0, 1)}</span>
+            <span style={{
+              font: "700 10px var(--mono)", color: 'var(--dim)', textAlign: 'right',
+            }}>{seeds.indexOf(r.team) + 1}</span>
+            <span style={{
+              font: `${winner ? 700 : 400} 13.5px var(--body)`,
+              color: mine ? 'var(--clay)' : winner ? 'var(--ink)' : 'var(--dim)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>{name(r.team)}</span>
+            <span style={{
+              font: `${winner ? 700 : 400} 15px var(--mono)`,
+              color: winner ? 'var(--ink)' : 'var(--dim)',
+            }}>{r.runs}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** "Winners round 2" is a tab label of about four characters. */
+function shortRound(round: string): string {
+  const m = /(\d+)/.exec(round);
+  if (/^Championship, if/i.test(round)) return 'GAME 2';
+  if (/^Championship/i.test(round)) return 'FINAL';
+  if (/^Winners/i.test(round)) return `W${m ? m[1] : ''}`;
+  if (/^Elimination/i.test(round)) return `E${m ? m[1] : ''}`;
+  return round.toUpperCase();
 }
 
 /** Who hosts: the better seed, which is exactly how the bracket decides it. */

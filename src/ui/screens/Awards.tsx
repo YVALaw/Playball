@@ -7,7 +7,7 @@
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FloatingAction } from '../Sticky.js';
 import { seasonComplete } from '../../engine/season.js';
-import { seasonAwards, allConference } from '../../engine/postseason.js';
+import { seasonAwards, allConference, coachOfTheYear } from '../../engine/postseason.js';
 
 export function Awards() {
   // Rendered both as a normal screen and as a step of the offseason. The
@@ -19,6 +19,7 @@ export function Awards() {
   const year = useDynasty((s) => s.year);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
+  const coachName = useDynasty((s) => s.coach.name);
   void version;
 
   if (!season || !team) return null;
@@ -39,6 +40,7 @@ export function Awards() {
 
   const awards = seasonAwards(season);
   const first = allConference(season);
+  const coach = coachOfTheYear(season);
 
   return (
     <div style={{ padding: '12px 14px 16px' }}>
@@ -48,6 +50,46 @@ export function Awards() {
           font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
         }}>Awards</div>
       </div>
+
+      {/*
+        Coach of the Year, which is not the most wins.
+        
+        That award always goes to whoever was handed the best roster, and it
+        says nothing. This one is wins measured against what a roster that good
+        should have been worth — the line is fit across the whole league, so a
+        thirty win team with thirty win talent finishes behind a twenty four win
+        team that had no business winning twenty.
+      */}
+      {coach && (
+        <div style={{
+          marginTop: 12,
+          border: `1px solid ${coach.team === team.index ? 'var(--clay)' : 'var(--faint)'}`,
+          background: 'var(--paper)',
+        }}>
+          <div style={{ padding: '6px 10px', background: 'var(--clay)' }}>
+            <span style={{
+              font: "600 9px var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
+            }}>COACH OF THE YEAR</span>
+          </div>
+          <div style={{ padding: '10px 12px 12px' }}>
+            <div style={{
+              font: "800 20px/1 var(--display)", textTransform: 'uppercase',
+              color: coach.team === team.index ? 'var(--clay)' : 'var(--ink)',
+            }}>{coach.team === team.index ? `${coachName} — ${coach.school}` : coach.school}</div>
+            <div style={{
+              marginTop: 5, font: "400 11.5px var(--mono)", color: 'var(--dim)',
+            }}>
+              {coach.wins}-{coach.losses} with a roster worth {coach.expected} wins
+            </div>
+            <div style={{
+              marginTop: 7, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
+            }}>
+              {(coach.wins - coach.expected).toFixed(1)} wins above what that roster
+              should have produced — the most in the country.
+            </div>
+          </div>
+        </div>
+      )}
 
       {awards.map((a) => {
         const ours = a.team === team.def.abbr;
