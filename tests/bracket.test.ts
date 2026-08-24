@@ -20,7 +20,7 @@ import {
   conferenceLengths, REGIONAL_LENGTHS, NATIONAL_LENGTHS, REGIONS, regionOf,
   CONF_FIELD, SERIES,
 } from '../src/engine/postseason.js';
-import { createSeason, simSeason } from '../src/engine/season.js';
+import { createSeason, simSeason, currentDay, restedFirst } from '../src/engine/season.js';
 import { makeRng } from '../src/engine/rng.js';
 import { simGame } from '../src/engine/game.js';
 
@@ -119,6 +119,124 @@ describe('a series', () => {
     expect(clincher(3)).toBe(2);
     expect(clincher(5)).toBe(3);
     expect(clincher(7)).toBe(4);
+  });
+});
+
+describe('June has a calendar', () => {
+  // The postseason used to run on `dayIndex` — an array position, forty five,
+  // while the last regular season game had been played on day seventy eight.
+  // Everything that asks how long ago a pitcher threw got the answer backwards.
+  it('starts after the last regular season game and moves a day per round', () => {
+    const s = world(717);
+    const last = s.schedule[s.schedule.length - 1]?.day ?? 0;
+    expect(currentDay(s)).toBeGreaterThan(last);
+
+    const opened = currentDay(s);
+    const b = startSeriesBracket(s, [0, 1, 2, 3], [3, 3]);
+    stepBracket(b);
+    expect(currentDay(s)).toBe(opened + 1);
+    stepBracket(b);
+    expect(currentDay(s)).toBe(opened + 2);
+  });
+
+  it('leaves an arm that just worked at the back of the pen, not the front', () => {
+    // The bug this pins: a bracket appearance was stamped with a day *earlier*
+    // than every regular season game, so the reliever who had just thrown read
+    // as the freshest man on the staff and came out again in the next game —
+    // the same two or three arms carrying a team through the whole of June.
+    const s = world(818);
+    freezeRegularSeason(s);
+    const before = new Map(s.lastPitched);
+    const { field } = conferenceField(s, s.teams[0]?.conference ?? 'GULF');
+    const b = startSeriesBracket(s, field, conferenceLengths());
+    stepBracket(b);
+
+    let checked = 0;
+    for (const team of field.map((i) => s.teams[i])) {
+      if (!team) continue;
+      const order = restedFirst(s, team);
+      // Whoever's last outing moved tonight is who worked the bracket game.
+      const worked = new Set(order
+        .filter((p) => s.lastPitched.get(p.id) !== before.get(p.id))
+        .map((p) => p.id));
+      if (worked.size === 0 || worked.size === order.length) continue;
+
+      checked += 1;
+      const firstWorked = order.findIndex((p) => worked.has(p.id));
+      // Everybody who threw last night sits behind everybody who did not.
+      expect(firstWorked).toBe(order.length - worked.size);
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it('gives every postseason game its own box score instead of one shared key', () => {
+    const s = world(919);
+    s.captureBoxFor = 0;
+    freezeRegularSeason(s);
+    const before = Object.keys(s.boxScores).length;
+    const { field } = conferenceField(s, s.teams[0]?.conference ?? 'GULF');
+    const b = startSeriesBracket(s, field, conferenceLengths());
+    let guard = 0;
+    while (!b.done && guard++ < 100) stepBracket(b);
+
+    const mine = b.rounds.flat()
+      .flatMap((x) => x.games)
+      .filter((g) => g.home === 0 || g.away === 0);
+    expect(mine.length).toBeGreaterThan(1);
+    // One key each. They all collided on `dayIndex` before, so a run to the
+    // final left exactly one box score behind.
+    expect(Object.keys(s.boxScores).length - before).toBe(mine.length);
+    expect(new Set(mine.map((g) => g.day)).size).toBe(mine.length);
+  });
+});
+
+describe('rotations in a bracket', () => {
+  it('runs each side down its own rotation, not the host\'s', () => {
+    // A team arriving off a bye and a team that has just played three games in
+    // three days are not both on their Friday arm. The bracket used to take one
+    // count — the host's — and hand it to both dugouts, so every game of every
+    // series was ace against ace and third starter against third starter.
+    //
+    // Played through several conferences because the property needs a semifinal
+    // where the two sides are genuinely at different points in their week.
+    let checked = 0;
+    for (const seed of [1021, 1022, 1023, 1024]) {
+      const s = world(seed);
+      freezeRegularSeason(s);
+
+      for (const conf of conferenceIds(s)) {
+        const { field } = conferenceField(s, conf);
+        s.captureBoxFor = field[0] as number;   // the top seed, who has a bye
+        const b = startSeriesBracket(s, field, conferenceLengths());
+        let guard = 0;
+        while (b.roundIndex === 0 && guard++ < 20) stepBracket(b);
+        stepBracket(b);                          // one semifinal game
+
+        const semi = (b.rounds[1] as { a: number | null; b: number | null; games: { day: number; home: number; away: number }[] }[])
+          .find((x) => x.games.length > 0 && (x.a === s.captureBoxFor || x.b === s.captureBoxFor));
+        const game = semi?.games[0];
+        const box = game ? s.boxScores[game.day] : undefined;
+        if (!box) continue;
+
+        const slotOf = (team: number, name: string): number =>
+          s.teams[team]?.team.rotation.findIndex((p) => p.name === name) ?? -1;
+        const homeStarter = slotOf(box.home, box.homePitching[0]?.name ?? '');
+        const awayStarter = slotOf(box.away, box.awayPitching[0]?.name ?? '');
+        if (homeStarter < 0 || awayStarter < 0) continue;
+
+        // Each side threw the arm its own tournament so far had come round to.
+        // `appearances` counts this game, so a turn back is one fewer.
+        const turn = (t: number): number =>
+          (((b.appearances.get(t) ?? 1) - 1) % 3 + 3) % 3;
+        expect(homeStarter).toBe(turn(box.home));
+        expect(awayStarter).toBe(turn(box.away));
+        // And at least once the two dugouts must be at different points in
+        // their week, which is the thing a single shared count made impossible.
+        if (homeStarter !== awayStarter) checked += 1;
+      }
+      if (checked >= 2) break;
+    }
+    expect(checked).toBeGreaterThan(0);
   });
 });
 

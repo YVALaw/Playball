@@ -50,9 +50,29 @@ export function Manage() {
   const logRef = useRef<HTMLDivElement>(null);
   void version;
 
+  /**
+   * The log follows the game down.
+   *
+   * A play resolves two or three lines at once and a simmed rest of the game
+   * resolves thirty, and snapping the scroll to the bottom made the text jump
+   * out from under whoever was reading it — the same complaint as the map
+   * camera, on a smaller board. It glides instead. The very first tail is still
+   * a jump: joining a game already in progress and then watching it scroll down
+   * from the top would be showing you the wrong innings on the way past.
+   */
+  const tailed = useRef(false);
   useEffect(() => {
     const el = logRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    const smooth = tailed.current
+      && !(typeof window.matchMedia === 'function'
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    tailed.current = true;
+    if (!smooth || typeof el.scrollTo !== 'function') {
+      el.scrollTop = el.scrollHeight;
+      return;
+    }
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   });
 
   // Follow the ball. `lastPlay` is cleared on every submit, so whatever contact

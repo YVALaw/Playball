@@ -321,6 +321,19 @@ export interface SeasonState {
    * that was actually played, and seeding would disagree with itself.
    */
   finalOrder: number[] | null;
+  /**
+   * What day it is once the schedule has run out, on the schedule's own
+   * calendar. Null until the first bracket game is played.
+   *
+   * June needs a date for the same reason May does. Without one the postseason
+   * fell back on `dayIndex`, which is an array position and not a date at all —
+   * forty five, while the last regular season game was played on day seventy
+   * eight. Everything that asks how long ago a pitcher threw got the answer
+   * backwards: an arm that had just worked the bracket looked *fresher* than one
+   * that had been resting since May, so the same reliever came out of the pen in
+   * every game of every round. Box scores collided on the one key too.
+   */
+  postseasonDay?: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -567,6 +580,7 @@ export function createSeason(
     careers: {},
     recruiting: generateClass(0, teams.length, rng),
     finalOrder: null,
+    postseasonDay: null,
   };
 }
 
@@ -623,6 +637,9 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
     // A new class every year. Last year's board is spent.
     recruiting: generateClass(prev.recruiting.year + 1, teams.length, prev.rng),
     finalOrder: null,
+    // June belongs to the year it was played in. A new season opens on its own
+    // schedule, and the clock picks up again from the last day of it.
+    postseasonDay: null,
   };
 }
 
@@ -706,6 +723,15 @@ export interface PlayOptions {
   conference?: boolean;
   /** Rotation slot for both sides. */
   slot?: number;
+  /**
+   * Rotation slot for one side only, where the two teams are not at the same
+   * point in their week. A weekend series runs both rotations in step and wants
+   * `slot`; a bracket does not, because a team that has played three games in
+   * this tournament and a team that has played none are not both on their
+   * Friday arm.
+   */
+  homeSlot?: number;
+  awaySlot?: number;
   day?: number;
   /** Whether the result moves records and streaks. Statistics always accumulate. */
   standings?: boolean;
@@ -714,10 +740,40 @@ export interface PlayOptions {
 }
 
 /**
- * Play one game and fold it into the season. Shared by the regular season and
- * the postseason so both accumulate statistics the same way — NCAA season
- * totals include tournament play, and two code paths would drift.
+ * The date the postseason opens: a few days after the last regular season game,
+ * which is roughly the gap the real calendar leaves for it.
  */
+export function firstPostseasonDay(season: SeasonState): number {
+  const last = season.schedule[season.schedule.length - 1]?.day;
+  return (last ?? season.dayIndex) + 3;
+}
+
+/**
+ * Today, on the schedule's own calendar.
+ *
+ * Read the fixture while there is one, and the postseason clock after that. One
+ * answer for the whole engine, so rest, box scores and result dates cannot
+ * disagree about what day a game was played on.
+ */
+export function currentDay(season: SeasonState): number {
+  return season.schedule[season.dayIndex]?.day
+    ?? season.postseasonDay
+    ?? firstPostseasonDay(season);
+}
+
+/**
+ * One more night of the postseason.
+ *
+ * A bracket round is a night, so arms recover between rounds and a bullpen
+ * emptied in game one is not the first thing a manager reaches for in game two.
+ * Ignored while the schedule still has days left in it: the regular season gets
+ * its dates from the fixture list, not from here.
+ */
+export function advancePostseasonDay(season: SeasonState): void {
+  if (!seasonComplete(season)) return;
+  season.postseasonDay = currentDay(season) + 1;
+}
+
 /**
  * Relief order for one game: longest rested first, ties broken by quality so a
  * manager reaches for his best available arm rather than an arbitrary one.
@@ -727,7 +783,7 @@ export interface PlayOptions {
  * a reason to leave five pitchers idle in the meantime.
  */
 export function restedFirst(season: SeasonState, team: TeamRecord): Pitcher[] {
-  const day = season.schedule[season.dayIndex]?.day ?? season.dayIndex;
+  const day = currentDay(season);
   return [...team.team.bullpen].sort((a, b) => {
     const restA = day - (season.lastPitched.get(a.id) ?? -99);
     const restB = day - (season.lastPitched.get(b.id) ?? -99);
@@ -780,6 +836,11 @@ function restedLineup(team: Team, rng: Rng): readonly Hitter[] | undefined {
   return lineup;
 }
 
+/**
+ * Play one game and fold it into the season. Shared by the regular season and
+ * the postseason so both accumulate statistics the same way — NCAA season
+ * totals include tournament play, and two code paths would drift.
+ */
 export function playGame(
   season: SeasonState,
   homeIndex: number,
@@ -798,8 +859,8 @@ export function playGame(
 
   const result = simGame(home.team, away.team, season.rng, {
     engine: season.config.engine,
-    homeStarter: slot,
-    awayStarter: slot,
+    homeStarter: opts.homeSlot ?? slot,
+    awayStarter: opts.awaySlot ?? slot,
     ...(homeLineup ? { homeLineup } : {}),
     ...(awayLineup ? { awayLineup } : {}),
     homeStrategy: home.strategy,
@@ -815,14 +876,6 @@ export function playGame(
     playEvents: opts.capture ?? false,
   });
   if (opts.capture) opts.onCapture?.(result);
-
-  // Whoever threw is unavailable for a while. Recorded for both sides.
-  const today = opts.day ?? season.dayIndex;
-  for (const side of [result.home, result.away]) {
-    for (const line of side.pitching.values()) {
-      if (line.outs > 0 || line.bf > 0) season.lastPitched.set(line.player.id, today);
-    }
-  }
 
   return recordResult(season, homeIndex, awayIndex, result, opts);
 }
@@ -878,6 +931,16 @@ export function recordResult(
   const away = season.teams[awayIndex];
   if (!home || !away) throw new Error('unknown team index');
   const conference = opts.conference ?? true;
+  const today = opts.day ?? currentDay(season);
+
+  // Whoever threw is unavailable for a while. Recorded here rather than in
+  // `playGame` so a game the manager played himself carries the same cost as a
+  // simulated one — it arrives through this door and no other.
+  for (const side of [result.home, result.away]) {
+    for (const line of side.pitching.values()) {
+      if (line.outs > 0 || line.bf > 0) season.lastPitched.set(line.player.id, today);
+    }
+  }
 
   const hr = result.home.runs;
   const ar = result.away.runs;
@@ -888,9 +951,8 @@ export function recordResult(
   // simulated, or managed pitch by pitch. Both arrive here.
   const keepFor = season.captureBoxFor;
   if (keepFor !== null && (homeIndex === keepFor || awayIndex === keepFor)) {
-    const day = opts.day ?? season.dayIndex;
-    season.boxScores[day] = {
-      day, home: homeIndex, away: awayIndex,
+    season.boxScores[today] = {
+      day: today, home: homeIndex, away: awayIndex,
       homeRuns: hr, awayRuns: ar, innings: result.innings,
       homeBatting: battingLines(result.home),
       awayBatting: battingLines(result.away),
@@ -930,7 +992,7 @@ export function recordResult(
   foldSide(season, result.away, !homeWon, margin, decision);
 
   const summary: GameSummary = {
-    day: opts.day ?? -1,
+    day: today,
     home: homeIndex,
     away: awayIndex,
     homeRuns: hr,

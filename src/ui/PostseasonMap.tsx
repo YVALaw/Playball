@@ -10,8 +10,12 @@
 // Panning writes the transform straight to the node and commits to React state
 // only on release. The board carries a few thousand descendants, and a render
 // that big between the touch and the movement is what makes a map feel dead.
+//
+// Camera moves the *app* makes travel; camera moves your *finger* makes do not.
+// Both go down the same imperative path, so an eased move costs no more renders
+// than a drag does.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { teamColour } from './Avatar.js';
 import {
   buildGraph, layoutGraph, CARD_W, COL_W, SECTION_GAP, CHAMP_W,
@@ -43,6 +47,35 @@ const TAB_NAME: Record<Section, string> = {
 const MARGIN_X = 0.45;
 const MARGIN_Y = 0.3;
 const PAD = 12;
+
+/**
+ * How long a camera move the app makes takes to travel.
+ *
+ * Simulating a game re-points the camera, and a re-point that lands in a single
+ * frame reads as the board being pulled out from under you. Scaled by how far
+ * it actually has to go on screen: a flight across the bracket gets the top of
+ * this range so the eye can keep hold of the board on the way past, and a small
+ * correction gets the bottom of it, because a forty pixel nudge that takes as
+ * long as a traverse reads as lag rather than as care.
+ */
+const GLIDE_MIN_MS = 170;
+const GLIDE_MAX_MS = 460;
+/** The screen distance beyond which a move is as slow as it will ever get. */
+const GLIDE_FULL_PX = 520;
+
+/** Ease in and out, so the camera sets off and arrives rather than cutting. */
+const ease = (t: number): number =>
+  (t < 0.5 ? 4 * t * t * t : 1 - ((-2 * t + 2) ** 3) / 2);
+
+/**
+ * A large area of the screen sliding is exactly what this setting is about, so
+ * the same moves happen instantly when it is on. Read at the moment of the
+ * move rather than once at mount: the preference can be changed mid-session.
+ */
+const wantsNoMotion = (): boolean =>
+  typeof window !== 'undefined'
+  && typeof window.matchMedia === 'function'
+  && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** Names, abbreviations, colour marks. `k: null` means fit the whole board. */
 const DENSITIES = [
@@ -85,6 +118,15 @@ export function PostseasonMap(
   const dragRef = useRef<
     { x: number; y: number; cam: { x: number; y: number }; id: number } | null
   >(null);
+  /** The frame handle of a move in flight, and null when the camera is still. */
+  const tweenRef = useRef<number | null>(null);
+  /**
+   * Which tier the camera was last pointed at.
+   *
+   * A move within a tier is a move across a board that is still there. A move
+   * between tiers is not — see the follow effect below.
+   */
+  const lastViewRef = useRef<Section | null>(null);
 
   const [dens, setDens] = useState(1);
   const [cam, setCam] = useState({ x: 0, y: 0 });
@@ -236,6 +278,74 @@ export function PostseasonMap(
     const off = offsetFor(c, kk);
     el.style.transform = `translate3d(${off.x}px,${off.y}px,0) scale(${kk})`;
   };
+  // Held in a ref so a move already in flight keeps writing through the current
+  // layout and the current box size. The map shrinks to fit a short tier, so
+  // both can change under a move that is halfway through it.
+  const applyRef = useRef(applyTransform);
+  applyRef.current = applyTransform;
+
+  const stopGlide = (): void => {
+    if (tweenRef.current === null) return;
+    cancelAnimationFrame(tweenRef.current);
+    tweenRef.current = null;
+  };
+
+  /**
+   * Take the camera to a focal point over time.
+   *
+   * Every frame goes straight to the node, exactly as a drag does. Easing this
+   * by re-rendering would put a few thousand descendants between the tween and
+   * the glass sixty times a second, which is the one thing this file is
+   * arranged to avoid — and `cam` is therefore only committed once the move is
+   * over, because a render carrying the destination would write it to the node
+   * and cut the travel short.
+   */
+  const glideTo = (to: { x: number; y: number }, kk: number, cut: boolean): void => {
+    // Wherever it is right now, which is what makes a target arriving mid-move
+    // pick up from here instead of restarting from where the last one began.
+    stopGlide();
+    const from = camRef.current;
+    const a = offsetFor(from, kk);
+    const b = offsetFor(to, kk);
+    const dist = Math.hypot(b.x - a.x, b.y - a.y);
+    if (cut || dist < 1 || wantsNoMotion()) {
+      camRef.current = to;
+      applyRef.current(to, kk);
+      setCam(to);
+      return;
+    }
+    const dur = GLIDE_MIN_MS
+      + (GLIDE_MAX_MS - GLIDE_MIN_MS) * Math.min(1, dist / GLIDE_FULL_PX);
+    const t0 = performance.now();
+    const step = (now: number): void => {
+      const t = Math.min(1, (now - t0) / dur);
+      const e = ease(t);
+      const c = { x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e };
+      camRef.current = c;
+      applyRef.current(c, kk);
+      if (t < 1) {
+        tweenRef.current = requestAnimationFrame(step);
+        return;
+      }
+      tweenRef.current = null;
+      setCam(to);
+    };
+    tweenRef.current = requestAnimationFrame(step);
+  };
+
+  // A move outlives nothing. Cancel on the way out or the next frame writes to
+  // a node that is no longer on the page.
+  useEffect(() => () => {
+    if (tweenRef.current !== null) cancelAnimationFrame(tweenRef.current);
+  }, []);
+
+  useLayoutEffect(() => {
+    // React writes the transform from `cam` on every commit, and commits land
+    // in the middle of both kinds of movement: the zoom crossfades as soon as
+    // it is pressed, and the store keeps rendering behind the map. Either would
+    // snap the board to the last committed camera. Put the live one back.
+    if (tweenRef.current !== null || dragRef.current) applyRef.current(camRef.current, k);
+  });
 
   useEffect(() => {
     const el = viewRef.current;
@@ -270,19 +380,30 @@ export function PostseasonMap(
     const c = p
       ? { x: p.x + p.w / 2, y: p.y + p.h / 2 }
       : { x: layout.totalW / 2, y: layout.totalH / 2 };
-    camRef.current = c;
-    applyTransform(c, k);
-    setCam(c);
+    // Within a tier the camera travels; across tiers it cuts.
+    //
+    // Each tier is laid out from its own origin, so the point being left and
+    // the point being arrived at are numbers in two different coordinate
+    // spaces — a slide between them traverses a board that does not exist, over
+    // nodes that were all replaced in the same commit. A cut is honest about
+    // what happened: you are somewhere else now. The first paint cuts for the
+    // same reason, there being nowhere to have travelled from.
+    const cut = lastViewRef.current !== view;
+    lastViewRef.current = view;
+    glideTo(c, k, cut);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusKey, layout, view]);
 
   // --- pointer panning -----------------------------------------------------
   const onDown = (e: React.PointerEvent): void => {
+    // A finger on the glass owns the board outright. Dropping the move here
+    // rather than letting it finish is what keeps it from fighting the drag,
+    // and taking the drag origin from `camRef` — wherever the move had got to —
+    // is what keeps the board from snapping back to where it set off from.
+    stopGlide();
     dragRef.current = {
       x: e.clientX, y: e.clientY, cam: camRef.current, id: e.pointerId,
     };
-    const el = canvasRef.current;
-    if (el) el.style.transition = 'none';
     if (overlayRef.current) overlayRef.current.style.opacity = '0.16';
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
   };
@@ -300,8 +421,6 @@ export function PostseasonMap(
     const d = dragRef.current;
     if (!d) return;
     dragRef.current = null;
-    const el = canvasRef.current;
-    if (el) el.style.transition = '';
     if (overlayRef.current) overlayRef.current.style.opacity = '1';
     try { e.currentTarget.releasePointerCapture(d.id); } catch { /* already gone */ }
 
@@ -324,17 +443,24 @@ export function PostseasonMap(
           const off = offsetFor(camRef.current, k);
           return { x: (size.w / 2 - off.x) / k, y: (size.h / 2 - off.y) / k };
         })();
-    camRef.current = c;
-    applyTransform(c, scaleFor(i));
-    setCam(c);
+    // The zoom itself is a step, not a slide. Three fixed cameras is the whole
+    // idea, the label layers crossfade to carry the change, and a scale that
+    // ramps would have to ramp the drag's pixels-per-unit with it. What eases
+    // is only where the camera has to sit afterwards — which for the two close
+    // cameras is barely anywhere, since the point under the middle of the
+    // screen is deliberately the point kept.
+    glideTo(c, scaleFor(i), false);
     setDens(i);
   };
 
   const goView = (st: Section): void => {
     if (st === view) return;
     // A drag in progress belongs to the layout that is going away, and its
-    // start point means nothing in the next one.
+    // start point means nothing in the next one. Same for a move in flight:
+    // the follow effect will re-point the camera in the new tier's own
+    // coordinates the moment the layout lands.
     dragRef.current = null;
+    stopGlide();
     setView(st);
   };
 
@@ -464,8 +590,12 @@ export function PostseasonMap(
           style={{
             position: 'absolute', left: 0, top: 0, transformOrigin: '0 0',
             willChange: 'transform', pointerEvents: 'none',
+            // No CSS transition on the transform. Panning writes this property
+            // once per pointer event and a move writes it once per frame, so a
+            // transition would restart on every write and turn both into mush —
+            // and it could not be trusted to stay off the drag either, since
+            // React only re-applies an inline style whose value has changed.
             transform: `translate3d(${off.x}px,${off.y}px,0) scale(${k})`,
-            transition: 'transform 620ms cubic-bezier(.24,.9,.26,1)',
           }}
         >
           {graph.brackets.map((b) => {

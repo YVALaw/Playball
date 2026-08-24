@@ -5,7 +5,10 @@
 // size, and best-of-N series — so the same code runs a national bracket the day
 // the world grows past one conference. See the note on scope at the bottom.
 
-import { playGame, recordResult, onBase, slugging, era, inningsPitched, standings, rpiOrder } from './season.js';
+import {
+  playGame, recordResult, onBase, slugging, era, inningsPitched, standings, rpiOrder,
+  advancePostseasonDay,
+} from './season.js';
 import type {
   BattingSeason, GameSummary, PitchingSeason, SeasonState, TeamRecord,
 } from './season.js';
@@ -62,18 +65,22 @@ export const pairKey = (a: number, b: number): string =>
  * One game. The better seed hosts, which is the whole prize for a good regular
  * season — and it is worth something now that home field advantage is real.
  *
- * A tournament arm is chosen by how many games the team has already played
+ * Each side's arm is chosen by how many games *that* team has already played
  * here, so a club that goes deep works down its rotation exactly as it would in
- * a real bracket.
+ * a real bracket. The two counts are kept apart deliberately: a team arriving
+ * off a bye and a team that has just played three games in three days are not
+ * both on their Friday starter, and running the whole bracket off the host's
+ * count meant they always were.
  */
 function play(bracket: Bracket, round: string, a: number, b: number): BracketGame {
   const seedA = bracket.seedOf.get(a) ?? Number.MAX_SAFE_INTEGER;
   const seedB = bracket.seedOf.get(b) ?? Number.MAX_SAFE_INTEGER;
   const [home, away] = seedA <= seedB ? [a, b] : [b, a];
 
-  const used = bracket.appearances.get(home) ?? 0;
-  bracket.appearances.set(home, used + 1);
-  bracket.appearances.set(away, (bracket.appearances.get(away) ?? 0) + 1);
+  const homeUsed = bracket.appearances.get(home) ?? 0;
+  const awayUsed = bracket.appearances.get(away) ?? 0;
+  bracket.appearances.set(home, homeUsed + 1);
+  bracket.appearances.set(away, awayUsed + 1);
 
   // A game the manager already played takes precedence over simulating one.
   // It is recorded exactly like any other bracket game, so a hand-played
@@ -85,11 +92,13 @@ function play(bracket: Bracket, round: string, a: number, b: number): BracketGam
       })
     : playGame(bracket.season, home, away, {
         conference: false,        // tournament play is not the conference race
-        slot: used % 3,
+        homeSlot: homeUsed % 3,
+        awaySlot: awayUsed % 3,
         standings: true,
         record: true,
       });
   if (ready) bracket.preplayed?.delete(pairKey(a, b));
+  advancePostseasonDay(bracket.season);
 
   const homeWon = summary.homeRuns > summary.awayRuns;
   const game: BracketGame = {
@@ -323,9 +332,10 @@ function playSeriesGame(
 
   const home = hostOfGame(s, s.games.length);
   const away = home === s.a ? s.b : s.a;
-  const used = state.appearances.get(home) ?? 0;
-  state.appearances.set(home, used + 1);
-  state.appearances.set(away, (state.appearances.get(away) ?? 0) + 1);
+  const homeUsed = state.appearances.get(home) ?? 0;
+  const awayUsed = state.appearances.get(away) ?? 0;
+  state.appearances.set(home, homeUsed + 1);
+  state.appearances.set(away, awayUsed + 1);
 
   const label = `${roundName(state.rounds.length, s.round)} · Game ${s.games.length + 1}`;
   const ready = preplayed?.get(pairKey(s.a, s.b));
@@ -334,7 +344,10 @@ function playSeriesGame(
         conference: false, standings: true, record: true,
       })
     : playGame(state.season, home, away, {
-        conference: false, slot: used % 3, standings: true, record: true,
+        conference: false,
+        homeSlot: homeUsed % 3,
+        awaySlot: awayUsed % 3,
+        standings: true, record: true,
       });
   if (ready) preplayed?.delete(pairKey(s.a, s.b));
 
@@ -363,6 +376,10 @@ export function stepBracket(
   if (state.done) return;
   const round = state.rounds[state.roundIndex] as Series[];
   for (const s of round) playSeriesGame(state, s, preplayed);
+  // The whole round played tonight, so tomorrow is one day later. This is what
+  // lets a bullpen recover between games instead of the same three arms
+  // carrying a team through every round of June.
+  advancePostseasonDay(state.season);
   promote(state);
 }
 
