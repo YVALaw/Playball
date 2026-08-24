@@ -1,6 +1,10 @@
 // CoachPoints.tsx
 // What you got better at this year.
 //
+// Called "Coach" and not "Your staff": there is no staff in this game, there is
+// you, and naming a screen after people who do not exist is the sort of thing
+// that makes a player go looking for them.
+//
 // Four attributes, and every one of them is wired to something the engine
 // already does — a skill tree whose branches do not change the simulation is a
 // menu, not a decision. The screen says what each point actually buys, in the
@@ -26,7 +30,7 @@ export function CoachPoints() {
         <div className="label">{coach.name} · YEAR {coach.tenure}</div>
         <div style={{
           font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
-        }}>Your staff</div>
+        }}>Coach</div>
       </div>
 
       <div style={{
@@ -96,7 +100,7 @@ export function CoachPoints() {
       </div>
 
       <FloatingAction
-        label={left > 0 ? `CONTINUE · ${left} UNSPENT` : 'TO RECRUITING'}
+        label={left > 0 ? `CONTINUE · ${left} UNSPENT` : 'TO THE DRAFT'}
         onClick={() => void next()}
       />
     </div>

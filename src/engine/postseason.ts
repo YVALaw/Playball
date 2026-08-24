@@ -30,6 +30,13 @@ export interface TournamentResult {
   champion: number;
   /** Team indices in the order they were knocked out, first out first. */
   eliminated: number[];
+  /**
+   * The tree it was played on, round by round.
+   *
+   * Kept on the result so a finished tournament draws exactly like a live one —
+   * the screen never has to rebuild a bracket from a flat list of games.
+   */
+  rounds?: Series[][];
 }
 
 interface Bracket {
@@ -95,217 +102,296 @@ function play(bracket: Bracket, round: string, a: number, b: number): BracketGam
   return game;
 }
 
-/** Standard bracket pairing: best against worst. An odd field byes the top seed. */
 /**
- * Who plays whom in a round, without playing it.
+ * Seeding order for a knockout tree.
  *
- * Best against worst, with a bye to the top seed on an odd field — exactly what
- * `playRound` does, extracted so the app can ask what is coming before anything
- * is decided. That question is the whole basis of letting a manager take his own
- * postseason game rather than watching it get simulated.
+ * The classic recursive interleave: 1 plays the lowest seed, and the bracket is
+ * built so the top two seeds can only meet in the final. Eight teams come out as
+ * 1-8, 4-5, 2-7, 3-6, which is the order every printed bracket in the world uses.
  */
-export function pairingsOf(teams: readonly number[]): {
-  bye: number | null; pairs: [number, number][];
-} {
-  let list = [...teams];
-  let bye: number | null = null;
-  if (list.length % 2 === 1) { bye = list[0] as number; list = list.slice(1); }
-
-  const pairs: [number, number][] = [];
-  for (let i = 0; i < list.length / 2; i++) {
-    pairs.push([list[i] as number, list[list.length - 1 - i] as number]);
-  }
-  return { bye, pairs };
-}
-
-/**
- * The game this team is due to play next in a live bracket, if any.
- *
- * Null when the team has a bye, is already out, or the bracket is finished.
- */
-export function nextGameFor(
-  state: BracketState, team: number,
-): { a: number; b: number; round: string } | null {
-  if (state.done) return null;
-
-  if (state.unbeaten.length === 1 && state.oneLoss.length === 1) {
-    const [a, b] = [state.unbeaten[0] as number, state.oneLoss[0] as number];
-    const round = state.decider ? 'Winner take all' : 'Championship';
-    return a === team || b === team ? { a, b, round } : null;
-  }
-
-  for (const [list, label] of [
-    [state.unbeaten, `Winners round ${state.round}`],
-    [state.oneLoss, `Elimination round ${state.round}`],
-  ] as [number[], string][]) {
-    if (list.length <= 1) continue;
-    const { pairs } = pairingsOf(list);
-    for (const [a, b] of pairs) {
-      if (a === team || b === team) return { a, b, round: label };
+export function seedOrder(n: number): number[] {
+  let order = [1];
+  while (order.length < n) {
+    const size = order.length * 2;
+    const next: number[] = [];
+    for (const seed of order) {
+      next.push(seed, size + 1 - seed);
     }
+    order = next;
   }
-  return null;
+  return order;
 }
 
-function playRound(
-  bracket: Bracket,
-  round: string,
-  teams: readonly number[],
-): { advanced: number[]; defeated: number[] } {
-  const advanced: number[] = [];
-  const defeated: number[] = [];
-
-  let list = [...teams];
-  if (list.length % 2 === 1) {
-    advanced.push(list[0] as number);      // bye to the best remaining seed
-    list = list.slice(1);
-  }
-
-  for (let i = 0; i < list.length / 2; i++) {
-    const game = play(bracket, round, list[i] as number, list[list.length - 1 - i] as number);
-    advanced.push(game.winner);
-    defeated.push(game.loser);
-  }
-
-  return { advanced, defeated };
-}
-
-/**
- * Double elimination, the format almost every real conference tournament uses.
- * Losing once drops you into the elimination bracket; losing twice sends you
- * home. If a team that has already lost beats the undefeated finalist, they play
- * again — both then have one loss, and the bracket has to be settled on the field.
- */
-/**
- * A bracket in progress.
- *
- * Split out of `doubleElimination` so the postseason can be *watched* rather
- * than only computed. The old function ran the whole tournament inside one
- * `while` loop, which is fine for a season being simulated and useless for a
- * player who wants to sit through his own regional — there was no point at which
- * anything could be shown, and no way to hand one game to the manager.
- *
- * The loop is unchanged; it just lives outside the function now.
- */
-export interface BracketState {
-  season: SeasonState;
-  seeds: number[];
-  unbeaten: number[];
-  oneLoss: number[];
-  eliminated: number[];
+/** One series: two teams, a stack of games, and a winner once somebody clinches. */
+export interface Series {
+  /** Round index, 0 for the opening round. */
   round: number;
+  /** Position within the round, top to bottom. */
+  slot: number;
+  /** Null until the feeding series has produced somebody. */
+  a: number | null;
+  b: number | null;
+  /** Seed within the whole bracket, 1 based. Zero when the slot is empty. */
+  aSeed: number;
+  bSeed: number;
   games: BracketGame[];
-  seedOf: Map<number, number>;
-  appearances: Map<number, number>;
+  winner: number | null;
+}
+
+/**
+ * A knockout bracket of series.
+ *
+ * Replaced double elimination, deliberately and with a trade made open-eyed.
+ * Double elimination is what college baseball actually plays, and losing and
+ * surviving is the best drama the format has. It is also unreadable on a phone:
+ * the losers' bracket pairings do not exist until somebody loses, so **there is
+ * no full bracket to draw** — the picture can only ever show you the next round.
+ * Reported from testing three separate times, ending in "we were supposed to see
+ * all the bracket before it all started".
+ *
+ * A knockout tree can be drawn whole on day one, with every slot in it and TBD
+ * where the names have not arrived. Series length carries the drama instead: a
+ * best of seven that goes to six is its own story, and it is one the screen can
+ * tell in a line.
+ */
+export interface SeriesBracket {
+  season: SeasonState;
+  /** Teams in seed order, best first. */
+  seeds: number[];
+  /** Games needed to take each round. One entry per round. */
+  lengths: number[];
+  rounds: Series[][];
+  /** Which round is being played. */
+  roundIndex: number;
   champion: number | null;
   done: boolean;
-  /**
-   * The unbeaten team has been beaten, and the title is on one more game.
-   *
-   * A flag rather than a second call inside the same step, because the manager
-   * has to be able to play that game too — a bracket that hands you the
-   * championship and then simulates the decider behind it is worse than one
-   * that simulated both.
-   */
-  decider: boolean;
+  /** Teams knocked out, first out first. */
+  eliminated: number[];
+  /** How many games each team has played here, for rotation order. */
+  appearances: Map<number, number>;
+  seedOf: Map<number, number>;
 }
 
-export function startBracket(season: SeasonState, seeds: readonly number[]): BracketState {
-  if (seeds.length < 2) throw new Error('a tournament needs at least two teams');
-  return {
-    season,
-    seeds: [...seeds],
-    unbeaten: [...seeds],
-    oneLoss: [],
-    eliminated: [],
-    round: 1,
-    games: [],
-    seedOf: new Map(seeds.map((t, i) => [t, i])),
+const ROUND_NAMES: Record<number, string[]> = {
+  1: ['Final'],
+  2: ['Semifinal', 'Final'],
+  3: ['Quarterfinal', 'Semifinal', 'Final'],
+  4: ['Round of 16', 'Quarterfinal', 'Semifinal', 'Final'],
+  5: ['Round of 32', 'Round of 16', 'Quarterfinal', 'Semifinal', 'Final'],
+};
+
+/** What a round is called, given how many rounds the bracket has in total. */
+export function roundName(total: number, index: number): string {
+  const names = ROUND_NAMES[total];
+  return names?.[index] ?? `Round ${index + 1}`;
+}
+
+/**
+ * Build the whole tree up front.
+ *
+ * Every slot exists from here, including the ones nobody has qualified for. That
+ * is the entire point: the bracket is a thing you can look at before it starts.
+ */
+export function startSeriesBracket(
+  season: SeasonState, seeds: readonly number[], lengths: readonly number[],
+): SeriesBracket {
+  if (seeds.length < 2) throw new Error('a bracket needs at least two teams');
+
+  // Round up to a power of two. A short field byes its best seeds, which is
+  // what a real bracket does with an awkward number of qualifiers.
+  let size = 1;
+  while (size < seeds.length) size *= 2;
+  const totalRounds = Math.log2(size);
+  if (lengths.length !== totalRounds) {
+    throw new Error(`${totalRounds} rounds need ${totalRounds} series lengths`);
+  }
+
+  const order = seedOrder(size);
+  const rounds: Series[][] = [];
+  for (let r = 0; r < totalRounds; r++) {
+    const count = size / 2 ** (r + 1);
+    const list: Series[] = [];
+    for (let slot = 0; slot < count; slot++) {
+      list.push({
+        round: r, slot, a: null, b: null, aSeed: 0, bSeed: 0,
+        games: [], winner: null,
+      });
+    }
+    rounds.push(list);
+  }
+
+  // Fill the opening round from the seeding order.
+  const first = rounds[0] as Series[];
+  for (let i = 0; i < first.length; i++) {
+    const seedA = order[i * 2] as number;
+    const seedB = order[i * 2 + 1] as number;
+    const s = first[i] as Series;
+    s.a = seeds[seedA - 1] ?? null;
+    s.b = seeds[seedB - 1] ?? null;
+    s.aSeed = seedA;
+    s.bSeed = seedB;
+    // A bye: the slot exists, nobody is in it, so the other side walks through.
+    if (s.a !== null && s.b === null) s.winner = s.a;
+    if (s.b !== null && s.a === null) s.winner = s.b;
+  }
+
+  const state: SeriesBracket = {
+    season, seeds: [...seeds], lengths: [...lengths], rounds,
+    roundIndex: 0, champion: null, done: false, eliminated: [],
     appearances: new Map(),
-    champion: null,
-    done: false,
-    decider: false,
+    seedOf: new Map(seeds.map((t, i) => [t, i + 1])),
+  };
+  promote(state);
+  return state;
+}
+
+/** Carry decided series into the round above, and settle a finished bracket. */
+function promote(state: SeriesBracket): void {
+  for (;;) {
+    const round = state.rounds[state.roundIndex] as Series[];
+    if (!round.every((s) => s.winner !== null)) return;
+
+    const last = state.roundIndex === state.rounds.length - 1;
+    if (last) {
+      state.champion = round[0]?.winner ?? null;
+      state.done = true;
+      return;
+    }
+
+    const next = state.rounds[state.roundIndex + 1] as Series[];
+    for (let i = 0; i < round.length; i++) {
+      const from = round[i] as Series;
+      const into = next[Math.floor(i / 2)] as Series;
+      const seed = from.winner === from.a ? from.aSeed : from.bSeed;
+      if (i % 2 === 0) { into.a = from.winner; into.aSeed = seed; }
+      else { into.b = from.winner; into.bSeed = seed; }
+    }
+    for (const s of next) {
+      if (s.a !== null && s.b === null) s.winner = s.a;
+      if (s.b !== null && s.a === null) s.winner = s.b;
+    }
+    state.roundIndex += 1;
+  }
+}
+
+/** Wins needed to take a series of this length. */
+export const clincher = (bestOf: number): number => Math.floor(bestOf / 2) + 1;
+
+const winsIn = (s: Series, team: number): number =>
+  s.games.filter((g) => g.winner === team).length;
+
+/**
+ * Who hosts each game of a series.
+ *
+ * Alternating from the better seed, so a best of seven gives him four of the
+ * seven and a best of three gives him two of the three. Home field is worth
+ * something real in this engine, and handing the higher seed every game of a
+ * seven game series would make the seeding decide it before anybody played.
+ */
+export function hostOfGame(s: Series, gameIndex: number): number {
+  const better = s.aSeed <= s.bSeed ? s.a : s.b;
+  const worse = s.aSeed <= s.bSeed ? s.b : s.a;
+  return (gameIndex % 2 === 0 ? better : worse) as number;
+}
+
+/** The series this team is due to play in next, if any. */
+export function liveSeries(state: SeriesBracket, team: number): Series | null {
+  if (state.done) return null;
+  const round = state.rounds[state.roundIndex] as Series[];
+  return round.find(
+    (s) => s.winner === null && (s.a === team || s.b === team),
+  ) ?? null;
+}
+
+export function nextGameFor(
+  state: SeriesBracket, team: number,
+): { a: number; b: number; round: string; series: Series } | null {
+  const s = liveSeries(state, team);
+  if (!s || s.a === null || s.b === null) return null;
+  return {
+    a: s.a, b: s.b,
+    round: roundName(state.rounds.length, s.round),
+    series: s,
   };
 }
 
-/** Play one round. Exactly the body of the old loop. */
+/** One game of one series. */
+function playSeriesGame(
+  state: SeriesBracket, s: Series, preplayed?: Map<string, GameResult>,
+): void {
+  if (s.winner !== null || s.a === null || s.b === null) return;
+
+  const home = hostOfGame(s, s.games.length);
+  const away = home === s.a ? s.b : s.a;
+  const used = state.appearances.get(home) ?? 0;
+  state.appearances.set(home, used + 1);
+  state.appearances.set(away, (state.appearances.get(away) ?? 0) + 1);
+
+  const label = `${roundName(state.rounds.length, s.round)} · Game ${s.games.length + 1}`;
+  const ready = preplayed?.get(pairKey(s.a, s.b));
+  const summary = ready
+    ? recordResult(state.season, home, away, ready, {
+        conference: false, standings: true, record: true,
+      })
+    : playGame(state.season, home, away, {
+        conference: false, slot: used % 3, standings: true, record: true,
+      });
+  if (ready) preplayed?.delete(pairKey(s.a, s.b));
+
+  const homeWon = summary.homeRuns > summary.awayRuns;
+  s.games.push({
+    ...summary, round: label,
+    winner: homeWon ? home : away,
+    loser: homeWon ? away : home,
+  });
+
+  const need = clincher(state.lengths[s.round] as number);
+  if (winsIn(s, s.a) >= need) { s.winner = s.a; state.eliminated.push(s.b); }
+  else if (winsIn(s, s.b) >= need) { s.winner = s.b; state.eliminated.push(s.a); }
+}
+
+/**
+ * One night of the postseason: a game in every series still being played.
+ *
+ * Series in a round run side by side, the way real playoff rounds do, so a press
+ * moves the whole round on by a game rather than resolving one matchup at a time
+ * while the others wait.
+ */
 export function stepBracket(
-  state: BracketState, preplayed?: Map<string, GameResult>,
+  state: SeriesBracket, preplayed?: Map<string, GameResult>,
 ): void {
   if (state.done) return;
+  const round = state.rounds[state.roundIndex] as Series[];
+  for (const s of round) playSeriesGame(state, s, preplayed);
+  promote(state);
+}
 
-  const bracket: Bracket = {
-    season: state.season,
-    seedOf: state.seedOf,
-    appearances: state.appearances,
-    games: state.games,
-    ...(preplayed ? { preplayed } : {}),
+/**
+ * A bracket, as the plain result everything else reads.
+ *
+ * The tree comes with it: a finished tournament has to draw exactly like a live
+ * one, and rebuilding a bracket from a flat list of games is guesswork.
+ */
+export function resultOf(state: SeriesBracket): TournamentResult {
+  if (!state.done || state.champion === null) throw new Error('bracket is not finished');
+  return {
+    seeds: state.seeds,
+    games: state.rounds.flat().flatMap((x) => x.games),
+    champion: state.champion,
+    eliminated: state.eliminated,
+    rounds: state.rounds,
   };
-
-  if (state.unbeaten.length + state.oneLoss.length <= 1) {
-    state.champion = state.unbeaten[0] ?? state.oneLoss[0] ?? (state.seeds[0] as number);
-    state.done = true;
-    return;
-  }
-
-  if (state.unbeaten.length === 1 && state.oneLoss.length === 1) {
-    // The title game, and the one after it if the challenger wins. Both are
-    // played here one at a time so either can be handed to the manager.
-    const unbeaten = state.unbeaten[0] as number;
-    const challenger = state.oneLoss[0] as number;
-    const game = play(
-      bracket,
-      state.decider ? 'Championship, if necessary' : 'Championship',
-      unbeaten, challenger,
-    );
-    if (game.winner === unbeaten) {
-      state.eliminated.push(challenger);
-      state.champion = unbeaten;
-      state.done = true;
-    } else if (state.decider) {
-      state.eliminated.push(unbeaten);
-      state.champion = challenger;
-      state.done = true;
-    } else {
-      // Both have one loss now. Winner take all, and it is a separate game.
-      state.decider = true;
-    }
-    return;
-  }
-
-  const dropped: number[] = [];
-  if (state.unbeaten.length > 1) {
-    const r = playRound(bracket, `Winners round ${state.round}`, state.unbeaten);
-    state.unbeaten = r.advanced;
-    dropped.push(...r.defeated);
-  }
-  if (state.oneLoss.length > 1) {
-    const r = playRound(bracket, `Elimination round ${state.round}`, state.oneLoss);
-    state.oneLoss = r.advanced;
-    state.eliminated.push(...r.defeated);
-  }
-  state.oneLoss = [...state.oneLoss, ...dropped];
-  state.round += 1;
-
-  // Every round eliminates someone once the elimination bracket is running, so
-  // this cannot spin. The guard fails loudly rather than hanging.
-  if (state.round > state.seeds.length * 3) throw new Error('bracket failed to converge');
 }
 
 /** The whole thing at once, which is what a simulated season wants. */
-export function doubleElimination(
-  season: SeasonState, seeds: readonly number[],
+export function singleElimination(
+  season: SeasonState, seeds: readonly number[], lengths: readonly number[],
 ): TournamentResult {
-  const state = startBracket(season, seeds);
-  while (!state.done) stepBracket(state);
-  return {
-    seeds: state.seeds,
-    games: state.games,
-    champion: state.champion as number,
-    eliminated: state.eliminated,
-  };
+  const state = startSeriesBracket(season, seeds, lengths);
+  let guard = 0;
+  while (!state.done && guard++ < 200) stepBracket(state);
+  return resultOf(state);
 }
-
 
 /** Best of N. Higher seed hosts every game, which is close enough at this scale. */
 export function bestOf(
@@ -358,7 +444,7 @@ export interface ConferenceTournament extends TournamentResult {
 export function conferenceField(
   season: SeasonState,
   conference: string,
-  size = 6,
+  size: number = CONF_FIELD,
 ): { field: number[]; missed: number[] } {
   // Seed off the recorded regular season order, not a fresh standings call.
   // Tournament games move overall records and run differential, which are
@@ -378,16 +464,19 @@ export function conferenceIds(season: SeasonState): string[] {
 export function conferenceTournament(
   season: SeasonState,
   conference: string,
-  size = 6,
+  size: number = CONF_FIELD,
 ): ConferenceTournament {
   const { field, missed } = conferenceField(season, conference, size);
-  return { ...doubleElimination(season, field), conference, missed };
+  return {
+    ...singleElimination(season, field, conferenceLengths()),
+    conference, missed,
+  };
 }
 
 /** Every conference crowns a champion. Eight automatic bids to the national field. */
 export function allConferenceTournaments(
   season: SeasonState,
-  size = 6,
+  size: number = CONF_FIELD,
 ): ConferenceTournament[] {
   return conferenceIds(season).map((id) => conferenceTournament(season, id, size));
 }
@@ -408,124 +497,114 @@ export function allConferenceTournaments(
  */
 export const FIELD_SIZE = 16;
 
-export interface Bid {
-  team: number;
-  /** An automatic bid is a conference title. Everyone else is chosen. */
-  kind: 'automatic' | 'at-large';
-  conference: string;
-  rpi: number;
-}
-
-export interface NationalTournament {
-  field: Bid[];
-  regionals: TournamentResult[];
-  /** The four regional winners, one four team double elimination. */
-  omaha: TournamentResult;
-  champion: number;
-}
-
 /**
- * Selection Monday. Every conference champion is in automatically, however they
- * finished in the regular season — win your tournament and nobody can leave you
- * out. The rest of the field is chosen on RPI, which is why non-conference
- * scheduling matters: a soft schedule shows up here.
- */
-export function selectField(
-  season: SeasonState,
-  champions: readonly number[],
-  size = FIELD_SIZE,
-): Bid[] {
-  const rpiOf = new Map(rpiOrder(season).map((r) => [r.team.index, r.rpi]));
-  const confOf = (i: number): string => season.teams[i]?.conference ?? '';
-  const bid = (team: number, kind: Bid['kind']): Bid =>
-    ({ team, kind, conference: confOf(team), rpi: rpiOf.get(team) ?? 0 });
-
-  const automatic = champions.map((t) => bid(t, 'automatic'));
-  const taken = new Set(champions);
-
-  const atLarge = [...rpiOf.entries()]
-    .filter(([team]) => !taken.has(team))
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, Math.max(0, size - automatic.length))
-    .map(([team]) => bid(team, 'at-large'));
-
-  // Seeded on RPI regardless of how they got in.
-  return [...automatic, ...atLarge].sort((a, b) => b.rpi - a.rpi);
-}
-
-/**
- * Serpentine the seeded field into regionals so each one gets a band from the
- * top, the second quarter, the third and the bottom. The real thing is done by a
- * committee balancing geography and avoiding conference rematches; this is the
- * honest mechanical version of the same idea.
- */
-function intoRegionals(field: readonly Bid[], count: number): number[][] {
-  const bands: number[][] = [];
-  for (let b = 0; b < 4; b++) {
-    bands.push(field.slice(b * count, (b + 1) * count).map((x) => x.team));
-  }
-  const regionals: number[][] = [];
-  for (let r = 0; r < count; r++) {
-    const group: number[] = [];
-    for (let b = 0; b < 4; b++) {
-      const band = bands[b] as number[];
-      const pick = b % 2 === 0 ? band[r] : band[count - 1 - r];
-      if (pick !== undefined) group.push(pick);
-    }
-    regionals.push(group);
-  }
-  return regionals;
-}
-
-/**
- * Which four teams meet in each regional, without playing a game.
+ * How long each round's series is.
  *
- * The app needs the groups before the results so it can find the one its own
- * team is in and hand those games to the manager, leaving the rest to simulate.
+ * The one place to change the length of June. Every extra game is a game the
+ * player presses through, so these numbers are a pacing decision as much as a
+ * format one — a champion plays `CONFERENCE_ROUNDS + 4` series to win it all.
  */
-export function regionalGroups(field: readonly Bid[]): number[][] {
-  return intoRegionals(field, Math.max(1, Math.floor(field.length / 4)));
-}
+export const SERIES = {
+  /** Six of twelve, three rounds. */
+  conference: 3,
+  /** Two conference champions, one series. */
+  regional: 5,
+  /** The four regional champions: semifinal and final. */
+  national: 7,
+} as const;
 
-/** A live bracket that has finished, as the plain result everything else reads. */
-export function resultOf(state: BracketState): TournamentResult {
-  if (!state.done || state.champion === null) throw new Error('bracket is not finished');
-  return {
-    seeds: state.seeds,
-    games: state.games,
-    champion: state.champion,
-    eliminated: state.eliminated,
-  };
+/**
+ * Teams from each conference.
+ *
+ * Six of twelve, so half the league is finished in May and qualifying is
+ * something you earn over forty five games. Six in an eight slot bracket also
+ * byes the top two seeds, which is the regular season's other reward: win your
+ * league and you need two series for the title instead of three.
+ */
+export const CONF_FIELD = 6;
+
+/** One length per round. Six teams is three rounds, the first with two byes. */
+export function conferenceLengths(): number[] {
+  return [SERIES.conference, SERIES.conference, SERIES.conference];
 }
 
 /**
- * Regionals, then Omaha.
+ * The four regions, each a pair of conferences.
  *
- * Four four-team double elimination regionals out of a sixteen team field, and
- * the four survivors play one more double elimination for the title.
+ * The postseason is a pyramid and this is its middle tier: win your conference,
+ * then beat the champion of the conference next door, then play the other three
+ * survivors for the country. One rule the whole way up — you advance by winning
+ * something — which is what the old at-large field could never say.
  */
-export function nationalTournament(
-  season: SeasonState,
-  champions: readonly number[],
-  size = FIELD_SIZE,
-): NationalTournament {
-  const field = selectField(season, champions, size);
-  const regionalCount = Math.max(1, Math.floor(field.length / 4));
+export const REGIONS: readonly { id: string; name: string; conferences: readonly string[] }[] = [
+  { id: 'SOUTH', name: 'South', conferences: ['GULF', 'ATL'] },
+  { id: 'NORTH', name: 'North', conferences: ['NEC', 'GLK'] },
+  { id: 'WEST', name: 'West', conferences: ['PAC', 'MTN'] },
+  { id: 'CENTRAL', name: 'Central', conferences: ['DES', 'HRT'] },
+];
 
-  const regionals = intoRegionals(field, regionalCount)
-    .map((group) => doubleElimination(season, group));
+/** Which region a conference belongs to. */
+export const regionOf = (conference: string): string =>
+  REGIONS.find((r) => r.conferences.includes(conference))?.id ?? 'SOUTH';
 
-  // Omaha. The four regional winners, one double elimination, and whoever is
-  // standing at the end is the national champion.
-  //
-  // The real tournament puts a best-of-three super regional in between and then
-  // takes eight to Omaha, but eight of sixty four would be an eighth of every
-  // program in the world reaching the College World Series, which would make it
-  // routine. Four out of sixty four is the same rarity the real thing has, and
-  // it keeps Omaha the thing you remember a season for.
-  const omaha = doubleElimination(season, regionals.map((r) => r.champion));
+/** A regional is one series; the national tree is a semifinal and a final. */
+export const REGIONAL_LENGTHS: readonly number[] = [SERIES.regional];
+export const NATIONAL_LENGTHS: readonly number[] = [SERIES.national, SERIES.national];
 
-  return { field, regionals, omaha, champion: omaha.champion };
+/**
+ * A regional: the two conference champions of one region, one series.
+ *
+ * Seeded by regular season record, so those forty five games still decide who
+ * hosts the odd game even after both teams have won their leagues.
+ */
+export function regionalPairing(
+  season: SeasonState, cups: readonly ConferenceTournament[],
+): { id: string; name: string; seeds: number[] }[] {
+  const championOf = new Map(cups.map((c) => [c.conference, c.champion]));
+  return REGIONS.map((r) => {
+    const teams = r.conferences
+      .map((c) => championOf.get(c))
+      .filter((t): t is number => t !== undefined)
+      .sort((a, b) => {
+        const ra = season.teams[a];
+        const rb = season.teams[b];
+        return (rb ? (rb.rw ?? rb.w) : 0) - (ra ? (ra.rw ?? ra.w) : 0);
+      });
+    return { id: r.id, name: r.name, seeds: teams };
+  }).filter((r) => r.seeds.length > 1);
+}
+
+/** Every regional played out. Four champions, one per region. */
+export function stageRegionals(
+  season: SeasonState, cups: readonly ConferenceTournament[],
+): RegionalResult[] {
+  return regionalPairing(season, cups).map((r) => ({
+    ...singleElimination(season, r.seeds, REGIONAL_LENGTHS),
+    region: r.id,
+    name: r.name,
+  }));
+}
+
+export interface RegionalResult extends TournamentResult {
+  region: string;
+  name: string;
+}
+
+/**
+ * The national tournament: four regional champions, a semifinal and a final.
+ *
+ * Seeded by regular season record, which is the last thing those forty five
+ * games are still paying for.
+ */
+export function stageNational(
+  season: SeasonState, regionals: readonly RegionalResult[],
+): TournamentResult {
+  const seeds = regionals.map((r) => r.champion).sort((a, b) => {
+    const ra = season.teams[a];
+    const rb = season.teams[b];
+    return (rb ? (rb.rw ?? rb.w) : 0) - (ra ? (ra.rw ?? ra.w) : 0);
+  });
+  return singleElimination(season, seeds, NATIONAL_LENGTHS);
 }
 
 // ---------------------------------------------------------------------------
@@ -537,11 +616,12 @@ export type Finish =
   | 'missed' | 'regional' | 'omaha' | 'runner-up' | 'champion';
 
 export interface PostseasonSummary {
-  /** Conference tournament winners, by team index. Eight automatic bids. */
+  /** Conference tournament winners, by team index. Eight of them. */
   conferenceChampions: number[];
-  field: Bid[];
+  /** Regional winners: the last four. */
+  regionChampions: number[];
   champion: number;
-  /** Only contains teams that made the national field. */
+  /** Only contains teams that got out of their conference. */
   finish: Record<number, Finish>;
 }
 
@@ -573,45 +653,25 @@ export function stageConferenceTournaments(season: SeasonState): ConferenceTourn
   return allConferenceTournaments(season);
 }
 
-/** Stage two: selection. Who is in, and who was left out. */
-export function stageSelection(
-  season: SeasonState, champions: readonly number[], size = FIELD_SIZE,
-): Bid[] {
-  return selectField(season, champions, size);
-}
-
-/** Stage three: the regionals. */
-export function stageRegionals(
-  season: SeasonState, field: readonly Bid[],
-): TournamentResult[] {
-  return regionalGroups(field).map((g) => doubleElimination(season, g));
-}
-
-/** Stage four: Omaha, and a champion. */
-export function stageOmaha(
-  season: SeasonState, regionals: readonly TournamentResult[],
-): TournamentResult {
-  return doubleElimination(season, regionals.map((r) => r.champion));
-}
-
 /** Reduce the finished stages to the summary a dynasty remembers. */
 export function summarize(
   cups: readonly ConferenceTournament[],
-  field: readonly Bid[],
-  regionals: readonly TournamentResult[],
-  omaha: TournamentResult,
+  regionals: readonly RegionalResult[],
+  national: TournamentResult,
 ): PostseasonSummary {
   const finish: Record<number, Finish> = {};
-  for (const bid of field) finish[bid.team] = 'regional';
+  // Winning a conference is reaching the regionals, which is the postseason
+  // proper: every team in it got there by winning something.
+  for (const r of regionals) for (const t of r.seeds) finish[t] = 'regional';
   for (const r of regionals) finish[r.champion] = 'omaha';
-  const runnerUp = omaha.eliminated[omaha.eliminated.length - 1];
+  const runnerUp = national.eliminated[national.eliminated.length - 1];
   if (runnerUp !== undefined) finish[runnerUp] = 'runner-up';
-  finish[omaha.champion] = 'champion';
+  finish[national.champion] = 'champion';
 
   return {
     conferenceChampions: cups.map((c) => c.champion),
-    field: [...field],
-    champion: omaha.champion,
+    regionChampions: regionals.map((r) => r.champion),
+    champion: national.champion,
     finish,
   };
 }
@@ -623,24 +683,8 @@ export function runPostseason(season: SeasonState, size = FIELD_SIZE): Postseaso
   for (const t of season.teams) { t.rw = t.w; t.rl = t.l; }
 
   const cups = allConferenceTournaments(season);
-  const conferenceChampions = cups.map((c) => c.champion);
-  const nat = nationalTournament(season, conferenceChampions, size);
-
-  const finish: Record<number, Finish> = {};
-  for (const bid of nat.field) finish[bid.team] = 'regional';
-  for (const r of nat.regionals) finish[r.champion] = 'omaha';
-
-  // The last team knocked out of Omaha is the one that lost the deciding game.
-  const runnerUp = nat.omaha.eliminated[nat.omaha.eliminated.length - 1];
-  if (runnerUp !== undefined) finish[runnerUp] = 'runner-up';
-  finish[nat.champion] = 'champion';
-
-  return {
-    conferenceChampions,
-    field: nat.field,
-    champion: nat.champion,
-    finish,
-  };
+  const regionals = stageRegionals(season, cups);
+  return summarize(cups, regionals, stageNational(season, regionals));
 }
 
 export const FINISH_LABEL: Record<Finish, string> = {

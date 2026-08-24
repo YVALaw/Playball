@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+body { margin: 0; background: #14181f; }
+a { color: #a8442a; text-decoration: none; }
+* { box-sizing: border-box; }
+button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+button:disabled { cursor: default; }
+a:hover { color: #8d3722; }
+@keyframes cardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes fallRight { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+@keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes pulseClay { 0%, 100% { box-shadow: 0 0 0 0 rgba(168,68,42,.34); } 50% { box-shadow: 0 0 0 6px rgba(168,68,42,0); } }
+::-webkit-scrollbar { width: 0; height: 0; }
+</style>
+</helmet>
+<x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" dark="{{ true }}" hint-size="428px,908px">
+<div style="height:100%;display:flex;flex-direction:column;min-height:0;background:#f2ece0;font-family:'Source Sans 3',system-ui,sans-serif;color:#1c2430">
+
+  <div style="flex:none;padding:9px 14px 8px;background:#223247;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.09) 0 1px,transparent 1px 7px);border-bottom:3px solid #a8442a;display:flex;align-items:center;gap:10px">
+    <div style="flex:1;min-width:0">
+      <div style="font:800 21px/0.95 'Big Shoulders Display',sans-serif;letter-spacing:.02em;color:#f6f1e6;text-transform:uppercase">Ridgemont State</div>
+      <div style="font:500 9px/1.5 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(246,241,230,.62);text-transform:uppercase">{{ headerSub }}</div>
+    </div>
+    <div style="flex:none;text-align:right">
+      <div style="font:800 22px/0.9 'Big Shoulders Display',sans-serif;color:#f6f1e6">{{ headerBig }}</div>
+      <div style="font:400 8.5px/1.5 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(246,241,230,.55)">{{ headerSmall }}</div>
+    </div>
+  </div>
+
+  <div style="flex:none;display:flex;gap:2px;padding:8px 10px 9px;background:#e7dfd0;border-bottom:1px solid rgba(28,36,48,.16)">
+    <sc-for list="{{ ladder }}" as="s" hint-placeholder-count="4">
+      <button onClick="{{ s.go }}" style="flex:1;text-align:left;background:transparent;padding:0 2px">
+        <div style="height:4px;border-radius:2px;background:{{ s.barColor }};transition:background 220ms ease"></div>
+        <div style="margin-top:5px;font:600 8px/1.3 'IBM Plex Mono',monospace;letter-spacing:.06em;text-align:center;color:{{ s.textColor }}">{{ s.name }}</div>
+      </button>
+    </sc-for>
+  </div>
+
+  <main style="flex:1;min-height:0;overflow-y:auto;position:relative">
+
+  <sc-if value="{{ isBracket }}" hint-placeholder-val="{{ true }}">
+    <div style="padding:13px 14px 6px">
+      <div style="border-bottom:2px solid #1c2430;padding-bottom:7px">
+        <div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:rgba(28,36,48,.5)">{{ stageKicker }}</div>
+        <div style="font:800 30px/0.95 'Big Shoulders Display',sans-serif;margin-top:5px;text-transform:uppercase">{{ stageTitle }}</div>
+      </div>
+
+      <div style="margin-top:11px;border:1px solid #a8442a;background:#fbf7ee">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:#a8442a">
+          <span style="font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#f6f1e6">YOU · RIDGEMONT STATE</span>
+          <span style="font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(246,241,230,.8)">{{ yourRecord }}</span>
+        </div>
+        <div style="padding:11px 12px 12px">
+          <div style="display:flex;align-items:center;gap:9px">
+            <div style="display:flex;gap:5px">
+              <sc-for list="{{ lives }}" as="d" hint-placeholder-count="2">
+                <div style="width:13px;height:13px;border-radius:50%;border:2px solid #a8442a;background:{{ d.fill }};transition:background 300ms ease"></div>
+              </sc-for>
+            </div>
+            <div style="font:700 11px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:{{ livesColor }}">{{ livesLabel }}</div>
+          </div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(28,36,48,.12)">
+            <div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:rgba(28,36,48,.5)">{{ nextKicker }}</div>
+            <div style="font:700 21px/1.08 'Big Shoulders Display',sans-serif;margin-top:4px;text-transform:uppercase;color:{{ nextColor }}">{{ nextLine }}</div>
+            <div style="margin-top:5px;font:400 12px/1.45 'Source Sans 3',sans-serif;color:rgba(28,36,48,.62)">{{ nextNote }}</div>
+          </div>
+        </div>
+      </div>
+
+      <button onClick="{{ toggleRules }}" style="margin-top:9px;width:100%;display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:transparent;border:1px solid rgba(28,36,48,.2)">
+        <span style="font:600 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.6)">HOW THIS ROUND WORKS</span>
+        <span style="font:700 11px 'IBM Plex Mono',monospace;color:#a8442a">{{ rulesToggle }}</span>
+      </button>
+      <sc-if value="{{ rulesOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:11px 12px;background:#fbf7ee;border:1px solid rgba(28,36,48,.2);border-top:0;font:400 12px/1.55 'Source Sans 3',sans-serif;color:rgba(28,36,48,.78)">{{ rulesText }}</div>
+      </sc-if>
+    </div>
+
+    <div style="padding:14px 14px 0">
+      <div style="display:flex;gap:5px">
+        <button onClick="{{ showBracket }}" style="flex:1;padding:9px 0;background:{{ tabBBg }};border:1px solid {{ tabBBorder }};color:{{ tabBColor }};font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.12em">FULL BRACKET</button>
+        <button onClick="{{ showPath }}" style="flex:1;padding:9px 0;background:{{ tabPBg }};border:1px solid {{ tabPBorder }};color:{{ tabPColor }};font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.12em">YOUR PATH</button>
+      </div>
+
+      <sc-if value="{{ tabIsBracket }}" hint-placeholder-val="{{ true }}">
+        <div style="position:relative;margin:11px -14px 0">
+        <div ref="{{ scrollRef }}" style="overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch">
+          <div style="position:relative;width:{{ canvasW }};height:{{ canvasH }}">
+            <sc-for list="{{ headers }}" as="h" hint-placeholder-count="2">
+              <div style="position:absolute;left:{{ h.x }};top:0;width:128px;font:600 8.5px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:{{ h.color }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ h.label }}</div>
+            </sc-for>
+
+            <div style="position:absolute;left:0;right:0;top:{{ bandY }};height:1px;background:rgba(28,36,48,.16)"></div>
+
+            <sc-for list="{{ pathSegs }}" as="s" hint-placeholder-count="1">
+              <div style="position:absolute;left:{{ s.x }};top:{{ s.y }};width:{{ s.w }};height:{{ s.h }};background:#a8442a;opacity:.55"></div>
+            </sc-for>
+
+            <sc-for list="{{ byes }}" as="y" hint-placeholder-count="1">
+              <div style="position:absolute;left:{{ y.x }};top:{{ y.y }};width:128px;height:56px;border:1px dashed {{ y.border }};display:grid;place-items:center;text-align:center;padding:0 6px">
+                <span style="font:600 8px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:{{ y.color }};line-height:1.35">{{ y.label }}</span>
+              </div>
+            </sc-for>
+
+            <sc-for list="{{ cards }}" as="c" hint-placeholder-count="3">
+              <div style="position:absolute;left:{{ c.x }};top:{{ c.y }};width:128px;height:56px;border:1px {{ c.bstyle }} {{ c.border }};background:#fbf7ee;opacity:{{ c.opacity }};animation:cardIn 300ms ease-out both;animation-delay:{{ c.delay }}">
+                <div style="display:flex;align-items:center;height:27px;padding:0 6px;gap:5px;border-bottom:1px solid rgba(28,36,48,.1);background:{{ c.aBg }}">
+                  <div style="width:3px;height:15px;flex:none;background:{{ c.aBar }}"></div>
+                  <span style="flex:none;width:7px;font:600 8px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.42)">{{ c.aSeed }}</span>
+                  <span style="flex:1;min-width:0;font:{{ c.aWeight }} 11px 'IBM Plex Mono',monospace;letter-spacing:.02em;color:{{ c.aColor }};text-decoration:{{ c.aDeco }}">{{ c.aAbbr }}</span>
+                  <span style="flex:none;font:700 12px 'IBM Plex Mono',monospace;color:{{ c.aColor }}">{{ c.aScore }}</span>
+                </div>
+                <div style="display:flex;align-items:center;height:28px;padding:0 6px;gap:5px;background:{{ c.bBg }}">
+                  <div style="width:3px;height:15px;flex:none;background:{{ c.bBar }}"></div>
+                  <span style="flex:none;width:7px;font:600 8px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.42)">{{ c.bSeed }}</span>
+                  <span style="flex:1;min-width:0;font:{{ c.bWeight }} 11px 'IBM Plex Mono',monospace;letter-spacing:.02em;color:{{ c.bColor }};text-decoration:{{ c.bDeco }}">{{ c.bAbbr }}</span>
+                  <span style="flex:none;font:700 12px 'IBM Plex Mono',monospace;color:{{ c.bColor }}">{{ c.bScore }}</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="position:absolute;left:0;top:{{ laneWLabelY }};width:96px;padding:6px 8px;background:#f2ece0;border-right:1px solid rgba(28,36,48,.16);pointer-events:none">
+          <div style="font:700 8.5px/1.4 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#1c2430">WINNERS<br>BRACKET</div>
+          <div style="margin-top:3px;font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:rgba(28,36,48,.62)">0 LOSSES</div>
+        </div>
+        <div style="position:absolute;left:0;top:{{ laneELabelY }};width:96px;padding:6px 8px;background:#f2ece0;border-right:1px solid rgba(28,36,48,.16);pointer-events:none">
+          <div style="font:700 8.5px/1.4 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#1c2430">ELIMINATION<br>BRACKET</div>
+          <div style="margin-top:3px;font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:rgba(28,36,48,.62)">1 LOSS</div>
+        </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:9px;flex-wrap:wrap">
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:16px;height:2px;background:#a8442a;opacity:.55"></span><span style="font:400 9.5px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.55)">your path</span></span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border:1px solid #a8442a"></span><span style="font:400 9.5px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.55)">your game</span></span>
+          <sc-if value="{{ showSwipe }}" hint-placeholder-val="{{ false }}"><span style="font:400 9.5px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.4)">swipe across →</span></sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ tabIsPath }}" hint-placeholder-val="{{ false }}">
+        <sc-if value="{{ pathEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:11px;padding:16px 14px;border:1px dashed rgba(28,36,48,.3);background:#fbf7ee">
+            <div style="font:700 17px/1.1 'Big Shoulders Display',sans-serif;text-transform:uppercase">Nothing played yet</div>
+            <div style="margin-top:5px;font:400 12px/1.5 'Source Sans 3',sans-serif;color:rgba(28,36,48,.6)">Your games appear here as you play them, newest first, each one saying what it did to your season.</div>
+          </div>
+        </sc-if>
+        <div style="margin-top:11px">
+          <sc-for list="{{ myPath }}" as="g" hint-placeholder-count="2">
+            <div style="display:grid;grid-template-columns:14px 1fr;gap:10px;align-items:stretch">
+              <div style="position:relative">
+                <div style="position:absolute;left:6px;top:0;bottom:0;width:2px;background:rgba(168,68,42,.28)"></div>
+                <div style="position:absolute;left:1px;top:20px;width:12px;height:12px;border-radius:50%;border:2px solid #a8442a;background:{{ g.dot }}"></div>
+              </div>
+              <div style="padding-bottom:10px">
+                <div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">{{ g.round }}</div>
+                <div style="margin-top:4px;border:1px solid {{ g.border }};background:#fbf7ee">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px">
+                    <span style="min-width:0"><span style="display:block;font:700 17px/1 'Big Shoulders Display',sans-serif;text-transform:uppercase;color:{{ g.color }}">{{ g.headline }}</span><span style="display:block;margin-top:3px;font:400 10.5px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.55)">{{ g.sub }}</span></span>
+                    <span style="flex:none;font:800 22px/1 'Big Shoulders Display',sans-serif;color:{{ g.color }}">{{ g.score }}</span>
+                  </div>
+                  <div style="padding:6px 10px;background:{{ g.footBg }};font:600 8px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:{{ g.footColor }}">{{ g.foot }}</div>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ standingsOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:18px">
+          <div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5);margin-bottom:6px">EVERY TEAM, RIGHT NOW</div>
+          <div style="border:1px solid rgba(28,36,48,.2);background:#fbf7ee">
+            <sc-for list="{{ table }}" as="t" hint-placeholder-count="4">
+              <div style="display:grid;grid-template-columns:20px 1fr auto auto;gap:8px;align-items:center;padding:7px 10px;border-bottom:1px solid rgba(28,36,48,.12);border-left:3px solid {{ t.edge }};background:{{ t.bg }}">
+                <span style="font:700 9.5px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.45)">{{ t.seed }}</span>
+                <span style="font:{{ t.weight }} 12px 'Source Sans 3',sans-serif;color:{{ t.color }};text-decoration:{{ t.deco }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.school }}</span>
+                <span style="display:flex;gap:3px">
+                  <sc-for list="{{ t.dots }}" as="d" hint-placeholder-count="2">
+                    <div style="width:9px;height:9px;border-radius:50%;border:1.5px solid {{ d.ring }};background:{{ d.fill }}"></div>
+                  </sc-for>
+                </span>
+                <span style="font:700 8px 'IBM Plex Mono',monospace;letter-spacing:.1em;min-width:50px;text-align:right;color:{{ t.stateColor }}">{{ t.state }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <button onClick="{{ toggleStandings }}" style="margin-top:10px;width:100%;padding:9px 0;background:transparent;border:1px solid rgba(28,36,48,.24);font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(28,36,48,.62)">{{ standingsToggle }}</button>
+      <div style="height:12px"></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isAwards }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:13px 14px 6px">
+      <div style="border-bottom:2px solid #1c2430;padding-bottom:7px">
+        <div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">2027 HONOURS · STEP 1 OF 6</div>
+        <div style="font:800 30px/0.95 'Big Shoulders Display',sans-serif;margin-top:5px;text-transform:uppercase">Awards night</div>
+      </div>
+      <div style="margin-top:10px;font:400 12px/1.5 'Source Sans 3',sans-serif;color:rgba(28,36,48,.62)">Three national awards. Two of them are yours.</div>
+    </div>
+    <div style="padding:0 14px 18px">
+      <sc-for list="{{ awards }}" as="a" hint-placeholder-count="3">
+        <div style="margin-top:11px;border:1px solid {{ a.border }};background:#fbf7ee;animation:riseIn 400ms ease-out both;animation-delay:{{ a.delay }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:{{ a.headBg }}">
+            <span style="font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#f6f1e6">{{ a.title }}</span>
+            <span style="font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:rgba(246,241,230,.75)">{{ a.tag }}</span>
+          </div>
+          <div style="padding:11px 12px 12px">
+            <div style="font:800 24px/1 'Big Shoulders Display',sans-serif;text-transform:uppercase;color:{{ a.nameColor }}">{{ a.name }}</div>
+            <div style="margin-top:5px;font:400 11px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.55)">{{ a.line }}</div>
+          </div>
+        </div>
+      </sc-for>
+      <div style="margin-top:20px;font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5);margin-bottom:6px">ALL-CONFERENCE · YOUR FOUR</div>
+      <div style="border:1px solid rgba(28,36,48,.2);background:#fbf7ee">
+        <sc-for list="{{ allConf }}" as="p" hint-placeholder-count="4">
+          <div style="display:grid;grid-template-columns:30px 1fr auto;gap:9px;align-items:center;padding:8px 10px;border-bottom:1px solid rgba(28,36,48,.12)">
+            <span style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#a8442a">{{ p.pos }}</span>
+            <div style="min-width:0"><div style="font:600 13px 'Source Sans 3',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.name }}</div><div style="font:400 10px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.55)">{{ p.line }}</div></div>
+            <span style="font:400 10px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.55)">{{ p.year }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isReview }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:13px 14px 18px">
+      <div style="border-bottom:2px solid #1c2430;padding-bottom:7px">
+        <div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">RIDGEMONT STATE · 2027 · STEP 2 OF 6</div>
+        <div style="font:800 30px/0.95 'Big Shoulders Display',sans-serif;margin-top:5px;text-transform:uppercase">The season</div>
+      </div>
+      <div style="margin-top:12px;padding:16px 14px;background:#1c2430;text-align:center;animation:riseIn 420ms ease-out both">
+        <div style="font:600 8.5px 'IBM Plex Mono',monospace;letter-spacing:.2em;color:rgba(246,241,230,.6)">FINISHED</div>
+        <div style="font:800 34px/1 'Big Shoulders Display',sans-serif;margin-top:6px;color:#f6f1e6;text-transform:uppercase">National champions</div>
+        <div style="margin-top:7px;font:400 12px/1.5 'Source Sans 3',sans-serif;color:rgba(246,241,230,.68)">First title in program history. Beat Piedmont State twice in two days to take it.</div>
+      </div>
+      <div style="display:flex;margin-top:11px;border:1px solid rgba(28,36,48,.2);background:#fbf7ee">
+        <div style="flex:1;padding:11px 8px;border-right:1px solid rgba(28,36,48,.12)"><div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">RECORD</div><div style="font:700 22px/1 'Big Shoulders Display',sans-serif;margin-top:4px;color:#a8442a">24-9</div></div>
+        <div style="flex:1;padding:11px 8px;border-right:1px solid rgba(28,36,48,.12)"><div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">POSTSEASON</div><div style="font:700 22px/1 'Big Shoulders Display',sans-serif;margin-top:4px;color:#3f6b46">11-2</div></div>
+        <div style="flex:1;padding:11px 8px"><div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">NATIONAL</div><div style="font:700 22px/1 'Big Shoulders Display',sans-serif;margin-top:4px;color:#a8442a">#5</div></div>
+      </div>
+
+      <div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5);margin:18px 0 6px">PROGRAM PRESTIGE</div>
+      <div style="border:1px solid rgba(28,36,48,.2);background:#fbf7ee;padding:13px 12px">
+        <div style="display:flex;align-items:baseline;justify-content:space-between">
+          <div><div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">WAS</div><div style="font:700 22px/1 'Big Shoulders Display',sans-serif;margin-top:3px">58</div></div>
+          <div><div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">THE SEASON</div><div style="font:700 22px/1 'Big Shoulders Display',sans-serif;margin-top:3px;color:#3f6b46">+13</div></div>
+          <div><div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">NOW</div><div style="font:700 26px/1 'Big Shoulders Display',sans-serif;margin-top:3px;color:#a8442a">71</div></div>
+        </div>
+        <div style="margin-top:11px;height:8px;background:rgba(28,36,48,.1);position:relative;overflow:hidden">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:58%;background:rgba(168,68,42,.42)"></div>
+          <div style="position:absolute;left:58%;top:0;bottom:0;width:{{ prestigeGrow }};background:#3f6b46;transition:width 900ms cubic-bezier(.2,.8,.3,1)"></div>
+        </div>
+        <div style="margin-top:11px;padding-top:10px;border-top:1px solid rgba(28,36,48,.12);font:400 12px/1.55 'Source Sans 3',sans-serif">A national title moves a program the way nothing else does. Four-star recruits will take your call now, and the board has stopped counting your wins.</div>
+      </div>
+
+      <div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5);margin:18px 0 6px">TEAM MVP</div>
+      <div style="display:flex;gap:12px;align-items:center;padding:12px;border:1px solid rgba(28,36,48,.2);background:#fbf7ee">
+        <dc-import name="Avatar" pid="rid-mercer-22" jersey="#1f4d3f" size="{{ 46 }}" hint-size="46px,46px"></dc-import>
+        <div><div style="font:700 18px/1 'Big Shoulders Display',sans-serif;text-transform:uppercase">Dane Mercer</div><div style="margin-top:4px;font:400 11.5px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.55)">.361 · 14 HR · 58 RBI</div></div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isCoach }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:13px 14px 18px">
+      <div style="border-bottom:2px solid #1c2430;padding-bottom:7px">
+        <div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">COACH REYES · YEAR 4 · STEP 3 OF 6</div>
+        <div style="font:800 30px/0.95 'Big Shoulders Display',sans-serif;margin-top:5px;text-transform:uppercase">Your staff</div>
+      </div>
+      <div style="margin-top:11px;padding:12px;background:#fbf7ee;border:1px solid {{ pointsBorder }};border-left:3px solid {{ pointsBorder }}">
+        <div style="display:flex;align-items:baseline;gap:9px">
+          <span style="font:800 30px/1 'Big Shoulders Display',sans-serif;color:{{ pointsColor }}">{{ points }}</span>
+          <span style="font:400 12px/1.42 'Source Sans 3',sans-serif;color:rgba(28,36,48,.6)">{{ pointsNote }}</span>
+        </div>
+      </div>
+      <sc-for list="{{ skills }}" as="s" hint-placeholder-count="4">
+        <div style="margin-top:9px;padding:12px;border:1px solid rgba(28,36,48,.2);background:#fbf7ee">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <span style="font:700 12px 'IBM Plex Mono',monospace;letter-spacing:.1em">{{ s.label }}</span>
+            <span style="font:700 20px/1 'Big Shoulders Display',sans-serif;color:{{ s.valueColor }}">{{ s.value }}</span>
+          </div>
+          <div style="height:6px;background:rgba(28,36,48,.09);margin-top:7px">
+            <div style="height:100%;background:#a8442a;width:{{ s.width }};transition:width 320ms cubic-bezier(.2,.8,.3,1)"></div>
+          </div>
+          <div style="margin-top:7px;font:400 11.5px/1.45 'Source Sans 3',sans-serif;color:rgba(28,36,48,.55)">{{ s.blurb }}</div>
+          <button onClick="{{ s.spend }}" style="margin-top:9px;width:100%;padding:11px 0;background:{{ s.btnBg }};border:1px solid {{ s.btnBorder }};color:{{ s.btnColor }};font:700 10px 'IBM Plex Mono',monospace;letter-spacing:.12em">{{ s.btnLabel }}</button>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isDraft }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:13px 14px 6px">
+      <div style="border-bottom:2px solid #1c2430;padding-bottom:7px">
+        <div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">JUNE DRAFT · STEP 4 OF 6</div>
+        <div style="font:800 30px/0.95 'Big Shoulders Display',sans-serif;margin-top:5px;text-transform:uppercase">Who you lost</div>
+      </div>
+      <div style="margin-top:10px;font:400 12px/1.5 'Source Sans 3',sans-serif;color:rgba(28,36,48,.62)">The draft comes before you recruit now, so the holes it leaves are the holes you go shopping for.</div>
+      <div style="display:flex;margin-top:11px;border:1px solid rgba(28,36,48,.2);background:#fbf7ee">
+        <div style="flex:1;padding:10px 8px;border-right:1px solid rgba(28,36,48,.12)"><div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">GONE</div><div style="font:700 20px/1 'Big Shoulders Display',sans-serif;margin-top:3px">6</div></div>
+        <div style="flex:1;padding:10px 8px;border-right:1px solid rgba(28,36,48,.12)"><div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">DRAFTED</div><div style="font:700 20px/1 'Big Shoulders Display',sans-serif;margin-top:3px;color:#a8442a">3</div></div>
+        <div style="flex:1;padding:10px 8px"><div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">SCHOLARSHIPS</div><div style="font:700 20px/1 'Big Shoulders Display',sans-serif;margin-top:3px;color:#a8442a">8</div></div>
+      </div>
+    </div>
+    <div style="padding:0 14px 18px">
+      <div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5);margin:16px 0 7px">THE HOLES THIS LEAVES</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <sc-for list="{{ holes }}" as="h" hint-placeholder-count="6">
+          <div style="padding:7px 10px;border:1px solid {{ h.border }};background:{{ h.bg }}">
+            <div style="font:700 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:{{ h.color }}">{{ h.pos }}</div>
+            <div style="margin-top:2px;font:400 8.5px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.5)">{{ h.note }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5);margin:18px 0 6px">DEPARTING</div>
+      <div style="border:1px solid rgba(28,36,48,.2);background:#fbf7ee">
+        <sc-for list="{{ departures }}" as="d" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:32px 1fr auto auto;gap:9px;align-items:center;padding:9px 11px;border-bottom:1px solid rgba(28,36,48,.12);background:{{ d.bg }}">
+            <dc-import name="Avatar" pid="{{ d.pid }}" jersey="{{ d.jersey }}" size="{{ 32 }}" hint-size="32px,32px"></dc-import>
+            <div style="min-width:0"><div style="font:600 13px 'Source Sans 3',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ d.name }}</div><div style="font:400 10px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.55)">{{ d.sub }}</div></div>
+            <span style="font:700 8px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:{{ d.tagColor }};white-space:nowrap">{{ d.tag }}</span>
+            <span style="font:600 13px 'IBM Plex Mono',monospace">{{ d.ovr }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isRecruit }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:13px 14px 6px">
+      <div style="border-bottom:2px solid #1c2430;padding-bottom:7px">
+        <div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">RECRUITING · WEEK {{ week }} OF {{ weeksTotal }} · STEP 5 OF 6</div>
+        <div style="font:800 30px/0.95 'Big Shoulders Display',sans-serif;margin-top:5px;text-transform:uppercase">The board</div>
+      </div>
+      <div style="display:flex;margin-top:11px;border:1px solid rgba(28,36,48,.2);background:#fbf7ee">
+        <div style="flex:1;padding:9px 8px;border-right:1px solid rgba(28,36,48,.12)"><div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">SIGNED</div><div style="font:700 18px/1 'Big Shoulders Display',sans-serif;margin-top:3px">{{ signedCount }}</div></div>
+        <div style="flex:1;padding:9px 8px;border-right:1px solid rgba(28,36,48,.12)"><div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">BUDGET LEFT</div><div style="font:700 18px/1 'Big Shoulders Display',sans-serif;margin-top:3px;color:{{ budgetColor }}">{{ budgetLeft }}</div></div>
+        <div style="flex:1;padding:9px 8px"><div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">PRESTIGE</div><div style="font:700 18px/1 'Big Shoulders Display',sans-serif;margin-top:3px;color:#a8442a">★★★★</div></div>
+      </div>
+      <div style="margin-top:10px;padding:9px 11px;background:#fbf7ee;border-left:3px solid #a8442a;font:400 11.5px/1.5 'Source Sans 3',sans-serif;color:rgba(28,36,48,.72)">{{ needNote }}</div>
+    </div>
+    <div style="padding:10px 14px 18px">
+      <sc-for list="{{ prospects }}" as="p" hint-placeholder-count="5">
+        <div style="margin-bottom:8px;border:1px solid {{ p.border }};background:#fbf7ee">
+          <div style="display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:10px 11px">
+            <dc-import name="Avatar" pid="{{ p.pid }}" jersey="#a8442a" size="{{ 34 }}" hint-size="34px,34px"></dc-import>
+            <div style="min-width:0">
+              <div style="display:flex;align-items:baseline;gap:6px"><span style="font:700 13.5px 'Source Sans 3',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.name }}</span><span style="font:600 10px 'IBM Plex Mono',monospace;color:#a8442a">{{ p.stars }}</span></div>
+              <div style="font:400 10px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.55)">{{ p.sub }}</div>
+            </div>
+            <span style="font:700 8px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:{{ p.standColor }};text-align:right">{{ p.stand }}</span>
+          </div>
+          <div style="padding:0 11px 10px">
+            <div style="height:5px;background:rgba(28,36,48,.09);display:flex">
+              <div style="height:100%;background:#a8442a;width:{{ p.mineWidth }};transition:width 320ms ease"></div>
+              <div style="height:100%;background:rgba(28,36,48,.3);width:{{ p.rivalWidth }}"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:9px">
+              <button onClick="{{ p.minus }}" disabled="{{ p.stepOff }}" style="width:38px;height:38px;flex:none;border:1px solid {{ p.stepBorder }};background:{{ p.stepBg }};color:{{ p.stepColor }};font:700 18px 'IBM Plex Mono',monospace;line-height:1">−</button>
+              <div style="flex:1;display:flex;gap:3px">
+                <sc-for list="{{ p.pips }}" as="v" hint-placeholder-count="12">
+                  <div style="flex:1;height:20px;background:{{ v.fill }};transition:background 160ms ease"></div>
+                </sc-for>
+              </div>
+              <button onClick="{{ p.plus }}" disabled="{{ p.stepOff }}" style="width:38px;height:38px;flex:none;border:1px solid {{ p.stepBorder }};background:{{ p.stepBg }};color:{{ p.stepColor }};font:700 18px 'IBM Plex Mono',monospace;line-height:1">+</button>
+              <span style="font:800 22px/1 'Big Shoulders Display',sans-serif;min-width:26px;text-align:right;color:{{ p.spendColor }}">{{ p.spend }}</span>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isSigning }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:13px 14px 18px">
+      <div style="border-bottom:2px solid #1c2430;padding-bottom:7px">
+        <div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">SIGNING DAY · STEP 6 OF 6</div>
+        <div style="font:800 30px/0.95 'Big Shoulders Display',sans-serif;margin-top:5px;text-transform:uppercase">The class</div>
+      </div>
+      <div style="display:flex;margin-top:11px;border:1px solid rgba(28,36,48,.2);background:#fbf7ee">
+        <div style="flex:1;padding:11px 8px;border-right:1px solid rgba(28,36,48,.12)"><div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">SIGNED</div><div style="font:700 22px/1 'Big Shoulders Display',sans-serif;margin-top:4px">{{ classSigned }}</div></div>
+        <div style="flex:1;padding:11px 8px;border-right:1px solid rgba(28,36,48,.12)"><div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">CLASS PTS</div><div style="font:700 22px/1 'Big Shoulders Display',sans-serif;margin-top:4px">{{ classPoints }}</div></div>
+        <div style="flex:1;padding:11px 8px"><div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5)">WALK-ONS</div><div style="font:700 22px/1 'Big Shoulders Display',sans-serif;margin-top:4px;color:#a8442a">{{ walkOns }}</div></div>
+      </div>
+      <div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5);margin:18px 0 6px">HOLES YOU FILLED</div>
+      <sc-if value="{{ classEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:16px 12px;border:1px dashed rgba(28,36,48,.3);background:#fbf7ee;font:400 12px/1.55 'Source Sans 3',sans-serif;color:rgba(28,36,48,.6)">Nobody signed. Every hole on the roster gets filled by a walk-on instead.</div>
+      </sc-if>
+      <sc-if value="{{ classHas }}" hint-placeholder-val="{{ true }}">
+      <div style="border:1px solid rgba(28,36,48,.2);background:#fbf7ee">
+        <sc-for list="{{ classList }}" as="c" hint-placeholder-count="3">
+          <div style="display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:10px 11px;border-bottom:1px solid rgba(28,36,48,.12);background:{{ c.bg }}">
+            <dc-import name="Avatar" pid="{{ c.pid }}" jersey="{{ c.jersey }}" size="{{ 34 }}" hint-size="34px,34px"></dc-import>
+            <div style="min-width:0"><div style="font:600 13px 'Source Sans 3',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</div><div style="font:400 10px 'IBM Plex Mono',monospace;color:{{ c.subColor }}">{{ c.sub }}</div></div>
+            <span style="font:600 11px 'IBM Plex Mono',monospace;color:#a8442a">{{ c.stars }}</span>
+          </div>
+        </sc-for>
+      </div>
+      </sc-if>
+
+      <div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(28,36,48,.5);margin:18px 0 6px">WHO YOU LOST, AND TO WHOM</div>
+      <sc-if value="{{ lostEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:16px 12px;border:1px dashed rgba(28,36,48,.3);background:#fbf7ee;font:400 12px/1.55 'Source Sans 3',sans-serif;color:rgba(28,36,48,.6)">Nobody came off your board to a rival.</div>
+      </sc-if>
+      <sc-if value="{{ lostHas }}" hint-placeholder-val="{{ true }}">
+      <div style="border:1px solid rgba(28,36,48,.2);background:#fbf7ee">
+        <sc-for list="{{ lostList }}" as="c" hint-placeholder-count="2">
+          <div style="display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:10px 11px;border-bottom:1px solid rgba(28,36,48,.12);background:{{ c.bg }}">
+            <dc-import name="Avatar" pid="{{ c.pid }}" jersey="{{ c.jersey }}" size="{{ 34 }}" hint-size="34px,34px"></dc-import>
+            <div style="min-width:0"><div style="font:600 13px 'Source Sans 3',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</div><div style="font:400 10px 'IBM Plex Mono',monospace;color:{{ c.subColor }}">{{ c.sub }}</div></div>
+            <span style="font:600 11px 'IBM Plex Mono',monospace;color:#a8442a">{{ c.stars }}</span>
+          </div>
+        </sc-for>
+      </div>
+      </sc-if>
+
+      <div style="margin-top:14px;padding:12px;background:#1c2430">
+        <div style="font:600 8.5px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(246,241,230,.6)">FEBRUARY 2028</div>
+        <div style="font:800 26px/1 'Big Shoulders Display',sans-serif;margin-top:6px;color:#f6f1e6;text-transform:uppercase">Defending a title</div>
+        <div style="margin-top:6px;font:400 12px/1.5 'Source Sans 3',sans-serif;color:rgba(246,241,230,.68)">{{ classNote }}</div>
+      </div>
+    </div>
+  </sc-if>
+
+  </main>
+
+  <div style="flex:none;padding:11px 14px;padding-bottom:13px;background:linear-gradient(to top,#f2ece0 72%,rgba(242,236,224,0));border-top:1px solid rgba(28,36,48,.1)">
+    <sc-if value="{{ hasSecondary }}" hint-placeholder-val="{{ false }}">
+      <button onClick="{{ secondaryRun }}" style="width:100%;padding:11px 0;margin-bottom:8px;background:transparent;border:1px solid rgba(28,36,48,.4);font:700 10px 'IBM Plex Mono',monospace;letter-spacing:.12em;color:#1c2430">{{ secondaryLabel }}</button>
+    </sc-if>
+    <button onClick="{{ primaryRun }}" style="width:100%;padding:15px 0;background:#a8442a;border:1px solid #a8442a;color:#f6f1e6;font:700 12px 'IBM Plex Mono',monospace;letter-spacing:.14em;box-shadow:0 2px 10px rgba(28,36,48,.22)">{{ primaryLabel }}</button>
+    <div style="margin-top:7px;font:400 10.5px/1.4 'Source Sans 3',sans-serif;color:rgba(28,36,48,.5);text-align:center">{{ primaryNote }}</div>
+  </div>
+
+</div>
+</x-import>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:428,&quot;height&quot;:908},&quot;startScreen&quot;:{&quot;editor&quot;:null,&quot;default&quot;:&quot;conf&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;dramaSpeed&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0.3,&quot;max&quot;:3,&quot;step&quot;:0.1,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Motion&quot;},&quot;showLives&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Bracket&quot;},&quot;showTeamColours&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Bracket&quot;}}">
+const CLAY = '#a8442a', INK = '#1c2430', WIN = '#3f6b46';
+const DIM = 'rgba(28,36,48,.45)', FAINT = 'rgba(28,36,48,.2)';
+const ME = 'RID';
+
+// Schools, colours and abbreviations lifted from src/data/schools.ts. The colour
+// is what teamColour() in src/ui/Avatar.tsx resolves for each abbreviation.
+const SCHOOLS = {
+  RID: { school: 'Ridgemont State', color: '#1f4d3f' },
+  BRK: { school: 'Bracken State', color: '#2b2f3a' },
+  MBT: { school: 'Marbury Tech', color: '#7a4a1f' },
+  PIN: { school: 'Pinecrest State', color: '#3f5f2b' },
+  VER: { school: 'Verdugo', color: '#8a2f4a' },
+  CAL: { school: 'Calloway', color: '#6b5b1f' },
+  BAY: { school: 'Bayou State', color: '#7a1f2b' },
+  WIC: { school: 'Wichita Plains', color: '#4a5a6b' },
+  JAX: { school: 'Jacksonville Shore', color: '#1f5f8a' },
+  PIE: { school: 'Piedmont State', color: '#8c1c2b' },
+  PLT: { school: 'Platte Valley', color: '#7a3f1f' },
+  SON: { school: 'Sonora State', color: '#8a4a1f' },
+  TAM: { school: 'Tampa Bay Tech', color: '#237a7a' },
+  CHS: { school: 'Charleston Harbor', color: '#1b3a5c' },
+  SLN: { school: 'Salina', color: '#8a7a3a' },
+  DLT: { school: 'Delta A&M', color: '#2f6b4f' },
+  NGL: { school: 'Nogales', color: '#3a3a4a' },
+  MOB: { school: 'Mobile Bay', color: '#1c3f6e' },
+  RGV: { school: 'Rio Grande', color: '#4a6b3a' },
+  TUC: { school: 'Tucson Mesa', color: '#7a2f2b' },
+};
+const teamColour = (abbr) => (SCHOOLS[abbr] ? SCHOOLS[abbr].color : '#a8442a');
+const seedTeams = (list) => {
+  const out = {};
+  list.forEach((abbr, i) => { out[abbr] = { school: SCHOOLS[abbr].school, seed: i + 1, color: SCHOOLS[abbr].color }; });
+  return out;
+};
+
+const CONF = {
+  key: 'conf',
+  teams: seedTeams(['BRK', 'RID', 'MBT', 'PIN', 'VER', 'CAL']),
+  rounds: [
+    { label: 'ROUND 1', preview: 'vs No. 5 Verdugo', note: 'You host — the better seed always does.',
+      w: [
+        { a: 'BRK', b: 'CAL', as: 8, bs: 2 },
+        { a: 'RID', b: 'VER', as: 5, bs: 4 },
+        { a: 'MBT', b: 'PIN', as: 3, bs: 6 },
+      ], e: [] },
+    { label: 'ROUND 2', preview: 'vs No. 4 Pinecrest State', note: 'Winners bracket. Bracken State sits this one out on the bye.',
+      w: [{ a: 'RID', b: 'PIN', as: 7, bs: 4 }], wBye: 'BRACKEN STATE',
+      e: [{ a: 'VER', b: 'CAL', as: 6, bs: 5, out: 'b' }], eBye: 'MARBURY TECH' },
+    { label: 'ROUND 3', preview: 'vs No. 1 Bracken State', note: 'Winner goes to the final unbeaten. Loser drops into the elimination bracket below, one life left.',
+      w: [{ a: 'BRK', b: 'RID', as: 3, bs: 4 }],
+      e: [{ a: 'PIN', b: 'VER', as: 9, bs: 2, out: 'b' }], eBye: 'MARBURY TECH' },
+    { label: 'ROUND 4', preview: '', note: 'You are in the final already, but you have not won anything yet — the elimination bracket below is deciding who you face.',
+      w: [], wBye: 'RIDGEMONT · WAITING IN THE FINAL',
+      e: [{ a: 'BRK', b: 'PIN', as: 5, bs: 2, out: 'b' }], eBye: 'MARBURY TECH' },
+    { label: 'ROUND 5', preview: '', note: 'Last cut before the final.',
+      w: [], wBye: 'RIDGEMONT · WAITING IN THE FINAL',
+      e: [{ a: 'MBT', b: 'BRK', as: 4, bs: 6, out: 'a' }] },
+    { label: 'CHAMPIONSHIP', preview: 'vs No. 1 Bracken State', note: 'They have one loss. You have none — so one win takes it.',
+      w: [{ a: 'RID', b: 'BRK', as: 6, bs: 2, out: 'b', title: true }], e: [] },
+  ],
+  rules: 'Six teams, double elimination. Lose once and you drop into the elimination bracket below the rule; lose twice and your season is over. The unbeaten team only has to win the final once — everybody else has to win it twice.',
+  verdict: 'Conference champions. That is an automatic bid to the national field, whatever the committee thinks of your record.',
+};
+
+const REGIONAL = {
+  key: 'regional',
+  teams: seedTeams(['BAY', 'RID', 'WIC', 'JAX']),
+  rounds: [
+    { label: 'ROUND 1', preview: 'vs No. 3 Wichita Plains', note: 'Four teams, same rules. Two losses ends your year.',
+      w: [{ a: 'BAY', b: 'JAX', as: 4, bs: 1 }, { a: 'RID', b: 'WIC', as: 3, bs: 2 }], e: [] },
+    { label: 'ROUND 2', preview: 'vs No. 1 Bayou State', note: 'Winner is one win from Omaha.',
+      w: [{ a: 'BAY', b: 'RID', as: 4, bs: 5 }],
+      e: [{ a: 'WIC', b: 'JAX', as: 7, bs: 3, out: 'b' }] },
+    { label: 'ROUND 3', preview: '', note: 'Bayou State are fighting back through the elimination bracket below to reach you. You still have to beat whoever survives it.',
+      w: [], wBye: 'RIDGEMONT · WAITING IN THE FINAL',
+      e: [{ a: 'BAY', b: 'WIC', as: 6, bs: 2, out: 'b' }] },
+    { label: 'REGIONAL FINAL', decider: true, preview: 'vs No. 1 Bayou State', note: 'One win and you are going to Omaha.',
+      w: [{ a: 'BAY', b: 'RID', as: 5, bs: 2 }], e: [] },
+    { label: 'WINNER TAKE ALL', preview: 'vs No. 1 Bayou State — again', note: 'They beat you, so you both have one loss now. This game settles it.',
+      w: [{ a: 'RID', b: 'BAY', as: 8, bs: 3, out: 'b', title: true }], e: [] },
+  ],
+  rules: 'Four teams, double elimination. If the unbeaten team loses the final, both sides have one loss and a second final is played the next day. That is the only way a bracket like this can be settled fairly.',
+  verdict: 'You lost the final and won the rematch. Regional champions — on to Omaha.',
+};
+
+const OMAHA = {
+  key: 'omaha',
+  teams: seedTeams(['PIE', 'RID', 'PLT', 'SON']),
+  rounds: [
+    { label: 'ROUND 1', preview: 'vs No. 3 Platte Valley', note: 'The last four programs in the country.',
+      w: [{ a: 'PIE', b: 'SON', as: 6, bs: 4 }, { a: 'RID', b: 'PLT', as: 4, bs: 1 }], e: [] },
+    { label: 'ROUND 2', preview: 'vs No. 1 Piedmont State', note: 'Lose and you drop into the elimination bracket below — not out, but one more ends it.',
+      w: [{ a: 'PIE', b: 'RID', as: 3, bs: 2 }],
+      e: [{ a: 'SON', b: 'PLT', as: 5, bs: 4, out: 'b' }] },
+    { label: 'ROUND 3', preview: 'vs No. 4 Sonora State', note: 'You are in the elimination bracket now. Lose this and the season is over.',
+      w: [], wBye: 'PIEDMONT STATE · WAITING IN THE FINAL',
+      e: [{ a: 'RID', b: 'SON', as: 9, bs: 1, out: 'b' }] },
+    { label: 'CHAMPIONSHIP', decider: true, preview: 'vs No. 1 Piedmont State', note: 'They are unbeaten. You have to beat them twice.',
+      w: [{ a: 'PIE', b: 'RID', as: 4, bs: 5 }], e: [] },
+    { label: 'WINNER TAKE ALL', preview: 'vs No. 1 Piedmont State — again', note: 'One game for the national title.',
+      w: [{ a: 'RID', b: 'PIE', as: 7, bs: 6, out: 'b', title: true }], e: [] },
+  ],
+  rules: 'The four regional winners, one last double elimination. You arrived with one loss already, so every game from here is an elimination game — and Piedmont State have to be beaten twice.',
+  verdict: 'National champions. Two wins over an unbeaten Piedmont State in two days.',
+};
+
+const BRACKETS = { conf: CONF, regional: REGIONAL, omaha: OMAHA };
+
+const FLOW = ['conf', 'regional', 'omaha', 'awards', 'review', 'coach', 'draft', 'recruit', 'signing'];
+
+const LADDER = [
+  { key: 'conf', name: 'CONFERENCE' },
+  { key: 'regional', name: 'YOUR REGIONAL' }, { key: 'omaha', name: 'OMAHA' },
+];
+const OFF_LADDER = [
+  { key: 'awards', name: 'AWARDS' }, { key: 'review', name: 'SEASON' },
+  { key: 'coach', name: 'STAFF' }, { key: 'draft', name: 'DRAFT' },
+  { key: 'recruit', name: 'RECRUIT' }, { key: 'signing', name: 'CLASS' },
+];
+
+const AWARDS = [
+  { title: 'PLAYER OF THE YEAR', tag: 'RID', name: 'Dane Mercer', line: '.361 / 14 HR / 58 RBI / 1.081 OPS', mine: true },
+  { title: 'PITCHER OF THE YEAR', tag: 'PIE', name: 'Wes Talbert', line: '11-1 / 1.94 ERA / 128 K / 106.2 IP', mine: false },
+  { title: 'FRESHMAN OF THE YEAR', tag: 'RID', name: 'Iker Solano', line: '9-2 / 2.61 ERA / 91 K', mine: true },
+];
+
+const ALLCONF = [
+  { pos: 'C', name: 'Dane Mercer', line: '.361 / 14 HR / 1.081 OPS', year: 'JR' },
+  { pos: 'SS', name: 'Ruben Astley', line: '.318 / 6 HR / .864 OPS', year: 'SR' },
+  { pos: 'CF', name: 'Marcus Whit', line: '.302 / 9 HR / .871 OPS', year: 'SO' },
+  { pos: 'P', name: 'Iker Solano', line: '9-2 / 2.61 ERA / 91 K', year: 'FR' },
+];
+
+// SKILLS / SKILL_LABEL / SKILL_BLURB, verbatim from src/engine/program.ts.
+const SKILL_DEFS = [
+  { key: 'offense', label: 'OFFENSE', blurb: 'Your hitters take better at-bats and run the bases smarter.' },
+  { key: 'defense', label: 'DEFENSE', blurb: 'Your fielders get to more, and your pitchers hold runners on.' },
+  { key: 'training', label: 'TRAINING', blurb: 'Players develop further between seasons, and decline later.' },
+  { key: 'recruiting', label: 'RECRUITING', blurb: 'Every hour spent on a recruit counts for more.' },
+];
+
+// src/engine/recruiting.ts
+const SCHOLARSHIPS = 8;
+const RECRUITING_BUDGET = 30;
+const MAX_PER_RECRUIT = 12;
+const RECRUITING_WEEKS = 3;
+const PRIORITY_LABEL = {
+  prestige: 'THE NAME', playingTime: 'PLAYING TIME', winning: 'WINNING NOW',
+  proximity: 'CLOSE TO HOME', development: 'DEVELOPMENT',
+};
+
+const DEPARTURES = [
+  { pid: 'rid-astley-04', name: 'Ruben Astley', sub: 'SS · SR · graduated', tag: 'CAREER OVER', drafted: false, ovr: 74 },
+  { pid: 'rid-brennan-11', name: 'Cal Brennan', sub: 'SP · JR · drafted', tag: 'RD 1 · PICK 14', drafted: true, ovr: 81 },
+  { pid: 'rid-reyes-27', name: 'Tobin Reyes', sub: 'CF · JR · drafted', tag: 'RD 2 · PICK 9', drafted: true, ovr: 76 },
+  { pid: 'rid-colvin-19', name: 'Nate Colvin', sub: 'C · SR · graduated', tag: 'CAREER OVER', drafted: false, ovr: 69 },
+  { pid: 'rid-draske-33', name: 'Emil Draske', sub: 'RP · JR · drafted', tag: 'RD 2 · PICK 31', drafted: true, ovr: 72 },
+  { pid: 'rid-aylward-08', name: 'Sam Aylward', sub: '1B · SR · graduated', tag: 'CAREER OVER', drafted: false, ovr: 66 },
+];
+
+const HOLES = [
+  { pos: 'SP', note: 'ace gone' }, { pos: 'C', note: '2 needed' }, { pos: 'CF', note: 'starter gone' },
+  { pos: 'SS', note: 'starter gone' }, { pos: '1B', note: 'starter gone' }, { pos: 'RP', note: 'depth' },
+];
+
+const PROSPECTS = [
+  { id: 'p1', pid: 'hs-lund-2028', name: 'Josiah Lund', stars: '★★★★', sub: '#12 · SP · TX · ' + PRIORITY_LABEL.development, rival: 62, fills: 'SP', to: 'PIE' },
+  { id: 'p2', pid: 'hs-marchetti-2028', name: 'Owen Marchetti', stars: '★★★★', sub: '#28 · C · CA · ' + PRIORITY_LABEL.playingTime, rival: 44, fills: 'C', to: 'PIE' },
+  { id: 'p3', pid: 'hs-beaumont-2028', name: 'Ty Beaumont', stars: '★★★', sub: '#61 · CF · FL · ' + PRIORITY_LABEL.winning, rival: 30, fills: 'CF', to: 'BAY' },
+  { id: 'p4', pid: 'hs-quintero-2028', name: 'Rafa Quintero', sub: '#74 · SS · AZ · ' + PRIORITY_LABEL.proximity, stars: '★★★', rival: 22, fills: 'SS', to: 'WIC' },
+  { id: 'p5', pid: 'hs-powell-2028', name: 'Grant Powell', stars: '★★', sub: '#140 · 1B · OH · ' + PRIORITY_LABEL.prestige, rival: 12, fills: '1B', to: 'TUC' },
+  { id: 'p6', pid: 'hs-cortez-2028', name: 'Dell Cortez', stars: '★★', sub: '#188 · RP · GA · ' + PRIORITY_LABEL.playingTime, rival: 8, fills: 'RP', to: 'BRK' },
+];
+
+class Component extends DCLogic {
+  state = {
+    screen: 'conf',
+    revealed: { conf: 0, regional: 0, omaha: 0 },
+    rolling: false,
+    roll: 0,
+    tab: 'bracket',
+    rulesOpen: false,
+    standingsOpen: false,
+    points: 9,
+    skills: { offense: 57, defense: 48, training: 61, recruiting: 54 },
+    week: 1,
+    spend: { p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0 },
+    // Points banked, the way recruiting.ts models them: a running total per
+    // program. Commitments come out of closeWeek(), never out of a week's spend.
+    banked: { p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0 },
+    rivalPts: { p1: 6.2, p2: 4.4, p3: 3.0, p4: 2.2, p5: 1.2, p6: 0.8 },
+    committed: {},
+    prestigeGrow: '0%',
+  };
+
+  componentDidMount() {
+    // An entry point for anyone embedding this component, not a live control:
+    // the design already has a ladder, and a second navigator would fight it.
+    if (this.props.startScreen && FLOW.includes(this.props.startScreen)) {
+      this.setState({ screen: this.props.startScreen });
+    }
+  }
+
+  componentWillUnmount() { this.stopRoll(); }
+
+  /**
+   * Keep the newest column in view.
+   *
+   * Done on update rather than on the tap: the column does not exist until the
+   * render that follows it, and a round that plays off the right edge of the
+   * screen is a round that did not visibly happen.
+   */
+  componentDidUpdate() {
+    const key = this.state.screen;
+    const rev = this.state.revealed[key];
+    if (rev === undefined || rev === this.lastRev) return;
+    this.lastRev = rev;
+    const el = this.scrollEl
+      || [...document.querySelectorAll('div')].find((d) => d.scrollWidth > d.clientWidth + 10);
+    if (el) el.scrollLeft = el.scrollWidth;
+  }
+
+  speed() { return Math.max(0.3, Number(this.props.dramaSpeed ?? 1)); }
+
+  stopRoll() {
+    if (this.rollTimer) { clearInterval(this.rollTimer); this.rollTimer = null; }
+    if (this.rollEnd) { clearTimeout(this.rollEnd); this.rollEnd = null; }
+  }
+
+  playRound() {
+    const key = this.state.screen;
+    const b = BRACKETS[key];
+    if (!b) return;
+    const n = this.state.revealed[key];
+    if (n >= b.rounds.length) return;
+    this.stopRoll();
+    this.setState((s) => ({ revealed: { ...s.revealed, [key]: n + 1 }, rolling: true, roll: 0 }));
+    // Bring the round that just played into view. The newest column is the
+    // rightmost one, and a bracket you have to go looking for is not a bracket.
+    setTimeout(() => {
+      const el = this.scrollEl
+        || [...document.querySelectorAll('div')].find((d) => d.scrollWidth > d.clientWidth + 10);
+      if (el) el.scrollLeft = el.scrollWidth;
+    }, 120);
+    const dur = 800 / this.speed();
+    this.rollTimer = setInterval(() => this.setState((s) => ({ roll: s.roll + 1 })), 70);
+    this.rollEnd = setTimeout(() => { this.stopRoll(); this.setState({ rolling: false }); }, dur);
+  }
+
+  playAll() {
+    const key = this.state.screen;
+    const b = BRACKETS[key];
+    if (!b) return;
+    this.stopRoll();
+    this.setState((s) => ({ revealed: { ...s.revealed, [key]: b.rounds.length }, rolling: false }));
+  }
+
+  go(screen) {
+    this.stopRoll();
+    // Opening recruiting opens the window. It is a three week event on a
+    // deadline, not a place you wander back into halfway through.
+    const fresh = screen === 'recruit'
+      ? {
+          week: 1,
+          spend: { p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0 },
+          banked: { p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0 },
+          rivalPts: { p1: 6.2, p2: 4.4, p3: 3.0, p4: 2.2, p5: 1.2, p6: 0.8 },
+          committed: {},
+        }
+      : {};
+    this.setState({ screen, rolling: false, rulesOpen: false, standingsOpen: false, ...fresh });
+    if (screen === 'review') setTimeout(() => this.setState({ prestigeGrow: '13%' }), 260);
+    else this.setState({ prestigeGrow: '0%' });
+  }
+
+  next() {
+    const i = FLOW.indexOf(this.state.screen);
+    if (i >= FLOW.length - 1) {
+      // The end of the sequence loops back to the top rather than sitting on a
+      // button that names a consequence and produces none. The three brackets
+      // reset, so the postseason is reachable again without a reload.
+      this.lastRev = undefined;
+      this.setState({ revealed: { conf: 0, regional: 0, omaha: 0 } });
+      this.go('conf');
+      return;
+    }
+    this.go(FLOW[i + 1]);
+  }
+
+  /** weeklyPoints() from recruiting.ts, at an average fit of .55. */
+  weekGain(actions) {
+    if (!actions || actions <= 0) return 0;
+    return 0.55 * 2.2 + actions * 0.55 * 2.6;
+  }
+
+  /** closeWeek(): bank the week, then let recruits make up their minds. */
+  endRecruitingWeek() {
+    this.setState((x) => {
+      const banked = { ...x.banked };
+      const rivalPts = { ...x.rivalPts };
+      const committed = { ...x.committed };
+      const finalWeek = x.week >= RECRUITING_WEEKS;
+
+      for (const p of PROSPECTS) {
+        if (committed[p.id]) continue;
+        banked[p.id] += this.weekGain(x.spend[p.id]);
+        // Rivals bank about half a decisive push a week, so ignoring a target
+        // costs you him by week two rather than immediately.
+        rivalPts[p.id] += p.rival / 20;
+
+        const mine = banked[p.id];
+        const rival = rivalPts[p.id];
+        const leader = Math.max(mine, rival);
+        const second = Math.min(mine, rival);
+        const margin = leader > 0 ? (leader - second) / leader : 0;
+        // COMMIT_POINTS = 7, COMMIT_MARGIN = 0.35, and the last week forces
+        // everybody still undecided to sign with whoever leads.
+        if (finalWeek || (leader > 7 && margin > 0.35)) {
+          committed[p.id] = mine >= rival ? 'me' : 'them';
+        }
+      }
+
+      return {
+        banked, rivalPts, committed,
+        week: x.week + 1,
+        spend: { p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0 },
+      };
+    });
+  }
+
+  // ---- bracket derivation ----
+
+  lifeState(b, revealed) {
+    const lost = {};
+    const out = {};
+    for (let i = 0; i < revealed; i++) {
+      const r = b.rounds[i];
+      for (const g of [...(r.w || []), ...(r.e || [])]) {
+        const loser = g.as > g.bs ? g.b : g.a;
+        lost[loser] = (lost[loser] || 0) + 1;
+        if (lost[loser] >= 2) out[loser] = true;
+      }
+    }
+    return { lost, out };
+  }
+
+  decorate(b, g, isLast, gi, pending) {
+    const mineHere = g.a === ME || g.b === ME;
+    // The programme colours from schools.ts, or a neutral rule when the tweak
+    // asks for a plain board.
+    const bar = (abbr) => (this.props.showTeamColours === false
+      ? 'rgba(28,36,48,.3)' : b.teams[abbr].color);
+    if (pending) {
+      return {
+        aAbbr: g.a, bAbbr: g.b,
+        aSeed: b.teams[g.a].seed, bSeed: b.teams[g.b].seed,
+        aBar: bar(g.a), bBar: bar(g.b),
+        aScore: '—', bScore: '—',
+        aColor: g.a === ME ? CLAY : INK, bColor: g.b === ME ? CLAY : INK,
+        aWeight: 400, bWeight: 400, aDeco: 'none', bDeco: 'none',
+        aBg: g.a === ME ? 'rgba(168,68,42,.09)' : 'transparent',
+        bBg: g.b === ME ? 'rgba(168,68,42,.09)' : 'transparent',
+        border: mineHere ? CLAY : 'rgba(28,36,48,.3)',
+        bstyle: 'dashed', opacity: 1, delay: (gi * 90) + 'ms',
+      };
+    }
+    const rolling = this.state.rolling && isLast;
+    const scramble = (v) => String((v * 3 + this.state.roll * 5 + gi * 7) % 13);
+    const aWin = g.as > g.bs;
+    const mineA = g.a === ME, mineB = g.b === ME;
+    const outA = g.out === 'a', outB = g.out === 'b';
+    const col = (win, mine, out) => mine ? CLAY : win ? INK : out ? DIM : 'rgba(28,36,48,.5)';
+    return {
+      aAbbr: g.a, bAbbr: g.b,
+      aSeed: b.teams[g.a].seed, bSeed: b.teams[g.b].seed,
+      aBar: bar(g.a), bBar: bar(g.b),
+      aScore: rolling ? scramble(g.as) : String(g.as),
+      bScore: rolling ? scramble(g.bs) : String(g.bs),
+      aColor: col(aWin, mineA, outA), bColor: col(!aWin, mineB, outB),
+      aWeight: aWin ? 700 : 400, bWeight: aWin ? 400 : 700,
+      aDeco: outA && !rolling ? 'line-through' : 'none',
+      bDeco: outB && !rolling ? 'line-through' : 'none',
+      aBg: mineA ? 'rgba(168,68,42,.10)' : 'transparent',
+      bBg: mineB ? 'rgba(168,68,42,.10)' : 'transparent',
+      border: mineA || mineB ? CLAY : FAINT,
+      bstyle: 'solid',
+      opacity: rolling ? 1 : (g.out && !mineA && !mineB) ? 0.72 : 1,
+      delay: (gi * 150 / this.speed()) + 'ms',
+    };
+  }
+
+  /**
+   * The bracket as a fixed grid: one column per round, winners lane above the
+   * rule, elimination lane below it. Every position is arithmetic, so the clay
+   * line tracing your own path can be drawn without measuring the DOM.
+   */
+  buildBracket(b, rev) {
+    // PAD is the width of the non-scrolling gutter the lane labels live in.
+    const PAD = 104, CARDW = 128, COLW = 154, CARDH = 56, ROW = 64, HDR = 20, BAND = 30;
+    const cards = [], byes = [], headers = [], pathSegs = [], points = [], myPath = [];
+
+    const lanes = [];
+    let maxW = 1, maxE = 1;
+    const shown = Math.min(rev, b.rounds.length - 1);
+    for (let i = 0; i <= shown; i++) {
+      const r = b.rounds[i];
+      const pending = i >= rev;
+      const isLast = i === rev - 1;
+      const mineIn = (g) => g.a === ME || g.b === ME;
+      const w = [...(r.w || [])].sort((x, y) => Number(mineIn(y)) - Number(mineIn(x)));
+      const e = [...(r.e || [])].sort((x, y) => Number(mineIn(y)) - Number(mineIn(x)));
+      const wBye = r.wBye ? r.wBye : null;
+      lanes.push({ i, r, isLast, pending, w, e, wBye, eBye: r.eBye || null });
+      maxW = Math.max(maxW, w.length + (wBye ? 1 : 0));
+      maxE = Math.max(maxE, e.length + (r.eBye ? 1 : 0));
+    }
+
+    const laneWTop = HDR + 8;
+    const bandY = laneWTop + maxW * ROW + 4;
+    const laneETop = bandY + BAND;
+    const canvasH = laneETop + maxE * ROW + 8;
+    const canvasW = PAD + Math.max(0, lanes.length - 1) * COLW + CARDW + 14;
+
+    for (const L of lanes) {
+      const x = PAD + L.i * COLW;
+      headers.push({
+        x: x + 'px', label: L.pending ? L.r.label + ' · TO COME' : L.r.label,
+        color: L.isLast || L.pending ? CLAY : 'rgba(28,36,48,.62)',
+      });
+
+      let slot = 0;
+      if (L.wBye) {
+        const mine = L.wBye.indexOf('RIDGEMONT') >= 0;
+        const y = laneWTop + slot * ROW;
+        byes.push({
+          x: x + 'px', y: y + 'px', label: mine ? L.wBye : L.wBye + ' · BYE',
+          border: mine ? CLAY : 'rgba(28,36,48,.26)',
+          color: mine ? CLAY : 'rgba(28,36,48,.5)',
+        });
+        if (mine) {
+          points.push({ x, yc: y + CARDH / 2 });
+          myPath.push({
+            round: L.r.label, headline: 'No game', score: '—',
+            sub: 'Waiting in the winners bracket',
+            foot: 'YOU ARE IN THE FINAL — NOT THROUGH IT',
+            color: INK, border: FAINT, dot: 'transparent',
+            footBg: 'rgba(28,36,48,.06)', footColor: 'rgba(28,36,48,.5)',
+          });
+        }
+        slot += 1;
+      }
+      for (const g of L.w) {
+        const y = laneWTop + slot * ROW;
+        cards.push({ ...this.decorate(b, g, L.isLast, slot, L.pending), x: x + 'px', y: y + 'px' });
+        if (g.a === ME || g.b === ME) {
+          points.push({ x, yc: y + CARDH / 2 });
+          if (!L.pending) myPath.push(this.pathEntry(b, L.r, g, 'winners'));
+        }
+        slot += 1;
+      }
+
+      let eSlot = 0;
+      if (L.eBye) {
+        byes.push({
+          x: x + 'px', y: (laneETop + eSlot * ROW) + 'px', label: L.eBye + ' · BYE',
+          border: 'rgba(28,36,48,.26)', color: 'rgba(28,36,48,.5)',
+        });
+        eSlot += 1;
+      }
+      for (const g of L.e) {
+        const y = laneETop + eSlot * ROW;
+        cards.push({ ...this.decorate(b, g, L.isLast, eSlot, L.pending), x: x + 'px', y: y + 'px' });
+        if (g.a === ME || g.b === ME) {
+          points.push({ x, yc: y + CARDH / 2 });
+          if (!L.pending) myPath.push(this.pathEntry(b, L.r, g, 'elimination'));
+        }
+        eSlot += 1;
+      }
+    }
+
+    for (let k = 1; k < points.length; k++) {
+      const p1 = points[k - 1], p2 = points[k];
+      const startX = p1.x + CARDW;
+      const midX = startX + (p2.x - startX) / 2;
+      pathSegs.push({ x: startX + 'px', y: (p1.yc - 1) + 'px', w: (midX - startX) + 'px', h: '2px' });
+      if (p1.yc !== p2.yc) {
+        pathSegs.push({
+          x: (midX - 1) + 'px', y: (Math.min(p1.yc, p2.yc) - 1) + 'px',
+          w: '2px', h: (Math.abs(p2.yc - p1.yc) + 2) + 'px',
+        });
+      }
+      pathSegs.push({ x: midX + 'px', y: (p2.yc - 1) + 'px', w: (p2.x - midX) + 'px', h: '2px' });
+    }
+
+    return {
+      cards, byes, headers, pathSegs, myPath: myPath.slice().reverse(),
+      scrollable: canvasW > 396, hasPath: myPath.length > 0,
+      canvasW: canvasW + 'px', canvasH: canvasH + 'px',
+      bandY: bandY + 'px',
+      laneWLabelY: (laneWTop + (maxW * ROW) / 2 - 16) + 'px',
+      laneELabelY: (laneETop + (maxE * ROW) / 2 - 16) + 'px',
+    };
+  }
+
+  /** One of your own games, said in words. */
+  pathEntry(b, round, g, lane) {
+    const opp = g.a === ME ? g.b : g.a;
+    const mineScore = g.a === ME ? g.as : g.bs;
+    const oppScore = g.a === ME ? g.bs : g.as;
+    const won = mineScore > oppScore;
+    const oppOut = g.out && (g.out === 'a' ? g.a : g.b) === opp;
+    return {
+      round: round.label,
+      headline: b.teams[opp].school,
+      sub: 'No. ' + b.teams[opp].seed + ' seed · ' + lane + ' bracket',
+      score: (won ? 'W ' : 'L ') + mineScore + '-' + oppScore,
+      foot: g.title ? 'YOU WIN IT'
+        : round.decider ? 'BOTH SIDES NOW ON ONE LOSS — ONE GAME SETTLES IT'
+        : oppOut ? b.teams[opp].school.toUpperCase() + ' ELIMINATED'
+        : lane === 'elimination'
+          ? (won ? 'YOU SURVIVE — STILL ONE LIFE LEFT' : 'YOUR SEASON IS OVER')
+          : won ? 'THEY DROP TO THE ELIMINATION BRACKET'
+            : 'YOU DROP TO THE ELIMINATION BRACKET — ONE LIFE LEFT',
+      color: won ? WIN : CLAY,
+      border: won ? FAINT : CLAY,
+      dot: won ? CLAY : 'transparent',
+      footBg: won ? 'rgba(63,107,70,.12)' : 'rgba(168,68,42,.12)',
+      footColor: won ? WIN : CLAY,
+    };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const screen = s.screen;
+    const b = BRACKETS[screen];
+    const isBracket = !!b;
+    const showLives = this.props.showLives !== false;
+
+    const v = {
+      isBracket, isAwards: screen === 'awards',
+      isReview: screen === 'review', isCoach: screen === 'coach', isDraft: screen === 'draft',
+      isRecruit: screen === 'recruit', isSigning: screen === 'signing',
+      rulesOpen: s.rulesOpen, standingsOpen: s.standingsOpen,
+      toggleRules: () => this.setState((x) => ({ rulesOpen: !x.rulesOpen })),
+      toggleStandings: () => this.setState((x) => ({ standingsOpen: !x.standingsOpen })),
+      rulesToggle: s.rulesOpen ? '−' : '+',
+      standingsToggle: s.standingsOpen ? 'HIDE THE FULL FIELD' : 'SHOW THE FULL FIELD',
+      prestigeGrow: s.prestigeGrow,
+      awards: AWARDS.map((a, i) => ({
+        ...a, delay: (i * 130) + 'ms',
+        border: a.mine ? CLAY : FAINT, headBg: a.mine ? CLAY : '#223247',
+        nameColor: a.mine ? CLAY : INK,
+      })),
+      allConf: ALLCONF,
+      departures: DEPARTURES.map((d) => ({
+        ...d, bg: d.drafted ? 'rgba(168,68,42,.09)' : 'transparent',
+        tagColor: d.drafted ? CLAY : 'rgba(28,36,48,.5)',
+        jersey: teamColour('RID'),
+      })),
+      holes: HOLES.map((h) => ({ ...h, border: CLAY, bg: 'rgba(168,68,42,.08)', color: CLAY })),
+      classList: [], lostList: [],
+      week: Math.min(s.week, RECRUITING_WEEKS), signedCount: 0, budgetLeft: 30, budgetColor: INK,
+      needNote: '',
+      prospects: [],
+      points: s.points,
+      pointsColor: s.points > 0 ? CLAY : 'rgba(28,36,48,.4)',
+      pointsBorder: s.points > 0 ? CLAY : FAINT,
+      pointsNote: s.points > 0
+        ? 'points to spend. Three for the season, plus a bid, a conference title, Omaha and the national title.'
+        : 'All spent. Your staff is set for next season.',
+      skills: SKILL_DEFS.map((d) => {
+        const value = s.skills[d.key];
+        const can = s.points > 0 && value < 99;
+        return {
+          ...d, value, width: value + '%',
+          valueColor: value >= 70 ? WIN : INK,
+          spend: () => { if (can) this.setState((x) => ({ points: x.points - 1, skills: { ...x.skills, [d.key]: x.skills[d.key] + 1 } })); },
+          btnLabel: can ? '+1 POINT' : value >= 99 ? 'MAXED' : 'NO POINTS LEFT',
+          btnBg: can ? '#f2ece0' : 'transparent',
+          btnBorder: can ? 'rgba(28,36,48,.42)' : 'rgba(28,36,48,.15)',
+          btnColor: can ? INK : 'rgba(28,36,48,.28)',
+        };
+      }),
+      ladder: [], lives: [], table: [], rounds: [],
+      headerSub: '', headerBig: '', headerSmall: '',
+    };
+
+    // recruiting
+    const totalSpend = Object.values(s.spend).reduce((a, n) => a + n, 0);
+    const left = RECRUITING_BUDGET - totalSpend;
+    const signedHere = Object.keys(s.committed).filter((k) => s.committed[k] === 'me').length;
+    v.budgetLeft = String(left);
+    v.budgetColor = left === 0 ? CLAY : INK;
+    v.signedCount = signedHere + '/' + SCHOLARSHIPS;
+    v.weeksTotal = String(RECRUITING_WEEKS);
+    v.needNote = 'Your six holes: SP, C, CF, SS, 1B, RP — one recruit on the board for each. Every recruit below is tagged with the hole he fills — the draft screen decided this list, not a filter you had to build. Thirty a week, twelve the most on any one man. Nobody signs until the week closes.';
+    v.prospects = PROSPECTS.map((p) => {
+      // One quantity drives the tile, the label and both bar segments: points
+      // banked so far, plus what this week's spend would add.
+      const pending = this.weekGain(s.spend[p.id]);
+      const mineScore = s.banked[p.id] + pending;
+      const rivalScore = s.rivalPts[p.id];
+      const total = Math.max(0.001, mineScore + rivalScore);
+      const who = s.committed[p.id];
+      const stand = who === 'me' ? 'SIGNED'
+        : who ? 'LOST HIM'
+        : mineScore <= 0 ? 'NOT IN IT'
+        : mineScore >= rivalScore ? 'LEADING'
+        : mineScore / rivalScore > 0.5 ? 'IN THE MIX' : 'WAY BEHIND';
+      const done = !!who;
+      return {
+        ...p,
+        border: who === 'me' ? WIN : s.spend[p.id] > 0 ? CLAY : FAINT,
+        stand,
+        standColor: stand === 'SIGNED' || stand === 'LEADING' ? WIN
+          : stand === 'LOST HIM' || stand === 'WAY BEHIND' ? CLAY : 'rgba(28,36,48,.55)',
+        mineWidth: (mineScore / total) * 100 + '%',
+        rivalWidth: (rivalScore / total) * 100 + '%',
+        spend: done ? '—' : String(s.spend[p.id]),
+        spendColor: s.spend[p.id] > 0 ? CLAY : 'rgba(28,36,48,.35)',
+        stepBg: done ? 'transparent' : '#f2ece0',
+        stepBorder: done ? 'rgba(28,36,48,.15)' : 'rgba(28,36,48,.3)',
+        stepColor: done ? 'rgba(28,36,48,.28)' : INK,
+        stepOff: done,
+        pips: Array.from({ length: MAX_PER_RECRUIT }, (_, i) => ({
+          fill: done ? 'rgba(28,36,48,.06)' : i < s.spend[p.id] ? CLAY : 'rgba(28,36,48,.1)',
+        })),
+        minus: () => { if (!done) this.setState((x) => ({ spend: { ...x.spend, [p.id]: Math.max(0, x.spend[p.id] - 1) } })); },
+        plus: () => { if (!done) this.setState((x) => {
+          const used = Object.values(x.spend).reduce((a, n) => a + n, 0);
+          if (used >= RECRUITING_BUDGET || x.spend[p.id] >= MAX_PER_RECRUIT) return {};
+          return { spend: { ...x.spend, [p.id]: x.spend[p.id] + 1 } };
+        }); },
+      };
+    });
+
+    // Signing day, read off the board rather than authored beside it.
+    const starsOf = (p) => (p.stars.match(/★/g) || []).length;
+    const mineClass = PROSPECTS.filter((p) => s.committed[p.id] === 'me');
+    const lostClass = PROSPECTS.filter((p) => s.committed[p.id] === 'them');
+    v.classList = mineClass.map((p) => ({
+      pid: p.pid, name: p.name, stars: p.stars,
+      sub: p.fills + ' · fills the ' + p.fills + ' hole',
+      jersey: teamColour('RID'), bg: 'transparent', subColor: 'rgba(28,36,48,.55)',
+    }));
+    v.lostList = lostClass.map((p) => ({
+      pid: p.pid, name: p.name, stars: p.stars,
+      sub: p.fills + ' · signed with ' + SCHOOLS[p.to].school,
+      jersey: teamColour(p.to), bg: 'rgba(28,36,48,.05)', subColor: CLAY,
+    }));
+    v.classSigned = String(mineClass.length);
+    v.classPoints = String(mineClass.reduce((a, p) => a + starsOf(p) * starsOf(p), 0));
+    v.walkOns = String(Math.max(0, SCHOLARSHIPS - mineClass.length));
+    v.classEmpty = mineClass.length === 0;
+    v.lostEmpty = lostClass.length === 0;
+    v.classHas = mineClass.length > 0;
+    v.lostHas = lostClass.length > 0;
+    v.classNote = mineClass.length === 0
+      ? 'Nobody signed. All eight scholarships go to walk-ons, and a walk-on is a long way below the players you were bidding on.'
+      : mineClass.length + ' signed of ' + SCHOLARSHIPS + ' — walk-ons take the '
+        + (SCHOLARSHIPS - mineClass.length) + ' spots you left unspent.';
+
+    // ladder + header
+    const inPost = ['conf', 'regional', 'omaha'].includes(screen);
+    const list = inPost ? LADDER : OFF_LADDER;
+    const here = list.findIndex((l) => l.key === screen);
+    v.ladder = list.map((l, i) => ({
+      name: l.name,
+      barColor: i < here ? 'rgba(168,68,42,.45)' : i === here ? CLAY : 'rgba(28,36,48,.16)',
+      textColor: i === here ? CLAY : 'rgba(28,36,48,.45)',
+      go: () => this.go(l.key),
+    }));
+    v.headerSub = inPost ? '2027 POSTSEASON' : '2027 OFFSEASON';
+    v.headerBig = inPost ? '24-9' : 'CHAMPS';
+    v.headerSmall = inPost ? '17-7 CONFERENCE' : '2027 NATIONAL TITLE';
+
+    if (isBracket) {
+      const rev = s.revealed[screen];
+      const done = rev >= b.rounds.length;
+      const { lost, out } = this.lifeState(b, rev);
+      const myLosses = lost[ME] || 0;
+
+      v.stageKicker = screen === 'conf' ? 'STAGE 1 OF 3 · DOUBLE ELIMINATION'
+        : screen === 'regional' ? 'STAGE 2 OF 3 · DOUBLE ELIMINATION'
+        : 'STAGE 3 OF 3 · DOUBLE ELIMINATION';
+      v.stageTitle = screen === 'conf' ? 'Conference tournament'
+        : screen === 'regional' ? 'Regional 2 · Bayou State' : 'Omaha';
+      v.rulesText = b.rules;
+
+      v.yourRecord = (() => {
+        let w = 0, l = 0;
+        for (let i = 0; i < rev; i++) {
+          for (const g of [...(b.rounds[i].w || []), ...(b.rounds[i].e || [])]) {
+            if (g.a === ME || g.b === ME) {
+              const iWon = (g.a === ME) === (g.as > g.bs);
+              if (iWon) w++; else l++;
+            }
+          }
+        }
+        return w + '-' + l;
+      })();
+
+      v.lives = showLives
+        ? [0, 1].map((i) => ({ fill: i < 2 - myLosses ? CLAY : 'transparent' }))
+        : [];
+      // A finished bracket has an answer, and an elimination warning is not it.
+      const iWon = done && !out[ME];
+      v.livesLabel = done
+        ? (iWon
+            ? (myLosses === 0 ? 'WON IT UNBEATEN' : 'WON IT — ONE LOSS ALONG THE WAY')
+            : 'KNOCKED OUT — TWO LOSSES')
+        : myLosses === 0 ? (showLives ? 'TWO LIVES · UNBEATEN' : 'UNBEATEN')
+        : myLosses === 1 ? (showLives ? 'ONE LIFE LEFT · NEXT LOSS ENDS IT' : 'ONE LOSS · THE NEXT ONE ENDS IT')
+        : 'ELIMINATED';
+      v.livesColor = done ? (iWon ? WIN : 'rgba(28,36,48,.5)')
+        : myLosses === 0 ? WIN : myLosses === 1 ? CLAY : 'rgba(28,36,48,.5)';
+
+      const nextRound = b.rounds[rev];
+      if (done) {
+        v.nextKicker = 'RESULT';
+        v.nextLine = screen === 'omaha' ? 'National champions' : screen === 'conf' ? 'Conference champions' : 'Regional champions';
+        v.nextNote = b.verdict;
+        v.nextColor = WIN;
+      } else if (nextRound && nextRound.preview) {
+        v.nextKicker = 'NEXT GAME · ' + nextRound.label;
+        v.nextLine = nextRound.preview;
+        v.nextNote = nextRound.note;
+        v.nextColor = CLAY;
+      } else {
+        v.nextKicker = nextRound ? 'NO GAME FOR YOU IN ' + nextRound.label : 'NEXT';
+        v.nextLine = 'You are waiting in the final';
+        v.nextNote = nextRound ? nextRound.note : '';
+        v.nextColor = INK;
+      }
+
+      const geo = this.buildBracket(b, rev);
+      v.cards = geo.cards; v.byes = geo.byes; v.headers = geo.headers;
+      v.pathSegs = geo.pathSegs; v.myPath = geo.myPath;
+      v.showSwipe = geo.scrollable; v.pathEmpty = !geo.hasPath;
+      v.canvasW = geo.canvasW; v.canvasH = geo.canvasH;
+      v.bandY = geo.bandY;
+      v.laneWLabelY = geo.laneWLabelY; v.laneELabelY = geo.laneELabelY;
+      v.scrollRef = (el) => { this.scrollEl = el; };
+      v.tabIsBracket = s.tab !== 'path';
+      v.tabIsPath = s.tab === 'path';
+      v.showBracket = () => this.setState({ tab: 'bracket' });
+      v.showPath = () => this.setState({ tab: 'path' });
+      v.tabBBg = s.tab !== 'path' ? CLAY : '#fbf7ee';
+      v.tabBBorder = s.tab !== 'path' ? CLAY : 'rgba(28,36,48,.28)';
+      v.tabBColor = s.tab !== 'path' ? '#f6f1e6' : INK;
+      v.tabPBg = s.tab === 'path' ? CLAY : '#fbf7ee';
+      v.tabPBorder = s.tab === 'path' ? CLAY : 'rgba(28,36,48,.28)';
+      v.tabPColor = s.tab === 'path' ? '#f6f1e6' : INK;
+
+      v.table = Object.keys(b.teams).map((k) => {
+        const t = b.teams[k];
+        const losses = lost[k] || 0;
+        const gone = !!out[k];
+        const champ = done && k === ME;
+        const mine = k === ME;
+        return {
+          seed: t.seed, school: t.school,
+          dots: [0, 1].map((i) => ({
+            ring: gone ? 'rgba(28,36,48,.3)' : mine ? CLAY : 'rgba(28,36,48,.45)',
+            fill: i < 2 - losses ? (mine ? CLAY : 'rgba(28,36,48,.55)') : 'transparent',
+          })),
+          state: champ ? 'CHAMPION' : gone ? 'OUT' : 'ALIVE',
+          stateColor: champ ? WIN : gone ? 'rgba(28,36,48,.4)' : CLAY,
+          weight: mine ? 700 : 400,
+          color: mine ? CLAY : gone ? 'rgba(28,36,48,.45)' : INK,
+          deco: gone ? 'line-through' : 'none',
+          edge: mine ? CLAY : 'transparent',
+          bg: mine ? 'rgba(168,68,42,.09)' : 'transparent',
+          sort: (champ ? -1 : gone ? 2 : 0) * 100 + t.seed,
+        };
+      }).sort((a, x) => a.sort - x.sort);
+
+      if (!done) {
+        v.primaryLabel = rev === 0 ? 'PLAY ROUND 1' : 'PLAY ' + b.rounds[rev].label;
+        v.primaryRun = () => this.playRound();
+        v.primaryNote = nextRound && nextRound.preview
+          ? 'One round at a time. ' + (myLosses === 1 ? 'This one could end your season.' : 'Nothing is decided behind your back.')
+          : 'Your bracket plays on without you this round.';
+        v.hasSecondary = rev > 0;
+        v.secondaryLabel = 'PLAY OUT THE WHOLE TOURNAMENT';
+        v.secondaryRun = () => this.playAll();
+      } else {
+        v.primaryLabel = screen === 'conf' ? 'ON TO YOUR REGIONAL'
+          : screen === 'regional' ? 'ON TO OMAHA' : 'END THE SEASON';
+        v.primaryRun = () => this.next();
+        v.primaryNote = screen === 'conf' ? 'Your automatic bid puts you in Regional 2, at Bayou State.'
+          : screen === 'regional' ? 'Four regional winners left in the country.'
+          : 'Awards, the draft, then a new class.';
+        v.hasSecondary = false;
+        v.secondaryLabel = ''; v.secondaryRun = () => {};
+      }
+    } else {
+      const labels = {
+        awards: ['ON TO THE SEASON REVIEW', 'Six steps between here and February.'],
+        review: ['SPEND YOUR COACHING POINTS', 'A title year pays three points.'],
+        coach: ['ON TO THE DRAFT', 'Find out who you are losing before you go shopping.'],
+        draft: ['OPEN THE RECRUITING BOARD', 'Six holes, eight scholarships, three weeks.'],
+        recruit: [
+          s.week >= RECRUITING_WEEKS ? 'CLOSE THE WINDOW · SIGNING DAY' : 'END WEEK ' + s.week,
+          s.week >= RECRUITING_WEEKS
+            ? 'Last week. Everybody still undecided signs with whoever leads.'
+            : 'Points carry over. A recruit commits once somebody is clearly ahead.',
+        ],
+        signing: [
+          'BACK TO THE POSTSEASON',
+          'One scripted season in this prototype — this returns you to the conference bracket, unplayed.',
+        ],
+      };
+      const [lab, note] = labels[screen] || ['CONTINUE', ''];
+      v.primaryLabel = lab;
+      v.primaryNote = note;
+      v.hasSecondary = screen === 'recruit';
+      v.secondaryLabel = 'SKIP TO SIGNING DAY';
+      v.secondaryRun = () => this.go('signing');
+      v.primaryRun = () => {
+        if (screen === 'recruit' && s.week < RECRUITING_WEEKS) {
+          this.endRecruitingWeek();
+          return;
+        }
+        if (screen === 'recruit') this.endRecruitingWeek();
+        this.next();
+      };
+    }
+
+    return v;
+  }
+}
+
+</script>
+</body>
+</html>

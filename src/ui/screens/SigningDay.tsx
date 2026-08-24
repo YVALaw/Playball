@@ -183,7 +183,7 @@ export function SigningDay() {
         </div>
       )}
 
-      <FloatingAction label="TO THE DRAFT" onClick={() => void next()} />
+      <FloatingAction label="START NEXT SEASON" onClick={() => void next()} />
 
       {open && (
         <RecruitSheet

@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { createSeason, simSeason, nextSeason } from '../src/engine/season.js';
-import { advanceOffseason } from '../src/engine/progression.js';
+import { advanceOffseason, departAndDevelop, fillRosters } from '../src/engine/progression.js';
 import { overallOf } from '../src/engine/ratings.js';
 import { makeRng } from '../src/engine/rng.js';
 import { CONFERENCES } from '../src/data/schools.js';
@@ -219,5 +219,56 @@ describe('the draft and underclassmen', () => {
     // Eight years of a sixty four team league. If none of them ever produced an
     // underclassman worth taking, the door is shut rather than narrow.
     expect(underclassmen).toBeGreaterThan(0);
+  });
+});
+
+describe('the draft running before recruiting', () => {
+  it('splits into departures then filling, with the same result as one pass', () => {
+    // The two halves exist so the draft can be *shown* before the recruiting
+    // board opens — the holes it leaves are what the board should be about.
+    // Splitting it must not change the world it produces.
+    const a = createSeason(makeRng(414));
+    simSeason(a);
+    const whole = advanceOffseason(a, a.rng, { userTeam: 0 });
+
+    const b = createSeason(makeRng(414));
+    simSeason(b);
+    const first = departAndDevelop(b, b.rng, { userTeam: 0 });
+    const second = fillRosters(b, b.rng, { userTeam: 0 });
+
+    expect(first.drafted.length).toBe(whole.drafted.length);
+    expect(first.graduated.length).toBe(whole.graduated.length);
+    expect(first.developmentNet).toBe(whole.developmentNet);
+    expect(second.recruits).toBe(whole.recruits);
+
+    for (let i = 0; i < a.teams.length; i++) {
+      const x = a.teams[i]!.team;
+      const y = b.teams[i]!.team;
+      expect(y.lineup.map((p) => p.id)).toEqual(x.lineup.map((p) => p.id));
+      expect(y.rotation.map((p) => p.id)).toEqual(x.rotation.map((p) => p.id));
+    }
+  });
+
+  it('reports holes the survivors cannot fill', () => {
+    const s = createSeason(makeRng(415));
+    simSeason(s);
+    const report = departAndDevelop(s, s.rng, { userTeam: 0 });
+
+    // Somebody always leaves, so there is always something to replace.
+    expect(report.holes.length).toBeGreaterThan(0);
+    for (const h of report.holes) {
+      expect(h.count).toBeGreaterThan(0);
+      expect(h.pos.length).toBeGreaterThan(0);
+    }
+
+    // And the holes are real: the roster is genuinely short until it is filled.
+    const before = s.teams[0]!.team;
+    const short = before.lineup.length + before.bench.length
+      + before.rotation.length + before.bullpen.length;
+    fillRosters(s, s.rng, { userTeam: 0 });
+    const after = s.teams[0]!.team;
+    const full = after.lineup.length + after.bench.length
+      + after.rotation.length + after.bullpen.length;
+    expect(full).toBeGreaterThan(short);
   });
 });

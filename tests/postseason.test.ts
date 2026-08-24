@@ -3,9 +3,12 @@
 // losses is worse than no bracket at all.
 
 import { describe, it, expect } from 'vitest';
-import { createSeason, simSeason, standings } from '../src/engine/season.js';
 import {
-  doubleElimination, bestOf, conferenceTournament, seasonAwards, allConference, runPostseason,
+  createSeason, simSeason, standings, seasonLength, DEFAULT_SEASON,
+} from '../src/engine/season.js';
+import {
+  singleElimination, bestOf, conferenceTournament, seasonAwards, allConference, runPostseason,
+  conferenceLengths, CONF_FIELD, clincher,
   coachOfTheYear, freezeRegularSeason,
 } from '../src/engine/postseason.js';
 import { makeRng } from '../src/engine/rng.js';
@@ -16,10 +19,10 @@ function playedSeason(seed = 2027) {
   return season;
 }
 
-describe('double elimination', () => {
+describe('the knockout bracket', () => {
   const season = playedSeason();
-  const seeds = standings(season, 'PAC').slice(0, 8).map((t) => t.index);
-  const result = doubleElimination(season, seeds);
+  const seeds = standings(season, 'PAC').slice(0, CONF_FIELD).map((t) => t.index);
+  const result = singleElimination(season, seeds, conferenceLengths());
 
   it('crowns exactly one champion from the field', () => {
     expect(seeds).toContain(result.champion);
@@ -32,17 +35,28 @@ describe('double elimination', () => {
     expect(new Set([...result.eliminated, result.champion])).toEqual(new Set(seeds));
   });
 
-  it('sends nobody home before their second loss', () => {
-    const losses = new Map<number, number>();
-    for (const g of result.games) losses.set(g.loser, (losses.get(g.loser) ?? 0) + 1);
-    for (const team of result.eliminated) expect(losses.get(team)).toBe(2);
-    expect(losses.get(result.champion) ?? 0).toBeLessThanOrEqual(1);
+  it('sends a team home the moment it loses a series, and not before', () => {
+    // One loss ends you, but a loss is a series rather than a game — so a team
+    // that goes out can still have won games on the way.
+    const bestOf = conferenceLengths()[0] as number;
+    const need = clincher(bestOf);
+    for (const round of result.rounds ?? []) {
+      for (const s of round) {
+        if (s.winner === null) continue;
+        // A bye: a slot with a winner and nobody to play. The top two seeds of
+        // a six team field get one, and that is the point of finishing first.
+        if (s.games.length === 0) continue;
+        const wins = s.games.filter((g) => g.winner === s.winner).length;
+        expect(wins).toBe(need);
+        expect(s.games.length).toBeLessThanOrEqual(bestOf);
+      }
+    }
   });
 
-  it('takes the number of games a double elimination bracket should', () => {
-    // Every team but the champion needs two losses; the champion may take one.
-    expect(result.games.length).toBeGreaterThanOrEqual(seeds.length * 2 - 2);
-    expect(result.games.length).toBeLessThanOrEqual(seeds.length * 2 - 1);
+  it('takes the number of series a knockout tree should', () => {
+    // Eight teams, seven series, every one of them decided.
+    const series = (result.rounds ?? []).flat().filter((s) => s.games.length > 0);
+    expect(series).toHaveLength(seeds.length - 1);
   });
 
   it('never plays a team against itself, and never ties', () => {
@@ -55,21 +69,31 @@ describe('double elimination', () => {
     }
   });
 
-  it('gives home field to the better seed', () => {
+  it('gives the better seed the odd game at home, not every game', () => {
+    // Home field is worth something real in this engine. Handing the higher
+    // seed all seven games of a series would let the seeding decide it before
+    // anybody played, so hosting alternates from him.
     const seedOf = new Map(seeds.map((t, i) => [t, i]));
-    for (const g of result.games) {
-      expect(seedOf.get(g.home)!).toBeLessThan(seedOf.get(g.away)!);
+    for (const round of result.rounds ?? []) {
+      for (const s of round) {
+        if (s.games.length < 2) continue;
+        const better = (seedOf.get(s.a as number) as number)
+          < (seedOf.get(s.b as number) as number) ? s.a : s.b;
+        const homes = s.games.filter((g) => g.home === better).length;
+        expect(homes).toBeGreaterThan(0);
+        expect(homes).toBeLessThan(s.games.length);
+      }
     }
   });
 
   it('refuses a field too small to be a tournament', () => {
-    expect(() => doubleElimination(season, [0])).toThrow();
+    expect(() => singleElimination(season, [0], [3])).toThrow();
   });
 
-  it('handles an odd field by giving the top seed a bye', () => {
-    const odd = standings(season, 'PAC').slice(0, 5).map((t) => t.index);
-    const r = doubleElimination(season, odd);
-    expect(odd).toContain(r.champion);
+  it('byes the best seeds when the field is short', () => {
+    const short = standings(season, 'PAC').slice(0, 5).map((t) => t.index);
+    const r = singleElimination(season, short, [3, 3, 3]);
+    expect(short).toContain(r.champion);
     expect(r.eliminated).toHaveLength(4);
   });
 });
@@ -91,36 +115,38 @@ describe('best of N series', () => {
 
 describe('conference tournament', () => {
   const season = playedSeason();
-  const cup = conferenceTournament(season, 'PAC', 6);
+  const cup = conferenceTournament(season, 'PAC');
 
   it('seeds the field off the recorded regular season order', () => {
     expect(season.finalOrder).not.toBeNull();
-    expect(cup.seeds).toEqual(season.finalOrder!.filter((i) => season.teams[i]!.conference === 'PAC').slice(0, 6));
+    expect(cup.seeds).toEqual(season.finalOrder!.filter((i) => season.teams[i]!.conference === 'PAC').slice(0, CONF_FIELD));
   });
 
   it('leaves the rest of the league out', () => {
-    expect(cup.missed).toHaveLength(8 - 6);
+    const inConference = season.teams.filter((x) => x.conference === 'PAC').length;
+    expect(cup.missed).toHaveLength(inConference - CONF_FIELD);
     for (const team of cup.missed) expect(cup.seeds).not.toContain(team);
   });
 
   it('does not touch the conference race it was seeded from', () => {
     // Tournament games count toward overall records and statistics, never the
-    // conference standings the bracket was built from. Seven series of three is
-    // 21 conference games; the other twelve are non-conference and never counted
-    // here.
+    // conference standings the bracket was built from. Read from the config
+    // rather than hardcoded, so changing the shape of the world does not turn
+    // this into a test of arithmetic nobody performs.
+    const conferenceGames = DEFAULT_SEASON.seriesRounds * 3;
     const table = standings(season);
-    for (const t of table) expect(t.cw + t.cl).toBe(21);
+    for (const t of table) expect(t.cw + t.cl).toBe(conferenceGames);
   });
 
   it('counts tournament games toward overall records', () => {
     const champion = season.teams[cup.champion]!;
-    expect(champion.w + champion.l).toBeGreaterThan(33);  // 33 regular season plus bracket games
+    expect(champion.w + champion.l).toBeGreaterThan(seasonLength(DEFAULT_SEASON));
   });
 });
 
 describe('awards', () => {
   const season = playedSeason();
-  conferenceTournament(season, 'PAC', 6);
+  conferenceTournament(season, 'PAC');
   const awards = seasonAwards(season);
 
   it('names a player, a pitcher and a freshman of the year', () => {
@@ -150,7 +176,7 @@ describe('awards', () => {
 describe('postseason determinism', () => {
   const run = (seed: number): string => {
     const season = playedSeason(seed);
-    const cup = conferenceTournament(season, 'PAC', 6);
+    const cup = conferenceTournament(season, 'PAC');
     return `${cup.champion}:${cup.games.length}:${cup.eliminated.join(',')}`;
   };
 
@@ -173,32 +199,28 @@ describe('the whole postseason', () => {
     expect(new Set(result.conferenceChampions).size).toBe(confs.size);
   });
 
-  it('fills a 16 team field', () => {
-    // A quarter of the sixty four programs, which is roughly the share of
-    // Division I that reaches the real tournament.
-    expect(result.field).toHaveLength(16);
-    expect(new Set(result.field.map((b) => b.team)).size).toBe(16);
-  });
-
-  it('splits the field evenly between automatic and at-large bids', () => {
-    const autos = result.field.filter((b) => b.kind === 'automatic');
-    expect(autos).toHaveLength(8);
-    expect(result.field.filter((b) => b.kind === 'at-large')).toHaveLength(8);
-  });
-
-  it('gives every conference champion an automatic bid', () => {
-    for (const champ of result.conferenceChampions) {
-      const bid = result.field.find((b) => b.team === champ);
-      expect(bid, 'a conference champion must be in the field').toBeDefined();
-      expect(bid?.kind).toBe('automatic');
+  it('takes the last four from the four regions', () => {
+    // Nothing is selected any more: you reach the national tournament by
+    // winning your conference and then your region. One rule the whole way up.
+    expect(result.regionChampions).toHaveLength(4);
+    expect(new Set(result.regionChampions).size).toBe(4);
+    for (const t of result.regionChampions) {
+      expect(result.conferenceChampions).toContain(t);
     }
   });
 
-  it('records a finish for everyone in the field and nobody else', () => {
+  it('crowns a champion from the last four', () => {
+    expect(result.regionChampions).toContain(result.champion);
+    expect(result.finish[result.champion]).toBe('champion');
+  });
+
+  it('records a finish for every conference champion and nobody else', () => {
+    // Getting out of your conference is what puts you in the record: the eight
+    // champions, and nobody who did not win a league.
     const placed = Object.keys(result.finish).map(Number);
-    expect(placed).toHaveLength(16);
+    expect(placed).toHaveLength(result.conferenceChampions.length);
     for (const team of placed) {
-      expect(result.field.some((b) => b.team === team)).toBe(true);
+      expect(result.conferenceChampions).toContain(team);
     }
   });
 

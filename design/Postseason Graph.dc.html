@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+body { margin: 0; background: #14181f; }
+* { box-sizing: border-box; }
+a { color: #a8442a; text-decoration: none; }
+a:hover { color: #8d3722; }
+button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+::-webkit-scrollbar { width: 0; height: 0; }
+</style>
+</helmet>
+<x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" dark="{{ true }}" hint-size="428px,908px">
+<div style="height:100%;display:flex;flex-direction:column;min-height:0;background:#f2ece0;font-family:'Source Sans 3',system-ui,sans-serif;color:#1c2430">
+
+  <div style="flex:none;padding:9px 14px 8px;background:#223247;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.09) 0 1px,transparent 1px 7px);border-bottom:3px solid #a8442a;display:flex;align-items:center;gap:10px">
+    <div style="flex:1;min-width:0">
+      <div style="font:800 21px/0.95 'Big Shoulders Display',sans-serif;letter-spacing:.02em;color:#f6f1e6;text-transform:uppercase">Ridgemont State</div>
+      <div style="font:500 9px/1.5 'IBM Plex Mono',monospace;letter-spacing:.18em;color:rgba(246,241,230,.62)">2027 POSTSEASON</div>
+    </div>
+    <div style="flex:none;text-align:right">
+      <div style="font:800 22px/0.9 'Big Shoulders Display',sans-serif;color:#f6f1e6">24-9</div>
+      <div style="font:400 8.5px/1.5 'IBM Plex Mono',monospace;letter-spacing:.12em;color:rgba(246,241,230,.55)">PACIFIC COAST</div>
+    </div>
+  </div>
+
+  <div style="flex:none;position:relative;padding:9px 10px 0;background:#e7dfd0;border-bottom:1px solid rgba(28,36,48,.18)">
+    <div style="display:flex">
+      <sc-for list="{{ sections }}" as="s" hint-placeholder-count="3">
+        <button onClick="{{ s.go }}" style="flex:1;padding:0 2px 9px;background:transparent;text-align:center">
+          <div style="font:700 10px 'IBM Plex Mono',monospace;letter-spacing:.09em;color:{{ s.color }}">{{ s.name }}</div>
+          <div style="margin-top:4px;font:600 8px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:{{ s.subColor }}">{{ s.sub }}</div>
+        </button>
+      </sc-for>
+    </div>
+    <div style="position:absolute;left:10px;bottom:0;height:3px;width:136px;background:#a8442a;transform:translateX({{ indX }});transition:transform 420ms cubic-bezier(.22,.9,.24,1)"></div>
+  </div>
+
+  <div style="flex:none;display:flex;align-items:center;gap:10px;padding:8px 14px;background:#fbf7ee;border-bottom:1px solid rgba(28,36,48,.12)">
+    <div style="flex:1;min-width:0;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.04em;color:rgba(28,36,48,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ contextLine }}</div>
+    <div style="flex:none;display:flex;gap:3px">
+      <button onClick="{{ densLarge }}" style="width:30px;height:26px;display:grid;place-items:center;background:{{ dl.bg }};border:1px solid {{ dl.border }}">
+        <span style="display:block;width:15px;height:11px;border:1.5px solid {{ dl.ink }}"></span>
+      </button>
+      <button onClick="{{ densMedium }}" style="width:30px;height:26px;display:grid;place-items:center;background:{{ dm.bg }};border:1px solid {{ dm.border }}">
+        <span style="display:grid;grid-template-columns:repeat(2,1fr);gap:2px">
+          <span style="display:block;width:6px;height:4px;border:1px solid {{ dm.ink }}"></span>
+          <span style="display:block;width:6px;height:4px;border:1px solid {{ dm.ink }}"></span>
+          <span style="display:block;width:6px;height:4px;border:1px solid {{ dm.ink }}"></span>
+          <span style="display:block;width:6px;height:4px;border:1px solid {{ dm.ink }}"></span>
+        </span>
+      </button>
+      <button onClick="{{ densFull }}" style="width:30px;height:26px;display:grid;place-items:center;background:{{ df.bg }};border:1px solid {{ df.border }}">
+        <span style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.5px">
+          <sc-for list="{{ fullDots }}" as="d" hint-placeholder-count="9">
+            <span style="display:block;width:3.5px;height:2.5px;background:{{ df.ink }}"></span>
+          </sc-for>
+        </span>
+      </button>
+    </div>
+  </div>
+
+  <div ref="{{ viewRef }}" onPointerDown="{{ panDown }}" onPointerMove="{{ panMove }}" onPointerUp="{{ panEnd }}" onPointerCancel="{{ panEnd }}" style="flex:1;min-height:0;position:relative;overflow:hidden;touch-action:none;background:#f2ece0">
+
+    <div ref="{{ canvasRef }}" style="position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;pointer-events:none;transform:translate3d({{ offX }},{{ offY }},0) scale({{ scale }});transition:{{ canvasTrans }}">
+
+      <sc-for list="{{ bands }}" as="b" hint-placeholder-count="4">
+        <div style="position:absolute;left:{{ b.x }};top:{{ b.y }};width:{{ b.w }};height:{{ b.h }};background:{{ b.bg }};border-left:{{ b.bw }} solid rgba(28,36,48,.14)"></div>
+      </sc-for>
+
+      <sc-for list="{{ wires }}" as="w" hint-placeholder-count="8">
+        <div style="position:absolute;left:{{ w.x }};top:{{ w.y }};width:{{ w.w }};height:{{ w.h }};background:{{ w.bg }};opacity:{{ w.op }}"></div>
+      </sc-for>
+
+      <sc-for list="{{ bids }}" as="q" hint-placeholder-count="4">
+        <div style="position:absolute;left:{{ q.x }};top:{{ q.y }};width:{{ q.w }};height:{{ q.h }};border:2px {{ q.bstyle }} {{ q.border }};background:{{ q.bg }};display:flex;flex-direction:column;justify-content:center;padding:0 10px;overflow:hidden">
+          <div style="opacity:{{ q.textOp }};transition:opacity 480ms ease">
+            <div style="font:700 11px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:{{ q.kindColor }};white-space:nowrap">{{ q.kind }}</div>
+            <div style="margin-top:2px;font:700 17px 'IBM Plex Mono',monospace;color:{{ q.color }};white-space:nowrap">{{ q.team }}</div>
+          </div>
+          <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:{{ q.bar }}"></div>
+        </div>
+      </sc-for>
+
+      <sc-for list="{{ cards }}" as="c" hint-placeholder-count="8">
+        <div style="position:absolute;left:{{ c.x }};top:{{ c.y }};width:{{ c.w }};height:{{ c.h }};border:{{ c.bw }} {{ c.bstyle }} {{ c.border }};background:{{ c.bg }};overflow:hidden">
+
+          <div style="position:absolute;left:0;top:0;right:0;bottom:0;display:flex;flex-direction:column;opacity:{{ c.markOp }};transition:opacity 480ms ease">
+            <div style="flex:1;background:{{ c.aMark }}"></div>
+            <div style="flex:1;background:{{ c.bMark }}"></div>
+          </div>
+
+          <div style="position:absolute;left:0;top:0;right:0;bottom:0;display:flex;flex-direction:column;opacity:{{ c.abbrOp }};transition:opacity 480ms ease">
+            <div style="flex:1;min-height:0;display:flex;align-items:center;gap:8px;padding:0 12px;background:{{ c.aBg }}">
+              <div style="flex:none;width:5px;height:54%;background:{{ c.aBar }}"></div>
+              <span style="flex:none;font:600 18px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.42)">{{ c.aSeed }}</span>
+              <span style="flex:1;min-width:0;font:{{ c.aWeight }} 22px 'IBM Plex Mono',monospace;color:{{ c.aColor }};white-space:nowrap;overflow:hidden">{{ c.aAbbr }}</span>
+              <span style="flex:none;font:700 24px 'IBM Plex Mono',monospace;color:{{ c.aColor }}">{{ c.aScore }}</span>
+            </div>
+            <div style="flex:1;min-height:0;display:flex;align-items:center;gap:8px;padding:0 12px;background:{{ c.bBg }};border-top:1px solid rgba(28,36,48,.09)">
+              <div style="flex:none;width:5px;height:54%;background:{{ c.bBar }}"></div>
+              <span style="flex:none;font:600 18px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.42)">{{ c.bSeed }}</span>
+              <span style="flex:1;min-width:0;font:{{ c.bWeight }} 22px 'IBM Plex Mono',monospace;color:{{ c.bColor }};white-space:nowrap;overflow:hidden">{{ c.bAbbr }}</span>
+              <span style="flex:none;font:700 24px 'IBM Plex Mono',monospace;color:{{ c.bColor }}">{{ c.bScore }}</span>
+            </div>
+          </div>
+
+          <div style="position:absolute;left:0;top:0;right:0;bottom:0;display:flex;flex-direction:column;opacity:{{ c.nameOp }};transition:opacity 480ms ease">
+            <div style="flex:1;min-height:0;display:flex;align-items:center;gap:7px;padding:0 9px;background:{{ c.aBg }}">
+              <div style="flex:none;width:5px;height:54%;background:{{ c.aBar }}"></div>
+              <span style="flex:1;min-width:0;font:{{ c.aWeight }} 15px 'Source Sans 3',sans-serif;color:{{ c.aColor }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.aName }}</span>
+              <span style="flex:none;font:700 20px 'IBM Plex Mono',monospace;color:{{ c.aColor }}">{{ c.aScore }}</span>
+            </div>
+            <div style="flex:1;min-height:0;display:flex;align-items:center;gap:7px;padding:0 9px;background:{{ c.bBg }};border-top:1px solid rgba(28,36,48,.09)">
+              <div style="flex:none;width:5px;height:54%;background:{{ c.bBar }}"></div>
+              <span style="flex:1;min-width:0;font:{{ c.bWeight }} 15px 'Source Sans 3',sans-serif;color:{{ c.bColor }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.bName }}</span>
+              <span style="flex:none;font:700 20px 'IBM Plex Mono',monospace;color:{{ c.bColor }}">{{ c.bScore }}</span>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+
+      <sc-for list="{{ byes }}" as="y" hint-placeholder-count="1">
+        <div style="position:absolute;left:{{ y.x }};top:{{ y.y }};width:{{ y.w }};height:{{ y.h }};border:{{ y.bw }} dashed {{ y.border }};display:grid;place-items:center;padding:0 8px;overflow:hidden">
+          <span style="opacity:{{ y.op }};font:600 17px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:{{ y.color }};white-space:nowrap;transition:opacity 480ms ease">{{ y.label }}</span>
+        </div>
+      </sc-for>
+
+      <div style="position:absolute;left:{{ champX }};top:{{ champY }};width:{{ champW }};height:{{ champH }};border:5px solid #a8442a;background:{{ champBg }};display:flex;flex-direction:column;justify-content:center;padding:0 14px">
+        <div style="opacity:{{ champTextOp }};transition:opacity 480ms ease">
+          <div style="font:700 13px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:{{ champKicker }}">🏆 NATIONAL CHAMPION</div>
+          <div style="margin-top:6px;font:800 30px/1.06 'Big Shoulders Display',sans-serif;text-transform:uppercase;color:{{ champInk }};text-wrap:balance">{{ champName }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div ref="{{ overlayRef }}" style="position:absolute;left:0;top:0;right:0;bottom:0;pointer-events:none;transition:opacity 260ms ease">
+      <sc-for list="{{ sectionTags }}" as="t" hint-placeholder-count="4">
+        <div style="position:absolute;top:0;left:0;transform:translateX({{ t.x }});width:{{ t.w }};padding:5px 0 6px 4px;background:linear-gradient(to bottom,#f2ece0 68%,rgba(242,236,224,0));font:700 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:{{ t.color }};white-space:nowrap;overflow:hidden;transition:transform 560ms cubic-bezier(.22,.9,.24,1),width 560ms cubic-bezier(.22,.9,.24,1),color 300ms ease">{{ t.label }}</div>
+      </sc-for>
+
+      <div style="position:absolute;left:4px;top:33px;opacity:{{ hereOp }};padding:2px 7px;background:rgba(231,223,208,.72);border-left:2px solid {{ hereColor }};font:600 7.5px 'IBM Plex Mono',monospace;letter-spacing:.12em;color:{{ hereColor }};white-space:nowrap;transition:opacity 400ms ease">{{ hereLabel }}</div>
+
+      <div style="position:absolute;right:8px;bottom:8px;font:400 8px 'IBM Plex Mono',monospace;color:rgba(28,36,48,.28)">{{ hint }}</div>
+    </div>
+
+    <sc-for list="{{ heads }}" as="h" hint-placeholder-count="2">
+      <button onClick="{{ h.go }}" style="position:absolute;top:0;left:0;transform:translateX({{ h.x }});width:{{ h.w }};text-align:left;padding:19px 0 5px 4px;font:600 8px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:{{ h.color }};opacity:{{ h.op }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:transform 560ms cubic-bezier(.22,.9,.24,1),width 560ms cubic-bezier(.22,.9,.24,1),opacity 300ms ease">{{ h.label }}</button>
+    </sc-for>
+
+    <button onClick="{{ champGo }}" style="position:absolute;left:0;top:0;transform:translate({{ champTagX }},{{ champTagY }});opacity:{{ champTagOp }};padding:4px 8px;background:#a8442a;text-align:left;font:700 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#f6f1e6;white-space:nowrap;transition:transform 620ms cubic-bezier(.24,.9,.26,1),opacity 400ms ease">🏆 {{ champTagName }}</button>
+
+
+  </div>
+
+  <div style="flex:none;padding:10px 14px 12px;background:#f2ece0;border-top:1px solid rgba(28,36,48,.14)">
+    <button onClick="{{ primaryRun }}" style="width:100%;padding:14px 0;background:#a8442a;border:1px solid #a8442a;color:#f6f1e6;font:700 12px 'IBM Plex Mono',monospace;letter-spacing:.14em">{{ primaryLabel }}</button>
+  </div>
+
+</div>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:428,&quot;height&quot;:908},&quot;startDensity&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:0,&quot;min&quot;:0,&quot;max&quot;:2,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Map&quot;},&quot;showConnectors&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Map&quot;}}">
+const CLAY = '#a8442a', INK = '#1c2430', WIN = '#3f6b46', FAINT = 'rgba(28,36,48,.2)';
+const ME = 'RID';
+
+// ---------------------------------------------------------------------------
+// The world, from src/data/schools.ts — eight conferences of eight.
+// ---------------------------------------------------------------------------
+const CONFERENCES = [
+  { id: 'GULF', name: 'GULF COAST', schools: [
+    ['BAY', 'Bayou State', '#7a1f2b', 66], ['MOB', 'Mobile Bay', '#1c3f6e', 51],
+    ['DLT', 'Delta A&M', '#2f6b4f', 63], ['THB', 'Thibodaux State', '#4a5c8a', 55],
+    ['GLP', 'Gulfport', '#5b4a7a', 44], ['PSC', 'Pascagoula Tech', '#5a5f66', 61],
+    ['LKC', 'Lake Charles', '#8a5a1f', 46], ['BIL', 'Biloxi Coast', '#2b6f77', 38]] },
+  { id: 'ATL', name: 'ATLANTIC COAST', schools: [
+    ['PIE', 'Piedmont State', '#8c1c2b', 68], ['CHS', 'Charleston Harbor', '#1b3a5c', 52],
+    ['TAM', 'Tampa Bay Tech', '#237a7a', 65], ['NEU', 'Neuse Valley', '#4a3f6b', 54],
+    ['ASH', 'Asheville Ridge', '#3f5c3a', 44], ['SAV', 'Savannah River', '#6b5a2b', 60],
+    ['JAX', 'Jacksonville Shore', '#1f5f8a', 47], ['OKE', 'Okefenokee State', '#3a4a2f', 37]] },
+  { id: 'PAC', name: 'PACIFIC COAST', schools: [
+    ['RID', 'Ridgemont State', '#1f4d3f', 67], ['BRK', 'Bracken State', '#2b2f3a', 53],
+    ['MBT', 'Marbury Tech', '#7a4a1f', 64], ['PIN', 'Pinecrest State', '#3f5f2b', 56],
+    ['CAL', 'Calloway', '#6b5b1f', 45], ['OAK', 'Oakhurst', '#5a4a3a', 47],
+    ['VER', 'Verdugo', '#8a2f4a', 59], ['SUT', 'Sutter Valley', '#8a6a2b', 39]] },
+  { id: 'HRT', name: 'HEARTLAND', schools: [
+    ['PLT', 'Platte Valley', '#7a3f1f', 60], ['OZK', 'Ozark State', '#3a2f2b', 46],
+    ['WIC', 'Wichita Plains', '#4a5a6b', 58], ['LWR', 'Lawrence Tech', '#5f4a2b', 48],
+    ['KEA', 'Kearney State', '#6b6b3a', 40], ['CDR', 'Cedar Falls', '#2b4a6b', 54],
+    ['DUB', 'Dubuque River', '#3f6b5f', 42], ['SLN', 'Salina', '#8a7a3a', 35]] },
+  { id: 'DES', name: 'DESERT', schools: [
+    ['SON', 'Sonora State', '#8a4a1f', 59], ['TUC', 'Tucson Mesa', '#7a2f2b', 45],
+    ['RGV', 'Rio Grande', '#4a6b3a', 57], ['ALB', 'Alamosa Tech', '#5a5a6b', 47],
+    ['LCR', 'Las Cruces', '#8a6b3a', 39], ['ELP', 'El Paso Ridge', '#6b4a3a', 41],
+    ['YUM', 'Yuma Basin', '#8a7a1f', 53], ['NGL', 'Nogales', '#3a3a4a', 34]] },
+  { id: 'GLK', name: 'GREAT LAKES', schools: [
+    ['ERI', 'Erie Shore', '#1f3f5a', 54], ['SAG', 'Saginaw State', '#4a4a4a', 40],
+    ['FVL', 'Fox Valley', '#6b3f2b', 52], ['TOL', 'Toledo Works', '#2f6b6b', 42],
+    ['SUP', 'Superior State', '#3a5f7a', 34], ['MRQ', 'Marquette Bay', '#5a3f6b', 48],
+    ['HUR', 'Huron Valley', '#3f5a4a', 36], ['ATB', 'Ashtabula Point', '#5a5f4a', 30]] },
+  { id: 'MTN', name: 'MOUNTAIN', schools: [
+    ['TET', 'Teton State', '#3a2f1f', 53], ['SIL', 'Silverton', '#5a5a5f', 39],
+    ['WAS', 'Wasatch Tech', '#2b4a6b', 51], ['LAR', 'Laramie Plains', '#6b5f2b', 41],
+    ['DUR', 'Durango Mesa', '#7a4a2b', 33], ['BIT', 'Bitterroot Valley', '#4a3a2f', 47],
+    ['POC', 'Pocatello', '#3f5a5f', 35], ['GRJ', 'Grand Junction', '#6b4a4a', 29]] },
+  { id: 'NEC', name: 'NORTHEAST', schools: [
+    ['HUD', 'Hudson Valley', '#2b3f6b', 52], ['NWP', 'Newport Bay', '#1f4a4a', 38],
+    ['BRS', 'Berkshire Tech', '#4a4a3a', 50], ['ALG', 'Allegheny Ridge', '#3a3a3a', 40],
+    ['PRT', 'Portland Head', '#5f6b7a', 32], ['NSH', 'Nashua Mills', '#6b3a3a', 46],
+    ['SCR', 'Scranton Valley', '#4a5f6b', 34], ['BGR', 'Bangor North', '#3f4a3a', 28]] },
+];
+
+const SCHOOL = {};
+for (const c of CONFERENCES) {
+  for (const [abbr, school, color, quality] of c.schools) {
+    SCHOOL[abbr] = { abbr, school, color, quality, conf: c.id, confName: c.name };
+  }
+}
+
+const CONF_FIELD = 6, FIELD_SIZE = 16, REGIONAL_COUNT = 4;
+
+const rng = (seed) => {
+  let s = (seed >>> 0) || 1;
+  return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+};
+const hash = (str) => {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h * 16777619) >>> 0; }
+  return h;
+};
+
+/** `pairingsOf` from the engine: best against worst, odd fields bye the head. */
+function pairingsOf(teams) {
+  let list = [...teams];
+  let bye = null;
+  if (list.length % 2 === 1) { bye = list[0]; list = list.slice(1); }
+  const pairs = [];
+  for (let i = 0; i < list.length / 2; i++) pairs.push([list[i], list[list.length - 1 - i]]);
+  return { bye, pairs };
+}
+
+/**
+ * The postseason as one directed graph.
+ *
+ * Edges come from a single `lastGame` map that is never reset between stages, so
+ * a conference final feeding a bid, and a bid feeding a regional opener, are
+ * produced by the same line as two games inside one bracket.
+ *
+ * Bids are real nodes. An automatic bid and an at-large selection are different
+ * events — one is caused by winning your conference, the other by a committee
+ * looking at your RPI — and drawing a lost conference game straight into a
+ * regional made a defeat look like advancement.
+ */
+function buildGraph() {
+  const nodes = [], edges = [];
+  const lastGame = {};
+  const brackets = [];
+
+  const emit = (node, teams) => {
+    nodes.push(node);
+    for (const t of teams) {
+      const prev = lastGame[t];
+      if (prev) {
+        const pn = nodes.find((n) => n.id === prev);
+        const won = pn && pn.winner === t;
+        const cross = pn && pn.section !== node.section;
+        edges.push({
+          from: prev, to: node.id, team: t,
+          kind: cross ? 'qualifies' : (won ? 'advance' : 'survives'),
+        });
+      }
+      lastGame[t] = node.id;
+    }
+  };
+
+  function runBracket(key, label, stage, section, seeds, bias) {
+    const rand = rng(hash(key));
+    const seedOf = {};
+    seeds.forEach((t, i) => { seedOf[t] = i + 1; });
+    let unbeaten = [...seeds], oneLoss = [], champion = null, round = 1, decider = false, guard = 0;
+    const mine = [];
+
+    const play = (a, b, roundLabel, col) => {
+      const qa = SCHOOL[a].quality + (a === ME ? bias : 0) + rand() * 18;
+      const qb = SCHOOL[b].quality + (b === ME ? bias : 0) + rand() * 18;
+      const aWon = qa >= qb;
+      const hi = 3 + Math.floor(rand() * 7);
+      const lo = Math.floor(rand() * hi);
+      const node = {
+        id: key + '-' + col + '-' + nodes.length, kind: 'game', bracket: key, stage, section, col,
+        roundLabel, a, b, as: aWon ? hi : lo, bs: aWon ? lo : hi,
+        winner: aWon ? a : b, loser: aWon ? b : a,
+        aSeed: seedOf[a] || '', bSeed: seedOf[b] || '',
+      };
+      emit(node, [a, b]);
+      mine.push(node);
+      return node;
+    };
+
+    const lane = (list, roundLabel, col) => {
+      const { bye, pairs } = pairingsOf(list);
+      const advanced = [], defeated = [];
+      if (bye) {
+        const node = {
+          id: key + '-bye-' + col + '-' + nodes.length, kind: 'bye',
+          bracket: key, stage, section, col, roundLabel, bye,
+        };
+        emit(node, [bye]);
+        mine.push(node);
+        advanced.push(bye);
+      }
+      for (const [a, b] of pairs) {
+        const gm = play(a, b, roundLabel, col);
+        advanced.push(gm.winner); defeated.push(gm.loser);
+      }
+      return { advanced, defeated };
+    };
+
+    while (guard++ < 40) {
+      if (unbeaten.length + oneLoss.length <= 1) { champion = unbeaten[0] || oneLoss[0] || seeds[0]; break; }
+      if (unbeaten.length === 1 && oneLoss.length === 1) {
+        const a = unbeaten[0], b = oneLoss[0];
+        const gm = play(a, b, decider ? 'WINNER TAKE ALL' : 'CHAMPIONSHIP', round);
+        if (gm.winner === a) { champion = a; break; }
+        if (decider) { champion = b; break; }
+        decider = true; unbeaten = [a]; oneLoss = [b]; round += 1;
+        continue;
+      }
+      const dropped = [];
+      if (unbeaten.length > 1) {
+        const r = lane(unbeaten, 'ROUND ' + round, round);
+        unbeaten = r.advanced; dropped.push(...r.defeated);
+      }
+      if (oneLoss.length > 1) {
+        const r = lane(oneLoss, 'ROUND ' + round, round);
+        oneLoss = r.advanced;
+      }
+      oneLoss = [...oneLoss, ...dropped];
+      round += 1;
+    }
+
+    brackets.push({ key, label, stage, section, seeds, champion, nodes: mine, cols: round });
+    return champion;
+  }
+
+  // Stage one. `conferenceField` takes the top six on conference record.
+  const champions = [];
+  for (const c of CONFERENCES) {
+    const order = c.schools.map((s) => s[0]).sort((a, b) => SCHOOL[b].quality - SCHOOL[a].quality);
+    champions.push(runBracket('c-' + c.id, c.name, 'conf', 'conf', order.slice(0, CONF_FIELD), 120));
+  }
+
+  // Selection. Eight automatic bids, eight at large on RPI, seeded together.
+  const taken = new Set(champions);
+  const atLarge = Object.keys(SCHOOL)
+    .filter((t) => !taken.has(t))
+    .sort((a, b) => SCHOOL[b].quality - SCHOOL[a].quality)
+    .slice(0, FIELD_SIZE - champions.length);
+  const field = [...champions, ...atLarge].sort((a, b) => SCHOOL[b].quality - SCHOOL[a].quality);
+
+  // The seam: one bid node per qualifier, saying how the team got in.
+  field.forEach((team, i) => {
+    const node = {
+      id: 'bid-' + team, kind: 'bid', stage: 'bid', section: 'regional',
+      col: 0, team, seed: i + 1,
+      bidKind: taken.has(team) ? 'AUTO BID' : 'AT-LARGE',
+    };
+    emit(node, [team]);
+  });
+
+  // `intoRegionals`: serpentine so every regional draws from each quarter.
+  const per = REGIONAL_COUNT;
+  const bands = [];
+  for (let b = 0; b < 4; b++) bands.push(field.slice(b * per, (b + 1) * per));
+  const groups = [];
+  for (let r = 0; r < per; r++) {
+    const group = [];
+    for (let b = 0; b < 4; b++) {
+      const band = bands[b];
+      const pick = b % 2 === 0 ? band[r] : band[per - 1 - r];
+      if (pick) group.push(pick);
+    }
+    groups.push(group);
+  }
+
+  const regionalChamps = groups.map((grp, i) =>
+    runBracket('r' + (i + 1), 'REGIONAL ' + (i + 1), 'regional', 'regional', grp, 120));
+
+  runBracket('nat', 'NATIONAL', 'national', 'national', regionalChamps, 120);
+
+  // The terminal node. Every path in the graph ends here.
+  const natBracket = brackets[brackets.length - 1];
+  const champNode = {
+    id: 'champ', kind: 'champ', stage: 'champ', section: 'national',
+    col: 0, team: natBracket.champion,
+  };
+  emit(champNode, [natBracket.champion]);
+
+  return { nodes, edges, brackets, field, champions, champion: natBracket.champion };
+}
+
+const G = buildGraph();
+const NODE = {};
+for (const n of G.nodes) NODE[n.id] = n;
+const FEEDERS = {}, CONSUMERS = {};
+for (const e of G.edges) {
+  (FEEDERS[e.to] || (FEEDERS[e.to] = [])).push(e.from);
+  (CONSUMERS[e.from] || (CONSUMERS[e.from] = [])).push(e.to);
+}
+const MY_NODES = new Set(G.nodes.filter(
+  (n) => n.bye === ME || n.a === ME || n.b === ME || n.team === ME).map((n) => n.id));
+const MY_EDGES = new Set(G.edges.filter((e) => e.team === ME).map((e) => e.from + '>' + e.to));
+
+// ---------------------------------------------------------------------------
+// Layout — one layered DAG, not thirteen stacked brackets
+// ---------------------------------------------------------------------------
+const CW = 180, CH = 78, COL = 196, GAPY = 24, SECTION_GAP = 190;
+const BID_W = 128, BID_H = 44;
+// A special card, not a banner. It reads as the terminus because it is the only
+// node with nothing after it, not because of its size — so the type wraps to fit
+// the card rather than the card stretching to fit the longest school name.
+// 118 tall so a two-line name ("Jacksonville Shore" wraps at 30px inside 190
+// units of content) still clears the kicker without spilling.
+const CHAMP_W = 228, CHAMP_H = 118;
+// Overscroll. Enough horizontal slack that the first conference game and the
+// champion endpoint can both be brought to the middle of the screen, rather
+// than either being pinned against an edge.
+const MARGIN_X = 0.45, MARGIN_Y = 0.3;
+const PAD = 12;
+const SECTIONS = ['conf', 'regional', 'national'];
+const SECTION_LABEL = { conf: 'CONFERENCES', regional: 'REGIONALS', national: 'NATIONAL' };
+const TAB_NAME = { conf: 'CONFERENCE', regional: 'REGIONALS', national: 'NATIONAL' };
+
+const sizeOf = (n) => (n.kind === 'bid' ? { w: BID_W, h: BID_H }
+  : n.kind === 'champ' ? { w: CHAMP_W, h: CHAMP_H } : { w: CW, h: CH });
+
+/**
+ * A layered graph layout.
+ *
+ * Columns come from progression, so left-to-right is always chronological. Rows
+ * come from the edges: a node is pulled to the vertical midpoint of what feeds
+ * it and of what it feeds, alternating direction, with a separation pass after
+ * each sweep so cards never overlap. Conference brackets therefore drift until
+ * they sit beside the regional they qualify into — nothing is stacked in a fixed
+ * order, and the crossings fall out on their own.
+ */
+function layoutGraph() {
+  const xOf = {}, colX = {};
+  let x = 0;
+
+  // Conference columns.
+  const confCols = Math.max(...G.brackets.filter((b) => b.stage === 'conf').map((b) => b.cols));
+  for (let c = 1; c <= confCols; c++) colX['conf:' + c] = (c - 1) * COL;
+  x = confCols * COL - (COL - CW);
+
+  // The bid seam.
+  const bidX = x + SECTION_GAP;
+  colX['bid:0'] = bidX;
+  x = bidX + BID_W;
+
+  const regCols = Math.max(...G.brackets.filter((b) => b.stage === 'regional').map((b) => b.cols));
+  const regX = x + SECTION_GAP;
+  for (let c = 1; c <= regCols; c++) colX['regional:' + c] = regX + (c - 1) * COL;
+  x = regX + regCols * COL - (COL - CW);
+
+  const natCols = Math.max(...G.brackets.filter((b) => b.stage === 'national').map((b) => b.cols));
+  const natX = x + SECTION_GAP;
+  for (let c = 1; c <= natCols; c++) colX['national:' + c] = natX + (c - 1) * COL;
+  x = natX + natCols * COL - (COL - CW);
+
+  const champX = x + SECTION_GAP;
+  colX['champ:0'] = champX;
+  const totalW = champX + CHAMP_W;
+
+  for (const n of G.nodes) xOf[n.id] = colX[n.stage + ':' + n.col];
+
+  // Layers.
+  const layers = {};
+  for (const n of G.nodes) (layers[xOf[n.id]] || (layers[xOf[n.id]] = [])).push(n);
+  const xs = Object.keys(layers).map(Number).sort((a, b) => a - b);
+
+  const y = {};
+  for (const lx of xs) {
+    let cy = 0;
+    for (const n of layers[lx]) { y[n.id] = cy; cy += sizeOf(n).h + GAPY; }
+  }
+  const mid = (id) => y[id] + sizeOf(NODE[id]).h / 2;
+  const mean = (ids) => ids.reduce((a, id) => a + mid(id), 0) / ids.length;
+
+  /** Push a layer apart without letting it drift off its own centre of mass. */
+  const separate = (list) => {
+    const before = list.reduce((a, n) => a + mid(n.id), 0) / list.length;
+    list.sort((a, b) => mid(a.id) - mid(b.id));
+    let floor = -Infinity;
+    for (const n of list) {
+      const h = sizeOf(n).h;
+      const top = Math.max(y[n.id], floor);
+      y[n.id] = top;
+      floor = top + h + GAPY;
+    }
+    const after = list.reduce((a, n) => a + mid(n.id), 0) / list.length;
+    const shift = before - after;
+    for (const n of list) y[n.id] += shift;
+  };
+
+  for (let pass = 0; pass < 14; pass++) {
+    const forward = pass % 2 === 0;
+    const order = forward ? xs : [...xs].reverse();
+    for (const lx of order) {
+      for (const n of layers[lx]) {
+        const nb = forward ? FEEDERS[n.id] : CONSUMERS[n.id];
+        if (nb && nb.length) y[n.id] = mean(nb) - sizeOf(n).h / 2;
+      }
+      separate(layers[lx]);
+    }
+  }
+
+  let minY = Infinity, maxY = -Infinity;
+  for (const n of G.nodes) {
+    minY = Math.min(minY, y[n.id]);
+    maxY = Math.max(maxY, y[n.id] + sizeOf(n).h);
+  }
+  const pos = {};
+  for (const n of G.nodes) {
+    const sz = sizeOf(n);
+    pos[n.id] = { x: xOf[n.id], y: y[n.id] - minY, w: sz.w, h: sz.h };
+  }
+
+  const bracketBox = {};
+  for (const b of G.brackets) {
+    let top = Infinity, bot = -Infinity;
+    for (const n of b.nodes) { top = Math.min(top, pos[n.id].y); bot = Math.max(bot, pos[n.id].y + pos[n.id].h); }
+    bracketBox[b.key] = { y: top, h: bot - top, x: pos[b.nodes[0].id].x };
+  }
+
+  const sectionSpan = {};
+  for (const st of SECTIONS) {
+    let lo = Infinity, hi = -Infinity, top = Infinity, bot = -Infinity;
+    for (const n of G.nodes) {
+      if (n.section !== st) continue;
+      lo = Math.min(lo, pos[n.id].x); hi = Math.max(hi, pos[n.id].x + pos[n.id].w);
+      top = Math.min(top, pos[n.id].y); bot = Math.max(bot, pos[n.id].y + pos[n.id].h);
+    }
+    sectionSpan[st] = { x: lo, w: hi - lo, y: top, h: bot - top };
+  }
+
+  const cols = { conf: confCols, regional: regCols, national: natCols };
+  return { pos, bracketBox, sectionSpan, colX, cols, totalW, totalH: maxY - minY, champX };
+}
+
+const L = layoutGraph();
+
+// Three cameras on one map. Detail crossfades between layers that all exist at
+// once, so nothing reflows mid-zoom.
+const DENS = [
+  { k: 1, name: 1, abbr: 0, mark: 0, kRef: 1 },
+  { k: 0.46, name: 0, abbr: 1, mark: 0, kRef: 0.46 },
+  { k: null, name: 0, abbr: 0, mark: 1, kRef: 0.09 },
+];
+
+/**
+ * Every connector, precomputed once per density.
+ *
+ * Wire geometry is pure layout — it depends on `L.pos` and nothing else — and so
+ * are the colours, which come from the edge's kind. Rebuilding all of it on
+ * every camera move was costing about a second before the density control's own
+ * transform could even be written, which read as a dead tap.
+ */
+function buildWires() {
+  return DENS.map((D) => {
+    const th = Math.max(1.4, 1.8 * D.kRef) / D.kRef;
+    const list = [];
+    // Qualification lines share a small set of vertical channels in the gap
+    // before their destination rather than all turning on the same x, so sixteen
+    // of them converge as a funnel instead of stacking into one thick rule.
+    const channel = {};
+    let chanSeq = 0;
+    for (const e of G.edges) {
+      const a = L.pos[e.from], b = L.pos[e.to];
+      if (!a || !b) continue;
+      const onMyPath = MY_EDGES.has(e.from + '>' + e.to);
+      const secondary = e.kind === 'survives';
+      const cross = e.kind === 'qualifies';
+      if (D.mark && secondary && !onMyPath) continue;
+      const bg = onMyPath ? CLAY : secondary ? 'rgba(28,36,48,.2)'
+        : cross ? 'rgba(28,36,48,.5)' : 'rgba(28,36,48,.4)';
+      const op = onMyPath ? 1 : secondary ? 0.5 : cross ? 0.8 : 0.72;
+      const w = secondary ? th * 0.55 : onMyPath ? th * 1.6 : cross ? th * 1.1 : th;
+      const x1 = a.x + a.w, y1 = a.y + a.h / 2;
+      const x2 = b.x, y2 = b.y + b.h / 2;
+      if (cross && channel[e.to] === undefined) channel[e.to] = chanSeq++ % 4;
+      const mid = cross
+        ? x2 - SECTION_GAP * (0.24 + 0.055 * channel[e.to])
+        : x1 + Math.max(12, (x2 - x1) / 2);
+      const key = e.from + '>' + e.to;
+      const px = (n) => n + 'px';
+      list.push({ id: key + 'a', mine: onMyPath, x: px(x1), y: px(y1 - w / 2), w: px(Math.max(0, mid - x1)), h: px(w), bg, op });
+      if (Math.abs(y2 - y1) > 0.5) {
+        list.push({ id: key + 'b', mine: onMyPath, x: px(mid - w / 2), y: px(Math.min(y1, y2)), w: px(w), h: px(Math.abs(y2 - y1)), bg, op });
+      }
+      list.push({ id: key + 'c', mine: onMyPath, x: px(mid), y: px(y2 - w / 2), w: px(Math.max(0, x2 - mid)), h: px(w), bg, op });
+    }
+    return list;
+  });
+}
+const WIRES = buildWires();
+
+class Component extends DCLogic {
+  state = {
+    dens: 0,
+    cam: { x: 0, y: 0 },
+    viewed: 'conf',
+    revealed: { conf: 0, regional: 0, national: 0 },
+    vw: 428, vh: 560,
+  };
+
+  componentDidMount() {
+    const d = this.props.startDensity;
+    if (typeof d === 'number' && DENS[d]) this.setState({ dens: d });
+    this.measure();
+    this.onResize = () => this.measure();
+    window.addEventListener('resize', this.onResize);
+    requestAnimationFrame(() => this.centreOnMe());
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this.onResize); }
+
+  measure() {
+    const el = this.viewEl;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (r.width && r.height) this.setState({ vw: r.width, vh: r.height });
+  }
+
+  stageRounds(st) { return L.cols[st]; }
+  stageDone(st) { return this.state.revealed[st] >= L.cols[st]; }
+  /** Where the season actually is, which is not the same as what you are looking at. */
+  activeStage() {
+    for (const st of SECTIONS) if (!this.stageDone(st)) return st;
+    return 'national';
+  }
+
+  playedNode(n) {
+    if (n.kind === 'game' || n.kind === 'bye') return n.col <= this.state.revealed[n.stage];
+    return this.knownNode(n);
+  }
+  /** Known = the matchup is determined. A first round is set by the seeding. */
+  knownNode(n) {
+    const f = FEEDERS[n.id];
+    if (!f) return true;
+    return f.every((id) => NODE[id] && this.playedNode(NODE[id]));
+  }
+
+  scaleFor(i) {
+    const k = DENS[i].k;
+    if (k !== null) return k;
+    return Math.min(
+      (this.state.vw - 2 * PAD) / L.totalW,
+      (this.state.vh - 2 * PAD) / L.totalH,
+    );
+  }
+  scale() { return this.scaleFor(this.state.dens); }
+
+  /**
+   * Write the transform straight to the node before React re-renders.
+   *
+   * The board carries a few thousand descendants, so the render that follows a
+   * tap can take long enough that the CSS transition had not started yet — the
+   * control felt dead, then the board slid. Setting the transform here starts
+   * the animation on the tap; React's own render writes the same value after.
+   */
+  applyTransform(cam, k) {
+    const el = this.canvasEl;
+    if (!el) return;
+    const off = this.offsetFor(cam, k);
+    el.style.transform = 'translate3d(' + off.x + 'px,' + off.y + 'px,0) scale(' + k + ')';
+  }
+  /**
+   * The committed camera, mirrored outside React state.
+   *
+   * A gesture that starts before the previous one's `setState` has been applied
+   * would otherwise read a stale origin and undo the drag before it. The mirror
+   * is written synchronously, so back-to-back drags compose.
+   */
+  commitCam(cam, extra) {
+    this.cam = cam;
+    this.setState({ cam, ...(extra || {}) });
+  }
+  liveCam() { return this.cam || this.state.cam; }
+  moveCamera(cam, extra) {
+    this.applyTransform(cam, this.scale());
+    this.commitCam(cam, extra);
+  }
+
+  /**
+   * Offset for a camera point.
+   *
+   * The bound is the overscroll margin, not the viewport edge: the outermost
+   * node may travel to within a margin of the far side, which is what lets any
+   * section be brought to the middle of the screen even when it sits at the end
+   * of the graph. A dimension that already fits is not locked either — the two
+   * bounds simply cross, and the range between them becomes the slack the map
+   * can be moved through.
+   */
+  offsetFor(cam, k) {
+    const place = (c, max, viewport, margin) => {
+      const want = viewport / 2 - c * k;
+      const m = viewport * margin;
+      const lo = viewport - m - max * k, hi = m;
+      return Math.max(Math.min(lo, hi), Math.min(Math.max(lo, hi), want));
+    };
+    return {
+      x: place(cam.x, L.totalW, this.state.vw, MARGIN_X),
+      y: place(cam.y, L.totalH, this.state.vh, MARGIN_Y),
+    };
+  }
+
+  /**
+   * Change zoom around whatever is currently in the middle of the screen.
+   *
+   * Reading the centre back out of the live offset — rather than trusting the
+   * stored camera — means a clamped view zooms around what you can actually see,
+   * so the focal point does not jump when the clamp lets go.
+   */
+  setDens(i) {
+    const k = this.scale();
+    const off = this.offsetFor(this.liveCam(), k);
+    const cam = { x: (this.state.vw / 2 - off.x) / k, y: (this.state.vh / 2 - off.y) / k };
+    this.applyTransform(cam, this.scaleFor(i));
+    this.cam = cam;
+    this.setState({ dens: i, cam });
+  }
+
+  /** The user's own games, but only the ones they are allowed to know about. */
+  myKnownIn(section) {
+    return G.nodes.filter((n) => MY_NODES.has(n.id) && n.section === section && this.knownNode(n));
+  }
+
+  centreOnMe() {
+    const st = this.activeStage();
+    const known = this.myKnownIn(st);
+    const next = known.find((n) => n.kind === 'game' && !this.playedNode(n));
+    const target = next || known[known.length - 1] || this.myKnownIn('conf')[0];
+    if (!target) return;
+    const p = L.pos[target.id];
+    if (p) this.moveCamera({ x: p.x + p.w / 2, y: p.y + p.h / 2 }, { viewed: target.section });
+  }
+
+  /**
+   * Section navigation: show me this part of the postseason.
+   *
+   * Deliberately not "find Ridgemont" — that is what `centreOnMe` is for, and it
+   * runs on the events where following the team is the point (arriving, playing a
+   * round). Here the target is the middle of the section, with the vertical taken
+   * from the user's own bracket when they have one there, so their conference is
+   * in view without the camera hunting a single game. Density is untouched.
+   */
+  goSection(st) {
+    const span = L.sectionSpan[st];
+    const mineHere = G.brackets.find((b) => b.section === st && b.seeds.includes(ME));
+    const box = mineHere ? L.bracketBox[mineHere.key] : null;
+    this.moveCamera({
+      x: span.x + span.w / 2,
+      y: box ? box.y + box.h / 2 : span.y + span.h / 2,
+    }, { viewed: st });
+  }
+
+  goCol(st, col) {
+    const x = L.colX[(st === 'regional' && col === 0 ? 'bid' : st) + ':' + col];
+    if (x === undefined) return;
+    this.moveCamera({ x: x + CW / 2, y: this.liveCam().y }, { viewed: st });
+  }
+
+  goBracket(key) {
+    const b = L.bracketBox[key];
+    if (b) this.moveCamera({ x: this.liveCam().x, y: b.y + b.h / 2 });
+  }
+
+  playRound() {
+    const st = this.activeStage();
+    if (this.stageDone(st)) return;
+    this.setState(
+      (s) => ({ revealed: { ...s.revealed, [st]: s.revealed[st] + 1 } }),
+      () => this.centreOnMe(),
+    );
+  }
+
+  /**
+   * Manual panning, one to one with the pointer.
+   *
+   * The transform is written straight to the node on every move and the easing
+   * is switched off for the duration, so the map tracks the finger instead of
+   * waiting on a render of several thousand nodes. State is committed once, on
+   * release. Pointer capture means a fast drag that leaves the viewport keeps
+   * going rather than stopping dead.
+   */
+  panDown = (e) => {
+    this.drag = { x: e.clientX, y: e.clientY, cam: this.liveCam(), id: e.pointerId };
+    this.dragCam = this.liveCam();
+    const el = this.canvasEl;
+    if (el) el.style.transition = 'none';
+    // Orientation labels step back while you are moving the map, and come back
+    // when you stop. Done on the node so a pan costs no renders.
+    if (this.overlayEl) this.overlayEl.style.opacity = '0.16';
+    if (e.currentTarget && e.currentTarget.setPointerCapture) {
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* not captureable */ }
+    }
+  };
+  panMove = (e) => {
+    if (!this.drag) return;
+    const k = this.scale();
+    this.dragCam = {
+      x: this.drag.cam.x - (e.clientX - this.drag.x) / k,
+      y: this.drag.cam.y - (e.clientY - this.drag.y) / k,
+    };
+    this.applyTransform(this.dragCam, k);
+  };
+  panEnd = (e) => {
+    if (!this.drag) return;
+    const id = this.drag.id;
+    this.drag = null;
+    const el = this.canvasEl;
+    if (el) el.style.transition = '';
+    if (this.overlayEl) this.overlayEl.style.opacity = '1';
+    if (e && e.currentTarget && e.currentTarget.releasePointerCapture) {
+      try { e.currentTarget.releasePointerCapture(id); } catch (err) { /* already released */ }
+    }
+    // The indicator follows where you have travelled to. The camera does not
+    // move — you put it there.
+    const cam = this.dragCam || this.liveCam();
+    let best = 'conf', bestD = Infinity;
+    for (const st of SECTIONS) {
+      const s2 = L.sectionSpan[st];
+      const d = Math.abs(cam.x - (s2.x + s2.w / 2));
+      if (d < bestD) { bestD = d; best = st; }
+    }
+    this.commitCam(cam, { viewed: best });
+  };
+
+  renderVals() {
+    const s = this.state;
+    const px = (n) => n + 'px';
+    const D = DENS[s.dens];
+    const k = this.scale();
+    const off = this.offsetFor(s.cam, k);
+    const active = this.activeStage();
+
+    const v = { fullDots: [1, 2, 3, 4, 5, 6, 7, 8, 9] };
+    v.viewRef = (el) => { if (el && this.viewEl !== el) { this.viewEl = el; this.measure(); } };
+    v.canvasRef = (el) => { this.canvasEl = el; };
+    // Template holes resolve against this object alone, so the pan handlers have
+    // to be exposed here — being bound instance fields is not enough to reach
+    // the template. They already are arrow fields, so the reference is the bind.
+    v.panDown = this.panDown;
+    v.panMove = this.panMove;
+    v.panEnd = this.panEnd;
+    v.overlayRef = (el) => { this.overlayEl = el; };
+
+    // The tab indicator follows what you are LOOKING at; the status label under
+    // each tab follows where the season actually is.
+    v.sections = SECTIONS.map((st) => ({
+      name: TAB_NAME[st],
+      sub: this.stageDone(st) ? '✓ DONE' : st === active ? '● NOW' : '—',
+      color: st === s.viewed ? CLAY : 'rgba(28,36,48,.62)',
+      subColor: this.stageDone(st) ? WIN : st === active ? CLAY : 'rgba(28,36,48,.35)',
+      go: () => this.goSection(st),
+    }));
+    v.indX = px(SECTIONS.indexOf(s.viewed) * 136);
+
+    const chip = (i) => ({
+      bg: s.dens === i ? CLAY : 'transparent',
+      border: s.dens === i ? CLAY : 'rgba(28,36,48,.28)',
+      ink: s.dens === i ? '#f6f1e6' : 'rgba(28,36,48,.55)',
+    });
+    v.dl = chip(0); v.dm = chip(1); v.df = chip(2);
+    v.densLarge = () => this.setDens(0);
+    v.densMedium = () => this.setDens(1);
+    v.densFull = () => this.setDens(2);
+
+    v.offX = px(off.x); v.offY = px(off.y);
+    v.scale = String(k);
+    // Easing is for programmatic moves only; manual dragging turns it off on the
+    // node itself so panning is exactly one to one.
+    v.canvasTrans = 'transform 620ms cubic-bezier(.24,.9,.26,1)';
+
+    v.bands = SECTIONS.map((st, i) => {
+      const span = L.sectionSpan[st];
+      return {
+        id: st,
+        x: px(span.x - SECTION_GAP / 2), y: px(-90),
+        w: px(span.w + SECTION_GAP), h: px(L.totalH + 180),
+        bg: i % 2 === 0 ? 'rgba(28,36,48,.02)' : 'transparent',
+        bw: i === 0 ? '0px' : '2px',
+      };
+    });
+
+    const cards = [], byes = [], bids = [];
+    for (const n of G.nodes) {
+      const p = L.pos[n.id];
+      if (!p) continue;
+      const known = this.knownNode(n);
+      const played = this.playedNode(n);
+      const mineNode = MY_NODES.has(n.id);
+
+      if (n.kind === 'bid') {
+        bids.push({
+          id: n.id, x: px(p.x), y: px(p.y), w: px(p.w), h: px(p.h),
+          kind: known ? n.bidKind : 'BID',
+          team: known ? (n.team === ME ? '★ ' + n.team : n.team) : '—',
+          bstyle: known ? 'solid' : 'dashed',
+          border: mineNode ? CLAY : known ? 'rgba(28,36,48,.34)' : 'rgba(28,36,48,.2)',
+          bg: mineNode ? 'rgba(168,68,42,.12)' : known ? '#fbf7ee' : 'rgba(251,247,238,.5)',
+          bar: known ? (n.bidKind === 'AUTO BID' ? WIN : 'rgba(28,36,48,.3)') : 'rgba(28,36,48,.12)',
+          kindColor: n.bidKind === 'AUTO BID' ? WIN : 'rgba(28,36,48,.5)',
+          color: mineNode ? CLAY : INK,
+          textOp: D.mark ? 0 : 1,
+        });
+        continue;
+      }
+      if (n.kind === 'champ') continue;
+      if (n.kind === 'bye') {
+        byes.push({
+          id: n.id, x: px(p.x), y: px(p.y), w: px(p.w), h: px(p.h), bw: '2px',
+          label: known ? (n.bye === ME ? 'RIDGEMONT · BYE' : n.bye + ' · BYE') : '',
+          op: D.mark ? 0 : 1,
+          border: mineNode && known ? CLAY : 'rgba(28,36,48,.22)',
+          color: mineNode ? CLAY : 'rgba(28,36,48,.5)',
+        });
+        continue;
+      }
+
+      const aWin = n.winner === n.a;
+      const mineA = n.a === ME, mineB = n.b === ME;
+      const col = (won, isMe) => (isMe ? CLAY : played ? (won ? INK : 'rgba(28,36,48,.5)') : 'rgba(28,36,48,.62)');
+      const markOf = (team, won) => {
+        if (!known) return 'rgba(28,36,48,.07)';
+        if (!played) return SCHOOL[team].color + '33';
+        return won ? SCHOOL[team].color : SCHOOL[team].color + '4d';
+      };
+      cards.push({
+        id: n.id,
+        x: px(p.x), y: px(p.y), w: px(p.w), h: px(p.h), bw: '2px',
+        bstyle: played ? 'solid' : 'dashed',
+        border: mineNode ? CLAY : played ? FAINT : 'rgba(28,36,48,.22)',
+        bg: played ? '#fbf7ee' : 'rgba(251,247,238,.55)',
+        nameOp: D.name, abbrOp: D.abbr, markOp: D.mark,
+        aMark: markOf(n.a, aWin), bMark: markOf(n.b, !aWin),
+        aAbbr: known ? (mineA ? '★ ' + n.a : n.a) : '', bAbbr: known ? (mineB ? '★ ' + n.b : n.b) : '',
+        aName: known ? (mineA ? '★ ' : '') + SCHOOL[n.a].school : '',
+        bName: known ? (mineB ? '★ ' : '') + SCHOOL[n.b].school : '',
+        aSeed: known ? n.aSeed : '', bSeed: known ? n.bSeed : '',
+        aBar: known ? SCHOOL[n.a].color : 'rgba(28,36,48,.14)',
+        bBar: known ? SCHOOL[n.b].color : 'rgba(28,36,48,.14)',
+        aScore: played ? String(n.as) : '', bScore: played ? String(n.bs) : '',
+        aColor: col(aWin, mineA), bColor: col(!aWin, mineB),
+        aWeight: played && aWin ? 700 : 400, bWeight: played && !aWin ? 700 : 400,
+        aBg: mineA ? 'rgba(168,68,42,.12)' : 'transparent',
+        bBg: mineB ? 'rgba(168,68,42,.12)' : 'transparent',
+      });
+    }
+    v.cards = cards; v.byes = byes; v.bids = bids;
+
+    // The terminal node: the far right of the map, and where the eye should land.
+    const champ = NODE.champ;
+    const champKnown = this.playedNode(champ);
+    const cp = L.pos.champ;
+    v.champX = px(cp.x); v.champY = px(cp.y);
+    v.champW = px(cp.w); v.champH = px(cp.h);
+    v.champBg = champKnown ? CLAY : 'rgba(168,68,42,.06)';
+    v.champKicker = champKnown ? 'rgba(246,241,230,.75)' : CLAY;
+    v.champInk = champKnown ? '#f6f1e6' : 'rgba(28,36,48,.3)';
+    v.champName = champKnown ? SCHOOL[champ.team].school : 'TBD';
+    v.champTextOp = D.mark ? 0 : 1;
+    // At map scale the endpoint is a 37px clay block, so its label comes off the
+    // board and gets pinned at screen size — the eye has to be able to find the
+    // end of the funnel from the fully zoomed-out view.
+    v.champTagOp = D.mark ? 1 : 0;
+    v.champTagName = champKnown ? SCHOOL[champ.team].school.toUpperCase() : 'CHAMPION · TBD';
+    v.champTagX = px(Math.max(6, Math.min(off.x + cp.x * k, s.vw - 150)));
+    v.champTagY = px(Math.max(24, off.y + cp.y * k - 16));
+    v.champGo = () => this.moveCamera({ x: cp.x + cp.w / 2, y: cp.y + cp.h / 2 }, { viewed: 'national' });
+
+    /**
+     * Edges. Winner advancement dominates, a survivor's path is thinner and
+     * lighter, and a qualification into the next stage is drawn like the
+     * advancement it is. At map scale the survivor paths of teams other than
+     * yours come out — two hundred grey elbows at one tenth scale is noise.
+     */
+    const built = WIRES[s.dens];
+    v.wires = this.props.showConnectors === false ? built.filter((w) => w.mine) : built;
+
+    v.sectionTags = SECTIONS.map((st) => {
+      const span = L.sectionSpan[st];
+      return {
+        id: st, label: SECTION_LABEL[st],
+        x: px(off.x + span.x * k), w: px(span.w * k),
+        color: st === s.viewed ? CLAY : 'rgba(28,36,48,.55)',
+      };
+    });
+
+    const heads = [];
+    for (const st of SECTIONS) {
+      for (let c = 1; c <= L.cols[st]; c++) {
+        const cx = L.colX[st + ':' + c];
+        if (cx === undefined) continue;
+        heads.push({
+          id: st + c,
+          label: st === 'national' && c === L.cols[st] ? 'FINAL' : 'ROUND ' + c,
+          x: px(off.x + cx * k), w: px(COL * k - 6),
+          color: c > s.revealed[st] ? 'rgba(28,36,48,.4)' : INK,
+          op: CW * k >= 84 ? 1 : 0,
+          go: () => this.goCol(st, c),
+        });
+      }
+    }
+    v.heads = heads;
+
+    /**
+     * Which bracket you are over, as one pinned chip.
+     *
+     * Thirteen in-canvas labels could not be placed safely: brackets no longer
+     * own a reserved band, because the DAG sweep interleaves nodes from
+     * different brackets in the same layer, so any fixed offset above a bracket
+     * eventually lands on a neighbour's card. One chip that names whatever the
+     * camera is over cannot collide with anything, and answers the same question.
+     */
+    // Resolved from the node the camera is actually nearest, then read straight
+    // off that node's `bracket`. Comparing against bracket bounding boxes was a
+    // guess, and it lost: the DAG sweep spreads a conference bracket across a
+    // tall band, so many boxes tie on vertical distance and the tiebreak handed
+    // the chip to a bracket a thousand units away from where you were looking.
+    let nearest = null, bestD = Infinity;
+    for (const n of G.nodes) {
+      const p = L.pos[n.id];
+      if (!p || !n.bracket) continue;
+      const dx = s.cam.x - (p.x + p.w / 2);
+      const dy = s.cam.y - (p.y + p.h / 2);
+      const d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; nearest = n; }
+    }
+    const here = nearest ? G.brackets.find((b) => b.key === nearest.bracket) : null;
+    v.hereLabel = here ? here.label + (here.seeds.includes(ME) ? ' · YOU' : '') : '';
+    v.hereColor = here && here.seeds.includes(ME) ? CLAY : 'rgba(28,36,48,.55)';
+    v.hereOp = D.mark ? 0 : 1;
+
+    const myGames = G.nodes.filter(
+      (n) => MY_NODES.has(n.id) && n.kind === 'game' && this.playedNode(n));
+    const w = myGames.filter((n) => n.winner === ME).length;
+    const lost = myGames.length - w;
+    const done = SECTIONS.every((st) => this.stageDone(st));
+    v.contextLine = done && G.champion === ME
+      ? '★ Ridgemont State · CHAMPIONS · ' + w + '-' + lost
+      : '★ Ridgemont State · ' + TAB_NAME[active] + ' · ' + w + '-' + lost;
+    v.hint = D.mark ? 'the whole postseason' : 'drag to move · tap a heading';
+
+    if (done) {
+      v.primaryLabel = 'REPLAY THE POSTSEASON';
+      v.primaryRun = () => this.setState(
+        { revealed: { conf: 0, regional: 0, national: 0 } },
+        () => this.centreOnMe(),
+      );
+    } else {
+      v.primaryLabel = 'PLAY ROUND ' + (s.revealed[active] + 1) + ' · ' + TAB_NAME[active];
+      v.primaryRun = () => this.playRound();
+    }
+
+    return v;
+  }
+}
+</script>
+</body>
+</html>

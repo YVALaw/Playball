@@ -1,0 +1,692 @@
+// PostseasonMap.tsx
+// The whole postseason, on one map you can move around.
+//
+// Three cameras over the same board. Zoomed in you read school names; a step out
+// and they become abbreviations; all the way out and every game is a pair of
+// colour marks and the map fits the screen. The layers all exist at once and
+// crossfade, so nothing reflows mid-zoom — the board never jumps under your
+// thumb.
+//
+// Panning writes the transform straight to the node and commits to React state
+// only on release. The board carries a few thousand descendants, and a render
+// that big between the touch and the movement is what makes a map feel dead.
+
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { teamColour } from './Avatar.js';
+import {
+  buildGraph, layoutGraph, CARD_W, COL_W, SECTION_GAP, CHAMP_W,
+  type GraphInput, type Section, type Box,
+} from './postseasonGraph.js';
+
+const CLAY = '#a8442a';
+
+/**
+ * Room to the left of a bracket for its name.
+ *
+ * Measured against the middle zoom rather than the live one, so the board does
+ * not reflow when you change zoom — the label just gets more or less slack.
+ */
+const gutterFor = (labels: readonly string[]): number => {
+  const longest = labels.reduce((m, l) => Math.max(m, l.length), 0);
+  return (longest * 7.6 + 18) / 0.46;
+};
+const INK = '#1c2430';
+const WIN = '#3f6b46';
+const FAINT = 'rgba(28,36,48,.2)';
+
+const SECTIONS: Section[] = ['conf', 'regional', 'national'];
+const SECTION_LABEL: Record<Section, string> = {
+  conf: 'CONFERENCES', regional: 'REGIONALS', national: 'NATIONAL',
+};
+const TAB_NAME: Record<Section, string> = {
+  conf: 'CONFERENCE', regional: 'REGIONALS', national: 'NATIONAL',
+};
+
+/** How much of the board you can pull past the edge, as a share of the screen. */
+const MARGIN_X = 0.45;
+const MARGIN_Y = 0.3;
+const PAD = 12;
+
+/** Names, abbreviations, colour marks. `k: null` means fit the whole board. */
+const DENSITIES = [
+  { k: 1 as number | null, name: 1, abbr: 0, mark: 0, ref: 1 },
+  { k: 0.46 as number | null, name: 0, abbr: 1, mark: 0, ref: 0.46 },
+  { k: null as number | null, name: 0, abbr: 0, mark: 1, ref: 0.09 },
+];
+
+export function PostseasonMap(
+  { input, abbr, name, height, focusKey, section }:
+  {
+    input: GraphInput;
+    abbr: (i: number) => string;
+    name: (i: number) => string;
+    height: number;
+    /** Changes when a round is played, so the camera follows your team. */
+    focusKey: string;
+    /**
+     * The tier being played, and the only one drawn.
+     *
+     * The map used to hold all three at once and let you pan between them.
+     * That made every simulated game a camera flight across the whole board —
+     * reported as "when we click to simulate the map goes crazy and janks the
+     * camera from one side to another" — and it buried the tier you were
+     * actually in. One tier per slide: the conferences, then the regionals,
+     * then the last four.
+     */
+    section: Section;
+  },
+) {
+  const { userTeam } = input;
+  const viewRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const camRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const dragRef = useRef<
+    { x: number; y: number; cam: { x: number; y: number }; id: number } | null
+  >(null);
+
+  const [dens, setDens] = useState(1);
+  const [cam, setCam] = useState({ x: 0, y: 0 });
+  const [viewed, setViewed] = useState<Section>('conf');
+  const [size, setSize] = useState({ w: 390, h: height });
+
+  // The board is rebuilt only when the postseason itself changes.
+  //
+  // Keyed on `focusKey` rather than on `input`, which is an object literal the
+  // caller rebuilds every render — memoising on its identity meant recomputing
+  // the layout on every render, and the camera effect below fires whenever the
+  // layout changes. That was most of the jank.
+  const { graph, layout } = useMemo(() => {
+    const full = buildGraph(input);
+    const nodes = full.nodes.filter((n) => n.section === section);
+    const ids = new Set(nodes.map((n) => n.id));
+    const g = {
+      ...full,
+      nodes,
+      edges: full.edges.filter((e) => ids.has(e.from) && ids.has(e.to)),
+      brackets: full.brackets.filter((b) => b.section === section),
+    };
+    const laid = layoutGraph(g);
+
+    // Slide the tier back to the origin on both axes. The layout reserves a
+    // column run and a row band for every tier, so a lone regional would
+    // otherwise sit a thousand units to the right of, and some way down, a
+    // canvas that is mostly empty. Normalising here is what lets the camera
+    // below treat the totals as the real size of what is on screen.
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const p of laid.pos.values()) {
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x + p.w);
+      minY = Math.min(minY, p.y);
+      maxY = Math.max(maxY, p.y + p.h);
+    }
+    if (minX !== Infinity) {
+      // Room for the bracket names, which are drawn in the gutter to the left.
+      const dx = minX - gutterFor(g.brackets.map((b) => b.label));
+      const dy = minY;
+      if (dx !== 0 || dy !== 0) {
+        for (const [id, p] of laid.pos) laid.pos.set(id, { ...p, x: p.x - dx, y: p.y - dy });
+        for (const [key, box] of laid.bracketBox) {
+          laid.bracketBox.set(key, { ...box, x: box.x - dx, y: box.y - dy });
+        }
+        for (const st of Object.keys(laid.sectionSpan) as Section[]) {
+          const s2 = laid.sectionSpan[st];
+          if (s2.w > 0) laid.sectionSpan[st] = { ...s2, x: s2.x - dx, y: s2.y - dy };
+        }
+      }
+      laid.totalW = Math.max(1, maxX - dx);
+      laid.totalH = Math.max(1, maxY - dy);
+    }
+    return { graph: g, layout: laid };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusKey, section]);
+
+  const mine = useMemo(
+    () => new Set(graph.nodes.filter((n) =>
+      (n.kind === 'series' && (n.a === userTeam || n.b === userTeam))
+      || (n.kind === 'champ' && n.team === userTeam),
+    ).map((n) => n.id)),
+    [graph, userTeam],
+  );
+  const myEdges = useMemo(
+    () => new Set(graph.edges.filter((e) => e.team === userTeam).map((e) => `${e.from}>${e.to}`)),
+    [graph, userTeam],
+  );
+
+  const D = DENSITIES[dens] as typeof DENSITIES[number];
+  const scaleFor = (i: number): number => {
+    const k = DENSITIES[i]?.k;
+    if (k !== null && k !== undefined) {
+      // The middle camera is the one that has to hold the whole tier across,
+      // because it is where every slide opens: a champion card hanging off the
+      // right edge is the one thing you must not have to go looking for. The
+      // close camera stays close — reading full names is what it is for.
+      if (i !== 1) return k;
+      return Math.min(k, (size.w - 2 * PAD) / Math.max(1, layout.totalW));
+    }
+    return Math.min(
+      (size.w - 2 * PAD) / Math.max(1, layout.totalW),
+      (size.h - 2 * PAD) / Math.max(1, layout.totalH),
+    );
+  };
+  const k = scaleFor(dens);
+
+  /**
+   * The map is only as tall as the tier needs.
+   *
+   * A region is a single series and the last four is three: at the fixed
+   * zooms those occupy a strip, and giving them the full height of the eight
+   * conference trees left most of the screen empty. A tier that overflows
+   * still gets the whole box to be panned around in.
+   */
+  // Measured from the fixed zoom rather than from `k`: the fit zoom is derived
+  // from the height, and feeding it back in here would be a loop.
+  const fixedK = DENSITIES[dens]?.k ?? null;
+  // Sized from the zoom actually in use — which a fixed camera may have
+  // narrowed to keep the board inside the sides — and never from a scale that
+  // is itself derived from the height, which would be a loop.
+  const viewH = fixedK === null ? null
+    : Math.max(180, Math.min(height, Math.round(layout.totalH * k) + 2 * PAD));
+
+  /**
+   * Offset for a camera point.
+   *
+   * The bound is the overscroll margin, not the viewport edge, so the outermost
+   * node can still be brought to the middle of the screen. A dimension that
+   * already fits is not locked either: the two bounds cross, and the range
+   * between them becomes the slack the map can be moved through.
+   */
+  const offsetFor = (c: { x: number; y: number }, kk: number): { x: number; y: number } => {
+    const place = (v: number, max: number, viewport: number, margin: number): number => {
+      // A tier that fits is centred rather than tracked. With one tier per
+      // slide the small ones — a region is one series, the last four is three —
+      // fit whole, and following a node around inside them only pushed the
+      // champion off the right edge.
+      if (max * kk <= viewport) return (viewport - max * kk) / 2;
+      const want = viewport / 2 - v * kk;
+      const m = viewport * margin;
+      const lo = viewport - m - max * kk;
+      const hi = m;
+      return Math.max(Math.min(lo, hi), Math.min(Math.max(lo, hi), want));
+    };
+    return {
+      x: place(c.x, layout.totalW, size.w, MARGIN_X),
+      y: place(c.y, layout.totalH, size.h, MARGIN_Y),
+    };
+  };
+
+  const applyTransform = (c: { x: number; y: number }, kk: number): void => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const off = offsetFor(c, kk);
+    el.style.transform = `translate3d(${off.x}px,${off.y}px,0) scale(${kk})`;
+  };
+
+  const moveCamera = (c: { x: number; y: number }, section?: Section): void => {
+    camRef.current = c;
+    applyTransform(c, k);
+    setCam(c);
+    if (section) setViewed(section);
+  };
+
+  useEffect(() => {
+    const el = viewRef.current;
+    if (!el) return;
+    const measure = (): void => {
+      const r = el.getBoundingClientRect();
+      if (r.width && r.height) setSize({ w: r.width, h: r.height });
+    };
+    measure();
+    // The box shrinks to fit a short tier, so the element resizes without the
+    // window doing anything. Watch the element itself or the camera centres
+    // against a height that is no longer there.
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    window.addEventListener('resize', measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, []);
+
+  /** Your next game if you have one, else the last thing that happened to you. */
+  useEffect(() => {
+    const ids = graph.nodes.filter((n) => mine.has(n.id));
+    const next = ids.find((n) => n.kind === 'series' && n.winner === null);
+    const target = next ?? ids[ids.length - 1];
+    if (!target) return;
+    const p = layout.pos.get(target.id);
+    if (!p) return;
+    const c = { x: p.x + p.w / 2, y: p.y + p.h / 2 };
+    camRef.current = c;
+    applyTransform(c, k);
+    setCam(c);
+    setViewed(target.section);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusKey, layout]);
+
+  // --- pointer panning -----------------------------------------------------
+  const onDown = (e: React.PointerEvent): void => {
+    dragRef.current = {
+      x: e.clientX, y: e.clientY, cam: camRef.current, id: e.pointerId,
+    };
+    const el = canvasRef.current;
+    if (el) el.style.transition = 'none';
+    if (overlayRef.current) overlayRef.current.style.opacity = '0.16';
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
+  };
+  const onMove = (e: React.PointerEvent): void => {
+    const d = dragRef.current;
+    if (!d) return;
+    const c = {
+      x: d.cam.x - (e.clientX - d.x) / k,
+      y: d.cam.y - (e.clientY - d.y) / k,
+    };
+    camRef.current = c;
+    applyTransform(c, k);
+  };
+  const onUp = (e: React.PointerEvent): void => {
+    const d = dragRef.current;
+    if (!d) return;
+    dragRef.current = null;
+    const el = canvasRef.current;
+    if (el) el.style.transition = '';
+    if (overlayRef.current) overlayRef.current.style.opacity = '1';
+    try { e.currentTarget.releasePointerCapture(d.id); } catch { /* already gone */ }
+
+    // The indicator follows where you travelled to. The camera stays put — you
+    // are the one who moved it.
+    const c = camRef.current;
+    let best: Section = 'conf';
+    let bestD = Infinity;
+    for (const st of SECTIONS) {
+      const span = layout.sectionSpan[st];
+      if (span.w === 0) continue;
+      const dist = Math.abs(c.x - (span.x + span.w / 2));
+      if (dist < bestD) { bestD = dist; best = st; }
+    }
+    setCam(c);
+    setViewed(best);
+  };
+
+  const changeDensity = (i: number): void => {
+    // The whole-map camera centres on the whole map. Keeping the previous focal
+    // point there leaves the board parked against an edge with the rest of June
+    // off screen, which is the one thing this zoom level exists to prevent.
+    const c = DENSITIES[i]?.k == null
+      ? { x: layout.totalW / 2, y: layout.totalH / 2 }
+      : (() => {
+          // Otherwise zoom around what is in the middle of the screen right now,
+          // read back out of the live offset so a clamped view does not jump
+          // when the clamp lets go.
+          const off = offsetFor(camRef.current, k);
+          return { x: (size.w / 2 - off.x) / k, y: (size.h / 2 - off.y) / k };
+        })();
+    camRef.current = c;
+    applyTransform(c, scaleFor(i));
+    setCam(c);
+    setDens(i);
+  };
+
+  const goSection = (st: Section): void => {
+    const span = layout.sectionSpan[st];
+    if (span.w === 0) return;
+    const bracket = graph.brackets.find((b) => b.section === st && b.mine);
+    const box = bracket ? layout.bracketBox.get(bracket.key) : undefined;
+    moveCamera({
+      x: span.x + span.w / 2,
+      y: box ? box.y + box.h / 2 : span.y + span.h / 2,
+    }, st);
+  };
+
+  const off = offsetFor(cam, k);
+
+  // --- wires ---------------------------------------------------------------
+  const wires = useMemo(() => {
+    const th = Math.max(1.4, 1.8 * D.ref) / D.ref;
+    const list: {
+      id: string; x: number; y: number; w: number; h: number; bg: string; op: number;
+    }[] = [];
+    const channel = new Map<string, number>();
+    let seq = 0;
+    for (const e of graph.edges) {
+      const a = layout.pos.get(e.from);
+      const b = layout.pos.get(e.to);
+      if (!a || !b) continue;
+      const onMyPath = myEdges.has(`${e.from}>${e.to}`);
+      const cross = e.kind === 'qualifies';
+      const bg = onMyPath ? CLAY : cross ? 'rgba(28,36,48,.5)' : 'rgba(28,36,48,.4)';
+      const op = onMyPath ? 1 : cross ? 0.8 : 0.72;
+      const w = onMyPath ? th * 1.6 : cross ? th * 1.1 : th;
+      const x1 = a.x + a.w;
+      const y1 = a.y + a.h / 2;
+      const x2 = b.x;
+      const y2 = b.y + b.h / 2;
+      // Qualification lines share a few vertical channels before their target
+      // rather than all turning on the same x, so sixteen of them read as a
+      // funnel instead of one thick rule.
+      if (cross && !channel.has(e.to)) channel.set(e.to, seq++ % 4);
+      const midX = cross
+        ? x2 - SECTION_GAP * (0.24 + 0.055 * (channel.get(e.to) ?? 0))
+        : x1 + Math.max(12, (x2 - x1) / 2);
+      const key = `${e.from}>${e.to}`;
+      list.push({ id: `${key}a`, x: x1, y: y1 - w / 2, w: Math.max(0, midX - x1), h: w, bg, op });
+      if (Math.abs(y2 - y1) > 0.5) {
+        list.push({
+          id: `${key}b`, x: midX - w / 2, y: Math.min(y1, y2),
+          w, h: Math.abs(y2 - y1), bg, op,
+        });
+      }
+      list.push({ id: `${key}c`, x: midX, y: y2 - w / 2, w: Math.max(0, x2 - midX), h: w, bg, op });
+    }
+    return list;
+  }, [graph, layout, myEdges, D]);
+
+  const champ = graph.nodes.find((n) => n.kind === 'champ');
+  const champPos = layout.pos.get('champ');
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      height: viewH === null ? height : undefined,
+    }}>
+      {/* Where you are looking, and where the season actually is. */}
+      {/* Zoom. Three fixed cameras rather than a pinch, because a pinch on a
+          board this size lands you somewhere you did not choose. */}
+      <div style={{
+        flex: 'none', display: 'flex', alignItems: 'center', gap: 10,
+        padding: '8px 14px', background: 'var(--paper)',
+        borderBottom: '1px solid rgba(28,36,48,.12)',
+      }}>
+        <div style={{
+          flex: 1, minWidth: 0, font: "600 10px var(--mono)", letterSpacing: '.04em',
+          color: 'rgba(28,36,48,.7)',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>{hereLabel(graph, section)}</div>
+        <div style={{ flex: 'none', display: 'flex', gap: 3 }}>
+          {[0, 1, 2].map((i) => (
+            <button
+              key={i}
+              onClick={() => changeDensity(i)}
+              className="tap"
+              style={{
+                width: 30, height: 26, display: 'grid', placeItems: 'center',
+                background: dens === i ? CLAY : 'transparent',
+                border: `1px solid ${dens === i ? CLAY : 'rgba(28,36,48,.28)'}`,
+              }}
+              aria-label={['Names', 'Abbreviations', 'Whole map'][i]}
+            >
+              <DensityIcon level={i} ink={dens === i ? 'var(--cream)' : 'rgba(28,36,48,.55)'} />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div
+        ref={viewRef}
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        onPointerUp={onUp}
+        onPointerCancel={onUp}
+        style={{
+          flex: viewH === null ? 1 : 'none',
+          height: viewH ?? undefined,
+          minHeight: 0, position: 'relative', overflow: 'hidden',
+          touchAction: 'none', background: 'var(--field)',
+        }}
+      >
+        <div
+          ref={canvasRef}
+          style={{
+            position: 'absolute', left: 0, top: 0, transformOrigin: '0 0',
+            willChange: 'transform', pointerEvents: 'none',
+            transform: `translate3d(${off.x}px,${off.y}px,0) scale(${k})`,
+            transition: 'transform 620ms cubic-bezier(.24,.9,.26,1)',
+          }}
+        >
+          {graph.brackets.map((b) => {
+            const bb = layout.bracketBox.get(b.key);
+            if (!bb) return null;
+            return (
+              <div key={`lbl-${b.key}`} style={{
+                position: 'absolute', textAlign: 'right',
+                left: 0, width: bb.x - 14 / D.ref,
+                top: bb.y + bb.h / 2 - 8 / D.ref,
+                font: `700 ${11 / D.ref}px var(--mono)`,
+                letterSpacing: '.06em',
+                color: b.mine ? CLAY : 'rgba(28,36,48,.42)',
+                whiteSpace: 'nowrap', overflow: 'hidden',
+              }}>{b.label}</div>
+            );
+          })}
+
+          {wires.map((w) => (
+            <div key={w.id} style={{
+              position: 'absolute', left: w.x, top: w.y, width: w.w, height: w.h,
+              background: w.bg, opacity: w.op,
+            }} />
+          ))}
+
+          {graph.nodes.map((n) => {
+            const p = layout.pos.get(n.id);
+            if (!p) return null;
+            const isMine = mine.has(n.id);
+
+            if (n.kind === 'champ') return null;
+
+            // A series, not a game. The card carries the state of the matchup —
+            // who leads it and how far it has to go — because that is the unit
+            // the format is built out of now.
+            const settled = n.winner !== null;
+            const started = n.games.length > 0;
+            const known = n.a !== null && n.b !== null;
+            const mineA = n.a === userTeam;
+            const mineB = n.b === userTeam;
+            const colourOf = (team: number | null, wins: number, other: number): string => {
+              if (team === userTeam) return CLAY;
+              if (!known) return 'rgba(28,36,48,.45)';
+              if (settled) return n.winner === team ? INK : 'rgba(28,36,48,.5)';
+              return wins > other ? INK : 'rgba(28,36,48,.62)';
+            };
+            const markOf = (team: number | null, wins: number, other: number): string => {
+              if (team === null) return 'rgba(28,36,48,.07)';
+              const c = teamColour(abbr(team));
+              if (!started) return `${c}33`;
+              if (settled) return n.winner === team ? c : `${c}4d`;
+              return wins >= other ? c : `${c}4d`;
+            };
+            // A settled series with no games is a bye: the seed was rewarded for
+            // finishing high enough that nobody was left to play it in round one.
+            const bye = settled && !started;
+            const label = (team: number | null, long: boolean): string => {
+              if (team === null) return bye ? 'BYE' : 'TBD';
+              return (team === userTeam ? '★ ' : '') + (long ? name(team) : abbr(team));
+            };
+
+            return (
+              <div key={n.id} style={{
+                position: 'absolute', left: p.x, top: p.y, width: p.w, height: p.h,
+                border: `2px ${settled ? 'solid' : 'dashed'} ${
+                  isMine ? CLAY : settled ? FAINT : 'rgba(28,36,48,.22)'}`,
+                background: started ? 'var(--paper)' : 'rgba(251,247,238,.55)',
+                overflow: 'hidden',
+              }}>
+                <Layer opacity={D.mark}>
+                  <div style={{ flex: 1, background: markOf(n.a, n.aWins, n.bWins) }} />
+                  <div style={{ flex: 1, background: markOf(n.b, n.bWins, n.aWins) }} />
+                </Layer>
+
+                <Layer opacity={D.abbr}>
+                  <Side
+                    bar={n.a === null ? 'rgba(28,36,48,.14)' : teamColour(abbr(n.a))}
+                    seed={n.aSeed} text={label(n.a, false)}
+                    score={started ? String(n.aWins) : ''}
+                    colour={colourOf(n.a, n.aWins, n.bWins)}
+                    weight={settled && n.winner === n.a ? 700 : 400} mine={mineA} big
+                  />
+                  <Side
+                    bar={n.b === null ? 'rgba(28,36,48,.14)' : teamColour(abbr(n.b))}
+                    seed={n.bSeed} text={label(n.b, false)}
+                    score={started ? String(n.bWins) : ''}
+                    colour={colourOf(n.b, n.bWins, n.aWins)}
+                    weight={settled && n.winner === n.b ? 700 : 400} mine={mineB} big top
+                  />
+                </Layer>
+
+                <Layer opacity={D.name}>
+                  <Side
+                    bar={n.a === null ? 'rgba(28,36,48,.14)' : teamColour(abbr(n.a))}
+                    text={label(n.a, true)}
+                    score={started ? String(n.aWins) : ''}
+                    colour={colourOf(n.a, n.aWins, n.bWins)}
+                    weight={settled && n.winner === n.a ? 700 : 400} mine={mineA}
+                  />
+                  <Side
+                    bar={n.b === null ? 'rgba(28,36,48,.14)' : teamColour(abbr(n.b))}
+                    text={label(n.b, true)}
+                    score={started ? String(n.bWins) : ''}
+                    colour={colourOf(n.b, n.bWins, n.aWins)}
+                    weight={settled && n.winner === n.b ? 700 : 400} mine={mineB} top
+                  />
+                </Layer>
+
+                {/* What the series is, in the corner. Best of three reads very
+                    differently from best of seven and the card has to say which. */}
+                <div style={{
+                  position: 'absolute', right: 4, top: 2, opacity: D.mark ? 0 : 0.75,
+                  font: "600 9px var(--mono)", letterSpacing: '.06em',
+                  color: settled ? 'rgba(28,36,48,.45)' : CLAY,
+                  transition: 'opacity 480ms ease',
+                }}>BO{n.bestOf}</div>
+              </div>
+            );
+          })}
+
+          {/* The terminus. The only node with nothing after it. */}
+          {champ && champPos && (
+            <div style={{
+              position: 'absolute', left: champPos.x, top: champPos.y,
+              width: champPos.w, height: champPos.h,
+              border: `5px solid ${CLAY}`,
+              background: champ.kind === 'champ' && champ.team !== null
+                ? CLAY : 'rgba(168,68,42,.06)',
+              display: 'flex', flexDirection: 'column', justifyContent: 'center',
+              padding: '0 14px',
+            }}>
+              <div style={{ opacity: D.mark ? 0 : 1, transition: 'opacity 480ms ease' }}>
+                <div style={{
+                  font: "700 13px var(--mono)", letterSpacing: '.14em',
+                  color: champ.kind === 'champ' && champ.team !== null
+                    ? 'rgba(246,241,230,.75)' : CLAY,
+                }}>NATIONAL CHAMPION</div>
+                <div style={{
+                  marginTop: 6, font: "800 30px/1.06 var(--display)", textTransform: 'uppercase',
+                  color: champ.kind === 'champ' && champ.team !== null
+                    ? 'var(--cream)' : 'rgba(28,36,48,.3)',
+                }}>
+                  {champ.kind === 'champ' && champ.team !== null ? name(champ.team) : 'TBD'}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Orientation, pinned at screen size. Steps back while you drag. */}
+        <div
+          ref={overlayRef}
+          style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            transition: 'opacity 260ms ease',
+          }}
+        >
+          <div style={{
+            position: 'absolute', right: 8, bottom: 8,
+            font: "400 8px var(--mono)", color: 'rgba(28,36,48,.28)',
+          }}>{D.mark ? 'the whole postseason' : 'drag to move'}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Layer({ opacity, children }: { opacity: number; children: React.ReactNode }) {
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+      opacity, transition: 'opacity 480ms ease',
+    }}>{children}</div>
+  );
+}
+
+function Side(
+  { bar, seed, text, score, colour, weight, mine, big, top }:
+  {
+    bar: string; seed?: number; text: string; score: string; colour: string;
+    weight: number; mine: boolean; big?: boolean; top?: boolean;
+  },
+) {
+  return (
+    <div style={{
+      flex: 1, minHeight: 0, display: 'flex', alignItems: 'center',
+      gap: big ? 8 : 7, padding: big ? '0 12px' : '0 9px',
+      background: mine ? 'rgba(168,68,42,.12)' : 'transparent',
+      borderTop: top ? '1px solid rgba(28,36,48,.09)' : 'none',
+    }}>
+      <div style={{ flex: 'none', width: 5, height: '54%', background: bar }} />
+      {seed !== undefined && seed > 0 && (
+        <span style={{
+          flex: 'none', font: "600 18px var(--mono)", color: 'rgba(28,36,48,.42)',
+        }}>{seed}</span>
+      )}
+      <span style={{
+        flex: 1, minWidth: 0,
+        font: big ? `${weight} 22px var(--mono)` : `${weight} 15px var(--body)`,
+        color: colour,
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      }}>{text}</span>
+      <span style={{
+        flex: 'none', font: `700 ${big ? 24 : 20}px var(--mono)`, color: colour,
+      }}>{score}</span>
+    </div>
+  );
+}
+
+/**
+ * What the toolbar says you are looking at.
+ *
+ * Your own bracket if this tier has one, because that is the thing you came
+ * to see; otherwise the tier itself. Every bracket on the board is named in
+ * its own gutter, so this line does not have to guess at one.
+ */
+function hereLabel(graph: ReturnType<typeof buildGraph>, section: Section): string {
+  const mine = graph.brackets.find((b) => b.mine);
+  if (mine) return `${mine.label} · YOU`;
+  return section === 'conf' ? 'THE CONFERENCES'
+    : section === 'regional' ? 'THE REGIONALS' : 'THE LAST FOUR';
+}
+function DensityIcon({ level, ink }: { level: number; ink: string }) {
+  if (level === 0) {
+    return <span style={{ display: 'block', width: 15, height: 11, border: `1.5px solid ${ink}` }} />;
+  }
+  if (level === 1) {
+    return (
+      <span style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
+        {[0, 1, 2, 3].map((i) => (
+          <span key={i} style={{ display: 'block', width: 6, height: 4, border: `1px solid ${ink}` }} />
+        ))}
+      </span>
+    );
+  }
+  return (
+    <span style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5 }}>
+      {Array.from({ length: 9 }, (_, i) => (
+        <span key={i} style={{ display: 'block', width: 3.5, height: 2.5, background: ink }} />
+      ))}
+    </span>
+  );
+}
+
+export { CARD_W, COL_W, CHAMP_W };

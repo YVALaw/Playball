@@ -87,8 +87,35 @@ interface PlayballDB extends DBSchema {
 
 let dbPromise: Promise<IDBPDatabase<PlayballDB>> | null = null;
 
-function db(): Promise<IDBPDatabase<PlayballDB>> {
-  dbPromise ??= openDB<PlayballDB>(DB_NAME, SCHEMA_VERSION, {
+/**
+ * How long to wait for the database before deciding it is not coming.
+ *
+ * Opening IndexedDB has failure modes that never resolve *and* never reject.
+ * The open request fires `blocked` when another tab is holding the database at
+ * a different version, and then simply waits — for that tab to close, which may
+ * be never. Some browsers also stall the request outright when site data is
+ * restricted. Neither case can be caught, because there is nothing to catch:
+ * the promise just stays pending.
+ *
+ * Reported from testing: "still stuck at building the league when opening from
+ * Chrome, from Safari it works". A loading screen with no timeout is a loading
+ * screen that can last for ever, and the only defence is to stop waiting.
+ */
+const OPEN_TIMEOUT_MS = 4000;
+
+/** Thrown when the browser will not give us storage. The game still runs. */
+export class StorageUnavailable extends Error {
+  constructor(reason: string) {
+    super(reason);
+    this.name = 'StorageUnavailable';
+  }
+}
+
+/** True once an open has failed, so the app can say saving is off. */
+export let storageBlocked = false;
+
+function openDatabase(): Promise<IDBPDatabase<PlayballDB>> {
+  const open = openDB<PlayballDB>(DB_NAME, SCHEMA_VERSION, {
     upgrade(database, oldVersion) {
       // Version 0 means a fresh browser. Each later case falls through so an
       // old save walks every migration between its version and this one.
@@ -111,6 +138,52 @@ function db(): Promise<IDBPDatabase<PlayballDB>> {
         database.createObjectStore(STORE, { keyPath: 'slot' });
       }
     },
+    /**
+     * Another tab is holding the database and ours cannot upgrade past it.
+     *
+     * Nothing to do but let the timeout below take over — but without this
+     * callback the request stays pending silently, which is the whole bug.
+     */
+    blocked() {
+      storageBlocked = true;
+    },
+    /**
+     * We are the tab in the way. Close, so the other one can get on with it.
+     *
+     * Without this, two tabs of the game deadlock each other: whichever opened
+     * first blocks the upgrade, and the second waits on it for ever.
+     */
+    blocking(_current, _blocked, event) {
+      (event.target as IDBPDatabase<PlayballDB> | null)?.close();
+      dbPromise = null;
+    },
+    terminated() {
+      dbPromise = null;
+    },
+  });
+
+  // Stop waiting eventually. A game that cannot reach its save is still a game.
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new StorageUnavailable(
+        'the browser did not open local storage within four seconds',
+      )),
+      OPEN_TIMEOUT_MS,
+    );
+  });
+
+  return Promise.race([open, timeout]).finally(() => clearTimeout(timer)) as
+    Promise<IDBPDatabase<PlayballDB>>;
+}
+
+function db(): Promise<IDBPDatabase<PlayballDB>> {
+  // A failed open is not cached. The next attempt gets a fresh request, so a
+  // tab that was blocking can be closed and the game carries on working.
+  dbPromise ??= openDatabase().catch((e) => {
+    dbPromise = null;
+    storageBlocked = true;
+    throw e;
   });
   return dbPromise;
 }

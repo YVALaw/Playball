@@ -17,13 +17,14 @@
 // see is not a ladder — it is just a short list that quietly gets longer.
 
 import { useMemo, useState } from 'react';
-import { CONFERENCES, type ConferenceDef, type SchoolDef } from '../../data/schools.js';
+import { CONFERENCES, ALL_SCHOOLS, type ConferenceDef, type SchoolDef } from '../../data/schools.js';
+import { CONF_FIELD } from '../../engine/postseason.js';
 import {
   prestigeStars, expectationFor, contractFor, requiredCoachPrestige,
   canBeHired, hireGateNote, ROOKIE_PRESTIGE, rosterStrength,
   type Mandate, type Objective,
 } from '../../engine/program.js';
-import { useDynasty, WORLD_SEED } from '../../state/store.js';
+import { useDynasty, careerSeed } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
 import { createSeason, seasonLength } from '../../engine/season.js';
 import { makeRng } from '../../engine/rng.js';
@@ -74,8 +75,17 @@ export function NewGame() {
   const [conference, setConference] = useState<ConferenceDef>(CONFERENCES[0] as ConferenceDef);
   const [picked, setPicked] = useState<SchoolDef | null>(null);
 
+  /**
+   * This career's seed, drawn once when the screen opens.
+   *
+   * The same number previews the world and starts it, and that is the whole
+   * point: the rosters on this screen have to be the rosters you get. Preview
+   * from one seed and start from another and the offer screen is a lie.
+   */
+  const [seed] = useState(careerSeed);
+
   // Build the actual world, not an estimate of it. Generation is deterministic
-  // from WORLD_SEED and costs about 2ms, so the screen can simply read the
+  // from the seed and costs about 2ms, so the screen can simply read the
   // rosters the player is going to get.
   //
   // The estimate it replaces was quality alone, which ran 1.7 points light on
@@ -84,7 +94,7 @@ export function NewGame() {
   // roster wanting 20 wins; signing produced CONTEND, a 65 roster and 22 wins.
   // A board that changes its terms between the handshake and the first day is a
   // bug, however small the numbers are.
-  const world = useMemo(() => createSeason(makeRng(WORLD_SEED), undefined, CONFERENCES), []);
+  const world = useMemo(() => createSeason(makeRng(seed), undefined, CONFERENCES), [seed]);
 
   const rosters = useMemo(() => {
     const map = new Map<string, number>();
@@ -137,9 +147,10 @@ export function NewGame() {
           <div style={{
             marginTop: 10, font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
           }}>
-            Sixty four programs across eight regions. You play everyone in your region
-            every year, so the seven schools you pick alongside are the ones you will
-            know best.
+            {ALL_SCHOOLS.length} programs in {CONFERENCES.length} conferences of
+            {' '}{CONFERENCES[0]?.schools.length ?? 0}. You play your conference three times a
+            year, so the schools you pick alongside are the ones you will know best —
+            and only the top {CONF_FIELD} of them play in June.
           </div>
 
           {/* Why half the board is greyed out, said before you tap a locked row. */}
@@ -192,7 +203,7 @@ export function NewGame() {
       }}>
         <span className="label">PROGRAM</span>
         <span style={{ font: "600 9px var(--mono)", color: 'var(--dim)' }}>
-          {openCount} OF 8 WILL HIRE YOU
+          {openCount} OF {conference.schools.length} WILL HIRE YOU
         </span>
       </div>
 
@@ -370,7 +381,7 @@ export function NewGame() {
                     </div>
 
                     <button
-                      onClick={() => start(undefined, indexOf(picked))}
+                      onClick={() => start(seed, indexOf(picked))}
                       style={{
                         marginTop: 14, width: '100%', padding: '13px 0',
                         background: picked.color, border: `1px solid ${picked.color}`,

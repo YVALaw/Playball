@@ -21,25 +21,27 @@ import type { GameResult } from '../engine/game.js';
 import { playerId } from '../engine/types.js';
 import type { Hitter, Pitcher, PlayerId, Tactic } from '../engine/types.js';
 import { createLiveGame, type LiveGame } from '../engine/liveGame.js';
-import { advanceOffseason, type OffseasonReport } from '../engine/progression.js';
+import {
+  departAndDevelop, fillRosters, type OffseasonReport,
+} from '../engine/progression.js';
 import {
   newCoach, reviewSeason, jobOffers, rosterStrength, contractFor, prestigeStars,
   skillPoints,
   type CoachState, type CoachSkills, type JobOffer, type Review, type SeasonOutcome,
 } from '../engine/program.js';
 import {
-  runPostseason, freezeRegularSeason, stageConferenceTournaments, stageSelection,
-  stageRegionals, stageOmaha, summarize,
-  startBracket, stepBracket, nextGameFor, resultOf, pairKey,
+  runPostseason, freezeRegularSeason, stageConferenceTournaments,
+  stageRegionals, stageNational, regionalPairing, summarize,
+  startSeriesBracket, stepBracket, nextGameFor, resultOf, pairKey, hostOfGame,
+  conferenceLengths, REGIONAL_LENGTHS, NATIONAL_LENGTHS, regionOf,
   seasonAwards, allConference, coachOfTheYear,
-  conferenceField, conferenceIds, conferenceTournament, regionalGroups,
-  doubleElimination,
-  type BracketState,
-  type Finish, type PostseasonSummary, type ConferenceTournament, type Bid,
-  type TournamentResult,
+  conferenceField, conferenceIds, conferenceTournament, singleElimination, REGIONS,
+  type SeriesBracket,
+  type Finish, type PostseasonSummary, type ConferenceTournament,
+  type RegionalResult, type TournamentResult,
 } from '../engine/postseason.js';
 import {
-  SCHOLARSHIPS, RECRUITING_BUDGET, MAX_PER_RECRUIT, RECRUITING_WEEKS,
+  SCHOLARSHIPS, RECRUITING_BUDGET, MAX_PER_RECRUIT, RECRUITING_WEEKS, budgetFor,
   aiTargets, weeklyPoints, closeWeek, resetWeeklySpend, canPursue, leadersAtWeekStart,
 } from '../engine/recruiting.js';
 import { pitchFor, developmentScore } from '../engine/pitch.js';
@@ -84,9 +86,9 @@ import type { Strategy } from '../engine/strategy.js';
 import { HOME_CONFERENCE, CONFERENCES } from '../data/schools.js';
 import { saveDynasty, loadDynasty } from './persistence.js';
 import { toPortable, fromPortable } from './seasonCodec.js';
-import { WORLD_SEED } from './world.js';
+import { WORLD_SEED, START_YEAR } from './world.js';
 // Re-exported so the screens that already import it from here keep working.
-export { WORLD_SEED };
+export { WORLD_SEED, START_YEAR, careerSeed } from './world.js';
 import {
   workerAvailable, simSeasonInWorker, offseasonInWorker,
 } from './simClient.js';
@@ -113,8 +115,26 @@ export type Phase =
   | 'draft';        // who leaves for professional ball
 
 /** The order the offseason runs in. */
+/**
+ * The order the offseason runs in.
+ *
+ * The draft comes *before* recruiting, which is the order that makes the two
+ * screens about each other: the holes the draft leaves are the holes you go
+ * shopping for. With recruiting first you were signing a class against a roster
+ * that had not lost anybody yet, and the draft was a receipt.
+ */
 export const PHASES: readonly Exclude<Phase, null>[] =
-  ['awards', 'review', 'coach', 'recruiting', 'signing', 'draft'];
+  ['awards', 'review', 'coach', 'draft', 'recruiting', 'signing'];
+
+/** What each step is called on the rail across the top. */
+export const PHASE_LABEL: Record<Exclude<Phase, null>, string> = {
+  awards: 'AWARDS',
+  review: 'SEASON',
+  coach: 'COACH',
+  draft: 'DRAFT',
+  recruiting: 'RECRUIT',
+  signing: 'CLASS',
+};
 
 export interface TabDef {
   id: Tab;
@@ -145,11 +165,20 @@ export interface PostseasonProgress {
    * 'selection' and 'done' are gone as steps but stay in the type: a save
    * written before this change can still be sitting on one, and it has to load.
    */
-  stage: 'conference' | 'selection' | 'regional' | 'omaha' | 'done';
+  /**
+   * Two stages now, not four.
+   *
+   * The national bracket is one sixteen team tree, so the regionals and Omaha
+   * are its first two and last two rounds rather than separate tournaments. The
+   * old names stay in the type because a save written before the format changed
+   * still has to load; `openStage` treats anything unknown as finished.
+   */
+  stage: 'conference' | 'regional' | 'national' | 'done' | 'selection' | 'omaha';
   cups: ConferenceTournament[];
-  field: Bid[];
-  regionals: TournamentResult[];
-  omaha: TournamentResult | null;
+  /** One per region, once they have been played. */
+  regionals: RegionalResult[];
+  /** The last four, once they have been played. */
+  national: TournamentResult | null;
 }
 
 /**
@@ -161,10 +190,8 @@ export interface PostseasonProgress {
  * off regional order and dropping yours on the end would reseed the country.
  */
 export interface MyBracket {
-  kind: 'conference' | 'regional' | 'omaha';
-  state: BracketState;
-  others: TournamentResult[];
-  slot: number;
+  kind: 'conference' | 'regional' | 'national';
+  state: SeriesBracket;
   /** A game you played by hand, waiting for the round it belongs to. */
   preplayed: Map<string, GameResult>;
 }
@@ -264,8 +291,19 @@ export interface DynastyStore {
    * summary has not been to the postseason — he has been told about it.
    */
   bracket: PostseasonProgress | null;
-  /** Play the next stage. */
+  /** Leave a finished stage for the next one. */
   advanceBracket: () => void;
+  /** Open whatever stage the bracket is on. Called on arrival, not by a press. */
+  openStage: () => void;
+  /**
+   * The furthest step of the offseason you have reached this year.
+   *
+   * The rail is a map, not a menu: you can go back and re-read the awards from
+   * recruiting, but you cannot skip forward past a step you have not done.
+   */
+  furthestPhase: number;
+  /** Jump back to a step already visited. Ignored for anything further on. */
+  goPhase: (phase: Exclude<Phase, null>) => void;
   /**
    * Your own tournament, one round at a time.
    *
@@ -282,7 +320,15 @@ export interface DynastyStore {
    * Let the computer play it: the round you are in, every round until you are
    * next on the field, or the whole rest of the tournament.
    */
-  simBracket: (mode: 'round' | 'until' | 'rest') => void;
+  /**
+   * Let the computer play it.
+   *
+   * A game is one night — a game in every series still going, which is the
+   * unit when one of them is yours. A round finishes the whole round, which is
+   * the unit when none of them are: a knocked-out coach should not have to
+   * press twenty times to watch a best of seven he is not in.
+   */
+  simBracket: (mode: 'game' | 'round' | 'rest') => void;
   /** Fold a finished run into the stage results and move on. Internal. */
   closeMyBracket: () => void;
 
@@ -350,9 +396,34 @@ export interface DynastyStore {
   loadSlot: (slot?: string) => Promise<boolean>;
   saveState: 'idle' | 'saving' | 'saved' | 'error';
   lastSaveError: string | null;
+  /** Why the save on disk could not be opened, if it could not. */
+  loadError: string | null;
 }
 
 export const AUTOSAVE_SLOT = 'auto';
+
+/**
+ * A saved postseason, but only if this build can still play it.
+ *
+ * The format changed from double elimination to a knockout tree of series, so a
+ * bracket saved by an older build describes a tournament that no longer exists.
+ * Dropping it costs that year's postseason and nothing else — it is re-run from
+ * the top — which is a far better outcome than resuming into a shape the screen
+ * cannot read.
+ */
+function usableBracket(saved: unknown): PostseasonProgress | null {
+  if (!saved || typeof saved !== 'object') return null;
+  const b = saved as Partial<PostseasonProgress> & { regionals?: unknown };
+  if ((b as { field?: unknown }).field !== undefined) return null;  // a selected field
+  if (!Array.isArray(b.cups) || !Array.isArray(b.regionals)) return null;
+  if (b.stage !== 'conference' && b.stage !== 'regional' && b.stage !== 'national') {
+    return null;
+  }
+  return {
+    stage: b.stage, cups: b.cups, regionals: b.regionals,
+    national: b.national ?? null,
+  };
+}
 
 /**
  * Snapshot the season that just finished. Returns null before the schedule is
@@ -432,7 +503,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       season,
       userTeam: team ?? defaultUserTeam(season),
       needsTeam: false,
-      year: seed,
+      year: START_YEAR,
       version: 1,
       coach: newCoach('Coach', contractFor(season.teams[team ?? 0]?.prestige ?? 50)),
       lastReview: null,
@@ -481,7 +552,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // limit on how many recruits may be on the board: having more irons in the
     // fire than you can finish is a legitimate way to work, and the scholarships
     // already limit what you can actually sign.
-    const allowed = Math.min(wanted, RECRUITING_BUDGET - spentElsewhere);
+    // Against this program's budget, not a flat league-wide one: prestige buys
+    // attention, and that is most of what a good job is worth on the board.
+    const budget = budgetFor(prestigeStars(get().season?.teams[userTeam]?.prestige ?? 50));
+    const allowed = Math.min(wanted, budget - spentElsewhere);
     if (allowed <= 0) delete prospect.spent[userTeam];
     else prospect.spent[userTeam] = allowed;
 
@@ -574,32 +648,46 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (next === 'recruiting') {
       seedRivalInterest(season, get().userTeam);
       season.recruiting.week = 1;
-      set({ phase: next, version: get().version + 1 });
+      set({
+        phase: next,
+        furthestPhase: Math.max(get().furthestPhase, PHASES.indexOf(next)),
+        version: get().version + 1,
+      });
       void get().saveNow();
       return;
     }
 
-    // Entering the draft runs the offseason, so the screen reports what happened
-    // rather than what might. Rolling it at the end instead meant the draft step
-    // could only ever show odds — the one screen whose entire job is results.
+    // Entering the draft empties the roster: who leaves, and who got better.
+    // The class is not placed here — recruiting has not happened yet, which is
+    // the entire point of the draft coming first.
     if (next === 'draft') {
-      const report = advanceOffseason(season, season.rng, {
+      const report = departAndDevelop(season, season.rng, {
         userTeam: get().userTeam,
         coachPrestige: get().coach.prestige,
       });
-      set({ lastOffseason: report, phase: next, version: get().version + 1 });
+      set({
+        lastOffseason: report, phase: next,
+        furthestPhase: Math.max(get().furthestPhase, PHASES.indexOf(next)),
+        version: get().version + 1,
+      });
       void get().saveNow();
       return;
     }
 
-    // The draft is the last step; leaving it turns the year over.
-    if (phase === 'draft') {
+    // Signing day is the last step; leaving it turns the year over.
+    if (phase === 'signing') {
       set({ phase: null });
       await get().rollYear();
       return;
     }
 
-    set({ phase: next, version: get().version + 1 });
+    set({
+      phase: next,
+      furthestPhase: next
+        ? Math.max(get().furthestPhase, PHASES.indexOf(next))
+        : get().furthestPhase,
+      version: get().version + 1,
+    });
   },
 
   spendSkill: (skill) => {
@@ -742,6 +830,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         phase: null,
         lastPostseason: null,
         lastOutcome: null,
+        furthestPhase: 0,
         coach,
         // Being let go puts you on the market immediately. Nobody waits.
         offers: review?.fired
@@ -758,18 +847,35 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       void get().saveNow();
     };
 
-    // The offseason itself already ran, on the way into the draft step. All that
-    // is left is turning the calendar.
-    done(season, get().lastOffseason ?? {
-      graduated: [], drafted: [], recruits: 0, signed: [], walkOns: [],
-      developmentNet: 0, improved: 0, declined: 0,
+    // Departures and development already ran, on the way into the draft step.
+    // What is left is the half that needed a signed class to exist: the recruits
+    // go on the roster, and walk-ons fill whatever the class did not.
+    const filled = fillRosters(season, season.rng, {
+      userTeam: get().userTeam,
+      coachPrestige: get().coach.prestige,
     });
+    const report: OffseasonReport = {
+      ...(get().lastOffseason ?? {
+        graduated: [], drafted: [], recruits: 0, signed: [], walkOns: [],
+        developmentNet: 0, improved: 0, declined: 0, holes: [],
+      }),
+      recruits: filled.recruits,
+      signed: filled.signed,
+      walkOns: filled.walkOns,
+    };
+    done(season, report);
   },
 
   history: [],
   jobSearch: false,
   lastPostseason: null,
   bracket: null,
+  furthestPhase: 0,
+  goPhase: (phase) => {
+    const at = PHASES.indexOf(phase);
+    if (at < 0 || at > get().furthestPhase) return;
+    set({ phase, overlay: null, selectedPlayer: null, version: get().version + 1 });
+  },
   selectedPlayer: null,
   coach: newCoach('Coach'),
   lastReview: null,
@@ -826,9 +932,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // than being threaded through every game.
     freezeRegularSeason(season);
     set({
-      bracket: { stage: 'conference', cups: [], field: [], regionals: [], omaha: null },
+      bracket: { stage: 'conference', cups: [], regionals: [], national: null },
       version: version + 1,
     });
+    get().openStage();
     void get().saveNow();
   },
 
@@ -841,99 +948,123 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
    * which is how a twenty five win season could end without the player seeing a
    * postseason game.
    */
-  advanceBracket: () => {
+  /**
+   * Open the stage the bracket is sitting on, without a press.
+   *
+   * Reported from testing: "it has two unnecessary clicks — the first play the
+   * tournament, after that it should appear the bracket directly." He is right.
+   * A screen whose only content is the name of a tournament and whose only
+   * action is to start it is a loading screen with a button on it. Arriving at a
+   * stage *is* the instruction to open it, so the bracket is on screen the
+   * moment you get there, with your first game already named.
+   *
+   * A stage you are not in is played out immediately for the same reason: there
+   * is nothing for you to decide, so there is nothing to press.
+   */
+  openStage: () => {
     const { season, bracket, userTeam, version } = get();
-    if (!season || !bracket) return;
+    if (!season || !bracket || get().myBracket) return;
 
-    // Three stages, not four, and no press that does nothing.
-    //
-    // Selection used to be its own step, which meant a screen whose only content
-    // was a list and whose only action was to leave — "the selection phase seems
-    // pointless since we don't really do anything there", and it was. The field
-    // is announced as the regionals open, which is where it matters. Omaha ends
-    // the postseason directly rather than passing through a 'done' stage that
-    // looked identical and took a second press to get past.
-    if (bracket.stage === 'conference') {
-      if (bracket.cups.length > 0) {
+    if (bracket.stage === 'conference' && bracket.cups.length === 0) {
+      const me = season.teams[userTeam];
+      const mine = me ? conferenceField(season, me.conference) : null;
+      if (me && mine && mine.field.includes(userTeam)) {
+        const cups = conferenceIds(season)
+          .filter((id) => id !== me.conference)
+          .map((id) => conferenceTournament(season, id));
         set({
-          bracket: {
-            ...bracket, stage: 'regional',
-            field: stageSelection(season, bracket.cups.map((c) => c.champion)),
+          bracket: { ...bracket, cups },
+          myBracket: {
+            kind: 'conference',
+            state: startSeriesBracket(season, mine.field, conferenceLengths()),
+            preplayed: new Map(),
           },
           version: version + 1,
         });
-      } else {
-        const me = season.teams[userTeam];
-        const mine = me ? conferenceField(season, me.conference) : null;
-        if (me && mine && mine.field.includes(userTeam)) {
-          const cups = conferenceIds(season)
-            .filter((id) => id !== me.conference)
-            .map((id) => conferenceTournament(season, id));
-          set({
-            bracket: { ...bracket, cups },
-            myBracket: {
-              kind: 'conference', state: startBracket(season, mine.field),
-              others: [], slot: 0, preplayed: new Map(),
-            },
-            version: version + 1,
-          });
-          return;
-        }
-        set({
-          bracket: { ...bracket, cups: stageConferenceTournaments(season) },
-          version: version + 1,
-        });
+        return;
       }
-    } else if (bracket.stage === 'regional') {
-      if (bracket.regionals.length > 0) {
-        set({ bracket: { ...bracket, stage: 'omaha' }, version: version + 1 });
-      } else {
-        const groups = regionalGroups(bracket.field);
-        const slot = groups.findIndex((g) => g.includes(userTeam));
-        if (slot >= 0) {
-          const others = groups
-            .filter((_, i) => i !== slot)
-            .map((g) => doubleElimination(season, g));
-          set({
-            myBracket: {
-              kind: 'regional', state: startBracket(season, groups[slot] as number[]),
-              others, slot, preplayed: new Map(),
-            },
-            version: version + 1,
-          });
-          return;
-        }
-        set({
-          bracket: { ...bracket, regionals: stageRegionals(season, bracket.field) },
-          version: version + 1,
-        });
-      }
-    } else if (bracket.stage === 'omaha') {
-      if (bracket.omaha !== null) {
-        set({ bracket: null, phase: 'awards', version: version + 1 });
-      } else {
-        const champions = bracket.regionals.map((r) => r.champion);
-        if (champions.includes(userTeam)) {
-          set({
-            myBracket: {
-              kind: 'omaha', state: startBracket(season, champions),
-              others: [], slot: 0, preplayed: new Map(),
-            },
-            version: version + 1,
-          });
-          return;
-        }
-        const omaha = stageOmaha(season, bracket.regionals);
-        set({
-          bracket: { ...bracket, omaha },
-          lastPostseason: summarize(bracket.cups, bracket.field, bracket.regionals, omaha),
-          version: version + 1,
-        });
-      }
-    } else {
-      // A save written while 'selection' or 'done' still existed as stages.
-      set({ bracket: null, phase: 'awards', version: version + 1 });
+      set({
+        bracket: { ...bracket, cups: stageConferenceTournaments(season) },
+        version: version + 1,
+      });
+      return;
     }
+
+    if (bracket.stage === 'regional' && bracket.regionals.length === 0) {
+      const pairings = regionalPairing(season, bracket.cups);
+      const mine = pairings.find((r) => r.seeds.includes(userTeam));
+      if (mine) {
+        // Every other region is decided now; yours is played a game at a time.
+        const others = pairings
+          .filter((r) => r.id !== mine.id)
+          .map((r) => ({
+            ...singleElimination(season, r.seeds, REGIONAL_LENGTHS),
+            region: r.id, name: r.name,
+          }));
+        set({
+          bracket: { ...bracket, regionals: others },
+          myBracket: {
+            kind: 'regional',
+            state: startSeriesBracket(season, mine.seeds, REGIONAL_LENGTHS),
+            preplayed: new Map(),
+          },
+          version: version + 1,
+        });
+        return;
+      }
+      set({
+        bracket: { ...bracket, regionals: stageRegionals(season, bracket.cups) },
+        version: version + 1,
+      });
+      return;
+    }
+
+    if (bracket.stage === 'national' && bracket.national === null) {
+      const champions = bracket.regionals.map((r) => r.champion);
+      if (champions.includes(userTeam)) {
+        const seeds = [...champions].sort((a, b) => {
+          const ra = season.teams[a];
+          const rb = season.teams[b];
+          return (rb ? (rb.rw ?? rb.w) : 0) - (ra ? (ra.rw ?? ra.w) : 0);
+        });
+        set({
+          myBracket: {
+            kind: 'national',
+            state: startSeriesBracket(season, seeds, NATIONAL_LENGTHS),
+            preplayed: new Map(),
+          },
+          version: version + 1,
+        });
+        return;
+      }
+      const national = stageNational(season, bracket.regionals);
+      set({
+        bracket: { ...bracket, national },
+        lastPostseason: summarize(bracket.cups, bracket.regionals, national),
+        version: version + 1,
+      });
+    }
+  },
+
+  /** Leave a finished tier for the next one, which opens itself. */
+  advanceBracket: () => {
+    const { season, bracket, version } = get();
+    if (!season || !bracket) return;
+
+    if (bracket.stage === 'conference') {
+      set({ bracket: { ...bracket, stage: 'regional' }, version: version + 1 });
+      get().openStage();
+      void get().saveNow();
+      return;
+    }
+    if (bracket.stage === 'regional') {
+      set({ bracket: { ...bracket, stage: 'national' }, version: version + 1 });
+      get().openStage();
+      void get().saveNow();
+      return;
+    }
+
+    set({ bracket: null, phase: 'awards', version: version + 1 });
     void get().saveNow();
   },
 
@@ -958,15 +1089,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const next = nextGameFor(myBracket.state, userTeam);
     if (!next) return;
 
-    const { seedOf, appearances } = myBracket.state;
-    const seedA = seedOf.get(next.a) ?? Number.MAX_SAFE_INTEGER;
-    const seedB = seedOf.get(next.b) ?? Number.MAX_SAFE_INTEGER;
-    const [h, a] = seedA <= seedB ? [next.a, next.b] : [next.b, next.a];
+    // The host and the arm are worked out exactly as the bracket would: home
+    // alternates from the better seed through the series, and the starter is
+    // chosen by how deep into the tournament that team already is.
+    const h = hostOfGame(next.series, next.series.games.length);
+    const a = h === next.a ? next.b : next.a;
     const home = season.teams[h];
     const away = season.teams[a];
     if (!home || !away) return;
 
-    const slot = (appearances.get(h) ?? 0) % 3;
+    const slot = (myBracket.state.appearances.get(h) ?? 0) % 3;
     set({
       live: createLiveGame(home.team, away.team, season.rng, {
         managing: h === userTeam ? 'home' : 'away',
@@ -983,28 +1115,22 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   simBracket: (mode) => {
-    const { myBracket, userTeam, version } = get();
+    const { myBracket, version } = get();
     if (!myBracket) return;
     const { state, preplayed } = myBracket;
 
-    if (mode === 'round') {
+    if (mode === 'game') {
       stepBracket(state, preplayed);
-    } else if (mode === 'until') {
-      // Straight to your next game. A double elimination bracket byes whoever
-      // is left at the top of an odd list, so a good seed can sit out three
-      // rounds in a row — and a round you are not in is not a decision, it is a
-      // button press standing between you and the one that is.
+    } else if (mode === 'round') {
+      // To the end of this round, however many nights that takes.
+      const from = state.roundIndex;
       let guard = 0;
-      do {
+      while (!state.done && state.roundIndex === from && guard++ < 40) {
         stepBracket(state, preplayed);
-      } while (
-        !state.done
-        && !state.eliminated.includes(userTeam)
-        && !nextGameFor(state, userTeam)
-        && guard++ < 40
-      );
+      }
     } else {
-      while (!state.done) stepBracket(state, preplayed);
+      let guard = 0;
+      while (!state.done && guard++ < 200) stepBracket(state, preplayed);
     }
 
     set({ version: version + 1 });
@@ -1023,26 +1149,28 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         ...bracket.cups,
         { ...mine, conference: me ? me.conference : '', missed },
       ];
-      // The stage does not move. Your tournament just finished and the result
-      // is the thing to look at; leaving is the next press.
+      // The tier does not move. Your tournament just finished and the result is
+      // the thing to look at; leaving is the next press.
       set({
         bracket: { ...bracket, cups },
         myBracket: null, version: version + 1,
       });
     } else if (myBracket.kind === 'regional') {
-      // Back in its own slot: Omaha seeds off regional order, so a result
-      // dropped on the end would reseed the national bracket.
-      const regionals = [...myBracket.others];
-      regionals.splice(myBracket.slot, 0, mine);
+      const me = season.teams[userTeam];
+      const id = me ? regionOf(me.conference) : 'SOUTH';
+      const name = REGIONS.find((r) => r.id === id)?.name ?? id;
       set({
-        bracket: { ...bracket, regionals },
+        bracket: {
+          ...bracket,
+          regionals: [...bracket.regionals, { ...mine, region: id, name }],
+        },
         myBracket: null, version: version + 1,
       });
     } else {
-      const summary = summarize(bracket.cups, bracket.field, bracket.regionals, mine);
       set({
-        bracket: { ...bracket, omaha: mine },
-        lastPostseason: summary, myBracket: null, version: version + 1,
+        bracket: { ...bracket, national: mine },
+        lastPostseason: summarize(bracket.cups, bracket.regionals, mine),
+        myBracket: null, version: version + 1,
       });
     }
     void get().saveNow();
@@ -1194,6 +1322,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   saveState: 'idle',
   lastSaveError: null,
+  loadError: null,
 
   saveNow: async (slot = AUTOSAVE_SLOT) => {
     const { season, year, userTeam, history, lastPostseason } = get();
@@ -1220,7 +1349,29 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   loadSlot: async (slot = AUTOSAVE_SLOT) => {
-    const loaded = await loadDynasty(slot);
+    /**
+     * A save that will not load must not take the app with it.
+     *
+     * Reported from testing: "tried running it from my phone but it is stuck at
+     * building the league". That screen is what shows while the save is being
+     * read, and the read is only ever finished by a `.then` — so a throw left
+     * it on screen for ever. `loadDynasty` throws on a save from a newer build
+     * by design, and the codec can throw on one whose shape has moved, which is
+     * exactly what an old phone has sitting in IndexedDB.
+     *
+     * So: catch it, say so, and let the player start a new dynasty. Losing a
+     * save is bad. Losing a save *and* being unable to play is worse.
+     */
+    let loaded;
+    try {
+      loaded = await loadDynasty(slot);
+    } catch (e) {
+      set({
+        loadError: e instanceof Error ? e.message : String(e),
+        needsTeam: true,
+      });
+      return false;
+    }
     if (!loaded) return false;
     // Saves written before box scores existed carry none, and would otherwise
     // resume capturing for nobody.
@@ -1239,7 +1390,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // Back into the postseason where it was left. A live sub-bracket is not
       // saved, so a reload taken mid-tournament replays that stage from the top
       // rather than resuming inside a round.
-      bracket: (loaded.bracket ?? null) as PostseasonProgress | null,
+      bracket: usableBracket(loaded.bracket),
       jobSearch: Boolean(loaded.jobSearch),
       // Back to the step the offseason was on, so a reload mid-sequence resumes
       // rather than stranding the player on the dashboard with a week of

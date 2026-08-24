@@ -8,6 +8,7 @@ import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { FixedHeader } from '../Sticky.js';
 import { overallOf } from '../../engine/ratings.js';
+import { potentialGrade } from '../../engine/scouting.js';
 import { battingAverage, era, inningsPitched } from '../../engine/season.js';
 import { pct } from '../format.js';
 import type { Hitter, Pitcher } from '../../engine/types.js';
@@ -84,7 +85,7 @@ export function Roster() {
       </div>
 
       <div style={{ marginTop: 10, font: "400 11px/1.5 var(--body)", color: 'var(--dim)' }}>
-        <strong>OVR</strong> is where a player is now, <strong>POT</strong> where he could
+        <strong>OVR</strong> is where a player is now, <strong>POT</strong> a letter for where he could
         end up. Seniors leave in June whatever happens; juniors leave if the draft wants them.
       </div>
     </div>
@@ -192,7 +193,7 @@ function HitterRow(
         p.pos,
         p.classYear,
         String(overallOf(p)),
-        String(p.potential),
+        potentialGrade(p.potential),
         played ? pct(avg) : '—',
         String(hr),
       ]}
@@ -219,7 +220,7 @@ function PitcherRow(
         p.role,
         p.classYear,
         String(overallOf(p)),
-        String(p.potential),
+        potentialGrade(p.potential),
         earned === null ? '—' : earned.toFixed(2),
         ip.toFixed(1),
       ]}

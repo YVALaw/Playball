@@ -143,7 +143,24 @@ export const SCHOLARSHIPS = 8;
  * than the ratio: it buys a decisive push on two or three players, or a thin one
  * on eight, and that trade is the whole screen.
  */
-export const RECRUITING_BUDGET = 30;
+export const RECRUITING_BUDGET = 40;
+
+/**
+ * A week's budget, which a good program has more of.
+ *
+ * Prestige buys attention: facilities to show, a name that returns calls, a
+ * staff big enough to be in three states at once. Forty is what a nobody gets;
+ * a blue blood works with half again as much.
+ *
+ * This is the lever that makes the top of the board a real decision. A five
+ * star costs more banked points than anybody can reach in one week, so landing
+ * one means spending most of a window on him — and every scholarship you needed
+ * elsewhere is still open when he signs. A big budget does not remove that
+ * trade, it just moves where it bites.
+ */
+export function budgetFor(stars: number): number {
+  return RECRUITING_BUDGET + Math.max(0, Math.round((stars - 1) * 5));
+}
 
 /** The most that can go on one recruit in one week. Nobody signs on money alone. */
 export const MAX_PER_RECRUIT = 12;
@@ -554,6 +571,24 @@ export function aiTargets(
  */
 const COMMIT_POINTS = 7;
 
+/**
+ * What a recruit of this grade wants banked before he will commit.
+ *
+ * Flat across the board meant a five star cost exactly what a two star cost,
+ * so a program that could legally chase the top of the class simply took it —
+ * reported from testing: "I got the #1 recruit three times in a row plus other
+ * high rankings without breaking a sweat." A five star now wants roughly three
+ * times the courtship.
+ *
+ * That is still reachable inside one week by a program with a good pitch that
+ * points everything at him, which is the intent: he is affordable, and the cost
+ * is the four holes you did not fill while paying it. Measured over five
+ * classes with everyone spending their whole budget greedily, a five star
+ * program lands about six of the top twenty and a three star lands half of one.
+ */
+export const commitPointsFor = (stars: number): number =>
+  COMMIT_POINTS * (1 + Math.max(0, stars - 2) * 0.55);
+
 /** How far clear the leader must be before a recruit stops listening. */
 const COMMIT_MARGIN = 0.35;
 
@@ -612,8 +647,18 @@ export function closeWeek(
     // Early weeks: only a recruit who has genuinely made up his mind. A clear
     // leader and enough attention banked to mean something.
     if (!finalWeek) {
-      const settled = margin > COMMIT_MARGIN && leader.points > COMMIT_POINTS;
+      // What it takes scales with what he is. A five star wants to be courted;
+      // a two star wants to be wanted.
+      const settled = margin > COMMIT_MARGIN
+        && leader.points > commitPointsFor(prospect.stars);
       if (!settled || rng() > 0.45) continue;
+    }
+
+    // On the last week a recruit still signs with whoever leads — but a top
+    // recruit nobody has really worked simply goes elsewhere rather than
+    // falling into the lap of whoever put a token point on him.
+    if (finalWeek && leader.points < commitPointsFor(prospect.stars) * 0.6) {
+      continue;
     }
 
     prospect.signedBy = leader.team;

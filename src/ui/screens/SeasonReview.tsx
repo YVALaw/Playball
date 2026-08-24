@@ -70,6 +70,33 @@ export function SeasonReview() {
 
   const delta = review ? review.prestigeAfter - review.prestigeBefore : 0;
 
+  // What the year is remembered as. Null for a season that is remembered as
+  // nothing, which is most of them.
+  const wonConference = post?.conferenceChampions.includes(team.index) ?? false;
+  const banner: { title: string; note: string } | null =
+    post?.champion === team.index
+      ? {
+          title: 'National champions',
+          note: `${team.def.school} win it all. Nothing you do to a program moves it further.`,
+        }
+      : finish === 'runner-up'
+        ? { title: 'National runners up', note: 'One game short in Omaha. It counts, and it stings.' }
+        : finish === 'omaha'
+          ? { title: 'Omaha', note: 'You made the College World Series — four teams out of sixty four.' }
+          : wonConference
+            ? {
+                title: `${team.conference} champions`,
+                note: 'Won the conference tournament and the automatic bid that comes with it.',
+              }
+            : finish === 'regional'
+              ? { title: 'National tournament', note: 'Sixteen teams got in. You were one of them.' }
+              : confRank === 1
+                ? {
+                    title: `${team.conference} regular season`,
+                    note: 'Best record in the conference over the games that count for seeding.',
+                  }
+                : null;
+
   return (
     <div style={{ padding: '16px 14px 24px' }}>
       <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
@@ -78,6 +105,34 @@ export function SeasonReview() {
           font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
         }}>The season</div>
       </div>
+
+      {/*
+        The banner, and only when the season earned one.
+
+        A dark slab reading "MISSED THE TOURNAMENT" every June is a slab nobody
+        reads; silence is the honest treatment of a year that went nowhere. When
+        there *is* something to say it is the first thing on the screen, because
+        it is the answer to the only question the screen exists to answer.
+      */}
+      {banner && (
+        <div className="rise-in" style={{
+          marginTop: 13, padding: '16px 14px', background: 'var(--ink)',
+          textAlign: 'center',
+        }}>
+          <div style={{
+            font: "600 8.5px var(--mono)", letterSpacing: '.2em',
+            color: 'rgba(246,241,230,.6)',
+          }}>FINISHED</div>
+          <div style={{
+            font: "800 34px/1 var(--display)", marginTop: 6,
+            color: 'var(--cream)', textTransform: 'uppercase',
+          }}>{banner.title}</div>
+          <div style={{
+            marginTop: 7, font: "400 12px/1.5 var(--body)",
+            color: 'rgba(246,241,230,.68)',
+          }}>{banner.note}</div>
+        </div>
+      )}
 
       <div style={{
         display: 'flex', marginTop: 14,

@@ -3,7 +3,10 @@
 // design/Dynasty Mobile.dc.html, which is the design of record.
 
 import { useEffect, useRef, useState } from 'react';
-import { PHASES, TABS, useDynasty, useUserTeam, type Tab } from '../state/store.js';
+import {
+  PHASES, PHASE_LABEL, TABS, useDynasty, useUserTeam, type Tab,
+} from '../state/store.js';
+import { StepRail } from './StepRail.js';
 import { Today } from './screens/Today.js';
 import { Standings } from './screens/Standings.js';
 import { Roster } from './screens/Roster.js';
@@ -43,9 +46,29 @@ export function App() {
   const live = useDynasty((s) => s.live);
   const selectedPlayer = useDynasty((s) => s.selectedPlayer);
   const overlay = useDynasty((s) => s.overlay);
+  const furthestPhase = useDynasty((s) => s.furthestPhase);
+  const goPhase = useDynasty((s) => s.goPhase);
+  const lastPostseason = useDynasty((s) => s.lastPostseason);
   const jobSearch = useDynasty((s) => s.jobSearch);
   const loadSlot = useDynasty((s) => s.loadSlot);
+  const loadError = useDynasty((s) => s.loadError);
   const [checked, setChecked] = useState(false);
+
+  /**
+   * The loading screen is not allowed to be the last thing that happens.
+   *
+   * Reported twice, the second time browser-specific: "still stuck at building
+   * the league in Chrome, Safari works". Opening IndexedDB has failure modes
+   * that never resolve and never reject — a blocked upgrade, restricted site
+   * data — so no `catch` can reach them. Whatever the cause, after eight
+   * seconds the screen stops claiming to be loading and offers a way past.
+   */
+  const [stalled, setStalled] = useState(false);
+  useEffect(() => {
+    if (checked) return undefined;
+    const t = setTimeout(() => setStalled(true), 8000);
+    return () => clearTimeout(t);
+  }, [checked]);
 
   /**
    * A new screen starts at the top.
@@ -66,7 +89,11 @@ export function App() {
     // Resume where the player left off. With nothing to come back to, ask which
     // job to take rather than assigning one — that choice is the first real
     // decision the game makes you make.
-    void loadSlot().then(() => setChecked(true));
+    // Always finish, however it goes. Without the catch a rejected load leaves
+    // `checked` false and the app on its loading screen permanently.
+    void loadSlot()
+      .catch(() => false)
+      .finally(() => setChecked(true));
   }, [season, checked, loadSlot]);
 
   if (!season && needsTeam && checked) {
@@ -74,9 +101,23 @@ export function App() {
       <div className="app-frame" style={{
         display: 'flex', flexDirection: 'column', minHeight: 0,
       }}>
-        <main ref={mainRef} style={{
+        <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
           flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
         }}>
+          {loadError && (
+            <div style={{
+              margin: '12px 14px 0', padding: '11px 12px',
+              background: 'var(--paper)', borderLeft: '3px solid var(--clay)',
+              font: "400 12px/1.55 var(--body)",
+            }}>
+              <strong>Your saved dynasty could not be opened.</strong> It was
+              written by a different version of the game. Starting a new one is
+              the only way forward from here.
+              <div style={{
+                marginTop: 6, font: "400 10px var(--mono)", color: 'var(--dim)',
+              }}>{loadError}</div>
+            </div>
+          )}
           <NewGame />
         </main>
       </div>
@@ -89,7 +130,7 @@ export function App() {
       <div className="app-frame" style={{
         display: 'flex', flexDirection: 'column', minHeight: 0,
       }}>
-        <main ref={mainRef} style={{
+        <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
           flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
         }}>
           <JobSearch />
@@ -99,6 +140,80 @@ export function App() {
   }
 
   if (!season || !team) {
+    /*
+      Two different states wear the same face, and only one of them is loading.
+
+      A save that opens but points at a team the world does not contain leaves
+      `season` set and `team` undefined, and this screen then sat there for
+      ever with nothing behind it. It is a broken save, not a slow one, and the
+      way out is a new dynasty rather than more waiting.
+    */
+    if (checked && season) {
+      return (
+        <div className="app-frame" style={{
+          display: 'grid', placeItems: 'center', padding: 24, textAlign: 'center',
+        }}>
+          <div>
+            <div style={{
+              font: "800 24px/1 var(--display)", textTransform: 'uppercase',
+            }}>Save is unreadable</div>
+            <div style={{
+              marginTop: 10, font: "400 12.5px/1.6 var(--body)", color: 'var(--dim)',
+            }}>
+              The dynasty on this device points at a program that is not in the
+              world any more. Start a new one to carry on.
+            </div>
+            <button
+              onClick={() => useDynasty.setState({ season: null, needsTeam: true })}
+              className="tap"
+              style={{
+                marginTop: 16, padding: '13px 22px',
+                background: 'var(--clay)', border: '1px solid var(--clay)',
+                color: 'var(--cream)', font: "700 11px var(--mono)", letterSpacing: '.14em',
+              }}
+            >NEW DYNASTY</button>
+          </div>
+        </div>
+      );
+    }
+    if (stalled) {
+      return (
+        <div className="app-frame" style={{
+          display: 'grid', placeItems: 'center', padding: 24, textAlign: 'center',
+        }}>
+          <div>
+            <div style={{
+              font: "800 24px/1 var(--display)", textTransform: 'uppercase',
+            }}>Cannot reach your saves</div>
+            <div style={{
+              marginTop: 10, font: "400 12.5px/1.6 var(--body)", color: 'var(--dim)',
+            }}>
+              This browser is not letting the game open its local storage. That
+              usually means another tab has the game open, or site data is
+              blocked for this address.
+            </div>
+            <div style={{
+              marginTop: 8, font: "400 12.5px/1.6 var(--body)", color: 'var(--dim)',
+            }}>
+              You can play anyway — nothing will be saved between sessions.
+            </div>
+            <button
+              onClick={() => {
+                useDynasty.setState({ needsTeam: true });
+                setChecked(true);
+              }}
+              className="tap"
+              style={{
+                marginTop: 16, padding: '13px 22px',
+                background: 'var(--clay)', border: '1px solid var(--clay)',
+                color: 'var(--cream)', font: "700 11px var(--mono)", letterSpacing: '.14em',
+              }}
+            >PLAY WITHOUT SAVING</button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="app-frame" style={{
         display: 'grid', placeItems: 'center',
@@ -123,7 +238,7 @@ export function App() {
       <div className="app-frame" style={{
         display: 'flex', flexDirection: 'column', minHeight: 0,
       }}>
-        <main ref={mainRef} style={{
+        <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
           flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
         }}>
           {/* A bracket game you took yourself is managed on the same screen a
@@ -162,14 +277,35 @@ export function App() {
               color: 'var(--cream-dim)', textTransform: 'uppercase',
             }}>OFFSEASON</div>
           </div>
-          <div style={{
-            flex: 'none', font: "500 9px var(--mono)", letterSpacing: '.16em',
-            color: 'rgba(246,241,230,.55)',
-          }}>
-            STEP {PHASES.indexOf(phase) + 1} OF {PHASES.length}
-          </div>
+          {/*
+            What the year came to, in the corner of every offseason screen.
+            The season's own header carries the record here; once the season is
+            over the record is history and the title is the headline.
+          */}
+          {(() => {
+            const badge = seasonBadge(lastPostseason, team);
+            if (!badge) return null;
+            return (
+              <div style={{ flex: 'none', textAlign: 'right', maxWidth: 150 }}>
+                <div style={{
+                  font: "800 18px/0.9 var(--display)", color: 'var(--cream)',
+                  textTransform: 'uppercase',
+                }}>{badge.big}</div>
+                <div style={{
+                  font: "400 8px/1.4 var(--mono)", letterSpacing: '.1em',
+                  color: 'rgba(246,241,230,.55)', textTransform: 'uppercase',
+                }}>{badge.small}</div>
+              </div>
+            );
+          })()}
         </header>
-        <main ref={mainRef} style={{
+        <StepRail
+          steps={PHASES.map((p) => ({ key: p, label: PHASE_LABEL[p] }))}
+          at={PHASES.indexOf(phase)}
+          furthest={furthestPhase}
+          onGo={(k) => goPhase(k as Exclude<typeof phase, null>)}
+        />
+        <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
           flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
         }}>
           {phase === 'awards' && <Awards />}
@@ -322,6 +458,28 @@ function TableOverlay() {
       </div>
     </div>
   );
+}
+
+/**
+ * What the season came to, in three words.
+ *
+ * Null when there is nothing to say, because a banner reading "MISSED THE
+ * TOURNAMENT" every June is a banner nobody reads. Silence is the honest
+ * treatment of a year that did not go anywhere.
+ */
+function seasonBadge(
+  post: { champion: number; finish: Record<number, string> } | null,
+  team: { index: number; conference: string },
+): { big: string; small: string } | null {
+  if (!post) return null;
+  const finish = post.finish[team.index];
+  if (post.champion === team.index) {
+    return { big: 'CHAMPS', small: 'National title' };
+  }
+  if (finish === 'runner-up') return { big: 'RUNNERS UP', small: 'Omaha final' };
+  if (finish === 'omaha') return { big: 'OMAHA', small: 'College World Series' };
+  if (finish === 'regional') return { big: 'REGIONAL', small: 'National tournament' };
+  return null;
 }
 
 /**

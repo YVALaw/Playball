@@ -47,7 +47,21 @@ export function FixedHeader(
  * and thirty signings put CONTINUE in the same place.
  */
 export function FloatingAction(
-  { label, onClick, note }: { label: string; onClick: () => void; note?: string },
+  { label, onClick, note, secondary }:
+  {
+    label: string;
+    onClick: () => void;
+    note?: string;
+    /**
+     * The other thing you might do here, sitting above the primary.
+     *
+     * Two actions on one screen belong in the same place, stacked, rather than
+     * one on the button bar and one buried in whatever card happens to be about
+     * the decision — that arrangement made "simulate it instead" a control you
+     * had to go find.
+     */
+    secondary?: { label: string; onClick: () => void } | null;
+  },
 ) {
   return (
     <div style={{
@@ -56,6 +70,18 @@ export function FloatingAction(
       paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
       background: 'linear-gradient(to top, var(--field) 68%, rgba(242,236,224,0))',
     }}>
+      {secondary && (
+        <button
+          onClick={secondary.onClick}
+          className="tap"
+          style={{
+            width: '100%', padding: '11px 10px', marginBottom: 8,
+            background: 'transparent', border: '1px solid rgba(28,36,48,.4)',
+            color: 'var(--ink)', font: "700 10px/1.25 var(--mono)", letterSpacing: '.1em',
+            whiteSpace: 'normal', overflowWrap: 'anywhere',
+          }}
+        >{secondary.label}</button>
+      )}
       {note && (
         <div style={{
           marginBottom: 8, font: "400 11px/1.45 var(--body)", color: 'var(--dim)',

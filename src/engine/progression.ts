@@ -76,6 +76,14 @@ export interface OffseasonReport {
   developmentNet: number;
   improved: number;
   declined: number;
+  /**
+   * What your roster is now short of, by position.
+   *
+   * The draft runs before recruiting opens, so these are the holes you go
+   * shopping for — which is the whole reason the two steps are in this order.
+   * A hole is a spot the structure requires and the survivors cannot fill.
+   */
+  holes: { pos: string; count: number }[];
 }
 
 /**
@@ -301,24 +309,52 @@ export interface OffseasonOpts {
   coachPrestige?: number;
 }
 
-export function advanceOffseason(
+const emptyReport = (): OffseasonReport => ({
+  graduated: [], drafted: [], recruits: 0, signed: [], walkOns: [],
+  developmentNet: 0, improved: 0, declined: 0, holes: [],
+});
+
+/**
+ * What the structure needs that the survivors cannot supply.
+ *
+ * Counted against the shape a roster is rebuilt to — nine in the lineup, four
+ * on the bench, four starters, six in the pen — so it says "you are two arms
+ * and a catcher short" rather than "you lost six players".
+ */
+function holesFor(survivors: readonly Player[]): { pos: string; count: number }[] {
+  const hitters = survivors.filter((p): p is Hitter => p.type === 'hitter');
+  const arms = survivors.filter((p): p is Pitcher => p.type === 'pitcher');
+  const out: { pos: string; count: number }[] = [];
+
+  for (const spot of LINEUP_SPOTS) {
+    if (!hitters.some((h) => h.pos === spot)) out.push({ pos: spot, count: 1 });
+  }
+  const benchShort = BENCH_SIZE - Math.max(0, hitters.length - LINEUP_SPOTS.length);
+  if (benchShort > 0) out.push({ pos: 'BENCH', count: benchShort });
+
+  const sp = arms.filter((p) => p.role === 'SP').length;
+  const rp = arms.filter((p) => p.role === 'RP').length;
+  if (sp < ROTATION_SIZE) out.push({ pos: 'SP', count: ROTATION_SIZE - sp });
+  if (rp < BULLPEN_SIZE) out.push({ pos: 'RP', count: BULLPEN_SIZE - rp });
+  return out;
+}
+
+/**
+ * Step one of the offseason: who leaves, and who gets better.
+ *
+ * Split out of `advanceOffseason` so the draft can be shown *before* recruiting
+ * opens. The order matters to the player rather than to the simulation: the
+ * holes the draft leaves are the holes the recruiting board should be about, and
+ * a draft screen that arrives after signing day can only ever be a receipt.
+ *
+ * The rosters are left short on purpose. Nothing plays a game between here and
+ * signing day, and a lineup with a gap in it is the truthful picture of a
+ * program that has just lost its catcher.
+ */
+export function departAndDevelop(
   season: SeasonState, rng: Rng, opts: OffseasonOpts = {},
 ): OffseasonReport {
-  const report: OffseasonReport = {
-    graduated: [], drafted: [], recruits: 0, signed: [], walkOns: [],
-    developmentNet: 0, improved: 0, declined: 0,
-  };
-
-  // Recruiting already happened, in its own window before the year turned over.
-  // All that is left is to put the signed class on the roster.
-  const classFor = new Map<number, Player[]>();
-  for (const prospect of season.recruiting.prospects) {
-    if (prospect.signedBy === null) continue;
-    const list = classFor.get(prospect.signedBy) ?? [];
-    list.push(prospect.player);
-    classFor.set(prospect.signedBy, list);
-    if (prospect.signedBy === opts.userTeam) report.signed.push(prospect);
-  }
+  const report = emptyReport();
 
   for (const record of season.teams) {
     const team = record.team;
@@ -353,20 +389,20 @@ export function advanceOffseason(
       survivors.push(p);
     }
 
-    // Only your own walk-ons are collected. `captureBoxFor` is already the
-    // convention for "the program this save keeps books on".
-    const walkOns: Player[] = [];
-    report.recruits += refill(
-      team, survivors, rng, classFor.get(record.index) ?? [],
-      record.index === season.captureBoxFor ? walkOns : undefined,
-    );
-    for (const p of walkOns) {
-      report.walkOns.push({
-        id: p.id, name: p.name,
-        pos: p.type === 'pitcher' ? (p as Pitcher).role : p.pos,
-        overall: overallOf(p),
-      });
+    if (record.index === (opts.userTeam ?? season.captureBoxFor)) {
+      report.holes = holesFor(survivors);
     }
+
+    // Held in the roster arrays as they are, structure and all. `fillRosters`
+    // rebuilds the shape once the class is known.
+    const hitters = survivors.filter((p): p is Hitter => p.type === 'hitter');
+    const arms = survivors.filter((p): p is Pitcher => p.type === 'pitcher');
+    team.lineup = hitters.slice(0, LINEUP_SPOTS.length);
+    team.bench = hitters.slice(LINEUP_SPOTS.length);
+    team.rotation = arms.filter((p) => p.role === 'SP').slice(0, ROTATION_SIZE);
+    team.bullpen = arms.filter(
+      (p) => p.role === 'RP' || arms.filter((x) => x.role === 'SP').indexOf(p) >= ROTATION_SIZE,
+    );
   }
 
   // Order the draft nationally once every program has been through.
@@ -377,5 +413,61 @@ export function advanceOffseason(
   report.drafted.sort((a, b) => b.overall - a.overall);
   report.drafted.forEach((d, i) => { d.round = Math.floor(i / 32) + 1; });
 
+  return report;
+}
+
+/**
+ * Step two: put the class on the roster, and walk-ons in whatever is left.
+ *
+ * Runs after signing day, so a scholarship you spent is a player who arrives and
+ * a scholarship you did not is a body thirteen points below your own level.
+ */
+export function fillRosters(
+  season: SeasonState, rng: Rng, opts: OffseasonOpts = {},
+): { recruits: number; signed: Prospect[]; walkOns: OffseasonReport['walkOns'] } {
+  const classFor = new Map<number, Player[]>();
+  const signed: Prospect[] = [];
+  for (const prospect of season.recruiting.prospects) {
+    if (prospect.signedBy === null) continue;
+    const list = classFor.get(prospect.signedBy) ?? [];
+    list.push(prospect.player);
+    classFor.set(prospect.signedBy, list);
+    if (prospect.signedBy === opts.userTeam) signed.push(prospect);
+  }
+
+  let recruits = 0;
+  const walkOns: OffseasonReport['walkOns'] = [];
+  for (const record of season.teams) {
+    const team = record.team;
+    const survivors: Player[] = [
+      ...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen,
+    ];
+    const collected: Player[] = [];
+    recruits += refill(
+      team, survivors, rng, classFor.get(record.index) ?? [],
+      record.index === season.captureBoxFor ? collected : undefined,
+    );
+    for (const p of collected) {
+      walkOns.push({
+        id: p.id, name: p.name,
+        pos: p.type === 'pitcher' ? (p as Pitcher).role : p.pos,
+        overall: overallOf(p),
+      });
+    }
+  }
+  return { recruits, signed, walkOns };
+}
+
+/**
+ * Both halves at once, which is what a simulated year and every test wants.
+ */
+export function advanceOffseason(
+  season: SeasonState, rng: Rng, opts: OffseasonOpts = {},
+): OffseasonReport {
+  const report = departAndDevelop(season, rng, opts);
+  const filled = fillRosters(season, rng, opts);
+  report.recruits = filled.recruits;
+  report.signed = filled.signed;
+  report.walkOns = filled.walkOns;
   return report;
 }

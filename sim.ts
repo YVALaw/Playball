@@ -17,7 +17,7 @@ import {
   DEFAULT_SEASON, type LeaderRow,
 } from './src/engine/season.js';
 import {
-  allConferenceTournaments, nationalTournament, seasonAwards,
+  allConferenceTournaments, stageRegionals, stageNational, seasonAwards,
 } from './src/engine/postseason.js';
 import { CONFERENCE_NAME, HOME_CONFERENCE } from './src/data/schools.js';
 import type { EngineName, Hitter, Pitcher } from './src/engine/types.js';
@@ -204,31 +204,33 @@ else if (cmd === 'season') {
     console.log(`   ${cup.conference}  ${school(cup.champion).padEnd(24)} (seed ${seedOfChamp})`);
   }
 
-  // --- the national tournament ---
-  const nat = nationalTournament(season, cups.map((c) => c.champion));
-  const autos = nat.field.filter((b) => b.kind === 'automatic').length;
-  console.log(`\n=== National tournament — ${nat.field.length} teams (${autos} automatic, ${nat.field.length - autos} at-large) ===`);
-  console.log('national seeds 1-8:');
-  nat.field.slice(0, 8).forEach((b, i) => {
-    console.log(`   ${String(i + 1).padStart(2)}  ${school(b.team).padEnd(24)}${b.conference}  RPI ${b.rpi.toFixed(4)}  ${b.kind}`);
-  });
-
-  console.log();
-  console.log('Regional winners (to Omaha):');
-  console.log('   ' + nat.regionals.map((r) => abbr(r.champion)).join('  '));
-
-  console.log();
-  console.log('Omaha:');
-  for (const g of nat.omaha.games) {
-    console.log(`   ${g.round.padEnd(18)} ${abbr(g.away)} ${g.awayRuns} at ${abbr(g.home)} ${g.homeRuns}`);
+  // --- the regionals: conference champions, paired by region ---
+  const regionals = stageRegionals(season, cups);
+  console.log('\n=== Regionals ===');
+  for (const r of regionals) {
+    const a = r.seeds[0] as number;
+    const b = r.seeds[1] as number;
+    console.log(
+      `   ${r.name.padEnd(9)} ${school(a).padEnd(24)} vs ${school(b).padEnd(24)}`
+      + ` -> ${school(r.champion)}`,
+    );
   }
 
-  console.log(`\n   NATIONAL CHAMPION: ${school(nat.champion)} (${conf(nat.champion)})`);
+  // --- the last four ---
+  const national = stageNational(season, regionals);
+  console.log('\n=== National tournament — four regional champions ===');
+  for (const g of national.games) {
+    console.log(`   ${g.round.padEnd(20)} ${abbr(g.away)} ${g.awayRuns} at ${abbr(g.home)} ${g.homeRuns}`);
+  }
+  console.log(`\n   NATIONAL CHAMPION: ${school(national.champion)} (${conf(national.champion)})`);
 
   // --- how the home conference fared ---
   const homeTeams = season.teams.filter((t) => t.conference === home).map((t) => t.index);
-  const inField = nat.field.filter((b) => homeTeams.includes(b.team));
-  console.log(`\n${home} in the national field: ${inField.length ? inField.map((b) => `${abbr(b.team)} (${b.kind})`).join(', ') : 'nobody'}`);
+  const gotOut = regionals.flatMap((r) => r.seeds).filter((t) => homeTeams.includes(t));
+  console.log(
+    `\n${home} out of the conference: `
+    + (gotOut.length ? gotOut.map((t) => abbr(t)).join(', ') : 'nobody'),
+  );
 
   console.log('\n=== Awards ===');
   for (const a of seasonAwards(season)) {

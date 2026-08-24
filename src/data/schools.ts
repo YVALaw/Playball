@@ -1,5 +1,5 @@
 // schools.ts
-// The world. Eight regions, eight programs each, sixty four in all.
+// The world. Eight regions, twelve programs each, ninety six in all.
 //
 // Fictional, per the locked decision in 01-roadmap.md, and frozen once written:
 // a dynasty save refers to these schools by abbreviation, so this is data, not
@@ -17,11 +17,15 @@
 //
 // Eight conferences of eight fixes both ends of that:
 //
-//   7 conference opponents x 3 game series = 21
-//   + 12 non-conference midweek games      = 33
+//   11 conference opponents x 3 game series = 33
+//   + 12 non-conference midweek games       = 45
 //
 // A **full round robin**. You play every team in your region every single
-// season. After one year you know all seven. After three you have a history.
+// season. After one year you know all eleven. After three you have a history.
+//
+// Twelve rather than eight so that making the conference tournament means
+// something: six of twelve get in, so half the league goes home in May. At eight
+// the cut was two teams and finishing seventh cost you nothing you could feel.
 //
 // ---------------------------------------------------------------------------
 // Region is the conference
@@ -148,6 +152,10 @@ export const CONFERENCES: readonly ConferenceDef[] = [
       { abbr: 'PSC', school: 'Pascagoula Tech', nickname: 'Ironmen', quality: 61, prestige: 47, color: '#5a5f66', rival: 'LKC', state: 'TX' },
       { abbr: 'LKC', school: 'Lake Charles', nickname: 'Drillers', quality: 46, prestige: 43, color: '#8a5a1f', rival: 'PSC', state: 'MS' },
       { abbr: 'BIL', school: 'Biloxi Coast', nickname: 'Sandpipers', quality: 38, prestige: 36, color: '#2b6f77', rival: 'MOB', state: 'AL' },
+      { abbr: 'ATF', school: 'Atchafalaya State', nickname: 'Basin Cats', quality: 40, prestige: 33, color: '#4a6b4a', rival: 'PTA', state: 'LA' },
+      { abbr: 'PTA', school: 'Port Arthur', nickname: 'Longshoremen', quality: 35, prestige: 30, color: '#2b5f6b', rival: 'ATF', state: 'TX' },
+      { abbr: 'HTB', school: 'Hattiesburg', nickname: 'Timberjacks', quality: 31, prestige: 27, color: '#6b5a3a', rival: 'SEL', state: 'MS' },
+      { abbr: 'SEL', school: 'Selma Forge', nickname: 'Anvils', quality: 27, prestige: 23, color: '#4a4a52', rival: 'HTB', state: 'AL' },
     ],
   },
   {
@@ -165,6 +173,10 @@ export const CONFERENCES: readonly ConferenceDef[] = [
       { abbr: 'SAV', school: 'Savannah River', nickname: 'Marsh Hawks', quality: 60, prestige: 45, color: '#6b5a2b', rival: 'CHS', state: 'FL' },
       { abbr: 'JAX', school: 'Jacksonville Shore', nickname: 'Anchors', quality: 47, prestige: 44, color: '#1f5f8a', rival: 'TAM', state: 'NC' },
       { abbr: 'OKE', school: 'Okefenokee State', nickname: 'Swampfoxes', quality: 37, prestige: 35, color: '#3a4a2f', rival: 'ASH', state: 'GA' },
+      { abbr: 'CPF', school: 'Cape Fear', nickname: 'Privateers', quality: 39, prestige: 32, color: '#1f4a6b', rival: 'SNB', state: 'NC' },
+      { abbr: 'ALT', school: 'Altamaha State', nickname: 'Cottonmouths', quality: 34, prestige: 29, color: '#3f5a2b', rival: 'OCL', state: 'GA' },
+      { abbr: 'SNB', school: 'Sandbridge', nickname: 'Dunerunners', quality: 30, prestige: 26, color: '#7a6b4a', rival: 'CPF', state: 'VA' },
+      { abbr: 'OCL', school: 'Ocala Flats', nickname: 'Ospreys', quality: 41, prestige: 24, color: '#5a3f5a', rival: 'ALT', state: 'FL' },
     ],
   },
   {
@@ -182,6 +194,10 @@ export const CONFERENCES: readonly ConferenceDef[] = [
       { abbr: 'OAK', school: 'Oakhurst', nickname: 'Owls', quality: 47, prestige: 45, color: '#5a4a3a', rival: 'CAL', state: 'WA' },
       { abbr: 'VER', school: 'Verdugo', nickname: 'Condors', quality: 59, prestige: 44, color: '#8a2f4a', rival: 'SUT', state: 'OR' },
       { abbr: 'SUT', school: 'Sutter Valley', nickname: 'Vaqueros', quality: 39, prestige: 36, color: '#8a6a2b', rival: 'VER', state: 'CA' },
+      { abbr: 'CSC', school: 'Cascadia Tech', nickname: 'Sawyers', quality: 37, prestige: 33, color: '#2f5a4a', rival: 'KLM', state: 'WA' },
+      { abbr: 'SLS', school: 'Salinas Coast', nickname: 'Growers', quality: 42, prestige: 30, color: '#6b7a3a', rival: 'MOJ', state: 'CA' },
+      { abbr: 'KLM', school: 'Klamath Falls', nickname: 'Trappers', quality: 33, prestige: 27, color: '#5a4a2b', rival: 'CSC', state: 'OR' },
+      { abbr: 'MOJ', school: 'Mojave State', nickname: 'Jackrabbits', quality: 29, prestige: 24, color: '#8a7a5a', rival: 'SLS', state: 'CA' },
     ],
   },
   {
@@ -199,6 +215,10 @@ export const CONFERENCES: readonly ConferenceDef[] = [
       { abbr: 'CDR', school: 'Cedar Falls', nickname: 'Hawks', quality: 54, prestige: 40, color: '#2b4a6b', rival: 'DUB', state: 'MO' },
       { abbr: 'DUB', school: 'Dubuque River', nickname: 'Riverboats', quality: 42, prestige: 40, color: '#3f6b5f', rival: 'CDR', state: 'KS' },
       { abbr: 'SLN', school: 'Salina', nickname: 'Wheatkings', quality: 35, prestige: 33, color: '#8a7a3a', rival: 'WIC', state: 'IA' },
+      { abbr: 'CHK', school: 'Chickasha', nickname: 'Drovers', quality: 36, prestige: 30, color: '#7a5a2b', rival: 'SDL', state: 'OK' },
+      { abbr: 'RDO', school: 'Red Oak', nickname: 'Threshers', quality: 32, prestige: 27, color: '#8a5f3a', rival: 'MRL', state: 'IA' },
+      { abbr: 'MRL', school: 'Marysville', nickname: 'Grainmen', quality: 28, prestige: 24, color: '#6b6b4a', rival: 'RDO', state: 'KS' },
+      { abbr: 'SDL', school: 'Sedalia', nickname: 'Railmen', quality: 39, prestige: 22, color: '#3a4a5a', rival: 'CHK', state: 'MO' },
     ],
   },
   {
@@ -216,6 +236,10 @@ export const CONFERENCES: readonly ConferenceDef[] = [
       { abbr: 'ELP', school: 'El Paso Ridge', nickname: 'Muleskinners', quality: 41, prestige: 39, color: '#6b4a3a', rival: 'RGV', state: 'NV' },
       { abbr: 'YUM', school: 'Yuma Basin', nickname: 'Sunhawks', quality: 53, prestige: 39, color: '#8a7a1f', rival: 'NGL', state: 'NM' },
       { abbr: 'NGL', school: 'Nogales', nickname: 'Scorpions', quality: 34, prestige: 32, color: '#3a3a4a', rival: 'YUM', state: 'UT' },
+      { abbr: 'MOA', school: 'Moab Canyon', nickname: 'Redwalls', quality: 35, prestige: 29, color: '#8a4a3a', rival: 'GAL', state: 'UT' },
+      { abbr: 'PAH', school: 'Pahrump Valley', nickname: 'Diggers', quality: 31, prestige: 26, color: '#6b6b5a', rival: 'CSG', state: 'NV' },
+      { abbr: 'GAL', school: 'Gallup Mesa', nickname: 'Zephyrs', quality: 38, prestige: 24, color: '#4a5f7a', rival: 'MOA', state: 'NM' },
+      { abbr: 'CSG', school: 'Casa Grande', nickname: 'Saguaros', quality: 27, prestige: 22, color: '#7a7a3a', rival: 'PAH', state: 'AZ' },
     ],
   },
   {
@@ -233,6 +257,10 @@ export const CONFERENCES: readonly ConferenceDef[] = [
       { abbr: 'MRQ', school: 'Marquette Bay', nickname: 'Voyageurs', quality: 48, prestige: 34, color: '#5a3f6b', rival: 'SUP', state: 'IL' },
       { abbr: 'HUR', school: 'Huron Valley', nickname: 'Longships', quality: 36, prestige: 34, color: '#3f5a4a', rival: 'FVL', state: 'OH' },
       { abbr: 'ATB', school: 'Ashtabula Point', nickname: 'Gales', quality: 30, prestige: 28, color: '#5a5f4a', rival: 'ERI', state: 'MI' },
+      { abbr: 'MSK', school: 'Muskegon Sands', nickname: 'Dunehawks', quality: 33, prestige: 26, color: '#3a5a6b', rival: 'SDY', state: 'MI' },
+      { abbr: 'KNK', school: 'Kankakee', nickname: 'Rivermen', quality: 37, prestige: 24, color: '#5a3a3a', rival: 'WBS', state: 'IL' },
+      { abbr: 'SDY', school: 'Sandusky Bay', nickname: 'Bluepike', quality: 29, prestige: 23, color: '#2b5a5a', rival: 'MSK', state: 'OH' },
+      { abbr: 'WBS', school: 'Wabash Works', nickname: 'Forgemen', quality: 26, prestige: 21, color: '#4a4238', rival: 'KNK', state: 'IN' },
     ],
   },
   {
@@ -250,6 +278,10 @@ export const CONFERENCES: readonly ConferenceDef[] = [
       { abbr: 'BIT', school: 'Bitterroot Valley', nickname: 'Wolverines', quality: 47, prestige: 33, color: '#4a3a2f', rival: 'GRJ', state: 'ID' },
       { abbr: 'POC', school: 'Pocatello', nickname: 'Bannocks', quality: 35, prestige: 33, color: '#3f5a5f', rival: 'WAS', state: 'MT' },
       { abbr: 'GRJ', school: 'Grand Junction', nickname: 'Cliffhangers', quality: 29, prestige: 27, color: '#6b4a4a', rival: 'BIT', state: 'CO' },
+      { abbr: 'BUT', school: 'Butte Copper', nickname: 'Copperheads', quality: 34, prestige: 26, color: '#7a4a2b', rival: 'CDA', state: 'MT' },
+      { abbr: 'CDA', school: 'Coeur Basin', nickname: 'Silvertips', quality: 30, prestige: 23, color: '#5a6b6b', rival: 'BUT', state: 'ID' },
+      { abbr: 'RWL', school: 'Rawlins', nickname: 'Sagehens', quality: 26, prestige: 21, color: '#6b6b3f', rival: 'SLD', state: 'WY' },
+      { abbr: 'SLD', school: 'Salida Peaks', nickname: 'Summiteers', quality: 36, prestige: 20, color: '#4a3f52', rival: 'RWL', state: 'CO' },
     ],
   },
   {
@@ -267,6 +299,10 @@ export const CONFERENCES: readonly ConferenceDef[] = [
       { abbr: 'NSH', school: 'Nashua Mills', nickname: 'Millmen', quality: 46, prestige: 32, color: '#6b3a3a', rival: 'BGR', state: 'NY' },
       { abbr: 'SCR', school: 'Scranton Valley', nickname: 'Breakers', quality: 34, prestige: 32, color: '#4a5f6b', rival: 'BRS', state: 'PA' },
       { abbr: 'BGR', school: 'Bangor North', nickname: 'Loggers', quality: 28, prestige: 26, color: '#3f4a3a', rival: 'NSH', state: 'MA' },
+      { abbr: 'UTC', school: 'Utica Falls', nickname: 'Cataracts', quality: 31, prestige: 25, color: '#3a4a6b', rival: 'CHC', state: 'NY' },
+      { abbr: 'PTS', school: 'Pittston Coal', nickname: 'Anthracite', quality: 35, prestige: 22, color: '#33383f', rival: 'PSA', state: 'PA' },
+      { abbr: 'CHC', school: 'Chicopee Mills', nickname: 'Weavers', quality: 27, prestige: 21, color: '#6b4a5a', rival: 'UTC', state: 'MA' },
+      { abbr: 'PSA', school: 'Passaic Falls', nickname: 'Silkmen', quality: 24, prestige: 19, color: '#5f5a6b', rival: 'PTS', state: 'NJ' },
     ],
   },
 ];

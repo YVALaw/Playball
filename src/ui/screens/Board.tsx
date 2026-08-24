@@ -15,7 +15,7 @@ import { useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import {
   fit, weeklyPoints, canPursue, PRIORITIES, PRIORITY_LABEL, PRIORITY_BLURB,
-  SCHOLARSHIPS, RECRUITING_BUDGET, MAX_PER_RECRUIT, RECRUITING_WEEKS,
+  SCHOLARSHIPS, MAX_PER_RECRUIT, RECRUITING_WEEKS, budgetFor,
   type Prospect, type Priority,
 } from '../../engine/recruiting.js';
 import { pitchFor, developmentScore } from '../../engine/pitch.js';
@@ -30,7 +30,7 @@ import { Avatar } from '../Avatar.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import type { Hitter, Pitcher, Position } from '../../engine/types.js';
 
-type View = 'recruits' | 'targets' | 'commits' | 'roster';
+type View = 'recruits' | 'targets' | 'commits' | 'needs' | 'roster';
 type Sheet = 'overview' | 'ratings' | 'stats' | 'schools';
 
 /** Grades in order, so a "minimum potential" filter has something to compare. */
@@ -48,6 +48,7 @@ const VIEW_LABEL: Record<View, string> = {
   recruits: 'RECRUITS',
   targets: 'TARGETS',
   commits: 'COMMITS',
+  needs: 'NEEDS',
   roster: 'ROSTER',
 };
 
@@ -169,8 +170,14 @@ export function Board() {
   if (!season || !team || !pitch) return null;
 
   const week = season.recruiting.week;
+
+  // The brief, straight off the draft that just ran.
+  const holes = useDynasty.getState().lastOffseason?.holes ?? [];
+  const needNote = holes.length === 0 ? null
+    : `You are short ${holes.map((h) => (h.count > 1 ? `${h.count} ${h.pos}` : h.pos)).join(', ')}. `
+      + 'Anything you do not sign gets filled by a walk-on.';
   const open = season.recruiting.prospects.find((p) => p.id === openId) ?? null;
-  const left = RECRUITING_BUDGET - spent;
+  const left = budgetFor(myStars) - spent;
   const live = week >= 1 && week <= RECRUITING_WEEKS;
   const full = commits.length >= SCHOLARSHIPS;
   const activeFilters = filters.pos !== null || filters.state !== null
@@ -224,7 +231,7 @@ export function Board() {
       </div>
 
       <div style={{ display: 'flex', gap: 5, marginTop: 12 }}>
-        {(['recruits', 'targets', 'commits', 'roster'] as View[]).map((v) => (
+        {(['recruits', 'targets', 'commits', 'needs', 'roster'] as View[]).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -239,6 +246,7 @@ export function Board() {
             {VIEW_LABEL[v]}
             {v === 'targets' && targets.length > 0 ? ` ${targets.length}` : ''}
             {v === 'commits' && commits.length > 0 ? ` ${commits.length}` : ''}
+            {v === 'needs' && holes.length > 0 ? ` ${holes.length}` : ''}
           </button>
         ))}
       </div>
@@ -286,13 +294,19 @@ export function Board() {
         <div style={{
           marginBottom: 10, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
         }}>
-          Thirty a week, spread how you like. Points carry over and the most
-          points signs him &mdash; so staying with somebody works, and recruits
-          come off the board every week you spend deciding.
+          {budgetFor(myStars)} a week, spread how you like. Points carry over and
+          the most points signs him &mdash; so staying with somebody works, and
+          recruits come off the board every week you spend deciding. The best in
+          the country want more attention than one week can buy.
         </div>
       )}
 
-      {view === 'roster' ? (
+      {view === 'needs' ? (
+        <NeedsView holes={holes} filled={commits} onPick={(pos) => {
+          setFilters({ ...NO_FILTERS, pos });
+          setView('recruits');
+        }} />
+      ) : view === 'roster' ? (
         <RosterView />
       ) : (
         <>
@@ -534,6 +548,86 @@ function Slider({ label, value, onChange }: {
 }
 
 /** The roster the class is meant to fix. */
+/**
+ * What the draft took, as a list you can act on.
+ *
+ * This was a sentence under the header — "you are short 1B, 2B, 4 BENCH" — which
+ * said the right thing in the place you stop reading. As its own tab it is a
+ * checklist: every hole, whether the class has covered it yet, and a tap that
+ * filters the board down to players who play there.
+ */
+function NeedsView(
+  { holes, filled, onPick }:
+  {
+    holes: { pos: string; count: number }[];
+    filled: Prospect[];
+    onPick: (pos: string) => void;
+  },
+) {
+  if (holes.length === 0) {
+    return (
+      <div style={{
+        marginTop: 10, padding: '18px 12px', border: '1px solid var(--faint)',
+        background: 'var(--paper)', font: "400 12px/1.55 var(--body)", color: 'var(--dim)',
+        textAlign: 'center',
+      }}>
+        Nobody left. Every spot the draft opened up is covered.
+      </div>
+    );
+  }
+
+  const signedAt = (pos: string): number =>
+    filled.filter((p) => slotOf(p) === pos).length;
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={{
+        marginBottom: 10, padding: '9px 11px', background: 'var(--paper)',
+        borderLeft: '3px solid var(--clay)',
+        font: "400 11.5px/1.5 var(--body)", color: 'var(--ink)',
+      }}>
+        The draft and graduation left these open. Anything you do not sign gets
+        filled by a walk-on — thirteen points below your program's own level.
+      </div>
+
+      <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+        {holes.map((h) => {
+          const got = h.pos === 'BENCH' ? 0 : signedAt(h.pos);
+          const done = got >= h.count;
+          return (
+            <button
+              key={h.pos}
+              onClick={() => h.pos !== 'BENCH' && onPick(h.pos)}
+              disabled={h.pos === 'BENCH'}
+              className="tap"
+              style={{
+                width: '100%', textAlign: 'left',
+                display: 'grid', gridTemplateColumns: '52px 1fr auto',
+                gap: 10, alignItems: 'center',
+                padding: '11px 11px', borderBottom: '1px solid var(--hairline)',
+                background: 'transparent',
+              }}
+            >
+              <span style={{
+                font: "700 13px var(--mono)", letterSpacing: '.06em',
+                color: done ? 'var(--win)' : 'var(--clay)',
+              }}>{h.pos}</span>
+              <span style={{ font: "400 11.5px/1.4 var(--body)", color: 'var(--dim)' }}>
+                {h.count > 1 ? `${h.count} to replace` : 'one to replace'}
+                {h.pos !== 'BENCH' && ` · ${got} signed`}
+              </span>
+              <span style={{
+                font: "700 8px var(--mono)", letterSpacing: '.1em',
+                color: done ? 'var(--win)' : 'var(--dim)',
+              }}>{done ? 'COVERED' : h.pos === 'BENCH' ? 'DEPTH' : 'SHOW ME →'}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function RosterView() {
   const team = useUserTeam();
   const openPlayer = useDynasty((s) => s.openPlayer);
@@ -772,15 +866,38 @@ function Overview({
               it at all.
             */}
             <Step label="−" onClick={() => onSet(Math.max(0, spent - 1))} disabled={spent === 0} />
-            <input
-              type="range"
-              min={0}
-              max={Math.min(MAX_PER_RECRUIT, spent + left)}
-              step={1}
-              value={spent}
-              onChange={(e) => onSet(Number(e.target.value))}
-              style={{ flex: 1, accentColor: 'var(--clay)', touchAction: 'none' }}
-            />
+            {/*
+              Pips, not a track.
+
+              A range input on a phone is a drag that has to beat the scroller
+              for the gesture, and dragging *down* to a smaller number is the
+              worst case of it — "the bar works fine to add points but to remove
+              them it doesn't work most of the times". Twelve tap targets in a
+              row have no gesture to lose: tap the sixth pip and the offer is
+              six. The steppers either side stay for one-at-a-time nudging.
+            */}
+            <div style={{ flex: 1, display: 'flex', gap: 3 }}>
+              {Array.from({ length: MAX_PER_RECRUIT }, (_, i) => {
+                const n = i + 1;
+                const reachable = n <= Math.min(MAX_PER_RECRUIT, spent + left);
+                const on = n <= spent;
+                return (
+                  <button
+                    key={n}
+                    onClick={() => onSet(reachable ? (spent === n ? n - 1 : n) : spent)}
+                    disabled={!reachable}
+                    className="tap"
+                    style={{
+                      flex: 1, height: 26, padding: 0,
+                      background: on ? 'var(--clay)'
+                        : reachable ? 'rgba(28,36,48,.10)' : 'rgba(28,36,48,.04)',
+                      border: 'none',
+                    }}
+                    aria-label={`Offer ${n}`}
+                  />
+                );
+              })}
+            </div>
             <Step
               label="+"
               onClick={() => onSet(Math.min(Math.min(MAX_PER_RECRUIT, spent + left), spent + 1))}

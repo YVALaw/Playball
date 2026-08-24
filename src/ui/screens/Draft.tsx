@@ -61,6 +61,7 @@ export function Draft() {
   // back to the odds — which is what it is for outside the sequence.
   if (!report) return <DraftOdds team={team} year={year} />;
 
+  const holes = report.holes ?? [];
   const rows = view === 'round1' ? round1
     : view === 'round2' ? round2
     : view === 'undrafted' ? undrafted
@@ -106,6 +107,41 @@ export function Draft() {
       </div>
     }>
     <div style={{ padding: '10px 14px 22px' }}>
+      {/*
+        The holes, first, above the names.
+
+        This is the whole reason the draft now runs before recruiting: a list of
+        who left is a eulogy, and a list of what you are short of is a shopping
+        list. The recruiting board opens next and repeats it, so the two screens
+        are about the same thing.
+      */}
+      {holes.length > 0 && (
+        <>
+          <div className="label" style={{ marginBottom: 7 }}>THE HOLES THIS LEAVES</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+            {holes.map((h, i) => (
+              <div
+                key={h.pos}
+                className="card-in"
+                style={{
+                  padding: '7px 10px',
+                  border: '1px solid var(--clay)',
+                  background: 'rgba(168,68,42,.08)',
+                  animationDelay: `${i * 40}ms`,
+                }}
+              >
+                <div style={{
+                  font: "700 11px var(--mono)", letterSpacing: '.08em', color: 'var(--clay)',
+                }}>{h.pos}</div>
+                <div style={{
+                  marginTop: 2, font: "400 8.5px var(--mono)", color: 'var(--dim)',
+                }}>{h.count > 1 ? `${h.count} needed` : 'need one'}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
       <div style={{
         border: '1px solid var(--faint)', background: 'var(--paper)',
       }}>
@@ -181,7 +217,7 @@ export function Draft() {
       )}
 
       {phase !== null && (
-        <FloatingAction label="START NEXT SEASON" onClick={() => void nextPhase()} />
+        <FloatingAction label="TO RECRUITING" onClick={() => void nextPhase()} />
       )}
     </div>
     </FixedHeader>

@@ -32,15 +32,17 @@ export interface SeasonConfig {
 }
 
 /**
- * 33 games: seven three-game conference series (21) plus twelve non-conference
+ * 45 games: eleven three-game conference series (33) plus twelve non-conference
  * midweek games.
  *
- * Seven series against a seven team field is a **full round robin**, and that is
- * the whole reason the world is eight conferences of eight rather than sixteen of
- * twelve. Under the old shape you played eight of eleven possible opponents, so
- * three teams in your own conference went unplayed every year — you could not
- * build a history with a league you only partly met. Now you play all seven,
- * every season, and after three years you know them.
+ * Eleven series against an eleven team field is a **full round robin**: you play
+ * everybody in your conference, every season, and after three years you know
+ * them. That property is the reason the schedule is built this way, and it
+ * survived the world growing from eight programs a conference to twelve.
+ *
+ * Twelve rather than eight so that qualifying for the conference tournament is
+ * an achievement — six of twelve get in, so half the league is finished in May.
+ * At eight the cut was two teams and finishing seventh cost you nothing.
  *
  * The non-conference games are not flavour. A league that only played itself
  * would be eight sealed islands: every conference would post identical aggregate
@@ -52,7 +54,10 @@ export interface SeasonConfig {
  * the Friday/Saturday/Sunday/midweek rotation the mockup shows is real.
  */
 export const DEFAULT_SEASON: SeasonConfig = {
-  seriesRounds: 7,
+  // Eleven conference opponents, three games each, plus twelve midweek
+  // non-conference games: forty five. Closer to the real thing than thirty three
+  // was, and long enough that a batting average starts to mean something.
+  seriesRounds: 11,
   nonConferenceGames: 12,
   engine: 'log5',
 };

@@ -5,7 +5,7 @@
 import { FINISH_LABEL } from '../../engine/postseason.js';
 import { RECRUITING_WEEKS } from '../../engine/recruiting.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { seasonComplete, rpiOrder } from '../../engine/season.js';
+import { seasonComplete, rpiOrder, seasonLength } from '../../engine/season.js';
 import { Rule, Tile, Card } from '../components/Kit.js';
 import { seasonDate } from '../format.js';
 
@@ -89,7 +89,7 @@ export function Today() {
       {todayGame && opponent && (
         <Card
           tag={day?.kind === 'series' ? `TODAY · ${team.conference} SERIES` : 'TODAY · MIDWEEK'}
-          note={`GAME ${team.gp + 1} OF 33`}
+          note={`GAME ${team.gp + 1} OF ${seasonLength(season.config)}`}
         >
           <div style={{ padding: '12px 12px 10px' }}>
             <div style={{ font: "800 22px/1 var(--display)", textTransform: 'uppercase' }}>
@@ -174,8 +174,9 @@ export function Today() {
               <div style={{
                 marginTop: 8, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
               }}>
-                Eight conference tournaments, then a sixteen team national
-                bracket: four regionals, and the four winners go to Omaha.
+                Win your conference, then your region, then the country. Eight
+                conference champions, four regional champions, and one team left
+                standing.
               </div>
             </>
           ) : (

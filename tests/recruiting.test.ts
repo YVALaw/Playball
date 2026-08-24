@@ -11,6 +11,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   generateClass, aiTargets, closeWeek, resetWeeklySpend, weeklyPoints, fit, canPursue,
   PRIORITIES, RECRUITING_WEEKS, SCHOLARSHIPS, RECRUITING_BUDGET, MAX_PER_RECRUIT,
+  commitPointsFor, budgetFor,
   type Pitch, type Prospect,
 } from '../src/engine/recruiting.js';
 import { makeRng } from '../src/engine/rng.js';
@@ -331,5 +332,26 @@ describe('prestige gates who will even listen', () => {
     for (const { prospect } of board) {
       expect(canPursue(prospect, 1)).toBe(true);
     }
+  });
+});
+
+describe('the price of a top recruit', () => {
+  it('scales with what he is', () => {
+    // Flat across the board meant a five star cost exactly what a two star did,
+    // so any program allowed to chase the top of the class simply took it —
+    // reported from testing as landing the number one recruit three years
+    // running without trying.
+    expect(commitPointsFor(5)).toBeGreaterThan(commitPointsFor(2) * 2);
+    expect(commitPointsFor(4)).toBeGreaterThan(commitPointsFor(3));
+    expect(commitPointsFor(3)).toBeGreaterThan(commitPointsFor(2));
+    // Below three stars nothing changes: those recruits were never the problem.
+    expect(commitPointsFor(1)).toBe(commitPointsFor(2));
+  });
+
+  it('gives a better program a bigger budget, but not a decisive one', () => {
+    expect(budgetFor(1)).toBe(RECRUITING_BUDGET);
+    expect(budgetFor(5)).toBeGreaterThan(budgetFor(1));
+    // Prestige buys attention, not the class outright.
+    expect(budgetFor(5)).toBeLessThan(budgetFor(1) * 2);
   });
 });
