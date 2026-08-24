@@ -11,6 +11,7 @@ import {
   expectationFor, prestigeStars, rosterStrength, objectiveMet, type Objective,
 } from '../../engine/program.js';
 import { seasonLength, regularRecord, seasonComplete } from '../../engine/season.js';
+import { REGION_OF_STATE } from '../../data/schools.js';
 
 export function Program() {
   const season = useDynasty((s) => s.season);
@@ -206,6 +207,26 @@ export function Program() {
       <div style={{ marginTop: 16 }}>
         <div className="label" style={{ marginBottom: 5 }}>CAREER</div>
         <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+          {/*
+            The man, above the numbers. Age and where he is from decide nothing —
+            they are here because a career belongs to somebody, and a record with
+            no name on it is a spreadsheet.
+          */}
+          <div style={{
+            padding: '10px 12px', borderBottom: '1px solid var(--hairline)',
+          }}>
+            <div style={{
+              font: "800 20px/1 var(--display)", textTransform: 'uppercase',
+            }}>{coach.name}</div>
+            <div style={{
+              marginTop: 4, font: "400 11px var(--mono)", color: 'var(--dim)',
+            }}>
+              {coach.age} · {coach.homeState}
+              {REGION_OF_STATE[coach.homeState]
+                ? ` · ${REGION_OF_STATE[coach.homeState]}`
+                : ''}
+            </div>
+          </div>
           <Row k="RECORD" v={`${coach.careerWins}-${coach.careerLosses}`} />
           <Row k="TOURNAMENT BIDS" v={String(coach.tournaments)} />
           <Row k="CONFERENCE TITLES" v={String(coach.conferenceTitles)} />

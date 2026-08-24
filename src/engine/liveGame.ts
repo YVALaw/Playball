@@ -86,9 +86,25 @@ const opt = (
   tactic: Tactic, label: string, note: string, available: boolean, why: string,
 ): TacticOption => ({ tactic, label, note: available ? note : why, available });
 
-const OFFENSE = (bases: [boolean, boolean, boolean], outs: number): TacticOption[] => {
+export const OFFENSE = (bases: [boolean, boolean, boolean], outs: number): TacticOption[] => {
   const [first, second, third] = bases;
   const anyOn = first || second || third;
+
+  // Which bag the engine would actually take if the runner were sent. The label
+  // has to name it, because "STEAL" with men on first and second reads as a
+  // double steal and what happens is the lead runner going to third alone.
+  const target = first && !second ? 2 : second && !third ? 3 : null;
+
+  // What shortening up buys in the situation on the field, rather than one
+  // sentence that is true only with a man on third. Putting the ball in play
+  // trades power for contact, and who that helps depends on where they are
+  // standing: it is a sacrifice fly with a man on third and less than two out,
+  // and simply a better chance to move the line along otherwise.
+  const contactNote = third && outs < 2 ? 'a ball in the air brings him home'
+    : third ? 'shorten up; he scores on a base hit'
+    : second ? 'put it in play and get him to third'
+    : 'shorten up and move him along';
+
   return [
     opt('swing', 'SWING AWAY', 'let him hit', true, ''),
     opt('hitrun', 'HIT AND RUN', 'runner goes with the pitch',
@@ -96,14 +112,18 @@ const OFFENSE = (bases: [boolean, boolean, boolean], outs: number): TacticOption
     opt('bunt', 'SAC BUNT', 'trade an out to move him up',
       (first || second) && outs < 2,
       !(first || second) ? 'nobody to move up' : 'two outs already'),
-    opt('contact', 'PLAY FOR CONTACT', 'ball in the air scores him',
-      third && outs < 2, !third ? 'no runner on third' : 'two outs already'),
-    // Only the steal of second exists in the engine, so that is the only one
-    // offered — a button for a play that silently does nothing teaches worse
-    // than no button at all.
-    opt('steal', 'STEAL SECOND', 'send the man on first',
-      first && !second,
-      !anyOn ? 'nobody on' : !first ? 'only a steal of second is on' : 'second is occupied'),
+    // Any runner benefits from a ball in play, so the only true reason to
+    // withhold this is an empty basepath.
+    opt('contact', 'PLAY FOR CONTACT', contactNote, anyOn, 'nobody on to move'),
+    // A double steal is not modelled, so with men on first and second only the
+    // lead runner goes and the label says third. Nobody steals home here either,
+    // and the unavailable text says so rather than pretending the bag is taken.
+    opt('steal', target === 3 ? 'STEAL THIRD' : 'STEAL SECOND',
+      target === 3 ? 'send the man on second' : 'send the man on first',
+      target !== null,
+      !anyOn ? 'nobody on'
+        : third && !first && !second ? 'only home is left, and nobody steals home'
+        : 'the next bag is taken'),
   ];
 };
 

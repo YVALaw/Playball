@@ -18,8 +18,10 @@
 // was. That only works if the three are tracked apart.
 
 import { overallOf } from './ratings.js';
+import { FIRST, LAST } from '../data/names.js';
+import { ALL_STATES } from '../data/schools.js';
 import type { TeamRecord } from './season.js';
-import type { Team } from './types.js';
+import type { Rng, Team } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Prestige
@@ -486,8 +488,72 @@ export function skillPoints(outcome: SeasonOutcome): number {
   return points;
 }
 
-export interface CoachState {
+/**
+ * Who the coach is, as distinct from what he can do.
+ *
+ * Nothing here reaches the simulation, and it is kept apart from `CoachSkills`
+ * so that stays visible. A career mode is allowed to ask for a name and a
+ * hometown purely so the thing you build has somebody's name on it — what it is
+ * not allowed to do is imply the answers are worth points.
+ */
+export interface CoachProfile {
   name: string;
+  /** Years old. Follows the calendar; no screen reads it for anything else. */
+  age: number;
+  /**
+   * The two letter code he is from, drawn from the same list programs and
+   * recruits use. A shared vocabulary matters more than the freedom of a text
+   * box: "MS" reads as a place in this world, "the Wirral" does not.
+   */
+  homeState: string;
+}
+
+/**
+ * The believable range for a head coach.
+ *
+ * Bounded rather than free entry because the number sits next to a career that
+ * can run for twenty years — a 19 year old with a decade of tenure is the kind
+ * of detail that makes everything around it look unserious.
+ */
+export const MIN_COACH_AGE = 28;
+export const MAX_COACH_AGE = 68;
+
+/**
+ * Who you are if nobody says otherwise — a fresh career that skipped the form,
+ * and a save written before the profile existed. The alternative for an old save
+ * is a screen with holes in it, which reads as a bug rather than as a career
+ * that predates the feature.
+ */
+export const DEFAULT_PROFILE: CoachProfile = { name: 'Coach', age: 41, homeState: 'TX' };
+
+export const clampAge = (age: number): number =>
+  (Number.isFinite(age)
+    ? Math.max(MIN_COACH_AGE, Math.min(MAX_COACH_AGE, Math.round(age)))
+    : DEFAULT_PROFILE.age);
+
+/**
+ * A plausible coach, drawn from the pools the players come out of.
+ *
+ * The creation screen opens with one of these already in the fields, so anybody
+ * who does not care about any of it presses continue once and still ends up with
+ * a career belonging to a named person. Takes the generator rather than reaching
+ * for `Math.random` so the same career seed always produces the same suggestion
+ * — a name that changes under you on every re-render is not a suggestion.
+ */
+export function randomProfile(rng: Rng): CoachProfile {
+  const first = FIRST[Math.floor(rng() * FIRST.length)] ?? DEFAULT_PROFILE.name;
+  const last = LAST[Math.floor(rng() * LAST.length)] ?? '';
+  return {
+    name: `${first} ${last}`.trim(),
+    // Late thirties to early fifties. Head jobs mostly go to people who spent a
+    // decade somewhere else first, so the suggestion sits well inside the range
+    // rather than at either end of it.
+    age: clampAge(38 + Math.floor(rng() * 15)),
+    homeState: ALL_STATES[Math.floor(rng() * ALL_STATES.length)] ?? DEFAULT_PROFILE.homeState,
+  };
+}
+
+export interface CoachState extends CoachProfile {
   /** What he is good at. See CoachSkills. */
   skills: CoachSkills;
   /** Unspent skill points, waiting on the offseason screen. */
@@ -530,9 +596,16 @@ export const contractFor = (prestige: number): number =>
  */
 export const ROOKIE_PRESTIGE = 25;
 
-export function newCoach(name: string, contractLength = 4): CoachState {
+export function newCoach(
+  profile: CoachProfile = DEFAULT_PROFILE,
+  contractLength = 4,
+): CoachState {
   return {
-    name,
+    // Trimmed and floored here rather than trusted from the screen, because this
+    // is also the door a loaded save and a test come through.
+    name: profile.name.trim() || DEFAULT_PROFILE.name,
+    age: clampAge(profile.age),
+    homeState: profile.homeState.trim() || DEFAULT_PROFILE.homeState,
     // A new coach is competent at nothing in particular.
     skills: { offense: 20, defense: 20, training: 20, recruiting: 20 },
     skillPoints: 0,
@@ -548,6 +621,35 @@ export function newCoach(name: string, contractLength = 4): CoachState {
     titles: 0,
     conferenceTitles: 0,
     tournaments: 0,
+  };
+}
+
+/**
+ * A coach off the disk, brought up to the current shape.
+ *
+ * Every save written before the profile existed carries a name and nothing
+ * else, so `coach.age` on those is `undefined` and every screen that shows it
+ * renders a hole. Filling the gaps in one place means there is a single answer
+ * to what an old career's coach looks like, rather than a different fallback at
+ * each display site.
+ *
+ * The age is *not* clamped on the way in. A coach who has run programs for
+ * twenty years is legitimately past the hiring range, and pulling him back to 68
+ * every load would quietly cap the length of a career in the one number that is
+ * supposed to record it.
+ */
+export function restoreCoach(saved: unknown): CoachState {
+  if (!saved || typeof saved !== 'object') return newCoach();
+  const c = saved as Partial<CoachState>;
+  return {
+    ...newCoach(),
+    ...c,
+    name: typeof c.name === 'string' && c.name.trim() !== ''
+      ? c.name.trim() : DEFAULT_PROFILE.name,
+    age: typeof c.age === 'number' && Number.isFinite(c.age)
+      ? Math.round(c.age) : DEFAULT_PROFILE.age,
+    homeState: typeof c.homeState === 'string' && c.homeState.trim() !== ''
+      ? c.homeState.trim() : DEFAULT_PROFILE.homeState,
   };
 }
 

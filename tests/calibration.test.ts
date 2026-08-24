@@ -35,20 +35,20 @@ import type { Hitter, Pitcher } from '../src/engine/types.js';
  * philosophy.
  */
 const GOLDEN: Record<string, number> = {
-  'Runs per team per game': 5.010416666666667,
-  'PA per team per game': 39.92166666666667,
-  'Batting average': 0.2664724194333218,
-  'On base percentage': 0.34363127791925857,
-  'Home runs per team per game': 0.4839583333333333,
-  'Strikeouts per team per game': 6.502291666666666,
-  'Walks per team per game': 3.654375,
-  'Pitches per plate appearance': 3.6245616415480315,
-  'Slugging': 0.37078552877653553,
+  'Runs per team per game': 5.091875,
+  'PA per team per game': 39.966875,
+  'Batting average': 0.267206596276711,
+  'On base percentage': 0.3444154273591151,
+  'Home runs per team per game': 0.50625,
+  'Strikeouts per team per game': 6.530625,
+  'Walks per team per game': 3.6679166666666667,
+  'Pitches per plate appearance': 3.632383067227548,
+  'Slugging': 0.3727973858505648,
 };
 
-const GOLDEN_SLUGGING = 0.37078552877653553;
-const GOLDEN_ERRORS = 1.0902083333333332;
-const GOLDEN_SB_PCT = 0.7114444631720883;
+const GOLDEN_SLUGGING = 0.3727973858505648;
+const GOLDEN_ERRORS = 1.0935416666666666;
+const GOLDEN_SB_PCT = 0.7129162462159435;
 
 /**
  * Metrics still outside the 10% bar. The list is now empty, and keeping the

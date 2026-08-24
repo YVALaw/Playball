@@ -15,14 +15,21 @@
 // hand its program to someone who has never run one. Most of the board is locked
 // on day one and it stays visible while it is locked, because a ladder you cannot
 // see is not a ladder — it is just a short list that quietly gets longer.
+//
+// Two steps, in that order: who you are, then where you work. The first one is
+// pre-filled and skippable in a single press, because a form standing between a
+// player and the game is a toll, not a feature — and everything it collects is
+// flavour, which is exactly why it is not allowed to cost anybody a minute.
 
 import { useMemo, useState } from 'react';
-import { CONFERENCES, ALL_SCHOOLS, type ConferenceDef, type SchoolDef } from '../../data/schools.js';
-import { CONF_FIELD } from '../../engine/postseason.js';
+import {
+  CONFERENCES, STATES_BY_REGION, type ConferenceDef, type SchoolDef,
+} from '../../data/schools.js';
 import {
   prestigeStars, expectationFor, contractFor, requiredCoachPrestige,
   canBeHired, hireGateNote, ROOKIE_PRESTIGE, rosterStrength,
-  type Mandate, type Objective,
+  randomProfile, clampAge, MIN_COACH_AGE, MAX_COACH_AGE,
+  type CoachProfile, type Mandate, type Objective,
 } from '../../engine/program.js';
 import { useDynasty, careerSeed } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
@@ -84,6 +91,13 @@ export function NewGame() {
    */
   const [seed] = useState(careerSeed);
 
+  // Drawn off the career seed rather than the clock, so the suggestion is the
+  // same man every render of the same career rather than a new one each time
+  // React decides to redraw the screen.
+  const suggestion = useMemo(() => randomProfile(makeRng(seed ^ 0x5eed)), [seed]);
+  const [coach, setCoach] = useState<CoachProfile>(suggestion);
+  const [made, setMade] = useState(false);
+
   // Build the actual world, not an estimate of it. Generation is deterministic
   // from the seed and costs about 2ms, so the screen can simply read the
   // rosters the player is going to get.
@@ -127,12 +141,23 @@ export function NewGame() {
 
   const openCount = conference.schools.filter((s) => preview(s).open).length;
 
+  if (!made) {
+    return (
+      <CoachSetup
+        profile={coach}
+        onChange={setCoach}
+        onShuffle={() => setCoach(randomProfile(makeRng(careerSeed())))}
+        onDone={() => setMade(true)}
+      />
+    );
+  }
+
   return (
     <FixedHeader
       header={
         <div style={{ padding: '14px 14px 8px' }}>
           {/*
-            Title, your standing, and the region chips stay put. The program list
+            Title, who you are, and the region chips stay put. The program list
             runs twelve deep and the chips are how you move between regions —
             scrolling them off means scrolling back up every time you want to
             look somewhere else.
@@ -144,28 +169,39 @@ export function NewGame() {
             }}>Take a job</div>
           </div>
 
-          <div style={{
-            marginTop: 10, font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
-          }}>
-            {ALL_SCHOOLS.length} programs in {CONFERENCES.length} conferences of
-            {' '}{CONFERENCES[0]?.schools.length ?? 0}. You play your conference three times a
-            year, so the schools you pick alongside are the ones you will know best —
-            and only the top {CONF_FIELD} of them play in June.
-          </div>
+          {/*
+            Who you are and what you are worth, on the line the standing box used
+            to take five for. What that box said in prose — nobody has heard of
+            you, the good jobs will not take the call — the board already says
+            per row with NEEDS 38 and a padlock, and says properly in the offer
+            sheet where `hireGateNote` explains the particular job you tapped.
+            Saying it a third time at the top cost the list about a fifth of the
+            screen, and the list is the reason anybody is here.
+          */}
+          <button
+            onClick={() => setMade(false)}
+            style={{
+              width: '100%', marginTop: 9, padding: '7px 0',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+              gap: 8, background: 'transparent', textAlign: 'left',
+              borderBottom: '1px solid var(--hairline)',
+            }}
+          >
+            <span style={{
+              minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap', font: "400 11px var(--mono)", color: 'var(--dim)',
+            }}>
+              <strong style={{ color: 'var(--ink)', fontWeight: 600 }}>{coach.name}</strong>
+              {' · '}{coach.age}{' · '}{coach.homeState}
+              <span style={{ color: 'var(--clay)' }}> · EDIT</span>
+            </span>
+            <span style={{
+              font: "600 9px var(--mono)", letterSpacing: '.1em',
+              color: 'var(--dim)', whiteSpace: 'nowrap',
+            }}>STANDING {ROOKIE_PRESTIGE}</span>
+          </button>
 
-          {/* Why half the board is greyed out, said before you tap a locked row. */}
-          <div style={{
-            marginTop: 12, padding: '10px 11px',
-            background: 'var(--field)', borderLeft: '3px solid var(--clay)',
-          }}>
-            <div className="label">YOUR STANDING · {ROOKIE_PRESTIGE}</div>
-            <div style={{ marginTop: 4, font: "400 12px/1.5 var(--body)" }}>
-              Nobody has heard of you. The good programs are not going to take that
-              call yet — win somewhere small and they will.
-            </div>
-          </div>
-
-          <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>REGION</div>
+          <div className="label" style={{ marginTop: 14, marginBottom: 6 }}>REGION</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
             {CONFERENCES.map((c) => {
               const on = c.id === conference.id;
@@ -185,12 +221,16 @@ export function NewGame() {
             })}
           </div>
 
+          {/*
+            The league's name and what class of league it is. The one line blurb
+            that used to follow was weather and atmosphere — nothing in it moves
+            a game or picks a job, and it wrapped to two lines on a phone.
+          */}
           <div style={{
-            marginTop: 9, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
+            marginTop: 8, font: "400 11.5px/1.4 var(--body)", color: 'var(--dim)',
           }}>
             <strong style={{ color: 'var(--ink)' }}>{conference.name}</strong>
             {' · '}{TIER_WORD[conference.tier]}
-            <br />{conference.blurb}
           </div>
 
         </div>
@@ -199,7 +239,7 @@ export function NewGame() {
     <div style={{ padding: '8px 14px 22px' }}>
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-        marginTop: 18, marginBottom: 6,
+        marginTop: 4, marginBottom: 6,
       }}>
         <span className="label">PROGRAM</span>
         <span style={{ font: "600 9px var(--mono)", color: 'var(--dim)' }}>
@@ -381,7 +421,7 @@ export function NewGame() {
                     </div>
 
                     <button
-                      onClick={() => start(seed, indexOf(picked))}
+                      onClick={() => start(seed, indexOf(picked), coach)}
                       style={{
                         marginTop: 14, width: '100%', padding: '13px 0',
                         background: picked.color, border: `1px solid ${picked.color}`,
@@ -419,6 +459,146 @@ export function NewGame() {
       })()}
     </div>
     </FixedHeader>
+  );
+}
+
+/**
+ * Who the dynasty belongs to.
+ *
+ * The fields arrive filled in with a plausible man, so the whole step is one
+ * press for anybody who came here to coach rather than to fill in a form. That
+ * is the constraint the layout is built around: nothing is required, nothing is
+ * validated against the player, and CONTINUE is always live.
+ *
+ * The bounds on the age stepper are the only rule in here, and they are about
+ * the fiction rather than the simulation — see MIN_COACH_AGE.
+ */
+function CoachSetup(
+  { profile, onChange, onShuffle, onDone }: {
+    profile: CoachProfile;
+    onChange: (p: CoachProfile) => void;
+    onShuffle: () => void;
+    onDone: () => void;
+  },
+) {
+  const set = <K extends keyof CoachProfile>(key: K, value: CoachProfile[K]): void =>
+    onChange({ ...profile, [key]: value });
+
+  return (
+    <div style={{ padding: '14px 14px 24px' }}>
+      <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
+        <div className="label">NEW DYNASTY</div>
+        <div style={{
+          font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
+        }}>Your coach</div>
+      </div>
+
+      <div style={{
+        marginTop: 10, font: "400 12px/1.5 var(--body)", color: 'var(--dim)',
+      }}>
+        Already filled in. Change what you like, or go straight to the board.
+      </div>
+
+      <div className="label" style={{ marginTop: 16, marginBottom: 5 }}>NAME</div>
+      <input
+        value={profile.name}
+        onChange={(e) => set('name', e.target.value)}
+        // Long enough for a real name and short enough to fit the headline it
+        // is printed in on every screen after this one.
+        maxLength={26}
+        style={{
+          width: '100%', padding: '11px 10px', background: 'var(--paper)',
+          border: '1px solid rgba(28,36,48,.28)', borderRadius: 0,
+          color: 'var(--ink)', font: "400 15px var(--body)",
+        }}
+      />
+
+      <div className="label" style={{ marginTop: 14, marginBottom: 5 }}>
+        AGE · {MIN_COACH_AGE}–{MAX_COACH_AGE}
+      </div>
+      {/*
+        A stepper rather than a keyboard. The range is 41 wide, every value in
+        it is acceptable, and putting a numeric keypad over half the screen to
+        collect one of them is the slower way round.
+      */}
+      <div style={{
+        display: 'flex', alignItems: 'stretch',
+        border: '1px solid rgba(28,36,48,.28)', background: 'var(--paper)',
+      }}>
+        <Nudge label="−" onClick={() => set('age', clampAge(profile.age - 1))} />
+        <div style={{
+          flex: 1, textAlign: 'center', padding: '11px 0',
+          font: "700 20px/1 var(--display)",
+        }}>{profile.age}</div>
+        <Nudge label="+" onClick={() => set('age', clampAge(profile.age + 1))} />
+      </div>
+
+      <div className="label" style={{ marginTop: 14, marginBottom: 5 }}>FROM</div>
+      {/*
+        The same two letter codes recruits and programs carry, grouped by the
+        same regions. A free text box would let you be from somewhere this world
+        has never heard of, and the state is the unit the rest of the game
+        already thinks in.
+      */}
+      <select
+        value={profile.homeState}
+        onChange={(e) => set('homeState', e.target.value)}
+        style={{
+          width: '100%', padding: '11px 10px', background: 'var(--paper)',
+          border: '1px solid rgba(28,36,48,.28)', borderRadius: 0,
+          color: 'var(--ink)', font: "600 14px var(--mono)", letterSpacing: '.04em',
+        }}
+      >
+        {Object.entries(STATES_BY_REGION).map(([region, states]) => (
+          <optgroup key={region} label={region}>
+            {states.map((st) => <option key={st} value={st}>{st} · {region}</option>)}
+          </optgroup>
+        ))}
+      </select>
+
+      <button
+        onClick={onShuffle}
+        style={{
+          marginTop: 14, width: '100%', padding: '11px 0',
+          background: 'transparent', border: '1px solid rgba(28,36,48,.28)',
+          font: "600 10px var(--mono)", letterSpacing: '.12em', color: 'var(--dim)',
+        }}
+      >SOMEBODY ELSE</button>
+
+      <button
+        onClick={onDone}
+        style={{
+          marginTop: 8, width: '100%', padding: '14px 0',
+          background: 'var(--clay)', border: '1px solid var(--clay)',
+          color: 'var(--cream)', font: "700 11px var(--mono)", letterSpacing: '.14em',
+        }}
+      >LOOK AT THE JOBS</button>
+
+      {/*
+        Said plainly, because the alternative is a player spending real thought
+        on which of these buys him something. None of them do.
+      */}
+      <div style={{
+        marginTop: 10, font: "400 11px/1.45 var(--body)", color: 'var(--dim)',
+        textAlign: 'center',
+      }}>
+        Your name, age and home state are yours alone — none of the three change
+        how a game is played.
+      </div>
+    </div>
+  );
+}
+
+/** One end of the age stepper. Wide enough to hit with a thumb. */
+function Nudge({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: 54, background: 'transparent',
+        font: "600 18px/1 var(--mono)", color: 'var(--clay)',
+      }}
+    >{label}</button>
   );
 }
 

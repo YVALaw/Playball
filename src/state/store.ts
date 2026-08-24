@@ -25,9 +25,10 @@ import {
   departAndDevelop, fillRosters, type OffseasonReport,
 } from '../engine/progression.js';
 import {
-  newCoach, reviewSeason, jobOffers, rosterStrength, contractFor, prestigeStars,
-  skillPoints,
-  type CoachState, type CoachSkills, type JobOffer, type Review, type SeasonOutcome,
+  newCoach, restoreCoach, reviewSeason, jobOffers, rosterStrength, contractFor,
+  prestigeStars, skillPoints,
+  type CoachState, type CoachSkills, type CoachProfile, type JobOffer, type Review,
+  type SeasonOutcome,
 } from '../engine/program.js';
 import {
   runPostseason, freezeRegularSeason, stageConferenceTournaments,
@@ -301,8 +302,12 @@ export interface DynastyStore {
   /** What the season came to, kept for the review screen. */
   lastOutcome: SeasonOutcome | null;
 
-  /** Begin a dynasty. Pass a team index to choose the job. */
-  start: (seed?: number, team?: number) => void;
+  /**
+   * Begin a dynasty. Pass a team index to choose the job, and the profile the
+   * creation step collected. Without the profile the career belongs to a man
+   * called "Coach", which is the pre-v0.6.3 behaviour and what the tests use.
+   */
+  start: (seed?: number, team?: number, profile?: CoachProfile) => void;
   /** True before a job has been taken, so the app can show the setup screen. */
   needsTeam: boolean;
   go: (tab: Tab, screen?: string) => void;
@@ -617,12 +622,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   lastWeek: null,
   phase: null,
 
-  start: (seed = WORLD_SEED, team?: number) => {
+  start: (seed = WORLD_SEED, team?: number, profile?: CoachProfile) => {
     const season = createSeason(makeRng(seed), undefined, CONFERENCES);
     // Whose games to keep box scores for. A season is built before anybody has
     // taken a job, so the engine cannot know this on its own.
     season.captureBoxFor = team ?? defaultUserTeam(season);
-    const coach = newCoach('Coach', contractFor(season.teams[team ?? 0]?.prestige ?? 50));
+    const coach = newCoach(profile, contractFor(season.teams[team ?? 0]?.prestige ?? 50));
     applyCoachMods(season, team ?? defaultUserTeam(season), coach);
     set({
       season,
@@ -965,7 +970,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
     const done = (next: SeasonState, report: OffseasonReport): void => {
       const rolled = nextSeason(next);
-      const coach = get().coach;
+      // A year passes for him too. Purely what the screen prints — nothing in
+      // the simulation asks how old the coach is, and no year of a career plays
+      // differently because of the number.
+      const coach = { ...get().coach, age: get().coach.age + 1 };
 
       set({
         season: rolled,
@@ -1023,7 +1031,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     set({ phase, overlay: null, selectedPlayer: null, version: get().version + 1 });
   },
   selectedPlayer: null,
-  coach: newCoach('Coach'),
+  coach: newCoach(),
   lastReview: null,
   offers: [],
 
@@ -1624,9 +1632,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // resume capturing for nobody.
     loaded.season.captureBoxFor = loaded.userTeam;
     loaded.season.boxScores ??= {};
-    // Saves made before the dynasty layer carry no coach; start a fresh one
-    // rather than refusing to load them.
-    const coach = (loaded.coach as CoachState | undefined) ?? newCoach('Coach');
+    // Saves made before the dynasty layer carry no coach at all, and saves made
+    // before the profile carry one with no age or hometown on it. Both come back
+    // filled in rather than refusing to load or rendering holes.
+    const coach = restoreCoach(loaded.coach);
     // Restamped on every load rather than trusted from the save, so a save from
     // before the in-game skills were wired — or one that predates a job change —
     // comes up with the edge on the right program.

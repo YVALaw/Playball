@@ -13,8 +13,18 @@ import { describe, it, expect } from 'vitest';
 import { makeRng } from '../src/engine/rng.js';
 import { makeTeam, resetNames } from '../src/engine/players.js';
 import { createHalfInning, TeamState } from '../src/engine/game.js';
-import { createLiveGame } from '../src/engine/liveGame.js';
-import type { EngineFn, PAContext, Rng } from '../src/engine/types.js';
+import { createLiveGame, OFFENSE } from '../src/engine/liveGame.js';
+import { ENGINES } from '../src/engine/engines.js';
+import type { EngineFn, Hitter, PAContext, Rng } from '../src/engine/types.js';
+
+/**
+ * Stand a runner on a base. `bases` is exposed read-only so nothing in the app
+ * can reach in and rearrange the inning; a test setting up the situation it
+ * wants to reproduce is the one caller that legitimately does.
+ */
+const place = (
+  half: { readonly bases: readonly (Hitter | null)[] }, base: 1 | 2 | 3, who: Hitter,
+): void => { (half.bases as (Hitter | null)[])[base - 1] = who; };
 
 /**
  * A scripted engine: each plate appearance resolves to the next entry in the
@@ -234,5 +244,325 @@ describe('pinch hitting', () => {
     expect(live.benchAvailable).not.toContain(sub);
     expect(live.pinchHit(sub)).toBe(false);
     expect(live.pending?.batter.id).toBe(sub.id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Nobody leaves the field for free
+// ---------------------------------------------------------------------------
+
+/**
+ * The conservation law, and the only test in here that would have caught all
+ * four of the bugs it was written for at once.
+ *
+ * Everyone who takes part in a play has to end it somewhere: standing on a base,
+ * across the plate, or retired. Reported as "there was someone on first and
+ * third, he hit a single, and the man on first just disappeared" — no run, no
+ * out, one fewer runner than the inning had a moment earlier. Four separate
+ * places in the engine were doing it: an intentional walk with the bases loaded
+ * dropped the man forced home, a botched bunt erased the lead runner and then
+ * wrote the batter on top of the man behind him, a ground ball to the right side
+ * moved the runner from second onto an occupied third, and a bunt single that
+ * retired a runner threw the out away.
+ */
+const runnersOn = (bases: readonly unknown[]): number => bases.filter(Boolean).length;
+
+describe('runners are conserved', () => {
+  it('never loses a man across a wide sweep of innings, calls and outcomes', () => {
+    const tactics = [undefined, 'swing', 'bunt', 'bunt', 'hitrun', 'contact', 'ibb'] as const;
+    const broken: string[] = [];
+    let steps = 0;
+
+    for (let seed = 1; seed <= 5000 && broken.length === 0; seed++) {
+      const { bats, field } = twoTeams(seed);
+      const rng = makeRng(seed * 7919 + 13);
+      const bat = new TeamState(bats, false);
+      const fld = new TeamState(field, true);
+      let log: string[] = [];
+      // Alternating so both the manual dugout and the computer's automatic
+      // steals and substitutions are swept.
+      const manual = seed % 2 === 0;
+      const half = createHalfInning(
+        bat, fld, 1, ENGINES.log5, rng, (s) => log.push(s),
+        false, [], undefined, manual, manual,
+      );
+
+      for (let guard = 0; guard < 40 && !half.done; guard++) {
+        const before = [...half.bases];
+        const outsBefore = half.outs;
+        const runsBefore = bat.runs;
+        const spotBefore = bat.spot;
+        log = [];
+        half.step(tactics[(seed + guard) % tactics.length]);
+        steps++;
+
+        // The batter only counts as arriving if he actually took his turn: a
+        // called steal resolves without consuming him.
+        const arrived = bat.spot !== spotBefore ? 1 : 0;
+        const left = (bat.runs - runsBefore) + (half.outs - outsBefore);
+        if (runnersOn(before) + arrived !== runnersOn(half.bases) + left) {
+          broken.push(
+            `seed ${seed}: ${runnersOn(before)} on + ${arrived} up -> ` +
+            `${runnersOn(half.bases)} on + ${bat.runs - runsBefore} in + ` +
+            `${half.outs - outsBefore} out\n    ${log.map((l) => l.trim()).join('\n    ')}`,
+          );
+        }
+      }
+    }
+
+    expect(steps).toBeGreaterThan(20000);
+    expect(broken).toEqual([]);
+  });
+
+  it('scores the man on third and moves the man on first on a single', () => {
+    // The reported situation, exactly, over three hundred independent streams.
+    const { bats, field } = twoTeams(4242);
+    const single: EngineFn = () =>
+      ({ event: 'single', kind: 'line', pitches: ['inplay'], engine: 'log5' });
+
+    let scoredFromThird = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const bat = new TeamState(bats, false);
+      const fld = new TeamState(field, true);
+      const half = createHalfInning(
+        bat, fld, 1, single, makeRng(seed * 31 + 7), () => {},
+        false, [], undefined, true, true,
+      );
+      const onFirst = bats.lineup[3]!;
+      const onThird = bats.lineup[5]!;
+      place(half, 1, onFirst);
+      place(half, 3, onThird);
+      half.step('swing');
+
+      // Three men were involved and three are accounted for.
+      expect(runnersOn(half.bases) + bat.runs + half.outs).toBe(3);
+      // And the man from first is either standing somewhere or was thrown out.
+      if (!half.bases.includes(onFirst)) expect(half.outs).toBe(1);
+      // A fielder's range can still turn the scripted single into an out, which
+      // is why this counts rather than asserting. When the hit does land, the
+      // man on third scores every time — there is no holding him on a single.
+      if (bat.runs > 0) {
+        scoredFromThird++;
+        expect(half.bases).not.toContain(onThird);
+      }
+    }
+    expect(scoredFromThird).toBeGreaterThan(240);
+  });
+
+  it('scores the man forced home by an intentional walk', () => {
+    const { bats, field } = twoTeams(11);
+    const bat = new TeamState(bats, false);
+    const fld = new TeamState(field, true);
+    const log: string[] = [];
+    const half = createHalfInning(
+      bat, fld, 1, script([]), alwaysCaught, (s) => log.push(s),
+      false, [], undefined, true, true,
+    );
+    const onThird = bats.lineup[5]!;
+    place(half, 1, bats.lineup[3]!);
+    place(half, 2, bats.lineup[4]!);
+    place(half, 3, onThird);
+
+    half.step('ibb');
+
+    // He walks in, rather than being quietly deleted from the inning.
+    expect(bat.runs).toBe(1);
+    expect(half.outs).toBe(0);
+    expect(runnersOn(half.bases)).toBe(3);
+    expect(bat.hitLine(onThird).r).toBe(1);
+    expect(log.join(' ')).toContain(`${onThird.name} is forced home`);
+  });
+
+  it('forces only the lead runner on a botched bunt, and leaves the rest standing', () => {
+    const { bats, field } = twoTeams(12);
+    const bat = new TeamState(bats, false);
+    const fld = new TeamState(field, true);
+    // First roll fails the beat-it-out chance, second forces the botch.
+    const rolls = [0.99, 0.0001];
+    const rng: Rng = () => rolls.shift() ?? 0.99;
+    const half = createHalfInning(
+      bat, fld, 1, script([]), rng, () => {},
+      false, [], undefined, true, true,
+    );
+    const onFirst = bats.lineup[3]!;
+    const onSecond = bats.lineup[4]!;
+    place(half, 1, onFirst);
+    place(half, 2, onSecond);
+
+    half.step('bunt');
+
+    // One out, and the man from first is on second rather than erased under the
+    // batter — this used to take two runners off the field for a single out.
+    expect(half.outs).toBe(1);
+    expect(half.bases[1]).toBe(onFirst);
+    expect(half.bases[0]).not.toBeNull();
+    expect(half.bases[0]).not.toBe(onFirst);
+    expect(half.bases).not.toContain(onSecond);
+    expect(runnersOn(half.bases)).toBe(2);
+  });
+
+  it('records the out when a bunt single retires a runner on the bases', () => {
+    const { bats, field } = twoTeams(13);
+    const bat = new TeamState(bats, false);
+    const fld = new TeamState(field, true);
+    // Beat it out, send the runner from first, and gun him down at third.
+    const rolls = [0.0001, 0.0001, 0.0001];
+    const rng: Rng = () => rolls.shift() ?? 0.99;
+    const half = createHalfInning(
+      bat, fld, 1, script([]), rng, () => {},
+      false, [], undefined, true, true,
+    );
+    const onFirst = bats.lineup[3]!;
+    place(half, 1, onFirst);
+
+    half.step('bunt');
+
+    expect(half.bases).not.toContain(onFirst);
+    // The out the caller used to throw on the floor.
+    expect(half.outs).toBe(1);
+    expect(fld.pitchLine(fld.pitcher).outs).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The calls on offer
+// ---------------------------------------------------------------------------
+
+describe('the offensive calls', () => {
+  const on = (...b: number[]): [boolean, boolean, boolean] =>
+    [b.includes(1), b.includes(2), b.includes(3)];
+  const find = (bases: [boolean, boolean, boolean], outs: number, tactic: string) =>
+    OFFENSE(bases, outs).find((o) => o.tactic === tactic)!;
+
+  it('names the bag the runner is actually taking', () => {
+    expect(find(on(1), 0, 'steal').label).toBe('STEAL SECOND');
+    expect(find(on(1, 3), 0, 'steal').label).toBe('STEAL SECOND');
+    // No double steal is modelled, so with two on it is the lead man alone.
+    expect(find(on(2), 0, 'steal').label).toBe('STEAL THIRD');
+    expect(find(on(1, 2), 0, 'steal').label).toBe('STEAL THIRD');
+    for (const bases of [on(1), on(1, 3), on(2), on(1, 2)]) {
+      expect(find(bases, 0, 'steal').available).toBe(true);
+    }
+  });
+
+  it('withholds the steal only when there is genuinely nowhere to go', () => {
+    for (const bases of [on(), on(3), on(2, 3), on(1, 2, 3)]) {
+      expect(find(bases, 0, 'steal').available).toBe(false);
+    }
+    expect(find(on(), 0, 'steal').note).toBe('nobody on');
+    // Stealing home is not in the engine, and the reason says so rather than
+    // claiming a base is occupied when it is not.
+    expect(find(on(3), 0, 'steal').note).toBe('only home is left, and nobody steals home');
+  });
+
+  it('offers contact for any runner, and describes the situation on the field', () => {
+    expect(find(on(), 0, 'contact').available).toBe(false);
+    for (const bases of [on(1), on(2), on(3), on(1, 2), on(2, 3), on(1, 2, 3)]) {
+      for (const outs of [0, 1, 2]) {
+        expect(find(bases, outs, 'contact').available).toBe(true);
+      }
+    }
+    // The blurb has to be true. A sacrifice fly needs a man on third and fewer
+    // than two out; with two down the same call is just a swing you shorten up.
+    expect(find(on(3), 1, 'contact').note).toContain('in the air');
+    expect(find(on(3), 2, 'contact').note).not.toContain('in the air');
+    expect(find(on(2), 0, 'contact').note).toContain('third');
+  });
+
+  it('never offers a call that cannot do anything', () => {
+    // Every available call has to change something. A steal with nowhere to go
+    // was offered for months and was a guaranteed no-op.
+    for (let mask = 0; mask < 8; mask++) {
+      const bases = on(...[1, 2, 3].filter((b) => mask & (1 << (b - 1))));
+      for (const outs of [0, 1, 2]) {
+        for (const o of OFFENSE(bases, outs)) {
+          if (!o.available) {
+            expect(o.note.length).toBeGreaterThan(0);
+            continue;
+          }
+          if (o.tactic === 'steal') {
+            const [first, second, third] = bases;
+            expect((first && !second) || (second && !third)).toBe(true);
+          }
+        }
+      }
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Stealing
+// ---------------------------------------------------------------------------
+
+describe('a called steal', () => {
+  it('takes third when second is the base he is standing on', () => {
+    const { bats, field } = twoTeams(21);
+    const bat = new TeamState(bats, false);
+    const fld = new TeamState(field, true);
+    const log: string[] = [];
+    // A rng of 0.0001 makes every success roll good.
+    const half = createHalfInning(
+      bat, fld, 1, script([]), () => 0.0001, (s) => log.push(s),
+      false, [], undefined, true, true,
+    );
+    const runner = bats.lineup[4]!;
+    place(half, 2, runner);
+
+    expect(half.step('steal')).toBe(false);
+    expect(half.bases[2]).toBe(runner);
+    expect(half.bases[1]).toBeNull();
+    expect(bat.hitLine(runner).sb).toBe(1);
+    expect(log.join(' ')).toContain(`${runner.name} steals third.`);
+  });
+
+  it('charges an out when the runner going to third is thrown out', () => {
+    const { bats, field } = twoTeams(22);
+    const bat = new TeamState(bats, false);
+    const fld = new TeamState(field, true);
+    const half = createHalfInning(
+      bat, fld, 1, script([]), alwaysCaught, () => {},
+      false, [], undefined, true, true,
+    );
+    const runner = bats.lineup[4]!;
+    place(half, 2, runner);
+
+    half.step('steal');
+    expect(half.outs).toBe(1);
+    expect(half.bases).toEqual([null, null, null]);
+    expect(bat.hitLine(runner).cs).toBe(1);
+  });
+
+  it('is caught often enough to be a real decision', () => {
+    // The complaint was "steal always works, every time". It does not: measured
+    // across three hundred managed games the manager's runner is out roughly
+    // three times in ten going to second, which is where D1 actually sits. This
+    // pins the band rather than a point estimate — the exact figure moves with
+    // any change to the rating spread, and only a collapse to a free base or to
+    // a coin flip is a bug.
+    let stolen = 0;
+    let caught = 0;
+    for (let seed = 1; seed <= 120; seed++) {
+      const { rng, bats: homeTeam, field: awayTeam } = twoTeams(seed);
+      const live = createLiveGame(homeTeam, awayTeam, rng, { managing: 'away' });
+      let guard = 0;
+      while (!live.over && guard++ < 2000) {
+        const p = live.pending;
+        if (!p) break;
+        if (p.side !== 'offense') { live.submit('pitch'); continue; }
+        const steal = p.options.find((o) => o.tactic === 'steal');
+        if (!steal?.available) { live.submit('swing'); continue; }
+        const before = live.log.length;
+        live.submit('steal');
+        const said = live.log.slice(before).join(' ');
+        // Whatever else it does, a called steal must never be a silent no-op.
+        expect(/steals (second|third)|is caught stealing/.test(said)).toBe(true);
+        if (said.includes('caught stealing')) caught++; else stolen++;
+      }
+    }
+
+    const attempts = stolen + caught;
+    expect(attempts).toBeGreaterThan(500);
+    expect(caught / attempts).toBeGreaterThan(0.18);
+    expect(caught / attempts).toBeLessThan(0.45);
   });
 });

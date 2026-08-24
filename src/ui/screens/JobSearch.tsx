@@ -37,17 +37,24 @@ export function JobSearch() {
         <div style={{
           font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
         }}>{coach.name}</div>
+        {/*
+          Where the profile made at the start of the career shows up: this is
+          the one screen that is about the man rather than the program.
+        */}
+        <div style={{
+          marginTop: 3, font: "400 10px var(--mono)", color: 'var(--dim)',
+        }}>{coach.age} · {coach.homeState}</div>
       </div>
 
-      <div style={{
-        marginTop: 12, padding: '12px', background: 'var(--paper)',
-        borderLeft: '3px solid var(--clay)', font: "400 12.5px/1.55 var(--body)",
-      }}>
-        The board has decided not to renew. Your record goes with you — it is the
-        only thing that does. Somebody else's program is the next job.
-      </div>
+      {/*
+        The paragraph that used to sit here — the board has decided not to
+        renew, your record goes with you, somebody else's program is the next
+        job — said in three lines what the heading, the career tiles and the
+        list of callers below already say between them, and it said it directly
+        above the only decision on the screen.
+      */}
 
-      <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>YOUR CAREER</div>
+      <div className="label" style={{ marginTop: 16, marginBottom: 6 }}>YOUR CAREER</div>
       <div style={{
         display: 'flex', border: '1px solid var(--faint)', background: 'var(--paper)',
       }}>
@@ -57,17 +64,19 @@ export function JobSearch() {
         <Tile k="TOURNAMENTS" v={String(trips)} last />
       </div>
 
-      <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>
+      <div className="label" style={{ marginTop: 16, marginBottom: 6 }}>
         {offers.length > 0 ? 'WHO IS CALLING' : 'NOBODY IS CALLING'}
       </div>
 
+      {/* The empty state stays: with no rows on screen it is the only thing
+          that explains why, which is the same job hireGateNote does. */}
       {offers.length === 0 && (
         <div style={{
-          padding: '16px 12px', border: '1px solid var(--faint)', background: 'var(--paper)',
+          padding: '14px 12px', border: '1px solid var(--faint)', background: 'var(--paper)',
           font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
         }}>
-          No program will have you at the moment. That is what a bad run costs —
-          and it is the one thing prestige is really for.
+          No program will have you at {coach.prestige}. Prestige is what opens
+          the board, and yours is too low.
         </div>
       )}
 

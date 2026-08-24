@@ -15,6 +15,10 @@ import {
   conferenceIds, conferenceTournament, freezeRegularSeason, conferenceField,
 } from '../src/engine/postseason.js';
 import { buildSaveFile } from '../src/state/persistence.js';
+import {
+  restoreCoach, DEFAULT_PROFILE, MIN_COACH_AGE, MAX_COACH_AGE,
+  type CoachState,
+} from '../src/engine/program.js';
 import { makeRng } from '../src/engine/rng.js';
 
 // Saving touches IndexedDB, which node does not have. The store already treats
@@ -67,6 +71,73 @@ describe('the week recap does not outlive its window', () => {
     const s = useDynasty.getState();
     expect(s.season?.recruiting.week).toBe(2);
     expect(s.lastWeek?.closed).toBe(1);
+  });
+});
+
+describe('the coach profile survives the disk', () => {
+  // Name, age and hometown are flavour, which is exactly why they are easy to
+  // lose: nothing downstream breaks when they go missing, so a drop shows up as
+  // a career quietly belonging to a 41 year old man called "Coach". The save
+  // record is assembled field by field, so this is the check that the profile is
+  // actually named on it.
+
+  const PROFILE = { name: 'Wendell Hartsock', age: 52, homeState: 'MS' };
+
+  it('starts a career with the profile the creation step collected', () => {
+    useDynasty.getState().start(4242, 0, PROFILE);
+    const coach = useDynasty.getState().coach;
+    expect(coach.name).toBe('Wendell Hartsock');
+    expect(coach.age).toBe(52);
+    expect(coach.homeState).toBe('MS');
+  });
+
+  it('writes the new fields into the save file', () => {
+    useDynasty.getState().start(4242, 0, PROFILE);
+    const { season, coach } = useDynasty.getState();
+    if (!season) throw new Error('no season');
+
+    const file = buildSaveFile('slot', 'Dynasty', season, 2027, 0, { coach });
+    const saved = file.coach as CoachState;
+    expect(saved.name).toBe('Wendell Hartsock');
+    expect(saved.age).toBe(52);
+    expect(saved.homeState).toBe('MS');
+    // And back out again, which is the trip that actually matters.
+    expect(restoreCoach(saved)).toEqual(coach);
+  });
+
+  it('keeps an age outside the hiring range once a career has run long enough', () => {
+    // Twenty years in the chair puts a coach past the upper bound of the
+    // creation screen, and a load must not pull him back to it.
+    const old = { ...useDynasty.getState().coach, age: MAX_COACH_AGE + 20 };
+    expect(restoreCoach(old).age).toBe(MAX_COACH_AGE + 20);
+  });
+
+  it('loads a save written before the profile existed, with defaults', () => {
+    useDynasty.getState().start(4242, 0, PROFILE);
+    const { coach } = useDynasty.getState();
+
+    // Exactly what an older build put on disk: a coach with a name, a record and
+    // no profile at all.
+    const legacy = { ...coach } as Partial<CoachState>;
+    delete legacy.age;
+    delete legacy.homeState;
+    legacy.careerWins = 140;
+
+    const restored = restoreCoach(legacy);
+    expect(restored.age).toBe(DEFAULT_PROFILE.age);
+    expect(restored.homeState).toBe(DEFAULT_PROFILE.homeState);
+    expect(restored.age).toBeGreaterThanOrEqual(MIN_COACH_AGE);
+    // Nothing the old save did carry may be lost on the way through.
+    expect(restored.name).toBe('Wendell Hartsock');
+    expect(restored.careerWins).toBe(140);
+    expect(restored.skills).toEqual(coach.skills);
+  });
+
+  it('loads a save with no coach at all rather than throwing', () => {
+    const restored = restoreCoach(undefined);
+    expect(restored.name).toBe(DEFAULT_PROFILE.name);
+    expect(restored.age).toBe(DEFAULT_PROFILE.age);
+    expect(restored.homeState).toBe(DEFAULT_PROFILE.homeState);
   });
 });
 

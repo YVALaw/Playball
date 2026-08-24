@@ -159,12 +159,18 @@ export function Manage() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      <div style={{ flex: 'none', background: 'var(--navy)', padding: '10px 14px 12px' }}>
-        <Line abbr={away?.def.abbr ?? '—'} name={away?.def.school ?? ''} runs={awayRuns} batting={d?.half === 'top'} />
-        <Line abbr={home?.def.abbr ?? '—'} name={home?.def.school ?? ''} runs={homeRuns} batting={d?.half === 'bottom'} />
+      {/*
+        One scoreboard, not two. The linescore used to sit in its own paper block
+        underneath this strip, which meant the score was printed twice and the
+        pair of them ate 145px of a phone screen whose whole job is the field and
+        the play log. Folded in, the R column IS the score and the strip costs
+        82px. What went is the giant 22px run total and the full school names —
+        the abbreviation and a bold R say the same thing in a third of the space.
+      */}
+      <div style={{ flex: 'none', background: 'var(--navy)', padding: '8px 12px 9px' }}>
         <div style={{
-          marginTop: 8, display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          height: 13,
         }}>
           <span style={{
             font: "600 10px var(--mono)", letterSpacing: '.16em', color: 'rgba(246,241,230,.72)',
@@ -184,25 +190,24 @@ export function Manage() {
             ))}
           </span>
         </div>
-      </div>
-
-      <div style={{
-        flex: 'none', padding: '4px 10px 5px',
-        background: 'var(--paper)', borderBottom: '1px solid var(--faint)',
-      }}>
-        <LineScore
-          innings={innCols}
-          rows={[
-            {
-              abbr: away?.def.abbr ?? 'AWY', cells: cellsFor('away'),
-              r: r.away.runs, h: r.away.hits, e: r.away.errors,
-            },
-            {
-              abbr: home?.def.abbr ?? 'HOM', cells: cellsFor('home'),
-              r: r.home.runs, h: r.home.hits, e: r.home.errors,
-            },
-          ]}
-        />
+        <div style={{ marginTop: 4 }}>
+          <LineScore
+            tone="navy"
+            innings={innCols}
+            rows={[
+              {
+                abbr: away?.def.abbr ?? 'AWY', cells: cellsFor('away'),
+                r: awayRuns, h: r.away.hits, e: r.away.errors,
+                batting: d?.half === 'top',
+              },
+              {
+                abbr: home?.def.abbr ?? 'HOM', cells: cellsFor('home'),
+                r: homeRuns, h: r.home.hits, e: r.home.errors,
+                batting: d?.half === 'bottom',
+              },
+            ]}
+          />
+        </div>
       </div>
 
       {/*
@@ -279,7 +284,12 @@ export function Manage() {
         flex: 1, minWidth: 0, overflowY: 'auto', padding: '9px 12px 12px 14px',
       }}>
         {recent.map((line, i) => {
-          const call = line.startsWith('[bunt]') || line.startsWith('[intentional]');
+          // The calls, and the two ways a call goes wrong. A runner thrown out
+          // is the most consequential thing on this screen and it was reading as
+          // dim grey filler, which is a large part of why a manager can call for
+          // a steal all afternoon and never notice the ones that failed.
+          const call = line.startsWith('[bunt]') || line.startsWith('[intentional]')
+            || /caught stealing|thrown out|forced at/.test(line);
           const sub = line.startsWith('   ');
           return (
             <div key={i} style={{
@@ -468,27 +478,4 @@ function Picker(
   );
 }
 
-function Line(
-  { abbr, name, runs, batting }:
-  { abbr: string; name: string; runs: number; batting?: boolean },
-) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '1px 0' }}>
-      <span style={{ width: 8, font: "600 11px var(--mono)", color: 'var(--clay)' }}>
-        {batting ? '•' : ''}
-      </span>
-      <span style={{
-        width: 34, font: "700 13px var(--display)", letterSpacing: '.04em', color: 'var(--cream)',
-      }}>{abbr}</span>
-      <span style={{
-        flex: 1, minWidth: 0, font: "400 11px var(--body)", color: 'rgba(246,241,230,.6)',
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>{name}</span>
-      <span style={{
-        font: "800 22px/1 var(--display)",
-        color: batting ? 'var(--cream)' : 'rgba(246,241,230,.75)',
-      }}>{runs}</span>
-    </div>
-  );
-}
 

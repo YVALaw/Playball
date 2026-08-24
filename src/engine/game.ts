@@ -422,6 +422,24 @@ export function createHalfInning(
 
   const addOuts = (n: number): void => { outs += n; fld.pitchLine(fld.pitcher).outs += n; };
 
+  /**
+   * Runs cross the plate in three separate places in here — the walk that forces
+   * one in, the bunt, and the plate appearance proper — and each has to charge
+   * the runner, the pitcher who put him on, and the earned split the same way.
+   * They did not: the intentional walk threw its list of scorers away unread, so
+   * a bases-loaded free pass erased the man on third instead of scoring him.
+   */
+  const bringHome = (runners: readonly Hitter[], pitcher: Pitcher, earned: boolean): void => {
+    for (const runner of runners) {
+      bat.hitLine(runner).r++;
+      const guilty = blame.get(runner) ?? pitcher;
+      const gl = fld.pitchLine(guilty);
+      gl.r++;
+      if (earned) gl.er++;
+    }
+    bat.runs += runners.length;
+  };
+
   let finished = false;
 
   // A steal, wherever it came from, is an event of its own: the runner moves or
@@ -431,7 +449,13 @@ export function createHalfInning(
   // the out it recorded was the third, which ends the half with the batter's
   // turn still to come: he leads off the next inning, which is how the rule works.
   const resolveSteal = (forced: boolean): boolean => {
-    const stole = attemptSteal(bases, bat, fld, rng, say, forced, events);
+    // The automatic game takes second and only second. League stolen base and
+    // caught stealing rates are calibrated against that, and a computer dugout
+    // that also started taking third would move both without anyone having
+    // decided to. A manager who calls for it gets whichever bag is open.
+    const target = forced ? stealTarget(bases) : 2;
+    if (target === null) return false;
+    const stole = attemptSteal(bases, bat, fld, rng, say, forced, events, target);
     if (stole !== 'caught') return false;
     addOuts(1);
     if (events) events.push({ kind: 'out', outs: 1 });
@@ -471,12 +495,36 @@ export function createHalfInning(
     const basesBefore: Bases = [bases[0], bases[1], bases[2]];
     const outsBefore = outs;
 
+    // Buffered so the batter's line comes first. The runner detail has to be
+    // worked out before the headline can be printed — the headline counts the
+    // runs — but "Torres scores from second" printed above "Ramirez singles"
+    // reads as a different inning.
+    const notes: string[] = [];
+    const note: Say = (line) => { notes.push(line); };
+
     // Two calls are not outcomes to be nudged — they are decisions that settle
     // the plate appearance on their own.
     if (tactic === 'ibb') {
       bLine.bb++; pLine.bb++; pLine.bf++;
-      forceAdvance(bases, batter, [], blame, pitcher);
+      const forced: Hitter[] = [];
+      forceAdvance(bases, batter, forced, blame, pitcher);
       say(`[intentional] ${batter.name} is walked on purpose.`);
+      // With the bases loaded the free pass is not free: the man on third walks
+      // in. He used to be dropped on the floor instead — no run, no out, and one
+      // fewer runner than the inning started with.
+      for (const runner of forced) say(`   ${runner.name} is forced home.`);
+      bringHome(forced, pitcher, true);
+      bLine.rbi += forced.length;
+      if (events) {
+        const moves = runnerMoves(basesBefore, bases, forced);
+        if (moves.length > 0) events.push({ kind: 'advance', runners: moves });
+        if (forced.length > 0) events.push({ kind: 'score', runs: forced.length });
+      }
+      if (forced.length > 0) onScore?.(bat, fld);
+      if (canWalkOff && bat.runs > fld.runs) {
+        say(`   ${bat.team.name} win it.`);
+        finished = true; return true;
+      }
       if (outs >= 3) { finished = true; return true; }
       return false;
     }
@@ -484,10 +532,11 @@ export function createHalfInning(
     if (tactic === 'bunt') {
       const buntBases: Bases = [bases[0], bases[1], bases[2]];
       const buntOuts = outs;
-      const res = sacrifice(bases, batter, outs, rng, bLine, pLine, blame, pitcher);
+      const res = sacrifice(bases, batter, outs, rng, bLine, pLine, blame, pitcher, note);
       addOuts(res.outs);
       pLine.bf++;
       say(`[bunt] ${batter.name} ${res.text}`);
+      for (const line of notes) say(line);
 
       // A bunt has to emit events like any other plate appearance. It resolves
       // without going through the pitch engine, so it produced a log line and no
@@ -502,13 +551,7 @@ export function createHalfInning(
         if (outs > buntOuts) events.push({ kind: 'out', outs: outs - buntOuts });
         if (res.scored.length > 0) events.push({ kind: 'score', runs: res.scored.length });
       }
-      for (const runner of res.scored) {
-        bat.hitLine(runner).r++;
-        const guilty = blame.get(runner) ?? pitcher;
-        fld.pitchLine(guilty).r++;
-        fld.pitchLine(guilty).er++;
-      }
-      bat.runs += res.scored.length;
+      bringHome(res.scored, pitcher, true);
       bLine.rbi += res.scored.length;
       if (res.scored.length > 0) onScore?.(bat, fld);
       if (canWalkOff && bat.runs > fld.runs) {
@@ -580,22 +623,20 @@ export function createHalfInning(
       if (rng() < chance) { event = 'error'; errored = true; }
     }
 
-    // Buffered so the batter's line comes first. `advanceOnHit` has to run
-    // before it — the headline counts the runs — but "Torres scores from
-    // second" printed above "Ramirez singles" reads as a different inning.
-    const notes: string[] = [];
-    const note: Say = (line) => { notes.push(line); };
-
     switch (event) {
       case 'walk':
         bLine.bb++; pLine.bb++;
         forceAdvance(bases, batter, scored, blame, pitcher);
         say(`${cnt} ${batter.name} walks. (${hand})`);
+        // The only run in the game nobody swung at. With the bases loaded the
+        // scoreboard moved and the log never said whose run it was.
+        for (const r of scored) note(`   ${r.name} is forced home.`);
         break;
       case 'hbp':
         bLine.hbp++;
         forceAdvance(bases, batter, scored, blame, pitcher);
         say(`${cnt} ${batter.name} is hit by the pitch.`);
+        for (const r of scored) note(`   ${r.name} is forced home.`);
         break;
       case 'error':
         bLine.ab++; fld.errors++;
@@ -630,7 +671,7 @@ export function createHalfInning(
           const looking = pa.pitches[pa.pitches.length - 1] === 'called';
           say(`${cnt} ${batter.name} strikes out ${looking ? 'looking' : 'swinging'}.`);
         } else {
-          const res = resolveOut(bases, batter, pa.kind, outs, rng, scored, blame, pitcher, called, fielder);
+          const res = resolveOut(bases, batter, pa.kind, outs, rng, scored, blame, pitcher, called, fielder, note);
           addOuts(res.outs);
           say(`${cnt} ${batter.name} ${res.text}`);
         }
@@ -650,14 +691,7 @@ export function createHalfInning(
 
     // Credit runs to the runners who scored and to the pitchers responsible.
     // `scored` is ordered lead runner first, which is the order they cross.
-    for (const runner of scored.slice(0, counted)) {
-      bat.hitLine(runner).r++;
-      const guilty = blame.get(runner) ?? pitcher;
-      const gl = fld.pitchLine(guilty);
-      gl.r++;
-      if (!errored) gl.er++;
-    }
-    bat.runs += counted;
+    bringHome(scored.slice(0, counted), pitcher, !errored);
     bLine.rbi += errored ? 0 : counted;
     if (counted > 0) onScore?.(bat, fld);
 
@@ -1114,6 +1148,7 @@ function resolveOut(
   scored: Hitter[], blame: Map<Hitter, Pitcher>, pitcher: Pitcher,
   called?: TacticMods,
   fielder?: Hitter | null,
+  note?: Say,
 ): { outs: number; text: string } {
   // A call can raise the double play risk or make a sacrifice fly likelier.
   const dpRate = BASERUNNING.doublePlayRate * ((called?.doublePlay ?? BASERUNNING.doublePlayRate) / BASERUNNING.doublePlayRate);
@@ -1121,12 +1156,17 @@ function resolveOut(
   const fromThird = called?.scoreFromThird ?? BASERUNNING.scoreFromThirdOnGroundOut;
   if (kind === 'ground' && bases[0] && outs < 2) {
     if (rng() < clamp(dpRate * mult(batter.speed, -0.40), 0.08, 0.62)) {
-      if (bases[2] && rng() < BASERUNNING.scoreFromThirdOnDoublePlay) { scored.push(bases[2]); bases[2] = null; }
+      if (bases[2] && rng() < BASERUNNING.scoreFromThirdOnDoublePlay) {
+        note?.(`   ${bases[2].name} scores from third.`);
+        scored.push(bases[2]); bases[2] = null;
+      }
+      note?.(`   ${bases[0].name} is forced at second.`);
       bases[0] = null;
       if (bases[1] && !bases[2]) { bases[2] = bases[1]; bases[1] = null; }
       return { outs: 2, text: 'grounds into a double play.' };
     }
     if (rng() < BASERUNNING.fieldersChoiceRate) {
+      note?.(`   ${bases[0].name} is forced at second.`);
       bases[0] = batter;
       blame.set(batter, pitcher);
       return { outs: 1, text: "reaches on a fielder's choice." };
@@ -1134,6 +1174,7 @@ function resolveOut(
   }
   if ((kind === 'fly' || kind === 'line') && bases[2] && outs < 2) {
     if (rng() < (kind === 'fly' ? sacFly : BASERUNNING.sacFlyOnLine)) {
+      note?.(`   ${bases[2].name} tags and scores.`);
       scored.push(bases[2]); bases[2] = null;
       return { outs: 1, text: 'lifts a sacrifice fly, run scores.' };
     }
@@ -1142,12 +1183,22 @@ function resolveOut(
   // run. Without this a runner on third could only score on a hit or a fly ball.
   if (kind === 'ground' && bases[2] && outs < 2) {
     if (rng() < fromThird) {
+      note?.(`   ${bases[2].name} scores from third.`);
       scored.push(bases[2]); bases[2] = null;
-      if (bases[1] && !bases[0]) { bases[2] = bases[1]; bases[1] = null; }
+      if (bases[1] && !bases[0]) {
+        note?.(`   ${bases[1].name} to third.`);
+        bases[2] = bases[1]; bases[1] = null;
+      }
       return { outs: 1, text: 'grounds out, the run scores.' };
     }
   }
-  if (kind === 'ground' && bases[1] && !bases[0] && rng() < BASERUNNING.secondToThirdOnGroundOut) {
+  // Third has to be empty for him to take it. Without that check the runner on
+  // second was written straight on top of the man on third, who left the inning
+  // with no run and no out against him — a runner deleted mid-play, and the
+  // exact thing a viewer sees as "he just disappeared".
+  if (kind === 'ground' && bases[1] && !bases[0] && !bases[2]
+      && rng() < BASERUNNING.secondToThirdOnGroundOut) {
+    note?.(`   ${bases[1].name} to third.`);
     bases[2] = bases[1]; bases[1] = null;
     return { outs: 1, text: 'grounds out to the right side, runner moves up.' };
   }
@@ -1172,6 +1223,7 @@ function sacrifice(
   bases: Bases, batter: Hitter, outs: number, rng: Rng,
   bLine: BattingLine, pLine: PitchingLine,
   blame: Map<Hitter, Pitcher>, pitcher: Pitcher,
+  note?: Say,
 ): { outs: number; text: string; scored: Hitter[] } {
   const scored: Hitter[] = [];
   const leadIndex = bases[2] ? 2 : bases[1] ? 1 : bases[0] ? 0 : -1;
@@ -1184,13 +1236,31 @@ function sacrifice(
   // Beating it out: rare, and mostly a speed thing.
   if (rng() < clamp(0.09 * mult(batter.speed, 0.9), 0.02, 0.28)) {
     bLine.ab++; bLine.h++; pLine.h++;
-    advanceOnHit(bases, batter, 1, rng, scored, blame, pitcher);
-    return { outs: 0, text: 'beats out a bunt single!', scored };
+    // The runners it retires count. Thrown away, a man gunned down going first
+    // to third on a bunt single left the bases without the out ever being
+    // recorded, which is a free erased baserunner in the batting team's favour.
+    const retired = advanceOnHit(
+      bases, batter, 1, rng, scored, blame, pitcher, RUNNING.balanced, 50, note,
+    );
+    return { outs: retired, text: 'beats out a bunt single!', scored };
   }
 
   // Botched: the lead runner is forced, which is the disaster case.
-  if (rng() < clamp(0.12 * mult(batter.speed, -0.4), 0.04, 0.30)) {
-    bases[leadIndex as 0 | 1 | 2] = null;
+  //
+  // Only the unbroken chain from first can be forced — a man on second with
+  // first base empty is under no obligation to run, so there is nothing to
+  // force and the play is an ordinary sacrifice instead. The old version took
+  // the lead runner whether he was forced or not, erased him, and then wrote the
+  // batter over the top of whoever stood on first: two runners off the field for
+  // one out.
+  let forcedAt = -1;
+  for (let i = 0; i < 3 && bases[i]; i++) forcedAt = i;
+  if (forcedAt >= 0 && rng() < clamp(0.12 * mult(batter.speed, -0.4), 0.04, 0.30)) {
+    const caught = bases[forcedAt as 0 | 1 | 2];
+    note?.(`   ${caught?.name ?? 'The lead runner'} is forced at ${BASE_WORD[forcedAt + 1] ?? 'home'}.`);
+    bases[forcedAt as 0 | 1 | 2] = null;
+    // Everyone behind him still moves up; the batter has first.
+    for (let i = forcedAt - 1; i >= 0; i--) { bases[i + 1] = bases[i] ?? null; bases[i] = null; }
     bases[0] = batter;
     blame.set(batter, pitcher);
     bLine.ab++;
@@ -1202,8 +1272,8 @@ function sacrifice(
     const runner = bases[i];
     if (!runner) continue;
     bases[i] = null;
-    if (i === 2) { scored.push(runner); }
-    else bases[i + 1] = runner;
+    if (i === 2) { note?.(`   ${runner.name} scores from third.`); scored.push(runner); }
+    else { note?.(`   ${runner.name} to ${BASE_WORD[i + 1] ?? 'third'}.`); bases[i + 1] = runner; }
   }
   return { outs: 1, text: 'lays down a sacrifice.', scored };
 }
@@ -1236,14 +1306,43 @@ const AVERAGE_CATCHER_ARM = 60;
 const catcherArm = (c: Hitter, sensitivity: number): number =>
   mult(50 + (c.arm - AVERAGE_CATCHER_ARM), sensitivity);
 
+/**
+ * The two bags a runner can take on his own, and what each one costs him.
+ *
+ * Third is the harder theft and the easier jump. The throw is shorter, so the
+ * catcher's arm decides more of it and the base constant sits lower; against
+ * that, a pitcher facing a runner on second is mostly worrying about the hitter
+ * and holds him less, so his hold matters less too. Home is not here on purpose:
+ * a straight steal of the plate is a once-a-season play and modelling it would
+ * put a button on the screen for something nobody should ever press.
+ *
+ * Measured over every generated lineup bat against every school's starter and
+ * catcher: a called steal of second is caught 30% of the time and of third 36%,
+ * against a real D1 caught-stealing rate in the twenties to low thirties.
+ */
+const STEAL_OF: Record<2 | 3, { base: number; speed: number; hold: number; arm: number }> = {
+  2: { base: 0.70, speed: 0.30, hold: -0.15, arm: -0.34 },
+  3: { base: 0.64, speed: 0.30, hold: -0.10, arm: -0.40 },
+};
+
+/** Where a runner would go if one were sent. Null when every bag ahead is taken. */
+export function stealTarget(bases: Bases): 2 | 3 | null {
+  if (bases[0] && !bases[1]) return 2;
+  if (bases[1] && !bases[2]) return 3;
+  return null;
+}
+
 function attemptSteal(
   bases: Bases, bat: TeamState, fld: TeamState, rng: Rng, say: Say, forced: boolean,
   events: PlayEvent[] | null = null,
+  target: 2 | 3 = 2,
 ): 'stolen' | 'caught' | null {
-  const runner = bases[0];
-  if (!runner || bases[1]) return null;
+  const from = (target - 1) as 1 | 2;
+  const runner = bases[from - 1];
+  if (!runner || bases[target - 1]) return null;
   const green = STEALS[bat.strategy.steals];
   if (green === 0 && !forced) return null;
+  const profile = STEAL_OF[target];
   // Runners pick their spots. A cannon behind the plate does not just throw
   // people out, it stops them leaving — which is why the arm has to appear here
   // as well as in the throw, or elite catchers would post huge caught-stealing
@@ -1258,20 +1357,28 @@ function attemptSteal(
   // equation. The pitcher controls how big a jump the runner gets; the runner
   // controls how fast he covers ninety feet; **the catcher has to make the
   // throw**, and a strong arm behind the plate is worth more than either.
+  //
+  // The ceiling used to be 0.94, which measured out as decoration: the best
+  // pairing the generator can produce — a 95 speed runner against a 41 arm — only
+  // reaches 0.90, so the clamp described a model nobody could reach. It now sits
+  // where the model actually tops out, and the floor low enough that a plodder
+  // against a cannon is genuinely a bad idea rather than a coin flip.
   const success = clamp(
-    0.70 * mult(runner.speed, 0.30) * mult(fld.pitcher.holdRunners, -0.15)
-         * catcherArm(fld.catcher, -0.34),
-    0.30, 0.94,
+    profile.base * mult(runner.speed, profile.speed)
+      * mult(fld.pitcher.holdRunners, profile.hold)
+      * catcherArm(fld.catcher, profile.arm),
+    0.25, 0.90,
   );
   const line = bat.hitLine(runner);
+  const word = target === 2 ? 'second' : 'third';
   if (rng() < success) {
-    bases[0] = null; bases[1] = runner; line.sb++;
-    say(`   ${runner.name} steals second.`);
-    if (events) events.push({ kind: 'advance', runners: [{ id: runner.id, from: 1, to: 2 }] });
+    bases[from - 1] = null; bases[target - 1] = runner; line.sb++;
+    say(`   ${runner.name} steals ${word}.`);
+    if (events) events.push({ kind: 'advance', runners: [{ id: runner.id, from, to: target }] });
     return 'stolen';
   }
-  bases[0] = null; line.cs++;
-  say(`   ${runner.name} is caught stealing.`);
+  bases[from - 1] = null; line.cs++;
+  say(`   ${runner.name} is caught stealing ${word}.`);
   return 'caught';
 }
 

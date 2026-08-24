@@ -364,30 +364,12 @@ function CardHead(
     rising: boolean;
   },
 ) {
-  const closePlayer = useDynasty((s) => s.closePlayer);
-
+  // No back control here. The overlay that mounts this card carries the navy
+  // ← BACK bar every full-screen overlay in the game carries, and that bar sits
+  // above this header and outside the scroller — so the card can start at the
+  // face, and the safe area is the bar's problem rather than this one's.
   return (
-    <div style={{
-      position: 'relative',
-      padding: 'calc(env(safe-area-inset-top) + 8px) 12px 0',
-    }}>
-      {/*
-        The way out, inside the card rather than on a bar above it.
-        Absolutely placed so it costs no vertical space — the header is already
-        the tallest thing on this screen and a row containing one small control
-        would be forty pixels the game log never gets back.
-      */}
-      <button
-        onClick={closePlayer}
-        aria-label="Back"
-        className="tap"
-        style={{
-          position: 'absolute', left: 2, top: 'calc(env(safe-area-inset-top) + 2px)',
-          padding: '8px 14px', background: 'transparent', border: 'none',
-          color: 'var(--ink)', font: "700 17px/1 var(--mono)",
-        }}
-      >←</button>
-
+    <div style={{ padding: '8px 12px 0' }}>
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
       }}>

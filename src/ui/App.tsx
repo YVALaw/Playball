@@ -437,25 +437,47 @@ function TableOverlay() {
       background: 'var(--field)',
       display: 'flex', flexDirection: 'column',
     }}>
-      <div style={{
-        flex: 'none', padding: '10px 14px',
-        paddingTop: 'calc(env(safe-area-inset-top) + 10px)',
-        background: 'var(--navy)', borderBottom: '3px solid var(--clay)',
-      }}>
-        <button
-          onClick={close}
-          style={{
-            padding: '11px 18px', background: 'rgba(246,241,230,.14)',
-            border: '1px solid rgba(246,241,230,.32)',
-            color: 'var(--cream)', font: "700 12px var(--mono)", letterSpacing: '.14em',
-          }}
-        >← BACK</button>
-      </div>
+      <BackBar onBack={close} />
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative' }}>
         {overlay === 'schedule' && <Schedule />}
         {overlay === 'standings' && <Standings />}
         {overlay === 'rankings' && <Rankings />}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The way out of anything that covers the whole frame.
+ *
+ * One definition, because the two overlays are the same object to the player
+ * and looked like two different apps when each drew its own: the tables came
+ * back on a navy bar with a bordered ← BACK, the player card on a bare chevron
+ * tucked into its own header. The navy bar is the one the rest of the game
+ * uses, and it earns its height by being outside the scroller — a control you
+ * can lose by reading too far is the complaint the whole of Sticky.tsx exists
+ * to answer.
+ *
+ * Bottom sheets dismiss with CLOSE on their clay bar instead, and that is a
+ * different pattern for a different thing: a sheet sits on top of a screen you
+ * can still see, while these replace it.
+ */
+function BackBar({ onBack }: { onBack: () => void }) {
+  return (
+    <div style={{
+      flex: 'none', padding: '10px 14px',
+      paddingTop: 'calc(env(safe-area-inset-top) + 10px)',
+      background: 'var(--navy)', borderBottom: '3px solid var(--clay)',
+    }}>
+      <button
+        onClick={onBack}
+        className="tap"
+        style={{
+          padding: '11px 18px', background: 'rgba(246,241,230,.14)',
+          border: '1px solid rgba(246,241,230,.32)',
+          color: 'var(--cream)', font: "700 12px var(--mono)", letterSpacing: '.14em',
+        }}
+      >← BACK</button>
     </div>
   );
 }
@@ -491,20 +513,22 @@ function seasonBadge(
  * had scrolled, and "back" dropped you at the top of something else. Nothing
  * underneath unmounts now, so closing the card puts you exactly where you were.
  *
- * The bar that used to carry the back button lived here rather than in the card,
- * so it could not scroll away. The card now pins its own header instead and puts
- * the chevron in it, which is one control rather than two stacked ones — so all
- * this has to provide is a positioned box of a known size for that header to
- * anchor to.
+ * The back bar belongs to the overlay rather than to the card, and it is the
+ * same bar the table overlay uses. A chevron drawn inside the card's own header
+ * was tried and is what prompted "the back button does not follow the other
+ * designs": it saved forty pixels and cost the player the one control in the
+ * app that always looks the same wherever it appears.
  */
 function PlayerOverlay() {
   const selectedPlayer = useDynasty((s) => s.selectedPlayer);
+  const close = useDynasty((s) => s.closePlayer);
   return (
     <div style={{
       position: 'absolute', inset: 0, zIndex: 30,
       background: 'var(--field)',
       display: 'flex', flexDirection: 'column',
     }}>
+      <BackBar onBack={close} />
       {/*
         Keyed on the man, so opening a second card is a fresh card.
         The scroll reset above resets the screen *underneath* the overlay, which
