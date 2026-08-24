@@ -6,6 +6,7 @@ import { useState } from 'react';
 
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { teamColour } from '../Avatar.js';
+import { LineScore } from '../LineScore.js';
 import { regularRecord } from '../../engine/season.js';
 import type { BoxScore, BoxLine, SeasonState } from '../../engine/season.js';
 import { seasonDate } from '../format.js';
@@ -190,6 +191,37 @@ function BoxScoreSheet(
           }}>CLOSE</button>
         </div>
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px' }}>
+          {/*
+            The linescore, when the save has one. Boxes stored before it existed
+            have no lines to show, and the sheet must still open for them. The
+            home line is one inning short when the bottom of the last was never
+            needed, which is what the 'X' says.
+          */}
+          {box.awayLine && box.homeLine && (
+            <div style={{
+              marginBottom: 14, padding: '6px 8px',
+              border: '1px solid var(--faint)', background: 'var(--paper)',
+            }}>
+              <LineScore
+                innings={Math.max(box.awayLine.length, box.homeLine.length)}
+                rows={[
+                  {
+                    abbr: away?.def.abbr ?? 'AWY',
+                    cells: box.awayLine.map((n) => n),
+                    r: box.awayRuns, h: box.awayHits ?? 0, e: box.awayErrors ?? 0,
+                  },
+                  {
+                    abbr: home?.def.abbr ?? 'HOM',
+                    cells: [
+                      ...box.homeLine,
+                      ...(box.homeLine.length < box.awayLine.length ? ['X'] : []),
+                    ],
+                    r: box.homeRuns, h: box.homeHits ?? 0, e: box.homeErrors ?? 0,
+                  },
+                ]}
+              />
+            </div>
+          )}
           <Side
             label={away?.def.school ?? 'Away'} abbr={away?.def.abbr ?? ''}
             runs={box.awayRuns} batting={box.awayBatting} pitching={box.awayPitching}

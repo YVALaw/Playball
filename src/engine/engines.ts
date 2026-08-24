@@ -54,7 +54,9 @@ export function log5Outcome(
 
   const platoon = platoonMultiplier(batter, pitcher);
   const context = contextMultiplier(ctx);
-  const offense = platoon * context;
+  // The batting side's coach-skill nudge rides in here, on the same product the
+  // real levers use. It is 1 for every team without a trained coach.
+  const offense = platoon * context * (ctx.offenseMult ?? 1);
 
   // Apply matchup, context and the manager's call to the batter's offensive
   // events, then renormalize. A tactic tilts the distribution; it never forces
@@ -249,7 +251,8 @@ export const enginePitch: EngineFn = (batter, pitcher, ctx, rng): PAResult => {
   const local: PAContext = {
     ...ctx,
     // Platoon and context bend the pitch model rather than the outcome table.
-    zoneBias: 1 / Math.pow(platoon * context, 0.5),
+    // The coach-skill nudge folds in the same way, so both engines price it.
+    zoneBias: 1 / Math.pow(platoon * context * (ctx.offenseMult ?? 1), 0.5),
   };
 
   for (let guard = 0; guard < 25; guard++) {

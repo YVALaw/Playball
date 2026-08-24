@@ -283,8 +283,8 @@ export function Board() {
             )}
             <div style={{ color: 'var(--dim)' }}>
               {lastWeek.gone === 0
-                ? 'Nobody came off the board anywhere. Your budget is back to thirty.'
-                : `${lastWeek.gone} recruit${lastWeek.gone === 1 ? '' : 's'} signed elsewhere and ${lastWeek.gone === 1 ? 'is' : 'are'} off the board. Your budget is back to thirty.`}
+                ? `Nobody came off the board anywhere. Your budget is back to ${budgetFor(myStars)}.`
+                : `${lastWeek.gone} recruit${lastWeek.gone === 1 ? '' : 's'} signed elsewhere and ${lastWeek.gone === 1 ? 'is' : 'are'} off the board. Your budget is back to ${budgetFor(myStars)}.`}
             </div>
           </div>
         </div>
@@ -362,6 +362,7 @@ export function Board() {
           prospect={open}
           userTeam={userTeam}
           coachPrestige={coach.prestige}
+          recruitingSkill={coach.skills.recruiting}
           pitch={pitch}
           reachable={canPursue(open, myStars)}
           live={live}
@@ -676,9 +677,10 @@ function RosterView() {
 }
 
 function ProspectSheet({
-  prospect, userTeam, coachPrestige, pitch, reachable, live, full, left, onSet, onClose,
+  prospect, userTeam, coachPrestige, recruitingSkill, pitch, reachable, live, full, left,
+  onSet, onClose,
 }: {
-  prospect: Prospect; userTeam: number; coachPrestige: number;
+  prospect: Prospect; userTeam: number; coachPrestige: number; recruitingSkill: number;
   pitch: ReturnType<typeof pitchFor>;
   reachable: boolean; live: boolean; full: boolean; left: number;
   onSet: (n: number) => void; onClose: () => void;
@@ -765,6 +767,7 @@ function ProspectSheet({
             <Overview
               prospect={prospect} pitch={pitch} reachable={reachable} live={live}
               full={full} spent={spent} left={left} coachPrestige={coachPrestige}
+              recruitingSkill={recruitingSkill}
               onSet={onSet}
             />
           )}
@@ -778,16 +781,19 @@ function ProspectSheet({
 }
 
 function Overview({
-  prospect, pitch, reachable, live, full, spent, left, coachPrestige, onSet,
+  prospect, pitch, reachable, live, full, spent, left, coachPrestige, recruitingSkill, onSet,
 }: {
   prospect: Prospect; pitch: ReturnType<typeof pitchFor>;
   reachable: boolean; live: boolean; full: boolean;
-  spent: number; left: number; coachPrestige: number; onSet: (n: number) => void;
+  spent: number; left: number; coachPrestige: number; recruitingSkill: number;
+  onSet: (n: number) => void;
 }) {
   const wants = [...PRIORITIES].sort(
     (a, b) => prospect.priorities[b] - prospect.priorities[a],
   ).slice(0, 2);
-  const gain = weeklyPoints(prospect, pitch, Math.max(spent, 1), coachPrestige);
+  // The same call the week close will make, skill included, or the preview
+  // undersells what the spend is actually worth.
+  const gain = weeklyPoints(prospect, pitch, Math.max(spent, 1), coachPrestige, recruitingSkill);
   const steps = [0, 2, 4, 6, 8, 10, 12].filter((n) => n <= MAX_PER_RECRUIT);
 
   return (

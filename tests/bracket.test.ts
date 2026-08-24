@@ -197,6 +197,118 @@ describe('a game played by hand', () => {
   });
 });
 
+describe('the end of your run', () => {
+  // Being knocked out is the one thing June has to say out loud, and it was the
+  // one thing it could not: the screen read elimination off the live bracket,
+  // and losing a deciding game folds that bracket into the stage results in the
+  // same commit. There was no render in which the player was out and his
+  // bracket still existed, so the modal never fired at all — worse, the losing
+  // side of a tier still got the button that reads ON TO THE REGIONALS.
+  //
+  // So the store records it. These pin the fact rather than the drawing: what
+  // the screen reads has to be true after the bracket is gone.
+
+  /**
+   * A finished game this series' `loser` loses, to hand back as a played one.
+   *
+   * Handed in the way a managed game is, because the point is the state left
+   * behind and not which side the simulation happened to favour: a test of
+   * elimination that only runs when the dice agree is a test of the dice.
+   */
+  const defeatFor = (
+    s: ReturnType<typeof world>,
+    series: { a: number | null; b: number | null; aSeed: number; bSeed: number },
+    loser: number,
+  ) => {
+    const host = hostOfGame(series as never, 0);
+    const guest = host === series.a ? (series.b as number) : (series.a as number);
+    for (let seed = 1; seed < 60; seed++) {
+      const g = simGame(s.teams[host]!.team, s.teams[guest]!.team, makeRng(seed * 977), {});
+      const won = g.home.runs > g.away.runs ? host : guest;
+      if (won !== loser) return g;
+    }
+    throw new Error('sixty games and the loser never lost one');
+  };
+
+  it('remembers a loss in the last round, after the bracket is gone', async () => {
+    const { useDynasty } = await import('../src/state/store.js');
+    const s = world(2101);
+    freezeRegularSeason(s);
+
+    // Two teams, one series: whatever happens here happens in a final.
+    const me = 0;
+    const foe = s.teams.find(
+      (t) => t.index !== me && t.conference !== s.teams[me]!.conference,
+    )!.index;
+    const state = startSeriesBracket(s, [me, foe], [1]);
+    const final = state.rounds[0]![0]!;
+
+    useDynasty.setState({
+      season: s, userTeam: me, year: 2099,
+      bracket: { stage: 'regional', cups: [], regionals: [], national: null },
+      myBracket: {
+        kind: 'regional', state,
+        preplayed: new Map([[pairKey(me, foe), defeatFor(s, final, me)]]),
+      },
+      knockout: null, postseasonSeen: [],
+    });
+
+    useDynasty.getState().simBracket('rest');
+    const after = useDynasty.getState();
+
+    // The bracket is gone, exactly as it is on screen.
+    expect(after.myBracket).toBeNull();
+    expect(after.knockout).not.toBeNull();
+    expect(after.knockout!.year).toBe(2099);
+    expect(after.knockout!.kind).toBe('regional');
+    expect(roundName(after.knockout!.rounds, after.knockout!.round)).toBe('Final');
+
+    // And the result the screen reads its verdict from says the same thing, so
+    // nothing downstream can congratulate him for it.
+    expect(after.bracket!.regionals[0]!.champion).toBe(foe);
+  });
+
+  it('remembers a loss that does not end the tournament, and keeps it through the rest', async () => {
+    const { useDynasty } = await import('../src/state/store.js');
+    const s = world(2102);
+    freezeRegularSeason(s);
+
+    // Four teams: the top seed's semifinal, lost, leaves a tournament still
+    // being played. Nothing folds the bracket away here, and the elimination
+    // still has to be recorded — the screen's own copy of it is a round old by
+    // the time anything renders.
+    const me = 0;
+    const rest = s.teams.filter((t) => t.index !== me).slice(0, 3).map((t) => t.index);
+    const state = startSeriesBracket(s, [me, ...rest], [1, 1]);
+    const mine = state.rounds[0]!.find((x) => x.a === me || x.b === me)!;
+    const foe = (mine.a === me ? mine.b : mine.a) as number;
+
+    useDynasty.setState({
+      season: s, userTeam: me, year: 2099,
+      bracket: { stage: 'conference', cups: [], regionals: [], national: null },
+      myBracket: {
+        kind: 'conference', state,
+        preplayed: new Map([[pairKey(me, foe), defeatFor(s, mine, me)]]),
+      },
+      knockout: null, postseasonSeen: [],
+    });
+
+    useDynasty.getState().simBracket('round');
+    const mid = useDynasty.getState();
+    expect(mid.myBracket).not.toBeNull();
+    expect(mid.knockout).not.toBeNull();
+    expect(roundName(mid.knockout!.rounds, mid.knockout!.round)).toBe('Semifinal');
+
+    // Watching the rest of it out is what a knocked-out coach does, and it must
+    // not rewrite where his own year ended.
+    useDynasty.getState().simBracket('rest');
+    const end = useDynasty.getState();
+    expect(end.myBracket).toBeNull();
+    expect(end.knockout).toEqual(mid.knockout);
+    expect(end.bracket!.cups[0]!.champion).not.toBe(me);
+  });
+});
+
 describe('the conference tournament', () => {
   it('takes half the league, so finishing seventh costs you something', () => {
     const s = world(78);

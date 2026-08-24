@@ -491,33 +491,30 @@ function seasonBadge(
  * had scrolled, and "back" dropped you at the top of something else. Nothing
  * underneath unmounts now, so closing the card puts you exactly where you were.
  *
- * The back control lives here rather than inside the card, which keeps it
- * pinned to the top of the screen instead of scrolling away with the content.
+ * The bar that used to carry the back button lived here rather than in the card,
+ * so it could not scroll away. The card now pins its own header instead and puts
+ * the chevron in it, which is one control rather than two stacked ones — so all
+ * this has to provide is a positioned box of a known size for that header to
+ * anchor to.
  */
 function PlayerOverlay() {
-  const closePlayer = useDynasty((s) => s.closePlayer);
+  const selectedPlayer = useDynasty((s) => s.selectedPlayer);
   return (
     <div style={{
       position: 'absolute', inset: 0, zIndex: 30,
       background: 'var(--field)',
       display: 'flex', flexDirection: 'column',
     }}>
-      <div style={{
-        flex: 'none', padding: '10px 14px',
-        paddingTop: 'calc(env(safe-area-inset-top) + 10px)',
-        background: 'var(--navy)', borderBottom: '3px solid var(--clay)',
-      }}>
-        <button
-          onClick={closePlayer}
-          style={{
-            padding: '11px 18px', background: 'rgba(246,241,230,.14)',
-            border: '1px solid rgba(246,241,230,.32)',
-            color: 'var(--cream)', font: "700 12px var(--mono)", letterSpacing: '.14em',
-          }}
-        >← BACK</button>
-      </div>
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-        <Player />
+      {/*
+        Keyed on the man, so opening a second card is a fresh card.
+        The scroll reset above resets the screen *underneath* the overlay, which
+        it must — but it leaves the card itself on whatever tab and scroll
+        position the last player was read at. Tapping a name in a box score and
+        landing halfway down someone else's game log is the same bug the reset
+        exists to prevent, one layer up.
+      */}
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        <Player key={selectedPlayer ?? ''} />
       </div>
     </div>
   );

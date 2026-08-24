@@ -7,7 +7,21 @@
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FloatingAction } from '../Sticky.js';
 import { seasonComplete } from '../../engine/season.js';
-import { seasonAwards, allConference, coachOfTheYear } from '../../engine/postseason.js';
+import {
+  seasonAwards, allConference, coachOfTheYear, type CoachAwardReason,
+} from '../../engine/postseason.js';
+
+/**
+ * The sentence under the headline stat, one per way of winning it. The stat
+ * itself comes from the engine (`award.line`) so every screen tells the same
+ * story; this is just the colour around it.
+ */
+const COACH_BODY: Record<CoachAwardReason, string> = {
+  overachieved: 'Nobody got more out of less. The roster said no; the record said yes.',
+  giantKiller: 'The trophy went home with a roster that had no business holding it.',
+  turnaround: 'The biggest one-year climb in the country, same school, same players.',
+  wireToWire: 'Won the league and outscored everybody doing it, start to finish.',
+};
 
 export function Awards() {
   // Rendered both as a normal screen and as a step of the offseason. The
@@ -17,6 +31,7 @@ export function Awards() {
   const openPlayer = useDynasty((s) => s.openPlayer);
   const season = useDynasty((s) => s.season);
   const year = useDynasty((s) => s.year);
+  const lastPostseason = useDynasty((s) => s.lastPostseason);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
   const coachName = useDynasty((s) => s.coach.name);
@@ -40,7 +55,7 @@ export function Awards() {
 
   const awards = seasonAwards(season);
   const first = allConference(season);
-  const coach = coachOfTheYear(season);
+  const coach = coachOfTheYear(season, lastPostseason);
 
   return (
     <div style={{ padding: '12px 14px 16px' }}>
@@ -52,13 +67,14 @@ export function Awards() {
       </div>
 
       {/*
-        Coach of the Year, which is not the most wins.
-        
-        That award always goes to whoever was handed the best roster, and it
-        says nothing. This one is wins measured against what a roster that good
-        should have been worth — the line is fit across the whole league, so a
-        thirty win team with thirty win talent finishes behind a twenty four win
-        team that had no business winning twenty.
+        Coach of the Year, which is not the most wins — that award always goes
+        to whoever was handed the best roster, and it says nothing.
+
+        Four stories can win it: beating what the roster was worth, winning it
+        all without a top-ten roster, the biggest one-year turnaround, and a
+        conference title on the country's best run margin. The engine picks
+        whichever was loudest this season and writes the headline stat itself;
+        the card just renders it.
       */}
       {coach && (
         <div style={{
@@ -79,13 +95,12 @@ export function Awards() {
             <div style={{
               marginTop: 5, font: "400 11.5px var(--mono)", color: 'var(--dim)',
             }}>
-              {coach.wins}-{coach.losses} with a roster worth {coach.expected} wins
+              {coach.wins}-{coach.losses} — {coach.line}
             </div>
             <div style={{
               marginTop: 7, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
             }}>
-              {(coach.wins - coach.expected).toFixed(1)} wins above what that roster
-              should have produced — the most in the country.
+              {COACH_BODY[coach.reason]}
             </div>
           </div>
         </div>

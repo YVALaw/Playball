@@ -178,7 +178,7 @@ describe('a signed class actually arrives', () => {
     for (const p of signed) { p.signedBy = me; p.committedWeek = 3; }
     const ids = new Set(signed.map((p) => p.player.id));
 
-    advanceOffseason(season, rng, { userTeam: me, coachPrestige: 45 });
+    advanceOffseason(season, rng, { userTeam: me });
 
     const t = season.teams[me]!.team;
     const roster = [...t.lineup, ...t.bench, ...t.rotation, ...t.bullpen];
@@ -188,6 +188,43 @@ describe('a signed class actually arrives', () => {
     // And the roster is still a fieldable team.
     expect(t.lineup).toHaveLength(9);
     expect(t.rotation).toHaveLength(4);
+  });
+});
+
+describe('the training skill', () => {
+  it('grows the user team a little more, and touches nobody else', () => {
+    // Two identical worlds, one difference: the user coach has maxed training.
+    // The multiplier scales only the systematic pull toward potential and
+    // consumes no rng draws of its own, so the runs share every departure and
+    // every noise roll — whatever separates the rosters afterwards is the
+    // skill and nothing but.
+    const run = (training: number) => {
+      const s = createSeason(makeRng(777), undefined, SMALL);
+      simSeason(s);
+      departAndDevelop(s, s.rng, { userTeam: 0, training });
+      return s;
+    };
+    const base = run(20);
+    const trained = run(99);
+
+    const meanOverall = (s: SeasonState, i: number): number => {
+      const roster = rosterOf(s, i);
+      return roster.reduce((a, p) => a + overallOf(p), 0) / roster.length;
+    };
+
+    // Same survivors on both sides — the streams never diverged.
+    expect(rosterOf(trained, 0).map((p) => p.id))
+      .toEqual(rosterOf(base, 0).map((p) => p.id));
+
+    // A rival program develops identically: the skill is the user's alone.
+    expect(meanOverall(trained, 1)).toBeCloseTo(meanOverall(base, 1), 9);
+
+    // The user's program comes out ahead — slightly. This is a tiny edge by
+    // design, worth about sixteen percent more systematic growth at the cap,
+    // not a different tier of program.
+    const edge = meanOverall(trained, 0) - meanOverall(base, 0);
+    expect(edge).toBeGreaterThan(0);
+    expect(edge).toBeLessThan(2);
   });
 });
 

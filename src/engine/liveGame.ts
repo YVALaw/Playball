@@ -98,9 +98,12 @@ const OFFENSE = (bases: [boolean, boolean, boolean], outs: number): TacticOption
       !(first || second) ? 'nobody to move up' : 'two outs already'),
     opt('contact', 'PLAY FOR CONTACT', 'ball in the air scores him',
       third && outs < 2, !third ? 'no runner on third' : 'two outs already'),
-    opt('steal', 'STEAL', 'send him on his own',
-      (first && !second) || (second && !third),
-      !anyOn ? 'nobody on' : 'next bag is occupied'),
+    // Only the steal of second exists in the engine, so that is the only one
+    // offered — a button for a play that silently does nothing teaches worse
+    // than no button at all.
+    opt('steal', 'STEAL SECOND', 'send the man on first',
+      first && !second,
+      !anyOn ? 'nobody on' : !first ? 'only a steal of second is on' : 'second is occupied'),
   ];
 };
 
@@ -130,8 +133,20 @@ export function createLiveGame(
   const log: string[] = [];
   const say = (s: string): void => { log.push(s); };
 
-  const home = new TeamState(homeTeam, true, opts.homeStarter ?? 0, opts.homeBullpen);
-  const away = new TeamState(awayTeam, false, opts.awayStarter ?? 0, opts.awayBullpen);
+  // Strategies matter here as much as in the fast path: the user's settings
+  // govern his automatic baserunning, and the opponent's personality governs
+  // the game the computer plays back at him.
+  // Including the coach-skill nudge: a game you manage carries the same tiny
+  // edge as one the season sims, deliberately, or managing would change the
+  // odds rather than the decisions.
+  const home = new TeamState(
+    homeTeam, true, opts.homeStarter ?? 0, opts.homeBullpen, opts.homeLineup, opts.homeStrategy,
+    opts.homeCoachMods,
+  );
+  const away = new TeamState(
+    awayTeam, false, opts.awayStarter ?? 0, opts.awayBullpen, opts.awayLineup, opts.awayStrategy,
+    opts.awayCoachMods,
+  );
   const mine = opts.managing === 'home' ? home : away;
 
   // Same decision tracking the fast path uses, so a managed game credits the
@@ -163,10 +178,15 @@ export function createLiveGame(
 
   const openHalf = (): void => {
     say(`\n--- ${half === 'top' ? 'Top' : 'Bottom'} ${inning} --- (${away.runs}-${home.runs})`);
+    // Only the human dugout is manual. The computer opponent keeps its whole
+    // automatic game — steals, pinch hitters, the bullpen — or a managed game
+    // is nine innings against a team with no coach. Once the game is handed
+    // over, both sides run themselves.
     current = createHalfInning(
       bat(), fld(), inning, engine, rng, say,
       half === 'bottom' && inning >= 9, events, onScore,
-      true,   // a human is managing: no automatic pinch hitting
+      !auto && bat() === mine,
+      !auto && fld() === mine,
     );
   };
 
@@ -236,8 +256,20 @@ export function createLiveGame(
         losingPitcher: leadHolder === winnerIs ? blameTo : null,
       };
     },
-    get benchAvailable() { return mine.team.bench; },
-    get bullpenAvailable() { return mine.relief.slice(mine.penIndex); },
+    // Availability is per game, tracked on the TeamState. The season's roster
+    // is never touched: splicing a pinch hitter out of team.bench deleted him
+    // from the program for good, which turned every substitution into a quiet
+    // roster cut.
+    get benchAvailable() {
+      return mine.team.bench.filter(
+        (h) => !mine.usedBench.includes(h) && !mine.order.includes(h),
+      );
+    },
+    get bullpenAvailable() {
+      return mine.relief.filter(
+        (p) => p !== mine.pitcher && !mine.usedPen.includes(p),
+      );
+    },
 
     submit(tactic) {
       if (over || !current) return;
@@ -254,22 +286,23 @@ export function createLiveGame(
 
     pinchHit(hitter) {
       if (over || bat() !== mine) return false;
-      const b = bat();
-      const idx = b.spot;
-      const outgoing = b.order[idx];
+      const outgoing = mine.order[mine.spot];
       if (!outgoing || !mine.team.bench.includes(hitter)) return false;
-      b.order[idx] = hitter;
-      // He is used up, and the man he replaced is done for the day.
-      mine.team.bench.splice(mine.team.bench.indexOf(hitter), 1);
+      if (mine.usedBench.includes(hitter) || mine.order.includes(hitter)) return false;
+      // Marks him used for this game and nothing more. The man he replaced is
+      // done for the day too — he is out of the order and cannot re-enter.
+      mine.pinchHit(mine.spot, hitter);
       say(`   Pinch hitter: ${hitter.name} bats for ${outgoing.name}.`);
       return true;
     },
 
     changePitcher(arm) {
       if (over || fld() !== mine) return false;
-      const idx = mine.relief.indexOf(arm);
-      if (idx < mine.penIndex) return false;
-      mine.penIndex = idx + 1;
+      if (!mine.relief.includes(arm)) return false;
+      // Once out, out for good — but taking the third arm on the list spends
+      // only him, not the two listed ahead of him.
+      if (arm === mine.pitcher || mine.usedPen.includes(arm)) return false;
+      mine.usedPen.push(arm);
       mine.pitcher = arm;
       mine.pitcherPitches = 0;
       say(`   Pitching change: ${arm.name} (${arm.throws}HP) enters.`);

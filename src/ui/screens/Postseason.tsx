@@ -14,7 +14,7 @@
 // length: best of three in the conference, best of five to the last four, best
 // of seven from there.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FloatingAction } from '../Sticky.js';
 import { Modal } from '../Modal.js';
@@ -52,7 +52,6 @@ const ordinal = (n: number): string => {
 
 export function Postseason() {
   const [modal, setModal] = useState<'in' | 'out' | null>(null);
-  const shown = useRef<{ in: boolean; out: string | null }>({ in: false, out: null });
 
   const season = useDynasty((s) => s.season);
   const bracket = useDynasty((s) => s.bracket);
@@ -64,6 +63,9 @@ export function Postseason() {
   const userTeam = useDynasty((s) => s.userTeam);
   const year = useDynasty((s) => s.year);
   const team = useUserTeam();
+  const knockout = useDynasty((s) => s.knockout);
+  const seen = useDynasty((s) => s.postseasonSeen);
+  const markSeen = useDynasty((s) => s.markPostseasonSeen);
   const version = useDynasty((s) => s.version);
   void version;
 
@@ -71,21 +73,50 @@ export function Postseason() {
   useEffect(() => { openStage(); }, [openStage, bracket?.stage, version]);
 
   const live: SeriesBracket | null = myBracket ? myBracket.state : null;
-  const iAmOut = live ? live.eliminated.includes(userTeam) : false;
+  /**
+   * Out of it — from the store when there is no bracket left to ask.
+   *
+   * Losing the deciding game of a tier removes the bracket in the same commit
+   * that decides it, so a screen that only knew how to look at `live` could see
+   * an elimination only when the tournament carried on without you.
+   */
+  const knockedOut = knockout !== null && knockout.year === year;
+  const iAmOut = live ? live.eliminated.includes(userTeam) : knockedOut;
   const stageKey = bracket?.stage ?? '';
+
+  /**
+   * The one moment worth stopping the screen for is the one it cannot see.
+   *
+   * Both flags live in the store rather than in a ref: managing a game unmounts
+   * this screen, and a remounted ref believes it has never spoken — which is
+   * how the qualification modal came back after a game and the elimination
+   * modal never came at all.
+   */
+  const stillIn = myBracket !== null && !knockedOut;
+  const mySeed = season && team
+    ? conferenceField(season, team.conference).field.indexOf(userTeam) + 1
+    : 0;
+  const inTheField = mySeed > 0;
+  const introKey = `${year}:in:${stageKey}`;
+  const outKey = knockedOut && knockout ? `${year}:out:${knockout.kind}` : '';
 
   useEffect(() => {
     if (!bracket) return;
-    if (!shown.current.in && bracket.stage === 'conference') {
-      shown.current.in = true;
-      setModal('in');
+    // Elimination first. A year that has just ended is never also a year that
+    // is about to begin, whatever stage the bracket says it is on.
+    if (outKey && !seen.includes(outKey)) {
+      markSeen(outKey);
+      setModal('out');
       return;
     }
-    if (iAmOut && shown.current.out !== stageKey) {
-      shown.current.out = stageKey;
-      setModal('out');
+    // And the welcome only where there is something to welcome you to: a live
+    // run of your own, or a May that ended without one.
+    if (stageKey === 'conference' && (inTheField ? stillIn : true)
+      && !seen.includes(introKey)) {
+      markSeen(introKey);
+      setModal('in');
     }
-  }, [bracket, iAmOut, stageKey]);
+  }, [bracket, stageKey, outKey, introKey, seen, markSeen, stillIn, inTheField]);
 
   if (!season || !team || !bracket) return null;
 
@@ -120,32 +151,33 @@ export function Postseason() {
     live: myBracket ? { kind: myBracket.kind, state: myBracket.state } : null,
   };
 
-  const qualified = (() => {
-    const seed = conferenceField(season, team.conference).field.indexOf(userTeam) + 1;
-    if (seed > 0) {
-      return {
+  const qualified = inTheField
+    ? {
+        good: true,
         title: `${team.conference} tournament`,
         lines: [
-          `${team.def.school} are the ${ordinal(seed)} seed of ${CONF_FIELD}.`,
+          `${team.def.school} are the ${ordinal(mySeed)} seed of ${CONF_FIELD}.`,
           `Win it and you play the ${regionName} regional. Lose once and the year is over.`,
         ],
+      }
+    : {
+        good: false,
+        title: 'Season over',
+        lines: [
+          `${team.def.school} finished outside the top ${CONF_FIELD} of the ${team.conference}.`,
+          'Half the league goes home in May, and this year that is you.',
+        ],
       };
-    }
-    return {
-      title: 'Season over',
-      lines: [
-        `${team.def.school} finished outside the top ${CONF_FIELD} of the ${team.conference}.`,
-        'Half the league goes home in May, and this year that is you.',
-      ],
-    };
-  })();
 
   const howFar = (() => {
-    const where = myBracket?.kind === 'conference'
+    // Read from the recorded elimination, not from the live bracket: by the
+    // time a losing final renders there is no live bracket to read.
+    const kind = knockout?.kind ?? myBracket?.kind ?? 'conference';
+    const where = kind === 'conference'
       ? `the ${team.conference} tournament`
-      : myBracket?.kind === 'regional' ? `the ${regionName} regional`
+      : kind === 'regional' ? `the ${regionName} regional`
       : 'the last four';
-    const round = live ? roundName(live.rounds.length, live.roundIndex) : '';
+    const round = knockout ? roundName(knockout.rounds, knockout.round) : '';
     return {
       title: 'Knocked out',
       lines: [
@@ -205,12 +237,23 @@ export function Postseason() {
           label: `${iAmOut ? 'SEE' : 'PLAY'} THE ${
             roundName(live.rounds.length, live.roundIndex).toUpperCase()}`,
           run: () => sim('round'),
+          // Only once you are out. While you are alive but waiting, running to
+          // the end of the tournament would run your own games with it, which
+          // is exactly what taking them one at a time exists to prevent.
+          secondary: iAmOut
+            ? { label: 'SIM TO THE END OF THE TOURNAMENT', onClick: () => sim('rest') }
+            : null,
         }
       : stagePlayed
         ? {
-            label: bracket.stage === 'conference' ? 'ON TO THE REGIONALS'
-              : bracket.stage === 'regional' ? 'ON TO THE LAST FOUR'
-              : 'END THE SEASON',
+            // What the press does depends on how the tier went. "ON TO THE
+            // REGIONALS" over a season that just ended reads as an invitation
+            // to a tournament you are not in.
+            label: bracket.stage === 'conference'
+              ? (verdict.good ? 'ON TO THE REGIONALS' : 'SEE THE REGIONALS')
+              : bracket.stage === 'regional'
+                ? (verdict.good ? 'ON TO THE LAST FOUR' : 'SEE THE LAST FOUR')
+                : 'END THE SEASON',
             run: advance,
           }
         : { label: 'CONTINUE', run: advance };
@@ -222,8 +265,8 @@ export function Postseason() {
           kicker={`${year} POSTSEASON`}
           title={qualified.title}
           lines={qualified.lines}
-          tone="win"
-          action="LET'S GO"
+          tone={qualified.good ? 'win' : 'clay'}
+          action={qualified.good ? "LET'S GO" : 'SEE THE REST OF IT'}
           onClose={() => setModal(null)}
         />
       )}
@@ -302,11 +345,22 @@ export function Postseason() {
         </div>
       )}
 
-      <FloatingAction
-        label={action.label}
-        onClick={action.run}
-        secondary={action.secondary ?? null}
-      />
+      {/* The gutter the button bar expects, given to the bar alone.
+          The bar bleeds 14px into its parent's padding so its background can
+          reach the edges of the screen while the button inside stays inset.
+          Every other screen that uses it is padded; this one cannot be, because
+          the map is full bleed on purpose — so the bar came out 28px wider than
+          the screen and June scrolled sideways. The gutter goes here instead.
+          It carries the pinning too: a sticky box is confined to its own
+          containing block, so a wrapper this tight would otherwise leave the
+          button parked at the bottom of the content rather than the frame. */}
+      <div style={{ position: 'sticky', bottom: 0, zIndex: 10, padding: '0 14px' }}>
+        <FloatingAction
+          label={action.label}
+          onClick={action.run}
+          secondary={action.secondary ?? null}
+        />
+      </div>
     </div>
   );
 }

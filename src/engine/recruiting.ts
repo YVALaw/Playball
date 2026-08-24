@@ -414,13 +414,19 @@ export function fit(prospect: Prospect, pitch: Pitch): number {
  */
 export function weeklyPoints(
   prospect: Prospect, pitch: Pitch, actions: number, coachPrestige: number,
+  recruitingSkill = 20,
 ): number {
   if (actions <= 0) return 0;
   const f = fit(prospect, pitch);
   // A coach with a name of his own drags recruits above his program's weight.
   const coach = 1 + Math.max(-0.2, Math.min(0.45, (coachPrestige - 45) / 110));
+  // And one who has trained at the phones gets more out of each hour spent.
+  // Neutral at the starting skill of 20, worth about twenty percent at 99 —
+  // roughly half the prestige lever above, on the effort half only, so the
+  // skill rewards working the board rather than replacing it.
+  const skill = 1 + (recruitingSkill - 20) / 400;
   const passive = f * 2.2;
-  const pitched = actions * f * coach * 2.6;
+  const pitched = actions * f * coach * skill * 2.6;
   return passive + pitched;
 }
 
@@ -488,12 +494,29 @@ export function aiTargets(
   // pointed at the tier above, the best players a program could legally chase
   // went unchased while everybody piled onto the safe ones — so the player
   // walked into an uncontested run at the top of the class.
-  const plan: { stars: number; share: number }[] = [
-    { stars: tier + 1, share: 0.30 },
-    { stars: tier, share: 0.40 },
-    { stars: tier - 1, share: 0.20 },
-    { stars: tier - 2, share: 0.10 },
-  ];
+  //
+  // The top of the ladder gets its own plans. A five star program has no tier
+  // above it, so the generic ladder pointed two of its slots at an empty band
+  // — and with fourteen elite programs against fifty-odd five star prospects,
+  // the class's best players still opened the window with nobody on them. The
+  // programs that can chase the top of the class are the only coverage it has,
+  // so their boards lean into it.
+  const plan: { stars: number; share: number }[] =
+    tier >= 5 ? [
+      { stars: 5, share: 0.55 },
+      { stars: 4, share: 0.30 },
+      { stars: 3, share: 0.15 },
+    ] : tier === 4 ? [
+      { stars: 5, share: 0.40 },
+      { stars: 4, share: 0.35 },
+      { stars: 3, share: 0.15 },
+      { stars: 2, share: 0.10 },
+    ] : [
+      { stars: tier + 1, share: 0.30 },
+      { stars: tier, share: 0.40 },
+      { stars: tier - 1, share: 0.20 },
+      { stars: tier - 2, share: 0.10 },
+    ];
 
   const picks: Prospect[] = [];
   const taken = new Set<PlayerId>();
@@ -511,7 +534,11 @@ export function aiTargets(
       // five star is not a staff.
       .map((p) => {
         const suitors = Object.values(p.points).filter((v) => v > 0).length;
-        const uncontested = suitors === 0 ? 1.45 : 1;
+        // Scaled by what he is: an unchased five star is a scandal a staff
+        // drops everything for, an unchased one star is Tuesday. The flat
+        // bonus pulled boards toward uncovered depth players as hard as
+        // uncovered blue chips, which is backwards.
+        const uncontested = suitors === 0 ? 1 + 0.18 * p.stars : 1;
         return { p, score: fit(p, pitch) * uncontested * (0.85 + rng() * 0.3) };
       })
       .sort((a, b) => b.score - a.score);

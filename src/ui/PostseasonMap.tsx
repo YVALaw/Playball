@@ -35,9 +35,6 @@ const WIN = '#3f6b46';
 const FAINT = 'rgba(28,36,48,.2)';
 
 const SECTIONS: Section[] = ['conf', 'regional', 'national'];
-const SECTION_LABEL: Record<Section, string> = {
-  conf: 'CONFERENCES', regional: 'REGIONALS', national: 'NATIONAL',
-};
 const TAB_NAME: Record<Section, string> = {
   conf: 'CONFERENCE', regional: 'REGIONALS', national: 'NATIONAL',
 };
@@ -64,7 +61,7 @@ export function PostseasonMap(
     /** Changes when a round is played, so the camera follows your team. */
     focusKey: string;
     /**
-     * The tier being played, and the only one drawn.
+     * The tier being played. One tier is drawn at a time.
      *
      * The map used to hold all three at once and let you pan between them.
      * That made every simulated game a camera flight across the whole board —
@@ -72,6 +69,10 @@ export function PostseasonMap(
      * camera from one side to another" — and it buried the tier you were
      * actually in. One tier per slide: the conferences, then the regionals,
      * then the last four.
+     *
+     * Which one is *on screen* is the tabs' business, below. Playing or simming
+     * anything snaps the view back here, so the board is never showing you
+     * somewhere else while your own tier moves.
      */
     section: Section;
   },
@@ -87,8 +88,19 @@ export function PostseasonMap(
 
   const [dens, setDens] = useState(1);
   const [cam, setCam] = useState({ x: 0, y: 0 });
-  const [viewed, setViewed] = useState<Section>('conf');
+  /**
+   * The tier on screen, which is the tier being played until you say otherwise.
+   *
+   * Browsing the other two is worth having — the regional you are trying to
+   * reach is the reason the conference final matters — but only as a discrete
+   * tap. Free panning between tiers is what janked the camera across the board
+   * on every press, and it is not coming back.
+   */
+  const [view, setView] = useState<Section>(section);
   const [size, setSize] = useState({ w: 390, h: height });
+
+  // Anything that moves the postseason puts you back in front of it.
+  useEffect(() => { setView(section); }, [section, focusKey]);
 
   // The board is rebuilt only when the postseason itself changes.
   //
@@ -98,13 +110,13 @@ export function PostseasonMap(
   // layout changes. That was most of the jank.
   const { graph, layout } = useMemo(() => {
     const full = buildGraph(input);
-    const nodes = full.nodes.filter((n) => n.section === section);
+    const nodes = full.nodes.filter((n) => n.section === view);
     const ids = new Set(nodes.map((n) => n.id));
     const g = {
       ...full,
       nodes,
       edges: full.edges.filter((e) => ids.has(e.from) && ids.has(e.to)),
-      brackets: full.brackets.filter((b) => b.section === section),
+      brackets: full.brackets.filter((b) => b.section === view),
     };
     const laid = layoutGraph(g);
 
@@ -142,7 +154,7 @@ export function PostseasonMap(
     }
     return { graph: g, layout: laid };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusKey, section]);
+  }, [focusKey, view]);
 
   const mine = useMemo(
     () => new Set(graph.nodes.filter((n) =>
@@ -225,13 +237,6 @@ export function PostseasonMap(
     el.style.transform = `translate3d(${off.x}px,${off.y}px,0) scale(${kk})`;
   };
 
-  const moveCamera = (c: { x: number; y: number }, section?: Section): void => {
-    camRef.current = c;
-    applyTransform(c, k);
-    setCam(c);
-    if (section) setViewed(section);
-  };
-
   useEffect(() => {
     const el = viewRef.current;
     if (!el) return;
@@ -254,19 +259,22 @@ export function PostseasonMap(
 
   /** Your next game if you have one, else the last thing that happened to you. */
   useEffect(() => {
-    const ids = graph.nodes.filter((n) => mine.has(n.id));
+    // Only in the tier you are playing. Every tier is laid out from its own
+    // origin, so a camera left pointing at your conference final while the
+    // regionals are on screen is a point in a coordinate space that is no
+    // longer drawn — a tier being browsed is shown whole instead.
+    const ids = view === section ? graph.nodes.filter((n) => mine.has(n.id)) : [];
     const next = ids.find((n) => n.kind === 'series' && n.winner === null);
     const target = next ?? ids[ids.length - 1];
-    if (!target) return;
-    const p = layout.pos.get(target.id);
-    if (!p) return;
-    const c = { x: p.x + p.w / 2, y: p.y + p.h / 2 };
+    const p = target ? layout.pos.get(target.id) : undefined;
+    const c = p
+      ? { x: p.x + p.w / 2, y: p.y + p.h / 2 }
+      : { x: layout.totalW / 2, y: layout.totalH / 2 };
     camRef.current = c;
     applyTransform(c, k);
     setCam(c);
-    setViewed(target.section);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusKey, layout]);
+  }, [focusKey, layout, view]);
 
   // --- pointer panning -----------------------------------------------------
   const onDown = (e: React.PointerEvent): void => {
@@ -297,19 +305,10 @@ export function PostseasonMap(
     if (overlayRef.current) overlayRef.current.style.opacity = '1';
     try { e.currentTarget.releasePointerCapture(d.id); } catch { /* already gone */ }
 
-    // The indicator follows where you travelled to. The camera stays put — you
-    // are the one who moved it.
-    const c = camRef.current;
-    let best: Section = 'conf';
-    let bestD = Infinity;
-    for (const st of SECTIONS) {
-      const span = layout.sectionSpan[st];
-      if (span.w === 0) continue;
-      const dist = Math.abs(c.x - (span.x + span.w / 2));
-      if (dist < bestD) { bestD = dist; best = st; }
-    }
-    setCam(c);
-    setViewed(best);
+    // Commit where you travelled to. The camera stays put — you are the one who
+    // moved it. Nothing has to be worked out about which tier you landed in:
+    // only one is drawn, and the tabs decide which.
+    setCam(camRef.current);
   };
 
   const changeDensity = (i: number): void => {
@@ -331,15 +330,12 @@ export function PostseasonMap(
     setDens(i);
   };
 
-  const goSection = (st: Section): void => {
-    const span = layout.sectionSpan[st];
-    if (span.w === 0) return;
-    const bracket = graph.brackets.find((b) => b.section === st && b.mine);
-    const box = bracket ? layout.bracketBox.get(bracket.key) : undefined;
-    moveCamera({
-      x: span.x + span.w / 2,
-      y: box ? box.y + box.h / 2 : span.y + span.h / 2,
-    }, st);
+  const goView = (st: Section): void => {
+    if (st === view) return;
+    // A drag in progress belongs to the layout that is going away, and its
+    // start point means nothing in the next one.
+    dragRef.current = null;
+    setView(st);
   };
 
   const off = offsetFor(cam, k);
@@ -393,35 +389,60 @@ export function PostseasonMap(
       display: 'flex', flexDirection: 'column',
       height: viewH === null ? height : undefined,
     }}>
-      {/* Where you are looking, and where the season actually is. */}
-      {/* Zoom. Three fixed cameras rather than a pinch, because a pinch on a
-          board this size lands you somewhere you did not choose. */}
       <div style={{
-        flex: 'none', display: 'flex', alignItems: 'center', gap: 10,
+        flex: 'none', display: 'flex', flexDirection: 'column', gap: 7,
         padding: '8px 14px', background: 'var(--paper)',
         borderBottom: '1px solid rgba(28,36,48,.12)',
       }}>
-        <div style={{
-          flex: 1, minWidth: 0, font: "600 10px var(--mono)", letterSpacing: '.04em',
-          color: 'rgba(28,36,48,.7)',
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>{hereLabel(graph, section)}</div>
-        <div style={{ flex: 'none', display: 'flex', gap: 3 }}>
-          {[0, 1, 2].map((i) => (
+        {/* Which tier is on screen. Three taps rather than a pan, because the
+            tiers are drawn one at a time and browsing to the regional you are
+            trying to reach should not move the tier you are playing. A tier
+            nobody has qualified for yet is still a tier: it draws as the empty
+            tree it will be filled into. */}
+        <div style={{ display: 'flex', gap: 3 }}>
+          {SECTIONS.map((st) => (
             <button
-              key={i}
-              onClick={() => changeDensity(i)}
+              key={st}
+              onClick={() => goView(st)}
               className="tap"
               style={{
-                width: 30, height: 26, display: 'grid', placeItems: 'center',
-                background: dens === i ? CLAY : 'transparent',
-                border: `1px solid ${dens === i ? CLAY : 'rgba(28,36,48,.28)'}`,
+                flex: 1, minWidth: 0, padding: '5px 2px',
+                background: view === st ? CLAY : 'transparent',
+                border: `1px solid ${view === st ? CLAY : 'rgba(28,36,48,.22)'}`,
+                color: view === st ? 'var(--cream)' : 'rgba(28,36,48,.6)',
+                font: "700 9px var(--mono)", letterSpacing: '.08em',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}
-              aria-label={['Names', 'Abbreviations', 'Whole map'][i]}
-            >
-              <DensityIcon level={i} ink={dens === i ? 'var(--cream)' : 'rgba(28,36,48,.55)'} />
-            </button>
+            >{TAB_NAME[st]}{st === section ? ' •' : ''}</button>
           ))}
+        </div>
+
+        {/* What you are looking at, and how close. Three fixed cameras rather
+            than a pinch, because a pinch on a board this size lands you
+            somewhere you did not choose. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            flex: 1, minWidth: 0, font: "600 10px var(--mono)", letterSpacing: '.04em',
+            color: 'rgba(28,36,48,.7)',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>{hereLabel(graph, view)}</div>
+          <div style={{ flex: 'none', display: 'flex', gap: 3 }}>
+            {[0, 1, 2].map((i) => (
+              <button
+                key={i}
+                onClick={() => changeDensity(i)}
+                className="tap"
+                style={{
+                  width: 30, height: 26, display: 'grid', placeItems: 'center',
+                  background: dens === i ? CLAY : 'transparent',
+                  border: `1px solid ${dens === i ? CLAY : 'rgba(28,36,48,.28)'}`,
+                }}
+                aria-label={['Names', 'Abbreviations', 'Whole map'][i]}
+              >
+                <DensityIcon level={i} ink={dens === i ? 'var(--cream)' : 'rgba(28,36,48,.55)'} />
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -657,15 +678,17 @@ function Side(
 /**
  * What the toolbar says you are looking at.
  *
- * Your own bracket if this tier has one, because that is the thing you came
- * to see; otherwise the tier itself. Every bracket on the board is named in
- * its own gutter, so this line does not have to guess at one.
+ * Your own bracket if the tier on screen has one, because that is the thing you
+ * came to see; otherwise the tier itself. Every bracket on the board is named
+ * in its own gutter, so this line does not have to guess at one. It names the
+ * tier being *viewed*, not the one being played — the two differ the moment you
+ * go and look at a regional you have not reached.
  */
-function hereLabel(graph: ReturnType<typeof buildGraph>, section: Section): string {
+function hereLabel(graph: ReturnType<typeof buildGraph>, view: Section): string {
   const mine = graph.brackets.find((b) => b.mine);
   if (mine) return `${mine.label} · YOU`;
-  return section === 'conf' ? 'THE CONFERENCES'
-    : section === 'regional' ? 'THE REGIONALS' : 'THE LAST FOUR';
+  return view === 'conf' ? 'THE CONFERENCES'
+    : view === 'regional' ? 'THE REGIONALS' : 'THE LAST FOUR';
 }
 function DensityIcon({ level, ink }: { level: number; ink: string }) {
   if (level === 0) {

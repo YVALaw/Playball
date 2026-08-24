@@ -10,13 +10,16 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   generateClass, aiTargets, closeWeek, resetWeeklySpend, weeklyPoints, fit, canPursue,
+  leadersAtWeekStart,
   PRIORITIES, RECRUITING_WEEKS, SCHOLARSHIPS, RECRUITING_BUDGET, MAX_PER_RECRUIT,
   commitPointsFor, budgetFor,
   type Pitch, type Prospect,
 } from '../src/engine/recruiting.js';
 import { makeRng } from '../src/engine/rng.js';
 import { resetNames } from '../src/engine/players.js';
-import type { Region } from '../src/data/schools.js';
+import { createSeason } from '../src/engine/season.js';
+import { seedRivalInterest } from '../src/state/store.js';
+import { CONFERENCES, type Region } from '../src/data/schools.js';
 
 // Names are unique for the life of the process, so a second call to
 // generateClass with a given seed does not produce the class the first one did:
@@ -57,8 +60,12 @@ function runWindow(seed: number, programs: Pitch[]) {
 
   for (let w = 1; w <= RECRUITING_WEEKS; w++) {
     recruits.week = w;
+    // The same snapshot the store hands the real weekly loop, so the window
+    // here runs under the same rules — including walking away from a recruit
+    // somebody else has already put clear of the field.
+    const atWeekStart = leadersAtWeekStart(recruits);
     programs.forEach((pitch, team) => {
-      for (const { prospect, actions } of aiTargets(team, pitch, 45, recruits.prospects, 8, rng)) {
+      for (const { prospect, actions } of aiTargets(team, pitch, 45, recruits.prospects, 8, rng, atWeekStart)) {
         prospect.spent[team] = actions;
         prospect.points[team] =
           (prospect.points[team] ?? 0) + weeklyPoints(prospect, pitch, actions, 45);
@@ -191,6 +198,25 @@ describe('points, not a lottery', () => {
     const natural = weeklyPoints(p, program(0.95), 2, 45);
     expect(hopeless).toBeLessThan(natural);
   });
+
+  it('pays a trained recruiter more for the same hours, on the effort half only', () => {
+    // The recruiting skill multiplies what the staff spends pitching — never
+    // the passive share, which accrues for being a good match whether or not
+    // the coach ever picks up a phone. At the cap it is worth just under
+    // twenty percent, about half the span of the prestige lever.
+    const { prospects } = generateClass(2027, 16, makeRng(9));
+    const p = prospects[0] as Prospect;
+    const pitch = program(0.7);
+
+    const base = weeklyPoints(p, pitch, 6, 45);
+    const trained = weeklyPoints(p, pitch, 6, 45, 99);
+    const passive = fit(p, pitch) * 2.2;
+
+    // The default skill of 20 is exactly neutral.
+    expect(weeklyPoints(p, pitch, 6, 45, 20)).toBeCloseTo(base, 9);
+    // And 99 scales the pitched share by 1 + 79/400.
+    expect((trained - passive) / (base - passive)).toBeCloseTo(1.1975, 3);
+  });
 });
 
 describe('the window', () => {
@@ -277,6 +303,51 @@ describe('the AI recruits inside the same rules', () => {
     const board = aiTargets(0, small, 45, recruits.prospects, 8, rng);
     const reaches = board.filter((b) => b.prospect.stars === 5).length;
     expect(reaches).toBeLessThan(board.length);
+  });
+
+  it('points an elite program\'s board at the top of the class', () => {
+    // A five star program has no tier to reach into, so its board *is* the top
+    // of the class — the generic reach/core/safe ladder pointed slots at an
+    // empty band above it and left the best recruits under-chased.
+    const rng = makeRng(99);
+    const recruits = generateClass(2027, 16, rng);
+    const board = aiTargets(0, program(0.9), 45, recruits.prospects, 8, rng);
+    const elite = board.filter((b) => b.prospect.stars >= 4).length;
+    expect(elite).toBeGreaterThanOrEqual(board.length / 2);
+  });
+});
+
+describe('the seeded board the player walks into', () => {
+  // The full store path: a real 96 program world, seeded exactly as the window
+  // opens. Reported from testing: "many of the recruits end up with nobody on
+  // him when they are even high ranking" — at its worst, nearly half the five
+  // stars and the number one player in the country opened with zero suitors.
+  it('leaves no meaningful part of the top of the class unchased', () => {
+    const season = createSeason(makeRng(12345), undefined, CONFERENCES);
+    seedRivalInterest(season, 0);
+
+    const prospects = season.recruiting.prospects;
+    const suitorsOf = (p: Prospect): number =>
+      Object.values(p.points).filter((v) => v > 0).length;
+    const covered = (stars: number): number => {
+      const tier = prospects.filter((p) => p.stars === stars);
+      return tier.filter((p) => suitorsOf(p) > 0).length / Math.max(1, tier.length);
+    };
+
+    // Blue chips essentially always have somebody on them...
+    expect(covered(5)).toBeGreaterThan(0.98);
+    expect(covered(4)).toBeGreaterThan(0.98);
+    // ...and coverage thins as the talent does. Not mean suitor count — three
+    // stars are chased by programs of every tier, so they carry the biggest
+    // crowds — but whether anybody is on you at all tracks what you are. The
+    // gap at the bottom is deliberate: an unchased one star is Tuesday.
+    expect(covered(4)).toBeGreaterThanOrEqual(covered(2));
+    expect(covered(2)).toBeGreaterThan(covered(1));
+    expect(covered(1)).toBeLessThan(0.95);
+
+    // Nobody in the national top fifty is sitting by a silent phone.
+    const top = [...prospects].sort((a, b) => a.rank - b.rank).slice(0, 50);
+    expect(top.filter((p) => suitorsOf(p) === 0).length).toBe(0);
   });
 });
 

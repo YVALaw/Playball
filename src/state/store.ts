@@ -14,7 +14,7 @@ import { create } from 'zustand';
 import {
   createSeason, simNextDay, simSeason, seasonComplete, standings, nextSeason, rpi,
   seasonLength, regularRecord, archiveSeason,
-  recordResult,
+  recordResult, restedFirst,
   type SeasonState,
 } from '../engine/season.js';
 import type { GameResult } from '../engine/game.js';
@@ -53,19 +53,32 @@ import { pitchFor, developmentScore } from '../engine/pitch.js';
  * a week's worth of interest, so the player arrives at a board that is already
  * contested. The user's own program is skipped — his head start is the one he
  * chooses.
+ *
+ * Exported for the tests, which hold the seeded board to a coverage standard:
+ * a top prospect with nobody on him at the open is the bug this exists to fix.
  */
-function seedRivalInterest(season: SeasonState, userTeam: number): void {
-  const snapshot = leadersAtWeekStart(season.recruiting);
-  for (const record of season.teams) {
-    if (record.index === userTeam) continue;
-    const conf = CONFERENCES.find((c) => c.id === record.conference);
-    const pitch = pitchFor(season, record, conf?.region ?? 'Gulf', developmentScore(record));
-    for (const { prospect, actions } of aiTargets(
-      record.index, pitch, 45, season.recruiting.prospects,
-      holesFor(record), season.rng, snapshot,
-    )) {
-      prospect.points[record.index] =
-        (prospect.points[record.index] ?? 0) + weeklyPoints(prospect, pitch, actions, 45);
+export function seedRivalInterest(season: SeasonState, userTeam: number): void {
+  // Two passes, not one. A single pass leaves the top of the class half
+  // covered — every board is picked against an empty field, so the elite
+  // programs all converge on the same handful of names and the rest of the
+  // five stars open the window with nobody on them. The second pass sees the
+  // first pass's leaders and spreads to whoever is still uncovered. Its points
+  // land at half weight: coverage comes from target selection, not point size,
+  // and full weight would double the AI's head start over the player.
+  for (const scale of [1, 0.5]) {
+    const snapshot = leadersAtWeekStart(season.recruiting);
+    for (const record of season.teams) {
+      if (record.index === userTeam) continue;
+      const conf = CONFERENCES.find((c) => c.id === record.conference);
+      const pitch = pitchFor(season, record, conf?.region ?? 'Gulf', developmentScore(record));
+      for (const { prospect, actions } of aiTargets(
+        record.index, pitch, 45, season.recruiting.prospects,
+        holesFor(record), season.rng, snapshot,
+      )) {
+        prospect.points[record.index] =
+          (prospect.points[record.index] ?? 0)
+          + weeklyPoints(prospect, pitch, actions, 45) * scale;
+      }
     }
   }
   // The spend is the AI's own; the player's budget is untouched.
@@ -194,6 +207,28 @@ export interface MyBracket {
   state: SeriesBracket;
   /** A game you played by hand, waiting for the round it belongs to. */
   preplayed: Map<string, GameResult>;
+}
+
+/**
+ * The end of your run, written down at the moment it happens.
+ *
+ * Elimination used to be read off the live bracket, and the live bracket is
+ * gone by the time anything can look at it. Losing a deciding game folds the
+ * tournament into the stage results in the same breath — one React commit
+ * carries both, so no screen ever renders the instant where you are out and
+ * your bracket still exists. A game you managed is worse: the postseason screen
+ * is unmounted behind the manage screen while it is decided, so it remounts
+ * knowing nothing at all.
+ *
+ * So the fact is stored rather than derived. It survives the bracket, the
+ * unmount and a reload, which is what makes it possible to say so exactly once.
+ */
+export interface Knockout {
+  year: number;
+  kind: 'conference' | 'regional' | 'national';
+  /** Which round ended it, and how many the bracket had — enough to name it. */
+  round: number;
+  rounds: number;
 }
 
 /** One completed year, kept forever. A dynasty is the list of these. */
@@ -331,6 +366,21 @@ export interface DynastyStore {
   simBracket: (mode: 'game' | 'round' | 'rest') => void;
   /** Fold a finished run into the stage results and move on. Internal. */
   closeMyBracket: () => void;
+  /** How your June ended, once it has. Null while you are still alive in it. */
+  knockout: Knockout | null;
+  /** Read elimination off the live bracket and keep it. Internal. */
+  noteKnockout: () => void;
+  /**
+   * What June has already said to you, keyed `${year}:in:${stage}` and
+   * `${year}:out:${kind}`.
+   *
+   * A ref held across renders is not enough: the postseason screen is unmounted
+   * and rebuilt every time you manage a game, and a fresh ref believes it has
+   * never spoken. Saved with the dynasty, so a reload does not repeat itself
+   * either.
+   */
+  postseasonSeen: string[];
+  markPostseasonSeen: (key: string) => void;
 
   /**
    * The game you are managing right now, if any. Holds closures, so it is never
@@ -426,6 +476,67 @@ function usableBracket(saved: unknown): PostseasonProgress | null {
 }
 
 /**
+ * Your own tournament, flattened for the disk.
+ *
+ * Two things in a live sub-bracket cannot make the trip. `state.season` points
+ * back at the whole world, and the world carries its generator, which is a
+ * function — storing it would duplicate the season and fail the clone. And
+ * `preplayed` holds a game you managed while it waits for its round, as engine
+ * objects with methods on them; `stepBracket` consumes an entry in the same
+ * breath it is set, so at any moment a save can be taken it is already empty.
+ *
+ * Both are put back on the way in: the season is the one being loaded, and the
+ * map starts fresh.
+ */
+type StoredMyBracket = { kind: MyBracket['kind']; state: Omit<SeriesBracket, 'season'> };
+
+function portableMyBracket(mine: MyBracket | null): StoredMyBracket | null {
+  if (!mine) return null;
+  const { season, ...state } = mine.state;
+  void season;
+  return { kind: mine.kind, state };
+}
+
+/**
+ * The tournament you were in the middle of, if this build can still play it.
+ *
+ * Refused unless it belongs to the stage the bracket says we are on, because
+ * resuming a conference draw into the regionals would put the wrong teams on
+ * screen and step a tree nobody is in. A refusal is not a loss: `openStage`
+ * rebuilds the stage from the top, which is what a save written before this was
+ * stored gets too.
+ */
+function usableMyBracket(
+  saved: unknown, season: SeasonState, bracket: PostseasonProgress | null,
+): MyBracket | null {
+  if (!saved || typeof saved !== 'object' || !bracket) return null;
+  const m = saved as Partial<StoredMyBracket>;
+  if (m.kind !== bracket.stage) return null;
+  const s = m.state as Partial<SeriesBracket> | undefined;
+  if (!s || !Array.isArray(s.rounds) || !Array.isArray(s.seeds)) return null;
+  // A finished tournament belongs in the stage results, not still in your hands.
+  if (s.done) return null;
+  // Maps survive a structured clone, but a hand-edited or half-written record
+  // would arrive without them, and every step reads both.
+  if (!(s.appearances instanceof Map) || !(s.seedOf instanceof Map)) return null;
+  return {
+    kind: m.kind,
+    state: { ...(s as Omit<SeriesBracket, 'season'>), season },
+    preplayed: new Map(),
+  };
+}
+
+/** A saved elimination, refused unless it belongs to the year being loaded. */
+function usableKnockout(saved: unknown, year: number): Knockout | null {
+  if (!saved || typeof saved !== 'object') return null;
+  const k = saved as Partial<Knockout>;
+  if (k.year !== year) return null;
+  if (k.kind !== 'conference' && k.kind !== 'regional' && k.kind !== 'national') return null;
+  if (typeof k.round !== 'number' || typeof k.rounds !== 'number') return null;
+  return { year, kind: k.kind, round: k.round, rounds: k.rounds };
+}
+
+/**
  * Snapshot the season that just finished. Returns null before the schedule is
  * done, so a half-played year cannot end up in the record books.
  */
@@ -447,7 +558,7 @@ function recordFor(state: DynastyStore): SeasonRecord | null {
 
   // And yours, when you were the one who got more out of a roster than it was
   // worth. It goes at the top: it is the only line on the page about you.
-  const coy = coachOfTheYear(season);
+  const coy = coachOfTheYear(season, lastPostseason);
   if (coy && coy.team === me.index) {
     mine.unshift({
       title: 'Coach of the Year',
@@ -470,6 +581,18 @@ function recordFor(state: DynastyStore): SeasonRecord | null {
     nationalChampion: winner,
     awards: mine,
   };
+}
+
+/**
+ * Stamp the user coach's offense and defense skills onto his own program's
+ * record — and off everybody else's, so a job change or an old save can never
+ * leave the edge behind on a team he no longer runs. `playGame` and the managed
+ * game read it from there, which is how those two skills reach the field.
+ */
+function applyCoachMods(season: SeasonState, userTeam: number, coach: CoachState): void {
+  for (const t of season.teams) delete t.coachMods;
+  const me = season.teams[userTeam];
+  if (me) me.coachMods = { offense: coach.skills.offense, defense: coach.skills.defense };
 }
 
 /** Ridgemont State, the founding program, unless told otherwise. */
@@ -499,19 +622,23 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // Whose games to keep box scores for. A season is built before anybody has
     // taken a job, so the engine cannot know this on its own.
     season.captureBoxFor = team ?? defaultUserTeam(season);
+    const coach = newCoach('Coach', contractFor(season.teams[team ?? 0]?.prestige ?? 50));
+    applyCoachMods(season, team ?? defaultUserTeam(season), coach);
     set({
       season,
       userTeam: team ?? defaultUserTeam(season),
       needsTeam: false,
       year: START_YEAR,
       version: 1,
-      coach: newCoach('Coach', contractFor(season.teams[team ?? 0]?.prestige ?? 50)),
+      coach,
       lastReview: null,
       offers: [],
       history: [],
       tab: 'home',
       screen: 'today',
       lastOffseason: null,
+      lastWeek: null,
+      lastCommits: [],
     });
     void get().saveNow();
   },
@@ -582,6 +709,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       return conf?.region ?? 'Gulf';
     };
 
+    // Taken before anyone spends, so every program judges the week against the
+    // same standings. This is what lets the AI walk away from a recruit
+    // somebody else has clearly locked up — without it the lost-causes filter
+    // in aiTargets compares against nothing and never fires.
+    const atWeekStart = leadersAtWeekStart(recruits);
+
     for (const record of season.teams) {
       const pitch = pitchFor(season, record, regionOf(record.index), developmentScore(record));
       const mine = record.index === userTeam;
@@ -592,11 +725,17 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
             .map((p) => ({ prospect: p, actions: p.spent[userTeam] as number }))
         : aiTargets(
             record.index, pitch, 45, recruits.prospects,
-            holesFor(record), season.rng,
+            holesFor(record), season.rng, atWeekStart,
           );
 
       for (const { prospect, actions } of spends) {
-        const gained = weeklyPoints(prospect, pitch, actions, mine ? coach.prestige : 45);
+        // The user's pitch carries his own reputation and recruiting skill;
+        // every AI program works at the league-average defaults.
+        const gained = weeklyPoints(
+          prospect, pitch, actions,
+          mine ? coach.prestige : 45,
+          mine ? coach.skills.recruiting : 20,
+        );
         prospect.points[record.index] = (prospect.points[record.index] ?? 0) + gained;
       }
     }
@@ -651,6 +790,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       set({
         phase: next,
         furthestPhase: Math.max(get().furthestPhase, PHASES.indexOf(next)),
+        // A fresh window starts with a fresh board. Last year's "week 3 is
+        // over" recap surviving into this year's week 1 read as the window
+        // being already finished.
+        lastWeek: null,
+        lastCommits: [],
         version: get().version + 1,
       });
       void get().saveNow();
@@ -663,7 +807,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (next === 'draft') {
       const report = departAndDevelop(season, season.rng, {
         userTeam: get().userTeam,
-        coachPrestige: get().coach.prestige,
+        training: get().coach.skills.training,
       });
       set({
         lastOffseason: report, phase: next,
@@ -691,17 +835,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   spendSkill: (skill) => {
-    const { coach, version } = get();
+    const { coach, season, userTeam, version } = get();
     if (coach.skillPoints <= 0) return;
     if (coach.skills[skill] >= 99) return;
-    set({
-      coach: {
-        ...coach,
-        skillPoints: coach.skillPoints - 1,
-        skills: { ...coach.skills, [skill]: coach.skills[skill] + 1 },
-      },
-      version: version + 1,
-    });
+    const next = {
+      ...coach,
+      skillPoints: coach.skillPoints - 1,
+      skills: { ...coach.skills, [skill]: coach.skills[skill] + 1 },
+    };
+    // The in-game skills live on the team record too; keep the copy current the
+    // moment a point lands, or the next game plays at last year's numbers.
+    if (season) applyCoachMods(season, userTeam, next);
+    set({ coach: next, version: version + 1 });
   },
 
   advanceDay: () => {
@@ -830,6 +975,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         phase: null,
         lastPostseason: null,
         lastOutcome: null,
+        lastWeek: null,
+        lastCommits: [],
         furthestPhase: 0,
         coach,
         // Being let go puts you on the market immediately. Nobody waits.
@@ -852,7 +999,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // go on the roster, and walk-ons fill whatever the class did not.
     const filled = fillRosters(season, season.rng, {
       userTeam: get().userTeam,
-      coachPrestige: get().coach.prestige,
     });
     const report: OffseasonReport = {
       ...(get().lastOffseason ?? {
@@ -888,17 +1034,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (!season) return;
     // The new job's games are the ones worth keeping now.
     season.captureBoxFor = team;
+    // A new job is a clean slate with a patient board, but your reputation
+    // comes with you — that is the whole point of tracking it separately.
+    const length = contractFor(season.teams[team]?.prestige ?? 50);
+    const next = { ...coach, tenure: 0, security: 62, contractYears: length, contractLength: length };
+    // The old program loses the in-game edge, the new one gains it.
+    applyCoachMods(season, team, next);
     set({
       userTeam: team,
       offers: [],
       jobSearch: false,
       lastReview: null,
-      // A new job is a clean slate with a patient board, but your reputation
-      // comes with you — that is the whole point of tracking it separately.
-      coach: (() => {
-        const length = contractFor(season.teams[team]?.prestige ?? 50);
-        return { ...coach, tenure: 0, security: 62, contractYears: length, contractLength: length };
-      })(),
+      coach: next,
       tab: 'home',
       screen: 'today',
       version: get().version + 1,
@@ -933,6 +1080,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     freezeRegularSeason(season);
     set({
       bracket: { stage: 'conference', cups: [], regionals: [], national: null },
+      // Last June's ending, and everything it was told, belong to last June.
+      knockout: null,
+      postseasonSeen: [],
       version: version + 1,
     });
     get().openStage();
@@ -965,11 +1115,29 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, bracket, userTeam, version } = get();
     if (!season || !bracket || get().myBracket) return;
 
-    if (bracket.stage === 'conference' && bracket.cups.length === 0) {
-      const me = season.teams[userTeam];
+    const me = season.teams[userTeam];
+
+    /**
+     * Whether this stage still owes you a tournament.
+     *
+     * Not "has anything been played here yet". Opening a stage decides every
+     * tournament you are not in and leaves yours live, so a save taken from
+     * that moment carries the other seven and no record of yours — and a reload
+     * reading `cups.length === 0` concluded the stage was finished and moved
+     * past the one tournament the player was actually in. The question that
+     * survives a reload is whether *your* result is on the books.
+     */
+    const mineMissing = (recorded: readonly { conference?: string; region?: string }[],
+      key: string | null): boolean =>
+      key !== null && !recorded.some((r) => r.conference === key || r.region === key);
+
+    if (bracket.stage === 'conference'
+      && mineMissing(bracket.cups, me ? me.conference : null)) {
       const mine = me ? conferenceField(season, me.conference) : null;
       if (me && mine && mine.field.includes(userTeam)) {
-        const cups = conferenceIds(season)
+        // Kept if a reload already carries them: replaying the other seven
+        // would roll fresh dice and quietly change who you are about to face.
+        const cups = bracket.cups.length > 0 ? bracket.cups : conferenceIds(season)
           .filter((id) => id !== me.conference)
           .map((id) => conferenceTournament(season, id));
         set({
@@ -990,12 +1158,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       return;
     }
 
-    if (bracket.stage === 'regional' && bracket.regionals.length === 0) {
+    if (bracket.stage === 'regional'
+      && mineMissing(bracket.regionals, me ? regionOf(me.conference) : null)) {
       const pairings = regionalPairing(season, bracket.cups);
       const mine = pairings.find((r) => r.seeds.includes(userTeam));
       if (mine) {
         // Every other region is decided now; yours is played a game at a time.
-        const others = pairings
+        // Already-decided ones are kept, for the same reason the cups are.
+        const others = bracket.regionals.length > 0 ? bracket.regionals : pairings
           .filter((r) => r.id !== mine.id)
           .map((r) => ({
             ...singleElimination(season, r.seeds, REGIONAL_LENGTHS),
@@ -1105,6 +1275,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         engine: season.config.engine,
         homeStarter: slot,
         awayStarter: slot,
+        // The same wiring the fast path gets: the Strategy screen's settings
+        // govern the game you manage, and the pen is offered most rested first.
+        homeStrategy: home.strategy,
+        awayStrategy: away.strategy,
+        homeBullpen: restedFirst(season, home),
+        awayBullpen: restedFirst(season, away),
+        // And the coach-skill nudge, so a managed game and a simmed one play
+        // to the same odds.
+        ...(home.coachMods ? { homeCoachMods: home.coachMods } : {}),
+        ...(away.coachMods ? { awayCoachMods: away.coachMods } : {}),
       }),
       liveMeta: {
         home: h, away: a, day: season.dayIndex,
@@ -1134,12 +1314,54 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     }
 
     set({ version: version + 1 });
+    // Before the close, which is what takes the bracket away: a round that ends
+    // your run without ending the tournament is still the end of your run.
+    get().noteKnockout();
     if (state.done) get().closeMyBracket();
+  },
+
+  knockout: null,
+
+  noteKnockout: () => {
+    const { myBracket, userTeam, year, knockout } = get();
+    if (!myBracket) return;
+    if (knockout && knockout.year === year) return;
+    const { state } = myBracket;
+    if (!state.eliminated.includes(userTeam)) return;
+
+    // The series that did it, so the modal can say where the year stopped. A
+    // bracket cannot eliminate a team without one, but the fall back to the
+    // last round keeps a malformed tree from producing a nameless round.
+    const lost = state.rounds.flat().find(
+      (s) => s.winner !== null && s.winner !== userTeam
+        && (s.a === userTeam || s.b === userTeam),
+    );
+    set({
+      knockout: {
+        year,
+        kind: myBracket.kind,
+        round: lost ? lost.round : state.rounds.length - 1,
+        rounds: state.rounds.length,
+      },
+    });
+  },
+
+  postseasonSeen: [],
+
+  markPostseasonSeen: (key) => {
+    const { postseasonSeen } = get();
+    if (postseasonSeen.includes(key)) return;
+    set({ postseasonSeen: [...postseasonSeen, key] });
+    // Written through immediately. The alternative is a reload between a modal
+    // and the next stage boundary showing it a second time, which is the whole
+    // reason this is state rather than a ref.
+    void get().saveNow();
   },
 
   closeMyBracket: () => {
     const { season, bracket, myBracket, userTeam, version } = get();
     if (!season || !bracket || !myBracket || !myBracket.state.done) return;
+    get().noteKnockout();
     const mine = resultOf(myBracket.state);
 
     if (myBracket.kind === 'conference') {
@@ -1207,6 +1429,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         engine: season.config.engine,
         homeStarter: g.slot,
         awayStarter: g.slot,
+        // The same wiring the fast path gets: the Strategy screen's settings
+        // govern the game you manage, and the pen is offered most rested first.
+        homeStrategy: home.strategy,
+        awayStrategy: away.strategy,
+        homeBullpen: restedFirst(season, home),
+        awayBullpen: restedFirst(season, away),
+        // And the coach-skill nudge, so a managed game and a simmed one play
+        // to the same odds.
+        ...(home.coachMods ? { homeCoachMods: home.coachMods } : {}),
+        ...(away.coachMods ? { awayCoachMods: away.coachMods } : {}),
       }),
       liveMeta: { home: g.home, away: g.away, day: day.day, conference: g.conference },
       version: version + 1,
@@ -1247,6 +1479,15 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, live, liveMeta, userTeam, version } = get();
     if (!season || !live || !liveMeta || !live.over) return;
 
+    // Whoever threw is unavailable for a while, exactly as playGame records it.
+    // Without this, arms used in a managed game counted as fully rested the
+    // next morning and the rotation quietly rode its best relievers every night.
+    for (const side of [live.result.home, live.result.away]) {
+      for (const line of side.pitching.values()) {
+        if (line.outs > 0 || line.bf > 0) season.lastPitched.set(line.player.id, liveMeta.day);
+      }
+    }
+
     // A bracket game belongs to the bracket, not to the calendar. It is handed
     // back as a pre-played result and the round steps around it, so the game you
     // managed is recorded exactly as a simulated one would have been.
@@ -1257,6 +1498,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         stepBracket(mb.state, mb.preplayed);
       }
       set({ live: null, liveMeta: null, version: version + 1 });
+      // The postseason screen is not mounted right now — it is behind this
+      // game — so a loss it could have noticed has to be recorded for it.
+      get().noteKnockout();
       // Saved only when the tournament ends, by `closeMyBracket`.
       //
       // A save taken mid-bracket would write a season carrying games the saved
@@ -1334,6 +1578,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         history,
         postseason: lastPostseason,
         bracket: get().bracket,
+        myBracket: portableMyBracket(get().myBracket),
+        knockout: get().knockout,
+        postseasonSeen: get().postseasonSeen,
         jobSearch: get().jobSearch,
         coach: get().coach,
         phase: get().phase,
@@ -1377,20 +1624,35 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // resume capturing for nobody.
     loaded.season.captureBoxFor = loaded.userTeam;
     loaded.season.boxScores ??= {};
+    // Saves made before the dynasty layer carry no coach; start a fresh one
+    // rather than refusing to load them.
+    const coach = (loaded.coach as CoachState | undefined) ?? newCoach('Coach');
+    // Restamped on every load rather than trusted from the save, so a save from
+    // before the in-game skills were wired — or one that predates a job change —
+    // comes up with the edge on the right program.
+    applyCoachMods(loaded.season, loaded.userTeam, coach);
+    const bracket = usableBracket(loaded.bracket);
     set({
       season: loaded.season,
       year: loaded.year,
       userTeam: loaded.userTeam,
       needsTeam: false,
       history: (loaded.history ?? []) as SeasonRecord[],
-      // Saves made before the dynasty layer carry no coach; start a fresh one
-      // rather than refusing to load them.
-      coach: (loaded.coach as CoachState | undefined) ?? newCoach('Coach'),
+      coach,
       lastPostseason: (loaded.postseason ?? null) as PostseasonSummary | null,
-      // Back into the postseason where it was left. A live sub-bracket is not
-      // saved, so a reload taken mid-tournament replays that stage from the top
-      // rather than resuming inside a round.
-      bracket: usableBracket(loaded.bracket),
+      // Back into the postseason where it was left, your own half-played
+      // tournament included. A save that predates storing it — or one this
+      // build cannot read — comes back without it, and `openStage` starts that
+      // stage again rather than skipping the part you were in.
+      bracket,
+      myBracket: usableMyBracket(loaded.myBracket, loaded.season, bracket),
+      // How June ended and what it has already said about it. Both are only
+      // ever read against the year on them, so a save from an older build —
+      // which carries neither — resumes with nothing said and nothing lost.
+      knockout: usableKnockout(loaded.knockout, loaded.year),
+      postseasonSeen: Array.isArray(loaded.postseasonSeen)
+        ? (loaded.postseasonSeen as string[]).filter((k) => typeof k === 'string')
+        : [],
       jobSearch: Boolean(loaded.jobSearch),
       // Back to the step the offseason was on, so a reload mid-sequence resumes
       // rather than stranding the player on the dashboard with a week of
@@ -1402,6 +1664,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       tab: 'home',
       screen: 'today',
       lastOffseason: null,
+      // Week recaps are not saved, and a stale one from the previous session
+      // would sit over a board it does not describe.
+      lastWeek: null,
+      lastCommits: [],
     });
     return true;
   },

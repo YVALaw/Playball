@@ -173,6 +173,13 @@ export interface TeamRecord {
    */
   rw?: number;
   rl?: number;
+  /**
+   * Last year's regular season record, carried across the year roll so an award
+   * can recognise a turnaround. Absent in season one and in saves from before it
+   * existed, in which case the turnaround category simply does not fire.
+   */
+  lastW?: number;
+  lastL?: number;
   cw: number;
   cl: number;
   rs: number;
@@ -182,6 +189,14 @@ export interface TeamRecord {
   streak: number;
   /** Team indices faced, once per game. Feeds strength of schedule. */
   opponents: number[];
+  /**
+   * The user coach's offense and defense skills, set only on the program he
+   * runs. `playGame` forwards them into every game this team plays — managed or
+   * simmed, the same tiny edge — and the store keeps them current when a skill
+   * point is spent or the coach changes jobs. Absent everywhere else, so the
+   * other sixty three programs play at their raw ratings.
+   */
+  coachMods?: { offense: number; defense: number };
 }
 
 export interface BattingSeason extends HitLine { g: number }
@@ -217,6 +232,19 @@ export interface BoxScore {
   awayBatting: BoxLine[];
   homePitching: BoxLine[];
   awayPitching: BoxLine[];
+  /**
+   * The classic linescore: runs per inning, then hits and errors. The two lines
+   * can legitimately differ in length — the home half of the ninth is not
+   * played when the home team already leads. Optional because saves from before
+   * these existed still have to open; the screen renders the strip only when
+   * they are here.
+   */
+  awayLine?: number[];
+  homeLine?: number[];
+  awayHits?: number;
+  homeHits?: number;
+  awayErrors?: number;
+  homeErrors?: number;
 }
 
 export interface GameSummary {
@@ -562,6 +590,9 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
     // it over the live one — so a brand new season opened showing last year's
     // 22-11 above a schedule of games nobody had played yet.
     rw: undefined, rl: undefined,
+    // But it does not vanish entirely: it becomes last year's record, which is
+    // what lets Coach of the Year recognise a turnaround.
+    lastW: t.rw ?? t.w, lastL: t.rl ?? t.l,
     opponents: [],
   }));
 
@@ -695,7 +726,7 @@ export interface PlayOptions {
  * needs the closer concept and a save situation to hand — worth doing, and not
  * a reason to leave five pitchers idle in the meantime.
  */
-function restedFirst(season: SeasonState, team: TeamRecord): Pitcher[] {
+export function restedFirst(season: SeasonState, team: TeamRecord): Pitcher[] {
   const day = season.schedule[season.dayIndex]?.day ?? season.dayIndex;
   return [...team.team.bullpen].sort((a, b) => {
     const restA = day - (season.lastPitched.get(a.id) ?? -99);
@@ -775,6 +806,11 @@ export function playGame(
     awayStrategy: away.strategy,
     homeBullpen: restedFirst(season, home),
     awayBullpen: restedFirst(season, away),
+    // The coach-skill nudge, present only on the user's program. Passing it
+    // here rather than in the store means simmed and managed games get it the
+    // same way — one wiring, not two.
+    ...(home.coachMods ? { homeCoachMods: home.coachMods } : {}),
+    ...(away.coachMods ? { awayCoachMods: away.coachMods } : {}),
     verbose: opts.capture ?? false,
     playEvents: opts.capture ?? false,
   });
@@ -860,6 +896,14 @@ export function recordResult(
       awayBatting: battingLines(result.away),
       homePitching: pitchingLines(result.home),
       awayPitching: pitchingLines(result.away),
+      // Copied, not referenced: the TeamState is a live object the caller may
+      // still be holding, and a save must not share arrays with it.
+      awayLine: [...result.away.lineScore],
+      homeLine: [...result.home.lineScore],
+      awayHits: result.away.hits,
+      homeHits: result.home.hits,
+      awayErrors: result.away.errors,
+      homeErrors: result.home.errors,
     };
   }
 

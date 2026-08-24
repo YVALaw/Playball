@@ -78,7 +78,7 @@ export function FloatingAction(
             width: '100%', padding: '11px 10px', marginBottom: 8,
             background: 'transparent', border: '1px solid rgba(28,36,48,.4)',
             color: 'var(--ink)', font: "700 10px/1.25 var(--mono)", letterSpacing: '.1em',
-            whiteSpace: 'normal', overflowWrap: 'anywhere',
+            whiteSpace: 'normal', overflowWrap: 'break-word',
           }}
         >{secondary.label}</button>
       )}
@@ -94,8 +94,12 @@ export function FloatingAction(
           width: '100%', padding: '15px 10px',
           background: 'var(--clay)', border: '1px solid var(--clay)',
           color: 'var(--cream)', font: "700 12px/1.25 var(--mono)", letterSpacing: '.1em',
-          // Long labels wrap rather than running off the end of the button.
-          whiteSpace: 'normal', overflowWrap: 'anywhere',
+          // Long labels wrap rather than running off the end of the button —
+          // between words only. `anywhere` is for unbroken strings like a URL:
+          // on a label it licenses a break in the middle of a word, which is
+          // what a label with a space in it never needs and what a photograph
+          // of a button split mid-word is evidence of.
+          whiteSpace: 'normal', overflowWrap: 'break-word',
           boxShadow: '0 2px 10px rgba(28,36,48,.22)',
         }}
       >{label}</button>

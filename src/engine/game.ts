@@ -96,6 +96,14 @@ export interface SimOptions {
   /** Each coach's policy. Defaults to a neutral one on both sides. */
   homeStrategy?: Strategy;
   awayStrategy?: Strategy;
+  /**
+   * The user coach's offense and defense skills, on whichever side he runs.
+   * Deliberately tiny — at 99 each is worth well under half of home field —
+   * because a skill tree that decides games replaces the roster as the thing
+   * that matters. Absent for every computer program.
+   */
+  homeCoachMods?: { offense: number; defense: number };
+  awayCoachMods?: { offense: number; defense: number };
 }
 
 export interface GameResult {
@@ -161,8 +169,23 @@ export class TeamState {
   readonly relief: readonly Pitcher[];
   /** Bench bats already used. Once a man is out he cannot return — NCAA rule. */
   readonly usedBench: Hitter[] = [];
+  /**
+   * Arms already brought in. The managed game picks from anywhere in the pen,
+   * so "who is left" cannot be a watermark index — choosing the third-listed
+   * arm must not discard the two ahead of him, and a man taken out must never
+   * be offered again.
+   */
+  readonly usedPen: Pitcher[] = [];
   /** How this coach plays. See engine/strategy.ts. */
   readonly strategy: Strategy;
+  /**
+   * The coach-skill nudge, as multipliers ready for the plate appearance
+   * context. Both sit at 1 for the default skill of 20 and move a basis point
+   * per point of skill — 1.0079 at the cap, against a home field edge of 1.020.
+   * A trained coach is a light thumb on the scale, not a sixth infielder.
+   */
+  readonly coachOffMult: number;
+  readonly coachDefMult: number;
 
   constructor(
     team: Team,
@@ -171,8 +194,11 @@ export class TeamState {
     relief: readonly Pitcher[] = team.bullpen,
     lineup: readonly Hitter[] = team.lineup,
     strategy: Strategy = DEFAULT_STRATEGY,
+    coachMods?: { offense: number; defense: number },
   ) {
     this.strategy = strategy;
+    this.coachOffMult = 1 + ((coachMods?.offense ?? 20) - 20) * 0.0001;
+    this.coachDefMult = 1 - ((coachMods?.defense ?? 20) - 20) * 0.0001;
     this.team = team;
     this.isHome = isHome;
     this.order = lineup.slice(0, 9);
@@ -282,9 +308,11 @@ export function simGame(
 
   const home = new TeamState(
     homeTeam, true, opts.homeStarter ?? 0, opts.homeBullpen, opts.homeLineup, opts.homeStrategy,
+    opts.homeCoachMods,
   );
   const away = new TeamState(
     awayTeam, false, opts.awayStarter ?? 0, opts.awayBullpen, opts.awayLineup, opts.awayStrategy,
+    opts.awayCoachMods,
   );
   const playEvents: PlayEvent[] | null = opts.playEvents ? [] : null;
 
@@ -369,8 +397,14 @@ export function createHalfInning(
   canWalkOff = false,
   events: PlayEvent[] | null = null,
   onScore?: (bat: TeamState, fld: TeamState) => void,
-  /** True when a human is managing this side, so the engine keeps its hands off. */
-  manual = false,
+  /**
+   * True when a human is managing that side, so the engine keeps its hands off
+   * its calls. Split per side because a managed game has one human dugout and
+   * one computer dugout: the computer's runners still steal and its bullpen
+   * still turns over, while the human's do nothing he did not ask for.
+   */
+  manualOffense = false,
+  manualDefense = false,
 ): HalfInning {
   let outs = 0;
   const bases: Bases = [null, null, null];
@@ -390,32 +424,50 @@ export function createHalfInning(
 
   let finished = false;
 
+  // A steal, wherever it came from, is an event of its own: the runner moves or
+  // he is an out, and a caught runner is an out like any other — for years of
+  // prototypes he simply vanished from first with the outs counter untouched,
+  // which handed the batting team a free erased baserunner. Returns true when
+  // the out it recorded was the third, which ends the half with the batter's
+  // turn still to come: he leads off the next inning, which is how the rule works.
+  const resolveSteal = (forced: boolean): boolean => {
+    const stole = attemptSteal(bases, bat, fld, rng, say, forced, events);
+    if (stole !== 'caught') return false;
+    addOuts(1);
+    if (events) events.push({ kind: 'out', outs: 1 });
+    return outs >= 3;
+  };
+
   const step = (calledFor?: Tactic): boolean => {
     // A computer-run side makes its own calls. Under manual management the coach
     // has already made his, and the engine must not second-guess him.
-    const tactic = calledFor ?? (manual ? undefined : chooseTactic(bat, fld, inning, outs, bases, rng));
+    const tactic = calledFor ?? (manualOffense ? undefined : chooseTactic(bat, fld, inning, outs, bases, rng));
     if (finished) return true;
     const called = tacticMods(tactic);
 
-    // A called steal happens before the pitch and does not consume the batter,
-    // so it runs ahead of everything else and the plate appearance follows.
-    if (tactic === 'steal') attemptSteal(bases, bat, fld, rng, say, true);
+    // A called steal happens before the pitch and does not consume the batter:
+    // it resolves on its own and control goes back to the manager with the same
+    // man still due at the plate. Only a manager ever calls it — the fast path
+    // takes its steals through the automatic check below.
+    if (tactic === 'steal') {
+      if (resolveSteal(true)) { finished = true; return true; }
+      return false;
+    }
 
-    maybeChangePitcher(fld, say);
-    // Only for a game the computer is running itself. Under manual management
-    // the coach makes this call, and having the engine quietly do it too would
-    // burn the bench out from under him.
-    if (!manual) maybePinchHit(bat, fld, inning, rng, say);
+    // The automatic game. Under manual management each of these is the coach's
+    // call, and having the engine quietly make it too would steal with his
+    // runners and burn his bench and bullpen out from under him.
+    if (!manualDefense) maybeChangePitcher(fld, say);
+    if (!manualOffense) maybePinchHit(bat, fld, inning, rng, say);
+    if (!manualOffense && resolveSteal(false)) { finished = true; return true; }
+
     const pitcher = fld.pitcher;
     const batter = bat.nextBatter();
     const bLine = bat.hitLine(batter);
     const pLine = fld.pitchLine(pitcher);
 
-    maybeSteal(bases, bat, fld, rng, say);
-
     // Snapshot after the steal check so the event stream describes the plate
-    // appearance itself. Steals and pitching changes do not emit events yet;
-    // the field layer does not need them until Phase 5.
+    // appearance itself; the steal emitted its own advance and out above.
     const basesBefore: Bases = [bases[0], bases[1], bases[2]];
     const outsBefore = outs;
 
@@ -476,7 +528,10 @@ export function createHalfInning(
       runnersOn: bases.some(Boolean),
       timesThrough: tto,
       fatigueMult,
-      defenseMult: mult(fld.defense, -0.12),
+      // The fielding coach's skill rides on the same lever team defence uses.
+      defenseMult: mult(fld.defense, -0.12) * fld.coachDefMult,
+      // And the hitting coach's on the batting side's whole event distribution.
+      offenseMult: bat.coachOffMult,
       // A shift is a bet on this hitter, not a flat upgrade.
       alignment: alignmentAgainst(fld.strategy.alignment, batter),
       ...(called ? { mods: called } : {}),
@@ -1153,15 +1208,15 @@ function sacrifice(
   return { outs: 1, text: 'lays down a sacrifice.', scored };
 }
 
-function maybeSteal(bases: Bases, bat: TeamState, fld: TeamState, rng: Rng, say: Say): void {
-  attemptSteal(bases, bat, fld, rng, say, false);
-}
-
 /**
  * A steal of second. `forced` is a manager sending the runner regardless of
  * whether the automatic logic would have tried it — the success odds are the
  * same either way, which is the point: calling for it does not make it work,
  * it only makes it happen.
+ *
+ * Reports what happened rather than settling it: the caller owns the outs
+ * counter, because a caught runner charges the out to the pitcher on the mound
+ * and can end the half, and only the half inning knows how to do either.
  */
 /**
  * The league's ordinary catcher arm — 50, plus the spectrum's catcher bonus.
@@ -1183,11 +1238,12 @@ const catcherArm = (c: Hitter, sensitivity: number): number =>
 
 function attemptSteal(
   bases: Bases, bat: TeamState, fld: TeamState, rng: Rng, say: Say, forced: boolean,
-): void {
+  events: PlayEvent[] | null = null,
+): 'stolen' | 'caught' | null {
   const runner = bases[0];
-  if (!runner || bases[1]) return;
+  if (!runner || bases[1]) return null;
   const green = STEALS[bat.strategy.steals];
-  if (green === 0) return;
+  if (green === 0 && !forced) return null;
   // Runners pick their spots. A cannon behind the plate does not just throw
   // people out, it stops them leaving — which is why the arm has to appear here
   // as well as in the throw, or elite catchers would post huge caught-stealing
@@ -1197,7 +1253,7 @@ function attemptSteal(
          * catcherArm(fld.catcher, -0.30),
     0, 0.75,
   );
-  if (!forced && rng() >= attempt) return;
+  if (!forced && rng() >= attempt) return null;
   // Three people decide a steal, and until now only two of them were in the
   // equation. The pitcher controls how big a jump the runner gets; the runner
   // controls how fast he covers ninety feet; **the catcher has to make the
@@ -1208,8 +1264,15 @@ function attemptSteal(
     0.30, 0.94,
   );
   const line = bat.hitLine(runner);
-  if (rng() < success) { bases[0] = null; bases[1] = runner; line.sb++; say(`   ${runner.name} steals second.`); }
-  else { bases[0] = null; line.cs++; say(`   ${runner.name} is caught stealing.`); }
+  if (rng() < success) {
+    bases[0] = null; bases[1] = runner; line.sb++;
+    say(`   ${runner.name} steals second.`);
+    if (events) events.push({ kind: 'advance', runners: [{ id: runner.id, from: 1, to: 2 }] });
+    return 'stolen';
+  }
+  bases[0] = null; line.cs++;
+  say(`   ${runner.name} is caught stealing.`);
+  return 'caught';
 }
 
 /**
@@ -1318,9 +1381,16 @@ function maybeChangePitcher(fld: TeamState, say: Say): void {
   const gassed = fld.pitcherPitches > budget + 12 + HOOK[fld.strategy.hook];
   const shelled = line.er >= 6 && fld.pitcherPitches > 35;
   if (!gassed && !shelled) return;
-  if (fld.penIndex >= fld.relief.length) return;
-  const next = fld.relief[fld.penIndex++];
+  // Walk past anyone the manager already spent. In a fully automatic game the
+  // pen is used strictly in order and this never skips; in a game handed to the
+  // computer late, an arm the manager burned must not come back out.
+  let next: Pitcher | undefined;
+  while (fld.penIndex < fld.relief.length && !next) {
+    const cand = fld.relief[fld.penIndex++];
+    if (cand && cand !== fld.pitcher && !fld.usedPen.includes(cand)) next = cand;
+  }
   if (!next) return;
+  fld.usedPen.push(next);
   fld.pitcher = next;
   fld.pitcherPitches = 0;
   say(`   Pitching change: ${next.name} (${next.throws}HP) enters.`);

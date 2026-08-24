@@ -10,8 +10,10 @@ import {
   singleElimination, bestOf, conferenceTournament, seasonAwards, allConference, runPostseason,
   conferenceLengths, CONF_FIELD, clincher,
   coachOfTheYear, freezeRegularSeason,
+  type PostseasonSummary,
 } from '../src/engine/postseason.js';
 import { makeRng } from '../src/engine/rng.js';
+import { overallOf } from '../src/engine/ratings.js';
 
 function playedSeason(seed = 2027) {
   const season = createSeason(makeRng(seed));
@@ -254,6 +256,10 @@ describe('coach of the year', () => {
     expect(award).not.toBeNull();
     expect(award!.wins).toBeGreaterThan(award!.losses);
 
+    // With no postseason to read and no previous year on record, the only
+    // category that can fire is the regression — the always-available fallback.
+    expect(award!.reason).toBe('overachieved');
+
     // He beat his roster's worth.
     expect(award!.wins).toBeGreaterThan(award!.expected);
 
@@ -269,5 +275,58 @@ describe('coach of the year', () => {
       if (a && a.team === most.index) sameAsMostWins += 1;
     }
     expect(sameAsMostWins).toBeLessThan(5);
+  });
+
+  it('recognises a turnaround that towers over the field', () => {
+    // The categories are picked by how loud each story was this season —
+    // the winner's number against that number's spread across the league. A
+    // league where nobody moved except one program that climbed eighteen games
+    // has exactly one story, and the award has to find it.
+    const s = createSeason(makeRng(1101));
+    simSeason(s);
+    freezeRegularSeason(s);
+
+    // Everyone repeated last year to the game — except the riser.
+    for (const t of s.teams) { t.lastW = t.rw ?? t.w; t.lastL = t.rl ?? t.l; }
+    const riser = s.teams.find((t) => (t.rw ?? t.w) > (t.rl ?? t.l))!;
+    riser.lastW = Math.max(0, (riser.rw ?? riser.w) - 18);
+    riser.lastL = (riser.lastL ?? 0) + 18;
+
+    const award = coachOfTheYear(s)!;
+    expect(award.reason).toBe('turnaround');
+    expect(award.team).toBe(riser.index);
+    expect(award.line).toContain('in one year');
+  });
+
+  it('hands it to a national champion nobody saw coming', () => {
+    // Giant-killer is binary — either the champion was a top-ten roster or he
+    // was not — so it carries a fixed salience high enough to win whenever it
+    // fires. A title from the bottom half of the talent table is the story of
+    // that season, whatever the overachievement table says.
+    const s = createSeason(makeRng(1102));
+    simSeason(s);
+    freezeRegularSeason(s);
+
+    const strengthOf = (t: (typeof s.teams)[number]): number => {
+      const all = [
+        ...t.team.lineup.map((p) => overallOf(p)),
+        ...t.team.rotation.slice(0, 3).map((p) => overallOf(p)),
+      ];
+      return all.reduce((a, b) => a + b, 0) / all.length;
+    };
+    const ranked = [...s.teams].sort((a, b) => strengthOf(b) - strengthOf(a));
+    const david = ranked.slice(32).find((t) => (t.rw ?? t.w) > (t.rl ?? t.l))!;
+
+    const post: PostseasonSummary = {
+      conferenceChampions: [david.index],
+      regionChampions: [david.index],
+      champion: david.index,
+      finish: { [david.index]: 'champion' },
+    };
+
+    const award = coachOfTheYear(s, post)!;
+    expect(award.reason).toBe('giantKiller');
+    expect(award.team).toBe(david.index);
+    expect(award.line).toContain('roster in the country');
   });
 });

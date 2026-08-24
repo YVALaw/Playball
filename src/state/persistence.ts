@@ -71,6 +71,23 @@ export interface SaveFile {
    * half played and no way back into it.
    */
   bracket?: unknown;
+  /**
+   * The tournament you are in the middle of, minus the two things that cannot
+   * be written down. Without it a reload mid-June found the other seven
+   * conferences already decided, decided your own stage was therefore over, and
+   * skipped the tournament you were playing — which also left you out of the
+   * regional, since you never won anything to qualify with.
+   */
+  myBracket?: unknown;
+  /**
+   * How your run in the postseason ended, and what June has already told you.
+   *
+   * A reload lands between the elimination and the screen that reports it, so
+   * both sides of that have to survive one: without the first the player is
+   * never told, and without the second he is told twice.
+   */
+  knockout?: unknown;
+  postseasonSeen?: unknown;
 }
 
 export interface SaveSummary {
@@ -195,6 +212,11 @@ export interface SaveExtras {
   history?: unknown[];
   postseason?: unknown;
   bracket?: unknown;
+  /** Your own half-played tournament, so a reload resumes inside it. */
+  myBracket?: unknown;
+  /** The end of your June, and the modals it has already shown. */
+  knockout?: unknown;
+  postseasonSeen?: unknown;
   /** True while the coach has no job. Without it, a reload rehires him. */
   jobSearch?: unknown;
   /** Optional so saves predating the dynasty layer still load. */
@@ -234,6 +256,14 @@ export function buildSaveFile(
     coach: extras.coach,
     ...(extras.postseason ? { postseason: extras.postseason } : {}),
     ...(extras.bracket ? { bracket: extras.bracket } : {}),
+    // Named here for the same reason everything else is: this record is built
+    // field by field, so widening the types above and stopping there would
+    // compile and still drop them.
+    ...(extras.myBracket ? { myBracket: extras.myBracket } : {}),
+    ...(extras.knockout ? { knockout: extras.knockout } : {}),
+    ...(Array.isArray(extras.postseasonSeen) && extras.postseasonSeen.length > 0
+      ? { postseasonSeen: extras.postseasonSeen }
+      : {}),
     ...(extras.jobSearch ? { jobSearch: true } : {}),
     // Where the offseason had got to. Widening `SaveExtras` alone was not
     // enough — this record is built field by field, so anything not named here
@@ -266,6 +296,11 @@ export interface LoadedDynasty {
   postseason: unknown;
   /** The postseason in progress, if a reload landed in the middle of one. */
   bracket: unknown;
+  /** Your own tournament inside it, still being played. */
+  myBracket: unknown;
+  /** How your run in it ended, and which modals have already been shown. */
+  knockout: unknown;
+  postseasonSeen: unknown;
   /** Whether the coach is currently out of a job. */
   jobSearch: unknown;
   /** Where the offseason sequence had got to, and the verdict behind it. */
@@ -319,6 +354,9 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     coach: file.coach,
     postseason: file.postseason ?? null,
     bracket: file.bracket ?? null,
+    myBracket: file.myBracket ?? null,
+    knockout: file.knockout ?? null,
+    postseasonSeen: file.postseasonSeen ?? [],
     jobSearch: file.jobSearch ?? false,
     phase: file.phase ?? null,
     review: file.review ?? null,

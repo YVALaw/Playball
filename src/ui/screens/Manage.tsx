@@ -12,6 +12,7 @@ import { overallOf } from '../../engine/ratings.js';
 import { useDynasty } from '../../state/store.js';
 import { lazy, Suspense } from 'react';
 import { Diamond } from '../Diamond.js';
+import { LineScore } from '../LineScore.js';
 
 /**
  * The 3D field, loaded only when a game is actually being managed.
@@ -75,10 +76,13 @@ export function Manage() {
 
   // Who crossed the plate on the last play. The engine reports it as an advance
   // to base 4, which is the only record of a man scoring — he is off the bases
-  // by the time the screen sees the new state.
+  // by the time the screen sees the new state. All advance events, not just the
+  // first: a steal now emits one of its own, and a run scored on the plate
+  // appearance after it must still flash.
   const scoredRunners = useMemo(() => {
-    const advance = live?.lastPlay.find((e) => e.kind === 'advance');
-    return (advance?.runners ?? [])
+    return (live?.lastPlay ?? [])
+      .filter((e) => e.kind === 'advance')
+      .flatMap((e) => e.runners ?? [])
       .filter((r) => r.to === 4)
       .map((r) => ({ id: r.id, from: r.from }));
   }, [live, version]);
@@ -128,6 +132,31 @@ export function Manage() {
 
   const recent = live.log.filter((l) => !l.startsWith('\n')).slice(-30);
 
+  // The linescore. Completed halves live in TeamState.lineScore; the half being
+  // played is the difference between the scoreboard and what has been written
+  // down. The two lines legitimately differ in length — a bottom ninth the home
+  // team never needed is an 'X', exactly as a newspaper would set it.
+  const battingHalf = d?.half ?? null;
+  const awayLs = r.away.lineScore;
+  const homeLs = r.home.lineScore;
+  const innCols = Math.max(
+    9,
+    awayLs.length + (battingHalf === 'top' ? 1 : 0),
+    homeLs.length + (battingHalf === 'bottom' ? 1 : 0),
+  );
+  const cellsFor = (side: 'away' | 'home'): Array<string | number> => {
+    const ls = side === 'away' ? awayLs : homeLs;
+    const runs = side === 'away' ? r.away.runs : r.home.runs;
+    const batting = side === 'away' ? battingHalf === 'top' : battingHalf === 'bottom';
+    const played = ls.reduce((a, b) => a + b, 0);
+    return Array.from({ length: innCols }, (_, i) => {
+      if (i < ls.length) return ls[i] ?? 0;
+      if (batting && i === ls.length) return runs - played;
+      if (live.over && side === 'home' && i === ls.length && awayLs.length > homeLs.length) return 'X';
+      return '';
+    });
+  };
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={{ flex: 'none', background: 'var(--navy)', padding: '10px 14px 12px' }}>
@@ -155,6 +184,25 @@ export function Manage() {
             ))}
           </span>
         </div>
+      </div>
+
+      <div style={{
+        flex: 'none', padding: '4px 10px 5px',
+        background: 'var(--paper)', borderBottom: '1px solid var(--faint)',
+      }}>
+        <LineScore
+          innings={innCols}
+          rows={[
+            {
+              abbr: away?.def.abbr ?? 'AWY', cells: cellsFor('away'),
+              r: r.away.runs, h: r.away.hits, e: r.away.errors,
+            },
+            {
+              abbr: home?.def.abbr ?? 'HOM', cells: cellsFor('home'),
+              r: r.home.runs, h: r.home.hits, e: r.home.errors,
+            },
+          ]}
+        />
       </div>
 
       {/*

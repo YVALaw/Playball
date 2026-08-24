@@ -464,9 +464,9 @@ export const SKILL_LABEL: Record<keyof CoachSkills, string> = {
 };
 
 export const SKILL_BLURB: Record<keyof CoachSkills, string> = {
-  offense: 'Your hitters take better at-bats and run the bases smarter.',
-  defense: 'Your fielders get to more, and your pitchers hold runners on.',
-  training: 'Players develop further between seasons, and decline later.',
+  offense: 'Your hitters take slightly better at-bats, every game.',
+  defense: 'Balls in play against you become outs a little more often.',
+  training: 'Your returning players develop further between seasons.',
   recruiting: 'Every hour spent on a recruit counts for more.',
 };
 

@@ -744,17 +744,30 @@ const pitcherValue = (s: PitchingSeason): number => {
 };
 
 /**
- * Coach of the Year: the man who got the most out of the least.
+ * Coach of the Year: four stories, and the one this season told loudest.
  *
- * Not the most wins — that award belongs to whoever was handed the best roster,
- * and giving it to him says nothing. This measures wins against what a roster
- * that good should have produced, and the baseline is drawn from the league
- * itself rather than a constant: fit wins against roster strength across all
- * sixty four programs, then find whoever is furthest above the line.
+ * The first version had one measure — wins against what the roster was worth —
+ * and it was a good measure with a bad consequence: the citation read the same
+ * every June, so five seasons in, the award was wallpaper. The fix is not a
+ * precedence list. Some category always fires (a plus-ten turnaround exists in
+ * practically every simulated season), so fixed precedence just swaps one
+ * repeated headline for another. Instead each category is scored by how loud
+ * it was *this* season — the winner's number divided by that number's spread
+ * across the league — and the loudest story wins. Dividing by the per-season
+ * standard deviation is what makes wins, win-jumps and run margins comparable
+ * at all: each becomes "how far outside a normal season was this".
  *
- * It is self-calibrating, so it keeps working if the engine's scoring, schedule
- * length or talent spread ever move.
+ * The regression baseline is unchanged and still self-calibrating: fit wins
+ * against roster strength across all sixty four programs, and overachievement
+ * is distance above the line. It is the one category that can always fire, so
+ * it is the fallback when the others have nothing to say.
  */
+export type CoachAwardReason =
+  | 'overachieved'   // furthest above what his roster was worth
+  | 'giantKiller'    // won it all without a top-ten roster
+  | 'turnaround'     // biggest one-year jump in wins
+  | 'wireToWire';    // conference champion with the country's best run margin
+
 export interface CoachAward {
   team: number;
   school: string;
@@ -763,9 +776,14 @@ export interface CoachAward {
   /** What a roster this good was worth, to one decimal. */
   expected: number;
   strength: number;
+  reason: CoachAwardReason;
+  /** The headline stat, written here so every screen tells the same story. */
+  line: string;
 }
 
-export function coachOfTheYear(season: SeasonState): CoachAward | null {
+export function coachOfTheYear(
+  season: SeasonState, post?: PostseasonSummary | null,
+): CoachAward | null {
   const strengthOf = (t: TeamRecord): number => {
     const all: number[] = [
       ...t.team.lineup.map((p) => overallOf(p)),
@@ -781,6 +799,11 @@ export function coachOfTheYear(season: SeasonState): CoachAward | null {
   if (rows.length < 4) return null;
 
   const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+  const sd = (xs: number[]): number => {
+    if (xs.length < 2) return 0;
+    const m = mean(xs);
+    return Math.sqrt(xs.reduce((a, x) => a + (x - m) ** 2, 0) / xs.length);
+  };
   const ms = mean(rows.map((r) => r.strength));
   const mw = mean(rows.map((r) => r.wins));
   let cov = 0;
@@ -790,25 +813,112 @@ export function coachOfTheYear(season: SeasonState): CoachAward | null {
     varS += (r.strength - ms) ** 2;
   }
   const slope = varS > 0 ? cov / varS : 0;
+  const expectedOf = (r: typeof rows[number]): number => mw + slope * (r.strength - ms);
 
-  // A losing season is not an overachievement however light the roster was.
+  // A losing season wins nothing, whatever the story. This holds for every
+  // category, not just overachievement.
   const eligible = rows.filter((r) => r.wins > r.losses);
   if (eligible.length === 0) return null;
 
+  type Candidate = {
+    row: typeof rows[number];
+    reason: CoachAwardReason;
+    salience: number;
+    line: string;
+  };
+  const candidates: Candidate[] = [];
+
+  // OVERACHIEVER — the original measure, and the guaranteed fallback: some
+  // team is always furthest above the line.
+  const residuals = rows.map((r) => r.wins - expectedOf(r));
+  const residualSd = sd(residuals);
   let best = eligible[0] as typeof rows[number];
   let bestGap = -Infinity;
   for (const r of eligible) {
-    const expected = mw + slope * (r.strength - ms);
-    const gap = r.wins - expected;
+    const gap = r.wins - expectedOf(r);
     if (gap > bestGap || (gap === bestGap && r.wins > best.wins)) { best = r; bestGap = gap; }
   }
+  candidates.push({
+    row: best,
+    reason: 'overachieved',
+    salience: residualSd > 0 ? bestGap / residualSd : 0,
+    line: `${bestGap.toFixed(1)} wins above what that roster was worth`,
+  });
+
+  // GIANT-KILLER — the national champion, when he was not supposed to be: a
+  // roster outside the top ten of sixty four. Binary and rare, so it carries a
+  // fixed salience high enough to win whenever it fires — a champion nobody
+  // saw coming is the story of that season, full stop.
+  if (post) {
+    const byStrength = [...rows].sort((a, b) => b.strength - a.strength);
+    const champRank = byStrength.findIndex((r) => r.t.index === post.champion) + 1;
+    const champ = rows.find((r) => r.t.index === post.champion);
+    if (champ && champRank > 10 && champ.wins > champ.losses) {
+      candidates.push({
+        row: champ,
+        reason: 'giantKiller',
+        salience: 4.0,
+        line: `national champions with the No. ${champRank} roster in the country`,
+      });
+    }
+  }
+
+  // TURNAROUND — the biggest one-year jump in wins. lastW is only present once
+  // a season has rolled over, so this stays silent in year one and for saves
+  // from before the field existed.
+  const jumps = rows
+    .filter((r) => r.t.lastW !== undefined)
+    .map((r) => r.wins - (r.t.lastW as number));
+  const jumpSd = sd(jumps);
+  const turnable = eligible.filter((r) => r.t.lastW !== undefined);
+  if (turnable.length > 0 && jumpSd > 0) {
+    const top = turnable.reduce((a, b) =>
+      (b.wins - (b.t.lastW as number)) > (a.wins - (a.t.lastW as number)) ? b : a);
+    const jump = top.wins - (top.t.lastW as number);
+    if (jump > 0) {
+      candidates.push({
+        row: top,
+        reason: 'turnaround',
+        salience: jump / jumpSd,
+        line: `from ${top.t.lastW}-${top.t.lastL} to ${top.wins}-${top.losses} in one year`,
+      });
+    }
+  }
+
+  // WIRE-TO-WIRE — a conference champion who also owned the country's best run
+  // margin per game: dominant in the standings and dominant on the field, all
+  // season long. Both halves are required — the margin alone is a stat, the
+  // title alone is a bracket.
+  if (post) {
+    const diffOf = (r: typeof rows[number]): number =>
+      r.t.gp > 0 ? (r.t.rs - r.t.ra) / r.t.gp : 0;
+    const diffs = rows.map(diffOf);
+    const diffSd = sd(diffs);
+    const bestDiff = Math.max(...diffs);
+    const leader = rows.find((r) => diffOf(r) === bestDiff);
+    if (
+      leader && diffSd > 0 && leader.wins > leader.losses
+      && post.conferenceChampions.includes(leader.t.index)
+    ) {
+      candidates.push({
+        row: leader,
+        reason: 'wireToWire',
+        salience: bestDiff / diffSd,
+        line: `outscored the country by ${bestDiff.toFixed(1)} runs a game, wire to wire`,
+      });
+    }
+  }
+
+  const winner = candidates.reduce((a, b) => (b.salience > a.salience ? b : a));
   return {
-    team: best.t.index,
-    school: best.t.def.school,
-    wins: best.wins,
-    losses: best.losses,
-    expected: Math.round((mw + slope * (best.strength - ms)) * 10) / 10,
-    strength: Math.round(best.strength),
+    team: winner.row.t.index,
+    school: winner.row.t.def.school,
+    wins: winner.row.wins,
+    losses: winner.row.losses,
+    expected: Math.round(expectedOf(winner.row) * 10) / 10,
+    strength: Math.round(winner.row.strength),
+    reason: winner.reason,
+    line: winner.line,
   };
 }
 

@@ -143,11 +143,16 @@ export const UNDERCLASS_BAR = { SO: 70, FR: 78 } as const;
  * makes recruiting a gamble rather than arithmetic — a 60 potential freshman can
  * stall, and a 48 can outgrow his projection.
  */
-function develop(p: Player, rng: Rng): number {
+function develop(p: Player, rng: Rng, growthMult = 1): number {
   const before = overallOf(p);
   const gap = p.potential - before;
   const rate = p.classYear === 'SO' ? 0.45 : p.classYear === 'JR' ? 0.35 : 0.25;
-  const delta = gap * rate + gauss(rng) * 2.2;
+  // The training skill scales the systematic pull toward potential and nothing
+  // else — the noise stays untouched, so a trained program raises the floor of
+  // a class without making development any less of a gamble. It also keeps the
+  // rng draw order identical whatever the multiplier, which is what lets a
+  // test compare skill levels on the same stream.
+  const delta = gap * rate * growthMult + gauss(rng) * 2.2;
 
   const bump = (v: number): number => clamp(v + delta + gauss(rng) * 1.2, 15, 99);
 
@@ -305,8 +310,13 @@ const WALK_ON_PENALTY = 13;
 export interface OffseasonOpts {
   /** The program the player coaches, so its board is not overwritten by the AI. */
   userTeam?: number;
-  /** The user's own reputation, which drags recruits above the program's weight. */
-  coachPrestige?: number;
+  /**
+   * The user coach's training skill, applied to his own program's development
+   * and nobody else's. Neutral at the starting value of 20; at 99 it is worth
+   * about sixteen percent more systematic growth — a real edge over four years
+   * of a class, invisible in any single offseason.
+   */
+  training?: number;
 }
 
 const emptyReport = (): OffseasonReport => ({
@@ -358,6 +368,10 @@ export function departAndDevelop(
 
   for (const record of season.teams) {
     const team = record.team;
+    // The coach-skill nudge: only the user's program trains above the norm.
+    const growthMult = record.index === opts.userTeam
+      ? 1 + ((opts.training ?? 20) - 20) / 500
+      : 1;
     const roster: Player[] = [
       ...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen,
     ];
@@ -383,7 +397,7 @@ export function departAndDevelop(
       const next = NEXT_CLASS[p.classYear];
       if (next === null) continue;        // unreachable: seniors always depart
       p.classYear = next;
-      const gained = develop(p, rng);
+      const gained = develop(p, rng, growthMult);
       report.developmentNet += gained;
       if (gained > 0) report.improved += 1; else report.declined += 1;
       survivors.push(p);

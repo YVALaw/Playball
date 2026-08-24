@@ -22,31 +22,33 @@ import { ENGINES } from '../src/engine/engines.js';
 import type { Hitter, Pitcher } from '../src/engine/types.js';
 
 /**
- * Re-recorded 2026-08-22, when coaching strategy became real: baserunning can
- * now fail, the computer bunts, and every program carries a philosophy. All of
- * that consumes random draws and moves these figures.
+ * Re-recorded 2026-08-24, when a caught stealing became an out. For years it
+ * only erased the runner, which made every steal attempt half price; charging
+ * the out ends some innings early, and every random draw after such an inning
+ * shifts. Runs moved from 5.18 to 5.01 per team per game — about 3%, the real
+ * cost of the outs that were being given away — and every component rate still
+ * lands within 5% of the sourced D1 targets (runs sit 5% under a target that is
+ * DERIVED rather than sourced, as flagged when it was set).
  *
- * Calibration was re-checked first. Every component rate — average, on base,
- * slugging, home runs, walks — lands within 2% of the sourced D1 targets. Runs
- * sit 5% under, which is the honest cost of an engine that now retires runners
- * on the bases and gives away outs bunting; the runs target itself is DERIVED
- * rather than sourced, and was flagged as such when it was set.
+ * Previously re-recorded 2026-08-22, when coaching strategy became real:
+ * baserunning can now fail, the computer bunts, and every program carries a
+ * philosophy.
  */
 const GOLDEN: Record<string, number> = {
-  'Runs per team per game': 5.184166666666667,
-  'PA per team per game': 40.486875,
-  'Batting average': 0.26635773864689527,
-  'On base percentage': 0.34483911967355674,
-  'Home runs per team per game': 0.4952083333333333,
-  'Strikeouts per team per game': 6.575,
-  'Walks per team per game': 3.77875,
-  'Pitches per plate appearance': 3.6288612050201454,
-  'Slugging': 0.37109592215013903,
+  'Runs per team per game': 5.010416666666667,
+  'PA per team per game': 39.92166666666667,
+  'Batting average': 0.2664724194333218,
+  'On base percentage': 0.34363127791925857,
+  'Home runs per team per game': 0.4839583333333333,
+  'Strikeouts per team per game': 6.502291666666666,
+  'Walks per team per game': 3.654375,
+  'Pitches per plate appearance': 3.6245616415480315,
+  'Slugging': 0.37078552877653553,
 };
 
-const GOLDEN_SLUGGING = 0.37109592215013903;
-const GOLDEN_ERRORS = 1.101875;
-const GOLDEN_SB_PCT = 0.7128146453089245;
+const GOLDEN_SLUGGING = 0.37078552877653553;
+const GOLDEN_ERRORS = 1.0902083333333332;
+const GOLDEN_SB_PCT = 0.7114444631720883;
 
 /**
  * Metrics still outside the 10% bar. The list is now empty, and keeping the

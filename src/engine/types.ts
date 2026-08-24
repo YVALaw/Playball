@@ -196,6 +196,12 @@ export interface PAContext {
   fatigueMult?: number;
   defenseMult?: number;
   /**
+   * The batting side's coach-skill nudge, a hair above or below 1. Kept apart
+   * from defenseMult because it lifts every offensive event, not just balls in
+   * play — a good hitting coach's at-bats end in more walks too.
+   */
+  offenseMult?: number;
+  /**
    * Defensive alignment as a multiplier on a ground ball becoming a hit. A shift
    * is a bet on the hitter at the plate, so this varies batter to batter rather
    * than being a flat team rating.
