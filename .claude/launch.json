@@ -3,9 +3,18 @@
   "configurations": [
     {
       "//": "node.exe directly rather than npm: Node was installed mid-session, so it is not on the PATH this process inherited, and npm.cmd shells out to `node` by name.",
+      "//2": "5174, not 5173. The frozen build took 5173 because saves are IndexedDB and IndexedDB is per-origin, port included — see the comment on `preview` in vite.config.ts. Both servers can run at once on these ports.",
       "name": "playball",
       "runtimeExecutable": "C:/Program Files/nodejs/node.exe",
-      "runtimeArgs": ["node_modules/vite/bin/vite.js", "--port", "5173", "--strictPort"],
+      "runtimeArgs": ["node_modules/vite/bin/vite.js", "--port", "5174", "--strictPort"],
+      "port": 5174
+    },
+    {
+      "//": "The frozen one, and the one to open on the phone. Serves whatever `npm run build` last put in dist/ and watches nothing, so a testing session is not interrupted every time a file is saved. Run the build again to move it forward.",
+      "//2": "On 5173 so that a dynasty already played at http://<lan-ip>:5173 opens here. A different port is a different origin and a different IndexedDB, so the same save would be invisible.",
+      "name": "playball-frozen",
+      "runtimeExecutable": "C:/Program Files/nodejs/node.exe",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js", "preview", "--port", "5173", "--strictPort"],
       "port": 5173
     }
   ]

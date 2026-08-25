@@ -54,7 +54,7 @@ export function Rankings() {
 
                   Your row used to be the only one that did anything, and what it
                   did was jump to your schedule. That made the one row you look
-                  for first behave unlike the sixty three around it — and the
+                  for first behave unlike the ninety five around it — and the
                   page it now opens carries your results anyway, on its own tab.
                 */
                 onClick={() => openTeam(t.index)}
@@ -104,7 +104,7 @@ function Row(
       gap: 6, alignItems: 'center',
       padding: '7px 10px',
       borderBottom: '1px solid var(--hairline)',
-      // Pinned, so sixty four rows never leave you guessing which column the
+      // Pinned, so ninety six rows never leave you guessing which column the
       // last number is. Opaque for the same reason the conference table's is.
       ...(head
         ? {

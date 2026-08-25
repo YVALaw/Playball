@@ -116,27 +116,34 @@ exists.
 - **A2 · Fifteenth-inning failure** — `DECIDED`. A game reaching the fifteenth
   went undefined. Not yet reproduced; a seeded search for long games will find
   it.
-- **A3 · World reconstruction** — `DECIDED`. The save omits the schedule and
-  rebuilds it from the *current* conference and program definitions, so
-  reordering the world silently alters an old career. Fix: persist a compact
-  world snapshot, or adopt permanent string program ids, or refuse to load a
-  save whose world version differs.
-- **A4 · Seeding tiebreakers** — `DECIDED`. Ties currently resolve by whatever
-  order the array happened to be in.
+- **A3 · World reconstruction** — SHIPPED. The schedule is rebuilt from the
+  teams the save holds rather than from `data/schools.ts` as it stands today.
+  Nothing new had to be persisted: a `TeamRecord` already carries its own index
+  and its own conference, so `worldFromTeams` reproduces the world the season
+  was built from. The two alternatives were rejected on the record — refusing
+  the load throws away a working career to avoid a problem that has a correct
+  answer, and permanent string ids are the same fix at ten times the size. See
+  `05-systems-reference.md` §11.6.
+- **A4 · Seeding tiebreakers** — SHIPPED. One chain, in `seedTeams`, used by the
+  conference table, the national rankings, the tournament field and both bracket
+  seedings: head to head as a mini round robin within the tied group, then
+  conference record, overall record, run differential, and finally the school's
+  abbreviation — deterministic, stated, and unmoved by reordering the data file.
+  `finalOrder` is now frozen conference by conference so a tournament seed cannot
+  disagree with the table on screen. See §8.7.
 - **A5 · A departing player's last season never reaches the record book** —
-  `DECIDED`, and the most damaging of these. `departAndDevelop` runs at the
-  draft phase and strips the departed off `lineup`/`bench`/`rotation`/`bullpen`;
-  `archiveSeason` runs later at the year roll and reads only those arrays. So
-  **every graduating senior's final year is lost**, and has always been lost.
-  That is the best season most players ever have, and it is exactly the data a
-  record book, a hall of fame and a career page read. Fix by archiving before
-  the draft phase, or by archiving the departed by id. Found while building
-  walk-ons; pre-existing, not caused by it.
-- **A6 · The draft screen's walk-on list is dead UI** — `DECIDED`, cosmetic.
-  `lastOffseason.walkOns` is only filled at the year roll, by which point the
-  phase has reset and the screen is unreachable. The block renders for nobody.
-  The class review now carries the projection instead, so this is either wired
-  to something real or deleted.
+  SHIPPED. `archiveSeason` runs on the way into the draft step, beside
+  `recordSeasonMarks`, which is the last moment the rosters exist. Archiving
+  before the draft was chosen over archiving the departed by id: it keeps one
+  notion of "the roster that played this season" instead of two that can drift,
+  and it puts both scans of a finished season in one place. It also fixed a
+  second thing nobody had noticed — the class year on the row, which
+  `departAndDevelop` had already advanced. See §12.4 and §13.2.
+- **A6 · The draft screen's walk-on list is dead UI** — SHIPPED, by deletion.
+  Wiring it to something real would have meant computing the class shortfall
+  twice, and the class review already carries it *before* signing day, where it
+  is something the coach can still act on rather than a receipt. A comment in
+  `Draft.tsx` records why the block is gone.
 
 ## B. Agreed and designed, not yet built
 
@@ -218,8 +225,9 @@ half the achievements are all reading from the same book.
   to design against is explicit: *a man who holds one single-game record and was
   otherwise ordinary must not get in*. Sustained excellence over a career, not a
   spike. Replaces the career-leaders placeholder on the program page. Depends on
-  B1, B9, and on A5 — a hall of fame reading a record book that lost every
-  player's final season would honour the wrong men.
+  B1 and B9. The third dependency, A5, is cleared: a hall of fame reading an
+  archive that lost every player's final season would have honoured the wrong
+  men, and the archive no longer loses it.
 - **B13 · Career records league-wide** — `DECIDED`. Requires widening archiving
   beyond your own program, which is the one genuinely expensive piece; single
   game and single season records have no such problem.
@@ -317,8 +325,9 @@ Fold in opportunistically rather than as a work item of their own.
 - `FIELD_SIZE` and `runPostseason`'s `size` parameter are vestigial.
 - `Expectation.expectsTournament` and `expectsConference` are computed and never
   read.
-- Stale comments listed in appendix A of the systems reference, including the
-  postseason note still describing four-team double-elimination regionals.
+- Stale comments listed in appendix A of the systems reference. The postseason
+  note that described four-team double-elimination regionals is gone; what is
+  left there is `FIELD_SIZE`, the five UI files above, and four smaller ones.
 
 ## G. From the original roadmap, never built
 
@@ -396,13 +405,16 @@ Park geometry (see G4) belongs to this track.
 
 ### G5 · Debt
 
-- **Twelve source files still say the world has 64 programs.** It has 96.
-  `postseason.ts`, `progression.ts`, `recruiting.ts`, `season.ts`, `strategy.ts`,
-  `wire.ts`, `persistence.ts`, `store.ts`, `world.ts`, `data/schools.ts`,
-  `Rankings.tsx`, `Today.tsx`. Correction to an earlier draft of this line: it
-  is all comments, and **none of it reaches the screen** — the "other sixty
-  three programs" is `Wire.tsx`'s header comment, not copy the player reads.
-  Debt, not a bug.
+- **Source files that say the world has 64 programs.** Mostly done: the engine,
+  the state layer, the data file, `Rankings.tsx`, `Today.tsx` and `Wire.tsx` are
+  swept, along with the `PostseasonProgress` comment below. Five UI files were
+  outside that pass and still carry one — `Avatar.tsx`, `Player.tsx`,
+  `Program.tsx`, `Standings.tsx`, `TeamCard.tsx` — and they are listed in
+  appendix A of the systems reference. **One correction to an earlier draft of
+  this line, which claimed none of it reached the screen: one did.**
+  `SeasonReview.tsx` told a coach who made Omaha he was one of "four teams out
+  of sixty four", and that was copy the player reads. It is fixed. The rest is
+  comments, and debt rather than a bug.
 - **T1** in `04-implementation-plan.md` still stands: `sim.ts parity` hardcodes
   a 68-against-38 matchup and prints a verdict it fails by its own criterion.
   Correction to an earlier draft: **B5 is closed**, not open. The implementation
@@ -412,10 +424,10 @@ Park geometry (see G4) belongs to this track.
 - `package.json` says **0.6.2** while the last release commit is v0.7.4, and the
   README still describes a 33-game season and "no save slots" when the season is
   45 games and named slots shipped.
-- `state/store.ts`, above `PostseasonProgress`, claims the national bracket is
-  one sixteen-team tree with the regionals and Omaha as its first and last
-  rounds. `REGIONAL_LENGTHS` is one series and `NATIONAL_LENGTHS` is two rounds,
-  so the comment is wrong and the systems reference is right.
+- ~~`state/store.ts`, above `PostseasonProgress`, claims the national bracket is
+  one sixteen-team tree.~~ Fixed. It is three tournaments that are played, not
+  four steps that are clicked through; `REGIONAL_LENGTHS` is one series and
+  `NATIONAL_LENGTHS` is two rounds, and the systems reference was right.
 - `05-systems-reference.md` Appendix B says no tendency specification exists;
   B11 in this file names six buildable ones. This file is newer.
 

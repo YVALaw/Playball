@@ -49,9 +49,11 @@ import {
   buildSaveFile, SCHEMA_VERSION,
 } from '../src/state/persistence.js';
 import { useDynasty } from '../src/state/store.js';
-import { createSeason } from '../src/engine/season.js';
+import { toPortable, fromPortable } from '../src/state/seasonCodec.js';
+import { createSeason, simNextDay } from '../src/engine/season.js';
+import type { SeasonState } from '../src/engine/season.js';
 import { makeRng } from '../src/engine/rng.js';
-import { CONFERENCES } from '../src/data/schools.js';
+import { CONFERENCES, type ConferenceDef } from '../src/data/schools.js';
 import { agoLabel } from '../src/ui/screens/Saves.js';
 
 const world = (seed = 4242) => createSeason(makeRng(seed), undefined, CONFERENCES);
@@ -163,6 +165,71 @@ describe('a named save is a whole dynasty', () => {
     disk.set('dyn-future', { ...file, schemaVersion: SCHEMA_VERSION + 1 });
 
     await expect(loadDynasty('dyn-future')).rejects.toThrow(/newer version/i);
+  });
+});
+
+describe('the world a save comes back into is its own', () => {
+  // A save omits its schedule, because a schedule is a pure function of the
+  // config, the world and the rotation. The world it was rebuilt from used to
+  // be `data/schools.ts` as it stands *now* — so reordering the file, renaming
+  // a program or moving one between conferences silently repointed every team
+  // index in an existing career, and the same dynasty came back playing
+  // somebody else's fixtures.
+
+  /** Fixtures as text, so two schedules can be compared as one value. */
+  const fixtures = (s: SeasonState): string => s.schedule
+    .map((d) => `${d.day}:${d.games.map((g) => `${g.away}@${g.home}`).join(',')}`)
+    .join('|');
+
+  it('rebuilds a world the data file never described', () => {
+    // Two conferences, twenty four programs — a world `CONFERENCES` cannot
+    // produce. Rebuilt from the data file it came back with ninety six teams'
+    // worth of fixtures against a roster of twenty four, which is not a
+    // schedule so much as a crash waiting for a Tuesday.
+    const small = createSeason(makeRng(7), undefined, CONFERENCES.slice(0, 2));
+    const back = fromPortable(toPortable(small));
+
+    expect(back.teams).toHaveLength(small.teams.length);
+    expect(fixtures(back)).toBe(fixtures(small));
+    for (const day of back.schedule) {
+      for (const g of day.games) {
+        expect(g.home).toBeLessThan(small.teams.length);
+        expect(g.away).toBeLessThan(small.teams.length);
+      }
+    }
+  });
+
+  it('keeps a career on the conference membership it was played under', () => {
+    // The A3 case exactly: somebody moves a program from one conference to
+    // another. The save still holds the teams as they were, so the schedule
+    // has to come from them.
+    // Two schools change leagues, so the conferences are ten and fourteen. Two
+    // rather than one because a round robin needs an even field either side.
+    const first = CONFERENCES[0] as ConferenceDef;
+    const moved = CONFERENCES.slice(0, 4).map((c, i) => ({
+      ...c,
+      schools: i === 0 ? c.schools.slice(0, 10)
+        : i === 1 ? [...c.schools, ...first.schools.slice(10)]
+        : c.schools,
+    }));
+    const season = createSeason(makeRng(23), undefined, moved);
+    expect(season.teams.filter((t) => t.conference === moved[0]?.id))
+      .toHaveLength(10);
+    expect(season.teams.filter((t) => t.conference === moved[1]?.id))
+      .toHaveLength(14);
+
+    const back = fromPortable(toPortable(season));
+    expect(fixtures(back)).toBe(fixtures(season));
+  });
+
+  it('survives the round trip a played season takes through the worker', () => {
+    // `toPortable` / `fromPortable` is also the thread boundary, so this runs
+    // far more often than a load does.
+    const season = world(4242);
+    simNextDay(season);
+    const back = fromPortable(toPortable(season));
+    expect(fixtures(back)).toBe(fixtures(season));
+    expect(back.dayIndex).toBe(season.dayIndex);
   });
 });
 

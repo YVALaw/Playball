@@ -38,10 +38,11 @@ export function Today() {
   const day = season.schedule[season.dayIndex];
   const diff = team.rs - team.ra;
 
-  // Where the program sits nationally. Recomputed rather than cached — 64 teams
+  // Where the program sits nationally. Recomputed rather than cached — 96 teams
   // is cheap and a stale rank on the hub screen is worse than the work.
-  // RPI needs games. Before any are played every team is 0-0 and the ordering is
-  // arbitrary — showing "#1" then would be inventing a standing.
+  // RPI needs games. Before any are played every team is 0-0, so the table is
+  // ordered by the tiebreak backstop alone — showing "#1" off that would be
+  // inventing a standing.
   const rank = team.gp === 0
     ? 0
     : rpiOrder(season).findIndex((r) => r.team.index === team.index) + 1;

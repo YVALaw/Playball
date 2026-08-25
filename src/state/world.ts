@@ -7,7 +7,7 @@
 // seconds of transform for one integer, and a five second test timing out on a
 // value that never changes.
 //
-// The same seed every time is the point: every player gets the same sixty four
+// The same seed every time is the point: every player gets the same ninety six
 // programs, so "I took the Pascagoula job" means the same thing to everybody.
 
 export const WORLD_SEED = 2027;

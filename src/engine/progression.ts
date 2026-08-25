@@ -2,7 +2,7 @@
 // The year turns over. Seniors graduate, the draft takes the best juniors,
 // everyone who stays gets better or worse, and a freshman class arrives.
 //
-// This runs for all 64 programs, not just yours. Roughly a quarter of the
+// This runs for all 96 programs, not just yours. Roughly a quarter of the
 // world's four thousand players leave every June and are replaced, which is what
 // stops a dynasty from being the same names forever — and it is the mechanism
 // behind the roadmap's central promise: you never keep your best players.
@@ -80,6 +80,16 @@ export interface OffseasonReport {
    * the team", and he is right that it is the honest accounting of a class that
    * came up short. They are also on a one year lease — see `Player.walkOn` — so
    * a program that fills a spot this way is shopping for it again next winter.
+   *
+   * No screen reads this. The list is only known once `fillRosters` has run,
+   * which is the year roll, and by then every offseason screen has been left
+   * behind — a draft screen that tried to show it drew nothing for anybody,
+   * every year, and has been deleted. What the coach sees instead is
+   * `walkOnShortfall` on the class review, which projects the same men *before*
+   * signing day, where the number is still something he can do something about.
+   * What this field is for now is holding that projection honest: the test in
+   * `tests/progression.test.ts` checks the two against each other, which is what
+   * makes the review a fact rather than an estimate.
    */
   walkOns: { id: PlayerId; name: string; pos: string; overall: number }[];
   /** Sum of overall gained across everyone who stayed. */

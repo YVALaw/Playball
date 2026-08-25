@@ -7,7 +7,7 @@
 
 import {
   playGame, recordResult, onBase, slugging, era, inningsPitched, standings, rpiOrder,
-  advancePostseasonDay,
+  advancePostseasonDay, seedTeams, regularRecord,
 } from './season.js';
 import type {
   BattingSeason, GameSummary, PitchingSeason, SeasonState, TeamRecord,
@@ -453,10 +453,8 @@ export interface ConferenceTournament extends TournamentResult {
 }
 
 /**
- * Top `size` teams by conference record, double elimination. Six of eight keeps
- * the same proportion a twelve team league had at eight, so the bottom
- * quarter of the conference still misses out and finishing seventh costs you
- * something real.
+ * Top `size` teams by conference record. Six of twelve, so half the league is
+ * finished in May and finishing seventh costs you something real.
  */
 export function conferenceField(
   season: SeasonState,
@@ -464,8 +462,10 @@ export function conferenceField(
   size: number = CONF_FIELD,
 ): { field: number[]; missed: number[] } {
   // Seed off the recorded regular season order, not a fresh standings call.
-  // Tournament games move overall records and run differential, which are
-  // standings tiebreakers — recomputing mid-bracket would reseed underneath us.
+  // Tournament games move run differential, which is a standings tiebreaker —
+  // recomputing mid-bracket would reseed underneath us. The snapshot is stored
+  // conference by conference for the same reason, so filtering it here returns
+  // exactly the table the program has been reading all season.
   const global = season.finalOrder ?? standings(season).map((t) => t.index);
   const order = global.filter((i) => season.teams[i]?.conference === conference);
   return { field: order.slice(0, size), missed: order.slice(size) };
@@ -503,14 +503,13 @@ export function allConferenceTournaments(
 // ---------------------------------------------------------------------------
 
 /**
- * Sixteen of sixty four programs, a quarter of the world. The real tournament
- * takes 64 of roughly 300 Division I schools — about a fifth — so a quarter is
- * the honest analogue at this scale, and it leaves the field evenly divisible
- * into four regionals of four.
+ * Vestigial, and kept only because it is exported.
  *
- * Eight of the sixteen are automatic: win your conference and nobody can leave
- * you out. The other eight are chosen on RPI, which is what makes a soft
- * non-conference schedule cost something.
+ * It described a sixteen-team national field of eight automatic bids and eight
+ * at-large RPI selections. There are no at-large bids: the field is the eight
+ * conference champions and nothing else, paired into four regionals. Nothing
+ * reads this except a `size` parameter on `runPostseason` that the body never
+ * looks at. See the E list in `docs/06-backlog.md`.
  */
 export const FIELD_SIZE = 16;
 
@@ -572,23 +571,35 @@ export const NATIONAL_LENGTHS: readonly number[] = [SERIES.national, SERIES.nati
  * A regional: the two conference champions of one region, one series.
  *
  * Seeded by regular season record, so those forty five games still decide who
- * hosts the odd game even after both teams have won their leagues.
+ * hosts the odd game even after both teams have won their leagues. Two league
+ * champions finishing on the same number of wins is common enough that the tie
+ * mattered: it used to be settled by which conference is listed first in
+ * `REGIONS`, so one half of every region hosted for ever.
  */
 export function regionalPairing(
   season: SeasonState, cups: readonly ConferenceTournament[],
 ): { id: string; name: string; seeds: number[] }[] {
   const championOf = new Map(cups.map((c) => [c.conference, c.champion]));
-  return REGIONS.map((r) => {
-    const teams = r.conferences
+  return REGIONS.map((r) => ({
+    id: r.id,
+    name: r.name,
+    seeds: seedByRecord(season, r.conferences
       .map((c) => championOf.get(c))
-      .filter((t): t is number => t !== undefined)
-      .sort((a, b) => {
-        const ra = season.teams[a];
-        const rb = season.teams[b];
-        return (rb ? (rb.rw ?? rb.w) : 0) - (ra ? (ra.rw ?? ra.w) : 0);
-      });
-    return { id: r.id, name: r.name, seeds: teams };
-  }).filter((r) => r.seeds.length > 1);
+      .filter((t): t is number => t !== undefined)),
+  })).filter((r) => r.seeds.length > 1);
+}
+
+/**
+ * Bracket seeding, by regular season wins and then the standings tiebreakers.
+ *
+ * `regularRecord` rather than the live one because both callers run in the
+ * middle of June, with earlier rounds already in the books.
+ */
+function seedByRecord(season: SeasonState, indices: readonly number[]): number[] {
+  const teams = indices
+    .map((i) => season.teams[i])
+    .filter((t): t is TeamRecord => t !== undefined);
+  return seedTeams(season, teams, (t) => regularRecord(t).w).map((t) => t.index);
 }
 
 /** Every regional played out. Four champions, one per region. */
@@ -616,12 +627,9 @@ export interface RegionalResult extends TournamentResult {
 export function stageNational(
   season: SeasonState, regionals: readonly RegionalResult[],
 ): TournamentResult {
-  const seeds = regionals.map((r) => r.champion).sort((a, b) => {
-    const ra = season.teams[a];
-    const rb = season.teams[b];
-    return (rb ? (rb.rw ?? rb.w) : 0) - (ra ? (ra.rw ?? ra.w) : 0);
-  });
-  return singleElimination(season, seeds, NATIONAL_LENGTHS);
+  return singleElimination(
+    season, seedByRecord(season, regionals.map((r) => r.champion)), NATIONAL_LENGTHS,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -651,7 +659,7 @@ export interface PostseasonSummary {
  * The postseason, one stage at a time.
  *
  * `runPostseason` does the whole thing in a single call, which is right for the
- * sixty three programs nobody is watching and wrong for the one that is: a coach
+ * ninety five programs nobody is watching and wrong for the one that is: a coach
  * who wins twenty five games and then sees a summary screen has not been to the
  * postseason, he has been told about it. These four functions are the same work,
  * stopped where there is something worth looking at.
@@ -775,7 +783,7 @@ const pitcherValue = (s: PitchingSeason): number => {
  * at all: each becomes "how far outside a normal season was this".
  *
  * The regression baseline is unchanged and still self-calibrating: fit wins
- * against roster strength across all sixty four programs, and overachievement
+ * against roster strength across all ninety six programs, and overachievement
  * is distance above the line. It is the one category that can always fire, so
  * it is the fallback when the others have nothing to say.
  */
@@ -863,7 +871,7 @@ export function coachOfTheYear(
   });
 
   // GIANT-KILLER — the national champion, when he was not supposed to be: a
-  // roster outside the top ten of sixty four. Binary and rare, so it carries a
+  // roster outside the top ten of ninety six. Binary and rare, so it carries a
   // fixed salience high enough to win whenever it fires — a champion nobody
   // saw coming is the story of that season, full stop.
   if (post) {
@@ -1063,13 +1071,15 @@ export function allConference(season: SeasonState): AllConferencePick[] {
 // sixteen four-team regionals, eight best-of-three super regionals, then eight
 // teams in Omaha. That is about a fifth of the country reaching the tournament.
 //
-// This world has 64 programs in total, so the same proportions give a 16 team
-// field, and 16 teams do not stretch to three rounds without making each one
-// trivial. The super regional is the round that goes: it is the one whose job —
-// cutting the field in half — the regionals already do here.
+// This world has 96 programs, and it takes a wider net to the same place. Six of
+// each conference's twelve play a tournament — half the country, which is the
+// one round that is deliberately generous, because it is the round that makes
+// finishing seventh cost something. From there it narrows hard: eight champions,
+// four regionals of two, and the last four in Omaha. Four of ninety six is a
+// rarer thing than eight of three hundred, which is the intended feeling.
 //
-// What is left keeps the two things that carry the weight. A regional is still
-// four teams and double elimination, so a bad Friday does not end your year but
-// two of them do. Omaha is still the last four, which out of 64 programs is the
-// same rarity it has in the real thing, and it is still decided by a bracket
-// rather than a single game.
+// The super regional is the round that is missing, and it is the right one to
+// lose: its job is to halve the field, and here the regionals already do that.
+// What is kept is the part that carries the weight — every round is a series, so
+// a bad Friday does not end your year, and the title is decided by a bracket
+// rather than by a single game.

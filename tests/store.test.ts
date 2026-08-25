@@ -11,6 +11,9 @@
 import { describe, it, expect } from 'vitest';
 import { useDynasty, PHASES } from '../src/state/store.js';
 import { createSeason, simSeason } from '../src/engine/season.js';
+import type { SeasonState, TeamRecord } from '../src/engine/season.js';
+import type { OffseasonReport } from '../src/engine/progression.js';
+import type { Player, PlayerId } from '../src/engine/types.js';
 import {
   conferenceIds, conferenceTournament, freezeRegularSeason, conferenceField,
 } from '../src/engine/postseason.js';
@@ -400,5 +403,109 @@ describe('a postseason survives being put down and picked up', () => {
     const saved = file.myBracket as { kind: string; state: { seeds: number[] } };
     expect(saved.kind).toBe('conference');
     expect(saved.state.seeds).toContain(me);
+  });
+});
+
+describe("a departing player's last season reaches the record book", () => {
+  /**
+   * The most damaging thing this file has ever had to cover, and it was never a
+   * regression: it had always been so.
+   *
+   * `departAndDevelop` runs at the draft step and strips every man who is
+   * leaving off `lineup`, `bench`, `rotation` and `bullpen`. `archiveSeason`
+   * ran later, at the year roll, and reads only those four arrays. So a
+   * graduating senior's final year — usually the best of his career, and
+   * exactly what a hall of fame weighs — was never written down at all. The
+   * archive now runs beside `recordSeasonMarks` on the way into the draft,
+   * which is the last moment those rosters exist.
+   */
+
+  const appeared = (season: SeasonState, id: PlayerId): boolean =>
+    (season.batting.get(id)?.ab ?? 0) > 0 || (season.pitching.get(id)?.outs ?? 0) > 0;
+
+  /** A season played to the end, with the user in the chair at team 0. */
+  const played = (seed: number): SeasonState => {
+    useDynasty.getState().start(seed, 0);
+    const season = useDynasty.getState().season as SeasonState;
+    simSeason(season);
+    return season;
+  };
+
+  const intoTheDraft = async (): Promise<void> => {
+    useDynasty.setState({ phase: 'coach', furthestPhase: PHASES.indexOf('coach') });
+    await useDynasty.getState().nextPhase();
+  };
+
+  it('archives every man who left, whichever door he left by', async () => {
+    const season = played(6161);
+    const me = season.teams[0] as TeamRecord;
+    const year = useDynasty.getState().year;
+
+    // Nobody has been recruited onto this roster yet, so no walk-on exists to
+    // lose. One is made by hand rather than by rolling a whole year forward:
+    // the exit route is the point, and `departAndDevelop` reads the flag and
+    // nothing else.
+    const roster = [
+      ...me.team.lineup, ...me.team.bench, ...me.team.rotation, ...me.team.bullpen,
+    ];
+    const walker = roster.find((p) => p.classYear !== 'SR' && appeared(season, p.id));
+    expect(walker).toBeDefined();
+    (walker as Player).walkOn = true;
+
+    await intoTheDraft();
+
+    const report = useDynasty.getState().lastOffseason as OffseasonReport;
+    const mine = [...report.graduated, ...report.drafted]
+      .filter((d) => d.teamAbbr === me.def.abbr);
+
+    // All three routes out are represented, so none of them is being covered
+    // by accident.
+    expect(new Set(mine.map((d) => d.reason)))
+      .toEqual(new Set(['graduated', 'drafted', 'walk-on']));
+
+    for (const d of mine) {
+      if (!appeared(season, d.id)) continue;
+      const career = season.careers[d.id] ?? [];
+      expect(career.some((row) => row.year === year)).toBe(true);
+    }
+  });
+
+  it('files a season under the class year it was actually played at', async () => {
+    // `departAndDevelop` ages every survivor as it goes, so an archive taken
+    // afterwards recorded a junior's season as a senior's.
+    const season = played(6161);
+    const me = season.teams[0] as TeamRecord;
+    const year = useDynasty.getState().year;
+    const before = new Map(
+      [...me.team.lineup, ...me.team.bench, ...me.team.rotation, ...me.team.bullpen]
+        .map((p) => [p.id, p.classYear] as const),
+    );
+
+    await intoTheDraft();
+
+    let checked = 0;
+    for (const [id, classYear] of before) {
+      const row = (season.careers[id] ?? []).find((r) => r.year === year);
+      if (!row) continue;
+      expect(row.classYear).toBe(classYear);
+      checked += 1;
+    }
+    expect(checked).toBeGreaterThan(15);
+  });
+
+  it('does not write the year twice when the draft step is re-entered', async () => {
+    // Walking back to the coach step and forward again runs the branch a
+    // second time. Two rows for one season would double a career total.
+    const season = played(6161);
+    const year = useDynasty.getState().year;
+    await intoTheDraft();
+    const rowsFor = (id: PlayerId): number =>
+      (season.careers[id] ?? []).filter((r) => r.year === year).length;
+    const ids = Object.keys(season.careers) as PlayerId[];
+    const after = ids.map((id) => [id, rowsFor(id)] as const);
+    expect(after.length).toBeGreaterThan(0);
+
+    await intoTheDraft();
+    for (const [id, count] of after) expect(rowsFor(id)).toBe(count);
   });
 });

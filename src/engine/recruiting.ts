@@ -866,7 +866,7 @@ export function weeklyPoints(
 }
 
 // ---------------------------------------------------------------------------
-// The other sixty three programs
+// The other ninety five programs
 // ---------------------------------------------------------------------------
 
 /**
@@ -878,7 +878,7 @@ export function weeklyPoints(
  *
  * The first version ranked the whole class by rating times fit and took the top
  * eight. Every program's list came out looking like every other program's, so
- * all sixty four chased the same players: **only 79 recruits out of 480 were
+ * all ninety six chased the same players: **only 79 recruits out of 480 were
  * pursued by anybody at all**, the average team signed 1.2 players against a
  * need of seven, and the rest of every roster arrived as walk-ons. Recruiting
  * existed and decided nothing.

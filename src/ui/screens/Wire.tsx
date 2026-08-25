@@ -1,7 +1,7 @@
 // Wire.tsx
 // What the rest of the country is doing.
 //
-// You play one team's schedule and the other sixty three programs move in the
+// You play one team's schedule and the other ninety five programs move in the
 // standings overnight for reasons you never see. The wire is where those reasons
 // go, so the league reads as a place rather than a table that updates itself.
 

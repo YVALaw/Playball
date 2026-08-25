@@ -43,10 +43,17 @@ Requires Node.
 
 ```
 npm install
-npm run dev          the game, at localhost:5173
+npm run dev          the game, at localhost:5174
 npm run check        typecheck, then the full test suite
 npm test             tests only
 ```
+
+To play a build that does not move under you — no hot reload, no reload when a
+file is saved — run `npm run build`, then `npm run preview`. It serves on 5173,
+and on your phone at `http://<this machine's LAN IP>:5173`. That port is not
+arbitrary: saves live in IndexedDB, which is scoped per origin including the
+port, so a dynasty is only visible on the port it was played on. 5173 is the
+one to keep pointed at the phone.
 
 The headless CLI is still there, and is still how the engine gets measured:
 

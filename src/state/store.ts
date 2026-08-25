@@ -6,7 +6,7 @@
 // accumulates into the same objects, and the offseason rewrites rosters on the
 // players themselves. That is right for a simulation and wrong for React, which
 // re-renders on reference change. So every mutation bumps `version`, and screens
-// read that when they need to recompute. Cloning a 64-team world on every
+// read that when they need to recompute. Cloning a 96-team world on every
 // simulated day would be the alternative, and it would be slower than the
 // simulation it exists to display.
 
@@ -198,12 +198,16 @@ export interface PostseasonProgress {
    * written before this change can still be sitting on one, and it has to load.
    */
   /**
-   * Two stages now, not four.
+   * Three stages that are played, not four steps that are clicked through.
    *
-   * The national bracket is one sixteen team tree, so the regionals and Omaha
-   * are its first two and last two rounds rather than separate tournaments. The
-   * old names stay in the type because a save written before the format changed
-   * still has to load; `openStage` treats anything unknown as finished.
+   * There is no national tree that swallows the regionals. A regional is one
+   * series between two conference champions (`REGIONAL_LENGTHS`), and the
+   * national bracket is the four survivors over two rounds
+   * (`NATIONAL_LENGTHS`) — separate tournaments, each with its own result. What
+   * went was selection, which had nothing to select, and a done screen that
+   * reported what the stage before it had already shown. The old names stay in
+   * the type because a save written before the format changed still has to
+   * load; `openStage` treats anything unknown as finished.
    */
   stage: 'conference' | 'regional' | 'national' | 'done' | 'selection' | 'omaha';
   cups: ConferenceTournament[];
@@ -670,7 +674,7 @@ function applyCoachMods(season: SeasonState, userTeam: number, coach: CoachState
  * `applyCoachMods` clears itself off everybody: a program you have left should
  * go back to playing like itself rather than keeping your bench for ever.
  * `strategyFor` is what built those benches in the first place, so for the
- * sixty-three teams this does not concern, it is a no-op that writes the value
+ * ninety-five teams this does not concern, it is a no-op that writes the value
  * that was already there.
  *
  * Deliberately *not* called on load. The saved season carries the strategy that
@@ -898,21 +902,29 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // the entire point of the draft coming first.
     if (next === 'draft') {
       /*
-        The all-time book is settled here, in the last moment the rosters that
-        produced the numbers still exist.
+        Both scans of the finished season happen here, in the last moment the
+        rosters that produced the numbers still exist.
 
-        `departAndDevelop`, two lines below, strips every departure off every
-        one of the ninety-six rosters — and `recordSeasonMarks` names a holder by
-        looking him up on one. Run at the year roll instead, a graduating senior
-        who led the country in home runs would enter the book with no name and no
-        program against him, which is the best season most players ever have and
-        exactly the row a record book exists for.
+        `departAndDevelop`, below, strips every departure off every one of the
+        ninety-six rosters — and both scans work by walking a roster. Run at the
+        year roll instead, a graduating senior who led the country in home runs
+        entered the book with no name and no program against him, and his final
+        year never reached his career page at all. That is the best season most
+        players ever have and exactly what a record book and a hall of fame are
+        for, so it is the one season that must not be the one that is lost.
 
-        Idempotent, because a mark has to be beaten: walking back to the coach
-        step and forward again offers the same numbers to a book that already
-        holds them and nothing changes.
+        The archive goes first. Nothing here reads what the other writes, so
+        today the order is free — but career records league-wide (B13) will have
+        the book read the archive, and putting them in that order now means that
+        change is not also a reordering.
+
+        Both are idempotent, which they have to be: walking back to the coach
+        step and forward again runs this branch a second time. A year already in
+        a man's career is not written twice, and a mark has to be beaten rather
+        than equalled, so the second pass changes nothing.
       */
       const year = get().year;
+      archiveSeason(season, get().userTeam, year);
       recordSeasonMarks(season, year);
       const chair = season.teams[get().userTeam];
       // Yours is the only career the world models, so it is the only one the
@@ -1076,9 +1088,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const record = recordFor(get());
     const review = get().lastReview;
 
-    // Into the record book before the statistics are wiped. The all-time book
-    // is settled earlier, on the way into the draft — see `nextPhase`.
-    archiveSeason(season, get().userTeam, year);
+    // The season itself was written down on the way into the draft, along with
+    // the all-time book — see `nextPhase`. Nothing is archived here, because by
+    // now every man who left is off the roster this would have read.
 
     const done = (next: SeasonState, report: OffseasonReport): void => {
       const rolled = nextSeason(next);

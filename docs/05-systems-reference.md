@@ -134,6 +134,9 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 59 | **The pool of names already taken is rebuilt from the save on every load**, and cannot be complete — a rival's graduated player is in no roster and in no record book, so his name comes back into circulation. | Occasionally two men with one name, on different teams. | `rebuildNameIndex` — `engine/season.ts`; `usedNames` — `engine/players.ts` | SHIPPED |
 | 60 | **A scoreless-innings streak is measured a whole appearance at a time.** Allowing a run in the seventh zeroes the streak rather than crediting the six scoreless innings before it, because the game line records outs and runs and not the order they came in. | A record that reads a little short. | `scorelessOuts`, `recordResult` — `engine/season.ts` | SHIPPED |
 | 61 | **A record must be beaten, not equalled**, including the seeded NCAA ones. | Stated on the record book screen; the incumbent simply staying put. | `offer` — `engine/records.ts` | SHIPPED |
+| 62 | **Two teams level on everything are separated by their abbreviations, ascending.** The four criteria above it are real; the fifth is a stated coin flip that always lands the same way. | A table that has an order, with nothing on screen saying why those two are that way round. | `seedTeams` — `engine/season.ts`; §8.7 | SHIPPED |
+| 63 | **Head-to-head is counted within the tied group, and only over the regular season.** A June meeting between the same two teams does not count toward the tiebreaker that seeded them. | Nothing. | `headToHead`, `seedTeams` — `engine/season.ts` | SHIPPED |
+| 64 | **Your season is written into your players' careers at the draft step, not at the year roll**, because the roster it reads is emptied in between. | Nothing — but before this, a departing player's final season was simply absent from his card. | `archiveSeason` — `engine/season.ts`; `nextPhase` — `state/store.ts` | SHIPPED |
 
 ---
 
@@ -1179,7 +1182,8 @@ The four regions, each a pair of conferences (`REGIONS`):
 
 One rule the whole way up: **you advance by winning something.** There is no
 at-large field. Regional and national seeding both read regular-season wins
-(`rw ?? w`), which is the last thing those forty-five games are still paying for.
+(`regularRecord`), which is the last thing those forty-five games are still paying
+for, and level teams are separated by §8.7 rather than by luck.
 
 ### 8.3 Why knockout and not double elimination
 
@@ -1247,6 +1251,55 @@ teams that got out of their conference appear in the map. Labels:
 | `omaha` | Omaha |
 | `runner-up` | National runner-up |
 | `champion` | NATIONAL CHAMPION |
+
+### 8.7 Ties, and how they are broken
+
+One function, `seedTeams` (`engine/season.ts`), and everything that puts teams in
+an order goes through it: the conference table, the national rankings, the
+conference tournament field, and both bracket seedings. It takes the ranking being
+seeded on — conference percentage, RPI, regular-season wins — and separates
+everyone level on it with the same chain.
+
+| # | Criterion | Notes |
+|---|---|---|
+| 1 | **Head to head** | A mini round robin *within the tied group*: wins over the others minus losses to them. Regular season only |
+| 2 | Conference record | `confPct` |
+| 3 | Overall record | `regularRecord`, so June cannot move it |
+| 4 | Run differential | The one term still live during the postseason, which is why it sits fourth |
+| 5 | **The school's abbreviation, ascending** | The stated, deterministic backstop |
+
+**Head to head is group-relative on purpose.** A pairwise comparison is not
+transitive: three teams in an a-beats-b-beats-c-beats-a cycle would sort into
+whatever order the comparator happened to visit them in, which is the problem the
+function exists to remove. A net figure is a number, and numbers sort.
+
+**Every meeting counts, conference or midweek**, and that happens to be the
+sport's own rule rather than a simplification of it. Inside a conference the season
+is a full round robin, so every meeting between two members is a conference game;
+two teams in different conferences can only ever have met in non-conference play.
+
+**Postseason games are excluded.** A tiebreaker that moved while a bracket was
+being played would reseed the rounds still to come from underneath them. The
+schedule's last day is the boundary — `currentDay` gives every June game a date
+past it.
+
+**The last resort is arbitrary, and arbitrary in public.** The real sport draws
+lots; a draw is exactly what cannot be allowed here. Before this, ties fell out of
+`Array.sort` in `data/schools.ts` order — an invisible coin flip that would have
+changed if anybody had ever reordered the file. An abbreviation is unique, it is
+what the rest of the save already identifies a program by, and it does not move.
+This was A4 in the backlog.
+
+The ties are not the rarity that a float suggests. Before a ball is thrown every
+program in the country has an RPI of exactly zero, and that is the table the
+national rankings screen draws in February.
+
+**`finalOrder` is frozen conference by conference.** It is the regular-season
+snapshot `conferenceField` seeds a tournament off, and the only thing that ever
+reads it filters it back down to one conference. Frozen as a single national table,
+a tie broken against the rest of the country could order two league-mates
+differently from their own table — and the tournament a program is seeded into has
+to match the standings it has been reading all season.
 
 ---
 
@@ -1747,6 +1800,38 @@ ago is in no roster and in no record book — the book is your program only — 
 his name returns to circulation. Since identity no longer rides on the name that
 is a repeated name on somebody's bench and nothing more.
 
+### 11.6 The world a save is rebuilt into
+
+A save does not carry its schedule. A schedule is a pure function of the config,
+the shape of the world and the rotation, so `fromPortable` rebuilds it on arrival
+— which is also the thread boundary, since the sim worker uses the same codec.
+
+The shape of the world used to come from `data/schools.ts` **as it stands now**.
+A team is an index in a schedule, so reordering that file, moving a program between
+conferences or adding one repointed every index in an existing career: the same
+dynasty came back with its team in somebody else's league, playing fixtures that
+belonged to a world it had never been part of. Nothing threw. This was A3.
+
+`worldFromTeams` takes the shape off the saved teams instead. Nothing new had to
+be written down, because it already was: every `TeamRecord` carries its own
+`index` and its own `conference`, and `createSeason` walks the conferences in
+order, so grouping the saved teams by conference in order of first appearance
+reproduces exactly the world the season was built from. Renaming a program does
+not reach an old career either — the `SchoolDef` rides in the save.
+
+Two alternatives were on the table and both were rejected. Refusing to load a save
+whose world differs is the cheapest, and it throws away a working career to solve a
+problem that has a correct answer. Permanent string program ids everywhere is the
+same fix at ten times the size: within one season the indices are already
+internally consistent, and the only thing that was ever wrong was where the world
+came from.
+
+It also covers a case that was never a save-version problem at all. The world grew
+from 64 programs to 96 with no schema bump — legitimately, because a save carries
+its own teams — and only the rebuilt schedule made that unsafe. A world the data
+file cannot produce at all, such as the small ones the tests build, now round-trips
+correctly for the same reason.
+
 ---
 
 ## 12. Planned systems — **PLANNED**
@@ -1815,9 +1900,19 @@ about twenty hidden gems per class either way.
 **What exists today (SHIPPED, for the avoidance of doubt):**
 
 - `archiveSeason` writes one `CareerYear` row per player per season into
-  `season.careers`, before the statistics are wiped. Hitters get AB/H/HR/RBI/BB/SB,
-  pitchers W/L/outs/ER/K, fielders chances/plays/errors. A year is written once, so
-  re-entering the offseason cannot duplicate it.
+  `season.careers`. Hitters get AB/H/HR/RBI/BB/SB, pitchers W/L/outs/ER/K, fielders
+  chances/plays/errors. A year is written once, so re-entering the offseason cannot
+  duplicate it.
+- **It runs on the way into the draft step, beside `recordSeasonMarks`** — not at
+  the year roll, where it used to. It reads the four roster arrays, and
+  `departAndDevelop` strips every graduating senior, drafted junior and walk-on off
+  those arrays at the start of the draft step. Archiving afterwards therefore lost
+  the entire departing class, every year, and always had: a man's final season,
+  which is usually his best and the one a hall of fame really weighs, never reached
+  his career at all. Running first also fixes what class year the row is filed
+  under — `departAndDevelop` ages every survivor as it goes, so a junior's season
+  was being recorded as a senior's. This was A5 in the backlog, and it is why B12
+  could not have been built on top of it.
 - Every row carries the player's **name**. The book is the last thing in a save
   that remembers a man — rosters are rewritten each June and a departure notice
   survives one offseason — and since §11.5 the id it is filed under is no longer
@@ -1897,8 +1992,13 @@ with no name and no program against him, which is the best season most players
 ever have and exactly the row a book exists for. So it runs in the last moment the
 rosters that produced the numbers still exist. It is idempotent, because a mark
 has to be beaten: walking back a step and forward again offers a book numbers it
-already holds. (This is a near neighbour of A5 in the backlog, which is the same
-ordering hazard in `archiveSeason` and is not fixed here.)
+already holds.
+
+`archiveSeason` now runs in the same breath, immediately before it, and for
+exactly the same reason — see §12.4. The archive goes first of the two. Nothing
+either one writes is read by the other, so today the order is free; it is fixed
+rather than left to chance because career records league-wide (B13) will have the
+book read the archive, and that change should not also have to be a reordering.
 
 Two things follow from this. The book is league-wide for free, because
 `recordResult` sees every game every program plays. And a replayed or exhibition
@@ -2019,11 +2119,8 @@ does. None of them changes behaviour; all of them will mislead the next reader.
 
 | Where | The problem |
 |---|---|
-| `engine/postseason.ts`, closing note "On the shape of the national tournament" | Says "A regional is still four teams and double elimination". A regional is two conference champions playing one best-of-five series. |
-| `engine/postseason.ts`, `FIELD_SIZE` | Documented as a 16-team field with eight automatic bids and eight at-large RPI selections. There are no at-large bids; the field is the eight conference champions. `FIELD_SIZE` is exported and its only use is a `size` parameter on `runPostseason` that the function body never reads. |
-| `engine/postseason.ts`, `conferenceField` docstring | "Six of eight keeps the same proportion a twelve team league had at eight" — conferences hold twelve, and six of twelve is the actual cut, which `CONF_FIELD`'s own comment gets right. |
-| `data/schools.ts`, header | The middle section argues for "Eight conferences of eight" and a 33-game season. The file actually defines eight conferences of twelve, and `DEFAULT_SEASON` is 45 games. The first line of the file ("Eight regions, twelve programs each, ninety six in all") is the correct one. |
-| `state/world.ts`, `engine/program.ts`, `engine/recruiting.ts`, `state/store.ts` | Comments repeatedly say "sixty four programs" / "the other sixty three". The world is 96. |
+| `engine/postseason.ts`, `FIELD_SIZE` | Vestigial. The docstring now says so rather than describing a 16-team field of automatic and at-large bids that never existed, but the symbol is still exported and its only use is a `size` parameter on `runPostseason` that the function body never reads. |
+| `ui/Avatar.tsx`, `ui/screens/Player.tsx`, `ui/screens/Program.tsx`, `ui/screens/Standings.tsx`, `ui/screens/TeamCard.tsx` | Comments still say "sixty four programs" / "the other sixty three". The world is 96. The engine, the state layer and the data file have been swept; these five were outside that pass, and all of it is comments. The one occurrence that did reach the screen — the Omaha note in `SeasonReview.tsx` — is fixed. |
 | `engine/recruiting.ts`, `RECRUITING_BUDGET` docstring | Opens "Thirty, spread across as many recruits as you like." The constant is 40. |
 | `engine/scouting.ts`, `PotentialGrade` | `'?'` is documented as what a screen prints where a ceiling is none of your business. No screen uses it; `ui/screens/Player.tsx` prints an em dash instead. |
 | `engine/recruiting.ts`, `BOARD_SLOTS` / `ACTIONS_PER_WEEK` | Marked `@deprecated`, still imported and used by `aiTargets`. |

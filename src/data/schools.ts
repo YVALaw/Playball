@@ -6,7 +6,7 @@
 // something to regenerate.
 //
 // ---------------------------------------------------------------------------
-// Why sixty four and not a hundred and ninety two
+// Why ninety six and not a hundred and ninety two
 // ---------------------------------------------------------------------------
 //
 // The old world had sixteen conferences of twelve, and nobody could recognise a
@@ -15,7 +15,7 @@
 // possible opponents, so you never even played three of your own conference in a
 // given year, and the other 180 schools were rows in a table you scrolled past.
 //
-// Eight conferences of eight fixes both ends of that:
+// Eight conferences of twelve fixes both ends of that:
 //
 //   11 conference opponents x 3 game series = 33
 //   + 12 non-conference midweek games       = 45
@@ -23,9 +23,11 @@
 // A **full round robin**. You play every team in your region every single
 // season. After one year you know all eleven. After three you have a history.
 //
-// Twelve rather than eight so that making the conference tournament means
-// something: six of twelve get in, so half the league goes home in May. At eight
-// the cut was two teams and finishing seventh cost you nothing you could feel.
+// Halving the number of conferences rather than the size of one is what buys
+// that. It is also what makes the conference tournament a cut worth caring
+// about: six of twelve get in, so half the league goes home in May. An interim
+// draft of this world ran eight conferences of eight, where the cut was two
+// teams and finishing seventh cost you nothing you could feel.
 //
 // ---------------------------------------------------------------------------
 // Region is the conference

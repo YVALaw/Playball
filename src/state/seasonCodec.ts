@@ -8,16 +8,20 @@
 //
 // Only two things cannot make the trip. The RNG is a function, so its state
 // travels as a number. The schedule is a pure function of the config, the shape
-// of the world and the rotation, so it is rebuilt on arrival rather than carried
-// — which also means it can never arrive out of step with the teams it belongs to.
+// of the world and the rotation, so it is rebuilt on arrival rather than carried.
+//
+// That last claim used to come with a caveat nobody had noticed: the shape of
+// the world was read from `data/schools.ts` at the moment of arrival, so it was
+// today's world and not the one the save was written in. It is now read off the
+// saved teams themselves, which is what makes the sentence above actually true —
+// a rebuilt schedule cannot arrive out of step with the teams it belongs to,
+// because it is built from them.
 
 import { rngFromState } from '../engine/rng.js';
-import { buildSchedule, rebuildNameIndex, worldFromConferences } from '../engine/season.js';
+import { buildSchedule, rebuildNameIndex, worldFromTeams } from '../engine/season.js';
 import { strategyFor } from '../engine/strategy.js';
 import { initialPrestige } from '../engine/program.js';
-import { generateClass } from '../engine/recruiting.js';
 import { seededBook } from '../engine/records.js';
-import { CONFERENCES } from '../data/schools.js';
 import type { SeasonState } from '../engine/season.js';
 
 export type StoredSeason = Omit<SeasonState, 'rng' | 'schedule'>;
@@ -76,9 +80,12 @@ export function fromPortable(p: Portable): SeasonState {
   return {
     ...p.season,
     rng: rngFromState(p.rngState),
+    // Rebuilt from the teams this save holds, not from `CONFERENCES`. See
+    // `worldFromTeams`: the data file is what the world looks like today, and a
+    // career is entitled to the world it was played in.
     schedule: buildSchedule(
       p.season.config,
-      worldFromConferences(CONFERENCES),
+      worldFromTeams(p.season.teams),
       p.season.scheduleRotation,
     ),
   };

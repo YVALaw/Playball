@@ -82,7 +82,7 @@ export function SeasonReview() {
       : finish === 'runner-up'
         ? { title: 'National runners up', note: 'One game short in Omaha. It counts, and it stings.' }
         : finish === 'omaha'
-          ? { title: 'Omaha', note: 'You made the College World Series — four teams out of sixty four.' }
+          ? { title: 'Omaha', note: 'You made the College World Series — four teams out of ninety six.' }
           : wonConference
             ? {
                 title: `${team.conference} champions`,

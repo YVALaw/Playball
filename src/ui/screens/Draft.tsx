@@ -30,8 +30,6 @@ export function Draft() {
   const phase = useDynasty((s) => s.phase);
   const nextPhase = useDynasty((s) => s.nextPhase);
   const report = useDynasty((s) => s.lastOffseason);
-  const openPlayer = useDynasty((s) => s.openPlayer);
-  const walkOns = report?.walkOns ?? [];
   const year = useDynasty((s) => s.year);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
@@ -182,47 +180,15 @@ export function Draft() {
       )}
 
       {/*
-        Who filled the holes the class did not.
+        There was a walk-on list here, and it rendered for nobody.
 
-        A scholarship you never spent does not leave the spot empty; somebody
-        walks on and plays there, and he is a long way below the players you
-        were bidding on. Showing them is the honest accounting of a class that
-        came up short.
+        `lastOffseason.walkOns` is filled by `fillRosters`, which runs at the
+        year roll — and the year roll sets `phase` to null, which is what makes
+        this screen unreachable. So the array was always empty at the only
+        moment the block could have been drawn. The class review carries the
+        shortfall now, before signing day rather than after it, where it is a
+        thing you can still do something about instead of a receipt.
       */}
-      {walkOns.length > 0 && (
-        <>
-          <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>
-            WALK-ONS · {walkOns.length}
-          </div>
-          <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-            {walkOns.map((w) => (
-              <button
-                key={w.id}
-                onClick={() => openPlayer(w.id)}
-                style={{
-                  width: '100%', textAlign: 'left',
-                  display: 'grid', gridTemplateColumns: '1fr auto auto',
-                  gap: 10, alignItems: 'center', background: 'transparent',
-                  padding: '9px 11px', borderBottom: '1px solid var(--hairline)',
-                }}
-              >
-                <span style={{ font: "400 13px var(--body)" }}>{w.name}</span>
-                <span style={{
-                  font: "400 10px var(--mono)", color: 'var(--dim)',
-                }}>{w.pos} · FR</span>
-                <span style={{ font: "600 13px var(--mono)" }}>{w.overall}</span>
-              </button>
-            ))}
-          </div>
-          <div style={{
-            marginTop: 6, font: "400 11px/1.45 var(--body)", color: 'var(--dim)',
-          }}>
-            Nobody recruited them. Every scholarship you leave unspent is one of
-            these instead &mdash; and each one is here for a season and then gone,
-            so the hole comes straight back.
-          </div>
-        </>
-      )}
 
       {phase !== null && (
         <FloatingAction label="TO RECRUITING" onClick={() => void nextPhase()} />

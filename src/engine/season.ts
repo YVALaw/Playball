@@ -132,8 +132,19 @@ export const careerName = (id: PlayerId, years: readonly CareerYear[]): string =
 /**
  * Write one team's season into the record book.
  *
- * Called on the way out of a year, before the statistics are wiped. Players who
- * never appeared are skipped: a line of zeroes is not a season.
+ * Two constraints, and the second is the one that was got wrong for a long
+ * time. It has to run before `nextSeason` wipes the statistics, which is
+ * obvious; and it has to run before `departAndDevelop`, which is not. That
+ * function strips every graduating senior, every drafted junior and every
+ * walk-on off the roster arrays this reads, so an archive taken at the year
+ * roll silently skipped the entire departing class — a man's last season, which
+ * is usually his best, and the only one a hall of fame really weighs.
+ *
+ * It also decides what class year the row is filed under. `departAndDevelop`
+ * ages every survivor as it goes, so an archive taken afterwards recorded a
+ * junior's year as SR. Running first records the class he actually played at.
+ *
+ * Players who never appeared are skipped: a line of zeroes is not a season.
  */
 export function archiveSeason(season: SeasonState, teamIndex: number, year: number): void {
   const rec = season.teams[teamIndex];
@@ -261,7 +272,7 @@ export interface TeamRecord {
   /**
    * How this coach plays. Every program gets one — an aggressive coach steals and
    * pulls starters early, a conservative one bunts and plays for a run. Without
-   * it 64 programs are one program repeated.
+   * it 96 programs are one program repeated.
    */
   strategy: Strategy;
   /**
@@ -305,7 +316,7 @@ export interface TeamRecord {
    * runs. `playGame` forwards them into every game this team plays — managed or
    * simmed, the same tiny edge — and the store keeps them current when a skill
    * point is spent or the coach changes jobs. Absent everywhere else, so the
-   * other sixty three programs play at their raw ratings.
+   * other ninety five programs play at their raw ratings.
    */
   coachMods?: { offense: number; defense: number };
 }
@@ -434,7 +445,7 @@ export interface SeasonState {
    * take the development on faith.
    *
    * Your program only. This is your record book, not the country's, and keeping
-   * every line for all sixty four schools would put tens of thousands of rows
+   * every line for all ninety six schools would put tens of thousands of rows
    * through a structured clone on every autosave for the sake of somebody
    * else's shortstop.
    */
@@ -484,14 +495,18 @@ export interface SeasonState {
    */
   recruiting: RecruitClass;
   /**
-   * Team indices in final regular season order, recorded the moment the
-   * schedule runs out.
+   * Every conference's final regular season table, one after another, recorded
+   * the moment the schedule runs out.
    *
    * This has to be a snapshot rather than something recomputed on demand.
-   * `standings()` breaks ties on overall record and run differential, and
-   * postseason games move both — so asking for the table again after the
-   * tournament would quietly return a different regular season than the one
-   * that was actually played, and seeding would disagree with itself.
+   * `standings()` breaks ties partly on run differential, and postseason games
+   * move it — so asking for the table again after the tournament would quietly
+   * return a different regular season than the one that was actually played,
+   * and seeding would disagree with itself.
+   *
+   * Conference by conference rather than as one national table, because that is
+   * the only way it is ever read and a tie broken against the rest of the
+   * country can order two league-mates differently from their own table.
    */
   finalOrder: number[] | null;
   /**
@@ -618,6 +633,42 @@ export function worldFromConferences(defs: readonly ConferenceDef[]): WorldShape
       teams: c.schools.map(() => next++),
     })),
   };
+}
+
+/**
+ * The same shape, read off a season that already exists.
+ *
+ * A save does not carry its schedule — the schedule is a pure function of the
+ * config, the world and the rotation, so it is cheaper to rebuild than to store.
+ * But rebuilding it needs a world, and taking that world from `CONFERENCES` took
+ * it from *today's* data file rather than from the career being opened. A team
+ * is an index in the schedule, and reordering `schools.ts`, moving a program
+ * between conferences or adding one silently repointed every one of those
+ * indices: the same dynasty came back with its team in somebody else's league,
+ * playing a schedule that belonged to a world it had never been part of.
+ *
+ * Nothing has to be written down to fix that, because it already is. Every
+ * `TeamRecord` carries its own `index` and its own `conference`, and
+ * `createSeason` walks the conferences in order, so grouping the saved teams by
+ * conference in order of first appearance reproduces exactly the shape the
+ * season was built from — including a world that was never the default one, such
+ * as the two-conference worlds the tests build.
+ */
+export function worldFromTeams(
+  teams: readonly Pick<TeamRecord, 'index' | 'conference'>[],
+): WorldShape {
+  const conferences: WorldShape['conferences'] = [];
+  const byId = new Map<string, { id: string; teams: number[] }>();
+  for (const t of teams) {
+    let conf = byId.get(t.conference);
+    if (!conf) {
+      conf = { id: t.conference, teams: [] };
+      byId.set(t.conference, conf);
+      conferences.push(conf);
+    }
+    conf.teams.push(t.index);
+  }
+  return { conferences };
 }
 
 /**
@@ -1304,8 +1355,16 @@ export function simNextDay(season: SeasonState, opts: DayOptions = {}): GameSumm
 
   // The schedule just ran out. Freeze the regular season order before any
   // postseason game can move a tiebreaker.
+  //
+  // Taken one conference at a time rather than as a single world-wide table,
+  // because the only thing that ever reads it filters it back down to one
+  // conference — and a tie broken across the whole country can put two teams
+  // from the same league in an order their own table disagrees with. The
+  // tournament a program is seeded into must match the standings it has been
+  // reading all season.
   if (seasonComplete(season) && season.finalOrder === null) {
-    season.finalOrder = standings(season).map((t) => t.index);
+    season.finalOrder = conferenceIds(season)
+      .flatMap((id) => standings(season, id).map((t) => t.index));
   }
 
   return summaries;
@@ -1329,18 +1388,123 @@ export function winPct(t: TeamRecord): number { return pct(t.w, t.l); }
 export function confPct(t: TeamRecord): number { return pct(t.cw, t.cl); }
 
 /**
- * Conference race order: conference record first, then overall, then run
- * differential. Pass a conference id for one league's table; omit it for the
+ * Who beat whom, in the regular season, counted.
+ *
+ * Postseason games are excluded deliberately. A bracket is seeded off what the
+ * regular season decided, and a tiebreaker that moved while the bracket was
+ * being played would reseed the rounds still to come from underneath them —
+ * the same hazard `finalOrder` exists to prevent, arriving by a second door.
+ * The schedule's last day is the boundary: `currentDay` gives every June game a
+ * date past it.
+ *
+ * Every meeting counts, conference or midweek. That happens to be exactly the
+ * sport's rule rather than a simplification of it: inside a conference the
+ * season is a full round robin, so every meeting between two of its members is
+ * a conference game, and two teams in different conferences can only ever have
+ * met in non-conference play.
+ */
+function headToHead(season: SeasonState): Map<string, number> {
+  const lastDay = season.schedule[season.schedule.length - 1]?.day ?? Infinity;
+  const beat = new Map<string, number>();
+  for (const g of season.results) {
+    if (g.day > lastDay) continue;
+    const home = g.homeRuns > g.awayRuns;
+    const key = `${home ? g.home : g.away}>${home ? g.away : g.home}`;
+    beat.set(key, (beat.get(key) ?? 0) + 1);
+  }
+  return beat;
+}
+
+/**
+ * Put teams in a defensible order, on any ranking, with the ties actually
+ * broken.
+ *
+ * Ties used to fall out of `Array.sort` in whatever order the pool happened to
+ * be in — which is `data/schools.ts` order, so the coin flip was invisible, and
+ * reordering the data file reseeded old careers. Nothing that decides who hosts
+ * a game may work that way.
+ *
+ * `rank` is the thing being seeded on and nothing more: conference percentage
+ * for a league table, RPI for the national one, regular season wins for a
+ * bracket. Everyone who comes out equal on it goes through the chain below, in
+ * the order the sport uses.
+ *
+ *   1. **head to head**, as a mini round robin *within the tied group* — wins
+ *      over the others minus losses to them. Group-relative on purpose: a
+ *      pairwise comparison is not transitive, and three teams in a beats-b
+ *      beats-c beats-a cycle would sort into whatever order the comparator
+ *      happened to visit them in, which is the problem this function exists to
+ *      remove. A net figure is a number, and numbers sort.
+ *   2. conference record
+ *   3. overall record, taken from `regularRecord` so June cannot move it
+ *   4. run differential
+ *   5. **the school's abbreviation, ascending.** The last resort has to be
+ *      something, the real sport draws lots, and a draw is exactly what cannot
+ *      be allowed here. An abbreviation is unique, it is the key the rest of
+ *      the save already identifies a program by, and it does not move when the
+ *      data file is reordered. It is arbitrary — but it is arbitrary in public,
+ *      which is the whole difference.
+ *
+ * Run differential is the one term still live during the postseason. It sits
+ * fourth, behind three frozen keys, and the abbreviation behind it is what
+ * actually guarantees an answer.
+ */
+export function seedTeams(
+  season: SeasonState,
+  pool: readonly TeamRecord[],
+  rank: (t: TeamRecord) => number,
+): TeamRecord[] {
+  const beat = headToHead(season);
+  const ranked = pool.map((t) => ({ t, r: rank(t) }))
+    .sort((a, b) => b.r - a.r);
+
+  const out: TeamRecord[] = [];
+  for (let i = 0; i < ranked.length;) {
+    let j = i + 1;
+    while (j < ranked.length && (ranked[j] as typeof ranked[number]).r
+      === (ranked[i] as typeof ranked[number]).r) j++;
+    const tied = ranked.slice(i, j).map((x) => x.t);
+    i = j;
+
+    if (tied.length === 1) { out.push(tied[0] as TeamRecord); continue; }
+
+    const net = new Map<number, number>();
+    for (const a of tied) {
+      let n = 0;
+      for (const b of tied) {
+        if (a.index === b.index) continue;
+        n += (beat.get(`${a.index}>${b.index}`) ?? 0)
+          - (beat.get(`${b.index}>${a.index}`) ?? 0);
+      }
+      net.set(a.index, n);
+    }
+
+    tied.sort((a, b) =>
+      (net.get(b.index) ?? 0) - (net.get(a.index) ?? 0) ||
+      confPct(b) - confPct(a) ||
+      overallPct(b) - overallPct(a) ||
+      (b.rs - b.ra) - (a.rs - a.ra) ||
+      (a.def.abbr < b.def.abbr ? -1 : a.def.abbr > b.def.abbr ? 1 : 0));
+    out.push(...tied);
+  }
+  return out;
+}
+
+const overallPct = (t: TeamRecord): number => {
+  const r = regularRecord(t);
+  return pct(r.w, r.l);
+};
+
+/**
+ * Conference race order: conference record, then the tiebreak chain in
+ * `seedTeams`. Pass a conference id for one league's table; omit it for the
  * whole world, which is really only useful as a stable ordering to filter from.
  */
 export function standings(season: SeasonState, conference?: string): TeamRecord[] {
   const pool = conference === undefined
     ? season.teams
     : season.teams.filter((t) => t.conference === conference);
-  return [...pool].sort((a, b) =>
-    confPct(b) - confPct(a) ||
-    b.w - a.w ||
-    (b.rs - b.ra) - (a.rs - a.ra));
+  return seedTeams(season, pool, confPct);
 }
 
 /** Every conference id in the world, in world order. */
@@ -1374,11 +1538,20 @@ function average(xs: readonly number[]): number {
   return xs.reduce((a, b) => a + b, 0) / xs.length;
 }
 
-/** Teams ordered by RPI, best first. */
+/**
+ * Teams ordered by RPI, best first, ties broken by `seedTeams`.
+ *
+ * The ties are not the rarity a float suggests. Before a ball is thrown every
+ * program in the country has an RPI of exactly zero, and this is what the
+ * national rankings screen draws in February — so the table opened on the data
+ * file's own order and called it a ranking.
+ */
 export function rpiOrder(season: SeasonState): Array<{ team: TeamRecord; rpi: number }> {
-  return season.teams
-    .map((team) => ({ team, rpi: rpi(season, team.index) }))
-    .sort((a, b) => b.rpi - a.rpi);
+  const value = new Map<number, number>(
+    season.teams.map((t) => [t.index, rpi(season, t.index)]),
+  );
+  return seedTeams(season, season.teams, (t) => value.get(t.index) ?? 0)
+    .map((team) => ({ team, rpi: value.get(team.index) ?? 0 }));
 }
 
 // ---------------------------------------------------------------------------

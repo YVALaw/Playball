@@ -9,6 +9,7 @@ import {
   leaders, inningsPitched, worldFromConferences, DEFAULT_SEASON,
   nextSeason, regularRecord,
 } from '../src/engine/season.js';
+import type { SeasonState, TeamRecord } from '../src/engine/season.js';
 import { makeRng } from '../src/engine/rng.js';
 import { CONFERENCES, ALL_SCHOOLS } from '../src/data/schools.js';
 
@@ -220,6 +221,99 @@ describe('rolling over to a new season', () => {
     const next = nextSeason(s);
     for (const t of next.teams) {
       expect(regularRecord(t)).toEqual({ w: 0, l: 0 });
+    }
+  });
+});
+
+describe('ties are broken by rules, not by array order', () => {
+  // Every ordering the game seeds off — the conference table, the national
+  // rankings, the conference tournament field, the regional and national
+  // brackets — used to fall back on whatever order `season.teams` happened to
+  // be in when two teams came out level. That is `data/schools.ts` order: a
+  // coin flip nobody can see, and one that changes if the data file is ever
+  // reordered.
+
+  const level = (s: SeasonState, indices: readonly number[]): void => {
+    for (const i of indices) {
+      const t = s.teams[i] as TeamRecord;
+      t.gp = 30; t.w = 20; t.l = 10; t.cw = 15; t.cl = 8; t.rs = 200; t.ra = 150;
+    }
+  };
+
+  const beat = (s: SeasonState, winner: number, loser: number): void => {
+    s.results.push({
+      day: 1, home: winner, away: loser, homeRuns: 5, awayRuns: 3,
+      conference: true, innings: 9,
+    });
+  };
+
+  const gulf = (s: SeasonState): TeamRecord[] =>
+    s.teams.filter((t) => t.conference === 'GULF');
+
+  it('puts the team that won the meeting ahead of the one that lost it', () => {
+    for (const [winner, loser] of [[0, 1], [1, 0]] as const) {
+      const s = createSeason(makeRng(505));
+      level(s, [0, 1]);
+      beat(s, winner, loser);
+      const table = standings(s, 'GULF');
+      expect(table[0]?.index).toBe(winner);
+      expect(table[1]?.index).toBe(loser);
+    }
+  });
+
+  it('falls back to the abbreviation, which is not the data file order', () => {
+    // Nothing separates these twelve at all: same record, same conference
+    // record, same run differential, and they have never met. The last resort
+    // has to answer anyway, and it has to answer the same way every time.
+    const s = createSeason(makeRng(506));
+    const conference = gulf(s);
+    level(s, conference.map((t) => t.index));
+
+    const table = standings(s, 'GULF').map((t) => t.def.abbr);
+    expect(table).toEqual([...table].sort());
+    // The point of the test: this is a different answer from the one the array
+    // was giving, so the fallback is a rule rather than an accident.
+    expect(table).not.toEqual(conference.map((t) => t.def.abbr));
+  });
+
+  it('ranks an unplayed season by the backstop rather than by team index', () => {
+    // In February every program in the country has an RPI of exactly zero, and
+    // this is the table the national rankings screen draws. It used to be the
+    // data file, printed with numbers beside it.
+    const s = createSeason(makeRng(507));
+    const order = rpiOrder(s).map((r) => r.team.def.abbr);
+    expect(order).toEqual([...order].sort());
+    expect(order).not.toEqual(s.teams.map((t) => t.def.abbr));
+  });
+
+  it('ignores June when breaking a regular season tie', () => {
+    // A tiebreaker that moved while the bracket was being played would reseed
+    // the rounds still to come from underneath them. Postseason games are
+    // dated past the last day of the schedule, which is the boundary.
+    const s = createSeason(makeRng(508));
+    level(s, [0, 1]);
+    beat(s, 0, 1);
+    const lastDay = s.schedule[s.schedule.length - 1]?.day ?? 0;
+    s.results.push({
+      day: lastDay + 5, home: 1, away: 0, homeRuns: 9, awayRuns: 1,
+      conference: false, innings: 9,
+    });
+    expect(standings(s, 'GULF')[0]?.index).toBe(0);
+  });
+
+  it('freezes a conference table the tournament field agrees with', () => {
+    // `conferenceField` filters the frozen order back down to one conference.
+    // Freezing a single national table instead let a tie broken against the
+    // rest of the country order two league-mates differently from their own
+    // table — the one the program has been reading all season.
+    const s = createSeason(makeRng(509));
+    simSeason(s);
+    expect(s.finalOrder).not.toBeNull();
+    for (const id of ['GULF', 'PAC', 'NEC']) {
+      const frozen = (s.finalOrder as number[]).filter(
+        (i) => s.teams[i]?.conference === id,
+      );
+      expect(frozen).toEqual(standings(s, id).map((t) => t.index));
     }
   });
 });

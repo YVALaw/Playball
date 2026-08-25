@@ -2,7 +2,7 @@
 // Dynasty saves, in IndexedDB.
 //
 // IndexedDB rather than localStorage because a save is roughly a megabyte —
-// 1,500 players across 64 programs, plus a season of statistics — and
+// 2,200 players across 96 programs, plus a season of statistics — and
 // localStorage caps out around five and stores strings, which would mean
 // stringifying the whole world on every write.
 //
@@ -193,6 +193,13 @@ function openDatabase(): Promise<IDBPDatabase<PlayballDB>> {
       // was about are gone. Dropping the store is the truthful outcome, and it
       // beats the alternative, which is loading into a world where your team is
       // quietly somebody else.
+      //
+      // The world has grown again since — eight conferences of twelve, ninety
+      // six programs — and that one did not need a version. A save carries its
+      // own teams, each with its own school and its own conference, and the
+      // schedule is rebuilt from those rather than from the data file as it
+      // stands today. See `worldFromTeams`. Version 4 was different only
+      // because the schools themselves stopped existing.
       if (oldVersion > 0 && oldVersion < 4) {
         database.deleteObjectStore(STORE);
         database.createObjectStore(STORE, { keyPath: 'slot' });

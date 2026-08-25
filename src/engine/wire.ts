@@ -1,8 +1,8 @@
 // wire.ts
 // The league talking about itself.
 //
-// Sixty four programs play every week and you see one of them. Without a feed,
-// the other sixty three are a standings table that changes overnight for reasons
+// Ninety six programs play every week and you see one of them. Without a feed,
+// the other ninety five are a standings table that changes overnight for reasons
 // you never witness — which is the difference between a league and a spreadsheet.
 //
 // Everything here is derived from what actually happened. Nothing is invented:

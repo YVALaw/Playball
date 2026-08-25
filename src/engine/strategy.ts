@@ -252,7 +252,7 @@ const ALIGN_BY_TRAIT: Alignment[] = ['straight', 'straight', 'situational', 'shi
  * so it is stable across a save and varies across the league. The spec asks for
  * this directly: an aggressive coach steals and pulls starters early, a
  * conservative one bunts and plays for one run, and that variety is what makes
- * 64 programs feel like different places rather than one program repeated.
+ * 96 programs feel like different places rather than one program repeated.
  *
  * Deliberately not random — a team that changed philosophy every time you looked
  * at it would be noise, not character.
