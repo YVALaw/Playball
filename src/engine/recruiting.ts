@@ -143,11 +143,15 @@ export const RECRUITING_WEEKS = 3;
 export const SCHOLARSHIPS = 8;
 
 /**
- * Recruiting budget per week.
+ * Recruiting budget per week, at a program with no prestige at all.
  *
- * Thirty, spread across as many recruits as you like. The number matters less
+ * Forty, spread across as many recruits as you like. The number matters less
  * than the ratio: it buys a decisive push on two or three players, or a thin one
  * on eight, and that trade is the whole screen.
+ *
+ * The floor rather than the rule. What a program actually works with is
+ * `budgetFor(stars)`, and every one of the ninety six reads it — see
+ * `weeklyBudget`, which both the board header and `aiTargets` go through.
  */
 export const RECRUITING_BUDGET = 40;
 

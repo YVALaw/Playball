@@ -14,7 +14,7 @@ import {
   generateClass, aiTargets, closeWeek, resetWeeklySpend, weeklyPoints, fit, canPursue,
   leadersAtWeekStart, byRank,
   PRIORITIES, RECRUITING_WEEKS, SCHOLARSHIPS, RECRUITING_BUDGET, MAX_PER_RECRUIT,
-  commitPointsFor, budgetFor,
+  commitPointsFor, budgetFor, weeklyBudget, windowBudget,
   reportWidth, reportGradeSteps, reportedOverall, reportedPotential, reportedTool,
   hintsFor, ceilingLinesFor, developmentLinesFor, rawnessOf,
   CEILING_LINES, DEVELOPMENT_LINES,
@@ -299,11 +299,15 @@ describe('the AI recruits inside the same rules', () => {
     const rng = makeRng(555);
     const recruits = generateClass(2027, 16, rng);
     for (let team = 0; team < 16; team++) {
-      const board = aiTargets(team, LADDER[team] as Pitch, 45, recruits.prospects, 9, rng);
+      const pitch = LADDER[team] as Pitch;
+      const board = aiTargets(team, pitch, 45, recruits.prospects, 9, rng);
       expect(board.length).toBeLessThanOrEqual(SCHOLARSHIPS);
       for (const b of board) expect(b.actions).toBeLessThanOrEqual(MAX_PER_RECRUIT);
       const spent = board.reduce((a, b) => a + b.actions, 0);
-      expect(spent).toBeLessThanOrEqual(RECRUITING_BUDGET + board.length);
+      // The program's own week, not the flat forty. `aiTargets` reads
+      // `weeklyBudget` now, so a five star program legitimately has fifty to
+      // spend and the old constant would have failed it for being rich.
+      expect(spent).toBeLessThanOrEqual(budgetFor(pitch.stars) + board.length);
     }
   });
 
@@ -609,6 +613,70 @@ describe('the price of a top recruit', () => {
     expect(budgetFor(5)).toBeGreaterThan(budgetFor(1));
     // Prestige buys attention, not the class outright.
     expect(budgetFor(5)).toBeLessThan(budgetFor(1) * 2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The week the other ninety five programs work with
+// ---------------------------------------------------------------------------
+
+/*
+  The asymmetry this closes was the blocker under the whole retention mechanic,
+  and it was quiet: `aiTargets` allocated a flat forty actions regardless of what
+  the program was, while the user's week came off `budgetFor(stars)` and had
+  whatever he spent in June taken out of it. So a computer program's budget was
+  a number nothing could touch — which meant handing it a way to spend money on
+  keeping players would have been handing it money it never had to find.
+*/
+describe('the AI works off the same week the user does', () => {
+  const total = (board: { actions: number }[]): number =>
+    board.reduce((a, b) => a + b.actions, 0);
+
+  /** One week's allocation for a program of this tier, on a full class. */
+  const weekFor = (stars: number, spentInJune = 0) => {
+    const rng = makeRng(77);
+    const recruits = generateClass(2027, 16, rng);
+    recruits.week = 1;
+    // A pitch whose prestige is the tier's, so `canPursue` gates it honestly.
+    const prestige = stars >= 5 ? 0.8 : stars >= 4 ? 0.65 : stars >= 3 ? 0.52
+      : stars >= 2 ? 0.42 : 0.3;
+    return aiTargets(
+      0, program(prestige), 45, recruits.prospects, 8, rng, {}, spentInJune,
+    );
+  };
+
+  it('gives a blue blood a bigger week than a nobody', () => {
+    const small = total(weekFor(1));
+    const big = total(weekFor(5));
+    expect(small).toBeLessThanOrEqual(budgetFor(1));
+    expect(big).toBeLessThanOrEqual(budgetFor(5));
+    // The gap is the whole point: a flat constant made these identical.
+    expect(big).toBeGreaterThan(small);
+  });
+
+  it('never spends more in a week than the program has', () => {
+    for (const stars of [1, 2, 3, 4, 5]) {
+      expect(total(weekFor(stars)), `a ${stars} star program overspent`)
+        .toBeLessThanOrEqual(budgetFor(stars));
+    }
+  });
+
+  it('is thinner for three weeks after a program spends in June', () => {
+    // The same rule the user's header prints: what the draft took comes off
+    // every week evenly rather than shutting week one and leaving the rest
+    // untouched, so keeping an ace cannot be recovered by waiting.
+    const june = 60;
+    const before = total(weekFor(5));
+    const after = total(weekFor(5, june));
+    expect(after).toBeLessThan(before);
+    expect(after).toBeLessThanOrEqual(weeklyBudget(5, june));
+    // And it is a third of the bill each week, not the whole bill at once.
+    expect(weeklyBudget(5, june) * RECRUITING_WEEKS)
+      .toBeGreaterThanOrEqual(windowBudget(5) - june - RECRUITING_WEEKS);
+  });
+
+  it('leaves a program that spent its whole window with nothing to work with', () => {
+    expect(total(weekFor(3, windowBudget(3)))).toBe(0);
   });
 });
 

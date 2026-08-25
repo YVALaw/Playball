@@ -187,21 +187,125 @@ half the achievements are all reading from the same book.
   rating curve was flat. With it fixed the best simulated season is 12 home runs
   and .462 rather than 9 and .427, so the marks are a long way closer without
   being cheap. What is left of the gap really is the aluminium bat.
-- **B3 · Achievements** — `DECIDED`. One-time and permanent, as against records,
-  which are there to be broken: Perfect Conference, Cinderella, Dynasty, Lifer,
-  Kingmaker, Recruiter, Builder, Iron Will, Streak, Grand Slam.
-- **B4 · Coach titles** — `DECIDED`. An earned title replaces "seasons
-  completed" beside the coach's name, including **Lifer** at fifteen seasons in
-  one chair.
-- **B5 · Prestige penalty for two bad seasons running** — `DECIDED`.
-- **B6 · Conference and regional titles as real achievements** — `DECIDED`.
-  Regional titles have no counter at all today.
-- **B7 · AI coaches get a career** — `DECIDED`, and the *deep* version, not a
-  drifting number. They improve, they are judged, they are sacked, and they move
-  between programs — the same life the player leads. The point is not fairness
-  for its own sake: without it you are the only coach in ninety-six programs who
-  ever gets better, and a dynasty that cannot be caught stops being a contest.
-  A rival who beat you being poached by a bigger school is the good outcome.
+- **B3 · Achievements** — SHIPPED, all ten. One-time and permanent, as against
+  records, which are there to be broken — so where the book keeps a sparse map of
+  *marks*, this keeps a sparse map of *dates*, and the first time is never
+  overwritten. They hang on the coach and travel with him.
+
+  The interesting part was *when*, and the answer is four doors rather than one
+  scan. A comeback is a fact about the sixth inning and a streak is only correct
+  at the instant a game ends, so both are detected inside `recordResult` and
+  cached on `season.feats` — the same trick `scorelessOuts` already plays. Six are
+  read at the board meeting. Kingmaker is read at the **draft step** and not on
+  the draft screen, because `returned` is written the moment a coach talks
+  somebody round and a man who goes back to school was still taken first overall.
+  Recruiter is read **when he commits** and not at signing day, because `rank` is
+  a fact about the class as published and the class is regenerated at the year
+  roll.
+
+  The cabinet shows only what has been earned. Ten rows with eight crossed off is
+  a checklist, and a checklist is a set of instructions about how to play.
+  See `05-systems-reference.md` §15.
+- **B4 · Coach titles** — SHIPPED. Unproven · Journeyman · Respected ·
+  Established · Renowned · Legendary, with **Lifer** kept deliberately apart at
+  fifteen seasons in one chair — the one thing on the page earned by staying
+  rather than winning, so a bad run cannot take it away, and it reads alongside
+  the title rather than instead of it (`RENOWNED · LIFER`).
+
+  Two ladders, and the higher wins. Prestige carries the climb because prestige is
+  already the number that moves on overachievement and decays when nothing
+  happens, which is what a reputation should do. Trophies act as **floors** on top
+  of it, one rung per thing there is to win: a bid is Respected, a league is
+  Established, a region is Renowned, the country is Legendary. So a national
+  champion is never introduced as a journeyman however the last two seasons went,
+  and twenty quiet years does not make anybody renowned — a test pins exactly
+  that. See §5.
+- **B5 · Prestige penalty for two bad seasons running** — SHIPPED.
+  `CoachState.badRun` counts consecutive `missed`/`failed` verdicts;
+  `badRunPenalty` is `5 + (badRun − 2) × 3` off coach prestige from the second
+  onward, sized against a hiring ladder whose rungs are fifteen points apart.
+
+  Three things worth recording. **One acceptable season wipes the run out
+  entirely** rather than decrementing it — a coach who answered the question is
+  not still serving a sentence. **It is deliberately not a second security hit**:
+  security already fell fourteen or twenty eight for each of those years, and
+  doubling the sacking pressure would mean nobody ever reaches a third bad season
+  for the escalation to apply to. And **it is cleared when he takes a chair**,
+  his and a rival's alike — a run is a board's patience running out, and a board
+  that has just hired him is by definition unconvinced by the last one's read. An
+  earlier version carried it across, and a coach sacked after four bad years who
+  then took a rebuild paid fourteen points for his first season in a building he
+  had been in for five minutes. What does travel is the prestige the run already
+  cost. See §6.5a.
+- **B6 · Conference and regional titles as real achievements** — SHIPPED.
+  `SeasonOutcome.wonRegional` and `CoachState.regionalTitles`, surfaced on the
+  coach page, in the record book as `coachRegionals`, and as a rung on the title
+  ladder.
+
+  Two decisions on the record. It is read off `regionChampions` rather than off
+  the finish string even though the two say the same thing in today's format, so
+  the day the postseason grows a round they stop agreeing on their own instead of
+  needing to be pulled apart by hand. And it is **not** priced into `seasonScore`:
+  reaching Omaha already pays +12 for exactly this event, and a second line would
+  have repriced every deep run in the game the day a bookkeeping gap was closed.
+
+  It also retired a derived number. The coach page computed TRIPS TO OMAHA by
+  filtering `history`, which was the honest thing to do with the fields that
+  existed and could not agree with a record book that had no regional row to
+  disagree with. Both now read the counter.
+- **B7 · AI coaches get a career** — SHIPPED, and the deep version. Ninety five
+  named men who accumulate skill, are judged by their boards, are sacked, are
+  poached, and get old and stop. `engine/rivals.ts`, hung on `TeamRecord.coach`,
+  run once a year from `settleSeason`.
+
+  **The bug underneath it was worse than "they do not improve".** `nextPrestige`
+  had existed since the board did and only the user's school was ever passed to
+  it — so ninety five programs were frozen at whatever the world generator gave
+  them, permanently, whatever they did on the field.
+
+  Everything is reused: `reviewSeason` grades a rival exactly as it grades you
+  (widened to a narrow `Reviewable` so one function can grade ninety six careers),
+  `judge` reads the same checklist, `nextCoachPrestige` applies the same B5
+  penalty, `canBeHired` decides who will have him, `skillPoints` pays him at the
+  same rate. **Nothing draws from the generator** — names hash off the chair and
+  the year, retirement off the name — for the same reason the draft's AI retention
+  does not: a whole rival year must not move a calibration figure, and a test pins
+  `rng.state()` across one.
+
+  **They are not superhuman.** A rival spends his points badly on purpose, half
+  into one hashed favourite; the country's average recruiting skill plateaus near
+  30 against a player who can reach 99 by concentrating.
+
+  **Measured over thirty five seasons of the full world**: mean prestige 42.7 →
+  51.4 and flat from year fifteen; spread 15.8 → peak 17.8 → 16.2; roster strength
+  spread 10.3 → 6.8; bottom five up eight points, top five plateauing below their
+  own clamp; thirteen different champions. It converges rather than compounding,
+  and talent — which is zero-sum against a fixed recruiting class and would show
+  compounding first — actively narrows.
+
+  One number is hotter than the real sport and is left alone deliberately: about
+  **twenty seven chair changes a year out of ninety five**, mean tenure near three
+  and a half seasons. It falls straight out of `expectationFor`'s designed 62%
+  clear rate applied to ninety five boards instead of one, and tuning it would
+  mean giving rival boards more patience than yours — a two-tier system, which is
+  the thing this was built not to be. See §16, and the E list below.
+- **B18 · The inbox** — SHIPPED. A notification centre, asked for directly: "a
+  notification or inbox center for this type of things". Board verdicts, job
+  offers, achievements, the draft and the coaching carousel accumulate there and
+  are read when convenient. Unread shows as a count on the sub-nav and a dot on
+  the HOME tab, and nothing in the game waits on it being opened.
+
+  **It sits beside the wire rather than inside it**, as a fourth screen on HOME.
+  They answer the same question about different things with different lifetimes:
+  `wire()` is derived fresh from the live season every render and thrown away,
+  and this is written down once and survives a reload. Folding them together
+  would put a row that evaporates when you press "next day" in the same scroll as
+  a row from your first season, with two different rules for disappearing.
+
+  Capped at eighty items, oldest dropped, because nothing is *only* there — the
+  history screen, the record book and the cabinet are the permanent copies. The
+  carousel is summarised rather than listed: your own conference is named, the
+  rest of the country is counted. See §17.
 - **B8 · Walk-ons** — SHIPPED. Marked, gone after exactly one season whatever
   class year they arrived at, and projected into the class review by position
   before they exist — a fact rather than an estimate, held to the real thing by
@@ -228,11 +332,29 @@ half the achievements are all reading from the same book.
   available on a man costs a median of 63 out of a 120–180 window and the second
   best costs 129.
 
-  Still open, and deliberately: **the AI programs do not talk anybody round.**
-  Their men simply go. Doing it properly needs the AI to have a recruiting
-  budget it actually spends against, which today it does not — `aiTargets`
-  allocates a flat `ACTIONS_PER_WEEK` — so giving it retention now would be
-  giving it free money. See appendix B item 5 of the systems reference.
+  The one thing that was left open when the mechanic shipped is now closed:
+  **the other ninety five programs talk men round too.** It needed the AI to have
+  a budget it could actually run out of, and it did not have one — `aiTargets`
+  allocated a flat `ACTIONS_PER_WEEK` (40) a week that no June could touch, so
+  retention would have been free money rather than a decision. That is fixed
+  first: an AI week is `weeklyBudget(pitch.stars, spentInJune)`, the same call
+  the user's board header makes, and appendix B item 5 of the systems reference
+  is answered along with it.
+
+  A rival then runs the same `makeTheCase` against the same `keepPoints`, out of
+  `windowBudget(stars) × 0.4`, choosing its case with `bestCase` — the cheapest
+  of the four that is honestly true, read off the player's own priorities,
+  which a staff is entitled to know about a man who has been in its building for
+  two years. Kept men go back through `reinstate` exactly as the user's do.
+
+  What stopped the league hoarding was not the price but the bar. A nineteenth
+  round pick costs four points, so affordability alone had every program keeping
+  everybody — and the *worst* programs hoarded hardest, which is backwards twice
+  over. A staff now fights only for a man in the top quarter of what is coming
+  back. Measured over eight settled years: 1.74 men exposed per program per year
+  and 0.32 kept, so **18% stay and 82% go**; nobody has ever kept more than three
+  in a year; rosters still turn over 35.5% a year against 37.3% with the whole
+  thing switched off. See `05-systems-reference.md` §14.7.
 
   It also unblocks B12: a career is what makes a man worth honouring, and a
   career now has an ending with a number on it.
@@ -384,6 +506,38 @@ those, or the book stops being a game system and becomes a museum.
 Fold in opportunistically rather than as a work item of their own.
 
 - Scholarship allocation controls are tiny touch targets.
+- **Two prestige scales that do not share a mean, and the churn it causes.**
+  Found while measuring B7, and it is one item rather than two because the
+  second is entirely caused by the first.
+
+  `nextPrestige` pulls a program toward `seasonScore`, whose league mean is about
+  **52** — win percentage averages 50 and the fixed pot of postseason bonuses
+  adds a couple of points spread over ninety six. `initialPrestige` seeds the
+  world with a mean nearer **43**. The two numbers are nominally the same 0–100
+  scale and are not the same distribution.
+
+  It never mattered while one program in ninety six was passed through
+  `nextPrestige`. With all of them going through it the whole league lifts nine
+  points and settles there, which is stable — but `expectationFor`'s
+  `standing = prestige × 0.45 + roster × 0.55` rises with it, so programs cross
+  into `contend` and `championship`, where reaching the national tournament is a
+  **required** box that eight of ninety six can fill. Measured: the league-wide
+  clear rate is about **a third**, against the 62% `expectationFor` was tuned to.
+  That 62% was never a property of the function alone; it was a property of it at
+  the seeded distribution.
+
+  Downstream of it: about **twenty seven chair changes a year out of ninety
+  five**, mean coaching tenure near three and a half seasons, roughly three times
+  the real sport's rate.
+
+  Three candidate fixes, none taken yet because all three touch the player's
+  board and none should be done quietly: centre `initialPrestige` on
+  `seasonScore`'s mean; take the free postseason bonuses out of `seasonScore` and
+  price the whole thing on win percentage; or move the mandate thresholds off
+  absolute standing and onto the program's *rank* in the league, which is
+  immune to the whole class of problem. Giving rival boards their own patience is
+  explicitly **not** on the list — that is a two-tier system, which is the thing
+  B7 was built not to be.
 - Recruiting offers should be able to promise what a recruit actually wants — a
   starting job, playing time — rather than only spending hours on him.
 - `highSchoolLine` derives its numbers from true ratings with a fixed noise

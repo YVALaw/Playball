@@ -41,8 +41,8 @@ const SECTIONS: Array<{ group: RecordGroup; title: string; note: string }> = [
   { group: 'team', title: 'TEAM', note: 'Programs, not players.' },
   {
     group: 'coach', title: 'COACHING',
-    note: 'Yours alone, honestly: the other ninety-five benches are a philosophy '
-      + 'and a reputation, not men with careers.',
+    note: 'Every head coach in the country, yours among them. They are hired, '
+      + 'judged and moved on the same terms you are.',
   },
 ];
 

@@ -543,6 +543,20 @@ export interface DraftBoard {
   /** Recruiting budget already committed to keeping people. */
   spent: number;
   men: DraftedMan[];
+  /**
+   * The same number for everybody else, by team index.
+   *
+   * A rival's June is settled the moment the draft is run — it has no screen
+   * and no decision waiting on it — but what it cost has to outlive the run,
+   * because the bill is paid over the three recruiting weeks that follow and
+   * the user can close the app in between. It rides here rather than on the
+   * team records for the reason the board itself does: it belongs to this
+   * June, and a new season is entitled to start with nobody owing anything.
+   *
+   * Sparse. A program that kept nobody is simply absent, and every reader
+   * takes a missing entry as nothing spent.
+   */
+  rivalSpend: Record<number, number>;
 }
 
 /**
@@ -579,4 +593,205 @@ export function letHimGo(man: DraftedMan): void {
   man.made = 0;
   man.needed = keepPoints(man.round);
   man.outcome = 'gone';
+}
+
+// ---------------------------------------------------------------------------
+// The other ninety five programs
+// ---------------------------------------------------------------------------
+
+/**
+ * What a coach brings to the table, as the two credibility cases read it.
+ *
+ * Pulled out as a shape of its own so the scene the user's program assembles
+ * and the scene every other program assembles come out of one function. They
+ * were written twice for about a week and the copies had already begun to
+ * disagree about what `returning` was measured against.
+ */
+export interface CoachRead {
+  /** His own reputation, on its 0 to 100 scale. */
+  prestige: number;
+  /** Seasons in this chair. */
+  tenure: number;
+  /** His TRAINING skill, 20 to 99. */
+  training: number;
+}
+
+/**
+ * The staff a program with nobody in the chair is run by.
+ *
+ * The league-average defaults the recruiting model used to hand every rival —
+ * `weeklyPoints` was called with a coach prestige of 45 and a recruiting skill
+ * of 20 for all ninety five — extended to the two skills this negotiation
+ * reads.
+ *
+ * An earlier draft of this comment argued against giving each rival a coach of
+ * its own, on the grounds that a *hashed* one would make a rival's word worth
+ * more than the user's at random and the user could neither see it nor answer
+ * it. That argument was right about a hashed coach and it is not the situation
+ * any more: the other ninety five programs are run by named men with careers
+ * the player can read, who earned their standing on the same results he did and
+ * can be beaten, out-recruited and outlasted. `departAndDevelop` passes the real
+ * one where there is one — see `engine/rivals.ts`.
+ *
+ * What is left for this constant is the honest gap: a world that has never been
+ * seated with coaches, which is most of the test suite and any save written
+ * before they existed. A program with nobody in the chair negotiates like
+ * nobody in particular.
+ */
+export const AVERAGE_STAFF: CoachRead = { prestige: 45, tenure: 4, training: 20 };
+
+/**
+ * Everything a case can honestly rest on, read off a program and a roster.
+ *
+ * `roster` is who is coming back — the men who survived the same June he is
+ * trying to walk back into, which is what makes `blockedBy` the answer to "is
+ * there actually a job here" rather than "was there one in April".
+ */
+export function sceneFrom(
+  prestige: number, roster: readonly Player[], coach: CoachRead,
+  p: Player, round: number,
+): KeepScene {
+  const strength = roster.length > 0
+    ? roster.reduce((a, r) => a + overallOf(r), 0) / roster.length
+    : 44;
+  const here = p.type === 'pitcher'
+    ? roster.filter((r) => r.type === 'pitcher' && r.role === p.role)
+    : roster.filter((r) => r.type === 'hitter' && r.pos === p.pos);
+  return {
+    prestige: unit(prestige / 100),
+    returning: unit((strength - 44) / 16),
+    coachPrestige: coach.prestige,
+    tenure: coach.tenure,
+    training: coach.training,
+    blockedBy: here.reduce((best, r) => Math.max(best, overallOf(r)), 0),
+    round,
+  };
+}
+
+/**
+ * The case a staff makes for a man of its own, and what it costs.
+ *
+ * The cheapest one that works, which is the same answer a coach who reads his
+ * player arrives at — and a program *may* read its own player, because he has
+ * been in the building for two years and the hint lines exist to model what a
+ * stranger knows, not what a staff does. The user gets two prose hints because
+ * he is being asked to make the read himself; the AI is not a player and has
+ * nothing to be denied.
+ *
+ * The AI is therefore better at *choosing* than a coach guessing and no better
+ * at *paying*, which is the correct place for the difference to sit: the whole
+ * mechanic is priced in recruiting money, and money is the thing the two sides
+ * have exactly as much of.
+ *
+ * `Infinity` when every case is a lie — a finished man taken in the second
+ * round with somebody better standing in his spot can be told nothing true.
+ */
+export function bestCase(
+  p: Player, scene: KeepScene, round: number,
+): { kind: KeepPitch; price: number } {
+  let best: KeepPitch = KEEP_PITCHES[0] as KeepPitch;
+  let price = Infinity;
+  for (const kind of KEEP_PITCHES) {
+    const at = keepPrice(kind, p, scene, round);
+    if (at < price) { best = kind; price = at; }
+  }
+  return { kind: best, price };
+}
+
+/**
+ * How much of its recruiting window a program will put behind keeping people.
+ *
+ * Not all of it, and the reason is the trade the user is being asked to make on
+ * the same screen: every point spent in June is a point the board does not have
+ * in July, and a program that spent the lot on one junior would sign nothing
+ * and be worse off for it.
+ *
+ * Two fifths, and it binds where you would want it to. Measured across the
+ * ninety six program world it is barely touched at the bottom of the league —
+ * a one star program spends 3.7 of the 48 it is allowed, because a nineteenth
+ * rounder costs about four — and it is the thing that stops a blue blood
+ * keeping a second round pick, whose price runs past the 66 a five star has.
+ * The men a strong program can afford are the ones it does not want, and the
+ * one it wants it cannot afford, which is the trade this mechanic is for.
+ */
+export const AI_KEEP_SHARE = 0.4;
+
+/**
+ * How far clear of the bar a man has to be before his staff will fight for him.
+ *
+ * The brake, and the money is not it. A nineteenth round pick costs about four
+ * points — less than one week's attention on one recruit — so affordability
+ * alone would have every program keeping everybody it was allowed to, and the
+ * rosters would stop turning over. Priced purely on what he costs, the worst
+ * programs in the league hoarded hardest, which is backwards twice over.
+ *
+ * What actually stops it is that keeping him spends a roster place as well as
+ * the money: `refill` rebuilds to a fixed twenty three, so a man talked into
+ * staying is a recruit not signed. A staff pays that twice only for a man who
+ * would be one of the best players on next year's team — see `keepBar` in
+ * progression.ts, which is the bar this is the margin on top of.
+ *
+ * Measured over eight settled years of the ninety six program world: the draft
+ * exposes 1.74 men per program per year and 0.32 of them are talked round, so
+ * **18% stay and 82% go**. No program has ever kept more than three in a year,
+ * and of the program-years where two or more men were exposed, 3.7% kept all of
+ * them. Rosters turn over 35.5% a year against 37.3% with the whole mechanic
+ * switched off — a program can hold on to a man, and it cannot hold a team
+ * together.
+ */
+export const AI_KEEP_EDGE = 4;
+
+/** One program's answer, per man it was asked about. */
+export interface RivalKeep {
+  man: DraftedMan;
+  kind: KeepPitch;
+  price: number;
+  /**
+   * The scene it was priced against, carried rather than rebuilt.
+   *
+   * Every one of a program's calls is made in the same June, against the roster
+   * as the draft left it. Recomputing the scene at the moment of paying would
+   * quietly price the second man against a depth chart the first man had just
+   * rejoined — so a staff would find itself paying for a case that had stopped
+   * being true between deciding and saying it.
+   */
+  scene: KeepScene;
+}
+
+/**
+ * What one of the other ninety five programs does about its own drafted men.
+ *
+ * Best man first, because that is the order a staff cares in, and the budget
+ * runs out rather than being rationed: a program that can afford its best man
+ * and nobody else keeps its best man, which is the decision the user is making
+ * on the same screen with the same money.
+ *
+ * Decides nothing at random. Every input is a fact about the program, the
+ * player and the round he went in — so a rival's June is reproducible, and it
+ * costs no `rng()` draw, which matters because this runs inside
+ * `departAndDevelop` where the stream is shared with everybody's development.
+ * The only draw a kept man costs is the development year `reinstate` gives
+ * him, and that one he has genuinely earned.
+ */
+export function rivalKeeps(
+  men: readonly DraftedMan[],
+  sceneOf: (man: DraftedMan) => KeepScene,
+  budget: number,
+  replacement: number,
+): RivalKeep[] {
+  const out: RivalKeep[] = [];
+  let left = Math.max(0, Math.floor(budget));
+  const order = [...men].sort((a, b) => overallOf(b.player) - overallOf(a.player));
+
+  for (const man of order) {
+    if (left <= 0) break;
+    if (man.outcome !== 'pending') continue;
+    if (overallOf(man.player) < replacement + AI_KEEP_EDGE) continue;
+    const scene = sceneOf(man);
+    const { kind, price } = bestCase(man.player, scene, man.round);
+    if (!Number.isFinite(price) || price > left) continue;
+    out.push({ man, kind, price, scene });
+    left -= price;
+  }
+  return out;
 }

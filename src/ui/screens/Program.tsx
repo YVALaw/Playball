@@ -22,6 +22,7 @@
 // well at a bad job.
 
 import { useState, type ReactNode } from 'react';
+import { ACHIEVEMENTS, ACHIEVEMENT_IDS } from '../../engine/achievements.js';
 import { useDynasty, useUserTeam, useConferenceTable } from '../../state/store.js';
 import type { SeasonRecord } from '../../state/store.js';
 import {
@@ -167,6 +168,7 @@ function BoardSheet({ team }: { team: Owner }) {
     conferenceSize: table.length,
     wonConference: post?.conferenceChampions.includes(team.index) ?? false,
     madeTournament: finish !== undefined,
+    wonRegional: post?.regionChampions.includes(team.index) ?? false,
     reachedOmaha: ['omaha', 'runner-up', 'champion'].includes(finish ?? ''),
     wonTitle: post?.champion === team.index,
   };
@@ -357,14 +359,18 @@ function CoachSheet({ team }: { team: Owner }) {
   const careerSeasons = Math.max(history.length, coach.tenure);
 
   /*
-    Deep runs have no counter on the coach: `tournaments` counts bids, and
-    nothing counts the last four. The record book does know, and this is the same
-    arithmetic the history screen prints for its OMAHA tile — derived the same
-    way from the same array, so the two pages cannot quietly disagree.
+    Deep runs used to have no counter on the coach, so this was derived from the
+    history array — which was the honest thing to do with the fields that
+    existed and disagreed with the record book by construction, since the book
+    had no regional row to disagree *with*.
+
+    `regionalTitles` is that counter (B6). Winning your region and reaching
+    Omaha are the same event in this format, so one number answers both and the
+    coach page, the record book and the season review are now reading the same
+    field rather than three arithmetics that happen to agree today.
   */
-  const omaha = history.filter(
-    (s) => s.finish === 'omaha' || s.finish === 'runner-up' || s.finish === 'champion',
-  ).length;
+  const omaha = coach.regionalTitles;
+  const cabinet = ACHIEVEMENT_IDS.filter((id) => coach.achievements[id]);
 
   return (
     <>
@@ -423,16 +429,70 @@ function CoachSheet({ team }: { team: Owner }) {
       </Panel>
 
       <div style={{ marginTop: 14 }}>
-        <Head>ACHIEVEMENTS</Head>
+        <Head>THE RECORD</Head>
         <Panel>
           <Stat k="RECORD" v={`${coach.careerWins}-${coach.careerLosses}`} />
           <Stat k="WIN PCT" v={games > 0 ? pct(coach.careerWins / games) : '—'} />
           <Stat k="TOURNAMENT BIDS" v={String(coach.tournaments)} />
-          <Stat k="TRIPS TO OMAHA" v={String(omaha)} />
           <Stat k="CONFERENCE TITLES" v={String(coach.conferenceTitles)} />
+          {/* One row per thing there is to win, in the order the pyramid is
+              climbed. The regional row is what B6 added; the trip to Omaha
+              beside it is the same event under the name the player knows it by,
+              which is exactly why they print the same number. */}
+          <Stat k="REGIONAL TITLES" v={String(coach.regionalTitles)} />
+          <Stat k="TRIPS TO OMAHA" v={String(omaha)} />
           <Stat k="NATIONAL TITLES" v={String(coach.titles)} last />
         </Panel>
       </div>
+
+      {/*
+        The cabinet.
+
+        Only what he has actually done, and deliberately no greyed-out rows for
+        the rest. An achievement is one-time and permanent, so a list of the ten
+        with eight crossed off is a checklist, and a checklist on this page would
+        be a set of instructions about how to play a game that is supposed to be
+        about running a program. What is unearned is simply absent.
+      */}
+      {cabinet.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <Head>ACHIEVEMENTS</Head>
+          <Panel>
+            {cabinet.map((id, i) => {
+              const row = coach.achievements[id];
+              return (
+                <div
+                  key={id}
+                  style={{
+                    padding: '9px 12px',
+                    borderBottom: i === cabinet.length - 1
+                      ? 'none' : '1px solid var(--hairline)',
+                  }}
+                >
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between',
+                    alignItems: 'baseline', gap: 8,
+                  }}>
+                    <span style={{
+                      font: "800 14px/1.1 var(--display)", textTransform: 'uppercase',
+                    }}>{ACHIEVEMENTS[id].name}</span>
+                    <span style={{
+                      font: "600 10px var(--mono)", color: 'var(--clay)', whiteSpace: 'nowrap',
+                    }}>{row?.team} {row?.year}</span>
+                  </div>
+                  <div style={{
+                    marginTop: 3, font: "400 11.5px/1.45 var(--body)", color: 'var(--dim)',
+                  }}>{row?.detail ?? ACHIEVEMENTS[id].note}</div>
+                </div>
+              );
+            })}
+          </Panel>
+          <Note>
+            Earned once and kept for ever, wherever you coach next. Records are
+            the other half of the book, and those exist to be broken.
+          </Note>
+        </div>
+      )}
 
       <div style={{ marginTop: 14 }}>
         <Head>STRATEGY</Head>

@@ -58,7 +58,8 @@ export type RecordKey =
   | 'teamGameRuns' | 'teamGameHits' | 'teamGameMargin'
   | 'teamSeasonWins' | 'teamSeasonDiff' | 'teamSeasonStreak'
   // coach
-  | 'coachWins' | 'coachTitles' | 'coachConfTitles' | 'coachTournaments';
+  | 'coachWins' | 'coachTitles' | 'coachRegionals' | 'coachConfTitles'
+  | 'coachTournaments';
 
 /** How a value is written down. The UI reads it; nothing else does. */
 export type RecordShape = 'count' | 'avg' | 'era' | 'tenth' | 'innings';
@@ -127,6 +128,11 @@ export const RECORDS: Record<RecordKey, RecordSpec> = {
 
   coachWins: { group: 'coach', label: 'CAREER WINS', shape: 'count' },
   coachTitles: { group: 'coach', label: 'NATIONAL TITLES', shape: 'count' },
+  // Between the national and the conference row, which is where it sits in the
+  // pyramid: win your league, win your region, win the country. Its absence was
+  // the whole of B6 — the postseason had a regional round and nothing in the
+  // game counted winning one.
+  coachRegionals: { group: 'coach', label: 'REGIONAL TITLES', shape: 'count' },
   coachConfTitles: { group: 'coach', label: 'CONFERENCE TITLES', shape: 'count' },
   coachTournaments: { group: 'coach', label: 'TOURNAMENT APPEARANCES', shape: 'count' },
 };
@@ -408,23 +414,36 @@ export function recordGameMarks(
 // The coach
 // ---------------------------------------------------------------------------
 
-/** What the book reads off a career. `CoachState` satisfies this as it stands. */
+/**
+ * What the book reads off a career.
+ *
+ * `CoachState` satisfies it and so does `RivalCoach`, which is the point of the
+ * shape: the coaching section cannot end up describing your career off one set
+ * of counters and everybody else's off another.
+ */
 export interface BookCoach {
   name: string;
   careerWins: number;
   careerLosses: number;
   titles: number;
   conferenceTitles: number;
+  regionalTitles: number;
   tournaments: number;
 }
 
 /**
  * A career, offered to the book at the close of each season.
  *
- * Yours only, and honestly so: the other ninety-five programs have no coach
- * object behind them — a rival bench is a strategy and a prestige number, not a
- * man with a record. The screen says as much rather than implying you are
- * beating a field.
+ * **All ninety six of them now.** This used to be yours alone, and the comment
+ * here said so honestly: the other ninety five programs had no coach object
+ * behind them, so a rival bench was a strategy and a prestige number rather than
+ * a man with a record. B7 made them men with records, and a coaching section
+ * that still ranked one career against nothing would have been telling the
+ * player he held every mark in the country by default — which is the opposite of
+ * what a record book is for.
+ *
+ * Ninety six calls a year of five comparisons each. It is the cheapest thing in
+ * the offseason by some distance.
  */
 export function recordCoachMarks(
   book: RecordBook, year: number, coach: BookCoach, team: string,
@@ -435,6 +454,9 @@ export function recordCoachMarks(
     detail: `${coach.careerWins}-${coach.careerLosses}`,
   });
   if (coach.titles > 0) offer(book, 'coachTitles', { ...who, value: coach.titles });
+  if (coach.regionalTitles > 0) {
+    offer(book, 'coachRegionals', { ...who, value: coach.regionalTitles });
+  }
   if (coach.conferenceTitles > 0) {
     offer(book, 'coachConfTitles', { ...who, value: coach.conferenceTitles });
   }

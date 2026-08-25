@@ -17,6 +17,7 @@
 // a rebuilt schedule cannot arrive out of step with the teams it belongs to,
 // because it is built from them.
 
+import { noFeats } from '../engine/achievements.js';
 import { ageFor } from '../engine/players.js';
 import { rngFromState } from '../engine/rng.js';
 import { buildSchedule, rebuildNameIndex, worldFromTeams } from '../engine/season.js';
@@ -79,6 +80,14 @@ export function fromPortable(p: Portable): SeasonState {
   // from the next pitch rather than every reader having to guard the map.
   p.season.fielding ??= new Map();
 
+  // And one that only exists for the width of an offseason: a save written
+  // between the draft phase and signing day carries a board, and a board from
+  // before the other ninety five programs could keep anybody has no ledger of
+  // what they spent. An empty one is the truthful state — nobody spent
+  // anything, because nobody could — and it keeps the recruiting week from
+  // reading a field off undefined.
+  if (p.season.draft) p.season.draft.rivalSpend ??= {};
+
   // And the record book, which is the same rule with one extra clause. An empty
   // book is *not* the truthful state for a save that predates it: the seeded
   // NCAA marks are not something the dynasty earned, they are the starting
@@ -88,6 +97,11 @@ export function fromPortable(p: Portable): SeasonState {
   // run was ever being counted — so it starts at nothing.
   p.season.records ??= seededBook();
   p.season.scorelessOuts ??= new Map();
+  // And the feats beside it, which are genuinely empty on an old save for the
+  // same reason the scoreless counter is: nobody was watching for them, so the
+  // honest state is that this season has produced none yet. A season resumed in
+  // May will simply start counting from the next game.
+  p.season.feats ??= noFeats();
 
   // A third thing no save carries, and the only one that lives outside the save
   // entirely: the pool of names already spoken for is module state in

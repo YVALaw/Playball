@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   expectationFor, objectivesFor, objectiveMet, gradeObjectives, judge,
-  coachStanding, newCoach, LIFER_SEASONS,
+  coachStanding, newCoach, LIFER_SEASONS, badRunPenalty, reviewSeason, takeChair,
   type Mandate, type SeasonOutcome, type Expectation, type CoachState,
 } from '../src/engine/program.js';
 
@@ -18,7 +18,8 @@ const MANDATES: Mandate[] = ['develop', 'build', 'compete', 'contend', 'champion
 /** A finished season, overridable field by field. */
 const outcome = (over: Partial<SeasonOutcome> = {}): SeasonOutcome => ({
   wins: 16, losses: 17, conferenceRank: 4, conferenceSize: 8,
-  wonConference: false, madeTournament: false, reachedOmaha: false, wonTitle: false,
+  wonConference: false, madeTournament: false, wonRegional: false,
+  reachedOmaha: false, wonTitle: false,
   ...over,
 });
 
@@ -266,6 +267,24 @@ describe('what they call you', () => {
     expect(rung(bidMaker)).toBeLessThan(rung(contender));
   });
 
+  it('gives winning a region its own rung, above a league and below the country', () => {
+    // B6's other half. A regional title is the second best thing available and
+    // had no counter anywhere, so the ladder could not read it.
+    const order = ['Unproven', 'Journeyman', 'Respected', 'Established', 'Renowned', 'Legendary'];
+    const rung = (c: CoachState) => order.indexOf(coachStanding(c).title);
+
+    const league = coachWith({
+      careerWins: 200, careerLosses: 150, prestige: 30,
+      tournaments: 4, conferenceTitles: 2,
+    });
+    const region = coachWith({ ...league, regionalTitles: 1 });
+    const country = coachWith({ ...region, titles: 1 });
+
+    expect(rung(league)).toBeLessThan(rung(region));
+    expect(rung(region)).toBeLessThan(rung(country));
+    expect(coachStanding(region).title).toBe('Renowned');
+  });
+
   it('calls a man who stayed fifteen years a lifer, whatever else he is', () => {
     // Deliberately apart from the ladder: it is the one thing here earned by
     // staying rather than winning, so a bad run must not be able to take it.
@@ -274,5 +293,95 @@ describe('what they call you', () => {
 
     const nearly = coachWith({ tenure: LIFER_SEASONS - 1 });
     expect(coachStanding(nearly).lifer).toBe(false);
+  });
+
+  it('does not hand a lifer a winner\'s title for the tenure alone', () => {
+    // The load-bearing case for the whole ladder, and the failure it replaced:
+    // fifteen years and nothing won reads as LIFER beside a title he has not
+    // earned, not as a title *because* of the fifteen years.
+    const served = coachWith({
+      tenure: LIFER_SEASONS + 5, careerWins: 260, careerLosses: 340, prestige: 28,
+    });
+    const standing = coachStanding(served);
+    expect(standing.lifer).toBe(true);
+    expect(standing.title).toBe('Journeyman');
+  });
+});
+
+describe('two bad seasons running', () => {
+  // B5. One bad year is variance and the ordinary arithmetic already prices it;
+  // two is a pattern, and until `badRun` existed nothing in the game could tell
+  // the difference between a coach's first poor season and his fourth.
+
+  const coachWith = (over: Partial<CoachState>): CoachState =>
+    ({ ...newCoach(), ...over });
+
+  /** A season that misses one required box and nothing else. */
+  const poor = outcome({ wins: 4, losses: 41, conferenceRank: 8, conferenceSize: 8 });
+  /** A season the board accepts at a modest program. */
+  const fine = outcome({ wins: 30, losses: 15, conferenceRank: 2, conferenceSize: 8 });
+
+  it('charges nothing for the first and something for the second', () => {
+    expect(badRunPenalty(0)).toBe(0);
+    expect(badRunPenalty(1)).toBe(0);
+    expect(badRunPenalty(2)).toBeGreaterThan(0);
+    expect(badRunPenalty(3)).toBeGreaterThan(badRunPenalty(2));
+  });
+
+  it('remembers the run across seasons and forgets it after a good one', () => {
+    const first = reviewSeason(coachWith({ tenure: 3 }), 45, 45, poor, 45);
+    expect(first.verdict === 'missed' || first.verdict === 'failed').toBe(true);
+    expect(first.badRun).toBe(1);
+    expect(first.prestigePenalty).toBe(0);
+
+    const second = reviewSeason(coachWith({ tenure: 4, badRun: 1 }), 45, 45, poor, 45);
+    expect(second.badRun).toBe(2);
+    expect(second.prestigePenalty).toBeGreaterThan(0);
+
+    // One acceptable year wipes it out completely rather than decrementing it.
+    const recovered = reviewSeason(coachWith({ tenure: 5, badRun: 2 }), 45, 45, fine, 45);
+    expect(recovered.verdict === 'met' || recovered.verdict === 'exceeded').toBe(true);
+    expect(recovered.badRun).toBe(0);
+    expect(recovered.prestigePenalty).toBe(0);
+  });
+
+  it('costs the same coach real standing on the second and not on the first', () => {
+    // Two identical seasons at the same job, one from a clean sheet and one from
+    // a coach who did it last year too. The only difference is the memory.
+    const clean = reviewSeason(coachWith({ tenure: 4, prestige: 60 }), 45, 45, poor, 45);
+    const repeat = reviewSeason(
+      coachWith({ tenure: 4, prestige: 60, badRun: 1 }), 45, 45, poor, 45,
+    );
+    expect(repeat.coachPrestigeAfter).toBeLessThan(clean.coachPrestigeAfter);
+    expect(clean.coachPrestigeAfter - repeat.coachPrestigeAfter)
+      .toBe(badRunPenalty(2));
+    // And the board says so out loud, because a silent penalty is a bug report.
+    expect(repeat.message).toMatch(/in a row/i);
+    expect(clean.message).not.toMatch(/in a row/i);
+  });
+
+  it('starts the run again when he takes a new chair', () => {
+    // The run is a board's patience running out, and this is a different board.
+    // Carrying it across meant a coach sacked after four bad years, who then
+    // took a rebuild and missed in his first season there, paid fourteen points
+    // in a building he had been in for five minutes.
+    const sacked = coachWith({ badRun: 4, prestige: 40 });
+    const rehired = takeChair(sacked, 45);
+    expect(rehired.badRun).toBe(0);
+    // What travels is the prestige the run already cost him.
+    expect(rehired.prestige).toBe(40);
+    expect(rehired.tenure).toBe(0);
+    expect(rehired.arrivedPrestige).toBe(45);
+  });
+
+  it('leaves job security to the security model', () => {
+    // Deliberately not a second sacking pressure: security already fell for
+    // both of those seasons on its own, and doubling it would mean nobody ever
+    // reaches a third bad year for the escalation above to apply to.
+    const clean = reviewSeason(coachWith({ tenure: 4, prestige: 60 }), 45, 45, poor, 45);
+    const repeat = reviewSeason(
+      coachWith({ tenure: 4, prestige: 60, badRun: 3 }), 45, 45, poor, 45,
+    );
+    expect(repeat.securityAfter).toBe(clean.securityAfter);
   });
 });

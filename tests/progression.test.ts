@@ -8,6 +8,8 @@ import { createSeason, simSeason, nextSeason } from '../src/engine/season.js';
 import {
   advanceOffseason, departAndDevelop, fillRosters, walkOnShortfall,
 } from '../src/engine/progression.js';
+import { AI_KEEP_SHARE } from '../src/engine/draft.js';
+import { windowBudget } from '../src/engine/recruiting.js';
 import { overallOf } from '../src/engine/ratings.js';
 import { makeRng } from '../src/engine/rng.js';
 import { CONFERENCES } from '../src/data/schools.js';
@@ -75,9 +77,23 @@ describe('the offseason', () => {
     );
   });
 
+  // A drafted man who was talked out of going is still on the notice — that is
+  // what the notice is for — so "who actually left" is the drafted rows minus
+  // the ones that came back. Every count below reads through this rather than
+  // through `report.drafted`, because the other ninety five programs settle
+  // their own drafted juniors now and some of them stay.
+  const lost = () => [...report.graduated, ...report.drafted.filter((d) => !d.returned)];
+
   it('never lets a departed player stay on a roster', () => {
-    const departed = new Set([...report.graduated, ...report.drafted].map((d) => d.id));
+    const departed = new Set(lost().map((d) => d.id));
     for (const p of after) expect(departed.has(p.id)).toBe(false);
+  });
+
+  it('leaves a man it talked round on the roster he plays for', () => {
+    const back = report.drafted.filter((d) => d.returned);
+    expect(back.length).toBeGreaterThan(0);
+    const here = new Set(after.map((p) => p.id));
+    for (const d of back) expect(here.has(d.id)).toBe(true);
   });
 
   it('keeps every roster at full strength', () => {
@@ -99,7 +115,7 @@ describe('the offseason', () => {
   });
 
   it('replaces exactly what it lost', () => {
-    expect(report.recruits).toBe(report.graduated.length + report.drafted.length);
+    expect(report.recruits).toBe(lost().length);
     expect(after).toHaveLength(before.length);
   });
 
@@ -157,7 +173,8 @@ describe('a dynasty across five years', () => {
     const report = departAndDevelop(season, rng);
     signClasses(season);
     const filled = fillRosters(season, rng);
-    departures += report.graduated.length + report.drafted.length;
+    departures += report.graduated.length
+      + report.drafted.filter((d) => !d.returned).length;
     arrivals += filled.recruits;
     season = nextSeason(season);
   }
@@ -562,5 +579,143 @@ describe('walk-ons', () => {
     // roster is short again, and it is short somewhere he was standing.
     expect(report.holes.length).toBeGreaterThan(0);
     expect(spots.some((p) => holes.has(p) || holes.has('BENCH'))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The other ninety five programs, in June
+// ---------------------------------------------------------------------------
+
+/*
+  Retention used to be the user's alone: he could spend recruiting money to talk
+  a drafted man out of professional baseball and no other program in the country
+  could. Every rival's drafted men left, every year, without anybody picking up a
+  phone.
+
+  Closing it needs both halves at once and the second is the one that had been
+  missing. A rival now runs the same `makeTheCase` against the same `keepPoints`
+  out of a budget on the same `windowBudget` scale the user's comes from — which
+  only became possible once `aiTargets` stopped allocating a flat forty a week
+  that no June could touch. Given free money instead of a budget, an AI keeping
+  players would not have been a rival, it would have been a cheat.
+
+  What the tests below hold is the *shape* of the answer rather than a number:
+  rivals keep somebody, they keep a clear minority, and no program holds a team
+  together against the draft.
+*/
+describe('the other ninety five programs keep men too', () => {
+  // One run of the whole world, asked several questions — the same economy as
+  // the settled-league draft block above, for the same reason.
+  let season = createSeason(makeRng(4471), undefined, CONFERENCES);
+  const programs = season.teams.length;
+
+  let exposed = 0;
+  let kept = 0;
+  let years = 0;
+  /** Per program-year: how many were exposed and how many were talked round. */
+  const rows: { team: number; exposed: number; kept: number }[] = [];
+  const churn: number[] = [];
+  let anySpend = 0;
+
+  for (let year = 0; year < 7; year++) {
+    simSeason(season);
+    const before = new Map<number, Set<string>>(
+      season.teams.map((r) => [r.index, new Set(rosterOf(season, r.index).map((p) => p.id))]),
+    );
+
+    const report = departAndDevelop(season, season.rng);
+    const board = season.draft;
+    signClasses(season);
+    fillRosters(season, season.rng);
+
+    if (year >= 3) {
+      years += 1;
+      const exp = new Map<number, number>();
+      const ret = new Map<number, number>();
+      for (const d of report.drafted) {
+        // Seniors have no eligibility to come back to, so they were never part
+        // of the conversation and must not be counted against it.
+        if (d.classYear === 'SR') continue;
+        exp.set(d.team, (exp.get(d.team) ?? 0) + 1);
+        if (d.returned) ret.set(d.team, (ret.get(d.team) ?? 0) + 1);
+      }
+      for (const r of season.teams) {
+        const e = exp.get(r.index) ?? 0;
+        const k = ret.get(r.index) ?? 0;
+        exposed += e;
+        kept += k;
+        rows.push({ team: r.index, exposed: e, kept: k });
+        anySpend += board?.rivalSpend[r.index] ?? 0;
+
+        const was = before.get(r.index) as Set<string>;
+        const still = rosterOf(season, r.index).filter((p) => was.has(p.id)).length;
+        churn.push(1 - still / Math.max(1, was.size));
+      }
+    }
+    season = nextSeason(season);
+  }
+
+  it('lets a rival talk one of its own men out of professional baseball', () => {
+    // The asymmetry itself. Before this, `kept` was zero for ninety five
+    // programs every year of every dynasty.
+    expect(exposed, 'nothing was exposed to the draft at all').toBeGreaterThan(0);
+    expect(kept, 'no program outside the user office kept anybody').toBeGreaterThan(0);
+    expect(anySpend, 'men were kept without anybody paying for them').toBeGreaterThan(0);
+  });
+
+  it('spreads it across the country rather than one lucky program', () => {
+    const withOne = new Set(rows.filter((r) => r.kept > 0).map((r) => r.team));
+    expect(withOne.size).toBeGreaterThan(programs * 0.25);
+  });
+
+  it('keeps a clear minority, so the draft is still the thing that empties a roster', () => {
+    // Measured across the settled world this runs at about 18%. The bound is
+    // loose because the number is emergent — what must not happen is retention
+    // becoming the normal outcome, which is what an AI with a budget nothing
+    // could touch would have produced.
+    expect(kept / exposed).toBeGreaterThan(0.02);
+    expect(kept / exposed).toBeLessThan(0.4);
+  });
+
+  it('lets no program keep everybody', () => {
+    // The claim the whole brake exists for. A program may hold on to a man, and
+    // it may not hold a team together: of the program-years where the draft
+    // took two or more men with eligibility left, almost none get them all back.
+    const many = rows.filter((r) => r.exposed >= 2);
+    expect(many.length, 'no program ever lost two men in a year').toBeGreaterThan(20);
+    const allBack = many.filter((r) => r.kept === r.exposed);
+    expect(allBack.length / many.length).toBeLessThan(0.15);
+
+    // And nobody hoards: a staff fights for its best man and maybe a second,
+    // never for a class.
+    const most = Math.max(...rows.map((r) => r.kept));
+    expect(most).toBeLessThanOrEqual(4);
+  });
+
+  it('leaves rival rosters churning heavily', () => {
+    // The roadmap promise this feature is closest to breaking: you never keep
+    // your best players. A third of every roster in the country still turns
+    // over every year with the mechanic switched on — measured at 35.5% against
+    // 37.3% with it off, so it costs under two points of churn.
+    const mean = churn.reduce((a, b) => a + b, 0) / churn.length;
+    expect(mean).toBeGreaterThan(0.25);
+    // Nor may any program sit still. A quiet June happens — a roster of
+    // underclassmen nobody drafted is a real thing and one man in twenty three
+    // is what it looks like — so the bound is on the shape of the tail rather
+    // than on its worst case: nine program-years in ten lose a real piece of
+    // the roster.
+    expect(Math.min(...churn), 'a program lost nobody at all').toBeGreaterThan(0);
+    const sorted = [...churn].sort((a, b) => a - b);
+    const tenth = sorted[Math.floor(sorted.length * 0.1)] as number;
+    expect(tenth, 'a tenth of the country barely turned over').toBeGreaterThan(0.15);
+  });
+
+  it('never lets a program spend past what June allows it', () => {
+    // The ceiling is `AI_KEEP_SHARE` of the program window, and the window at
+    // the very top of the league is the largest one there is.
+    const ceiling = windowBudget(5) * AI_KEEP_SHARE;
+    for (const r of season.teams) {
+      expect(season.draft?.rivalSpend[r.index] ?? 0).toBeLessThanOrEqual(ceiling);
+    }
   });
 });

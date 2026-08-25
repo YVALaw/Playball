@@ -30,6 +30,8 @@ import { Rankings } from './screens/Rankings.js';
 import { JobSearch } from './screens/JobSearch.js';
 import { Draft } from './screens/Draft.js';
 import { Wire } from './screens/Wire.js';
+import { Inbox } from './screens/Inbox.js';
+import { unreadCount } from '../engine/inbox.js';
 import { Saves } from './screens/Saves.js';
 import { OpenTeam, TeamCard } from './screens/TeamCard.js';
 
@@ -63,6 +65,9 @@ function AppBody(
   const go = useDynasty((s) => s.go);
   const setScreen = useDynasty((s) => s.setScreen);
   const team = useUserTeam();
+  // Selected as a number rather than as the list, so a card being marked read
+  // does not re-render the whole chrome.
+  const unread = useDynasty((s) => unreadCount(s.inbox));
 
   const needsTeam = useDynasty((s) => s.needsTeam);
   const phase = useDynasty((s) => s.phase);
@@ -434,13 +439,26 @@ function AppBody(
               onClick={() => setScreen(s.id)}
               style={{
                 flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 4,
                 background: on ? 'var(--field)' : 'transparent',
                 borderRight: '1px solid rgba(28,36,48,.1)',
                 boxShadow: on ? 'inset 0 -3px 0 var(--clay)' : 'none',
                 font: "600 10px var(--mono)", letterSpacing: '.14em',
                 color: on ? 'var(--clay)' : 'var(--dim)',
               }}
-            >{s.label}</button>
+            >
+              {s.label}
+              {/* The count, not a dot. "Three things happened" is worth
+                  crossing the screen for and "something happened" is not, and
+                  at ten characters wide the sub-nav has room for one digit. */}
+              {s.id === 'inbox' && unread > 0 && (
+                <span style={{
+                  display: 'inline-block', minWidth: 14, padding: '1px 3px',
+                  background: 'var(--clay)', color: 'var(--cream)',
+                  font: "700 9px/1.3 var(--mono)", textAlign: 'center',
+                }}>{unread > 9 ? '9+' : unread}</span>
+              )}
+            </button>
           );
         })}
       </nav>
@@ -473,7 +491,22 @@ function AppBody(
               <div style={{
                 font: "700 12px/1 var(--display)", letterSpacing: '.12em',
                 color: on ? 'var(--cream)' : 'rgba(246,241,230,.5)',
-              }}>{t.label}</div>
+                position: 'relative', display: 'inline-block',
+              }}>
+                {t.label}
+                {/* Unread has to be visible from wherever the player normally
+                    is, and where he normally is is not the home tab. A dot on
+                    the bottom bar is the only mark that survives being three
+                    screens away — the count itself is on the sub-nav, one tap
+                    closer, where there is room to print it. */}
+                {t.id === 'home' && unread > 0 && (
+                  <span style={{
+                    position: 'absolute', top: -3, right: -8,
+                    width: 6, height: 6, borderRadius: '50%',
+                    background: 'var(--clay)',
+                  }} />
+                )}
+              </div>
             </button>
           );
         })}
@@ -722,6 +755,7 @@ function Screen({ id }: { id: string }) {
     case 'board': return <Board />;
     case 'draft': return <Draft />;
     case 'wire': return <Wire />;
+    case 'inbox': return <Inbox />;
     case 'saves': return <Saves />;
     default: return <Placeholder id={id} />;
   }

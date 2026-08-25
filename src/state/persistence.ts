@@ -88,6 +88,16 @@ export interface SaveFile {
    */
   knockout?: unknown;
   postseasonSeen?: unknown;
+  /**
+   * What has happened to the coach's world, unread flags included.
+   *
+   * The one thing in the save that is *only* here. Everything else the inbox
+   * reports has a permanent home — the season is in the history, the mark is in
+   * the record book, the achievement is on the coach — but whether the player
+   * has read a given card exists nowhere else, and losing it on every reload
+   * would mean the badge came back the moment the app restarted.
+   */
+  inbox?: unknown;
 }
 
 export interface SaveSummary {
@@ -271,6 +281,8 @@ export interface SaveExtras {
   jobSearch?: unknown;
   /** Optional so saves predating the dynasty layer still load. */
   coach?: unknown;
+  /** The notification centre, read flags and all. */
+  inbox?: unknown;
 }
 
 /**
@@ -321,6 +333,12 @@ export function buildSaveFile(
     ...(extras.phase ? { phase: extras.phase } : {}),
     ...(extras.review ? { review: extras.review } : {}),
     ...(extras.outcome ? { outcome: extras.outcome } : {}),
+    // Same rule again, and this one is the easiest of the lot to lose: an inbox
+    // that was dropped and an inbox that was empty look identical on the next
+    // load, so nothing would ever report the mistake.
+    ...(Array.isArray(extras.inbox) && extras.inbox.length > 0
+      ? { inbox: extras.inbox }
+      : {}),
   };
 }
 
@@ -357,6 +375,8 @@ export interface LoadedDynasty {
   phase: unknown;
   review: unknown;
   outcome: unknown;
+  /** Empty for every save written before the inbox existed. */
+  inbox: unknown;
 }
 
 /**
@@ -411,6 +431,7 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     phase: file.phase ?? null,
     review: file.review ?? null,
     outcome: file.outcome ?? null,
+    inbox: file.inbox ?? [],
   };
 }
 

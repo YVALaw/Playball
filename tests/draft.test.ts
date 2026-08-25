@@ -11,12 +11,12 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  DRAFT_AGE, DRAFT_ROUNDS,
-  draftContext, draftEligible, draftRound, keepPoints, keepPrice,
+  AI_KEEP_EDGE, AVERAGE_STAFF, DRAFT_AGE, DRAFT_ROUNDS,
+  bestCase, draftContext, draftEligible, draftRound, keepPoints, keepPrice,
   letHimGo, makeTheCase, offerWorth, pitchCredibility, prioritiesOf, pullHints,
-  seasonForm, visibleValue, yearsCompleted,
+  rivalKeeps, sceneFrom, seasonForm, visibleValue, yearsCompleted,
   KEEP_PITCHES,
-  type DraftedMan, type KeepScene,
+  type DraftedMan, type KeepScene, type RivalKeep,
 } from '../src/engine/draft.js';
 import { reinstate } from '../src/engine/progression.js';
 import { makeHitter, makePitcher, arrivalAge, ageFor } from '../src/engine/players.js';
@@ -326,5 +326,146 @@ describe('a man who comes back', () => {
     expect(draftEligible(junior)).toBe(true);
     // And the year he was bought is a real year of development.
     expect(overallOf(junior)).not.toBe(before);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The other ninety five programs, doing the same thing
+// ---------------------------------------------------------------------------
+
+/*
+  Until now the user was the only coach in the country who could talk a drafted
+  man out of professional baseball. The other ninety five lost theirs every year
+  without a word, which is an advantage in his favour that nothing in the fiction
+  justifies — a rival staff has a phone too.
+
+  What was in the way was money rather than machinery: the AI allocated a flat
+  forty actions a week that no June could reduce, so giving it a retention
+  mechanic would have given it a second budget for free. With `aiTargets` reading
+  `weeklyBudget`, the two sides now spend from the same pool on the same scale,
+  and the rest of this is the negotiation itself, run by a staff instead of a
+  screen.
+*/
+describe('a rival program keeps its own men', () => {
+  const backline = (n: number, quality: number): Hitter[] =>
+    Array.from({ length: n }, (_, i) =>
+      makeHitter(makeRng(900 + i), quality, { pos: 'LF' }));
+
+  it('assembles a scene out of the program, not out of nothing', () => {
+    const back = backline(6, 55);
+    const p = makeHitter(makeRng(11), 70, { pos: 'LF' });
+    const sc = sceneFrom(72, back, AVERAGE_STAFF, p, 9);
+
+    expect(sc.prestige).toBeCloseTo(0.72, 6);
+    expect(sc.round).toBe(9);
+    // The best man at his own spot who is coming back, which is what decides
+    // whether a promise of a role is a lie.
+    expect(sc.blockedBy).toBe(Math.max(...back.map(overallOf)));
+    // Rival staffs are the league average the recruiting model already hands
+    // them, not a hidden coach the user can neither see nor out-recruit.
+    expect(sc.coachPrestige).toBe(AVERAGE_STAFF.prestige);
+    expect(sc.training).toBe(AVERAGE_STAFF.training);
+  });
+
+  it('reads nobody at his position as nobody standing there', () => {
+    const arms = Array.from({ length: 4 }, (_, i) =>
+      makePitcher(makeRng(950 + i), 60, { role: 'SP' }));
+    const p = makeHitter(makeRng(12), 62, { pos: 'C' });
+    expect(sceneFrom(50, arms, AVERAGE_STAFF, p, 12).blockedBy).toBe(0);
+  });
+
+  it('makes the cheapest case that is actually true', () => {
+    const p = makeHitter(makeRng(13), 70, { pos: 'SS' });
+    p.priorities = wants('playingTime');
+    const sc = scene({ blockedBy: 0, prestige: 0.15, returning: 0.1, round: 10 });
+    const picked = bestCase(p, sc, 10);
+
+    // It has to be the cheapest of the four, whichever one that is. The claim
+    // is that a staff reads its own player, not that it always says "role".
+    for (const other of KEEP_PITCHES) {
+      expect(picked.price).toBeLessThanOrEqual(keepPrice(other, p, sc, 10));
+    }
+    expect(keepPrice(picked.kind, p, sc, 10)).toBe(picked.price);
+  });
+
+  it('has no case worth making for a finished man nobody has room for', () => {
+    // Everything a staff could say is a lie: he cannot get better, somebody far
+    // better is standing in front of him, and the program has nothing to sell.
+    const p = makeHitter(makeRng(14), 60, { pos: '1B' });
+    p.potential = 60;
+    p.priorities = wants('playingTime');
+    const sc = scene({
+      blockedBy: 99, prestige: 0, returning: 0, coachPrestige: 0, tenure: 0,
+      training: 20, round: 1,
+    });
+    // A coach word is never quite worthless, so the price is finite rather than
+    // infinite — and hopeless all the same, well past the whole window of the
+    // best funded program in the country.
+    expect(bestCase(p, sc, 1).price).toBeGreaterThan(180);
+  });
+});
+
+describe('a rival program spends like a program, not like a cheat', () => {
+  const men = (qualities: number[], round: number, seed: number): DraftedMan[] =>
+    qualities.map((q, i) => {
+      const p = makeHitter(makeRng(seed + i), q, { pos: 'LF' });
+      p.priorities = wants('playingTime');
+      return pending(p, round);
+    });
+
+  it('spends down to the budget and then stops', () => {
+    const board = men([70, 68, 66, 64], 12, 20);
+    const sc = scene({ blockedBy: 0, round: 12 });
+
+    const rich = rivalKeeps(board, () => sc, 1000, 0);
+    expect(rich.length, 'a program with money could not afford anybody').toBe(4);
+
+    const cheapest = Math.min(...rich.map((k) => k.price));
+    const again = men([75, 68, 62, 56], 12, 20);
+    const poor = rivalKeeps(again, () => sc, cheapest, 0);
+    expect(poor.length).toBe(1);
+    expect(poor.reduce((a, k) => a + k.price, 0)).toBeLessThanOrEqual(cheapest);
+    // Best man first, because that is the order a staff cares in.
+    const best = [...again].sort(
+      (a, b) => overallOf(b.player) - overallOf(a.player),
+    )[0] as DraftedMan;
+    expect((poor[0] as RivalKeep).man.player.id).toBe(best.player.id);
+  });
+
+  it('will not fight for a man the roster can replace', () => {
+    // A bar set exactly where the better man clears it and the other cannot,
+    // and money is not what decides it — there is a thousand points on the
+    // table and the cheaper man is the one being turned down.
+    const board = men([75, 52], 14, 40);
+    const [good, weak] = board as [DraftedMan, DraftedMan];
+    expect(overallOf(good.player)).toBeGreaterThan(overallOf(weak.player));
+
+    const bar = overallOf(good.player) - AI_KEEP_EDGE;
+    const kept = rivalKeeps(
+      board, () => scene({ blockedBy: 0, round: 14 }), 1000, bar,
+    );
+    expect(kept.length).toBe(1);
+    expect((kept[0] as RivalKeep).man.player.id).toBe(good.player.id);
+  });
+
+  it('leaves a man whose June is already settled alone', () => {
+    const board = men([75], 15, 60);
+    letHimGo(board[0] as DraftedMan);
+    expect(rivalKeeps(board, () => scene({ round: 15 }), 1000, 0)).toEqual([]);
+  });
+
+  it('pays for the case it priced, against the roster it priced it on', () => {
+    // The scene a decision was made against travels with it. Rebuilt at the
+    // moment of paying, it would price the second man against a depth chart the
+    // first man had just rejoined — so a staff would find itself buying a case
+    // that stopped being true between deciding on it and saying it out loud.
+    const board = men([72, 70], 11, 70);
+    const sc = scene({ blockedBy: 0, round: 11 });
+    const kept = rivalKeeps(board, () => sc, 1000, 0);
+    expect(kept.length).toBe(2);
+    for (const k of kept) {
+      const { kept: stayed } = makeTheCase(k.man, k.kind, k.price, k.scene, 1000);
+      expect(stayed, 'a case the staff had priced failed when it was made').toBe(true);
+    }
   });
 });

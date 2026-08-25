@@ -7,6 +7,9 @@
 // season. Real calendar dates are a presentation concern, and keeping them out
 // of here is what lets a season replay exactly from its seed.
 
+import {
+  largestDeficit, noFeats, noteGame, type SeasonFeats,
+} from './achievements.js';
 import { makeTeam, reserveNames, resetNames } from './players.js';
 import { overallOf } from './ratings.js';
 import { initialPrestige } from './program.js';
@@ -15,6 +18,9 @@ import { generateClass, type RecruitClass } from './recruiting.js';
 // Type only, and it has to stay that way: draft.ts reads this file's rate
 // helpers at runtime, so a value import here would close the loop.
 import type { DraftBoard } from './draft.js';
+// Type only, and it has to stay that way: `rivals.ts` imports this module for
+// `SeasonState`, so a runtime import here would close the loop.
+import type { RivalCoach } from './rivals.js';
 import { simGame, type GameResult, type TeamState } from './game.js';
 import {
   offer, recordGameMarks, seededBook, type RecordBook,
@@ -322,6 +328,18 @@ export interface TeamRecord {
    * other ninety five programs play at their raw ratings.
    */
   coachMods?: { offense: number; defense: number };
+  /**
+   * The man in the chair, on every program except the one you are running.
+   *
+   * On the team record rather than in a parallel array because the coach belongs
+   * to the job: `nextSeason` spreads a record forward and the codec writes one
+   * whole, so a career survives a year roll and a reload without either of them
+   * knowing this field exists. Absent on your chair, and absent on any world
+   * that has not been through `seatCoaches` — which is most tests, and which is
+   * why every reader treats a missing coach as the league-average staff the
+   * ninety five had before B7.
+   */
+  coach?: RivalCoach;
 }
 
 export interface BattingSeason extends HitLine { g: number }
@@ -489,6 +507,21 @@ export interface SeasonState {
    * fifteen hundred numbers maintained to answer a question with a fixed answer.
    */
   scorelessOuts?: Map<PlayerId, number>;
+  /**
+   * The two achievements only a finished game can see, for your program alone.
+   *
+   * Exactly the same argument as `scorelessOuts` above: a comeback is a fact
+   * about the scoreboard in the sixth inning and a winning streak is only ever
+   * correct at the instant a game ends, so neither survives to a season-end
+   * scan — by then the box score of a Tuesday has been thrown away and the
+   * streak reads whatever the team happened to finish on. Two integers, updated
+   * as each of your games is folded in, read once when the board sits down.
+   *
+   * Your program only, because achievements are the user coach's and nobody
+   * else's. See `engine/achievements.ts` for why the other ninety five do not
+   * get a cabinet.
+   */
+  feats?: SeasonFeats;
   /**
    * The recruiting class in front of the program right now.
    *
@@ -825,6 +858,7 @@ export function createSeason(
     // book has something in it on day one.
     records: seededBook(),
     scorelessOuts: new Map(),
+    feats: noFeats(),
     recruiting: generateClass(0, teams.length, rng),
     finalOrder: null,
     postseasonDay: null,
@@ -885,6 +919,10 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
     // The streak does not: it is a single-season record, and a scoreless run
     // does not survive an offseason and a new roster.
     scorelessOuts: new Map(),
+    // Nor do the feats. They were read by the board in June and hanging one up
+    // is permanent, so what carries forward is the cabinet on the coach, not the
+    // evidence that filled it.
+    feats: noFeats(),
     results: [],
     // Last year's box scores belong to last year. The career lines do not —
     // they are the only copy, and they carry forward for as long as the dynasty
@@ -1274,6 +1312,22 @@ export function recordResult(
     if (conference) { winner.cw += 1; loser.cl += 1; }
     winner.streak = winner.streak > 0 ? winner.streak + 1 : 1;
     loser.streak = loser.streak < 0 ? loser.streak - 1 : -1;
+
+    // What only this moment knows, for the one program that has a cabinet.
+    // Both numbers are gone by the end of the season: the scoreboard is not
+    // written down for anybody's game, and `streak` is a running total that
+    // says nothing about the run a team put together in April.
+    if (winner.index === keepFor) {
+      const iAmHome = homeWon;
+      noteGame(
+        (season.feats ??= noFeats()), true, winner.streak,
+        largestDeficit(
+          iAmHome ? result.home.lineScore : result.away.lineScore,
+          iAmHome ? result.away.lineScore : result.home.lineScore,
+          iAmHome,
+        ),
+      );
+    }
   }
 
   const decision: Decision = {

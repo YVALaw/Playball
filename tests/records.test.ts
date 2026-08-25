@@ -360,12 +360,15 @@ describe('the coaching section', () => {
     const book: RecordBook = {};
     const coach = {
       name: 'Ray Vance', careerWins: 120, careerLosses: 60,
-      titles: 0, conferenceTitles: 2, tournaments: 4,
+      titles: 0, conferenceTitles: 2, regionalTitles: 1, tournaments: 4,
     };
     recordCoachMarks(book, 2031, coach, 'RID');
     expect(book.coachWins?.value).toBe(120);
     // No title yet, so the row stays open rather than reading "0, Ray Vance".
     expect(book.coachTitles).toBeUndefined();
+    // Winning a region is counted, which it was not anywhere in the game
+    // before B6 — the postseason had the round and nothing kept the number.
+    expect(book.coachRegionals?.value).toBe(1);
 
     recordCoachMarks(book, 2032, { ...coach, careerWins: 120 }, 'RID');
     expect(book.coachWins?.year).toBe(2031);

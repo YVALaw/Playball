@@ -98,7 +98,7 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 23 | **The coach's OFFENSE skill is worth 1 basis point per point**, capping at ×1.0079 on the whole offensive vector. Home field is ×1.020. | A blurb: "slightly better at-bats". | `TeamState.coachOffMult` — `engine/game.ts` | SHIPPED |
 | 24 | **DEFENSE likewise, ×0.9921 at the cap**, applied to singles, doubles and triples only. | A blurb. | `TeamState.coachDefMult`, `log5Outcome` — `engine/game.ts`, `engine/engines.ts` | SHIPPED |
 | 25 | **TRAINING scales only the systematic pull toward potential, never the noise** — ×1.158 at 99. | Slightly better development years. | `develop`, `OffseasonOpts.training` — `engine/progression.ts` | SHIPPED |
-| 26 | **Coach skills apply to the user's program only.** The other 95 play at raw ratings, with a flat coach prestige of 45 and recruiting 20. | Nothing. | `applyCoachMods`, `advanceRecruitingWeek` — `state/store.ts` | SHIPPED |
+| 26 | **Every program's coach skills reach the simulation, not only yours.** This was the reverse until B7: the other 95 played at raw ratings with a flat coach prestige of 45, recruiting 20 and training 20. Each chair now has a named man whose four skills feed the bench edge, his players' development, his recruiting pitch and what he can promise a drafted player. `AVERAGE_STAFF` is the fallback for a chair with nobody in it. | A rival program that recruits or develops better than its name suggests. | `syncCoachMods` — `engine/rivals.ts`; `advanceRecruitingWeek` — `state/store.ts`; `AVERAGE_STAFF` — `engine/draft.ts`; §16.7 | SHIPPED |
 | 27 | **Coach age, name, home state and portrait never reach the simulation.** | A creation form that looks like it matters. | `CoachProfile` — `engine/program.ts` | SHIPPED |
 | 28 | **Trophy floors on the coach title.** A national champion can never be introduced below LEGENDARY however far prestige falls. | A word beside HEAD COACH. | `coachStanding` — `engine/program.ts` | SHIPPED |
 | 29 | **A first-year coach's negative security hit is halved.** | Surviving a bad first season. | `reviewSeason` — `engine/program.ts` | SHIPPED |
@@ -125,6 +125,8 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 47c | **The round is a position on somebody else's 600-pick board**, via a logistic centred at value 61 with a scale of 6 — not a rank among our own men. This is why round one is one or two men in the country and the median man taken goes in the teens. | `RD 12`. | `draftRound`, `BOARD_MID`, `BOARD_SPREAD` — `engine/draft.ts`; §14.3 | SHIPPED |
 | 47d | **What a retention offer is worth per unit is hidden; what the round demands is printed.** `keepPoints(round)` is on screen, `affinity × credibility × 5.0` is not — so the price is only knowable by reading the man. | "WHAT A ROUND 8 MAN WANTS · 43", and afterwards "it was worth 31 against the 43". | `keepPoints`, `offerWorth`, `KEEP_RATE` — `engine/draft.ts`; §14.4 | SHIPPED |
 | 47e | **A player carries the five recruiting priorities he was signed on**, and a man nobody recruited gets a hashed set from the same distribution. Neither is ever printed; the draft screen gives two overlapping prose hints instead. | Two sentences about what is pulling him. | `Player.priorities`, `prioritiesFor` — `engine/recruiting.ts`; `pullHints`, `PULL_LINES` — `engine/draft.ts`; §14.5 | SHIPPED |
+| 47f | **The other ninety five programs talk drafted men round too, and choose better than you do.** A rival reads its own player's priorities exactly and makes the cheapest case that is true, out of 40% of its recruiting window; what stops the league hoarding is that it only fights for a man in the top quarter of what is coming back. 18% of exposed men stay. | A rival roster that did not lose the junior you expected it to. | `bestCase`, `rivalKeeps`, `AI_KEEP_SHARE`, `AI_KEEP_EDGE` — `engine/draft.ts`; `keepBar` — `engine/progression.ts`; §14.7 | SHIPPED |
+| 47g | **What a rival spent in June comes off its recruiting weeks, exactly as yours does.** `aiTargets` works off `weeklyBudget(stars, spentInJune)`, not the flat forty it used to — which is what made giving the AI a retention mechanic honest rather than free. | Nothing. | `aiTargets`, `weeklyBudget` — `engine/recruiting.ts`; `DraftBoard.rivalSpend` — `engine/draft.ts`; §14.7 | SHIPPED |
 | 48 | **A signed recruit with nowhere to play still joins**, on the bench or in the pen. | A full class. | `refill` — `engine/progression.ts` | SHIPPED |
 | 49 | **Roughly a third of days a regular sits**, and his replacement takes the spot of whoever plays his position. | Bench players with real statistics. | `restedLineup` — `engine/season.ts` | SHIPPED |
 | 50 | **The bullpen is offered most-rested-first, ties broken by quality.** | The right arm turning up. | `restedFirst` — `engine/season.ts` | SHIPPED |
@@ -144,6 +146,17 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 62 | **Two teams level on everything are separated by their abbreviations, ascending.** The four criteria above it are real; the fifth is a stated coin flip that always lands the same way. | A table that has an order, with nothing on screen saying why those two are that way round. | `seedTeams` — `engine/season.ts`; §8.7 | SHIPPED |
 | 63 | **Head-to-head is counted within the tied group, and only over the regular season.** A June meeting between the same two teams does not count toward the tiebreaker that seeded them. | Nothing. | `headToHead`, `seedTeams` — `engine/season.ts` | SHIPPED |
 | 64 | **Your season is written into your players' careers at the draft step, not at the year roll**, because the roster it reads is emptied in between. | Nothing — but before this, a departing player's final season was simply absent from his card. | `archiveSeason` — `engine/season.ts`; `nextPhase` — `state/store.ts` | SHIPPED |
+| 65 | **A run of bad seasons is remembered as a run.** The second consecutive `missed` or `failed` costs 5 points of coach prestige and every one after it costs 3 more, on top of the season's own arithmetic. One acceptable year wipes the run out completely rather than decrementing it, and so does taking a new chair. | The board saying "twice in a row now", and a separate inbox card naming the points. | `badRunPenalty`, `CoachState.badRun`, `takeChair` — `engine/program.ts`; §6.5a | SHIPPED |
+| 66 | **The run penalty is not a second hit to job security.** Security already fell 14 or 28 for each of those seasons; doubling the sacking pressure would mean nobody ever reaches a third bad year for the escalation to apply to. | Nothing. | `reviewSeason` — `engine/program.ts` | SHIPPED |
+| 67 | **Winning a regional and reaching Omaha are the same event in this format**, so `regionalTitles` prints under both names on the coach page. It is read off `regionChampions` rather than the finish string, so the day the postseason grows a round the two stop agreeing on their own. | Two rows with the same number. | `SeasonOutcome.wonRegional` — `engine/program.ts`; `summarize` — `engine/postseason.ts`; §5 | SHIPPED |
+| 68 | **A regional title is deliberately not priced into `seasonScore`.** Reaching Omaha already pays for it at +12; a second line would have repriced every deep run in the game the day the counter was added. | Nothing. | `seasonScore` — `engine/program.ts` | SHIPPED |
+| 69 | **The two game-level achievements are detected inside `recordResult` and cached on the season.** A comeback is a fact about the scoreboard in the sixth and a streak is only correct at the instant a game ends; neither survives to a season-end scan. `largestDeficit` walks the line scores half inning by half inning, because a side that goes down seven in the top of the first and answers in the bottom was behind by seven. | Nothing. | `SeasonState.feats`, `largestDeficit` — `engine/achievements.ts`; §15.3 | SHIPPED |
+| 70 | **Achievements are the user coach's alone.** Rival coaches have full careers and could earn them; nothing would read them, and the announcement would be noise. | Nothing. | `engine/achievements.ts` header; §15.4 | SHIPPED |
+| 71 | **Rival coaches are hashed, never drawn.** Names come off the chair and the year, retirement age off the name, and every hiring decision is a fact about a program and a man — so a whole rival year costs the generator zero `rng()` calls and cannot move a calibration figure. | Nothing. | `rivalName`, `retireAge`, `runCarousel` — `engine/rivals.ts`; §16.3 | SHIPPED |
+| 72 | **A rival spends his season's skill points badly on purpose** — half into one hashed favourite, the rest scattered. An optimiser would put twenty years of points into recruiting and out-recruit any player who spent his attention elsewhere. | A country whose average coach never becomes elite. | `spendPoints`, `RivalCoach.lean` — `engine/rivals.ts`; §16.4 | SHIPPED |
+| 73 | **A sitting coach will not move for less than 10 prestige, and will not move at all after 10 years in the chair.** Without the first, one retirement cascades through eight programs a year; without the second, every good coach is eventually pulled up the ladder and no rival is ever a fixture. | A rival who stays long enough to be somebody. | `POACH_GAP`, `SETTLED_TENURE` — `engine/rivals.ts`; §16.6 | SHIPPED |
+| 74 | **A board that cannot get anybody who clears its bar hires the best available anyway**, and a sacked coach nobody wanted that June leaves the profession. | Nothing. | `runCarousel` — `engine/rivals.ts`; §16.6 | SHIPPED |
+| 75 | **A job offer is now a chair somebody would be moved out of.** `jobOffers` takes a predicate: empty, *or* held by a coach the country rates below you. It is deliberately not "empty" alone — the carousel never leaves a chair open, so that rule produces a market of nothing and a sacked career that ends on a screen saying nobody rang. | Taking a job and being told they let their man go to hire you. | `jobOffers` — `engine/program.ts`; `rollYear`, `acceptOffer` — `state/store.ts`; §16.7 | SHIPPED |
 
 ---
 
@@ -732,7 +745,12 @@ Within a band, targets are scored `fit × uncontested × (0.85 + rng × 0.3)`, w
 otherwise. A recruit somebody else was more than 40% clear on at the start of the
 week is dropped. Weekly actions are then allocated by
 `max(0.05, fit) × (already-ahead ? 1.35 : 1)`, capped at `MAX_PER_RECRUIT` per
-recruit and `ACTIONS_PER_WEEK` (40) in total.
+recruit and the program's own week in total — `weeklyBudget(stars, spentInJune)`,
+which is 40 at a one-star program and 60 at a five-star, less whatever the draft
+phase took, spread evenly across the three weeks. That is the same call the user's
+board header prints; it used to be a flat `ACTIONS_PER_WEEK` (40) for all
+ninety-five, which was survivable only while there was nowhere else to spend. See
+§14.7.
 
 Every AI program pitches at a flat coach prestige of **45** and recruiting skill of
 **20**. The user's own prestige and skill are the only ones that vary.
@@ -875,10 +893,18 @@ month, the man who won it does not drop below the rung it bought.
 | Floor | Condition |
 |---|---|
 | Legendary | `titles > 0` |
+| Renowned | `regionalTitles > 0` |
 | Established | `conferenceTitles > 0` or `tournaments >= 3` |
 | Respected | `tournaments > 0` |
 | Journeyman | has coached a game |
 | Unproven | otherwise |
+
+One rung per thing there is to win, which is what makes the ladder legible: a bid
+is RESPECTED, a league is ESTABLISHED, a region — Omaha — is RENOWNED, and the
+country is LEGENDARY. Three tournament appearances stand in for a league title
+because a program that keeps qualifying and never wins the thing is still
+somebody the sport has heard of. The regional rung arrived with B6 and could not
+have existed before it: winning a region was counted nowhere at all.
 
 **The ladder** — evaluated top down, first match wins.
 
@@ -1029,7 +1055,53 @@ contractFor(prestige) = prestige >= 65 ? 3 : prestige >= 48 ? 4 : 5
 
 Weaker programs offer more time because they are asking for a rebuild and know it;
 the good jobs pay in prestige and expect results sooner. A new job resets tenure to
-0, security to 62, and issues a fresh deal.
+0, security to 62, and issues a fresh deal. That reset is `takeChair`, one
+function, so a new career, a job accepted and a rival hired all agree about what
+arriving means — including the one thing that is not obvious, `arrivedPrestige`,
+which is what the Builder achievement measures a career against.
+
+### 6.5a Two bad seasons in a row — **B5**
+
+Security already remembered a bad season in the sense that the number was lower
+afterwards. What nothing could see was the *shape*: a coach's first poor year and
+his fourth cost exactly the same, so a run of them was priced as a series of
+unrelated accidents. `CoachState.badRun` is the memory — bad seasons in a row,
+`missed` and `failed` counting alike.
+
+```
+badRunPenalty(badRun) = 0                       for badRun < 2
+                      = 5 + (badRun - 2) * 3    otherwise
+```
+
+Subtracted from `nextCoachPrestige`, on top of whatever the season itself did.
+Sized against the hiring ladder, whose rungs are about fifteen points apart: two
+bad years costs a third of a rung and four in a row costs most of one. A coach can
+survive a rebuild going wrong; a coach who is simply not good enough falls out of
+the band the good jobs recruit from, which is what "he has stopped being a name"
+should mean in a number.
+
+Three deliberate choices:
+
+- **One acceptable season wipes the run out entirely**, rather than decrementing
+  it. A coach who missed twice and then met the mandate has answered the
+  question, and carrying half a pattern forward would have him serving a sentence
+  for a year that went fine.
+- **It is not a second hit to job security.** Security already fell fourteen or
+  twenty eight for each of those seasons; doubling the sacking pressure would mean
+  nobody ever reaches a third bad year, and the escalation above would be a rule
+  that fires once and is never seen again.
+- **It is cleared when he takes a chair**, his and a rival's alike, in
+  `takeChair` and in the matching clause in `runCarousel`. A run is a *board's*
+  patience running out, and a board that has just hired him is by definition
+  unconvinced by the last one's read of him. What does follow him between jobs is
+  the prestige the run already cost, which is the part that genuinely is the
+  country's opinion. Measured before this rule went in: a coach sacked after four
+  bad years, who then took a rebuild and missed in his first season there, paid
+  fourteen points in a building he had been in for five minutes.
+
+The board says it out loud: at two the message gains "Twice in a row now, and it
+is being noticed outside this room", and the inbox files a separate card naming
+the points. A silent penalty is a bug report.
 
 ### 6.6 The hiring ladder
 
@@ -1816,10 +1888,16 @@ year rollover. There is also an explicit save control in the app chrome.
 | `rngState` | Where the generator had got to. Without it a resumed season diverges |
 | `year`, `userTeam`, `name`, `savedAt` | |
 | `history` | Completed seasons. Optional — older saves come back with an empty book |
-| `coach` | The full `CoachState`. Optional; `restoreCoach` fills every gap |
+| `coach` | The full `CoachState`, the achievement cabinet included. Optional; `restoreCoach` fills every gap |
 | `phase`, `review`, `outcome` | Where the offseason sequence had got to, and the verdict behind it |
 | `postseason`, `bracket`, `myBracket`, `knockout`, `postseasonSeen` | June, at whatever stage it had reached, including a half-played tournament of your own |
 | `jobSearch` | True while the coach has been dismissed and has not taken a new job |
+| `inbox` | The notification centre, read flags and all. The one field in the file whose contents exist nowhere else — everything it reports has a permanent home, but *whether it has been read* does not |
+
+The other ninety five careers are **not** in this table and do not need to be:
+`TeamRecord.coach` rides inside `season`, so a rival's career survives the codec
+and `nextSeason`'s spread without either of them knowing the field exists. That is
+the whole reason it lives on the team record rather than in a parallel array.
 
 The record is assembled **field by field** in `buildSaveFile`, so a value not named
 there is dropped no matter what the types say. Widening the types and stopping there
@@ -2047,7 +2125,7 @@ than being a field somebody has to remember to name in `buildSaveFile`.
 | Team, single game — runs, hits, margin | `recordGameMarks` | As above |
 | Team, season — wins, run differential | `recordSeasonMarks` | Run differential is not monotonic, so a running check would record a mid-season peak |
 | Team, longest winning streak | `recordResult` | `TeamRecord.streak` is a running number, correct only at the instant it is set. A season-end scan reads whatever the team happened to finish on |
-| Coach career | `recordCoachMarks`, same place | Reads `CoachState`, which lives in the store and not in the engine |
+| Coach career | `recordCoachMarks`, same place | Reads `CoachState`, which lives in the store and not in the engine, plus every `TeamRecord.coach` beside it |
 
 **Why the draft phase and not the year roll.** `recordSeasonMarks` names a holder
 by looking him up on a roster, and `departAndDevelop` — which runs on entry to the
@@ -2184,6 +2262,17 @@ its left edge, the same treatment a leaderboard gives one of yours. A row whose
 holder can still be found — a current roster anywhere in the country, or your own
 career archive — is a button that opens his card; one whose holder is gone is not,
 because a tap that opens an apology is worse than no tap.
+
+**The coaching section is now the whole country.** It was yours alone, and
+honestly so at the time: the other ninety five programs had no coach object
+behind them, so a rival bench was a strategy and a prestige number rather than a
+man with a record. B7 (§16) made them men with records, and a section that still
+ranked one career against nothing would have told the player he held every mark
+in the country by default — which is the opposite of what a record book is for.
+It costs ninety six calls a year of five comparisons each. There is a fifth row
+in it now, **REGIONAL TITLES**, which is B6: the postseason has had a regional
+round for as long as it has had this shape and nothing anywhere counted winning
+one.
 
 **There are no career records**, and the screen says so in as many words. They
 need archiving widened past your own program, which is the one genuinely expensive
@@ -2418,6 +2507,460 @@ The odds fallback (no report yet) now lists everyone the June ahead exposes
 rather than juniors and seniors, and it carries the continue button — without
 one, a reload mid-offseason landed on a screen with no way forward.
 
+### 14.7 The other ninety five programs
+
+Everything above was, until this shipped, the user's alone. A rival's drafted men
+left every June without anybody picking up a phone — an advantage in his favour
+that nothing in the fiction supports, since a rival staff has the same phone and
+the same reason to use it.
+
+**The blocker was money, not machinery.** `aiTargets` allocated a flat
+`ACTIONS_PER_WEEK` (40) a week regardless of what the program was, while the
+user's week came off `budgetFor(stars)` (40–60) and had whatever he spent in June
+taken out of it. Handing a retention mechanic to a program whose budget nothing
+could touch would not have made it a rival; it would have made it a cheat. So the
+budget was fixed first.
+
+**One week, one formula.** `aiTargets` now reads
+`weeklyBudget(pitch.stars, spentOnTheDraft)` — the same call `boardBudget` makes
+for the user. A one-star program works with 40 a week and a blue blood with 60,
+and what June took comes off all three weeks evenly rather than shutting week one.
+`ACTIONS_PER_WEEK` is now used by nothing.
+
+**A rival's June runs inside `departAndDevelop`**, immediately after `regroup`
+closes the roster — because half of what a case rests on is who is coming back,
+and a man cannot be told there is a job open on a depth chart that has not been
+settled yet.
+
+| | The user | A rival |
+|---|---|---|
+| Who chooses the case | he does, off two prose hints | `bestCase` — the cheapest of the four that is honestly true |
+| Arithmetic | `makeTheCase` | `makeTheCase`, the same call |
+| Money | `windowBudget(stars)`, all of it if he likes | `windowBudget(stars) × AI_KEEP_SHARE` (0.4) |
+| Coach | his own prestige, tenure and TRAINING | `AVERAGE_STAFF` — 45, 4 seasons, 20: the league-average defaults the recruiting model already gives them |
+| Bill comes off | every week of his board | every week of its board, identically |
+
+**The AI reads its own player's priorities, and that is correct.** He has been in
+the building for two years. The hint lines model what a *stranger* knows, and the
+AI is not a player being asked to make a read — it has nothing to be denied. So a
+rival is better than a guessing coach at *choosing* and no better at *paying*,
+which puts the whole difference in the money, where both sides have exactly as
+much.
+
+**What stops the league hoarding is the bar, not the price.** A nineteenth-round
+pick costs about four points — less than one week's attention on one recruit — so
+affordability alone had every program keeping everybody it was allowed to, and the
+*worst* programs hoarded hardest, which is backwards twice over. `keepBar`
+(progression.ts) is the answer: a staff fights only for a man in the **top quarter
+of what is coming back**, plus `AI_KEEP_EDGE` (4). The honest reading is that
+keeping him spends a roster place as well as the money — `refill` rebuilds to a
+fixed twenty three, so a man talked into staying is a recruit not signed.
+
+Measured over eight settled years of the ninety six program world, with every
+program on the AI and a full recruiting window each year:
+
+| | |
+|---|---|
+| exposed to the draft with eligibility left | **1.74** per program per year |
+| talked round | **0.32** per program per year — **18% stay, 82% go** |
+| most any one program kept in a year | **3** |
+| program-years with 2+ exposed that kept them all | **3.7%** |
+| mean June spend | **7.8** of a 120–180 window |
+| roster churn | **35.5%** a year, against **37.3%** with the mechanic off |
+
+By tier the shape is the interesting part:
+
+| Program | exposed/yr | kept/yr | keep % | June spend |
+|---|---|---|---|---|
+| ★ | 0.56 | 0.29 | 51% | 3.7 |
+| ★★ | 1.51 | 0.47 | 32% | 11.9 |
+| ★★★ | 2.51 | 0.36 | 14% | 13.6 |
+| ★★★★ | 4.98 | 0.14 | 3% | 6.7 |
+| ★★★★★ | 5.46 | 0.29 | 5% | 17.2 |
+
+A small program loses one man every other year and hangs on to half of them,
+because its men go late and cost nothing. A blue blood loses five and keeps one
+every seven years — **the men it can afford are the ones it does not want, and the
+one it wants it cannot afford**, which is the trade the mechanic exists to
+produce. The draft remains the thing that levels the league.
+
+**A kept rival goes back through `reinstate`**, exactly as one of yours does:
+class year advances, he takes the development year he was skipped for, and
+`regroup` puts him back in the roster arrays. His departure notice is marked
+`returned`, so the national BOARD tab stops listing a man who is standing on a
+college field this minute, and the offseason report's development totals include
+the year he just bought.
+
+**What it cost is carried on `DraftBoard.rivalSpend`**, by team index and sparse.
+A rival's June is settled the moment the draft is run — it has no screen and no
+decision waiting on it — but the bill is paid across the three recruiting weeks
+that follow, and the user can close the app in between. It rides on the board
+rather than on the team records for the reason the board itself does: it belongs
+to this June, and a new season starts with nobody owing anything.
+
+---
+
+## 15. Achievements — **SHIPPED**
+
+`engine/achievements.ts`, hung on `CoachState.achievements`, shown on the COACH
+tab and announced through the inbox.
+
+### 15.1 What separates one from a record
+
+A record exists to be broken: it holds a value and a holder, and a better one
+replaces it. An achievement has no value and cannot be beaten — you have either
+won back to back national titles or you have not, and doing it a third time does
+not upgrade anything. So where `records.ts` keeps a sparse map of *marks*, this
+keeps a sparse map of *dates*: present means earned, and the entry says when,
+where and in one line what it was. **First time wins and is never overwritten**,
+which is the rule that makes them different; `offer` gives a tie to the incumbent
+because a mark must be beaten, and here the second occurrence is not a candidate
+at all.
+
+They belong to the coach rather than to the program and travel with him. The book
+next door is the league's; this is one man's.
+
+### 15.2 The ten, and where each is detected
+
+The awkward part is *when*. A comeback is a fact about the seventh inning of one
+Tuesday, a streak is a running count only ever correct at the instant a game ends,
+a draft pick is a fact about June and a title is a fact about its last day. A
+single scan at the end of the year can see none of the first two. So there are
+four doors.
+
+| Achievement | Earned by | Detected at |
+|---|---|---|
+| **Perfect Conference** | undefeated in league play (`cw > 0` and `cl === 0`) | `awardSeason`, at the board meeting |
+| **Cinderella** | the national title at a program of 2 stars or fewer | same, off `review.prestigeBefore` |
+| **Dynasty** | the national title in consecutive seasons | same, off the last row of `history` |
+| **Grand Slam** | conference, regional and national title in one year | same |
+| **Lifer** | 15 seasons at one school | same, off tenure *including* this one |
+| **Builder** | one star to five without leaving | same, `arrivedPrestige` against now |
+| **Kingmaker** | one of your men taken first overall | the draft step, off the top row of the sorted national board |
+| **Recruiter** | signing the number one recruit in the country | the week he commits, off `Prospect.rank` |
+| **Iron Will** | winning after trailing by 6 or more | `recordResult`, into `season.feats` |
+| **Streak** | 20 consecutive wins | same |
+
+**Why Kingmaker is read at the draft step and not on the draft screen.**
+`returned` is written the moment a coach talks somebody round, and a man who goes
+back to school was still taken first overall. **Why Recruiter is read at the
+commit and not at signing day.** `rank` is a fact about the class as published,
+and the class is regenerated at the year roll — by signing day the man is on a
+roster and the board he was ranked on is gone.
+
+### 15.3 The evidence a season leaves
+
+`SeasonState.feats` is two integers — the largest deficit come back from in a
+win, and the longest winning streak — for the user's program only, reset with the
+season. Exactly the same argument as `scorelessOuts` beside it: the numbers cannot
+be reconstructed at the end of the year, because the box score of a Tuesday is
+never written down and `TeamRecord.streak` reads whatever April left it on.
+
+`largestDeficit` walks the two line scores **half inning by half inning**, not by
+whole innings. A side that goes down seven in the top of the first and answers
+with eight in the bottom was never behind on a whole-inning reading, and it
+plainly was.
+
+### 15.4 The user's coach only
+
+Rival coaches have careers (§16) and could in principle earn these. Nothing would
+ever read them: there is no screen for another man's cabinet, and an inbox
+announcing that a coach in the Mountain conference had gone twenty straight is
+noise rather than news. A list nobody reads is still a list written to disk ninety
+five times a year.
+
+### 15.5 On the screen
+
+The COACH tab grows an ACHIEVEMENTS panel listing **only what has been earned** —
+deliberately no greyed rows for the rest. Ten rows with eight crossed off is a
+checklist, and a checklist on that page is a set of instructions about how to play
+a game that is supposed to be about running a program. What is unearned is simply
+absent, and the note under the panel says what the panel is: earned once, kept for
+ever, wherever you coach next.
+
+---
+
+## 16. Rival coaches and the carousel — **SHIPPED**
+
+`engine/rivals.ts`, hung on `TeamRecord.coach`, run once a year from
+`settleSeason`.
+
+### 16.1 The problem
+
+You were the only coach in the country who ever got better. Your training skill
+grew, your recruiting skill grew, your reputation opened doors — and the ninety
+five programs you were competing against were run by nobody at all, permanently,
+at a fixed standing no result could move. `nextPrestige` had existed since the
+board did and **only your school was ever passed to it**, so the other ninety five
+were frozen at whatever the world generator gave them.
+
+That is a snowball with no brake. Worse, it is a snowball the game cannot
+describe: a rival who beats you is a row in a table, and there is nothing there to
+be poached, sacked or beaten twice.
+
+### 16.2 What a rival carries, and why each field is there
+
+Fifteen numbers and a name, times ninety five, is about four kilobytes in a
+megabyte save — so size was never the constraint. What decided the list is
+whether anything reads the field.
+
+| Field | Read by |
+|---|---|
+| `name`, `careerWins/Losses`, `titles`, `conferenceTitles`, `regionalTitles`, `tournaments` | The inbox line and the record book. This is what makes "Hollis Ward, two conference titles, leaves the Mountain for a five star job" a sentence instead of an index |
+| `prestige`, `security`, `tenure`, `contractYears`, `contractLength`, `badRun` | `reviewSeason` and `canBeHired`. The machinery |
+| `skills` | The simulation: the bench edge in every game, how far his returning players develop, how hard his pitch lands on a recruit |
+| `age` | The only thing that eventually empties a good chair whatever the coach does |
+| `lean` | Which skill he over-invests in, fixed for life |
+
+Three things are deliberately **absent**. No unspent points — he spends them the
+moment he earns them, and a rival's unspent point has no reader. No philosophy —
+`strategyFor` already gives every program a bench personality seeded off its
+index, and layering a coach's preference over it would make a program's style
+flicker every time it changed coaches for reasons the player can never see. No
+achievements, for the reason in §15.4.
+
+### 16.3 Everything is reused, and nothing is drawn
+
+`reviewSeason` grades a rival exactly as it grades you, `judge` reads the same
+checklist, `nextCoachPrestige` moves his standing on the same arithmetic including
+the B5 penalty, `nextPrestige` moves his program, `canBeHired` decides who will
+have him, and `skillPoints` pays him at the same rate. `reviewSeason` takes a
+narrow `Reviewable` rather than a whole `CoachState`, which is what lets one
+function grade ninety six careers; the alternative was a fake `CoachState` per
+rival carrying a face, a home state and a philosophy invented to satisfy a type.
+
+**Nothing here draws from the generator.** The same decision the AI's draft
+retention made and for a sharper reason: this runs once a year against ninety five
+programs, and spending draws would move every recruiting class and every
+development roll in the game by an amount that depends on how many coaches
+happened to be sacked. Names are hashed off the chair and the year, retirement age
+is hashed off the name, and every decision is a fact about a program and a man. A
+test asserts `season.rng.state()` is unchanged across a whole rival year.
+
+### 16.4 They are not superhuman
+
+A rival earns the points a season pays you and **spends them worse**: half into
+the one skill he happens to favour, the rest scattered over the other three. A
+coach who allocated optimally for twenty years would end up better than a player
+who did anything else with his attention. Measured over thirty five seasons of the
+full world, the country's average rival recruiting skill plateaus near 30 and then
+drifts *down* as churn resets careers — against a player who can reach 99 in one
+skill by concentrating. That is the same rule the draft was built to: the AI is
+allowed to be competent and is not allowed to be right.
+
+### 16.5 The year
+
+Run from `settleSeason`, at the same moment your own board sits down, because that
+is when everything it needs is in hand: the postseason is settled, the regular
+season records are frozen, and no roster has been touched. At the year roll
+instead it would judge coaches against teams that had already graduated.
+
+1. Each chair gets a `SeasonOutcome` from `rivalOutcome` — the *regular* season
+   record, so a deep June does not raise the target it is measured against. Rank
+   is taken off conference record and run differential rather than the full
+   `seedTeams` chain: worth the work for one program, not for ninety five, and the
+   only thing a board reads off it is which band the finish falls in.
+2. `reviewSeason`, then the program's prestige moves and the coach's career,
+   standing, seat, contract and skills all update.
+3. **Retirement is checked before sacking and beats it.** A man let go at sixty
+   eight has retired whatever the minutes say, and reporting it the other way
+   round would leave the market carrying candidates who will never work again.
+4. Sacked coaches go into a pool. `runCarousel` then fills every empty chair.
+
+### 16.6 The carousel
+
+Best chair first, so the top of the league picks before the bottom does. For each
+vacancy the shortlist is the pool plus every sitting coach at a program at least
+`POACH_GAP` below it, and the best available takes it; a poach empties the chair
+he came from, which is offered on the next of three passes. A board that cannot
+get anybody who clears its bar **hires the best available anyway** — the truthful
+outcome, and the only one the rest of the engine can handle, since a program with
+no coach recruits at nobody's skill for ever.
+
+Two brakes, both measured:
+
+- **`POACH_GAP` = 10**, most of a star tier. At six the country changed twenty
+  nine chairs a year out of ninety five, so the coach who beat you in May was
+  somebody else by the following spring. At ten it settles nearer twenty and being
+  poached stays an event rather than the annual weather.
+- **`SETTLED_TENURE` = 10.** After ten years in one chair he stops listening. It
+  is true, and it is what allows a rival to become a fixture — without it every
+  good coach is eventually pulled up the ladder and the league has no equivalent
+  of the man who *is* the program.
+
+A coach's `badRun` is cleared when he changes chairs. His new board is by
+definition unconvinced by the last one's read of him, and leaving it on would have
+him sacked in two years for seasons somebody else's programme produced.
+
+**A sacked coach who is not re-hired the same June leaves the profession.** The
+pool is local to one call. It is a simplification and a deliberate one: a
+persistent unemployed list is state that grows for ever to model men nobody will
+ever see again.
+
+### 16.7 Where a rival coach reaches the simulation
+
+| Channel | Where |
+|---|---|
+| Bench edge in every game his team plays | `syncCoachMods` writes `TeamRecord.coachMods` for all ninety six. `applyCoachMods` used to clear the field and write one row |
+| How far his returning players develop | `departAndDevelop` reads `record.coach.skills.training` where before every rival was a flat 20 |
+| How hard his recruiting pitch lands | `seedRivalInterest` and `advanceRecruitingWeek` pass his prestige and recruiting skill to `aiTargets` and `weeklyPoints`, where both used to be hardcoded 45 and 20 |
+| What he can promise a drafted player | `departAndDevelop` builds the `CoachRead` from him rather than from `AVERAGE_STAFF` |
+| Which jobs you are offered | `jobOffers` takes an `isOpen` predicate; the store passes "empty, **or** held by a man the country rates below you". Not "empty" alone — the carousel never leaves a chair open, so that produces a market of nothing and a sacked career with no way forward. Taking one moves the incumbent on, and the inbox says so |
+
+`AVERAGE_STAFF` survives for the honest gap: a world that has never been through
+`seatCoaches` — most of the test suite, and any save written before B7. A program
+with nobody in the chair negotiates like nobody in particular.
+
+### 16.8 Seating, and your chair
+
+`seatCoaches(season, userTeam, year)` is the one door: a new career, a load, and a
+job accepted all go through it, so there is a single answer to who is running the
+other programs. It is idempotent — a chair that already has a man keeps him —
+which is what lets it run on every load without wiping a fifteen year carousel.
+**Your chair is emptied** and the man displaced is handed back, because a board
+sacking its coach to make room for you is news, and because leaving a rival
+sitting in a chair the game ignores goes wrong the moment you are sacked out of
+it.
+
+They are seeded at what their programs are worth rather than all as unknowns. A
+league of ninety six rookies would open the entire hiring ladder to whoever won a
+game first, you included.
+
+### 16.9 What it does to the league — measured
+
+Thirty five seasons of the full ninety six program world, every chair on the AI,
+seed 20260825. This is the number B7 exists for.
+
+| | Year 1 | Peak | Year 35 |
+|---|---|---|---|
+| Mean program prestige | 42.7 | — | **51.4**, flat from year 15 |
+| Program prestige SD | 15.8 | 17.8 (yr 17) | **16.2** |
+| Roster strength SD | 10.3 | — | **6.8** |
+| Top five average prestige | 76.8 | 93.4 | **88.2** |
+| Bottom five average | 21.0 | — | **28.8** |
+| Star distribution 1–5 | 46/20/16/11/3 | — | 21/25/23/12/15 |
+
+It converges. The spread widens by two points as the boards start biting, peaks
+around year seventeen and comes back down; the mean is flat for the last twenty
+seasons. **Talent spread narrows** the whole way, which is the number that would
+show compounding first, because recruiting is zero-sum against a fixed class. The
+bottom of the ladder comes *up* by eight points and the top plateaus below its own
+clamp. Thirteen different programs won the title, the most by any one of them
+eight. Start-to-end prestige correlation is 0.70: recognisably the same league,
+genuinely moved.
+
+### 16.10 What it exposed, and did not fix
+
+Two prestige scales share a name and not a mean. `nextPrestige` pulls a program
+toward `seasonScore`, whose league mean is about **52**; `initialPrestige` seeds
+the world at about **43**. That never mattered while one program in ninety six
+went through `nextPrestige`. With all of them going through it the league lifts
+nine points and settles — stable, and visible in the table above — but
+`expectationFor`'s `standing = prestige × 0.45 + roster × 0.55` rises with it, so
+programs cross into `contend` and `championship`, where a tournament bid is a
+**required** box that eight of ninety six can fill.
+
+Measured: the league-wide clear rate is about **a third**, against the 62%
+`expectationFor` was tuned to. That 62% was never a property of the function
+alone; it was a property of it at the seeded distribution.
+
+Downstream of it, and the one number hotter than the real sport: **about twenty
+seven chair changes a year out of ninety five**, mean tenure near three and a half
+seasons.
+
+Nothing here is retuned to recover the old figure. The board is shared with the
+player, and quietly making it kinder is a balance change nobody asked for; the
+three candidate fixes and the one non-candidate are in the E list of
+`06-backlog.md`.
+
+---
+
+## 17. The inbox — **SHIPPED**
+
+`engine/inbox.ts`, `ui/screens/Inbox.tsx`, HOME · INBOX.
+
+### 17.1 Why
+
+Everything worth telling a coach was already being told badly. A job offer sat on
+the program page waiting to be noticed. A board verdict lived on one offseason
+screen and was gone the moment the step advanced. Your men being drafted was a
+screen you pressed through. Achievements did not exist. And the ninety five
+careers §16 just started had nowhere to go at all, which would have made the whole
+carousel invisible — ninety five men living lives the player never hears about is
+the same as ninety five men not existing.
+
+Two failure modes, opposite and both real: the modal that interrupts you to say
+something you did not need at that moment, and the thing that never surfaces. An
+inbox answers both. It accumulates, it is visible as a count from wherever you
+are, and **nothing in the game waits on it being opened**.
+
+### 17.2 It is not the wire, and it sits beside it
+
+They answer the same question about different things with different lifetimes.
+`wire()` is derived fresh from the live season on every render and thrown away: it
+is the country's news, it is about nobody in particular, and a row of it stops
+being true the moment another day is simulated. The inbox is written down once, is
+about you, and survives fifteen years and a reload.
+
+Folding one into the other would put a row that evaporates when you press "next
+day" in the same scroll as a row from your first season, under one heading, with
+two different rules for disappearing. Two screens on the same tab is the honest
+shape: same question, next to each other, still distinguishable. HOME therefore
+has four sub-screens — TODAY, WIRE, INBOX, SCOREBOOK.
+
+### 17.3 What files, and at what volume
+
+| Kind | Posted by |
+|---|---|
+| `board` | The verdict, every year, plus a separate card whenever the B5 run penalty fires |
+| `offer` | Each job on the market the year you are let go |
+| `achievement` | Each newly earned one, with its own line |
+| `draft` | How many of your men were taken, and Kingmaker if it fired |
+| `carousel` | Coaching changes |
+
+The carousel is the one that needed a volume rule, because ninety five careers
+produce five to twenty moves a year and posting all of them would bury the four
+items that are about you. Two rules:
+
+- **Your conference gets named.** Eleven programs whose games decide your season;
+  a change of coach at one of them is a change to your league.
+- **Everybody else gets counted**, in one line. Honest summary of news you cannot
+  act on, and enough to say the country is alive.
+
+A poach in or out of your conference is named at both ends, because a rival being
+taken by a bigger school is the single event the system exists to produce and
+should never be a number in a total.
+
+### 17.4 Reading, and the badge
+
+Opening the screen marks everything read, on arrival rather than on the way out —
+the app unmounts a screen on a tab change, a phase change and an overlay, so
+marking on unmount would clear the badge for a player who tapped INBOX and
+immediately tapped away. There is no per-card tick: a card with a chore attached
+is a chore, and reading is not supposed to be one.
+
+Unread shows twice. The sub-nav prints the **count**, because "three things
+happened" is worth crossing the screen for and "something happened" is not. The
+bottom nav prints a **dot** on HOME, because that is the only mark that survives
+being three screens away from where the player normally is.
+
+### 17.5 Size, ids and the disk
+
+Capped at `INBOX_LIMIT` = **80**, oldest dropped. A twenty year career posts
+somewhere near two hundred items, which is a scroll nobody reaches the bottom of
+and a chunk of a save spent on things read once. Eighty is roughly six seasons.
+Nothing is *only* here: the history screen has every season, the record book every
+mark, the coach page the cabinet.
+
+Ids are a plain counter, not the clock. `tests/architecture.test.ts` forbids the
+engine reading `Date.now` — a seeded replay has to produce the same world twice —
+so `restoreInbox` winds the counter past whatever the save came back with instead.
+Two cards with the same React key is a list that reorders itself.
+
+The inbox is the one thing in the save that exists nowhere else. Everything it
+reports has a permanent home, but **whether the player has read a given card** does
+not, and dropping it would bring the badge back on every restart.
+
 ---
 
 ## Appendix A: stale comments and vestigial code found while writing this
@@ -2429,9 +2972,9 @@ does. None of them changes behaviour; all of them will mislead the next reader.
 |---|---|
 | `engine/postseason.ts`, `FIELD_SIZE` | Vestigial. The docstring now says so rather than describing a 16-team field of automatic and at-large bids that never existed, but the symbol is still exported and its only use is a `size` parameter on `runPostseason` that the function body never reads. |
 | `ui/Avatar.tsx`, `ui/screens/Player.tsx`, `ui/screens/Program.tsx`, `ui/screens/Standings.tsx`, `ui/screens/TeamCard.tsx` | Comments still say "sixty four programs" / "the other sixty three". The world is 96. The engine, the state layer and the data file have been swept; these five were outside that pass, and all of it is comments. The one occurrence that did reach the screen — the Omaha note in `SeasonReview.tsx` — is fixed. |
-| `engine/recruiting.ts`, `RECRUITING_BUDGET` docstring | Opens "Thirty, spread across as many recruits as you like." The constant is 40. |
+| ~~`engine/recruiting.ts`, `RECRUITING_BUDGET` docstring~~ | Fixed. It opened "Thirty, spread across as many recruits as you like" over a constant of 40. |
 | `engine/scouting.ts`, `PotentialGrade` | `'?'` is documented as what a screen prints where a ceiling is none of your business. No screen uses it; `ui/screens/Player.tsx` prints an em dash instead. |
-| `engine/recruiting.ts`, `BOARD_SLOTS` / `ACTIONS_PER_WEEK` | Marked `@deprecated`, still imported and used by `aiTargets`. |
+| `engine/recruiting.ts`, `BOARD_SLOTS` | Marked `@deprecated`, still used by `aiTargets` to size a board. `ACTIONS_PER_WEEK` beside it is now genuinely unused — `aiTargets` reads `weeklyBudget` (§14.7) — and is kept only as the record of what the flat week was. |
 | `engine/program.ts`, `objectivesFor` docstring | Says winning the conference is "a bonus for a contender and a requirement for a championship program", and calls that asymmetry "the whole point of having mandates". The code passes `confTitle(false)` for both, so it is a bonus for everyone and no mandate requires it. |
 | `engine/program.ts`, `Expectation.expectsTournament` / `expectsConference` | Computed in `expectationFor` and read by nothing, anywhere in `src/` or `tests/`. Vestigial since `judge` was rewritten to read the checklist and nothing else. |
 
@@ -2451,10 +2994,13 @@ Things this document could not settle from the code, and must not guess at.
    engine terms, are not.
 4. ~~**Whether the `raw` projectable draw survives the S+ gate.**~~ Answered: it
    does, untouched, at about twenty hidden gems per class before and after. §12.3.
-5. **`ACTIONS_PER_WEEK` for the AI versus `budgetFor` for the player.** AI programs
-   allocate against the flat `ACTIONS_PER_WEEK` (40) regardless of their own
-   prestige tier, while the user's cap comes from `budgetFor(stars)` (40–60). It is
-   not clear from the code whether the asymmetry is intentional.
+5. ~~**`ACTIONS_PER_WEEK` for the AI versus `budgetFor` for the player.**~~
+   Answered, and it was not intentional. `aiTargets` reads
+   `weeklyBudget(pitch.stars, spentOnTheDraft)` now — the same call the user's
+   board makes — so an AI program's week is its own prestige tier's, less what it
+   spent in June. Fixing it was the precondition for letting the other ninety
+   five keep drafted players at all: a budget nothing could reduce would have
+   made that money free. §14.7.
 6. **How the offseason `coach` phase interacts with unspent points across years.**
    The screen says points "do not carry over well"; the data carries them over
    fully. Whether the copy is loose or the intended decay is unbuilt is not

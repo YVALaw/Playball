@@ -28,14 +28,24 @@ import {
   type OffseasonReport,
 } from '../engine/progression.js';
 import {
-  letHimGo, makeTheCase, type KeepPitch, type KeepScene,
+  letHimGo, makeTheCase, sceneFrom, type KeepPitch, type KeepScene,
 } from '../engine/draft.js';
 import {
   newCoach, restoreCoach, reviewSeason, jobOffers, rosterStrength, contractFor,
-  prestigeStars, skillPoints,
+  prestigeStars, skillPoints, takeChair,
   type CoachState, type CoachSkills, type CoachProfile, type JobOffer, type Review,
   type SeasonOutcome,
 } from '../engine/program.js';
+import {
+  runRivalYear, seatCoaches, syncCoachMods, type CarouselMove,
+} from '../engine/rivals.js';
+import {
+  ACHIEVEMENTS, awardFirstOverall, awardSeason, awardTopRecruit, noFeats,
+  type AchievementId,
+} from '../engine/achievements.js';
+import {
+  markAllRead, newItem, push, restoreInbox, unreadCount, type InboxItem,
+} from '../engine/inbox.js';
 import {
   runPostseason, freezeRegularSeason, stageConferenceTournaments,
   stageRegionals, stageNational, regionalPairing, summarize,
@@ -79,13 +89,22 @@ export function seedRivalInterest(season: SeasonState, userTeam: number): void {
       if (record.index === userTeam) continue;
       const conf = CONFERENCES.find((c) => c.id === record.conference);
       const pitch = pitchFor(season, record, conf?.region ?? 'Gulf', developmentScore(record));
+      // His own coach, where the world has been seated with them: a program run
+      // by a recruiter opens the window ahead of one that is not, which is the
+      // same head start the user's own reputation buys him. Forty five and
+      // twenty are what a chair with nobody in it is worth.
+      const staff = record.coach;
       for (const { prospect, actions } of aiTargets(
-        record.index, pitch, 45, season.recruiting.prospects,
+        record.index, pitch, staff?.prestige ?? 45, season.recruiting.prospects,
         holesFor(record), season.rng, snapshot,
+        season.draft?.rivalSpend[record.index] ?? 0,
       )) {
         prospect.points[record.index] =
           (prospect.points[record.index] ?? 0)
-          + weeklyPoints(prospect, pitch, actions, 45) * scale;
+          + weeklyPoints(
+            prospect, pitch, actions,
+            staff?.prestige ?? 45, staff?.skills.recruiting ?? 20,
+          ) * scale;
       }
     }
   }
@@ -128,21 +147,16 @@ function sceneFor(
     ? [...record.team.lineup, ...record.team.bench,
       ...record.team.rotation, ...record.team.bullpen]
     : [];
-  const strength = roster.length > 0
-    ? roster.reduce((a, r) => a + overallOf(r), 0) / roster.length
-    : 44;
-  const here = p.type === 'pitcher'
-    ? roster.filter((r) => r.type === 'pitcher' && r.role === p.role)
-    : roster.filter((r) => r.type === 'hitter' && r.pos === p.pos);
-  return {
-    prestige: Math.max(0, Math.min(1, (record?.prestige ?? 50) / 100)),
-    returning: Math.max(0, Math.min(1, (strength - 44) / 16)),
-    coachPrestige: coach.prestige,
-    tenure: coach.tenure,
-    training: coach.skills.training,
-    blockedBy: here.reduce((best, r) => Math.max(best, overallOf(r)), 0),
-    round,
-  };
+  // The assembly itself lives in `sceneFrom`, because the other ninety five
+  // programs now build the same object for the same negotiation and two copies
+  // of "what is coming back worth" would drift. All this supplies is the one
+  // thing that is genuinely yours: an actual coach, instead of the league
+  // average their staffs are.
+  return sceneFrom(
+    record?.prestige ?? 50, roster,
+    { prestige: coach.prestige, tenure: coach.tenure, training: coach.skills.training },
+    p, round,
+  );
 }
 
 /** Roughly how many bodies a program has to replace, which sizes its board. */
@@ -224,8 +238,13 @@ export interface TabDef {
 
 /** Bottom nav and the sub-nav under it, exactly as the mockup lays them out. */
 export const TABS: readonly TabDef[] = [
+  // The inbox sits beside the wire rather than being folded into it. They
+  // answer the same question about different things: the wire is derived from
+  // the live season and evaporates, the inbox is written down and is about you.
+  // See `engine/inbox.ts`.
   { id: 'home', label: 'HOME', screens: [
-    { id: 'today', label: 'TODAY' }, { id: 'wire', label: 'WIRE' }, { id: 'box', label: 'SCOREBOOK' }] },
+    { id: 'today', label: 'TODAY' }, { id: 'wire', label: 'WIRE' },
+    { id: 'inbox', label: 'INBOX' }, { id: 'box', label: 'SCOREBOOK' }] },
   // Statistics are your players, so they live with your players. Strategy is a
   // standing policy rather than a thing you check, so it sits with the program.
   // Awards are now part of the record books: only the ones your program won,
@@ -391,6 +410,21 @@ export interface DynastyStore {
   openOffseason: () => void;
   /** What the season came to, kept for the review screen. */
   lastOutcome: SeasonOutcome | null;
+
+  /**
+   * What has happened to your world, newest first.
+   *
+   * The one place in the store that only ever grows during a career, which is
+   * why `push` trims it — see `engine/inbox.ts`.
+   */
+  inbox: InboxItem[];
+  /**
+   * File something. Everything that posts goes through here so the trim and the
+   * id are in one place rather than at a dozen call sites.
+   */
+  post: (item: Omit<InboxItem, 'id' | 'read'>) => void;
+  /** What opening the screen does. Nothing else clears the badge. */
+  readInbox: () => void;
 
   /**
    * Begin a dynasty. Pass a team index to choose the job, and the profile the
@@ -724,9 +758,12 @@ function recordFor(state: DynastyStore): SeasonRecord | null {
  * game read it from there, which is how those two skills reach the field.
  */
 function applyCoachMods(season: SeasonState, userTeam: number, coach: CoachState): void {
-  for (const t of season.teams) delete t.coachMods;
-  const me = season.teams[userTeam];
-  if (me) me.coachMods = { offense: coach.skills.offense, defense: coach.skills.defense };
+  // Every chair, not just yours. It used to clear the field and write one row,
+  // which was right when the other ninety five benches were nobody's — now each
+  // of them has a man with an OFFENSE and a DEFENSE of his own, and the pass
+  // that forgets to write them is the pass that hands the user the only bench
+  // edge in the country.
+  syncCoachMods(season, userTeam, coach.skills);
 }
 
 /**
@@ -753,6 +790,63 @@ function applyPhilosophy(season: SeasonState, userTeam: number, coach: CoachStat
   for (const t of season.teams) t.strategy = strategyFor(t.index);
   const me = season.teams[userTeam];
   if (me) me.strategy = strategyForPhilosophy(coach.philosophy);
+}
+
+/** The board's verdict as a headline, since `message` is the paragraph. */
+const BOARD_HEADLINE: Record<Review['verdict'], string> = {
+  exceeded: 'The board is delighted',
+  met: 'The board is satisfied',
+  missed: 'The board expected more',
+  failed: 'The board is not happy',
+};
+
+const capitalise = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+
+/**
+ * The carousel, filed at a volume a person can actually read.
+ *
+ * A league of ninety five careers produces somewhere between five and twenty
+ * moves a year, and posting every one of them would bury the four items that
+ * are about you under a directory of strangers. Two rules, and they are the
+ * only two:
+ *
+ *   - **Your conference gets named.** Eleven programs whose games decide your
+ *     season, and a change of coach at one of them is a change to your league.
+ *   - **Everybody else gets counted.** One line saying how many chairs turned
+ *     over is the honest summary of news you cannot act on, and it is enough to
+ *     tell the player the country is alive.
+ *
+ * A poach out of your conference is named at both ends, because a rival being
+ * taken by a bigger school is the single event the whole system exists to
+ * produce and it should never be a number in a total.
+ */
+function postCarousel(
+  store: DynastyStore, year: number, myConference: string,
+  moves: readonly CarouselMove[],
+): void {
+  const inConference = (t: number | undefined): boolean =>
+    t !== undefined && store.season?.teams[t]?.conference === myConference;
+
+  let counted = 0;
+  for (const m of moves) {
+    const near = inConference(m.team) || inConference(m.from);
+    if (!near) { counted += 1; continue; }
+    const title = m.kind === 'poached'
+      ? `${m.coach} leaves ${m.fromSchool} for ${m.school}`
+      : m.kind === 'sacked'
+        ? `${m.school} sack ${m.coach}`
+        : m.kind === 'retired'
+          ? `${m.coach} retires at ${m.school}`
+          : `${m.school} hire ${m.coach}`;
+    store.post({ kind: 'carousel', year, title, body: m.detail });
+  }
+  if (counted > 0) {
+    store.post({
+      kind: 'carousel', year,
+      title: `${counted} more coaching change${counted === 1 ? '' : 's'} around the country`,
+      body: 'Outside your conference. The full picture is on the rankings table.',
+    });
+  }
 }
 
 /** Ridgemont State, the founding program, unless told otherwise. */
@@ -785,12 +879,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // And what year it is, which the engine has no other way of knowing and the
     // record book cannot do without — a mark with no year against it is a rumour.
     season.year = START_YEAR;
-    const coach = newCoach(profile, contractFor(season.teams[team ?? 0]?.prestige ?? 50));
-    applyCoachMods(season, team ?? defaultUserTeam(season), coach);
-    applyPhilosophy(season, team ?? defaultUserTeam(season), coach);
+    const seat = team ?? defaultUserTeam(season);
+    const here = season.teams[seat]?.prestige ?? 50;
+    const coach = takeChair(newCoach(profile, contractFor(here)), here);
+    // The other ninety five get their men before the first pitch, seeded at what
+    // their programs are worth. Without it the entire hiring ladder would be
+    // open to whoever won a game first — you included.
+    seatCoaches(season, seat, START_YEAR);
+    applyCoachMods(season, seat, coach);
+    applyPhilosophy(season, seat, coach);
     set({
       season,
-      userTeam: team ?? defaultUserTeam(season),
+      userTeam: seat,
       needsTeam: false,
       year: START_YEAR,
       version: 1,
@@ -803,6 +903,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       lastOffseason: null,
       lastWeek: null,
       lastCommits: [],
+      inbox: [],
     });
     void get().saveNow();
   },
@@ -885,22 +986,30 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       const pitch = pitchFor(season, record, regionOf(record.index), developmentScore(record));
       const mine = record.index === userTeam;
 
+      const staff = record.coach;
       const spends: { prospect: typeof recruits.prospects[number]; actions: number }[] = mine
         ? recruits.prospects
             .filter((p) => (p.spent[userTeam] ?? 0) > 0)
             .map((p) => ({ prospect: p, actions: p.spent[userTeam] as number }))
         : aiTargets(
-            record.index, pitch, 45, recruits.prospects,
+            // Whatever this program spent in June comes off its week, the same
+            // way `boardBudget` takes the user's draft spend off his.
+            record.index, pitch, staff?.prestige ?? 45, recruits.prospects,
             holesFor(record), season.rng, atWeekStart,
+            season.draft?.rivalSpend[record.index] ?? 0,
           );
 
       for (const { prospect, actions } of spends) {
-        // The user's pitch carries his own reputation and recruiting skill;
-        // every AI program works at the league-average defaults.
+        // Every pitch carries the reputation and the recruiting skill of the man
+        // making it. That used to be true of exactly one program in ninety six,
+        // which meant the player's RECRUITING points bought him an edge nobody
+        // in the country could ever answer. A chair with nobody in it — an
+        // unseated world, or a save from before B7 — still works at the flat
+        // league-average defaults.
         const gained = weeklyPoints(
           prospect, pitch, actions,
-          mine ? coach.prestige : 45,
-          mine ? coach.skills.recruiting : 20,
+          mine ? coach.prestige : (staff?.prestige ?? 45),
+          mine ? coach.skills.recruiting : (staff?.skills.recruiting ?? 20),
         );
         prospect.points[record.index] = (prospect.points[record.index] ?? 0) + gained;
       }
@@ -912,14 +1021,31 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     resetWeeklySpend(recruits);
     recruits.week += 1;
 
-    const yours = commits
-      .filter((c) => c.team === userTeam)
-      .map((c) => c.prospect.player.name);
+    const mineThisWeek = commits.filter((c) => c.team === userTeam);
+    const yours = mineThisWeek.map((c) => c.prospect.player.name);
     set({
       version: version + 1,
       lastCommits: yours,
       lastWeek: { closed, yours, gone: commits.length - yours.length },
     });
+
+    // The number one recruit in the country, at the moment he commits. Read
+    // here rather than at signing day because `rank` is a fact about the class
+    // as it was published and the class is regenerated at the year roll — by
+    // signing day the man is on a roster and the board he was ranked on is gone.
+    const chair = season.teams[userTeam];
+    const top = mineThisWeek.find((c) => c.prospect.rank === 1);
+    if (top && chair) {
+      for (const id of awardTopRecruit(
+        get().coach.achievements, get().year, chair.def.abbr, top.prospect.player.name,
+      )) {
+        get().post({
+          kind: 'achievement', year: get().year,
+          title: ACHIEVEMENTS[id].name.toUpperCase(),
+          body: `${top.prospect.player.name}, the number one recruit in the country, is coming here.`,
+        });
+      }
+    }
   },
 
   keepPlayer: (id, pitch, offer) => {
@@ -1054,10 +1180,15 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       archiveSeason(season, get().userTeam, year);
       recordSeasonMarks(season, year);
       const chair = season.teams[get().userTeam];
-      // Yours is the only career the world models, so it is the only one the
-      // coaching section can honestly be about. The screen says so.
-      if (season.records && chair) {
-        recordCoachMarks(season.records, year, get().coach, chair.def.abbr);
+      // Every career in the country, not only yours. It was yours alone for as
+      // long as a rival bench was a strategy and a prestige number; now each of
+      // them is a man with a record, and a coaching section that ranked one
+      // career against nothing was measuring you against an empty field.
+      if (season.records) {
+        if (chair) recordCoachMarks(season.records, year, get().coach, chair.def.abbr);
+        for (const t of season.teams) {
+          if (t.coach) recordCoachMarks(season.records, year, t.coach, t.def.abbr);
+        }
       }
 
       /*
@@ -1078,6 +1209,39 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           training: get().coach.skills.training,
         });
         set({ lastOffseason: report });
+
+        /*
+          First overall, which is a fact about the national board and not about
+          your roster — so it is read here, off the sorted list, rather than by
+          asking which of your men went highest.
+
+          `report.drafted` is ordered round then ability, which *is* the order
+          the clubs took them in, so the top row is the number one pick in the
+          country. It has to be checked in this branch and not on the draft
+          screen: `returned` gets written the moment a coach talks somebody
+          round, and a man who goes back to school was still taken first.
+        */
+        const first = report.drafted[0];
+        const mine = get().userTeam;
+        if (first && first.round === 1 && first.team === mine && chair) {
+          for (const id of awardFirstOverall(
+            get().coach.achievements, year, chair.def.abbr, first.name,
+          )) {
+            get().post({
+              kind: 'achievement', year,
+              title: ACHIEVEMENTS[id].name.toUpperCase(),
+              body: `${first.name} went first overall. Nobody in the country was taken ahead of one of yours.`,
+            });
+          }
+        }
+        const lost = report.drafted.filter((d) => d.team === mine && !d.returned).length;
+        if (lost > 0) {
+          get().post({
+            kind: 'draft', year,
+            title: `${lost} of your men drafted`,
+            body: 'The conversation about keeping them is on the draft step, and it is paid for out of the recruiting budget you are about to open the board with.',
+          });
+        }
       }
       set({
         phase: next,
@@ -1188,6 +1352,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       conferenceSize: season.teams.filter((t) => t.conference === me.conference).length,
       wonConference: post?.conferenceChampions.includes(me.index) ?? false,
       madeTournament: post?.finish[me.index] !== undefined,
+      // Off the regional round itself rather than off the finish string. The
+      // two say the same thing in today's format and are not the same fact.
+      wonRegional: post?.regionChampions.includes(me.index) ?? false,
       reachedOmaha: ['omaha', 'runner-up', 'champion'].includes(post?.finish[me.index] ?? ''),
       wonTitle: post?.champion === me.index,
     };
@@ -1199,6 +1366,59 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // Prestige belongs to the school and survives a coaching change.
     me.prestige = review.prestigeAfter;
 
+    const year = get().year;
+    const tenure = review.fired ? 0 : coach.tenure + 1;
+
+    /*
+      The cabinet, before the coach object is replaced.
+
+      Read against `tenure`, which is this season counted — a man finishing his
+      fifteenth year is a Lifer at the meeting that closes it, not a year later.
+      `titleLastYear` comes off the history array rather than off a flag on the
+      coach: the array is written at the year roll and is therefore exactly "the
+      seasons before this one", which is the question Dynasty asks.
+
+      The two game-level feats are read off the season and not recomputed. By
+      now the box scores of ninety five programs are gone and the streak on the
+      team record says whatever April left it on.
+    */
+    const previous = get().history[get().history.length - 1];
+    const earned = awardSeason(coach.achievements, {
+      year,
+      team: me.def.abbr,
+      conference: me.conference,
+      conferenceWins: me.cw,
+      conferenceLosses: me.cl,
+      wonConference: outcome.wonConference,
+      wonRegional: outcome.wonRegional,
+      wonTitle: outcome.wonTitle,
+      titleLastYear: previous?.finish === 'champion',
+      stars: prestigeStars(review.prestigeBefore),
+      arrivedStars: prestigeStars(coach.arrivedPrestige),
+      tenure,
+      feats: season.feats ?? noFeats(),
+    });
+
+    /*
+      And now the other ninety five, at the one moment everything they are graded
+      on is in hand: the postseason is settled, the regular season records are
+      frozen, and no roster has been touched. Run at the year roll instead it
+      would judge coaches against teams that had already graduated.
+
+      It moves their programs' prestige too, which is the line that did not exist
+      anywhere before B7 — `nextPrestige` was written once and only the user's
+      school was ever passed through it.
+    */
+    const rivals = runRivalYear(season, post, {
+      year,
+      userTeam,
+      games: seasonLength(season.config),
+      userOpen: review.fired,
+    });
+    // Their benches changed hands, so the edge every one of their games is
+    // played with has to be restamped before the next season starts.
+    syncCoachMods(season, userTeam, coach.skills);
+
     set({
       lastReview: review,
       lastOutcome: outcome,
@@ -1206,17 +1426,47 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         ...coach,
         prestige: review.coachPrestigeAfter,
         security: review.securityAfter,
-        tenure: review.fired ? 0 : coach.tenure + 1,
+        tenure,
+        badRun: review.badRun,
         contractYears: review.contractYears,
         careerWins: coach.careerWins + outcome.wins,
         careerLosses: coach.careerLosses + outcome.losses,
         titles: coach.titles + (outcome.wonTitle ? 1 : 0),
         conferenceTitles: coach.conferenceTitles + (outcome.wonConference ? 1 : 0),
+        regionalTitles: coach.regionalTitles + (outcome.wonRegional ? 1 : 0),
         tournaments: coach.tournaments + (outcome.madeTournament ? 1 : 0),
         skillPoints: coach.skillPoints + skillPoints(outcome),
       },
       version: get().version + 1,
     });
+
+    // Filed after the state is set, so nothing here can be lost to the write
+    // above it clobbering an inbox that grew while it was being assembled.
+    get().post({
+      kind: 'board', year,
+      title: BOARD_HEADLINE[review.verdict],
+      body: review.message,
+    });
+    if (review.prestigePenalty > 0) {
+      get().post({
+        kind: 'board', year,
+        title: 'Your standing has taken a hit',
+        body: `${review.badRun} seasons in a row the board did not accept. `
+          + `Coaches around the country notice a pattern where they forgive an `
+          + `accident — ${review.prestigePenalty} points off your reputation, on `
+          + `top of the season itself.`,
+      });
+    }
+    for (const id of earned) {
+      const spec = ACHIEVEMENTS[id];
+      const row = coach.achievements[id];
+      get().post({
+        kind: 'achievement', year,
+        title: spec.name.toUpperCase(),
+        body: row?.detail ? `${spec.note} ${capitalise(row.detail)}.` : spec.note,
+      });
+    }
+    postCarousel(get(), year, me.conference, rivals.moves);
   },
 
   rollYear: async () => {
@@ -1241,6 +1491,30 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // differently because of the number.
       const coach = { ...get().coach, age: get().coach.age + 1 };
 
+      /*
+        Who would actually take a call from you.
+
+        Before B7 this was every program that would have you, which quietly meant
+        all ninety six were permanently hiring — the ladder was a shopping list
+        rather than a market. Now every chair has a man in it, and the honest
+        question is not "is it empty" but "would the board move him on for you".
+
+        Empty is *not* enough on its own, and this is the trap that had to be
+        avoided rather than the obvious version of the rule. `runCarousel` never
+        leaves a chair open, so a filter of `!t.coach` would have produced an
+        empty market every single time — and the job search screen has no way
+        forward with nothing on it, so a sacked coach's career would simply have
+        ended on a page that said nobody was calling.
+
+        So: an empty chair, or one held by somebody the country rates below you.
+        That is also exactly what `acceptOffer` already does when you say yes —
+        the incumbent is moved on, and the inbox says so.
+      */
+      const offers = review?.fired
+        ? jobOffers(coach, rolled.teams, (t) => t.prestige, get().userTeam, 4,
+          (t) => !t.coach || coach.prestige > t.coach.prestige)
+        : [];
+
       set({
         season: rolled,
         year: year + 1,
@@ -1263,9 +1537,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         furthestPhase: 0,
         coach,
         // Being let go puts you on the market immediately. Nobody waits.
-        offers: review?.fired
-          ? jobOffers(coach, rolled.teams, (t) => t.prestige, get().userTeam)
-          : [],
+        offers,
         // Dismissed means dismissed. The world carries on without you until you
         // take another job, and the career record is what you take with you.
         jobSearch: review?.fired ?? false,
@@ -1274,6 +1546,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         tab: 'home',
         screen: 'today',
       });
+      for (const o of offers) {
+        get().post({
+          kind: 'offer', year: year + 1,
+          title: `${o.school} want to talk to you`,
+          body: `${o.conference}, ${prestigeStars(o.prestige)} star. ${o.pitch}`,
+        });
+      }
       void get().saveNow();
     };
 
@@ -1312,17 +1591,48 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   clearReview: () => set({ lastReview: null }),
 
+  inbox: [],
+  post: (item) => set({ inbox: push(get().inbox, newItem(item)) }),
+  readInbox: () => {
+    const inbox = get().inbox;
+    if (unreadCount(inbox) === 0) return;
+    set({ inbox: markAllRead(inbox), version: get().version + 1 });
+    void get().saveNow();
+  },
+
   acceptOffer: async (team) => {
-    const { season, coach } = get();
+    const { season, coach, userTeam, year } = get();
     if (!season) return;
     // The new job's games are the ones worth keeping now.
     season.captureBoxFor = team;
     // A new job is a clean slate with a patient board, but your reputation
     // comes with you — that is the whole point of tracking it separately.
-    const length = contractFor(season.teams[team]?.prestige ?? 50);
-    const next = { ...coach, tenure: 0, security: 62, contractYears: length, contractLength: length };
+    const next = takeChair(coach, season.teams[team]?.prestige ?? 50);
+    // Somebody was sitting in this chair, and now he is not. The chair you are
+    // leaving goes back on the market in the same breath — `seatCoaches` fills
+    // every empty one but the one you are in, which after this line is the new
+    // program rather than the old.
+    const displaced = seatCoaches(season, team, year);
+    const leaving = season.teams[userTeam];
     // The old program loses the in-game edge, the new one gains it.
     applyCoachMods(season, team, next);
+    if (displaced) {
+      get().post({
+        kind: 'carousel', year,
+        title: `${displaced.name} out at ${season.teams[team]?.def.school ?? 'your new job'}`,
+        body: `They moved him on to hire you. ${displaced.careerWins}-${displaced.careerLosses} in the chair.`,
+      });
+    }
+    if (leaving && leaving.index !== team) {
+      const took = leaving.coach;
+      if (took) {
+        get().post({
+          kind: 'carousel', year,
+          title: `${took.name} takes over at ${leaving.def.school}`,
+          body: 'The job you left did not stay open long.',
+        });
+      }
+    }
     // And the way he plays comes with him. A philosophy is a trait of the coach,
     // not of the job, so the new bench starts where he starts — including the
     // case where the old one had been tuned away from it by hand, which belonged
@@ -1874,6 +2184,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         phase: get().phase,
         review: get().lastReview,
         outcome: get().lastOutcome,
+        inbox: get().inbox,
       });
       set({ saveState: 'saved' });
     } catch (e) {
@@ -1920,6 +2231,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // before the profile carry one with no age or hometown on it. Both come back
     // filled in rather than refusing to load or rendering holes.
     const coach = restoreCoach(loaded.coach);
+    // Every empty chair gets a man, which for a save written before B7 is all
+    // ninety five of them. Idempotent, so a career fifteen years into its own
+    // carousel keeps every coach it has hired and fired — the only chair this
+    // touches on a modern save is one the market genuinely failed to fill.
+    seatCoaches(loaded.season, loaded.userTeam, loaded.year);
     // Restamped on every load rather than trusted from the save, so a save from
     // before the in-game skills were wired — or one that predates a job change —
     // comes up with the edge on the right program.
@@ -1951,6 +2267,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         ? (loaded.postseasonSeen as string[]).filter((k) => typeof k === 'string')
         : [],
       jobSearch: Boolean(loaded.jobSearch),
+      // Unread stays unread across a restart. It is the one thing the inbox
+      // knows that nothing else in the save does.
+      inbox: restoreInbox(loaded.inbox),
       // Back to the step the offseason was on, so a reload mid-sequence resumes
       // rather than stranding the player on the dashboard with a week of
       // recruiting budget already spent and nowhere to spend the rest.
@@ -2033,6 +2352,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     lastWeek: null,
     lastCommits: [],
     history: [],
+    // Somebody else's post. `start` does not clear it either, and an inbox is
+    // exactly the kind of furniture that would follow a player into a new
+    // career and tell him his old board was delighted.
+    inbox: [],
     overlay: null,
     selectedPlayer: null,
     loadError: null,

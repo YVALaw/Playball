@@ -8,11 +8,15 @@
 // behind the roadmap's central promise: you never keep your best players.
 
 import {
-  draftContext, draftEligible, draftRound, visibleValue, yearsOfLeverage,
+  AI_KEEP_SHARE, AVERAGE_STAFF,
+  draftContext, draftEligible, draftRound, makeTheCase, rivalKeeps, sceneFrom,
+  visibleValue, yearsOfLeverage,
   type DraftBoard, type DraftedMan,
 } from './draft.js';
 import { ageFor, makeHitter, makePitcher } from './players.js';
+import { prestigeStars } from './program.js';
 import { overallOf, clamp } from './ratings.js';
+import { windowBudget } from './recruiting.js';
 import type { Prospect } from './recruiting.js';
 import { gauss } from './rng.js';
 import type { SeasonState } from './season.js';
@@ -478,6 +482,22 @@ export function holesFor(survivors: readonly Player[]): { pos: string; count: nu
 }
 
 /**
+ * How good a man has to be for his own staff to fight the draft over him.
+ *
+ * The top quarter of what is coming back, which is the honest reading of
+ * "would he be one of the best players on next year's team". An empty roster —
+ * a program the draft and graduation between them stripped — has no bar to
+ * clear, and the number it falls back to is the level a walk-on arrives at.
+ */
+const KEEP_BAR_QUANTILE = 0.75;
+function keepBar(survivors: readonly Player[]): number {
+  if (survivors.length === 0) return 44;
+  const sorted = survivors.map(overallOf).sort((a, b) => a - b);
+  const at = Math.min(sorted.length - 1, Math.floor(KEEP_BAR_QUANTILE * sorted.length));
+  return sorted[at] as number;
+}
+
+/**
  * Step one of the offseason: who leaves, and who gets better.
  *
  * Split out of `advanceOffseason` so the draft can be shown *before* recruiting
@@ -497,19 +517,32 @@ export function departAndDevelop(
   // so a .900 OPS is graded against the league that produced it.
   const ctx = draftContext(season);
   const mine = opts.userTeam ?? season.captureBoxFor;
-  const board: DraftBoard = { year: season.year ?? 0, spent: 0, men: [] };
+  const board: DraftBoard = {
+    year: season.year ?? 0, spent: 0, men: [], rivalSpend: {},
+  };
 
   for (const record of season.teams) {
     const team = record.team;
-    // The coach-skill nudge: only the user's program trains above the norm.
-    const growthMult = record.index === opts.userTeam
-      ? 1 + ((opts.training ?? 20) - 20) / 500
-      : 1;
+    // The coach-skill nudge, and it is no longer the user's alone. Every chair
+    // has a man in it who has been spending points for as long as he has held
+    // it, so a program with a developer in charge brings its freshmen on faster
+    // than one without — which is the same edge the player buys with TRAINING
+    // and the same one he loses when a rival buys it too. A world that has never
+    // been through `seatCoaches` has no rival coaches and falls back to the flat
+    // twenty this was before, so nothing that does not want this pays for it.
+    const trainer = record.index === opts.userTeam
+      ? (opts.training ?? 20)
+      : (record.coach?.skills.training ?? 20);
+    const growthMult = 1 + (trainer - 20) / 500;
     const roster: Player[] = [
       ...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen,
     ];
 
     const survivors: Player[] = [];
+    // A rival's drafted underclassmen, held until the roster loop is done: his
+    // staff has to see who is coming back before it can tell anybody there is a
+    // job here, and half of what a case rests on is exactly that.
+    const exposed: { man: DraftedMan; row: Departure }[] = [];
     for (const p of roster) {
       /**
        * A birthday, before anything else is decided.
@@ -550,14 +583,17 @@ export function departAndDevelop(
         if (reason === 'drafted') {
           row.round = draftRound(visibleValue(p, season, ctx));
           report.drafted.push(row);
-          // Your own men with eligibility still on them are the only ones there
-          // is a conversation to be had with. A senior has nothing left to go
-          // back to, and a rival program's junior is not yours to talk to.
-          if (record.index === mine && p.classYear !== 'SR') {
-            board.men.push({
+          // Men with eligibility still on them are the only ones there is a
+          // conversation to be had with anywhere; a senior has nothing left to
+          // go back to. Yours land on the board and wait for you. A rival's are
+          // settled below, by his own staff, out of his own money.
+          if (p.classYear !== 'SR') {
+            const man: DraftedMan = {
               player: p, round: row.round,
               pitch: null, offered: 0, made: 0, needed: 0, outcome: 'pending',
-            });
+            };
+            if (record.index === mine) board.men.push(man);
+            else exposed.push({ man, row });
           }
         } else report.graduated.push(row);
         continue;
@@ -575,6 +611,83 @@ export function departAndDevelop(
     if (record.index === mine) report.holes = holesFor(survivors);
 
     regroup(team, survivors);
+
+    // And now the other ninety five make the call the user is about to be
+    // shown a screen for.
+    //
+    // After `regroup`, deliberately: `reinstate` puts a kept man back through
+    // the same door, and running it against a roster that had not been closed
+    // yet would have him rejoining a team that did not exist for another line.
+    if (record.index !== mine && exposed.length > 0) {
+      const stars = prestigeStars(record.prestige);
+      // The bar a man has to clear to be worth fighting for: the top quarter of
+      // what is coming back.
+      //
+      // A quantile rather than the mean, and the difference is the whole
+      // behaviour. Measured against the mean, half a roster is below the bar by
+      // construction and a drafted man is above it by selection — so every
+      // program fought for everybody, and the ones that hoarded hardest were
+      // the worst ones, whose late round picks cost four points each. Against
+      // the top quarter the bar moves with the program: a good roster is hard
+      // to be one of the best men on and a bad one is not much easier, because
+      // a bad program's drafted man is a worse player.
+      const level = keepBar(survivors);
+      // What this program is prepared to put behind keeping people, out of the
+      // same window its recruiting board is about to be paid from. `aiTargets`
+      // reads what is left of it, three weeks running, exactly as the user's
+      // header does.
+      const allowance = Math.floor(windowBudget(stars) * AI_KEEP_SHARE);
+      // The man in the chair, where there is one. Two of the four cases a staff
+      // can make are about *him* — the development a coach can promise and the
+      // word he can give — so a program run by somebody with a name and eleven
+      // years in the building keeps a man a caretaker would lose. That is the
+      // point of B7 reaching this screen at all rather than stopping at the
+      // standings. A world without seated coaches falls back to the average
+      // staff, which is what every program was before there was anybody in it.
+      const staff = record.coach
+        ? {
+          prestige: record.coach.prestige,
+          tenure: record.coach.tenure,
+          training: record.coach.skills.training,
+        }
+        : AVERAGE_STAFF;
+      const kept = rivalKeeps(
+        exposed.map((e) => e.man),
+        (m) => sceneFrom(record.prestige, survivors, staff, m.player, m.round),
+        allowance,
+        level,
+      );
+      let bill = 0;
+      for (const { man, kind, price, scene } of kept) {
+        // Through `makeTheCase` rather than around it. The AI is playing the
+        // user's mechanic, not a parallel one that happens to agree with it
+        // today — if the arithmetic of a pitch ever changes, it changes for
+        // ninety six programs on the same line. And the offer is spent whether
+        // it works or not for them too.
+        const { spent, kept: stayed } = makeTheCase(
+          man, kind, price, scene, allowance - bill,
+        );
+        bill += spent;
+        if (!stayed) continue;
+        // He goes back exactly the way one of yours does — class year, the
+        // development year he was skipped for, and the same `regroup`, which
+        // has already put him back in the roster arrays by the time this
+        // returns. `survivors` is kept in step with it so the name does not
+        // start lying to whatever gets written under it next.
+        const grew = reinstate(team, man.player, rng);
+        report.developmentNet += grew;
+        if (grew > 0) report.improved += 1; else report.declined += 1;
+        survivors.push(man.player);
+      }
+      if (bill > 0) board.rivalSpend[record.index] = bill;
+      // The national board tells the truth about him: he was taken, and he did
+      // not go. Every count of what a program lost already skips a `returned`
+      // man, so this is the one line that keeps the BOARD tab from listing a
+      // man who is on a college roster this minute.
+      for (const { man, row } of exposed) {
+        if (man.outcome === 'stayed') row.returned = true;
+      }
+    }
   }
 
   // Best first inside each round, so the national board reads like one.

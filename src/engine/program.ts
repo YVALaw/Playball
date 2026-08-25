@@ -17,6 +17,9 @@
 // standing, and leave for a better job while the program stays roughly what it
 // was. That only works if the three are tracked apart.
 
+import {
+  LIFER_SEASONS, restoreAchievements, type AchievementLog,
+} from './achievements.js';
 import { overallOf } from './ratings.js';
 import { FIRST, LAST } from '../data/names.js';
 import { ALL_STATES } from '../data/schools.js';
@@ -110,6 +113,16 @@ export interface SeasonOutcome {
   conferenceSize: number;
   wonConference: boolean;
   madeTournament: boolean;
+  /**
+   * Won the regional round: beat the champion of the conference next door.
+   *
+   * In today's format that is the same event as reaching Omaha, because the
+   * four regional winners *are* the national field. It is read off the regional
+   * result rather than off the finish string all the same, so the day the
+   * postseason grows a round the two stop agreeing on their own instead of
+   * needing to be pulled apart by hand.
+   */
+  wonRegional: boolean;
   reachedOmaha: boolean;
   wonTitle: boolean;
 }
@@ -126,6 +139,10 @@ export function seasonScore(o: SeasonOutcome): number {
   let score = winPct(o) * 100;
   if (o.madeTournament) score += 6;
   if (o.wonConference) score += 8;
+  // The regional is deliberately not priced here. Winning it is what puts a
+  // program in Omaha, so the twelve below already pays for it — adding a second
+  // line would quietly reprice every deep run the day the counter was added,
+  // which is a balance change wearing a bookkeeping change's clothes.
   if (o.reachedOmaha) score += 12;
   if (o.wonTitle) score += 15;
   return Math.max(0, Math.min(100, score));
@@ -674,7 +691,39 @@ export interface CoachState extends CoachProfile {
   careerLosses: number;
   titles: number;
   conferenceTitles: number;
+  /** Regionals won. Counted nowhere at all before B6, and it is a real thing. */
+  regionalTitles: number;
   tournaments: number;
+  /**
+   * Consecutive seasons the board graded `missed` or `failed`.
+   *
+   * The whole of B5 lives in this one integer. Security already remembers a bad
+   * season in the sense that the number is lower afterwards, but nothing could
+   * tell the difference between a coach on his first poor year and a coach on
+   * his fourth — so the second one cost exactly what the first did, and a run
+   * of them was priced as a series of unrelated accidents.
+   *
+   * Cleared when he takes a chair — see `takeChair`, and the same clause for a
+   * rival in `runCarousel`. A run is a *board's* patience running out, and a
+   * board that has just hired him is by definition unconvinced by the last
+   * one's read. What follows him between jobs is the prestige the run already
+   * cost him, which is the part that is genuinely the country's opinion.
+   */
+  badRun: number;
+  /**
+   * What the program was worth on the day he walked in.
+   *
+   * The only reason it is stored rather than derived is the Builder
+   * achievement, which asks a question about the *distance travelled* at one
+   * school — and a prestige number that has already moved cannot be asked where
+   * it started from. Reset with tenure whenever he takes a chair.
+   */
+  arrivedPrestige: number;
+  /**
+   * One-time and permanent, and his rather than the program's. See
+   * `engine/achievements.ts` — a sparse map, so an absent key means unearned.
+   */
+  achievements: AchievementLog;
 }
 
 /**
@@ -720,8 +769,13 @@ export type CoachTitle =
  * the one thing here earned by staying instead of winning, and a bad run should
  * not be able to take it away. It reads alongside the title — RENOWNED · LIFER —
  * so a long tenure survives a reputation that has slipped.
+ *
+ * The number itself belongs to the achievement of the same name and is defined
+ * there. Re-exported because this is the module every caller of `coachStanding`
+ * is already importing from, and because two fifteens is how a screen and a
+ * cabinet come to disagree about whether a man is a lifer.
  */
-export const LIFER_SEASONS = 15;
+export { LIFER_SEASONS };
 
 export interface CoachStanding {
   title: CoachTitle;
@@ -735,8 +789,15 @@ export function coachStanding(coach: CoachState): CoachStanding {
 
   // A trophy is a floor, not a bonus. Whatever prestige says this month, the
   // man who won it does not drop below the rung it bought.
+  //
+  // One rung per thing there is to win, which is what makes the ladder legible:
+  // a bid is Respected, a league is Established, a region — Omaha — is
+  // Renowned, and the country is Legendary. Three tournament appearances stand
+  // in for a league title because a program that keeps qualifying and never
+  // wins the thing is still somebody the sport has heard of.
   let floor: CoachTitle = 'Unproven';
   if (coach.titles > 0) floor = 'Legendary';
+  else if (coach.regionalTitles > 0) floor = 'Renowned';
   else if (coach.conferenceTitles > 0 || coach.tournaments >= 3) floor = 'Established';
   else if (coach.tournaments > 0) floor = 'Respected';
   else if (games > 0) floor = 'Journeyman';
@@ -783,7 +844,47 @@ export function newCoach(
     careerLosses: 0,
     titles: 0,
     conferenceTitles: 0,
+    regionalTitles: 0,
     tournaments: 0,
+    badRun: 0,
+    // Overwritten the moment he is actually put in a chair, by `takeChair`.
+    // Fifty is the middle of the scale and the honest answer to "we do not know
+    // yet"; nothing reads it before a program has been chosen.
+    arrivedPrestige: 50,
+    achievements: {},
+  };
+}
+
+/**
+ * A coach placed in a chair, whoever's it is and however he got there.
+ *
+ * A new career, a job offer taken, and a coach loaded off a disk into a program
+ * all have to agree about what arriving means: the board is patient again, the
+ * tenure clock restarts, the deal is the one this program offers, and — the
+ * reason this exists rather than being spelled out at each site — the prestige
+ * the program had on the day he walked in is written down, because Builder is a
+ * question about distance travelled and a number that has already moved cannot
+ * answer it.
+ *
+ * The run of bad seasons is cleared here too, and the same clause in
+ * `runCarousel` clears a rival's. A board hiring a man is by definition
+ * unconvinced by the last one's read of him, and leaving the run on meant a
+ * coach who took a rebuild after being sacked paid the whole accumulated
+ * penalty for his first year in the new building — fourteen points, measured,
+ * for a season the board he now works for was expecting. His prestige already
+ * carries the damage; the run was the *board's* patience running out, and this
+ * is a different board.
+ */
+export function takeChair(coach: CoachState, programPrestige: number): CoachState {
+  const length = contractFor(programPrestige);
+  return {
+    ...coach,
+    tenure: 0,
+    security: 62,
+    badRun: 0,
+    contractYears: length,
+    contractLength: length,
+    arrivedPrestige: programPrestige,
   };
 }
 
@@ -820,6 +921,12 @@ export function restoreCoach(saved: unknown): CoachState {
       ? c.homeState.trim() : DEFAULT_PROFILE.homeState,
     look: normalizeLook(c.look),
     philosophy: isPhilosophyId(c.philosophy) ? c.philosophy : DEFAULT_PHILOSOPHY,
+    // Same rule as the face: a career that predates the ledger comes back with
+    // an empty one rather than with `undefined`, which every reader would then
+    // have to guard. Nothing is backdated — a coach cannot be handed Cinderella
+    // for a title he won before the achievement existed, because the season
+    // that would prove it is not written down in enough detail to check.
+    achievements: restoreAchievements(c.achievements),
   };
 }
 
@@ -830,15 +937,47 @@ const SECURITY_DELTA: Record<Verdict, number> = {
   failed: -28,
 };
 
+/** A season the board did not accept. Both halves of it count the same here. */
+export const isBadSeason = (v: Verdict): boolean => v === 'missed' || v === 'failed';
+
+/**
+ * What a run of bad seasons costs a reputation, over and above the season.
+ *
+ * Nothing for the first, because one bad year is variance and the ordinary
+ * arithmetic in `nextCoachPrestige` has already priced it. The second is where
+ * the sport stops giving a man the benefit of the doubt, and every one after
+ * that hurts more than the last.
+ *
+ * Sized against the hiring ladder, which has rungs about fifteen points apart:
+ * two bad years costs a third of a rung and four in a row costs the best part
+ * of a whole one. A coach can survive a rebuild going wrong; a coach who is
+ * simply not good enough falls out of the band that the good jobs recruit from,
+ * which is what "he has stopped being a name" should actually mean.
+ *
+ * Deliberately **not** a second hit to job security. Security already fell
+ * fourteen or twenty eight points for each of those seasons on its own, and
+ * doubling the sacking pressure would mean a coach essentially never reaches a
+ * third bad year — which would make the escalation below unreachable and leave
+ * B5 as a rule that fires once and is never seen again.
+ */
+export function badRunPenalty(badRun: number): number {
+  if (badRun < 2) return 0;
+  return 5 + (badRun - 2) * 3;
+}
+
 /**
  * Personal standing moves on what you did *relative to the job*. Winning 20 games
  * at a powerhouse is expected; winning 20 at a cellar program is the reason
  * somebody better calls you. Overachievement is the whole signal.
+ *
+ * `badRun` is the run *including* the season being graded, so a coach handing in
+ * his second poor year in a row arrives here with 2.
  */
 export function nextCoachPrestige(
-  coach: CoachState,
+  coach: { prestige: number },
   o: SeasonOutcome,
   programPrestige: number,
+  badRun = 0,
 ): number {
   const over = seasonScore(o) - programPrestige;
   let gain = over * 0.22;
@@ -849,7 +988,28 @@ export function nextCoachPrestige(
   // Reputation decays toward the middle when nothing happens, so a coach cannot
   // coast on one good year for a decade.
   const inertia = (45 - coach.prestige) * 0.04;
-  return Math.max(5, Math.min(99, Math.round(coach.prestige + gain + inertia)));
+  return Math.max(5, Math.min(99, Math.round(
+    coach.prestige + gain + inertia - badRunPenalty(badRun),
+  )));
+}
+
+/**
+ * What the board reads off a man, whoever he is.
+ *
+ * `CoachState` satisfies it and so does `RivalCoach` in `engine/rivals.ts`,
+ * which is the entire reason one `reviewSeason` can grade ninety six careers.
+ * Widening the parameter was chosen over assembling a fake `CoachState` around
+ * each rival: the fake would have carried a face, a home state and a philosophy
+ * invented purely to satisfy a type, and every one of those is a lie the next
+ * reader has to check before he can trust the rest of the object.
+ */
+export interface Reviewable {
+  prestige: number;
+  security: number;
+  tenure: number;
+  contractYears: number;
+  contractLength: number;
+  badRun: number;
 }
 
 export interface Review {
@@ -869,12 +1029,23 @@ export interface Review {
   fired: boolean;
   /** Ran out the deal without convincing anyone. Not the same as being sacked. */
   notRenewed: boolean;
+  /** Bad seasons in a row, this one included. Zero after any acceptable year. */
+  badRun: number;
+  /** What the run cost his standing on top of the season. Zero on the first. */
+  prestigePenalty: number;
   message: string;
 }
 
-/** The end of season meeting. */
+/**
+ * The end of season meeting.
+ *
+ * Takes the narrow shape the board actually reads rather than a whole
+ * `CoachState`, which is what lets the other ninety five programs be graded by
+ * this function instead of by a copy of it — see `engine/rivals.ts`. Nothing in
+ * here has ever wanted his face, his home state or his cabinet.
+ */
 export function reviewSeason(
-  coach: CoachState,
+  coach: Reviewable,
   programPrestige: number,
   roster: number,
   outcome: SeasonOutcome,
@@ -882,6 +1053,13 @@ export function reviewSeason(
 ): Review {
   const expectation = expectationFor(programPrestige, roster, games);
   const verdict = judge(outcome, expectation);
+
+  // The run, before anything is priced off it. One acceptable season wipes it
+  // out entirely rather than decrementing it: a coach who missed twice and then
+  // met the mandate has answered the question, and carrying half a pattern
+  // forward would have him serving a sentence for a year that went fine.
+  const badRun = isBadSeason(verdict) ? coach.badRun + 1 : 0;
+  const prestigePenalty = badRunPenalty(badRun);
 
   const securityBefore = coach.security;
   // A first year gets some grace: boards fire the coach they hired last spring
@@ -902,6 +1080,14 @@ export function reviewSeason(
   const notRenewed = !sacked && !extended && remaining === 0 && securityAfter < 45;
   const fired = sacked || notRenewed;
 
+  // A run says something a single season cannot, so it gets said. It goes
+  // *before* the ordinary lines rather than after them because "twice in a row"
+  // is the headline the moment it is true — the seat being warm is the same
+  // sentence it was last year and reads as though nothing has changed.
+  const run = badRun >= 2
+    ? ` ${badRun === 2 ? 'Twice in a row now' : `${badRun} years running`}, and it is being noticed outside this room.`
+    : '';
+
   const message = sacked
     ? 'The board has seen enough. You are relieved of your duties.'
     : notRenewed
@@ -913,8 +1099,8 @@ export function reviewSeason(
           : verdict === 'met'
             ? 'The board is satisfied. Do it again.'
             : verdict === 'missed'
-              ? `The board expected more. ${contractYears} year${contractYears === 1 ? '' : 's'} left to convince them.`
-              : 'The board is not happy. Your seat is warm.';
+              ? `The board expected more. ${contractYears} year${contractYears === 1 ? '' : 's'} left to convince them.${run}`
+              : `The board is not happy. Your seat is warm.${run}`;
 
   return {
     verdict,
@@ -923,13 +1109,15 @@ export function reviewSeason(
     prestigeBefore: programPrestige,
     prestigeAfter: nextPrestige(programPrestige, outcome),
     coachPrestigeBefore: coach.prestige,
-    coachPrestigeAfter: nextCoachPrestige(coach, outcome, programPrestige),
+    coachPrestigeAfter: nextCoachPrestige(coach, outcome, programPrestige, badRun),
     securityBefore,
     securityAfter,
     contractYears,
     extended,
     fired,
     notRenewed,
+    badRun,
+    prestigePenalty,
     message,
   };
 }
@@ -960,9 +1148,23 @@ export function jobOffers(
   prestigeOf: (t: TeamRecord) => number,
   currentTeam: number,
   limit = 4,
+  /**
+   * Whether this program would take the call.
+   *
+   * Not "is the chair empty" — the carousel never leaves one empty, so that
+   * version of the rule produces a market of nothing and a career that ends on a
+   * screen saying nobody rang. It is empty *or* held by somebody the country
+   * rates below you, which is the same question a board actually asks.
+   *
+   * Optional, and the default of "everybody is hiring" is what this did before
+   * the other ninety five programs had coaches in them. The store passes the
+   * real answer; a test that only cares about the ladder does not have to build
+   * a staffed world to ask about it.
+   */
+  isOpen: (t: TeamRecord) => boolean = () => true,
 ): JobOffer[] {
   const candidates = teams
-    .filter((t) => t.index !== currentTeam)
+    .filter((t) => t.index !== currentTeam && isOpen(t))
     .map((t) => ({ t, prestige: prestigeOf(t) }))
     // Same ladder the opening board uses, so the two can never disagree about
     // who would hire you. The lower bound is not a rule about them, it is about

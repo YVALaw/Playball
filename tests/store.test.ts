@@ -34,6 +34,7 @@ import {
   COACH_SKIN, COACH_HAIR, CUT_LABEL, BEARD_LABEL,
 } from '../src/ui/CoachPortrait.js';
 import { makeRng } from '../src/engine/rng.js';
+import { unreadCount } from '../src/engine/inbox.js';
 
 // Saving touches IndexedDB, which node does not have. The store already treats
 // a failed save as a surfaced error rather than a crash, so the tests simply
@@ -124,6 +125,95 @@ describe('the board meets every year, not just the first', () => {
 
     expect(useDynasty.getState().lastReview).not.toBeNull();
     expect(useDynasty.getState().coach.skillPoints).toBeGreaterThan(afterFirst);
+  });
+});
+
+describe('the world reports itself', () => {
+  // The inbox and the rival carousel are both engine-side and both tested
+  // there. What can only go wrong here is the wiring: a store that computes a
+  // carousel nobody is told about, or a board verdict that reaches a screen and
+  // nowhere else. These check that settling a season actually files something.
+
+  it('files the board\'s verdict where it can be read later', () => {
+    useDynasty.setState({ inbox: [] });
+    useDynasty.getState().start(4242, 0);
+    expect(useDynasty.getState().inbox).toHaveLength(0);
+
+    useDynasty.getState().settleSeason();
+    const inbox = useDynasty.getState().inbox;
+    expect(inbox.some((i) => i.kind === 'board')).toBe(true);
+    expect(unreadCount(inbox)).toBeGreaterThan(0);
+
+    // And opening the screen is the only thing that clears the badge.
+    useDynasty.getState().readInbox();
+    expect(unreadCount(useDynasty.getState().inbox)).toBe(0);
+  });
+
+  it('runs the other ninety five careers at the same meeting', () => {
+    useDynasty.getState().start(4242, 0);
+    const season = useDynasty.getState().season as SeasonState;
+    const before = season.teams.map((t) => t.prestige);
+    const staffed = season.teams.filter((t) => t.coach).length;
+    // Every chair but the user's has a man in it from the first day.
+    expect(staffed).toBe(season.teams.length - 1);
+
+    useDynasty.getState().settleSeason();
+    const after = season.teams.map((t) => t.prestige);
+    // Somebody other than the user moved. Before B7 this array was frozen for
+    // the life of the dynasty.
+    let moved = 0;
+    for (let i = 0; i < after.length; i++) if (after[i] !== before[i]) moved += 1;
+    expect(moved).toBeGreaterThan(1);
+    // And the bench edge is restamped on all of them, so the next season's
+    // games are played by the coaches who are actually in post.
+    for (const t of season.teams) {
+      if (t.coach) expect(t.coachMods?.offense).toBe(t.coach.skills.offense);
+    }
+  });
+
+  it('still finds somebody who would take the call after a sacking', async () => {
+    // The trap B7 laid and this is the tripwire for. Every chair in the country
+    // has a man in it and `runCarousel` never leaves one open, so an offer list
+    // filtered on "the chair is empty" comes back empty every single time — and
+    // the job search screen has no way forward with nothing on it. A career
+    // would end on a page saying nobody rang.
+    useDynasty.getState().start(4242, 0);
+    useDynasty.setState({
+      coach: { ...useDynasty.getState().coach, prestige: 55, security: 12, tenure: 4 },
+    });
+    const season = useDynasty.getState().season as SeasonState;
+    const me = season.teams[0] as TeamRecord;
+    me.rw = 4; me.rl = 41; me.cw = 2; me.cl = 31;
+
+    useDynasty.getState().settleSeason();
+    expect(useDynasty.getState().lastReview?.fired).toBe(true);
+    await useDynasty.getState().rollYear();
+
+    expect(useDynasty.getState().jobSearch).toBe(true);
+    expect(useDynasty.getState().offers.length).toBeGreaterThan(0);
+    // And they are all programs whose current man is worse than he is, or
+    // programs with nobody in the chair at all.
+    const after = useDynasty.getState().season as SeasonState;
+    for (const o of useDynasty.getState().offers) {
+      const chair = after.teams[o.team] as TeamRecord;
+      expect(!chair.coach || chair.coach.prestige < 55).toBe(true);
+    }
+  });
+
+  it('carries the inbox and the cabinet onto the save record', () => {
+    useDynasty.getState().start(4242, 0);
+    useDynasty.getState().settleSeason();
+    const s = useDynasty.getState();
+    const file = buildSaveFile(
+      'slot', 'Dynasty', s.season as SeasonState, s.year, s.userTeam,
+      { coach: s.coach, inbox: s.inbox },
+    );
+    // The save record is assembled field by field, so a widened type is not
+    // enough — and an inbox that was dropped looks exactly like one that was
+    // empty on the next load.
+    expect(Array.isArray(file.inbox)).toBe(true);
+    expect((file.inbox as unknown[]).length).toBeGreaterThan(0);
+    expect((file.coach as CoachState).achievements).toBeDefined();
   });
 });
 
