@@ -290,14 +290,15 @@ is not licence to corrupt a save quietly — a load must still fail honestly.
 
 ## Still open
 
-Three questions, and the old file's three are not among them: NIL, park effects
+Two questions, and the old file's three are not among them: NIL, park effects
 and iOS are all settled above.
 
-- **Whether the seeded NCAA marks should be re-pitched.** Seven of the twelve are
-  out of reach of the engine's run environment — they were set with aluminium
-  bats and the calibration targets are modern Division I. Scaling by games played
-  does not close that. The gap is written down with numbers so it can be argued
-  about rather than rediscovered (§13.3)
+Answered since: **whether the seeded NCAA marks should be re-pitched.** They have
+been. Each keeps its holder, his school and his year and carries a value set
+where this league produces a season that beats it about once in fifteen to
+twenty years — measured, not multiplied by a guess at the 1985 run environment.
+Ventura's streak is still the one row nobody can touch. §13.3 has the table, the
+method and the two measurement mistakes that hid the size of the problem.
 - **Which channels a badge may attach to**, and how a situation is defined in
   engine terms. Tiers, caps and earning routes are agreed; this is not
 - **Whether the recruiting asymmetry is intentional** — AI programs allocate

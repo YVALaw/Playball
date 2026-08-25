@@ -18,6 +18,7 @@ import {
   BOOK_SEASON_GAMES, CAREER_MIN_AB, RECORDS, offer, recordGameMarks,
   recordCoachMarks, seededBook, recordsIn, type RecordBook, type RecordKey,
 } from '../src/engine/records.js';
+import { LEAGUE_BEST, yearsToBeat } from './records-probe.js';
 import { restoreCoach, type CoachState } from '../src/engine/program.js';
 import { TeamState, type GameResult } from '../src/engine/game.js';
 import { makeTeam } from '../src/engine/players.js';
@@ -44,27 +45,90 @@ describe('the seeded marks', () => {
     expect(book.seasonScoreless?.holder).toBe('Todd Helton');
   });
 
-  it('are all flagged as real-world marks', () => {
+  it('are all flagged as real-world marks, which is what the screen badges', () => {
     for (const mark of Object.values(seededBook())) expect(mark.ncaa).toBe(true);
+    // `RecordBook.tsx` reads `mark.ncaa` off the season's own book to decide
+    // whether to draw the NCAA tag, so that is the object the flag has to survive
+    // into — not the module constant it was copied from.
+    const book = world().records ?? {};
+    expect(book.seasonHR?.ncaa).toBe(true);
+    expect(book.seasonIP?.ncaa).toBe(true);
+    // And a row this world set is not one of them, which is what the tag means.
+    expect(book.gameHR?.ncaa).toBeUndefined();
   });
 
-  it('scales counting records by games played and leaves rates alone', () => {
-    const book = seededBook();
-    // The season the scaling is against has to be the season actually played.
+  it('knows how long the season it is written for actually is', () => {
+    // Nothing is scaled by this any more, but the career minimums are two of
+    // these and Ventura's streak is unreachable because it is longer than one.
     expect(BOOK_SEASON_GAMES).toBe(seasonLength(DEFAULT_SEASON));
+  });
 
-    expect(book.seasonHR?.value).toBe(29);       // 48 in 75 → 48 × 45/75 = 28.8
-    expect(book.seasonRBI?.value).toBe(86);      // 143 in 75 → 85.8
-    expect(book.seasonTB?.value).toBe(171);      // 285 in 75
-    expect(book.seasonTriples?.value).toBe(12);  // 17 in 63 → 12.1
-    expect(book.seasonDoubles?.value).toBe(22);  // 36 → 21.6
-    expect(book.seasonWins?.value).toBe(12);     // 20 → 12
-    expect(book.seasonIP?.value).toBe(112);      // 186 → 111.6
-    expect(book.seasonScoreless?.value).toBe(28);// 47 → 28.2
+  /**
+   * The real marks, as the men actually set them. Every seeded value is a
+   * correction of one of these and the direction of the correction is the point:
+   * the book may ask for less than Incaviglia did, never for more.
+   */
+  const REAL: Partial<Record<RecordKey, number>> = {
+    seasonAvg: 0.551, seasonHR: 48, seasonRBI: 143, seasonTB: 285,
+    seasonSlg: 1.140, seasonTriples: 17, seasonDoubles: 36, seasonWins: 20,
+    seasonIP: 186, seasonK9: 16.8, seasonScoreless: 47, seasonHitStreak: 58,
+  };
 
-    expect(book.seasonAvg?.value).toBeCloseTo(0.551, 5);
-    expect(book.seasonSlg?.value).toBeCloseTo(1.140, 5);
-    expect(book.seasonK9?.value).toBeCloseTo(16.8, 5);
+  it('asks for less than the man actually did, on every row', () => {
+    const book = seededBook();
+    for (const [key, mark] of Object.entries(book)) {
+      const real = REAL[key as RecordKey];
+      expect(real, `${key} has no real mark on file`).toBeDefined();
+      expect(mark.value, `${key} claims more than the real ${real}`)
+        .toBeLessThanOrEqual(real as number);
+    }
+  });
+
+  /*
+    The correction itself: each mark sits where this league produces a season
+    that beats it about once in fifteen to twenty years.
+
+    Measured rather than simulated here. `records-probe.ts` plays forty four
+    seasons of two dynasties to get `LEAGUE_BEST`, which takes minutes; what this
+    does is read the resulting distribution, which takes none. The band is wide
+    on purpose — a home run record can only move in whole home runs, so the
+    nearest available value to fifteen years may be twelve or twenty five — but
+    both ends of it are load bearing. Below ten and the row is a scoreboard that
+    the first good season wipes; above thirty it is furniture, which is the exact
+    failure this correction exists to undo.
+  */
+  it('sits where a great season beats it, but only about once in a generation', () => {
+    const book = seededBook();
+    for (const [key, mark] of Object.entries(book)) {
+      if (RECORDS[key as RecordKey].frozen) continue;
+      const spread = LEAGUE_BEST[key as RecordKey];
+      expect(spread, `${key} is seeded with nothing measured behind it`).toBeDefined();
+      const years = yearsToBeat(
+        mark.value, spread!, RECORDS[key as RecordKey].shape === 'count',
+      );
+      expect(years, `${key} falls every ${years.toFixed(1)} years`).toBeGreaterThan(10);
+      expect(years, `${key} takes ${years.toFixed(0)} years to fall`).toBeLessThan(30);
+    }
+  });
+
+  it('keeps the man, his school and his year on every corrected row', () => {
+    // The whole point of correcting rather than replacing: you are chasing
+    // Incaviglia, at a number that means here what his meant there.
+    const book = seededBook();
+    const who = (key: RecordKey): string =>
+      `${book[key]?.holder} · ${book[key]?.team} · ${book[key]?.year}`;
+    expect(who('seasonAvg')).toBe('Keith Hagman · New Mexico · 1980');
+    expect(who('seasonTriples')).toBe('Keith Hagman · New Mexico · 1980');
+    expect(who('seasonHR')).toBe('Pete Incaviglia · Oklahoma State · 1985');
+    expect(who('seasonRBI')).toBe('Pete Incaviglia · Oklahoma State · 1985');
+    expect(who('seasonTB')).toBe('Pete Incaviglia · Oklahoma State · 1985');
+    expect(who('seasonSlg')).toBe('Pete Incaviglia · Oklahoma State · 1985');
+    expect(who('seasonDoubles')).toBe('Brad Hawpe · LSU · 2000');
+    expect(who('seasonHitStreak')).toBe('Robin Ventura · Oklahoma State · 1987');
+    expect(who('seasonWins')).toBe('Mike Loynd · Florida State · 1986');
+    expect(who('seasonIP')).toBe('Floyd Bannister · Arizona State · 1976');
+    expect(who('seasonK9')).toBe('Ryan Wagner · Houston · 2003');
+    expect(who('seasonScoreless')).toBe('Todd Helton · Tennessee · 1994');
   });
 
   it('keeps Ventura at his real number, and marks it as the one out of reach', () => {
@@ -81,7 +145,7 @@ describe('the seeded marks', () => {
     const a = seededBook();
     const b = seededBook();
     (a.seasonHR as { value: number }).value = 99;
-    expect(b.seasonHR?.value).toBe(29);
+    expect(b.seasonHR?.value).toBe(18);
   });
 
   it('leaves a category with no verified mark genuinely unset', () => {
@@ -122,9 +186,9 @@ describe('taking a record', () => {
 
   it('will not let a tie unseat a seeded mark', () => {
     const book = seededBook();
-    expect(offer(book, 'seasonHR', { ...mark(29), holder: 'Somebody' })).toBe(false);
+    expect(offer(book, 'seasonHR', { ...mark(18), holder: 'Somebody' })).toBe(false);
     expect(book.seasonHR?.holder).toBe('Pete Incaviglia');
-    expect(offer(book, 'seasonHR', { ...mark(30), holder: 'Somebody' })).toBe(true);
+    expect(offer(book, 'seasonHR', { ...mark(19), holder: 'Somebody' })).toBe(true);
     expect(book.seasonHR?.ncaa).toBeUndefined();
   });
 });
@@ -295,7 +359,7 @@ describe('the season scan', () => {
   });
 
   it('names a holder off his roster, which is why it runs before the draft', () => {
-    // Past Incaviglia's 29, or the seeded mark simply keeps the row.
+    // Past Incaviglia's 18, or the seeded mark simply keeps the row.
     const line = {
       g: 45, ab: 200, r: 40, h: 90, d: 10, t: 1, hr: 35, rbi: 95, bb: 20,
       k: 30, hbp: 2, sb: 4, cs: 1,

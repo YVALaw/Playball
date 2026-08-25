@@ -2189,31 +2189,35 @@ be two different definitions of a season.
 first name out of the map takes an unset category at zero, and "0 stolen bases,
 held by a pitcher" is worse than an open row.
 
-### 13.3 The seeded marks, and the honest problem with them
+### 13.3 The seeded marks, and the two corrections they carry
 
-Twelve, all flagged `ncaa: true` in the data and badged **NCAA** on screen.
-Counting marks are scaled by games played — 45 against the 56-to-75 game seasons
-they were set in — and rates are taken exactly as they stand, because a .400
-average means the same thing at any season length.
+Twelve, all flagged `ncaa: true` in the data and badged **NCAA** on screen. Each
+one keeps its holder, his school and his year, and carries a value corrected for
+the league it has to be chased in. The screen says as much, and the line under
+each name is what the man actually did.
 
-| Mark | Real | Games | In the book |
-|---|---|---|---|
-| Home runs, Incaviglia 1985 | 48 | 75 | 29 |
-| RBI, Incaviglia 1985 | 143 | 75 | 86 |
-| Total bases, Incaviglia 1985 | 285 | 75 | 171 |
-| Triples, Hagman 1980 | 17 | 63 | 12 |
-| Doubles, Hawpe 2000 | 36 | 75\* | 22 |
-| Wins, Loynd 1986 | 20 | 75\* | 12 |
-| Innings, Bannister 1976 | 186 | 75\* | 112 |
-| Consecutive scoreless innings, Helton 1994 | 47 | 75\* | 28 |
-| Batting average, Hagman 1980 | .551 | rate | .551 |
-| Slugging, Incaviglia 1985 | 1.140 | rate | 1.140 |
-| Strikeouts per nine, Wagner 2003 | 16.8 | rate | 16.8 |
-| Consecutive games hitting, Ventura 1987 | 58 | — | **58** |
+| Mark | Real | Was | Now | league best | one in |
+|---|---|---|---|---|---|
+| Batting average, Hagman 1980 | .551 | .551 | **.500** | .463 ± .023 | 15 |
+| Home runs, Incaviglia 1985 | 48 in 75 g | 29 | **18** | 14.5 ± 2.4 | 15 |
+| RBI, Incaviglia 1985 | 143 in 75 g | 86 | **93** | 80.8 ± 7.0 | 19 |
+| Total bases, Incaviglia 1985 | 285 | 171 | **198** | 170.9 ± 15.9 | 17 |
+| Slugging, Incaviglia 1985 | 1.140 | 1.140 | **.830** | .757 ± .044 | 16 |
+| Triples, Hagman 1980 | 17 in 63 g | 12 | **10** | 8.1 ± 1.3 | 21 |
+| Doubles, Hawpe 2000 | 36 | 22 | **30** | 27.1 ± 2.2 | 13 |
+| Wins, Loynd 1986 | 20 | 12 | **16** | 14.3 ± 1.2 | 19 |
+| Innings, Bannister 1976 | 186 | 112 | **158** | 136.2 ± 12.8 | 16 |
+| Strikeouts per nine, Wagner 2003 | 16.8 | 16.8 | **13.5** | 12.0 ± 0.8 | 22 |
+| Consecutive scoreless innings, Helton 1994 | 47 | 28 | **32** | 25.5 ± 4.0 | 17 |
+| Consecutive games hitting, Ventura 1987 | 58 | 58 | **58** | — | never |
 
-\* the source does not record a season length; `ERA_GAMES` = 75 stands in, which
-is the top of the band and the length of both seasons that *are* recorded. Guessing
-high scales a mark down, and a mark pitched too high is furniture.
+"League best" is the best season ninety six programs produce in a year, mean and
+standard deviation over forty four seasons of two independent dynasties
+(`tests/records-probe.ts`, `LEAGUE_BEST`). "One in" is how many years this league
+needs to beat the seeded value, from a Gumbel fit — a league best is the maximum
+of fifteen hundred seasons and the maximum of a large sample takes that shape
+whatever the seasons look like, and the extreme-value curve is the one with the
+honest upper tail. A normal fit reports every mark as harder than it is.
 
 **Ventura's streak keeps its real number on purpose.** Forty five games cannot
 hold fifty eight, so the row can never change hands. One untouchable mark that
@@ -2223,38 +2227,84 @@ instead of implying it is in reach, and nothing anywhere computes a candidate fo
 it — there is no arrangement of a 45-game season that would produce one. A test
 asserts that exactly one row is frozen.
 
-**The thing that was revisited, and what is left of it.** The engine used to
-produce these league bests in a season: 9 HR, 56 RBI, 111 total bases, .427, .678
-slugging, 5 triples, 18 doubles, 11 wins, 96 innings, 10.9 K/9. Seven of the twelve
-seeds were out of reach, and the diagnosis was that they were set with aluminium
-bats in the 1980s against an engine calibrated to modern Division I.
+#### The history of this row, which is three revisions long
 
-Half of that diagnosis was wrong. The run *environment* was right; the curve from
-a rating to an outcome was too flat, so the best power hitter in the country
-earned only 1.7× the league home run rate where real leaders run about 3×. That
-was fixed in §9.7, and the league environment did not move to do it. Measured over
-six simulated seasons, the best individual season now:
+**One: the marks were seeded scaled by games played.** 45 against the 56-to-75
+game seasons they were set in, rates left alone. The decision is in 06-backlog.md
+("Records are scaled, not literal") and it was the obvious correction to make.
 
-| | Before | After | Seeded mark |
-|---|---|---|---|
-| Home runs | 10 | **12** (best of six: 14) | 29 |
-| Batting average | .431 | **.462** | .551 |
-| Slugging | .644 | **.736** | 1.140 |
-| Strikeouts | 96 | **107** | — |
-| ERA | 1.25 | 1.27 | — |
+**Two: seven of the twelve turned out to be unreachable, and the first diagnosis
+was half wrong.** The measured league bests were 9 HR, 56 RBI, 111 total bases,
+.427, .678 slugging, 5 triples, 18 doubles, 11 wins, 96 innings, 10.9 K/9, and the
+diagnosis was aluminium bats against an engine calibrated to modern Division I.
+The run *environment* turned out to be right; the curve from a rating to an
+outcome was too flat, so the best power hitter in the country earned 1.7× the
+league home run rate where real leaders run about 3×. §9.7 fixed the curve without
+moving the environment, and the best individual season went from 10 home runs to
+12, .431 to .462, .644 slugging to .736. **ERA deliberately did not move**: a
+pitcher's spread lives almost entirely in home runs, walks and strikeouts, his hit
+suppression on balls in play barely spreads in real baseball either, and a 1.03
+earned run average is already better than any Division I leader posts.
 
-So the marks moved a long way toward reachable without becoming cheap, and none of
-them is in reach yet. **ERA deliberately did not move**: a pitcher's spread lives
-almost entirely in home runs, walks and strikeouts, and his hit suppression on
-balls in play barely spreads in real baseball either — a 1.03 earned run average
-is already better than any Division I leader posts, and making it lower would have
-been the wrong kind of realism.
+**Three: the measurement those numbers came from was of the wrong thing**, and
+correcting it changed the answer in both directions.
 
-Scaling by games played remains the decision on record (06-backlog.md, "Records
-are scaled, not literal"). What is left of the gap is genuinely the aluminium bat:
-Incaviglia's 29 scaled home runs is eleven times what an average regular hits in
-this league, and no defensible rating curve puts one man there. Reachable today:
-innings, wins, doubles, triples and the scoreless streak.
+- **It left out the postseason.** The book is settled on the way into the draft
+  phase (§13.2), which is *after* the bracket, and a conference tournament game's
+  line goes into `season.batting` like any other — §8.5 says so in one sentence
+  and it is the sentence the seeding needed. The man who leads the country is
+  by construction on a team that played into June, so he finishes with fifty-odd
+  games and not forty five. Over the same forty leagues, counting the postseason
+  moves the average league best in innings from 98 to 125 and in home runs from
+  11.7 to 13.2. Dividing the real marks by 45 was never dividing by the right
+  number.
+- **It was taken on generated leagues rather than on a dynasty.** Ninety six
+  rosters straight out of `makeTeam` are not the league a record is chased in:
+  recruiting concentrates power where a generator spreads it, and a mature
+  league's best hitter is a home run and thirty points of slugging past a
+  generated one. Two twenty-two-year dynasties, run with every chair on the AI,
+  are what the table above is measured on. Neither series trends over its
+  twenty two years, so this is a settled league and not one still filling up.
+
+Between them, the book was not what either revision thought. Five rows were
+unreachable — home runs at one season in five thousand, slugging at one in a
+hundred thousand — and three more were being beaten by somebody in the country in
+all but a couple of the forty four seasons measured: doubles, innings and wins.
+The innings row is the clearest of the three — the seeded 112 was not once the
+best in the country across the twenty two years of the first series, whose
+weakest league-leading total was 117.
+
+#### What replaced the scaling, and why it is not one multiplier
+
+Each mark is now set where a genuinely exceptional season lands: **about one year
+in fifteen to twenty produces something that beats it**. That is a mark a great
+player reaches for once in a career and a long dynasty watches fall two or three
+times, and it is measurable, which "scaled by the run environment" was not — the
+1985 environment is not a number this project has a source for, and inventing one
+would have been a fudge factor with a story attached.
+
+The implied deflators are all over the place, which is the evidence that a single
+era ratio would have been wrong: .91 on batting average, .83 on doubles, .80 on
+wins, .73 on slugging, .65 on RBI, .375 on home runs. There is structure in that
+spread and it is worth keeping:
+
+- **A rate deflates less than a count, because a rate has a floor under it.** A
+  .551 average sits on top of a league that hits .270 (§9.6), so only the distance
+  above the league is era-sensitive and the correction is small. A home run total
+  has nothing under it — an average regular hits two or three — so the correction
+  is brutal.
+- **The engine's extra bases are not uniformly cold.** Its home run tail is well
+  short of the aluminium era and its doubles tail is not: the league's best
+  doubles hitter runs about half a double a game, which is what Hawpe's record
+  season ran. Scaling that mark down by games played was never going to leave
+  anything to chase.
+
+**No row asks for more than the man did.** Every seeded value is at or below the
+real one — 18 against 48, .500 against .551, 158 against 186 — which is the
+property that keeps these honest as NCAA records with a correction on them rather
+than as invented numbers with real names attached. A test enforces it, alongside
+one that reads `LEAGUE_BEST` and fails any row whose fitted return period leaves
+the ten-to-thirty-year band.
 
 ### 13.4 The one piece of extra state
 
@@ -2359,12 +2409,14 @@ changes nothing.
 batted in, hits, runs, steals, doubles, total bases, slugging; earned run average,
 strikeouts, wins, innings. `docs/06-backlog.md` section D has the real career marks
 and the arithmetic to scale them — Incaviglia's 100 home runs come out near 85 —
-and every one was rejected, because a career mark is four times a season mark and
-§13.3 already records that seven of the twelve *season* seeds are out of reach of
-this run environment. Seeding these would have put thirteen permanently unbeatable
-rows in a book whose stated rule is that exactly one row may be unreachable, and
-Ventura holds it. They start open, and the first man in the country to finish a
-career takes all thirteen.
+and every one was rejected. A career mark is four times a season mark, and §13.3
+is the record of how badly a plausible-looking scaling can miss: the same two
+corrections would have to be found for each of these against a distribution
+nobody has measured, and the season rows took two revisions and forty four
+measured seasons to get right. Guessing at thirteen more, in a book whose stated
+rule is that exactly one row may be unreachable, was not worth the page of 1980s
+names. They start open, and the first man in the country to finish a career takes
+all thirteen.
 
 **A career rate qualifies on two seasons' worth** — `CAREER_MIN_AB` = 180 at bats,
 `CAREER_MIN_IP` = 90 innings, the single-season bars doubled. A career rate is more

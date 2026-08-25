@@ -41,12 +41,19 @@ The arithmetic is the reason nationals had to grow. Four automatic bids into a
 four-team national field would *be* the whole field, and every conference
 tournament and regional beneath it would be decoration.
 
-### Records are scaled, not literal
+### Records are scaled, not literal — **revisited, and the method changed**
 
-Real marks come from 56-to-75-game seasons; ours is 45 (eleven three-game
-conference series plus twelve non-conference). Counting records are scaled by
-games played so they can actually be chased; rate records are taken as they
-stand, because a .400 average means the same thing in any season length.
+The principle stands: a seeded mark is corrected so it can actually be chased,
+and it keeps the man, the school and the year it was set in. The *method* was
+scaling by games played — 45 against the 56-to-75 game seasons they were set in,
+rates left alone — and that has been replaced, because measurement showed it
+getting the answer wrong in both directions. Five rows were unreachable and four
+were beaten by somebody in the country every single year.
+
+Each mark is now set where the measured distribution of best-in-league seasons
+puts a once-in-fifteen-to-twenty-years year, and no seeded value exceeds the real
+one. §13.3 of the systems reference has the arithmetic, the two measurement
+mistakes that hid the problem, and why one era multiplier could not have worked.
 
 ### S+ belongs to the store
 
@@ -179,14 +186,17 @@ half the achievements are all reading from the same book.
   which is the last moment the rosters that produced the numbers still exist.
   Ties go to the incumbent. Career records are explicitly not in it — that is
   B13. See `05-systems-reference.md` §13.
-- **B2 · Seed the book with real NCAA marks** — SHIPPED. Twelve seeds, counting
-  marks scaled by games played and rates left alone, flagged in the data and
-  badged **NCAA** on the screen. See §13.3, which recorded that seven of the
-  twelve were out of reach and blamed the run environment. Half of that was
-  wrong, and A7 above is the correction: the environment was right and the
-  rating curve was flat. With it fixed the best simulated season is 12 home runs
-  and .462 rather than 9 and .427, so the marks are a long way closer without
-  being cheap. What is left of the gap really is the aluminium bat.
+- **B2 · Seed the book with real NCAA marks** — SHIPPED, and re-pitched twice
+  since. Twelve seeds flagged in the data and badged **NCAA** on the screen. They
+  were scaled by games played, then §13.3 recorded that seven were out of reach
+  and blamed the run environment; A7 above is half of that correction (the
+  environment was right, the rating curve was flat). The rest is in §13.3: the
+  measurement behind both diagnoses left out the postseason, which the book
+  counts, and was taken on generated leagues rather than on a dynasty. Measured
+  properly, five rows were unreachable and four were beaten every single year.
+  Each mark is now set off the measured distribution of best-in-league seasons at
+  about one year in fifteen to twenty, keeps its holder, school and year, and
+  asks for no more than the man actually did.
 - **B3 · Achievements** — SHIPPED, all ten. One-time and permanent, as against
   records, which are there to be broken — so where the book keeps a sparse map of
   *marks*, this keeps a sparse map of *dates*, and the first time is never
@@ -557,11 +567,12 @@ half the achievements are all reading from the same book.
   to the draft step. Each row carries the year last folded in.
 
   **Nothing is seeded**, and section D below is the provenance of that decision
-  rather than a gap. A career mark is four times a season mark, and §13.3 already
-  records that seven of the twelve season seeds are out of reach — thirteen more
-  unbeatable rows would break the book's own rule that exactly one row may be
-  unreachable. The first man in the country to finish a career takes all thirteen,
-  which is worth watching in a way that a page of 1980s names is not.
+  rather than a gap. A career mark is four times a season mark, and §13.3 is the
+  record of how badly a plausible scaling of one can miss — the season rows took
+  two revisions and forty four measured seasons to land. Thirteen more guesses, in
+  a book whose rule is that exactly one row may be unreachable, was not worth it.
+  The first man in the country to finish a career takes all thirteen, which is
+  worth watching in a way that a page of 1980s names is not.
 - **B14 · The S+ store player** — deferred to v1.0. 82 overall on arrival, 99
   potential, ten badges, faster progression, exempt from the cap.
 
@@ -590,11 +601,18 @@ own.
 seeded in `engine/records.ts` with the arithmetic in a comment. **The career table
 below is deliberately not seeded**, and that is now a decision rather than a
 pending item: B13 shipped the career rows open. A career mark is four times a
-season mark, seven of the twelve season seeds are already out of reach of this run
-environment (§13.3), and the book's stated rule is that exactly one row may be
-unreachable by construction. This section stays because it is the provenance: it
-is where the numbers came from and what is still missing, and the seeds should not
-be edited without it.
+season mark, the same two corrections would have to be found for each against a
+distribution nobody has measured, and the book's stated rule is that exactly one
+row may be unreachable by construction. This section stays because it is the
+provenance: it is where the numbers came from and what is still missing, and the
+seeds should not be edited without it.
+
+**The "scaled to 45 games" column is history rather than instruction.** It is
+what the first seeding did and what the marks in the book were until the era
+correction; the values now in `engine/records.ts` are set off a measured
+distribution instead, and §13.3 has both the numbers and why the games-played
+scaling was getting the answer wrong in both directions. The **Real** column is
+the part of this table that is still load bearing.
 
 Gathered so far, from sources that could actually be read. The official NCAA
 records book is a two-hundred-page PDF that will not fetch; NCAA.com renders

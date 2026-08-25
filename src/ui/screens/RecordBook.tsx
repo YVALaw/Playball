@@ -88,8 +88,10 @@ export function RecordBook() {
     <div style={{ padding: '12px 14px 20px' }}>
       <div style={{ font: "400 12px/1.55 var(--body)", color: 'var(--dim)' }}>
         Every program in the country, for as long as this dynasty has run. Marks
-        tagged <Tag /> are the real ones, scaled to a forty-five game season —
-        counting records by games played, rates left exactly as they were set.
+        tagged <Tag /> are the real ones, corrected for the league you are chasing
+        them in — most were set with aluminium bats — and each sits where a great
+        season here beats it about once in a generation. What the man actually did
+        is printed under his name, and no row asks for more than that.
       </div>
 
       {SECTIONS.map((s) => (

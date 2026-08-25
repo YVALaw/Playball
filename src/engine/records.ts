@@ -241,41 +241,66 @@ export const CAREER_MIN_AB = BOOK_SEASON_GAMES * 2 * 2;
 export const CAREER_MIN_IP = BOOK_SEASON_GAMES * 2;
 
 /**
- * The length of the season a real mark was set in, where the source does not say.
+ * The real marks, corrected for the league they have to be chased in.
  *
- * Seventy five: the top of the 56-to-75 band, and the length of both seasons
- * that *are* recorded below. Guessing high scales a mark down, which is the safe
- * direction — the entire reason for seeding is to give a dynasty something to
- * chase, and a mark pitched too high is furniture.
- */
-const ERA_GAMES = 75;
-
-/**
- * A counting mark, in our season. Rate marks are not passed through here:
- * a .400 average means the same thing in a 45-game season as in a 75-game one.
- */
-const scaled = (real: number, games: number): number =>
-  Math.round((real * BOOK_SEASON_GAMES) / games);
-
-/**
- * The real marks, scaled, exactly as agreed in `docs/06-backlog.md`.
+ * **The correction they used to carry was half of one.** Every counting mark was
+ * multiplied by 45 over the length of the season it was set in and nothing else,
+ * on the reasoning that a shorter season is the only thing standing between a
+ * dynasty and Incaviglia. It is not. He hit his 48 with an aluminium bat in 1985,
+ * in a run environment nothing like the modern Division I one this engine is
+ * calibrated to (§9.6): 29 was arithmetically correct, and measured against this
+ * league it falls about once in five thousand years. A row that cannot be beaten
+ * is furniture, and this book is allowed exactly one piece of it.
  *
- * The arithmetic, all of it, so nobody has to re-derive it:
+ * **What replaced it is measured rather than argued.** `tests/records-probe.ts`
+ * plays whole leagues and keeps the best season in the country from each year —
+ * which is the sample a record chase actually draws from, one league-leading
+ * season per season — and each mark is set where a genuinely exceptional year
+ * lands: **about one season in fifteen to twenty beats it.** That is a record a
+ * great player reaches for once in a career and a long dynasty watches fall two
+ * or three times. The distribution is forty four seasons of two independent
+ * dynasties, ninety six programs each, offseason and all.
  *
- * | Mark | Real | Games | Scaled |
- * |---|---|---|---|
- * | Home runs, Incaviglia 1985 | 48 | 75 | 48 × 45/75 = 28.8 → **29** |
- * | RBI, Incaviglia 1985 | 143 | 75 | 143 × 45/75 = 85.8 → **86** |
- * | Total bases, Incaviglia 1985 | 285 | 75 | 285 × 45/75 = **171** |
- * | Triples, Hagman 1980 | 17 | 63 | 17 × 45/63 = 12.1 → **12** |
- * | Doubles, Hawpe 2000 | 36 | 75* | 36 × 45/75 = 21.6 → **22** |
- * | Wins, Loynd 1986 | 20 | 75* | 20 × 45/75 = **12** |
- * | Innings, Bannister 1976 | 186 | 75* | 186 × 45/75 = 111.6 → **112** |
- * | Scoreless innings, Helton 1994 | 47 | 75* | 47 × 45/75 = 28.2 → **28** |
+ * | Mark | Real | Was | Now | league best | one in |
+ * |---|---|---|---|---|---|
+ * | Batting average, Hagman 1980 | .551 | .551 | **.500** | .463 ± .023 | 15 |
+ * | Home runs, Incaviglia 1985 | 48 in 75 g | 29 | **18** | 14.5 ± 2.4 | 15 |
+ * | RBI, Incaviglia 1985 | 143 in 75 g | 86 | **93** | 80.8 ± 7.0 | 19 |
+ * | Total bases, Incaviglia 1985 | 285 | 171 | **198** | 170.9 ± 15.9 | 17 |
+ * | Slugging, Incaviglia 1985 | 1.140 | 1.140 | **.830** | .757 ± .044 | 16 |
+ * | Triples, Hagman 1980 | 17 in 63 g | 12 | **10** | 8.1 ± 1.3 | 21 |
+ * | Doubles, Hawpe 2000 | 36 | 22 | **30** | 27.1 ± 2.2 | 13 |
+ * | Wins, Loynd 1986 | 20 | 12 | **16** | 14.3 ± 1.2 | 19 |
+ * | Innings, Bannister 1976 | 186 | 112 | **158** | 136.2 ± 12.8 | 16 |
+ * | Strikeouts per nine, Wagner 2003 | 16.8 | 16.8 | **13.5** | 12.0 ± 0.8 | 22 |
+ * | Scoreless innings, Helton 1994 | 47 | 28 | **32** | 25.5 ± 4.0 | 17 |
+ * | Consecutive games hitting, Ventura 1987 | 58 | 58 | **58** | — | never |
  *
- * An asterisk is a season length the source does not record; see `ERA_GAMES`.
- * Batting average (.551), slugging (1.140) and strikeouts per nine (16.8) are
- * rates and are taken as they stand.
+ * "One in" is a Gumbel fit rather than a count of the sample: a league best is
+ * the maximum of fifteen hundred seasons, and the maximum of a large sample takes
+ * that shape whatever the seasons themselves look like. The probe explains why it
+ * is not a normal curve.
+ *
+ * **No row claims more than the man did.** Every value above is at or below the
+ * real one, which is the property that keeps these honest as NCAA records rather
+ * than as invented numbers with real names attached. Six of them went *up*
+ * against what the old scaling produced, and that is the same finding read from
+ * the other end: the games-played correction was too harsh on everything except
+ * home runs, and the doubles, innings and wins rows were being beaten by somebody
+ * in the country in all but a couple of the forty four seasons measured.
+ *
+ * **Two reasons the old numbers were so far out**, both worth keeping because
+ * they will be rediscovered otherwise. The first is that a rate and a count do
+ * not deflate alike: a .551 average sits on top of a league that hits .270, so
+ * only the *distance above the league* is era-sensitive, and the correction on
+ * the batting row is small (.551 → .500) where the correction on the home run row
+ * — a count with no floor under it — is brutal (48 → 18). The second is that the
+ * book counts the postseason. `store.ts` settles it on the way into the draft,
+ * which is after the bracket, so the man who leads the country is the man whose
+ * team played into June: fifty-odd games, not forty five. Measured over the same
+ * forty leagues, counting the postseason moves the average league best in innings
+ * from 98 to 125 and in home runs from 11.7 to 13.2. Dividing by 45 was never
+ * dividing by the right number.
  *
  * **Ventura's 58-game hitting streak keeps its real value on purpose.** Forty
  * five games cannot hold fifty eight, so the mark can never change hands, and
@@ -289,53 +314,42 @@ const scaled = (real: number, games: number): number =>
  *
  * **The career rows are deliberately not seeded, and that is a decision rather
  * than a gap.** `docs/06-backlog.md` section D has the real career marks and the
- * arithmetic to scale them — Incaviglia's 100 home runs come out near 85 over
- * four of our seasons — and every one of them was rejected. A career mark is four
- * times a season mark, and the note below records that seven of the twelve season
- * seeds are already out of reach of this run environment; seeding the career rows
- * would put thirteen permanently unbeatable records in the book at a stroke. The
- * rule this book is built on is that exactly one row is allowed to be
- * unreachable, and Ventura already holds it. So the career section starts open,
- * and the first man in the country to finish a career takes every row in it —
+ * arithmetic to scale them, and every one of them was rejected. A career mark is
+ * four times a season mark and the same two corrections would have to be found
+ * for each, against a distribution nobody has measured — the career section is
+ * young and its own rows have barely settled. The rule this book is built on is
+ * that exactly one row may be unreachable, Ventura already holds it, and the
+ * first man in the country to finish a career takes every career row there is —
  * which is worth watching happen in a way that a page of 1980s names is not.
- *
- * **What the engine can currently reach.** One simulated season of 96 programs
- * produced these league bests: 9 HR, 56 RBI, 111 total bases, .427 average, .678
- * slugging, 5 triples, 18 doubles, 11 wins, 96 innings, 10.9 K/9. So seven of
- * the twelve seeds are out of reach of the offensive environment as it stands —
- * these were set with aluminium bats in the 1980s and the engine is calibrated
- * to modern Division I run scoring. Scaling by games played is the decision on
- * record and this follows it; the gap is written down so it can be revisited
- * with numbers instead of rediscovered.
  */
 const SEEDS: Partial<Record<RecordKey, RecordMark>> = {
   seasonAvg: {
-    value: 0.551, holder: 'Keith Hagman', team: 'New Mexico', year: 1980,
-    detail: '125-for-227', ncaa: true,
+    value: 0.500, holder: 'Keith Hagman', team: 'New Mexico', year: 1980,
+    detail: 'real mark .551, 125-for-227', ncaa: true,
   },
   seasonHR: {
-    value: scaled(48, ERA_GAMES), holder: 'Pete Incaviglia',
+    value: 18, holder: 'Pete Incaviglia',
     team: 'Oklahoma State', year: 1985,
     detail: 'real mark 48 in 75 games — sources give 48 or 45', ncaa: true,
   },
   seasonRBI: {
-    value: scaled(143, ERA_GAMES), holder: 'Pete Incaviglia',
+    value: 93, holder: 'Pete Incaviglia',
     team: 'Oklahoma State', year: 1985, detail: 'real mark 143 in 75 games', ncaa: true,
   },
   seasonTB: {
-    value: scaled(285, ERA_GAMES), holder: 'Pete Incaviglia',
+    value: 198, holder: 'Pete Incaviglia',
     team: 'Oklahoma State', year: 1985, detail: 'real mark 285 in 75 games', ncaa: true,
   },
   seasonSlg: {
-    value: 1.140, holder: 'Pete Incaviglia', team: 'Oklahoma State', year: 1985,
-    ncaa: true,
+    value: 0.830, holder: 'Pete Incaviglia', team: 'Oklahoma State', year: 1985,
+    detail: 'real mark 1.140', ncaa: true,
   },
   seasonTriples: {
-    value: scaled(17, 63), holder: 'Keith Hagman', team: 'New Mexico', year: 1980,
+    value: 10, holder: 'Keith Hagman', team: 'New Mexico', year: 1980,
     detail: 'real mark 17 in 63 games', ncaa: true,
   },
   seasonDoubles: {
-    value: scaled(36, ERA_GAMES), holder: 'Brad Hawpe', team: 'LSU', year: 2000,
+    value: 30, holder: 'Brad Hawpe', team: 'LSU', year: 2000,
     detail: 'real mark 36', ncaa: true,
   },
   seasonHitStreak: {
@@ -343,19 +357,19 @@ const SEEDS: Partial<Record<RecordKey, RecordMark>> = {
     ncaa: true,
   },
   seasonWins: {
-    value: scaled(20, ERA_GAMES), holder: 'Mike Loynd', team: 'Florida State',
+    value: 16, holder: 'Mike Loynd', team: 'Florida State',
     year: 1986, detail: 'real mark 20', ncaa: true,
   },
   seasonIP: {
-    value: scaled(186, ERA_GAMES), holder: 'Floyd Bannister',
+    value: 158, holder: 'Floyd Bannister',
     team: 'Arizona State', year: 1976, detail: 'real mark 186', ncaa: true,
   },
   seasonK9: {
-    value: 16.8, holder: 'Ryan Wagner', team: 'Houston', year: 2003,
-    ncaa: true,
+    value: 13.5, holder: 'Ryan Wagner', team: 'Houston', year: 2003,
+    detail: 'real mark 16.8', ncaa: true,
   },
   seasonScoreless: {
-    value: scaled(47, ERA_GAMES), holder: 'Todd Helton', team: 'Tennessee',
+    value: 32, holder: 'Todd Helton', team: 'Tennessee',
     year: 1994, detail: 'real mark 47 straight', ncaa: true,
   },
 };
