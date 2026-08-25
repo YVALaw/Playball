@@ -38,11 +38,13 @@ regular season, and a career an athletic director can end. Ships to Android.
 
 ## Where it stands
 
-**v0.7.3, and the loop is closed.** Take a job, play or simulate a season, manage
-a postseason run a game at a time, hand out awards, spend coaching points, read a
-recruiting board that is honest about being vague, lose players to the draft, and
-start again in February. Twenty-one test files cover it, calibration among them,
-so the engine cannot drift without something failing.
+**v0.7.4 plus five feature blocks, and the loop is closed.** Take a job, play or
+simulate a season, manage a postseason run a game at a time, hand out awards,
+spend coaching points, read a recruiting board that is honest about being vague,
+argue the draft out of taking your junior, and start again in February — against
+ninety-five rival programs run by men with careers of their own. Twenty-six test
+files cover it, calibration among them, so the engine cannot drift without
+something failing.
 
 **What is missing is the phone.** There is no Capacitor project, no Android
 build, no keystore, no store listing. The whole point of the project is a phone
@@ -290,7 +292,7 @@ is not licence to corrupt a save quietly — a load must still fail honestly.
 
 ## Still open
 
-Two questions, and the old file's three are not among them: NIL, park effects
+One question, and the old file's three are not among them: NIL, park effects
 and iOS are all settled above.
 
 Answered since: **whether the seeded NCAA marks should be re-pitched.** They have
@@ -299,24 +301,34 @@ where this league produces a season that beats it about once in fifteen to
 twenty years — measured, not multiplied by a guess at the 1985 run environment.
 Ventura's streak is still the one row nobody can touch. §13.3 has the table, the
 method and the two measurement mistakes that hid the size of the problem.
-- **Which channels a badge may attach to**, and how a situation is defined in
-  engine terms. Tiers, caps and earning routes are agreed; this is not
-- **Whether the recruiting asymmetry is intentional** — AI programs allocate
-  against a flat weekly budget while the user's scales with prestige
+
+Answered since, too: **which channels a badge may attach to** — twenty-three of
+them, each naming one channel and one situation, §18.5 — and **whether the
+recruiting asymmetry was intentional**. It was not. Every program's week now
+comes off `weeklyBudget(stars, spentInJune)`, the same call the user's board
+header makes, which was the precondition for letting the other ninety-five keep
+drafted players at all.
+
+- **The last percentage point of the walk deficit.** The eight-seed sweep reads
+  walks 5.2% under target and only about half of that is accounted for. It is a
+  game-level effect of the kind the pace channel turned out to be, and it wants
+  the same treatment: isolate a channel, measure it against the sweep, dial it.
+  §18.8
 
 ## Debt
 
-- Source comments across the engine, the store, the world builder, the school
-  data and two screens still describe a **sixty-four program** world. It has
-  ninety-six. All of them are comments — none of it reaches the player — which
+- Four UI files — `Avatar.tsx`, `Player.tsx`, `Standings.tsx`, `TeamCard.tsx` —
+  still carry a comment describing a **sixty-four program** world. It has
+  ninety-six. The engine, the store, the world builder and the school data were
+  swept; all that is left is comments, none of it reaches the player, which
   makes it cheap to fix and easy to keep forgetting
 - `sim.ts parity` still prints a verdict off a thirty-point rating gap the shipped
   world never produces, and the verdict is wrong. The curve it should be read
   against is in `tests/parity-sweep.ts` (T1 in the implementation plan)
 - The stale comments and vestigial exports catalogued in appendix A of the systems
   reference
-- `package.json` says v0.6.2 and the README still describes a thirty-three game
-  season and a single autosave. Both are behind the code
+- ~~`package.json` says v0.6.2 and the README still describes a thirty-three game
+  season and a single autosave.~~ Both fixed
 
 ## The budgets
 

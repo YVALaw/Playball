@@ -7,35 +7,42 @@ Mobile first, shipping to Android.
 
 ## Status
 
-**v0.6.2.** Phases 0 through 6 are done: the engine, the season, the app shell,
-roster management, recruiting, the 3D field and the dynasty layer. The whole loop
-runs — pick a job, play or simulate a 33 game season, go through the postseason a
-game at a time, hand out awards, spend coaching points, recruit a class over three
-weeks, lose players to the draft, and start again the following February.
+**v0.7.4, and a batch of five feature blocks on top of it.** Ninety-six programs
+in eight conferences of twelve, a forty-five game regular season, and the whole
+loop runs: pick a job, play or simulate a season, go through the postseason a
+game at a time, hand out awards, spend coaching points, read a recruiting board
+that is honest about being vague, argue the MLB draft out of taking your junior,
+and start again the following February. Rival programs are run by ninety-five
+named men with careers of their own. There is a record book, a hall of fame, an
+inbox, badges, tendencies and a defence that is nine players rather than one
+number.
 
-Phase 7 — shipping — has not started. No Capacitor build, no Android package, no
-onboarding, no save slots.
+What is missing is the phone. No Capacitor project, no Android build, no
+keystore, no store listing, no onboarding. It is deliberately last — nothing
+else waits on it.
 
-The engine is calibrated multi-seed against sourced NCAA D1 rates and is within
-about 3 percent on every target. 235 tests, including determinism goldens and
-calibration as a regression test.
+The engine is calibrated multi-seed against sourced NCAA D1 rates. 687 tests
+across 26 files, including determinism goldens and calibration as a regression
+test.
 
 | Not built yet | |
 |---|---|
-| Capacitor / Android | hardware back button, safe area insets, signed build |
+| Capacitor / Android | hardware back button, signed build. Safe-area insets are done |
 | Injuries and fatigue across a season | |
-| Redshirts and eligibility | |
-| Multiple save slots | one autosave today |
-| Onboarding | |
+| Redshirts | draft eligibility exists; redshirting does not |
+| Transfer portal | |
+| Onboarding | the game now has scouting bands, badges and a record book to explain |
 
 ## Docs
 
 | Doc | What it covers |
 |-----|----------------|
-| [01-roadmap.md](docs/01-roadmap.md) | The product, the stack, the build phases |
+| [01-roadmap.md](docs/01-roadmap.md) | The product, the stack, what is left and in what order |
 | [02-sim-engine-spec.md](docs/02-sim-engine-spec.md) | Engine internals, the baseball research behind them |
 | [03-engine-salvage-audit.md](docs/03-engine-salvage-audit.md) | The two forked engine copies and what to keep from each |
 | [04-implementation-plan.md](docs/04-implementation-plan.md) | Defect register and the phase-by-phase plan |
+| [05-systems-reference.md](docs/05-systems-reference.md) | **Every system in the game, with its numbers — and the register of what the game hides from the player.** Start here |
+| [06-backlog.md](docs/06-backlog.md) | What is agreed, what is still a question, and the argument behind each |
 
 ## Run it
 
@@ -60,11 +67,21 @@ The headless CLI is still there, and is still how the engine gets measured:
 ```
 npm run sim -- game                     one game with text play by play
 npm run sim -- game --engine pitch      same, using engine B
+npm run sim -- season                   a full league season
 npm run calibrate                       league totals vs real D1 targets
 npm run sim -- compare --n 1000         both engines side by side
 npm run sim -- platoon --n 40000        prove the handedness model works
 npm run sim -- parity --n 800           does the better team win too often
 npm run goldens                         re-record the determinism goldens
+```
+
+Three probes are heavier than a test and print a judgment rather than a pass,
+so they live outside Vitest and are run by hand:
+
+```
+npm run balance                         what badges and tendencies cost the league
+npm run carousel -- 35 20260825         thirty-five seasons of the coaching carousel
+npm run parity-sweep                    the better-team-wins curve across rating gaps
 ```
 
 ## Layout
@@ -84,15 +101,19 @@ sim.ts        the headless CLI, kept forever
 | Engine file | What it holds |
 |------|---------------|
 | `src/engine/ratings.ts` | Every baseball number in the game. League rates, rating to rate conversion, platoon math, fatigue. **Tune here and nowhere else.** |
-| `src/engine/players.ts` | Player and team generation, the defensive spectrum, handedness, potential |
+| `src/engine/players.ts` | Player and team generation, the defensive spectrum, handedness, ages, potential |
 | `src/engine/pitchModel.ts` | One pitch at a time. Zone rates and swing rates by count |
 | `src/engine/engines.ts` | Both plate appearance engines |
 | `src/engine/game.ts` | Nine innings, baserunning, steals, errors, fielders, box score |
-| `src/engine/season.ts` | Schedule, standings, RPI, season statistics |
-| `src/engine/postseason.ts` | Conference tournaments, selection, regionals, Omaha |
-| `src/engine/recruiting.ts` | The three week window, pitches, priorities, commitments |
-| `src/engine/progression.ts` | Offseason development, the draft, roster turnover |
-| `src/engine/program.ts` | Prestige, coach attributes, job offers, getting fired |
+| `src/engine/season.ts` | Schedule, standings, RPI, season statistics, tiebreakers, the career ledger |
+| `src/engine/postseason.ts` | Conference tournaments, selection, regionals, Omaha, awards |
+| `src/engine/recruiting.ts` | The three week window, scouting reports, priorities, commitments |
+| `src/engine/progression.ts` | Offseason development, departures, walk-ons, roster turnover |
+| `src/engine/draft.ts` | Eligibility, what the clubs can see, the round, talking him out of it |
+| `src/engine/program.ts` | Prestige, coach skills, the board, job offers, getting fired |
+| `src/engine/rivals.ts` | The other ninety-five coaches and the carousel |
+| `src/engine/pitches.ts`, `tendencies.ts`, `badges.ts`, `traits.ts` | What a man throws, what he is like, and what he is good at |
+| `src/engine/records.ts`, `hall.ts`, `achievements.ts` | The all-time book, induction, and the cabinet |
 | `sim.ts` | CLI and the calibration harness |
 
 ## The two engines
@@ -125,6 +146,13 @@ Turn it up and stars separate more, but the better team starts winning too often
 and the dynasty mode feels rigged. Turn it down and everyone plays the same.
 
 Any time you change `SPREAD`, rerun `calibrate` and `parity` together.
+
+Most of the time it is the wrong knob. How far a rating goes differs **per
+event** — `BAT_SENS` and `PIT_SENS` beside it — and that is where the last
+widening pass happened, because `SPREAD` also stretches singles and balls in
+play, whose spread was already right and which are what decide games. Widening
+an event costs a matching entry in `BAT_NORM` or `PIT_NORM` to hold the league's
+realized rate where it was. See §9.7 of the systems reference.
 
 ## The prototype in `design/`
 

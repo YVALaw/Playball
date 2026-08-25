@@ -191,7 +191,7 @@ Ordered by dependency. Records come first because badges, the hall of fame and
 half the achievements are all reading from the same book.
 
 - **B1 · The records book** — SHIPPED. League-wide, thirty-eight rows, holders
-  only. Single game and feats are taken inside `recordResult`; single season,
+  only — fifty-two now, once B13's career table and B6's regional row went in. Single game and feats are taken inside `recordResult`; single season,
   team season and coaching come off a scan on the way into the draft phase,
   which is the last moment the rosters that produced the numbers still exist.
   Ties go to the incumbent. Career records are explicitly not in it — that is
@@ -753,8 +753,10 @@ Fold in opportunistically rather than as a work item of their own.
   read.~~ Deleted with the item above. They became a second, *wrong* opinion about
   the ask the moment contenders stopped needing a bid.
 - Stale comments listed in appendix A of the systems reference. The postseason
-  note that described four-team double-elimination regionals is gone; what is
-  left there is `FIELD_SIZE`, the five UI files above, and four smaller ones.
+  note that described four-team double-elimination regionals is gone, and so are
+  four more rows that were fixed rather than catalogued; what is left there is
+  `FIELD_SIZE`, the four UI files below, the `'?'` grade docstring and
+  `BOARD_SLOTS`.
 
 ## G. From the original roadmap, never built
 
@@ -834,10 +836,11 @@ Park geometry (see G4) belongs to this track.
 
 - **Source files that say the world has 64 programs.** Mostly done: the engine,
   the state layer, the data file, `Rankings.tsx`, `Today.tsx` and `Wire.tsx` are
-  swept, along with the `PostseasonProgress` comment below. Five UI files were
+  swept, along with the `PostseasonProgress` comment below. Four UI files were
   outside that pass and still carry one — `Avatar.tsx`, `Player.tsx`,
-  `Program.tsx`, `Standings.tsx`, `TeamCard.tsx` — and they are listed in
-  appendix A of the systems reference. **One correction to an earlier draft of
+  `Standings.tsx`, `TeamCard.tsx` — and they are listed in appendix A of the
+  systems reference. `Program.tsx`'s went with B12, because it was screen copy
+  rather than a comment. **One correction to an earlier draft of
   this line, which claimed none of it reached the screen: one did.**
   `SeasonReview.tsx` told a coach who made Omaha he was one of "four teams out
   of sixty four", and that was copy the player reads. It is fixed. The rest is
@@ -848,9 +851,10 @@ Park geometry (see G4) belongs to this track.
   plan reversed its own conclusion in a later calibration pass — 18% was too
   high rather than too low, `LEAGUE_K_RATE` is the sourced 0.164, and
   `CONTEXT.normalizer` closed B6 in the same move.
-- `package.json` says **0.6.2** while the last release commit is v0.7.4, and the
-  README still describes a 33-game season and "no save slots" when the season is
-  45 games and named slots shipped.
+- ~~`package.json` says **0.6.2** while the last release commit is v0.7.4, and the
+  README still describes a 33-game season and "no save slots".~~ Both fixed.
+  `package.json` reads 0.7.4, and the README describes the forty-five game
+  season, the named slots, and the five blocks that have landed since.
 - ~~`state/store.ts`, above `PostseasonProgress`, claims the national bracket is
   one sixteen-team tree.~~ Fixed. It is three tournaments that are played, not
   four steps that are clicked through; `REGIONAL_LENGTHS` is one series and

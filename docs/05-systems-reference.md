@@ -1,8 +1,9 @@
 # Systems Reference: what the game does, and what it does not say
 
-**Last updated:** August 24, 2026
-**Companion docs:** `01-roadmap.md` for the product and stack, `02-sim-engine-spec.md`
-for engine internals, `03-engine-salvage-audit.md` for the forked engine copies,
+**Last updated:** August 25, 2026
+**Companion docs:** `01-roadmap.md` for the product and stack, `06-backlog.md` for
+what is agreed and not yet built, `02-sim-engine-spec.md` for engine internals,
+`03-engine-salvage-audit.md` for the forked engine copies,
 `04-implementation-plan.md` for the phase plan and defect register.
 
 ---
@@ -27,9 +28,9 @@ a design and becomes folklore, and the next person to touch it either
 reimplements it or breaks it.
 
 The **[Hidden Mechanics Index](#hidden-mechanics-index)** below is that register.
-It is meant to be complete for what exists today. More hidden systems are
-planned — badges especially — and every one of them gets a row in that table on
-the day it lands.
+It is meant to be complete for what exists today. The systems that were planned
+when it was written — badges especially — have since landed and taken their
+rows; whatever is built next gets one on the day it does.
 
 ## How to keep it current
 
@@ -55,16 +56,13 @@ the day it lands.
 | **IN FLIGHT** | Being written right now. Present in the working tree, behaviour may still move. |
 | **PLANNED** | Designed and agreed. **Nothing is built.** No code implements it. |
 
-> **A note on the working tree.** As of this writing several engine files carry
-> uncommitted changes — `types.ts`, `players.ts`, `game.ts`, `season.ts`,
-> `progression.ts`, `recruiting.ts`, `scouting.ts`, `program.ts`, and
-> `state/seasonCodec.ts` among them, along with the four files §18 is built on:
-> `pitches.ts`, `tendencies.ts`, `badges.ts` and `traits.ts`. Everything documented here is read from the
-> working tree, i.e. from the game as it behaves today. The defensive-attribute
-> and fielding-statistics work is marked **IN FLIGHT** throughout; the recruiting
-> scouting-report system is marked **SHIPPED** because it is complete, wired, and
-> carries close to 300 lines of dedicated tests in `tests/recruiting.test.ts`,
-> even though the commit has not landed yet.
+> **A note on the working tree.** An earlier draft of this document was written
+> against a tree with a dozen engine files uncommitted, and several sections
+> carried **IN FLIGHT** for work that was finished but unlanded — the defensive
+> layer of §10 most of all. Nothing is in that state now: every system described
+> here is committed, wired to the simulation and covered by tests, and no
+> section carries the marker. If one ever does again, it means exactly what the
+> legend says and it is a promise to come back and change it.
 
 ---
 
@@ -93,17 +91,20 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 17 | **AI programs abandon a recruit they are more than 40% behind on.** | Suitors quietly dropping off a recruit's page. | `aiTargets` — `engine/recruiting.ts` | SHIPPED |
 | 18 | **An uncontested recruit gets a scaled AI bonus, `1 + 0.18 × stars`.** | Blue chips rarely staying uncovered for long. | `aiTargets` — `engine/recruiting.ts` | SHIPPED |
 | 19 | **Recruiting budget scales with your program's star tier**, 40 up to 60. | The budget number on the board header. | `budgetFor` — `engine/recruiting.ts` | SHIPPED |
-| 20 | **A scholarship you do not spend becomes a walk-on 13 points below your program's level.** | A name on the roster with a bad rating. | `WALK_ON_PENALTY` — `engine/progression.ts` | SHIPPED |
+| 20 | **A scholarship you do not spend becomes a walk-on 13 points below your program's level.** | A name on the roster with a bad rating. | `WALK_ON_PENALTY` — `engine/progression.ts`; §2.10 | SHIPPED |
+| 20a | **A walk-on is gone after one *season*, not after one class year.** He is manufactured as a freshman, and the question is asked before `departure` and independently of what the roster calls him — so a spot filled this way is a spot you are shopping for again next winter. Asking first also costs no `rng()` draw, so nothing about who else leaves depends on how many walk-ons a program is carrying. | A name that turns up for a year and is not there the next. | `Player.walkOn`, `departAndDevelop` — `engine/progression.ts`; §2.10 | SHIPPED |
 | 21 | **7% of generated freshmen get a large extra headroom draw** on top of ordinary headroom. This is the only reason hidden gems exist. | Nothing at all. | `projectPotential` — `engine/players.ts` | SHIPPED |
+| 21a | **No player the world makes may be given a ceiling above 94**, one below the S+ floor, and nothing on any screen says the grade is reserved. The gate is on the number rather than the letter, so development, the scouting bands and the draft all agree about it. | An S+ nobody ever scouts, and a top grade that reads as merely very rare. | `GENERATED_POTENTIAL_CAP`, `TOP_GENERATED_GRADE` — `engine/scouting.ts`; §1.6 | SHIPPED |
 | 22 | ~~**Platoon skill is a hidden per-player number.**~~ **Surfaced, as B17.** The number itself is still not printed, but what it does to a man is: THE SPLIT panel on the ratings tab shows his contact and power against each hand and the production swing underneath, off the same arithmetic `platoonMultiplier` uses. The distribution can still go negative, so real reverse-split players exist and the card says so. | Two columns, VS RHP and VS LHP. | `drawPlatoonSkill` — `engine/players.ts`; `platoonSplit`, `platoonMultiplier` — `engine/ratings.ts`; §18.7 | SHIPPED |
 | 23 | **The coach's OFFENSE skill is worth 1 basis point per point**, capping at ×1.0079 on the whole offensive vector. Home field is ×1.020. | A blurb: "slightly better at-bats". | `TeamState.coachOffMult` — `engine/game.ts` | SHIPPED |
 | 24 | **DEFENSE likewise, ×0.9921 at the cap**, applied to singles, doubles and triples only. | A blurb. | `TeamState.coachDefMult`, `log5Outcome` — `engine/game.ts`, `engine/engines.ts` | SHIPPED |
 | 25 | **TRAINING scales only the systematic pull toward potential, never the noise** — ×1.158 at 99. | Slightly better development years. | `develop`, `OffseasonOpts.training` — `engine/progression.ts` | SHIPPED |
 | 26 | **Every program's coach skills reach the simulation, not only yours.** This was the reverse until B7: the other 95 played at raw ratings with a flat coach prestige of 45, recruiting 20 and training 20. Each chair now has a named man whose four skills feed the bench edge, his players' development, his recruiting pitch and what he can promise a drafted player. `AVERAGE_STAFF` is the fallback for a chair with nobody in it. | A rival program that recruits or develops better than its name suggests. | `syncCoachMods` — `engine/rivals.ts`; `advanceRecruitingWeek` — `state/store.ts`; `AVERAGE_STAFF` — `engine/draft.ts`; §16.7 | SHIPPED |
-| 27 | **Coach age, name, home state and portrait never reach the simulation.** | A creation form that looks like it matters. | `CoachProfile` — `engine/program.ts` | SHIPPED |
+| 27 | **Your coach's age, name, home state and portrait never reach the simulation.** He does not retire and nothing reads where he is from. A *rival's* name and age do reach it — his retirement age is hashed off his name (row 71) — which is the one place the two kinds of coach genuinely differ. | A creation form that looks like it matters. | `CoachProfile` — `engine/program.ts`; `retireAge` — `engine/rivals.ts` | SHIPPED |
 | 28 | **Trophy floors on the coach title.** A national champion can never be introduced below LEGENDARY however far prestige falls. | A word beside HEAD COACH. | `coachStanding` — `engine/program.ts` | SHIPPED |
 | 29 | **A first-year coach's negative security hit is halved.** | Surviving a bad first season. | `reviewSeason` — `engine/program.ts` | SHIPPED |
 | 30 | **The win target is priced off roster strength alone and sits ~1.5 wins below the median outcome**, buying about a 62% clear rate. | "The board wants 22." | `expectationFor` — `engine/program.ts` | SHIPPED |
+| 30a | **A board may *require* only what the format can seat.** The checklist is on screen; the rule that shapes it is not. It is why a national bid is a bonus at every mandate rather than a requirement of contenders — there are eight bids and were fifteen to twenty programs asked for one — and why `contend` asks for a top-three finish instead of a top half. Two tests price the seats off `NATIONAL_BIDS`, `OMAHA_BERTHS` and the conference table rather than off the number eight, so the day the field grows they stop objecting on their own. | A board that asks for hard things and not for impossible ones. | `objectivesFor` — `engine/program.ts`; §6.3a | SHIPPED |
 | 31 | **A proud program with a gutted roster discounts its own hiring bar** to the midpoint of prestige and roster. | A big job you can somehow get. | `hiringBar` — `engine/program.ts` | SHIPPED |
 | 32 | **Coach prestige decays toward 45 every year**, at 4% of the distance. | Standing slipping in a quiet decade. | `nextCoachPrestige` — `engine/program.ts` | SHIPPED |
 | 33 | **Coach of the Year is chosen by salience** — each category's winner divided by that category's league-wide standard deviation this season — not by a precedence list. | One award and one sentence. | `coachOfTheYear` — `engine/postseason.ts` | SHIPPED |
@@ -112,13 +113,15 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 36 | **A blanket shift is a wash.** Measured at 4.72 → 4.71 runs allowed over 2,500 games. SITUATIONAL declines the bet against runners and non-pullers. | Three alignment options that look like three sizes of one thing. | `alignmentAgainst`, `SHIFT` — `engine/strategy.ts` | SHIPPED |
 | 37 | **Calling for a steal does not improve its odds.** `forced` skips the attempt roll and nothing else. | A button that sometimes works. | `attemptSteal` — `engine/game.ts` | SHIPPED |
 | 38 | **The automatic game only ever steals second.** A manager gets whichever bag is open; the AI does not. | Nothing. | `resolveSteal` — `engine/game.ts` | SHIPPED |
-| 39 | **The catcher's arm suppresses attempts as well as converting them**, so a cannon shows up as empty basepaths rather than as a big caught-stealing total. | A quiet running game against certain teams. | `attemptSteal` — `engine/game.ts` | IN FLIGHT |
-| 40 | **The catcher's arm is re-centred on 60, not 50**, because the position generates ten points above school quality. | Nothing. | `AVERAGE_CATCHER_ARM`, `catcherArm` — `engine/game.ts` | IN FLIGHT |
-| 41 | **`bunt` and `steal` ratings are derived from the player's own profile**, not rolled free. | A slugger who cannot lay one down. | `makeHitter` — `engine/players.ts` | IN FLIGHT |
-| 42 | **Range is measured against the fielder's own team average, not against 50**, so a good shortstop redistributes plays rather than adding defence to the league. | Plays above expected on a fielding line. | `createHalfInning` range swing, `TeamState.defense` — `engine/game.ts` | IN FLIGHT |
-| 43 | **The out-to-hit direction is scaled by 0.178/0.4885** so good and bad gloves balance and league scoring does not move. | Nothing. | `OUT_TO_HIT_BALANCE` — `engine/game.ts` | IN FLIGHT |
-| 44 | **Two separate error paths, glove and throw**, splitting one calibrated total rather than adding to it. | "reaches on an error" vs "throwing error". | `GLOVE_ERROR_BASE`, `THROW_ERROR_BASE` — `engine/game.ts` | IN FLIGHT |
-| 45 | **A pitcher's `armAccuracy` is pulled toward his control**; his fielding ratings are centred below a position player's. | Comebackers thrown away. | `makePitcher` — `engine/players.ts` | IN FLIGHT |
+| 39 | **The catcher's arm suppresses attempts as well as converting them**, so a cannon shows up as empty basepaths rather than as a big caught-stealing total. | A quiet running game against certain teams. | `attemptSteal` — `engine/game.ts` | SHIPPED |
+| 40 | **The catcher's arm is re-centred on 60, not 50**, because the position generates ten points above school quality. | Nothing. | `AVERAGE_CATCHER_ARM`, `catcherArm` — `engine/game.ts` | SHIPPED |
+| 41 | **`bunt` and `steal` ratings are derived from the player's own profile**, not rolled free. | A slugger who cannot lay one down. | `makeHitter` — `engine/players.ts` | SHIPPED |
+| 42 | **Range is measured against the fielder's own team average, not against 50**, so a good shortstop redistributes plays rather than adding defence to the league. That average is weighted by how often each position is actually thrown a ball, because an unweighted one sat below the man who fields it and turned the whole thing into a league-wide upgrade. | Plays above expected on a fielding line. | `RANGE_SWING`, `FIELDING_SHARE`, `TeamState.defense` — `engine/game.ts` | SHIPPED |
+| 43 | **The out-to-hit direction is scaled by 0.178/0.4885** so good and bad gloves balance and league scoring does not move. | Nothing. | `OUT_TO_HIT_BALANCE` — `engine/game.ts` | SHIPPED |
+| 44 | **Two separate error paths, glove and throw**, splitting one calibrated total rather than adding to it. | "reaches on an error" vs "throwing error". | `GLOVE_ERROR_BASE`, `THROW_ERROR_BASE` — `engine/game.ts` | SHIPPED |
+| 44a | **Half the first baseman's ground balls are a feed to the pitcher covering the bag, and that play reads two men** — the fielder's accuracy and the pitcher's hands — while the error goes on the first baseman's line either way. A real scorer would split it; the engine resolved the play in one roll and does not pretend to know which end of it failed. | A throwing error charged to the first baseman. | `throwRisk`, `COVER_FIRST_SHARE` — `engine/game.ts`; §10.5 | SHIPPED |
+| 45 | **A pitcher's `armAccuracy` is pulled toward his control**; his fielding ratings are centred below a position player's. | Comebackers thrown away. | `makePitcher` — `engine/players.ts` | SHIPPED |
+| 45a | **The two fielding numbers on the card do not have the zero the player will assume.** `playsAboveExpected` counts an error as a play not made, so the league average is about minus one per team per game rather than nought; `fieldingPct` divides by chances rather than by putouts plus assists, so it lands near .960 against a real D1 .967. Both are for comparing defenders with each other. | Two figures on a fielding line. | `fieldingPct`, `playsAboveExpected` — `engine/season.ts`; §10.6 | SHIPPED |
 | 46 | **A ceiling a player has already cleared is silently revised upward.** | Potential that moves. | `develop` — `engine/progression.ts` | SHIPPED |
 | 47 | **Underclassmen are exposed by age, not by talent.** Three years completed *or* twenty one, whichever comes first — so the ~20% of freshmen who arrive at 19 or 20 come into range one or two Junes early. Eligibility itself is stated on the player card; what the card does not say is that a club then discounts him for the years of eligibility he could walk back to (×0.35 for a sophomore, ×0.15 for a freshman). | Losing a sophomore, rarely. | `draftEligible`, `yearsOfLeverage` — `engine/draft.ts`; `LEVERAGE_DISCOUNT`, `departure` — `engine/progression.ts`; §14.1 | SHIPPED |
 | 47a | **Arrival age is hashed from the player id, not drawn**, so it costs the generator no rng call and cannot move a calibration figure. 80% at 18, 15% at 19, 5% at 20. | An age on the card. | `arrivalAge`, `ARRIVAL_SALT` — `engine/players.ts`; §14.1 | SHIPPED |
@@ -141,12 +144,14 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 56 | **Player generation draw order is load-bearing.** Adding or removing an `rng()` call shifts every downstream number in the simulation. | Nothing. | header comment, `engine/players.ts` | SHIPPED |
 | 57 | **The report tab renames ratings.** A pitcher's `stuff` prints as `K/9`, `movement` as `H/9`, `control` as `BB/9`; a hitter's `eye` prints as `DISCIPLINE` and `range` as `REACTION`. | Different words from the ones the roster uses. | `Report` — `ui/screens/Board.tsx` | SHIPPED |
 | 58 | **Signing day judges your report, not the recruit.** It says "TOP OF YOUR REPORT" or "BOTTOM OF YOUR REPORT" and is deliberately silent in the middle. | Two labels, occasionally. | `verdict` — `ui/screens/SigningDay.tsx` | SHIPPED |
+| 58a | **A player's id is not his name.** It is his position in the generator's stream, put through a hash and written as `p` plus seven digits — which costs no draw, cannot collide, and is reproduced exactly by a resumed save. Statistics, box scores, awards and the record book are all keyed on it, so before this two men called Tyler Johnson were one man in every one of them. Saves written earlier keep their name-shaped ids rather than being migrated; the two spaces cannot collide, because a name has a space in it. | Nothing — but before this, one man's career quietly containing another's. | `nextPlayerId` — `engine/players.ts`; §11.5 | SHIPPED |
 | 59 | **The pool of names already taken is rebuilt from the save on every load**, and cannot be complete — a rival's graduated player is in no roster and in no record book, so his name comes back into circulation. | Occasionally two men with one name, on different teams. | `rebuildNameIndex` — `engine/season.ts`; `usedNames` — `engine/players.ts` | SHIPPED |
+| 59a | **The shape of the world is rebuilt from the teams the save holds, not from `data/schools.ts` as it stands today.** A team is an index in a schedule, so reordering that file or moving a program between conferences used to repoint every index in an existing career — the same dynasty came back in somebody else's league, playing fixtures from a world it had never been part of, and nothing threw. | Nothing. | `worldFromTeams` — `engine/season.ts`; `fromPortable` — `state/seasonCodec.ts`; §11.6 | SHIPPED |
 | 60 | **A scoreless-innings streak is measured a whole appearance at a time.** Allowing a run in the seventh zeroes the streak rather than crediting the six scoreless innings before it, because the game line records outs and runs and not the order they came in. | A record that reads a little short. | `scorelessOuts`, `recordResult` — `engine/season.ts` | SHIPPED |
 | 61 | **A record must be beaten, not equalled**, including the seeded NCAA ones. | Stated on the record book screen; the incumbent simply staying put. | `offer` — `engine/records.ts` | SHIPPED |
 | 62 | **Two teams level on everything are separated by their abbreviations, ascending.** The four criteria above it are real; the fifth is a stated coin flip that always lands the same way. | A table that has an order, with nothing on screen saying why those two are that way round. | `seedTeams` — `engine/season.ts`; §8.7 | SHIPPED |
 | 63 | **Head-to-head is counted within the tied group, and only over the regular season.** A June meeting between the same two teams does not count toward the tiebreaker that seeded them. | Nothing. | `headToHead`, `seedTeams` — `engine/season.ts` | SHIPPED |
-| 64 | **Your season is written into your players' careers at the draft step, not at the year roll**, because the roster it reads is emptied in between. | Nothing — but before this, a departing player's final season was simply absent from his card. | `archiveSeason` — `engine/season.ts`; `nextPhase` — `state/store.ts` | SHIPPED |
+| 64 | **Your season is written into your players' careers at the draft step, not at the year roll**, because the roster it reads is emptied in between. It also fixes what class year the row is filed under: `departAndDevelop` ages every survivor as it goes, so archiving afterwards recorded a junior's season as a senior's. | Nothing — but before this, a departing player's final season was simply absent from his card, and everybody else's was a year out. | `archiveSeason` — `engine/season.ts`; `nextPhase` — `state/store.ts`; §12.4 | SHIPPED |
 | 65 | **A run of bad seasons is remembered as a run.** The second consecutive `missed` or `failed` costs 5 points of coach prestige and every one after it costs 3 more, on top of the season's own arithmetic. One acceptable year wipes the run out completely rather than decrementing it, and so does taking a new chair. | The board saying "twice in a row now", and a separate inbox card naming the points. | `badRunPenalty`, `CoachState.badRun`, `takeChair` — `engine/program.ts`; §6.5a | SHIPPED |
 | 66 | **The run penalty is not a second hit to job security.** Security already fell 14 or 28 for each of those seasons; doubling the sacking pressure would mean nobody ever reaches a third bad year for the escalation to apply to. | Nothing. | `reviewSeason` — `engine/program.ts` | SHIPPED |
 | 67 | **Winning a regional and reaching Omaha are the same event in this format**, so `regionalTitles` prints under both names on the coach page. It is read off `regionChampions` rather than the finish string, so the day the postseason grows a round the two stop agreeing on their own. | Two rows with the same number. | `SeasonOutcome.wonRegional` — `engine/program.ts`; `summarize` — `engine/postseason.ts`; §5 | SHIPPED |
@@ -160,6 +165,8 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 74a | **Your board and a rival's are two boards, and the difference is two fields on `Board`.** A rival's reads the same checklist against *this year's* league rather than against the distribution `expectationFor` was calibrated on, and has one firing bar where yours has two. Everything else — the mandates, the objectives, `judge`, the security deltas, the sacking bar, the first-year grace, the bad-run penalty — is shared, and a 4,500-review sweep pins that yours is unchanged to the digit. | Nothing. Your board is the board it always was. | `Board`, `playerBoard`, `rivalBoard`, `rivalExpectation`, `CALIBRATED_LEAGUE` — `engine/program.ts`; §16.10 | SHIPPED |
 | 74b | **A rival's mandate and win target are priced off the league, because two of the game's scales do not sit still.** Mean prestige drifts 41→51 and mean roster strength 45→55 over thirty five seasons, and `expectationFor` is absolute in both. Wins are zero-sum — 22.5 a program, always — so an absolute target lifting with the roster number put the required `wins` box out of reach for 53 of 96 programs a year. | A rival board that does not get harder just because the whole country got better. | `rivalExpectation`, `leagueShape` — `engine/program.ts`; §16.10 | SHIPPED |
 | 75 | **A job offer is now a chair somebody would be moved out of.** `jobOffers` takes a predicate: empty, *or* held by a coach the country rates below you. It is deliberately not "empty" alone — the carousel never leaves a chair open, so that rule produces a market of nothing and a sacked career that ends on a screen saying nobody rang. | Taking a job and being told they let their man go to hire you. | `jobOffers` — `engine/program.ts`; `rollYear`, `acceptOffer` — `state/store.ts`; §16.7 | SHIPPED |
+| 75a | **The coaching carousel is filed at two different volumes.** Ninety five careers produce five to twenty moves a year, so a change in your own conference is named and everybody else is counted in one line — with the exception that a poach is named at both ends wherever it happens, because a rival being taken by a bigger school is the single event the carousel exists to produce and should never be a number in a total. | Two or three names you know, and a sentence saying the country is alive. | `postCarousel` — `state/store.ts`; §17.3 | SHIPPED |
+| 75b | **Opening the inbox marks everything read on arrival, not on the way out**, because the app unmounts a screen on a tab change, a phase change and an overlay — so marking on unmount would clear the badge for somebody who tapped INBOX and immediately tapped away. There is no per-card tick: a card with a chore attached is a chore. | A count that goes away when you look at it. | `markAllRead`, `unreadCount` — `engine/inbox.ts`; §17.4 | SHIPPED |
 | 76 | **A pitcher's repertoire and every player's tendencies are hashed off the id, never stored and never drawn.** Same argument as arrival age: one `rng()` call per pitcher would have moved every calibration figure in the project. A save carries neither, and a dynasty from before they existed gets them for free. | A repertoire that never changes across a reload. | `repertoireOf` — `engine/pitches.ts`; `tendenciesOf` — `engine/tendencies.ts`; §18.1 | SHIPPED |
 | 77 | **The pitch-usage tendency is read off the finished usage shares, not hashed like the other eight.** POWER ARM is a fastball share at or above .655 and JUNKBALLER at or below .470, which are the twenty-first and seventy-ninth percentiles of four thousand generated arms — so the pole sizes match every other slot without a second draw deciding them. | A pitch mix on the card, and a label under it that agrees with it. | `MIX_JUNK`, `MIX_POWER`, `poleOf` — `engine/tendencies.ts`; §18.2 | SHIPPED |
 | 78 | **Every tendency pair averages to exactly 1.0 over the 21/58/21 population split.** That is what stops a tendency being a rating, and it is asserted per channel in `tests/traits.test.ts` rather than hoped for. | Nothing. | `pairOf`, `POLE_SHARE` — `engine/tendencies.ts`; §18.3 | SHIPPED |
@@ -415,11 +422,15 @@ floors.
 | C | 20 |
 | B | 28 |
 | A | 32 |
+| A+ | 31 |
 | S | 31 |
 | S+ | 31 |
 
-Note that S and S+ have one fewer than A: the single C–A line
-("Coaches in the area think he can play at this level.") drops out above A.
+Note that A+, S and S+ have one fewer than A: the single C–A line
+("Coaches in the area think he can play at this level.") drops out above A. The
+three top rows are identical because no line has a floor above A — the pool
+stops widening there, which is what keeps a loud line readable as enthusiasm
+rather than as a grade spelled out in words.
 
 Six lines in the table stop below S+ and therefore rule grades out. Five of them
 run from D — "He is close to the player he is going to be." caps at C, and the
@@ -570,8 +581,15 @@ Home region is drawn from a weighted list (`HOME_REGIONS`): Gulf ×3, Atlantic �
 Pacific ×2, and one each of Desert, Heartland, Great Lakes, Mountain, Northeast.
 The state is then drawn uniformly within the region from `STATES_BY_REGION`.
 
-Measured over one class (`generateClass(2027, 96, makeRng(4242))`): 223 one-stars,
-213 two, 182 three, 64 four, 38 five.
+Measured over one class (`generateClass(2027, 96, makeRng(4242))`): **224
+one-stars, 209 two, 164 three, 78 four, 45 five**.
+
+The same call read 223 / 213 / 182 / 64 / 38 when this section was first
+written, and the class is now noticeably more top-heavy. Neither the quality
+rolls above nor `serviceScore` has been edited, so something upstream of them
+moved and nothing recorded that it had — which is why this line names the call
+it was taken with. **Appendix B item 10** carries it as an open question rather
+than a guess.
 
 ### 2.3 Priorities
 
@@ -648,14 +666,18 @@ something completely different to each of them.
 
 | Recruit stars | minProgram 1 | 2 | 3 | 4 |
 |---|---|---|---|---|
-| ★ | 223 | — | — | — |
-| ★★ | 186 | 27 | — | — |
-| ★★★ | 65 | 62 | 55 | — |
-| ★★★★ | — | — | 28 | 36 |
-| ★★★★★ | — | — | 2 | 36 |
+| ★ | 224 | — | — | — |
+| ★★ | 172 | 37 | — | — |
+| ★★★ | 56 | 51 | 57 | — |
+| ★★★★ | — | — | 39 | 39 |
+| ★★★★★ | — | — | 5 | 40 |
 
-So about 5% of five stars will hear out a three-star program, about 44% of four
-stars will, and only a four- or five-star program sees the whole board.
+So about **11%** of five stars will hear out a three-star program, **half** of
+four stars will, and only a four- or five-star program sees the whole board.
+Those two shares were 5% and 44% when the ladder was fitted, and the ladder has
+not been touched since — the class underneath it has (§2.2). The docstrings on
+`REACH_LADDER` still quote the old figures, "about one in twenty-five" and "two
+in five", and are the first thing to correct if the rungs are ever re-cut.
 
 `canPursue(prospect, programStars)` is simply `programStars >= prospect.minProgram`.
 When it fails the board prints: *"He will not take the call. A program of his
@@ -772,13 +794,57 @@ board header prints; it used to be a flat `ACTIONS_PER_WEEK` (40) for all
 ninety-five, which was survivable only while there was nowhere else to spend. See
 §14.7.
 
-Every AI program pitches at a flat coach prestige of **45** and recruiting skill of
-**20**. The user's own prestige and skill are the only ones that vary.
+**Every pitch carries the reputation and the recruiting skill of the man making
+it**, and that used to be true of exactly one program in ninety six. A flat
+prestige of 45 and a flat recruiting of 20 stood in for the other ninety five,
+which meant the coach points the player spent on RECRUITING bought him an edge
+nobody in the country could ever answer. Since B7 each chair has a named man and
+`weeklyPoints` reads his two numbers (§16.7). The old flat pair survives as the
+fallback for a chair with nobody in it — an unseated world, most of the test
+suite, or a save written before B7 — because a program with no coach should
+negotiate like nobody in particular rather than throw.
 
 `seedRivalInterest` (`state/store.ts`) runs two passes over the whole league as the
 window opens — the second at half weight, because coverage comes from target
 selection rather than point size — so the player arrives at a board that is already
 contested. The user's program is skipped; his head start is the one he chooses.
+
+### 2.10 What an unspent scholarship becomes — **B8**
+
+A class that comes up short does not leave the spot empty. `refill`
+(`engine/progression.ts`) rebuilds every roster in the country to a fixed
+twenty-three, and it fills each hole in the same three steps: somebody you
+signed who actually plays there, else the best bat or arm you signed, else a
+walk-on drawn at `team.quality − WALK_ON_PENALTY` (**13**) with a small residual.
+That ordering is the whole point of the recruiting system — a program that
+recruits well fills its holes with players it chose, and one that does not fills
+them with whoever turned up. The penalty used to be 5 and applied to everybody,
+which meant recruiting could not matter, because every program reloaded at its
+own quality whatever it did in November.
+
+**A walk-on is on a one-season lease.** `departAndDevelop` asks whether a man
+walked on *before* it asks `departure`, and reads the flag rather than the class
+year: the rule is one season, not one class year, so a walk-on who somehow
+arrived as an upperclassman cannot be kept for three more years by a technicality.
+Asking first also costs no `rng()` draw, so nothing about who else leaves depends
+on how many walk-ons a program happens to be carrying. A spot filled this way is a
+spot you are shopping for again next winter, which is the honest price of a short
+class.
+
+**The coach is told before it matters, not afterwards.** `walkOnShortfall` runs on
+the class review, on signing day, when the shortfall is still something he could
+feel bad about — and it reports *positions and counts only*, inventing no names,
+ratings or ids, because the men themselves are not manufactured until the year
+rolls over. It walks `refill`'s placement in the same order, and a test asserts
+that it projects exactly the men who turn up in June: that is what makes the
+review a fact rather than an estimate. It cannot simply *be* `refill`, because
+`refill` draws from the generator to build bodies and a screen may not spend the
+season's rng to render itself.
+
+The draft screen used to carry a walk-on list of its own. It drew nothing for
+anybody, every year — the real list is only known once `fillRosters` has run, by
+which time every offseason screen has been left behind — and it was deleted
+rather than wired up, with a comment in `Draft.tsx` recording why. That was A6.
 
 ---
 
@@ -888,12 +954,20 @@ probability. A trained coach is a light thumb on the scale, not a sixth infielde
 a win rate, because proving the direction empirically would need tens of thousands
 of games to clear sampling noise.
 
-The two in-game skills reach the field via `TeamRecord.coachMods`, which the store
-stamps onto the user's program and deletes from every other one — so a job change
-or an old save can never leave the edge behind on a team he no longer runs.
-TRAINING is passed to `departAndDevelop` as `OffseasonOpts.training` and applied to
-the user's program only. RECRUITING is passed at the two call sites in
-`advanceRecruitingWeek` and read directly by the board and signing-day screens.
+The two in-game skills reach the field via `TeamRecord.coachMods`. `syncCoachMods`
+writes that field for **all ninety-six** programs — the user's off `CoachState`,
+everybody else's off the man in the chair (§16.7) — and deletes it from any
+program with nobody in it, so a job change or an old save can never leave the
+edge behind on a team he no longer runs. It used to clear the field everywhere
+and write exactly one row, which was the shape of the bug B7 fixed: the player's
+coach points bought an edge no other program in the country could have.
+
+TRAINING reaches development the same way. The user's is passed to
+`departAndDevelop` as `OffseasonOpts.training` and applies to his program only;
+every other program develops on `record.coach.skills.training`, where it used to
+be a flat 20. RECRUITING is passed at the two call sites that spend a week —
+`seedRivalInterest` and `advanceRecruitingWeek` — and read directly by the board
+and signing-day screens.
 
 ---
 
@@ -1579,6 +1653,13 @@ success = clamp(base × mult(runner.speed, sp) × mult(runner.steal, jump)
 | second | 0.70 | 0.12 | 0.22 | −0.15 | −0.34 |
 | third | 0.64 | 0.10 | 0.24 | −0.10 | −0.40 |
 
+Two factors ride on top of both lines and are left out of the boxes above
+because they belong to §18 rather than to this model: the runner's GREEN LIGHT
+or STATION TO STATION tendency multiplies the attempt, and BURGLAR on the runner
+and CANNON on the catcher scale the success and the attempt respectively. They
+multiply the dugout's policy rather than replacing it — a man turned loose on a
+club that never runs still does not run, because the sign comes from the bench.
+
 Third is the harder theft and the easier jump: the throw is shorter, so the
 catcher's arm decides more of it, while a pitcher facing a runner on second is
 mostly worrying about the hitter and holds him less. **Home is not modelled** — a
@@ -1713,22 +1794,19 @@ are the events that decide games.
 
 ---
 
-## 10. Defence: attributes and per-player fielding statistics — **IN FLIGHT**
+## 10. Defence: attributes and per-player fielding statistics — **SHIPPED**
 
 `engine/types.ts`, `engine/players.ts`, `engine/game.ts`, `engine/season.ts`,
 `engine/progression.ts`, `state/seasonCodec.ts`, `tests/fielding.test.ts`
 
-This is being written right now. The shape below is what is in the working tree
-today; treat the numbers as live.
-
 ### 10.1 What is new versus what was already there
 
-Already shipped before this work: `range`, `hands`, `arm` on every player; the
+Already there before this work: `range`, `hands`, `arm` on every player; the
 defensive spectrum; the range swing; team-level `defenseMult`; the glove-error
 path; lane-based fielder assignment; `overallOf` weighting a hitter's glove at
 7% range, 5% hands, 6% arm.
 
-Arriving with the current work:
+Arriving with it:
 
 - `armAccuracy`, `blocking`, `bunt` and `steal` as first-class ratings
 - `FieldLine` and per-player, per-season fielding statistics
@@ -1863,8 +1941,12 @@ Two error rolls, in the real order of events:
 
 ```
 glove:  0.0376 × (1/0.701) × KIND_ERROR_RISK[kind] × mult(hands, −0.55)
-throw:  0.0408 × mult(armAccuracy, −0.55)      // ground balls, infielders who throw
+throw:  0.0408 × mult(armAccuracy, −0.55)                    // ground balls, infielders
+        × 0.50 × mult(pitcher.hands, −0.35)                  // and again if he is the 1B
 ```
+
+VACUUM and ON A LINE scale the two rolls respectively (§18.6); they are the only
+badges that touch this.
 
 `KIND_ERROR_RISK` is ground 1.00, line 0.55, fly 0.45, popup 0.30 — errors are
 overwhelmingly a ground-ball event, and charging fly balls the same rate makes a
@@ -1875,9 +1957,24 @@ so the redistribution does not change how many errors there are.
 The two paths are a **split of one calibrated total, not an addition to it** — the
 glove rate alone used to be 0.055. Real fielders throw the ball away roughly as
 often as they drop it, and the throw is the more expensive mistake: a ball skipping
-past first moves every runner rather than just putting one on. `makesThrow` charges
-it only where the engine actually knows a throw was made — every infielder except
-the first baseman, on a ground ball.
+past first moves every runner rather than just putting one on. `throwRisk` charges
+it only where the engine actually knows a throw was made: a ground ball an
+infielder fielded. An outfielder catching a fly throws to nobody, and a runner
+testing an outfield arm is already resolved by `advanceOnHit` without the ball
+ever being described as on target or not.
+
+**The first baseman is the exception, and he is half in.** He was exempt
+entirely to begin with, on the grounds that he carries the ball to the bag
+himself — but half of those balls are not that play, they are a feed to the
+pitcher covering first, which is the one thing besides a comebacker a pitcher is
+on the field to do and was the last ground ball in the engine with nobody
+throwing on it. `COVER_FIRST_SHARE` is **0.50**, and that play reads two men:
+the first baseman's `armAccuracy` and the covering pitcher's `hands`. The error
+goes on the first baseman either way. A real scorer would split it — a wild feed
+is his, a dropped one is the pitcher's — and the engine resolved the play in a
+single roll, so it keeps one culprit rather than pretending to know which end of
+it failed. Leaving it out left a first baseman's accuracy a rating nothing could
+read, which is the dead menu item this whole pass exists to stop.
 
 The E column is now **derived** from the men who booted the ball
 (`TeamState.errors` sums the fielding lines), so the box score and the fielding
@@ -2058,21 +2155,23 @@ correctly for the same reason.
 
 ---
 
-## 12. Planned systems — **MOSTLY SHIPPED**
+## 12. Planned systems — **ALL BUT ONE SHIPPED**
 
-This section was written when nothing in it was built. Four of its six entries
+This section was written when nothing in it was built. Five of its six entries
 have since shipped and now point at the sections that describe the behaviour:
-badges and tendencies at §18, the records book at §13, and the draft at §14. What
-is left genuinely unbuilt is the S+ store player (§12.3) and hall-of-fame
-induction (§12.6). The shipped entries are kept rather than deleted because the
-gap between what was intended and what was built is the useful part of them.
+badges and tendencies at §18, the records book at §13, the draft at §14 and
+hall-of-fame induction at §19. What is left genuinely unbuilt is the **S+ store
+player** (§12.3), and only the player — the gate that reserves the grade for him
+is built and measured. The shipped entries are kept rather than deleted because
+the gap between what was intended and what was built is the useful part of them.
 
 ### 12.1 Badges
 
 **SHIPPED.** See §18.5, which replaced this entry: twenty-three badges in four
 families at three tiers, position-aware, capped by ceiling, innate or earned or
-coached, and measured at seven tenths of a point of win probability for a whole
-roster's worth of them.
+coached, and measured at **0.31 points of win probability per gold badge** — a
+roster carrying the ordinary complement the generator hands out wins 49.9%,
+which is to say no measurable edge at all.
 
 Two things in the plan this entry recorded did change on the way, and both are
 worth keeping the provenance of. **The cap ladder is S+ 10, S 6, A+ 5, A 4, B 3,
@@ -2177,8 +2276,12 @@ marks so there is something to chase in the first week of the first season.
 
 ### 13.1 Why it is cheap
 
-A record book does not need the seasons, it needs the **holders**: thirty-eight
-rows, each a value, a name, a program and a year. Every finished game already
+A record book does not need the seasons, it needs the **holders**: fifty-two
+rows, each a value, a name, a program and a year — 6 single-game, 3 feats, 19
+single-season, 13 career, 6 team and 5 coaching. It opened at thirty-eight; the
+career table (§13.6) added thirteen and B6 added REGIONAL TITLES.
+
+Every finished game already
 passes through `recordResult`, so a candidate is offered against the standing
 mark as it happens and thrown away the instant it fails to beat it. Keeping every
 player's line across ninety-six rosters is what would have been expensive, and
@@ -3825,7 +3928,7 @@ does. None of them changes behaviour; all of them will mislead the next reader.
 | Where | The problem |
 |---|---|
 | `engine/postseason.ts`, `FIELD_SIZE` | Vestigial. The docstring now says so rather than describing a 16-team field of automatic and at-large bids that never existed, but the symbol is still exported and its only use is a `size` parameter on `runPostseason` that the function body never reads. |
-| `ui/Avatar.tsx`, `ui/screens/Standings.tsx`, `ui/screens/TeamCard.tsx` | Comments still say "sixty four programs" / "the other sixty three". The world is 96. The engine, the state layer and the data file have been swept; these were outside that pass, and all of it is comments. Two more are now fixed rather than listed: `Program.tsx`'s was screen copy on the HALL tab and went with B12, and `Player.tsx`'s career comment went with B13. The one other occurrence that reached the screen — the Omaha note in `SeasonReview.tsx` — was fixed earlier. |
+| `ui/Avatar.tsx`, `ui/screens/Player.tsx`, `ui/screens/Standings.tsx`, `ui/screens/TeamCard.tsx` | Comments still say "sixty four programs" / "the other sixty three". The world is 96. The engine, the state layer and the data file have been swept; these four were outside that pass, and all of it is comments. `Program.tsx`'s was screen copy on the HALL tab and went with B12; `Player.tsx`'s *career* comment went with B13, but the one above `gameLogFor` — "two Tyler Johnsons in a sixty four school world" — was not in that pass and is still there. The one occurrence that reached the screen, the Omaha note in `SeasonReview.tsx`, was fixed earlier. `CoachPortrait.tsx` and `Draft.tsx` also say "sixty-four", about a coordinate box and a draft round respectively, and are correct. |
 | ~~`engine/recruiting.ts`, `RECRUITING_BUDGET` docstring~~ | Fixed. It opened "Thirty, spread across as many recruits as you like" over a constant of 40. |
 | `engine/scouting.ts`, `PotentialGrade` | `'?'` is documented as what a screen prints where a ceiling is none of your business. No screen uses it; `ui/screens/Player.tsx` prints an em dash instead. |
 | `engine/recruiting.ts`, `BOARD_SLOTS` | Marked `@deprecated`, still used by `aiTargets` to size a board. `ACTIONS_PER_WEEK` beside it is now genuinely unused — `aiTargets` reads `weeklyBudget` (§14.7) — and is kept only as the record of what the flat week was. |
@@ -3868,3 +3971,26 @@ Things this document could not settle from the code, and must not guess at.
    determinable from the code.
 7. **The real-world frequency of each Coach of the Year category.** The salience
    rule makes this an emergent property of a season's spread; nothing measures it.
+8. **The league's caught-stealing rate since §18.** The 30% at second and 36% at
+   third in §9.4 were measured before the situational layer existed, and both
+   halves of `attemptSteal` now carry a tendency and a badge that were not in
+   that population — GREEN LIGHT and STATION TO STATION on the attempt, BURGLAR
+   and CANNON on the outcome. The pairs are population-neutral and the badges
+   are small, so the figure should be close; nobody has re-run the probe to say
+   how close.
+9. **The league's error total and fielding percentage since §18.** §10.6 puts
+   `fieldingPct` around .960 and `playsAboveExpected` at about minus one per
+   team per game, both measured during the fielding work. VACUUM and ON A LINE
+   scale the two error rolls and, unlike a tendency, a badge only ever
+   subtracts — so the true figures are now a shade above those. The
+   eight-seed sweep in §18.8 does not carry an error row, so the size of the
+   drift is not known. Adding one is the cheap way to find out.
+10. **What moved the star distribution of a generated class.** The same call
+    that produced 223 / 213 / 182 / 64 / 38 one- through five-stars when §2.2
+    was written now produces 224 / 209 / 164 / 78 / 45 — the same seed, the same
+    year, the same ninety-six programs. The quality rolls, `serviceScore` and
+    `REACH_LADDER` are all unedited, so the change came in from somewhere
+    upstream during the block batch and nothing recorded it. It is not
+    self-evidently wrong — a slightly top-heavier class is defensible — but
+    "defensible and unexplained" is how a calibration figure rots. The tables in
+    §2.2 and §2.4 are re-measured; the cause is not known.
