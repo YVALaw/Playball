@@ -567,6 +567,25 @@ export const REGIONS: readonly { id: string; name: string; conferences: readonly
 export const regionOf = (conference: string): string =>
   REGIONS.find((r) => r.conferences.includes(conference))?.id ?? 'SOUTH';
 
+/**
+ * How many programs the national field seats.
+ *
+ * Derived from the regions rather than written down, because it is not a number
+ * anybody looks up for its own sake — it is the ceiling on how many boards may
+ * *require* a bid. A checklist that asks more programs than this to reach the
+ * tournament is asking for something the format cannot hand out, and that is a
+ * broken board rather than a hard one. `objectivesFor` in `program.ts` is where
+ * the ask is spent and a test in `program.test.ts` holds the two together.
+ *
+ * Eight today: one champion per conference, paired into four regionals. The
+ * expanded format in the backlog seats twenty, and this moves with it.
+ */
+export const NATIONAL_BIDS =
+  REGIONS.reduce((n, r) => n + r.conferences.length, 0);
+
+/** Programs that reach Omaha: one per region. The next ceiling up. */
+export const OMAHA_BERTHS = REGIONS.length;
+
 /** A regional is one series; the national tree is a semifinal and a final. */
 export const REGIONAL_LENGTHS: readonly number[] = [SERIES.regional];
 export const NATIONAL_LENGTHS: readonly number[] = [SERIES.national, SERIES.national];

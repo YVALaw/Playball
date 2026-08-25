@@ -65,8 +65,11 @@ const MANDATE_NOTE: Record<Mandate, string> = {
   develop: 'The most forgiving job on the board. Nobody expects wins yet.',
   build: 'A proud school with a thin roster. Patience, but not unlimited patience.',
   compete: 'Middle of the pack. Win more than you lose and you keep the job.',
-  contend: 'Real talent and real expectations. June is the target.',
-  championship: 'The hardest seat here. Anything short of Omaha is a failed year.',
+  // These sit directly above the checklist, so they say what the checklist says.
+  // "June is the target" survived a change that made reaching June a bonus, and
+  // a note that contradicts the boxes under it is worse than no note.
+  contend: 'Real talent and real expectations. The top of the league, not the middle.',
+  championship: 'The hardest seat here. Win the conference or it is a wasted year.',
 };
 
 /**

@@ -17,8 +17,10 @@ import {
 import { runPostseason } from '../src/engine/postseason.js';
 import { departAndDevelop, fillRosters, holesFor } from '../src/engine/progression.js';
 import {
-  prestigeStars, rosterStrength, type Verdict,
+  leagueShape, prestigeStars, rivalExpectation, rosterStrength,
+  type ObjectiveKey, type Verdict,
 } from '../src/engine/program.js';
+import { NATIONAL_BIDS, OMAHA_BERTHS } from '../src/engine/postseason.js';
 import {
   POACH_GAP, SETTLED_TENURE, newRivalCoach, retireAge, rivalName, rivalOutcome,
   runCarousel, runRivalYear, seatCoaches, spendPoints, syncCoachMods,
@@ -391,10 +393,25 @@ describe('a long dynasty does not tear the league apart', () => {
   let changes = 0;
   const openSkill = mean(season.teams.map((t) => t.coach?.skills.recruiting ?? 20));
 
+  /** The most programs any one required box was asked of, in any single year. */
+  const peakDemand: Partial<Record<ObjectiveKey, number>> = {};
+
   for (let y = 0; y < YEARS; y++) {
     simSeason(season);
     const post = runPostseason(season);
     champions.add(post.champion);
+
+    const league = leagueShape(season.teams);
+    const asked: Partial<Record<ObjectiveKey, number>> = {};
+    for (const t of season.teams) {
+      const e = rivalExpectation(t.prestige, rosterStrength(t.team), league, 45);
+      for (const o of e.objectives) {
+        if (o.required) asked[o.key] = (asked[o.key] ?? 0) + 1;
+      }
+    }
+    for (const [key, n] of Object.entries(asked) as [ObjectiveKey, number][]) {
+      peakDemand[key] = Math.max(peakDemand[key] ?? 0, n);
+    }
 
     const { moves, verdicts } = runRivalYear(season, post, {
       year: season.year ?? 0, userTeam: -1, games: 45,
@@ -464,7 +481,45 @@ describe('a long dynasty does not tear the league apart', () => {
     expect(stars.filter((s) => s >= 4).length).toBeGreaterThan(0);
   });
 
-  it('grades ninety five boards at something like the rate it was tuned for', () => {
+  it('never asks more programs for a box than the format has seats', () => {
+    /*
+      The live version of the arithmetic guard in `program.test.ts`, counted off
+      leagues that have actually been played rather than off a generated one with
+      its spread widened by hand. It is the stronger of the two: the mandate mix
+      is a property of the distribution the pipeline settles into, and nothing
+      short of playing the seasons produces that distribution.
+
+      The rule is `objectivesFor`'s own: a board may require only what the country
+      can hand out. It was broken by a national bid required of every contend and
+      championship program — fifteen to twenty of them a year against
+      `NATIONAL_BIDS` of eight — and thirteen programs a year failed a box with no
+      seat behind it.
+    */
+    const conferences = [...new Set(season.teams.map((t) => t.conference))];
+    const size = season.teams.filter(
+      (t) => t.conference === conferences[0],
+    ).length;
+    const seats: Partial<Record<ObjectiveKey, number>> = {
+      notLast: (size - 1) * conferences.length,
+      topHalf: Math.ceil(size / 2) * conferences.length,
+      topThree: 3 * conferences.length,
+      conferenceTitle: conferences.length,
+      tournament: NATIONAL_BIDS,
+      omaha: OMAHA_BERTHS,
+      title: 1,
+    };
+    for (const [key, n] of Object.entries(peakDemand) as [ObjectiveKey, number][]) {
+      const room = seats[key];
+      if (room === undefined) continue;      // `wins` and `winningSeason`
+      expect(n, `${key} at its worst year`).toBeLessThanOrEqual(room);
+    }
+    // And the boxes with the least room really are being asked for, so this is
+    // not passing because the checklist quietly stopped requiring placement.
+    expect(peakDemand.topThree ?? 0).toBeGreaterThan(0);
+    expect(peakDemand.conferenceTitle ?? 0).toBeGreaterThan(0);
+  });
+
+  it('grades ninety five boards at the rate it was tuned for', () => {
     /*
       This used to come out at about a third, and the comment here used to
       explain at length why that was somebody else's problem. It was not: with
@@ -473,22 +528,24 @@ describe('a long dynasty does not tear the league apart', () => {
       never been calibrated against, and the required `wins` box — the one every
       mandate carries — had drifted above what forty five games between ninety
       six programs can supply. `rivalBoard` reads the same checklist against this
-      year's league instead, and the rate comes back to the mid fifties.
+      year's league instead, and the rate came back to the mid fifties.
 
-      Not the full 62%, and the residue is known rather than mysterious: the
-      checklist requires a national tournament bid of every contend and
-      championship program, and there are eight bids for ninety six programs
-      however the mandates are handed out. That is a property of `objectivesFor`,
-      which is shared with the player, so it is written down in the backlog
-      rather than quietly patched here.
+      The last seven points were the second half of the same error, in
+      `objectivesFor` rather than in the league it was read against: a national
+      bid required of fifteen to twenty programs a year out of eight bids. With
+      the bid a bonus the rate is **63.2% and 63.8%** over thirty five seasons on
+      two seeds, against the 62% the win target's offset is tuned to. Fourteen
+      seasons is a shorter and noisier run, so the band allows for it — but it is
+      now tight enough to fail a board that has drifted back to the mid fifties,
+      which the old 42-to-75 band was not.
     */
     const total = graded.reduce(
       (a, v) => a + v.exceeded + v.met + v.missed + v.failed, 0,
     );
     const cleared = graded.reduce((a, v) => a + v.exceeded + v.met, 0);
     expect(total).toBeGreaterThan(0);
-    expect(cleared / total).toBeGreaterThan(0.42);
-    expect(cleared / total).toBeLessThan(0.75);
+    expect(cleared / total).toBeGreaterThan(0.57);
+    expect(cleared / total).toBeLessThan(0.70);
   });
 
   it('turns the country over at about the rate the real sport does', () => {
@@ -498,19 +555,24 @@ describe('a long dynasty does not tear the league apart', () => {
       cent, retirements and men leaving for a better job included.
 
       Measured on the full world over thirty five seasons, two seeds:
-      **11.5 and 11.9 chairs a year**, made of 5.6–6.0 sackings, 2.8 poachings
-      and 3.1 retirements. Before the split it was 30.4, of which 15.4 were
-      sackings and mean tenure was 1.9 seasons; it is 5.8 now.
+      **9.2 and 9.3 chairs a year**, made of 4.3–4.5 sackings, 1.7–1.9 poachings
+      and 2.9–3.1 retirements. Before the split it was 30.4, of which 15.4 were
+      sackings and mean tenure was 1.9 seasons; it is 7.0 now. It was 11.5–11.9
+      between the split and the checklist fix — closing the bid box stopped about
+      a sacking and a poaching a year, and the poaching went with the sacking
+      because a market nobody is being tipped into is a thinner market.
 
       This run is fourteen seasons, which is short enough that the first
       retirement wave has barely started — the world is seated with men aged 36
       to 55 and none of them reaches 64 for a decade — so the total here sits
-      below the long-run figure and the band allows for it. The long number is
-      the one in §16.9; `npx tsx tests/carousel-probe.ts 35` reproduces it.
+      below the long-run figure and the lower bound allows for it. The upper
+      bound is the real sport's twelve and is not slack: a board that starts
+      failing people again shows up here first. The long numbers are in §16.9;
+      `npx tsx tests/carousel-probe.ts 35` reproduces them.
     */
     const perYear = changes / YEARS / season.teams.length;
-    expect(perYear).toBeGreaterThan(0.04);
-    expect(perYear).toBeLessThan(0.14);
+    expect(perYear).toBeGreaterThan(0.035);
+    expect(perYear).toBeLessThan(12.5 / 96);
     expect(cause.sacked + cause.poached + cause.retired).toBe(changes);
     // And all three causes are load bearing. A league that only sacks people has
     // lost the promotion, and one that only poaches has lost the consequence.

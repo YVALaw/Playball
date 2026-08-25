@@ -200,10 +200,18 @@ export interface Expectation {
   summary: string;
   /** What they actually want to see, beyond the record. */
   detail: string;
-  /** The actual checklist. `judge` reads this and nothing else. */
+  /**
+   * The actual checklist. `judge` reads this and nothing else.
+   *
+   * Two summary flags used to sit beside it — `expectsTournament` and
+   * `expectsConference` — computed off the mandate and read by nothing, ever.
+   * They were a second opinion about what the board wants, next to the checklist
+   * that is the first one, and the day the checklist stopped requiring a bid of
+   * contenders they became a second opinion that was also wrong. Deleted rather
+   * than corrected, because the whole argument for `judge` reading this field and
+   * nothing else is that there is one source of truth about the ask.
+   */
   objectives: Objective[];
-  expectsTournament: boolean;
-  expectsConference: boolean;
 }
 
 /**
@@ -215,17 +223,50 @@ export interface Expectation {
  * same achievement, read two completely different ways depending on whose chair
  * you are sitting in. That asymmetry is the whole point of having mandates.
  *
- * **Placement objectives are zero-sum and have to be spent carefully.** Only
- * four of eight teams can finish in the top half, so requiring it of more than
- * half the league guarantees mass failure no matter how well anyone plays. The
- * first draft of this list demanded a top-half finish from rebuilding programs —
- * teams that are weak *by definition*, since that is what earns the mandate —
- * and 73% of them failed their review. A board that asks for the arithmetically
- * impossible is not a hard board, it is a broken one.
+ * **Zero-sum objectives are rationed by what the format hands out.** Only six of
+ * a twelve team conference can finish in the top half, so requiring it of more
+ * than half the league guarantees mass failure no matter how well anyone plays.
+ * The first draft of this list demanded a top-half finish from rebuilding
+ * programs — teams that are weak *by definition*, since that is what earns the
+ * mandate — and 73% of them failed their review. A board that asks for the
+ * arithmetically impossible is not a hard board, it is a broken one.
  *
- * So placement is required only where the roster justifies it, and the ask
- * climbs with the mandate: stay out of the cellar, then finish above .500, then
- * top half, then top three.
+ * The rule was written for placement and then broken by a postseason box, which
+ * is the same mistake wearing different clothes. **A national bid used to be
+ * required of every `contend` and `championship` program.** There are
+ * `NATIONAL_BIDS` of them — eight, one per conference champion — and fifteen to
+ * twenty programs a year carried the requirement, so seven to twelve of them
+ * failed a box the country had no seat for. Measured over twenty seasons of the
+ * full world it cost **12.8 clear reviews a year**, which was the whole of the
+ * distance between the 55% the boards were clearing and the 62% the win target
+ * is tuned to. The bid is a bonus now, at every mandate.
+ *
+ * So the ask climbs with the mandate, and every rung is a thing the format can
+ * actually supply to the number of programs standing on it — seats per season
+ * against programs asked per season, measured over thirty five seasons of the
+ * eight conferences of twelve:
+ *
+ *   stay out of the cellar   88 seats   ~60 asked   develop and build
+ *   finish above .500        unrationed ~15 asked   compete
+ *   top three                24 seats   ~19 asked   contend and championship
+ *   win the conference        8 seats    ~5 asked   championship alone
+ *
+ * The top two rungs are close to full and are meant to be — they peak at 22 of
+ * 24 and 7 of 8 — so a change that makes either mandate commoner breaks the
+ * arithmetic, and that is what the tests are watching.
+ *
+ * Each rung is also asked of programs the format selects *for* rather than
+ * against, which is the second half of the rule and the reason "not last" is
+ * safe where "top half" was not: the cellar is one slot in twelve and a rebuild
+ * has eleven ways out of it, whereas a rebuild cannot be above the median of a
+ * league it is defining the bottom of.
+ *
+ * The day the postseason grows — the backlog's expanded format seats twenty —
+ * `NATIONAL_BIDS` moves and a bid becomes a requirement a contender's board can
+ * honestly make again. That is a judgement to take deliberately rather than a
+ * constant to wire in here, so it is not automatic; the test in
+ * `program.test.ts` reads `NATIONAL_BIDS` off the postseason and fails the day
+ * this list asks for more of anything than the format awards.
  */
 export function objectivesFor(mandate: Mandate, targetWins: number): Objective[] {
   const wins: Objective = {
@@ -265,17 +306,28 @@ export function objectivesFor(mandate: Mandate, targetWins: number): Objective[]
         bid(false), stretch,
       ];
     case 'contend':
+      // Top three rather than top half. A contender clears the top half of its
+      // conference 98% of the time — a required box that never fails is
+      // decoration, and it was there because the bid beside it was carrying the
+      // difficulty. With the bid a bonus, the placement rung has to be the real
+      // ask, and three of twelve is one a league of sixteen contenders can fill.
       return [
         wins,
-        { key: 'topHalf', label: 'Finish in the top half of the conference', required: true },
-        bid(true), confTitle(false), omaha(false),
+        { key: 'topThree', label: 'Finish top three in the conference', required: true },
+        bid(false), confTitle(false), omaha(false),
       ];
     case 'championship':
       return [
         wins,
         { key: 'topThree', label: 'Finish top three in the conference', required: true },
-        bid(true),
-        confTitle(false), omaha(false),
+        // The asymmetry the mandates exist for, and it is finally the one the
+        // docstring claims: the same trophy a contender is praised for is the
+        // job here. It is not a harder ask than the bid it replaces — in today's
+        // format they are the same event, since the field *is* the eight
+        // conference champions — but it stays honest when the field grows and a
+        // bid stops meaning you won anything.
+        confTitle(true),
+        bid(false), omaha(false),
         { key: 'title', label: 'Win the national title', required: false },
       ];
   }
@@ -399,12 +451,13 @@ export function expectationFor(prestige: number, roster: number, games: number):
   const floor = mandate === 'compete' ? Math.floor(games / 2) + 1 : 0;
   const targetWins = Math.max(floor, Math.round(targetPct * games));
 
-  const expectsTournament = mandate === 'championship' || mandate === 'contend';
-  const expectsConference = mandate === 'championship';
-
+  // The headline has to say the same thing the checklist does. It used to
+  // promise a contender the tournament, which is a box the board no longer
+  // requires and never had the seats for — two sources of truth in front of the
+  // player, which is the failure `judge` was rewritten to end.
   const summary = {
-    championship: 'Omaha. This roster is good enough and the board knows it.',
-    contend: `Win the conference and reach the tournament. ${targetWins} wins is the floor.`,
+    championship: `Win the conference and go deep. ${targetWins} wins on the way there.`,
+    contend: `Top three, and push on into June. ${targetWins} wins is the floor.`,
     compete: `A winning season, and push for a bid. The board wants ${targetWins}.`,
     build: `Stay respectable while you reload. ${targetWins} wins keeps the room calm.`,
     develop: `Bring players on. ${targetWins} wins would be real progress.`,
@@ -421,7 +474,6 @@ export function expectationFor(prestige: number, roster: number, games: number):
   return {
     mandate, targetWins, summary, detail,
     objectives: objectivesFor(mandate, targetWins),
-    expectsTournament, expectsConference,
   };
 }
 
@@ -469,18 +521,27 @@ export function expectationFor(prestige: number, roster: number, games: number):
   `objectivesFor` already refuses to require a top-half finish of more than half
   the league, on the grounds that a board asking for the arithmetically
   impossible is not a hard board but a broken one. This is the same rule applied
-  to the one zero-sum quantity that got away with it.
+  to a zero-sum quantity that got away with it. A second one got away with it
+  inside the checklist itself and has since been caught — the national bid, which
+  was required of twice as many programs as the country awards. Three instances
+  of one mistake is what turned a per-objective judgement into the capacity rule
+  now stated over `objectivesFor` and enforced by a test.
 
   So a rival board reads the identical checklist, and reads it against **this
-  year's league** rather than against a snapshot from 2027. The player's board is
-  left exactly as it is — see the note in `engine/rivals.ts` and §16.10.
+  year's league** rather than against a snapshot from 2027. What the checklist
+  itself asks for is the player's board and is shared — see the note in
+  `engine/rivals.ts` and §16.10.
 
   --- WHAT DIFFERS, AND WHY (2): the second bar ---
 
   With the arithmetic corrected the boards clear 55% of the league, against the
   62% `expectationFor` was tuned to, and they still sack 7.5 coaches of 96 a
-  year where the real sport sacks four or five. That residue is not an error;
-  it is what the player's board *is*, seen ninety five times over at once. The
+  year where the real sport sacks four or five. (The seven points were the
+  second half of the same error and are closed now — see the capacity rule in
+  `objectivesFor` — but they were still open when the bar below was argued, and
+  closing them did not touch it: the boards clear 63% and sack 4.4.) That
+  residue is not an error; it is what the player's board *is*, seen ninety five
+  times over at once. The
   same hazard that reads as "you will be sacked about once in thirteen seasons"
   in one career reads as a cull when it is applied to a whole country.
 

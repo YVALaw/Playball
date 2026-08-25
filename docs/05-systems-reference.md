@@ -1013,20 +1013,63 @@ conference title and then fire you over a win total you were never shown.
 | `develop` | Win *N* games · Finish out of the conference cellar | Top half · Reach the national tournament · Win *N+4* |
 | `build` | Win *N* games · Stay out of the conference cellar | Top half · Reach the national tournament · Win *N+4* |
 | `compete` | Win *N* games · Finish above .500 | Top half · Reach the national tournament · Win *N+4* |
-| `contend` | Win *N* games · Finish in the top half · Reach the national tournament | Win the conference · Reach Omaha |
-| `championship` | Win *N* games · Finish top three · Reach the national tournament | Win the conference · Reach Omaha · Win the national title |
+| `contend` | Win *N* games · Finish top three | Reach the national tournament · Win the conference · Reach Omaha |
+| `championship` | Win *N* games · Finish top three · **Win the conference** | Reach the national tournament · Reach Omaha · Win the national title |
 
 Where the mandates genuinely differ is in what is *required* rather than in what
-sounds different. Note that **winning the conference is a bonus for everybody and
-required by nobody**, including a championship program — `objectivesFor` passes
-`confTitle(false)` in both places, and its own docstring says otherwise (Appendix A).
-What actually climbs with the mandate is placement: stay out of the cellar, then
-finish above .500, then top half, then top three.
+sounds different, and **winning the conference is the difference between the top
+two**: the same trophy a contender is praised for is the job at a championship
+program. Every mandate carries exactly three bonus boxes, which is what makes
+`judge`'s two-bonus bar for "exceeded" mean the same thing at every job.
 
-Placement objectives are zero-sum and spent carefully: only half a conference can
-finish in the top half, and
-the first draft of this list demanded a top-half finish from rebuilding programs
-(weak *by definition*, since that is what earns the mandate) and failed 73% of them.
+### 6.3a The capacity rule, and the two times it was broken
+
+A board may **require** only what the format can actually hand out. Stated
+properly: for each required box, the number of programs asked for it must not
+exceed the number of programs that can have it in one season.
+
+| Rung | Seats in one season | Asked of, per year | Peak over 35 seasons |
+|---|---|---|---|
+| Stay out of the cellar | 88 — eleven of twelve, times eight | ~60 `develop` + `build` | — |
+| Finish above .500 | not rationed by the format | ~15 `compete` | — |
+| Top three | 24 — three, times eight | ~19 `contend` + `championship` | **22** |
+| Win the conference | 8 — one per conference | ~5 `championship` | **7** |
+| Reach the national tournament | `NATIONAL_BIDS`, 8 | required of nobody | — |
+
+The rule has been broken twice and both times it read as the game being unfair
+rather than as a bug.
+
+1. The first draft required a **top-half finish of rebuilding programs** — teams
+   that are weak *by definition*, since that is what earns the mandate — and 73%
+   of them failed their review.
+2. A **national tournament bid was required of every `contend` and `championship`
+   program**. There are eight bids in this format, one per conference champion,
+   and fifteen to twenty programs a year carried the box, so seven to twelve of
+   them failed something the country had no seat for. Measured over twenty
+   seasons of the full world it cost **12.8 clear reviews a year** — the whole of
+   the distance between the 55% the boards were clearing and the 62%
+   `expectationFor`'s win offset is tuned to. The bid is a bonus at every mandate
+   now, and `contend` climbed from top half to top three to replace it, because a
+   contender clears the top half 98% of the time and a required box that never
+   fails is decoration.
+
+The rule has a second half that the seat count alone does not capture: the
+population asked must be one the format selects *for* rather than against. That
+is why "not last" is safe where "top half" was not — the cellar is one slot in
+twelve and a rebuild has eleven ways out of it, whereas a rebuild cannot be above
+the median of a league it is defining the bottom of. It shows in the measurement:
+`notLast` is missed by 6.5 programs a year but is the **sole** miss for only 0.5
+of them, because the other six had already lost their win box. Reading a raw miss
+column as the price of a box is how an objective gets blamed for a season the win
+total had already lost, and it is what the earlier estimate of "notLast costs
+seven" was doing.
+
+Two tests hold this. `program.test.ts` prices the seats off `NATIONAL_BIDS`,
+`OMAHA_BERTHS` and the conference table and sweeps a generated league at three
+spreads; `rivals.test.ts` counts the real demand year by year across a played
+league. Neither hardcodes eight, so **the expanded postseason cannot silently
+reintroduce the breach** — and equally, the day the field seats twenty, requiring
+a bid of contenders becomes honest and the tests will say so.
 
 `objectiveMet` treats a `conferenceRank` of 0 as "not known", so a season in
 progress never shows a placement box already ticked.
@@ -1283,6 +1326,13 @@ One rule the whole way up: **you advance by winning something.** There is no
 at-large field. Regional and national seeding both read regular-season wins
 (`regularRecord`), which is the last thing those forty-five games are still paying
 for, and level teams are separated by §8.7 rather than by luck.
+
+Two counts are derived from `REGIONS` rather than written down, because the board
+has to respect them and a hardcoded eight would go stale the day the field grows:
+**`NATIONAL_BIDS`** (8 — the programs that reach the national field at all, which
+in this format is one champion per conference) and **`OMAHA_BERTHS`** (4 — one per
+region). §6.3a is the rule they exist for: a mandate may require reaching a stage
+of no more programs than the stage seats.
 
 ### 8.3 Why knockout and not double elimination
 
@@ -3016,20 +3066,28 @@ fixed class and none of this work touched it. The bottom of the ladder comes *up
 by seven points and the top plateaus below its own clamp. Seventeen different
 programs won the title on this seed, twelve on 4242.
 
-**The carousel, per year out of ninety six**, before and after §16.10:
+**The carousel, per year out of ninety six**, at each of the three states it has
+been in. "Split" is §16.10; "capacity" is the checklist fix in §6.3a. Two seeds,
+thirty five seasons each.
 
-| | Before | After | Real sport |
-|---|---|---|---|
-| Chairs changing hands | 30.4 | **11.5 / 11.9** | 8–12 |
-| — sacked | 15.4 | **5.6 / 6.0** | ~5 |
-| — poached | 11.4 | **2.8 / 2.8** | ~3.5 |
-| — retired | 3.5 | **3.1 / 3.1** | ~2 |
-| Mean tenure, seasons | 1.9 | **5.8** | 8–10 |
-| League-wide clear rate | 27% | **55%** | — |
+| | One board | After the split | After the capacity fix | Real sport |
+|---|---|---|---|---|
+| Chairs changing hands | 30.4 | 11.5 / 11.9 | **9.2 / 9.3** | 8–12 |
+| — sacked | 15.4 | 5.6 / 6.0 | **4.5 / 4.3** | ~5 |
+| — poached | 11.4 | 2.8 / 2.8 | **1.7 / 1.9** | ~3.5 |
+| — retired | 3.5 | 3.1 / 3.1 | **2.9 / 3.1** | ~2 |
+| Mean tenure, seasons | 1.9 | 5.8 | **7.0** | 8–10 |
+| League-wide clear rate | 27% | 55.6% | **63.2 / 63.8%** | — |
+
+Poaching fell with the sackings and that is not a coincidence: a market nobody is
+being tipped into is a thinner market, and a chair that is not empty cannot start
+a cascade. The remaining gap to the real sport's tenure is age — this world's
+coaches retire between 64 and 72 against a hiring age averaging 45.
 
 Calming it cost the convergence almost nothing — the prestige spread peak moved
-by two tenths of a point — which answers the obvious worry. The churn was never
-what was holding the league together.
+by two tenths of a point at the split, and the spread at year 35 is 16.5–16.8
+after the capacity fix against 16.9–17.1 before it. The churn was never what was
+holding the league together.
 
 ### 16.10 The seam: your board and the other ninety five
 
@@ -3073,7 +3131,10 @@ honest reference for a zero-sum quantity. A test asserts that at
 `CALIBRATED_LEAGUE` the two functions are indistinguishable over 225 programs.
 
 **Difference two: the second bar.** With the arithmetic corrected the boards clear
-56% and still sack 7.5 of 96 a year. That residue is not an error; it is what the
+56% and still sack 7.5 of 96 a year. (The missing seven points were the checklist,
+not the league it was read against, and are closed in §6.3a; closing them did not
+touch the argument below, and the boards clear 63% and sack 4.4 now.) That residue
+is not an error; it is what the
 player's board *is*, seen ninety five times at once. The part that does not
 survive the multiplication is the second firing bar: `SACK_BAR` at 20, where they
 stop the car, and `PLAYER_RENEW_BAR` at 45, where a deal running out is simply not
@@ -3090,24 +3151,38 @@ first-year grace and the escalating bad-run penalty are all the player's, which 
 why a rival who fails three seasons running loses his job on exactly the
 arithmetic that would lose the player his.
 
-**The player's board did not move**, and this is pinned rather than asserted: the
-same sweep of 4,500 reviews — 225 programs × 5 seasons × 4 seats — was run against
-`program.ts` before and after the split and came out identical to the digit
-(1564 exceeded / 472 met / 724 missed / 1740 failed, −15,971 points of security,
-1,232 sacked and 553 not renewed, 107,620 wins asked for). Those literals are the
-test.
+**The player's board did not move at the split**, and this is pinned rather than
+asserted: the same sweep of 4,500 reviews — 225 programs × 5 seasons × 4 seats —
+was run against `program.ts` before and after and came out identical to the digit.
+Those literals are the test, in `program.test.ts` under "your board, pinned".
 
-**What is still wrong, and is the player's to keep.** The clear rate is 55%,
-not the 62% `expectationFor` claims, and the residue is one line of
-`objectivesFor`: contend and championship programs are **required** to reach the
-national tournament, and there are eight bids for ninety six programs however the
-mandates are handed out. Fifteen to nineteen programs carry that box and about
-thirteen fail it every year. `notLast` costs another seven — somebody finishes
-last in each of eight conferences. `objectivesFor`'s own docstring establishes the
-rule these break ("a board that asks for the arithmetically impossible is not a
-hard board, it is a broken one") and the checklist is shared with the player, so
-it is in the E list of `06-backlog.md` rather than quietly patched. Closing it
-would take the clear rate to roughly 62% and turnover to about ten.
+**It moved once since, deliberately**, when §6.3a took the national bid off the
+required list. The literals were re-recorded and what moved is worth stating,
+because it is the evidence that the change was surgical rather than a retune:
+
+| | Split | Capacity fix |
+|---|---|---|
+| exceeded / met | 1564 / 472 | **1636 / 400** |
+| missed / failed | 724 / 1740 | **724 / 1740** |
+| wins asked for | 107,620 | **107,620** |
+| security moved | −15,971 | **−15,179** |
+| sacked / not renewed | 1232 / 553 | **1232 / 535** |
+| extended | 1173 | **1227** |
+
+`missed`, `failed` and the wins asked for did not move at all, and neither did the
+sackings. Every review that failed a required box before fails exactly one before
+and after: a contender that used to miss the bid now misses the top three instead,
+and a championship board's conference title is the same event as the bid it
+replaced. What moved is 72 reviews from `met` to `exceeded`, because a contender
+now carries three bonus boxes where it carried two, and the security and contract
+totals that follow from those 72. **The win target was not touched**, which is the
+whole point: a clear rate closed by lowering the number beside an impossible box
+would have hidden the incoherence rather than removed it.
+
+The sweep's fourth season was corrected on the same commit. It reached the
+national field without winning its conference, which this format cannot produce —
+the field *is* the eight conference champions — and the contradiction was free
+until a board started requiring the title.
 
 ---
 
@@ -3754,8 +3829,9 @@ does. None of them changes behaviour; all of them will mislead the next reader.
 | ~~`engine/recruiting.ts`, `RECRUITING_BUDGET` docstring~~ | Fixed. It opened "Thirty, spread across as many recruits as you like" over a constant of 40. |
 | `engine/scouting.ts`, `PotentialGrade` | `'?'` is documented as what a screen prints where a ceiling is none of your business. No screen uses it; `ui/screens/Player.tsx` prints an em dash instead. |
 | `engine/recruiting.ts`, `BOARD_SLOTS` | Marked `@deprecated`, still used by `aiTargets` to size a board. `ACTIONS_PER_WEEK` beside it is now genuinely unused — `aiTargets` reads `weeklyBudget` (§14.7) — and is kept only as the record of what the flat week was. |
-| `engine/program.ts`, `objectivesFor` docstring | Says winning the conference is "a bonus for a contender and a requirement for a championship program", and calls that asymmetry "the whole point of having mandates". The code passes `confTitle(false)` for both, so it is a bonus for everyone and no mandate requires it. |
-| `engine/program.ts`, `Expectation.expectsTournament` / `expectsConference` | Computed in `expectationFor` and read by nothing, anywhere in `src/` or `tests/`. Vestigial since `judge` was rewritten to read the checklist and nothing else. |
+| ~~`engine/program.ts`, `objectivesFor` docstring~~ | Fixed by making the code true rather than the comment weaker. It claimed winning the conference was "a bonus for a contender and a requirement for a championship program" while passing `confTitle(false)` in both places. §6.3a. |
+| ~~`engine/program.ts`, `Expectation.expectsTournament` / `expectsConference`~~ | Deleted. Computed in `expectationFor` and read by nothing; they became a second opinion about the ask that was also *wrong* the day contenders stopped needing a bid, which is exactly what `judge` reading the checklist and nothing else exists to prevent. |
+| ~~`program.test.ts`, the pinned sweep's fourth season~~ | Fixed. It reached the national field without winning its conference, which cannot happen in a format whose field is the eight conference champions. |
 
 ## Appendix B: undetermined
 

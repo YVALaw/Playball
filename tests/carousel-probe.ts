@@ -85,6 +85,17 @@ const totals = { sacked: 0, retired: 0, poached: 0, cleared: 0, graded: 0 };
 const mix: Record<Verdict, number> = { exceeded: 0, met: 0, missed: 0, failed: 0 };
 const tenures: number[] = [];
 const boxTotals: Record<string, number> = {};
+// A box missed alongside two others costs nothing extra — the season was already
+// a failure. What a required box actually *costs* the clear rate is the number of
+// programs it was the only thing standing between and a satisfied board, so that
+// is counted separately. Reading the raw miss column as the price of a box is how
+// an objective gets blamed for a season the win total had already lost.
+const soleTotals: Record<string, number> = {};
+const byMandate: Record<Mandate, { n: number; cleared: number }> = {
+  develop: { n: 0, cleared: 0 }, build: { n: 0, cleared: 0 },
+  compete: { n: 0, cleared: 0 }, contend: { n: 0, cleared: 0 },
+  championship: { n: 0, cleared: 0 },
+};
 let askedTotal = 0;
 let wonTotal = 0;
 
@@ -122,12 +133,19 @@ for (let y = 0; y < YEARS; y++) {
       reachedOmaha: ['omaha', 'runner-up', 'champion'].includes(post.finish[t.index] ?? ''),
       wonTitle: post.champion === t.index,
     };
-    for (const g of gradeObjectives(e, o)) {
-      if (g.objective.required && !g.met) {
-        missedBox[g.objective.key] = (missedBox[g.objective.key] ?? 0) + 1;
-        boxTotals[g.objective.key] = (boxTotals[g.objective.key] ?? 0) + 1;
-      }
+    const gone = gradeObjectives(e, o)
+      .filter((g) => g.objective.required && !g.met)
+      .map((g) => g.objective.key);
+    for (const key of gone) {
+      missedBox[key] = (missedBox[key] ?? 0) + 1;
+      boxTotals[key] = (boxTotals[key] ?? 0) + 1;
     }
+    if (gone.length === 1) {
+      const only = gone[0] as string;
+      soleTotals[only] = (soleTotals[only] ?? 0) + 1;
+    }
+    byMandate[e.mandate].n += 1;
+    if (gone.length === 0) byMandate[e.mandate].cleared += 1;
   }
   askedTotal += asked / season.teams.length;
   wonTotal += won / season.teams.length;
@@ -198,7 +216,15 @@ console.log('star spread   %s   (seeded 46/20/16/11/3)', stars.slice(1).join('/'
 const ranked = season.teams.map((t) => t.prestige).sort((a, b) => b - a);
 console.log('top five      %s      bottom five %s',
   mean(ranked.slice(0, 5)).toFixed(1), mean(ranked.slice(-5)).toFixed(1));
-console.log('required boxes missed, per year, out of %d programs:', N);
+console.log('required boxes missed, per year, out of %d programs (sole = what it cost):', N);
 for (const [k, v] of Object.entries(boxTotals).sort((a, b) => b[1] - a[1])) {
-  console.log('  %s %s', k.padEnd(16), (v / YEARS).toFixed(1));
+  console.log('  %s %s   sole %s',
+    k.padEnd(16), (v / YEARS).toFixed(1).padStart(5), ((soleTotals[k] ?? 0) / YEARS).toFixed(1));
+}
+console.log('clear rate by mandate:');
+for (const m of Object.keys(byMandate) as Mandate[]) {
+  const { n, cleared } = byMandate[m];
+  console.log('  %s %s/yr  %s%%', m.padEnd(13),
+    (n / YEARS).toFixed(1).padStart(5),
+    n === 0 ? '  -' : (100 * cleared / n).toFixed(0).padStart(3));
 }

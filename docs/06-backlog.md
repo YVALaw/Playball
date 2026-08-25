@@ -41,6 +41,16 @@ The arithmetic is the reason nationals had to grow. Four automatic bids into a
 four-team national field would *be* the whole field, and every conference
 tournament and regional beneath it would be decoration.
 
+**One thing to revisit on the same commit.** `NATIONAL_BIDS` in
+`engine/postseason.ts` is derived from `REGIONS` and is the ceiling on how many
+boards may *require* a bid (§6.3a). It goes from 8 to 20 here, which makes
+"reach the national tournament" a requirement a `contend` board can honestly
+make again — it is a bonus today only because eight bids could not cover twenty
+askers. That is a judgement to take deliberately rather than a constant to wire
+into `objectivesFor`, so nothing happens automatically; the two capacity tests
+will simply stop objecting. Note also that a bid and a conference title stop
+being the same event, which is why `championship` requires the title by name.
+
 ### Records are scaled, not literal — **revisited, and the method changed**
 
 The principle stands: a seeded mark is corrected so it can actually be chased,
@@ -699,40 +709,49 @@ Fold in opportunistically rather than as a work item of their own.
   back in June. Turnover is **11.5–11.9 chairs a year** across two seeds, of
   which 5.6–6.0 sackings, 2.8 poachings and 3.1 retirements.
 
-- **The two required boxes the checklist cannot supply.** What is left of the
-  clear-rate gap after the split, and it is the player's board so it was not
-  touched. `objectivesFor` requires a national tournament bid of every `contend`
-  and `championship` program. There are **eight bids for ninety six programs**
-  and fifteen to nineteen carry the requirement, so about thirteen fail it every
-  year by arithmetic. `notLast` costs another seven, because somebody finishes
-  last in each of eight conferences and most of those programs are on `develop`.
-  Together that is a fifth of the league in breach of a required box before a
-  ball is thrown, and it is the whole distance between the measured 55% clear
-  rate and the 62% `expectationFor` claims.
+- **~~The two required boxes the checklist cannot supply.~~** SHIPPED, and one of
+  the two was not a breach at all. See §6.3a of the systems reference.
 
-  `objectivesFor`'s own docstring already states the rule these break: "Only four
-  of eight teams can finish in the top half, so requiring it of more than half
-  the league guarantees mass failure no matter how well anyone plays… A board
-  that asks for the arithmetically impossible is not a hard board, it is a broken
-  one." Placement objectives were spent carefully and the two most zero-sum asks
-  in the game were not.
+  The bid was, exactly as diagnosed: `objectivesFor` required a national
+  tournament bid of every `contend` and `championship` program, fifteen to twenty
+  a year, against eight bids. It is a bonus at every mandate now, `contend`
+  climbed from top half to top three to replace it (a contender clears the top
+  half 98% of the time, so the box it lost was carrying all the difficulty and
+  the box beside it none), and `championship` requires the **conference title** —
+  the same event as the bid in today's format, but the honest one to name, and it
+  makes `objectivesFor`'s own docstring true for the first time.
 
-  Fixing it is a change to the player's board and should be taken deliberately,
-  with the clear rate re-measured on both sides. Estimated: clear rate to roughly
-  62% and rival turnover from 11.7 to about ten. Candidates — make the bid a
-  bonus rather than a requirement for `contend` and keep it required only for
-  `championship`; or make the required box "reach the conference tournament
-  final", which the same eight conferences can supply sixteen of.
+  Clear rate **55.6% → 63.2% and 63.8%** on two seeds over thirty five seasons,
+  against the 62% the win offset is tuned to. Turnover **11.5 / 11.9 → 9.2 / 9.3**
+  chairs a year, still inside the real sport's 8–12. **The win target was not
+  touched** — a clear rate closed by lowering the number beside an impossible box
+  would have hidden the incoherence instead of removing it — and the pinned sweep
+  shows it: `missed`, `failed`, the wins asked for and the sackings are identical
+  to the digit, and the only movement is 72 of 4,500 reviews going from `met` to
+  `exceeded` because a contender now carries three bonus boxes where it had two.
+
+  **`notLast` was misdiagnosed here, and the estimate of "another seven" was
+  double-counting.** It is missed by 6.5 programs a year and is the *sole* miss
+  for 0.5 of them: the other six had already lost their win box, so the box cost
+  the clear rate almost nothing. It also does not breach the capacity rule —
+  eighty eight of ninety six programs can stay out of a cellar and about sixty
+  are asked to. Left exactly as it was.
+
+  What did not survive is the estimate's *method*. A required box's price is the
+  number of programs it was the only thing standing between and a satisfied
+  board, not the number of times it was ticked off. `npm run carousel` prints both
+  columns now for exactly this reason.
 - Recruiting offers should be able to promise what a recruit actually wants — a
   starting job, playing time — rather than only spending hours on him.
 - `highSchoolLine` derives its numbers from true ratings with a fixed noise
   term, so the formula can be reverse-engineered to pin present ability to about
   ±6 regardless of scouting skill. One line to widen.
-- No mandate requires a conference title, though `objectivesFor`'s own docstring
-  says otherwise.
+- ~~No mandate requires a conference title, though `objectivesFor`'s own docstring
+  says otherwise.~~ Fixed with the item above: `championship` requires it.
 - `FIELD_SIZE` and `runPostseason`'s `size` parameter are vestigial.
-- `Expectation.expectsTournament` and `expectsConference` are computed and never
-  read.
+- ~~`Expectation.expectsTournament` and `expectsConference` are computed and never
+  read.~~ Deleted with the item above. They became a second, *wrong* opinion about
+  the ask the moment contenders stopped needing a bid.
 - Stale comments listed in appendix A of the systems reference. The postseason
   note that described four-team double-elimination regionals is gone; what is
   left there is `FIELD_SIZE`, the five UI files above, and four smaller ones.

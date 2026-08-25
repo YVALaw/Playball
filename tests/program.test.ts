@@ -11,10 +11,11 @@ import {
   expectationFor, objectivesFor, objectiveMet, gradeObjectives, judge,
   coachStanding, newCoach, LIFER_SEASONS, badRunPenalty, reviewSeason, takeChair,
   initialPrestige, leagueShape, playerBoard, rivalBoard, rivalExpectation,
-  CALIBRATED_LEAGUE, PLAYER_RENEW_BAR, SACK_BAR,
+  rosterStrength, CALIBRATED_LEAGUE, PLAYER_RENEW_BAR, SACK_BAR,
   type Mandate, type SeasonOutcome, type Expectation, type CoachState,
-  type Verdict,
+  type ObjectiveKey, type Verdict,
 } from '../src/engine/program.js';
+import { NATIONAL_BIDS, OMAHA_BERTHS } from '../src/engine/postseason.js';
 import { createSeason, DEFAULT_SEASON } from '../src/engine/season.js';
 import { makeRng } from '../src/engine/rng.js';
 import { CONFERENCES } from '../src/data/schools.js';
@@ -29,12 +30,25 @@ const outcome = (over: Partial<SeasonOutcome> = {}): SeasonOutcome => ({
   ...over,
 });
 
-/** A season that clears every required box of the given expectation and no bonus. */
+/**
+ * A season that clears every required box of the given expectation and no bonus.
+ *
+ * Built off the checklist rather than off a hand-written season per mandate, so
+ * that moving a box between required and bonus cannot quietly leave this handing
+ * out a required tick it was never asked for — which is how a checklist change
+ * comes to prove itself.
+ */
 function meetExactly(e: Expectation): SeasonOutcome {
+  const required = (key: ObjectiveKey): boolean =>
+    e.objectives.some((o) => o.key === key && o.required);
   return outcome({
     wins: e.targetWins, losses: 33 - e.targetWins,
     conferenceRank: 1, conferenceSize: 8,
-    madeTournament: e.objectives.some((o) => o.key === 'tournament' && o.required),
+    wonConference: required('conferenceTitle'),
+    // Winning the conference is reaching the national field in today's format,
+    // so a season that ticks the one ticks the other whether it was asked to or
+    // not. Anything else would be a season that cannot happen.
+    madeTournament: required('conferenceTitle') || required('tournament'),
   });
 }
 
@@ -47,6 +61,107 @@ describe('the checklist', () => {
       expect(required.length, `${m} required`).toBeGreaterThanOrEqual(2);
       expect(bonus.length, `${m} bonus`).toBeGreaterThanOrEqual(2);
     }
+  });
+
+  /*
+    The arithmetic guard, and the reason it is structural rather than a number.
+
+    `objectivesFor` may only *require* something the format can actually hand out
+    to everybody it asks. The rule was written for placement — six of twelve
+    finish in the top half, so requiring it of more than half the league fails
+    them by construction — and was then broken by a postseason box: a national
+    bid was required of every contend and championship program, and the country
+    awards `NATIONAL_BIDS` of them. Fifteen to twenty programs a year carried a
+    box with eight seats behind it, at a measured cost of 12.8 clear reviews a
+    year.
+
+    So the seats are read off the postseason and the conference table rather than
+    written down here. The day the field grows — the backlog's expanded format
+    seats twenty — this test re-prices itself, which is the point: the expansion
+    must not be able to quietly reintroduce the breach, and it must not be able
+    to quietly forbid a requirement it has since made honest either.
+  */
+  const world = createSeason(makeRng(20260825), DEFAULT_SEASON, CONFERENCES);
+  const conferences = [...new Set(world.teams.map((t) => t.conference))];
+  const confSize = world.teams.filter((t) => t.conference === conferences[0]).length;
+
+  /** How many programs the format can hand each box to, in one season. */
+  const SEATS: Partial<Record<ObjectiveKey, number>> = {
+    notLast: (confSize - 1) * conferences.length,
+    topHalf: Math.ceil(confSize / 2) * conferences.length,
+    topThree: 3 * conferences.length,
+    conferenceTitle: conferences.length,
+    tournament: NATIONAL_BIDS,
+    omaha: OMAHA_BERTHS,
+    title: 1,
+  };
+
+  /**
+   * What this league's boards ask for, box by box.
+   *
+   * `stretch` widens the league about its own mean without moving the mean,
+   * because that is the one thing thirty five seasons do to the distribution
+   * that a shift cannot model — the prestige spread goes 15.4 to 17.1 as the
+   * boards start biting, and it is the tails that decide how many programs reach
+   * `contend` and `championship`. Read through `rivalExpectation`, which is the
+   * translation every board in the country except the player's own goes through.
+   */
+  const demand = (stretch: number): Partial<Record<ObjectiveKey, number>> => {
+    const league = leagueShape(world.teams);
+    const asked: Partial<Record<ObjectiveKey, number>> = {};
+    for (const t of world.teams) {
+      const e = rivalExpectation(
+        league.prestige + (t.prestige - league.prestige) * stretch,
+        league.roster + (rosterStrength(t.team) - league.roster) * stretch,
+        league, 45,
+      );
+      for (const o of e.objectives) {
+        if (o.required) asked[o.key] = (asked[o.key] ?? 0) + 1;
+      }
+    }
+    return asked;
+  };
+
+  it('never requires a box of more programs than the format seats', () => {
+    // 1.0 is the world as generated and 1.1 is the world thirty five seasons
+    // later — the prestige spread goes 15.4 to 17.1 as the boards start biting.
+    // The two tightest rungs are close to full, and are meant to be: over those
+    // thirty five seasons `championship` peaks at 7 programs against 8 conference
+    // titles, and `contend` and `championship` together at 22 against 24 top
+    // three finishes. A change that makes either mandate commoner breaks this,
+    // which is the point of it — the live version, counted off leagues that have
+    // actually been played, is in `rivals.test.ts`.
+    for (const stretch of [0.9, 1.0, 1.1]) {
+      for (const [key, n] of Object.entries(demand(stretch))) {
+        const seats = SEATS[key as ObjectiveKey];
+        if (seats === undefined) continue;      // `wins` and `winningSeason`
+        expect(n, `${key} at stretch ${stretch}`).toBeLessThanOrEqual(seats);
+      }
+    }
+  });
+
+  it('leaves no zero-sum box outside the guard above', () => {
+    // A box with no seat count is a box the test above skips, so adding one and
+    // forgetting to price it is how the breach comes back. `wins` and
+    // `winningSeason` are the only two that are genuinely not rationed by the
+    // format — a whole league can win twenty games in the same year — and every
+    // other key has to be in SEATS whether or not anybody requires it today.
+    const unpriced: ObjectiveKey[] = ['wins', 'stretchWins', 'winningSeason'];
+    for (const m of MANDATES) {
+      for (const o of objectivesFor(m, 18)) {
+        if (unpriced.includes(o.key)) continue;
+        expect(SEATS[o.key], `${m}/${o.key}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('does not require a national bid while the field is smaller than the ask', () => {
+    // The specific regression, stated in its own terms so the diff that
+    // reintroduces it is unambiguous. Contend and championship together run to
+    // twenty two programs at their peak over thirty five seasons; the field
+    // seats eight.
+    const asked = demand(1.1).tournament ?? 0;
+    expect(asked).toBeLessThanOrEqual(NATIONAL_BIDS);
   });
 
   it('never shows a placement box as met while the season is unranked', () => {
@@ -416,6 +531,16 @@ describe('two bad seasons running', () => {
   The numbers were taken by running the same sweep against `program.ts` as it
   stood before the split and again after, and they came out identical to the
   digit. That is what they are here to keep true.
+
+  **They have been re-recorded once, deliberately**, when the checklist stopped
+  requiring a national bid of contenders. Worth reading what moved, because it is
+  the argument that the change was surgical: `missed` and `failed` did not move
+  at all, and neither did the wins asked for. Every review that failed a required
+  box before fails exactly one before and after — a contender that used to miss
+  the bid now misses the top three instead, and a championship board's conference
+  title is the same event as the bid it replaced. What moved is 72 reviews from
+  `met` to `exceeded`, because a contender now carries three bonus boxes where it
+  carried two, and the security and contract totals that follow from those 72.
 */
 
 /** Every kind of program, every kind of season, every kind of seat. */
@@ -424,11 +549,26 @@ for (let p = 20; p <= 90; p += 5) {
   for (let r = 20; r <= 90; r += 5) GRID.push({ prestige: p, roster: r });
 }
 
+/*
+  Five seasons, and the fourth one carries a correction.
+
+  It used to reach the national field without winning its conference, which is a
+  season this format cannot produce: the field *is* the eight conference
+  champions, so `madeTournament` and `wonConference` are the same fact until the
+  postseason grows. Nothing read `wonConference` as a requirement, so the
+  contradiction cost nothing and sat there. It stopped being free the moment a
+  championship board started requiring the conference title — a fifth of the
+  sweep was then failing a box that the `madeTournament` beside it said had been
+  cleared, which prices a checklist change against a world that does not exist.
+*/
 const SEASONS: SeasonOutcome[] = [
   outcome({ wins: 8, losses: 37, conferenceRank: 8, conferenceSize: 8 }),
   outcome({ wins: 16, losses: 29, conferenceRank: 6, conferenceSize: 8 }),
   outcome({ wins: 23, losses: 22, conferenceRank: 4, conferenceSize: 8 }),
-  outcome({ wins: 30, losses: 15, conferenceRank: 2, conferenceSize: 8, madeTournament: true }),
+  outcome({
+    wins: 30, losses: 15, conferenceRank: 2, conferenceSize: 8,
+    wonConference: true, madeTournament: true,
+  }),
   outcome({
     wins: 36, losses: 9, conferenceRank: 1, conferenceSize: 8,
     wonConference: true, madeTournament: true, wonRegional: true, reachedOmaha: true,
@@ -478,21 +618,27 @@ describe('your board, pinned', () => {
     // 225 programs × 5 seasons × 4 seats. Move any of these four and the board
     // the player is standing in front of is not the board that was tuned.
     expect(sweep().verdicts)
-      .toEqual({ exceeded: 1564, met: 472, missed: 724, failed: 1740 });
+      .toEqual({ exceeded: 1636, met: 400, missed: 724, failed: 1740 });
   });
 
   it('asks for the same wins and moves security by the same amount', () => {
     const { wins, security } = sweep();
+    // The win target has never moved and must not: the clear rate was closed by
+    // taking a box the format could not supply off the list, not by lowering the
+    // number beside it, which would have hidden the incoherence behind a digit.
     expect(wins).toBe(107620);
-    expect(security).toBe(-15971);
+    expect(security).toBe(-15179);
   });
 
   it('keeps and lets go of exactly the same men, by the same two routes', () => {
     const { fired, sacked, notRenewed, extended } = sweep();
-    expect(fired).toBe(1785);
+    expect(fired).toBe(1767);
+    // Sackings did not move at all. Nobody is fired mid-contract who was not
+    // fired mid-contract before — the whole of the difference is at the renewal
+    // bar, where 18 men now have enough security to be kept on.
     expect(sacked).toBe(1232);
-    expect(notRenewed).toBe(553);
-    expect(extended).toBe(1173);
+    expect(notRenewed).toBe(535);
+    expect(extended).toBe(1227);
   });
 
   it('is what `reviewSeason` uses when nobody says otherwise', () => {
