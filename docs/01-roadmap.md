@@ -153,7 +153,7 @@ Ticked means opened and checked, August 2026. Detail on any line is in
       ninety-five rival programs working a board of their own
 - [x] Signing day, and a verdict that judges your report rather than the recruit
 
-**Progression and the draft** — §12.5
+**Progression and the draft**
 
 - [x] Development and decline between seasons, walk-ons filling unspent
       scholarships, graduation
@@ -198,7 +198,7 @@ to invest in this track again, and nothing else on it is urgent.
 - [~] **The MLB draft.** Departures are automatic and the coach has no say. The
       persuasion half — reading what a man wants and paying for him out of the
       recruiting budget — is agreed and unbuilt (backlog B9, and it needs ages
-      first)
+      first; §12.5 records exactly what the automatic version does today)
 - [~] **The coaching carousel.** You move between jobs; nobody else does. Rival
       coaches never improve, are never judged and are never poached, so you are
       the only coach in ninety-six programs who gets better (B7)
@@ -305,9 +305,10 @@ and iOS are all settled above.
 
 ## Debt
 
-- Source comments across the engine, the store, the world builder and two screens
-  still describe a **sixty-four program** world. It has ninety-six. One of them
-  is player-facing prose on the wire screen
+- Source comments across the engine, the store, the world builder, the school
+  data and two screens still describe a **sixty-four program** world. It has
+  ninety-six. All of them are comments — none of it reaches the player — which
+  makes it cheap to fix and easy to keep forgetting
 - `sim.ts parity` still prints a verdict off a thirty-point rating gap the shipped
   world never produces, and the verdict is wrong. The curve it should be read
   against is in `tests/parity-sweep.ts` (T1 in the implementation plan)
@@ -321,10 +322,14 @@ and iOS are all settled above.
 Held so far, and worth guarding — a performance regression found six months later
 is a rewrite.
 
-| Operation | Budget | Measured |
+| Operation | Budget | Where it stood when last timed |
 |---|---|---|
 | Single game, headless | under 5 ms | ~0.4 ms |
-| Full league season | under 3 s in a Worker | comfortably inside it |
-| Screen transition | under 100 ms | not measured |
-| Initial bundle, 3D excluded | under 250 KB gzipped | not measured |
+| Full league season | under 3 s in a Worker | inside it by a wide margin |
+| Screen transition | under 100 ms | never measured |
+| Initial bundle, 3D excluded | under 250 KB gzipped | never measured |
 | 3D field on a mid-range Android | 30 fps during ball flight | never run on a phone |
+
+The two engine figures are from the August calibration pass and have not been
+re-timed since the fielding rework added a per-ball-in-play fielder lookup, which
+is the first change in a while that could plausibly cost something.

@@ -357,13 +357,27 @@ gap in the plan and it is not a small job.
   heuristic. This is the difference between an opponent who bunts by rule and
   one who bunts when the base-out state says to.
 
-### G3 · The 3D track, status unknown
+### G3 · The 3D track — audited
 
-`Diamond3D.tsx` exists, so this is part-built, but the roadmap lists sub-items
-nobody has audited: instanced fielder and runner markers, ball flight driven by
-`PlayEvent`, camera easing between fixed positions, `frameloop="demand"` and DPR
-capping, a 2D/3D toggle in settings, and holding 30fps on a mid-range Android.
-Needs an audit before it can be planned.
+Done: lazy loaded and code split, every material unlit so there is no lighting
+cost, DPR capped at 1.6, and ball flight driven off the engine's landing
+coordinate with a profile per batted-ball type.
+
+Missing, and the first one is the surprise:
+
+- **There are no fielders in the scene.** Only the runners and the ball. Nine
+  men are simulated in detail and none of them is drawn.
+- Runners are individual meshes rather than instanced.
+- **One fixed camera that never moves.** No easing, no three positions.
+- **`frameloop` is the default `always`**, so the canvas renders continuously
+  between pitches. The only item here with a real battery cost, and the one to
+  fix first.
+- No 2D/3D toggle. The 2D diamond survives only as the Suspense fallback while
+  the chunk loads, which is not a setting.
+- Thirty frames a second has never been measured, because the game has never
+  run on a phone.
+
+Park geometry (see G4) belongs to this track.
 
 ### G4 · The roadmap's open questions, now closed
 
@@ -382,13 +396,28 @@ Needs an audit before it can be planned.
 
 ### G5 · Debt
 
-- **Ten source files still say the world has 64 programs.** It has 96.
+- **Twelve source files still say the world has 64 programs.** It has 96.
   `postseason.ts`, `progression.ts`, `recruiting.ts`, `season.ts`, `strategy.ts`,
-  `wire.ts`, `persistence.ts`, `store.ts`, `Rankings.tsx`, `Today.tsx` — and
-  `Wire.tsx` tells the player about "the other sixty three programs".
-- Two unresolved items in `04-implementation-plan.md`: **B5**, `LEAGUE_K_RATE`
-  is unverified and needs a sourced D1 strikeout rate; **T1**, the parity
-  harness points at an unrealistic matchup.
+  `wire.ts`, `persistence.ts`, `store.ts`, `world.ts`, `data/schools.ts`,
+  `Rankings.tsx`, `Today.tsx`. Correction to an earlier draft of this line: it
+  is all comments, and **none of it reaches the screen** — the "other sixty
+  three programs" is `Wire.tsx`'s header comment, not copy the player reads.
+  Debt, not a bug.
+- **T1** in `04-implementation-plan.md` still stands: `sim.ts parity` hardcodes
+  a 68-against-38 matchup and prints a verdict it fails by its own criterion.
+  Correction to an earlier draft: **B5 is closed**, not open. The implementation
+  plan reversed its own conclusion in a later calibration pass — 18% was too
+  high rather than too low, `LEAGUE_K_RATE` is the sourced 0.164, and
+  `CONTEXT.normalizer` closed B6 in the same move.
+- `package.json` says **0.6.2** while the last release commit is v0.7.4, and the
+  README still describes a 33-game season and "no save slots" when the season is
+  45 games and named slots shipped.
+- `state/store.ts`, above `PostseasonProgress`, claims the national bracket is
+  one sixteen-team tree with the regionals and Omaha as its first and last
+  rounds. `REGIONAL_LENGTHS` is one series and `NATIONAL_LENGTHS` is two rounds,
+  so the comment is wrong and the systems reference is right.
+- `05-systems-reference.md` Appendix B says no tendency specification exists;
+  B11 in this file names six buildable ones. This file is newer.
 
 ## F. Research outstanding
 

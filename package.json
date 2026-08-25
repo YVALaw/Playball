@@ -1,6 +1,6 @@
 {
   "name": "playball",
-  "version": "0.6.2",
+  "version": "0.7.4",
   "private": true,
   "type": "module",
   "description": "College baseball dynasty. Headless sim engine plus a mobile front end.",
