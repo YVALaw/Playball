@@ -21,8 +21,10 @@ import {
   type Pitch, type Prospect, type Rawness,
 } from '../src/engine/recruiting.js';
 import {
-  GRADE_LADDER, potentialGrade, type PotentialGrade,
+  GRADE_LADDER, potentialGrade, GENERATED_POTENTIAL_CAP, TOP_GENERATED_GRADE,
+  type PotentialGrade,
 } from '../src/engine/scouting.js';
+import { makeHitter, makePitcher } from '../src/engine/players.js';
 import { overallOf } from '../src/engine/ratings.js';
 import { makeRng } from '../src/engine/rng.js';
 import { resetNames } from '../src/engine/players.js';
@@ -934,5 +936,67 @@ describe('the national rank is an opinion, not the answer', () => {
       expect(Math.max(...above), `${stars} star against ${stars - 1} star`)
         .toBeLessThan(Math.min(...below));
     }
+  });
+});
+
+describe('the top of the ladder is reserved', () => {
+  // S+ is a store player and nobody else. The gate is on the *number* rather
+  // than the letter, because development, the scouting bands and the draft all
+  // read the raw ceiling — capping only the grade would be a lie three separate
+  // systems could see through. These pin the gate at the one funnel every
+  // generated player passes through, so a future store bypass has to be
+  // deliberate rather than accidental.
+
+  it('never hands S+ to anybody the world generates', () => {
+    let highest = 0;
+    let seen = 0;
+    for (let c = 0; c < 12; c++) {
+      const cls = generateClass(2027 + c, 96, makeRng(31_000 + c * 97));
+      for (const p of cls.prospects) {
+        highest = Math.max(highest, p.player.potential);
+        expect(potentialGrade(p.player.potential)).not.toBe('S+');
+        seen++;
+      }
+    }
+    expect(seen).toBeGreaterThan(5000);
+    expect(highest).toBeLessThanOrEqual(GENERATED_POTENTIAL_CAP);
+  });
+
+  it('holds the cap for walk-ons and rival rosters too, not just recruits', () => {
+    // A walk-on is made straight from `makeHitter`/`makePitcher` rather than
+    // through a class, so a gate that only knew about recruiting would leak here.
+    const rng = makeRng(4242);
+    for (let i = 0; i < 3000; i++) {
+      const p = i % 2 === 0 ? makeHitter(rng, 95) : makePitcher(rng, 95);
+      expect(p.potential).toBeLessThanOrEqual(GENERATED_POTENTIAL_CAP);
+    }
+  });
+
+  it('keeps S genuinely scarce and A+ merely rare', () => {
+    const CLASSES = 20;
+    let s = 0;
+    let aPlus = 0;
+    for (let c = 0; c < CLASSES; c++) {
+      for (const p of generateClass(2027 + c, 96, makeRng(77_000 + c * 53)).prospects) {
+        const g = potentialGrade(p.player.potential);
+        if (g === 'S') s++;
+        if (g === 'A+') aPlus++;
+      }
+    }
+    // A couple of men in the country in a year, which is the whole point of the
+    // grade. Bounded on both sides: nought would make it decoration.
+    expect(s / CLASSES).toBeGreaterThan(1);
+    expect(s / CLASSES).toBeLessThan(6);
+    // Rare, but findable often enough to be worth scouting for.
+    expect(aPlus).toBeGreaterThan(s);
+  });
+
+  it('orders the ladder and names the best grade the world can reach', () => {
+    expect(GRADE_LADDER.indexOf('A')).toBeLessThan(GRADE_LADDER.indexOf('A+'));
+    expect(GRADE_LADDER.indexOf('A+')).toBeLessThan(GRADE_LADDER.indexOf('S'));
+    expect(GRADE_LADDER.indexOf('S')).toBeLessThan(GRADE_LADDER.indexOf('S+'));
+    // Derived, so it cannot drift away from the cap it describes.
+    expect(TOP_GENERATED_GRADE).toBe('S');
+    expect(potentialGrade(GENERATED_POTENTIAL_CAP + 1)).toBe('S+');
   });
 });

@@ -30,7 +30,9 @@ import {
 } from '../../engine/recruiting.js';
 import { pitchFor, developmentScore } from '../../engine/pitch.js';
 import { overallOf } from '../../engine/ratings.js';
-import { highSchoolLine, type PotentialGrade } from '../../engine/scouting.js';
+import {
+  highSchoolLine, GRADE_LADDER, TOP_GENERATED_GRADE, type PotentialGrade,
+} from '../../engine/scouting.js';
 import { CONFERENCES, ALL_STATES } from '../../data/schools.js';
 import { prestigeStars } from '../../engine/program.js';
 import { Avatar } from '../Avatar.js';
@@ -47,16 +49,34 @@ const SHEET_LABEL: Record<Sheet, string> = {
   schools: 'SCHOOLS',
 };
 
-/** Grades in order, so a "minimum potential" filter has something to compare. */
+/**
+ * Grades in order, so a "minimum potential" filter has something to compare.
+ *
+ * Read off the ladder rather than written out again. The list was a literal
+ * until a grade was inserted into the middle of it, and a filter that has not
+ * heard of A+ does not fail loudly — it silently rates it below A and hides the
+ * players it was asked to find.
+ */
 const GRADE_RANK: Record<PotentialGrade, number> = {
-  '?': 0, D: 1, C: 2, B: 3, A: 4, S: 5, 'S+': 6,
-};
+  '?': 0,
+  ...Object.fromEntries(GRADE_LADDER.map((g, i) => [g, i + 1])),
+} as Record<PotentialGrade, number>;
 
-/** What the "minimum potential" slider is asking for at each notch. */
-const GRADE_STEPS: PotentialGrade[] = ['D', 'C', 'B', 'A', 'S'];
+/**
+ * What the "minimum potential" slider is asking for at each notch.
+ *
+ * Stops at the best grade the world actually produces. S+ belongs to a store
+ * player and nobody else, so a notch for it would be a filter that always
+ * returns an empty board.
+ */
+const GRADE_STEPS: PotentialGrade[] =
+  GRADE_LADDER.slice(0, GRADE_LADDER.indexOf(TOP_GENERATED_GRADE) + 1);
 
 const wantedGrade = (min: number): PotentialGrade =>
-  GRADE_STEPS[Math.min(GRADE_STEPS.length - 1, Math.ceil(min / 20) - 1)] as PotentialGrade;
+  GRADE_STEPS[Math.min(
+    GRADE_STEPS.length - 1,
+    Math.max(0, Math.ceil(min / (100 / GRADE_STEPS.length)) - 1),
+  )] as PotentialGrade;
 
 const VIEW_LABEL: Record<View, string> = {
   recruits: 'RECRUITS',

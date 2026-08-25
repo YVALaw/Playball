@@ -8,6 +8,7 @@
 
 import { gauss, normal } from './rng.js';
 import { overallOf } from './ratings.js';
+import { GENERATED_POTENTIAL_CAP } from './scouting.js';
 import { FIRST, LAST } from '../data/names.js';
 import { playerId } from './types.js';
 import type {
@@ -45,7 +46,13 @@ function projectPotential(rng: Rng, overall: number, cls: ClassYear): number {
    */
   const raw = cls === 'FR' && rng() < 0.07 ? normal(rng, 20, 8, 6, 34) : 0;
 
-  return Math.min(99, Math.round(overall + headroom + raw));
+  // Capped short of S+ rather than at 99. This is the single funnel every
+  // generated player passes through — a recruiting class, a walk-on, the roster
+  // a rival program starts the world with — which is why the gate belongs here
+  // and nowhere else. A store player is built by computing his ceiling without
+  // this clamp; see GENERATED_POTENTIAL_CAP for why the number is reserved
+  // rather than the letter.
+  return Math.min(GENERATED_POTENTIAL_CAP, Math.round(overall + headroom + raw));
 }
 
 /** One draw. The cast is safe: the array is non-empty and rng() is below 1. */
