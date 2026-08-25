@@ -22,7 +22,30 @@ import { ENGINES } from '../src/engine/engines.js';
 import type { Hitter, Pitcher } from '../src/engine/types.js';
 
 /**
- * Re-recorded 2026-08-25, when defence became something individual men do.
+ * Re-recorded 2026-08-25, when a rating of 95 started buying something.
+ *
+ * The per-event sensitivities in ratings.ts roughly doubled on home runs,
+ * triples and strikeouts and widened on doubles and walks, so that the best
+ * player in the country sits as far above the league as he does in real
+ * baseball. Every seeded number in the engine moved, and none of them could
+ * have survived it.
+ *
+ * The league did not move, and that was the point. Measured on the eight-seed
+ * sweep below, before and after: runs +0.3% to +0.7% of target, batting average
+ * -0.1% to 0.0%, slugging +0.4% to +0.6%, home runs -1.1% to -0.6%, strikeouts
+ * -1.9% to -0.7%, walks -4.4% to -4.1%, pitches per plate appearance unmoved at
+ * -3.3%. Every single row is the same or closer than it was; the worst deviation
+ * went from 4.4% to 4.1%. That is the per-event normalisation in `BAT_NORM`,
+ * `PIT_NORM` and `JENSEN_K` doing its job, and it is why the change is "widen,
+ * then re-normalise" rather than "widen".
+ *
+ * Home runs on this seed read 0.463 against 0.485 before, which is the widest
+ * single row here and is the roster lottery rather than a mechanism — the same
+ * trap the walks note below describes. Seed 4242 drew a league that does not
+ * homer; over the eight seeds home runs land 0.507 against a target of 0.510.
+ * Do not chase this seed. The sweep is the measurement.
+ *
+ * Previously re-recorded 2026-08-25, when defence became something individual men do.
  *
  * Four new things happen on a field that were not happening before — the pitcher
  * fields comebackers, the first baseman feeds a pitcher covering the bag, a
@@ -65,20 +88,20 @@ import type { Hitter, Pitcher } from '../src/engine/types.js';
  * philosophy.
  */
 const GOLDEN: Record<string, number> = {
-  'Runs per team per game': 5.226875,
-  'PA per team per game': 39.97,
-  'Batting average': 0.26743874448030386,
-  'On base percentage': 0.341010966558252,
-  'Home runs per team per game': 0.48520833333333335,
-  'Strikeouts per team per game': 6.663125,
-  'Walks per team per game': 3.4952083333333333,
-  'Pitches per plate appearance': 3.624072220832291,
-  'Slugging': 0.37070803574549394,
+  'Runs per team per game': 5.255625,
+  'PA per team per game': 39.79625,
+  'Batting average': 0.26880132229079845,
+  'On base percentage': 0.3432065416548879,
+  'Home runs per team per game': 0.46291666666666664,
+  'Strikeouts per team per game': 6.650833333333333,
+  'Walks per team per game': 3.51875,
+  'Pitches per plate appearance': 3.6253363486928207,
+  'Slugging': 0.37173603418262385,
 };
 
-const GOLDEN_SLUGGING = 0.37070803574549394;
-const GOLDEN_ERRORS = 1.0902083333333332;
-const GOLDEN_SB_PCT = 0.7129163281884646;
+const GOLDEN_SLUGGING = 0.37173603418262385;
+const GOLDEN_ERRORS = 1.0354166666666667;
+const GOLDEN_SB_PCT = 0.7085000800384185;
 
 /**
  * Metrics still outside the 10% bar. The list is now empty, and keeping the

@@ -162,8 +162,17 @@ const clamp = (v: number, lo: number, hi: number): number =>
 // important tuning knob in the whole engine.
 //
 // Measured: at a 13 point rating gap, which is the widest the shipped conference
-// produces, the better team wins 78.5 percent. That is inside the 75 to 85
+// produces, the better team wins 75.6 percent. That is inside the 75 to 85
 // target. Any change here must rerun `calibrate` and `parity` together.
+//
+// It stayed at 0.62 through the August 2026 spread work, which widened the
+// per-event sensitivities below by up to a factor of two. That is the whole
+// reason the work was done event by event rather than here: this knob moves
+// every rating at once, including the ones — singles, balls in play — whose
+// spread was already correct, and it is those that decide games. The two things
+// this constant is watched for did not move. The better seed still wins about
+// 62 percent of bracket games, and the best record in a simulated season is
+// still 41-4.
 export const SPREAD = 0.62;
 
 // Core conversion. rating 50 is league average and returns 1.0.
@@ -176,28 +185,144 @@ export function mult(rating: number, sensitivity: number): number {
 type SensTable<K extends string> =
   Partial<Record<OffensiveEvent, Partial<Record<K, number>>>>;
 
+/**
+ * How far the best player in the country should sit above the league in each
+ * event, and why these numbers and not the ones that were here before.
+ *
+ * These were all roughly half as wide until the spread was measured against real
+ * baseball. The league rates were right and the ratings spread was right — 0 to
+ * 100 with a median in the low forties and a p99 in the high eighties — but the
+ * *curve* between them was flat enough that the best power hitter the generator
+ * can make earned 1.7x the league home run rate. Real home run leaders run about
+ * 3x. A rating of 95 has to buy something a rating of 50 cannot.
+ *
+ * Measured as the top player's per-plate-appearance rate over the league mean,
+ * against an average opponent. `batterVector` against a league-average arm is
+ * exactly the hitter's own rate vector — log5 with p = LEAGUE collapses to the
+ * batter's vector — so this is an exact analytic quantity, not a sim estimate.
+ *
+ *   event      was    now    real   reasoning
+ *   single    1.34   1.34   ~1.3    already right; left alone
+ *   double    1.39   1.70   ~1.6    MLB doubles leader ~7.1% of PA on a 4.4%
+ *                                   league; college doubles a touch livelier
+ *   triple    1.95   3.00   ~3.8    the most skewed event in baseball, because
+ *                                   it needs the speed and the gap and the park
+ *                                   together. Deliberately short of the MLB
+ *                                   figure: `speed` tops out at 90, not 95, and
+ *                                   a triple is worth more here than there
+ *   homerun   1.79   3.00    3.0    the finding this whole pass came from
+ *   walk      1.77   2.00    2.1    a 19% walk rate on a 9% league
+ *   hbp       1.07   1.07     —     not widened. Real hit-by-pitch leaders are
+ *                                   miles above average, but that is a man who
+ *                                   crowds the plate and there is no rating for
+ *                                   it; `eye` is the wrong one to pay for it
+ *
+ * Batting average is the check that keeps the rest honest. It is not tuned
+ * directly — it falls out of the four hit events — and it lands at 1.56x the
+ * league, against about 1.5x in the real game (a .400 hitter on a .270 league).
+ * That is why `single` is untouched: singles are most of a batting average, and
+ * widening them would have pushed average past its own target while doing
+ * nothing for the slugger the exercise was about.
+ */
 const BAT_SENS: SensTable<keyof HitterRatings> = {
   single: { contact: 0.38, speed: 0.14 },
-  double: { power: 0.45, contact: 0.12 },
-  triple: { speed: 1.20 },
-  homerun: { power: 0.95 },
-  walk: { eye: 0.90 },
+  double: { power: 0.73, contact: 0.19 },
+  triple: { speed: 2.06 },
+  homerun: { power: 1.87 },
+  walk: { eye: 1.10 },
   hbp: { eye: 0.10 },
 };
 
+/**
+ * The same pass from the mound, because a dominant pitcher was exactly as
+ * compressed as a great hitter and for the same reason.
+ *
+ * Measured the other way round: the best arm's allowed rate as a fraction of the
+ * league mean, against an average bat.
+ *
+ *   event      was    now    real   reasoning
+ *   single    0.79   0.79   ~0.76   batting average allowed barely spreads in
+ *   double    0.79   0.79     —     real baseball either. Balls in play are the
+ *   triple    0.88   0.88     —     one thing pitchers genuinely share
+ *   homerun   0.54   0.42    0.42   best HR/9 in a rotation is well under half
+ *                                   the league; worst is well over
+ *   walk      0.56   0.45    0.41   a 3.5% walk rate on an 8.5% league
+ *   hbp       0.70   0.70     —     left, same reason as the batter's
+ *
+ * The symmetry with the batter's table is not decoration. Contact quality is
+ * compressed on both sides and the outcome events — the ball over the fence, the
+ * fourth ball, the third strike — are the ones with real spread in them.
+ */
 const PIT_SENS: SensTable<keyof PitcherRatings> = {
   single: { movement: -0.28, stuff: -0.12 },
   double: { movement: -0.38 },
   triple: { movement: -0.20 },
-  homerun: { movement: -0.95 },
-  walk: { control: -0.90 },
+  homerun: { movement: -1.33 },
+  walk: { control: -1.21 },
   hbp: { control: -0.55 },
+};
+
+/**
+ * What pays for the widening above, and the reason this had to be a two-part
+ * change rather than a bigger number.
+ *
+ * `mult` is `exp`, and `exp` is convex, so widening a sensitivity raises the
+ * *population mean* of an event even though the curve still returns exactly 1.0
+ * at a rating of 50. Two more things push the same way. The generator centres
+ * hitters near 44, not 50, so the average man already sits on the low side of a
+ * pivot that assumes he is on it, and stretching the curve stretches that gap
+ * too. And log5 renormalises: a slugger's home run share is divided by a
+ * denominator his own home runs inflate, so a widened event is quietly clipped
+ * on the way out. Left alone, the pass above would have moved the league's home
+ * run rate and its walk rate while claiming to be about individuals.
+ *
+ * So each widened event carries the constant that puts the league's realized
+ * rate back exactly where it was. Same idea as `JENSEN_K` below, applied per
+ * event instead of once globally, and empirical for the same reason — only more
+ * so. The analytic correction, computed straight off the generated population,
+ * still left home runs and triples nearly three percent light and walks one and
+ * a half, because it can price the convexity but not the renormalisation. These
+ * are measured off the harness instead: run the four-seed sweep, read the
+ * per-plate-appearance rate of every event before and after, and multiply the
+ * constant by the ratio. Two rounds converge to inside the sampling noise.
+ *
+ * Fitted against the calibration harness's quality-50 league rather than the
+ * world's quality-42 one, and the choice matters — the two populations disagree
+ * by three to five percent on how much correction they want, because the world
+ * carries the between-programs quality spread on top of the within-roster one.
+ * The harness is what `CONTEXT.normalizer` and `JENSEN_K` were both fitted
+ * against, and it is what `npm run calibrate` reports, so it is the population
+ * the league is defined by. The residual on the world is measured and small:
+ * runs 1.0% up, walks and strikeouts 2.5% up, slugging unmoved.
+ *
+ * They restore the rate the engine *had*, not the rate `LEAGUE` names — whatever
+ * gap sits between those two is already priced into `CONTEXT.normalizer`, and
+ * closing it here would move the league behind calibration's back.
+ *
+ * Re-measure alongside `JENSEN_K` if the generator's spreads ever change. An
+ * event with no entry is not widened and needs no correction.
+ */
+type NormTable = Partial<Record<OffensiveEvent, number>>;
+
+const BAT_NORM: NormTable = {
+  double: 0.9978, triple: 0.9903, homerun: 0.9657, walk: 1.0003,
+};
+
+// Barely off one, where the batter's home run correction is three percent, and
+// the asymmetry is the sign doing its work: a pitcher's sensitivities are
+// negative, so widening pushes his mean the other way and most of the batter's
+// correction has nothing to answer here. Walks and home runs are the only two
+// events where both sides widened, so those corrections were split evenly —
+// each side carries the square root of what the event needed.
+const PIT_NORM: NormTable = {
+  homerun: 1.0022, walk: 1.0034,
 };
 
 // `source` is typed to guarantee every attribute the table names is present, so
 // the original's `?? 50` fallback is unreachable and has been dropped.
 function buildVector<K extends string>(
   sensTable: SensTable<K>,
+  normTable: NormTable,
   source: Record<K, number>,
 ): EventVector {
   const v = {} as EventVector;
@@ -211,7 +336,7 @@ function buildVector<K extends string>(
         m *= mult(source[attr], s);
       }
     }
-    v[ev] = LEAGUE[ev] * m;
+    v[ev] = LEAGUE[ev] * m * (normTable[ev] ?? 1);
     sum += v[ev];
   }
   // Out absorbs the remainder. Clamp so a monster hitter cannot go negative.
@@ -222,11 +347,11 @@ function buildVector<K extends string>(
 }
 
 export function batterVector(batter: Hitter): EventVector {
-  return buildVector(BAT_SENS, batter);
+  return buildVector(BAT_SENS, BAT_NORM, batter);
 }
 
 export function pitcherVector(pitcher: Pitcher): EventVector {
-  return buildVector(PIT_SENS, pitcher);
+  return buildVector(PIT_SENS, PIT_NORM, pitcher);
 }
 
 // Platoon. Returns the multiplier applied to a batter's offensive events.
@@ -256,10 +381,29 @@ export function platoonMultiplier(batter: Hitter, pitcher: Pitcher): number {
  * the generator's rating distributions, which are themselves tuned.
  *
  * Re-measure with a multi-seed sweep if the generator's spreads ever change.
+ *
+ * It moved from 0.965 to 0.959 when the two sensitivities below were widened,
+ * which is this constant doing exactly the job it was written for. Fitted the
+ * same way as the norm tables above and against the same harness: strikeouts per
+ * plate appearance, before and after, four seeds.
  */
-const JENSEN_K = 0.965;
+const JENSEN_K = 0.9593;
 
-// Strikeout share of outs, resolved after the log5 model says 'out'.
+/**
+ * Strikeout share of outs, resolved after the log5 model says 'out'.
+ *
+ * Both sensitivities were 0.70, which made the best arm in the country a 1.5x
+ * strikeout pitcher and the best contact bat a 0.63x one. Real figures are about
+ * 1.7x for the arm and nearer 0.4x for the bat, so both were widened: the arm now
+ * measures 1.70x and the bat 0.51x, against an average opponent.
+ *
+ * This is the cheapest widening in the file and the most visible, because a
+ * strikeout is settled *after* the event is already an out. It changes what an
+ * out looks like, not whether one happened, so a strikeout leaderboard can
+ * separate properly without touching the run environment at all — the only
+ * scoring it reaches is the sacrifice fly and the runner moving on a ground ball,
+ * which a strikeout denies.
+ */
 export function strikeoutProbability(
   batter: Hitter,
   pitcher: Pitcher,
@@ -267,8 +411,8 @@ export function strikeoutProbability(
 ): number {
   const raw =
     LEAGUE_K_RATE * JENSEN_K *
-    mult(batter.contact, -0.70) *
-    mult(pitcher.stuff, 0.70) *
+    mult(batter.contact, -1.00) *
+    mult(pitcher.stuff, 0.92) *
     (1 / fatigueMult);
   return clamp(raw, 0.02, 0.62);
 }

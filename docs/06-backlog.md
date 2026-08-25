@@ -139,6 +139,22 @@ exists.
   and it puts both scans of a finished season in one place. It also fixed a
   second thing nobody had noticed — the class year on the row, which
   `departAndDevelop` had already advanced. See §12.4 and §13.2.
+- **A7 · A rating of 95 bought almost nothing** — SHIPPED. The ratings spread was
+  fine and the league rates were fine; the curve between them was flat. The best
+  power hitter the generator can make earned **1.7×** the league home run rate,
+  against about 3× for a real home run leader, and the same compression sat on
+  walks, triples and strikeouts. It reached the player: the leaderboard, the
+  awards and the record book were all describing a league where nobody is much
+  better than anybody. Fixed event by event rather than by turning `SPREAD` up,
+  because `SPREAD` also widens singles and balls in play — whose spread was
+  already correct, and which are what decide games. Home runs and triples now
+  measure 3.0×, walks 2.0×, doubles 1.7×, the best arm's strikeout rate 1.7×,
+  and singles are untouched at 1.34×. The league did not move: on the eight-seed
+  calibration sweep every row is the same or closer to its target than before,
+  worst deviation 4.4% → 4.1%. Competitive balance held — team win standard
+  deviation 7.85 → 8.73, best record still 41-4, the better seed still wins 62%
+  of bracket games. See `05-systems-reference.md` §9.7, and §13.3 for what it did
+  to the record book.
 - **A6 · The draft screen's walk-on list is dead UI** — SHIPPED, by deletion.
   Wiring it to something real would have meant computing the class shortfall
   twice, and the class review already carries it *before* signing day, where it
@@ -158,10 +174,12 @@ half the achievements are all reading from the same book.
   B13. See `05-systems-reference.md` §13.
 - **B2 · Seed the book with real NCAA marks** — SHIPPED. Twelve seeds, counting
   marks scaled by games played and rates left alone, flagged in the data and
-  badged **NCAA** on the screen. See §13.3, which also records the thing worth
-  revisiting: seven of the twelve are out of reach of the engine's run
-  environment, because they were set with aluminium bats and the calibration
-  targets are modern Division I. Scaling by games alone does not close that gap.
+  badged **NCAA** on the screen. See §13.3, which recorded that seven of the
+  twelve were out of reach and blamed the run environment. Half of that was
+  wrong, and A7 above is the correction: the environment was right and the
+  rating curve was flat. With it fixed the best simulated season is 12 home runs
+  and .462 rather than 9 and .427, so the marks are a long way closer without
+  being cheap. What is left of the gap really is the aluminium bat.
 - **B3 · Achievements** — `DECIDED`. One-time and permanent, as against records,
   which are there to be broken: Perfect Conference, Cinderella, Dynasty, Lifer,
   Kingmaker, Recruiter, Builder, Iron Will, Streak, Grand Slam.

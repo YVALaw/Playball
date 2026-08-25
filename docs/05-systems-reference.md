@@ -124,9 +124,11 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 49 | **Roughly a third of days a regular sits**, and his replacement takes the spot of whoever plays his position. | Bench players with real statistics. | `restedLineup` — `engine/season.ts` | SHIPPED |
 | 50 | **The bullpen is offered most-rested-first, ties broken by quality.** | The right arm turning up. | `restedFirst` — `engine/season.ts` | SHIPPED |
 | 51 | **Each bracket round advances the calendar by one day**, and each side's rotation slot is its *own* appearance count mod 3. | Rested arms in June. | `advancePostseasonDay`, `playSeriesGame` — `engine/postseason.ts` | SHIPPED |
-| 52 | **A global spread knob, `SPREAD = 0.62`, scales every rating sensitivity in the engine.** | How often the better team wins (measured 78.5% at a 13-point gap). | `SPREAD`, `mult` — `engine/ratings.ts` | SHIPPED |
+| 52 | **A global spread knob, `SPREAD = 0.62`, scales every rating sensitivity in the engine.** | How often the better team wins (measured 75.6% at a 13-point gap). | `SPREAD`, `mult` — `engine/ratings.ts` | SHIPPED |
 | 53 | **A normalizer of 1.070 divides out the expected product of every context modifier**, so situational boosts redistribute offence without inflating the league. | Nothing. | `CONTEXT.normalizer` — `engine/ratings.ts` | SHIPPED |
-| 54 | **A Jensen correction of 0.965 on the strikeout rate**, because `exp` is convex and a population with spread averages above the configured rate. | Nothing. | `JENSEN_K` — `engine/ratings.ts` | SHIPPED |
+| 54 | **A Jensen correction of 0.959 on the strikeout rate**, because `exp` is convex and a population with spread averages above the configured rate. | Nothing. | `JENSEN_K` — `engine/ratings.ts` | SHIPPED |
+| 54a | **How far a rating goes differs by event, on purpose.** The best power hitter in the country homers at 3× the league rate; the best contact hitter singles at only 1.34×, because that is what real baseball does. | Stars who look like stars on the leaderboard. | `BAT_SENS`, `PIT_SENS` — `engine/ratings.ts`; §9.7 | SHIPPED |
+| 54b | **Four per-event constants cancel the inflation that widening causes**, because `exp` is convex, the generator centres hitters near 44 rather than 50, and log5 renormalises a slugger's own denominator. Without them the league's home run and walk rates would have moved. | Nothing. | `BAT_NORM`, `PIT_NORM` — `engine/ratings.ts` | SHIPPED |
 | 55 | **The event stream takes no random draws.** Watching a game play by play must not change what happens. | Identical results simmed or watched. | `landingFor` — `engine/game.ts` | SHIPPED |
 | 56 | **Player generation draw order is load-bearing.** Adding or removing an `rng()` call shifts every downstream number in the simulation. | Nothing. | header comment, `engine/players.ts` | SHIPPED |
 | 57 | **The report tab renames ratings.** A pitcher's `stuff` prints as `K/9`, `movement` as `H/9`, `control` as `BB/9`; a hitter's `eye` prints as `DISCIPLINE` and `range` as `REACTION`. | Different words from the ones the roster uses. | `Report` — `ui/screens/Board.tsx` | SHIPPED |
@@ -1493,6 +1495,70 @@ Calibration runs spread over 12 distinct team pairs (`CALIBRATION_PAIRS`), becau
 measuring one pair makes the result a property of twenty-three particular players
 rather than of the engine.
 
+### 9.7 How far a rating goes
+
+`BAT_SENS` and `PIT_SENS` in `engine/ratings.ts`. Every rating is turned into a
+rate by `mult(rating, sens) = exp(((r − 50) / 50) × sens × SPREAD)`, and the
+sensitivity is per event: how much a rating of 95 buys depends entirely on which
+event it is buying.
+
+The figures below are the **best player in the generated world's** per-plate-
+appearance rate as a multiple of the league mean, against an average opponent.
+They are exact rather than simulated: `batterVector` measured against a
+league-average arm *is* the hitter's own rate vector, because log5 with the
+pitcher on the league baseline collapses to the batter's side.
+
+| Event | Was | Now | Real | The reasoning |
+|---|---|---|---|---|
+| Single | 1.34× | 1.34× | ~1.3× | Already right. Left alone deliberately: singles are most of a batting average and most of what decides a game |
+| Double | 1.39× | **1.70×** | ~1.6× | MLB's doubles leader runs 7.1% of plate appearances on a 4.4% league |
+| Triple | 1.95× | **3.00×** | ~3.8× | The most skewed event in baseball — it takes the speed, the gap and the park together. Held short of the MLB figure because `speed` tops out at 90, not 95 |
+| Home run | 1.79× | **3.00×** | 3.0× | The measurement this whole pass came from |
+| Walk | 1.77× | **2.00×** | ~2.1× | A 19% walk rate on a 9% league |
+| Hit by pitch | 1.07× | 1.07× | — | **Not widened.** Real leaders are miles above average, but that is a man who crowds the plate and no rating measures it; `eye` is the wrong one to charge for it |
+| Batting average | 1.43× | **1.56×** | ~1.5× | Not tuned — it falls out of the four hit events above and is the check that keeps them honest |
+| Slugging | 1.47× | **1.73×** | ~1.7× | Likewise derived |
+
+And from the mound, as the fraction of the league rate the **best arm** allows:
+
+| Event | Was | Now | Real |
+|---|---|---|---|
+| Single / double / triple allowed | 0.79× / 0.79× / 0.88× | unchanged | ~0.76× — balls in play barely spread in real baseball either |
+| Home run allowed | 0.54× | **0.42×** | 0.42× |
+| Walk allowed | 0.56× | **0.45×** | 0.41× |
+| Strikeouts | 1.50× (as a multiple, best arm) | **1.70×** | ~1.7× |
+
+Strikeouts are the cheapest widening in the engine and the most visible. Engine A
+settles the event *before* it asks whether the out was a strikeout, so the
+strikeout rate changes what an out looks like rather than whether one happened;
+it reaches scoring only through the sacrifice fly and the runner moving up on a
+ground ball. The batter's side widened with it — the best contact hitter now
+strikes out at 0.51× the league rate, against 0.63× before.
+
+**Widening had to be paid for.** `exp` is convex, so a wider sensitivity raises
+the population *mean* of an event even though the curve still returns exactly 1.0
+at a rating of 50; the generator centres hitters near 44 rather than 50, which
+pushes the same way; and log5 divides a slugger's home run share by a denominator
+his own home runs inflate. `BAT_NORM`, `PIT_NORM` and `JENSEN_K` are the constants
+that put the league's realized rates back where they were, fitted empirically
+against the calibration harness. Measured on the eight-seed sweep, before and
+after: every calibration row is the same or closer to its target than it was, and
+the worst deviation moved from 4.4% to 4.1%.
+
+**Engine B was left alone.** `resolveBallInPlay` carries its own sensitivities on
+its own hit-probability table, and they are calibrated against nothing — Engine B
+is a comparison instrument reachable only from the command line. Widening them
+would mean giving it a calibration pass of its own, which is not what this was.
+
+**What it cost in competitive balance, which is the tension the knob exists to
+manage.** Over six simulated seasons the standard deviation of team win totals
+went from 7.85 to 8.73, the best record in a season stayed at 41-4, and the better
+seed still wins 62% of bracket games against 64% before. At the widest rating gap
+the shipped conference produces, 13 points, the better team wins 75.6%, inside the
+75-to-85 target. Widening event by event rather than turning `SPREAD` up is what
+bought that: `SPREAD` would have widened singles and balls in play too, and those
+are the events that decide games.
+
 ---
 
 ## 10. Defence: attributes and per-player fielding statistics — **IN FLIGHT**
@@ -2057,15 +2123,38 @@ instead of implying it is in reach, and nothing anywhere computes a candidate fo
 it — there is no arrangement of a 45-game season that would produce one. A test
 asserts that exactly one row is frozen.
 
-**The thing to revisit.** One simulated season of the current engine produced
-these league bests: 9 HR, 56 RBI, 111 total bases, .427, .678 slugging, 5 triples,
-18 doubles, 11 wins, 96 innings, 10.9 K/9. So seven of the twelve seeds are out of
-reach of the run environment as it stands, not because of season length but
-because these were set with aluminium bats in the 1980s and the engine is
-calibrated to modern Division I. Scaling by games played is the decision on record
-(06-backlog.md, "Records are scaled, not literal") and the code follows it; the
-gap is written down so it can be argued about with numbers rather than
-rediscovered. Reachable today: innings, wins, doubles and the scoreless streak.
+**The thing that was revisited, and what is left of it.** The engine used to
+produce these league bests in a season: 9 HR, 56 RBI, 111 total bases, .427, .678
+slugging, 5 triples, 18 doubles, 11 wins, 96 innings, 10.9 K/9. Seven of the twelve
+seeds were out of reach, and the diagnosis was that they were set with aluminium
+bats in the 1980s against an engine calibrated to modern Division I.
+
+Half of that diagnosis was wrong. The run *environment* was right; the curve from
+a rating to an outcome was too flat, so the best power hitter in the country
+earned only 1.7× the league home run rate where real leaders run about 3×. That
+was fixed in §9.7, and the league environment did not move to do it. Measured over
+six simulated seasons, the best individual season now:
+
+| | Before | After | Seeded mark |
+|---|---|---|---|
+| Home runs | 10 | **12** (best of six: 14) | 29 |
+| Batting average | .431 | **.462** | .551 |
+| Slugging | .644 | **.736** | 1.140 |
+| Strikeouts | 96 | **107** | — |
+| ERA | 1.25 | 1.27 | — |
+
+So the marks moved a long way toward reachable without becoming cheap, and none of
+them is in reach yet. **ERA deliberately did not move**: a pitcher's spread lives
+almost entirely in home runs, walks and strikeouts, and his hit suppression on
+balls in play barely spreads in real baseball either — a 1.03 earned run average
+is already better than any Division I leader posts, and making it lower would have
+been the wrong kind of realism.
+
+Scaling by games played remains the decision on record (06-backlog.md, "Records
+are scaled, not literal"). What is left of the gap is genuinely the aluminium bat:
+Incaviglia's 29 scaled home runs is eleven times what an average regular hits in
+this league, and no defensible rating curve puts one man there. Reachable today:
+innings, wins, doubles, triples and the scoreless streak.
 
 ### 13.4 The one piece of extra state
 
