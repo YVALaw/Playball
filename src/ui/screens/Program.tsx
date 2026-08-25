@@ -24,7 +24,6 @@
 import { useState, type ReactNode } from 'react';
 import { ACHIEVEMENTS, ACHIEVEMENT_IDS } from '../../engine/achievements.js';
 import { useDynasty, useUserTeam, useConferenceTable } from '../../state/store.js';
-import type { SeasonRecord } from '../../state/store.js';
 import {
   expectationFor, prestigeStars, rosterStrength, objectiveMet, coachStanding,
   SKILLS, SKILL_LABEL, type Objective,
@@ -33,6 +32,8 @@ import {
   careerName, seasonLength, regularRecord, seasonComplete,
   type CareerYear, type SeasonState,
 } from '../../engine/season.js';
+import { honoursByPlayer, type Inductee } from '../../engine/hall.js';
+import { RECORDS, type RecordKey } from '../../engine/records.js';
 import { philosophyOf } from '../../engine/strategy.js';
 import { REGION_OF_STATE } from '../../data/schools.js';
 import { playerId, type PlayerId } from '../../engine/types.js';
@@ -564,19 +565,6 @@ interface HallRow {
 const sum = (years: CareerYear[], key: keyof CareerYear): number =>
   years.reduce((a, y) => a + ((y[key] as number | undefined) ?? 0), 0);
 
-/** Everything your own players have won, gathered under the man who won it. */
-function honoursByPlayer(history: SeasonRecord[]): Map<string, string[]> {
-  const map = new Map<string, string[]>();
-  for (const season of history) {
-    for (const a of season.awards ?? []) {
-      const list = map.get(a.id) ?? [];
-      if (!list.includes(a.title)) list.push(a.title);
-      map.set(a.id, list);
-    }
-  }
-  return map;
-}
-
 /**
  * The record book, folded into one row per man.
  *
@@ -614,13 +602,20 @@ function hallRows(
 }
 
 /**
- * The best players you have coached.
+ * The men you put in, and the men who piled up the most. In that order.
  *
- * Ranked on counting statistics the game already prints — hits for the bats,
- * strikeouts for the arms — rather than on a career score of my own invention.
- * A hall of fame ordered by a number nobody can check is a leaderboard for a
- * statistic that does not exist, and the honours a man actually won are sitting
- * right there in the record book to say who the great ones were.
+ * This tab used to be the second thing alone: two leaderboards of career hits and
+ * career strikeouts, computed live and honest about being a leaderboard. B12 is
+ * the first thing, and the difference between them is the whole point. A
+ * leaderboard is a fact about who is currently top of a column and it changes
+ * when somebody passes him. An induction is a verdict, it happens on a date, it
+ * is announced, and nothing later takes it away — see `engine/hall.ts` for what
+ * it takes and why a plaque is frozen at the moment it is written.
+ *
+ * The leaderboards stay, underneath, because they answer a different question.
+ * Who accumulated the most is worth knowing about a program and it is not the
+ * same as who was great: a four year regular will out-hit a two year star every
+ * time, and only one of them has a plaque.
  */
 function HallSheet() {
   const season = useDynasty((s) => s.season);
@@ -631,21 +626,9 @@ function HallSheet() {
 
   if (!season) return null;
 
-  const rows = hallRows(season.careers ?? {}, honoursByPlayer(history));
-
-  if (rows.length === 0) {
-    return (
-      <>
-        <Head>HALL OF FAME</Head>
-        <Panel>
-          <Empty>
-            Nobody yet. A man is written into the record book when the year rolls
-            over, so the first names appear after your first full season.
-          </Empty>
-        </Panel>
-      </>
-    );
-  }
+  const honours = honoursByPlayer(history);
+  const rows = hallRows(season.careers ?? {}, honours);
+  const inducted = [...(season.hall ?? [])].sort((a, b) => b.year - a.year || b.score - a.score);
 
   // Twelve is what fits before a leaderboard stops being a leaderboard. The rest
   // are still reachable — every one of these men has a card of his own.
@@ -654,7 +637,43 @@ function HallSheet() {
 
   return (
     <>
-      <Head>BATTING · BY CAREER HITS</Head>
+      <Head>THE HALL</Head>
+      {inducted.length === 0
+        ? (
+          <Panel>
+            <Empty>
+              Empty. The hall meets every June, once the draft has settled, and it
+              only ever looks at men whose careers are finished — so nobody can go
+              in until he has left. It wants a career rather than an afternoon:
+              two seasons at the very least, and sustained production across them
+              weighed against the best two years of it. One enormous game does not
+              count for anything here.
+            </Empty>
+          </Panel>
+        )
+        : inducted.map((m) => (
+          <Plaque
+            key={m.id}
+            man={m}
+            honours={honours.get(m.id) ?? []}
+            marks={marksHeldBy(season, m.id)}
+            onOpen={() => openPlayer(m.id)}
+          />
+        ))}
+
+      {/* Named apart from the plaques above, or the first table reads as the
+          rest of the hall. Two different questions, one screen. */}
+      <div style={{ marginTop: 18 }}>
+        <div style={{
+          font: "400 11px/1.5 var(--body)", color: 'var(--dim)', marginBottom: 8,
+        }}>
+          <strong style={{ color: 'var(--ink)' }}>Career leaders.</strong> Who
+          accumulated the most, which is not the same question as who was great —
+          four years of turning up will out-hit two years of being the best player
+          in the country.
+        </div>
+        <Head>BATTING · BY CAREER HITS</Head>
+      </div>
       <Table cols={BAT_COLS} head={['PLAYER', 'H', 'AVG', 'HR']}>
         {bats.length === 0
           ? <Empty>No hitter has finished a season for you yet.</Empty>
@@ -695,12 +714,101 @@ function HallSheet() {
       </div>
 
       <Note>
-        Your own book, and only yours. Career lines are kept for the rosters you
-        have run — at this program and any other you have coached — because
-        keeping them for all sixty four schools would put tens of thousands of
-        rows through every save. Nobody else's players are in here.
+        Your own men, and only yours — at this program and any other you have
+        coached. Season by season lines are kept for your rosters alone, because
+        keeping them for all ninety six programs would put tens of thousands of
+        rows through every save. The country's <em>career</em> records are in the
+        record book, which manages it on a running total instead.
       </Note>
     </>
+  );
+}
+
+/**
+ * Every record in the country this man still holds, as the plaque names them.
+ *
+ * Printed and never scored, and that separation is the point of B12 rather than
+ * an implementation detail. The brief was that a man who holds one enormous
+ * single-game record and was otherwise ordinary must not get in, so the ballot in
+ * `engine/hall.ts` cannot see the book at all. What a hall of famer holds is
+ * still worth reading, so it is here — on the plaque, after the fact.
+ *
+ * Team and coaching rows are skipped: they are not his.
+ */
+function marksHeldBy(season: SeasonState, id: PlayerId): string[] {
+  const out: string[] = [];
+  for (const [key, mark] of Object.entries(season.records ?? {})) {
+    if (mark.id !== id) continue;
+    const spec = RECORDS[key as RecordKey];
+    const prefix = spec.group === 'game' ? 'GAME'
+      : spec.group === 'season' ? 'SEASON'
+      : spec.group === 'career' ? 'CAREER'
+      : null;
+    if (prefix === null) continue;
+    out.push(`${prefix} ${spec.label}`);
+  }
+  return out;
+}
+
+/**
+ * One man, in.
+ *
+ * Drawn in the same clothes the record book gives a mark of yours — a clay rule
+ * down the left edge and a warm ground — because it is the same statement in a
+ * different place: this one is ours.
+ */
+function Plaque(
+  { man, honours, marks, onOpen }:
+  { man: Inductee; honours: string[]; marks: string[]; onOpen: () => void },
+) {
+  const span = man.first === man.last ? `${man.first}` : `${man.first}–${man.last}`;
+  return (
+    <button
+      onClick={onOpen}
+      style={{
+        width: '100%', textAlign: 'left', display: 'block',
+        marginTop: 8, padding: '10px 12px',
+        background: 'rgba(168,68,42,.07)',
+        border: '1px solid var(--faint)', borderLeft: '3px solid var(--clay)',
+      }}
+    >
+      <div style={{
+        display: 'flex', justifyContent: 'space-between',
+        alignItems: 'baseline', gap: 8,
+      }}>
+        <span className="label" style={{ color: 'var(--clay)' }}>
+          INDUCTED {man.year}
+        </span>
+        <span style={{ font: "400 9px var(--mono)", color: 'var(--dim)' }}>
+          {span} · {man.teams.join(' · ')}
+        </span>
+      </div>
+      <div style={{
+        font: "800 19px/1.05 var(--display)", textTransform: 'uppercase', marginTop: 3,
+      }}>{man.name}</div>
+      <div style={{ marginTop: 3, font: "500 11px var(--mono)", color: 'var(--ink)' }}>
+        {man.line}
+      </div>
+      {honours.length > 0 && (
+        <div style={{
+          marginTop: 5, display: 'flex', flexWrap: 'wrap', gap: '2px 8px',
+        }}>
+          {honours.map((t) => (
+            <span key={t} style={{
+              font: "600 8px var(--mono)", letterSpacing: '.08em', color: 'var(--clay)',
+            }}>{t.toUpperCase()}</span>
+          ))}
+        </div>
+      )}
+      {marks.length > 0 && (
+        <div style={{
+          marginTop: 5, paddingTop: 5, borderTop: '1px solid var(--hairline)',
+          font: "400 9.5px/1.5 var(--mono)", color: 'var(--dim)',
+        }}>
+          STILL HOLDS · {marks.join(' · ')}
+        </div>
+      )}
+    </button>
   );
 }
 

@@ -24,10 +24,14 @@ import type { RivalCoach } from './rivals.js';
 import { simGame, type GameResult, type TeamState } from './game.js';
 import { blankWatch, type Watch } from './tendencies.js';
 import {
-  offer, recordGameMarks, seededBook, type RecordBook,
+  CAREER_MIN_IP, CAREER_MIN_AB, offer, recordGameMarks, seededBook,
+  type RecordBook,
 } from './records.js';
 import { CONFERENCES, type ConferenceDef, type SchoolDef } from '../data/schools.js';
 import { teamId } from './types.js';
+// Type only, and it has to stay that way: `hall.ts` reads `careerName` out of
+// this module, so a value import back the other way would be a runtime cycle.
+import type { Inductee } from './hall.js';
 import type {
   EngineName, FieldLine, HitLine, Hitter, PitchLine, Pitcher, PlayerId, Rng,
   Team, TeamId,
@@ -106,8 +110,18 @@ export interface CareerYear {
    * what both screens fall back to.
    */
   name?: string;
-  /** Hitters. */
-  ab?: number; h?: number; hr?: number; rbi?: number; bb?: number; sb?: number;
+  /**
+   * Hitters.
+   *
+   * Doubles and triples are here for the hall of fame, which prices a career in
+   * runs and cannot do that without total bases. While they were missing the
+   * only available approximation was hits plus home runs, which scores every
+   * gap hitter in the archive as a singles hitter — a systematic libel against
+   * exactly the kind of player a hall exists to argue about. Optional like the
+   * rest, so a row written before they were kept simply has none.
+   */
+  ab?: number; h?: number; d?: number; t?: number;
+  hr?: number; rbi?: number; bb?: number; sb?: number;
   /** Pitchers. */
   w?: number; l?: number; outs?: number; er?: number; k?: number;
   /**
@@ -121,6 +135,44 @@ export interface CareerYear {
    * summed down a career column.
    */
   chances?: number; plays?: number; errors?: number;
+}
+
+/**
+ * One man's career so far, league-wide, as a running total.
+ *
+ * This is B13, and it is the cheap half of the expensive idea. Career records
+ * need every program's careers and not only the user's — but a record book does
+ * not need the *seasons*, it needs the totals, which is the same observation
+ * `records.ts` is built on one level down. So instead of archiving twenty five
+ * hundred `CareerYear` rows a year for ever, one row per active player is kept
+ * and added to each June.
+ *
+ * **It is pruned by construction, which is what makes it bounded.** The map is
+ * rebuilt each June from the rosters, so a man who has graduated falls out of it
+ * the following year — and that is safe precisely because his total was final the
+ * moment he left and had already been offered to the book. The map is therefore
+ * never larger than the league is: about twenty four hundred rows, for ever,
+ * rather than twenty four hundred more every season.
+ *
+ * Only what a career record actually reads. There is no walks column because
+ * there is no career on-base record, and no games column because a career rate
+ * qualifies on plate appearances.
+ */
+export interface CareerTotals {
+  /** Seasons he has appeared in. */
+  y: number;
+  /**
+   * The last season folded in.
+   *
+   * The offseason rail can be walked backwards and forwards, so the scan that
+   * writes this can run twice on the same June. Every other pass over a finished
+   * season is idempotent because a record has to be beaten rather than equalled;
+   * a running total is the one thing that is not, and this is what makes it so.
+   */
+  last: number;
+  ab: number; h: number; d: number; t: number; hr: number;
+  r: number; rbi: number; sb: number;
+  outs: number; w: number; l: number; er: number; k: number;
 }
 
 /**
@@ -174,7 +226,10 @@ export function archiveSeason(season: SeasonState, teamIndex: number, year: numb
     const row: CareerYear = {
       year, classYear: p.classYear, team: rec.def.abbr, name: p.name,
       ...(bat && bat.ab > 0
-        ? { ab: bat.ab, h: bat.h, hr: bat.hr, rbi: bat.rbi, bb: bat.bb, sb: bat.sb }
+        ? {
+          ab: bat.ab, h: bat.h, d: bat.d, t: bat.t,
+          hr: bat.hr, rbi: bat.rbi, bb: bat.bb, sb: bat.sb,
+        }
         : {}),
       ...(pit && pit.outs > 0
         ? { w: pit.w, l: pit.l, outs: pit.outs, er: pit.er, k: pit.k }
@@ -472,6 +527,30 @@ export interface SeasonState {
    * else's shortstop.
    */
   careers: Record<PlayerId, CareerYear[]>;
+  /**
+   * The men you have put in the hall, and the case that put them there.
+   *
+   * Beside `careers` rather than on the coach, for the same reason the archive
+   * is: a hall of fame is about the men, it spans every program the coach has
+   * run, and it has to outlive the roster that produced it. Written once, in the
+   * June after a career ends, and never recomputed — see `engine/hall.ts` for
+   * why a plaque is frozen and a leaderboard is not.
+   *
+   * Optional because a dynasty from before induction existed has none, and an
+   * empty hall is the truthful state for it: nobody was ever inducted. Its men
+   * are still in the archive and will be considered at the next year roll.
+   */
+  hall?: Inductee[];
+  /**
+   * Career totals for every man on a roster in the country. See `CareerTotals`.
+   *
+   * Optional and genuinely empty on a save that predates it, on the same terms as
+   * `scorelessOuts`: nobody's career was being counted, so the honest answer is
+   * that counting starts now. The career records such a dynasty goes on to set
+   * will be short by whatever was played before the upgrade, which is a smaller
+   * lie than inventing the missing seasons would be.
+   */
+  careerTotals?: Map<PlayerId, CareerTotals>;
   /**
    * The all-time book, league-wide and permanent. See engine/records.ts.
    *
@@ -875,6 +954,7 @@ export function createSeason(
     boxScores: {},
     captureBoxFor: null,
     careers: {},
+    careerTotals: new Map(),
     // A brand new dynasty opens with the real marks already standing, so the
     // book has something in it on day one.
     records: seededBook(),
@@ -954,6 +1034,11 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
     // does.
     boxScores: {},
     careers: prev.careers ?? {},
+    // And nor does the hall, or the running career totals under the book. Both
+    // are permanent records of things that already happened, and both are the
+    // only copy of what they hold.
+    ...(prev.hall ? { hall: prev.hall } : {}),
+    careerTotals: prev.careerTotals ?? new Map(),
     captureBoxFor: prev.captureBoxFor,
     // A new class every year. Last year's board is spent, and so is last
     // June's draft: `draft` is deliberately not carried, because a man still
@@ -2138,4 +2223,116 @@ export function recordSeasonMarks(season: SeasonState, year: number): void {
       ...who, value: t.rs - t.ra, detail: `${t.rs} RS, ${t.ra} RA`,
     });
   }
+}
+
+/**
+ * Career marks, for every program in the country. B13.
+ *
+ * The expensive reading of this was "archive every program's seasons the way the
+ * user's are archived", and it was rejected on measurement: twenty five hundred
+ * rows a year that are never deleted, against a book that only ever wants totals.
+ * What is kept instead is one running total per man on a roster, added to each
+ * June and dropped the year after he leaves — bounded by the size of the league
+ * rather than by the age of the dynasty. A departed man's total is final the
+ * moment he goes, and it has already been offered to the book, so there is
+ * nothing left in the row to lose.
+ *
+ * Runs beside `recordSeasonMarks`, under the same constraint and for the same
+ * reason: before `departAndDevelop`, which is the last moment the men who played
+ * the season are still on the rosters this walks. Miss that and every career in
+ * the book is short by its final year, which is usually its best.
+ *
+ * **Idempotent, which took the one extra field on the row.** Every other pass
+ * over a finished season is idempotent for free because a mark has to be beaten
+ * rather than equalled — a running total is not, and the offseason rail can be
+ * walked backwards and forwards. `last` is the year already folded in, so a
+ * second call re-offers the same totals and changes nothing.
+ */
+export function recordCareerMarks(season: SeasonState, year: number): void {
+  const book = (season.records ??= seededBook());
+  const prev = season.careerTotals ?? new Map<PlayerId, CareerTotals>();
+  const next = new Map<PlayerId, CareerTotals>();
+
+  for (const rec of season.teams) {
+    const roster = [
+      ...rec.team.lineup, ...rec.team.bench, ...rec.team.rotation, ...rec.team.bullpen,
+    ];
+    for (const p of roster) {
+      const bat = season.batting.get(p.id);
+      const pit = season.pitching.get(p.id);
+      const played = (bat && bat.ab > 0) || (pit && pit.outs > 0);
+      const before = prev.get(p.id);
+      if (!played && !before) continue;
+
+      const base: CareerTotals = before ?? {
+        y: 0, last: 0,
+        ab: 0, h: 0, d: 0, t: 0, hr: 0, r: 0, rbi: 0, sb: 0,
+        outs: 0, w: 0, l: 0, er: 0, k: 0,
+      };
+      const total: CareerTotals = before?.last === year ? before : {
+        y: base.y + (played ? 1 : 0),
+        last: year,
+        ab: base.ab + (bat?.ab ?? 0),
+        h: base.h + (bat?.h ?? 0),
+        d: base.d + (bat?.d ?? 0),
+        t: base.t + (bat?.t ?? 0),
+        hr: base.hr + (bat?.hr ?? 0),
+        r: base.r + (bat?.r ?? 0),
+        rbi: base.rbi + (bat?.rbi ?? 0),
+        sb: base.sb + (bat?.sb ?? 0),
+        outs: base.outs + (pit?.outs ?? 0),
+        w: base.w + (pit?.w ?? 0),
+        l: base.l + (pit?.l ?? 0),
+        er: base.er + (pit?.er ?? 0),
+        k: base.k + (pit?.k ?? 0),
+      };
+      next.set(p.id, total);
+
+      const who = { holder: p.name, team: rec.def.abbr, year, id: p.id };
+      const span = `${total.y} season${total.y === 1 ? '' : 's'}`;
+
+      if (total.ab > 0) {
+        const tb = total.h + total.d + total.t * 2 + total.hr * 3;
+        if (total.hr > 0) offer(book, 'careerHR', { ...who, value: total.hr, detail: span });
+        if (total.rbi > 0) offer(book, 'careerRBI', { ...who, value: total.rbi, detail: span });
+        if (total.h > 0) {
+          offer(book, 'careerHits', { ...who, value: total.h, detail: `${total.ab} AB` });
+        }
+        if (total.r > 0) offer(book, 'careerRuns', { ...who, value: total.r, detail: span });
+        if (total.sb > 0) offer(book, 'careerSB', { ...who, value: total.sb, detail: span });
+        if (total.d > 0) offer(book, 'careerDoubles', { ...who, value: total.d, detail: span });
+        if (tb > 0) offer(book, 'careerTB', { ...who, value: tb, detail: `${total.ab} AB` });
+
+        if (total.ab >= CAREER_MIN_AB) {
+          offer(book, 'careerAvg', {
+            ...who, value: total.h / total.ab, detail: `${total.h}-for-${total.ab}`,
+          });
+          offer(book, 'careerSlg', { ...who, value: tb / total.ab, detail: `${tb} TB` });
+        }
+      }
+
+      if (total.outs > 0) {
+        const innings = total.outs / 3;
+        const shown = `${Math.floor(total.outs / 3)}.${total.outs % 3} IP`;
+        if (total.k > 0) offer(book, 'careerK', { ...who, value: total.k, detail: shown });
+        if (total.w > 0) {
+          offer(book, 'careerWins', {
+            ...who, value: total.w, detail: `${total.w}-${total.l}`,
+          });
+        }
+        offer(book, 'careerIP', { ...who, value: innings, detail: span });
+        if (innings >= CAREER_MIN_IP) {
+          offer(book, 'careerERA', {
+            ...who, value: (total.er * 9) / innings, detail: shown,
+          });
+        }
+      }
+    }
+  }
+
+  // Rebuilt rather than merged, which is the pruning. Anybody who was on a roster
+  // last June and is not on one now has graduated, been drafted or was a walk-on,
+  // and his total is finished — so the map that replaces this one simply does not
+  // contain him.
+  season.careerTotals = next;
 }

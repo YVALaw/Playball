@@ -29,6 +29,9 @@ const KIND_TONE: Record<InboxKind, string> = {
   achievement: 'var(--win)',
   draft: 'var(--ink)',
   carousel: 'var(--dim)',
+  // Clay, with the achievements and the board. An induction is not something you
+  // have to act on, but it is the loudest good news a program ever gets.
+  hall: 'var(--clay)',
 };
 
 export function Inbox() {

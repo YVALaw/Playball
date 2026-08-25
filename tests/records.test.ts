@@ -11,13 +11,14 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  createSeason, simNextDay, recordSeasonMarks, seasonLength, nextSeason,
-  DEFAULT_SEASON, type SeasonState,
+  createSeason, simNextDay, recordSeasonMarks, recordCareerMarks, seasonLength,
+  nextSeason, DEFAULT_SEASON, type SeasonState,
 } from '../src/engine/season.js';
 import {
-  BOOK_SEASON_GAMES, RECORDS, offer, recordGameMarks, recordCoachMarks,
-  seededBook, recordsIn, type RecordBook, type RecordKey,
+  BOOK_SEASON_GAMES, CAREER_MIN_AB, RECORDS, offer, recordGameMarks,
+  recordCoachMarks, seededBook, recordsIn, type RecordBook, type RecordKey,
 } from '../src/engine/records.js';
+import { restoreCoach, type CoachState } from '../src/engine/program.js';
 import { TeamState, type GameResult } from '../src/engine/game.js';
 import { makeTeam } from '../src/engine/players.js';
 import { makeRng } from '../src/engine/rng.js';
@@ -355,6 +356,164 @@ describe('the season scan', () => {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * B13. The career section, and the thing it had to prove before it could ship.
+ *
+ * The expensive reading of "career records league-wide" was to archive every
+ * program's seasons the way the user's are archived — measured at seven and a
+ * half megabytes after twenty years, and growing. What shipped instead is one
+ * running total per man on a roster, pruned the year after he leaves: three
+ * hundred kilobytes, and it does not grow. These tests pin the three properties
+ * that makes the cheap version honest — it accumulates, it is league-wide, and a
+ * man's total is finished rather than lost when he goes.
+ */
+describe('career records, league-wide', () => {
+  /** A season played out, with everybody's line in hand. */
+  const season = (seed: number): SeasonState => {
+    const s = world(seed);
+    for (let d = 0; d < 6; d++) simNextDay(s);
+    return s;
+  };
+
+  /** The rows with a qualifying minimum on them, and the rows without. */
+  const RATES = ['careerAvg', 'careerSlg', 'careerERA'] as const;
+  const COUNTS = recordsIn('career').filter((k) => !(RATES as readonly string[]).includes(k));
+
+  it('sets every counting career row off six days, from all over the country', () => {
+    const s = season(3131);
+    recordCareerMarks(s, 2027);
+
+    for (const key of COUNTS) {
+      expect(s.records?.[key], `${key} should be set`).toBeDefined();
+    }
+    // Nothing in the career section came out of the NCAA book: the real career
+    // marks are four times a season mark and would have been furniture.
+    for (const key of recordsIn('career')) expect(s.records?.[key]?.ncaa).toBeUndefined();
+    // And nobody has anything like two seasons behind him yet, so the three rows
+    // with a qualifying minimum are still open. That is the bar working.
+    for (const key of RATES) expect(s.records?.[key]).toBeUndefined();
+
+    const holders = new Set(COUNTS.map((k) => s.records?.[k]?.team));
+    expect(holders.size).toBeGreaterThan(2);
+    expect([...holders].filter((t) => t !== s.teams[0]?.def.abbr).length).toBeGreaterThan(1);
+  });
+
+  it('adds a second season onto the first rather than replacing it', () => {
+    const s = season(3131);
+    recordCareerMarks(s, 2027);
+    const first = s.records?.careerHits?.value ?? 0;
+    const oneYear = new Map(s.careerTotals);
+
+    // The same men, a second summer. `nextSeason` wipes the statistics and keeps
+    // the totals, which is the property the whole design rests on.
+    const next = nextSeason(s);
+    for (let d = 0; d < 6; d++) simNextDay(next);
+    recordCareerMarks(next, 2028);
+
+    const stayed = [...next.careerTotals ?? []].find(([id]) => oneYear.has(id));
+    expect(stayed).toBeDefined();
+    const [id, after] = stayed!;
+    expect(after.y).toBe(2);
+    expect(after.h).toBeGreaterThanOrEqual(oneYear.get(id)?.h ?? 0);
+    expect(next.records?.careerHits?.value).toBeGreaterThan(first);
+  });
+
+  it('does not fold the same season in twice when the rail is walked back', () => {
+    // Every other pass over a finished season is idempotent because a mark has
+    // to be beaten. A running total is the one thing that is not, and `last` is
+    // what makes it so.
+    const s = season(3131);
+    recordCareerMarks(s, 2027);
+    const once = new Map([...s.careerTotals ?? []].map(([k, v]) => [k, { ...v }]));
+    recordCareerMarks(s, 2027);
+    for (const [id, before] of once) {
+      expect(s.careerTotals?.get(id)).toEqual(before);
+    }
+  });
+
+  it('keeps a departed man in the book and drops him from the ledger', () => {
+    const s = season(3131);
+    recordCareerMarks(s, 2027);
+
+    // Whoever leads the country in career hits, taken off his roster the way the
+    // offseason takes a graduating senior off it.
+    const leader = s.records?.careerHits;
+    expect(leader?.id).toBeDefined();
+    const rec = s.teams.find((t) => t.def.abbr === leader?.team);
+    expect(rec).toBeDefined();
+    const strip = <T extends { id: unknown }>(xs: T[]): T[] =>
+      xs.filter((p) => p.id !== leader?.id);
+    rec!.team.lineup = strip(rec!.team.lineup);
+    rec!.team.bench = strip(rec!.team.bench);
+    rec!.team.rotation = strip(rec!.team.rotation);
+    rec!.team.bullpen = strip(rec!.team.bullpen);
+
+    // A second June with nobody having played a game, which is enough: the scan
+    // walks rosters, and he is not on one. No games are simulated because a
+    // lineup one man short is a state the engine is entitled to refuse.
+    const next = nextSeason(s);
+    recordCareerMarks(next, 2028);
+
+    // His row is gone from the running ledger — which is the pruning that keeps
+    // it bounded — and his mark is exactly where he left it.
+    expect(next.careerTotals?.has(leader!.id!)).toBe(false);
+    expect(next.careerTotals?.size).toBeLessThan(s.careerTotals?.size ?? 0);
+    expect(next.records?.careerHits?.value).toBe(leader!.value);
+    expect(next.records?.careerHits?.holder).toBe(leader!.holder);
+  });
+
+  it('holds a career rate to two qualifying seasons', () => {
+    const s = world(3131);
+    for (const t of s.teams) t.gp = 45;
+    const cameo = s.teams[1]?.team.lineup[0];
+    const everyday = s.teams[2]?.team.lineup[0];
+    const line = (ab: number, h: number) => ({
+      g: 45, ab, r: 0, h, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, hbp: 0, sb: 0, cs: 0,
+    });
+    // Forty for forty is a 1.000 career and a hundred and forty at bats short.
+    s.batting.set(cameo!.id, line(40, 40));
+    s.batting.set(everyday!.id, line(CAREER_MIN_AB, Math.round(CAREER_MIN_AB * 0.6)));
+
+    recordCareerMarks(s, 2027);
+    expect(s.records?.careerAvg?.id).toBe(everyday!.id);
+    expect(s.records?.careerAvg?.value).toBeCloseTo(0.6, 2);
+  });
+
+  it('survives a save and a load, ledger and all', () => {
+    const s = season(3131);
+    recordCareerMarks(s, 2027);
+    const mark = s.records?.careerTB;
+    const rows = s.careerTotals?.size ?? 0;
+    expect(mark).toBeDefined();
+    expect(rows).toBeGreaterThan(100);
+
+    const file = buildSaveFile('slot', 'Test', s, 2027, 0, {}, 0);
+    const back = fromPortable({ season: file.season, rngState: file.rngState });
+
+    expect(back.records?.careerTB?.value).toBe(mark?.value);
+    expect(back.records?.careerTB?.holder).toBe(mark?.holder);
+    expect(back.careerTotals?.size).toBe(rows);
+
+    // And a career carries on from the disk rather than restarting: the reloaded
+    // ledger is what the next June adds to.
+    for (let d = 0; d < 4; d++) simNextDay(back);
+    recordCareerMarks(back, 2028);
+    expect(back.records?.careerTB?.value).toBeGreaterThanOrEqual(mark!.value);
+  });
+
+  it('opens a dynasty from before the ledger existed on an empty one', () => {
+    const portable = toPortable(world());
+    delete (portable.season as { careerTotals?: unknown }).careerTotals;
+    const back = fromPortable(portable);
+    // Genuinely empty, not seeded. Nobody's career was being counted, so counting
+    // starts now — the same rule the scoreless streak follows.
+    expect(back.careerTotals?.size).toBe(0);
+    for (const key of recordsIn('career')) expect(back.records?.[key]).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+
 describe('the coaching section', () => {
   it('takes a career only when it beats the standing one', () => {
     const book: RecordBook = {};
@@ -375,6 +534,38 @@ describe('the coaching section', () => {
     recordCoachMarks(book, 2033, { ...coach, careerWins: 155, titles: 1 }, 'RID');
     expect(book.coachWins?.value).toBe(155);
     expect(book.coachTitles?.value).toBe(1);
+  });
+
+  it('says the same thing about your career as the coach page does', () => {
+    /*
+      The two screens read one set of counters, and the day they stop is the day
+      a coach is told he has three conference titles on one tab and four on the
+      next. `BookCoach` exists to make that a compile error — a real `CoachState`
+      has to satisfy it — and this pins the other half: every row the book prints
+      is the field the coach page prints, untouched.
+
+      B6 is the reason the guarantee is worth a test. TRIPS TO OMAHA used to be
+      derived on the coach page by filtering the season history, against a book
+      that had no regional row at all, so the two could not even be compared.
+    */
+    const coach: CoachState = {
+      ...restoreCoach(undefined),
+      name: 'Ray Vance',
+      careerWins: 341, careerLosses: 188,
+      titles: 2, conferenceTitles: 6, regionalTitles: 3, tournaments: 9,
+    };
+    const book: RecordBook = {};
+    recordCoachMarks(book, 2041, coach, 'RID');
+
+    // Left of each equals sign is the book; right is the string the COACH tab
+    // renders in `Program.tsx`.
+    expect(book.coachWins?.value).toBe(coach.careerWins);
+    expect(book.coachWins?.detail).toBe(`${coach.careerWins}-${coach.careerLosses}`);
+    expect(book.coachTournaments?.value).toBe(coach.tournaments);
+    expect(book.coachConfTitles?.value).toBe(coach.conferenceTitles);
+    expect(book.coachRegionals?.value).toBe(coach.regionalTitles);
+    expect(book.coachTitles?.value).toBe(coach.titles);
+    expect(book.coachWins?.holder).toBe(coach.name);
   });
 });
 
@@ -415,7 +606,7 @@ describe('the book on disk', () => {
   it('keeps every group reachable from the book', () => {
     // A key added to the union and left out of the table would render nowhere.
     const seen = new Set<RecordKey>();
-    for (const g of ['game', 'feat', 'season', 'team', 'coach'] as const) {
+    for (const g of ['game', 'feat', 'season', 'career', 'team', 'coach'] as const) {
       for (const k of recordsIn(g)) seen.add(k);
     }
     expect(seen.size).toBe(Object.keys(RECORDS).length);

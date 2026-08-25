@@ -468,17 +468,69 @@ half the achievements are all reading from the same book.
   pace channel is not an outcome — it decides when a starter is pulled and when
   he tires — and at its first sizes it cost the league 1.3% of its walks by
   keeping starters, who throw more strikes than relievers, on the mound longer.
-- **B12 · Hall of Fame induction** — `DECIDED`. **Your own players only** — you
-  see the men you coached, not a national ballot. On merit, and the failure mode
-  to design against is explicit: *a man who holds one single-game record and was
-  otherwise ordinary must not get in*. Sustained excellence over a career, not a
-  spike. Replaces the career-leaders placeholder on the program page. Depends on
-  B1 and B9. The third dependency, A5, is cleared: a hall of fame reading an
-  archive that lost every player's final season would have honoured the wrong
-  men, and the archive no longer loses it.
-- **B13 · Career records league-wide** — `DECIDED`. Requires widening archiving
-  beyond your own program, which is the one genuinely expensive piece; single
-  game and single season records have no such problem.
+- **B12 · Hall of Fame induction** — SHIPPED. Your own men, a class decided each
+  June once the draft has settled, announced in the inbox, and written down for
+  good. See `05-systems-reference.md` §19.
+
+  **The stated failure mode is designed against structurally rather than
+  numerically.** *A man who holds one single-game record and was otherwise
+  ordinary must not get in* — so the ballot cannot see the record book at all, not
+  one row of it. A record is one measurement and a hall of fame is a verdict on a
+  career; the moment the first can substitute for the second the failure mode is
+  back, whatever weight it is given. The test hands a man the best afternoon in the
+  history of the country and asserts his score does not move by a point. What he
+  holds is printed on the plaque, after the fact, and is worth nothing on the
+  ballot.
+
+  **The early departure is handled by scoring the career and the peak together**,
+  which is JAWS at college scale: runs above replacement summed over every season,
+  plus the mean of his best two. Two rather than JAWS's seven because a college
+  career is four and the two year star's whole case *is* two seasons. Awards are
+  priced in the same units and small — a national award is worth about one and a
+  half average seasons — so four years of honours cannot carry an ordinary career.
+  Two seasons is a hard floor whatever the number says: one season is a spike by
+  definition, and the test for it leaves out a man with a .550, 35 home run year.
+
+  **The bar was measured, not chosen.** `tests/hall-probe.ts` scores every finished
+  career at the strongest, median and weakest program of a twenty season world. At
+  110 the best program in the country inducts almost every year, which is the
+  "roster" the brief warned about; at 140 nothing outside the elite ever inducts
+  anybody, which is the "locked room". **130** is the last bar where a great
+  program honours its best man about every second year — ten in twenty — and the
+  median is not shut out. Read the middle column as a floor: every program in that
+  measurement is run by the machine, whose recruiting plateaus near 30 against a
+  player who can reach 99.
+
+  The bar is absolute rather than a quota, on purpose. At a bad program the hall
+  stays nearly empty, and filling it is the achievement.
+- **B13 · Career records league-wide** — SHIPPED, thirteen rows. See
+  `05-systems-reference.md` §13.6.
+
+  **The deferral was a cost claim about the wrong implementation.** Archiving every
+  program's seasons is expensive; a career record does not want the seasons, it
+  wants the total — which is §13.1's own observation one level down. What is kept
+  is one running row per man on a roster anywhere in the country, rebuilt each June
+  from the ninety six rosters, so a graduate falls out of it the following year.
+  That is safe precisely because his total was final the day he left and had
+  already been offered to the book. The ledger is the size of the league, not the
+  age of the dynasty.
+
+  **Measured over twenty seasons of the full world**: the ledger is 2,530 rows and
+  **308 KB**, flat, at 1.4 ms a June — 10% of a 2.7 MB save. The archive
+  alternative is 49,519 rows and **7,526 KB** by year twenty, growing 375 KB a
+  season for ever, and would have been almost three times the rest of the save put
+  together. The time difference is noise; the size was always the objection.
+
+  One thing genuinely had to be added: a running total is the only pass over a
+  finished season that is not idempotent for free, and the rail can be walked back
+  to the draft step. Each row carries the year last folded in.
+
+  **Nothing is seeded**, and section D below is the provenance of that decision
+  rather than a gap. A career mark is four times a season mark, and §13.3 already
+  records that seven of the twelve season seeds are out of reach — thirteen more
+  unbeatable rows would break the book's own rule that exactly one row may be
+  unreachable. The first man in the country to finish a career takes all thirteen,
+  which is worth watching in a way that a page of 1980s names is not.
 - **B14 · The S+ store player** — deferred to v1.0. 82 overall on arrival, 99
   potential, ten badges, faster progression, exempt from the cap.
 
@@ -504,10 +556,14 @@ own.
 ## D. The record marks
 
 **Shipped as section D stands** — the twelve verified single-season marks are
-seeded in `engine/records.ts` with the arithmetic in a comment, and the career
-table below is not, because career records are B13. This section stays because
-it is the provenance: it is where the numbers came from and what is still
-missing, and the seeds should not be edited without it.
+seeded in `engine/records.ts` with the arithmetic in a comment. **The career table
+below is deliberately not seeded**, and that is now a decision rather than a
+pending item: B13 shipped the career rows open. A career mark is four times a
+season mark, seven of the twelve season seeds are already out of reach of this run
+environment (§13.3), and the book's stated rule is that exactly one row may be
+unreachable by construction. This section stays because it is the provenance: it
+is where the numbers came from and what is still missing, and the seeds should not
+be edited without it.
 
 Gathered so far, from sources that could actually be read. The official NCAA
 records book is a two-hundred-page PDF that will not fetch; NCAA.com renders

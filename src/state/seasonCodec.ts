@@ -97,6 +97,15 @@ export function fromPortable(p: Portable): SeasonState {
   // run was ever being counted — so it starts at nothing.
   p.season.records ??= seededBook();
   p.season.scorelessOuts ??= new Map();
+  // The running career totals under the career section of that book, and this
+  // one is genuinely empty rather than seeded. Nobody's career was being counted
+  // in a save written before it existed, so counting honestly starts now — the
+  // career records such a dynasty sets will be short by whatever was played
+  // before the upgrade, which is a smaller lie than inventing the missing
+  // seasons would be. The hall of fame beside it needs no clause at all: an empty
+  // hall is the truth about a dynasty that never inducted anybody, and every man
+  // in its archive is considered at the next year roll.
+  p.season.careerTotals ??= new Map();
   // And the feats beside it, which are genuinely empty on an old save for the
   // same reason the scoreless counter is: nobody was watching for them, so the
   // honest state is that this season has produced none yet. A season resumed in

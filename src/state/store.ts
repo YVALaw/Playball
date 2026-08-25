@@ -14,9 +14,10 @@ import { create } from 'zustand';
 import {
   createSeason, simNextDay, simSeason, seasonComplete, standings, nextSeason, rpi,
   seasonLength, regularRecord, archiveSeason, recordSeasonMarks,
-  recordResult, restedFirst,
+  recordCareerMarks, recordResult, restedFirst,
   type SeasonState,
 } from '../engine/season.js';
+import { activeIds, honoursByPlayer, inductees } from '../engine/hall.js';
 import { BADGES } from '../engine/badges.js';
 import { recordCoachMarks } from '../engine/records.js';
 import { overallOf } from '../engine/ratings.js';
@@ -1135,6 +1136,51 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // coach does nothing, so doing nothing has to mean that here too rather
       // than leaving him in limbo on a screen nobody will come back to.
       for (const man of season.draft?.men ?? []) letHimGo(man);
+
+      /*
+        And with the last of them decided, the hall of fame meets. B12.
+
+        **Here rather than at the draft step, and the reason is the same one that
+        put Kingmaker at the draft step rather than on the draft screen: the
+        honest moment is the one where the fact is finally true.** A junior taken
+        in the fourth round is off the roster from the instant `departAndDevelop`
+        runs, and induct him there and a coach who then talks him into coming back
+        has a hall of famer on next year's lineup card. Every man on the board is
+        resolved one line above this, either by a conversation the coach paid for
+        or by the loop that lets the rest go, so this is the first moment in the
+        year at which "his career is over" is a settled question.
+
+        It is a moment on purpose. A list that silently recomputed itself would
+        make induction a leaderboard with a threshold, which is what the HALL tab
+        already was; the point of B12 is that somebody goes in, it is announced,
+        and it stays true afterwards. `season.hall` is written once per man and
+        never rescored — see `engine/hall.ts`.
+
+        Idempotent, and it has to be: this branch is not behind `furthestPhase`,
+        so walking back to the draft step and forward again runs it twice. The men
+        already in are passed in as `inducted` and are never reconsidered.
+      */
+      const hallYear = get().year;
+      const going = inductees({
+        careers: season.careers ?? {},
+        active: activeIds(season.teams),
+        inducted: new Set((season.hall ?? []).map((m) => String(m.id))),
+        honours: honoursByPlayer(get().history),
+        year: hallYear,
+      });
+      if (going.length > 0) {
+        season.hall = [...(season.hall ?? []), ...going];
+        get().post({
+          kind: 'hall',
+          year: hallYear,
+          title: going.length === 1
+            ? `${going[0]!.name} goes into the hall`
+            : `${going.length} men go into the hall`,
+          body: `${going.map((m) => `${m.name}, ${m.line}`).join('. ')}. `
+            + 'The plaques are on the program page, under HALL OF FAME.',
+        });
+      }
+
       seedRivalInterest(season, get().userTeam);
       season.recruiting.week = 1;
       set({
@@ -1167,19 +1213,23 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         players ever have and exactly what a record book and a hall of fame are
         for, so it is the one season that must not be the one that is lost.
 
-        The archive goes first. Nothing here reads what the other writes, so
-        today the order is free — but career records league-wide (B13) will have
-        the book read the archive, and putting them in that order now means that
-        change is not also a reordering.
+        The archive goes first, and there are three of them now. Your program's
+        seasons, so the hall of fame has a career to read; the league's season
+        marks; and the league's career totals, which is B13 — one running row per
+        man on a roster anywhere in the country, added to here and pruned the year
+        after he leaves.
 
-        Both are idempotent, which they have to be: walking back to the coach
-        step and forward again runs this branch a second time. A year already in
-        a man's career is not written twice, and a mark has to be beaten rather
-        than equalled, so the second pass changes nothing.
+        All three are idempotent, which they have to be: walking back to the coach
+        step and forward again runs this branch a second time. A year already in a
+        man's career is not written twice, a mark has to be beaten rather than
+        equalled, and a career total carries the year it was last folded in. The
+        third was the only one that needed anything doing to it — a running total
+        is the one thing here that does not get idempotence for free.
       */
       const year = get().year;
       archiveSeason(season, get().userTeam, year);
       recordSeasonMarks(season, year);
+      recordCareerMarks(season, year);
       const chair = season.teams[get().userTeam];
       // Every career in the country, not only yours. It was yours alone for as
       // long as a rival bench was a strategy and a prestige number; now each of

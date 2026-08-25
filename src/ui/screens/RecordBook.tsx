@@ -38,6 +38,13 @@ const SECTIONS: Array<{ group: RecordGroup; title: string; note: string }> = [
       + 'use: two plate appearances a game to be batting, one inning a game to be '
       + 'pitching.',
   },
+  {
+    group: 'career', title: 'CAREER',
+    note: 'Four years at most, and the men who left after two are in here with '
+      + 'the men who stayed. Rate marks need two qualifying seasons behind them. '
+      + 'Nothing is seeded: the real career records are four times a single-season '
+      + 'mark and would never be beaten, so every row here was set in this world.',
+  },
   { group: 'team', title: 'TEAM', note: 'Programs, not players.' },
   {
     group: 'coach', title: 'COACHING',
@@ -105,10 +112,15 @@ export function RecordBook() {
         A mark has to be <strong>beaten</strong>. Equalling one leaves it where it
         is.
         <br /><br />
-        There are no career records here, and that is a gap rather than a
-        decision: only your own program's players are archived past the season
-        they played, so nobody could honestly be called the country's career
-        leader in anything.
+        Career marks are taken across the whole country, the same as the rest of
+        the book. What is kept for them is a running total per man rather than
+        every season of every roster — a career record wants the total, and the
+        total is final the day he leaves.
+        <br /><br />
+        There are no career fielding records, for the reason there are no season
+        ones: the ranking statistic is plays above what an average glove{' '}
+        <em>on his own team</em> would have made, which does not mean the same
+        thing in two different rows.
       </div>
     </div>
   );

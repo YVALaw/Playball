@@ -170,6 +170,11 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 85 | **Badge development is rolled off a hash of the player's id and the year, not off the offseason's random stream.** Two thousand rolls a year inserted into that stream would move every departure and every development draw in the league. Earned at 42% for a man who did the thing; coached at 16% for one thing a winter; both scaled by TRAINING up to ×1.8. | A badge appearing in the inbox in June. | `developBadges`, `EARN_CHANCE`, `COACH_CHANCE`, `trainingMult` — `engine/badges.ts`; §18.5 | SHIPPED |
 | 86 | **The earning bars are set against what this engine's 45-game season actually produces, not against real college numbers.** Six home runs is the 95th percentile here and 48 was Incaviglia's real mark; a bar written from the record book would have been unreachable by everybody. | Nothing. | `BADGES[*].earned` — `engine/badges.ts`; §18.5 | SHIPPED |
 | 87 | **Only a catcher can earn CANNON**, because stolen bases and caught stealing are recorded on the catcher's fielding line and nowhere else. An outfielder holding it got it innately or from his staff. | Nothing. | `BADGES.cannon.earned` — `engine/badges.ts`; `attemptSteal` — `engine/game.ts`; §18.5 | SHIPPED |
+| 88 | **The hall of fame ballot cannot see the record book.** Not one row of it, single game, single season or career. A record is one measurement and a hall is a verdict on a career, and the failure mode the whole feature was designed against is the first substituting for the second. What a hall of famer holds is printed on his plaque and is worth nothing on the ballot. | STILL HOLDS, under the plaque. | `inductees`, `buildCase` — `engine/hall.ts`; §19.1 | SHIPPED |
+| 89 | **A career is scored in runs above replacement, and the peak window is two seasons.** Replacement is 72% of the league's .126 runs created per plate appearance for a bat, and a 6.63 earned run average for an arm. Neither number, nor the score itself, is ever printed — the plaque shows the line he actually put up. | `4 seasons · .383, 23 HR, 161 RBI`. | `seasonRuns`, `PEAK_SEASONS` — `engine/hall.ts`; §19.2 | SHIPPED |
+| 90 | **The induction bar is absolute, not a quota**, so a great program inducts about every second year and a poor one may never induct anybody. Measured at 130: ten men in twenty seasons at the strongest program in the country, one at the median, none at the weakest. | An empty hall at a bad job. | `HALL_BAR` — `engine/hall.ts`; `tests/hall-probe.ts`; §19.4 | SHIPPED |
+| 91 | **Induction is decided when the draft step closes, not when it opens.** A drafted junior is off the roster from the first line of the offseason and may still be talked back onto it, so "his career is over" is not a settled question until the board is empty. A career also has to be over *everywhere* — a coach who moves jobs leaves sophomores behind. | Nothing, except the class never containing a man who comes back. | `nextPhase`, the `recruiting` branch — `state/store.ts`; `BallotInput.active` — `engine/hall.ts`; §19.5 | SHIPPED |
+| 92 | **Career records are kept as a running total per active player, pruned the year after he leaves**, rather than by archiving every program's seasons. The ledger is the size of the league — about 2,400 rows, 308 KB — instead of growing 375 KB a season for ever. Each row carries the year it was last folded in, because a running total is the one pass over a finished season that is not idempotent for free. | Nothing. | `CareerTotals`, `recordCareerMarks` — `engine/season.ts`; §13.6 | SHIPPED |
 
 ---
 
@@ -2083,15 +2088,19 @@ about twenty hidden gems per class either way.
   the name. `careerName` reads the row and falls back to the id for rows written
   before the field existed, where the id *is* the name. Both the HALL tab and the
   alumnus card on the player screen go through it.
+- A row also carries **doubles and triples** since B12. They are there so total
+  bases can be computed exactly: the hall of fame prices a career in runs, and
+  without them the only available approximation was hits plus home runs, which
+  scores every gap hitter in the archive as a singles hitter.
 - `HISTORY` (`ui/screens/History.tsx`) is the season-by-season book for the program.
-- `PROGRAM → HALL` (`ui/screens/Program.tsx`) ranks the best players you have
-  coached, bats by career hits and arms by career strikeouts, twelve each. It is
-  ordered on counting statistics the game already prints rather than on a career
-  score of nobody's devising.
+- `PROGRAM → HALL` (`ui/screens/Program.tsx`) is now the men who have been
+  **inducted** (§19), with the two career leaderboards kept underneath. They
+  answer different questions and both are worth answering: a leaderboard says who
+  accumulated the most, an induction says who was great.
 
 **Shipped since:** the all-time book in the other sense — league-wide marks that
-persist and can be broken, seeded with real NCAA records. See §13. Career leaders
-are still the missing half of it, and for the reason given there.
+persist and can be broken, seeded with real NCAA records (§13), and the career
+half of it (§13.6).
 
 ### 12.5 Draft declaration and persuasion
 
@@ -2101,11 +2110,8 @@ and a screen where you get to talk him out of it.
 
 ### 12.6 Hall-of-fame induction
 
-**Intent:** a ceremony, an inducted class, and a lasting honour.
-
-**Reality today:** the HALL tab described in §12.4 is a leaderboard of the best
-players you have coached, computed live from the record book. Nothing is inducted,
-nothing is permanent, and nobody is honoured.
+**SHIPPED.** See §19, which replaced this entry entirely: a class decided in June
+once the draft has settled, announced in the inbox, and written down for good.
 
 ---
 
@@ -2289,18 +2295,88 @@ in it now, **REGIONAL TITLES**, which is B6: the postseason has had a regional
 round for as long as it has had this shape and nothing anywhere counted winning
 one.
 
-**There are no career records**, and the screen says so in as many words. They
-need archiving widened past your own program, which is the one genuinely expensive
-piece and is B13 in the backlog. Fielding records are also absent: the ranking
-statistic is plays above what an *average glove on his own team* would have made,
-which does not mean the same thing in two different rows and cannot be compared
-across seasons — the same reason `CareerYear` leaves it out.
+**Career records are in it now**, thirteen rows, league-wide. §13.6 is how, and
+why it did not cost what B13 was deferred for. Fielding records are still absent:
+the ranking statistic is plays above what an *average glove on his own team* would
+have made, which does not mean the same thing in two different rows and cannot be
+compared across seasons — the same reason `CareerYear` leaves it out.
 
 Saves written before the book existed come up with the **seeded** marks rather
 than an empty book. That is a different rule from the other backfills in
 `fromPortable`, and deliberately: an empty fielding map is the truthful state for
 a save that never recorded a chance, but an empty record book is not — the NCAA
 seeds are not something a dynasty earned, they are where every dynasty starts.
+
+### 13.6 Career records, and why they were not expensive after all — **B13**
+
+`CareerTotals` and `recordCareerMarks` in `src/engine/season.ts`.
+
+B13 was deferred for a year because of one sentence: career records need
+archiving widened past the user's own program, and archiving the whole country is
+the genuinely expensive piece. That sentence was true about the expensive reading
+of the problem and false about the problem.
+
+**The same observation the rest of the book rests on applies again.** §13.1 says a
+record book does not need the seasons, it needs the holders. One level down, a
+*career* record does not need a man's seasons either — it needs his total. So
+what is kept is one running row per player on a roster anywhere in the country,
+added to each June: at bats, hits, doubles, triples, home runs, runs, runs batted
+in, steals; outs, wins, losses, earned runs, strikeouts. Fifteen numbers.
+
+**The pruning is what makes it bounded, and it is free.** The map is rebuilt each
+June from the ninety six rosters, so a man who graduated last year is simply not
+in the new one — which is safe precisely because his total was final the moment he
+left and had already been offered to the book. There is nothing left in the row to
+lose. The ledger is therefore the size of the *league*, about twenty four hundred
+rows, for ever, rather than twenty four hundred more every season.
+
+**Measured, because the deferral was a cost claim and a cost claim has to be
+answered with numbers.** `tests/hall-probe.ts` runs both against twenty seasons of
+the full world:
+
+| | after 20 seasons | growth | time per June |
+|---|---|---|---|
+| The running ledger | 2,530 rows, **308 KB** | none — it is the league's size | 1.4 ms |
+| Archiving every program's seasons | 19,128 men, 49,519 rows, **7,526 KB** | ~375 KB a season, for ever | 1.7 ms |
+
+The ledger is 10% of a save that is 2.7 MB with a whole world in it. The archive
+would have been almost three times the rest of the save put together by year
+twenty, and would still have been growing at graduation — on a phone, through a
+structured clone, on every autosave. The time difference is noise; the size is
+not, and the size was always the objection.
+
+**One thing genuinely had to be added, and it is the only place a running total
+differs from every other pass over a finished season.** The rest of the book is
+idempotent for free because a mark has to be beaten rather than equalled, and the
+offseason rail can be walked backwards and forwards. A running total is not: fold
+2031 in twice and every career in the country gains a season. Each row carries
+`last`, the year already counted, and a second pass re-offers the same totals and
+changes nothing.
+
+**Thirteen rows, and none of them is seeded.** Batting average, home runs, runs
+batted in, hits, runs, steals, doubles, total bases, slugging; earned run average,
+strikeouts, wins, innings. `docs/06-backlog.md` section D has the real career marks
+and the arithmetic to scale them — Incaviglia's 100 home runs come out near 85 —
+and every one was rejected, because a career mark is four times a season mark and
+§13.3 already records that seven of the twelve *season* seeds are out of reach of
+this run environment. Seeding these would have put thirteen permanently unbeatable
+rows in a book whose stated rule is that exactly one row may be unreachable, and
+Ventura holds it. They start open, and the first man in the country to finish a
+career takes all thirteen.
+
+**A career rate qualifies on two seasons' worth** — `CAREER_MIN_AB` = 180 at bats,
+`CAREER_MIN_IP` = 90 innings, the single-season bars doubled. A career rate is more
+fragile than a season rate rather than less, because a career can be two months
+long, and without a floor the career batting record belongs for ever to a pinch
+hitter who went nine for sixteen as a freshman. The bar is in *at bats* rather than
+plate appearances, which is the one place it reads differently from the
+single-season rule beside it: the ledger does not keep walks, because no career
+record needs them.
+
+A dynasty from before the ledger existed opens with an **empty** one, not a seeded
+one — the opposite of the rule for the book itself, and for the reason the
+scoreless streak follows: nobody's career was being counted, so counting honestly
+starts now.
 
 ---
 
@@ -2932,6 +3008,13 @@ has four sub-screens — TODAY, WIRE, INBOX, SCOREBOOK.
 | `achievement` | Each newly earned one, with its own line |
 | `draft` | How many of your men were taken, and Kingmaker if it fired |
 | `carousel` | Coaching changes |
+| `hall` | The induction class, once a June, and only in a June that has one |
+
+`hall` is the one kind that is about somebody other than the coach, and it has its
+own row rather than being folded in with `achievement` for exactly that reason: an
+achievement is a thing he did, an induction is a thing a man who played for him
+earns. It is the only card here that fires in most years and not all of them,
+which is the point of it — see §19.
 
 The carousel is the one that needed a volume rule, because ninety five careers
 produce five to twenty moves a year and posting all of them would bury the four
@@ -3356,6 +3439,164 @@ judgment call rather than an assertion.
 
 ---
 
+## 19. The hall of fame — **SHIPPED**
+
+`src/engine/hall.ts`, the induction step in `nextPhase` (`src/state/store.ts`),
+`PROGRAM → HALL OF FAME` (`src/ui/screens/Program.tsx`). B12.
+
+### 19.1 What it is against
+
+The brief came with one failure mode stated outright, and it decided the whole
+design: *a man who holds one enormous single-game record and was otherwise
+ordinary must not get in.* Sustained excellence over a career, not a spike.
+
+So **the ballot cannot see the record book at all.** Not the single-game rows, not
+the season rows, not the career rows §13.6 just added. A record is one measurement;
+a hall of fame is a verdict on a career, and the moment one can substitute for the
+other the failure mode is back. `tests/hall.test.ts` pins this in its strongest
+form: a man is given the best afternoon in the history of the country and his
+score does not move by a point.
+
+What a hall of famer holds is still printed — on the plaque, after the fact, under
+STILL HOLDS. That is the honest place for it: worth reading, worth nothing.
+
+### 19.2 Peak and longevity, because the draft made both ordinary
+
+A four year career and a two year career are both normal outcomes since B9. A rule
+that added seasons up would hand the hall to whoever nobody wanted; a rule that
+took the best year alone would hand it to whoever had one.
+
+So the score is what Jaffe's JAWS does for Cooperstown, at college scale:
+
+```
+score = career + peak + honours
+```
+
+- **`career`** is runs above replacement, summed over every season in the archive.
+- **`peak`** is the mean of his best **two** seasons. Two rather than JAWS's seven
+  because a college career is four and a junior who left has three — a seven year
+  window on a four year career is just the career again, and the two year star's
+  whole case *is* two seasons.
+- **`honours`** is what the country voted him, priced in runs.
+
+**Runs above replacement is the currency** because it is the only one that can
+compare a shortstop's summer with a Friday starter's. A bat gets basic Runs
+Created — `(H + BB) × TB / PA`, in the form James wrote it — against what a
+replacement would have produced in the same trips, where replacement is 72% of the
+league's .126 runs created per plate appearance. An arm gets runs prevented against
+a replacement earned run average of 6.63, which is the calibrated 5.30 a game plus
+a quarter. A two-way player gets both, which is right: he did both.
+
+**Honours are priced small on purpose.** A national player or pitcher of the year
+is worth 12 — about one and a half average seasons — freshman of the year 5, and a
+place on the all-conference team 4. Four years of every honour the game can give a
+hitter cannot get an ordinary career past the bar on its own, and a test says so.
+They tip a borderline case, which is what a contemporaneous vote should do.
+
+### 19.3 Two seasons, minimum, whatever the number says
+
+`MIN_SEASONS` = 2, checked before the score is looked at. One season is a spike by
+definition, and this is a hall built against spikes. It is also the cheapest
+possible statement of the rule the file exists for: *sustained* means more than
+once. The test for it hands a man the greatest season the engine can describe —
+.550, 35 home runs, a score of 275 against a bar of 130 — and leaves him out.
+
+The floor costs almost nothing in practice. Eligibility is three years completed or
+age 21 (§14.1), so leaving after one season needs a freshman who arrived at 20 and
+was immediately a first-round talent.
+
+### 19.4 The bar, and the rate it produces
+
+`HALL_BAR` = **130**, and it was measured rather than chosen. `tests/hall-probe.ts`
+plays twenty seasons of the whole country and scores every finished career at three
+programs — the strongest in the world that seed generates, the median, and the
+weakest. What each candidate bar would have admitted over those twenty years:
+
+| bar | blue blood | median | cellar |
+|---|---|---|---|
+| 100 | 30 | 7 | 0 |
+| 110 | 19 | 3 | 0 |
+| 120 | 14 | 2 | 0 |
+| **130** | **10** | **1** | **0** |
+| 140 | 8 | 0 | 0 |
+
+The two failure modes were named in the brief: a hall that admits somebody every
+year is a roster, one that admits nobody in twenty is a locked room. At 110 the
+best program in the country inducts almost every season. At 140 nothing outside the
+elite ever inducts anybody. **130 is the last row where a great program honours its
+best man about every second year and the rest of the country is not shut out.**
+
+Two things to read carefully with that table.
+
+**The middle column is a floor, not the user's experience.** Every program in the
+measurement is run by the machine, and a rival spends his skill points badly on
+purpose — the country's recruiting skill plateaus near 30 against a player who can
+reach 99 by concentrating (§16.4). A coach who recruits properly at an average
+program produces careers somewhere between those two columns.
+
+**The bar is absolute and deliberately not a quota.** A hall that admitted the best
+two men of every decade would say nothing about the program the coach built. This
+one says a great deal: at a bad program it stays nearly empty, and filling it is
+the achievement. `tests/hall.test.ts` asserts the gradient rather than a number —
+somebody at a strong program, not every year, and never more at a weak one than a
+strong one.
+
+### 19.5 When it happens, and why exactly there
+
+**The class is decided when the draft step closes**, on the way into recruiting —
+after the last man on the board is either talked round or let go.
+
+This is the same argument that put Kingmaker at the draft step rather than on the
+draft screen (§15.2): the honest moment is the one where the fact is finally true.
+A junior taken in the fourth round is off the roster from the instant
+`departAndDevelop` runs at the *start* of the draft step. Induct him there and a
+coach who then talks him into coming back has a hall of famer on next year's lineup
+card. A career is over when he is on no roster **anywhere in the country** — every
+roster rather than yours, because a coach who changes jobs leaves men behind who
+are still sophomores.
+
+There is **no waiting period**. A coaching career is fifteen years if it goes well,
+and a five year wait would leave a third of the men he coached pending when he
+retires. He goes in the June after his last game or he does not go in at all — and
+because the bar is absolute rather than a quota, a man who misses has missed for
+good, which is why last year's near misses are not reconsidered.
+
+**Idempotent**, because that branch is not behind `furthestPhase` and the rail can
+be walked back to the draft step and forward again. The men already in are passed
+in as `inducted` and never reconsidered; the announcement fires once.
+
+### 19.6 It is a moment, and it is written down
+
+Induction posts an **inbox card** (§17.3, kind `hall`) naming the man and his
+career line. That is the difference between this and what the tab used to be: a
+list that silently recomputes is a leaderboard with a threshold, and the point of
+B12 is that somebody goes in, it is said out loud, and it stays true afterwards.
+
+`season.hall` holds the class, beside `season.careers` rather than on the coach —
+the archive spans every program he has run and has to outlive the roster that
+produced it. **A plaque is frozen at the moment it is written**: the name, the
+span, the programs, the career line and the score are all stored rather than
+recomputed. If the scoring is ever changed, the men already in stay in with the
+case that put them there. That is how every real hall works and the opposite of how
+a leaderboard works, and it is the whole distinction the tab now draws.
+
+### 19.7 Your own men only
+
+`season.careers` is written by `archiveSeason` for the user's program alone, and
+the ballot has no other source of men. A rival's monster is not excluded by a
+filter — he is not in the book to be on the ballot in the first place.
+
+One consequence worth stating: a man who played two years for you and two for
+somebody else after you left is judged on the two he gave you. That is the honest
+reading of "the men you coached", and it is what the archive holds.
+
+The screen keeps the two career leaderboards under the plaques. They answer a
+different question and it is worth answering: who accumulated the most is a fact
+about a program, and a four year regular will out-hit a two year star every time
+while only one of them has a plaque.
+
+---
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code
@@ -3364,7 +3605,7 @@ does. None of them changes behaviour; all of them will mislead the next reader.
 | Where | The problem |
 |---|---|
 | `engine/postseason.ts`, `FIELD_SIZE` | Vestigial. The docstring now says so rather than describing a 16-team field of automatic and at-large bids that never existed, but the symbol is still exported and its only use is a `size` parameter on `runPostseason` that the function body never reads. |
-| `ui/Avatar.tsx`, `ui/screens/Player.tsx`, `ui/screens/Program.tsx`, `ui/screens/Standings.tsx`, `ui/screens/TeamCard.tsx` | Comments still say "sixty four programs" / "the other sixty three". The world is 96. The engine, the state layer and the data file have been swept; these five were outside that pass, and all of it is comments. The one occurrence that did reach the screen — the Omaha note in `SeasonReview.tsx` — is fixed. |
+| `ui/Avatar.tsx`, `ui/screens/Standings.tsx`, `ui/screens/TeamCard.tsx` | Comments still say "sixty four programs" / "the other sixty three". The world is 96. The engine, the state layer and the data file have been swept; these were outside that pass, and all of it is comments. Two more are now fixed rather than listed: `Program.tsx`'s was screen copy on the HALL tab and went with B12, and `Player.tsx`'s career comment went with B13. The one other occurrence that reached the screen — the Omaha note in `SeasonReview.tsx` — was fixed earlier. |
 | ~~`engine/recruiting.ts`, `RECRUITING_BUDGET` docstring~~ | Fixed. It opened "Thirty, spread across as many recruits as you like" over a constant of 40. |
 | `engine/scouting.ts`, `PotentialGrade` | `'?'` is documented as what a screen prints where a ceiling is none of your business. No screen uses it; `ui/screens/Player.tsx` prints an em dash instead. |
 | `engine/recruiting.ts`, `BOARD_SLOTS` | Marked `@deprecated`, still used by `aiTargets` to size a board. `ACTIONS_PER_WEEK` beside it is now genuinely unused — `aiTargets` reads `weeklyBudget` (§14.7) — and is kept only as the record of what the flat week was. |
@@ -3379,9 +3620,11 @@ Things this document could not settle from the code, and must not guess at.
    each, the population split that keeps them power-neutral, and a discovery
    mechanic for how they surface on your own men. §18.3 and §18.4.
 2. ~~**The scope of the planned records book.**~~ Answered, and built: league-wide
-   single game, single season and team marks, plus the user's coaching career,
-   seeded with real NCAA records. Career leaders are the one part left out, and
-   §13.5 gives the reason. See §13.
+   single game, single season, career and team marks, plus every coaching career
+   in the country, seeded with real NCAA records where a real mark could be
+   verified. Career records were the last piece and were deferred on a cost claim
+   that turned out to be about the wrong implementation; §13.6 has the
+   measurement. See §13.
 3. ~~**Badge channels and situations.**~~ Answered, and built: twenty-three
    badges, each naming one channel and one situation, with the situation defined
    as a field on `Situation` that `game.ts` fills in once per plate appearance.

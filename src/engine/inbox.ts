@@ -34,7 +34,8 @@ export type InboxKind =
   | 'offer'
   | 'achievement'
   | 'draft'
-  | 'carousel';
+  | 'carousel'
+  | 'hall';
 
 export interface InboxItem {
   /** Unique, and stable across a reload so React keys do not shuffle. */
@@ -55,6 +56,10 @@ export const INBOX_LABEL: Record<InboxKind, string> = {
   achievement: 'ACHIEVEMENT',
   draft: 'THE DRAFT',
   carousel: 'THE CAROUSEL',
+  // Its own kind rather than folded in with achievements, which are the coach's.
+  // This is the one thing the inbox says about somebody else: a man who played
+  // for you, honoured for what he did while he was here.
+  hall: 'THE HALL',
 };
 
 /**

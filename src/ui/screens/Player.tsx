@@ -1127,8 +1127,13 @@ function Games({ id, owner, isOurs }: { id: PlayerId; owner: Owner; isOurs: bool
  * The season maps are wiped each June, so without the record book a junior's
  * first two years simply did not exist — which is a strange thing for a game
  * whose whole subject is players getting better. Your program only, for the
- * same reason the box scores are: keeping every line for all sixty four schools
+ * same reason the box scores are: keeping every line for all ninety six schools
  * would put tens of thousands of rows through every autosave.
+ *
+ * The country's *career totals* are kept, since B13, and this is not them. A
+ * total is one row per man that is thrown away the year after he leaves; this is
+ * the season by season table, which is the only thing that can show a man
+ * developing and is therefore the expensive one. See §13.6.
  */
 function Career({ id, isPitcher, isOurs }: { id: PlayerId; isPitcher: boolean; isOurs: boolean }) {
   const season = useDynasty((s) => s.season);

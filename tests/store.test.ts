@@ -750,3 +750,80 @@ describe('the offseason cannot be run twice', () => {
     expect(after, 'a second class graduated out of an emptied roster').toEqual(before);
   });
 });
+
+describe('the hall of fame meets when the draft settles', () => {
+  /**
+   * B12, end to end through the store.
+   *
+   * The careers are written into the archive by hand rather than played out,
+   * because a hall of fame case takes three seasons to accumulate and this is a
+   * unit test. What is being checked is the wiring and the timing — that the
+   * ballot runs at the one moment every departure is settled, that it announces
+   * itself, and that it does not touch a man who is still on a roster.
+   */
+  const greatYear = (year: number, classYear: string, abbr: string, name: string) => ({
+    year, classYear, team: abbr, name,
+    ab: 180, h: 72, d: 18, t: 2, hr: 15, rbi: 65, bb: 30, sb: 4,
+  });
+
+  it('inducts a finished career, says so, and leaves a man still playing alone', async () => {
+    useDynasty.getState().start(7373, 0);
+    const season = useDynasty.getState().season as SeasonState;
+    simSeason(season);
+    const me = season.teams[0] as TeamRecord;
+    const year = useDynasty.getState().year;
+    const abbr = me.def.abbr;
+
+    // One man who left three Junes ago, and one of exactly the same quality who
+    // is a freshman and has three seasons in front of him.
+    const departed = 'Hall Worthy';
+    season.careers[departed as PlayerId] = [
+      greatYear(year - 3, 'SO', abbr, departed),
+      greatYear(year - 2, 'JR', abbr, departed),
+      greatYear(year - 1, 'SR', abbr, departed),
+    ];
+    const kid = me.team.lineup.find((p) => p.classYear === 'FR') as Player;
+    expect(kid).toBeDefined();
+    season.careers[kid.id] = [
+      greatYear(year - 1, 'FR', abbr, kid.name),
+      greatYear(year, 'SO', abbr, kid.name),
+    ];
+
+    useDynasty.setState({ phase: 'coach', furthestPhase: PHASES.indexOf('coach') });
+    await useDynasty.getState().nextPhase();      // into the draft
+    // Nothing is inducted at the draft step: a man on the board may yet be
+    // talked into coming back, so his career is not over until the step ends.
+    expect(useDynasty.getState().season?.hall ?? []).toEqual([]);
+
+    await useDynasty.getState().nextPhase();      // into recruiting, and the hall meets
+
+    const after = useDynasty.getState().season as SeasonState;
+    const hall = (after.hall ?? []).map((m) => String(m.id));
+    expect(hall).toContain(departed);
+
+    // The freshman is a sophomore now and still on the roster, so he is not on
+    // the ballot however good his two seasons were.
+    const roster = new Set([
+      ...me.team.lineup, ...me.team.bench, ...me.team.rotation, ...me.team.bullpen,
+    ].map((p) => String(p.id)));
+    expect(roster.has(String(kid.id))).toBe(true);
+    expect(hall).not.toContain(String(kid.id));
+
+    // Announced. The inbox is where a thing that happened to you goes.
+    const posted = useDynasty.getState().inbox.filter((i) => i.kind === 'hall');
+    expect(posted.length).toBe(1);
+    expect(posted[0]?.title).toContain(departed);
+    expect(posted[0]?.year).toBe(year);
+
+    // And it is on the disk, which for this record has to be checked rather than
+    // assumed: the save is assembled field by field one level down.
+    const file = buildSaveFile('slot', 'Test', after, year, 0, {}, 0);
+    expect((file.season.hall ?? []).map((m) => String(m.id))).toContain(departed);
+
+    // Walking back and forward again does not induct him twice.
+    useDynasty.getState().goPhase('draft');
+    await useDynasty.getState().nextPhase();
+    expect((useDynasty.getState().season?.hall ?? []).length).toBe(hall.length);
+    expect(useDynasty.getState().inbox.filter((i) => i.kind === 'hall').length).toBe(1);
+  });
+});

@@ -9,9 +9,12 @@
 // ninety-six rosters is what would be expensive, and none of it is necessary to
 // answer "who hit the most home runs anybody ever hit here".
 //
-// Career records are deliberately not here. They need archiving widened past the
-// user's own program, which is the one genuinely expensive piece (B13), and the
-// screen says so rather than showing an empty section that looks like a bug.
+// Career records are here now, and the same observation paid for them a second
+// time. The expensive reading of B13 was "archive every program's seasons"; the
+// cheap one is that a career record needs a career *total*, which is one row per
+// active player that is added to each June and falls out of the map the year he
+// graduates. It is bounded by the size of the league rather than by the age of
+// the dynasty. See `CareerTotals` in season.ts, and `recordCareerMarks`.
 
 import type { GameResult, TeamState } from './game.js';
 import type { PlayerId } from './types.js';
@@ -40,7 +43,7 @@ export interface RecordMark {
   ncaa?: boolean;
 }
 
-export type RecordGroup = 'game' | 'feat' | 'season' | 'team' | 'coach';
+export type RecordGroup = 'game' | 'feat' | 'season' | 'career' | 'team' | 'coach';
 
 export type RecordKey =
   // single game, player
@@ -54,6 +57,10 @@ export type RecordKey =
   // single season, pitching
   | 'seasonERA' | 'seasonWHIP' | 'seasonK' | 'seasonWins' | 'seasonSaves'
   | 'seasonIP' | 'seasonK9' | 'seasonScoreless'
+  // career, league-wide
+  | 'careerAvg' | 'careerHR' | 'careerRBI' | 'careerHits' | 'careerRuns'
+  | 'careerSB' | 'careerDoubles' | 'careerTB' | 'careerSlg'
+  | 'careerERA' | 'careerK' | 'careerWins' | 'careerIP'
   // team
   | 'teamGameRuns' | 'teamGameHits' | 'teamGameMargin'
   | 'teamSeasonWins' | 'teamSeasonDiff' | 'teamSeasonStreak'
@@ -118,6 +125,20 @@ export const RECORDS: Record<RecordKey, RecordSpec> = {
   seasonIP: { group: 'season', label: 'INNINGS PITCHED', shape: 'innings' },
   seasonK9: { group: 'season', label: 'STRIKEOUTS PER NINE', shape: 'tenth' },
   seasonScoreless: { group: 'season', label: 'CONSECUTIVE SCORELESS INNINGS', shape: 'count' },
+
+  careerAvg: { group: 'career', label: 'BATTING AVERAGE', shape: 'avg' },
+  careerHR: { group: 'career', label: 'HOME RUNS', shape: 'count' },
+  careerRBI: { group: 'career', label: 'RUNS BATTED IN', shape: 'count' },
+  careerHits: { group: 'career', label: 'HITS', shape: 'count' },
+  careerRuns: { group: 'career', label: 'RUNS', shape: 'count' },
+  careerSB: { group: 'career', label: 'STOLEN BASES', shape: 'count' },
+  careerDoubles: { group: 'career', label: 'DOUBLES', shape: 'count' },
+  careerTB: { group: 'career', label: 'TOTAL BASES', shape: 'count' },
+  careerSlg: { group: 'career', label: 'SLUGGING', shape: 'avg' },
+  careerERA: { group: 'career', label: 'EARNED RUN AVERAGE', shape: 'era', ascending: true },
+  careerK: { group: 'career', label: 'STRIKEOUTS', shape: 'count' },
+  careerWins: { group: 'career', label: 'WINS', shape: 'count' },
+  careerIP: { group: 'career', label: 'INNINGS PITCHED', shape: 'innings' },
 
   teamGameRuns: { group: 'team', label: 'RUNS, GAME', shape: 'count' },
   teamGameHits: { group: 'team', label: 'HITS, GAME', shape: 'count' },
@@ -197,6 +218,29 @@ function tally(book: RecordBook, key: RecordKey, mark: Omit<RecordMark, 'value'>
 export const BOOK_SEASON_GAMES = 45;
 
 /**
+ * What a career rate has to have behind it: two qualifying seasons' worth.
+ *
+ * A career rate is more fragile than a season one rather than less, because a
+ * career can be two months long. Without a floor the career batting record would
+ * belong for ever to a pinch hitter who went nine for sixteen as a freshman and
+ * never started again.
+ *
+ * **In at bats rather than plate appearances**, which is the one place this rule
+ * reads differently from the single-season one next to it. `CareerTotals` does
+ * not keep walks — no career record needs them — so the bar is set on the unit
+ * the ledger has. Ninety a season is the season bar in plate appearances and
+ * about seventy eight of them are at bats, so a hundred and eighty is a little
+ * over two qualifying seasons and lands in the right place.
+ *
+ * Doubling the season bar rather than scaling with how long he actually stayed is
+ * deliberate. A bar that grew with a career would ask more of the four-year man
+ * than of the two-year one, which is the wrong way round: it is the short career
+ * that needs proving.
+ */
+export const CAREER_MIN_AB = BOOK_SEASON_GAMES * 2 * 2;
+export const CAREER_MIN_IP = BOOK_SEASON_GAMES * 2;
+
+/**
  * The length of the season a real mark was set in, where the source does not say.
  *
  * Seventy five: the top of the 56-to-75 band, and the length of both seasons
@@ -242,6 +286,18 @@ const scaled = (real: number, games: number): number =>
  *
  * **One conflict left open.** Incaviglia's 1985 home run total is 48 in Wikipedia
  * and 45 in The Hardball Times. 48 is used, and the detail line says so.
+ *
+ * **The career rows are deliberately not seeded, and that is a decision rather
+ * than a gap.** `docs/06-backlog.md` section D has the real career marks and the
+ * arithmetic to scale them — Incaviglia's 100 home runs come out near 85 over
+ * four of our seasons — and every one of them was rejected. A career mark is four
+ * times a season mark, and the note below records that seven of the twelve season
+ * seeds are already out of reach of this run environment; seeding the career rows
+ * would put thirteen permanently unbeatable records in the book at a stroke. The
+ * rule this book is built on is that exactly one row is allowed to be
+ * unreachable, and Ventura already holds it. So the career section starts open,
+ * and the first man in the country to finish a career takes every row in it —
+ * which is worth watching happen in a way that a page of 1980s names is not.
  *
  * **What the engine can currently reach.** One simulated season of 96 programs
  * produced these league bests: 9 HR, 56 RBI, 111 total bases, .427 average, .678
