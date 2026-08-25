@@ -14,6 +14,7 @@
     "pitch-level": "tsx tests/pitch-level-check.ts",
     "parity-sweep": "tsx tests/parity-sweep.ts",
     "balance": "tsx tests/block-probe.ts",
+    "carousel": "tsx tests/carousel-probe.ts",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",

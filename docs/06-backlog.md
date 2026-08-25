@@ -283,12 +283,43 @@ half the achievements are all reading from the same book.
   and talent — which is zero-sum against a fixed recruiting class and would show
   compounding first — actively narrows.
 
-  One number is hotter than the real sport and is left alone deliberately: about
-  **twenty seven chair changes a year out of ninety five**, mean tenure near three
-  and a half seasons. It falls straight out of `expectationFor`'s designed 62%
-  clear rate applied to ninety five boards instead of one, and tuning it would
-  mean giving rival boards more patience than yours — a two-tier system, which is
-  the thing this was built not to be. See §16, and the E list below.
+  One number came out hotter than the real sport and was left alone at the time:
+  about **twenty seven chair changes a year out of ninety five**, mean tenure near
+  three and a half seasons.
+- **B7a · The other ninety five boards** — SHIPPED. What B7 left alone, measured
+  properly and then fixed. Turnover was **30.4 chairs a year out of ninety six**
+  against the real sport's eight to twelve; it is **11.5–11.9** now, of which
+  5.6–6.0 sackings, 2.8 poachings and 3.1 retirements, and mean tenure is 5.8
+  seasons rather than 1.9.
+
+  B7's own explanation was half of it. The prestige mismatch is real and was
+  tried on its own first: recentring `nextPrestige` and changing nothing else
+  bought 30.4 → 24.8 and widened the prestige spread from 17.1 to 19.2, so it was
+  not taken. **Mean roster strength drifts 44.7 → 55.2 over the same run** and has
+  nothing to do with coaches, and because wins are zero-sum while
+  `expectationFor`'s win target is absolute, the league ended up asked for 23.6
+  wins a program in a season that can only produce 22.5. `wins` is required under
+  every mandate; 53 of 96 programs were in breach of it every year.
+
+  So the boards split, in **two fields on `Board`** and nowhere else: a rival's
+  reads the same checklist against this year's league, and has one firing bar
+  where the player's has two. The second one is the interesting half — the band
+  between "sack him" and "do not renew him" is a good device for one career and a
+  scheduled cull across ninety five, because the median coach's security is a
+  near-driftless walk that spends a third of its life in it. **The player's board
+  is unchanged to the digit**, pinned by a 4,500-review sweep run against
+  `program.ts` before and after.
+
+  Two things fell out on the way. `POACH_GAP` was re-measured — its old value was
+  fitted while the boards were sacking a third of the country, which is a
+  different question — and went from 10 to 26, two star tiers. And a board was
+  observed sacking its coach in May and hiring him back in June, which had always
+  been possible and had never shown because the market was never thin enough for a
+  program's own reject to be the best thing on it.
+
+  Convergence survived it: the prestige spread peak moved by two tenths of a
+  point. The churn was never what was holding the league together. See §16.9 and
+  §16.10, and `npm run carousel` to reproduce any of it.
 - **B18 · The inbox** — SHIPPED. A notification centre, asked for directly: "a
   notification or inbox center for this type of things". Board verdicts, job
   offers, achievements, the draft and the coaching carousel accumulate there and
@@ -623,38 +654,57 @@ those, or the book stops being a game system and becomes a museum.
 Fold in opportunistically rather than as a work item of their own.
 
 - Scholarship allocation controls are tiny touch targets.
-- **Two prestige scales that do not share a mean, and the churn it causes.**
-  Found while measuring B7, and it is one item rather than two because the
-  second is entirely caused by the first.
+- **~~Two prestige scales that do not share a mean, and the churn it causes.~~**
+  SHIPPED, and the diagnosis was half right. See §16.10.
 
-  `nextPrestige` pulls a program toward `seasonScore`, whose league mean is about
-  **52** — win percentage averages 50 and the fixed pot of postseason bonuses
-  adds a couple of points spread over ninety six. `initialPrestige` seeds the
-  world with a mean nearer **43**. The two numbers are nominally the same 0–100
-  scale and are not the same distribution.
+  The prestige mismatch is real — `nextPrestige` drifts toward `seasonScore`
+  (league mean 51) while `initialPrestige` seeds at 41 — and it was tried on its
+  own first, because a split that papers over an arithmetic error is worse than
+  the error. Recentring the drift and changing nothing else took turnover from
+  **30.4 chairs a year to 24.8** and the clear rate from 27% to 33%, and widened
+  the prestige spread from 17.1 to 19.2, which is a regression on the one
+  property the carousel was built to protect. It is less than half the story and
+  it is not the expensive half.
 
-  It never mattered while one program in ninety six was passed through
-  `nextPrestige`. With all of them going through it the whole league lifts nine
-  points and settles there, which is stable — but `expectationFor`'s
-  `standing = prestige × 0.45 + roster × 0.55` rises with it, so programs cross
-  into `contend` and `championship`, where reaching the national tournament is a
-  **required** box that eight of ninety six can fill. Measured: the league-wide
-  clear rate is about **a third**, against the 62% `expectationFor` was tuned to.
-  That 62% was never a property of the function alone; it was a property of it at
-  the seeded distribution.
+  The bigger half is that **mean roster strength drifts 44.7 → 55.2** over the
+  same run and has nothing to do with coaches: the progression and recruiting
+  pipeline simply settles ten points above what the generator seeds. And the
+  damage is not mainly the mandate mix, it is the **win target**, because wins
+  are zero-sum and the target is not. The league is asked for 18.1 wins at the
+  seeded distribution and 23.6 at the settled one, and wins 22.5 either way;
+  `wins` is a required box under every mandate and was missed by 53 of 96
+  programs a year.
 
-  Downstream of it: about **twenty seven chair changes a year out of ninety
-  five**, mean coaching tenure near three and a half seasons, roughly three times
-  the real sport's rate.
+  What shipped is the split the user asked for, kept to two fields on `Board`
+  and argued at the seam in `program.ts`, plus a re-measured `POACH_GAP` and a
+  bug the old churn was hiding — a board sacking a coach in May and hiring him
+  back in June. Turnover is **11.5–11.9 chairs a year** across two seeds, of
+  which 5.6–6.0 sackings, 2.8 poachings and 3.1 retirements.
 
-  Three candidate fixes, none taken yet because all three touch the player's
-  board and none should be done quietly: centre `initialPrestige` on
-  `seasonScore`'s mean; take the free postseason bonuses out of `seasonScore` and
-  price the whole thing on win percentage; or move the mandate thresholds off
-  absolute standing and onto the program's *rank* in the league, which is
-  immune to the whole class of problem. Giving rival boards their own patience is
-  explicitly **not** on the list — that is a two-tier system, which is the thing
-  B7 was built not to be.
+- **The two required boxes the checklist cannot supply.** What is left of the
+  clear-rate gap after the split, and it is the player's board so it was not
+  touched. `objectivesFor` requires a national tournament bid of every `contend`
+  and `championship` program. There are **eight bids for ninety six programs**
+  and fifteen to nineteen carry the requirement, so about thirteen fail it every
+  year by arithmetic. `notLast` costs another seven, because somebody finishes
+  last in each of eight conferences and most of those programs are on `develop`.
+  Together that is a fifth of the league in breach of a required box before a
+  ball is thrown, and it is the whole distance between the measured 55% clear
+  rate and the 62% `expectationFor` claims.
+
+  `objectivesFor`'s own docstring already states the rule these break: "Only four
+  of eight teams can finish in the top half, so requiring it of more than half
+  the league guarantees mass failure no matter how well anyone plays… A board
+  that asks for the arithmetically impossible is not a hard board, it is a broken
+  one." Placement objectives were spent carefully and the two most zero-sum asks
+  in the game were not.
+
+  Fixing it is a change to the player's board and should be taken deliberately,
+  with the clear rate re-measured on both sides. Estimated: clear rate to roughly
+  62% and rival turnover from 11.7 to about ten. Candidates — make the bid a
+  bonus rather than a requirement for `contend` and keep it required only for
+  `championship`; or make the required box "reach the conference tournament
+  final", which the same eight conferences can supply sixteen of.
 - Recruiting offers should be able to promise what a recruit actually wants — a
   starting job, playing time — rather than only spending hours on him.
 - `highSchoolLine` derives its numbers from true ratings with a fixed noise

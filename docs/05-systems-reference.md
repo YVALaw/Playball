@@ -155,8 +155,10 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 70 | **Achievements are the user coach's alone.** Rival coaches have full careers and could earn them; nothing would read them, and the announcement would be noise. | Nothing. | `engine/achievements.ts` header; §15.4 | SHIPPED |
 | 71 | **Rival coaches are hashed, never drawn.** Names come off the chair and the year, retirement age off the name, and every hiring decision is a fact about a program and a man — so a whole rival year costs the generator zero `rng()` calls and cannot move a calibration figure. | Nothing. | `rivalName`, `retireAge`, `runCarousel` — `engine/rivals.ts`; §16.3 | SHIPPED |
 | 72 | **A rival spends his season's skill points badly on purpose** — half into one hashed favourite, the rest scattered. An optimiser would put twenty years of points into recruiting and out-recruit any player who spent his attention elsewhere. | A country whose average coach never becomes elite. | `spendPoints`, `RivalCoach.lean` — `engine/rivals.ts`; §16.4 | SHIPPED |
-| 73 | **A sitting coach will not move for less than 10 prestige, and will not move at all after 10 years in the chair.** Without the first, one retirement cascades through eight programs a year; without the second, every good coach is eventually pulled up the ladder and no rival is ever a fixture. | A rival who stays long enough to be somebody. | `POACH_GAP`, `SETTLED_TENURE` — `engine/rivals.ts`; §16.6 | SHIPPED |
-| 74 | **A board that cannot get anybody who clears its bar hires the best available anyway**, and a sacked coach nobody wanted that June leaves the profession. | Nothing. | `runCarousel` — `engine/rivals.ts`; §16.6 | SHIPPED |
+| 73 | **A sitting coach will not move for less than 26 prestige — two star tiers — and will not move at all after 10 years in the chair.** Without the first, one retirement cascades through three programs; without the second, every good coach is eventually pulled up the ladder and no rival is ever a fixture. The 26 was re-measured after §16.10: the old value of 10 was fitted while the boards were sacking a third of the country, which is a different question. | A rival who stays long enough to be somebody. | `POACH_GAP`, `SETTLED_TENURE` — `engine/rivals.ts`; §16.6 | SHIPPED |
+| 74 | **A board that cannot get anybody who clears its bar hires the best available anyway**, a sacked coach nobody wanted that June leaves the profession, and **the chair that sacked him is the one chair he cannot have**. | Nothing. | `runCarousel`, `FreeAgent` — `engine/rivals.ts`; §16.6 | SHIPPED |
+| 74a | **Your board and a rival's are two boards, and the difference is two fields on `Board`.** A rival's reads the same checklist against *this year's* league rather than against the distribution `expectationFor` was calibrated on, and has one firing bar where yours has two. Everything else — the mandates, the objectives, `judge`, the security deltas, the sacking bar, the first-year grace, the bad-run penalty — is shared, and a 4,500-review sweep pins that yours is unchanged to the digit. | Nothing. Your board is the board it always was. | `Board`, `playerBoard`, `rivalBoard`, `rivalExpectation`, `CALIBRATED_LEAGUE` — `engine/program.ts`; §16.10 | SHIPPED |
+| 74b | **A rival's mandate and win target are priced off the league, because two of the game's scales do not sit still.** Mean prestige drifts 41→51 and mean roster strength 45→55 over thirty five seasons, and `expectationFor` is absolute in both. Wins are zero-sum — 22.5 a program, always — so an absolute target lifting with the roster number put the required `wins` box out of reach for 53 of 96 programs a year. | A rival board that does not get harder just because the whole country got better. | `rivalExpectation`, `leagueShape` — `engine/program.ts`; §16.10 | SHIPPED |
 | 75 | **A job offer is now a chair somebody would be moved out of.** `jobOffers` takes a predicate: empty, *or* held by a coach the country rates below you. It is deliberately not "empty" alone — the carousel never leaves a chair open, so that rule produces a market of nothing and a sacked career that ends on a screen saying nobody rang. | Taking a job and being told they let their man go to hire you. | `jobOffers` — `engine/program.ts`; `rollYear`, `acceptOffer` — `state/store.ts`; §16.7 | SHIPPED |
 | 76 | **A pitcher's repertoire and every player's tendencies are hashed off the id, never stored and never drawn.** Same argument as arrival age: one `rng()` call per pitcher would have moved every calibration figure in the project. A save carries neither, and a dynasty from before they existed gets them for free. | A repertoire that never changes across a reload. | `repertoireOf` — `engine/pitches.ts`; `tendenciesOf` — `engine/tendencies.ts`; §18.1 | SHIPPED |
 | 77 | **The pitch-usage tendency is read off the finished usage shares, not hashed like the other eight.** POWER ARM is a fastball share at or above .655 and JUNKBALLER at or below .470, which are the twenty-first and seventy-ninth percentiles of four thousand generated arms — so the pole sizes match every other slot without a second draw deciding them. | A pitch mix on the card, and a label under it that agrees with it. | `MIX_JUNK`, `MIX_POWER`, `poleOf` — `engine/tendencies.ts`; §18.2 | SHIPPED |
@@ -2820,6 +2822,8 @@ narrow `Reviewable` rather than a whole `CoachState`, which is what lets one
 function grade ninety six careers; the alternative was a fake `CoachState` per
 rival carrying a face, a home state and a philosophy invented to satisfy a type.
 
+Two things and only two are different, and both live in `Board` — see §16.10.
+
 **Nothing here draws from the generator.** The same decision the AI's draft
 retention made and for a sharper reason: this runs once a year against ninety five
 programs, and spending draws would move every recruiting class and every
@@ -2870,14 +2874,26 @@ no coach recruits at nobody's skill for ever.
 
 Two brakes, both measured:
 
-- **`POACH_GAP` = 10**, most of a star tier. At six the country changed twenty
-  nine chairs a year out of ninety five, so the coach who beat you in May was
-  somebody else by the following spring. At ten it settles nearer twenty and being
-  poached stays an event rather than the annual weather.
+- **`POACH_GAP` = 26**, two star tiers. Measured twice. The first sweep — six
+  against ten, over twenty two seasons — was taken while the boards were sacking
+  a third of the country, so nearly every chair on the market was one a board had
+  just emptied and the gap was holding back a flood. With the flood gone the same
+  sweep gives different answers: over thirty five seasons of the full world,
+  chairs changing hands per year come out at **19.0 at a gap of 10, 14.8 at 16,
+  12.1 at 22 and 11.8 at 26**. Twenty six buys the thing the mechanic is for — a
+  poach is a promotion, a man leaves a two star program for a four star job rather
+  than the three star next door. The curve is flat above twenty two; what is left
+  is sackings and old age.
 - **`SETTLED_TENURE` = 10.** After ten years in one chair he stops listening. It
   is true, and it is what allows a rival to become a fixture — without it every
   good coach is eventually pulled up the ladder and the league has no equivalent
   of the man who *is* the program.
+
+`retireAge` is **64 to 72**, hashed off the name. It was 62 to 70, which was two
+years early and only became visible once the boards stopped sacking everybody
+first: against a hiring age averaging forty five it retired three and a half men
+a year out of ninety six where the real sport loses about two to age and to
+leaving the profession.
 
 A coach's `badRun` is cleared when he changes chairs. His new board is by
 definition unconvinced by the last one's read of him, and leaving it on would have
@@ -2887,6 +2903,14 @@ him sacked in two years for seasons somebody else's programme produced.
 pool is local to one call. It is a simplification and a deliberate one: a
 persistent unemployed list is state that grows for ever to model men nobody will
 ever see again.
+
+**And the chair that sacked him is the one chair he cannot have.** The pool
+carries `FreeAgent.from` for that single rule. It could always go wrong and it
+never showed: while the boards were emptying fifteen chairs a year, a program's
+own reject was never the best thing on the market. At five sackings the market is
+thin enough that he is, and Bayou State was observed dismissing Calvin Boswell in
+May and hiring him in June — a measurement bug and a fiction bug that turned out
+to be the same bug.
 
 ### 16.7 Where a rival coach reaches the simulation
 
@@ -2920,49 +2944,118 @@ game first, you included.
 ### 16.9 What it does to the league — measured
 
 Thirty five seasons of the full ninety six program world, every chair on the AI,
-seed 20260825. This is the number B7 exists for.
+seed 20260825. Reproduce with `npm run carousel -- 35 20260825`
+(`tests/carousel-probe.ts`), which prints every row of this table and the
+per-year breakdown behind it.
 
-| | Year 1 | Peak | Year 35 |
+| | Seeded | Peak | Year 35 |
 |---|---|---|---|
-| Mean program prestige | 42.7 | — | **51.4**, flat from year 15 |
-| Program prestige SD | 15.8 | 17.8 (yr 17) | **16.2** |
-| Roster strength SD | 10.3 | — | **6.8** |
-| Top five average prestige | 76.8 | 93.4 | **88.2** |
-| Bottom five average | 21.0 | — | **28.8** |
-| Star distribution 1–5 | 46/20/16/11/3 | — | 21/25/23/12/15 |
+| Mean program prestige | 40.9 | — | **51.4**, flat from year 18 |
+| Program prestige SD | 15.4 | 18.0 (yr 16) | **17.1** |
+| Top five average prestige | 74.6 | — | **91.2** |
+| Bottom five average | 20.4 | — | **27.8** |
+| Star distribution 1–5 | 46/20/16/11/3 | — | 25/23/22/12/14 |
 
-It converges. The spread widens by two points as the boards start biting, peaks
-around year seventeen and comes back down; the mean is flat for the last twenty
-seasons. **Talent spread narrows** the whole way, which is the number that would
-show compounding first, because recruiting is zero-sum against a fixed class. The
-bottom of the ladder comes *up* by eight points and the top plateaus below its own
-clamp. Thirteen different programs won the title, the most by any one of them
-eight. Start-to-end prestige correlation is 0.70: recognisably the same league,
-genuinely moved.
+It converges. The spread widens by two and a half points as the boards start
+biting, peaks around year sixteen and comes back down; the mean is flat for the
+last eighteen seasons. **Talent spread narrows** the whole way, which is the
+number that would show compounding first, because recruiting is zero-sum against a
+fixed class and none of this work touched it. The bottom of the ladder comes *up*
+by seven points and the top plateaus below its own clamp. Seventeen different
+programs won the title on this seed, twelve on 4242.
 
-### 16.10 What it exposed, and did not fix
+**The carousel, per year out of ninety six**, before and after §16.10:
 
-Two prestige scales share a name and not a mean. `nextPrestige` pulls a program
-toward `seasonScore`, whose league mean is about **52**; `initialPrestige` seeds
-the world at about **43**. That never mattered while one program in ninety six
-went through `nextPrestige`. With all of them going through it the league lifts
-nine points and settles — stable, and visible in the table above — but
-`expectationFor`'s `standing = prestige × 0.45 + roster × 0.55` rises with it, so
-programs cross into `contend` and `championship`, where a tournament bid is a
-**required** box that eight of ninety six can fill.
+| | Before | After | Real sport |
+|---|---|---|---|
+| Chairs changing hands | 30.4 | **11.5 / 11.9** | 8–12 |
+| — sacked | 15.4 | **5.6 / 6.0** | ~5 |
+| — poached | 11.4 | **2.8 / 2.8** | ~3.5 |
+| — retired | 3.5 | **3.1 / 3.1** | ~2 |
+| Mean tenure, seasons | 1.9 | **5.8** | 8–10 |
+| League-wide clear rate | 27% | **55%** | — |
 
-Measured: the league-wide clear rate is about **a third**, against the 62%
-`expectationFor` was tuned to. That 62% was never a property of the function
-alone; it was a property of it at the seeded distribution.
+Calming it cost the convergence almost nothing — the prestige spread peak moved
+by two tenths of a point — which answers the obvious worry. The churn was never
+what was holding the league together.
 
-Downstream of it, and the one number hotter than the real sport: **about twenty
-seven chair changes a year out of ninety five**, mean tenure near three and a half
-seasons.
+### 16.10 The seam: your board and the other ninety five
 
-Nothing here is retuned to recover the old figure. The board is shared with the
-player, and quietly making it kinder is a balance change nobody asked for; the
-three candidate fixes and the one non-candidate are in the E list of
-`06-backlog.md`.
+Everything above was graded by one board until it was measured across ninety five
+programs at once and turned out to be sacking three times as many men as the real
+sport. The split that followed is **two fields on `Board`**, both constructed at
+the seam in `program.ts`, immediately under `expectationFor`. `reviewSeason` takes
+a `Board` and defaults to `playerBoard`, so every call in `state/store.ts` is
+unchanged and unchangeable by accident.
+
+**Difference one: which league the checklist is read against.** Every number in
+`expectationFor` was calibrated against the world `createSeason` hands over, and
+neither of its two inputs stays there:
+
+| | Seeded | Settled |
+|---|---|---|
+| Mean program prestige | 40.9 | 51.4 |
+| Mean roster strength | 44.7 | 55.2 |
+
+The prestige half is the arithmetic error the previous pass found — `nextPrestige`
+drifts a program toward `seasonScore`, whose league mean is 51, while
+`initialPrestige` seeds at 41. The roster half is larger and has nothing to do
+with coaches: the progression and recruiting pipeline settles ten points above
+what the generator seeds. Both feed `standing = prestige × 0.45 + roster × 0.55`.
+
+The damage is mostly **not** the mandate mix; it is the win target, because wins
+are zero-sum and the target is not. Forty five games between ninety six programs
+produce 22.5 wins a program however good everybody gets, and the fitted line asks
+for more as the roster number rises: at the seeded distribution the league is
+asked for 18.1 and wins 22.5; at the settled one it is asked for **23.6** and
+still wins 22.5. `wins` is a required box under every mandate and it was missed by
+**53 of 96 programs a year**.
+
+`rivalExpectation` translates the program back onto `CALIBRATED_LEAGUE` and calls
+`expectationFor`. A shift, not a rescale — it cannot reorder the league or change
+what a roster point is worth, only "compared to whom". The two references:
+`prestige: 41` is what `initialPrestige` produces over the school table, pinned by
+a test; `roster: 49` is not measured at all but derived, `(0.5 + 0.128) / 0.01284`
+— the roster `expectationFor`'s own fitted line says goes .500, which is the only
+honest reference for a zero-sum quantity. A test asserts that at
+`CALIBRATED_LEAGUE` the two functions are indistinguishable over 225 programs.
+
+**Difference two: the second bar.** With the arithmetic corrected the boards clear
+56% and still sack 7.5 of 96 a year. That residue is not an error; it is what the
+player's board *is*, seen ninety five times at once. The part that does not
+survive the multiplication is the second firing bar: `SACK_BAR` at 20, where they
+stop the car, and `PLAYER_RENEW_BAR` at 45, where a deal running out is simply not
+renewed. The band between them is a good device for one career — the contract
+ticking down while you try to convince them is a story. Across ninety five
+programs it is a scheduled cull, because the median coach's security is a
+near-driftless walk that spends a third of its life in that band and gets fired by
+the calendar every three to five years. **A rival board has one bar**: it sacks a
+man it has seen enough of and re-signs everybody else, which is simpler than the
+player's rule as well as closer to what athletic directors do.
+
+Nothing else about patience differs. The security deltas, the sacking bar, the
+first-year grace and the escalating bad-run penalty are all the player's, which is
+why a rival who fails three seasons running loses his job on exactly the
+arithmetic that would lose the player his.
+
+**The player's board did not move**, and this is pinned rather than asserted: the
+same sweep of 4,500 reviews — 225 programs × 5 seasons × 4 seats — was run against
+`program.ts` before and after the split and came out identical to the digit
+(1564 exceeded / 472 met / 724 missed / 1740 failed, −15,971 points of security,
+1,232 sacked and 553 not renewed, 107,620 wins asked for). Those literals are the
+test.
+
+**What is still wrong, and is the player's to keep.** The clear rate is 55%,
+not the 62% `expectationFor` claims, and the residue is one line of
+`objectivesFor`: contend and championship programs are **required** to reach the
+national tournament, and there are eight bids for ninety six programs however the
+mandates are handed out. Fifteen to nineteen programs carry that box and about
+thirteen fail it every year. `notLast` costs another seven — somebody finishes
+last in each of eight conferences. `objectivesFor`'s own docstring establishes the
+rule these break ("a board that asks for the arithmetically impossible is not a
+hard board, it is a broken one") and the checklist is shared with the player, so
+it is in the E list of `06-backlog.md` rather than quietly patched. Closing it
+would take the clear rate to roughly 62% and turnover to about ten.
 
 ---
 

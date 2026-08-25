@@ -10,8 +10,14 @@ import { describe, it, expect } from 'vitest';
 import {
   expectationFor, objectivesFor, objectiveMet, gradeObjectives, judge,
   coachStanding, newCoach, LIFER_SEASONS, badRunPenalty, reviewSeason, takeChair,
+  initialPrestige, leagueShape, playerBoard, rivalBoard, rivalExpectation,
+  CALIBRATED_LEAGUE, PLAYER_RENEW_BAR, SACK_BAR,
   type Mandate, type SeasonOutcome, type Expectation, type CoachState,
+  type Verdict,
 } from '../src/engine/program.js';
+import { createSeason, DEFAULT_SEASON } from '../src/engine/season.js';
+import { makeRng } from '../src/engine/rng.js';
+import { CONFERENCES } from '../src/data/schools.js';
 
 const MANDATES: Mandate[] = ['develop', 'build', 'compete', 'contend', 'championship'];
 
@@ -388,5 +394,245 @@ describe('two bad seasons running', () => {
       coachWith({ tenure: 4, prestige: 60, badRun: 3 }), 45, 45, poor, 45,
     );
     expect(repeat.securityAfter).toBe(clean.securityAfter);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The seam
+// ---------------------------------------------------------------------------
+
+/*
+  Two boards, and the tests that stop them becoming one or becoming three.
+
+  The first block is the one that matters and it is deliberately blunt: it runs
+  every board decision over a grid of programs, seasons and seats, and pins the
+  totals to literal numbers. Anything that touches `expectationFor`,
+  `objectivesFor`, `judge`, `SECURITY_DELTA` or either firing rule moves one of
+  them whatever else it was trying to do. The point of giving rival programs
+  their own path was that the player's would not move, and a promise that broad
+  needs a test that broad — a handful of spot cases lets a retune through on all
+  the cases nobody happened to write down.
+
+  The numbers were taken by running the same sweep against `program.ts` as it
+  stood before the split and again after, and they came out identical to the
+  digit. That is what they are here to keep true.
+*/
+
+/** Every kind of program, every kind of season, every kind of seat. */
+const GRID: { prestige: number; roster: number }[] = [];
+for (let p = 20; p <= 90; p += 5) {
+  for (let r = 20; r <= 90; r += 5) GRID.push({ prestige: p, roster: r });
+}
+
+const SEASONS: SeasonOutcome[] = [
+  outcome({ wins: 8, losses: 37, conferenceRank: 8, conferenceSize: 8 }),
+  outcome({ wins: 16, losses: 29, conferenceRank: 6, conferenceSize: 8 }),
+  outcome({ wins: 23, losses: 22, conferenceRank: 4, conferenceSize: 8 }),
+  outcome({ wins: 30, losses: 15, conferenceRank: 2, conferenceSize: 8, madeTournament: true }),
+  outcome({
+    wins: 36, losses: 9, conferenceRank: 1, conferenceSize: 8,
+    wonConference: true, madeTournament: true, wonRegional: true, reachedOmaha: true,
+  }),
+];
+
+/**
+ * Four chairs that between them reach both firing rules: a first year inside
+ * the grace, a deal with one year left at full confidence, a coach the board has
+ * already cooled on, and a long server out of contract.
+ */
+const SEATS = [
+  { tenure: 0, security: 62, contractYears: 4 },
+  { tenure: 3, security: 62, contractYears: 1 },
+  { tenure: 6, security: 30, contractYears: 2 },
+  { tenure: 9, security: 30, contractYears: 1 },
+];
+
+describe('your board, pinned', () => {
+  const sweep = (): {
+    verdicts: Record<Verdict, number>;
+    security: number; fired: number; sacked: number;
+    notRenewed: number; extended: number; wins: number;
+  } => {
+    const verdicts: Record<Verdict, number> = { exceeded: 0, met: 0, missed: 0, failed: 0 };
+    let security = 0; let fired = 0; let sacked = 0;
+    let notRenewed = 0; let extended = 0; let wins = 0;
+    for (const { prestige, roster } of GRID) {
+      for (const o of SEASONS) {
+        for (const seat of SEATS) {
+          const coach: CoachState = { ...newCoach(), ...seat, contractLength: 4 };
+          const review = reviewSeason(coach, prestige, roster, o, 45);
+          verdicts[review.verdict] += 1;
+          security += review.securityAfter - review.securityBefore;
+          if (review.fired) fired += 1;
+          if (review.notRenewed) notRenewed += 1;
+          if (review.fired && !review.notRenewed) sacked += 1;
+          if (review.extended) extended += 1;
+          wins += review.expectation.targetWins;
+        }
+      }
+    }
+    return { verdicts, security, fired, sacked, notRenewed, extended, wins };
+  };
+
+  it('reaches the same verdict on the same season it always reached', () => {
+    // 225 programs × 5 seasons × 4 seats. Move any of these four and the board
+    // the player is standing in front of is not the board that was tuned.
+    expect(sweep().verdicts)
+      .toEqual({ exceeded: 1564, met: 472, missed: 724, failed: 1740 });
+  });
+
+  it('asks for the same wins and moves security by the same amount', () => {
+    const { wins, security } = sweep();
+    expect(wins).toBe(107620);
+    expect(security).toBe(-15971);
+  });
+
+  it('keeps and lets go of exactly the same men, by the same two routes', () => {
+    const { fired, sacked, notRenewed, extended } = sweep();
+    expect(fired).toBe(1785);
+    expect(sacked).toBe(1232);
+    expect(notRenewed).toBe(553);
+    expect(extended).toBe(1173);
+  });
+
+  it('is what `reviewSeason` uses when nobody says otherwise', () => {
+    // The default argument is the whole guarantee. If it stopped being
+    // `playerBoard`, every call in `state/store.ts` would change board without
+    // a line of the store being edited.
+    for (const { prestige, roster } of GRID.slice(0, 40)) {
+      for (const o of SEASONS) {
+        const coach: CoachState = { ...newCoach(), tenure: 3 };
+        expect(reviewSeason(coach, prestige, roster, o, 45)).toEqual(
+          reviewSeason(coach, prestige, roster, o, 45, playerBoard(prestige, roster, 45)),
+        );
+      }
+    }
+  });
+
+  it('keeps both of the bars it has always had', () => {
+    expect(SACK_BAR).toBe(20);
+    expect(PLAYER_RENEW_BAR).toBe(45);
+    const board = playerBoard(50, 50, 45);
+    expect(board.renewAt).toBe(PLAYER_RENEW_BAR);
+    expect(board.expectation).toEqual(expectationFor(50, 50, 45));
+  });
+});
+
+describe('a rival\'s board', () => {
+  const poor = outcome({ wins: 4, losses: 41, conferenceRank: 8, conferenceSize: 8 });
+
+  it('is your board exactly, when the league is where it was calibrated', () => {
+    // The translation is a shift and nothing else, so at zero shift the two must
+    // be indistinguishable. A rescale, a clamp, or a second opinion sneaking in
+    // shows up here before it shows up anywhere else.
+    for (const { prestige, roster } of GRID) {
+      expect(rivalExpectation(prestige, roster, CALIBRATED_LEAGUE, 45))
+        .toEqual(expectationFor(prestige, roster, 45));
+    }
+  });
+
+  it('asks the middle of the league for a number the league can win', () => {
+    // The churn diagnosis in one assertion. Wins are zero-sum — forty five games
+    // between ninety six programs produce 22.5 wins a program whatever the
+    // rosters are — so the average program's target has to stay under that
+    // however far the pipeline lifts the roster number. The player's board does
+    // not, which is what put a required box out of reach for half the country.
+    const half = 45 / 2;
+    for (const roster of [45, 49, 55, 60]) {
+      const target = rivalExpectation(41, roster, { prestige: 41, roster }, 45).targetWins;
+      expect(half - target).toBeGreaterThan(1);
+      expect(half - target).toBeLessThan(3);
+    }
+    expect(expectationFor(41, 45, 45).targetWins).toBeLessThan(half);
+    expect(expectationFor(41, 60, 45).targetWins).toBeGreaterThan(half);
+  });
+
+  it('still tells the good programs from the poor ones', () => {
+    // Level-invariant is not the same as flat. Whatever the league is doing, a
+    // program above it is asked for more than one below it, on the same slope.
+    const league = { prestige: 51, roster: 55 };
+    const weak = rivalExpectation(30, 42, league, 45);
+    const middling = rivalExpectation(51, 55, league, 45);
+    const strong = rivalExpectation(85, 75, league, 45);
+    expect(weak.targetWins).toBeLessThan(middling.targetWins);
+    expect(middling.targetWins).toBeLessThan(strong.targetWins);
+    expect(weak.mandate).toBe('develop');
+    expect(strong.mandate).toBe('championship');
+  });
+
+  it('has one firing bar where yours has two', () => {
+    expect(rivalBoard(50, 50, CALIBRATED_LEAGUE, 45).renewAt).toBe(SACK_BAR);
+
+    // The same man, the same season, the same security movement — kept by one
+    // board and let go by the other. That is the whole of the second difference,
+    // and it is isolated here by handing both boards the identical checklist so
+    // that nothing but the bar can be responsible for the two answers.
+    const cooled: CoachState = {
+      ...newCoach(), tenure: 4, security: 45, contractYears: 1, contractLength: 4,
+    };
+    // Wins made, cellar finish: one required box, so security lands in the band
+    // between the two bars rather than below both of them.
+    const middling = outcome({ wins: 25, losses: 20, conferenceRank: 8, conferenceSize: 8 });
+    const mine = reviewSeason(cooled, 45, 45, middling, 45);
+    const theirs = reviewSeason(cooled, 45, 45, middling, 45, {
+      expectation: mine.expectation, renewAt: SACK_BAR,
+    });
+    expect(mine.securityAfter).toBeGreaterThanOrEqual(SACK_BAR);
+    expect(mine.securityAfter).toBeLessThan(PLAYER_RENEW_BAR);
+    expect(theirs.verdict).toBe(mine.verdict);
+    expect(theirs.securityAfter).toBe(mine.securityAfter);
+    expect(mine.notRenewed).toBe(true);
+    expect(mine.fired).toBe(true);
+    expect(theirs.fired).toBe(false);
+  });
+
+  it('still sacks a man it has seen enough of', () => {
+    // Patience is not immortality. The sacking bar, the security deltas and the
+    // first-year grace are the player's and untouched, so a rival who collapses
+    // goes on exactly the arithmetic that would cost the player his job.
+    let coach: CoachState = {
+      ...newCoach(), tenure: 4, security: 62, contractYears: 4, contractLength: 4,
+    };
+    let sackedAfter = 0;
+    for (let year = 1; year <= 6; year++) {
+      const review = reviewSeason(coach, 45, 45, poor, 45,
+        rivalBoard(45, 45, CALIBRATED_LEAGUE, 45));
+      if (review.fired) { sackedAfter = year; break; }
+      coach = {
+        ...coach, security: review.securityAfter, tenure: coach.tenure + 1,
+        badRun: review.badRun, contractYears: review.contractYears,
+      };
+    }
+    // Not the first — one disaster is survivable and that is the point of job
+    // security being a number rather than a switch — and not never.
+    expect(sackedAfter).toBeGreaterThan(1);
+    expect(sackedAfter).toBeLessThanOrEqual(4);
+  });
+
+  it('is priced off the world the world actually starts in', () => {
+    // `CALIBRATED_LEAGUE.prestige` claims to be what `initialPrestige` produces
+    // over the school table. Add a conference of blue bloods and the claim stops
+    // being true, and every rival board in the country quietly shifts with it.
+    const seeded = CONFERENCES.flatMap(
+      (c) => c.schools.map((s) => initialPrestige(s.prestige)),
+    );
+    const mean = seeded.reduce((a, b) => a + b, 0) / seeded.length;
+    expect(Math.abs(mean - CALIBRATED_LEAGUE.prestige)).toBeLessThan(1.5);
+
+    // And `roster` claims to be the roster `expectationFor`'s own fitted line
+    // says goes .500, which is the only defensible reference for a zero-sum
+    // quantity: a program on it is asked for a shade under half the season.
+    const atReference = expectationFor(41, CALIBRATED_LEAGUE.roster, 45).targetWins;
+    expect(atReference).toBeGreaterThan(45 / 2 - 3);
+    expect(atReference).toBeLessThan(45 / 2);
+  });
+
+  it('reads the league off every chair, including yours', () => {
+    const season = createSeason(makeRng(99), DEFAULT_SEASON, CONFERENCES.slice(0, 2));
+    const byHand = season.teams.reduce((a, t) => a + t.prestige, 0) / season.teams.length;
+    expect(leagueShape(season.teams).prestige).toBeCloseTo(byHand, 6);
+    // A world with no chairs in it is the calibrated one, which is what makes a
+    // test that never seats anybody behave like the game did before the split.
+    expect(leagueShape([])).toEqual(CALIBRATED_LEAGUE);
   });
 });

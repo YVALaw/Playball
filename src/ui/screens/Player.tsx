@@ -791,11 +791,28 @@ function Platoon({ p }: { p: AnyPlayer }) {
         ))}
       </div>
       <Note>
-        {switchHitter
-          ? 'He turns around, so he has the better side of it against everybody. Switch hitters carry small splits by construction.'
-          : p.platoonSkill < 0
-            ? 'A reverse split: he is genuinely better against his own hand, which is rare and real.'
-            : 'Contact and power move by different amounts from one split, because a change in production is a small move on the power curve and a large one on the contact curve.'}
+        {/*
+          The pitcher gets his own sentence, because the two he used to share
+          with the hitter were both wrong on the mound. One named a CONTACT and
+          a POWER row that only a hitter's table has; the other announced a
+          reverse split, which no pitcher in the game can have — the generator
+          gives an arm a split between nought and a tenth, so the only two cases
+          here are a man with one and a man without, and half of them are
+          without. A panel reading "+0.0%  +0.0%" has to say so itself, or it
+          reads as a number the card failed to work out.
+        */}
+        {p.type !== 'hitter'
+          ? (p.platoonSkill === 0
+            ? 'No split to speak of. Left and right handed batters get the same man, '
+              + 'so there is nothing here to match up against and nothing to hide.'
+            : 'Read it as what he gives up: below nought is production taken away. '
+              + 'The same-handed batter is the one he suppresses, which is the whole '
+              + 'argument for having a left hander to bring in.')
+          : switchHitter
+            ? 'He turns around, so he has the better side of it against everybody. Switch hitters carry small splits by construction.'
+            : p.platoonSkill < 0
+              ? 'A reverse split: he is genuinely better against his own hand, which is rare and real.'
+              : 'Contact and power move by different amounts from one split, because a change in production is a small move on the power curve and a large one on the contact curve.'}
       </Note>
     </>
   );

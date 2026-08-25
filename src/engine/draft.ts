@@ -508,7 +508,14 @@ export function pullHints(p: Player): readonly [string, string] {
     return (pool[i] as PullLine).text;
   };
   const a = pick(linesFor(top), PULL_SALT.first);
-  const b = pick(linesFor(second), PULL_SALT.second);
+  // The two pools overlap: most lines are filed under two priorities, so a man
+  // whose top and second pulls share a line can be handed the same sentence
+  // twice — seen on the KEEP card, printed one above the other, which reads as
+  // the screen being broken rather than as a man labouring a point. The line
+  // already spent is taken out of the second pool rather than re-rolled, so the
+  // pair stays a pure function of his id.
+  const rest = linesFor(second).filter((l) => l.text !== a);
+  const b = pick(rest.length > 0 ? rest : linesFor(second), PULL_SALT.second);
   return scoutNoise(p.id, PULL_SALT.order) < 0.5 ? [a, b] : [b, a];
 }
 

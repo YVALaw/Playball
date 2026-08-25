@@ -168,7 +168,11 @@ function Row(
       <span style={{
         gridColumn: 2, gridRow: '1 / span 2', alignSelf: 'center', textAlign: 'right',
         font: `${ours ? 800 : 700} 15px var(--mono)`,
-        color: mark ? (ours ? 'var(--clay)' : 'var(--ink)') : 'var(--faint)',
+        // The dash on an unset row was drawn in --faint, which is the border
+        // token: a fifth of the ink, and on paper that is not quiet, it is gone.
+        // --dim is the token for text that should recede, and it is already what
+        // the sentence beside it uses.
+        color: mark ? (ours ? 'var(--clay)' : 'var(--ink)') : 'var(--dim)',
       }}>{mark ? format(mark.value, rkey) : '—'}</span>
 
       <span style={{

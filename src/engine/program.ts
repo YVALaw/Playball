@@ -425,6 +425,179 @@ export function expectationFor(prestige: number, roster: number, games: number):
   };
 }
 
+// ---------------------------------------------------------------------------
+// The seam: your board, and the other ninety five
+// ---------------------------------------------------------------------------
+
+/*
+  There are two boards in this file and they are two on purpose. This is the
+  seam, and everything that differs is in the block below rather than scattered
+  through `engine/rivals.ts`, so that nobody can change one without seeing the
+  other. `Board` is the whole of the difference: two fields, and if a third ever
+  appears it appears here.
+
+  Everything else is shared and must stay shared — `objectivesFor`, `judge`,
+  `SECURITY_DELTA`, `badRunPenalty`, `nextCoachPrestige`, `contractFor`, the
+  sacking bar. One `reviewSeason` grades ninety six careers.
+
+  --- WHAT DIFFERS, AND WHY (1): the league the checklist is read against ---
+
+  `expectationFor` above is **the player's**, and every number in it — the
+  standing cutoffs, the fitted win line, the offset that buys a 62% clear rate —
+  was calibrated against the world as `createSeason` hands it over. Its inputs
+  do not stay there. Measured over thirty five seasons of the full ninety six
+  program world:
+
+      mean program prestige   40.9  →  51.4   (`nextPrestige` drifts toward
+                                               `seasonScore`, mean 51; the school
+                                               table seeds at mean 41)
+      mean roster strength    44.7  →  55.2   (nothing to do with coaches: the
+                                               progression and recruiting
+                                               pipeline settles ten points above
+                                               what the generator seeds)
+
+  Both feed `standing = prestige × 0.45 + roster × 0.55`, so a board written for
+  a league centred at 43 ends up reading one centred at 53. The damage is mostly
+  not the mandate mix; it is the win target, because **wins are zero-sum and the
+  target is not**. The fitted line asks for more games as the roster number
+  rises, but forty five games against each other cannot produce more than 22.5
+  wins a program however good everybody gets. At the seeded distribution the
+  league is asked for 18.1 and wins 22.5; at the settled one it is asked for 23.6
+  and still wins 22.5. `wins` is a required box under every mandate, and it is
+  missed by 53 of 96 programs a year.
+
+  `objectivesFor` already refuses to require a top-half finish of more than half
+  the league, on the grounds that a board asking for the arithmetically
+  impossible is not a hard board but a broken one. This is the same rule applied
+  to the one zero-sum quantity that got away with it.
+
+  So a rival board reads the identical checklist, and reads it against **this
+  year's league** rather than against a snapshot from 2027. The player's board is
+  left exactly as it is — see the note in `engine/rivals.ts` and §16.10.
+
+  --- WHAT DIFFERS, AND WHY (2): the second bar ---
+
+  With the arithmetic corrected the boards clear 55% of the league, against the
+  62% `expectationFor` was tuned to, and they still sack 7.5 coaches of 96 a
+  year where the real sport sacks four or five. That residue is not an error;
+  it is what the player's board *is*, seen ninety five times over at once. The
+  same hazard that reads as "you will be sacked about once in thirteen seasons"
+  in one career reads as a cull when it is applied to a whole country.
+
+  The part of it that does not survive the multiplication is the **second bar**.
+  The player's board has two: `SACK_BAR`, where they stop the car, and
+  `PLAYER_RENEW_BAR`, twenty five points higher, where a contract running out is
+  simply not renewed. The band between them is a good device for one career — the
+  deal ticking down while you try to convince them is a story, and the game
+  should keep telling it. Across ninety five programs it is a scheduled cull:
+  the median coach's security is a near-driftless walk that spends a third of its
+  life in that band, so every three to five years it fires him regardless of
+  whether anybody thought he should go.
+
+  A rival board has one bar. It sacks a man it has seen enough of, and re-signs
+  everybody else — which is both simpler than the player's rule and closer to
+  what athletic directors do, since a board that would not pay to remove a coach
+  does not usually decline to re-sign him either.
+
+  Nothing else about patience is touched. The security deltas, the sacking bar,
+  the first-year grace and the escalating bad-run penalty are all the player's,
+  which is why a rival who fails three seasons running still loses his job on
+  exactly the arithmetic that would lose the player his.
+*/
+
+/** Where a league sits, this year, on the two scales `expectationFor` reads. */
+export interface LeagueShape {
+  /** Mean program prestige across every chair. */
+  prestige: number;
+  /** Mean `rosterStrength` across every chair. */
+  roster: number;
+}
+
+/**
+ * The league `expectationFor`'s numbers were written against.
+ *
+ * `prestige` is what `initialPrestige` produces over the school table — 40.85,
+ * and a test pins it. `roster` is not measured at all: it is the roster the
+ * fitted line inside `expectationFor` says goes .500, `(0.5 + 0.128) / 0.01284`,
+ * which is the only honest reference for a zero-sum quantity. Whatever the
+ * league's mean roster is, that roster wins half its games by definition, so
+ * translating the mean onto this number is what makes the target answerable.
+ */
+export const CALIBRATED_LEAGUE: LeagueShape = { prestige: 41, roster: 49 };
+
+/** What the country looks like right now, for a board that bothers to look. */
+export function leagueShape(teams: readonly TeamRecord[]): LeagueShape {
+  if (teams.length === 0) return CALIBRATED_LEAGUE;
+  const sum = (f: (t: TeamRecord) => number): number =>
+    teams.reduce((a, t) => a + f(t), 0) / teams.length;
+  return {
+    prestige: sum((t) => t.prestige),
+    roster: sum((t) => rosterStrength(t.team)),
+  };
+}
+
+/**
+ * What a rival's board wants: `expectationFor`, with the league moved back under
+ * it.
+ *
+ * A translation and nothing else — the mandate cutoffs, the checklist, the
+ * fitted slope and the offset are all the player's, untouched. Only where the
+ * middle of the country sits is corrected, and it is corrected on both axes
+ * because both of them moved.
+ *
+ * It is deliberately a shift rather than a rescale. A shift cannot reorder the
+ * league or change what one roster point is worth; it only answers "compared to
+ * whom", which is the only question that went stale.
+ */
+export function rivalExpectation(
+  prestige: number,
+  roster: number,
+  league: LeagueShape,
+  games: number,
+): Expectation {
+  return expectationFor(
+    prestige - league.prestige + CALIBRATED_LEAGUE.prestige,
+    roster - league.roster + CALIBRATED_LEAGUE.roster,
+    games,
+  );
+}
+
+/** Security below which a board stops the car mid-contract. Shared. */
+export const SACK_BAR = 20;
+
+/** And the second bar, which is the player's alone. See the seam note above. */
+export const PLAYER_RENEW_BAR = 45;
+
+/**
+ * Who is judging, and the only two things that depend on the answer.
+ *
+ * A parameter to `reviewSeason` rather than a branch inside it, so the two
+ * boards are constructed by name at the call site and a reader of either call
+ * can see immediately which one is sitting.
+ */
+export interface Board {
+  /** The checklist. `judge` reads this and nothing else. */
+  expectation: Expectation;
+  /** Security below which a deal that has run out is not offered again. */
+  renewAt: number;
+}
+
+/** Yours. Every number in it is the one it has always been. */
+export const playerBoard = (
+  prestige: number, roster: number, games: number,
+): Board => ({
+  expectation: expectationFor(prestige, roster, games),
+  renewAt: PLAYER_RENEW_BAR,
+});
+
+/** One of the other ninety five. Two differences, both argued at the seam. */
+export const rivalBoard = (
+  prestige: number, roster: number, league: LeagueShape, games: number,
+): Board => ({
+  expectation: rivalExpectation(prestige, roster, league, games),
+  renewAt: SACK_BAR,
+});
+
 export type Verdict = 'exceeded' | 'met' | 'missed' | 'failed';
 
 /**
@@ -1043,6 +1216,11 @@ export interface Review {
  * `CoachState`, which is what lets the other ninety five programs be graded by
  * this function instead of by a copy of it — see `engine/rivals.ts`. Nothing in
  * here has ever wanted his face, his home state or his cabinet.
+ *
+ * `board` says who is sitting, and it is a parameter rather than a branch so
+ * that the difference is stated at the call site instead of hidden in here.
+ * Omitted — which is every call for the player — it is `playerBoard`, exactly
+ * what this function always used.
  */
 export function reviewSeason(
   coach: Reviewable,
@@ -1050,8 +1228,9 @@ export function reviewSeason(
   roster: number,
   outcome: SeasonOutcome,
   games: number,
+  board: Board = playerBoard(programPrestige, roster, games),
 ): Review {
-  const expectation = expectationFor(programPrestige, roster, games);
+  const { expectation } = board;
   const verdict = judge(outcome, expectation);
 
   // The run, before anything is priced off it. One acceptable season wipes it
@@ -1068,7 +1247,7 @@ export function reviewSeason(
   const delta = coach.tenure === 0 && raw < 0 ? raw / 2 : raw;
   const securityAfter = Math.max(0, Math.min(100, securityBefore + delta));
 
-  const sacked = securityAfter < 20 && coach.tenure >= 1;
+  const sacked = securityAfter < SACK_BAR && coach.tenure >= 1;
 
   // A good year buys years. Boards extend the people they want to keep rather
   // than letting a deal run down and inviting somebody else to make an offer.
@@ -1076,8 +1255,12 @@ export function reviewSeason(
   const remaining = Math.max(0, coach.contractYears - 1);
   const contractYears = extended ? coach.contractLength : remaining;
 
-  // Out of contract and out of favour: they thank you and move on.
-  const notRenewed = !sacked && !extended && remaining === 0 && securityAfter < 45;
+  // Out of contract and out of favour: they thank you and move on. The bar is
+  // the board's own — twenty five points above the sacking line for the player,
+  // and the sacking line itself for a rival, which is why this never fires for
+  // one. See the seam.
+  const notRenewed = !sacked && !extended && remaining === 0
+    && securityAfter < board.renewAt;
   const fired = sacked || notRenewed;
 
   // A run says something a single season cannot, so it gets said. It goes

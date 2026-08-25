@@ -23,6 +23,15 @@
 // will have him, and `skillPoints` pays him for the season at the same rate. A
 // second system that resembled the first would drift from it inside a month.
 //
+// **The divergences are two, and they are both `rivalBoard`.** A rival's board
+// reads the same checklist against *this year's* league rather than against the
+// distribution `expectationFor` was calibrated on, and it has one firing bar
+// where the player's has two. Everything the argument rests on — including why
+// the second one is not simply the player's board being made kinder — is at the
+// seam in `program.ts`, deliberately over there rather than here, because a
+// divergence documented only on the side that diverges is how two systems come
+// apart. Nothing else in this file knows there is a difference.
+//
 // **Nothing here draws from the generator.** The same decision the AI's draft
 // retention made and for a sharper reason: this runs once a year against
 // ninety five programs, and spending draws here would move every recruiting
@@ -39,8 +48,8 @@
 
 import { FIRST, LAST } from '../data/names.js';
 import {
-  ROOKIE_PRESTIGE, canBeHired, contractFor, reviewSeason, rosterStrength,
-  skillPoints,
+  ROOKIE_PRESTIGE, canBeHired, contractFor, leagueShape, reviewSeason,
+  rivalBoard, rosterStrength, skillPoints,
   type CoachSkills, type SeasonOutcome, type Verdict,
 } from './program.js';
 import type { PostseasonSummary } from './postseason.js';
@@ -124,7 +133,7 @@ export function rivalName(seat: number, year: number): string {
 }
 
 /**
- * When he stops, between 62 and 70.
+ * When he stops, between 64 and 72.
  *
  * The one force in this file that does not care how good anybody is, and the
  * reason the top of the league cannot lock. Everything else here is a feedback
@@ -134,9 +143,16 @@ export function rivalName(seat: number, year: number): string {
  * it starts again from wherever he was.
  *
  * Spread across nine years off the name, so they do not all go in the same June.
+ *
+ * It was 62 to 70, which was two years early and only became visible once the
+ * boards stopped sacking everybody first. Against a hiring age averaging forty
+ * five it retired three and a half men a year out of ninety six, where the real
+ * sport loses two or so to age and to leaving the profession — college baseball
+ * is full of men still in the dugout at seventy, and the game's own coach
+ * creation screen will let the player start a career at sixty eight.
  */
 export function retireAge(name: string): number {
-  return 62 + (hash(`retire:${name}`) % 9);
+  return 64 + (hash(`retire:${name}`) % 9);
 }
 
 /**
@@ -328,14 +344,25 @@ export interface CarouselMove {
  * is doing well, and the vacancy that leaves drags somebody else — so a single
  * retirement cascades through eight programs and the league reads as a lottery.
  *
- * Measured over twenty two seasons of the full world: at six points the country
- * changed twenty nine chairs a year out of ninety five, which is a mean tenure
- * of three and a bit and means the coach who beat you in May is somebody else by
- * the following spring. At ten — most of a star tier — it settles nearer twenty,
- * a rival stays put long enough to become somebody, and being poached stays the
- * event it is supposed to be rather than the annual weather.
+ * The value is measured rather than argued, and it has been measured twice. The
+ * first time — six against ten, over twenty two seasons — was taken while the
+ * boards were sacking a third of the country every year, so almost every chair
+ * on the market was one a board had just emptied and the gap was being asked to
+ * hold back a flood. With `rivalBoard` in place the flood is gone and the same
+ * sweep gives different answers. Thirty five seasons of the full world, two
+ * seeds, chairs changing hands per year out of ninety six:
+ *
+ *     gap 10   19.0     gap 16   14.8     gap 22   12.1     gap 26   11.8
+ *
+ * Twenty six is two star tiers, and what it buys is that a poach is a promotion
+ * rather than a sideways step: a man leaves a two star program for a four star
+ * job, not for the three star next door. Below twenty two the cascade takes over
+ * again — one retirement at a blue blood empties three chairs — and the country
+ * runs hotter than the real sport at the very thing that is supposed to be its
+ * rarest event. Above it there is nothing left to win: the curve is flat by
+ * twenty two, because what remains is sackings and old age.
  */
-export const POACH_GAP = 10;
+export const POACH_GAP = 26;
 
 /**
  * After this long in one chair he stops listening.
@@ -361,6 +388,23 @@ const CASCADE_PASSES = 3;
  */
 const OUT_OF_WORK = 3;
 
+/**
+ * A man the market has, and the chair that let him go.
+ *
+ * `from` exists for one rule and it is not a nicety: without it a board that
+ * sacks its coach in May can hire him back in June. It could always happen and
+ * it never showed, because the boards were emptying fifteen chairs a year and
+ * the market was never thin enough for a program's own reject to be the best
+ * thing on it. At five sackings it is thin every year — a school that dismisses
+ * the only man on the market gets him back — which is how a measurement bug and
+ * a fiction bug turn out to be the same bug.
+ */
+export interface FreeAgent {
+  coach: RivalCoach;
+  /** The chair that sacked him, which is the one chair he cannot have. */
+  from: number;
+}
+
 interface Candidate {
   coach: RivalCoach;
   /** The chair he is sitting in, or -1 if he is out of work. */
@@ -379,7 +423,7 @@ interface Candidate {
  */
 export function runCarousel(
   season: SeasonState, userTeam: number, year: number,
-  pool: RivalCoach[],
+  pool: FreeAgent[],
 ): CarouselMove[] {
   const moves: CarouselMove[] = [];
   const line = (c: RivalCoach): string =>
@@ -398,7 +442,9 @@ export function runCarousel(
       if (chair.coach) continue;
       const roster = rosterStrength(chair.team);
 
-      const options: Candidate[] = pool.map((coach) => ({ coach, seat: -1 }));
+      const options: Candidate[] = pool
+        .filter((free) => free.from !== chair.index)
+        .map((free) => ({ coach: free.coach, seat: -1 }));
       // Only the last pass stops poaching. A cascade that is still running is
       // the interesting part — the blue blood takes the man from the four star,
       // and the four star takes the man from the two.
@@ -437,7 +483,7 @@ export function runCarousel(
         }
         moved = true;
       } else {
-        pool.splice(pool.indexOf(pick.coach), 1);
+        pool.splice(pool.findIndex((free) => free.coach === pick.coach), 1);
         moves.push({
           kind: 'hired', coach: pick.coach.name, team: chair.index,
           school: chair.def.school, detail: line(pick.coach),
@@ -505,16 +551,24 @@ export function runRivalYear(
   const verdicts: Record<Verdict, number> = {
     exceeded: 0, met: 0, missed: 0, failed: 0,
   };
-  const pool: RivalCoach[] = [];
+  const pool: FreeAgent[] = [];
   const moves: CarouselMove[] = [];
+
+  // Measured once, off every chair including the user's — he is part of the
+  // country whether or not his own board looks at it — and before a single
+  // program's prestige has moved, so all ninety five meetings are held against
+  // the same league rather than against a number that shifts as the loop runs.
+  const league = leagueShape(season.teams);
 
   for (const record of season.teams) {
     const coach = record.coach;
     if (record.index === userTeam || !coach) continue;
 
     const outcome = rivalOutcome(season, post, record);
+    const roster = rosterStrength(record.team);
     const review = reviewSeason(
-      coach, record.prestige, rosterStrength(record.team), outcome, games,
+      coach, record.prestige, roster, outcome, games,
+      rivalBoard(record.prestige, roster, league, games),
     );
     verdicts[review.verdict] += 1;
 
@@ -554,7 +608,7 @@ export function runRivalYear(
     }
     if (review.fired) {
       delete record.coach;
-      pool.push(coach);
+      pool.push({ coach, from: record.index });
       moves.push({
         kind: 'sacked', coach: coach.name, team: record.index,
         school: record.def.school, detail: line,

@@ -301,6 +301,15 @@ describe('talking him out of it', () => {
     // And never a number.
     expect(`${a} ${b}`).not.toMatch(/\d/);
   });
+
+  // One id happening not to collide is not the property. The pools overlap, so
+  // this only holds because the second pick is drawn from what the first left.
+  it('never says the same thing to him twice', () => {
+    for (let i = 0; i < 400; i++) {
+      const [a, b] = pullHints({ ...player, id: `pull-${i}` as typeof player.id });
+      expect(a).not.toBe(b);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

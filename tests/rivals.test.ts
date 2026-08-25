@@ -213,8 +213,8 @@ describe('a rival coach has a career', () => {
     // can influence.
     for (let seat = 0; seat < 12; seat++) {
       const name = rivalName(seat, 2027);
-      expect(retireAge(name)).toBeGreaterThanOrEqual(62);
-      expect(retireAge(name)).toBeLessThanOrEqual(70);
+      expect(retireAge(name)).toBeGreaterThanOrEqual(64);
+      expect(retireAge(name)).toBeLessThanOrEqual(72);
     }
     const season = world(16);
     seatCoaches(season, -1, 2027);
@@ -302,9 +302,29 @@ describe('the carousel', () => {
     delete open.coach;
     for (const t of season.teams) { if (t.coach) t.prestige = open.prestige; }
     const spare: RivalCoach = { ...newRivalCoach(90, 2020, 44), careerWins: 300 };
-    const moves = runCarousel(season, -1, 2028, [spare]);
+    const moves = runCarousel(season, -1, 2028, [{ coach: spare, from: 90 }]);
     expect(open.coach).toBe(spare);
     expect(moves.some((m) => m.kind === 'hired' && m.coach === spare.name)).toBe(true);
+  });
+
+  it('will not sell a man back to the board that just sacked him', () => {
+    // It could always happen and it never showed, because the boards were
+    // emptying fifteen chairs a year and a program's own reject was never the
+    // best thing on the market. At five sackings the market is thin enough that
+    // he is, and a school would rehire the man it dismissed in May.
+    const season = staffed(26);
+    const open = season.teams[0]!;
+    delete open.coach;
+    const rejected: RivalCoach = { ...newRivalCoach(90, 2020, 80), careerWins: 200 };
+    runCarousel(season, -1, 2028, [{ coach: rejected, from: open.index }]);
+    expect(open.coach).toBeDefined();
+    expect(open.coach).not.toBe(rejected);
+    // And anywhere else would still have him — this is one chair's rule, not a
+    // ban from the profession.
+    const elsewhere = season.teams[1]!;
+    delete elsewhere.coach;
+    runCarousel(season, -1, 2028, [{ coach: rejected, from: open.index }]);
+    expect(elsewhere.coach).toBe(rejected);
   });
 
   it('never leaves a chair empty when the market is done', () => {
@@ -367,8 +387,8 @@ describe('a long dynasty does not tear the league apart', () => {
   const rosterSpread: number[] = [];
   const champions = new Set<number>();
   const graded: Record<Verdict, number>[] = [];
+  const cause = { sacked: 0, poached: 0, retired: 0 };
   let changes = 0;
-  let poaches = 0;
   const openSkill = mean(season.teams.map((t) => t.coach?.skills.recruiting ?? 20));
 
   for (let y = 0; y < YEARS; y++) {
@@ -380,8 +400,13 @@ describe('a long dynasty does not tear the league apart', () => {
       year: season.year ?? 0, userTeam: -1, games: 45,
     });
     graded.push(verdicts);
+    // A chair changes hands once for every `poached` and every `hired`, and
+    // `hired` is by conservation exactly `sacked` plus `retired` — so the three
+    // causes below add up to the number of chairs with a new man in them.
+    for (const kind of ['sacked', 'poached', 'retired'] as const) {
+      cause[kind] += moves.filter((m) => m.kind === kind).length;
+    }
     changes += moves.filter((m) => m.kind !== 'hired').length;
-    poaches += moves.filter((m) => m.kind === 'poached').length;
     syncCoachMods(season, -1, null);
 
     spread.push(sd(season.teams.map((t) => t.prestige)));
@@ -401,13 +426,15 @@ describe('a long dynasty does not tear the league apart', () => {
     // because nothing moved at all. With ninety five careers running, prestige
     // is a live number and the question is whether it runs away.
     //
-    // It does not. It widens by a couple of points as the boards start biting
-    // and then turns over: measured on the full ninety six program world over
-    // thirty five seasons, the spread rises from 15.4 to a peak of 17.8 around
-    // year seventeen and settles back to 16.2, and the mean is flat at 51 from
-    // year fifteen onwards. The band here is deliberately generous — this is a
-    // quarter of the world over sixteen years, which is noisier — and it is
-    // still tight enough to fail a league that compounds.
+    // It does not, and it still does not now that the boards have stopped
+    // sacking a third of the country. Measured on the full ninety six program
+    // world over thirty five seasons, the spread rises from 15.4 to a peak of
+    // 18.0 around year sixteen and settles back to 17.1, and the mean is flat at
+    // 51.4 from year eighteen onwards. Calming the carousel moved the peak by two
+    // tenths of a point, which is the answer to the obvious worry: the churn was
+    // never what was holding the league together. The band here is deliberately
+    // generous — this is a quarter of the world over fourteen years, which is
+    // noisier — and it is still tight enough to fail a league that compounds.
     const open = sd(openPrestige);
     const end = sd(endPrestige);
     expect(end).toBeGreaterThan(open * 0.6);
@@ -437,44 +464,61 @@ describe('a long dynasty does not tear the league apart', () => {
     expect(stars.filter((s) => s >= 4).length).toBeGreaterThan(0);
   });
 
-  it('grades ninety five boards without either extreme', () => {
+  it('grades ninety five boards at something like the rate it was tuned for', () => {
     /*
-      Not a check that the clear rate is `expectationFor`'s calibrated 62%,
-      because it measurably is not: over this run it comes out around a third.
+      This used to come out at about a third, and the comment here used to
+      explain at length why that was somebody else's problem. It was not: with
+      every program's prestige live and the recruiting pipeline lifting the
+      average roster ten points, `expectationFor` was reading a league it had
+      never been calibrated against, and the required `wins` box — the one every
+      mandate carries — had drifted above what forty five games between ninety
+      six programs can supply. `rivalBoard` reads the same checklist against this
+      year's league instead, and the rate comes back to the mid fifties.
 
-      That is a real interaction rather than a rival-board bug, and it is worth
-      knowing. `nextPrestige` pulls a program toward `seasonScore`, whose league
-      mean is about 52 — winPct averages 50 and the fixed pot of postseason
-      bonuses adds a couple of points spread over everybody. The world generator
-      seeds prestige with a mean nearer 43. So switching all ninety six programs
-      on lifts the whole league about nine points, `expectationFor`'s
-      `standing = prestige * 0.45 + roster * 0.55` rises with it, and programs
-      cross into `contend` and `championship` — where a tournament bid is a
-      *required* box that eight of ninety six can fill.
-
-      The 62% figure was never a property of `expectationFor` alone; it was a
-      property of it at the seeded distribution. Nothing here is retuned to
-      recover it, because the board is shared with the player and quietly making
-      it kinder is a balance change nobody asked for. See the E list in the
-      backlog.
-
-      What this actually pins is that both halves work: the boards keep people
-      and the boards sack people, and neither is close to all of them.
+      Not the full 62%, and the residue is known rather than mysterious: the
+      checklist requires a national tournament bid of every contend and
+      championship program, and there are eight bids for ninety six programs
+      however the mandates are handed out. That is a property of `objectivesFor`,
+      which is shared with the player, so it is written down in the backlog
+      rather than quietly patched here.
     */
     const total = graded.reduce(
       (a, v) => a + v.exceeded + v.met + v.missed + v.failed, 0,
     );
     const cleared = graded.reduce((a, v) => a + v.exceeded + v.met, 0);
     expect(total).toBeGreaterThan(0);
-    expect(cleared / total).toBeGreaterThan(0.15);
-    expect(cleared / total).toBeLessThan(0.85);
+    expect(cleared / total).toBeGreaterThan(0.42);
+    expect(cleared / total).toBeLessThan(0.75);
   });
 
-  it('turns chairs over without turning them over every year', () => {
+  it('turns the country over at about the rate the real sport does', () => {
+    /*
+      The number the whole split exists for. Real college baseball changes eight
+      to twelve head coaches a year per ninety six programs — call it ten per
+      cent, retirements and men leaving for a better job included.
+
+      Measured on the full world over thirty five seasons, two seeds:
+      **11.5 and 11.9 chairs a year**, made of 5.6–6.0 sackings, 2.8 poachings
+      and 3.1 retirements. Before the split it was 30.4, of which 15.4 were
+      sackings and mean tenure was 1.9 seasons; it is 5.8 now.
+
+      This run is fourteen seasons, which is short enough that the first
+      retirement wave has barely started — the world is seated with men aged 36
+      to 55 and none of them reaches 64 for a decade — so the total here sits
+      below the long-run figure and the band allows for it. The long number is
+      the one in §16.9; `npx tsx tests/carousel-probe.ts 35` reproduces it.
+    */
     const perYear = changes / YEARS / season.teams.length;
     expect(perYear).toBeGreaterThan(0.04);
-    expect(perYear).toBeLessThan(0.45);
-    expect(poaches).toBeGreaterThan(0);
+    expect(perYear).toBeLessThan(0.14);
+    expect(cause.sacked + cause.poached + cause.retired).toBe(changes);
+    // And all three causes are load bearing. A league that only sacks people has
+    // lost the promotion, and one that only poaches has lost the consequence.
+    expect(cause.sacked).toBeGreaterThan(0);
+    expect(cause.poached).toBeGreaterThan(0);
+    // Sackings are the largest single cause and are not the whole of it.
+    expect(cause.sacked).toBeGreaterThan(cause.poached);
+    expect(cause.sacked).toBeLessThan(changes * 0.8);
   });
 
   it('improves the men in the chairs, and not into supermen', () => {
