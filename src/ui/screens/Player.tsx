@@ -27,6 +27,7 @@ import { Avatar, teamColour } from '../Avatar.js';
 import { FixedHeader } from '../Sticky.js';
 import {
   battingAverage, onBase, slugging, era, whip, inningsPitched,
+  fieldingPct, playsAboveExpected, fieldingContext,
 } from '../../engine/season.js';
 import type { BoxScore, CareerYear, SeasonState } from '../../engine/season.js';
 import type { Departure } from '../../engine/progression.js';
@@ -63,11 +64,40 @@ const HITTER_BARS: Array<[RatingKey<Hitter>, string, string]> = [
   ['contact', 'CONTACT', 'Hits for average, and strikes out less'],
   ['power', 'POWER', 'Home runs and extra base hits'],
   ['eye', 'DISCIPLINE', 'Draws walks, chases less'],
-  ['speed', 'SPEED', 'Triples, infield hits, steals, extra bases'],
+  ['speed', 'SPEED', 'Triples, infield hits, extra bases'],
+  ['steal', 'BASE STEALING', 'The jump, not the wheels. Reads a pitcher and leaves on the first move'],
+  ['bunt', 'BUNTING', 'Gets the sacrifice down when the call is on'],
+];
+
+/**
+ * The glove, on its own list.
+ *
+ * Eleven bars in one column is a scroll nobody reads to the bottom of, and the
+ * split is not just for length: hitting and fielding are the two questions you
+ * ask about a position player, and a coach deciding whether this man can play
+ * shortstop should not have to skip past his power to find out.
+ */
+const HITTER_GLOVE_BARS: Array<[RatingKey<Hitter>, string, string]> = [
   ['range', 'REACTION', 'First step and ground covered — turns would-be hits into outs'],
   ['hands', 'FIELDING', 'Handles what he reaches. Low fielding is how a routine play becomes an error'],
   ['arm', 'ARM STRENGTH', 'Keeps runners from taking the extra base. Behind the plate, throws them out'],
+  ['armAccuracy', 'ACCURACY', 'Where the throw goes. A wild one puts the runner up a base as well as on'],
 ];
+
+/**
+ * Blocking, and why only the catcher has it.
+ *
+ * Every position player carries the rating — the generator draws it for all of
+ * them — but the simulation asks about it in exactly one place, behind the
+ * plate, and `overallOf` pays for it in exactly one place too. Printing a bar
+ * for a left fielder's blocking would be the card advertising a number that
+ * changes nothing about him, which is the sort of thing a player only finds out
+ * by testing it and then stops trusting the whole tab. So it appears where it is
+ * real. A backup catcher's shows; a shortstop's does not exist as far as this
+ * screen is concerned, and if he ever moves behind the plate it will.
+ */
+const CATCHER_BAR: [RatingKey<Hitter>, string, string] =
+  ['blocking', 'BLOCKING', 'Keeps the ball in front of him. Fewer passed balls, fewer runners moving up'];
 
 const PITCHER_BARS: Array<[RatingKey<Pitcher>, string, string]> = [
   ['stuff', 'K/9', 'Misses bats. This is the strikeout rating'],
@@ -76,6 +106,21 @@ const PITCHER_BARS: Array<[RatingKey<Pitcher>, string, string]> = [
   ['stamina', 'STAMINA', 'How deep into a start he can go'],
   ['groundBall', 'GB RATE', 'Keeps it on the ground, sets up double plays'],
   ['holdRunners', 'PICKOFF', 'Keeps baserunners honest'],
+];
+
+/**
+ * A pitcher has a glove now, and it is read.
+ *
+ * He fields about one comebacker in eight ground balls and has to throw it
+ * across, which is a play pitchers genuinely botch. The card showed none of it —
+ * six bars and no defence at all — while the fielding line underneath was
+ * quietly charging him errors for a rating nobody could see.
+ */
+const PITCHER_GLOVE_BARS: Array<[RatingKey<Pitcher>, string, string]> = [
+  ['range', 'REACTION', 'Off the mound on a comebacker or a bunt'],
+  ['hands', 'FIELDING', 'Handles what he gets to'],
+  ['arm', 'ARM STRENGTH', 'The throw over, and the throw to first'],
+  ['armAccuracy', 'ACCURACY', 'Where it goes. The throw across is the one a pitcher airmails'],
 ];
 
 const CLASS_NAME: Record<ClassYear, string> = {
@@ -254,7 +299,7 @@ export function Player() {
       <div style={{ padding: '12px 14px 20px' }}>
         {active === 'overview' && <Overview p={p} owner={owner} isOurs={isOurs} />}
         {active === 'ratings' && <Ratings p={p} />}
-        {active === 'stats' && <ThisSeason id={p.id} isPitcher={isPitcher} />}
+        {active === 'stats' && <ThisSeason p={p} />}
         {active === 'games' && <Games id={p.id} owner={owner} isOurs={isOurs} />}
         {active === 'history' && <Career id={p.id} isPitcher={isPitcher} isOurs={isOurs} />}
       </div>
@@ -334,7 +379,12 @@ function Alumnus(
             </Note>
           </>
         )}
-        {active === 'history' && <CareerTable years={career} isPitcher={wasPitcher} />}
+        {active === 'history' && (
+          <>
+            <CareerTable years={career} isPitcher={wasPitcher} />
+            <CareerGlove years={career} />
+          </>
+        )}
       </div>
     </FixedHeader>
   );
@@ -490,13 +540,21 @@ function Overview({ p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: bo
 
 function Ratings({ p }: { p: AnyPlayer }) {
   const isPitcher = p.type === 'pitcher';
+  const glove: Array<[string, string, string, number]> = isPitcher
+    ? PITCHER_GLOVE_BARS.map(([k, l, n]) => [k, l, n, (p as Pitcher)[k]])
+    : [
+      ...HITTER_GLOVE_BARS.map(([k, l, n]) =>
+        [k, l, n, (p as Hitter)[k]] as [string, string, string, number]),
+      ...(p.pos === 'C'
+        ? [[CATCHER_BAR[0], CATCHER_BAR[1], CATCHER_BAR[2], (p as Hitter).blocking] as
+            [string, string, string, number]]
+        : []),
+    ];
+
   return (
     <>
       <Head>SCOUTING</Head>
-      <div style={{
-        marginTop: 8, padding: '12px 12px 6px',
-        border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
+      <BarGroup title={isPitcher ? 'PITCHING' : 'HITTING'}>
         {isPitcher
           ? PITCHER_BARS.map(([key, label, note]) => (
             <Bar key={key} label={label} note={note} value={Math.round((p as Pitcher)[key])} />
@@ -515,15 +573,36 @@ function Ratings({ p }: { p: AnyPlayer }) {
             </span>
           </div>
         )}
-      </div>
+      </BarGroup>
+
+      <BarGroup title={isPitcher ? 'FIELDING' : `FIELDING · ${p.pos}`}>
+        {glove.map(([key, label, note, value]) => (
+          <Bar key={key} label={label} note={note} value={Math.round(value)} />
+        ))}
+      </BarGroup>
     </>
   );
 }
 
-function ThisSeason({ id, isPitcher }: { id: PlayerId; isPitcher: boolean }) {
+/** One headed block of bars. Two of these are the whole Ratings tab. */
+function BarGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <>
+      <div className="label" style={{ marginTop: 14, marginBottom: 4 }}>{title}</div>
+      <div style={{
+        padding: '12px 12px 6px',
+        border: '1px solid var(--faint)', background: 'var(--paper)',
+      }}>{children}</div>
+    </>
+  );
+}
+
+function ThisSeason({ p }: { p: AnyPlayer }) {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   void version;
+  const id = p.id;
+  const isPitcher = p.type === 'pitcher';
   const bat = season?.batting.get(id);
   const pit = season?.pitching.get(id);
 
@@ -570,6 +649,100 @@ function ThisSeason({ id, isPitcher }: { id: PlayerId; isPitcher: boolean }) {
           ) : <Empty>Has not appeared yet this season.</Empty>
         )}
       </Panel>
+      <Fielding p={p} />
+    </>
+  );
+}
+
+/**
+ * The glove's half of the season, and the one number on this card that cannot be
+ * printed on its own.
+ *
+ * Plays above average is a redistribution against a fielder's own teammates, and
+ * an error is a play not made — so the league itself sits *below* zero, at about
+ * one play a game per team. A bare "−3" next to every man in the country would
+ * tell nine players out of ten that they are bad defenders, which is not what the
+ * number says. What it says is where he stands among the other gloves, so that is
+ * what the card leads with: his rate per hundred chances, the league's own rate
+ * beside it in the same units, and his rank among everyone who has fielded
+ * enough to be ranked. Zero is not the comparison and the screen never implies
+ * it is.
+ */
+function Fielding({ p }: { p: AnyPlayer }) {
+  const season = useDynasty((s) => s.season);
+  const version = useDynasty((s) => s.version);
+  void version;
+  if (!season) return null;
+
+  const fld = season.fielding?.get(p.id);
+  if (!fld || fld.chances === 0) return null;
+
+  const ctx = fieldingContext(season, p.id);
+  const pae = playsAboveExpected(fld);
+  const signed = `${pae > 0 ? '+' : ''}${pae}`;
+  const rate = (v: number): string => `${v > 0 ? '+' : ''}${v.toFixed(1)}`;
+  const catcher = p.type === 'hitter' && p.pos === 'C';
+  const attempts = fld.sba + fld.cs;
+
+  return (
+    <>
+      <div className="label" style={{ marginTop: 16, marginBottom: 4 }}>IN THE FIELD</div>
+
+      <div style={{
+        display: 'flex', border: '1px solid var(--faint)', background: 'var(--paper)',
+      }}>
+        {/* The rate leads, not the count: it is the figure that survives being
+            compared with a man at another position, and the one the league line
+            underneath is quoted in. Accented when he beats that line rather than
+            when he clears zero, because zero is not the bar. */}
+        <Tile
+          k="PER 100 CHANCES"
+          v={ctx ? rate(ctx.rate) : '—'}
+          accent={!!ctx && ctx.rate > ctx.leagueRate}
+        />
+        <Tile
+          k="AMONG GLOVES"
+          v={ctx && ctx.ranked ? `${ordinal(ctx.rank)}/${ctx.qualified}` : '—'}
+          last
+        />
+      </div>
+
+      <Panel>
+        {ctx && <Stat k="LEAGUE AVERAGE" v={`${rate(ctx.leagueRate)} per 100`} />}
+        <Stat k="PLAYS ABOVE AVERAGE" v={signed} />
+        <Stat k="CHANCES" v={String(fld.chances)} />
+        <Stat k="PLAYS MADE" v={String(fld.plays)} />
+        <Stat
+          k="ERRORS"
+          v={fld.throwing > 0 ? `${fld.errors} (${fld.throwing} throwing)` : String(fld.errors)}
+        />
+        <Stat k="FIELDING PCT" v={pct(fieldingPct(fld))} last={!catcher} />
+        {catcher && (
+          <>
+            {/* The engine has no pitch location, so a ball in the dirt and a
+                ball he missed are one event to it — and one event to the runner,
+                who moves up either way. Labelled as both rather than claiming a
+                distinction the simulation cannot make. */}
+            <Stat k="PASSED BALLS / WP" v={String(fld.pb)} />
+            <Stat
+              k="RUNNERS CAUGHT"
+              v={attempts === 0 ? 'none ran' : `${fld.cs} of ${attempts}`}
+            />
+            <Stat
+              k="CAUGHT STEALING PCT"
+              v={attempts === 0 ? '—' : pct(fld.cs / attempts)}
+              last
+            />
+          </>
+        )}
+      </Panel>
+
+      <Note>
+        Plays above average counts outs he made that an average glove on his own
+        team would not have, with his errors already taken off. The league runs
+        below zero on it — an error is a play nobody made — so the honest reading
+        is the gap to the league line and the rank, not the sign.
+      </Note>
     </>
   );
 }
@@ -665,6 +838,59 @@ function Career({ id, isPitcher, isOurs }: { id: PlayerId; isPitcher: boolean; i
     <>
       <Head>COLLEGE CAREER</Head>
       <CareerTable years={years} isPitcher={isPitcher} />
+      <CareerGlove years={years} />
+    </>
+  );
+}
+
+/**
+ * The years he spent in the field, in their own table.
+ *
+ * A second table rather than three more columns, because six columns is already
+ * what a 360 pixel phone holds and the two lines answer different questions
+ * anyway. Chances, plays and errors are what the record book keeps; plays above
+ * average is deliberately not among them and is not reconstructed here — it is
+ * measured against whichever team he happened to play for that year, so it does
+ * not mean the same thing in two rows and a career column of it would be adding
+ * up numbers that are not on the same scale.
+ */
+function CareerGlove({ years }: { years: CareerYear[] }) {
+  const played = years.filter((y) => (y.chances ?? 0) > 0);
+  if (played.length === 0) return null;
+
+  const cols = '42px 28px 1fr 40px 34px 44px';
+  return (
+    <>
+      <div className="label" style={{ marginTop: 16, marginBottom: 4 }}>IN THE FIELD</div>
+      <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+        <div style={{
+          display: 'grid', gridTemplateColumns: cols,
+          gap: 6, padding: '6px 10px', borderBottom: '1px solid var(--hairline)',
+        }}>
+          {['YEAR', 'CL', 'CH', 'PLAYS', 'E', 'PCT'].map((h) => (
+            <span key={h} className="label">{h}</span>
+          ))}
+        </div>
+        {played.map((y) => {
+          const ch = y.chances ?? 0;
+          return (
+            <div key={y.year} style={{
+              display: 'grid', gridTemplateColumns: cols,
+              gap: 6, alignItems: 'baseline',
+              padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
+            }}>
+              <span style={{ font: "700 12px var(--display)" }}>{y.year}</span>
+              <span style={{ font: "400 10px var(--mono)", color: 'var(--dim)' }}>{y.classYear}</span>
+              <span style={{ font: "500 11px var(--mono)" }}>{ch}</span>
+              <span style={{ font: "500 11px var(--mono)" }}>{y.plays ?? 0}</span>
+              <span style={{ font: "500 11px var(--mono)" }}>{y.errors ?? 0}</span>
+              <span style={{ font: "500 11px var(--mono)" }}>
+                {pct((ch - (y.errors ?? 0)) / ch)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </>
   );
 }
@@ -795,6 +1021,13 @@ function Stat({ k, v, last }: { k: string; v: string; last?: boolean }) {
     </div>
   );
 }
+
+/** "14th", for a rank that has to fit in a tile. */
+const ordinal = (n: number): string => {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] ?? s[v] ?? 'th');
+};
 
 /** A rating, drawn against the full scale so the shape of a player is readable. */
 function Bar({ label, note, value }: { label: string; note: string; value: number }) {

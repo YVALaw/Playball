@@ -27,7 +27,7 @@
 import { makeHitter, makePitcher } from './players.js';
 import { overallOf } from './ratings.js';
 import {
-  GRADE_LADDER, potentialGrade, scoutNoise, type PotentialGrade,
+  GRADE_LADDER, TOP_GENERATED_GRADE, potentialGrade, scoutNoise, type PotentialGrade,
 } from './scouting.js';
 import type { Player, PlayerId, Position, Rng } from './types.js';
 import { STATES_BY_REGION, type Region } from '../data/schools.js';
@@ -600,7 +600,14 @@ export function reportedPotential(
   );
   // Slid back onto the ladder at either end, never trimmed, for the same reason
   // the numeric window slides.
-  const low = Math.max(0, Math.min(GRADE_LADDER.length - 1 - steps, truth - below));
+  //
+  // The top of the ladder is the best grade the world can actually produce, not
+  // the last entry in the array. S+ sits above it and belongs to a store player,
+  // so a band that reached for it would be a report promising a ceiling nobody
+  // in the country is allowed to have — and the promise would be unfalsifiable,
+  // since no recruit could ever turn out to have deserved it.
+  const top = GRADE_LADDER.indexOf(TOP_GENERATED_GRADE);
+  const low = Math.max(0, Math.min(top - steps, truth - below));
   return {
     low: GRADE_LADDER[low] as PotentialGrade,
     high: GRADE_LADDER[low + steps] as PotentialGrade,

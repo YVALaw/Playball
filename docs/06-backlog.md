@@ -115,8 +115,16 @@ half the achievements are all reading from the same book.
   Effects sized against the engine's own reference points: home-field advantage
   is a 1.020 multiplier worth about +4.9 points of win probability, so a gold
   badge on a channel that fires a quarter of the time lands near +1.75% across a
-  season. At most two at signing; five or six developed; caps by potential grade
-  (S+ 7 / S 6 / A+ 6 / A 5 / B 4 / C 3 / D 2). Some innate and visible, some
+  season. At most two at signing, and a ceiling that climbs with the grade:
+  **S 6 · A+ 5 · A 4 · B 3 · C 2 · D 2**, with S+ exempt because the store
+  player carries ten. One rung per step at the rare end, so inserting A+ into
+  the ladder buys something rather than merely renaming S — an earlier draft
+  gave A+ and S the same six and the new grade meant nothing here.
+  D and C share their two on purpose: three quarters of the country lives in
+  those two grades, so a fine gradation matters least there, and it produces
+  the right reading — a low ceiling recruit can arrive already at his badge
+  cap, which is what "he is close to the player he is going to be" has been
+  telling you on the board all along. Some innate and visible, some
   earned, some coached. No decay — these are young men and there are no injuries.
   Not visible on other programs' players.
 - **B11 · Tendencies** — `DECIDED`. What a player *does*, as against how well he

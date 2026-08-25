@@ -18,8 +18,9 @@ import { makeTeam, resetNames } from '../src/engine/players.js';
 import { makeRng } from '../src/engine/rng.js';
 import {
   createSeason, simNextDay, archiveSeason, nextSeason, fieldingFor, fieldingPct,
-  playsAboveExpected,
+  playsAboveExpected, fieldingContext, leaders,
 } from '../src/engine/season.js';
+import { overallOf } from '../src/engine/ratings.js';
 import { toPortable, fromPortable } from '../src/state/seasonCodec.js';
 import type {
   EngineFn, Hitter, Pitcher, Player, Rng, Team,
@@ -628,5 +629,151 @@ describe('the fielding book survives the calendar', () => {
     // And it keeps counting from here rather than throwing on the next game.
     expect(() => simNextDay(loaded)).not.toThrow();
     expect((loaded.fielding as Map<string, unknown>).size).toBeGreaterThan(0);
+  });
+});
+
+describe('reading the fielding book back out', () => {
+  const build = (): ReturnType<typeof createSeason> => {
+    const s = createSeason(makeRng(77));
+    s.captureBoxFor = 0;
+    for (let i = 0; i < 12; i++) simNextDay(s);
+    return s;
+  };
+
+  it('ranks gloves on plays above average per chance, not on errors', () => {
+    const s = build();
+    const board = leaders(s, { minChances: 10 }).fielding;
+    expect(board.length).toBeGreaterThan(0);
+    // Descending, and the detail carries the volume the count depends on.
+    for (let i = 1; i < board.length; i++) {
+      expect((board[i - 1] as { value: number }).value)
+        .toBeGreaterThanOrEqual((board[i] as { value: number }).value);
+    }
+    expect(board[0]?.detail).toMatch(/CH,.*PLAYS,.*PCT/);
+
+    // The man who never touched the ball sits at exactly zero and must not be
+    // on it. That is the entire reason the minimum exists.
+    const zero = [...(s.fielding as Map<string, { chances: number }>).entries()]
+      .find(([, f]) => f.chances === 0);
+    if (zero) expect(board.some((r) => r.id === zero[0])).toBe(false);
+  });
+
+  it('does not let a man with a handful of chances outrank an everyday fielder', () => {
+    const s = build();
+    const board = leaders(s, { minChances: 10 }).fielding;
+    const book = s.fielding as Map<string, { chances: number }>;
+    // Every man on it has to have cleared the bar. The failure this guards
+    // against is the old raw-count ranking, where the league average being
+    // negative meant more chances dragged a fielder down and a backup with a
+    // dozen touches sat on top of a shortstop who played every inning.
+    for (const r of board) {
+      expect(book.get(r.id)?.chances ?? 0).toBeGreaterThanOrEqual(10);
+    }
+  });
+
+  it('keeps a glove off the board until enough has been hit at him', () => {
+    const s = build();
+    const strict = leaders(s, { minChances: 10_000 }).fielding;
+    expect(strict.length).toBe(0);
+  });
+
+  it('tells a fielder where he stands, because zero is not the comparison', () => {
+    const s = build();
+    const busiest = [...(s.fielding as Map<string, { chances: number }>).entries()]
+      .sort((a, b) => b[1].chances - a[1].chances)[0];
+    expect(busiest).toBeDefined();
+
+    const id = (busiest as [string, unknown])[0] as unknown as Hitter['id'];
+    const ctx = fieldingContext(s, id, { minChances: 10 });
+    expect(ctx).not.toBeNull();
+    const c = ctx as NonNullable<typeof ctx>;
+    expect(c.ranked).toBe(true);
+    expect(c.rank).toBeGreaterThanOrEqual(1);
+    expect(c.rank).toBeLessThanOrEqual(c.qualified);
+
+    // The whole point: the league's own line is below zero, so a fielder can
+    // read negative and still be above average.
+    expect(c.leagueRate).toBeLessThan(0);
+    expect(Number.isFinite(c.rate)).toBe(true);
+  });
+
+  it('says nothing about a man who has not fielded a ball', () => {
+    const s = createSeason(makeRng(77));
+    const someone = s.teams[0]?.team.lineup[0] as Hitter;
+    expect(fieldingContext(s, someone.id)).toBeNull();
+  });
+});
+
+describe('defence in the overall rating', () => {
+  /** A league-average position player, so one rating at a time can be moved. */
+  const average = (pos: Hitter['pos']): Hitter => {
+    resetNames();
+    const p = makeTeam(makeRng(4242), 'X', 50).lineup[0] as Hitter;
+    p.pos = pos;
+    p.contact = 50; p.power = 50; p.eye = 50; p.speed = 50;
+    p.range = 50; p.hands = 50; p.arm = 50; p.armAccuracy = 50; p.blocking = 50;
+    p.bunt = 50; p.steal = 50;
+    return p;
+  };
+
+  const withRating = (pos: Hitter['pos'], key: keyof Hitter, v: number): number => {
+    const p = average(pos);
+    (p as unknown as Record<string, number>)[key] = v;
+    return overallOf(p);
+  };
+
+  it('leaves an average player at average, whatever position he plays', () => {
+    for (const pos of ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH'] as const) {
+      expect(overallOf(average(pos))).toBe(50);
+    }
+  });
+
+  it('pays a catcher for blocking and nobody else', () => {
+    expect(withRating('C', 'blocking', 90)).toBeGreaterThan(50);
+    expect(withRating('LF', 'blocking', 90)).toBe(50);
+    expect(withRating('1B', 'blocking', 90)).toBe(50);
+  });
+
+  it('values a throw where the throw is the play', () => {
+    const short = withRating('SS', 'armAccuracy', 90) - 50;
+    const first = withRating('1B', 'armAccuracy', 90) - 50;
+    expect(short).toBeGreaterThan(first);
+    expect(first).toBeGreaterThan(0);
+  });
+
+  it('values range up the middle and hands in the corner', () => {
+    expect(withRating('CF', 'range', 90)).toBeGreaterThan(withRating('1B', 'range', 90));
+    expect(withRating('1B', 'hands', 90)).toBeGreaterThan(withRating('CF', 'hands', 90));
+  });
+
+  it('makes a defensive catcher a better player than a bad one', () => {
+    const good = average('C');
+    good.range = 68; good.hands = 74; good.arm = 78; good.armAccuracy = 72; good.blocking = 80;
+    const bad = average('C');
+    bad.range = 32; bad.hands = 30; bad.arm = 26; bad.armAccuracy = 30; bad.blocking = 24;
+    // Identical bats. The only difference between them is the glove, and it has
+    // to be worth something without being worth a whole player.
+    const gap = overallOf(good) - overallOf(bad);
+    expect(gap).toBeGreaterThan(5);
+    expect(gap).toBeLessThan(15);
+  });
+
+  it('gives the pitcher a glove worth a little and not a lot', () => {
+    resetNames();
+    const build = makeRng(99);
+    const arm = makeTeam(build, 'X', 50).rotation[0] as Pitcher;
+    arm.range = 50; arm.hands = 50; arm.arm = 50; arm.armAccuracy = 50;
+    const base = overallOf(arm);
+    arm.range = 90; arm.hands = 90; arm.arm = 90; arm.armAccuracy = 90;
+    const gloved = overallOf(arm);
+    expect(gloved).toBeGreaterThan(base);
+    expect(gloved - base).toBeLessThanOrEqual(2);
+  });
+
+  it('ignores bunting and stealing, which are calls rather than quality', () => {
+    const p = average('2B');
+    const base = overallOf(p);
+    p.bunt = 95; p.steal = 95;
+    expect(overallOf(p)).toBe(base);
   });
 });

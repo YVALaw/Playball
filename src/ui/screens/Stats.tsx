@@ -6,11 +6,14 @@
 import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
-import { leaders, type LeaderRow } from '../../engine/season.js';
+import { leaders, leagueFieldingRate, type LeaderRow } from '../../engine/season.js';
 import { pct } from '../format.js';
 import type { PlayerId } from '../../engine/types.js';
 
 type Scope = 'national' | 'team';
+
+/** A signed rate, so a fielder's line and the league's read in the same units. */
+const fmtRate = (v: number): string => `${v > 0 ? '+' : ''}${v.toFixed(1)}`;
 
 export function Stats() {
   const season = useDynasty((s) => s.season);
@@ -28,7 +31,11 @@ export function Stats() {
   // lineup cannot fill a top five against a national minimum, and on your own
   // team you want to see everybody including the bench.
   const boards = scope === 'team'
-    ? leaders(season, { limit: 5, minPA: 1, minIP: 1, team: team.def.abbr })
+    // The bat and arm qualifiers go to 1 on your own roster so the bench shows
+    // up. The glove keeps a real bar even here: it is ranked on a rate, and a
+    // rate off two chances is not a season. Low enough that a catcher and a
+    // platoon corner outfielder both make it.
+    ? leaders(season, { limit: 5, minPA: 1, minIP: 1, minChances: 20, team: team.def.abbr })
     : leaders(season);
 
   const mine = (rows: LeaderRow[]): LeaderRow[] => rows;
@@ -68,6 +75,32 @@ export function Stats() {
         <Board title="RUNS BATTED IN" rows={mine(boards.rbi)} fmt={String} mark={team.def.abbr} onPick={openPlayer} />
         <Board title="EARNED RUN AVERAGE" rows={mine(boards.era)} fmt={(v) => v.toFixed(2)} mark={team.def.abbr} onPick={openPlayer} />
         <Board title="STRIKEOUTS" rows={mine(boards.strikeouts)} fmt={String} mark={team.def.abbr} onPick={openPlayer} />
+        {/*
+          The defensive board ranks on plays made above what an average glove
+          would have made of the same chances, not on errors — fewest errors in
+          the country belongs to whoever nobody hits it to. Per hundred chances
+          rather than as a total, because a centre fielder sees six times what a
+          catcher does and the raw count reads that as talent. The detail line
+          carries the volume, the raw plays and the percentage so nothing is
+          hidden behind the rate.
+        */}
+        <Board
+          title="PLAYS ABOVE AVERAGE / 100 CH"
+          rows={mine(boards.fielding)}
+          fmt={fmtRate}
+          detail
+          mark={team.def.abbr}
+          onPick={openPlayer}
+        />
+        <div style={{
+          marginTop: 8, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+        }}>
+          Outs he made that an average glove would not have, per hundred balls hit
+          at him, once enough has been hit at him to mean something. Zero is not
+          average here: an error is a play nobody made, so the league itself sits
+          at <strong>{fmtRate(leagueFieldingRate(season))}</strong>. Anything above
+          that line is a fielder helping his pitcher.
+        </div>
       </div>
     </FixedHeader>
   );
@@ -91,10 +124,16 @@ function Chip(
 }
 
 function Board(
-  { title, rows, fmt, mark, onPick }:
+  { title, rows, fmt, mark, onPick, detail }:
   {
     title: string; rows: LeaderRow[]; fmt: (v: number) => string;
     mark: string; onPick: (id: PlayerId) => void;
+    /**
+     * Show the row's own second line. Off everywhere else because "3 HR" under a
+     * home run leader is noise, and on for the fielding board because a count of
+     * plays above average means nothing without knowing how many balls he saw.
+     */
+    detail?: boolean;
   },
 ) {
   return (
@@ -133,6 +172,12 @@ function Board(
               <span style={{
                 font: "600 12px var(--mono)", textAlign: 'right',
               }}>{fmt(r.value)}</span>
+              {detail && (
+                <span style={{
+                  gridColumn: '2 / -1', marginTop: 1,
+                  font: "400 9.5px var(--mono)", color: 'var(--dim)',
+                }}>{r.detail}</span>
+              )}
             </button>
           );
         })}

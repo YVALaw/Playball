@@ -3,8 +3,8 @@
 // Tune in this file only. Nothing else should hardcode a baseball number.
 
 import type {
-  BattedBall, EventVector, Hitter, HitterRatings, OffensiveEvent,
-  PAEvent, Pitcher, PitcherRatings, Rng,
+  BattedBall, EventVector, FieldingRatings, Hitter, HitterRatings, OffensiveEvent,
+  PAEvent, Pitcher, PitcherRatings, Position, Rng,
 } from './types.js';
 
 // League baseline, per plate appearance, calibrated to NCAA Division I.
@@ -300,6 +300,89 @@ export function fatigueMultiplier(pitcher: Pitcher, pitchCount: number): number 
 
 export { clamp };
 
+/** The five things a glove is made of, plus the catcher's own. */
+type GloveKey = keyof FieldingRatings | 'blocking';
+
+/**
+ * How much each defensive rating is worth **at each position**, as shares of one.
+ *
+ * A flat defensive bonus would have said that a catcher who blocks and a right
+ * fielder who blocks are the same player, and blocking is a rating the engine
+ * only ever reads behind the plate. Position is most of what defence means: the
+ * shortstop is paid for ground covered, the first baseman for the scoop, the
+ * corner outfielder for the throw, and the man behind the plate for keeping the
+ * ball in front of him. So the weights move with the position rather than the
+ * total moving with a badge.
+ *
+ * Each row sums to 1 and is then scaled by `HITTER_GLOVE`, which is what keeps
+ * the change a redistribution rather than a raise: no position gets more total
+ * defensive credit than any other, they just get it for different things.
+ *
+ * Read against the spray model in game.ts, which is where these are earned. A
+ * catcher's `range` is nearly worthless because the only ball he fields is a
+ * pop-up off the plate; a centre fielder's is nearly everything because a lane
+ * of the outfield is his alone. The DH row is the average of a fielder's, not a
+ * blank: the slot is where a lineup parks a bat for one afternoon, not a
+ * property of the man, and a designated hitter with hands is worth more to a
+ * program than one without because next week he is playing somewhere.
+ */
+const GLOVE_WEIGHTS: Record<Position, Record<GloveKey, number>> = {
+  C:    { range: 0.08, hands: 0.22, arm: 0.26, armAccuracy: 0.14, blocking: 0.30 },
+  '1B': { range: 0.30, hands: 0.48, arm: 0.10, armAccuracy: 0.12, blocking: 0 },
+  '2B': { range: 0.32, hands: 0.24, arm: 0.18, armAccuracy: 0.26, blocking: 0 },
+  '3B': { range: 0.24, hands: 0.24, arm: 0.26, armAccuracy: 0.26, blocking: 0 },
+  SS:   { range: 0.34, hands: 0.22, arm: 0.22, armAccuracy: 0.22, blocking: 0 },
+  LF:   { range: 0.38, hands: 0.26, arm: 0.20, armAccuracy: 0.16, blocking: 0 },
+  CF:   { range: 0.48, hands: 0.24, arm: 0.18, armAccuracy: 0.10, blocking: 0 },
+  RF:   { range: 0.34, hands: 0.24, arm: 0.26, armAccuracy: 0.16, blocking: 0 },
+  DH:   { range: 0.28, hands: 0.30, arm: 0.21, armAccuracy: 0.21, blocking: 0 },
+  P:    { range: 0.30, hands: 0.25, arm: 0.15, armAccuracy: 0.30, blocking: 0 },
+};
+
+// Every row has to sum to one or the position quietly becomes worth more or less
+// than the others in total, which is the flat bonus this table exists to avoid.
+for (const [pos, row] of Object.entries(GLOVE_WEIGHTS)) {
+  const sum = Object.values(row).reduce((a, b) => a + b, 0);
+  if (Math.abs(sum - 1) > 1e-9) {
+    throw new Error(`glove weights for ${pos} must sum to 1, got ${sum}`);
+  }
+}
+
+/**
+ * Defence's share of a position player's overall.
+ *
+ * 0.20 against the 0.18 the three old fielding terms carried between them. It is
+ * a redistribution and it was chosen to be one: the offensive weights below give
+ * up two points to pay for it, so the league's mean overall does not move and
+ * the spread barely does. That matters more than it looks — `overallOf` feeds
+ * `projectPotential`, and generated ceilings are hard capped at 94, so raising
+ * overalls across the board would push players into the cap and change the grade
+ * distribution the ceiling rework just tuned. Measured before and after: the
+ * class mean moves a tenth of a point and the grade counts are unchanged.
+ */
+const HITTER_GLOVE = 0.20;
+
+/**
+ * And a pitcher's, which is small on purpose.
+ *
+ * He fields about one ground ball in eight and the throw across is a real error
+ * source — until the defensive layer landed he had no glove at all, which was
+ * the more obviously wrong number. But he is the one man on the field chosen for
+ * something other than his defence, and his fielding ratings are drawn around a
+ * fixed centre rather than around his quality, so every point of weight here
+ * pulls the best arms in the country back toward average. Four percent is enough
+ * to separate two otherwise identical arms and not enough to flatten the top.
+ */
+const PITCHER_GLOVE = 0.04;
+
+/** What his glove is worth, on the 0-100 scale the rest of the ratings use. */
+function gloveScore(p: Hitter | Pitcher): number {
+  const w = GLOVE_WEIGHTS[p.pos];
+  return p.range * w.range + p.hands * w.hands + p.arm * w.arm
+       + p.armAccuracy * w.armAccuracy
+       + (p.type === 'hitter' ? p.blocking * w.blocking : 0);
+}
+
 /**
  * One number for how good a player is right now. Derived rather than stored so
  * it cannot go stale when development moves the underlying ratings.
@@ -307,10 +390,16 @@ export { clamp };
  * The weights are judgment, not arithmetic: contact carries a hitter more than
  * arm strength does, and a pitcher lives on stuff, movement and control with
  * stamina as a distant fourth.
+ *
+ * `bunt` and `steal` are left out, and that is not an oversight. Both are
+ * execution of a call rather than a measure of a player — and `steal` is drawn
+ * off `speed`, which is already counted, so paying for it would quietly make
+ * fast men good twice.
  */
 export function overallOf(p: Hitter | Pitcher): number {
   return p.type === 'hitter'
-    ? Math.round(p.contact * 0.30 + p.power * 0.24 + p.eye * 0.16
-               + p.speed * 0.12 + p.range * 0.07 + p.hands * 0.05 + p.arm * 0.06)
-    : Math.round(p.stuff * 0.34 + p.movement * 0.28 + p.control * 0.28 + p.stamina * 0.10);
+    ? Math.round(p.contact * 0.29 + p.power * 0.24 + p.eye * 0.15 + p.speed * 0.12
+               + gloveScore(p) * HITTER_GLOVE)
+    : Math.round(p.stuff * 0.33 + p.movement * 0.27 + p.control * 0.27 + p.stamina * 0.09
+               + gloveScore(p) * PITCHER_GLOVE);
 }

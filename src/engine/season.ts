@@ -1227,6 +1227,134 @@ export const fieldingPct = (s: FieldingSeason): number =>
  */
 export const playsAboveExpected = (s: FieldingSeason): number => s.plays - s.expected;
 
+/**
+ * The same thing per hundred balls hit at him, which is how two fielders at two
+ * positions can be put in one order. A centre fielder sees six times the traffic
+ * a catcher does, and the raw count reads that difference as talent.
+ */
+export const paePer100 = (s: FieldingSeason): number =>
+  s.chances === 0 ? 0 : (playsAboveExpected(s) / s.chances) * 100;
+
+/**
+ * The bar a glove has to clear to be ranked, in balls hit at him.
+ *
+ * The same idea as the batting title's plate appearances and the ERA title's
+ * innings, and it exists for a sharper reason than either: the ranking statistic
+ * is a *count* of plays made above average, so a man who never took the field
+ * sits at exactly zero and would outrank every real fielder having a bad month.
+ *
+ * A third of a chance per team game, which is far lower than it sounds. Balls in
+ * play are shared out very unevenly by the spray model: a centre fielder sees
+ * three and a half a game, and a catcher a little under half of one, because the
+ * only ball he fields is a pop-up off the plate. A one-per-game bar reads like a
+ * light touch and in practice tells every catcher in the country that he cannot
+ * be rated — while his real defensive work, blocking and throwing runners out, is
+ * not in this statistic at all and lives on his own card. So the bar sits where a
+ * season behind the plate clears it, and a reliever with five comebackers does
+ * not.
+ */
+const MIN_CHANCES_FLOOR = 15;
+const CHANCES_PER_GAME = 0.35;
+
+/** The bar in this season, in balls hit at him. Exported so a screen can hide a rate that cannot mean anything yet. */
+export const rankableChances = (season: SeasonState): number =>
+  Math.max(MIN_CHANCES_FLOOR,
+    Math.floor(Math.max(...season.teams.map((t) => t.gp), 1) * CHANCES_PER_GAME));
+
+/**
+ * And the higher bar the national board uses, because leading the country is a
+ * different question from being placed in it.
+ *
+ * An everyday fielder, at roughly a chance and a half a game. The board is
+ * ranked on a rate, and a rate off twenty-six chances is one lucky afternoon
+ * printed as a season.
+ */
+const BOARD_CHANCES_FLOOR = 30;
+const BOARD_CHANCES_PER_GAME = 1.5;
+
+/**
+ * Where a fielder sits against the rest of the league, which is the only way
+ * plays above expected can honestly be printed.
+ *
+ * The statistic is a redistribution: `expected` is what his own team's average
+ * glove would have done with the same balls, so the league sums to roughly the
+ * league's error count rather than to zero, and every fielder alive reads
+ * slightly negative. Printed bare it says "this player is bad" about all of
+ * them. Printed next to the league's own figure and a rank, it says the thing it
+ * actually knows — better or worse than the men he is competing with.
+ *
+ * The rate is per hundred chances so a shortstop and a first baseman can be
+ * compared without the shortstop winning on volume alone; the leaderboard ranks
+ * on the count, which is a different and equally fair question.
+ */
+export interface FieldingContext {
+  /** Plays above expected per hundred chances, for this player. */
+  rate: number;
+  /** The same figure for every glove in the league. Not zero, and never was. */
+  leagueRate: number;
+  /** 1 is the best qualified glove in the pool. */
+  rank: number;
+  /** How many gloves cleared the bar he is being ranked against. */
+  qualified: number;
+  /** False when he has not fielded enough for the rank to mean anything. */
+  ranked: boolean;
+}
+
+/**
+ * Where zero actually is, in plays per hundred chances.
+ *
+ * Exported so a screen can print the league's own line beside a fielder's
+ * instead of asking the reader to take "slightly below zero" on trust. It is
+ * about minus four — one play a team a game, spread over the twenty-odd balls a
+ * team fields in one — and it is the league's error rate, nothing more.
+ */
+export function leagueFieldingRate(season: SeasonState): number {
+  let plays = 0; let expected = 0; let chances = 0;
+  for (const s of (season.fielding ?? new Map<PlayerId, FieldingSeason>()).values()) {
+    plays += s.plays; expected += s.expected; chances += s.chances;
+  }
+  return chances === 0 ? 0 : ((plays - expected) / chances) * 100;
+}
+
+export function fieldingContext(
+  season: SeasonState,
+  id: PlayerId,
+  opts: { minChances?: number; team?: string } = {},
+): FieldingContext | null {
+  const mine = season.fielding?.get(id);
+  if (!mine || mine.chances === 0) return null;
+
+  const minChances = opts.minChances ?? rankableChances(season);
+
+  const pool = opts.team === undefined
+    ? [...(season.fielding ?? new Map<PlayerId, FieldingSeason>()).entries()]
+    : (() => {
+      const teams = teamLookup(season);
+      return [...(season.fielding ?? new Map<PlayerId, FieldingSeason>()).entries()]
+        .filter(([pid]) => teams.get(pid) === opts.team);
+    })();
+
+  let leaguePlays = 0;
+  let leagueExpected = 0;
+  let leagueChances = 0;
+  for (const [, s] of pool) {
+    leaguePlays += s.plays; leagueExpected += s.expected; leagueChances += s.chances;
+  }
+
+  const rate = paePer100(mine);
+  const qualified = pool.filter(([, s]) => s.chances >= minChances);
+  const better = qualified.filter(([, s]) => paePer100(s) > rate).length;
+
+  return {
+    rate,
+    leagueRate: leagueChances === 0
+      ? 0 : ((leaguePlays - leagueExpected) / leagueChances) * 100,
+    rank: better + 1,
+    qualified: qualified.length,
+    ranked: mine.chances >= minChances,
+  };
+}
+
 export const inningsPitched = (s: PitchingSeason): number => s.outs / 3;
 export const era = (s: PitchingSeason): number => {
   const ip = inningsPitched(s);
@@ -1262,6 +1390,8 @@ export interface LeaderOptions {
   minPA?: number;
   /** Minimum innings for pitching rate stats. */
   minIP?: number;
+  /** Minimum balls hit at him before a glove is ranked. */
+  minChances?: number;
   /**
    * Restrict the whole pool to one team before ranking.
    *
@@ -1280,6 +1410,25 @@ export interface Leaderboards {
   era: LeaderRow[];
   strikeouts: LeaderRow[];
   wins: LeaderRow[];
+  /**
+   * Gloves, ranked on plays made above what an average fielder would have made
+   * of the same chances — **per hundred chances**.
+   *
+   * Not errors, which is the number a real box score prints and the wrong one to
+   * rank on: the fewest errors in the country belongs to the man nobody hits it
+   * to, and fielding percentage rewards the same player for the same reason. The
+   * only statistic here that asks whether a defender did anything is the one that
+   * counts outs he had no business making.
+   *
+   * A rate rather than the raw count, which is the second half of the same
+   * problem. The count is biased downward by volume — the league average is
+   * negative, so every extra chance drags a man further below zero — and ranking
+   * on it put a backup with twelve chances and a flat zero above a shortstop who
+   * had played every inning of the season. Positions differ by six times in how
+   * often the ball comes, so the count is not comparable between two of them and
+   * the rate is.
+   */
+  fielding: LeaderRow[];
 }
 
 export function leaders(season: SeasonState, opts: LeaderOptions = {}): Leaderboards {
@@ -1301,6 +1450,8 @@ export function leaders(season: SeasonState, opts: LeaderOptions = {}): Leaderbo
   const MIN_IP_FLOOR = 15;
   const minPA = opts.minPA ?? Math.max(MIN_PA_FLOOR, Math.floor(gamesPlayed * 2.0));
   const minIP = opts.minIP ?? Math.max(MIN_IP_FLOOR, Math.floor(gamesPlayed * 1.0));
+  const minChances = opts.minChances
+    ?? Math.max(BOARD_CHANCES_FLOOR, Math.floor(gamesPlayed * BOARD_CHANCES_PER_GAME));
 
   const row = (id: PlayerId, value: number, detail: string): LeaderRow => ({
     id,
@@ -1315,9 +1466,14 @@ export function leaders(season: SeasonState, opts: LeaderOptions = {}): Leaderbo
 
   const bat = [...season.batting.entries()].filter(([id]) => onTeam(id));
   const pit = [...season.pitching.entries()].filter(([id]) => onTeam(id));
+  // Optional on the save: a dynasty rolled forward from before the defensive
+  // layer has no fielding map at all until the next pitch is thrown.
+  const fld = [...(season.fielding ?? new Map<PlayerId, FieldingSeason>()).entries()]
+    .filter(([id]) => onTeam(id));
 
   const qualifiedBat = bat.filter(([, s]) => s.ab + s.bb + s.hbp >= minPA);
   const qualifiedPit = pit.filter(([, s]) => inningsPitched(s) >= minIP);
+  const qualifiedFld = fld.filter(([, s]) => s.chances >= minChances);
 
   const top = <T>(
     rows: Array<[PlayerId, T]>,
@@ -1338,5 +1494,21 @@ export function leaders(season: SeasonState, opts: LeaderOptions = {}): Leaderbo
     era: top(qualifiedPit, era, (s) => `${inningsPitched(s).toFixed(1)} IP`, true),
     strikeouts: top(pit, (s) => s.k, (s) => `${inningsPitched(s).toFixed(1)} IP`),
     wins: top(pit, (s) => s.w, (s) => `${s.l} L, ${era(s).toFixed(2)} ERA`),
+    // Ties broken by volume, which `top` cannot do and this board needs: on a
+    // rate off a hundred-odd chances two men land on the same tenth often, and
+    // the one who has been out there more has earned it over the smaller sample.
+    fielding: qualifiedFld
+      .slice()
+      .sort((a, b) => paePer100(b[1]) - paePer100(a[1]) || b[1].chances - a[1].chances)
+      .slice(0, limit)
+      .map(([id, s]) => {
+        const pae = playsAboveExpected(s);
+        return row(
+          id,
+          paePer100(s),
+          `${s.chances} CH, ${pae > 0 ? '+' : ''}${pae} PLAYS, `
+            + `${fieldingPct(s).toFixed(3).replace(/^0/, '')} PCT`,
+        );
+      }),
   };
 }

@@ -249,22 +249,51 @@ class review can actually say.
 `potentialGrade` (`engine/scouting.ts`), calibrated against the league: the
 median college player projects to about 53 and the ninetieth percentile to 71.
 
-| Grade | True potential |
-|---|---|
-| S+ | ≥ 95 |
-| S | ≥ 85 |
-| A | ≥ 74 |
-| B | ≥ 63 |
-| C | ≥ 50 |
-| D | below 50 |
+| Grade | True potential | Per national class of 720 |
+|---|---|---|
+| S+ | ≥ 95 | **0 — see below** |
+| S | ≥ 92 | 3.1 |
+| A+ | ≥ 85 | 5.9 |
+| A | ≥ 74 | 37.8 |
+| B | ≥ 63 | 125.3 |
+| C | ≥ 50 | 293.4 |
+| D | below 50 | 254.6 |
 
-`GRADE_LADDER` is `['D','C','B','A','S','S+']`. `'?'` exists in the
-`PotentialGrade` union as the absence of a grade and is currently unused by any
-screen — a rival's ceiling renders as an em dash (`ui/screens/Player.tsx`).
+Measured over forty seeded classes, 28,800 prospects.
+
+**S+ is reserved and unreachable.** `GENERATED_POTENTIAL_CAP` (94, one below the
+S+ floor) is applied in `projectPotential` — the single funnel every generated
+player passes through, whether he arrives in a recruiting class, as a walk-on,
+or in the roster a rival program starts the world with. The highest ceiling
+generated anywhere across that sample was 94.
+
+The gate is on the *number* rather than the letter, deliberately. Development
+pulls a man toward his raw potential, the scouting bands are cut from it, and
+the draft is decided by what he grew into — so capping only the grade would have
+been a lie three separate systems could see through, and the first coach to
+watch a supposed S outgrow every S in the country would have been right to call
+it a bug. The cap is a named export precisely so the store player that will one
+day hold the grade has to bypass it on purpose.
+
+S formerly began at 85 and arrived about nine times per class, which made the
+best grade in the game something you waited for rather than something you found.
+A+ took over the band it vacated, so the population of visibly special players
+is unchanged — only the name of its top sliver moved, and only that sliver got
+rare.
+
+`GRADE_LADDER` is `['D','C','B','A','A+','S','S+']`, and `TOP_GENERATED_GRADE`
+is derived from the cap rather than written down, so it cannot drift away from
+the number it describes. `'?'` exists in the `PotentialGrade` union as the
+absence of a grade — a rival's ceiling renders as an em dash
+(`ui/screens/Player.tsx`).
 
 The band is slid back onto the ladder at either end rather than trimmed, so it
-always holds exactly `steps + 1` letters. With a two-letter band the only
-possible spans are D–C, C–B, B–A, A–S, S–S+.
+always holds exactly `steps + 1` letters — and it slides against
+`TOP_GENERATED_GRADE`, not the end of the array. A band that reached for S+
+would be a report promising a ceiling nobody in the country is allowed to have,
+and an unfalsifiable one at that, since no recruit could ever turn out to have
+deserved it. Verified across 28,800 bands at five scouting levels: none names
+S+. With a two-letter band the possible spans are D–C, C–B, B–A, A–A+, A+–S.
 
 ### 1.7 The two lines — the hint tables
 
@@ -1729,18 +1758,23 @@ a tendency. See Appendix B.
 
 ### 12.3 S+ potential as a store-only grade
 
-**Intent:** S+ is the top of the game and should never be generated in a normal
-recruiting class — reserved for a store or reward path, deferred to v1.0.
+**The gate is SHIPPED. Only the store is planned.** See §1.6 for the mechanism
+and the measured distribution; in short, `GENERATED_POTENTIAL_CAP` stops every
+generated ceiling at 94 and nothing the world makes on its own can reach the
+grade. What remains unbuilt is the player who is *supposed* to hold it: 82
+overall on arrival, 99 potential, ten badges, faster progression, exempt from
+the badge cap. Deferred to v1.0.
 
-**Reality today:** `potentialGrade` returns `'S+'` at potential ≥ 95 and there is
-no gate anywhere preventing an ordinary class from producing one. `projectPotential`
-caps only at 99. Measured across 20 generated classes (14,400 prospects), **42 came
-out S+ — 0.29%**, alongside 127 S, 762 A, 2,570 B, 5,836 C and 5,063 D.
+This section previously recorded the opposite — that 0.29% of ordinary
+prospects came out S+ and no gate existed anywhere. That was true when it was
+written and is the reason the gate now exists.
 
-So this is not merely unbuilt; the current behaviour is the opposite of the intent.
-Whoever implements the store-only rule has to add the gate, and should decide what
-happens to the `raw` projectable draw in `projectPotential`, which is the main path
-to a 95+ ceiling.
+One question it raised has been answered: the `raw` projectable draw in
+`projectPotential` — the 7% of freshmen who get a second large headroom roll,
+and the only reason a three star can become a star — **survives the cap
+untouched**. It was the thing most at risk, since squeezing the top of the
+ladder is exactly how you would kill it by accident. Measured before and after:
+about twenty hidden gems per class either way.
 
 ### 12.4 A records book
 
@@ -1813,7 +1847,8 @@ Things this document could not settle from the code, and must not guess at.
 3. **Badge channels and situations.** The tiers, caps and earning routes are agreed
    (§12.1). Which channels can carry a badge, and how a situation is defined in
    engine terms, are not.
-4. **Whether the `raw` projectable draw survives the S+ gate.** §12.3.
+4. ~~**Whether the `raw` projectable draw survives the S+ gate.**~~ Answered: it
+   does, untouched, at about twenty hidden gems per class before and after. §12.3.
 5. **`ACTIONS_PER_WEEK` for the AI versus `budgetFor` for the player.** AI programs
    allocate against the flat `ACTIONS_PER_WEEK` (40) regardless of their own
    prestige tier, while the user's cap comes from `budgetFor(stars)` (40–60). It is
