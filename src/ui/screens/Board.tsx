@@ -14,7 +14,7 @@
 import { useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import {
-  fit, weeklyPoints, canPursue, PRIORITIES, PRIORITY_LABEL, PRIORITY_BLURB,
+  fit, weeklyPoints, canPursue, byRank, PRIORITIES, PRIORITY_LABEL, PRIORITY_BLURB,
   SCHOLARSHIPS, MAX_PER_RECRUIT, RECRUITING_WEEKS, budgetFor,
   type Prospect, type Priority,
 } from '../../engine/recruiting.js';
@@ -108,7 +108,7 @@ export function Board() {
 
   const myStars = team ? prestigeStars(team.prestige) : 1;
 
-  const { list, targets, commits, spent, locked } = useMemo(() => {
+  const { list, matches, targets, commits, spent, locked } = useMemo(() => {
     const all = season?.recruiting.prospects ?? [];
 
     // Anyone this program has ever put money on stays on the target list until
@@ -155,12 +155,21 @@ export function Board() {
 
     return {
       list: ranked.slice(0, 50),
+      // What the filter actually caught, before the board's fifty row cap. The
+      // capped number is the wrong one to put on the apply button: it reads 50
+      // whatever you do until you have narrowed the country down past fifty
+      // players, which is exactly the range where you need to be told whether
+      // the last tap did anything.
+      matches: reachable.length,
       targets: mine.slice().sort((a, b) => {
         // Unresolved first — those are the ones still worth a decision.
         const live = Number(a.signedBy !== null) - Number(b.signedBy !== null);
         return live || (b.points[userTeam] ?? 0) - (a.points[userTeam] ?? 0);
       }),
-      commits: signed.sort((a, b) => b.stars - a.stars),
+      // The class you have landed, in the same national order the signing day
+      // report reads in. Two screens showing the same eight names with the same
+      // #rank on each row must agree about which of them is first.
+      commits: signed.sort(byRank),
       spent: used,
       locked: shown.filter((p) => !canPursue(p, myStars))
         .sort((a, b) => b.stars - a.stars).slice(0, 5),
@@ -209,13 +218,33 @@ export function Board() {
             font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
           }}>The board</div>
         </div>
+        {/*
+          Filtering is a mode, not a drawer.
+
+          Reported from testing: "if we scrolled to the players and try to tab on
+          the filter it would not work". It worked perfectly — it opened the
+          panel at the top of the list, fourteen hundred pixels above where you
+          were reading, and the browser's scroll anchoring then held the view
+          exactly still so that nothing whatsoever appeared to happen. That is
+          what pinning the header cost: the control used to be reachable only
+          from the top of the list, where the thing it opened was also visible.
+          Entering a mode instead means the panel is the only thing in the body,
+          so there is nowhere for it to hide.
+        */}
         <button
-          onClick={() => setFiltersOpen((v) => !v)}
+          onClick={() => {
+            setOpenId(null);
+            // Filters only shape the recruits list, so opening them from the
+            // roster tab and landing back on the roster would be a control that
+            // changed a screen you were not looking at.
+            if (!filtersOpen) setView('recruits');
+            setFiltersOpen((v) => !v);
+          }}
           style={{
             padding: '7px 10px',
-            background: activeFilters ? 'var(--clay)' : 'var(--paper)',
-            border: `1px solid ${activeFilters ? 'var(--clay)' : 'rgba(28,36,48,.28)'}`,
-            color: activeFilters ? 'var(--cream)' : 'var(--ink)',
+            background: filtersOpen || activeFilters ? 'var(--clay)' : 'var(--paper)',
+            border: `1px solid ${filtersOpen || activeFilters ? 'var(--clay)' : 'rgba(28,36,48,.28)'}`,
+            color: filtersOpen || activeFilters ? 'var(--cream)' : 'var(--ink)',
             font: "700 9px var(--mono)", letterSpacing: '.1em',
           }}
         >FILTER{activeFilters ? ' ON' : ''}</button>
@@ -253,14 +282,9 @@ export function Board() {
       </div>
     }>
     <div style={{ padding: '10px 14px 20px' }}>
-      {filtersOpen && (
-        <FilterPanel
-          filters={filters}
-          onChange={setFilters}
-          onClear={() => setFilters(NO_FILTERS)}
-        />
-      )}
-
+      {/* Filtering replaces the body rather than pushing it down. The rest of
+          this branch is the board itself; see the note on the FILTER button. */}
+      {filtersOpen ? <FilterPanel filters={filters} onChange={setFilters} /> : <>
       {live && lastWeek && (
         <div style={{
           marginBottom: 10, border: '1px solid var(--clay)',
@@ -372,8 +396,32 @@ export function Board() {
           onClose={() => setOpenId(null)}
         />
       )}
+      </>}
 
-      {live && (
+      {/*
+        The pinned button says what you are actually doing.
+
+        Reported from testing: "when filtering the button set should appear
+        instead of the end week one, that causes confusion." Ending the week is
+        the one irreversible act on this screen — recruits come off the board and
+        the budget resets — and leaving it under the thumb while somebody is
+        tuning a position filter is a trap rather than a convenience. While the
+        filter is open the only thing the button can do is close it, and it says
+        how many recruits are waiting on the other side.
+      */}
+      {filtersOpen ? (
+        <FloatingAction
+          label={matches === 0
+            ? 'NOBODY MATCHES — BACK TO THE BOARD'
+            : matches > list.length
+              ? `SHOW THE TOP ${list.length} OF ${matches}`
+              : `SHOW ${matches} RECRUIT${matches === 1 ? '' : 'S'}`}
+          onClick={() => setFiltersOpen(false)}
+          secondary={activeFilters
+            ? { label: 'CLEAR EVERY FILTER', onClick: () => setFilters(NO_FILTERS) }
+            : null}
+        />
+      ) : live ? (
         <FloatingAction
           label={week >= RECRUITING_WEEKS ? 'SIGNING DAY' : `END WEEK ${week}`}
           onClick={() => {
@@ -381,7 +429,7 @@ export function Board() {
             else advanceWeek();
           }}
         />
-      )}
+      ) : null}
     </div>
     </FixedHeader>
   );
@@ -438,9 +486,16 @@ function Row({
   );
 }
 
+/**
+ * The whole body while filtering, rather than a drawer above the list.
+ *
+ * Clearing and applying live on the pinned button underneath — the two things
+ * you do *to* the filter set belong together and in the one place on this screen
+ * that never scrolls away, which is the same argument the header is built on.
+ */
 function FilterPanel({
-  filters, onChange, onClear,
-}: { filters: Filters; onChange: (f: Filters) => void; onClear: () => void }) {
+  filters, onChange,
+}: { filters: Filters; onChange: (f: Filters) => void }) {
   const set = <K extends keyof Filters>(k: K, v: Filters[K]) =>
     onChange({ ...filters, [k]: v });
 
@@ -494,15 +549,6 @@ function FilterPanel({
           font: "700 9.5px var(--mono)", letterSpacing: '.1em',
         }}
       >WITHIN MY REACH ONLY</button>
-
-      <button
-        onClick={onClear}
-        style={{
-          marginTop: 6, width: '100%', padding: '8px 0', background: 'transparent',
-          border: '1px solid rgba(28,36,48,.2)',
-          font: "600 9px var(--mono)", letterSpacing: '.1em', color: 'var(--dim)',
-        }}
-      >CLEAR</button>
     </div>
   );
 }

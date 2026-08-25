@@ -238,38 +238,97 @@ function drawPriorities(stars: number, rng: Rng): Priorities {
 }
 
 /**
+ * Where each grade of recruit starts, and what it takes to bring him lower.
+ *
+ * `floor` is the smallest program he will hear out before his own priorities are
+ * consulted; every threshold in `steps` his flexibility clears takes him down one
+ * more tier. Written as a ladder rather than as arithmetic on his star rating
+ * because the honest answer is different at each rung, and a single formula has
+ * to be bent out of shape to say so.
+ *
+ * Nobody starts above four. A class the three programs at the top of the country
+ * are the only ones allowed to call is a class nobody else can compete for, and
+ * the point of the gate is a ladder, not a wall.
+ *
+ * The numbers are read off the flexibility distribution the priority draw
+ * actually produces at each grade, which is why they are not a tidy sequence —
+ * a two star is a far more flexible animal than a five star, so the same
+ * threshold would mean something completely different to each of them.
+ */
+const REACH_LADDER: Record<number, { floor: number; steps: readonly number[] }> = {
+  // A five star always hears out a four star program; only the ones who want
+  // the ball, or want home, come further than that — about one in twenty-five.
+  // Unchanged: this rung was already doing its job.
+  5: { floor: 4, steps: [0.3333] },
+  // This is the rung the complaint was about. Two in five four stars will look
+  // at a three star program now, where it used to be every last one of them,
+  // and about one in a hundred at a two star.
+  4: { floor: 4, steps: [0.32, 0.58] },
+  // Below the blue chips the ladder is about the bottom of the country rather
+  // than the top: a three star is a *good* player at a small school, and a one
+  // star program getting nine in ten of them is what made the bottom two tiers
+  // of the prestige table interchangeable.
+  3: { floor: 3, steps: [0.36, 0.485] },
+  2: { floor: 2, steps: [0.42] },
+  1: { floor: 1, steps: [] },
+};
+
+/**
  * How far down the ladder this recruit will listen.
  *
  * The tolerance is his own: a kid who wants the ball as a freshman, or to stay
- * near his family, will hear out a program two or three tiers below him, while
- * one chasing the biggest name in the country will not come down at all. That is
+ * near his family, will hear out a program a tier or two below him, while one
+ * chasing the biggest name in the country will not come down at all. That is
  * where the upsets live, and they are a property of the recruit rather than a
- * global percentage — so the five star a small program can actually take is a
+ * global percentage — so the four star a small program can actually take is a
  * specific, identifiable player rather than a lottery ticket.
+ *
+ * Reported from testing: "I as a three star college have access to the very top
+ * players." He did. A three star program could pursue **every four star in the
+ * country** and just under half the national top fifty, because the old formula
+ * only ever tightened the gate for five stars — and the top fifty is barely half
+ * five stars. That made prestige a budget modifier with a cosmetic gate attached
+ * rather than a ladder you climb, which is the one thing a dynasty is for. Only
+ * a four or five star program sees the whole board now; below that the ceiling
+ * comes down a rung at a time.
  */
 function reachOf(stars: number, priorities: Priorities): number {
+  // Wanting to play, or to play near home, is what brings a recruit down;
+  // wanting the name does not.
   const flexible = priorities.playingTime + priorities.proximity;
-  // How far below his own tier a recruit will look. Wanting to play, or to
-  // play near home, is what brings him down; wanting the name does not.
-  let tolerance = 0.6 + flexible * 3.2;
+  const rung = REACH_LADDER[Math.max(1, Math.min(5, stars))] as
+    { floor: number; steps: readonly number[] };
 
-  // The very best are the exception, and they have to be.
-  //
-  // Reported from testing: "I got the #1 recruit three times in a row without
-  // breaking a sweat" — from a three star program. A blue chip who will
-  // seriously consider anybody is not a blue chip, he is a free agent, and the
-  // whole prestige ladder collapses if the top of the board is open at the
-  // bottom of it. He still comes down for playing time, just not that far.
-  if (stars >= 5) tolerance *= 0.90;
-  else if (stars >= 4) tolerance *= 0.60;
-
-  return Math.max(1, Math.min(5, Math.round(stars - tolerance)));
+  let min = rung.floor;
+  for (const step of rung.steps) if (flexible > step) min -= 1;
+  return Math.max(1, Math.min(4, min));
 }
 
 /** Whether a program of this tier may recruit him at all. */
 export function canPursue(prospect: Prospect, programStars: number): boolean {
   return programStars >= prospect.minProgram;
 }
+
+/**
+ * The order any list of recruits reads in: national ranking, best first.
+ *
+ * One comparator rather than a sort written out at each call site, because the
+ * board and the signing day report are showing the same players with the same
+ * `#rank` printed beside their names — and a class that reads 4, 2, 9, 1 on one
+ * screen and 1, 2, 4, 9 on the next makes one of them look broken. Sorting on
+ * stars instead, which is what the class review did, puts a hundred and twenty
+ * players in one bucket and then leaves their order to whatever the array
+ * happened to be.
+ *
+ * Ranks are unique inside a class, so the tie-breaks are insurance rather than
+ * routine: an unranked recruit (a save written before ranks existed carries a
+ * zero) sorts last instead of first, and stars then name keep the order stable
+ * across renders rather than letting an unstable sort reshuffle equal keys.
+ */
+export const byRank = (a: Prospect, b: Prospect): number =>
+  (a.rank || Number.MAX_SAFE_INTEGER) - (b.rank || Number.MAX_SAFE_INTEGER)
+  || b.stars - a.stars
+  || a.player.name.localeCompare(b.player.name);
 
 /** The regions a recruit can be from, in rough proportion to where talent is. */
 const HOME_REGIONS: readonly Region[] = [
@@ -501,16 +560,22 @@ export function aiTargets(
   // the class's best players still opened the window with nobody on them. The
   // programs that can chase the top of the class are the only coverage it has,
   // so their boards lean into it.
+  //
+  // Four star recruits are the band that needs this most, and it is a direct
+  // consequence of the reach gate: two thirds of them will not hear from a three
+  // star program at all, so the fourteen elite programs are the entire market
+  // for them. With the old split those programs pointed more slots at five stars
+  // than the country produces and the four stars underneath went unsigned, which
+  // is the same "nobody is on him" failure one tier down.
   const plan: { stars: number; share: number }[] =
     tier >= 5 ? [
-      { stars: 5, share: 0.55 },
-      { stars: 4, share: 0.30 },
-      { stars: 3, share: 0.15 },
+      { stars: 5, share: 0.50 },
+      { stars: 4, share: 0.38 },
+      { stars: 3, share: 0.12 },
     ] : tier === 4 ? [
-      { stars: 5, share: 0.40 },
-      { stars: 4, share: 0.35 },
-      { stars: 3, share: 0.15 },
-      { stars: 2, share: 0.10 },
+      { stars: 5, share: 0.35 },
+      { stars: 4, share: 0.48 },
+      { stars: 3, share: 0.17 },
     ] : [
       { stars: tier + 1, share: 0.30 },
       { stars: tier, share: 0.40 },

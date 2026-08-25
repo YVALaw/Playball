@@ -12,7 +12,7 @@ import { useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import {
-  PRIORITY_LABEL, PRIORITIES, type Prospect, type Priority,
+  PRIORITY_LABEL, PRIORITIES, byRank, type Prospect, type Priority,
 } from '../../engine/recruiting.js';
 import { scoutedOverall, scoutedPotential, highSchoolLine } from '../../engine/scouting.js';
 import type { Pitcher } from '../../engine/types.js';
@@ -58,11 +58,15 @@ export function SigningDay() {
       .map(([t, list]) => ({ team: t, list, points: classPoints(list) }))
       .sort((a, b) => b.points - a.points);
 
+    // Both lists read in national ranking order, which is the number printed
+    // beside every name on this screen. Sorted on stars they came out in an
+    // order nothing on the row explained — five players all showing ★★★★, the
+    // 9th best in the country under the 140th — and the class review is the one
+    // screen whose whole job is to say what you got.
     return {
       rankings: table,
-      mine: (byTeam.get(userTeam) ?? []).sort((a, b) => b.stars - a.stars),
-      signed: prospects.filter((p) => p.signedBy !== null)
-        .sort((a, b) => b.stars - a.stars || b.player.potential - a.player.potential),
+      mine: (byTeam.get(userTeam) ?? []).slice().sort(byRank),
+      signed: prospects.filter((p) => p.signedBy !== null).sort(byRank),
       myRank: table.findIndex((r) => r.team === userTeam) + 1,
     };
   }, [season, userTeam]);

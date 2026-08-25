@@ -8,9 +8,11 @@
 // The tests here bound both sides.
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   generateClass, aiTargets, closeWeek, resetWeeklySpend, weeklyPoints, fit, canPursue,
-  leadersAtWeekStart,
+  leadersAtWeekStart, byRank,
   PRIORITIES, RECRUITING_WEEKS, SCHOLARSHIPS, RECRUITING_BUDGET, MAX_PER_RECRUIT,
   commitPointsFor, budgetFor,
   type Pitch, type Prospect,
@@ -349,6 +351,84 @@ describe('the seeded board the player walks into', () => {
     const top = [...prospects].sort((a, b) => a.rank - b.rank).slice(0, 50);
     expect(top.filter((p) => suitorsOf(p) === 0).length).toBe(0);
   });
+
+  it('still finds suitors for the four stars the reach gate narrowed', () => {
+    // The interaction the reach retune risks. Two thirds of four stars will not
+    // hear from a three star program any more, which leaves the fourteen elite
+    // programs as their entire market — and if that market is too small to cover
+    // the band, the tightening has simply moved the "nobody is on him" failure
+    // down one tier instead of fixing anything.
+    const season = createSeason(makeRng(2468), undefined, CONFERENCES);
+    seedRivalInterest(season, 0);
+
+    const suitorsOf = (p: Prospect): number =>
+      Object.values(p.points).filter((v) => v > 0).length;
+    const fours = season.recruiting.prospects.filter((p) => p.stars === 4);
+    const eliteOnly = fours.filter((p) => p.minProgram >= 4);
+
+    // The gate really is shut on most of them...
+    expect(eliteOnly.length).toBeGreaterThan(fours.length / 3);
+    // ...and every one of them still has somebody in the conversation.
+    expect(eliteOnly.filter((p) => suitorsOf(p) === 0).length).toBe(0);
+  });
+});
+
+describe('a class reads in ranking order', () => {
+  // Reported from testing: "in the class review, the players should be organized
+  // in the ranking order." Both class lists print #rank on every row and then
+  // sorted on stars, which puts a hundred and twenty players in one bucket and
+  // leaves their order to however the array came out.
+
+  it('puts the best in the country first', () => {
+    const { prospects } = generateClass(2027, 32, makeRng(818));
+    const someClass = prospects.filter((_, i) => i % 17 === 0).slice(0, 12);
+    const sorted = [...someClass].sort(byRank);
+
+    expect(sorted.map((p) => p.rank)).toEqual(
+      [...someClass.map((p) => p.rank)].sort((a, b) => a - b),
+    );
+    // And it is genuinely a re-ordering, not the input handed back.
+    expect(sorted[0]?.rank).toBeLessThan(sorted[sorted.length - 1]?.rank as number);
+  });
+
+  it('does not fall back to stars, which was the bug', () => {
+    // The load-bearing case: a lower graded recruit who is ranked higher belongs
+    // above the four star, because the rank is the number on the row.
+    const { prospects } = generateClass(2027, 32, makeRng(818));
+    const a = { ...prospects[0], rank: 9, stars: 3 } as Prospect;
+    const b = { ...prospects[1], rank: 140, stars: 4 } as Prospect;
+    expect([b, a].sort(byRank).map((p) => p.rank)).toEqual([9, 140]);
+  });
+
+  it('sorts an unranked recruit last and breaks ties the same way twice', () => {
+    // A save written before ranks existed carries a zero for everybody. Zero
+    // must not read as "best in the country", and equal keys must not reshuffle
+    // between renders.
+    const { prospects } = generateClass(2027, 32, makeRng(818));
+    const unranked = { ...prospects[0], rank: 0, stars: 5 } as Prospect;
+    const ranked = { ...prospects[1], rank: 300, stars: 1 } as Prospect;
+    expect([unranked, ranked].sort(byRank)[0]?.rank).toBe(300);
+
+    const tied = [3, 1, 2].map((i) => ({
+      ...prospects[i], rank: 0, stars: 3,
+    } as Prospect));
+    const once = [...tied].sort(byRank).map((p) => p.player.name);
+    const again = [...tied].reverse().sort(byRank).map((p) => p.player.name);
+    expect(again).toEqual(once);
+  });
+
+  it('is the comparator both class screens actually use', () => {
+    // The point of exporting it. The board's COMMITS tab and the signing day
+    // report show the same eight names with the same #rank beside each of them,
+    // so two hand-written sorts is two chances for them to disagree and make one
+    // of the screens look broken.
+    const screens = ['../src/ui/screens/Board.tsx', '../src/ui/screens/SigningDay.tsx'];
+    for (const rel of screens) {
+      const src = readFileSync(join(import.meta.dirname, rel), 'utf8');
+      expect(src, `${rel} does not import byRank`).toContain('byRank');
+      expect(src.includes('sort(byRank)'), `${rel} sorts a class some other way`).toBe(true);
+    }
+  });
 });
 
 describe('prestige gates who will even listen', () => {
@@ -393,6 +473,82 @@ describe('prestige gates who will even listen', () => {
       const open = prospects.filter((p) => canPursue(p, tier));
       expect(open.length, `a ${tier} star program had nothing to chase`).toBeGreaterThan(200);
     }
+  });
+
+  it('only lets a four or five star program work the whole board', () => {
+    // The line the user drew: "only 4 and 5 stars are actually able to reach all
+    // players, from 3 and down should all have some caps based on their
+    // prestige." Everything below four is capped, and the cap tightens all the
+    // way down rather than only biting at the top of the class.
+    const { prospects } = generateClass(2027, 64, makeRng(4242));
+    const share = (tier: number) =>
+      prospects.filter((p) => canPursue(p, tier)).length / prospects.length;
+
+    expect(share(5)).toBe(1);
+    expect(share(4)).toBe(1);
+    expect(share(3)).toBeLessThan(1);
+    expect(share(3)).toBeGreaterThan(share(2));
+    expect(share(2)).toBeGreaterThan(share(1));
+
+    // The specific hole this closed: a three star program could pursue *every*
+    // four star in the country, so the only rung the gate ever cost anybody was
+    // the five stars.
+    const fours = prospects.filter((p) => p.stars === 4);
+    expect(fours.length).toBeGreaterThan(40);
+    expect(fours.filter((p) => canPursue(p, 3)).length).toBeLessThan(fours.length * 0.6);
+  });
+
+  it('keeps the top of the national board away from a three star program', () => {
+    // The complaint this retune answers: "I as a three star college have access
+    // to the very top players." The top fifty is only about half five stars, and
+    // the old gate tightened for five stars alone — so every four star in the
+    // country was open and a three star program could pursue nearly half of the
+    // national top fifty. A handful is the drama; half is a broken ladder.
+    const { prospects } = generateClass(2027, 64, makeRng(4242));
+    const top = [...prospects].sort(byRank).slice(0, 50);
+
+    const openAt = (tier: number) => top.filter((p) => canPursue(p, tier)).length;
+    expect(openAt(5)).toBe(50);
+    expect(openAt(4)).toBe(50);
+    // Seventeen of the top fifty on this fixture before, eight after. A dozen is
+    // the line: below it the top of the board is a reach, above it it is a menu.
+    expect(openAt(3)).toBeLessThan(12);
+    // The bottom of the ladder stays shut out of the top of the board outright,
+    // which was already true and is the half of "caps based on their prestige"
+    // that has to be a wall rather than a slope.
+    expect(openAt(2)).toBeLessThanOrEqual(1);
+    expect(openAt(1)).toBeLessThanOrEqual(1);
+  });
+
+  it('leaves a small program a class to sign out of what it can reach', () => {
+    // The other side of the gate. A board that is mostly locked rows is a
+    // screen that says no eight times and offers nothing, so every tier has to
+    // keep a pool far larger than the eight scholarships it can fill.
+    const { prospects } = generateClass(2027, 64, makeRng(4242));
+    for (const tier of [1, 2, 3]) {
+      const open = prospects.filter((p) => canPursue(p, tier));
+      expect(open.length / prospects.length,
+        `a ${tier} star program's board was mostly locked`).toBeGreaterThan(0.5);
+    }
+  });
+
+  it('still sends somebody after the four stars it just shut three star programs out of', () => {
+    // The risk the retune carries. Two thirds of four stars will not hear from a
+    // three star program now, which leaves the elite programs as their entire
+    // market — and a prospect nobody may chase is worse than a prospect anybody
+    // may chase. The AI's board plans lean into the four star band to pay for it.
+    const rng = makeRng(99);
+    const recruits = generateClass(2027, 64, rng);
+    const elite = program(0.9);
+    const strong = program(0.65);
+
+    const foursOn = (pitch: Pitch) =>
+      aiTargets(0, pitch, 45, recruits.prospects, 8, rng)
+        .filter((b) => b.prospect.stars === 4).length;
+
+    // One more slot apiece than the boards carried before the gate moved.
+    expect(foursOn(elite)).toBeGreaterThanOrEqual(3);
+    expect(foursOn(strong)).toBeGreaterThanOrEqual(4);
   });
 
   it('stops the AI chasing recruits it is barred from', () => {
