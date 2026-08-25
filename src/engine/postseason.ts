@@ -507,17 +507,6 @@ export function allConferenceTournaments(
 // ---------------------------------------------------------------------------
 
 /**
- * Vestigial, and kept only because it is exported.
- *
- * It described a sixteen-team national field of eight automatic bids and eight
- * at-large RPI selections. There are no at-large bids: the field is the eight
- * conference champions and nothing else, paired into four regionals. Nothing
- * reads this except a `size` parameter on `runPostseason` that the body never
- * looks at. See the E list in `docs/06-backlog.md`.
- */
-export const FIELD_SIZE = 16;
-
-/**
  * How long each round's series is.
  *
  * The one place to change the length of June. Every extra game is a game the
@@ -724,7 +713,7 @@ export function summarize(
   };
 }
 
-export function runPostseason(season: SeasonState, size = FIELD_SIZE): PostseasonSummary {
+export function runPostseason(season: SeasonState): PostseasonSummary {
   // Freeze the regular season before a single bracket game moves a record. This
   // is the one moment where the boundary is unambiguous, which is why the
   // snapshot lives here rather than being threaded through playGame.

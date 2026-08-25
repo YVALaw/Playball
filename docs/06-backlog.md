@@ -682,6 +682,26 @@ those, or the book stops being a game system and becomes a museum.
 Fold in opportunistically rather than as a work item of their own.
 
 - Scholarship allocation controls are tiny touch targets.
+- **~~The recruiting class drifted and the reach gate loosened with it.~~** Both
+  answered, and neither happened. The star counts of
+  `generateClass(2027, 96, makeRng(4242))` were bisected across every commit from
+  v0.6.0 to the head of the block batch; the population distribution has not
+  moved since the gate was fitted, and every commit of the batch returns an
+  identical class to its branch point. The two "measurements" in disagreement
+  were single classes, and a class is far too small to carry either figure — its
+  five-star count swings by a fifth of itself from seed to seed, and
+  `generateClass` is not even a function of its arguments, because `uniqueName`
+  spends a variable number of draws against a module-level name pool. The rung
+  rates are measured against the priority draw now and pinned by
+  `recruiting.test.ts`; a draw-count canary in `identity.test.ts` catches the
+  stray `rng()` this was mistaken for. See `05-systems-reference.md` §2.2, §2.4
+  and appendix B item 10.
+- **Other calibration figures in the systems reference taken from one sample.**
+  The reach gate was the one somebody happened to re-read; it will not be the
+  only one. Any figure quoted off a single class, a single season or a single
+  sweep carries the sampling noise of that sample and nothing says how wide it
+  is. Worth a pass that either widens each measurement or writes down its spread,
+  starting with anything a rung, a threshold or a docstring was fitted against.
 - **~~Two prestige scales that do not share a mean, and the churn it causes.~~**
   SHIPPED, and the diagnosis was half right. See §16.10.
 
@@ -748,15 +768,18 @@ Fold in opportunistically rather than as a work item of their own.
   ±6 regardless of scouting skill. One line to widen.
 - ~~No mandate requires a conference title, though `objectivesFor`'s own docstring
   says otherwise.~~ Fixed with the item above: `championship` requires it.
-- `FIELD_SIZE` and `runPostseason`'s `size` parameter are vestigial.
+- ~~`FIELD_SIZE` and `runPostseason`'s `size` parameter are vestigial.~~ Both
+  deleted. `ui/postseasonGraph.ts` held a second, private `FIELD_SIZE = 16` that
+  nothing in that file read either, so removing the exported one would not have
+  found it — the pair is the argument for deleting a dead constant when it is
+  spotted rather than annotating it.
 - ~~`Expectation.expectsTournament` and `expectsConference` are computed and never
   read.~~ Deleted with the item above. They became a second, *wrong* opinion about
   the ask the moment contenders stopped needing a bid.
 - Stale comments listed in appendix A of the systems reference. The postseason
   note that described four-team double-elimination regionals is gone, and so are
   four more rows that were fixed rather than catalogued; what is left there is
-  `FIELD_SIZE`, the four UI files below, the `'?'` grade docstring and
-  `BOARD_SLOTS`.
+  the four UI files below, the `'?'` grade docstring and `BOARD_SLOTS`.
 
 ## G. From the original roadmap, never built
 

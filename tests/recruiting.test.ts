@@ -457,6 +457,93 @@ describe('prestige gates who will even listen', () => {
     }
   });
 
+  /*
+    Every rung of the ladder, against the share its own docstring claims.
+
+    This is the test whose absence let the gate be reported as a regression it
+    was not. What existed was a bound on one class — "fewer than half the five
+    stars come down to a three star program" — which is loose enough to pass
+    whether the true rate is one in twenty or one in three, and the tight
+    figures lived only in prose. So the prose was checked by hand, on one class,
+    which is the one place they cannot be read: a class holds about forty five
+    stars and the rate is about five percent, so the honest reading of any
+    single class is "two, give or take two". Counted that way the rung read one
+    in twenty-five the day it was cut and one in nine a few months later with
+    nothing in between having touched it.
+
+    Twenty-four classes pool about a thousand five stars, which is enough to
+    tell five percent from ten. The bands are roughly three standard errors
+    wide around the rate the priority draw actually produces, so a rung that has
+    genuinely moved fails and a class that came out lucky does not.
+  */
+  it('lets each grade down the ladder at the rate its rung claims', () => {
+    const CLASSES = 24;
+    const pop = [0, 0, 0, 0, 0, 0];
+    const at = [0, 1, 2, 3, 4, 5].map(() => [0, 0, 0, 0, 0]);
+    for (let i = 0; i < CLASSES; i++) {
+      // An empty name pool before each one. The rejection loop in `uniqueName`
+      // spends draws, so a class generated second in a process is a different
+      // class from the same seed — which is the other half of how the figures
+      // in these docstrings came to be unreproducible.
+      resetNames();
+      const { prospects } = generateClass(2027, 96, makeRng(4242 + i * 7919));
+      for (const p of prospects) { pop[p.stars]!++; at[p.stars]![p.minProgram]!++; }
+    }
+
+    /** The share of a grade that will hear out a program of `tier` or smaller. */
+    const downTo = (stars: number, tier: number): number => {
+      let n = 0;
+      for (let m = 1; m <= tier; m++) n += at[stars]![m]!;
+      return n / pop[stars]!;
+    };
+
+    expect(pop[5]).toBeGreaterThan(800);
+    expect(downTo(5, 3)).toBeGreaterThan(0.032);   // "about one in eighteen"
+    expect(downTo(5, 3)).toBeLessThan(0.078);
+    expect(downTo(5, 2)).toBe(0);                  // nobody starts above four
+
+    expect(downTo(4, 3)).toBeGreaterThan(0.41);    // "a shade under half"
+    expect(downTo(4, 3)).toBeLessThan(0.49);
+    expect(downTo(4, 2)).toBeGreaterThan(0.003);   // "one in a hundred and thirty"
+    expect(downTo(4, 2)).toBeLessThan(0.018);
+
+    expect(downTo(3, 2)).toBeGreaterThan(0.69);    // "seven in ten"
+    expect(downTo(3, 2)).toBeLessThan(0.745);
+    expect(downTo(3, 1)).toBeGreaterThan(0.30);    // "a third of them"
+    expect(downTo(3, 1)).toBeLessThan(0.36);
+
+    expect(downTo(2, 1)).toBeGreaterThan(0.83);    // "five in six"
+    expect(downTo(2, 1)).toBeLessThan(0.87);
+
+    // A one star recruit is nobody's gate, and a floor of one with no steps has
+    // nowhere below it to go.
+    expect(downTo(1, 1)).toBe(1);
+  });
+
+  it('keeps the very top of the board out of a three star program\'s reach', () => {
+    // The user's sentence, measured where it can be measured: "I as a three
+    // star college have access to the very top players." A handful of the top
+    // fifty is the drama the gate is for; the top ten has to be somebody else's
+    // board almost every year, and that is a claim about the average season
+    // rather than about one lucky draw.
+    const CLASSES = 24;
+    const tens: number[] = [];
+    const twentyFives: number[] = [];
+    for (let i = 0; i < CLASSES; i++) {
+      resetNames();
+      const { prospects } = generateClass(2027, 96, makeRng(4242 + i * 7919));
+      const ranked = [...prospects].sort(byRank);
+      tens.push(ranked.slice(0, 10).filter((p) => canPursue(p, 3)).length);
+      twentyFives.push(ranked.slice(0, 25).filter((p) => canPursue(p, 3)).length);
+    }
+    const mean = (xs: number[]): number => xs.reduce((a, b) => a + b, 0) / xs.length;
+
+    expect(mean(tens)).toBeLessThan(1.5);
+    for (const n of tens) expect(n).toBeLessThanOrEqual(4);
+    expect(mean(twentyFives)).toBeLessThan(3.5);
+    for (const n of twentyFives) expect(n).toBeLessThanOrEqual(8);
+  });
+
   it('leaves a narrow door open for a program recruiting above its weight', () => {
     // The Campus Dynasty behaviour: landing a big prospect from the lower
     // leagues is rare, not impossible. A gate with no door at all would make

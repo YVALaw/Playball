@@ -308,4 +308,78 @@ describe('determinism', () => {
     expect(loaded.teams.map((t) => t.id as TeamId))
       .toEqual(season.teams.map((t) => t.id as TeamId));
   });
+
+  it('gives the same seed the same class only once', () => {
+    // Stated as a property rather than left as a footnote, because a
+    // calibration figure taken from a generated class is worthless without it.
+    // Two figures in the systems reference were: the same call, written down
+    // twice, disagreed — and the disagreement was read as the generator having
+    // drifted rather than as the second reading having been taken in a process
+    // that already knew nine hundred names.
+    const names = (): string[] =>
+      generateClass(2027, 8, makeRng(4242)).prospects.map((p) => p.player.name);
+
+    resetNames();
+    const first = names();
+    expect(names()).not.toEqual(first);
+
+    resetNames();
+    expect(names()).toEqual(first);
+  });
+
+  /*
+    A stray draw is the one change to this file nothing else in the suite can
+    see. Ratings come out of distributions, so an rng() added or removed
+    anywhere in player generation moves every man in the world without moving
+    any average the calibration probes read — and the golden fixtures that would
+    catch it are re-recorded as a matter of course whenever a block of work
+    lands, which is exactly when one would be introduced.
+
+    A count is different: it has one right answer, and re-recording it is a
+    deliberate act. If these numbers move, the draw sequence moved, and whoever
+    moved it has to say so.
+  */
+  describe('the draws a player costs', () => {
+    /** The same generator, counting how many times it is turned. */
+    function counted(seed: number): { rng: ReturnType<typeof makeRng>; spent: () => number } {
+      const inner = makeRng(seed);
+      let n = 0;
+      const rng = (() => { n++; return inner(); }) as ReturnType<typeof makeRng>;
+      // `nextPlayerId` reads the position without turning it, so the counter has
+      // to pass the real one through rather than hide it.
+      rng.state = inner.state;
+      return { rng, spent: () => n };
+    }
+
+    // Two sequences rather than one number each, because the count is not
+    // constant: the projectable-ceiling branch and the platoon draw both spend
+    // extra numbers on some men and not others, and a pin that only ever saw
+    // the common path would miss a draw added inside a branch.
+    it.each([
+      { what: 'a hitter', spent: [31, 31, 31, 31, 31, 32, 31, 31] },
+      { what: 'a pitcher', spent: [30, 30, 30, 30, 31, 30, 30, 30] },
+    ])('is fixed for $what', ({ what, spent }) => {
+      const got = spent.map((_, i) => {
+        // An empty pool on every seed: a name already taken costs the rejection
+        // loop two more draws, which is a real cost and a different measurement.
+        resetNames();
+        const c = counted(i + 1);
+        if (what === 'a hitter') makeHitter(c.rng, 50, { pos: 'SS' });
+        else makePitcher(c.rng, 50, { role: 'SP' });
+        return c.spent();
+      });
+      expect(got).toEqual(spent);
+    });
+
+    it('is fixed for a whole recruiting class', () => {
+      // The class pipeline on top of the two above: the quality roll, the home
+      // region, the state inside it and the five priority weights. Sixty
+      // prospects is enough that a draw added to any one of them shows.
+      resetNames();
+      const c = counted(4242);
+      const cls = generateClass(2027, 8, c.rng);
+      expect(cls.prospects.length).toBe(60);
+      expect(c.spent()).toBe(2413);
+    });
+  });
 });

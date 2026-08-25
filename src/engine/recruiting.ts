@@ -349,21 +349,34 @@ function priorityWeights(stars: number, roll: () => number): Priorities {
  * actually produces at each grade, which is why they are not a tidy sequence —
  * a two star is a far more flexible animal than a five star, so the same
  * threshold would mean something completely different to each of them.
+ *
+ * The frequencies quoted on each rung below are measured against that draw
+ * directly — four hundred thousand sets of weights per grade — and not counted
+ * off a generated class. That distinction is the whole reason this comment was
+ * ever wrong. A class holds about forty five stars, so a one-in-eighteen rate is
+ * two of them give or take one and a half; the rung was first written up as
+ * "one in twenty-five" because the class in front of whoever wrote it happened
+ * to contain two, and re-counting it later on a different class read one in
+ * nine and looked like a regression. Neither number was ever the rate. A rung
+ * is a property of the draw and has to be measured where the draw lives.
  */
 const REACH_LADDER: Record<number, { floor: number; steps: readonly number[] }> = {
   // A five star always hears out a four star program; only the ones who want
-  // the ball, or want home, come further than that — about one in twenty-five.
-  // Unchanged: this rung was already doing its job.
+  // the ball, or want home, come further than that — about one in eighteen.
+  // Unchanged since the retune: this rung was already doing its job.
   5: { floor: 4, steps: [0.3333] },
-  // This is the rung the complaint was about. Two in five four stars will look
-  // at a three star program now, where it used to be every last one of them,
-  // and about one in a hundred at a two star.
+  // This is the rung the complaint was about. A shade under half of four stars
+  // will look at a three star program now, where it used to be every last one
+  // of them, and about one in a hundred and thirty at a two star.
   4: { floor: 4, steps: [0.32, 0.58] },
   // Below the blue chips the ladder is about the bottom of the country rather
   // than the top: a three star is a *good* player at a small school, and a one
   // star program getting nine in ten of them is what made the bottom two tiers
-  // of the prestige table interchangeable.
+  // of the prestige table interchangeable. Seven in ten will hear out a two star
+  // program and a third of them a one star.
   3: { floor: 3, steps: [0.36, 0.485] },
+  // Five in six, which is close enough to open that the bottom rung is about
+  // the handful who will not come rather than the many who will.
   2: { floor: 2, steps: [0.42] },
   1: { floor: 1, steps: [] },
 };

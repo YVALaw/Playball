@@ -581,15 +581,32 @@ Home region is drawn from a weighted list (`HOME_REGIONS`): Gulf ×3, Atlantic �
 Pacific ×2, and one each of Desert, Heartland, Great Lakes, Mountain, Northeast.
 The state is then drawn uniformly within the region from `STATES_BY_REGION`.
 
-Measured over one class (`generateClass(2027, 96, makeRng(4242))`): **224
-one-stars, 209 two, 164 three, 78 four, 45 five**.
+Measured over forty classes, each generated after `resetNames()`: **221 one-stars,
+210 two, 165 three, 83 four, 40 five** on average, with a class-to-class standard
+deviation of about 13, 12, 10, 8 and 5 respectively.
 
-The same call read 223 / 213 / 182 / 64 / 38 when this section was first
-written, and the class is now noticeably more top-heavy. Neither the quality
-rolls above nor `serviceScore` has been edited, so something upstream of them
-moved and nothing recorded that it had — which is why this line names the call
-it was taken with. **Appendix B item 10** carries it as an open question rather
-than a guess.
+**A single class is not a measurement of this.** Two things have to be said
+before any figure taken from `generateClass` means anything, and neither was said
+the first time round:
+
+- **The spread is wide.** The five-star count of one class swings between about
+  30 and 50. `generateClass(2027, 96, makeRng(4242))` currently returns 224 / 209
+  / 164 / 78 / 45; that is one draw from the distribution above, not the
+  distribution.
+- **The name pool is an input.** `uniqueName` rejects a name already taken and
+  draws again, which costs two extra random numbers and moves everything
+  downstream. The identical call made four times in one process returns four
+  different classes — measured at 143, 126, 134 and 123 four-and-five-stars. Any
+  figure quoted from a class has to name the pool state it was taken with, and in
+  practice that means `resetNames()` first.
+
+This section previously recorded 223 / 213 / 182 / 64 / 38 from that call and a
+later reading of 224 / 209 / 164 / 78 / 45, and the difference was carried as
+evidence that something upstream had moved. It was not. Measured the same way
+over the same forty seeds, the class at v0.6.8 — the release the reach ladder was
+fitted against — reads 221 / 209 / 165 / 85 / 40, which differs from the figures
+above by less than one standard error of the mean on every grade. See
+**Appendix B item 10**, now answered.
 
 ### 2.3 Priorities
 
@@ -662,22 +679,35 @@ produces at each grade, which is why they are not a tidy sequence: a two star is
 far more flexible animal than a five star, so the same threshold would mean
 something completely different to each of them.
 
-**Measured** over the same generated class:
+**Measured** against the priority draw itself — four hundred thousand sets of
+weights per grade, rather than counted off a class. A rung is a property of the
+draw, and a class of 720 holds only about forty five stars, which cannot tell one
+in twenty from one in ten:
 
-| Recruit stars | minProgram 1 | 2 | 3 | 4 |
-|---|---|---|---|---|
-| ★ | 224 | — | — | — |
-| ★★ | 172 | 37 | — | — |
-| ★★★ | 56 | 51 | 57 | — |
-| ★★★★ | — | — | 39 | 39 |
-| ★★★★★ | — | — | 5 | 40 |
+| Recruit stars | Will hear out a 3★ program | a 2★ | a 1★ |
+|---|---|---|---|
+| ★★★★★ | 5.4% (about 1 in 18) | — | — |
+| ★★★★ | 44.8% | 0.8% (about 1 in 130) | — |
+| ★★★ | all of them | 71.6% | 32.8% |
+| ★★ | all | all | 84.9% |
+| ★ | all | all | all |
 
-So about **11%** of five stars will hear out a three-star program, **half** of
-four stars will, and only a four- or five-star program sees the whole board.
-Those two shares were 5% and 44% when the ladder was fitted, and the ladder has
-not been touched since — the class underneath it has (§2.2). The docstrings on
-`REACH_LADDER` still quote the old figures, "about one in twenty-five" and "two
-in five", and are the first thing to correct if the rungs are ever re-cut.
+So about **one five star in eighteen** will hear out a three-star program, **a
+shade under half** of four stars will, and only a four- or five-star program sees
+the whole board. Pooled over twenty-four generated classes those rates read 4.9%
+and 43.5%, which is what `recruiting.test.ts` pins.
+
+What a three-star program can actually pursue at the top of the board, over
+twenty-four classes: **0.5 of the top ten** on average (never more than two),
+**1.3 of the top twenty-five**, **6.6 of the top fifty**. At v0.6.8, the release
+the ladder was fitted against, the same measurement read 0.5, 1.9 and 7.8 — the
+gate is where it was cut, and marginally tighter if anything.
+
+Two earlier readings of this section — 5% and 44%, then 11% and 50% — were each
+counted off a single class and read against each other as a drift. They were two
+samples of the same unchanged rate; the second one's five-star share rested on
+five players. The `REACH_LADDER` docstrings now quote the draw-measured figures
+and say where they came from.
 
 `canPursue(prospect, programStars)` is simply `programStars >= prospect.minProgram`.
 When it fails the board prints: *"He will not take the call. A program of his
@@ -3927,7 +3957,7 @@ does. None of them changes behaviour; all of them will mislead the next reader.
 
 | Where | The problem |
 |---|---|
-| `engine/postseason.ts`, `FIELD_SIZE` | Vestigial. The docstring now says so rather than describing a 16-team field of automatic and at-large bids that never existed, but the symbol is still exported and its only use is a `size` parameter on `runPostseason` that the function body never reads. |
+| ~~`engine/postseason.ts`, `FIELD_SIZE`~~ | Deleted, along with the `size` parameter on `runPostseason` that was its only use and that the function body never read. `ui/postseasonGraph.ts` carried a private copy of the same constant, also unread, so the two could not have been found by deleting either one; both are gone. |
 | `ui/Avatar.tsx`, `ui/screens/Player.tsx`, `ui/screens/Standings.tsx`, `ui/screens/TeamCard.tsx` | Comments still say "sixty four programs" / "the other sixty three". The world is 96. The engine, the state layer and the data file have been swept; these four were outside that pass, and all of it is comments. `Program.tsx`'s was screen copy on the HALL tab and went with B12; `Player.tsx`'s *career* comment went with B13, but the one above `gameLogFor` — "two Tyler Johnsons in a sixty four school world" — was not in that pass and is still there. The one occurrence that reached the screen, the Omaha note in `SeasonReview.tsx`, was fixed earlier. `CoachPortrait.tsx` and `Draft.tsx` also say "sixty-four", about a coordinate box and a draft round respectively, and are correct. |
 | ~~`engine/recruiting.ts`, `RECRUITING_BUDGET` docstring~~ | Fixed. It opened "Thirty, spread across as many recruits as you like" over a constant of 40. |
 | `engine/scouting.ts`, `PotentialGrade` | `'?'` is documented as what a screen prints where a ceiling is none of your business. No screen uses it; `ui/screens/Player.tsx` prints an em dash instead. |
@@ -3985,12 +4015,31 @@ Things this document could not settle from the code, and must not guess at.
    subtracts — so the true figures are now a shade above those. The
    eight-seed sweep in §18.8 does not carry an error row, so the size of the
    drift is not known. Adding one is the cheap way to find out.
-10. **What moved the star distribution of a generated class.** The same call
-    that produced 223 / 213 / 182 / 64 / 38 one- through five-stars when §2.2
-    was written now produces 224 / 209 / 164 / 78 / 45 — the same seed, the same
-    year, the same ninety-six programs. The quality rolls, `serviceScore` and
-    `REACH_LADDER` are all unedited, so the change came in from somewhere
-    upstream during the block batch and nothing recorded it. It is not
-    self-evidently wrong — a slightly top-heavier class is defensible — but
-    "defensible and unexplained" is how a calibration figure rots. The tables in
-    §2.2 and §2.4 are re-measured; the cause is not known.
+10. ~~**What moved the star distribution of a generated class.**~~ Answered:
+    nothing did. The question was built on two readings of one class, and a
+    class is far too small a sample to carry either figure.
+
+    The star counts of `generateClass(2027, 96, makeRng(4242))` were checked at
+    every commit from v0.6.0 to the head of the block batch. All ten commits of
+    the batch return an identical class to the branch point, so the batch is not
+    involved at all. The population distribution — forty classes, `resetNames()`
+    before each — has not moved either: 221 / 209 / 165 / 85 / 40 at v0.6.8
+    against 221 / 210 / 165 / 83 / 40 now, inside one standard error of the mean
+    on every grade, against a class-to-class standard deviation of 5 to 13.
+
+    Two things made a stationary number look like a moving one. A class of 720
+    holds about forty five stars, so its top two grades swing by ten percent of
+    themselves from seed to seed. And `generateClass` is not a function of its
+    arguments: `uniqueName` rejects a name already in the module-level pool and
+    draws again, at two random numbers a rejection, so the same call repeated in
+    one process returns a different class each time — 143, 126, 134 and 123
+    four-and-five-stars on four consecutive calls. Neither recorded figure was
+    reproducible from the call named beside it. 223 / 213 / 182 / 64 / 38 in
+    particular holds 102 four-and-five-stars, and 250 fresh-process seeds at the
+    commit it was written on produced no class below 103 — so it was taken in a
+    process that already had a name pool.
+
+    The reach gate went the same way and is answered with it — see §2.4. Its
+    rates are now measured against the priority draw, where four hundred
+    thousand samples per grade cost less than one class does, and
+    `recruiting.test.ts` pins every rung.

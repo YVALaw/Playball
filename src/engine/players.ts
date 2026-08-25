@@ -127,6 +127,14 @@ function drawPlatoonSkill(rng: Rng, bats: Bats): number {
 // is still module-level state that no save has ever carried, which is why a load
 // puts it back — `rebuildNameIndex` in season.ts gathers the names, `resetNames`
 // and `reserveNames` are how they get here.
+//
+// Cosmetic in what it decides, not in what it costs. `uniqueName` rejects a name
+// already in here and draws again, so how many random numbers a player costs
+// depends on who has been generated before him — which makes every generator in
+// this file a function of this set as well as of its seed. Anybody measuring a
+// generated population has to say what was in the pool, and in practice that
+// means calling `resetNames` first: the same seeded class generated four times
+// running in one process is four different classes.
 const usedNames = new Set<string>();
 export function resetNames(): void { usedNames.clear(); }
 

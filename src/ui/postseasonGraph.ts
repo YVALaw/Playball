@@ -99,8 +99,6 @@ export interface GraphInput {
   live: { kind: 'conference' | 'regional' | 'national'; state: SeriesBracket } | null;
 }
 
-const FIELD_SIZE = 16;
-
 /** A tree of the right shape with nobody in it, for a bracket not yet seeded. */
 function emptyTree(size: number): Series[][] {
   const rounds: Series[][] = [];
