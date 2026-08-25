@@ -2712,6 +2712,12 @@ them drafted — two in the first round.
 
 216 tests pass.
 
+**Superseded.** "Two in the first round" out of six is the number that gave this away:
+thirty-two-deep rounds over the men one league sends up meant every program had a first
+rounder. The draft is twenty rounds of thirty now, placed by what the clubs think a man is
+worth on a national six-hundred-pick board, and the screen's four views are KEEP,
+DEPARTING, BOARD and UNDRAFTED. See `05-systems-reference.md` §14.
+
 ## A slider, and a face for every player
 
 ### The offer is a slider

@@ -7,7 +7,11 @@
 // stops a dynasty from being the same names forever — and it is the mechanism
 // behind the roadmap's central promise: you never keep your best players.
 
-import { makeHitter, makePitcher } from './players.js';
+import {
+  draftContext, draftEligible, draftRound, visibleValue, yearsOfLeverage,
+  type DraftBoard, type DraftedMan,
+} from './draft.js';
+import { ageFor, makeHitter, makePitcher } from './players.js';
 import { overallOf, clamp } from './ratings.js';
 import type { Prospect } from './recruiting.js';
 import { gauss } from './rng.js';
@@ -52,17 +56,29 @@ export interface Departure {
   team: number;
   teamAbbr: string;
   classYear: ClassYear;
+  /** How old he was in the June he left. */
+  age: number;
   overall: number;
   reason: DepartureReason;
   /**
    * Which round he went in, for the men who were drafted.
    *
    * The draft is a national event and a player wants to know where he stood in
-   * it — "drafted" is a fact, "went in the first round" is the story. Assigned
-   * across the whole league at once, so the rounds mean the same thing for every
-   * program.
+   * it — "drafted" is a fact, "went in the third round" is the story. It comes
+   * off what the clubs think he is worth rather than off his position in a
+   * queue, which is what lets a strong year put three men in the first round
+   * and a weak one put nobody there. See `draftRound`.
    */
   round?: number;
+  /**
+   * He was drafted and he came back to school anyway.
+   *
+   * Kept on the notice rather than deleted from the list, because being taken
+   * in the fourth round and turning it down is a thing that happened to him and
+   * a thing the program should be able to point at. Every count of what you
+   * lost skips him.
+   */
+  returned?: boolean;
 }
 
 export interface OffseasonReport {
@@ -107,53 +123,50 @@ export interface OffseasonReport {
 }
 
 /**
- * Draft odds for a junior.
+ * How likely a club is to spend a pick on a man of this ability.
  *
- * College players are draft eligible after their junior year, and this is the
- * roadmap's core tension: a star is on a three year clock whether you like it or
- * not. A 70 overall junior is gone almost every time; a 45 almost never hears his
- * name. Seniors leave regardless, so the draft only really *costs* you juniors.
+ * The roadmap's core tension expressed as a number: a star is on a three year
+ * clock whether you like it or not. A 70 overall is gone almost every time; a 45
+ * almost never hears his name. Seniors leave regardless, so the draft only
+ * really *costs* you men with eligibility left.
  */
 export function draftChance(overall: number): number {
   return clamp((overall - 46) / 34, 0, 0.88);
 }
 
+/**
+ * How much a club discounts a man who can walk away from it.
+ *
+ * Nought years of eligibility left is a senior, who has no leverage and signs.
+ * One is a junior, who can go back for a victory lap and mostly does not. Two
+ * or three is an underclassman the age clause has exposed, and he can cost a
+ * club a whole pick by simply going back to school — so clubs take him only
+ * when they mean to pay him, which is what keeps the age exception occasional
+ * rather than a second graduating class every June.
+ *
+ * These are the numbers the old talent bars produced, kept deliberately: the
+ * frequency an underclassman leaves at was right, it was the *reason* that was
+ * a fiction.
+ */
+const LEVERAGE_DISCOUNT: Record<number, number> = { 0: 0.6, 1: 1, 2: 0.35, 3: 0.15 };
+
 /** Does this player leave the program this offseason? */
 function departure(p: Player, rng: Rng): DepartureReason | null {
-  const overall = overallOf(p);
+  const leverage = yearsOfLeverage(p.classYear);
+  const chance = draftChance(overallOf(p)) * (LEVERAGE_DISCOUNT[leverage] ?? 1);
+
   if (p.classYear === 'SR') {
-    // Seniors are gone either way. Whether they were drafted is flavour, but it
-    // is the flavour that tells you how good your program's exits were.
-    return rng() < draftChance(overall) * 0.6 ? 'drafted' : 'graduated';
+    // A senior is gone either way. Whether a club called his name is flavour,
+    // but it is the flavour that tells you how good your program's exits were.
+    return rng() < chance ? 'drafted' : 'graduated';
   }
-  if (p.classYear === 'JR') {
-    return rng() < draftChance(overall) ? 'drafted' : null;
-  }
-
-  // The exception, and it has to exist.
-  //
-  // Reported from testing: "I had a super rookie who was doing wonders — there
-  // is no way a player like that would not be drafted once the season is
-  // finished". The real rule is three years or age twenty one, but the feeling
-  // the rule produces is the point: a genuinely special underclassman is not
-  // yours for as long as you would like. The bar is deliberately steep, so this
-  // happens to a program once in a long while rather than every June.
-  if (p.classYear === 'SO' && overall >= UNDERCLASS_BAR.SO) {
-    return rng() < draftChance(overall) * 0.35 ? 'drafted' : null;
-  }
-  if (p.classYear === 'FR' && overall >= UNDERCLASS_BAR.FR) {
-    return rng() < draftChance(overall) * 0.15 ? 'drafted' : null;
-  }
-  return null;
+  // Everyone else: the door has to be open before anybody can walk through it.
+  // Ordinarily that is the end of his third year, which is why a freshman and a
+  // sophomore are safe and the cliff arrives on schedule. The exception is the
+  // man who arrived at nineteen or twenty and is already twenty one.
+  if (!draftEligible(p)) return null;
+  return rng() < chance ? 'drafted' : null;
 }
-
-/**
- * How good an underclassman has to be before anybody drafts him.
- *
- * A sophomore at 70 is the best player in most conferences; a freshman at 78 is
- * the best player in the country. Below these the draft does not touch them.
- */
-export const UNDERCLASS_BAR = { SO: 70, FR: 78 } as const;
 
 /**
  * A year of development, applied after the class year advances.
@@ -261,6 +274,9 @@ function refill(
     if (any) { any.pos = pos; return any; }
     const p = makeHitter(rng, team.quality - WALK_ON_PENALTY + gauss(rng) * 3, { pos });
     p.classYear = 'FR';
+    // Generated at whatever class year the draw handed him, so his age has to
+    // come back into step with the freshman the roster is about to call him.
+    p.age = ageFor(p.id, 'FR');
     p.walkOn = true;
     collect?.push(p);
     return p;
@@ -273,6 +289,7 @@ function refill(
     if (any) { any.role = role; return any; }
     const p = makePitcher(rng, team.quality - WALK_ON_PENALTY + gauss(rng) * 3, { role });
     p.classYear = 'FR';
+    p.age = ageFor(p.id, 'FR');
     p.walkOn = true;
     collect?.push(p);
     return p;
@@ -442,7 +459,7 @@ const emptyReport = (): OffseasonReport => ({
  * on the bench, four starters, six in the pen — so it says "you are two arms
  * and a catcher short" rather than "you lost six players".
  */
-function holesFor(survivors: readonly Player[]): { pos: string; count: number }[] {
+export function holesFor(survivors: readonly Player[]): { pos: string; count: number }[] {
   const hitters = survivors.filter((p): p is Hitter => p.type === 'hitter');
   const arms = survivors.filter((p): p is Pitcher => p.type === 'pitcher');
   const out: { pos: string; count: number }[] = [];
@@ -476,6 +493,11 @@ export function departAndDevelop(
   season: SeasonState, rng: Rng, opts: OffseasonOpts = {},
 ): OffseasonReport {
   const report = emptyReport();
+  // What the clubs see, taken once against the season everybody just played,
+  // so a .900 OPS is graded against the league that produced it.
+  const ctx = draftContext(season);
+  const mine = opts.userTeam ?? season.captureBoxFor;
+  const board: DraftBoard = { year: season.year ?? 0, spent: 0, men: [] };
 
   for (const record of season.teams) {
     const team = record.team;
@@ -489,6 +511,20 @@ export function departAndDevelop(
 
     const survivors: Player[] = [];
     for (const p of roster) {
+      /**
+       * A birthday, before anything else is decided.
+       *
+       * The draft is held in June and eligibility is read at that moment, so
+       * the man who arrived at nineteen has to be twenty one *here*, at the end
+       * of his sophomore season, and not a step later. Ticking after the
+       * departure check would put the age clause a full year behind the rule it
+       * is supposed to express.
+       *
+       * Everybody ages, including the men about to leave, because a drafted
+       * junior really is twenty one on the day a club calls his name and the
+       * departure notice should say so.
+       */
+      p.age += 1;
       /**
        * A walk-on gets the season he was found for, and that is all.
        *
@@ -507,11 +543,23 @@ export function departAndDevelop(
           team: record.index,
           teamAbbr: record.def.abbr,
           classYear: p.classYear,
+          age: p.age,
           overall: overallOf(p),
           reason,
         };
-        if (reason === 'drafted') report.drafted.push(row);
-        else report.graduated.push(row);
+        if (reason === 'drafted') {
+          row.round = draftRound(visibleValue(p, season, ctx));
+          report.drafted.push(row);
+          // Your own men with eligibility still on them are the only ones there
+          // is a conversation to be had with. A senior has nothing left to go
+          // back to, and a rival program's junior is not yours to talk to.
+          if (record.index === mine && p.classYear !== 'SR') {
+            board.men.push({
+              player: p, round: row.round,
+              pitch: null, offered: 0, made: 0, needed: 0, outcome: 'pending',
+            });
+          }
+        } else report.graduated.push(row);
         continue;
       }
 
@@ -524,31 +572,64 @@ export function departAndDevelop(
       survivors.push(p);
     }
 
-    if (record.index === (opts.userTeam ?? season.captureBoxFor)) {
-      report.holes = holesFor(survivors);
-    }
+    if (record.index === mine) report.holes = holesFor(survivors);
 
-    // Held in the roster arrays as they are, structure and all. `fillRosters`
-    // rebuilds the shape once the class is known.
-    const hitters = survivors.filter((p): p is Hitter => p.type === 'hitter');
-    const arms = survivors.filter((p): p is Pitcher => p.type === 'pitcher');
-    team.lineup = hitters.slice(0, LINEUP_SPOTS.length);
-    team.bench = hitters.slice(LINEUP_SPOTS.length);
-    team.rotation = arms.filter((p) => p.role === 'SP').slice(0, ROTATION_SIZE);
-    team.bullpen = arms.filter(
-      (p) => p.role === 'RP' || arms.filter((x) => x.role === 'SP').indexOf(p) >= ROTATION_SIZE,
-    );
+    regroup(team, survivors);
   }
 
-  // Order the draft nationally once every program has been through.
-  //
-  // Rounds are assigned across the league rather than per team, because a round
-  // is only meaningful as a national ordering — thirty two names deep, then the
-  // next thirty two, exactly as a real draft board reads.
-  report.drafted.sort((a, b) => b.overall - a.overall);
-  report.drafted.forEach((d, i) => { d.round = Math.floor(i / 32) + 1; });
+  // Best first inside each round, so the national board reads like one.
+  report.drafted.sort((a, b) => (a.round ?? 99) - (b.round ?? 99) || b.overall - a.overall);
+  board.men.sort((a, b) => a.round - b.round || overallOf(b.player) - overallOf(a.player));
+  season.draft = board;
 
   return report;
+}
+
+/**
+ * Put the survivors back in the roster arrays, structure and all.
+ *
+ * `fillRosters` rebuilds the real shape once the class is known, so all this
+ * has to do is keep the four arrays a legal home for everybody left. Written
+ * once because a man talked out of the draft is put back through the same
+ * door he came out of, and two versions of "where does he go" would eventually
+ * disagree about a fourth starter.
+ */
+function regroup(team: Team, survivors: readonly Player[]): void {
+  const hitters = survivors.filter((p): p is Hitter => p.type === 'hitter');
+  const arms = survivors.filter((p): p is Pitcher => p.type === 'pitcher');
+  const starters = arms.filter((p) => p.role === 'SP');
+  team.lineup = hitters.slice(0, LINEUP_SPOTS.length);
+  team.bench = hitters.slice(LINEUP_SPOTS.length);
+  team.rotation = starters.slice(0, ROTATION_SIZE);
+  team.bullpen = arms.filter(
+    (p) => p.role === 'RP' || starters.indexOf(p) >= ROTATION_SIZE,
+  );
+}
+
+/**
+ * A man who was drafted and came back to school anyway.
+ *
+ * He missed the class-year bump and the development pass on the way out, so he
+ * takes both now — which is the whole reason a returning junior is a senior
+ * with no leverage next June, and why the year he bought you is a real year of
+ * growth rather than a pause. He is put back through `regroup` for the same
+ * reason everybody else went through it.
+ *
+ * Returns what the year did to him, so the offseason report's development
+ * totals stay the sum of everybody who actually stayed.
+ */
+export function reinstate(
+  team: Team, p: Player, rng: Rng, growthMult = 1,
+): number {
+  const next = NEXT_CLASS[p.classYear];
+  if (next === null) return 0;
+  p.classYear = next;
+  const gained = develop(p, rng, growthMult);
+  const survivors: Player[] = [
+    ...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen, p,
+  ];
+  regroup(team, survivors);
+  return gained;
 }
 
 /**

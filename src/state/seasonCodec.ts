@@ -17,6 +17,7 @@
 // a rebuilt schedule cannot arrive out of step with the teams it belongs to,
 // because it is built from them.
 
+import { ageFor } from '../engine/players.js';
 import { rngFromState } from '../engine/rng.js';
 import { buildSchedule, rebuildNameIndex, worldFromTeams } from '../engine/season.js';
 import { strategyFor } from '../engine/strategy.js';
@@ -50,6 +51,26 @@ export function fromPortable(p: Portable): SeasonState {
     const t = team as Partial<typeof team>;
     if (!t.strategy) team.strategy = strategyFor(team.index);
     if (typeof t.prestige !== 'number') team.prestige = initialPrestige(team.def.prestige);
+  }
+
+  // The same rule one level down: a save written before players had ages holds
+  // men whose age is simply absent, and draft eligibility reads it. Backfilled
+  // rather than made optional on the type, because "optional" would put a
+  // fallback at every one of the dozen places that print it and one of them
+  // would eventually get it wrong. `ageFor` reproduces exactly what the
+  // generator would have given him, so a resumed dynasty and a fresh one agree.
+  for (const team of p.season.teams) {
+    for (const man of [
+      ...team.team.lineup, ...team.team.bench,
+      ...team.team.rotation, ...team.team.bullpen,
+    ]) {
+      if (typeof man.age !== 'number') man.age = ageFor(man.id, man.classYear);
+    }
+  }
+  for (const prospect of p.season.recruiting?.prospects ?? []) {
+    if (typeof prospect.player.age !== 'number') {
+      prospect.player.age = ageFor(prospect.player.id, prospect.player.classYear);
+    }
   }
 
   // Same rule one level up: a save written before fielding was kept has two stat

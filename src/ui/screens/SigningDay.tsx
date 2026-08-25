@@ -469,7 +469,11 @@ function RecruitSheet({
                 {p.name}
               </div>
               <div style={{ marginTop: 3, font: "400 11px var(--mono)", color: 'var(--dim)' }}>
-                {slotOf(prospect)} &middot; bats {p.bats} &middot; throws {p.throws}
+                {/* Age, because a class is not all one age. A freshman who
+                    arrives at twenty is draft eligible after one season, and
+                    the day you sign him is the day to know it. */}
+                {slotOf(prospect)} &middot; age {p.age} &middot; bats {p.bats}
+                {' '}&middot; throws {p.throws}
               </div>
             </div>
           </div>

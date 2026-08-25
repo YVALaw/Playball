@@ -8,9 +8,9 @@
 
 import { gauss, normal } from './rng.js';
 import { overallOf } from './ratings.js';
-import { GENERATED_POTENTIAL_CAP } from './scouting.js';
+import { GENERATED_POTENTIAL_CAP, scoutNoise } from './scouting.js';
 import { FIRST, LAST } from '../data/names.js';
-import { playerId } from './types.js';
+import { CLASS_ORDER, playerId } from './types.js';
 import type {
   Bats, ClassYear, Hand, Hitter, PitcherRole, Pitcher, PlayerId, Position, Rng, Team,
 } from './types.js';
@@ -54,6 +54,40 @@ function projectPotential(rng: Rng, overall: number, cls: ClassYear): number {
   // rather than the letter.
   return Math.min(GENERATED_POTENTIAL_CAP, Math.round(overall + headroom + raw));
 }
+
+/**
+ * How old a man is on the day he first walks into a college programme.
+ *
+ * Eighteen for four in five of them, and older for the rest: a gap year, a late
+ * start, two seasons at a junior college. That tail is not decoration. Draft
+ * eligibility arrives at three years completed *or* twenty one, so a freshman
+ * who turned up at nineteen is in range after his sophomore season and one who
+ * turned up at twenty is in range after his first — a year or two before the
+ * rest of his class, and the only way the age clause ever fires.
+ *
+ * Hashed out of the player's id rather than drawn from the generator. Every
+ * rng() call in this file sits in a fixed sequence, and spending one here would
+ * move every downstream number in the whole simulation for the sake of a fact
+ * that decides nothing on the field; `nextPlayerId` reads the stream's position
+ * without turning it for exactly the same reason. The id comes off a bijection
+ * on 32 bits, so it is as uniform as a draw would have been.
+ */
+const ARRIVAL_SALT = 5147;
+export function arrivalAge(id: string): number {
+  const u = scoutNoise(id, ARRIVAL_SALT);
+  return u < 0.80 ? 18 : u < 0.95 ? 19 : 20;
+}
+
+/**
+ * How old a man of a given class year is.
+ *
+ * Recomputed rather than stored anywhere else, so the two places that overwrite
+ * a generated player's class year — a recruit forced to FR, a walk-on
+ * manufactured as one — can put the age back in step with a single call instead
+ * of leaving a senior's age on a freshman's card.
+ */
+export const ageFor = (id: string, cls: ClassYear): number =>
+  arrivalAge(id) + CLASS_ORDER[cls];
 
 /** One draw. The cast is safe: the array is non-empty and rng() is below 1. */
 function pick<T>(rng: Rng, arr: readonly T[]): T {
@@ -240,6 +274,11 @@ export function makeHitter(rng: Rng, quality = 50, opts: HitterOpts = {}): Hitte
   const throws = opts.throws ?? drawThrows(rng, bats);
   const name = uniqueName(rng);
   const pos = opts.pos ?? pick(rng, POSITIONS);
+  // Hoisted out of the literal, where it used to be drawn, so that the age
+  // below can read it. The draw still happens at exactly this point in the
+  // sequence — after the position and before the platoon split — so no
+  // downstream number moves.
+  const classYear = pick(rng, CLASSES);
   const spec = SPECTRUM[pos];
   let buntNoise = 0;
   let stealNoise = 0;
@@ -249,7 +288,8 @@ export function makeHitter(rng: Rng, quality = 50, opts: HitterOpts = {}): Hitte
     id,
     name,
     pos,
-    classYear: pick(rng, CLASSES),
+    classYear,
+    age: ageFor(id, classYear),
     bats,
     throws,
     platoonSkill: drawPlatoonSkill(rng, bats),
@@ -306,6 +346,9 @@ export function makePitcher(rng: Rng, quality = 50, opts: PitcherOpts = {}): Pit
   const role: PitcherRole = opts.role ?? 'SP';
   const sidearm = throws === 'R' && rng() < 0.08 && role === 'RP';
   const name = uniqueName(rng);
+  // Hoisted for the same reason as in `makeHitter`, and drawn in the same place
+  // in the sequence it always was.
+  const classYear = pick(rng, CLASSES);
   let velocityNoise = 0;
   let accuracyNoise = 0;
   const p: Pitcher = {
@@ -315,7 +358,8 @@ export function makePitcher(rng: Rng, quality = 50, opts: PitcherOpts = {}): Pit
     name,
     pos: 'P',
     role,
-    classYear: pick(rng, CLASSES),
+    classYear,
+    age: ageFor(id, classYear),
     bats: throws,
     throws,
     sidearm,

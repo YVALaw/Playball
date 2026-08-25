@@ -24,12 +24,14 @@
 // which a small program actually takes somebody. That is the moment the mode
 // exists to produce.
 
-import { makeHitter, makePitcher } from './players.js';
+import { ageFor, makeHitter, makePitcher } from './players.js';
 import { overallOf } from './ratings.js';
 import {
   GRADE_LADDER, TOP_GENERATED_GRADE, potentialGrade, scoutNoise, type PotentialGrade,
 } from './scouting.js';
-import type { Player, PlayerId, Position, Rng } from './types.js';
+import type {
+  Player, PlayerId, Position, Priorities, Priority, Rng,
+} from './types.js';
 import { STATES_BY_REGION, type Region } from '../data/schools.js';
 
 /** Positions a class is built to cover, in rough proportion to roster need. */
@@ -43,8 +45,12 @@ const CLASS_SHAPE: readonly (Position | 'SP' | 'RP')[] = [
  *
  * Each is a real quantity the program already has, not a number invented for
  * this screen — which is what stops the pitch system from being flavour text.
+ *
+ * The two type names moved to `types.ts` when a player started carrying his own
+ * set into the draft. They are re-exported here because this is still where the
+ * system lives and where every caller already looks for them.
  */
-export type Priority = 'prestige' | 'playingTime' | 'winning' | 'proximity' | 'development';
+export type { Priority, Priorities } from './types.js';
 
 export const PRIORITIES: readonly Priority[] =
   ['prestige', 'playingTime', 'winning', 'proximity', 'development'];
@@ -64,9 +70,6 @@ export const PRIORITY_BLURB: Record<Priority, string> = {
   proximity: 'wants to stay near home',
   development: 'wants a coach who will make him a draft pick',
 };
-
-/** How much a recruit weighs each factor. Sums to 1. */
-export type Priorities = Record<Priority, number>;
 
 export interface Prospect {
   readonly id: PlayerId;
@@ -165,11 +168,43 @@ export function budgetFor(stars: number): number {
   return RECRUITING_BUDGET + Math.max(0, Math.round((stars - 1) * 5));
 }
 
+/**
+ * The whole offseason's budget, which is now spent in two places.
+ *
+ * The draft phase runs immediately before the board opens and keeping a drafted
+ * player is paid for out of this same pool — which is the entire reason the two
+ * steps are next to each other. Keep the ace or sign the class.
+ *
+ * Whatever the draft took comes off every week evenly rather than emptying week
+ * one. A coach who spent forty in June should find the window a third thinner
+ * for three weeks, not shut for one and normal afterwards: the second version
+ * would let him keep an ace and lose nothing he could not have recovered by
+ * waiting.
+ */
+export const windowBudget = (stars: number): number =>
+  budgetFor(stars) * RECRUITING_WEEKS;
+
+export const weeklyBudget = (stars: number, spentOnTheDraft: number): number =>
+  Math.max(0, Math.floor(
+    (windowBudget(stars) - Math.max(0, spentOnTheDraft)) / RECRUITING_WEEKS,
+  ));
+
 /** The most that can go on one recruit in one week. Nobody signs on money alone. */
 export const MAX_PER_RECRUIT = 12;
 
 /** @deprecated Kept until the board screen stops naming it. */
 export const BOARD_SLOTS = SCHOLARSHIPS;
+
+/**
+ * @deprecated The flat week every program outside the user's office worked with.
+ *
+ * It stopped being a harmless simplification the moment the draft gave the user
+ * a second place to spend. His week comes off `budgetFor(stars)` and has money
+ * taken out of it in June; the other ninety five had a flat forty that no
+ * prestige raised and no draft could touch, so handing them a retention
+ * mechanic would have been handing them free money. `aiTargets` reads
+ * `weeklyBudget` now, exactly as his board does. Nothing else uses this.
+ */
 export const ACTIONS_PER_WEEK = RECRUITING_BUDGET;
 
 /**
@@ -237,6 +272,37 @@ export function starsFor(p: Player): number {
  * board is just the prestige table sorted twice.
  */
 function drawPriorities(stars: number, rng: Rng): Priorities {
+  return priorityWeights(stars, rng);
+}
+
+/**
+ * The same five weights for a man nobody ever recruited.
+ *
+ * A rival program's roster is generated whole on the first day of the world and
+ * a walk-on is manufactured in June, so neither ever sat on a recruiting board
+ * and neither has weights of his own. The draft still has to ask what is
+ * pulling him, and answering "the league average" would make every one of them
+ * the same negotiation.
+ *
+ * Hashed out of the id rather than drawn, for the reason `arrivalAge` is: the
+ * generator's sequence in players.ts is load bearing and this is worth no draws
+ * at all. Stable, so the man reads the same way every time you open him.
+ */
+const PRIORITY_SALT = 4157;
+export function prioritiesFor(id: string, stars: number): Priorities {
+  let step = 0;
+  return priorityWeights(stars, () => scoutNoise(id, PRIORITY_SALT + step++ * 13));
+}
+
+/**
+ * One draw of the weights, from whatever source of numbers the caller has.
+ *
+ * Split so the recruiting board and the draft cannot drift apart: a man who
+ * came through a class carries the weights the generator gave him, a man who
+ * did not gets a hashed set from here, and both are the same distribution
+ * rather than two that resemble each other.
+ */
+function priorityWeights(stars: number, roll: () => number): Priorities {
   const tilt = (stars - 3) / 2;                 // -1 for a one star, +1 for a five
 
   // Base leanings, before the dice.
@@ -254,8 +320,8 @@ function drawPriorities(stars: number, rng: Rng): Priorities {
   const raw: Priorities = { ...base };
   let total = 0;
   for (const k of PRIORITIES) {
-    const roll = Math.pow(rng(), 1.7) * 2.1;
-    raw[k] = Math.max(0.04, base[k] * (0.45 + roll));
+    const lump = Math.pow(roll(), 1.7) * 2.1;
+    raw[k] = Math.max(0.04, base[k] * (0.45 + lump));
     total += raw[k];
   }
   for (const k of PRIORITIES) raw[k] /= total;
@@ -393,10 +459,18 @@ export function generateClass(year: number, teams: number, rng: Rng): RecruitCla
       ? makePitcher(rng, quality, { role: slot })
       : makeHitter(rng, quality, { pos: slot });
     player.classYear = 'FR';
+    // He was generated at whatever class year the draw handed him, so his age
+    // has to come back into step with the freshman he is about to be.
+    player.age = ageFor(player.id, 'FR');
 
     const stars = starsFor(player);
     const home = HOME_REGIONS[Math.floor(rng() * HOME_REGIONS.length)] as Region;
     const priorities = drawPriorities(stars, rng);
+    // Written onto the man himself as well as onto the prospect wrapper. The
+    // wrapper is thrown away on signing day and the player is not, and three
+    // years later the draft wants to know the same thing about him that the
+    // recruiting board did.
+    player.priorities = priorities;
     prospects.push({
       id: player.id,
       player,
@@ -897,6 +971,7 @@ export function aiTargets(
   team: number, pitch: Pitch, coachPrestige: number,
   prospects: readonly Prospect[], need: number, rng: Rng,
   atWeekStart: Record<string, number> = {},
+  spentOnTheDraft = 0,
 ): { prospect: Prospect; actions: number }[] {
   void coachPrestige;
 
@@ -1017,11 +1092,23 @@ export function aiTargets(
   });
   const totalWeight = weights.reduce((a, b) => a + b, 0);
 
+  // The same week the user gets, read off the same two numbers: what the
+  // program's own prestige is worth, less whatever June already took out of it.
+  //
+  // This used to be a flat forty for all ninety five of them, which was
+  // survivable only while the draft did not exist. Once keeping a player cost
+  // recruiting money, a budget the draft could not touch was a budget the AI
+  // could spend twice — so the retention mechanic could not be given to them
+  // until the money it comes out of was real. It is the same call `boardBudget`
+  // makes for the user, deliberately, because two formulas for one week is how
+  // an asymmetry gets back in.
+  const week = weeklyBudget(pitch.stars, spentOnTheDraft);
+
   const out: { prospect: Prospect; actions: number }[] = [];
-  let left = ACTIONS_PER_WEEK;
+  let left = week;
   picks.forEach((prospect, i) => {
     if (left <= 0) return;
-    const want = Math.round((weights[i] as number) / totalWeight * ACTIONS_PER_WEEK);
+    const want = Math.round((weights[i] as number) / totalWeight * week);
     const actions = Math.max(1, Math.min(MAX_PER_RECRUIT, Math.min(want, left)));
     left -= actions;
     out.push({ prospect, actions });

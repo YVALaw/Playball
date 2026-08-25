@@ -18,13 +18,18 @@ import {
   type SeasonState,
 } from '../engine/season.js';
 import { recordCoachMarks } from '../engine/records.js';
+import { overallOf } from '../engine/ratings.js';
 import type { GameResult } from '../engine/game.js';
 import { playerId } from '../engine/types.js';
 import type { Hitter, Pitcher, PlayerId, Tactic } from '../engine/types.js';
 import { createLiveGame, type LiveGame } from '../engine/liveGame.js';
 import {
-  departAndDevelop, fillRosters, type OffseasonReport,
+  departAndDevelop, fillRosters, holesFor as rosterHoles, reinstate,
+  type OffseasonReport,
 } from '../engine/progression.js';
+import {
+  letHimGo, makeTheCase, type KeepPitch, type KeepScene,
+} from '../engine/draft.js';
 import {
   newCoach, restoreCoach, reviewSeason, jobOffers, rosterStrength, contractFor,
   prestigeStars, skillPoints,
@@ -44,6 +49,7 @@ import {
 } from '../engine/postseason.js';
 import {
   SCHOLARSHIPS, RECRUITING_BUDGET, MAX_PER_RECRUIT, RECRUITING_WEEKS, budgetFor,
+  weeklyBudget, windowBudget,
   aiTargets, weeklyPoints, closeWeek, resetWeeklySpend, canPursue, leadersAtWeekStart,
 } from '../engine/recruiting.js';
 import { pitchFor, developmentScore } from '../engine/pitch.js';
@@ -85,6 +91,58 @@ export function seedRivalInterest(season: SeasonState, userTeam: number): void {
   }
   // The spend is the AI's own; the player's budget is untouched.
   resetWeeklySpend(season.recruiting);
+}
+
+/**
+ * What one week of the recruiting board is worth to this program.
+ *
+ * Its own prestige tier, less whatever the draft phase has already spent
+ * keeping people. Read through one function because two screens and one action
+ * all have to agree about it: the board header prints it, the spend control
+ * caps against it, and `recruit` refuses above it.
+ */
+export function boardBudget(season: SeasonState | null, userTeam: number): number {
+  return weeklyBudget(
+    prestigeStars(season?.teams[userTeam]?.prestige ?? 50),
+    season?.draft?.spent ?? 0,
+  );
+}
+
+/**
+ * The case a coach can honestly make to a man professional baseball has just
+ * taken, assembled from what is true of the program right now.
+ *
+ * Same principle as `pitchFor` in the recruiting model: every number is read
+ * off real state, so a promise is credible exactly where the program can back
+ * it and nowhere else. `blockedBy` is the one that has to be per player — a
+ * role is only open if nobody better is standing in it — and it reads the
+ * roster *after* the draft has emptied it, which is the roster he would
+ * actually be coming back to.
+ */
+function sceneFor(
+  season: SeasonState, userTeam: number, coach: CoachState, p: Hitter | Pitcher,
+  round: number,
+): KeepScene {
+  const record = season.teams[userTeam];
+  const roster = record
+    ? [...record.team.lineup, ...record.team.bench,
+      ...record.team.rotation, ...record.team.bullpen]
+    : [];
+  const strength = roster.length > 0
+    ? roster.reduce((a, r) => a + overallOf(r), 0) / roster.length
+    : 44;
+  const here = p.type === 'pitcher'
+    ? roster.filter((r) => r.type === 'pitcher' && r.role === p.role)
+    : roster.filter((r) => r.type === 'hitter' && r.pos === p.pos);
+  return {
+    prestige: Math.max(0, Math.min(1, (record?.prestige ?? 50) / 100)),
+    returning: Math.max(0, Math.min(1, (strength - 44) / 16)),
+    coachPrestige: coach.prestige,
+    tenure: coach.tenure,
+    training: coach.skills.training,
+    blockedBy: here.reduce((best, r) => Math.max(best, overallOf(r)), 0),
+    round,
+  };
 }
 
 /** Roughly how many bodies a program has to replace, which sizes its board. */
@@ -314,6 +372,16 @@ export interface DynastyStore {
   phase: Phase;
   /** Move to the next step. At the end of the sequence, rolls the year over. */
   nextPhase: () => Promise<void>;
+  /**
+   * Make one of the four cases to a man a professional club has just taken.
+   *
+   * The offer is recruiting budget and it is gone whether it works or not, so
+   * this is the one action in the game that can cost a coach a class and give
+   * him nothing back. See `engine/draft.ts`.
+   */
+  keepPlayer: (id: PlayerId, pitch: KeepPitch, offer: number) => void;
+  /** Shake his hand and keep the money. */
+  releasePlayer: (id: PlayerId) => void;
   /** Put a skill point into one of the coach's four attributes. */
   spendSkill: (skill: keyof CoachSkills) => void;
   /** Close the books on the season just played. Called when the review opens. */
@@ -777,7 +845,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // already limit what you can actually sign.
     // Against this program's budget, not a flat league-wide one: prestige buys
     // attention, and that is most of what a good job is worth on the board.
-    const budget = budgetFor(prestigeStars(get().season?.teams[userTeam]?.prestige ?? 50));
+    // Less whatever the draft phase already took to keep somebody, which is the
+    // sequencing the whole retention mechanic hangs on.
+    const budget = boardBudget(get().season, userTeam);
     const allowed = Math.min(wanted, budget - spentElsewhere);
     if (allowed <= 0) delete prospect.spent[userTeam];
     else prospect.spent[userTeam] = allowed;
@@ -852,6 +922,58 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     });
   },
 
+  keepPlayer: (id, pitch, offer) => {
+    const { season, userTeam, coach, version, phase } = get();
+    const board = season?.draft;
+    if (!season || !board || phase !== 'draft') return;
+    const man = board.men.find((m) => m.player.id === id);
+    if (!man || man.outcome !== 'pending') return;
+
+    const stars = prestigeStars(season.teams[userTeam]?.prestige ?? 50);
+    const left = windowBudget(stars) - board.spent;
+    const scene = sceneFor(season, userTeam, coach, man.player, man.round);
+    const { spent, kept } = makeTheCase(man, pitch, offer, scene, left);
+    board.spent += spent;
+
+    if (kept) {
+      const record = season.teams[userTeam];
+      const report = get().lastOffseason;
+      if (record) {
+        // He takes the class-year bump and the development year he was skipped
+        // for on the way out, the user's TRAINING included — this is his year,
+        // and it is the year the coach just bought on his behalf.
+        const gained = reinstate(
+          record.team, man.player, season.rng,
+          1 + (coach.skills.training - 20) / 500,
+        );
+        if (report) {
+          report.developmentNet += gained;
+          if (gained > 0) report.improved += 1; else report.declined += 1;
+          // The notice stays and changes its mind. Every count of what you lost
+          // reads `returned`, and the holes he no longer leaves are recomputed
+          // from the roster he is standing on again.
+          const row = report.drafted.find((d) => d.id === id);
+          if (row) row.returned = true;
+          report.holes = rosterHoles([
+            ...record.team.lineup, ...record.team.bench,
+            ...record.team.rotation, ...record.team.bullpen,
+          ]);
+        }
+      }
+    }
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  releasePlayer: (id) => {
+    const { season, version, phase } = get();
+    const man = season?.draft?.men.find((m) => m.player.id === id);
+    if (!man || phase !== 'draft') return;
+    letHimGo(man);
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
   /**
    * Walk one step through the offseason.
    *
@@ -881,6 +1003,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // a single point of effort led the field. Recruiting is a competition and it
     // has to look like one on the day it starts.
     if (next === 'recruiting') {
+      // Anybody still sitting on the draft board has run out of time to be
+      // talked to. Signing with the club that took him is what happens when a
+      // coach does nothing, so doing nothing has to mean that here too rather
+      // than leaving him in limbo on a screen nobody will come back to.
+      for (const man of season.draft?.men ?? []) letHimGo(man);
       seedRivalInterest(season, get().userTeam);
       season.recruiting.week = 1;
       set({
@@ -933,12 +1060,27 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         recordCoachMarks(season.records, year, get().coach, chair.def.abbr);
       }
 
-      const report = departAndDevelop(season, season.rng, {
-        userTeam: get().userTeam,
-        training: get().coach.skills.training,
-      });
+      /*
+        The third thing here is emphatically *not* idempotent, and the rail lets
+        you walk back to the coach step and come forward again.
+
+        `departAndDevelop` empties every roster in the league and develops
+        everybody who stays. Run twice it would graduate a second class out of
+        rosters that had already lost one, and it would rebuild the draft board
+        over the top of decisions the coach had already paid for — an ace talked
+        out of professional baseball would be gone again with his price still
+        deducted. `furthestPhase` is the record of having been here, and it is
+        the one thing in the offseason that only ever moves forward.
+      */
+      if (get().furthestPhase < PHASES.indexOf('draft')) {
+        const report = departAndDevelop(season, season.rng, {
+          userTeam: get().userTeam,
+          training: get().coach.skills.training,
+        });
+        set({ lastOffseason: report });
+      }
       set({
-        lastOffseason: report, phase: next,
+        phase: next,
         furthestPhase: Math.max(get().furthestPhase, PHASES.indexOf(next)),
         version: get().version + 1,
       });

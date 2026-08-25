@@ -9,7 +9,10 @@
 // week that ended a season ago — over a board it did not describe.
 
 import { describe, it, expect } from 'vitest';
-import { useDynasty, PHASES } from '../src/state/store.js';
+import { useDynasty, PHASES, boardBudget } from '../src/state/store.js';
+import { windowBudget } from '../src/engine/recruiting.js';
+import { prestigeStars } from '../src/engine/program.js';
+import type { DraftBoard } from '../src/engine/draft.js';
 import { createSeason, simSeason } from '../src/engine/season.js';
 import type { SeasonState, TeamRecord } from '../src/engine/season.js';
 import type { OffseasonReport } from '../src/engine/progression.js';
@@ -507,5 +510,153 @@ describe("a departing player's last season reaches the record book", () => {
 
     await intoTheDraft();
     for (const [id, count] of after) expect(rowsFor(id)).toBe(count);
+  });
+});
+
+describe('talking a drafted player out of professional baseball', () => {
+  /**
+   * The mechanic's whole weight is that it spends the recruiting budget, and
+   * the recruiting board opens ninety seconds later. So what has to be held
+   * here is not the persuasion arithmetic — that is `tests/draft.test.ts` —
+   * but the accounting: the money comes out of the right pool, it cannot go
+   * past the bottom of it, and a man who stays is genuinely back on the roster
+   * rather than only marked as such.
+   */
+
+  const intoTheDraft = async (seed: number): Promise<SeasonState> => {
+    useDynasty.getState().start(seed, 0);
+    const season = useDynasty.getState().season as SeasonState;
+    simSeason(season);
+    useDynasty.setState({ phase: 'coach', furthestPhase: PHASES.indexOf('coach') });
+    await useDynasty.getState().nextPhase();
+    return season;
+  };
+
+  const window = (season: SeasonState): number =>
+    windowBudget(prestigeStars((season.teams[0] as TeamRecord).prestige));
+
+  it('offers your own men with eligibility left, and nobody else', async () => {
+    const season = await intoTheDraft(6161);
+    const board = season.draft as DraftBoard;
+    const report = useDynasty.getState().lastOffseason as OffseasonReport;
+    const abbr = (season.teams[0] as TeamRecord).def.abbr;
+
+    expect(board.men.length).toBeGreaterThan(0);
+    const drafted = new Map(report.drafted.map((d) => [d.id, d]));
+    for (const man of board.men) {
+      const notice = drafted.get(man.player.id);
+      expect(notice, 'somebody on the board was never drafted').toBeDefined();
+      expect(notice?.teamAbbr, 'a rival program\'s player was offered to you').toBe(abbr);
+      // A senior has nothing to come back to, so there is no conversation.
+      expect(man.player.classYear).not.toBe('SR');
+      expect(man.round).toBe(notice?.round);
+    }
+  });
+
+  it('never spends past the bottom of the recruiting pool', async () => {
+    const season = await intoTheDraft(6161);
+    const board = season.draft as DraftBoard;
+    const man = board.men[0] as DraftBoard['men'][number];
+    // Everything, twice over, on one man.
+    useDynasty.getState().keepPlayer(man.player.id, 'ring', 9999);
+    expect(board.spent).toBe(window(season));
+    expect(boardBudget(season, 0)).toBe(0);
+
+    // And a second man cannot spend money that is gone.
+    const next = board.men[1];
+    if (next) {
+      useDynasty.getState().keepPlayer(next.player.id, 'word', 40);
+      expect(board.spent).toBe(window(season));
+      expect(next.offered).toBe(0);
+    }
+  });
+
+  it('takes what it spends off every week of the board', async () => {
+    const season = await intoTheDraft(6161);
+    const board = season.draft as DraftBoard;
+    const full = boardBudget(season, 0);
+    const man = board.men[0] as DraftBoard['men'][number];
+    useDynasty.getState().keepPlayer(man.player.id, 'word', 30);
+    expect(board.spent).toBe(30);
+    // Thirty out of a three week window is ten a week.
+    expect(boardBudget(season, 0)).toBe(full - 10);
+  });
+
+  it('puts a man who stays back on the roster, as a senior', async () => {
+    const season = await intoTheDraft(6161);
+    const board = season.draft as DraftBoard;
+    const junior = board.men.find((m) => m.player.classYear === 'JR');
+    expect(junior).toBeDefined();
+    const man = junior as DraftBoard['men'][number];
+
+    // Made deliberately cheap and deliberately well matched, because what is
+    // being tested here is the bookkeeping and not whether the price was fair.
+    man.round = 20;
+    man.player.priorities = {
+      prestige: 0.02, playingTime: 0.02, winning: 0.92, proximity: 0.02, development: 0.02,
+    };
+    useDynasty.getState().keepPlayer(man.player.id, 'ring', 60);
+    expect(man.outcome, 'he did not stay').toBe('stayed');
+
+    const team = (season.teams[0] as TeamRecord).team;
+    const roster = [...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen];
+    expect(roster.some((p) => p.id === man.player.id)).toBe(true);
+    // A returning junior is a senior, which is the bet: no leverage next June.
+    expect(man.player.classYear).toBe('SR');
+    // He is on the roster once, not twice.
+    expect(roster.filter((p) => p.id === man.player.id)).toHaveLength(1);
+
+    // The notice changes its mind rather than disappearing — being taken in a
+    // round and turning it down is a thing that happened to him.
+    const report = useDynasty.getState().lastOffseason as OffseasonReport;
+    const row = report.drafted.find((d) => d.id === man.player.id);
+    expect(row?.returned).toBe(true);
+  });
+
+  it('signs anybody still undecided when the phase closes', async () => {
+    const season = await intoTheDraft(6161);
+    const board = season.draft as DraftBoard;
+    expect(board.men.some((m) => m.outcome === 'pending')).toBe(true);
+    await useDynasty.getState().nextPhase();
+    for (const man of board.men) expect(man.outcome).not.toBe('pending');
+  });
+});
+
+describe('the offseason cannot be run twice', () => {
+  /**
+   * The rail lets you walk back to a step you have already done. Everything
+   * else on the way into the draft is idempotent by construction; the departure
+   * pass is not, and once the draft board holds decisions the coach has paid
+   * for, running it again would take his money and give the player back to
+   * professional baseball.
+   */
+  it('leaves the rosters and the draft board alone on a second pass', async () => {
+    useDynasty.getState().start(6161, 0);
+    const season = useDynasty.getState().season as SeasonState;
+    simSeason(season);
+    useDynasty.setState({ phase: 'coach', furthestPhase: PHASES.indexOf('coach') });
+    await useDynasty.getState().nextPhase();
+
+    const board = season.draft as DraftBoard;
+    const man = board.men[0] as DraftBoard['men'][number];
+    useDynasty.getState().keepPlayer(man.player.id, 'word', 25);
+    const spent = board.spent;
+    const outcome = man.outcome;
+    const team = (season.teams[0] as TeamRecord).team;
+    const before = [
+      ...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen,
+    ].map((p) => p.id);
+
+    // Back to the coach step and forward again.
+    useDynasty.getState().goPhase('coach');
+    await useDynasty.getState().nextPhase();
+
+    expect(useDynasty.getState().season?.draft).toBe(board);
+    expect(board.spent).toBe(spent);
+    expect(board.men[0]?.outcome).toBe(outcome);
+    const after = [
+      ...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen,
+    ].map((p) => p.id);
+    expect(after, 'a second class graduated out of an emptied roster').toEqual(before);
   });
 });

@@ -12,6 +12,9 @@ import { overallOf } from './ratings.js';
 import { initialPrestige } from './program.js';
 import { strategyFor, type Strategy } from './strategy.js';
 import { generateClass, type RecruitClass } from './recruiting.js';
+// Type only, and it has to stay that way: draft.ts reads this file's rate
+// helpers at runtime, so a value import here would close the loop.
+import type { DraftBoard } from './draft.js';
 import { simGame, type GameResult, type TeamState } from './game.js';
 import {
   offer, recordGameMarks, seededBook, type RecordBook,
@@ -495,6 +498,21 @@ export interface SeasonState {
    */
   recruiting: RecruitClass;
   /**
+   * Your own men taken in this June's draft, and what is being offered to keep
+   * them.
+   *
+   * Beside the recruiting class rather than in the store for exactly the reason
+   * the class is: it holds live players who are on nobody's roster while the
+   * decision is open, and it has to survive a reload the way a half-worked
+   * board does. Put in the store it would be lost the moment a phone put the
+   * app to sleep, and the men on it would be lost with it.
+   *
+   * Optional and not carried forward. A new season builds a new one, because by
+   * then every man on the old one has either signed with a professional club or
+   * been talked back onto the roster.
+   */
+  draft?: DraftBoard;
+  /**
    * Every conference's final regular season table, one after another, recorded
    * the moment the schedule runs out.
    *
@@ -874,7 +892,10 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
     boxScores: {},
     careers: prev.careers ?? {},
     captureBoxFor: prev.captureBoxFor,
-    // A new class every year. Last year's board is spent.
+    // A new class every year. Last year's board is spent, and so is last
+    // June's draft: `draft` is deliberately not carried, because a man still
+    // sitting on it undecided has by now either gone to professional baseball
+    // or been talked back onto the roster above.
     recruiting: generateClass(prev.recruiting.year + 1, teams.length, prev.rng),
     finalOrder: null,
     // June belongs to the year it was played in. A new season opens on its own

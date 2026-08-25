@@ -28,6 +28,17 @@ export const teamId = (s: string): TeamId => s as TeamId;
 export type Hand = 'R' | 'L';
 export type Bats = Hand | 'S';
 export type ClassYear = 'FR' | 'SO' | 'JR' | 'SR';
+
+/**
+ * How many years a man has behind him when he is standing in each class year.
+ *
+ * Written down because two separate rules count in it — how old he is, which is
+ * his arrival age plus this, and whether the draft may take him, which is this
+ * plus one against three — and a class year compared with a string literal in
+ * two files is how those two quietly stop agreeing.
+ */
+export const CLASS_ORDER: Record<ClassYear, number> = { FR: 0, SO: 1, JR: 2, SR: 3 };
+
 export type Position = 'C' | '1B' | '2B' | '3B' | 'SS' | 'LF' | 'CF' | 'RF' | 'DH' | 'P';
 export type PitcherRole = 'SP' | 'RP';
 
@@ -49,6 +60,19 @@ export type OffensiveEvent = Exclude<PAEvent, 'out'>;
 
 /** A probability across all seven events, summing to 1. */
 export type EventVector = Record<PAEvent, number>;
+
+/**
+ * The five things a young man weighs when he decides where to play.
+ *
+ * Declared here rather than in recruiting.ts, where the rest of the vocabulary
+ * still lives, because a player carries his own set now: the draft asks the
+ * same question recruiting asked him, and it has to be able to read the same
+ * answer. `recruiting.ts` re-exports both names so nothing had to move.
+ */
+export type Priority = 'prestige' | 'playingTime' | 'winning' | 'proximity' | 'development';
+
+/** How much he weighs each of them. Sums to 1. */
+export type Priorities = Record<Priority, number>;
 
 // ---------------------------------------------------------------------------
 // Players
@@ -146,6 +170,37 @@ interface PlayerCore {
   name: string;
   pos: Position;
   classYear: ClassYear;
+  /**
+   * How old he is, which is not a restatement of his class year.
+   *
+   * Most freshmen arrive at eighteen and a real minority at nineteen or twenty
+   * — a gap year, a late start, two seasons of junior college — and that
+   * minority is the whole reason the number exists. Draft eligibility is three
+   * years completed *or* age twenty one, whichever comes first, so the man who
+   * turned up old comes into range while the rest of his class is still safe.
+   * Without a real age that clause can only be imitated with a talent bar,
+   * which is exactly what it used to be.
+   *
+   * Deliberately descriptive otherwise. Nothing in the simulation reads it —
+   * not development, not decline, not fatigue, not fielding — because the
+   * progression rework is going to want it and must not find it already wired
+   * in somewhere else.
+   */
+  age: number;
+  /**
+   * What he is looking for, carried from the winter somebody recruited him.
+   *
+   * The same five weights `fit` multiplies a recruiting spend by, on the same
+   * man, so talking him out of professional ball is the recruiting pitch again
+   * rather than a second system built to resemble one. A coach who read his
+   * player in December still knows him in June.
+   *
+   * Optional because only men who came through a recruiting class have a set
+   * that was actually drawn for them — nobody recruited the rosters the world
+   * starts with, and nobody recruited a walk-on. `prioritiesFor` hashes one out
+   * of the id for those, which is stable and costs the generator nothing.
+   */
+  priorities?: Priorities;
   bats: Bats;
   throws: Hand;
   /** Hidden. Full platoon split size as a share of production. Never shown. */

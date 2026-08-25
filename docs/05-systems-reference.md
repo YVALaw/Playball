@@ -119,7 +119,12 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 44 | **Two separate error paths, glove and throw**, splitting one calibrated total rather than adding to it. | "reaches on an error" vs "throwing error". | `GLOVE_ERROR_BASE`, `THROW_ERROR_BASE` — `engine/game.ts` | IN FLIGHT |
 | 45 | **A pitcher's `armAccuracy` is pulled toward his control**; his fielding ratings are centred below a position player's. | Comebackers thrown away. | `makePitcher` — `engine/players.ts` | IN FLIGHT |
 | 46 | **A ceiling a player has already cleared is silently revised upward.** | Potential that moves. | `develop` — `engine/progression.ts` | SHIPPED |
-| 47 | **Underclassmen can be drafted, above hard bars** — SO at 70 overall, FR at 78, at 35% and 15% of the normal chance. | Losing a sophomore star. | `UNDERCLASS_BAR`, `departure` — `engine/progression.ts` | SHIPPED |
+| 47 | **Underclassmen are exposed by age, not by talent.** Three years completed *or* twenty one, whichever comes first — so the ~20% of freshmen who arrive at 19 or 20 come into range one or two Junes early. Eligibility itself is stated on the player card; what the card does not say is that a club then discounts him for the years of eligibility he could walk back to (×0.35 for a sophomore, ×0.15 for a freshman). | Losing a sophomore, rarely. | `draftEligible`, `yearsOfLeverage` — `engine/draft.ts`; `LEVERAGE_DISCOUNT`, `departure` — `engine/progression.ts`; §14.1 | SHIPPED |
+| 47a | **Arrival age is hashed from the player id, not drawn**, so it costs the generator no rng call and cannot move a calibration figure. 80% at 18, 15% at 19, 5% at 20. | An age on the card. | `arrivalAge`, `ARRIVAL_SALT` — `engine/players.ts`; §14.1 | SHIPPED |
+| 47b | **Professional clubs price a player on current ability, last season's production and his age — never on `potential`.** A club taking a finished player over a raw one who will be better is correct behaviour, and the coach's private knowledge of who will grow is the edge it buys him. | A round number. | `visibleValue`, `seasonForm` — `engine/draft.ts`; §14.2 | SHIPPED |
+| 47c | **The round is a position on somebody else's 600-pick board**, via a logistic centred at value 61 with a scale of 6 — not a rank among our own men. This is why round one is one or two men in the country and the median man taken goes in the teens. | `RD 12`. | `draftRound`, `BOARD_MID`, `BOARD_SPREAD` — `engine/draft.ts`; §14.3 | SHIPPED |
+| 47d | **What a retention offer is worth per unit is hidden; what the round demands is printed.** `keepPoints(round)` is on screen, `affinity × credibility × 5.0` is not — so the price is only knowable by reading the man. | "WHAT A ROUND 8 MAN WANTS · 43", and afterwards "it was worth 31 against the 43". | `keepPoints`, `offerWorth`, `KEEP_RATE` — `engine/draft.ts`; §14.4 | SHIPPED |
+| 47e | **A player carries the five recruiting priorities he was signed on**, and a man nobody recruited gets a hashed set from the same distribution. Neither is ever printed; the draft screen gives two overlapping prose hints instead. | Two sentences about what is pulling him. | `Player.priorities`, `prioritiesFor` — `engine/recruiting.ts`; `pullHints`, `PULL_LINES` — `engine/draft.ts`; §14.5 | SHIPPED |
 | 48 | **A signed recruit with nowhere to play still joins**, on the bench or in the pen. | A full class. | `refill` — `engine/progression.ts` | SHIPPED |
 | 49 | **Roughly a third of days a regular sits**, and his replacement takes the spot of whoever plays his position. | Bench players with real statistics. | `restedLineup` — `engine/season.ts` | SHIPPED |
 | 50 | **The bullpen is offered most-rested-first, ties broken by quality.** | The right arm turning up. | `restedFirst` — `engine/season.ts` | SHIPPED |
@@ -1997,15 +2002,9 @@ are still the missing half of it, and for the reason given there.
 
 ### 12.5 Draft declaration and persuasion
 
-**Intent:** a player facing the draft declares or returns, and the coach can try to
-persuade him to come back.
-
-**Reality today:** the draft is entirely automatic and the coach has no say.
-`draftChance(overall) = clamp((overall − 46) / 34, 0, 0.88)`; seniors leave
-regardless and are labelled drafted at 60% of that chance; juniors leave at the full
-chance; sophomores above 70 overall at 35% of it and freshmen above 78 at 15%.
-Rounds are assigned nationally, 32 names deep per round. There is no declaration
-step, no persuasion, and no screen for either.
+**SHIPPED.** See §14, which replaced this entry entirely: real ages, the real
+eligibility rule, a twenty-round board, a valuation the clubs can honestly see,
+and a screen where you get to talk him out of it.
 
 ### 12.6 Hall-of-fame induction
 
@@ -2198,6 +2197,226 @@ than an empty book. That is a different rule from the other backfills in
 `fromPortable`, and deliberately: an empty fielding map is the truthful state for
 a save that never recorded a chance, but an empty record book is not — the NCAA
 seeds are not something a dynasty earned, they are where every dynasty starts.
+
+---
+
+## 14. Ages, the draft, and talking him out of it — **SHIPPED**
+
+Three things that arrived together because none of them works alone. A real age
+is what makes the eligibility rule express itself instead of being faked with a
+talent bar. The eligibility rule is what decides who the clubs may take. And
+what the clubs pay for him — his round — is what decides whether you can afford
+to talk him out of going.
+
+Lives in `engine/draft.ts`, which is new; `engine/progression.ts` calls into it,
+`state/store.ts` spends the money, and `ui/screens/Draft.tsx` is the screen.
+
+### 14.1 Ages, and who the draft may take
+
+Every player carries `age`. Freshmen arrive at **18 (80%), 19 (15%) or 20 (5%)**,
+hashed out of the player's id by `arrivalAge` rather than drawn — every `rng()`
+call in `players.ts` sits in a fixed sequence and spending one on a fact that
+decides nothing on the field would move every calibration figure in the project.
+`ageFor(id, classYear)` is arrival age plus `CLASS_ORDER`, and it is called again
+anywhere a generated player's class year is overwritten (a recruit forced to FR,
+a walk-on manufactured as one).
+
+Age advances at the top of `departAndDevelop`, **before** anybody's departure is
+decided, because the draft is held in June and eligibility is read at that
+moment. Measured over a settled league the classes come out at FR 18/19/20 =
+80/16/4%, SO 19/20/21, JR 20/21/22, SR 21/22/23 — so the typical senior is 21,
+which is the real thing.
+
+Nothing else in the engine reads it. Not development, not decline, not fatigue.
+That is deliberate: the progression rework will want it and must not find
+effects already wired in twice.
+
+**The rule.** `draftEligible` is three years completed **or** age 21, whichever
+comes first — the real NCAA/MLB rule, and the one chosen on the record in
+`06-backlog.md`. So:
+
+| | arrives 18 | arrives 19 | arrives 20 |
+|---|---|---|---|
+| after FR season | 19 — safe | 20 — safe | **21 — exposed** |
+| after SO season | 20 — safe | **21 — exposed** | exposed |
+| after JR season | 21 — exposed (and three years in) | exposed | exposed |
+
+Seniors leave regardless; they have no eligibility left.
+
+**Leverage.** Being eligible is not being taken. `draftChance(overall)` is
+unchanged — `clamp((overall − 46) / 34, 0, 0.88)` — and it is multiplied by a
+discount for the years of eligibility a man could walk back to: **SR ×0.6** (he
+signs; whether a club called his name is flavour), **JR ×1**, **SO ×0.35**,
+**FR ×0.15**. Those are the numbers the old `UNDERCLASS_BAR` produced, kept on
+purpose: the *frequency* an underclassman left at was right, the *reason* was a
+fiction. A sophomore with two years to go can cost a club a whole pick by going
+back to school, so a club takes him only when it means to pay him.
+
+Measured over nine settled years of the 96-program world: about **8 sophomores
+and 1 freshman a year**, against roughly 160 juniors and 48 seniors — 4.2% of
+the draft, and weighted about twelve to one toward the good ones, because
+`draftChance` still does the sorting (0.71 at 70 overall against 0.06 at 48).
+
+### 14.2 What the clubs can see
+
+`visibleValue(player, season, ctx)` is
+
+```
+0.60 × overall  +  0.40 × seasonForm  +  youth  +  disagreement
+```
+
+- **`overall`** — what a scout can watch him do now.
+- **`seasonForm`** — last spring, on the same 0–100 scale, standardised against
+  the league that produced it (`draftContext` takes the mean and standard
+  deviation of OPS over hitters with 60+ AB, and of ERA and K/9 over arms with
+  20+ IP). Shrunk by playing time — `pa / (pa + 110)` for a bat, `ip / (ip + 32)`
+  for an arm — so a huge rate in forty at bats is worth a fraction of the same
+  rate in two hundred. A man who never played comes out at exactly 50, graded on
+  ability alone rather than punished. Strikeouts are weighted above earned runs
+  (0.55 / 0.45) because a run average belongs to a defence as much as to a
+  pitcher.
+- **`youth`** — `−1.2 × (age − 21)`, clamped to ±3. A club buys the years it gets.
+- **`disagreement`** — ±3.5, hashed off the id. Thirty organisations do not agree.
+
+**`potential` is deliberately absent, and that is the load-bearing part.** It is
+the one thing nobody outside the program can know. A club that read it would
+never take a bust, no first rounder would ever fail, and the coach's private
+knowledge of who is going to grow — which is what the whole recruiting and
+scouting system exists to sell him — would be worth nothing. A test pins it:
+setting a player's potential to 99 or to 15 must not move his value by a single
+point.
+
+### 14.3 The round
+
+Twenty rounds of thirty picks, six hundred in all. A man's round is **not** his
+rank among our men; it is where he would stand on the national board, which is
+fed by high schools, junior colleges and roughly three hundred four-year
+programs of which ours are ninety-six.
+
+```
+share = 1 / (1 + exp((value − 61) / 6))
+round = clamp(ceil(share × 600 / 30), 1, 20)
+```
+
+The old rule was `round = floor(i / 32) + 1` over the men the league sent up,
+which put everybody in the first two rounds and made a first round pick a thing
+every program had two of. Fitted against what a settled league actually
+produces — median drafted value 60, ninetieth percentile 70, best in a good year
+80 — the distribution comes out, per year, averaged over nine settled seasons of
+the 96-program world:
+
+| round | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| men | 1.2 | 3.1 | 6.1 | 6.6 | 7.1 | 6.7 | 8.3 | 9.3 | 12.7 | 12.3 |
+
+| round | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| men | 14.8 | 13.4 | 18.1 | 19.1 | 17.9 | 19.1 | 17.9 | 15.4 | 9.2 | 1.1 |
+
+Round one is **1.2 men in the country in a year** — some years four, some years
+nobody. Fewer than one drafted man in nine goes inside five rounds. The mass
+sits in the teens, which is the honest reading of a courtesy pick.
+
+### 14.4 Talking him out of it
+
+Your own drafted men **with eligibility left** land on `season.draft`, a board
+carried on the season rather than in the store precisely because it holds live
+player objects who are on nobody's roster while the decision is open. He is in
+exactly one of the two places at any moment, so a reload cannot produce two of
+him.
+
+**Four cases, one per priority.** `stock` speaks to `development`, `role` to
+`playingTime`, `ring` to `winning`, and `word` — the coach's own name and the
+place — to `prestige` and `proximity` half each. One case per priority so no two
+compete for the same man, which is what makes choosing one a read.
+
+**The arithmetic is `weeklyPoints` again**, deliberately:
+
+```
+worth   = offer × affinity × credibility × 5.0
+affinity = Σ (his weight on k) × (how much this case is about k)
+he stays iff worth ≥ keepPoints(round)
+keepPoints(round) = 165 × 0.825^(round − 1)
+```
+
+165 in the first round down to 4 in the twentieth. Credibility is read off real
+state and every case can be a lie:
+
+| case | credible when | zero when |
+|---|---|---|
+| `stock` | `0.55 × growth + 0.45 × roomAbove`, times `0.45 + 0.55 × TRAINING reach`. `growth` is headroom above 1, full at 9; `roomAbove` is the round above 3, full at 12. | a finished player taken early — nothing left to teach and nowhere to go |
+| `role` | `0.5 + (his overall − best returning man at his spot) / 24` | somebody 12 points better is standing there |
+| `ring` | `0.60 × prestige + 0.40 × returning strength` | never quite zero, but a bottom-half program with a gutted roster lands near 0.2 |
+| `word` | `0.20 + 0.50 × coach prestige reach + 0.30 × min(1, tenure / 8)` | never — but a rookie's word is worth 0.20 and a fifteen-year lifer's near 0.9 |
+
+**A worked example.** A junior shortstop, 74 overall, taken in round 8, at a
+mid-table program with a mid-career coach. `keepPoints(8) = 43`.
+
+- He weighs playing time at 0.42 and winning at 0.11.
+- Nobody returning at short is within twelve points of him, so `role` credibility
+  is 1.0. Worth per unit: `0.42 × 1.0 × 5.0 = 2.10`. **Price: 21.**
+- `ring` credibility at this program is 0.55. Worth per unit:
+  `0.11 × 0.55 × 5.0 = 0.30`. **Price: 143.**
+
+Twenty-one against a hundred and forty three. The window is 120–180 depending on
+prestige, so reading him costs an eighth of a class and guessing costs all of it
+and probably fails anyway. Measured across fourteen simulated years: the best
+case available on a man has a median price of **63**, the second best **129**,
+and the worst is essentially always unaffordable.
+
+**The money is the recruiting budget.** `windowBudget = budgetFor(stars) × 3`,
+so 120 at a one-star program and 180 at a five-star. What the draft takes comes
+off **every week** of the board evenly (`weeklyBudget`), not out of week one —
+otherwise a coach could keep an ace and recover by waiting. **The offer is spent
+whether it works or not**, which is what makes a promise the depth chart
+contradicts cost something, and the screen says so before you press.
+
+Anybody left undecided when the phase closes signs with the club that took him:
+doing nothing is a decision and it has to mean the thing doing nothing means.
+
+**A man who stays** goes through `reinstate`: class year advances, he takes the
+development year he was skipped for on the way out (the user's TRAINING
+included), and he is put back through the same `regroup` every other survivor
+went through. So **a returning junior is a senior with no leverage next June** —
+the bet the coach made on his behalf, and the screen says that too. His
+departure notice stays on the board marked `returned`, because being taken in
+the fourth round and turning it down is a thing that happened to him; every
+count of what you lost skips him, and `report.holes` is recomputed so the hole
+he no longer leaves closes while you watch.
+
+### 14.5 What he tells you
+
+Nothing numeric, consistent with how scouting already works. `pullHints` gives
+**two prose lines**, one drawn off his strongest priority and one off his
+second, hashed off his id so they are stable across renders, and in an order
+decided by a third hash so the first line is not always the stronger pull. The
+seventeen lines in `PULL_LINES` overlap across priorities on purpose — the same
+contract `CEILING_LINES` carries — so a line narrows what he wants without ever
+naming it.
+
+A player who came through a recruiting class carries the weights the generator
+drew for him (`Player.priorities`, written in `generateClass`). A man nobody
+recruited — a rival roster the world started with, a walk-on — gets a set from
+`prioritiesFor(id, stars)`, which is the same distribution driven by hashes
+instead of the generator. Neither is ever printed.
+
+### 14.6 The screen
+
+`ui/screens/Draft.tsx`, four tabs.
+
+- **KEEP** — the decision. Budget remaining across the header; one card per man
+  with his round, the two hints, what a man of that round wants, the four cases,
+  a stepper, and afterwards a line saying what the case was worth against what
+  it needed. That retrospective is how the hidden multiplier gets learned over a
+  few seasons without being printed in advance.
+- **DEPARTING** — everything you lost, with the holes it leaves above it.
+- **BOARD** — the national draft grouped by round, which is worth reading now
+  that round one is one or two names.
+- **UNDRAFTED** — seniors nobody called.
+
+The odds fallback (no report yet) now lists everyone the June ahead exposes
+rather than juniors and seniors, and it carries the continue button — without
+one, a reload mid-offseason landed on a screen with no way forward.
 
 ---
 

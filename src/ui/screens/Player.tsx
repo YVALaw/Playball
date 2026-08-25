@@ -22,6 +22,7 @@
 import { useState, type ReactNode } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { potentialGrade } from '../../engine/scouting.js';
+import { draftEligible } from '../../engine/draft.js';
 import { overallOf } from '../../engine/ratings.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { FixedHeader } from '../Sticky.js';
@@ -283,8 +284,13 @@ export function Player() {
           left={{ k: 'CLASS', v: p.classYear }}
           right={{ k: isPitcher ? 'ROLE' : 'POS', v: slot }}
           sub={
+            // The class year is already on the flank to the left of his face,
+            // so the line under his name spends the room on the thing the flank
+            // does not say. Age is not a restatement of class year: two juniors
+            // can be twenty and twenty-two, and only one of them was draft
+            // eligible last June.
             <>
-              {p.classYear} · BATS {p.bats} · THROWS {p.throws}
+              AGE {p.age} · BATS {p.bats} · THROWS {p.throws}
               {isPitcher && (p as Pitcher).sidearm ? ' · SIDEARM' : ''}
             </>
           }
@@ -373,6 +379,9 @@ function Alumnus(
                 : 'Departed'} />
               <Stat k="LAST CLASS" v={classYear in CLASS_NAME
                 ? CLASS_NAME[classYear as ClassYear] : classYear} />
+              {/* The record book keeps no age, so this is only knowable while
+                  the departure notice survives — one offseason. */}
+              {gone?.age !== undefined && <Stat k="AGE WHEN HE LEFT" v={String(gone.age)} />}
               {abbr && <Stat k="PROGRAM" v={abbr} />}
               {drafted && gone?.round !== undefined && (
                 <Stat k="DRAFT ROUND" v={`Round ${gone.round}`} />
@@ -529,6 +538,19 @@ function Overview({ p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: bo
           <Stat k="POSITION" v={p.pos} />
         )}
         <Stat k="CLASS" v={CLASS_NAME[p.classYear]} />
+        {/*
+          Age sits directly under class year because the two together are the
+          fact and either alone is misleading. Three years completed or twenty
+          one, whichever comes first — so a nineteen-year-old sophomore is safe
+          for two more Junes and a twenty-year-old sophomore is not safe at all.
+          Read against the June ahead, which is the draft this age decides.
+        */}
+        <Stat
+          k="AGE"
+          v={`${p.age}${
+            p.classYear !== 'SR' && draftEligible({ classYear: p.classYear, age: p.age + 1 })
+              ? ' · eligible in June' : ''}`}
+        />
         <Stat k="BATS" v={p.bats === 'S' ? 'Switch' : p.bats === 'L' ? 'Left' : 'Right'} />
         <Stat k="THROWS" v={p.throws === 'L' ? 'Left' : 'Right'} />
         {isPitcher && <Stat k="FASTBALL" v={`${(p as Pitcher).velocity} mph`} />}

@@ -63,6 +63,10 @@ shaped around preserving a save written last week.
 
 ### The draft is the MLB draft, and the price is your recruiting budget
 
+**SHIPPED**, as B9 below records; the decision is left here in the words it was
+made in, because that is the provenance and the reference (§14) is the
+behaviour. What follows is what was agreed, and all of it was built.
+
 A player of yours is *drafted by a professional club*, and you get to talk him
 into coming back to school. Not a transfer, not a generic "leaving" roll.
 
@@ -93,6 +97,9 @@ A junior who returns comes back as a senior with no leverage, so talking him
 into staying is a bet made on his behalf.
 
 ### Players have ages
+
+**SHIPPED**, as B15 below records. Left here for the same reason as the decision
+above it.
 
 Real ages rather than class year alone. Freshmen arrive mostly at 18 with a
 genuine minority at 19 or 20 — gap years, late starters, junior college — and
@@ -199,11 +206,51 @@ half the achievements are all reading from the same book.
   class year they arrived at, and projected into the class review by position
   before they exist — a fact rather than an estimate, held to the real thing by
   a test. See `05-systems-reference.md`.
-- **B9 · Draft declaration** — `DECIDED`, mechanic settled; see "The draft is the
-  MLB draft" above. Needs ages (B15) first. Prerequisite for the hall of fame,
-  since a career is what makes a man worth honouring.
-- **B15 · Player ages** — `DECIDED`. See the decision above. Small, and it gates
-  B9 and informs the progression rework.
+- **B9 · Draft declaration** — SHIPPED, and the whole of it: eligibility, the
+  round, who the clubs value, and the conversation. See
+  `05-systems-reference.md` §14.
+
+  Four things are worth recording here because each replaced something that was
+  wrong rather than merely missing. **Eligibility is the real rule** — three
+  years or twenty one — and it replaced a pair of talent bars that produced the
+  right frequency for the wrong reason and could not say why one sophomore was
+  exposed and an identical one was not. **The round is a position on a national
+  six-hundred-pick board**, `1 / (1 + exp((value − 61) / 6))` scaled to twenty
+  rounds of thirty, not a rank among our own men: round one is now **1.2 men in
+  the country in a year** where `floor(i / 32) + 1` used to put the whole league
+  in the first two rounds. **The clubs price a man on current ability, last
+  season's production and his age, and never on `potential`**, so a club taking
+  a finished player over a raw one is correct behaviour and a bust in the first
+  round is a thing that happens. And **the persuasion is `weeklyPoints` again** —
+  `offer × affinity × credibility × 5.0` against `165 × 0.825^(round−1)` — so it
+  is the recruiting model applied to a man you already have rather than a second
+  system that resembles one. Measured over fourteen years, the best case
+  available on a man costs a median of 63 out of a 120–180 window and the second
+  best costs 129.
+
+  Still open, and deliberately: **the AI programs do not talk anybody round.**
+  Their men simply go. Doing it properly needs the AI to have a recruiting
+  budget it actually spends against, which today it does not — `aiTargets`
+  allocates a flat `ACTIONS_PER_WEEK` — so giving it retention now would be
+  giving it free money. See appendix B item 5 of the systems reference.
+
+  It also unblocks B12: a career is what makes a man worth honouring, and a
+  career now has an ending with a number on it.
+- **B15 · Player ages** — SHIPPED. 80% of freshmen arrive at 18, 15% at 19, 5%
+  at 20, and age ticks at the top of the offseason before anybody's departure is
+  decided — because the draft is held in June and eligibility is read at that
+  moment. The arrival age is **hashed off the player's id rather than drawn**:
+  every `rng()` call in `players.ts` sits in a fixed sequence and spending one
+  on a fact that decides nothing on the field would have moved every calibration
+  figure in the project, which is the same reason `nextPlayerId` reads the
+  stream's position without turning it.
+
+  Descriptive, as agreed. `draftEligible` and the screens are the only readers;
+  the progression and decline rework will find nothing already wired in. It is
+  on the player card, on the departure notice, on the signing-day recruit line
+  and on the draft screen, and it is **not** on the roster table, where the class
+  column is four characters wide and there is genuinely no room.
+  See `05-systems-reference.md` §14.1.
 - **B16 · Detailed pitch types** — `DECIDED`. A real repertoire per pitcher.
   Also the prerequisite for pitch-usage tendencies, so it and the usage half of
   B11 are one job.
@@ -264,8 +311,12 @@ upsets, streaks and postseason meetings · expanded awards · position-change
 training · detailed pitch repertoires · broadcast presentation, with adaptive
 treatment for no-hitters, elimination games and championships · a dynasty
 documentary timeline built from real career events · a geographic recruiting
-pipeline map with contested territory · MLB Decision Day, where juniors weigh
-draft stock against role, loyalty and development.
+pipeline map with contested territory.
+
+~~MLB Decision Day, where juniors weigh draft stock against role, loyalty and
+development.~~ Shipped as part of B9, and it is the draft screen: he hints at
+what is pulling him and you make one of four cases. It never needed a day of its
+own.
 
 ## D. The record marks
 

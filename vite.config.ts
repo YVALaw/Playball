@@ -1,8 +1,26 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  /**
+   * Everything except a second copy of ourselves.
+   *
+   * Agents working in isolation get a git worktree under `.claude/worktrees`,
+   * which is a full checkout of this repository — tests included. Vitest's
+   * default net catches them, so the suite quietly ran twice: 944 tests instead
+   * of 472, every file collected from both trees.
+   *
+   * The count was the harmless half. The damage was timing. Twice the work on
+   * the same cores pushed the slowest postseason tests past their five second
+   * limit, so a suite that passes in isolation failed in aggregate and pointed
+   * at innocent code — the worst kind of red, because it is real, reproducible
+   * while the worktree exists, and about nothing.
+   */
+  test: {
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.claude/**'],
+  },
   server: {
     // 5174, not 5173, and the reason is storage rather than taste. See the
     // `preview` block below: 5173 belongs to the frozen build now, because a

@@ -21,10 +21,10 @@
 // a bug.
 
 import { useMemo, useState } from 'react';
-import { useDynasty, useUserTeam } from '../../state/store.js';
+import { boardBudget, useDynasty, useUserTeam } from '../../state/store.js';
 import {
   fit, weeklyPoints, canPursue, byRank, PRIORITIES, PRIORITY_LABEL, PRIORITY_BLURB,
-  SCHOLARSHIPS, MAX_PER_RECRUIT, RECRUITING_WEEKS, budgetFor,
+  SCHOLARSHIPS, MAX_PER_RECRUIT, RECRUITING_WEEKS,
   reportedOverall, reportedPotential, reportedTool, reportWidth, hintsFor,
   type Prospect, type Priority,
 } from '../../engine/recruiting.js';
@@ -224,7 +224,12 @@ export function Board() {
     : `You are short ${holes.map((h) => (h.count > 1 ? `${h.count} ${h.pos}` : h.pos)).join(', ')}. `
       + 'Anything you do not sign gets filled by a walk-on.';
   const open = season.recruiting.prospects.find((p) => p.id === openId) ?? null;
-  const left = budgetFor(myStars) - spent;
+  // What a week is worth here, after the draft phase took whatever it took to
+  // keep somebody. The header prints the honest number, so a coach who talked
+  // his shortstop out of professional baseball in June can see the price of it
+  // on the board he opens ninety seconds later.
+  const weekly = boardBudget(season, userTeam);
+  const left = weekly - spent;
   const live = week >= 1 && week <= RECRUITING_WEEKS;
   const full = commits.length >= SCHOLARSHIPS;
   const activeFilters = filters.pos !== null || filters.state !== null
@@ -345,8 +350,8 @@ export function Board() {
             )}
             <div style={{ color: 'var(--dim)' }}>
               {lastWeek.gone === 0
-                ? `Nobody came off the board anywhere. Your budget is back to ${budgetFor(myStars)}.`
-                : `${lastWeek.gone} recruit${lastWeek.gone === 1 ? '' : 's'} signed elsewhere and ${lastWeek.gone === 1 ? 'is' : 'are'} off the board. Your budget is back to ${budgetFor(myStars)}.`}
+                ? `Nobody came off the board anywhere. Your budget is back to ${weekly}.`
+                : `${lastWeek.gone} recruit${lastWeek.gone === 1 ? '' : 's'} signed elsewhere and ${lastWeek.gone === 1 ? 'is' : 'are'} off the board. Your budget is back to ${weekly}.`}
             </div>
           </div>
         </div>
@@ -356,7 +361,7 @@ export function Board() {
         <div style={{
           marginBottom: 10, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
         }}>
-          {budgetFor(myStars)} a week, spread how you like. Points carry over and
+          {weekly} a week, spread how you like. Points carry over and
           the most points signs him &mdash; so staying with somebody works, and
           recruits come off the board every week you spend deciding. The best in
           the country want more attention than one week can buy.

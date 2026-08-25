@@ -263,34 +263,116 @@ describe('the training skill', () => {
   });
 });
 
-describe('the draft and underclassmen', () => {
-  it('takes exceptional freshmen and sophomores, and nobody ordinary', () => {
-    // Reported from testing: a freshman doing wonders who nobody could draft.
-    // The bar is steep on purpose — it should happen to a program rarely rather
-    // than every June — so this asserts both halves: the door exists, and it is
-    // shut for everybody who is not remarkable.
-    let season = createSeason(makeRng(918), undefined, CONFERENCES);
-    let underclassmen = 0;
+describe('the draft, over a settled league', () => {
+  // One run of the whole world, asked several questions. Eight years of ninety
+  // six programs is the expensive part of this file and there is no reason to
+  // pay for it four times.
+  let season = createSeason(makeRng(918), undefined, CONFERENCES);
+  const programs = season.teams.length;
+  const rounds = new Map<number, number>();
+  const teamsHit = new Set<number>();
+  let underclassmen = 0;
+  let drafted = 0;
+  let years = 0;
 
-    for (let year = 0; year < 8; year++) {
-      simSeason(season);
-      const report = advanceOffseason(season, season.rng);
+  for (let year = 0; year < 8; year++) {
+    simSeason(season);
+    // The offseason in the order the game runs it, classes and all. Running it
+    // without a signed class turns the league into nothing but freshmen and
+    // walk-ons inside three years — see `signClasses` — and a draft measured on
+    // that league is measuring a world the game never produces.
+    const report = departAndDevelop(season, season.rng);
+    signClasses(season);
+    fillRosters(season, season.rng);
+    if (year >= 3) {
+      years += 1;
       for (const d of report.drafted) {
-        if (d.classYear === 'FR') {
-          underclassmen += 1;
-          expect(d.overall, `a ${d.overall} freshman was drafted`).toBeGreaterThanOrEqual(78);
-        }
-        if (d.classYear === 'SO') {
-          underclassmen += 1;
-          expect(d.overall, `a ${d.overall} sophomore was drafted`).toBeGreaterThanOrEqual(70);
-        }
+        drafted += 1;
+        teamsHit.add(d.team);
+        rounds.set(d.round as number, (rounds.get(d.round as number) ?? 0) + 1);
+        if (d.classYear === 'FR' || d.classYear === 'SO') underclassmen += 1;
       }
-      season = nextSeason(season);
+    }
+    season = nextSeason(season);
+  }
+
+  it('only takes an underclassman the age clause has reached', () => {
+    // The rule replaced a pair of talent bars, and this is the difference: a
+    // sophomore is not exposed for being good, he is exposed for being twenty
+    // one. The bars said the same thing about frequency and the wrong thing
+    // about cause.
+    expect(underclassmen, 'the age clause never fired in eight years')
+      .toBeGreaterThan(0);
+    // Rare rather than a second graduating class: nobody should be losing a
+    // sophomore most years.
+    expect(underclassmen / drafted).toBeLessThan(0.12);
+  });
+
+  it('spreads the country across the whole draft instead of the top of it', () => {
+    // The bug this replaced: `round = floor(i / 32) + 1` over the forty to
+    // sixty men a league sends up put everybody in round one or two, which made
+    // a first round pick a thing every program had two of.
+    const used = [...rounds.keys()].sort((a, b) => a - b);
+    expect(Math.max(...used), 'nobody reached the late rounds').toBeGreaterThanOrEqual(18);
+    expect(used.length, 'the draft used only a handful of rounds').toBeGreaterThanOrEqual(15);
+
+    // Round one is a handful in the country, not a tier.
+    const first = (rounds.get(1) ?? 0) / years;
+    expect(first, 'nobody ever went in the first round').toBeGreaterThan(0);
+    expect(first, 'the first round is not rare').toBeLessThan(6);
+
+    // And the mass is nowhere near the top. Fewer than a fifth of the men
+    // taken go inside five rounds.
+    let top5 = 0;
+    for (let r = 1; r <= 5; r++) top5 += rounds.get(r) ?? 0;
+    expect(top5 / drafted).toBeLessThan(0.2);
+  });
+
+  it('empties rival rosters too, not just yours', () => {
+    // Rival programs churn the way yours does. Without this a dynasty is the
+    // only program in the country that ever loses anybody, and the league
+    // quietly turns into ninety five teams of seniors.
+    expect(teamsHit.size).toBeGreaterThan(programs * 0.8);
+  });
+});
+
+describe('ages', () => {
+  it('brings freshmen in mostly at eighteen, with a real minority older', () => {
+    const s = createSeason(makeRng(2718), undefined, CONFERENCES);
+    const freshmen = everyone(s).filter((p) => p.classYear === 'FR');
+    const at = (n: number) => freshmen.filter((p) => p.age === n).length / freshmen.length;
+
+    // Nobody arrives younger than eighteen or older than twenty.
+    for (const p of freshmen) {
+      expect(p.age, `${p.name} arrived at ${p.age}`).toBeGreaterThanOrEqual(18);
+      expect(p.age).toBeLessThanOrEqual(20);
+    }
+    expect(at(18)).toBeGreaterThan(0.7);
+    expect(at(18)).toBeLessThan(0.9);
+    // "A genuine minority", which is the whole reason the age clause ever
+    // fires: without these men the rule is three years and nothing else.
+    expect(at(19) + at(20)).toBeGreaterThan(0.1);
+  });
+
+  it('agrees with the class year, and moves with the calendar', () => {
+    const s = createSeason(makeRng(31337), undefined, SMALL);
+    simSeason(s);
+    const before = new Map(everyone(s).map((p) => [p.id, { age: p.age, cls: p.classYear }]));
+
+    // A man three years in is three years older than he arrived, whichever
+    // year he arrived at.
+    const gap: Record<string, number> = { FR: 0, SO: 1, JR: 2, SR: 3 };
+    for (const p of everyone(s)) {
+      expect(p.age - gap[p.classYear]!).toBeGreaterThanOrEqual(18);
+      expect(p.age - gap[p.classYear]!).toBeLessThanOrEqual(20);
     }
 
-    // Eight years of a sixty four team league. If none of them ever produced an
-    // underclassman worth taking, the door is shut rather than narrow.
-    expect(underclassmen).toBeGreaterThan(0);
+    advanceOffseason(s, s.rng);
+    const survivors = everyone(s).filter((p) => before.has(p.id));
+    expect(survivors.length).toBeGreaterThan(0);
+    for (const p of survivors) {
+      expect(p.age, `${p.name} did not have a birthday`).toBe(before.get(p.id)!.age + 1);
+    }
   });
 });
 
