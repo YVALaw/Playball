@@ -1013,6 +1013,15 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         phase: null,
         lastPostseason: null,
         lastOutcome: null,
+        // Cleared with the rest of last year, and for a sharper reason than the
+        // others: `settleSeason` refuses to run a second time while a review is
+        // still sitting here, so a review left undismissed did not merely linger
+        // on screen — it swallowed the whole of the next season's meeting.
+        // Prestige, the seat, the career totals and the points you improve with
+        // were all skipped in silence. Only the dismiss button on the program
+        // page ever cleared it, so whether a season was graded at all came down
+        // to whether the player had tapped a card.
+        lastReview: null,
         lastWeek: null,
         lastCommits: [],
         furthestPhase: 0,

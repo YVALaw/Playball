@@ -82,6 +82,45 @@ describe('the week recap does not outlive its window', () => {
   });
 });
 
+describe('the board meets every year, not just the first', () => {
+  // `settleSeason` grades the year — prestige, the seat, career totals, and the
+  // points a coach improves with — and it refuses to run while a review is
+  // already sitting in the store. Nothing cleared that at the year roll except
+  // the dismiss button on the program page, so a player who never tapped it was
+  // silently ungraded from his second season onward. Reported as "I got points
+  // in the first season to upgrade my coach but not in the second".
+
+  it('clears last year\'s review when the year turns over', async () => {
+    useDynasty.getState().start(4242, 0);
+    const before = useDynasty.getState().coach.skillPoints;
+
+    // A graded first season, its review never dismissed.
+    useDynasty.getState().settleSeason();
+    const reviewed = useDynasty.getState();
+    expect(reviewed.lastReview).not.toBeNull();
+    expect(reviewed.coach.skillPoints).toBeGreaterThan(before);
+
+    await useDynasty.getState().rollYear();
+
+    // The new year starts with no verdict carried over, so the next meeting can
+    // actually happen.
+    expect(useDynasty.getState().lastReview).toBeNull();
+  });
+
+  it('awards points again in the second season', async () => {
+    useDynasty.getState().start(4242, 0);
+    useDynasty.getState().settleSeason();
+    const afterFirst = useDynasty.getState().coach.skillPoints;
+    expect(afterFirst).toBeGreaterThan(0);
+
+    await useDynasty.getState().rollYear();
+    useDynasty.getState().settleSeason();
+
+    expect(useDynasty.getState().lastReview).not.toBeNull();
+    expect(useDynasty.getState().coach.skillPoints).toBeGreaterThan(afterFirst);
+  });
+});
+
 describe('the coach profile survives the disk', () => {
   // Name, age and hometown are flavour, which is exactly why they are easy to
   // lose: nothing downstream breaks when they go missing, so a drop shows up as
