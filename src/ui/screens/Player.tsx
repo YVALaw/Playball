@@ -280,7 +280,12 @@ function Alumnus(
   },
 ) {
   const last = career[career.length - 1];
-  const name = gone?.name ?? 'Former player';
+  // A departure notice survives one offseason, so a man who left four years ago
+  // has none — and the record book would name him "Former player" on a screen
+  // that had just listed him by name. His id *is* his name (see `playerId` in
+  // players.ts), which is the only reason anybody that far back can be named at
+  // all; fall back to it whenever the record book still holds a season for him.
+  const name = gone?.name ?? (career.length > 0 ? String(id) : 'Former player');
   const abbr = gone?.teamAbbr ?? last?.team ?? '';
   const classYear = gone?.classYear ?? last?.classYear ?? '—';
   const drafted = gone?.reason === 'drafted';

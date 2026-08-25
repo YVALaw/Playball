@@ -1,33 +1,152 @@
 // Program.tsx
-// Where you stand: the school, the board, and your own seat.
+// Where you stand: the board, the coach, and the men who played for him.
 //
-// The three numbers are shown apart on purpose. Program prestige is the school's
-// and survives you; coach prestige is yours and travels; job security is how the
-// board feels this minute. Blending them into one "reputation" bar would hide
-// the only interesting case — a good coach doing well at a bad job.
+// This was one column — the school, the mandate, the checklist, the seat meter
+// and a career summary stacked — which is one page answering four different
+// questions. On a phone that means the thing you opened the screen for is
+// usually two thumb-drags from where it put you. So: three tabs, because there
+// are three questions.
+//
+//   BOARD  what is being asked of you this year, and how safe you are.
+//   COACH  who you are, what you have done, and how your teams play.
+//   HALL   who you did it with.
+//
+// There is deliberately no season-by-season tab. That list already exists as
+// HISTORY, the screen immediately beside this one in the same nav group, and two
+// record books one tap apart is two record books that eventually disagree.
+//
+// The three numbers on the BOARD tab are shown apart on purpose. Program
+// prestige is the school's and survives you; coach prestige is yours and
+// travels; job security is how the board feels this minute. Blending them into
+// one "reputation" bar would hide the only interesting case — a good coach doing
+// well at a bad job.
 
+import { useState, type ReactNode } from 'react';
 import { useDynasty, useUserTeam, useConferenceTable } from '../../state/store.js';
+import type { SeasonRecord } from '../../state/store.js';
 import {
-  expectationFor, prestigeStars, rosterStrength, objectiveMet, type Objective,
+  expectationFor, prestigeStars, rosterStrength, objectiveMet,
+  SKILLS, SKILL_LABEL, type Objective,
 } from '../../engine/program.js';
-import { seasonLength, regularRecord, seasonComplete } from '../../engine/season.js';
+import {
+  seasonLength, regularRecord, seasonComplete,
+  type CareerYear, type SeasonState,
+} from '../../engine/season.js';
+import { philosophyOf } from '../../engine/strategy.js';
 import { REGION_OF_STATE } from '../../data/schools.js';
+import { playerId, type PlayerId } from '../../engine/types.js';
+import { CoachPortrait } from '../CoachPortrait.js';
+import { teamColour } from '../Avatar.js';
+import { FixedHeader } from '../Sticky.js';
+import { pct } from '../format.js';
+
+/** The record for one program, as the season carries it. */
+type Owner = SeasonState['teams'][number];
+
+type Sheet = 'board' | 'coach' | 'hall';
+
+const SHEETS: Sheet[] = ['board', 'coach', 'hall'];
+
+const SHEET_LABEL: Record<Sheet, string> = {
+  board: 'BOARD',
+  coach: 'COACH',
+  hall: 'HALL OF FAME',
+};
 
 export function Program() {
+  const season = useDynasty((s) => s.season);
+  const review = useDynasty((s) => s.lastReview);
+  const offers = useDynasty((s) => s.offers);
+  const year = useDynasty((s) => s.year);
+  const version = useDynasty((s) => s.version);
+  const team = useUserTeam();
+  const [sheet, setSheet] = useState<Sheet>('board');
+  void version;
+
+  if (!season || !team) return null;
+
+  /*
+    The school stays in the pinned header rather than riding one of the tabs.
+
+    Every tab here is about the same job at the same place — even the hall, which
+    is the men who played for you at it — so the name of the school is the one
+    line that is true on all three, and a title that scrolled away would leave
+    the coach's page looking like it belonged to nobody in particular.
+  */
+  return (
+    <FixedHeader header={
+      <>
+        <div style={{ padding: '12px 14px 0' }}>
+          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
+            <div className="label">{team.conference} · {year}</div>
+            <div style={{
+              font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+            }}>{team.def.school}</div>
+          </div>
+        </div>
+        <TabStrip
+          at={sheet}
+          onGo={setSheet}
+          // The board is talking to you and you are one tab away from hearing
+          // it. A review sitting unread behind an inactive tab is the whole
+          // reason this screen used to open on the meeting.
+          waiting={review !== null || offers.length > 0}
+        />
+      </>
+    }>
+      <div style={{ padding: '12px 14px 20px' }}>
+        {sheet === 'board' && <BoardSheet team={team} />}
+        {sheet === 'coach' && <CoachSheet team={team} />}
+        {sheet === 'hall' && <HallSheet />}
+      </div>
+    </FixedHeader>
+  );
+}
+
+/** The tabs, in the same clothes the player card and the recruiting sheet wear. */
+function TabStrip(
+  { at, onGo, waiting }:
+  { at: Sheet; onGo: (s: Sheet) => void; waiting: boolean },
+) {
+  return (
+    <div style={{ display: 'flex', gap: 4, padding: '10px 14px' }}>
+      {SHEETS.map((s) => (
+        <button
+          key={s}
+          onClick={() => onGo(s)}
+          style={{
+            flex: 1, padding: '8px 0',
+            background: s === at ? 'var(--ink)' : 'var(--field)',
+            border: s === at ? '1px solid var(--ink)' : '1px solid var(--faint)',
+            color: s === at ? 'var(--cream)' : 'var(--dim)',
+            font: "700 8.5px var(--mono)", letterSpacing: '.08em',
+          }}
+        >
+          {SHEET_LABEL[s]}
+          {s === 'board' && waiting && s !== at && (
+            <span style={{ color: 'var(--clay)' }}> ●</span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// The board
+// ---------------------------------------------------------------------------
+
+function BoardSheet({ team }: { team: Owner }) {
   const season = useDynasty((s) => s.season);
   const coach = useDynasty((s) => s.coach);
   const review = useDynasty((s) => s.lastReview);
   const offers = useDynasty((s) => s.offers);
   const acceptOffer = useDynasty((s) => s.acceptOffer);
   const clearReview = useDynasty((s) => s.clearReview);
-  const year = useDynasty((s) => s.year);
-  const version = useDynasty((s) => s.version);
-  const team = useUserTeam();
-  const table = useConferenceTable();
   const post = useDynasty((s) => s.lastPostseason);
-  void version;
+  const table = useConferenceTable();
 
-  if (!season || !team) return null;
+  if (!season) return null;
 
   const roster = rosterStrength(team.team);
   // A full season's length, not games played so far. Scaling by games played
@@ -61,15 +180,20 @@ export function Program() {
    * *schedule* is exhausted, which is the moment the postseason becomes
    * possible, not the moment it is over. A tournament objective is open until
    * the bracket has actually been played.
+   *
+   * `title` belongs on that list for exactly the same reason and was missing
+   * from it: a championship mandate showed "✕ Win the national title" from the
+   * moment the regular season ended, which is to say from the moment winning it
+   * became possible.
    */
   const settledFor = (key: string): boolean =>
-    key === 'tournament' || key === 'omaha' || key === 'conferenceTitle'
+    key === 'tournament' || key === 'omaha' || key === 'conferenceTitle' || key === 'title'
       ? post !== null
       : done;
 
   return (
-    <div style={{ padding: '12px 14px 16px' }}>
-      {/* The board meeting takes precedence over everything else on this screen. */}
+    <>
+      {/* The board meeting takes precedence over everything else on this tab. */}
       {review && (
         <div style={{
           marginBottom: 16,
@@ -153,15 +277,8 @@ export function Program() {
         </div>
       )}
 
-      <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-        <div className="label">{team.conference} · {year}</div>
-        <div style={{
-          font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-        }}>{team.def.school}</div>
-      </div>
-
       <div style={{
-        display: 'flex', marginTop: 12,
+        display: 'flex',
         border: '1px solid var(--faint)', background: 'var(--paper)',
       }}>
         <Tile k="PRESTIGE" v={'★'.repeat(stars) + '☆'.repeat(5 - stars)} accent />
@@ -203,39 +320,399 @@ export function Program() {
           <Seat security={coach.security} />
         </div>
       </div>
+    </>
+  );
+}
 
-      <div style={{ marginTop: 16 }}>
-        <div className="label" style={{ marginBottom: 5 }}>CAREER</div>
-        <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-          {/*
-            The man, above the numbers. Age and where he is from decide nothing —
-            they are here because a career belongs to somebody, and a record with
-            no name on it is a spreadsheet.
-          */}
-          <div style={{
-            padding: '10px 12px', borderBottom: '1px solid var(--hairline)',
-          }}>
+// ---------------------------------------------------------------------------
+// The coach
+// ---------------------------------------------------------------------------
+
+/**
+ * The man, not the job.
+ *
+ * The portrait sits in the panel rather than in the pinned header on purpose: it
+ * is the thing you look at once on arrival and never again, so it should be the
+ * first thing to scroll away. What stays pinned is the school and the tabs,
+ * which is what you actually navigate by.
+ */
+function CoachSheet({ team }: { team: Owner }) {
+  const coach = useDynasty((s) => s.coach);
+  const history = useDynasty((s) => s.history);
+  const version = useDynasty((s) => s.version);
+  void version;
+
+  const philosophy = philosophyOf(coach.philosophy);
+  const region = REGION_OF_STATE[coach.homeState];
+  const games = coach.careerWins + coach.careerLosses;
+
+  /*
+    Two clocks that tick a moment apart. The coach's own counters move at the
+    board review; the record book is written at the roll into next year. In the
+    offseason between them a raw `history.length` can read as fewer seasons than
+    the coach has spent at this one job, which is nonsense on its face — so the
+    career figure is never allowed below tenure.
+  */
+  const careerSeasons = Math.max(history.length, coach.tenure);
+
+  /*
+    Deep runs have no counter on the coach: `tournaments` counts bids, and
+    nothing counts the last four. The record book does know, and this is the same
+    arithmetic the history screen prints for its OMAHA tile — derived the same
+    way from the same array, so the two pages cannot quietly disagree.
+  */
+  const omaha = history.filter(
+    (s) => s.finish === 'omaha' || s.finish === 'runner-up' || s.finish === 'champion',
+  ).length;
+
+  return (
+    <>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
+      }}>
+        <Flank k="CAREER" v={String(careerSeasons)} align="right" />
+        <CoachPortrait look={coach.look} size={76} />
+        <Flank k="AT SCHOOL" v={String(coach.tenure)} align="left" />
+      </div>
+
+      <div style={{
+        marginTop: 6, textAlign: 'center',
+        font: "800 26px/0.95 var(--display)", textTransform: 'uppercase',
+      }}>{coach.name}</div>
+
+      {/*
+        The two counters are seasons *finished*, which is why this says nothing
+        about which year is in progress. The board tab already says "Year 3 at
+        the job", and a page carrying both a 2 and a 3 for the same span of time
+        makes the reader stop and work out which is lying.
+      */}
+      <div className="label" style={{ marginTop: 4, textAlign: 'center' }}>
+        HEAD COACH · SEASONS COMPLETED
+      </div>
+
+      <div style={{
+        marginTop: 3, marginBottom: 12, textAlign: 'center',
+        font: "600 10px var(--mono)", letterSpacing: '.1em',
+        color: teamColour(team.def.abbr),
+      }}>{team.def.school.toUpperCase()} · {team.conference}</div>
+
+      <Head>INFORMATION</Head>
+      <Panel>
+        <Stat k="AGE" v={String(coach.age)} />
+        <Stat k="FROM" v={region ? `${coach.homeState} · ${region}` : coach.homeState} />
+        <Stat k="CAREER EXPERIENCE" v={seasonWord(careerSeasons)} />
+        <Stat k="AT THIS SCHOOL" v={seasonWord(coach.tenure)} />
+        <Stat
+          k="CONTRACT"
+          v={coach.contractYears > 0
+            ? `${coach.contractYears} of ${coach.contractLength} years left`
+            : 'Final year'}
+        />
+        <Meter
+          k="YOUR STANDING"
+          v={String(coach.prestige)}
+          value={coach.prestige}
+          note="What the rest of the country thinks of you. It decides whose call you get."
+          last
+        />
+      </Panel>
+
+      <div style={{ marginTop: 14 }}>
+        <Head>ACHIEVEMENTS</Head>
+        <Panel>
+          <Stat k="RECORD" v={`${coach.careerWins}-${coach.careerLosses}`} />
+          <Stat k="WIN PCT" v={games > 0 ? pct(coach.careerWins / games) : '—'} />
+          <Stat k="TOURNAMENT BIDS" v={String(coach.tournaments)} />
+          <Stat k="TRIPS TO OMAHA" v={String(omaha)} />
+          <Stat k="CONFERENCE TITLES" v={String(coach.conferenceTitles)} />
+          <Stat k="NATIONAL TITLES" v={String(coach.titles)} last />
+        </Panel>
+      </div>
+
+      <div style={{ marginTop: 14 }}>
+        <Head>STRATEGY</Head>
+        {/*
+          The name and the sentence both come out of the engine. They are printed
+          on the creation step as well, and one copy of a sentence in two screens
+          is two sentences that eventually say different things.
+        */}
+        <Panel>
+          <div style={{ padding: '11px 12px' }}>
             <div style={{
               font: "800 20px/1 var(--display)", textTransform: 'uppercase',
-            }}>{coach.name}</div>
+            }}>{philosophy.name}</div>
             <div style={{
-              marginTop: 4, font: "400 11px var(--mono)", color: 'var(--dim)',
-            }}>
-              {coach.age} · {coach.homeState}
-              {REGION_OF_STATE[coach.homeState]
-                ? ` · ${REGION_OF_STATE[coach.homeState]}`
-                : ''}
-            </div>
+              marginTop: 6, font: "400 12px/1.5 var(--body)",
+            }}>{philosophy.blurb}</div>
           </div>
-          <Row k="RECORD" v={`${coach.careerWins}-${coach.careerLosses}`} />
-          <Row k="TOURNAMENT BIDS" v={String(coach.tournaments)} />
-          <Row k="CONFERENCE TITLES" v={String(coach.conferenceTitles)} />
-          <Row k="NATIONAL TITLES" v={String(coach.titles)} last />
-        </div>
+        </Panel>
+        <Note>
+          What he carries between programs. It sets five controls the first day he
+          arrives, and every one of them is yours to change on the strategy screen.
+        </Note>
       </div>
+
+      <div style={{ marginTop: 14 }}>
+        <Head>RATINGS</Head>
+        <div style={{
+          marginTop: 8, padding: '12px 12px 4px',
+          border: '1px solid var(--faint)', background: 'var(--paper)',
+        }}>
+          {SKILLS.map((k) => (
+            <Bar key={k} label={SKILL_LABEL[k]} value={coach.skills[k]} />
+          ))}
+        </div>
+        {coach.skillPoints > 0 && (
+          <Note>
+            <span style={{ color: 'var(--clay)' }}>
+              {coach.skillPoints} point{coach.skillPoints === 1 ? '' : 's'} unspent.
+            </span>{' '}
+            They are spent on the coach step of the offseason.
+          </Note>
+        )}
+      </div>
+    </>
+  );
+}
+
+const seasonWord = (n: number): string => `${n} season${n === 1 ? '' : 's'}`;
+
+// ---------------------------------------------------------------------------
+// The hall
+// ---------------------------------------------------------------------------
+
+/** One man's whole college career, as the record book has it. */
+interface HallRow {
+  id: PlayerId;
+  name: string;
+  first: number;
+  last: number;
+  /** Every program he played for under you, in the order he played for them. */
+  teams: string[];
+  pitcher: boolean;
+  ab: number; h: number; hr: number; rbi: number;
+  w: number; l: number; outs: number; er: number; k: number;
+  /** What he won while he was here, without repeats. */
+  honours: string[];
+}
+
+const sum = (years: CareerYear[], key: keyof CareerYear): number =>
+  years.reduce((a, y) => a + ((y[key] as number | undefined) ?? 0), 0);
+
+/** Everything your own players have won, gathered under the man who won it. */
+function honoursByPlayer(history: SeasonRecord[]): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  for (const season of history) {
+    for (const a of season.awards ?? []) {
+      const list = map.get(a.id) ?? [];
+      if (!list.includes(a.title)) list.push(a.title);
+      map.set(a.id, list);
+    }
+  }
+  return map;
+}
+
+/**
+ * The record book, folded into one row per man.
+ *
+ * The book is keyed by player id, and a player id in this game *is* his name —
+ * `makeHitter` and `makePitcher` build one from the other (engine/players.ts).
+ * That is the only reason a list of men who left four years ago can be printed
+ * at all: rosters are rewritten every June and the departure notices are kept
+ * for one offseason, so nothing else in the save still remembers them.
+ */
+function hallRows(
+  careers: Record<PlayerId, CareerYear[]>,
+  honours: Map<string, string[]>,
+): HallRow[] {
+  return Object.entries(careers).map(([id, rawYears]) => {
+    const years = [...rawYears].sort((a, b) => a.year - b.year);
+    const teams: string[] = [];
+    for (const y of years) if (!teams.includes(y.team)) teams.push(y.team);
+    return {
+      id: playerId(id),
+      name: id,
+      first: years[0]?.year ?? 0,
+      last: years[years.length - 1]?.year ?? 0,
+      teams,
+      // Same test the player card uses to decide which career table to draw, so
+      // a two-way man lands in the same half of the book on both screens.
+      pitcher: years.some((y) => (y.outs ?? 0) > 0) || !years.some((y) => (y.ab ?? 0) > 0),
+      ab: sum(years, 'ab'), h: sum(years, 'h'), hr: sum(years, 'hr'), rbi: sum(years, 'rbi'),
+      w: sum(years, 'w'), l: sum(years, 'l'), outs: sum(years, 'outs'),
+      er: sum(years, 'er'), k: sum(years, 'k'),
+      honours: honours.get(id) ?? [],
+    };
+  });
+}
+
+/**
+ * The best players you have coached.
+ *
+ * Ranked on counting statistics the game already prints — hits for the bats,
+ * strikeouts for the arms — rather than on a career score of my own invention.
+ * A hall of fame ordered by a number nobody can check is a leaderboard for a
+ * statistic that does not exist, and the honours a man actually won are sitting
+ * right there in the record book to say who the great ones were.
+ */
+function HallSheet() {
+  const season = useDynasty((s) => s.season);
+  const history = useDynasty((s) => s.history);
+  const openPlayer = useDynasty((s) => s.openPlayer);
+  const version = useDynasty((s) => s.version);
+  void version;
+
+  if (!season) return null;
+
+  const rows = hallRows(season.careers ?? {}, honoursByPlayer(history));
+
+  if (rows.length === 0) {
+    return (
+      <>
+        <Head>HALL OF FAME</Head>
+        <Panel>
+          <Empty>
+            Nobody yet. A man is written into the record book when the year rolls
+            over, so the first names appear after your first full season.
+          </Empty>
+        </Panel>
+      </>
+    );
+  }
+
+  // Twelve is what fits before a leaderboard stops being a leaderboard. The rest
+  // are still reachable — every one of these men has a card of his own.
+  const bats = rows.filter((r) => !r.pitcher).sort((a, b) => b.h - a.h).slice(0, 12);
+  const arms = rows.filter((r) => r.pitcher).sort((a, b) => b.k - a.k).slice(0, 12);
+
+  return (
+    <>
+      <Head>BATTING · BY CAREER HITS</Head>
+      <Table cols={BAT_COLS} head={['PLAYER', 'H', 'AVG', 'HR']}>
+        {bats.length === 0
+          ? <Empty>No hitter has finished a season for you yet.</Empty>
+          : bats.map((r) => (
+            <HallRowView
+              key={r.id}
+              row={r}
+              cols={BAT_COLS}
+              values={[
+                String(r.h),
+                r.ab > 0 ? pct(r.h / r.ab) : '—',
+                String(r.hr),
+              ]}
+              onClick={() => openPlayer(r.id)}
+            />
+          ))}
+      </Table>
+
+      <div style={{ marginTop: 14 }}>
+        <Head>PITCHING · BY STRIKEOUTS</Head>
+        <Table cols={ARM_COLS} head={['PLAYER', 'K', 'W-L', 'ERA']}>
+          {arms.length === 0
+            ? <Empty>No pitcher has finished a season for you yet.</Empty>
+            : arms.map((r) => (
+              <HallRowView
+                key={r.id}
+                row={r}
+                cols={ARM_COLS}
+                values={[
+                  String(r.k),
+                  `${r.w}-${r.l}`,
+                  r.outs > 0 ? (r.er * 27 / r.outs).toFixed(2) : '—',
+                ]}
+                onClick={() => openPlayer(r.id)}
+              />
+            ))}
+        </Table>
+      </div>
+
+      <Note>
+        Your own book, and only yours. Career lines are kept for the rosters you
+        have run — at this program and any other you have coached — because
+        keeping them for all sixty four schools would put tens of thousands of
+        rows through every save. Nobody else's players are in here.
+      </Note>
+    </>
+  );
+}
+
+const BAT_COLS = '1fr 30px 38px 26px';
+const ARM_COLS = '1fr 30px 40px 40px';
+
+function Table(
+  { cols, head, children }: { cols: string; head: string[]; children: ReactNode },
+) {
+  return (
+    <div style={{
+      marginTop: 8, border: '1px solid var(--faint)', background: 'var(--paper)',
+    }}>
+      <div style={{
+        display: 'grid', gridTemplateColumns: cols, gap: 6,
+        padding: '6px 10px', borderBottom: '1px solid var(--hairline)',
+      }}>
+        {head.map((c, i) => (
+          <span key={c} className="label" style={{ textAlign: i === 0 ? 'left' : 'right' }}>
+            {c}
+          </span>
+        ))}
+      </div>
+      {children}
     </div>
   );
 }
+
+function HallRowView(
+  { row, cols, values, onClick }:
+  { row: HallRow; cols: string; values: string[]; onClick: () => void },
+) {
+  const span = row.first === row.last ? `${row.first}` : `${row.first}–${row.last}`;
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: '100%', textAlign: 'left',
+        display: 'grid', gridTemplateColumns: cols, gap: 6, alignItems: 'baseline',
+        padding: '8px 10px', borderBottom: '1px solid var(--hairline)',
+        background: row.honours.length > 0 ? 'rgba(168,68,42,.05)' : 'transparent',
+      }}
+    >
+      <span style={{
+        font: "400 12px var(--body)",
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        borderBottom: '1px dotted rgba(28,36,48,.35)',
+      }}>{row.name}</span>
+      {values.map((v, i) => (
+        <span key={i} style={{ font: "500 11px var(--mono)", textAlign: 'right' }}>{v}</span>
+      ))}
+      <span style={{
+        gridColumn: '1 / -1', marginTop: 2,
+        font: "400 9px var(--mono)", color: 'var(--dim)',
+      }}>{span} · {row.teams.join(' · ')}</span>
+      {row.honours.length > 0 && (
+        <span style={{
+          gridColumn: '1 / -1', marginTop: 2,
+          display: 'flex', flexWrap: 'wrap', gap: '2px 8px',
+        }}>
+          {row.honours.slice(0, 3).map((t) => (
+            <span key={t} style={{
+              font: "600 8px var(--mono)", letterSpacing: '.08em', color: 'var(--clay)',
+            }}>{t.toUpperCase()}</span>
+          ))}
+          {row.honours.length > 3 && (
+            <span style={{
+              font: "600 8px var(--mono)", letterSpacing: '.08em', color: 'var(--dim)',
+            }}>+{row.honours.length - 3}</span>
+          )}
+        </span>
+      )}
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pieces
+// ---------------------------------------------------------------------------
 
 const verdictWord = (v: string): string =>
   v === 'exceeded' ? 'Above expectations'
@@ -342,15 +819,112 @@ function Tile({ k, v, accent, last }: { k: string; v: string; accent?: boolean; 
   );
 }
 
-function Row({ k, v, last }: { k: string; v: string; last?: boolean }) {
+/** One of the two counters either side of the face. */
+function Flank({ k, v, align }: { k: string; v: string; align: 'left' | 'right' }) {
+  return (
+    <div style={{ minWidth: 56, textAlign: align }}>
+      <div className="label">{k}</div>
+      <div style={{
+        marginTop: 1, font: "800 20px/1 var(--display)", textTransform: 'uppercase',
+      }}>{v}</div>
+    </div>
+  );
+}
+
+function Head({ children }: { children: ReactNode }) {
+  return (
+    <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
+      <div className="label">{children}</div>
+    </div>
+  );
+}
+
+function Panel({ children }: { children: ReactNode }) {
+  return (
+    <div style={{
+      marginTop: 8, border: '1px solid var(--faint)', background: 'var(--paper)',
+    }}>{children}</div>
+  );
+}
+
+function Note({ children }: { children: ReactNode }) {
+  return (
+    <div style={{ marginTop: 8, font: "400 11px/1.5 var(--body)", color: 'var(--dim)' }}>
+      {children}
+    </div>
+  );
+}
+
+function Empty({ children }: { children: ReactNode }) {
+  return (
+    <div style={{ padding: '12px', font: "400 12px/1.5 var(--body)", color: 'var(--dim)' }}>
+      {children}
+    </div>
+  );
+}
+
+function Stat({ k, v, last }: { k: string; v: string; last?: boolean }) {
   return (
     <div style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-      padding: '8px 12px',
+      padding: '8px 12px', gap: 10,
       borderBottom: last ? 'none' : '1px solid var(--hairline)',
     }}>
       <span className="label">{k}</span>
-      <span style={{ font: "600 14px var(--mono)" }}>{v}</span>
+      <span style={{ font: "600 14px var(--mono)", textAlign: 'right' }}>{v}</span>
+    </div>
+  );
+}
+
+/** A `Stat` that also has to show where the number sits on its scale. */
+function Meter(
+  { k, v, value, note, last }:
+  { k: string; v: string; value: number; note?: string; last?: boolean },
+) {
+  return (
+    <div style={{
+      padding: '8px 12px 11px',
+      borderBottom: last ? 'none' : '1px solid var(--hairline)',
+    }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10,
+      }}>
+        <span className="label">{k}</span>
+        <span style={{ font: "600 14px var(--mono)" }}>{v}</span>
+      </div>
+      <div style={{ height: 6, background: 'rgba(28,36,48,.09)', marginTop: 6 }}>
+        <div style={{
+          width: `${Math.max(2, Math.min(100, value))}%`, height: '100%',
+          background: 'var(--clay)', transition: 'width 400ms ease',
+        }} />
+      </div>
+      {note && (
+        <div style={{
+          marginTop: 6, font: "400 10.5px/1.4 var(--body)", color: 'var(--dim)',
+        }}>{note}</div>
+      )}
+    </div>
+  );
+}
+
+/** A coach rating, drawn against the full scale the skill screen uses. */
+function Bar({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between',
+        alignItems: 'baseline', marginBottom: 4,
+      }}>
+        <span className="label">{label}</span>
+        <span style={{ font: "600 11px var(--mono)", color: 'var(--dim)' }}>{value}</span>
+      </div>
+      <div style={{ height: 6, background: 'rgba(28,36,48,.09)' }}>
+        <div style={{
+          width: `${Math.max(0, Math.min(100, value))}%`, height: '100%',
+          background: value >= 60 ? 'var(--clay)' : 'var(--ink)',
+          opacity: value >= 60 ? 1 : 0.55,
+        }} />
+      </div>
     </div>
   );
 }
