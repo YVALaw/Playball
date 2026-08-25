@@ -16,7 +16,7 @@
 
 import { useEffect, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { FloatingAction } from '../Sticky.js';
+import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { Modal } from '../Modal.js';
 import { PostseasonMap } from '../PostseasonMap.js';
 import type { GraphInput } from '../postseasonGraph.js';
@@ -259,7 +259,11 @@ export function Postseason() {
         : { label: 'CONTINUE', run: advance };
 
   return (
-    <div style={{ padding: '14px 0 22px' }}>
+    <>
+      {/*
+        The modals stay outside the screen's own scroller. They cover the frame,
+        and a cover that lives inside the box it is covering scrolls with it.
+      */}
       {modal === 'in' && (
         <Modal
           kicker={`${year} POSTSEASON`}
@@ -281,17 +285,26 @@ export function Postseason() {
         />
       )}
 
-      <div style={{
-        margin: '0 14px', borderBottom: '2px solid var(--ink)', paddingBottom: 8,
-      }}>
-        <div className="label">{year} POSTSEASON · STAGE {rung + 1} OF 3</div>
-        <div style={{
-          font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
-        }}>{stageTitle}</div>
-      </div>
+      {/*
+        Which stage this is, and how far through June you are, pinned. Both are
+        the answer to "where am I", and a map 430 pixels tall pushes them off
+        the top of the screen the moment you go looking at the bracket.
+      */}
+      <FixedHeader header={
+        <div style={{ padding: '14px 0 12px' }}>
+          <div style={{
+            margin: '0 14px', borderBottom: '2px solid var(--ink)', paddingBottom: 8,
+          }}>
+            <div className="label">{year} POSTSEASON · STAGE {rung + 1} OF 3</div>
+            <div style={{
+              font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
+            }}>{stageTitle}</div>
+          </div>
 
-      <Ladder at={rung} />
-
+          <Ladder at={rung} />
+        </div>
+      }>
+      <div style={{ padding: '12px 0 22px' }}>
       <PostseasonMap
         section={rung === 0 ? 'conf' : rung === 1 ? 'regional' : 'national'}
         input={graphInput}
@@ -361,7 +374,9 @@ export function Postseason() {
           secondary={action.secondary ?? null}
         />
       </div>
-    </div>
+      </div>
+      </FixedHeader>
+    </>
   );
 }
 

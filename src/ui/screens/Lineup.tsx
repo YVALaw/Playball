@@ -8,6 +8,7 @@
 
 import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
+import { FixedHeader } from '../Sticky.js';
 import { overallOf } from '../../engine/ratings.js';
 import { battingAverage, era, inningsPitched } from '../../engine/season.js';
 import { pct } from '../format.js';
@@ -56,25 +57,36 @@ export function Lineup() {
   };
 
   return (
-    <div style={{ padding: '12px 14px 16px' }}>
-      <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-        <div className="label">BATTING ORDER</div>
-        <div style={{
-          font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-        }}>Lineup card</div>
-      </div>
+    <FixedHeader
+      header={
+        <div style={{ padding: '12px 14px 10px' }}>
+          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
+            <div className="label">BATTING ORDER</div>
+            <div style={{
+              font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+            }}>Lineup card</div>
+          </div>
 
+          {/*
+            The instruction rides with the title rather than the list. It is the
+            other half of a two-tap gesture — "now tap the spot to swap with
+            Reyes" — and a prompt you can scroll off the screen halfway through
+            the thing it is prompting is a prompt that has stopped working.
+          */}
+          <div style={{
+            marginTop: 8, font: "400 11px/1.5 var(--body)",
+            color: picked === null ? 'var(--dim)' : 'var(--clay)',
+          }}>
+            {picked === null
+              ? 'Tap two spots to swap them.'
+              : `Now tap the spot to swap with ${order[picked]?.name ?? ''}.`}
+          </div>
+        </div>
+      }
+    >
+    <div style={{ padding: '10px 14px 16px' }}>
       <div style={{
-        marginTop: 8, font: "400 11px/1.5 var(--body)",
-        color: picked === null ? 'var(--dim)' : 'var(--clay)',
-      }}>
-        {picked === null
-          ? 'Tap two spots to swap them.'
-          : `Now tap the spot to swap with ${order[picked]?.name ?? ''}.`}
-      </div>
-
-      <div style={{
-        marginTop: 8, border: '1px solid var(--faint)', background: 'var(--paper)',
+        border: '1px solid var(--faint)', background: 'var(--paper)',
       }}>
         {order.map((p, i) => {
           const line = season.batting.get(p.id);
@@ -157,6 +169,7 @@ export function Lineup() {
         takes all nine non-conference games — {midweekInnings.toFixed(0)} innings so far.
       </div>
     </div>
+    </FixedHeader>
   );
 }
 

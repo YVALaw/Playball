@@ -6,6 +6,7 @@ import { useState } from 'react';
 
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { teamColour } from '../Avatar.js';
+import { FixedHeader } from '../Sticky.js';
 import { LineScore } from '../LineScore.js';
 import { regularRecord } from '../../engine/season.js';
 import type { BoxScore, BoxLine, SeasonState } from '../../engine/season.js';
@@ -34,16 +35,22 @@ export function Schedule() {
   });
 
   return (
-    <div style={{ padding: '12px 14px 16px' }}>
-      <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-        <div className="label">SCHEDULE · {year}</div>
-        <div style={{
-          font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-        }}>{regularRecord(team).w}-{regularRecord(team).l} overall</div>
-      </div>
-
+    <>
+    <FixedHeader
+      header={
+        <div style={{ padding: '12px 14px 10px' }}>
+          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
+            <div className="label">SCHEDULE · {year}</div>
+            <div style={{
+              font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+            }}>{regularRecord(team).w}-{regularRecord(team).l} overall</div>
+          </div>
+        </div>
+      }
+    >
+    <div style={{ padding: '2px 14px 16px' }}>
       <div style={{
-        marginTop: 12, border: '1px solid var(--faint)', background: 'var(--paper)',
+        border: '1px solid var(--faint)', background: 'var(--paper)',
       }}>
         {rows.map(({ day, home, opponent, result }, i) => {
           const won = result
@@ -96,14 +103,22 @@ export function Schedule() {
           );
         })}
       </div>
-      {openDay !== null && season.boxScores?.[openDay] && (
-        <BoxScoreSheet
-          box={season.boxScores[openDay]}
-          season={season}
-          onClose={() => setOpenDay(null)}
-        />
-      )}
     </div>
+    </FixedHeader>
+    {/*
+      The sheet is a sibling of the screen rather than a child of its scroller.
+      It covers the frame, and a full-screen cover that lives inside the box it
+      is covering is one that scrolls with it — the header would ride out from
+      under the sheet the first time you dragged a long box score.
+    */}
+    {openDay !== null && season.boxScores?.[openDay] && (
+      <BoxScoreSheet
+        box={season.boxScores[openDay]}
+        season={season}
+        onClose={() => setOpenDay(null)}
+      />
+    )}
+    </>
   );
 }
 

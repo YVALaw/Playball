@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
+import { FixedHeader } from '../Sticky.js';
 import { leaders, type LeaderRow } from '../../engine/season.js';
 import { pct } from '../format.js';
 import type { PlayerId } from '../../engine/types.js';
@@ -44,25 +45,31 @@ export function Stats() {
   }
 
   return (
-    <div style={{ padding: '12px 14px 16px' }}>
-      <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-        <div className="label">LEADERS</div>
-        <div style={{
-          font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-        }}>{scope === 'national' ? 'National' : team.def.school}</div>
-      </div>
+    <FixedHeader
+      header={
+        <div style={{ padding: '12px 14px 10px' }}>
+          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
+            <div className="label">LEADERS</div>
+            <div style={{
+              font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+            }}>{scope === 'national' ? 'National' : team.def.school}</div>
+          </div>
 
-      <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-        <Chip on={scope === 'national'} onClick={() => setScope('national')}>NATIONAL</Chip>
-        <Chip on={scope === 'team'} onClick={() => setScope('team')}>MY TEAM</Chip>
+          <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+            <Chip on={scope === 'national'} onClick={() => setScope('national')}>NATIONAL</Chip>
+            <Chip on={scope === 'team'} onClick={() => setScope('team')}>MY TEAM</Chip>
+          </div>
+        </div>
+      }
+    >
+      <div style={{ padding: '2px 14px 16px' }}>
+        <Board title="BATTING AVERAGE" rows={mine(boards.average)} fmt={pct} mark={team.def.abbr} onPick={openPlayer} />
+        <Board title="HOME RUNS" rows={mine(boards.homeRuns)} fmt={String} mark={team.def.abbr} onPick={openPlayer} />
+        <Board title="RUNS BATTED IN" rows={mine(boards.rbi)} fmt={String} mark={team.def.abbr} onPick={openPlayer} />
+        <Board title="EARNED RUN AVERAGE" rows={mine(boards.era)} fmt={(v) => v.toFixed(2)} mark={team.def.abbr} onPick={openPlayer} />
+        <Board title="STRIKEOUTS" rows={mine(boards.strikeouts)} fmt={String} mark={team.def.abbr} onPick={openPlayer} />
       </div>
-
-      <Board title="BATTING AVERAGE" rows={mine(boards.average)} fmt={pct} mark={team.def.abbr} onPick={openPlayer} />
-      <Board title="HOME RUNS" rows={mine(boards.homeRuns)} fmt={String} mark={team.def.abbr} onPick={openPlayer} />
-      <Board title="RUNS BATTED IN" rows={mine(boards.rbi)} fmt={String} mark={team.def.abbr} onPick={openPlayer} />
-      <Board title="EARNED RUN AVERAGE" rows={mine(boards.era)} fmt={(v) => v.toFixed(2)} mark={team.def.abbr} onPick={openPlayer} />
-      <Board title="STRIKEOUTS" rows={mine(boards.strikeouts)} fmt={String} mark={team.def.abbr} onPick={openPlayer} />
-    </div>
+    </FixedHeader>
   );
 }
 

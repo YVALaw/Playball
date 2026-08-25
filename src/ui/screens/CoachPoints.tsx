@@ -12,7 +12,7 @@
 // rather than on which word sounds strongest.
 
 import { useDynasty } from '../../state/store.js';
-import { FloatingAction } from '../Sticky.js';
+import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { SKILLS, SKILL_LABEL, SKILL_BLURB } from '../../engine/program.js';
 
 export function CoachPoints() {
@@ -25,16 +25,21 @@ export function CoachPoints() {
   const left = coach.skillPoints;
 
   return (
-    <div style={{ padding: '16px 14px 24px' }}>
-      <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
-        <div className="label">{coach.name} · YEAR {coach.tenure}</div>
-        <div style={{
-          font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
-        }}>Coach</div>
-      </div>
-
+    <FixedHeader
+      header={
+        <div style={{ padding: '16px 14px 10px' }}>
+          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
+            <div className="label">{coach.name} · YEAR {coach.tenure}</div>
+            <div style={{
+              font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
+            }}>Coach</div>
+          </div>
+        </div>
+      }
+    >
+    <div style={{ padding: '12px 14px 24px' }}>
       <div style={{
-        marginTop: 12, padding: '12px', background: 'var(--paper)',
+        padding: '12px', background: 'var(--paper)',
         border: `1px solid ${left > 0 ? 'var(--clay)' : 'var(--faint)'}`,
         borderLeft: `3px solid ${left > 0 ? 'var(--clay)' : 'var(--faint)'}`,
       }}>
@@ -104,5 +109,6 @@ export function CoachPoints() {
         onClick={() => void next()}
       />
     </div>
+    </FixedHeader>
   );
 }

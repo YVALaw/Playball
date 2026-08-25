@@ -7,6 +7,7 @@
 
 import { useMemo } from 'react';
 import { useDynasty } from '../../state/store.js';
+import { FixedHeader } from '../Sticky.js';
 import { wire, type WireKind } from '../../engine/wire.js';
 
 const KIND_LABEL: Record<WireKind, string> = {
@@ -37,14 +38,19 @@ export function Wire() {
   if (!season) return null;
 
   return (
-    <div style={{ padding: '12px 14px 20px' }}>
-      <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-        <div className="label">AROUND THE COUNTRY</div>
-        <div style={{
-          font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-        }}>The wire</div>
-      </div>
-
+    <FixedHeader
+      header={
+        <div style={{ padding: '12px 14px 10px' }}>
+          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
+            <div className="label">AROUND THE COUNTRY</div>
+            <div style={{
+              font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+            }}>The wire</div>
+          </div>
+        </div>
+      }
+    >
+    <div style={{ padding: '2px 14px 20px' }}>
       {items.length === 0 && (
         <div style={{
           marginTop: 16, padding: '18px 12px', border: '1px solid var(--faint)',
@@ -89,5 +95,6 @@ export function Wire() {
         })}
       </div>
     </div>
+    </FixedHeader>
   );
 }

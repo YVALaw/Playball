@@ -8,6 +8,7 @@
 // aggressive running game does take more bases and does run into more outs.
 
 import { useDynasty, useUserTeam } from '../../state/store.js';
+import { FixedHeader } from '../Sticky.js';
 import type { Strategy } from '../../engine/strategy.js';
 
 interface Group<K extends keyof Strategy> {
@@ -80,16 +81,21 @@ export function StrategyScreen() {
   const current = team.strategy;
 
   return (
-    <div style={{ padding: '12px 14px 16px' }}>
-      <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-        <div className="label">HOW YOU PLAY</div>
-        <div style={{
-          font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-        }}>Strategy</div>
-      </div>
-
+    <FixedHeader
+      header={
+        <div style={{ padding: '12px 14px 10px' }}>
+          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
+            <div className="label">HOW YOU PLAY</div>
+            <div style={{
+              font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+            }}>Strategy</div>
+          </div>
+        </div>
+      }
+    >
+    <div style={{ padding: '10px 14px 16px' }}>
       <div style={{
-        marginTop: 9, font: "400 11.5px/1.55 var(--body)", color: 'var(--dim)',
+        font: "400 11.5px/1.55 var(--body)", color: 'var(--dim)',
       }}>
         These are live from the next pitch. Every setting gives something up —
         there is no column here that is simply better than the others.
@@ -139,5 +145,6 @@ export function StrategyScreen() {
         </div>
       ))}
     </div>
+    </FixedHeader>
   );
 }

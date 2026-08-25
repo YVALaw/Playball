@@ -13,6 +13,7 @@
 // what you did — the record, the rings, the tournaments.
 
 import { useDynasty } from '../../state/store.js';
+import { FixedHeader } from '../Sticky.js';
 import { prestigeStars } from '../../engine/program.js';
 
 export function JobSearch() {
@@ -31,21 +32,24 @@ export function JobSearch() {
   const trips = history.filter((h) => h.finish !== 'missed').length;
 
   return (
-    <div style={{ padding: '16px 14px 24px' }}>
-      <div style={{ borderBottom: '2px solid var(--clay)', paddingBottom: 8 }}>
-        <div className="label" style={{ color: 'var(--clay)' }}>OUT OF A JOB</div>
-        <div style={{
-          font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
-        }}>{coach.name}</div>
-        {/*
-          Where the profile made at the start of the career shows up: this is
-          the one screen that is about the man rather than the program.
-        */}
-        <div style={{
-          marginTop: 3, font: "400 10px var(--mono)", color: 'var(--dim)',
-        }}>{coach.age} · {coach.homeState}</div>
+    <FixedHeader header={
+      <div style={{ padding: '16px 14px 10px' }}>
+        <div style={{ borderBottom: '2px solid var(--clay)', paddingBottom: 8 }}>
+          <div className="label" style={{ color: 'var(--clay)' }}>OUT OF A JOB</div>
+          <div style={{
+            font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
+          }}>{coach.name}</div>
+          {/*
+            Where the profile made at the start of the career shows up: this is
+            the one screen that is about the man rather than the program.
+          */}
+          <div style={{
+            marginTop: 3, font: "400 10px var(--mono)", color: 'var(--dim)',
+          }}>{coach.age} · {coach.homeState}</div>
+        </div>
       </div>
-
+    }>
+    <div style={{ padding: '6px 14px 24px' }}>
       {/*
         The paragraph that used to sit here — the board has decided not to
         renew, your record goes with you, somebody else's program is the next
@@ -54,7 +58,7 @@ export function JobSearch() {
         above the only decision on the screen.
       */}
 
-      <div className="label" style={{ marginTop: 16, marginBottom: 6 }}>YOUR CAREER</div>
+      <div className="label" style={{ marginTop: 10, marginBottom: 6 }}>YOUR CAREER</div>
       <div style={{
         display: 'flex', border: '1px solid var(--faint)', background: 'var(--paper)',
       }}>
@@ -117,6 +121,7 @@ export function JobSearch() {
         );
       })}
     </div>
+    </FixedHeader>
   );
 }
 

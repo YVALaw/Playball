@@ -20,6 +20,7 @@
 import { overallOf } from './ratings.js';
 import { FIRST, LAST } from '../data/names.js';
 import { ALL_STATES } from '../data/schools.js';
+import { DEFAULT_PHILOSOPHY, isPhilosophyId, type PhilosophyId } from './strategy.js';
 import type { TeamRecord } from './season.js';
 import type { Rng, Team } from './types.js';
 
@@ -489,12 +490,78 @@ export function skillPoints(outcome: SeasonOutcome): number {
 }
 
 /**
+ * What he looks like, as four small integers.
+ *
+ * Indices into the palettes the portrait component owns, rather than colours or
+ * names. A save that stores "#c68a5e" freezes today's palette into every career
+ * ever started; a save that stores `2` follows the drawing when it is redrawn.
+ * They are also the cheapest possible thing to write to disk and to validate on
+ * the way back — see `normalizeLook`.
+ */
+export interface CoachLook {
+  skin: number;
+  hair: number;
+  /** Hair style, including bald. */
+  cut: number;
+  /** Facial hair, including none. */
+  beard: number;
+}
+
+/**
+ * How many choices each of those four has.
+ *
+ * The counts, not the colours: the palettes live in the portrait component,
+ * which is where anybody changing them will be. They have to agree with these
+ * numbers, and the portrait indexes modulo its own list length so a disagreement
+ * shows up as the wrong shade rather than as a face that fails to draw.
+ */
+export const LOOK_CHOICES: Readonly<Record<keyof CoachLook, number>> = {
+  skin: 6, hair: 6, cut: 5, beard: 4,
+};
+
+export const DEFAULT_LOOK: CoachLook = { skin: 1, hair: 1, cut: 1, beard: 0 };
+
+/** One saved index, brought back inside the range the portrait can draw. */
+const clampChoice = (value: unknown, of: number): number =>
+  (typeof value === 'number' && Number.isFinite(value)
+    ? Math.abs(Math.round(value)) % of
+    : 0);
+
+/**
+ * A look off the disk or out of a form. Anything missing or nonsensical becomes
+ * the default rather than a hole, for the same reason `restoreCoach` exists: a
+ * career that predates the portrait must load as a coach with a face, not as a
+ * blank square or a crash.
+ */
+export function normalizeLook(saved: unknown): CoachLook {
+  if (!saved || typeof saved !== 'object') return { ...DEFAULT_LOOK };
+  const l = saved as Partial<CoachLook>;
+  return {
+    skin: clampChoice(l.skin, LOOK_CHOICES.skin),
+    hair: clampChoice(l.hair, LOOK_CHOICES.hair),
+    cut: clampChoice(l.cut, LOOK_CHOICES.cut),
+    beard: clampChoice(l.beard, LOOK_CHOICES.beard),
+  };
+}
+
+/**
  * Who the coach is, as distinct from what he can do.
  *
- * Nothing here reaches the simulation, and it is kept apart from `CoachSkills`
- * so that stays visible. A career mode is allowed to ask for a name and a
- * hometown purely so the thing you build has somebody's name on it — what it is
- * not allowed to do is imply the answers are worth points.
+ * A career mode is allowed to ask for a name and a hometown purely so the thing
+ * you build has somebody's name on it — what it is not allowed to do is imply
+ * the answers are worth points. Name, age, home state and the portrait are all
+ * that: they never reach the simulation, and they are kept apart from
+ * `CoachSkills` so that stays visible.
+ *
+ * The philosophy is the one exception on this list and it is not flavour at all.
+ * It is a real starting Strategy, applied to whatever program hires him, and it
+ * lives here because it is part of who the coach is rather than something the
+ * job came with — see engine/strategy.ts.
+ *
+ * `look` and `philosophy` are optional at the door because this is the shape the
+ * creation screen, an old save and a test all come through, and two of those
+ * three predate both fields. `newCoach` fills them in, so `CoachState` below has
+ * them for certain.
  */
 export interface CoachProfile {
   name: string;
@@ -506,6 +573,8 @@ export interface CoachProfile {
    * box: "MS" reads as a place in this world, "the Wirral" does not.
    */
   homeState: string;
+  look?: CoachLook;
+  philosophy?: PhilosophyId;
 }
 
 /**
@@ -524,7 +593,10 @@ export const MAX_COACH_AGE = 68;
  * is a screen with holes in it, which reads as a bug rather than as a career
  * that predates the feature.
  */
-export const DEFAULT_PROFILE: CoachProfile = { name: 'Coach', age: 41, homeState: 'TX' };
+export const DEFAULT_PROFILE: CoachProfile = {
+  name: 'Coach', age: 41, homeState: 'TX',
+  look: DEFAULT_LOOK, philosophy: DEFAULT_PHILOSOPHY,
+};
 
 export const clampAge = (age: number): number =>
   (Number.isFinite(age)
@@ -543,6 +615,7 @@ export const clampAge = (age: number): number =>
 export function randomProfile(rng: Rng): CoachProfile {
   const first = FIRST[Math.floor(rng() * FIRST.length)] ?? DEFAULT_PROFILE.name;
   const last = LAST[Math.floor(rng() * LAST.length)] ?? '';
+  const choice = (of: number): number => Math.floor(rng() * of);
   return {
     name: `${first} ${last}`.trim(),
     // Late thirties to early fifties. Head jobs mostly go to people who spent a
@@ -550,10 +623,29 @@ export function randomProfile(rng: Rng): CoachProfile {
     // rather than at either end of it.
     age: clampAge(38 + Math.floor(rng() * 15)),
     homeState: ALL_STATES[Math.floor(rng() * ALL_STATES.length)] ?? DEFAULT_PROFILE.homeState,
+    look: {
+      skin: choice(LOOK_CHOICES.skin),
+      hair: choice(LOOK_CHOICES.hair),
+      cut: choice(LOOK_CHOICES.cut),
+      beard: choice(LOOK_CHOICES.beard),
+    },
+    // The face is drawn at random and the philosophy is not. A suggestion that
+    // quietly picked how the team plays would be the one prefilled answer that
+    // costs games, and the whole point of the prefill is that skipping it is
+    // free.
+    philosophy: DEFAULT_PHILOSOPHY,
   };
 }
 
 export interface CoachState extends CoachProfile {
+  /** His face. Always present once a coach exists, however he was created. */
+  look: CoachLook;
+  /**
+   * How his teams play. A trait he carries between programs, not a property of
+   * the job: it is applied to whoever hires him, and it is the starting point
+   * for the strategy screen rather than a lock on it.
+   */
+  philosophy: PhilosophyId;
   /** What he is good at. See CoachSkills. */
   skills: CoachSkills;
   /** Unspent skill points, waiting on the offseason screen. */
@@ -606,6 +698,8 @@ export function newCoach(
     name: profile.name.trim() || DEFAULT_PROFILE.name,
     age: clampAge(profile.age),
     homeState: profile.homeState.trim() || DEFAULT_PROFILE.homeState,
+    look: normalizeLook(profile.look),
+    philosophy: isPhilosophyId(profile.philosophy) ? profile.philosophy : DEFAULT_PHILOSOPHY,
     // A new coach is competent at nothing in particular.
     skills: { offense: 20, defense: 20, training: 20, recruiting: 20 },
     skillPoints: 0,
@@ -637,6 +731,11 @@ export function newCoach(
  * twenty years is legitimately past the hiring range, and pulling him back to 68
  * every load would quietly cap the length of a career in the one number that is
  * supposed to record it.
+ *
+ * The portrait and the philosophy arrived later still and are filled the same
+ * way. A coach whose career predates them gets the default face and a balanced
+ * bench — which is what he has been playing as all along, since balanced is what
+ * the world hands a team nobody has given an opinion to.
  */
 export function restoreCoach(saved: unknown): CoachState {
   if (!saved || typeof saved !== 'object') return newCoach();
@@ -650,6 +749,8 @@ export function restoreCoach(saved: unknown): CoachState {
       ? Math.round(c.age) : DEFAULT_PROFILE.age,
     homeState: typeof c.homeState === 'string' && c.homeState.trim() !== ''
       ? c.homeState.trim() : DEFAULT_PROFILE.homeState,
+    look: normalizeLook(c.look),
+    philosophy: isPhilosophyId(c.philosophy) ? c.philosophy : DEFAULT_PHILOSOPHY,
   };
 }
 

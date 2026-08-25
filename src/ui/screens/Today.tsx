@@ -7,6 +7,7 @@ import { RECRUITING_WEEKS } from '../../engine/recruiting.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { seasonComplete, rpiOrder, seasonLength } from '../../engine/season.js';
 import { Rule, Tile, Card } from '../components/Kit.js';
+import { FixedHeader } from '../Sticky.js';
 import { seasonDate } from '../format.js';
 
 export function Today() {
@@ -52,33 +53,38 @@ export function Today() {
   const atHome = todayGame?.home === team.index;
 
   return (
-    <div style={{ padding: '12px 14px 16px' }}>
-      <div style={{
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-        borderBottom: '2px solid var(--ink)', paddingBottom: 6,
-      }}>
-        <div>
+    <FixedHeader
+      header={
+        <div style={{ padding: '12px 14px 10px' }}>
           <div style={{
-            font: "500 9px/1 var(--mono)", letterSpacing: '.2em', color: 'var(--dim)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
+            borderBottom: '2px solid var(--ink)', paddingBottom: 6,
           }}>
-            {done ? 'REGULAR SEASON COMPLETE'
-              : `WEEK ${day?.week ?? 1} · ${day?.kind === 'series' ? 'CONFERENCE SERIES' : 'MIDWEEK'}`}
+            <div>
+              <div style={{
+                font: "500 9px/1 var(--mono)", letterSpacing: '.2em', color: 'var(--dim)',
+              }}>
+                {done ? 'REGULAR SEASON COMPLETE'
+                  : `WEEK ${day?.week ?? 1} · ${day?.kind === 'series' ? 'CONFERENCE SERIES' : 'MIDWEEK'}`}
+              </div>
+              <div style={{
+                font: "800 34px/0.9 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              }}>{done ? `${year} FINAL` : seasonDate(year, day?.day ?? 0)}</div>
+            </div>
+            <div style={{
+              textAlign: 'right', font: "500 9.5px/1.6 var(--mono)", color: 'var(--dim)',
+            }}>
+              RPI #{rank || '—'}<br />
+              {team.streak === 0 ? 'No streak'
+                : `${team.streak > 0 ? 'Won' : 'Lost'} ${Math.abs(team.streak)} straight`}
+            </div>
           </div>
-          <div style={{
-            font: "800 34px/0.9 var(--display)", marginTop: 4, textTransform: 'uppercase',
-          }}>{done ? `${year} FINAL` : seasonDate(year, day?.day ?? 0)}</div>
         </div>
-        <div style={{
-          textAlign: 'right', font: "500 9.5px/1.6 var(--mono)", color: 'var(--dim)',
-        }}>
-          RPI #{rank || '—'}<br />
-          {team.streak === 0 ? 'No streak'
-            : `${team.streak > 0 ? 'Won' : 'Lost'} ${Math.abs(team.streak)} straight`}
-        </div>
-      </div>
-
+      }
+    >
+    <div style={{ padding: '10px 14px 16px' }}>
       <div style={{
-        display: 'flex', marginTop: 12,
+        display: 'flex',
         border: '1px solid var(--faint)', background: 'var(--paper)',
       }}>
         <Tile k="OVERALL" v={`${team.w}-${team.l}`} />
@@ -210,6 +216,7 @@ export function Today() {
         </div>
       )}
     </div>
+    </FixedHeader>
   );
 }
 

@@ -278,15 +278,18 @@ function DraftOdds({ team, year }: { team: NonNullable<ReturnType<typeof useUser
   const atRisk = juniors.filter((p) => draftChance(overallOf(p)) >= 0.35).length;
 
   return (
-    <div style={{ padding: '12px 14px 20px' }}>
-      <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-        <div className="label">{team.def.abbr} · {year}</div>
-        <div style={{
-          font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-        }}>The draft</div>
+    <FixedHeader header={
+      <div style={{ padding: '12px 14px 10px' }}>
+        <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
+          <div className="label">{team.def.abbr} · {year}</div>
+          <div style={{
+            font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+          }}>The draft</div>
+        </div>
       </div>
-
-      <div style={{ marginTop: 10, font: "400 12px/1.55 var(--body)", color: 'var(--dim)' }}>
+    }>
+    <div style={{ padding: '10px 14px 20px' }}>
+      <div style={{ font: "400 12px/1.55 var(--body)", color: 'var(--dim)' }}>
         Seniors leave in June whatever happens. Juniors leave if the draft wants
         them &mdash; and the better you develop one, the more it does.
       </div>
@@ -320,6 +323,7 @@ function DraftOdds({ team, year }: { team: NonNullable<ReturnType<typeof useUser
         </>
       )}
     </div>
+    </FixedHeader>
   );
 }
 

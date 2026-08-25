@@ -11,7 +11,7 @@
 // who only ever sees the final figure never learns what moves it.
 
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { FloatingAction } from '../Sticky.js';
+import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { Avatar } from '../Avatar.js';
 import { rpiOrder, standings, regularRecord } from '../../engine/season.js';
 import { overallOf } from '../../engine/ratings.js';
@@ -98,14 +98,19 @@ export function SeasonReview() {
                 : null;
 
   return (
-    <div style={{ padding: '16px 14px 24px' }}>
-      <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
-        <div className="label">{team.def.school} · {year}</div>
-        <div style={{
-          font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
-        }}>The season</div>
-      </div>
-
+    <FixedHeader
+      header={
+        <div style={{ padding: '16px 14px 10px' }}>
+          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
+            <div className="label">{team.def.school} · {year}</div>
+            <div style={{
+              font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
+            }}>The season</div>
+          </div>
+        </div>
+      }
+    >
+    <div style={{ padding: '3px 14px 24px' }}>
       {/*
         The banner, and only when the season earned one.
 
@@ -224,6 +229,7 @@ export function SeasonReview() {
 
       <FloatingAction label="CONTINUE" onClick={() => void next()} />
     </div>
+    </FixedHeader>
   );
 }
 

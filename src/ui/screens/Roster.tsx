@@ -118,6 +118,11 @@ function Head({ mode }: { mode: Mode }) {
     : ['', 'PLAYER', 'ROL', 'CL', 'OVR', 'POT', 'ERA', 'IP'];
   return (
     <div style={{
+      // Pinned to the top of the scroller. The title and the hitters/pitchers
+      // switch already stay put; the row that says which column is AVG and which
+      // is HR belongs with them, and it is the only part of the table you cannot
+      // work out from the numbers themselves.
+      position: 'sticky', top: 0, zIndex: 1, background: 'var(--paper)',
       display: 'grid', gridTemplateColumns: GRID, gap: 4,
       padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
     }}>

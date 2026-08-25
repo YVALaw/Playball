@@ -467,6 +467,34 @@ export function PostseasonMap(
   const off = offsetFor(cam, k);
 
   // --- wires ---------------------------------------------------------------
+  /**
+   * Where one bracket stops and the next starts, as a y for each gap.
+   *
+   * Taken from the laid-out boxes rather than from the order the brackets were
+   * built in, because the layout sweeps cards apart to stop them overlapping
+   * and a conference can end up drawn somewhere its position in the list does
+   * not predict. Sorting by what is actually on the board is the only way the
+   * rule lands in the gap it is meant to mark.
+   */
+  const dividers = useMemo(() => {
+    const boxes = graph.brackets
+      .map((b) => ({ key: b.key, box: layout.bracketBox.get(b.key) }))
+      .filter((x): x is { key: string; box: Box } => !!x.box)
+      .sort((a, b) => a.box.y - b.box.y);
+
+    const gaps: { key: string; y: number }[] = [];
+    for (let i = 1; i < boxes.length; i++) {
+      const above = boxes[i - 1] as { key: string; box: Box };
+      const below = boxes[i] as { key: string; box: Box };
+      const bottom = above.box.y + above.box.h;
+      // Two brackets the sweep left overlapping have no gap to draw in, and a
+      // rule through the middle of a card is worse than no rule at all.
+      if (below.box.y <= bottom) continue;
+      gaps.push({ key: below.key, y: (bottom + below.box.y) / 2 });
+    }
+    return gaps;
+  }, [graph, layout]);
+
   const wires = useMemo(() => {
     const th = Math.max(1.4, 1.8 * D.ref) / D.ref;
     const list: {
@@ -598,6 +626,25 @@ export function PostseasonMap(
             transform: `translate3d(${off.x}px,${off.y}px,0) scale(${k})`,
           }}
         >
+          {/*
+            A rule between one bracket and the next.
+
+            Eight conference draws stacked in a column read as one continuous
+            tree — there is nothing to say where the Gulf ends and the Atlantic
+            begins, so a card halfway down belongs to whichever league the eye
+            happens to have been following. The line is drawn in the gap between
+            two brackets rather than around each one: a box per tournament would
+            put eight more rectangles on a board that is already mostly
+            rectangles, and the only thing missing is the boundary.
+          */}
+          {dividers.map((d) => (
+            <div key={`div-${d.key}`} style={{
+              position: 'absolute', left: 0, top: d.y,
+              width: layout.totalW, height: Math.max(1, 1 / D.ref),
+              background: 'rgba(28,36,48,.14)',
+            }} />
+          ))}
+
           {graph.brackets.map((b) => {
             const bb = layout.bracketBox.get(b.key);
             if (!bb) return null;

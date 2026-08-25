@@ -138,6 +138,106 @@ export function alignmentAgainst(alignment: Alignment, batter: Hitter): number {
 }
 
 // ---------------------------------------------------------------------------
+// Philosophies
+// ---------------------------------------------------------------------------
+
+/**
+ * A coaching philosophy is a **preset over the five policies above**, and
+ * deliberately nothing more.
+ *
+ * A career mode wants to ask "what kind of coach are you?" on the way in, and
+ * the tempting answer is a second system — schemes, styles, a name for each with
+ * its own numbers. That system would then have to be wired to the simulation a
+ * second time, and the version that never gets wired is the dead menu this
+ * project has already paid for once with coach skills.
+ *
+ * So a philosophy owns no numbers of its own. It is a named point in the policy
+ * space the engine already reads, which means picking one at creation is exactly
+ * equivalent to opening the strategy screen and setting five controls by hand —
+ * and the player can go and change any of them afterwards, because there is
+ * nothing underneath to disagree with.
+ *
+ * Each one is a real bet with a real cost, for the reason stated at the top of
+ * this file: if one of these were strictly better it would not be a philosophy,
+ * it would be the correct answer with three decoys.
+ */
+export type PhilosophyId = 'smallball' | 'power' | 'pitching' | 'balanced';
+
+export interface Philosophy {
+  id: PhilosophyId;
+  /** What it is called, wherever it is printed. */
+  name: string;
+  /**
+   * One line about how his teams play, in plain baseball English — what it does
+   * *and* what it spends, never only the first half.
+   *
+   * The words live here rather than in the screens because two screens print
+   * them: the creation step where it is chosen and the coach's own page where it
+   * sits for the rest of his career. Two copies of the same sentence is two
+   * sentences that eventually disagree.
+   */
+  blurb: string;
+  strategy: Strategy;
+}
+
+export const PHILOSOPHIES: readonly Philosophy[] = [
+  {
+    id: 'smallball',
+    name: 'SMALL BALL',
+    blurb: 'His teams run, bunt and take the extra base — and get thrown out doing it.',
+    strategy: {
+      running: 'aggressive', steals: 'constant', bunt: 'often',
+      hook: 'standard', alignment: 'straight',
+    },
+  },
+  {
+    id: 'power',
+    name: 'POWER',
+    blurb: 'Nobody runs into an out. He waits for the three-run inning and wears the quiet nights.',
+    strategy: {
+      running: 'patient', steals: 'never', bunt: 'never',
+      hook: 'patient', alignment: 'straight',
+    },
+  },
+  {
+    id: 'pitching',
+    name: 'PITCHING AND DEFENSE',
+    blurb: 'Fresh arms and a shifted infield. A one-run lead he expects to hold, on a tired bullpen.',
+    strategy: {
+      running: 'patient', steals: 'selective', bunt: 'rare',
+      hook: 'quick', alignment: 'shift',
+    },
+  },
+  {
+    // Last on the list rather than first: a default presented at the top of four
+    // options is the one everybody takes without reading the other three.
+    id: 'balanced',
+    name: 'BALANCED',
+    blurb: 'No strong lean. Takes what the game offers and decides the rest one night at a time.',
+    strategy: { ...DEFAULT_STRATEGY },
+  },
+];
+
+/** What a coach plays like if nobody has said otherwise. */
+export const DEFAULT_PHILOSOPHY: PhilosophyId = 'balanced';
+
+export const isPhilosophyId = (value: unknown): value is PhilosophyId =>
+  typeof value === 'string' && PHILOSOPHIES.some((p) => p.id === value);
+
+export const philosophyOf = (id: PhilosophyId): Philosophy =>
+  PHILOSOPHIES.find((p) => p.id === id) ?? (PHILOSOPHIES.at(-1) as Philosophy);
+
+/**
+ * The five policy values a philosophy stands for, as a fresh object.
+ *
+ * A copy rather than the table's own record, because what this returns is
+ * assigned onto a team and lives there for a career — handing out the shared
+ * constant would let one program's settings become every program's.
+ */
+export const strategyForPhilosophy = (id: PhilosophyId): Strategy =>
+  ({ ...philosophyOf(id).strategy });
+
+// ---------------------------------------------------------------------------
 // The rest of the conference
 // ---------------------------------------------------------------------------
 

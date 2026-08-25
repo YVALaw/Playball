@@ -5,7 +5,7 @@
 // rather than showing a leaderboard of nobody.
 
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { FloatingAction } from '../Sticky.js';
+import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { seasonComplete } from '../../engine/season.js';
 import {
   seasonAwards, allConference, coachOfTheYear, type CoachAwardReason,
@@ -58,13 +58,19 @@ export function Awards() {
   const coach = coachOfTheYear(season, lastPostseason);
 
   return (
-    <div style={{ padding: '12px 14px 16px' }}>
-      <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-        <div className="label">{year} HONOURS</div>
-        <div style={{
-          font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-        }}>Awards</div>
-      </div>
+    <FixedHeader
+      header={
+        <div style={{ padding: '12px 14px 10px' }}>
+          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
+            <div className="label">{year} HONOURS</div>
+            <div style={{
+              font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+            }}>Awards</div>
+          </div>
+        </div>
+      }
+    >
+    <div style={{ padding: '10px 14px 16px' }}>
 
       {/*
         Coach of the Year, which is not the most wins — that award always goes
@@ -181,5 +187,6 @@ export function Awards() {
         <FloatingAction label="SEASON REVIEW" onClick={() => void nextPhase()} />
       )}
     </div>
+    </FixedHeader>
   );
 }

@@ -4,6 +4,7 @@
 // gone. This is the screen that makes five years mean something.
 
 import { useDynasty, useUserTeam } from '../../state/store.js';
+import { FixedHeader } from '../Sticky.js';
 import { FINISH_LABEL, type Finish } from '../../engine/postseason.js';
 
 /** Deep runs earn colour. Everything else stays quiet. */
@@ -48,18 +49,23 @@ export function History() {
   const rings = history.filter((s) => s.wonConference).length;
 
   return (
-    <div style={{ padding: '12px 14px 16px' }}>
-      <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-        <div className="label">
-          PROGRAM RECORD · {history.length} SEASON{history.length === 1 ? '' : 'S'}
+    <FixedHeader
+      header={
+        <div style={{ padding: '12px 14px 10px' }}>
+          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
+            <div className="label">
+              PROGRAM RECORD · {history.length} SEASON{history.length === 1 ? '' : 'S'}
+            </div>
+            <div style={{
+              font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+            }}>{wins}-{losses}</div>
+          </div>
         </div>
-        <div style={{
-          font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-        }}>{wins}-{losses}</div>
-      </div>
-
+      }
+    >
+    <div style={{ padding: '10px 14px 16px' }}>
       <div style={{
-        display: 'flex', marginTop: 12,
+        display: 'flex',
         border: '1px solid var(--faint)', background: 'var(--paper)',
       }}>
         <Tile k="TITLES" v={titles} />
@@ -70,12 +76,17 @@ export function History() {
       <div style={{
         marginTop: 14, border: '1px solid var(--faint)', background: 'var(--paper)',
       }}>
+        {/* Sticky rather than part of the fixed header, because the table starts
+            halfway down the screen — under the three career tiles — and a
+            column name pinned to the frame would sit above a block that is not
+            the table it names. */}
         <div style={{
+          position: 'sticky', top: 0, zIndex: 1, background: 'var(--paper)',
           display: 'grid', gridTemplateColumns: '40px 52px 30px 1fr',
           gap: 6, padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
         }}>
-          {['YEAR', 'RECORD', 'CONF', 'FINISH'].map((c, i) => (
-            <span key={c} className="label" style={{ textAlign: i === 3 ? 'left' : 'left' }}>{c}</span>
+          {['YEAR', 'RECORD', 'CONF', 'FINISH'].map((c) => (
+            <span key={c} className="label">{c}</span>
           ))}
         </div>
 
@@ -146,6 +157,7 @@ export function History() {
         national field however the regular season went.
       </div>
     </div>
+    </FixedHeader>
   );
 }
 

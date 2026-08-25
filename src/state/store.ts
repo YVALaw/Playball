@@ -96,7 +96,7 @@ const holesFor = (record: { team: { lineup: unknown[]; bench: unknown[]; rotatio
 };
 import type { Region } from '../data/schools.js';
 import { makeRng } from '../engine/rng.js';
-import type { Strategy } from '../engine/strategy.js';
+import { strategyFor, strategyForPhilosophy, type Strategy } from '../engine/strategy.js';
 import { HOME_CONFERENCE, CONFERENCES } from '../data/schools.js';
 import { saveDynasty, loadDynasty } from './persistence.js';
 import { toPortable, fromPortable } from './seasonCodec.js';
@@ -167,7 +167,10 @@ export const TABS: readonly TabDef[] = [
   { id: 'team', label: 'TEAM', screens: [
     { id: 'roster', label: 'ROSTER' }, { id: 'lineup', label: 'LINEUP' }, { id: 'stats', label: 'STATS' }] },
   { id: 'season', label: 'SEASON', screens: [
-    { id: 'sched', label: 'SCHEDULE' }, { id: 'stand', label: 'STANDINGS' }, { id: 'rankings', label: 'NATIONAL' }] },
+    // CONFERENCE, not STANDINGS: the tab beside it is the national table, and
+    // two tabs that both mean "the standings" leave the player working out
+    // which one he is looking at from the contents rather than the name.
+    { id: 'sched', label: 'SCHEDULE' }, { id: 'stand', label: 'CONFERENCE' }, { id: 'rankings', label: 'NATIONAL' }] },
 
   { id: 'program', label: 'PROGRAM', screens: [
     { id: 'records', label: 'PROGRAM' }, { id: 'history', label: 'HISTORY' }, { id: 'strategy', label: 'STRATEGY' }] },
@@ -600,6 +603,32 @@ function applyCoachMods(season: SeasonState, userTeam: number, coach: CoachState
   if (me) me.coachMods = { offense: coach.skills.offense, defense: coach.skills.defense };
 }
 
+/**
+ * Put the coach's philosophy on the bench of the program he is now running.
+ *
+ * This is the whole reason the creation screen's play-style step is not a
+ * decoration: what it collects is written onto `TeamRecord.strategy`, which is
+ * the same field the strategy screen edits and the same one every game is built
+ * from. Pick SMALL BALL on the way in and the first pitch of the first game is
+ * already being played that way.
+ *
+ * Every other program is handed its own personality back for the same reason
+ * `applyCoachMods` clears itself off everybody: a program you have left should
+ * go back to playing like itself rather than keeping your bench for ever.
+ * `strategyFor` is what built those benches in the first place, so for the
+ * sixty-three teams this does not concern, it is a no-op that writes the value
+ * that was already there.
+ *
+ * Deliberately *not* called on load. The saved season carries the strategy that
+ * was actually in force, overrides included, and re-stamping the philosophy over
+ * it every reload would quietly undo the strategy screen.
+ */
+function applyPhilosophy(season: SeasonState, userTeam: number, coach: CoachState): void {
+  for (const t of season.teams) t.strategy = strategyFor(t.index);
+  const me = season.teams[userTeam];
+  if (me) me.strategy = strategyForPhilosophy(coach.philosophy);
+}
+
 /** Ridgemont State, the founding program, unless told otherwise. */
 function defaultUserTeam(season: SeasonState): number {
   const home = season.teams.find((t) => t.conference === HOME_CONFERENCE);
@@ -629,6 +658,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     season.captureBoxFor = team ?? defaultUserTeam(season);
     const coach = newCoach(profile, contractFor(season.teams[team ?? 0]?.prestige ?? 50));
     applyCoachMods(season, team ?? defaultUserTeam(season), coach);
+    applyPhilosophy(season, team ?? defaultUserTeam(season), coach);
     set({
       season,
       userTeam: team ?? defaultUserTeam(season),
@@ -1048,6 +1078,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const next = { ...coach, tenure: 0, security: 62, contractYears: length, contractLength: length };
     // The old program loses the in-game edge, the new one gains it.
     applyCoachMods(season, team, next);
+    // And the way he plays comes with him. A philosophy is a trait of the coach,
+    // not of the job, so the new bench starts where he starts — including the
+    // case where the old one had been tuned away from it by hand, which belonged
+    // to the program he just left.
+    applyPhilosophy(season, team, next);
     set({
       userTeam: team,
       offers: [],

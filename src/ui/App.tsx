@@ -30,8 +30,31 @@ import { Rankings } from './screens/Rankings.js';
 import { JobSearch } from './screens/JobSearch.js';
 import { Draft } from './screens/Draft.js';
 import { Wire } from './screens/Wire.js';
+import { OpenTeam, TeamCard } from './screens/TeamCard.js';
 
+/**
+ * The app, and the one piece of navigation state that is not in the store.
+ *
+ * A rival's page is opened from the conference table and the national rankings,
+ * both of which render in two places apiece, so the way in is a context rather
+ * than a callback threaded through four call sites. It lives here rather than
+ * beside `selectedPlayer` in the store because the store is not this screen's to
+ * change; the trade is that the card cannot be deep-linked or saved, which is
+ * exactly as much as a card you opened to check somebody's record deserves.
+ */
 export function App() {
+  const [teamCard, setTeamCard] = useState<number | null>(null);
+  return (
+    <OpenTeam.Provider value={setTeamCard}>
+      <AppBody teamCard={teamCard} setTeamCard={setTeamCard} />
+    </OpenTeam.Provider>
+  );
+}
+
+function AppBody(
+  { teamCard, setTeamCard }:
+  { teamCard: number | null; setTeamCard: (index: number | null) => void },
+) {
   const start = useDynasty((s) => s.start);
   const season = useDynasty((s) => s.season);
   const tab = useDynasty((s) => s.tab);
@@ -45,7 +68,6 @@ export function App() {
   const bracket = useDynasty((s) => s.bracket);
   const live = useDynasty((s) => s.live);
   const selectedPlayer = useDynasty((s) => s.selectedPlayer);
-  const overlay = useDynasty((s) => s.overlay);
   const furthestPhase = useDynasty((s) => s.furthestPhase);
   const goPhase = useDynasty((s) => s.goPhase);
   const lastPostseason = useDynasty((s) => s.lastPostseason);
@@ -82,6 +104,13 @@ export function App() {
   useEffect(() => {
     mainRef.current?.scrollTo(0, 0);
   }, [phase, tab, screen, bracket?.stage, live !== null, selectedPlayer !== null]);
+
+  /**
+   * Going somewhere closes the rival's page, exactly as `go()` clears the
+   * selected player. An overlay that survives a tab change is a screen you did
+   * not ask for sitting over the one you did.
+   */
+  useEffect(() => { setTeamCard(null); }, [phase, tab, screen, setTeamCard]);
 
 
   useEffect(() => {
@@ -246,8 +275,7 @@ export function App() {
               different game than the one you played in April. */}
           {live ? <Manage /> : <Postseason />}
         </main>
-        {overlay !== null && <TableOverlay />}
-        {selectedPlayer !== null && <PlayerOverlay />}
+        <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
       </div>
     );
   }
@@ -315,8 +343,7 @@ export function App() {
           {phase === 'signing' && <SigningDay />}
           {phase === 'draft' && <Draft />}
         </main>
-        {overlay !== null && <TableOverlay />}
-        {selectedPlayer !== null && <PlayerOverlay />}
+        <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
       </div>
     );
   }
@@ -415,8 +442,54 @@ export function App() {
           );
         })}
       </nav>
+      <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
+    </div>
+  );
+}
+
+/**
+ * The three things that can cover a frame, stacked in the order you meet them.
+ *
+ * A table sits over the screen, a program's page sits over the table you tapped
+ * it from, and a player's card sits over whichever of those named him — so
+ * closing each one puts you back exactly where you were rather than at the top
+ * of somewhere else. Gathered into one component because all three frames the
+ * app can be in need the identical set, and three copies of it is three places
+ * to forget one.
+ */
+function Overlays(
+  { teamCard, onCloseTeam }: { teamCard: number | null; onCloseTeam: () => void },
+) {
+  const overlay = useDynasty((s) => s.overlay);
+  const selectedPlayer = useDynasty((s) => s.selectedPlayer);
+  return (
+    <>
       {overlay !== null && <TableOverlay />}
+      {teamCard !== null && <TeamOverlay index={teamCard} onBack={onCloseTeam} />}
       {selectedPlayer !== null && <PlayerOverlay />}
+    </>
+  );
+}
+
+/**
+ * A rival's program, over the table you tapped it in.
+ *
+ * The player card's twin in every respect that shows: the same navy bar, the
+ * same absolute frame, the same rule that nothing underneath unmounts. Keyed on
+ * the program so opening a second one is a second page rather than the first
+ * one with new numbers on whatever tab you left it on.
+ */
+function TeamOverlay({ index, onBack }: { index: number; onBack: () => void }) {
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, zIndex: 28,
+      background: 'var(--field)',
+      display: 'flex', flexDirection: 'column',
+    }}>
+      <BackBar onBack={onBack} />
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        <TeamCard key={index} index={index} />
+      </div>
     </div>
   );
 }
@@ -438,7 +511,10 @@ function TableOverlay() {
       display: 'flex', flexDirection: 'column',
     }}>
       <BackBar onBack={close} />
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative' }}>
+      {/* Hidden, not auto. All three of these pin their own header and scroll
+          their own body, so a scroller here would be a scroller around a
+          scroller — and the outer one is the one that drags the header. */}
+      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
         {overlay === 'schedule' && <Schedule />}
         {overlay === 'standings' && <Standings />}
         {overlay === 'rankings' && <Rankings />}
