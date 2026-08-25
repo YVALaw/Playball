@@ -1883,11 +1883,22 @@ than being a field somebody has to remember to name in `buildSaveFile`.
 |---|---|---|
 | Single game, player — HR, hits, RBI, runs, SB, pitcher K | `recordGameMarks`, from `recordResult` | The box score of a Tuesday in the Mountain conference is never written down. Both teams' per-player lines exist for about a microsecond, and this is the only moment they do |
 | Feats — perfect game, no-hitter, complete-game shutout | same | Needs the opposing team's hit and run totals against one pitcher's out count, which is a per-game fact |
-| Single season, player | `recordSeasonMarks`, from `rollYear` | `season.batting` / `pitching` are already league-wide — they are what the national leaderboards are computed from — so this is a scan of what is in hand, not a new store. A season leader is also not knowable until the season stops |
+| Single season, player | `recordSeasonMarks`, on the way into the **draft** phase | `season.batting` / `pitching` are already league-wide — they are what the national leaderboards are computed from — so this is a scan of what is in hand, not a new store. A season leader is also not knowable until the season stops |
 | Team, single game — runs, hits, margin | `recordGameMarks` | As above |
 | Team, season — wins, run differential | `recordSeasonMarks` | Run differential is not monotonic, so a running check would record a mid-season peak |
 | Team, longest winning streak | `recordResult` | `TeamRecord.streak` is a running number, correct only at the instant it is set. A season-end scan reads whatever the team happened to finish on |
-| Coach career | `recordCoachMarks`, from `rollYear` | Reads `CoachState`, which lives in the store and not in the engine |
+| Coach career | `recordCoachMarks`, same place | Reads `CoachState`, which lives in the store and not in the engine |
+
+**Why the draft phase and not the year roll.** `recordSeasonMarks` names a holder
+by looking him up on a roster, and `departAndDevelop` — which runs on entry to the
+draft step — strips every departure off all ninety-six of them. Settled at the
+year roll instead, every graduating senior in the country would enter the book
+with no name and no program against him, which is the best season most players
+ever have and exactly the row a book exists for. So it runs in the last moment the
+rosters that produced the numbers still exist. It is idempotent, because a mark
+has to be beaten: walking back a step and forward again offers a book numbers it
+already holds. (This is a near neighbour of A5 in the backlog, which is the same
+ordering hazard in `archiveSeason` and is not fixed here.)
 
 Two things follow from this. The book is league-wide for free, because
 `recordResult` sees every game every program plays. And a replayed or exhibition

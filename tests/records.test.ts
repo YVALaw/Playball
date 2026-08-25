@@ -293,6 +293,36 @@ describe('the season scan', () => {
     expect(s.records?.seasonSB).toBeUndefined();
   });
 
+  it('names a holder off his roster, which is why it runs before the draft', () => {
+    // Past Incaviglia's 29, or the seeded mark simply keeps the row.
+    const line = {
+      g: 45, ab: 200, r: 40, h: 90, d: 10, t: 1, hr: 35, rbi: 95, bb: 20,
+      k: 30, hbp: 2, sb: 4, cs: 1,
+    };
+
+    const s = world();
+    for (const t of s.teams) t.gp = 45;
+    const rec = s.teams[3]!;
+    const p = rec.team.lineup[0]!;
+    s.batting.set(p.id, { ...line });
+    recordSeasonMarks(s, 2027);
+    expect(s.records?.seasonHR?.holder).toBe(p.name);
+    expect(s.records?.seasonHR?.team).toBe(rec.def.abbr);
+
+    // And what the same scan produces once the offseason has taken him off the
+    // roster, which is the whole reason the store settles the book on the way
+    // into the draft rather than at the year roll: the best season a graduating
+    // senior ever has, filed under nobody.
+    const after = world();
+    for (const t of after.teams) t.gp = 45;
+    const gone = after.teams[3]!;
+    const q = gone.team.lineup[0]!;
+    after.batting.set(q.id, { ...line });
+    gone.team.lineup = gone.team.lineup.filter((h) => h !== q);
+    recordSeasonMarks(after, 2027);
+    expect(after.records?.seasonHR?.team).toBe('---');
+  });
+
   it('reads the whole country and not only one program', () => {
     const s = world();
     for (let d = 0; d < 8; d++) simNextDay(s);

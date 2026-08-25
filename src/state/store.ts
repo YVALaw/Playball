@@ -897,6 +897,30 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // The class is not placed here — recruiting has not happened yet, which is
     // the entire point of the draft coming first.
     if (next === 'draft') {
+      /*
+        The all-time book is settled here, in the last moment the rosters that
+        produced the numbers still exist.
+
+        `departAndDevelop`, two lines below, strips every departure off every
+        one of the ninety-six rosters — and `recordSeasonMarks` names a holder by
+        looking him up on one. Run at the year roll instead, a graduating senior
+        who led the country in home runs would enter the book with no name and no
+        program against him, which is the best season most players ever have and
+        exactly the row a record book exists for.
+
+        Idempotent, because a mark has to be beaten: walking back to the coach
+        step and forward again offers the same numbers to a book that already
+        holds them and nothing changes.
+      */
+      const year = get().year;
+      recordSeasonMarks(season, year);
+      const chair = season.teams[get().userTeam];
+      // Yours is the only career the world models, so it is the only one the
+      // coaching section can honestly be about. The screen says so.
+      if (season.records && chair) {
+        recordCoachMarks(season.records, year, get().coach, chair.def.abbr);
+      }
+
       const report = departAndDevelop(season, season.rng, {
         userTeam: get().userTeam,
         training: get().coach.skills.training,
@@ -1052,17 +1076,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const record = recordFor(get());
     const review = get().lastReview;
 
-    // Into the record books before the statistics are wiped. Two different
-    // books: `archiveSeason` keeps your own men's career lines, and this keeps
-    // the country's all-time marks. Both read maps that `nextSeason` empties in
-    // a few lines' time, which is the only reason either has to happen here.
+    // Into the record book before the statistics are wiped. The all-time book
+    // is settled earlier, on the way into the draft — see `nextPhase`.
     archiveSeason(season, get().userTeam, year);
-    recordSeasonMarks(season, year);
-    const book = season.records;
-    const chair = season.teams[get().userTeam];
-    // Yours is the only career the world models, so it is the only one the
-    // coaching section can be about. The screen says so.
-    if (book && chair) recordCoachMarks(book, year, get().coach, chair.def.abbr);
 
     const done = (next: SeasonState, report: OffseasonReport): void => {
       const rolled = nextSeason(next);

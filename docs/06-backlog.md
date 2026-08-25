@@ -144,8 +144,9 @@ Ordered by dependency. Records come first because badges, the hall of fame and
 half the achievements are all reading from the same book.
 
 - **B1 · The records book** — SHIPPED. League-wide, thirty-eight rows, holders
-  only. Single game and feats are taken inside `recordResult`; single season and
-  team season come off a scan at the year roll; coaching comes off `CoachState`.
+  only. Single game and feats are taken inside `recordResult`; single season,
+  team season and coaching come off a scan on the way into the draft phase,
+  which is the last moment the rosters that produced the numbers still exist.
   Ties go to the incumbent. Career records are explicitly not in it — that is
   B13. See `05-systems-reference.md` §13.
 - **B2 · Seed the book with real NCAA marks** — SHIPPED. Twelve seeds, counting
@@ -364,14 +365,20 @@ nobody has audited: instanced fielder and runner markers, ball flight driven by
 capping, a 2D/3D toggle in settings, and holding 30fps on a mid-range Android.
 Needs an audit before it can be planned.
 
-### G4 · Open questions from the roadmap, still open
+### G4 · The roadmap's open questions, now closed
 
-- **NIL and revenue sharing** — a mechanic, or deliberately skipped? Now partly
-  answered by the draft decision: the persuasion currency is recruiting budget,
-  not money, so a full NIL economy is not required. Worth closing formally.
-- **Park effects** — numeric only, or geometry in the 3D view?
-- **iOS, or Android only?** Capacitor does both; iOS needs a Mac and a paid
-  developer account.
+- **NIL and revenue sharing — SKIPPED, deliberately.** The recruiting budget is
+  the only currency the game has and it now does two jobs, signing a class and
+  keeping a drafted player. That is enough tension without a second economy, and
+  one currency the player already understands beats two he has to learn.
+- **Park effects — yes, and in 3D.** Not numeric only: the parks get geometry,
+  so a short porch is something you can see rather than a modifier you read
+  about. That makes them part of G3 rather than an engine-only change.
+- **Android only for now.** Capacitor could do both; iOS needs a Mac and a paid
+  developer account, and neither is worth carrying before the game is finished.
+- **Shipping goes last.** Capacitor, the keystore and the store listing are the
+  final work before launch, not something to carry from here. Everything in G1
+  stays on the list; none of it blocks a system.
 
 ### G5 · Debt
 

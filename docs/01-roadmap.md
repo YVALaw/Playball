@@ -1,430 +1,330 @@
-# Playball: Project Roadmap v3
+# Roadmap
 
-**Last updated:** August 19, 2026
-**Supersedes:** v2
-**Companion doc:** `02-sim-engine-spec.md` for engine internals
+**Last updated:** August 25, 2026
+**Supersedes:** v3, which by the end was wrong about most of what it claimed
+**Companion docs:** `05-systems-reference.md` for what the game does today,
+`06-backlog.md` for what it is going to do and why, `02-sim-engine-spec.md` for
+engine internals, `04-implementation-plan.md` for the build log and the defect
+register.
 
 ---
+
+## What this file is for
+
+The two-minute view: what is built, what is next and in what order, and what was
+decided against. Nothing here is a specification, and no number lives here.
+
+The division of labour is worth stating, because ignoring it is what let this
+document rot. **`05-systems-reference.md` describes the game as it is** and is
+where a constant belongs. **`06-backlog.md` holds the decisions** — what is
+agreed, what is still a question, and the argument behind each. This file holds
+neither. It holds the order, and it points at the other two.
+
+**How to keep it current.** A box gets ticked on the commit that earns it. A
+ticked box is only worth having if it can be trusted, so the rule is the strict
+one: tick nothing that has not been opened and looked at. Where the thing exists
+but is not what the line describes, it gets `[~]` and a sentence saying what is
+actually there. The previous version of this file carried sixty-two unticked
+boxes, most of them describing work that had shipped months earlier, and the one
+question anybody opens a roadmap to answer is "what is left".
 
 ## The pitch
 
-You are the head coach of a college baseball program. Recruit high schoolers, develop them, survive the MLB draft stealing your best arms every June, work the transfer portal, and chase a national title in Omaha. Games resolve at bat by at bat with text play by play, visualized on a 3D diamond. Ships to Android.
+You are the head coach of a college baseball program. Recruit high schoolers,
+develop them, survive the MLB draft stealing your best arms every June, and chase
+a national title. Games resolve at bat by at bat with text play by play over a 3D
+diamond. Ninety-six programs in eight conferences of twelve, a forty-five game
+regular season, and a career an athletic director can end. Ships to Android.
 
-## Where the project actually is
+## Where it stands
 
-**Phase 0 is mostly done, and unverified.** The simulation engine exists and runs headless. It is currently plain JavaScript and needs converting to TypeScript before anything gets built on top of it.
+**v0.7.3, and the loop is closed.** Take a job, play or simulate a season, manage
+a postseason run a game at a time, hand out awards, spend coaching points, read a
+recruiting board that is honest about being vague, lose players to the draft, and
+start again in February. Twenty-one test files cover it, calibration among them,
+so the engine cannot drift without something failing.
 
-**The calibration claim checks out.** As of August 19, 2026 the harness has actually been run. Runs per team per game land at 6.84 against a 6.79 target, home runs and pitches per plate appearance are exact, and nothing is off by more than 7%. The platoon model produces the right split sizes in the right direction. Full output in `tests/fixtures/calibration-baseline.txt`.
+**What is missing is the phone.** There is no Capacitor project, no Android
+build, no keystore, no store listing. The whole point of the project is a phone
+game and the only thing it has ever run in is a desktop browser. That is the
+largest single gap in the plan, and it is deliberately last — nothing else waits
+on it, and doing it early means carrying a second build for a year.
 
-**But it has real defects.** Three bugs and four gaps against its own spec:
-
-- A walk-off bug — the bottom half plays to three outs regardless of score
-- Pitch-level D1 constants that are documented in `ratings.js` and wired to nothing
-- No home field advantage at all. Measured: the better team wins at the same rate home and away
-- No individual fielders, no catcher in the engine, no pitch types, no AI decision layer
-
-Walks run 7% high and plate appearances 5% high — the two numbers worth chasing, and they are related.
-
-Performance is not a concern: roughly 2,500 full games per second.
-
-See the defect register in `04-implementation-plan.md`. Phases 0.4 and 0.6 close the gap.
-
----
-
-## Tech stack
+## The stack
 
 | Layer | Tech |
 |-------|------|
-| Language | **TypeScript 5.x**, strict mode |
-| Build | **Vite 5** |
-| UI | **React 18** |
-| 3D | **Three.js** via **React Three Fiber** and **drei** |
-| State | **Zustand** |
-| Storage | **IndexedDB** via **idb** |
-| Heavy sim | **Web Worker** with **Comlink** |
-| Styling | **CSS Modules** with custom properties |
-| Testing | **Vitest** |
-| Mobile | **Capacitor 6**, Android target |
+| Language | TypeScript 5.7, `strict` and `noUncheckedIndexedAccess` from the first file |
+| Build | Vite 5 |
+| UI | React 19 |
+| 3D | Three.js via React Three Fiber. No drei — the scene is primitives and flat colours and never needed the helpers |
+| State | Zustand |
+| Storage | IndexedDB via idb |
+| Heavy sim | Web Worker over Comlink |
+| Styling | One token sheet plus inline styles. CSS Modules were planned and never wanted |
+| Testing | Vitest |
+| Mobile | Capacitor, Android only. **Not set up** |
 
-### TypeScript
+Three rules underneath it that have not moved and should not.
 
-Strict from day one. `strict: true`, `noUncheckedIndexedAccess: true`. Turning strict on later means fixing hundreds of errors at once, and you will not do it.
+**The engine imports nothing.** No React, no Three, no DOM, no store. That
+separation is why ten thousand games can be simmed from a command line and why
+the front end could be replaced without touching the simulation. The plan called
+for an ESLint boundary rule; `tests/architecture.test.ts` does it instead, which
+was cheaper to write and fails louder.
 
-The domain model is where TypeScript pays for itself immediately. A baseball sim is dozens of interlocking record types, and one mistyped field ruins a season silently.
+**Determinism is protected.** The seed and the generator's position both ride the
+save, so a resumed dynasty replays rather than diverging, and a bug report is
+reproducible. Adding or removing a random draw in player generation moves every
+downstream number in the game; the goldens exist to catch exactly that.
 
-```ts
-export type Hand = 'R' | 'L';
-export type Bats = Hand | 'S';
-export type ClassYear = 'FR' | 'SO' | 'JR' | 'SR';
-export type Position = 'C'|'1B'|'2B'|'3B'|'SS'|'LF'|'CF'|'RF'|'DH'|'P';
-
-export type PAEvent =
-  | 'single' | 'double' | 'triple' | 'homerun'
-  | 'walk' | 'hbp' | 'out';
-
-export type PitchResult =
-  | 'ball' | 'called' | 'swinging' | 'foul' | 'inplay' | 'hbp';
-
-export type BattedBall = 'ground' | 'line' | 'fly' | 'popup';
-
-export interface Ratings {
-  contact: number; power: number; eye: number;
-  speed: number; fielding: number; arm: number;
-  /** Strat-O-Matic style, lower is better. 1 is a defensive star. */
-  range: number; errorRate: number;
-}
-
-export interface PitcherRatings {
-  stuff: number; movement: number; control: number;
-  stamina: number; groundBall: number; holdRunners: number;
-  velocity: number;
-}
-
-export interface Player {
-  readonly id: PlayerId;
-  name: string;
-  pos: Position;
-  classYear: ClassYear;
-  bats: Bats;
-  throws: Hand;
-  /** Hidden. Full platoon split size as a share of production. */
-  platoonSkill: number;
-  ratings: Ratings;
-  pitching?: PitcherRatings;
-}
-```
-
-Use branded IDs so you cannot pass a `TeamId` where a `PlayerId` belongs:
-
-```ts
-type Brand<T, B> = T & { readonly __brand: B };
-export type PlayerId = Brand<string, 'PlayerId'>;
-export type TeamId   = Brand<string, 'TeamId'>;
-```
-
-Keep every event union exhaustive and let the compiler catch the missing case when you add one:
-
-```ts
-function assertNever(x: never): never {
-  throw new Error(`Unhandled: ${JSON.stringify(x)}`);
-}
-```
-
-### Three.js, scoped
-
-This is the decision that determines whether the project ships. Three.js can absorb unlimited effort, and 3D is not where a dynasty sim's value lives. So the scope is fixed up front.
-
-**In scope: a stylized diamond diorama.**
-
-- Low poly field: dirt infield, grass, foul lines, base pads, mound. No stadium, no stands, no crowd
-- Fielders and runners as simple markers, not humanoid models. Colored capsules or discs with jersey numbers
-- Ball flight animation on contact, driven by the batted ball type the engine already produces
-- One camera easing between three fixed positions: behind the plate, high third base, and a bird's eye for baserunning
-- Everything readable on a 6 inch screen held one handed
-
-**Out of scope, permanently:** player models, animation rigs, swing and pitch mechanics, stadium geometry, crowds, weather particles, free camera replays.
-
-**The engine never learns about Three.js.** The sim emits a `PlayEvent` describing what happened. The 3D layer reads it and animates. That boundary is the whole reason this stays shippable.
-
-```ts
-export interface PlayEvent {
-  kind: 'pitch' | 'contact' | 'advance' | 'out' | 'score';
-  battedBall?: BattedBall;
-  /** Normalized field coordinates. The engine emits geometry, never visuals. */
-  landing?: { x: number; y: number };
-  runners?: Array<{ id: PlayerId; from: 0|1|2|3; to: 0|1|2|3|4 }>;
-}
-```
-
-**Mobile 3D rules, non negotiable:**
-
-| Rule | Why |
-|------|-----|
-| Cap device pixel ratio at 2 | Phones report 3 or 4 and you render four times the pixels for no visible gain |
-| `frameloop="demand"` in R3F | Render only when something moved. A static field between pitches should cost zero frames |
-| Instanced meshes for repeated geometry | One draw call for all nine fielders |
-| Bake lighting into materials | No real time shadows. They are the single biggest mobile GPU cost |
-| Lazy load the 3D bundle | Three.js is roughly 600 KB gzipped. Code split it so menus load instantly |
-| Ship a 2D fallback | A CSS diamond view. Some players will prefer it for speed and battery, and you need it while the 3D is unfinished |
-
-That last one matters more than it sounds. Build the 2D view first and treat 3D as an enhancement layer. If Three.js turns into a swamp, you still have a complete game.
-
-### Capacitor and Android
-
-Capacitor wraps the built web app in an Android WebView. Same codebase, real APK.
-
-```
-npm i @capacitor/core @capacitor/android
-npx cap init Playball com.yva.playball
-npm run build && npx cap add android && npx cap sync
-npx cap open android          opens Android Studio for the APK or AAB
-```
-
-Android specifics that will bite you if you leave them for the end:
-
-- **Hardware back button.** Android users expect it to navigate back, not close the app. Wire `App.addListener('backButton')` to your nav stack in Phase 2, not Phase 7
-- **Safe areas and gesture nav.** Use `env(safe-area-inset-*)` on the bottom navigation or the gesture bar sits on top of your buttons
-- **WebGL in a WebView** works, but runs slower than the same device's Chrome. Test on a real mid range phone early, not just the emulator and not just your own device
-- **Storage.** IndexedDB persists fine in the Android WebView. Do not use Capacitor Preferences for saves, it is a key value store meant for settings
-- **Orientation.** Lock to portrait unless the 3D view earns landscape
-- **Signing.** Generate the keystore before your first release build and back it up somewhere permanent. Lose it and you can never update the app on Play
-
-### Repo layout
-
-```
-Playball/
-  package.json
-  tsconfig.json                strict: true
-  vite.config.ts
-  capacitor.config.ts
-  index.html
-  /src
-    /engine                    pure TS. No React, no Three, no DOM
-      types.ts                 the domain model
-      ratings.ts               every baseball number lives here
-      players.ts
-      pitchModel.ts
-      engines.ts
-      game.ts
-      season.ts                Phase 1
-      progression.ts           Phase 3
-      recruiting.ts            Phase 4
-      rng.ts                   seeded xorshift
-    /state
-      store.ts                 Zustand
-      persistence.ts           IndexedDB, schema migrations
-      simWorker.ts             Web Worker
-      simClient.ts             Comlink wrapper
-    /ui
-      /screens
-      /components
-      tokens.css
-    /field
-      Field2D.tsx              the CSS fallback, built first
-      FieldScene.tsx           R3F canvas, lazy loaded
-      Diamond.tsx
-      Fielders.tsx
-      BallFlight.tsx
-    /data
-      schools.json
-      conferences.json
-      names.json
-  /tests
-    engine.test.ts
-    calibration.test.ts        the regression test that actually matters
-  /docs
-  sim.ts                       headless CLI, kept forever
-```
-
-**The one architectural rule:** nothing in `/engine` may import from `/ui`, `/state`, or `/field`. Enforce it with an ESLint boundary rule so it cannot rot. That separation is what keeps the engine testable headless and lets you sim ten thousand games from the command line.
-
-### Determinism and saves
-
-The engine uses a seeded xorshift RNG and that is worth protecting. Store the seed in the save. Same seed plus same inputs reproduces the season exactly, which buys you reproducible bug reports, replays without storing every play, and small save files.
-
-```ts
-interface SaveFile {
-  schemaVersion: 4;
-  seed: number;
-  year: number;
-  dynasty: DynastyState;
-}
-```
-
-Write a migration per version bump before you have users, not after.
-
-### Performance targets
-
-| Operation | Budget |
-|-----------|--------|
-| Single game, headless | under 5 ms |
-| Full 33 game season, one team | under 200 ms |
-| Full league season | under 3 s in a Worker, with progress |
-| Screen transition | under 100 ms |
-| 3D field, mid range Android | 30 fps sustained during ball flight |
-| Initial bundle, 3D excluded | under 250 KB gzipped |
-
-Guard these with benchmark tests. A performance regression found six months later is a rewrite.
+**The mockup is the design.** `design/Dynasty Mobile.dc.html`. Where anything
+disagrees with it, it wins. The scorebook palette this document used to argue for
+was never adopted and the argument has been deleted rather than left to mislead.
 
 ---
 
-## Design direction — **STALE, DO NOT BUILD FROM THIS**
+## Done
 
-> This section was not updated for v3 and does not describe the app's design.
->
-> **The design is `design/Dynasty Mobile.dc.html`.** The mockup is the source of truth
-> for palette, typography, layout, and interaction. Port it as-is. Where this section
-> and the mockup disagree, the mockup wins — including on color, where this section's
-> scorebook palette was never adopted.
->
-> Kept below only as an idea file. The one piece still worth stealing is the live
-> scorebook cell described at the end, which the mockup does not have.
+Ticked means opened and checked, August 2026. Detail on any line is in
+`05-systems-reference.md`, cited by section.
 
-The identity comes from the sport's own paperwork, not from generic sports app conventions. College baseball's real artifact is the **scorebook**: ruled grid paper, a small diamond in every cell, notation like 6-4-3 and a backwards K, and the scorekeeper's convention of marking plays in blue or black and runs in red.
+**The engine** — §9
 
-The 3D field lives inside that world rather than fighting it. Think a scorekeeper's diagram rendered in three dimensions: flat matte colors, visible construction, no photorealism. Chasing a realistic ballpark on a phone GPU produces something that looks cheap. A deliberately diagrammatic field looks designed.
+- [x] Generalized log5 plate appearance model, with pitch sequencing constrained
+      to land on the outcome; the free pitch model survives as a comparison
+      instrument and is not what ships
+- [x] Calibrated against sourced Division I rates, over twelve independently
+      generated roster pairs rather than one, so a result is a property of the
+      engine and not of twenty-three particular players
+- [x] Walk-offs, the run rule, the tenth-inning tiebreaker, no re-entry
+- [x] Baserunning, steals with a real catcher behind them, double plays,
+      sacrifice flies, passed balls
+- [x] Individual fielders — range, hands, arm and throwing accuracy, with two
+      error paths splitting one calibrated total, and a per-player fielding
+      line — §10
+- [x] Fatigue, times through the order, and the AI's hook
+- [x] `PlayEvent`, so the 3D layer reads geometry and never asks the engine what
+      to draw. The event stream takes no random draws: watching a game must not
+      change it
 
-| Token | Value | Use |
-|-------|-------|-----|
-| `--paper` | `#F2F0EB` | Background, the ruled page |
-| `--rule` | `#D6D2C6` | Grid lines, dividers |
-| `--graphite` | `#232326` | Primary text |
-| `--ink` | `#1F3F8F` | Ballpoint blue. Actions, active states |
-| `--scored` | `#B02B2B` | Red pencil. Runs scored, nothing else |
-| `--turf` | `#5E7A4F` | Field green, muted |
-| `--clay` | `#A8735A` | Infield dirt |
-| `--dugout` | `#14161A` | Night mode ground |
+**The season and the world** — §8
 
-The red is the discipline test. Scorekeepers use red for exactly one thing. If it starts appearing on errors, injuries, and losses, it stops meaning "a run scored" and becomes decoration.
+- [x] Ninety-six programs, eight conferences of twelve, forty-five games
+- [x] Schedule generator, day-by-day loop, standings, leaderboards, RPI
+- [x] Conference tournaments, regionals, a national final, and awards decided by
+      how loud the story was rather than by a precedence list — §7
+- [x] `npm run sim -- season` prints a full year headless
 
-**Type**
+**The app**
 
-- Display: a compressed grotesque for team names and scores, tight and large
-- Body: a neutral sans, nothing below 15px on a phone
-- Data: a monospace for the play log and every stat table. Column alignment is the entire readability of a box score
+- [x] Zustand store, IndexedDB persistence with schema versioning, and a load
+      that fails honestly rather than half-working — §11
+- [x] Season simming in a Worker with progress, so a phone does not freeze
+- [x] Bottom navigation, four tabs, thirteen screens, and an offseason that walks
+      through its phases in order
+- [x] Design tokens, safe-area insets, reduced motion
+- [x] Named save slots on top of the autosave, with no limit
+- [x] The 2D diamond (`src/ui/Diamond.tsx` — never `Field2D.tsx`), the play log,
+      and box scores that can be reopened in September
 
-**Signature element:** the live scorebook cell. As an at bat resolves, a real scorekeeping cell fills in beside the field: diamond, count, notation. It ties the 3D view back to the paper world and it is the one place to spend animation budget.
+**The career** — §5, §6
 
----
+- [x] Program prestige, coach prestige and job security tracked apart, because
+      conflating them is what makes career modes feel arbitrary
+- [x] Mandates, a checklist the board actually judges on, verdicts, contracts,
+      and being sacked
+- [x] Four coach skills wired to things the engine already does, at deliberately
+      small magnitudes
+- [x] Job offers and a hiring ladder that discounts a proud program with a gutted
+      roster
+- [x] Program history, a league-wide record book seeded with real NCAA marks, and
+      a hall tab — §13
 
-## Build phases
+**Recruiting** — §1, §2
 
-### Phase 0: The engine — **PROTOTYPE (in JavaScript)**
-- [x] Player and team structures with handedness and platoon skill
-- [x] Generalized log5 plate appearance model
-- [x] Free pitch model as a comparison engine
-- [~] Pitch level count model — built, but the D1 constants in `ratings.js` are wired to nothing
-- [~] Baserunning, steals, errors, double plays, sacrifice flies — steals are first-to-second only and ignore the catcher, who does not exist in the engine
-- [x] Fatigue, times through the order, pitching change AI
-- [x] Text play by play and box score
-- [~] Calibration harness, platoon test, parity test — written, never run
-- [ ] Walk-off handling — the bottom half plays to three outs regardless of score
-- [ ] Individual fielders with range and error ratings
-- [ ] AI decision layer on a run expectancy matrix
+- [x] A national class by state and region, with stars and rank that both carry
+      projection error
+- [x] Scouting reports as bands rather than numbers, one shared bias per sheet so
+      the estimate cannot be averaged away, and two prose lines that are vague but
+      never false
+- [x] Five priorities per recruit, a reach gate that will refuse your call, fit
+      that multiplies effort instead of adding to it, a weekly budget, and
+      ninety-five rival programs working a board of their own
+- [x] Signing day, and a verdict that judges your report rather than the recruit
 
-### Phase 0.4: Stabilize the JavaScript engine — **START HERE**
-Install Node, capture a measured baseline, fix the known bugs, recalibrate. See
-`04-implementation-plan.md`. This must land before the TypeScript port, so that a
-post-port calibration difference can only mean the port broke something.
+**Progression and the draft** — §12.5
 
-### Phase 0.5: TypeScript conversion
-- [ ] `tsconfig.json` with strict mode on
-- [ ] `types.ts`: full domain model, branded IDs, exhaustive unions
-- [ ] Port the five engine files, fixing what strict mode surfaces
-- [ ] Port the CLI to `sim.ts`, run with `tsx`
-- [ ] Move the calibration harness into Vitest so it runs as a real test
-- [ ] Add the `PlayEvent` type and emit it from `game.ts`, ready for the 3D layer
-
-**Done when:** `npm test` passes, calibration still hits the D1 targets, and the engine compiles clean under strict.
-
-### Phase 1: The season
-Still headless. Do not open the UI yet.
-
-- [ ] Schedule generator: conference weekend series plus midweek games
-- [ ] Day by day season loop
-- [ ] Standings, team stats, stat leaders
-- [ ] Rankings and an RPI approximation
-- [ ] Conference tournament bracket
-- [ ] NCAA tournament: regionals, supers, Omaha
-- [ ] Season awards
-- [ ] `sim.ts season` prints a full year
-
-**Done when:** the stat leaders from a simmed season look like real college baseball.
-
-### Phase 2: The app shell
-- [ ] Vite React TS scaffold, folder structure, ESLint boundary rule
-- [ ] Zustand store typed against the engine model
-- [ ] IndexedDB persistence with schema versioning
-- [ ] Web Worker plus Comlink for season simming, with a progress bar
-- [ ] Bottom navigation and the five core screens
-- [ ] Design tokens in CSS
-- [ ] **`Field2D.tsx`**: CSS diamond, play log, and the live scorebook cell
-- [ ] Android back button handling and safe area insets
-- [ ] First Capacitor build, APK running on a real phone
-
-**Done when:** you can play a full season on an Android device with no laptop involved.
-
-### Phase 3: Roster management
-- [ ] Lineup and rotation editor
-- [ ] Depth chart with position eligibility
-- [ ] Injuries and season long fatigue
-- [ ] Progression and regression at season end
-- [ ] Eligibility, redshirts, graduation
-- [ ] MLB draft: who leaves, who returns
-
-### Phase 4: Recruiting
-- [ ] Recruit class generation by state and region
-- [ ] Interest and pitch system: playing time, development, winning, proximity, academics
-- [ ] Weekly recruiting budget
-- [ ] Rival schools competing for the same players
-- [ ] Signing day
-- [ ] Recruits drafted out of high school who never arrive
-- [ ] Transfer portal, both directions
-
-### Phase 5: The 3D field
-Deliberately late. The game is complete and playable before this starts.
-
-- [ ] R3F canvas, lazy loaded and code split
-- [ ] Low poly diamond geometry with baked materials
-- [ ] Instanced fielder and runner markers
-- [ ] Ball flight driven by `PlayEvent`
-- [ ] Camera easing between three fixed positions
-- [ ] `frameloop="demand"` and DPR capping
-- [ ] 2D and 3D toggle in settings, 2D stays default until 3D beats it
-- [ ] Profile on a real mid range Android phone, hold 30 fps
-
-### Phase 6: The dynasty layer
-- [ ] Program prestige tied to results
-- [ ] Coach attributes and a skill tree
-- [ ] Job offers and the coaching carousel
-- [ ] Facilities and budget upgrades
-- [ ] AD expectations and getting fired
-- [ ] Records book and program history
-
-### Phase 7: Ship
-- [ ] Onboarding for the first ten minutes
-- [ ] Multiple save slots
-- [ ] News feed and headlines
-- [ ] Keystore generated and backed up
-- [ ] Play Store listing, signed AAB
-- [ ] Accessibility: focus states, reduced motion, text scaling
+- [x] Development and decline between seasons, walk-ons filling unspent
+      scholarships, graduation
+- [x] The MLB draft takes players every June, underclassmen included above hard
+      bars
 
 ---
 
-## Decisions locked
+## Half-built
 
-| Decision | Choice |
-|----------|--------|
-| Core fantasy | Head coach dynasty |
-| Sim depth | At bat by at bat, text play by play |
-| Platform | Mobile first, Android via Capacitor |
-| Language | TypeScript, strict |
-| UI | React 18 on Vite |
-| 3D | Three.js via React Three Fiber, stylized diamond only |
-| Engine | Generalized log5 with constrained pitch sequencing |
-| Rating visibility | All visible in v1 |
-| Two way players | Skipped in v1, added later |
-| Schools | Fictional |
-| World size | 12 teams, one conference. Schedule generator parameterized by team count so the world can grow |
-| Season length | 33 games — a single round robin, every opponent three times |
-| Individual fielders | **In v1.** Range and error ratings per player, spray direction, a real catcher |
-| Pitch arsenals | Deferred past v1 |
-| Defensive shifts | Coach decision, per the mockup: Straight / Situational / Full shift |
-| Re-entry | Once a player is substituted out he cannot return. Hitters and pitchers alike |
-| The mockup | `design/Dynasty Mobile.dc.html` is the app's layout. Port it to the stack, keeping the screens and interaction model exactly |
+Each of these exists. None is the thing the old plan claimed. This section is the
+one that keeps the rest of the file honest.
+
+### The 3D field
+
+`src/ui/Diamond3D.tsx`. It is lazy loaded and code split, the park is primitives
+and flat colours with no lights at all, device pixel ratio is capped at 1.6, and
+the ball flies along the engine's own landing coordinate with a separate profile
+per batted-ball type so a grounder and a fly are told apart at a glance. What the
+plan listed and never got:
+
+- [ ] **Fielders.** There are none in the scene. Runners and the ball, and
+      nothing else stands on the field
+- [ ] **Instanced markers.** Every runner is his own mesh. Harmless at three of
+      them, and not what was planned for nine
+- [ ] **Camera easing between three fixed positions.** There is one camera behind
+      the plate and it never moves
+- [ ] **`frameloop="demand"`.** The canvas renders continuously, including
+      between pitches when nothing has moved. This is the item with a real
+      battery cost on the target device
+- [ ] **A 2D/3D toggle.** The 2D diamond survives only as the fallback shown
+      while the 3D chunk loads. That is not a setting and not a choice
+- [ ] **Thirty frames a second on a mid-range Android, measured.** Never measured
+      on any phone, because the game has never run on one
+
+Park effects land here too: they were agreed as geometry rather than as a
+modifier, so a short porch is something you can see. That makes them the reason
+to invest in this track again, and nothing else on it is urgent.
+
+### Everything else that is part-done
+
+- [~] **The MLB draft.** Departures are automatic and the coach has no say. The
+      persuasion half — reading what a man wants and paying for him out of the
+      recruiting budget — is agreed and unbuilt (backlog B9, and it needs ages
+      first)
+- [~] **The coaching carousel.** You move between jobs; nobody else does. Rival
+      coaches never improve, are never judged and are never poached, so you are
+      the only coach in ninety-six programs who gets better (B7)
+- [~] **Eligibility.** Graduation and draft eligibility are real; redshirts do
+      not exist anywhere in the codebase
+- [~] **Android.** Safe-area insets are done and were done early, correctly. The
+      hardware back button is not wired, because there is nothing to wire it to
+      yet
+- [~] **Accessibility.** Reduced motion is honoured throughout. Focus states and
+      text scaling are not: every size in the app is in pixels
 
 ---
+
+## What is next, in order
+
+The ordering principle is that a system should not be built on top of data that
+is known to be wrong, and that the things a player touches come before the things
+that surround them.
+
+1. **The data-integrity bugs.** Backlog section A, and A5 first: a departing
+   player's last season never reaches the record book, so every graduating
+   senior's best year has always been lost. A hall of fame reading that book
+   would honour the wrong men, which is why this comes before the hall of fame
+   and not after it.
+
+2. **Ages, then a draft you can argue with.** B15 then B9. Ages are small and
+   they are what makes the eligibility rule express itself honestly instead of as
+   a special case; the persuasion mechanic is the first place the recruiting
+   budget has to do two jobs at once, and that tension is the point.
+
+3. **Badges and tendencies.** B10, B11, B16, B17. The largest addition to the
+   hidden layer, and the one that gives two players with the same ratings
+   different identities. Every badge that ships gets a row in the hidden
+   mechanics index on the day it lands — that rule is not negotiable, because an
+   invisible system nobody wrote down stops being a design and becomes folklore.
+
+4. **The rest of the career.** Achievements, coach titles, conference and
+   regional honours, rival coaches with careers of their own, hall-of-fame
+   induction, league-wide career records. B3 through B7, B12, B13.
+
+5. **The postseason, rebuilt.** Top four in the country straight into an
+   eight-team national tournament, sixteen more into four regionals of four. The
+   shape and the reasoning are in the backlog. It comes after the player-facing
+   systems on purpose: today's format works, and a bracket rewrite pays off less
+   per week than anything above it.
+
+6. **The depth systems, one design pass each.** Backlog section C — the transfer
+   portal, injuries, morale, scouting reports, a progression rework and the rest.
+   Listing them is not designing them, and none may be built before it has been
+   specified on its own.
+
+7. **Shipping.** Capacitor, a first APK on a real device, the back button, a
+   keystore generated and backed up somewhere permanent, a signed AAB, a store
+   listing, onboarding for the first ten minutes, and the accessibility work.
+   Last, and blocking nothing. Onboarding is sized against the game as it will be
+   by then, which by that point includes scouting bands, philosophies, badges and
+   a record book to explain.
+
+## Missing and unscheduled
+
+Real gaps with no slot yet. Each is small enough to fold into a stage above when
+somebody wants it.
+
+- **A depth chart with position eligibility.** There is a lineup editor; who can
+  credibly play where is not modelled
+- **Facilities to spend on.** Facilities exist as something a recruit weighs and
+  nothing else — there is no upgrade and no budget for one
+- **Recruits drafted out of high school who never arrive.** Signed, then gone
+  before they play a game. Cheap to build, and it stings in the right way
+- **An AI that reads a run-expectancy matrix.** The opponent calls only the
+  sacrifice, on a heuristic. This is the difference between a manager who bunts
+  by rule and one who bunts when the base-out state says to
+- **Injuries and season-long fatigue.** Bullpen rest and in-game fatigue are
+  modelled; nothing accumulates across a year
+
+## Deferred, and why
+
+| Decision | Why |
+|---|---|
+| **NIL and revenue sharing — skipped** | The recruiting budget is the only currency and it already does two jobs, signing a class and keeping a drafted player. One currency the player understands beats two he has to learn |
+| **iOS — not now** | Capacitor could do both. iOS needs a Mac and a paid developer account, and neither is worth carrying before the game is finished |
+| **Two-way players** | Still out. Nothing has changed the argument |
+| **The S+ store player** | Deferred to v1.0. The cap that reserves the grade for him is built and tested; he is not |
+| **The live scorebook cell** | The one idea worth keeping from the old design section, and never built. It is a nice thing rather than a needed thing, and the mockup does not have it |
+
+Backward compatibility is explicitly **not** a constraint. Testing runs from
+fresh saves, so a change may require a new dynasty rather than a migration. That
+is not licence to corrupt a save quietly — a load must still fail honestly.
 
 ## Still open
 
-- [ ] NIL and revenue sharing as a mechanic, or skip it?
-- [ ] Park effects, and do they get 3D geometry or stay numeric?
-- [ ] iOS later, or Android only? Capacitor supports both, but iOS needs a Mac and a paid developer account
+Three questions, and the old file's three are not among them: NIL, park effects
+and iOS are all settled above.
 
----
+- **Whether the seeded NCAA marks should be re-pitched.** Seven of the twelve are
+  out of reach of the engine's run environment — they were set with aluminium
+  bats and the calibration targets are modern Division I. Scaling by games played
+  does not close that. The gap is written down with numbers so it can be argued
+  about rather than rediscovered (§13.3)
+- **Which channels a badge may attach to**, and how a situation is defined in
+  engine terms. Tiers, caps and earning routes are agreed; this is not
+- **Whether the recruiting asymmetry is intentional** — AI programs allocate
+  against a flat weekly budget while the user's scales with prestige
 
-## Next action
+## Debt
 
-Phase 0.4. Install Node, run the calibration harness for the first time, and commit its output as a measured baseline. Then fix the walk-off bug and wire up the dead pitch constants, and recalibrate.
+- Source comments across the engine, the store, the world builder and two screens
+  still describe a **sixty-four program** world. It has ninety-six. One of them
+  is player-facing prose on the wire screen
+- `sim.ts parity` still prints a verdict off a thirty-point rating gap the shipped
+  world never produces, and the verdict is wrong. The curve it should be read
+  against is in `tests/parity-sweep.ts` (T1 in the implementation plan)
+- The stale comments and vestigial exports catalogued in appendix A of the systems
+  reference
+- `package.json` says v0.6.2 and the README still describes a thirty-three game
+  season and a single autosave. Both are behind the code
 
-Phase 0.5 follows immediately: convert the engine to TypeScript with strict mode on and get the harness running under Vitest as a regression test against that baseline. It is a contained, mechanical job, and doing it while the engine is still under a thousand lines means every phase after it is typed from the start instead of retrofitted.
+## The budgets
+
+Held so far, and worth guarding — a performance regression found six months later
+is a rewrite.
+
+| Operation | Budget | Measured |
+|---|---|---|
+| Single game, headless | under 5 ms | ~0.4 ms |
+| Full league season | under 3 s in a Worker | comfortably inside it |
+| Screen transition | under 100 ms | not measured |
+| Initial bundle, 3D excluded | under 250 KB gzipped | not measured |
+| 3D field on a mid-range Android | 30 fps during ball flight | never run on a phone |

@@ -254,47 +254,47 @@ const SEEDS: Partial<Record<RecordKey, RecordMark>> = {
   seasonHR: {
     value: scaled(48, ERA_GAMES), holder: 'Pete Incaviglia',
     team: 'Oklahoma State', year: 1985,
-    detail: '48 in 75 games — sources give 48 or 45', ncaa: true,
+    detail: 'real mark 48 in 75 games — sources give 48 or 45', ncaa: true,
   },
   seasonRBI: {
     value: scaled(143, ERA_GAMES), holder: 'Pete Incaviglia',
-    team: 'Oklahoma State', year: 1985, detail: '143 in 75 games', ncaa: true,
+    team: 'Oklahoma State', year: 1985, detail: 'real mark 143 in 75 games', ncaa: true,
   },
   seasonTB: {
     value: scaled(285, ERA_GAMES), holder: 'Pete Incaviglia',
-    team: 'Oklahoma State', year: 1985, detail: '285 in 75 games', ncaa: true,
+    team: 'Oklahoma State', year: 1985, detail: 'real mark 285 in 75 games', ncaa: true,
   },
   seasonSlg: {
     value: 1.140, holder: 'Pete Incaviglia', team: 'Oklahoma State', year: 1985,
-    detail: '1.140', ncaa: true,
+    ncaa: true,
   },
   seasonTriples: {
     value: scaled(17, 63), holder: 'Keith Hagman', team: 'New Mexico', year: 1980,
-    detail: '17 in 63 games', ncaa: true,
+    detail: 'real mark 17 in 63 games', ncaa: true,
   },
   seasonDoubles: {
     value: scaled(36, ERA_GAMES), holder: 'Brad Hawpe', team: 'LSU', year: 2000,
-    detail: '36', ncaa: true,
+    detail: 'real mark 36', ncaa: true,
   },
   seasonHitStreak: {
     value: 58, holder: 'Robin Ventura', team: 'Oklahoma State', year: 1987,
-    detail: '58 straight games', ncaa: true,
+    ncaa: true,
   },
   seasonWins: {
     value: scaled(20, ERA_GAMES), holder: 'Mike Loynd', team: 'Florida State',
-    year: 1986, detail: '20', ncaa: true,
+    year: 1986, detail: 'real mark 20', ncaa: true,
   },
   seasonIP: {
     value: scaled(186, ERA_GAMES), holder: 'Floyd Bannister',
-    team: 'Arizona State', year: 1976, detail: '186', ncaa: true,
+    team: 'Arizona State', year: 1976, detail: 'real mark 186', ncaa: true,
   },
   seasonK9: {
     value: 16.8, holder: 'Ryan Wagner', team: 'Houston', year: 2003,
-    detail: '16.8', ncaa: true,
+    ncaa: true,
   },
   seasonScoreless: {
     value: scaled(47, ERA_GAMES), holder: 'Todd Helton', team: 'Tennessee',
-    year: 1994, detail: '47 straight', ncaa: true,
+    year: 1994, detail: 'real mark 47 straight', ncaa: true,
   },
 };
 
