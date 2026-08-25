@@ -186,7 +186,7 @@ function Row(
               )}
             </>
           )
-          : 'Nobody has done it. The first man to takes it.'}
+          : 'Not set. Whoever does it first takes it.'}
       </span>
     </>
   );

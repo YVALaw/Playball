@@ -319,6 +319,70 @@ Fold in opportunistically rather than as a work item of their own.
 - Stale comments listed in appendix A of the systems reference, including the
   postseason note still describing four-team double-elimination regionals.
 
+## G. From the original roadmap, never built
+
+`01-roadmap.md` carries sixty-two unticked boxes, most of them stale — the work
+shipped and nobody went back to tick them. What follows is what is genuinely
+still missing, verified against the source rather than read off the list. The
+roadmap should be reconciled against this section and then trusted again, or
+retired in favour of this file.
+
+### G1 · Shipping. Nothing of this exists.
+
+The whole point of the project is a phone game and **there is no mobile build at
+all** — no Capacitor, no keystore, no store listing. This is the largest silent
+gap in the plan and it is not a small job.
+
+- Capacitor set up, a first APK running on a real device
+- Android back button handling (safe-area insets are already done)
+- Keystore generated **and backed up** — losing it means never updating the app
+  under the same listing again
+- Play Store listing and a signed AAB
+- Onboarding for the first ten minutes. There is none, and the game now has
+  scouting bands, philosophies, badges and a record book to explain.
+- Accessibility: focus states, text scaling. Reduced motion is done.
+
+### G2 · Gameplay the backlog missed
+
+- **Redshirts.** No concept of one anywhere. Real eligibility management, and it
+  interacts with ages and the draft.
+- **Depth chart with position eligibility.** A lineup editor exists; who can
+  credibly play where does not.
+- **Facilities and budget upgrades.** Facilities exist as a recruiting pitch
+  attribute only — there is nothing to spend on and nothing to improve.
+- **Recruits drafted out of high school who never arrive.** Signed, then gone
+  before they play a game. Cheap, and it stings in the right way.
+- **An AI decision layer on a run expectancy matrix.** `chooseTactic` is
+  heuristic. This is the difference between an opponent who bunts by rule and
+  one who bunts when the base-out state says to.
+
+### G3 · The 3D track, status unknown
+
+`Diamond3D.tsx` exists, so this is part-built, but the roadmap lists sub-items
+nobody has audited: instanced fielder and runner markers, ball flight driven by
+`PlayEvent`, camera easing between fixed positions, `frameloop="demand"` and DPR
+capping, a 2D/3D toggle in settings, and holding 30fps on a mid-range Android.
+Needs an audit before it can be planned.
+
+### G4 · Open questions from the roadmap, still open
+
+- **NIL and revenue sharing** — a mechanic, or deliberately skipped? Now partly
+  answered by the draft decision: the persuasion currency is recruiting budget,
+  not money, so a full NIL economy is not required. Worth closing formally.
+- **Park effects** — numeric only, or geometry in the 3D view?
+- **iOS, or Android only?** Capacitor does both; iOS needs a Mac and a paid
+  developer account.
+
+### G5 · Debt
+
+- **Ten source files still say the world has 64 programs.** It has 96.
+  `postseason.ts`, `progression.ts`, `recruiting.ts`, `season.ts`, `strategy.ts`,
+  `wire.ts`, `persistence.ts`, `store.ts`, `Rankings.tsx`, `Today.tsx` — and
+  `Wire.tsx` tells the player about "the other sixty three programs".
+- Two unresolved items in `04-implementation-plan.md`: **B5**, `LEAGUE_K_RATE`
+  is unverified and needs a sourced D1 strikeout rate; **T1**, the parity
+  harness points at an unrealistic matchup.
+
 ## F. Research outstanding
 
 - **Simulation gap analysis** — how OOTP, Diamond Mind, Strat-O-Matic and the
