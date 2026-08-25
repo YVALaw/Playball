@@ -42,6 +42,29 @@ export const CLASS_ORDER: Record<ClassYear, number> = { FR: 0, SO: 1, JR: 2, SR:
 export type Position = 'C' | '1B' | '2B' | '3B' | 'SS' | 'LF' | 'CF' | 'RF' | 'DH' | 'P';
 export type PitcherRole = 'SP' | 'RP';
 
+/**
+ * The badges, named here rather than in `badges.ts`.
+ *
+ * A held badge is the one piece of the situational layer a save has to write
+ * down — a repertoire and a tendency are both hashed out of the player's id and
+ * cost nothing, but a badge can be earned or coached and therefore has a
+ * history. That makes it part of the domain model, and the domain model lives
+ * in this file. What each one *does* stays in `badges.ts`, which imports these.
+ */
+export type BadgeId =
+  | 'getsHimIn' | 'lateAndClose' | 'tableSetter' | 'houdini' | 'theDoor' | 'deepWater'
+  | 'wheels' | 'burglar' | 'lightTower' | 'cannon' | 'rubberArm' | 'swingAndMiss'
+  | 'toughOut' | 'vacuum' | 'onALine' | 'painter' | 'wormBurner' | 'stealsStrikes'
+  | 'gymRat' | 'noPanic' | 'secondLook' | 'bigStage' | 'crowdsThePlate';
+
+/** Bronze, silver, gold. */
+export type BadgeTier = 1 | 2 | 3;
+
+export interface HeldBadge {
+  id: BadgeId;
+  tier: BadgeTier;
+}
+
 /** The seven outcomes the log5 model partitions a plate appearance into. */
 export type PAEvent = 'single' | 'double' | 'triple' | 'homerun' | 'walk' | 'hbp' | 'out';
 
@@ -225,6 +248,18 @@ interface PlayerCore {
    * exists.
    */
   walkOn?: boolean;
+  /**
+   * The small, specific edges he carries. See `engine/badges.ts`.
+   *
+   * Stored, unlike his repertoire and his tendencies, because this is the one
+   * part of the situational layer with a history: some are innate, some are
+   * earned from what he actually did, some are coached, and none of them decay.
+   * A derived-from-the-id badge could not be any of those things.
+   *
+   * Optional so that a save written before badges existed loads unchanged. A
+   * player with no field simply holds none, which is the truth about him.
+   */
+  badges?: HeldBadge[];
 }
 
 export interface Hitter extends PlayerCore, HitterRatings {
@@ -298,6 +333,34 @@ export interface TacticMods {
   scoreFromThird?: number;
 }
 
+/**
+ * What the two men's tendencies and badges do to one plate appearance.
+ *
+ * Declared here rather than beside the code that builds it, for the same reason
+ * `TacticMods` is: it crosses the boundary into an engine, and the engines are
+ * typed against this file. `engine/traits.ts` is what fills it in and
+ * `engine/tendencies.ts` and `engine/badges.ts` are what decide the numbers.
+ *
+ * Named fields rather than a keyed record because this is read once per plate
+ * appearance in the hot loop. `all` multiplies every offensive event at once;
+ * the rest are per event, except `pace`, which scales the length of the pitch
+ * sequence and is the only one that reaches something other than the outcome.
+ */
+export interface TraitMods {
+  all: number;
+  walk: number;
+  hbp: number;
+  single: number;
+  double: number;
+  homerun: number;
+  /** On the strikeout share of an out. */
+  strikeout: number;
+  /** On the ground ball share of a ball in play. */
+  groundBall: number;
+  /** On how many pitches the at-bat takes. */
+  pace: number;
+}
+
 /** Situational context handed to an engine for one plate appearance. */
 export interface PAContext {
   isHome?: boolean;
@@ -321,6 +384,12 @@ export interface PAContext {
   zoneBias?: number;
   /** The manager's call, if anyone made one. */
   mods?: TacticMods;
+  /**
+   * What the two men are like, as opposed to how good they are. Absent when
+   * neither carries a tendency or a badge that fires here, which is the fast
+   * path an engine harness with hand-built players takes.
+   */
+  traits?: TraitMods;
 }
 
 export interface PAResult {

@@ -58,7 +58,8 @@ the day it lands.
 > **A note on the working tree.** As of this writing several engine files carry
 > uncommitted changes — `types.ts`, `players.ts`, `game.ts`, `season.ts`,
 > `progression.ts`, `recruiting.ts`, `scouting.ts`, `program.ts`, and
-> `state/seasonCodec.ts` among them. Everything documented here is read from the
+> `state/seasonCodec.ts` among them, along with the four files §18 is built on:
+> `pitches.ts`, `tendencies.ts`, `badges.ts` and `traits.ts`. Everything documented here is read from the
 > working tree, i.e. from the game as it behaves today. The defensive-attribute
 > and fielding-statistics work is marked **IN FLIGHT** throughout; the recruiting
 > scouting-report system is marked **SHIPPED** because it is complete, wired, and
@@ -94,7 +95,7 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 19 | **Recruiting budget scales with your program's star tier**, 40 up to 60. | The budget number on the board header. | `budgetFor` — `engine/recruiting.ts` | SHIPPED |
 | 20 | **A scholarship you do not spend becomes a walk-on 13 points below your program's level.** | A name on the roster with a bad rating. | `WALK_ON_PENALTY` — `engine/progression.ts` | SHIPPED |
 | 21 | **7% of generated freshmen get a large extra headroom draw** on top of ordinary headroom. This is the only reason hidden gems exist. | Nothing at all. | `projectPotential` — `engine/players.ts` | SHIPPED |
-| 22 | **Platoon skill is a hidden per-player number**, drawn from a distribution that can go negative (real reverse-split players). | Observed splits in the stats screen, and noise. | `drawPlatoonSkill` — `engine/players.ts`; `platoonMultiplier` — `engine/ratings.ts` | SHIPPED |
+| 22 | ~~**Platoon skill is a hidden per-player number.**~~ **Surfaced, as B17.** The number itself is still not printed, but what it does to a man is: THE SPLIT panel on the ratings tab shows his contact and power against each hand and the production swing underneath, off the same arithmetic `platoonMultiplier` uses. The distribution can still go negative, so real reverse-split players exist and the card says so. | Two columns, VS RHP and VS LHP. | `drawPlatoonSkill` — `engine/players.ts`; `platoonSplit`, `platoonMultiplier` — `engine/ratings.ts`; §18.7 | SHIPPED |
 | 23 | **The coach's OFFENSE skill is worth 1 basis point per point**, capping at ×1.0079 on the whole offensive vector. Home field is ×1.020. | A blurb: "slightly better at-bats". | `TeamState.coachOffMult` — `engine/game.ts` | SHIPPED |
 | 24 | **DEFENSE likewise, ×0.9921 at the cap**, applied to singles, doubles and triples only. | A blurb. | `TeamState.coachDefMult`, `log5Outcome` — `engine/game.ts`, `engine/engines.ts` | SHIPPED |
 | 25 | **TRAINING scales only the systematic pull toward potential, never the noise** — ×1.158 at 99. | Slightly better development years. | `develop`, `OffseasonOpts.training` — `engine/progression.ts` | SHIPPED |
@@ -157,6 +158,18 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 73 | **A sitting coach will not move for less than 10 prestige, and will not move at all after 10 years in the chair.** Without the first, one retirement cascades through eight programs a year; without the second, every good coach is eventually pulled up the ladder and no rival is ever a fixture. | A rival who stays long enough to be somebody. | `POACH_GAP`, `SETTLED_TENURE` — `engine/rivals.ts`; §16.6 | SHIPPED |
 | 74 | **A board that cannot get anybody who clears its bar hires the best available anyway**, and a sacked coach nobody wanted that June leaves the profession. | Nothing. | `runCarousel` — `engine/rivals.ts`; §16.6 | SHIPPED |
 | 75 | **A job offer is now a chair somebody would be moved out of.** `jobOffers` takes a predicate: empty, *or* held by a coach the country rates below you. It is deliberately not "empty" alone — the carousel never leaves a chair open, so that rule produces a market of nothing and a sacked career that ends on a screen saying nobody rang. | Taking a job and being told they let their man go to hire you. | `jobOffers` — `engine/program.ts`; `rollYear`, `acceptOffer` — `state/store.ts`; §16.7 | SHIPPED |
+| 76 | **A pitcher's repertoire and every player's tendencies are hashed off the id, never stored and never drawn.** Same argument as arrival age: one `rng()` call per pitcher would have moved every calibration figure in the project. A save carries neither, and a dynasty from before they existed gets them for free. | A repertoire that never changes across a reload. | `repertoireOf` — `engine/pitches.ts`; `tendenciesOf` — `engine/tendencies.ts`; §18.1 | SHIPPED |
+| 77 | **The pitch-usage tendency is read off the finished usage shares, not hashed like the other eight.** POWER ARM is a fastball share at or above .655 and JUNKBALLER at or below .470, which are the twenty-first and seventy-ninth percentiles of four thousand generated arms — so the pole sizes match every other slot without a second draw deciding them. | A pitch mix on the card, and a label under it that agrees with it. | `MIX_JUNK`, `MIX_POWER`, `poleOf` — `engine/tendencies.ts`; §18.2 | SHIPPED |
+| 78 | **Every tendency pair averages to exactly 1.0 over the 21/58/21 population split.** That is what stops a tendency being a rating, and it is asserted per channel in `tests/traits.test.ts` rather than hoped for. | Nothing. | `pairOf`, `POLE_SHARE` — `engine/tendencies.ts`; §18.3 | SHIPPED |
+| 79 | **Clutch is priced rather than granted.** The +5.5% with a runner in scoring position is paid for exactly by −1.74% without one, weighted by how often each arrives, so a clutch hitter's season line is identical to an ordinary man's. | A player who is better in the spots that matter and no better overall. | `CLUTCH_LIFT`, `CLUTCH_DIP`, `RISP_SHARE` — `engine/tendencies.ts`; §18.3 | SHIPPED |
+| 80 | **A neutral multiplier pair is not automatically a neutral season.** Pace is not an outcome — it decides when a starter is pulled and when he tires — and at its first sizes it cost the league 1.3% of its walks by keeping starters, who throw more strikes than relievers, on the mound longer. The pace pairs are 40% smaller than they were. | Nothing. | the `Pair` docstring — `engine/tendencies.ts`; §18.3, §18.8 | SHIPPED |
+| 81 | **How much of a tendency has been discovered, and the units it is counted in.** Evidence accrues per man from every game your program plays and is counted in plate appearances, times on base or balls in play depending on what the reading is actually made of. The card shows the bar filling; it never shows the counters. | STILL WATCHING, and a bar under it. | `Watch`, `isKnown`, `watchProgress` — `engine/tendencies.ts`; `noteWatch` — `engine/season.ts`; §18.4 | SHIPPED |
+| 82 | **Tendencies are hidden on your own men and visible on everybody else's; badges are the reverse.** A tendency is what you can see from the other dugout, a badge is what you only know because you have had the man in your building. | A rival's leadoff man labelled GREEN LIGHT while your own is still being watched. | `isKnown` — `engine/tendencies.ts`; `Badges` — `ui/screens/Player.tsx`; §18.4 | SHIPPED |
+| 83 | **A badge's size band is chosen by how often its situation arrives**, not by how good it sounds. Always-available channels get 2.5/4.5/7.0%, spot situations 3.0/5.5/8.0%, and the two rare ones 4.0/7.0/10.0%. | Three tier names. | `STEADY`, `SPOT`, `RARE` — `engine/badges.ts`; §18.5 | SHIPPED |
+| 84 | **Three badges exist partly to keep the league's rates where they were.** SWING AND MISS answers TOUGH OUT on the strikeout column, WORM BURNER suppresses home runs as well as raising ground balls so LIGHT TOWER is not unopposed, and CROWDS THE PLATE puts back some of what PAINTER takes off the walk column. | Three ordinary-looking badges. | `badgeMods` — `engine/badges.ts`; §18.5 | SHIPPED |
+| 85 | **Badge development is rolled off a hash of the player's id and the year, not off the offseason's random stream.** Two thousand rolls a year inserted into that stream would move every departure and every development draw in the league. Earned at 42% for a man who did the thing; coached at 16% for one thing a winter; both scaled by TRAINING up to ×1.8. | A badge appearing in the inbox in June. | `developBadges`, `EARN_CHANCE`, `COACH_CHANCE`, `trainingMult` — `engine/badges.ts`; §18.5 | SHIPPED |
+| 86 | **The earning bars are set against what this engine's 45-game season actually produces, not against real college numbers.** Six home runs is the 95th percentile here and 48 was Incaviglia's real mark; a bar written from the record book would have been unreachable by everybody. | Nothing. | `BADGES[*].earned` — `engine/badges.ts`; §18.5 | SHIPPED |
+| 87 | **Only a catcher can earn CANNON**, because stolen bases and caught stealing are recorded on the catcher's fielding line and nowhere else. An outfielder holding it got it innately or from his staff. | Nothing. | `BADGES.cannon.earned` — `engine/badges.ts`; `attemptSteal` — `engine/game.ts`; §18.5 | SHIPPED |
 
 ---
 
@@ -1562,6 +1575,11 @@ counts are those rates over 41 plate appearances and are marked derived.
 | First pitch strike rate | .584 | sourced |
 | Foul share of swings | .365 | sourced |
 
+Since §18 there is a layer on top of all of this that is designed to leave every
+row above unmoved: a tendency's two poles cancel across the population and a
+badge is a small edge on one channel. §18.8 records what it actually cost, which
+was one row.
+
 Supporting constants in `engine/ratings.ts`: `LEAGUE` (the seven-event baseline,
 summing to exactly 1), `LEAGUE_K_RATE` 0.164, `LEAGUE_BIP` (44% ground, 21% line,
 27% fly, 8% popup), `CONTEXT.homeFieldOffense` 1.020 (measures 54.9% between evenly
@@ -1983,46 +2001,43 @@ correctly for the same reason.
 
 ---
 
-## 12. Planned systems — **PLANNED**
+## 12. Planned systems — **MOSTLY SHIPPED**
 
-Everything in this section is **design intent. Nothing is built.** No code
-implements any of it; there are no types, no constants, and no tests. Do not read
-any of these as behaviour the game has.
+This section was written when nothing in it was built. Four of its six entries
+have since shipped and now point at the sections that describe the behaviour:
+badges and tendencies at §18, the records book at §13, and the draft at §14. What
+is left genuinely unbuilt is the S+ store player (§12.3) and hall-of-fame
+induction (§12.6). The shipped entries are kept rather than deleted because the
+gap between what was intended and what was built is the useful part of them.
 
 ### 12.1 Badges
 
-Situational boosts: a small, specific edge that applies in one situation on one
-channel, rather than a general rating increase.
+**SHIPPED.** See §18.5, which replaced this entry: twenty-three badges in four
+families at three tiers, position-aware, capped by ceiling, innate or earned or
+coached, and measured at seven tenths of a point of win probability for a whole
+roster's worth of them.
 
-| Property | Intent |
-|---|---|
-| Tiers | Bronze / Silver / Gold |
-| Magnitude | roughly +2–3% / +4–5% / +6–8% |
-| Scope | **one** channel in **one** situation — never a flat boost |
-| Cap by potential | S+ 7, S 6, A 5, B 4, C 3, D 2 |
-| At signing | at most 2 |
-| Developed ceiling | up to 5–6 over a career |
-| How earned | three routes: innate at generation, earned in the record (a player who keeps doing the thing), coached via the TRAINING skill |
-| Visibility | hidden from opposing teams |
-| Decay | none — there are no injuries in this game |
-
-Badges are the largest planned addition to the hidden layer, and every one of them
-will need a row in the [index](#hidden-mechanics-index) on the day it ships: what
-it boosts, by how much, in which situation, and how a player could infer it.
-
-The engine already has one hook pointed at this. `attemptSteal` records stolen
-bases and caught stealing on the **catcher's** fielding line, with the comment that
-it goes there "where a badge or an award can find it later".
+Two things in the plan this entry recorded did change on the way, and both are
+worth keeping the provenance of. **The cap ladder is S+ 10, S 6, A+ 5, A 4, B 3,
+C 2, D 2** rather than the S+ 7 / S 6 / A 5 / B 4 / C 3 / D 2 sketched here — the
+backlog settled it after A+ was inserted into the grade scale, and the store
+player's ten is what makes S+ exempt rather than merely top of the ladder. And
+the hook this entry pointed at was real and got used: `attemptSteal` records
+stolen bases and caught stealing on the catcher's fielding line "where a badge or
+an award can find it later", and CANNON is what found it.
 
 ### 12.2 Tendencies
 
-What a player **chooses to do**, as opposed to how well he does it. Deliberately
-power-neutral and double-edged: a tendency should change the shape of a player's
-season without making him better or worse, so it is a thing to manage rather than a
-thing to acquire.
+**SHIPPED.** See §18.3. Nine slots, five for a hitter and four for a pitcher,
+each with two poles held by 21% of the league apiece and every pair averaging to
+exactly 1.0 across the population — which is the principle this entry stated,
+made into arithmetic a test can check.
 
-Nothing here is specified beyond that principle, and the code contains no notion of
-a tendency. See Appendix B.
+The one addition to the principle is worth stating here because it is the line
+between the two systems that shipped together: **a tendency redistributes and a
+badge adds.** Both can fire on the same pitch. CLUTCH makes a hitter a different
+player with a man on second and the same player over a season; GETS HIM IN simply
+makes him better there.
 
 ### 12.3 S+ potential as a store-only grade
 
@@ -2963,6 +2978,384 @@ not, and dropping it would bring the badge back on every restart.
 
 ---
 
+## 18. The situational layer: repertoires, tendencies and badges — **SHIPPED**
+
+`src/engine/pitches.ts`, `src/engine/tendencies.ts`, `src/engine/badges.ts`,
+`src/engine/traits.ts`, `src/engine/game.ts`, `src/engine/engines.ts`,
+`src/engine/progression.ts`, `src/ui/screens/Player.tsx`,
+`tests/traits.test.ts`
+
+Three systems that sit on top of the ratings without being ratings. They shipped
+together because they depend on each other in one direction: a pitch-usage
+tendency needs a repertoire to be read off, and a badge has to be sized against
+what a tendency already does in the same spot.
+
+The dividing line runs through all three and is worth stating before anything
+else. **A rating says how good a man is. A tendency says what he is like, and
+redistributes. A badge says what he is good at in one named spot, and adds a
+little.** CLUTCH makes a hitter a different player with a man on second and the
+same player over a season; GETS HIM IN simply makes him better there. Both can
+fire on the same pitch and they are doing different jobs.
+
+### 18.1 What is stored, and what is not
+
+Only badges. A repertoire and a tendency are pure functions of the player's id —
+hashed exactly the way `arrivalAge` is (§14.1, index 47a) and for the same
+reason: every `rng()` call in `players.ts` sits in a fixed sequence, and one draw
+per pitcher per fact would have moved every calibration figure in the project.
+Nothing about them is written to a save, nothing can drift on a reload, and a
+dynasty carried forward from before they existed gets them for free.
+
+Badges cannot work that way, because a badge has a history: some are innate,
+some are earned from what a man actually did, some are coached, and none of them
+decay. So `Player.badges` is the one new field in the save, it is optional, and a
+player written before it simply holds none.
+
+### 18.2 The pitch palette — B16
+
+Eleven pitches, with real abbreviations because that is what a scouting report
+uses:
+
+| Family | Pitches |
+|---|---|
+| Fastballs | Four-seam `FF`, Sinker `SI`, Cutter `FC` |
+| Breaking | Slider `SL`, Curveball `CU`, Slurve `SV`, Screwball `SC` |
+| Offspeed | Changeup `CH`, Splitter `FS`, Vulcan change `VU`, Knuckleball `KN` |
+
+**Every pitcher's repertoire is his own.** He carries two to five of them, never
+all of them, with a usage share per pitch that sums to one and is printed on the
+card. Measured over four thousand generated arms: 3,402 distinct repertoires out
+of 4,000, and a carry rate that keeps the ordinary pitches ordinary and the
+curiosities rare — slider 60%, changeup 63%, curve 53%, sinker 39%, slurve 19%,
+cutter 17%, splitter 13%, vulcan 4%, screwball 4%, **knuckleball 1.2%**.
+Repertoire length runs 2 (7%), 3 (51%), 4 (36%), 5 (5%).
+
+Three rules shape a repertoire, and each exists because the naive version
+produced something that was not a pitcher.
+
+- **A knuckleballer gets his own branch.** Generated through the ordinary path he
+  came out with a 12% knuckleball and a slider, which is not a knuckleballer. He
+  throws it 70 to 84 percent of the time and keeps a fastball around to remind
+  hitters it exists.
+- **There is only one *kind* of slow pitch.** Offering changeup, splitter and
+  vulcan off one weighted table and refilling from what was left put a vulcan on
+  one arm in five. A pitcher has a change of pace and it has a flavour: 84%
+  changeup, 10% splitter, 6% vulcan.
+- **No secondary pitch is the pitch he throws most**, capped at 42%. The first
+  weighting produced a man throwing 59% changeups, which is not a junkballer, it
+  is an arithmetic accident. Slider-first relievers survive the cap, which is why
+  it is 42% rather than "under the fastball".
+
+`speedOf` derives each pitch's velocity off the man's own fastball, which the
+generator already ties to `stuff` — so the change of pace on the card agrees with
+the radar-gun number in the panel above it.
+
+**Does it reach the simulation?** Yes, through exactly one door: the POWER ARM
+and JUNKBALLER tendency below is read off the finished usage shares rather than
+hashed. That is what makes the usage share real data rather than a caption — a
+number something consumes.
+
+### 18.3 Tendencies — B11
+
+Nine slots, five for a hitter and four for a pitcher. Each hands its plus pole to
+21% of the league, its minus pole to 21%, and nothing to the 58% in between.
+
+| Slot | Plus pole | Minus pole | What moves |
+|---|---|---|---|
+| `approach` | FREE SWINGER | PATIENT | walks -22/+22%, doubles and home runs +5/-5%, strikeouts +5/-5%, pace |
+| `firstPitch` | HUNTS STRIKE ONE | TAKES STRIKE ONE | singles +4/-4%, walks -8/+8%, pace |
+| `running` | GREEN LIGHT | STATION TO STATION | steal attempts x1.70/x0.30, extra bases x1.20/x0.80, thrown out x1.30/x0.70 |
+| `spray` | PULL-HAPPY | USES THE WHOLE FIELD | the pull lane x1.28/x0.75, and how a shift reads him |
+| `clutch` | CLUTCH | TIGHTENS UP | every offensive event +5.5/-5.5% with a man in scoring position, -1.74/+1.74% without |
+| `zone` | ATTACKER | NIBBLER | walks allowed -18/+18%, home runs +7/-7%, singles +2/-2%, pace |
+| `pace` | QUICK WORKER | DELIBERATE | pitches per at-bat -5/+5%, and the third-time-through penalty +25/-25% |
+| `mix` | POWER ARM | JUNKBALLER | strikeouts +9/-9%, home runs +8/-8%, ground balls -11/+11% |
+| `poise` | BEARS DOWN | LOSES THE THREAD | the clutch channel, from the mound |
+
+**Every pair averages to exactly 1.0 across the population**, which is the
+property that stops a tendency being a rating, and `tests/traits.test.ts` asserts
+it on every channel. Two consequences of taking that seriously:
+
+- **Clutch is priced, not asserted.** A runner is in scoring position for about a
+  quarter of plate appearances, so a +5.5% lift there costs -1.74% over the other
+  three quarters and the season line does not move. `CLUTCH_DIP` is that
+  arithmetic, not a chosen number.
+- **The running pairs were wrong once and it mattered.** `risk` was 1.35 against
+  0.75, which reads as a fair trade and is not one — the mean is 1.021, and the
+  league quietly retired two percent more runners on the bases than it had before
+  tendencies existed.
+
+**Pace is the exception to "neutral means harmless", and it was cut back for
+it.** Every other channel is a multiplier on an outcome, so a neutral pair leaves
+the league where it was. Pace is not an outcome: it is how many pitches an at-bat
+takes, and pitches decide when a starter is pulled and when he starts losing
+effectiveness, neither of which is linear in the count. At the first sizes tried
+the league's walk rate drifted about 1.3% low, because shorter at-bats keep
+starters — who throw more strikes than relievers — on the mound longer. The pace
+pairs are about 40% smaller than they were.
+
+The spray tendency is the one that needed the fielding rework (§10). Before there
+were real batted-ball lanes there was nowhere to put a spray chart.
+
+### 18.4 Discovery: you learn a man by watching him
+
+**A tendency on your own player is not visible on the day he signs.** This is the
+user's decision and it is a mechanic rather than a display rule: what accrues is
+*evidence*, in the unit the reading is actually made of, and a reading only
+becomes something the card will say out loud once there is enough of it.
+
+| Slot | Unit | Needs |
+|---|---|---|
+| `mix` | batters faced | 60 |
+| `firstPitch` | plate appearances | 70 |
+| `running` | times on base | 40 |
+| `spray` | balls in play | 100 |
+| `approach` | plate appearances | 120 |
+| `pace` | batters faced | 120 |
+| `zone` | batters faced | 200 |
+| `clutch` | plate appearances | 300 |
+| `poise` | batters faced | 450 |
+
+A regular takes about 200 plate appearances a season and a Friday starter faces
+about 330 batters, so the mix and the first-pitch read arrive inside a month, the
+approach and the spray chart by midseason, the pace and the zone late in a first
+year, and clutch and poise land somewhere in year two. A seventh reliever may
+never be read at all, which is the correct answer about a seventh reliever. The
+ordering is deliberate and it agrees with the evidence: clutch talent is the
+smallest and least reliable signal in the sport, so it should take the longest to
+see.
+
+**It accrues from ordinary play, simulated games included.** `noteWatch` runs
+inside `recordResult` — the one door every finished game comes through, whether
+it was simmed by the hundred or managed pitch by pitch — and is gated on the same
+`record` flag that stops a replay putting a second no-hitter in the book. The
+card draws the accumulating evidence as a bar under STILL WATCHING, so the
+mechanic is visible while it is happening rather than surprising the coach when
+it finishes.
+
+**Opponents are the exception, and it is deliberate.** A tendency on another
+program's player is visible immediately, because a scouting report saying their
+leadoff man runs is precisely what a defensive setting is for. Badges run the
+opposite way: yours only. A tendency is what you can see from the other dugout; a
+badge is what you only know because you have had the man in your building.
+
+### 18.5 Badges — B10
+
+Twenty-three of them, in four families, at three tiers. **One channel in one
+situation, never a flat boost.**
+
+| Family | Badge | Who | What it does |
+|---|---|---|---|
+| Situational | **GETS HIM IN** | hitters | better with a runner in scoring position |
+| | **LATE AND CLOSE** | hitters | better from the seventh on inside two runs |
+| | **TABLE SETTER** | hitters | better leading off an inning |
+| | **HOUDINI** | pitchers | harder to hit with men on |
+| | **THE DOOR** | relievers | harder to hit protecting a lead of three or fewer from the eighth |
+| | **DEEP WATER** | starters | holds up the third time through an order |
+| Physical | **WHEELS** | hitters | takes the extra base more often |
+| | **BURGLAR** | hitters | steals a higher share of the bases he goes for |
+| | **LIGHT TOWER** | hitters | more home runs |
+| | **CANNON** | C, OF, 3B | runners test him less; behind the plate he throws them out |
+| | **RUBBER ARM** | pitchers | loses less off his stuff past his pitch count |
+| | **SWING AND MISS** | pitchers | strikes out more of them |
+| Technical | **TOUGH OUT** | hitters | strikes out less often |
+| | **VACUUM** | infielders, C | boots fewer of the balls he reaches |
+| | **ON A LINE** | anyone | throws fewer of them away |
+| | **PAINTER** | pitchers | walks fewer of them |
+| | **WORM BURNER** | pitchers | keeps it on the ground, and out of the seats |
+| | **STEALS STRIKES** | catchers | the staff walks fewer men with him behind the plate |
+| Makeup | **GYM RAT** | anyone | develops faster between seasons |
+| | **NO PANIC** | pitchers | harder to hit with two out and men on |
+| | **SECOND LOOK** | hitters | better the third time he faces a pitcher |
+| | **BIG STAGE** | anyone | better in a bracket game |
+| | **CROWDS THE PLATE** | hitters | wears one, and gets pitched around rather than inside |
+
+Three of those exist to keep the layer honest as much as to be badges. **SWING
+AND MISS** is the counterweight to TOUGH OUT; **WORM BURNER** suppresses home
+runs as well as raising ground balls, which is physically true and is what stops
+LIGHT TOWER being the only badge in the game with an opinion about the home run
+column; and **CROWDS THE PLATE** answers a gap §9.7 wrote down on purpose — hit
+by pitch was left unwidened because a real leader is "a man who crowds the plate
+and no rating measures it", and a badge is exactly the right home for a fact
+about a man that is not a skill.
+
+**Sizing.** Three bands, chosen by how often the situation arrives, because a
+badge that can fire on any pitch needs a smaller number than one that waits for
+the eighth inning of a one-run game:
+
+| Band | Bronze | Silver | Gold | Used by |
+|---|---|---|---|---|
+| `STEADY` | 2.5% | 4.5% | 7.0% | always-available channels |
+| `SPOT` | 3.0% | 5.5% | 8.0% | situations arriving a fifth to a third of the time |
+| `RARE` | 4.0% | 7.0% | 10.0% | THE DOOR, BIG STAGE |
+
+The engine's own reference points are what these are calibrated against.
+Home-field advantage is a 1.020 offensive multiplier worth about +4.9 points of
+win probability; a maxed coach skill is worth +0.87 points over twenty thousand
+games. A gold GETS HIM IN is +8% on the 24% of plate appearances that come with a
+man in scoring position — +1.9% of one hitter's offence, about a fifth of home
+field spread over one ninth of a lineup.
+
+**Measured twice, which is the check that matters.** A squad against an
+identical squad with its badges taken off — same ids, same ratings, same
+tendencies, the badge list the only difference in the world — over twelve
+thousand games with home field alternating.
+
+An **ordinary roster**, carrying the ten innate badges the generator gave it,
+wins **49.9%**. That is not a small edge, it is no measurable edge at all: ten
+badges, most of them bronze, several on channels that fire a handful of times a
+week, cannot be seen in a win column over a season. Which is the correct answer
+and the one the layer was designed for.
+
+A roster carrying **two gold badges on every one of its twenty-three men** — a
+configuration nothing in the game can produce, since the cap is two for three
+quarters of the country and gold is 4% of badges held — wins **64.1%**. Divide it
+out and a gold badge is worth **0.31 points of team win probability**: sixteen of
+them are worth playing at home, and one of them is worth almost nothing. That is
+the size the whole catalogue was designed to, and it is the number to re-measure
+if any of the size bands ever move.
+
+**Caps by ceiling**, as decided: S+ 10, S 6, A+ 5, A 4, B 3, C 2, D 2, with S+
+exempt because the store player is supposed to carry ten and is the only thing in
+the game that will ever grade S+. D and C share their two on purpose: three
+quarters of the country lives in those two grades, a fine gradation matters least
+there, and it produces the right reading — a low-ceiling recruit can arrive
+already at his badge cap, which is what "he is close to the player he is going to
+be" has been saying about him on the board all along.
+
+**At most two at signing**, and most men have none. Measured across a generated
+world: 0.57 badges per player, nobody above two, gold about 4% of badges held.
+
+**Three routes in, and no decay.**
+
+- *Innate*, hashed off the id at generation, capped at two and by his ceiling.
+- *Earned*, in the offseason, from the season the man just played — read off the
+  three season books rather than a parallel ledger, which is the same argument
+  `records.ts` makes about the all-time book. Every bar is set near the 90th to
+  95th percentile of what this engine's 45-game season actually produces: six
+  home runs, a .430 on-base, a 9.5% strikeout rate, 9.8 K/9, 1.95 BB/9, and so
+  on. A man who did the thing keeps it 42% of the time.
+- *Coached*, one thing a winter, at 16% — because a staff picks something to work
+  on with a man, it does not run him through the catalogue.
+
+**TRAINING is the only lever anybody has over it**, and it is worth up to 80%
+more badge development at the cap, on both routes. Measured over five simulated
+years, the user's program at TRAINING 99 carried 1.25 badges per player against
+1.03 at the starting 20. Across the league a freshman averages 0.61 and a senior
+1.18, with the best men reaching four.
+
+The rolls are hashed off the player's id and the year rather than drawn from the
+offseason's random stream, for the same reason everything else here is: two
+thousand rolls a year inserted into that stream would move every departure and
+every development draw in the league.
+
+**One honest limitation.** CANNON is eligible for outfielders and third basemen,
+and only a catcher can *earn* it: the engine records stolen bases and caught
+stealing on the catcher's fielding line and nowhere else, so there is no season
+row an outfielder's arm could be read off. An outfielder gets it innately or from
+his coaching staff.
+
+### 18.6 Where it all reaches the simulation
+
+`plateTraits` in `engine/traits.ts` multiplies the tendency contribution and the
+badge contribution into one `TraitMods`, which rides on `PAContext` beside the
+manager's tactic. `log5Outcome` reads `all` into the same product platoon and
+context use, and the per-event factors onto the batter's side of the table;
+`engineLog5` reads `strikeout` into the strikeout share of an out and
+`groundBall` into the batted-ball mix; `constrainedSequence` reads `pace` as a
+geometric tilt on the count weights. That last one takes the same single random
+draw whatever the value, so nothing here changes how much randomness a plate
+appearance consumes.
+
+Outside the plate appearance: `runningMods` and WHEELS scale the extra-base
+attempt inside `advanceOnHit`, per runner rather than per team; BURGLAR and the
+catcher's CANNON scale the two halves of `attemptSteal`; `pullMultiplier` weights
+the pull lane in `fielderFor` and `shiftBias` feeds `alignmentAgainst`; VACUUM
+and ON A LINE scale the two error rolls; RUBBER ARM scales the fatigue slope; GYM
+RAT scales development. `SimOptions.postseason` exists solely so BIG STAGE can
+know it is a bracket game — inferring it from the calendar would have put a
+schedule assumption three layers below where schedules live.
+
+**Engine B is untouched**, as §9.7 already records for the spread work. It is a
+comparison instrument reachable only from the command line, and giving it a
+situational layer would mean giving it a calibration pass of its own.
+
+### 18.7 The split, surfaced — B17
+
+`platoonSkill` has been on every player since the engine was ported and had never
+once been shown, on the grounds that it is hidden information. It is not: contact
+and power against each hand is the first thing every other baseball game puts on
+a player card, and a coach setting a lineup against a left hander is entitled to
+know which of his men can hit one.
+
+`platoonSplit` in `engine/ratings.ts` is the arithmetic, and it lives there rather
+than in the screen so that what the card prints and what the simulation does are
+the same function. The full split is spent half either way, exactly as
+`platoonMultiplier` spends it, so the opposite hand is worth `+skill/2` and the
+same hand `-skill/2`. A switch hitter turns around and therefore has the good
+side of it against everybody, which is why both his columns read the same. A
+pitcher's is printed as what he *allows*, which is the useful direction from a
+dugout.
+
+**Contact and power move by different amounts from one split, and that is the
+model rather than a rounding artefact.** The multiplier lands on production, and
+the same change in production is a large move on the contact curve and a small
+one on the power curve, because `contact` buys singles at a sensitivity of 0.38
+and `power` buys home runs at 1.87. Printing one delta against both would be
+inventing a symmetry the engine does not have.
+
+Index row 22 is therefore retired as a hidden mechanic: the number itself is
+still not printed, but what it does to a man is.
+
+### 18.8 What it cost, measured
+
+The eight-seed sweep and the bracket probe, before and after the whole block:
+
+| | Before | After |
+|---|---|---|
+| Runs per team per game | +0.7% | +0.1% |
+| PA per team per game | -2.5% | -2.6% |
+| Batting average | +0.0% | +0.1% |
+| On base percentage | -0.5% | -0.7% |
+| Home runs per team per game | -0.6% | -1.2% |
+| Strikeouts per team per game | -0.7% | -1.1% |
+| Walks per team per game | -4.1% | -5.2% |
+| Pitches per plate appearance | -3.3% | -3.5% |
+| Slugging | +0.6% | +0.6% |
+| **Worst deviation** | **4.1%** | **5.2%** |
+| Better seed's share of bracket games | 65.7% | 65.5% |
+| Standard deviation of team win totals | 9.02 | 8.87 |
+| Best record in a season | 43-2 | 42-3 |
+
+Walks are the one row that moved, and the honest statement is that about a
+percentage point of it is unexplained. The per-plate-appearance arithmetic is
+neutral — measured exactly, off the log5 table across 624 hitters and 480
+pitchers with no simulation in the way, every tendency moves the league's walk
+share by less than 0.35% and they sum to +0.3% — and the badge contribution is
+about -0.5%, from PAINTER and STEALS STRIKES carrying more weight on that channel
+than CROWDS THE PLATE puts back. The rest is a game-level effect of the kind pace
+turned out to be, and it should be chased with the same method: isolate a
+channel, measure it against the sweep, and dial it rather than guessing.
+
+**Competitive balance did not move, which was the thing to watch.** The better
+seed takes 65.5% of bracket games over eight simulated seasons against 65.7% for
+the same build with the whole layer switched off — the same number. The win-total
+spread and the best record in a season are unchanged too.
+
+Read that figure with its error bars, though. The bracket probe is noisy season
+to season, because a season's brackets are strongly correlated within themselves:
+two adjacent six-season runs of the *same* build read 63.6% and 59.1%. Eight
+seasons is 1,042 games and the standard error is about 1.5 points, so what the
+measurement supports is "unchanged", not "improved by two tenths". The thing it
+does rule out — badges pushing the favourite past the mid-sixties — it rules out
+comfortably.
+
+The harness for both numbers is `tests/block-probe.ts`, which is deliberately not
+a Vitest file: it plays whole seasons of ninety six programs and its output is a
+judgment call rather than an assertion.
+
+---
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code
@@ -2982,16 +3375,20 @@ does. None of them changes behaviour; all of them will mislead the next reader.
 
 Things this document could not settle from the code, and must not guess at.
 
-1. **Tendencies.** No specification exists anywhere in the repository beyond the
-   principle "power-neutral and double-edged". Which tendencies, what they attach
-   to, and how they surface are all open.
+1. ~~**Tendencies.**~~ Answered, and built. Nine slots, the poles and channels of
+   each, the population split that keeps them power-neutral, and a discovery
+   mechanic for how they surface on your own men. §18.3 and §18.4.
 2. ~~**The scope of the planned records book.**~~ Answered, and built: league-wide
    single game, single season and team marks, plus the user's coaching career,
    seeded with real NCAA records. Career leaders are the one part left out, and
    §13.5 gives the reason. See §13.
-3. **Badge channels and situations.** The tiers, caps and earning routes are agreed
-   (§12.1). Which channels can carry a badge, and how a situation is defined in
-   engine terms, are not.
+3. ~~**Badge channels and situations.**~~ Answered, and built: twenty-three
+   badges, each naming one channel and one situation, with the situation defined
+   as a field on `Situation` that `game.ts` fills in once per plate appearance.
+   §18.5 and §18.6. One question it raised is still open and is recorded there:
+   about a percentage point of the league's walk deficit is unexplained by the
+   per-plate-appearance arithmetic, and wants the same isolate-and-measure
+   treatment that found the pace channel. §18.8.
 4. ~~**Whether the `raw` projectable draw survives the S+ gate.**~~ Answered: it
    does, untouched, at about twenty hidden gems per class before and after. §12.3.
 5. ~~**`ACTIONS_PER_WEEK` for the AI versus `budgetFor` for the player.**~~

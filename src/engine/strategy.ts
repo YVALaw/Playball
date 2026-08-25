@@ -116,14 +116,28 @@ export const SHIFT: Record<Alignment, { vsPower: number; vsSpeed: number }> = {
  *   FULL SHIFT    every hitter, every time. Big against a pull heavy lineup,
  *                 actively bad against one that can run. A bet on the opponent.
  */
-export function alignmentAgainst(alignment: Alignment, batter: Hitter): number {
+export function alignmentAgainst(
+  alignment: Alignment,
+  batter: Hitter,
+  /**
+   * How pull-prone his spray chart says he is, above or below what his power
+   * alone would suggest. One when nothing is known about him.
+   *
+   * Power was the only proxy available before there were tendencies, and it is
+   * a poor one — plenty of sluggers go the other way and plenty of slap hitters
+   * roll everything to the right side. The caller supplies this rather than the
+   * function reaching for it, so `strategy.ts` stays a file of policies with no
+   * opinion about where a tendency comes from.
+   */
+  pullBias = 1,
+): number {
   if (alignment === 'straight') return 1;
 
   // Scaled from 45 over a 30 point range so an ordinary hitter still feels
   // something. Anchored at the league average across the full scale, a power 70
   // slugger saw a 4% effect and everyone else essentially none — real in the
   // code, invisible in the box score.
-  const pull = Math.max(0, Math.min(1.4, (batter.power - 45) / 30));
+  const pull = Math.max(0, Math.min(1.4, ((batter.power - 45) / 30) * pullBias));
   const wheels = Math.max(0, Math.min(1.4, (batter.speed - 45) / 30));
 
   if (alignment === 'situational') {

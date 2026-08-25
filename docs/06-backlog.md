@@ -373,40 +373,101 @@ half the achievements are all reading from the same book.
   and on the draft screen, and it is **not** on the roster table, where the class
   column is four characters wide and there is genuinely no room.
   See `05-systems-reference.md` §14.1.
-- **B16 · Detailed pitch types** — `DECIDED`. A real repertoire per pitcher.
-  Also the prerequisite for pitch-usage tendencies, so it and the usage half of
-  B11 are one job.
-- **B17 · Surface platoon splits** — `DECIDED`. `platoonSkill` already exists and
-  is deliberately hidden; contact and power against left and right handers is
-  what every other baseball game shows. Nearly free.
-- **B10 · Badges** — `DECIDED`, spec agreed. Four families (situational,
-  physical, technical, makeup), three tiers, position-aware, playful names.
-  Effects sized against the engine's own reference points: home-field advantage
-  is a 1.020 multiplier worth about +4.9 points of win probability, so a gold
-  badge on a channel that fires a quarter of the time lands near +1.75% across a
-  season. At most two at signing, and a ceiling that climbs with the grade:
-  **S 6 · A+ 5 · A 4 · B 3 · C 2 · D 2**, with S+ exempt because the store
-  player carries ten. One rung per step at the rare end, so inserting A+ into
-  the ladder buys something rather than merely renaming S — an earlier draft
-  gave A+ and S the same six and the new grade meant nothing here.
-  D and C share their two on purpose: three quarters of the country lives in
-  those two grades, so a fine gradation matters least there, and it produces
-  the right reading — a low ceiling recruit can arrive already at his badge
-  cap, which is what "he is close to the player he is going to be" has been
-  telling you on the board all along. Some innate and visible, some
-  earned, some coached. No decay — these are young men and there are no injuries.
-  Not visible on other programs' players.
-- **B11 · Tendencies** — `DECIDED`, and **all of them**, with pitch usage and
-  clutch as the priority pair. What a player *does*, as against how well he does
-  it, so they add identity without power creep. Double-edged by construction: a
-  free swinger walks less and ambushes more. Visible on opponents, unlike
-  badges, because a scouting report saying their leadoff man runs is exactly
-  what a defensive setting is for.
-  Buildable on today's engine: free swinger / patient, first-pitch hunter, green
-  light (per-player baserunning aggression — we have a team policy only),
-  nibbler / attacker, quick worker, and pull-happy / spray, which works because
-  the fielding rework gave us real batted-ball lanes to bias. Pitch usage needs
-  B16 first.
+- **B16 · Detailed pitch types** — SHIPPED. Eleven pitches — four-seam, sinker,
+  cutter, slider, curve, slurve, screwball, changeup, splitter, vulcan change and
+  knuckleball — and every pitcher carries two to five of them with a usage share
+  that sums to one. Measured over four thousand arms: 3,402 distinct repertoires
+  out of 4,000, a knuckleballer once in eighty, a vulcan once in twenty-five.
+  Three rules had to be added because the naive generator produced things that
+  were not pitchers: the knuckleballer gets his own branch and throws it 70 to
+  84 percent of the time, there is only one *kind* of slow pitch per man, and no
+  secondary offering may be the pitch he throws most.
+
+  **The usage share is real data, not flavour.** It reaches the simulation
+  through exactly one door: the POWER ARM / JUNKBALLER tendency is read off the
+  finished fastball share rather than hashed like the other eight, at the
+  twenty-first and seventy-ninth percentiles of the generated distribution — so
+  the pole sizes match every other slot and the label under the bar cannot
+  disagree with the bar. Nothing about a repertoire is stored: it is hashed off
+  the player's id, exactly as arrival age is, so it costs the generator no draw.
+  See `05-systems-reference.md` §18.2.
+- **B17 · Surface platoon splits** — SHIPPED. THE SPLIT panel on the ratings tab,
+  two columns, VS RHP and VS LHP: contact and power as effective ratings and the
+  production swing underneath. The arithmetic is `platoonSplit` in
+  `engine/ratings.ts` rather than in the screen, so what the card prints and what
+  `platoonMultiplier` does are the same function.
+
+  One thing it turned up that is worth recording: contact and power move by
+  *different amounts* from one split, because the multiplier lands on production
+  and the same change in production is a large move on the contact curve and a
+  small one on the power curve. Printing one delta against both would have been
+  inventing a symmetry the engine does not have. A switch hitter reads the same
+  from both sides, and reverse-split players are real and the card says so.
+  See §18.7.
+- **B10 · Badges** — SHIPPED. Twenty-three, in the four agreed families, three
+  tiers, position-aware, with the names delegated and taken:
+
+  *Situational* — GETS HIM IN, LATE AND CLOSE, TABLE SETTER, HOUDINI, THE DOOR,
+  DEEP WATER. *Physical* — WHEELS, BURGLAR, LIGHT TOWER, CANNON, RUBBER ARM,
+  SWING AND MISS. *Technical* — TOUGH OUT, VACUUM, ON A LINE, PAINTER, WORM
+  BURNER, STEALS STRIKES. *Makeup* — GYM RAT, NO PANIC, SECOND LOOK, BIG STAGE,
+  CROWDS THE PLATE.
+
+  Sized in three bands by how often the situation arrives — 2.5/4.5/7.0% for an
+  always-available channel, 3.0/5.5/8.0% for one that fires a fifth to a third of
+  the time, 4.0/7.0/10.0% for THE DOOR and BIG STAGE. The cap ladder is as
+  decided (**S+ 10 · S 6 · A+ 5 · A 4 · B 3 · C 2 · D 2**), at most two at
+  signing, no decay, not visible on other programs' players. Innate badges are
+  hashed off the id; earned ones are read off the three season books at bars set
+  near the 90th to 95th percentile of what a 45-game season here actually
+  produces; coached ones are one thing a winter, and TRAINING is worth up to 80%
+  more of both.
+
+  **Measured, which is the part with teeth.** A squad against an identical squad
+  with its badges stripped — same men, same ratings, same tendencies. An ordinary
+  roster carrying its ten innate badges wins **49.9%**: no measurable edge at
+  all, which is the right answer. A roster carrying two gold badges on every one
+  of its twenty-three men — a thing the game cannot produce — wins **64.1%**,
+  which works out at **0.31 points of win probability per gold badge** against
+  home field's 4.9. Across the league a freshman carries 0.61 badges and a senior
+  1.18.
+
+  Three of the twenty-three exist partly as counterweights, and that is written
+  down rather than hidden: SWING AND MISS answers TOUGH OUT, WORM BURNER
+  suppresses home runs so LIGHT TOWER is not unopposed, and CROWDS THE PLATE puts
+  back some of what PAINTER takes off the walk column. CROWDS THE PLATE also
+  closes a gap §9.7 left open on purpose — hit by pitch was never widened because
+  "no rating measures a man who crowds the plate", and a badge is the right home
+  for a fact about a man that is not a skill. See §18.5.
+- **B11 · Tendencies** — SHIPPED, and **all of them**. Nine slots: free swinger /
+  patient, hunts / takes strike one, green light / station to station,
+  pull-happy / uses the whole field, and clutch / tightens up for a hitter;
+  attacker / nibbler, quick worker / deliberate, power arm / junkballer, and
+  bears down / loses the thread for an arm. Each pole is held by 21% of the
+  league and **every pair averages to exactly 1.0 across the population**, which
+  is the double-edged principle turned into arithmetic a test can check.
+
+  Clutch is *priced* rather than granted: the +5.5% with a man in scoring
+  position is paid for exactly by −1.74% without one, so a clutch hitter's season
+  line is an ordinary man's. That is also the line between this system and
+  badges, which is worth stating because both fire in the same spot — **a
+  tendency redistributes and a badge adds.**
+
+  **Discovery, as decided, is a real mechanic and not a flag.** A tendency on
+  your own player is invisible until you have watched enough of him, and what
+  accrues is evidence in the unit the reading is made of — plate appearances,
+  times on base, or balls in play. It accrues from *every* game your program
+  plays, simulated ones included, out of `recordResult`, which is the single door
+  every finished game comes through. The thresholds sort the way real baseball
+  knowledge sorts: a pitcher's mix inside a month, a spray chart by midseason,
+  whether a man is clutch somewhere in his second year. Opponents stay visible
+  immediately, as agreed. See §18.4.
+
+  One thing had to be dialled back and it is worth the warning: **a
+  population-neutral multiplier is not automatically a season-neutral one.** The
+  pace channel is not an outcome — it decides when a starter is pulled and when
+  he tires — and at its first sizes it cost the league 1.3% of its walks by
+  keeping starters, who throw more strikes than relievers, on the mound longer.
 - **B12 · Hall of Fame induction** — `DECIDED`. **Your own players only** — you
   see the men you coached, not a national ballot. On merit, and the failure mode
   to design against is explicit: *a man who holds one single-game record and was
@@ -430,7 +491,7 @@ Transfer portal · injuries · fatigue and season workload · position changes �
 playing-time expectations · morale · a progression and decline rework ·
 opponent scouting reports · rivalry histories and a dossier that remembers
 upsets, streaks and postseason meetings · expanded awards · position-change
-training · detailed pitch repertoires · broadcast presentation, with adaptive
+training · broadcast presentation, with adaptive
 treatment for no-hitters, elimination games and championships · a dynasty
 documentary timeline built from real career events · a geographic recruiting
 pipeline map with contested territory.
@@ -651,8 +712,10 @@ Park geometry (see G4) belongs to this track.
   one sixteen-team tree.~~ Fixed. It is three tournaments that are played, not
   four steps that are clicked through; `REGIONAL_LENGTHS` is one series and
   `NATIONAL_LENGTHS` is two rounds, and the systems reference was right.
-- `05-systems-reference.md` Appendix B says no tendency specification exists;
-  B11 in this file names six buildable ones. This file is newer.
+- ~~`05-systems-reference.md` Appendix B says no tendency specification exists;
+  B11 in this file names six buildable ones.~~ Both are out of date and both are
+  fixed: nine tendencies shipped, Appendix B item 1 points at §18.3, and item 3
+  now records the one question badges left open rather than the whole design.
 
 ## F. Research outstanding
 
@@ -662,3 +725,11 @@ Park geometry (see G4) belongs to this track.
   whether the evidence on clutch talent — which is that it barely exists —
   argues for keeping situational badges small and honest.
 - **The remaining record marks**, from a source that can actually be fetched.
+- **The last percentage point of the walk deficit.** The eight-seed sweep reads
+  walks 5.2% under target against 4.1% before the situational layer, and only
+  about half of that gap is accounted for: the per-plate-appearance arithmetic is
+  neutral when measured exactly off the log5 table, and badges explain roughly
+  half a point. The rest is a game-level effect of the kind the pace channel
+  turned out to be — something that changes who is on the mound rather than what
+  the mound does. It wants the same treatment that found pace: isolate a channel,
+  measure it against the sweep, dial it. See `05-systems-reference.md` §18.8.

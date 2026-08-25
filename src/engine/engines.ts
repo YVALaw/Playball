@@ -55,8 +55,12 @@ export function log5Outcome(
   const platoon = platoonMultiplier(batter, pitcher);
   const context = contextMultiplier(ctx);
   // The batting side's coach-skill nudge rides in here, on the same product the
-  // real levers use. It is 1 for every team without a trained coach.
-  const offense = platoon * context * (ctx.offenseMult ?? 1);
+  // real levers use. It is 1 for every team without a trained coach. So does the
+  // whole-distribution half of what the two men are like: a clutch hitter with a
+  // runner on second and a pitcher who bears down are both lifts or drags on
+  // every offensive event at once, which is what this product is for.
+  const traits = ctx.traits;
+  const offense = platoon * context * (ctx.offenseMult ?? 1) * (traits?.all ?? 1);
 
   // Apply matchup, context and the manager's call to the batter's offensive
   // events, then renormalize. A tactic tilts the distribution; it never forces
@@ -82,12 +86,27 @@ export function log5Outcome(
   // home run, and none of them can affect a walk.
   const defence = ctx.defenseMult ?? 1;
 
+  // The per-event half of the same thing. A free swinger's missing walks and a
+  // slugger's LIGHT TOWER land on one event each and must not be smeared across
+  // the distribution — that is the difference between a badge and a rating.
+  const perEvent = (ev: PAEvent): number => {
+    if (!traits) return 1;
+    switch (ev) {
+      case 'walk': return traits.walk;
+      case 'hbp': return traits.hbp;
+      case 'single': return traits.single;
+      case 'double': return traits.double;
+      case 'homerun': return traits.homerun;
+      default: return 1;
+    }
+  };
+
   let sum = 0;
   for (const ev of EVENTS) {
     if (ev === 'out') continue;
     const inPlay = ev === 'single' || ev === 'double' || ev === 'triple';
     b[ev] *= offense * (inPlay ? defence : 1)
-      * (called?.[ev] ?? 1) * (ev === 'single' ? shift : 1);
+      * (called?.[ev] ?? 1) * (ev === 'single' ? shift : 1) * perEvent(ev);
     sum += b[ev];
   }
   b.out = Math.max(0.05, 1 - sum);
@@ -130,19 +149,36 @@ function constrainedSequence(
   target: SequenceTarget,
   batter: Hitter,
   pitcher: Pitcher,
-  _ctx: PAContext,
+  ctx: PAContext,
   rng: Rng,
 ): { pitches: PitchResult[]; count: Count } {
   const eyeM = mult(batter.eye, 0.35);
   const stuffM = mult(pitcher.stuff, 0.30);
 
+  /**
+   * How long the at-bat runs, which is the one channel that is purely about
+   * what these two men are like rather than how good they are.
+   *
+   * A hitter who hunts strike one and a pitcher who works quickly both shorten
+   * it; a hitter who takes strike one and a pitcher who nibbles both stretch it.
+   * Applied as a geometric tilt on the count weights, so `pace` of 1 leaves the
+   * table exactly as it was — and it takes the same single draw either way, so
+   * nothing here changes how much randomness a plate appearance consumes.
+   *
+   * It matters because a pitch count is a real resource: a lineup that works
+   * counts gets a starter out in the fifth, and one that ambushes lets him
+   * finish the seventh.
+   */
+  const pace = ctx.traits?.pace ?? 1;
+  const p2 = pace * pace;
+
   // How many balls and strikes accumulate before the at bat ends.
   const nBalls = target === 'walk'
     ? 4
-    : pick(rng, [0.38, 0.30 * eyeM, 0.20 * eyeM, 0.12 * eyeM]);
+    : pick(rng, [0.38, 0.30 * eyeM * pace, 0.20 * eyeM * p2, 0.12 * eyeM * p2 * pace]);
   const nStrikes = target === 'strikeout'
     ? 3
-    : pick(rng, [0.30, 0.35, 0.35 * stuffM]);
+    : pick(rng, [0.30, 0.35 * pace, 0.35 * stuffM * p2]);
 
   // Extra foul balls once the batter is at two strikes.
   let extraFouls = 0;
@@ -185,6 +221,16 @@ function constrainedSequence(
   return { pitches, count: { balls: b, strikes: s } };
 }
 
+/**
+ * The manager's call and the pitcher's own habits, on the same knob.
+ *
+ * A WORM BURNER and a JUNKBALLER both push the ball into the dirt, and so does
+ * asking for a double play. They multiply because they are three separate
+ * reasons for the same thing rather than three competing opinions about it.
+ */
+const groundBias = (ctx: PAContext): number =>
+  (ctx.mods?.groundBall ?? 1) * (ctx.traits?.groundBall ?? 1);
+
 export const engineLog5: EngineFn = (batter, pitcher, ctx, rng): PAResult => {
   const event = log5Outcome(batter, pitcher, ctx, rng);
 
@@ -193,11 +239,16 @@ export const engineLog5: EngineFn = (batter, pitcher, ctx, rng): PAResult => {
   if (event === 'walk') { kind = 'walk'; target = 'walk'; }
   else if (event === 'hbp') { kind = 'hbp'; target = 'hbp'; }
   else if (event === 'out') {
-    const kProb = strikeoutProbability(batter, pitcher, ctx.fatigueMult ?? 1) / LEAGUE.out;
+    // A POWER ARM's extra whiffs and a TOUGH OUT's missing ones both land here,
+    // which is the cheapest place in the engine to put them: the event is
+    // already an out, so this changes what the out looked like rather than
+    // whether one happened. See the note on `strikeoutProbability`.
+    const kProb = strikeoutProbability(batter, pitcher, ctx.fatigueMult ?? 1)
+      * (ctx.traits?.strikeout ?? 1) / LEAGUE.out;
     if (rng() < clamp(kProb, 0.02, 0.85)) { kind = 'strikeout'; target = 'strikeout'; }
-    else kind = battedBallType(batter, pitcher, rng, ctx.mods?.groundBall ?? 1);
+    else kind = battedBallType(batter, pitcher, rng, groundBias(ctx));
   } else {
-    kind = battedBallType(batter, pitcher, rng, ctx.mods?.groundBall ?? 1);
+    kind = battedBallType(batter, pitcher, rng, groundBias(ctx));
   }
 
   const { pitches } = constrainedSequence(target, batter, pitcher, ctx, rng);

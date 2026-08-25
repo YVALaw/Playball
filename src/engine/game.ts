@@ -2,12 +2,17 @@
 // Nine innings. Baserunning, errors, steals, pitching changes, box score,
 // and readable text play by play.
 
+import {
+  badgeSize, extraBaseBonus, fatigueBonus, gloveBonus, holdBonus, stealBonus, throwBonus,
+} from './badges.js';
 import { ENGINES } from './engines.js';
 import { fatigueMultiplier, mult, clamp, platoonMultiplier, BASERUNNING } from './ratings.js';
 import {
   RUNNING, STEALS, BUNT, HOOK, alignmentAgainst,
   DEFAULT_STRATEGY, type Strategy,
 } from './strategy.js';
+import { pullMultiplier, runningMods, shiftBias } from './tendencies.js';
+import { plateTraits } from './traits.js';
 import type {
   BattedBall, EngineFn, EngineName, FieldLine, HitLine, Hitter, PAKind, Pitcher,
   PitchLine, PitchResult, Player, PlayEvent, Position, Rng, Tactic, TacticMods, Team,
@@ -125,6 +130,16 @@ export interface SimOptions {
    */
   homeCoachMods?: { offense: number; defense: number };
   awayCoachMods?: { offense: number; defense: number };
+  /**
+   * A bracket game rather than a Tuesday in April.
+   *
+   * The only thing in the engine that reads it is the BIG STAGE badge, which is
+   * the whole reason it exists: a badge that fires in the postseason cannot be
+   * built without the engine being told which games those are, and the
+   * alternative — inferring it from the day number — would have put a schedule
+   * assumption three layers below where schedules live.
+   */
+  postseason?: boolean;
 }
 
 export interface GameResult {
@@ -207,6 +222,21 @@ export class TeamState {
    */
   readonly coachOffMult: number;
   readonly coachDefMult: number;
+  /**
+   * How much less often a runner tests this outfield, from CANNON.
+   *
+   * Computed once here rather than per play because it is a property of who is
+   * standing out there, and folded across the three of them by the share of
+   * balls each sees: one gold arm in left is a third of the outfield, not all of
+   * it. One for an outfield nobody has hung a badge on, which is nearly all of
+   * them.
+   */
+  readonly holdEdge: number;
+  /**
+   * A bracket game. Set by `simGame` from its options; false for a friendly,
+   * a replay and every regular season night. Only BIG STAGE reads it.
+   */
+  postseason = false;
 
   constructor(
     team: Team,
@@ -267,6 +297,13 @@ export class TeamState {
     this.arm = outfield.length > 0
       ? outfield.reduce((a, p) => a + p.arm, 0) / outfield.length
       : team.lineup.reduce((a, p) => a + p.arm, 0) / team.lineup.length;
+    // A badge is not a rating, so this does not raise anyone's arm — it lowers
+    // how often a runner takes the chance, which is what an arm is actually
+    // worth. Divided by three because a runner tests the outfielder the ball was
+    // hit to and not the other two.
+    let hold = 1;
+    for (const p of outfield) hold *= 1 - (1 - holdBonus(p)) / 3;
+    this.holdEdge = hold;
     const backstop = this.order.find((p) => p.pos === 'C') ?? team.lineup.find((p) => p.pos === 'C');
     this.catcher = backstop ?? (this.order[0] as Hitter);
     // First man at each spot wins; a lineup with two shortstops is a lineup bug,
@@ -365,6 +402,7 @@ export function simGame(
     awayTeam, false, opts.awayStarter ?? 0, opts.awayBullpen, opts.awayLineup, opts.awayStrategy,
     opts.awayCoachMods,
   );
+  if (opts.postseason) { home.postseason = true; away.postseason = true; }
   const playEvents: PlayEvent[] | null = opts.playEvents ? [] : null;
 
   // Updated every time the lead changes hands. Whatever is here when the game
@@ -643,6 +681,14 @@ export function createHalfInning(
       const res = sacrifice(bases, batter, outs, rng, bLine, pLine, blame, pitcher, note);
       addOuts(res.outs);
       pLine.bf++;
+      // The pitch he bunted. It was thrown, the event stream has always said so,
+      // and the pitching line did not count it — so a game with a bunt in it
+      // emitted one more pitch event than the box score claimed had been thrown.
+      // Only ever visible on a seed that happened to produce one, which is how
+      // it survived: `tests/play-events.test.ts` measures exactly this equality
+      // and its fixed seed had never bunted.
+      pLine.pitches++;
+      fld.pitcherPitches++;
       say(`[bunt] ${batter.name} ${res.text}`);
       for (const line of notes) say(line);
 
@@ -670,9 +716,23 @@ export function createHalfInning(
       return false;
     }
 
-    const fatigueMult = fatigueMultiplier(pitcher, fld.pitcherPitches);
+    const fatigueMult = fatigueMultiplier(pitcher, fld.pitcherPitches, fatigueBonus(pitcher));
     const tto = (fld.timesThrough.get(batter.name) ?? 0) + 1;
     fld.timesThrough.set(batter.name, tto);
+
+    // Where in the game we are, described once and handed to both the tendency
+    // layer and the badge layer, so the two cannot end up disagreeing about
+    // whether a runner is in scoring position.
+    const traits = plateTraits(batter, pitcher, fld.catcher, {
+      risp: bases[1] !== null || bases[2] !== null,
+      runnersOn: bases.some(Boolean),
+      timesThrough: tto,
+      outs,
+      inning,
+      margin: bat.runs - fld.runs,
+      leadingOff: outs === 0 && !bases[0] && !bases[1] && !bases[2],
+      postseason: bat.postseason,
+    });
 
     const pa = engine(batter, pitcher, {
       isHome: bat.isHome,
@@ -683,8 +743,10 @@ export function createHalfInning(
       defenseMult: mult(fld.defense, -0.12) * fld.coachDefMult,
       // And the hitting coach's on the batting side's whole event distribution.
       offenseMult: bat.coachOffMult,
-      // A shift is a bet on this hitter, not a flat upgrade.
-      alignment: alignmentAgainst(fld.strategy.alignment, batter),
+      // A shift is a bet on this hitter, not a flat upgrade — and a hitter who
+      // pulls everything is a better bet than his power rating alone says.
+      alignment: alignmentAgainst(fld.strategy.alignment, batter, shiftBias(batter)),
+      traits,
       ...(called ? { mods: called } : {}),
     }, rng);
 
@@ -734,7 +796,7 @@ export function createHalfInning(
       // His hands, not the team's average — and a scorched grounder is a much
       // better chance to boot one than a lazy fly.
       const chance = GLOVE_ERROR_BASE * ERROR_BY_KIND * (KIND_ERROR_RISK[pa.kind] ?? 1)
-        * mult(fielder.hands, -0.55);
+        * mult(fielder.hands, -0.55) * gloveBonus(fielder);
       if (rng() < chance) { event = 'error'; errored = true; }
       // Having fielded it cleanly, he still has to get it across the diamond.
       // Second roll rather than one combined chance because the two failures do
@@ -775,7 +837,7 @@ export function createHalfInning(
       case 'error':
         bLine.ab++;
         if (fielder) fld.fieldLine(fielder).errors++;
-        addOuts(advanceOnHit(bases, batter, 1, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note));
+        addOuts(advanceOnHit(bases, batter, 1, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note, 0, fld.holdEdge));
         say(`${cnt} ${batter.name} reaches on an error by ${fielder?.name ?? 'the defense'}.`);
         break;
       case 'throwing':
@@ -788,27 +850,27 @@ export function createHalfInning(
         // ball. Nobody is thrown out on it either — the ball is loose and there
         // is no throw left to make, which is why `advanceOnHit` skips its own
         // risk check when the bonus is on.
-        addOuts(advanceOnHit(bases, batter, 1, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note, 1));
+        addOuts(advanceOnHit(bases, batter, 1, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note, 1, fld.holdEdge));
         say(`${cnt} ${batter.name} reaches on a throwing error by ${fielder?.name ?? 'the defense'}; the ball gets away.`);
         break;
       case 'single':
         bLine.ab++; bLine.h++; bat.hits++; pLine.h++;
-        addOuts(advanceOnHit(bases, batter, 1, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note));
+        addOuts(advanceOnHit(bases, batter, 1, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note, 0, fld.holdEdge));
         say(`${cnt} ${batter.name} singles${scored.length ? `, ${scored.length} in` : ''}. (${hand})`);
         break;
       case 'double':
         bLine.ab++; bLine.h++; bLine.d++; bat.hits++; pLine.h++;
-        addOuts(advanceOnHit(bases, batter, 2, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note));
+        addOuts(advanceOnHit(bases, batter, 2, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note, 0, fld.holdEdge));
         say(`${cnt} ${batter.name} doubles${scored.length ? `, ${scored.length} in` : ''}. (${hand})`);
         break;
       case 'triple':
         bLine.ab++; bLine.h++; bLine.t++; bat.hits++; pLine.h++;
-        addOuts(advanceOnHit(bases, batter, 3, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note));
+        addOuts(advanceOnHit(bases, batter, 3, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note, 0, fld.holdEdge));
         say(`${cnt} ${batter.name} triples into the gap${scored.length ? `, ${scored.length} in` : ''}.`);
         break;
       case 'homerun':
         bLine.ab++; bLine.h++; bLine.hr++; bat.hits++; pLine.h++; pLine.hr++;
-        addOuts(advanceOnHit(bases, batter, 4, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note));
+        addOuts(advanceOnHit(bases, batter, 4, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note, 0, fld.holdEdge));
         say(`${cnt} ${batter.name} HOMERS to deep left${scored.length > 1 ? `, ${scored.length} run shot` : ''}. (${hand})`);
         break;
       default: {
@@ -972,6 +1034,11 @@ export function advanceOnHit(
    * for the same reason — there is no throw left to make.
    */
   runnerBonus = 0,
+  /**
+   * How much less often a runner tests this outfield, from CANNON. One when
+   * nobody out there has the badge, which is nearly every outfield.
+   */
+  holdFactor = 1,
 ): number {
   let retired = 0;
 
@@ -998,6 +1065,18 @@ export function advanceOnHit(
     if (!runner) continue;
     let adv = numBases;
     let tried = false;
+    /**
+     * The team's policy, then this particular man's.
+     *
+     * A running policy is the coach's instruction to everybody, and it was the
+     * only thing here: a leadoff man with wheels and a catcher with none went
+     * first to third at the same rate. GREEN LIGHT and STATION TO STATION are
+     * the man's own answer to the sign, and WHEELS is a badge on top of it —
+     * one channel, how often he tries for the extra base, and nothing else.
+     */
+    const own = runningMods(runner);
+    const attemptRate = run.attempt * own.attempt * extraBaseBonus(runner) * holdFactor;
+    const riskRate = run.risk * own.risk;
     // The bounds differ per situation and always did: a runner on second scores
     // on a single at least a fifth of the time however slow he is, while first
     // to third tops out at three quarters however fast. Collapsing all three into
@@ -1012,7 +1091,7 @@ export function advanceOnHit(
       onMake: number, onHold: number,
     ): number => {
       tried = true;
-      return rng() < clamp(base * run.attempt * mult(runner.speed, extra), lo, hi)
+      return rng() < clamp(base * attemptRate * mult(runner.speed, extra), lo, hi)
         ? onMake : onHold;
     };
     if (numBases === 1 && i === 1) {
@@ -1043,7 +1122,7 @@ export function advanceOnHit(
     const pushed = numBases === 2 ? gained === 3 : gained === 2;
     if (tried && pushed && retired === 0 && runnerBonus === 0) {
       const thrownOut = clamp(
-        BASERUNNING.thrownOutAdvancing * run.risk
+        BASERUNNING.thrownOutAdvancing * riskRate
           * mult(runner.speed, -0.45) * mult(defenceArm, 0.40),
         0.004, 0.30,
       );
@@ -1163,7 +1242,12 @@ const MIRROR: Record<Lane, Lane> = { pull: 'oppo', middle: 'middle', oppo: 'pull
  * the whole field. Returns a weight applied to the pull lane.
  */
 const pullBias = (batter: Hitter): number =>
-  1 + Math.max(-0.25, Math.min(0.5, (batter.power - 50) / 90));
+  (1 + Math.max(-0.25, Math.min(0.5, (batter.power - 50) / 90)))
+  // And whether he is the kind of hitter who pulls, which is not the same
+  // question as how hard he hits it. This is the tendency the fielding rework
+  // made buildable: before there were real batted-ball lanes there was nowhere
+  // to put a spray chart.
+  * pullMultiplier(batter);
 
 /**
  * Pick the man who fields it.
@@ -1432,11 +1516,13 @@ const COVER_FIRST_SHARE = 0.50;
 export function throwRisk(fielder: Player, covering: Pitcher): number {
   const pos = fielder.pos;
   if (pos === 'LF' || pos === 'CF' || pos === 'RF' || pos === 'DH') return 0;
+  // ON A LINE, which is the badge that names exactly this roll and nothing else.
+  const badge = throwBonus(fielder);
   if (pos === '1B') {
-    return COVER_FIRST_SHARE * THROW_ERROR_BASE
+    return COVER_FIRST_SHARE * THROW_ERROR_BASE * badge
       * mult(fielder.armAccuracy, -0.55) * mult(covering.hands, -0.35);
   }
-  return THROW_ERROR_BASE * mult(fielder.armAccuracy, -0.55);
+  return THROW_ERROR_BASE * badge * mult(fielder.armAccuracy, -0.55);
 }
 
 /**
@@ -1676,10 +1762,16 @@ function attemptSteal(
   // Who goes is mostly a question of who thinks he can, which is instinct
   // rather than raw speed — the fast man who never runs is a real player and
   // was not expressible while one rating decided both halves of this.
+  // GREEN LIGHT and STATION TO STATION multiply the team's policy rather than
+  // replacing it: a runner turned loose on a club that never runs still does not
+  // run, because the sign comes from the dugout. And a CANNON behind the plate
+  // stops men leaving, which is most of what a catcher's arm is worth.
+  const own = runningMods(runner);
   const attempt = clamp(
-    0.11 * green * mult(runner.speed, 0.45) * mult(runner.steal, 0.65)
+    0.11 * green * own.steal * mult(runner.speed, 0.45) * mult(runner.steal, 0.65)
          * mult(fld.pitcher.holdRunners, -0.35)
-         * catcherArm(fld.catcher, -0.30),
+         * catcherArm(fld.catcher, -0.30)
+         * (1 - badgeSize(fld.catcher, 'cannon') * 1.2),
     0, 0.75,
   );
   if (!forced && rng() >= attempt) return null;
@@ -1696,7 +1788,8 @@ function attemptSteal(
   const success = clamp(
     profile.base * mult(runner.speed, profile.speed) * mult(runner.steal, profile.jump)
       * mult(fld.pitcher.holdRunners, profile.hold)
-      * catcherArm(fld.catcher, profile.arm),
+      * catcherArm(fld.catcher, profile.arm)
+      * stealBonus(runner) * (1 - badgeSize(fld.catcher, 'cannon')),
     0.25, 0.90,
   );
   const line = bat.hitLine(runner);

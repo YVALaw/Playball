@@ -17,6 +17,7 @@ import {
   recordResult, restedFirst,
   type SeasonState,
 } from '../engine/season.js';
+import { BADGES } from '../engine/badges.js';
 import { recordCoachMarks } from '../engine/records.js';
 import { overallOf } from '../engine/ratings.js';
 import type { GameResult } from '../engine/game.js';
@@ -1242,6 +1243,30 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
             body: 'The conversation about keeping them is on the draft step, and it is paid for out of the recruiting budget you are about to open the board with.',
           });
         }
+        /*
+          What the winter actually produced, which is otherwise invisible.
+
+          Development moves a rating a point or two and shows up as a number on
+          a screen nobody opens twice. A badge is a thing with a name, and it is
+          the only visible return on the TRAINING skill — so it gets a line
+          rather than being something a coach finds by chance six months later
+          on a player card. One item for the whole class, because four separate
+          notices about four sophomores is how an inbox becomes noise.
+        */
+        if (report.badges.length > 0) {
+          const list = report.badges
+            .map((b) => `${b.name} — ${BADGES[b.badge].label}`)
+            .slice(0, 8)
+            .join('; ');
+          const more = report.badges.length > 8 ? `, and ${report.badges.length - 8} more` : '';
+          get().post({
+            kind: 'draft', year,
+            title: report.badges.length === 1
+              ? 'One of your men picked something up'
+              : `${report.badges.length} of your men picked something up`,
+            body: `${list}${more}. Earned from what they did last spring, or worked on over the winter.`,
+          });
+        }
       }
       set({
         phase: next,
@@ -1565,7 +1590,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const report: OffseasonReport = {
       ...(get().lastOffseason ?? {
         graduated: [], drafted: [], recruits: 0, signed: [], walkOns: [],
-        developmentNet: 0, improved: 0, declined: 0, holes: [],
+        developmentNet: 0, improved: 0, declined: 0, badges: [], holes: [],
       }),
       recruits: filled.recruits,
       signed: filled.signed,

@@ -96,6 +96,10 @@ function play(bracket: Bracket, round: string, a: number, b: number): BracketGam
         awaySlot: awayUsed % 3,
         standings: true,
         record: true,
+        // A bracket game, which the BIG STAGE badge is the only thing that
+        // reads. Set here rather than inferred from the calendar, because a
+        // schedule assumption three layers down is how these things go wrong.
+        postseason: true,
       });
   if (ready) bracket.preplayed?.delete(pairKey(a, b));
   advancePostseasonDay(bracket.season);
@@ -347,7 +351,7 @@ function playSeriesGame(
         conference: false,
         homeSlot: homeUsed % 3,
         awaySlot: awayUsed % 3,
-        standings: true, record: true,
+        standings: true, record: true, postseason: true,
       });
   if (ready) preplayed?.delete(pairKey(s.a, s.b));
 

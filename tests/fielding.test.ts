@@ -275,13 +275,33 @@ describe('arm accuracy', () => {
 
   it('is a separate skill from arm strength', () => {
     // A cannon that cannot find first base is a real player, and he could not
-    // exist while one rating decided both. Moving strength alone must leave the
-    // throwing error count where it was.
-    const cannon = defenceTrial(250, (r) => { for (const p of r) p.arm = 90; });
-    const noodle = defenceTrial(250, (r) => { for (const p of r) p.arm = 20; });
-    expect(Math.abs(cannon.throwing - noodle.throwing)).toBeLessThan(
-      Math.max(6, cannon.throwing * 0.25),
-    );
+    // exist while one rating decided both.
+    //
+    // **Asserted on the risk itself rather than on a game trial**, and the
+    // reason is a correction to how this used to be checked. It compared the
+    // throwing-error *counts* of a 90-arm defence and a 20-arm one and expected
+    // them to be close — but `arm` is not inert elsewhere. It decides whether a
+    // runner is gunned down taking an extra base and, through the catcher,
+    // whether anybody runs at all: over four hundred games the 20-arm roster
+    // allowed 447 stolen bases and the 90-arm roster 219. Those are different
+    // games. They end innings at different points, make pitching changes at
+    // different points, and therefore field a different mix of batted balls,
+    // and a ground ball is several times likelier to be booted than a fly. The
+    // old assertion was reading all of that and calling it accuracy.
+    //
+    // What the split actually promises is a property of one function, and there
+    // are no dice in it.
+    resetNames();
+    const build = makeRng(4711);
+    const probe = makeTeam(build, 'Probe', 50);
+    const covering = probe.rotation[0] as Pitcher;
+    for (const man of probe.lineup) {
+      if (man.pos === 'DH' || man.pos === 'LF' || man.pos === 'CF' || man.pos === 'RF') continue;
+      const weak = throwRisk({ ...man, arm: 20 }, covering);
+      const strong = throwRisk({ ...man, arm: 90 }, covering);
+      expect(strong, man.pos).toBe(weak);
+      expect(weak).toBeGreaterThan(0);
+    }
   });
 });
 

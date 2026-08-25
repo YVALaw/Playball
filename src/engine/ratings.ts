@@ -367,6 +367,67 @@ export function platoonMultiplier(batter: Hitter, pitcher: Pitcher): number {
 }
 
 /**
+ * The split, in the shape a card can print.
+ *
+ * `platoonSkill` has been on every player since the engine was ported and has
+ * never once been shown, on the grounds that it is hidden information. It is
+ * not: contact and power against each hand is the first thing every other
+ * baseball game puts on a player card, and a coach setting a lineup against a
+ * left hander is entitled to know which of his men can hit one.
+ *
+ * The arithmetic is `platoonMultiplier`'s, read against an average opponent, so
+ * what the card prints and what the simulation does cannot drift: the full split
+ * is spent half either way, so the opposite hand is worth `+skill/2` and the
+ * same hand `−skill/2`. A switch hitter turns around and therefore has the good
+ * side of it against everybody, which is why both his columns read the same.
+ *
+ * **Contact and power move by different amounts from one split, and that is the
+ * model rather than a rounding artefact.** The multiplier lands on production,
+ * and the same change in production is a large move on the contact curve and a
+ * small one on the power curve, because `contact` buys singles at a sensitivity
+ * of 0.38 and `power` buys home runs at 1.87. Printing one delta against both
+ * would be inventing a symmetry the engine does not have.
+ */
+export interface PlatoonSplit {
+  /** Multiplier on his production against a right hander, and against a left. */
+  vsRHP: number;
+  vsLHP: number;
+  /** Effective ratings, for a hitter. Undefined on the mound. */
+  contact?: { vsRHP: number; vsLHP: number };
+  power?: { vsRHP: number; vsLHP: number };
+}
+
+/** A production multiplier, expressed as the rating that would have produced it. */
+export function ratingForMultiplier(base: number, m: number, sensitivity: number): number {
+  return Math.round(clamp(base + (Math.log(m) * 50) / (sensitivity * SPREAD), 1, 99));
+}
+
+/** The two sensitivities the split is read through. See `BAT_SENS`. */
+const SPLIT_SENS = { contact: 0.38, power: 1.87 } as const;
+
+export function platoonSplit(p: Hitter | Pitcher): PlatoonSplit {
+  const half = p.platoonSkill / 2;
+  // A switch hitter always bats the other way round, so he never takes the
+  // same-hand penalty from either side.
+  const switching = p.type === 'hitter' && p.bats === 'S';
+  const hand = p.type === 'hitter' ? p.bats : p.throws;
+  const vsRHP = switching ? 1 + half : hand === 'R' ? 1 - half : 1 + half;
+  const vsLHP = switching ? 1 + half : hand === 'R' ? 1 + half : 1 - half;
+  if (p.type !== 'hitter') return { vsRHP, vsLHP };
+  return {
+    vsRHP, vsLHP,
+    contact: {
+      vsRHP: ratingForMultiplier(p.contact, vsRHP, SPLIT_SENS.contact),
+      vsLHP: ratingForMultiplier(p.contact, vsLHP, SPLIT_SENS.contact),
+    },
+    power: {
+      vsRHP: ratingForMultiplier(p.power, vsRHP, SPLIT_SENS.power),
+      vsLHP: ratingForMultiplier(p.power, vsLHP, SPLIT_SENS.power),
+    },
+  };
+}
+
+/**
  * Correction for the fact that `mult` is `exp`, and `exp` is convex.
  *
  * `strikeoutProbability` multiplies the league rate by two `mult` terms. Each is
@@ -435,11 +496,21 @@ export function battedBallType(
   return 'popup';
 }
 
-// Pitcher effectiveness decays past his stamina budget.
-export function fatigueMultiplier(pitcher: Pitcher, pitchCount: number): number {
+/**
+ * Pitcher effectiveness decays past his stamina budget.
+ *
+ * `slope` scales how fast, and exists for RUBBER ARM: a badge on the one channel
+ * that decides how much of a start is worth watching. One for everybody who does
+ * not have it, which is nearly everybody. Passed in rather than read off the
+ * player here, because a badge lookup in this file would make `ratings.ts`
+ * import `badges.ts`, which imports `scouting.ts`, which imports this.
+ */
+export function fatigueMultiplier(
+  pitcher: Pitcher, pitchCount: number, slope = 1,
+): number {
   const budget = 30 + pitcher.stamina * 0.85; // stamina 80 gives roughly 98 pitches
   if (pitchCount <= budget) return 1;
-  return Math.max(0.55, 1 - (pitchCount - budget) * CONTEXT.fatigueSlopePerPitch);
+  return Math.max(0.55, 1 - (pitchCount - budget) * CONTEXT.fatigueSlopePerPitch * slope);
 }
 
 export { clamp };

@@ -196,9 +196,14 @@ describe('the catcher', () => {
 
       let sb = 0, cs = 0;
       const games = makeRng(4242);
-      for (let i = 0; i < 120; i++) {
+      for (let i = 0; i < 240; i++) {
         const res = simGame(offense, defense, games, { engine: 'log5' });
-        for (const line of res.away.batting.values()) { sb += line.sb; cs += line.cs; }
+        // The home side only, which is the side batting against the catcher
+        // whose arm this trial moved. Counting both used to double the sample
+        // and halve the signal — every steal the *defence* team attempted was
+        // against a catcher nothing here had touched, so it was pure noise
+        // stirred into the measurement. It passed on the old random stream and
+        // was one unlucky reshuffle from not.
         for (const line of res.home.batting.values()) { sb += line.sb; cs += line.cs; }
       }
       return { sb, cs, attempts: sb + cs };

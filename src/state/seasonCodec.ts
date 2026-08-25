@@ -102,6 +102,13 @@ export function fromPortable(p: Portable): SeasonState {
   // honest state is that this season has produced none yet. A season resumed in
   // May will simply start counting from the next game.
   p.season.feats ??= noFeats();
+  // And what you have watched of your own men, which is genuinely empty on a
+  // save from before tendencies existed. That is the right answer rather than a
+  // kindness: nobody had been watching, so nothing is known yet, and the coach
+  // starts learning about the roster he already has from its next game. Badges
+  // need no clause of their own — a player written before them simply has no
+  // `badges` field, which is the truth about him.
+  p.season.watch ??= new Map();
 
   // A third thing no save carries, and the only one that lives outside the save
   // entirely: the pool of names already spoken for is module state in

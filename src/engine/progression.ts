@@ -7,6 +7,7 @@
 // stops a dynasty from being the same names forever — and it is the mechanism
 // behind the roadmap's central promise: you never keep your best players.
 
+import { developBadges, type BadgeEvidence, type BadgeId } from './badges.js';
 import {
   AI_KEEP_SHARE, AVERAGE_STAFF,
   draftContext, draftEligible, draftRound, makeTheCase, rivalKeeps, sceneFrom,
@@ -116,6 +117,15 @@ export interface OffseasonReport {
   developmentNet: number;
   improved: number;
   declined: number;
+  /**
+   * Badges your men picked up over the winter, earned or coached.
+   *
+   * Your program only, because a badge is not visible on anybody else's players
+   * and a list of a rival's would be the report telling you something the card
+   * refuses to. It is what the offseason has to show for a TRAINING skill: the
+   * development number moves a point or two and a badge is a thing with a name.
+   */
+  badges: { id: PlayerId; name: string; badge: BadgeId; tier: 1 | 2 | 3 }[];
   /**
    * What your roster is now short of, by position.
    *
@@ -453,8 +463,28 @@ export interface OffseasonOpts {
 
 const emptyReport = (): OffseasonReport => ({
   graduated: [], drafted: [], recruits: 0, signed: [], walkOns: [],
-  developmentNet: 0, improved: 0, declined: 0, holes: [],
+  developmentNet: 0, improved: 0, declined: 0, badges: [], holes: [],
 });
+
+/**
+ * One man's season, in the terms a badge can be earned from.
+ *
+ * Read straight off the three season books rather than out of a ledger built
+ * for the purpose — the same argument `records.ts` makes about the all-time
+ * book. Every field a badge could ask about is already being kept for the
+ * statistics screens, and a parallel accumulator would be a second thing to
+ * keep in step with the first.
+ */
+function evidenceFor(season: SeasonState, id: PlayerId): BadgeEvidence {
+  const bat = season.batting.get(id);
+  const pit = season.pitching.get(id);
+  const fld = season.fielding?.get(id);
+  const ev: BadgeEvidence = {};
+  if (bat) ev.bat = bat;
+  if (pit) ev.pit = pit;
+  if (fld) ev.fld = fld;
+  return ev;
+}
 
 /**
  * What the structure needs that the survivors cannot supply.
@@ -605,6 +635,18 @@ export function departAndDevelop(
       const gained = develop(p, rng, growthMult);
       report.developmentNet += gained;
       if (gained > 0) report.improved += 1; else report.declined += 1;
+      // A winter's worth of badges: what the season he just played earned him,
+      // and what his staff worked on with him. Deliberately after `develop`,
+      // because the cap is read off his potential and `develop` can raise a
+      // ceiling a man has already cleared.
+      for (const id of developBadges(p, evidenceFor(season, p.id), board.year, trainer)) {
+        if (record.index === mine) {
+          report.badges.push({
+            id: p.id, name: p.name, badge: id,
+            tier: (p.badges?.find((b) => b.id === id)?.tier ?? 1) as 1 | 2 | 3,
+          });
+        }
+      }
       survivors.push(p);
     }
 

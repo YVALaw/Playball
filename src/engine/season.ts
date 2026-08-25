@@ -22,6 +22,7 @@ import type { DraftBoard } from './draft.js';
 // `SeasonState`, so a runtime import here would close the loop.
 import type { RivalCoach } from './rivals.js';
 import { simGame, type GameResult, type TeamState } from './game.js';
+import { blankWatch, type Watch } from './tendencies.js';
 import {
   offer, recordGameMarks, seededBook, type RecordBook,
 } from './records.js';
@@ -523,6 +524,26 @@ export interface SeasonState {
    */
   feats?: SeasonFeats;
   /**
+   * How much of each of your own men you have actually watched.
+   *
+   * A tendency on your own player is not visible on the day he signs — it is
+   * learned by watching him play, and this is the record of that watching. Three
+   * counters per man, accrued out of the box score of every game your program
+   * plays, simulated or managed. `engine/tendencies.ts` owns what the numbers
+   * mean and how much of each is enough.
+   *
+   * **Your program only**, because the rule for the other ninety five is the
+   * opposite: a tendency on an opponent is visible immediately, on the grounds
+   * that a scouting report saying their leadoff man runs is exactly what a
+   * defensive setting is for. So there is nothing to accumulate about them.
+   *
+   * Carried forward across the season roll, unlike every other counter here,
+   * because a thing you spent a year learning about a sophomore is still true
+   * when he is a junior. Optional so a save written before it loads unchanged —
+   * such a save simply starts learning about its roster from that day.
+   */
+  watch?: Map<PlayerId, Watch>;
+  /**
    * The recruiting class in front of the program right now.
    *
    * Carried on the season rather than the offseason because that is when
@@ -916,6 +937,10 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
     // The book is the one thing here that is not about a season. It carries
     // forward for as long as the dynasty does, seeded if this save predates it.
     records: prev.records ?? seededBook(),
+    // Neither is what you know about your own men. Four years of watching a
+    // player is what a tendency is discovered out of, and resetting it every
+    // June would mean nobody was ever known for anything.
+    ...(prev.watch ? { watch: prev.watch } : {}),
     // The streak does not: it is a single-season record, and a scoreless run
     // does not survive an offseason and a new roster.
     scorelessOuts: new Map(),
@@ -1067,6 +1092,11 @@ export interface PlayOptions {
   standings?: boolean;
   /** Appended to season.results. Off for exhibition or replay use. */
   record?: boolean;
+  /**
+   * A bracket game. Only the BIG STAGE badge reads it, and only through
+   * `SimOptions.postseason`; nothing about how the game is recorded changes.
+   */
+  postseason?: boolean;
 }
 
 /**
@@ -1202,6 +1232,7 @@ export function playGame(
     // same way — one wiring, not two.
     ...(home.coachMods ? { homeCoachMods: home.coachMods } : {}),
     ...(away.coachMods ? { awayCoachMods: away.coachMods } : {}),
+    ...(opts.postseason ? { postseason: true } : {}),
     verbose: opts.capture ?? false,
     playEvents: opts.capture ?? false,
   });
@@ -1248,6 +1279,45 @@ function pitchingLines(side: GameResult['home']): BoxLine[] {
     });
   }
   return out;
+}
+
+/**
+ * A day's worth of watching one of your own men, folded into what you know.
+ *
+ * This is the whole of tendency discovery, and it is deliberately not a flag
+ * that gets set the first time somebody appears. What accrues is *evidence*, in
+ * the unit the tendency is read in — plate appearances or batters faced, times
+ * on base, balls in play — and a reading only becomes something a coach will say
+ * out loud once there is enough of it. So a green light is obvious inside a
+ * month and whether a man is clutch is a question you are still asking in his
+ * second year, which is the right order and is also what the research says.
+ *
+ * It runs here rather than anywhere prettier for the reason the record book runs
+ * here: **every finished game comes through this door**, whether it was
+ * simulated by the hundred or managed pitch by pitch. Discovery therefore
+ * happens through ordinary play without anybody having to opt into it.
+ */
+function noteWatch(season: SeasonState, side: TeamState): void {
+  const book = (season.watch ??= new Map());
+  const of = (id: PlayerId): Watch => {
+    let w = book.get(id);
+    if (!w) { w = blankWatch(); book.set(id, w); }
+    return w;
+  };
+  for (const l of side.batting.values()) {
+    const pa = l.ab + l.bb + l.hbp;
+    if (pa === 0) continue;
+    const w = of(l.player.id);
+    w.pa += pa;
+    w.on += l.h + l.bb + l.hbp;
+    // A strikeout is not a ball in play, and neither is a ball over the fence —
+    // a spray chart is made of the ones a fielder had to go and get.
+    w.bip += Math.max(0, l.ab - l.k - l.hr);
+  }
+  for (const l of side.pitching.values()) {
+    if (l.bf === 0) continue;
+    of(l.player.id).pa += l.bf;
+  }
 }
 
 export function recordResult(
@@ -1297,6 +1367,14 @@ export function recordResult(
       awayErrors: result.away.errors,
       homeErrors: result.home.errors,
     };
+  }
+
+  // What you learned by watching, from the same test that decides whose box
+  // score is worth keeping — and gated on `record` so that a replayed game does
+  // not teach you the same thing twice.
+  if ((opts.record ?? true) && keepFor !== null) {
+    if (homeIndex === keepFor) noteWatch(season, result.home);
+    else if (awayIndex === keepFor) noteWatch(season, result.away);
   }
 
   if (opts.standings ?? true) {

@@ -6,6 +6,7 @@
 // whole simulation. Do not reorder these without expecting the calibration
 // fixtures to move.
 
+import { innateBadges } from './badges.js';
 import { gauss, normal } from './rng.js';
 import { overallOf } from './ratings.js';
 import { GENERATED_POTENTIAL_CAP, scoutNoise } from './scouting.js';
@@ -240,6 +241,23 @@ if (SPECTRUM_CHECK.range !== 0 || SPECTRUM_CHECK.arm !== 0) {
   );
 }
 
+/**
+ * The badges he turns up with, hung on him once his ceiling is known.
+ *
+ * Last, because the cap is read off his potential and his potential is the last
+ * thing computed about him. It costs no random draw — see `innateBadges` — so a
+ * player generated before badges existed and one generated after come off the
+ * same point in the same stream, and no calibration figure moved for this.
+ *
+ * The field is left off entirely when he has none, which is most men. Two
+ * thousand empty arrays a season through every autosave is a cost paid to say
+ * nothing.
+ */
+function signWithBadges(p: Hitter | Pitcher): void {
+  const badges = innateBadges(p);
+  if (badges.length > 0) p.badges = badges;
+}
+
 export interface HitterOpts {
   bats?: Bats;
   throws?: Hand;
@@ -331,6 +349,7 @@ export function makeHitter(rng: Rng, quality = 50, opts: HitterOpts = {}): Hitte
   // difference between a fast man and a base stealer.
   p.steal = derived(50 + (p.speed - 50) * 0.40, stealNoise, 14);
   p.potential = projectPotential(rng, overallOf(p), p.classYear);
+  signWithBadges(p);
   return p;
 }
 
@@ -401,6 +420,7 @@ export function makePitcher(rng: Rng, quality = 50, opts: PitcherOpts = {}): Pit
   p.velocity = Math.round(
     Math.max(78, Math.min(103, 80 + p.stuff * 0.19 + velocityNoise * 2.2)),
   );
+  signWithBadges(p);
   return p;
 }
 

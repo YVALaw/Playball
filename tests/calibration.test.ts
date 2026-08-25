@@ -22,7 +22,37 @@ import { ENGINES } from '../src/engine/engines.js';
 import type { Hitter, Pitcher } from '../src/engine/types.js';
 
 /**
- * Re-recorded 2026-08-25, when a rating of 95 started buying something.
+ * Re-recorded 2026-08-25, when players started being *like* something.
+ *
+ * Repertoires, tendencies and badges (§18) all reach the plate appearance, so
+ * every seeded number here moved and none of them could have survived it.
+ * Nothing about generation changed — every one of them is hashed off the
+ * player's id and costs the generator no draw — so the rosters are identical
+ * and what moved is what happens on the field.
+ *
+ * One real fix landed with it and is the reason two of these numbers moved
+ * further than the rest: **a bunt now counts as a pitch on the pitching line.**
+ * The event stream had always emitted one and the box score had never recorded
+ * it, so a game with a bunt in it claimed two fewer pitches than it threw.
+ * `tests/play-events.test.ts` measures exactly that equality and had never
+ * caught it, because its fixed seed had never bunted.
+ *
+ * The league held. On the eight-seed sweep, before and after: runs +0.7% to
+ * +0.1%, batting average unmoved, slugging +0.6%, home runs -0.6% to -1.2%,
+ * strikeouts -0.7% to -1.1%, pitches per plate appearance -3.3% to -3.5%. The
+ * one row that moved is walks, -4.1% to -5.2%, and §18.8 records what is and is
+ * not understood about it — roughly half is badges on a channel with more weight
+ * suppressing walks than raising them, and the rest is a game-level effect still
+ * to be isolated. It is written down in the backlog rather than quietly tolerated.
+ *
+ * The bar this seed is judged against also moved, and deliberately: the guard in
+ * `record-goldens.ts` now refuses on the eight-seed sweep rather than on seed
+ * 4242 alone. Its home run row reads 8% under target here and 1.2% under on the
+ * sweep, and a recorder that refuses to baseline a healthy engine because one
+ * seed of twelve roster pairs got unlucky is making the exact mistake the sweep
+ * exists to prevent.
+ *
+ * Previously re-recorded 2026-08-25, when a rating of 95 started buying something.
  *
  * The per-event sensitivities in ratings.ts roughly doubled on home runs,
  * triples and strikeouts and widened on doubles and walks, so that the best
@@ -88,20 +118,20 @@ import type { Hitter, Pitcher } from '../src/engine/types.js';
  * philosophy.
  */
 const GOLDEN: Record<string, number> = {
-  'Runs per team per game': 5.255625,
-  'PA per team per game': 39.79625,
-  'Batting average': 0.26880132229079845,
-  'On base percentage': 0.3432065416548879,
-  'Home runs per team per game': 0.46291666666666664,
-  'Strikeouts per team per game': 6.650833333333333,
-  'Walks per team per game': 3.51875,
-  'Pitches per plate appearance': 3.6253363486928207,
-  'Slugging': 0.37173603418262385,
+  'Runs per team per game': 5.105625,
+  'PA per team per game': 39.708333333333336,
+  'Batting average': 0.2659847744547886,
+  'On base percentage': 0.33871458551941236,
+  'Home runs per team per game': 0.46541666666666665,
+  'Strikeouts per team per game': 6.497916666666667,
+  'Walks per team per game': 3.3722916666666665,
+  'Pitches per plate appearance': 3.5955246589716685,
+  'Slugging': 0.3674201419568512,
 };
 
-const GOLDEN_SLUGGING = 0.37173603418262385;
-const GOLDEN_ERRORS = 1.0354166666666667;
-const GOLDEN_SB_PCT = 0.7085000800384185;
+const GOLDEN_SLUGGING = 0.3674201419568512;
+const GOLDEN_ERRORS = 1.0920833333333333;
+const GOLDEN_SB_PCT = 0.7107465684633412;
 
 /**
  * Metrics still outside the 10% bar. The list is now empty, and keeping the

@@ -21,9 +21,18 @@
 
 import { useState, type ReactNode } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
+import {
+  BADGES, FAMILY_LABEL, TIER_NAME, badgeCap, badgesOf,
+  type BadgeFamily,
+} from '../../engine/badges.js';
+import { PITCHES, repertoireOf, speedOf } from '../../engine/pitches.js';
 import { potentialGrade } from '../../engine/scouting.js';
+import {
+  HITTER_TENDENCIES, PITCHER_TENDENCIES, TENDENCIES, isKnown, tendenciesOf,
+  tendencyLabel, watchProgress, type TendencyId,
+} from '../../engine/tendencies.js';
 import { draftEligible } from '../../engine/draft.js';
-import { overallOf } from '../../engine/ratings.js';
+import { overallOf, platoonSplit } from '../../engine/ratings.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { FixedHeader } from '../Sticky.js';
 import {
@@ -304,7 +313,7 @@ export function Player() {
     }>
       <div style={{ padding: '12px 14px 20px' }}>
         {active === 'overview' && <Overview p={p} owner={owner} isOurs={isOurs} />}
-        {active === 'ratings' && <Ratings p={p} />}
+        {active === 'ratings' && <Ratings p={p} isOurs={isOurs} />}
         {active === 'stats' && <ThisSeason p={p} />}
         {active === 'games' && <Games id={p.id} owner={owner} isOurs={isOurs} />}
         {active === 'history' && <Career id={p.id} isPitcher={isPitcher} isOurs={isOurs} />}
@@ -557,17 +566,82 @@ function Overview({ p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: bo
         <Stat k="SCHOOL" v={owner.def.school} />
         <Stat k="CONFERENCE" v={owner.conference} last />
       </Panel>
+      {isOurs && <Badges p={p} />}
       {!isOurs && (
         <Note>
           He plays for someone else. You can see what he has done and what he can
-          do now — how much further he might go is your rival's problem to know.
+          do now — how much further he might go, and what he is good at that no
+          box score shows, is your rival's problem to know.
         </Note>
       )}
     </>
   );
 }
 
-function Ratings({ p }: { p: AnyPlayer }) {
+/**
+ * His badges, and the room he has left for more.
+ *
+ * **Your own program only**, which is the opposite of the rule for tendencies
+ * and deliberately so. A tendency is a thing you can see from the other dugout —
+ * their leadoff man runs, their number three pulls everything — and a badge is
+ * something you only know about a man because you have had him in the building.
+ *
+ * The ceiling is shown beside the count because it is a recruiting fact as much
+ * as a roster one: a D-grade recruit can arrive already holding both of the
+ * badges he will ever have, which is the same thing his ceiling has been telling
+ * you on the board all along.
+ */
+function Badges({ p }: { p: AnyPlayer }) {
+  const held = badgesOf(p);
+  const cap = badgeCap(p.potential);
+  const byFamily = new Map<BadgeFamily, typeof held>();
+  for (const b of held) {
+    const fam = BADGES[b.id].family;
+    byFamily.set(fam, [...(byFamily.get(fam) ?? []), b]);
+  }
+  const families: BadgeFamily[] = ['situational', 'physical', 'technical', 'makeup'];
+
+  return (
+    <>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between',
+        alignItems: 'baseline', marginTop: 16, gap: 10,
+      }}>
+        <div className="label">BADGES</div>
+        <div className="label">{held.length} OF {cap}</div>
+      </div>
+      <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+        {held.length === 0 && <Empty>Nothing yet. They come with what he does.</Empty>}
+        {families.filter((f) => byFamily.has(f)).map((fam, i, shown) => (
+          <div key={fam} style={{
+            padding: '9px 12px',
+            borderBottom: i === shown.length - 1 ? 'none' : '1px solid var(--hairline)',
+          }}>
+            <div className="label">{FAMILY_LABEL[fam]}</div>
+            {(byFamily.get(fam) ?? []).map((b) => (
+              <div key={b.id} style={{ marginTop: 5 }}>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  alignItems: 'baseline', gap: 10,
+                }}>
+                  <span style={{
+                    font: "700 12px var(--display)", letterSpacing: '.02em', color: 'var(--clay)',
+                  }}>{BADGES[b.id].label}</span>
+                  <span className="label" style={{ color: 'var(--dim)' }}>{TIER_NAME[b.tier]}</span>
+                </div>
+                <div style={{
+                  font: "400 10px/1.4 var(--body)", color: 'var(--dim)', marginTop: 2,
+                }}>{BADGES[b.id].note}</div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function Ratings({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   const isPitcher = p.type === 'pitcher';
   const glove: Array<[string, string, string, number]> = isPitcher
     ? PITCHER_GLOVE_BARS.map(([k, l, n]) => [k, l, n, (p as Pitcher)[k]])
@@ -604,14 +678,220 @@ function Ratings({ p }: { p: AnyPlayer }) {
         )}
       </BarGroup>
 
+      {isPitcher && <Repertoire p={p as Pitcher} />}
+
+      <Platoon p={p} />
+
       <BarGroup title={isPitcher ? 'FIELDING' : `FIELDING · ${p.pos}`}>
         {glove.map(([key, label, note, value]) => (
           <Bar key={key} label={label} note={note} value={Math.round(value)} />
         ))}
       </BarGroup>
+
+      <Tendencies p={p} isOurs={isOurs} />
     </>
   );
 }
+
+/**
+ * What he throws, and how often.
+ *
+ * The usage share is the number worth reading and the reason it is printed
+ * rather than described: a man who throws 62% four-seamers and a man who throws
+ * 38% of them are different pitchers with the same three ratings, and until
+ * there was a repertoire the card could not say so. It is also the data the
+ * POWER ARM and JUNKBALLER tendencies are read off, so the bar and the label
+ * below it are two views of one fact rather than two facts that might disagree.
+ *
+ * The speed beside each pitch is derived from his fastball, which the generator
+ * already ties to his stuff — so the change of pace on the card agrees with the
+ * number in the panel above it.
+ */
+function Repertoire({ p }: { p: Pitcher }) {
+  const rep = repertoireOf(p);
+  return (
+    <>
+      <div className="label" style={{ marginTop: 14, marginBottom: 4 }}>REPERTOIRE</div>
+      <div style={{
+        padding: '10px 12px 4px',
+        border: '1px solid var(--faint)', background: 'var(--paper)',
+      }}>
+        {rep.map((o) => (
+          <div key={o.id} style={{ marginBottom: 8 }}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              alignItems: 'baseline', marginBottom: 3, gap: 8,
+            }}>
+              <span className="label">{PITCHES[o.id].name}</span>
+              <span style={{ font: "600 11px var(--mono)", color: 'var(--dim)' }}>
+                {speedOf(p, o.id)} · {Math.round(o.usage * 100)}%
+              </span>
+            </div>
+            <div style={{ height: 5, background: 'rgba(28,36,48,.09)' }}>
+              <div style={{
+                width: `${Math.round(o.usage * 100)}%`, height: '100%',
+                background: PITCHES[o.id].family === 'fastball' ? 'var(--clay)' : 'var(--ink)',
+                opacity: PITCHES[o.id].family === 'fastball' ? 1 : 0.55,
+              }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/**
+ * The split, which the engine has always had and never once shown.
+ *
+ * The arithmetic lives in `platoonSplit` rather than here, so that what the card
+ * prints and what the simulation does are the same function — a display that
+ * re-derived the split from `platoonSkill` on its own would eventually disagree
+ * with `platoonMultiplier` and nobody would find out.
+ *
+ * A pitcher's is printed as what he *allows*, which is the useful direction from
+ * a dugout: the same-handed batter is the one he suppresses.
+ */
+function Platoon({ p }: { p: AnyPlayer }) {
+  const split = platoonSplit(p);
+  const switchHitter = p.type === 'hitter' && p.bats === 'S';
+
+  const rows: Array<[string, string, string]> = p.type === 'hitter'
+    ? [
+      ['CONTACT', String(split.contact?.vsRHP ?? ''), String(split.contact?.vsLHP ?? '')],
+      ['POWER', String(split.power?.vsRHP ?? ''), String(split.power?.vsLHP ?? '')],
+      ['PRODUCTION', pctSigned(split.vsRHP - 1), pctSigned(split.vsLHP - 1)],
+    ]
+    : [['ALLOWED', pctSigned(split.vsRHP - 1), pctSigned(split.vsLHP - 1)]];
+
+  return (
+    <>
+      <div className="label" style={{ marginTop: 14, marginBottom: 4 }}>
+        {p.type === 'hitter' ? 'THE SPLIT' : 'THE SPLIT · WHAT HE ALLOWS'}
+      </div>
+      <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 10,
+          padding: '7px 12px', borderBottom: '1px solid var(--hairline)',
+        }}>
+          <span className="label">{switchHitter ? 'SWITCH' : ''}</span>
+          <span className="label" style={{ minWidth: 46, textAlign: 'right' }}>VS RHP</span>
+          <span className="label" style={{ minWidth: 46, textAlign: 'right' }}>VS LHP</span>
+        </div>
+        {rows.map(([k, r, l], i) => (
+          <div key={k} style={{
+            display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 10,
+            padding: '8px 12px', alignItems: 'baseline',
+            borderBottom: i === rows.length - 1 ? 'none' : '1px solid var(--hairline)',
+          }}>
+            <span className="label">{k}</span>
+            <span style={{ font: "600 14px var(--mono)", minWidth: 46, textAlign: 'right' }}>{r}</span>
+            <span style={{ font: "600 14px var(--mono)", minWidth: 46, textAlign: 'right' }}>{l}</span>
+          </div>
+        ))}
+      </div>
+      <Note>
+        {switchHitter
+          ? 'He turns around, so he has the better side of it against everybody. Switch hitters carry small splits by construction.'
+          : p.platoonSkill < 0
+            ? 'A reverse split: he is genuinely better against his own hand, which is rare and real.'
+            : 'Contact and power move by different amounts from one split, because a change in production is a small move on the power curve and a large one on the contact curve.'}
+      </Note>
+    </>
+  );
+}
+
+const pctSigned = (v: number): string => `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`;
+
+/**
+ * What he does, as against how well he does it — and how much of it you have
+ * seen yet.
+ *
+ * **On your own men a tendency is not visible until you have watched enough of
+ * him**, which is the mechanic rather than a display rule: the bar under an
+ * unknown reading is the evidence accumulating, and it fills from ordinary
+ * play, simulated games included. On somebody else's player they are all
+ * visible immediately, because a scouting report saying their leadoff man runs
+ * is exactly what a defensive setting is for.
+ *
+ * A slot he is ordinary in is printed as such rather than hidden. "Nothing
+ * unusual" is a real answer about a player and leaving the row out would make
+ * an ordinary man look like an unfinished one.
+ */
+function Tendencies({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
+  const season = useDynasty((s) => s.season);
+  const watch = isOurs ? season?.watch?.get(p.id) : undefined;
+  const slots = p.type === 'hitter' ? HITTER_TENDENCIES : PITCHER_TENDENCIES;
+
+  return (
+    <>
+      <div className="label" style={{ marginTop: 14, marginBottom: 4 }}>TENDENCIES</div>
+      <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+        {slots.map((slot, i) => {
+          const spec = TENDENCIES[slot];
+          const known = isKnown(slot, watch, isOurs);
+          const label = known ? tendencyLabel(p, slot) : null;
+          const progress = watchProgress(slot, watch);
+          const last = i === slots.length - 1;
+          return (
+            <div key={slot} style={{
+              padding: '9px 12px',
+              borderBottom: last ? 'none' : '1px solid var(--hairline)',
+            }}>
+              <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                alignItems: 'baseline', gap: 10,
+              }}>
+                <span style={{
+                  font: "600 12px var(--display)", letterSpacing: '.02em',
+                  color: known && label ? 'var(--clay)' : 'var(--dim)',
+                }}>
+                  {known ? (label ?? 'NOTHING UNUSUAL') : 'STILL WATCHING'}
+                </span>
+                <span className="label">{SLOT_WORD[slot]}</span>
+              </div>
+              {known && label && (
+                <div style={{
+                  font: "400 10px/1.4 var(--body)", color: 'var(--dim)', marginTop: 3,
+                }}>
+                  {(tendenciesOf(p)[slot] ?? 0) > 0 ? spec.plusNote : spec.minusNote}
+                </div>
+              )}
+              {!known && (
+                <div style={{ height: 4, background: 'rgba(28,36,48,.09)', marginTop: 6 }}>
+                  <div style={{
+                    width: `${Math.round(progress * 100)}%`, height: '100%',
+                    background: 'var(--ink)', opacity: 0.35,
+                  }} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {isOurs && (
+        <Note>
+          You learn what a man is like by watching him play, not by signing him.
+          Every game your program plays adds to what you have seen — the rarer the
+          thing, the longer it takes to be sure of it.
+        </Note>
+      )}
+    </>
+  );
+}
+
+/** What each slot is a reading *about*, in two or three words. */
+const SLOT_WORD: Record<TendencyId, string> = {
+  approach: 'AT THE PLATE',
+  firstPitch: 'FIRST PITCH',
+  running: 'ON THE BASES',
+  spray: 'SPRAY',
+  clutch: 'WITH MEN ON',
+  zone: 'IN THE ZONE',
+  pace: 'PACE',
+  mix: 'PITCH MIX',
+  poise: 'WITH MEN ON',
+};
 
 /** One headed block of bars. Two of these are the whole Ratings tab. */
 function BarGroup({ title, children }: { title: string; children: ReactNode }) {
