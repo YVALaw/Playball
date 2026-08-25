@@ -22,7 +22,37 @@ import { ENGINES } from '../src/engine/engines.js';
 import type { Hitter, Pitcher } from '../src/engine/types.js';
 
 /**
- * Re-recorded 2026-08-24, when a caught stealing became an out. For years it
+ * Re-recorded 2026-08-25, when defence became something individual men do.
+ *
+ * Four new things happen on a field that were not happening before — the pitcher
+ * fields comebackers, the first baseman feeds a pitcher covering the bag, a
+ * throw can be wild, and a pitch can get past the catcher — and each takes a
+ * random draw at a point in the stream where nothing used to be drawn. Player
+ * generation moved too: four more ratings on a hitter and one on a pitcher is
+ * five more draws per man, which reshuffles every roster in the league. Nothing
+ * here could have survived that, and nothing did.
+ *
+ * The league it produces is closer to the sourced targets than the one before
+ * it. Across the eight-seed sweep below, runs went from 2.7% under to 1.0% over,
+ * because the bases a defence gives away were missing from the run environment
+ * rather than priced into it, and the worst deviation of any rate moved 3.1% to
+ * 3.3% — the same place. Errors per team per game stayed where they were
+ * calibrated, 1.08 to 1.05, with roughly three in ten now thrown away rather
+ * than dropped: a change of composition, not of quantity. League fielding runs
+ * .962 on balls hit at a man, against a real D1 figure near .967 on a denominator
+ * this engine cannot honestly produce.
+ *
+ * The one figure that reads worse is walks, 6% under on this seed against 1.5%
+ * under before, and it is the roster lottery rather than a mechanism. Measured
+ * over twelve independent base seeds, walks per plate appearance average .0906
+ * before this work and .0903 after, against a target of .0910 — a difference of
+ * 0.3% between two samples whose seed-to-seed spread is 2 to 3%. Seed 4242 drew
+ * a league that does not walk; seed 909 drew a worse one before any of this
+ * existed. Per plate appearance every component sits inside 1% of its target and
+ * what remains is the PA-per-game deficit, which is 2.6% and predates all of it.
+ * Do not chase this seed. The sweep is the measurement.
+ *
+ * Previously re-recorded 2026-08-24, when a caught stealing became an out. For years it
  * only erased the runner, which made every steal attempt half price; charging
  * the out ends some innings early, and every random draw after such an inning
  * shifts. Runs moved from 5.18 to 5.01 per team per game — about 3%, the real
@@ -35,20 +65,20 @@ import type { Hitter, Pitcher } from '../src/engine/types.js';
  * philosophy.
  */
 const GOLDEN: Record<string, number> = {
-  'Runs per team per game': 5.091875,
-  'PA per team per game': 39.966875,
-  'Batting average': 0.267206596276711,
-  'On base percentage': 0.3444154273591151,
-  'Home runs per team per game': 0.50625,
-  'Strikeouts per team per game': 6.530625,
-  'Walks per team per game': 3.6679166666666667,
-  'Pitches per plate appearance': 3.632383067227548,
-  'Slugging': 0.3727973858505648,
+  'Runs per team per game': 5.226875,
+  'PA per team per game': 39.97,
+  'Batting average': 0.26743874448030386,
+  'On base percentage': 0.341010966558252,
+  'Home runs per team per game': 0.48520833333333335,
+  'Strikeouts per team per game': 6.663125,
+  'Walks per team per game': 3.4952083333333333,
+  'Pitches per plate appearance': 3.624072220832291,
+  'Slugging': 0.37070803574549394,
 };
 
-const GOLDEN_SLUGGING = 0.3727973858505648;
-const GOLDEN_ERRORS = 1.0935416666666666;
-const GOLDEN_SB_PCT = 0.7129162462159435;
+const GOLDEN_SLUGGING = 0.37070803574549394;
+const GOLDEN_ERRORS = 1.0902083333333332;
+const GOLDEN_SB_PCT = 0.7129163281884646;
 
 /**
  * Metrics still outside the 10% bar. The list is now empty, and keeping the

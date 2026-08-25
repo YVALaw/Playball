@@ -470,7 +470,10 @@ export const SKILL_BLURB: Record<keyof CoachSkills, string> = {
   offense: 'Your hitters take slightly better at-bats, every game.',
   defense: 'Balls in play against you become outs a little more often.',
   training: 'Your returning players develop further between seasons.',
-  recruiting: 'Every hour spent on a recruit counts for more.',
+  // Two effects now, and the second one is the reason to spend here early: the
+  // hours matter, but a coach who cannot read a recruit is guessing at which
+  // hours to spend. Saying only the first half was true and misleading at once.
+  recruiting: 'Every hour on a recruit counts for more, and your scouting reports run tighter.',
 };
 
 /**
@@ -687,6 +690,72 @@ export const contractFor = (prestige: number): number =>
  * you can see it is closed, which is the whole point of having a ladder.
  */
 export const ROOKIE_PRESTIGE = 25;
+
+// ---------------------------------------------------------------------------
+// What they call you
+// ---------------------------------------------------------------------------
+
+/**
+ * The word beside HEAD COACH, earned rather than served.
+ *
+ * The line used to read "seasons completed", which is a fact the two counters
+ * either side of the portrait already state. What a coach wants from that line
+ * is what the sport thinks of him, and the only honest source for that is what
+ * he has actually done — so the ladder is climbed with titles and deep runs,
+ * not with attendance. Twenty quiet years does not make anybody renowned.
+ *
+ * Prestige carries most of it because prestige is already the number that moves
+ * on overachievement and decays when nothing happens, which is exactly the
+ * behaviour a reputation should have. The trophies act as floors on top of it:
+ * a national champion is never introduced as a journeyman, however the last two
+ * seasons went.
+ */
+export type CoachTitle =
+  | 'Unproven' | 'Journeyman' | 'Respected' | 'Established' | 'Renowned' | 'Legendary';
+
+/**
+ * Fifteen years in one chair.
+ *
+ * Kept apart from the ladder rather than sitting on top of it, because it is
+ * the one thing here earned by staying instead of winning, and a bad run should
+ * not be able to take it away. It reads alongside the title — RENOWNED · LIFER —
+ * so a long tenure survives a reputation that has slipped.
+ */
+export const LIFER_SEASONS = 15;
+
+export interface CoachStanding {
+  title: CoachTitle;
+  /** True once he has spent {@link LIFER_SEASONS} at the current job. */
+  lifer: boolean;
+}
+
+export function coachStanding(coach: CoachState): CoachStanding {
+  const games = coach.careerWins + coach.careerLosses;
+  const winPct = games === 0 ? 0 : coach.careerWins / games;
+
+  // A trophy is a floor, not a bonus. Whatever prestige says this month, the
+  // man who won it does not drop below the rung it bought.
+  let floor: CoachTitle = 'Unproven';
+  if (coach.titles > 0) floor = 'Legendary';
+  else if (coach.conferenceTitles > 0 || coach.tournaments >= 3) floor = 'Established';
+  else if (coach.tournaments > 0) floor = 'Respected';
+  else if (games > 0) floor = 'Journeyman';
+
+  // And the ladder itself, which can lift him above that floor but never below.
+  const earned: CoachTitle =
+    coach.prestige >= 80 && coach.titles > 0 ? 'Legendary'
+    : coach.prestige >= 68 ? 'Renowned'
+    : coach.prestige >= 55 ? 'Established'
+    : coach.prestige >= 42 || winPct > 0.55 ? 'Respected'
+    : games > 0 ? 'Journeyman'
+    : 'Unproven';
+
+  const ORDER: CoachTitle[] =
+    ['Unproven', 'Journeyman', 'Respected', 'Established', 'Renowned', 'Legendary'];
+  const title = ORDER.indexOf(earned) >= ORDER.indexOf(floor) ? earned : floor;
+
+  return { title, lifer: coach.tenure >= LIFER_SEASONS };
+}
 
 export function newCoach(
   profile: CoachProfile = DEFAULT_PROFILE,

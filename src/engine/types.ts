@@ -75,6 +75,17 @@ export interface FieldingRatings {
   hands: number;
   /** Throwing strength. Holds runners, and for a catcher, throws them out. */
   arm: number;
+  /**
+   * Where the throw goes, as opposed to how hard it gets there.
+   *
+   * Strength decides whether the ball beats the runner; accuracy decides whether
+   * the first baseman has to leave the bag for it. They are separate skills and
+   * they fail differently — the cannon who airmails one into the dugout is a
+   * type of player, and with one `arm` rating he could not exist. This is the
+   * rating a throwing error comes off, which is the only error the engine has
+   * that moves runners rather than just putting one on.
+   */
+  armAccuracy: number;
 }
 
 export interface HitterRatings extends FieldingRatings {
@@ -82,6 +93,27 @@ export interface HitterRatings extends FieldingRatings {
   power: number;
   eye: number;
   speed: number;
+  /**
+   * Keeping the ball in front of you. Carried by every position player and read
+   * only for the man behind the plate, in the same spirit as `range` on a DH:
+   * the rating is absolute, and the position decides whether it is ever asked
+   * about. Without it a catcher is graded exactly like a left fielder, which is
+   * why the hardest position on the field had no identity of its own.
+   */
+  blocking: number;
+  /**
+   * Laying one down. There has been a team-level bunt policy since coaching
+   * strategy landed, and no notion of who can actually execute it — so a
+   * clean-up hitter dropped a sacrifice as reliably as a nine-hole slap hitter.
+   */
+  bunt: number;
+  /**
+   * The jump, not the wheels. Reading a pitcher's first move and leaving on it
+   * is a skill of its own: speed is what covers the ninety feet once you have
+   * gone, and plenty of fast men never learn to go. Split out of `speed` so the
+   * base stealer and the merely quick are different players.
+   */
+  steal: number;
 }
 
 export interface PitcherRatings extends FieldingRatings {
@@ -239,6 +271,43 @@ export interface HitLine {
 export interface PitchLine {
   outs: number; h: number; r: number; er: number; bb: number;
   k: number; hr: number; pitches: number; bf: number;
+}
+
+/**
+ * A fielder's day, in the terms the simulation can honestly speak.
+ *
+ * Deliberately NOT a box score. A real fielding line is putouts and assists, and
+ * three quarters of those are the first baseman taking a throw — a throw this
+ * engine never decides to make, because it resolves a ground ball as an out
+ * without ever asking who covered the bag. Counting them would be fiction with
+ * the shape of a statistic.
+ *
+ * What the engine really produces is a ball hit at a named man and a result, so
+ * that is what this counts: how many came his way, how many he turned into outs,
+ * and how many an average glove on his own team would have turned into outs.
+ * `plays - expected` is therefore plays above average, measured against the
+ * exact baseline the range model uses — which is what makes it a real number
+ * rather than a compliment.
+ */
+export interface FieldLine {
+  /** Balls in play hit at him. Home runs are nobody's chance. */
+  chances: number;
+  /** Chances he retired the batter on. */
+  plays: number;
+  /**
+   * What his own team's average fielder would have made of the same chances —
+   * the play the log5 model had already settled before his range was consulted.
+   */
+  expected: number;
+  /** Charged to him, both kinds together. This is the E column's only source. */
+  errors: number;
+  /** Of those, the ones where the throw was the problem rather than the glove. */
+  throwing: number;
+  /** Catchers. Pitches that got past him with a man on. Not an error, by rule. */
+  pb: number;
+  /** Catchers. Bases stolen on him, and runners he threw out. */
+  sba: number;
+  cs: number;
 }
 
 // ---------------------------------------------------------------------------

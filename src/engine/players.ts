@@ -137,12 +137,34 @@ export interface HitterOpts {
   pos?: Position;
 }
 
+/**
+ * Two of the new ratings are read out of the player rather than drawn free, and
+ * both would be worse as an independent roll.
+ *
+ * A bunt skill uncorrelated with anything is the complaint it was added to fix,
+ * wearing a number: the clean-up hitter simply rolls 80 sometimes and bunts like
+ * a nine-hole slap hitter again. And a steal skill uncorrelated with speed
+ * produces a catcher with elite instincts and nowhere to use them. So both are
+ * centred on the profile the player already has, with enough noise left in that
+ * the correlation is a tendency and not a formula — which is the whole point of
+ * splitting them out.
+ *
+ * Both stay centred on 50 for a league-average player, so `mult` reads them as
+ * neutral and neither moves the league's bunt or steal totals on its own.
+ */
+const RATING_LO = 15;
+const RATING_HI = 95;
+const derived = (base: number, noise: number, sd: number): number =>
+  Math.max(RATING_LO, Math.min(RATING_HI, base + noise * sd));
+
 export function makeHitter(rng: Rng, quality = 50, opts: HitterOpts = {}): Hitter {
   const bats = opts.bats ?? drawBats(rng);
   const throws = opts.throws ?? drawThrows(rng, bats);
   const name = uniqueName(rng);
   const pos = opts.pos ?? pick(rng, POSITIONS);
   const spec = SPECTRUM[pos];
+  let buntNoise = 0;
+  let stealNoise = 0;
   const p: Hitter = {
     type: 'hitter',
     potential: 0,
@@ -160,7 +182,36 @@ export function makeHitter(rng: Rng, quality = 50, opts: HitterOpts = {}): Hitte
     range: normal(rng, quality + spec.range, 12),
     hands: normal(rng, quality, 12),
     arm: normal(rng, quality + spec.arm, 12),
+    // Accuracy carries no spectrum offset on purpose. Range and arm have one
+    // because a shortstop is *chosen* for them, and the zero-sum check above is
+    // what stops the spectrum from handing the league free defence. Nobody is
+    // moved to right field for having a straight throw, so there is nothing to
+    // redistribute and no reason to risk unbalancing a column that must sum to
+    // nothing.
+    armAccuracy: normal(rng, quality, 12),
+    // Same reasoning, one step further: only the catcher's blocking is ever
+    // read, so a catcher bonus here would not distinguish catchers from anyone
+    // else — it would simply raise the league's baseline behind the plate and
+    // need re-centring, exactly as the catcher arm bonus already does in
+    // game.ts. An average catcher should be average.
+    blocking: normal(rng, quality, 12),
+    // Placeholders. Both read out ratings still being drawn, so the noise is
+    // taken here — in the draw order the rating occupies — and the value is
+    // computed once the literal closes. Same trick velocity uses below.
+    bunt: ((buntNoise = gauss(rng)), 0),
+    steal: ((stealNoise = gauss(rng)), 0),
   };
+  // Bunting belongs to the contact hitter who can run. Power is the one thing
+  // that argues against it: nobody teaches a slugger to give the at-bat away,
+  // and he has not practised it since high school.
+  p.bunt = derived(
+    50 + (p.contact - 50) * 0.30 + (p.speed - 50) * 0.25 - (p.power - 50) * 0.30,
+    buntNoise, 11,
+  );
+  // Speed is worth something on the bases and nothing like everything. The
+  // residual is the jump, and it is large on purpose — that residual is the
+  // difference between a fast man and a base stealer.
+  p.steal = derived(50 + (p.speed - 50) * 0.40, stealNoise, 14);
   p.potential = projectPotential(rng, overallOf(p), p.classYear);
   return p;
 }
@@ -176,6 +227,7 @@ export function makePitcher(rng: Rng, quality = 50, opts: PitcherOpts = {}): Pit
   const sidearm = throws === 'R' && rng() < 0.08 && role === 'RP';
   const name = uniqueName(rng);
   let velocityNoise = 0;
+  let accuracyNoise = 0;
   const p: Pitcher = {
     type: 'pitcher',
     potential: 0,
@@ -204,7 +256,18 @@ export function makePitcher(rng: Rng, quality = 50, opts: PitcherOpts = {}): Pit
     range: normal(rng, 48, 12),
     hands: normal(rng, 52, 11),
     arm: normal(rng, 55, 10),
+    // Placeholder, for the same reason velocity is one: it reads out control.
+    armAccuracy: ((accuracyNoise = gauss(rng)), 0),
   };
+  // A pitcher's fielding sits below a position player's and always has — 48 on
+  // range against a lineup drawn at its school's quality — because he is the
+  // one man on the field picked for something else entirely. Accuracy follows
+  // that: centred a little under average, and pulled toward control, because
+  // whatever lets a man put a ball on the outside corner also lets him put one
+  // in the first baseman's glove. The throw to first is the play pitchers
+  // genuinely botch, and until now they could not: comebackers reached the
+  // shortstop and the mound had no glove at all.
+  p.armAccuracy = Math.max(15, Math.min(95, 46 + (p.control - 50) * 0.25 + accuracyNoise * 10));
   p.potential = projectPotential(rng, overallOf(p), p.classYear);
 
   // Velocity reads out stuff rather than standing apart from it. Nothing in the

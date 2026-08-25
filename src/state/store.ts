@@ -98,7 +98,14 @@ import type { Region } from '../data/schools.js';
 import { makeRng } from '../engine/rng.js';
 import { strategyFor, strategyForPhilosophy, type Strategy } from '../engine/strategy.js';
 import { HOME_CONFERENCE, CONFERENCES } from '../data/schools.js';
-import { saveDynasty, loadDynasty } from './persistence.js';
+import {
+  saveDynasty, loadDynasty, listSaves, deleteSave, newSlotId, AUTOSAVE_SLOT,
+  type SaveSummary,
+} from './persistence.js';
+// Re-exported because the slot is the store's vocabulary as much as the disk's,
+// and every existing caller already imports it from here.
+export { AUTOSAVE_SLOT } from './persistence.js';
+export type { SaveSummary } from './persistence.js';
 import { toPortable, fromPortable } from './seasonCodec.js';
 import { WORLD_SEED, START_YEAR } from './world.js';
 // Re-exported so the screens that already import it from here keep working.
@@ -172,8 +179,15 @@ export const TABS: readonly TabDef[] = [
     // which one he is looking at from the contents rather than the name.
     { id: 'sched', label: 'SCHEDULE' }, { id: 'stand', label: 'CONFERENCE' }, { id: 'rankings', label: 'NATIONAL' }] },
 
+  // Saves sit here because this tab is the one that is about the career rather
+  // than about the season: the board, the record books, the standing policies.
+  // Which dynasty you are coaching, and whether there are others, is the same
+  // kind of question — and it is the one place in the app where the bottom nav
+  // is present and nothing is half-decided, which is the only safe moment to
+  // put a career down and pick a different one up.
   { id: 'program', label: 'PROGRAM', screens: [
-    { id: 'records', label: 'PROGRAM' }, { id: 'history', label: 'HISTORY' }, { id: 'strategy', label: 'STRATEGY' }] },
+    { id: 'records', label: 'PROGRAM' }, { id: 'history', label: 'HISTORY' },
+    { id: 'strategy', label: 'STRATEGY' }, { id: 'saves', label: 'SAVES' }] },
 ];
 
 /** How far through the postseason we are, and what has happened so far. */
@@ -417,8 +431,15 @@ export interface DynastyStore {
    * review's record and rankings tiles looked tappable and did nothing. An
    * overlay works everywhere, and nothing underneath unmounts.
    */
-  overlay: 'schedule' | 'standings' | 'rankings' | null;
-  openOverlay: (o: 'schedule' | 'standings' | 'rankings') => void;
+  /**
+   * The saves menu is in here with the tables for exactly the reason the tables
+   * are: the offseason owns the whole screen, so there is no nav to hang it off
+   * between the last game of one year and the first of the next — which is the
+   * stretch containing every decision somebody would want a copy of the dynasty
+   * before making.
+   */
+  overlay: 'schedule' | 'standings' | 'rankings' | 'saves' | null;
+  openOverlay: (o: 'schedule' | 'standings' | 'rankings' | 'saves') => void;
   closeOverlay: () => void;
 
   /** Whose card is open. Cleared when you navigate away. */
@@ -450,15 +471,47 @@ export interface DynastyStore {
   /** Move a starter up or down the weekend rotation. */
   moveRotation: (index: number, delta: number) => void;
 
-  saveNow: (slot?: string) => Promise<void>;
+  /**
+   * Write the dynasty down. `name` is what the saves list will call it; left
+   * out, a save is filed under the school, which is what the autosave has
+   * always been called.
+   */
+  saveNow: (slot?: string, name?: string) => Promise<void>;
   loadSlot: (slot?: string) => Promise<boolean>;
   saveState: 'idle' | 'saving' | 'saved' | 'error';
   lastSaveError: string | null;
   /** Why the save on disk could not be opened, if it could not. */
   loadError: string | null;
-}
 
-export const AUTOSAVE_SLOT = 'auto';
+  /**
+   * Every dynasty on this device, newest first.
+   *
+   * Held in the store rather than fetched by the screen so that the actions
+   * which change it — a save, a delete — can refresh it from one place. A list
+   * that goes stale the moment you act on it is a list that offers to load a
+   * save that is no longer there.
+   */
+  saves: SaveSummary[];
+  savesState: 'idle' | 'loading' | 'ready' | 'error';
+  /** Why the list could not be read. Almost always storage being refused. */
+  savesError: string | null;
+  refreshSaves: () => Promise<void>;
+  /**
+   * Copy the career as it stands into a slot of its own, under a name the
+   * player typed. The key is generated; see `newSlotId`.
+   */
+  saveAs: (name: string) => Promise<void>;
+  deleteSlot: (slot: string) => Promise<void>;
+  /**
+   * Put the game back on the creation screen.
+   *
+   * Everything that belongs to the career being left has to go with it, and
+   * `start` clears only some of it — a bracket, a live game or an offseason
+   * phase left behind would come back up over the top of a world that has not
+   * been built yet.
+   */
+  newDynasty: () => void;
+}
 
 /**
  * A saved postseason, but only if this build can still play it.
@@ -1620,13 +1673,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   lastSaveError: null,
   loadError: null,
 
-  saveNow: async (slot = AUTOSAVE_SLOT) => {
+  saveNow: async (slot = AUTOSAVE_SLOT, name?: string) => {
     const { season, year, userTeam, history, lastPostseason } = get();
     if (!season) return;
     const team = season.teams[userTeam];
     set({ saveState: 'saving', lastSaveError: null });
     try {
-      await saveDynasty(slot, team ? team.def.school : 'Dynasty', season, year, userTeam, {
+      await saveDynasty(slot, name ?? (team ? team.def.school : 'Dynasty'), season, year, userTeam, {
         history,
         postseason: lastPostseason,
         bracket: get().bracket,
@@ -1690,6 +1743,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       year: loaded.year,
       userTeam: loaded.userTeam,
       needsTeam: false,
+      // Whatever went wrong last time went wrong with a different save. Left
+      // set, a newer-build slot refused once would keep warning about itself
+      // over the top of the career that loaded perfectly well afterwards.
+      loadError: null,
       history: (loaded.history ?? []) as SeasonRecord[],
       coach,
       lastPostseason: (loaded.postseason ?? null) as PostseasonSummary | null,
@@ -1716,6 +1773,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       version: get().version + 1,
       tab: 'home',
       screen: 'today',
+      // Whatever was covering the screen belonged to the dynasty being put
+      // down — including the saves menu this was very likely pressed from.
+      overlay: null,
+      selectedPlayer: null,
       lastOffseason: null,
       // Week recaps are not saved, and a stale one from the previous session
       // would sit over a board it does not describe.
@@ -1724,6 +1785,71 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     });
     return true;
   },
+
+  saves: [],
+  savesState: 'idle',
+  savesError: null,
+
+  refreshSaves: async () => {
+    set({ savesState: 'loading' });
+    try {
+      set({ saves: await listSaves(), savesState: 'ready', savesError: null });
+    } catch (e) {
+      // Storage refused. The list is empty rather than wrong, and the screen
+      // says why — a saves page that silently shows nothing reads as "you have
+      // no dynasties", which is the one thing it must never say by accident.
+      set({
+        saves: [], savesState: 'error',
+        savesError: e instanceof Error ? e.message : String(e),
+      });
+    }
+  },
+
+  saveAs: async (name) => {
+    if (!get().season) return;
+    const typed = name.trim();
+    // The key is generated and owes nothing to the text above. See `newSlotId`.
+    await get().saveNow(newSlotId(), typed.length > 0 ? typed : undefined);
+    await get().refreshSaves();
+  },
+
+  deleteSlot: async (slot) => {
+    try {
+      await deleteSave(slot);
+      set({ savesError: null });
+    } catch (e) {
+      set({ savesError: e instanceof Error ? e.message : String(e) });
+    }
+    await get().refreshSaves();
+  },
+
+  newDynasty: () => set({
+    season: null,
+    needsTeam: true,
+    // The career being left takes all of its furniture with it. `start` clears
+    // the history and the offers and stops there, which was safe only while the
+    // creation screen could be reached from nowhere but a cold boot.
+    phase: null,
+    furthestPhase: 0,
+    bracket: null,
+    myBracket: null,
+    knockout: null,
+    postseasonSeen: [],
+    lastPostseason: null,
+    live: null,
+    liveMeta: null,
+    jobSearch: false,
+    offers: [],
+    lastReview: null,
+    lastOutcome: null,
+    lastOffseason: null,
+    lastWeek: null,
+    lastCommits: [],
+    history: [],
+    overlay: null,
+    selectedPlayer: null,
+    loadError: null,
+  }),
 }));
 
 /**

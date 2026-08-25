@@ -9,8 +9,8 @@ import {
   DEFAULT_STRATEGY, type Strategy,
 } from './strategy.js';
 import type {
-  BattedBall, EngineFn, EngineName, HitLine, Hitter, PAKind, Pitcher, PitchLine,
-  PitchResult, PlayEvent, Position, Rng, Tactic, TacticMods, Team,
+  BattedBall, EngineFn, EngineName, FieldLine, HitLine, Hitter, PAKind, Pitcher,
+  PitchLine, PitchResult, Player, PlayEvent, Position, Rng, Tactic, TacticMods, Team,
 } from './types.js';
 
 /**
@@ -51,15 +51,36 @@ export function tacticMods(tactic?: Tactic): TacticMods | undefined {
  */
 const EXTRA_INNINGS_TIEBREAK = 10;
 
+/**
+ * Chance a pitch gets past an average catcher with a man on base.
+ *
+ * Passed balls and wild pitches together, because from the runner's side they
+ * are the same play and the engine has no pitch location to tell them apart.
+ * Rolled once per batter with somebody on, which measures at 0.63 a team a game.
+ *
+ * Deliberately short of the real figure, and worth being plain about why. The
+ * majors run about 0.45 of these a team a game and Division I runs well over
+ * one, because college pitchers miss by more and college catchers are twenty
+ * years old. Ours sits between the two. Every one of them is a base the offence
+ * did not earn, the run environment is calibrated to within a few percent of a
+ * sourced target, and the college rate would spend that whole margin on one
+ * play. Raise it only alongside a recalibration, never on its own.
+ */
+const PASSED_BALL_RATE = 0.030;
+
 const ORD = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th','12th','13th','14th','15th'];
 
 const blankHit = (): HitLine =>
   ({ ab: 0, r: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, hbp: 0, sb: 0, cs: 0 });
 const blankPit = (): PitchLine =>
   ({ outs: 0, h: 0, r: 0, er: 0, bb: 0, k: 0, hr: 0, pitches: 0, bf: 0 });
+const blankFld = (): FieldLine =>
+  ({ chances: 0, plays: 0, expected: 0, errors: 0, throwing: 0, pb: 0, sba: 0, cs: 0 });
 
 export type BattingLine = HitLine & { player: Hitter };
 export type PitchingLine = PitchLine & { player: Pitcher };
+/** The pitcher is on here too: he fields comebackers like anybody else. */
+export type FieldingLine = FieldLine & { player: Player };
 
 /** First, second, third. A tuple so index access stays checked. */
 export type Bases = [Hitter | null, Hitter | null, Hitter | null];
@@ -135,13 +156,13 @@ export class TeamState {
   spot = 0;
   runs = 0;
   hits = 0;
-  errors = 0;
   readonly lineScore: number[] = [];
   pitcher: Pitcher;
   penIndex = 0;
   pitcherPitches = 0;
   readonly batting = new Map<string, BattingLine>();
   readonly pitching = new Map<string, PitchingLine>();
+  readonly fielding = new Map<string, FieldingLine>();
   readonly timesThrough = new Map<string, number>();
   readonly defense: number;
   /** Average outfield arm, for runners testing it. */
@@ -220,7 +241,15 @@ export class TeamState {
     // the man who actually fields the ball, and `edge` came out positive on
     // average — turning what should be a redistribution between fielders into a
     // league-wide defensive upgrade worth about 1% of scoring.
-    const gloves = this.order.filter((p) => p.pos !== 'DH');
+    const gloves: Player[] = this.order.filter((p) => p.pos !== 'DH');
+    // The man on the mound belongs in this average now that comebackers reach
+    // him. Leaving him out would put a 48-range fielder on roughly a twentieth of
+    // the balls in play while the baseline `edge` is measured against pretended
+    // he was not there — which is the same silent league-wide offense change the
+    // DH correction above was written to stop, in the other direction. The
+    // starter stands in for whoever is pitching at the time; a reliever moves
+    // this by a fraction of a rating point.
+    gloves.push(starter);
     let weighted = 0, weight = 0;
     for (const p of gloves) {
       const w = FIELDING_SHARE[p.pos] ?? 0.11;
@@ -245,6 +274,22 @@ export class TeamState {
     for (const p of this.order) if (!this.byPosition.has(p.pos)) this.byPosition.set(p.pos, p);
   }
 
+  /**
+   * The E column, summed from the men who actually booted the ball rather than
+   * counted alongside them.
+   *
+   * An error used to land on a team counter and nowhere else, which is why no
+   * defensive play in this game had ever been attributed to a player. Deriving
+   * the total instead of tracking it in parallel means the box score and the
+   * fielding lines cannot disagree — there is one place an error is recorded and
+   * this reads it.
+   */
+  get errors(): number {
+    let n = 0;
+    for (const f of this.fielding.values()) n += f.errors;
+    return n;
+  }
+
   hitLine(p: Hitter): BattingLine {
     let line = this.batting.get(p.name);
     if (!line) { line = { player: p, ...blankHit() }; this.batting.set(p.name, line); }
@@ -254,6 +299,12 @@ export class TeamState {
   pitchLine(p: Pitcher): PitchingLine {
     let line = this.pitching.get(p.name);
     if (!line) { line = { player: p, ...blankPit() }; this.pitching.set(p.name, line); }
+    return line;
+  }
+
+  fieldLine(p: Player): FieldingLine {
+    let line = this.fielding.get(p.name);
+    if (!line) { line = { player: p, ...blankFld() }; this.fielding.set(p.name, line); }
     return line;
   }
 
@@ -462,6 +513,54 @@ export function createHalfInning(
     return outs >= 3;
   };
 
+  /**
+   * A pitch gets past the catcher.
+   *
+   * Rolled only with somebody on, and not because it never happens otherwise —
+   * a ball to the backstop with the bases empty is simply a ball, and rolling
+   * for it would spend a random draw to produce no baseball at all.
+   *
+   * Not an out and not a plate appearance: everybody moves up and the same man
+   * is still standing at the plate, so it resolves out here beside the steal
+   * rather than inside the at-bat. It is also not an error, by rule — a passed
+   * ball is its own line in the book and the runs it lets in stay earned, which
+   * is why nothing here touches the fielding line's error column.
+   *
+   * Returns true when the run it let in ended the game.
+   */
+  const resolvePassedBall = (): boolean => {
+    if (!bases[0] && !bases[1] && !bases[2]) return false;
+    const catcher = fld.catcher;
+    // The catcher's job first and the pitcher's second. A ball in the dirt is
+    // half the pitcher's doing, which is the one other place `control` earns
+    // its keep beyond the walk column.
+    const chance = clamp(
+      PASSED_BALL_RATE * mult(catcher.blocking, -0.55) * mult(fld.pitcher.control, -0.25),
+      0, 0.25,
+    );
+    if (rng() >= chance) return false;
+
+    const before: Bases = [bases[0], bases[1], bases[2]];
+    const home: Hitter[] = [];
+    // Lead runner first, so nobody is written on top of anybody — the same rule
+    // `advanceOnHit` spends thirty lines protecting.
+    if (bases[2]) { home.push(bases[2]); bases[2] = null; }
+    if (bases[1]) { bases[2] = bases[1]; bases[1] = null; }
+    if (bases[0]) { bases[1] = bases[0]; bases[0] = null; }
+
+    fld.fieldLine(catcher).pb++;
+    say(`   The pitch gets by ${catcher.name}.`);
+    for (const r of home) say(`   ${r.name} scores from third.`);
+    bringHome(home, fld.pitcher, true);
+    if (events) {
+      const moves = runnerMoves(before, bases, home);
+      if (moves.length > 0) events.push({ kind: 'advance', runners: moves });
+      if (home.length > 0) events.push({ kind: 'score', runs: home.length });
+    }
+    if (home.length > 0) onScore?.(bat, fld);
+    return canWalkOff && bat.runs > fld.runs;
+  };
+
   const step = (calledFor?: Tactic): boolean => {
     // A computer-run side makes its own calls. Under manual management the coach
     // has already made his, and the engine must not second-guess him.
@@ -484,6 +583,15 @@ export function createHalfInning(
     if (!manualDefense) maybeChangePitcher(fld, say);
     if (!manualOffense) maybePinchHit(bat, fld, inning, rng, say);
     if (!manualOffense && resolveSteal(false)) { finished = true; return true; }
+
+    // Nobody calls for this one. It runs in a managed game exactly as it does in
+    // a simulated one, because a ball off the catcher's shin guard is not a
+    // decision anybody made.
+    if (resolvePassedBall()) {
+      say(`   ${bat.team.name} win it.`);
+      finished = true;
+      return true;
+    }
 
     const pitcher = fld.pitcher;
     const batter = bat.nextBatter();
@@ -597,6 +705,13 @@ export function createHalfInning(
       ? null
       : fielderFor(fld, pa.kind, batter, rng);
 
+    // What an average glove on this team would have done with it, taken before
+    // the man actually standing there gets a say. That is the baseline his
+    // fielding line is measured against, and it is the same baseline the range
+    // swing below works from — so "plays above expected" is the range model's
+    // own arithmetic read back out, rather than a second opinion about it.
+    const expectedOut = event === 'out' && pa.kind !== 'strikeout';
+
     // Range first: does he get to it at all? Then hands: having got there, does
     // he handle it? That is the real order of events on a ground ball, and
     // keeping them separate is the whole reason the two ratings exist.
@@ -618,9 +733,28 @@ export function createHalfInning(
     if (event === 'out' && pa.kind !== 'strikeout' && fielder) {
       // His hands, not the team's average — and a scorched grounder is a much
       // better chance to boot one than a lazy fly.
-      const chance = 0.055 * ERROR_BY_KIND * (KIND_ERROR_RISK[pa.kind] ?? 1)
+      const chance = GLOVE_ERROR_BASE * ERROR_BY_KIND * (KIND_ERROR_RISK[pa.kind] ?? 1)
         * mult(fielder.hands, -0.55);
       if (rng() < chance) { event = 'error'; errored = true; }
+      // Having fielded it cleanly, he still has to get it across the diamond.
+      // Second roll rather than one combined chance because the two failures do
+      // different things to the inning: a booted ball is a runner on first, a
+      // throw into the camera well is a runner on first and everybody else up a
+      // base. Only a ground ball involves a throw at all.
+      else if (pa.kind === 'ground') {
+        const risk = throwRisk(fielder, fld.pitcher);
+        if (risk > 0 && rng() < risk) { event = 'throwing'; errored = true; }
+      }
+    }
+
+    // His day, one line per man, whoever he is. Home runs are excluded because
+    // nobody had a chance at one; everything else hit into his zone was a play
+    // that could have been made.
+    if (fielder && event !== 'homerun') {
+      const fLine = fld.fieldLine(fielder);
+      fLine.chances++;
+      if (expectedOut) fLine.expected++;
+      if (event === 'out') fLine.plays++;
     }
 
     switch (event) {
@@ -639,9 +773,23 @@ export function createHalfInning(
         for (const r of scored) note(`   ${r.name} is forced home.`);
         break;
       case 'error':
-        bLine.ab++; fld.errors++;
+        bLine.ab++;
+        if (fielder) fld.fieldLine(fielder).errors++;
         addOuts(advanceOnHit(bases, batter, 1, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note));
         say(`${cnt} ${batter.name} reaches on an error by ${fielder?.name ?? 'the defense'}.`);
+        break;
+      case 'throwing':
+        bLine.ab++;
+        if (fielder) {
+          const fl = fld.fieldLine(fielder);
+          fl.errors++; fl.throwing++;
+        }
+        // The extra base is the entire difference between this and a booted
+        // ball. Nobody is thrown out on it either — the ball is loose and there
+        // is no throw left to make, which is why `advanceOnHit` skips its own
+        // risk check when the bonus is on.
+        addOuts(advanceOnHit(bases, batter, 1, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note, 1));
+        say(`${cnt} ${batter.name} reaches on a throwing error by ${fielder?.name ?? 'the defense'}; the ball gets away.`);
         break;
       case 'single':
         bLine.ab++; bLine.h++; bat.hits++; pLine.h++;
@@ -816,6 +964,14 @@ export function advanceOnHit(
   run: { attempt: number; risk: number } = RUNNING.balanced,
   defenceArm = 50,
   say?: Say,
+  /**
+   * Bases every runner takes on top of whatever the play gave him, and the
+   * batter does not. This exists for the wild throw: the batter reaches first
+   * like any other error, and the men already on advance further because the
+   * ball is rolling loose behind the play. Nobody is thrown out while it is set,
+   * for the same reason — there is no throw left to make.
+   */
+  runnerBonus = 0,
 ): number {
   let retired = 0;
 
@@ -866,6 +1022,7 @@ export function advanceOnHit(
     } else if (numBases === 2 && i === 0) {
       adv = go(BASERUNNING.scoreFromFirstOnDouble, 0.35, 0.18, 0.92, 3, 2);
     }
+    adv += runnerBonus;
 
     bases[i] = null;
 
@@ -884,7 +1041,7 @@ export function advanceOnHit(
     // single — which put a fourth out in the inning and was caught by the replay
     // test rather than by anything in the engine.
     const pushed = numBases === 2 ? gained === 3 : gained === 2;
-    if (tried && pushed && retired === 0) {
+    if (tried && pushed && retired === 0 && runnerBonus === 0) {
       const thrownOut = clamp(
         BASERUNNING.thrownOutAdvancing * run.risk
           * mult(runner.speed, -0.45) * mult(defenceArm, 0.40),
@@ -939,12 +1096,58 @@ const GROUND_LANES: readonly (readonly [Lane, number])[] =
 const AIR_LANES: readonly (readonly [Lane, number])[] =
   [['pull', 0.36], ['middle', 0.36], ['oppo', 0.28]];
 
-/** Infield positions by lane, for a right handed hitter. Mirrored for lefties. */
-const INFIELD: Record<Lane, readonly Position[]> = {
-  pull: ['3B', 'SS'],
-  middle: ['P', 'SS', '2B'],
-  oppo: ['2B', '1B'],
+/**
+ * Infield positions by lane, for a right handed hitter. Mirrored for lefties.
+ *
+ * The middle lane used to list the pitcher first and never once produced him:
+ * these are resolved through `byPosition`, which is built from the batting
+ * order, and the batting order does not contain a pitcher. Every comebacker in
+ * the history of this engine was quietly fielded by the shortstop. The mound is
+ * handled explicitly below instead — as a share of ground balls rather than the
+ * whole middle lane, which is what listing him here would have meant if it had
+ * ever worked.
+ *
+ * The lane also has to be split between the two men standing in it, rather than
+ * handed to whichever is named first. Read as a fallback chain — which is what
+ * this was — the pull lane always went to the third baseman, the middle lane
+ * always to the shortstop and the opposite lane always to the second baseman,
+ * so the third baseman saw more ground balls than the shortstop and **the first
+ * baseman fielded nothing at all, ever**. His range and hands were ratings the
+ * simulation could not read, which is invisible until a fielding line asks him
+ * how many chances he had and he says none.
+ *
+ * The weights inside each lane are set from real assist counts, which is the
+ * closest published thing to "fielded a ground ball himself": across a season a
+ * shortstop records around 400, a second baseman 380, a third baseman 280 and a
+ * first baseman 110 — the corner is low because the second baseman cuts off most
+ * of the right side, and because a first baseman's putouts are overwhelmingly
+ * throws he received rather than balls he fielded.
+ */
+const INFIELD: Record<Lane, readonly (readonly [Position, number])[]> = {
+  pull: [['3B', 0.53], ['SS', 0.47]],
+  middle: [['SS', 0.48], ['2B', 0.52]],
+  oppo: [['2B', 0.65], ['1B', 0.35]],
 };
+
+/**
+ * Share of ground balls the pitcher fields himself.
+ *
+ * Roughly what the real number is, and the figure the lane table's own comment
+ * has claimed all along. It is drawn before the lane so the pitcher takes his
+ * cut out of the whole diamond rather than out of one third of it.
+ */
+const COMEBACKER_SHARE = 0.12;
+
+/**
+ * Share of pop-ups the catcher takes.
+ *
+ * Same hole as the comebacker, one position over: the defensive baseline has
+ * always assumed the catcher handles about two percent of balls in play, and the
+ * lane tables never once sent him one. A quarter of the pop-ups is what that two
+ * percent works out to, and a pop-up straight up off the plate is the ball he
+ * really does catch.
+ */
+const CATCHER_POPUP_SHARE = 0.24;
 
 const OUTFIELD: Record<Lane, readonly Position[]> = {
   pull: ['LF'],
@@ -970,9 +1173,19 @@ const pullBias = (batter: Hitter): number =>
  * *player*, so that range, hands and the play log can stop talking about "the
  * defense" as if it were one person.
  */
-function fielderFor(fld: TeamState, kind: PAKind, batter: Hitter, rng: Rng): Hitter {
+function fielderFor(fld: TeamState, kind: PAKind, batter: Hitter, rng: Rng): Player {
   const grounded = kind === 'ground';
   const infield = grounded || kind === 'popup';
+
+  // Back through the box. Ground balls only: a pitcher does occasionally spear a
+  // line drive, but a liner he does not catch is a hit off the bat and the
+  // engine has no way to tell the two apart, so claiming the chance would mean
+  // claiming plays he never had.
+  if (grounded && rng() < COMEBACKER_SHARE) return fld.pitcher;
+  if (kind === 'popup' && rng() < CATCHER_POPUP_SHARE) {
+    const backstop = fld.byPosition.get('C');
+    if (backstop) return backstop;
+  }
 
   const table = infield ? GROUND_LANES : AIR_LANES;
   const bias = pullBias(batter);
@@ -995,7 +1208,13 @@ function fielderFor(fld: TeamState, kind: PAKind, batter: Hitter, rng: Rng): Hit
   // infield take a share of them, which is what a line out to short is.
   const useInfield = infield || (kind === 'line' && rng() < 0.32);
   const side = batter.bats === 'L' ? MIRROR[lane] : lane;
-  const options = useInfield ? INFIELD[side] : OUTFIELD[side];
+
+  // Which of the two men in the lane gets it. The outfield lanes hold one man
+  // each and take no draw; the infield splits, and the man who loses the split
+  // is still the fallback if his neighbour is missing from the lineup.
+  const options: readonly Position[] = useInfield
+    ? weighted(INFIELD[side], rng)
+    : OUTFIELD[side];
 
   for (const pos of options) {
     const man = fld.byPosition.get(pos);
@@ -1003,6 +1222,24 @@ function fielderFor(fld: TeamState, kind: PAKind, batter: Hitter, rng: Rng): Hit
   }
   // A lineup missing that position: fall back to anyone rather than throwing.
   return fld.order[0] as Hitter;
+}
+
+/**
+ * The lane's two positions, best candidate first, chosen on the weights.
+ *
+ * Returns both rather than one so the caller keeps its fallback: a lineup with
+ * no first baseman is a lineup bug, and the ball should go to the second baseman
+ * rather than to the top of the order.
+ */
+function weighted(
+  table: readonly (readonly [Position, number])[], rng: Rng,
+): readonly Position[] {
+  let r = rng();
+  for (const [pos, share] of table) {
+    r -= share;
+    if (r < 0) return [pos, ...table.map(([p]) => p).filter((p) => p !== pos)];
+  }
+  return table.map(([p]) => p);
 }
 
 /**
@@ -1049,7 +1286,7 @@ const POSITION_SPOT: Record<Position, { x: number; y: number }> = {
  * instead, which is stable, free, and varies exactly as much as it needs to.
  */
 function landingFor(
-  fielder: Hitter | null, kind: PAKind, event: string, salt: number,
+  fielder: Player | null, kind: PAKind, event: string, salt: number,
 ): { x: number; y: number } | undefined {
   if (!fielder || !BATTED_KINDS.has(kind)) return undefined;
 
@@ -1113,6 +1350,10 @@ const RANGE_SWING = 0.18;
 const FIELDING_SHARE: Partial<Record<Position, number>> = {
   SS: 0.15, '2B': 0.13, '3B': 0.10, '1B': 0.09, C: 0.02,
   LF: 0.16, CF: 0.19, RF: 0.16,
+  // Comebackers: `COMEBACKER_SHARE` of the ground balls, which are 44% of balls
+  // in play. Small, and it has to be here or the pitcher's glove would be a
+  // free discount on the defensive baseline.
+  P: 0.05,
 };
 
 /**
@@ -1127,6 +1368,76 @@ const OUT_TO_HIT_BALANCE = 0.178 / 0.4885;
 export const KIND_ERROR_RISK: Partial<Record<PAKind, number>> = {
   ground: 1.00, line: 0.55, fly: 0.45, popup: 0.30,
 };
+
+/**
+ * The two ways a defence gives a batter first base, and how the league's error
+ * total is split between them.
+ *
+ * There was only ever one: a ball hit at a man and not handled. Real fielders
+ * throw the ball away roughly as often as they drop it — a little over a third
+ * of all errors are throwing errors — and the throw is the more expensive
+ * mistake, because a ball skipping past first base moves every runner rather
+ * than just putting one on. That difference is the whole reason to model it
+ * separately instead of raising the muffed-ball rate.
+ *
+ * These two are a **split of the old rate, not an addition to it.** The league
+ * error total is a calibrated quantity sitting near one a game, which is where
+ * a .965 fielding percentage puts it; adding a second error path on top of the
+ * first would have put it near one and a half. GLOVE was 0.055 and carried
+ * everything.
+ */
+const GLOVE_ERROR_BASE = 0.0376;
+
+/**
+ * Charged only where the engine actually knows a throw was made: a ground ball
+ * an infielder fielded, which is a throw across the diamond. An outfielder
+ * catching a fly ball throws to nobody, and a runner testing an outfield arm is
+ * already resolved by `advanceOnHit` without the ball ever being described as
+ * on target or not — so claiming a wild throw there would be inventing a play
+ * the simulation never ran.
+ *
+ * Higher per chance than the glove rate because it applies to under half as
+ * many balls.
+ */
+const THROW_ERROR_BASE = 0.0408;
+
+/**
+ * Share of ground balls to the first baseman that become a throw at all.
+ *
+ * The rest he carries to the bag himself, which is the reason his arm was
+ * exempt from the throw entirely to begin with. But half of them are not that
+ * play — they are a feed to the pitcher covering first, which is the one thing
+ * besides a comebacker a pitcher is on the field to do, and it was the last
+ * ground ball in the engine with nobody throwing on it. Leaving it out left the
+ * first baseman's accuracy a rating the simulation could not read, which is the
+ * dead menu item this whole pass exists to stop.
+ */
+const COVER_FIRST_SHARE = 0.50;
+
+/**
+ * The chance a ground ball, once it is cleanly in the glove, is thrown away.
+ *
+ * Zero for anyone standing in the outfield, which on a ground ball is nobody —
+ * the lane tables only ever send a grounder to an infielder — so that arm is a
+ * guard on the one fallback path in `fielderFor`, where a lineup missing a
+ * position hands the ball to the top of the order.
+ *
+ * The play at first is two men and reads both of them: the first baseman puts
+ * the ball where the pitcher can catch it, and the pitcher has to catch it on
+ * the run and find the bag. It is charged to the first baseman either way. A
+ * real scorer would split it — a wild feed is the fielder's error and a dropped
+ * one is the pitcher's — and the engine keeps a single culprit rather than
+ * pretending to know which end of a play it resolved in one roll failed.
+ */
+export function throwRisk(fielder: Player, covering: Pitcher): number {
+  const pos = fielder.pos;
+  if (pos === 'LF' || pos === 'CF' || pos === 'RF' || pos === 'DH') return 0;
+  if (pos === '1B') {
+    return COVER_FIRST_SHARE * THROW_ERROR_BASE
+      * mult(fielder.armAccuracy, -0.55) * mult(covering.hands, -0.35);
+  }
+  return THROW_ERROR_BASE * mult(fielder.armAccuracy, -0.55);
+}
 
 /**
  * Divisor holding the league error total where it was once the risks above are
@@ -1147,7 +1458,7 @@ function resolveOut(
   bases: Bases, batter: Hitter, kind: PAKind, outs: number, rng: Rng,
   scored: Hitter[], blame: Map<Hitter, Pitcher>, pitcher: Pitcher,
   called?: TacticMods,
-  fielder?: Hitter | null,
+  fielder?: Player | null,
   note?: Say,
 ): { outs: number; text: string } {
   // A call can raise the double play risk or make a sacrifice fly likelier.
@@ -1233,8 +1544,11 @@ function sacrifice(
     return { outs: 1, text: 'bunts into an out.', scored };
   }
 
-  // Beating it out: rare, and mostly a speed thing.
-  if (rng() < clamp(0.09 * mult(batter.speed, 0.9), 0.02, 0.28)) {
+  // Beating it out: rare, mostly a speed thing, and partly a matter of putting
+  // the ball where nobody can get to it in time. A team-level bunt policy has
+  // existed since coaching strategy landed; who could execute it did not, so a
+  // slugger dropped one as well as a leadoff man.
+  if (rng() < clamp(0.09 * mult(batter.speed, 0.9) * mult(batter.bunt, 0.50), 0.02, 0.28)) {
     bLine.ab++; bLine.h++; pLine.h++;
     // The runners it retires count. Thrown away, a man gunned down going first
     // to third on a bunt single left the bases without the out ever being
@@ -1255,7 +1569,8 @@ function sacrifice(
   // one out.
   let forcedAt = -1;
   for (let i = 0; i < 3 && bases[i]; i++) forcedAt = i;
-  if (forcedAt >= 0 && rng() < clamp(0.12 * mult(batter.speed, -0.4), 0.04, 0.30)) {
+  if (forcedAt >= 0
+      && rng() < clamp(0.12 * mult(batter.speed, -0.4) * mult(batter.bunt, -0.60), 0.04, 0.30)) {
     const caught = bases[forcedAt as 0 | 1 | 2];
     note?.(`   ${caught?.name ?? 'The lead runner'} is forced at ${BASE_WORD[forcedAt + 1] ?? 'home'}.`);
     bases[forcedAt as 0 | 1 | 2] = null;
@@ -1319,10 +1634,21 @@ const catcherArm = (c: Hitter, sensitivity: number): number =>
  * Measured over every generated lineup bat against every school's starter and
  * catcher: a called steal of second is caught 30% of the time and of third 36%,
  * against a real D1 caught-stealing rate in the twenties to low thirties.
+ *
+ * `speed` and `jump` split what used to be one number. The steal has two halves
+ * and they belong to different skills: reading the first move and leaving on it
+ * is instinct, and covering the ninety feet once you have gone is wheels. The
+ * jump is the larger share, which is why the base stealers in real baseball are
+ * not simply the fastest men in the league. The two weights together are close
+ * to the single one they replaced, so the league's caught-stealing rate stays
+ * where it was calibrated.
  */
-const STEAL_OF: Record<2 | 3, { base: number; speed: number; hold: number; arm: number }> = {
-  2: { base: 0.70, speed: 0.30, hold: -0.15, arm: -0.34 },
-  3: { base: 0.64, speed: 0.30, hold: -0.10, arm: -0.40 },
+const STEAL_OF: Record<
+  2 | 3,
+  { base: number; speed: number; jump: number; hold: number; arm: number }
+> = {
+  2: { base: 0.70, speed: 0.12, jump: 0.22, hold: -0.15, arm: -0.34 },
+  3: { base: 0.64, speed: 0.10, jump: 0.24, hold: -0.10, arm: -0.40 },
 };
 
 /** Where a runner would go if one were sent. Null when every bag ahead is taken. */
@@ -1347,8 +1673,12 @@ function attemptSteal(
   // people out, it stops them leaving — which is why the arm has to appear here
   // as well as in the throw, or elite catchers would post huge caught-stealing
   // totals instead of the empty basepaths they actually produce.
+  // Who goes is mostly a question of who thinks he can, which is instinct
+  // rather than raw speed — the fast man who never runs is a real player and
+  // was not expressible while one rating decided both halves of this.
   const attempt = clamp(
-    0.11 * green * mult(runner.speed, 1.1) * mult(fld.pitcher.holdRunners, -0.35)
+    0.11 * green * mult(runner.speed, 0.45) * mult(runner.steal, 0.65)
+         * mult(fld.pitcher.holdRunners, -0.35)
          * catcherArm(fld.catcher, -0.30),
     0, 0.75,
   );
@@ -1364,20 +1694,24 @@ function attemptSteal(
   // where the model actually tops out, and the floor low enough that a plodder
   // against a cannon is genuinely a bad idea rather than a coin flip.
   const success = clamp(
-    profile.base * mult(runner.speed, profile.speed)
+    profile.base * mult(runner.speed, profile.speed) * mult(runner.steal, profile.jump)
       * mult(fld.pitcher.holdRunners, profile.hold)
       * catcherArm(fld.catcher, profile.arm),
     0.25, 0.90,
   );
   const line = bat.hitLine(runner);
+  // The steal is the one defensive play the catcher was already making and
+  // getting no credit for. It goes on his fielding line, where a badge or an
+  // award can find it later.
+  const backstop = fld.fieldLine(fld.catcher);
   const word = target === 2 ? 'second' : 'third';
   if (rng() < success) {
-    bases[from - 1] = null; bases[target - 1] = runner; line.sb++;
+    bases[from - 1] = null; bases[target - 1] = runner; line.sb++; backstop.sba++;
     say(`   ${runner.name} steals ${word}.`);
     if (events) events.push({ kind: 'advance', runners: [{ id: runner.id, from, to: target }] });
     return 'stolen';
   }
-  bases[from - 1] = null; line.cs++;
+  bases[from - 1] = null; line.cs++; backstop.cs++;
   say(`   ${runner.name} is caught stealing ${word}.`);
   return 'caught';
 }

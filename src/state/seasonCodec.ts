@@ -47,6 +47,12 @@ export function fromPortable(p: Portable): SeasonState {
     if (typeof t.prestige !== 'number') team.prestige = initialPrestige(team.def.prestige);
   }
 
+  // Same rule one level up: a save written before fielding was kept has two stat
+  // books instead of three. An empty one is the truthful state — nobody's
+  // chances were ever recorded — and it means the season starts counting again
+  // from the next pitch rather than every reader having to guard the map.
+  p.season.fielding ??= new Map();
+
   return {
     ...p.season,
     rng: rngFromState(p.rngState),

@@ -6,24 +6,31 @@
 // four different questions and answering them on one list means answering none
 // of them well.
 //
-// Two rules hold the screen together. Ratings are **scouting reports, not
-// truth**, so the board is a set of bets rather than a sorted table. And a
-// recruit out of your program's reach is refused outright rather than quietly
-// discounted, because a button that works and achieves nothing reads as a bug.
+// Two rules hold the screen together.
+//
+// **Nothing here is a fact.** A recruit's ability is a band and his ceiling is
+// a span of letters, both as wide as the coach reading them is bad at this, and
+// the two lines of scouting prose narrow the field without ever settling it. So
+// the board is a set of bets rather than a sorted table, and the class review
+// after signing day is where anybody finds out. See the long note at the top of
+// `recruiting.ts` for how the bands are drawn and why the truth is never in the
+// middle of one.
+//
+// **A recruit out of your program's reach is refused outright** rather than
+// quietly discounted, because a button that works and achieves nothing reads as
+// a bug.
 
 import { useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import {
   fit, weeklyPoints, canPursue, byRank, PRIORITIES, PRIORITY_LABEL, PRIORITY_BLURB,
   SCHOLARSHIPS, MAX_PER_RECRUIT, RECRUITING_WEEKS, budgetFor,
+  reportedOverall, reportedPotential, reportedTool, reportWidth, hintsFor,
   type Prospect, type Priority,
 } from '../../engine/recruiting.js';
 import { pitchFor, developmentScore } from '../../engine/pitch.js';
 import { overallOf } from '../../engine/ratings.js';
-import {
-  scoutedOverall, scoutedPotential, scoutedRange, highSchoolLine,
-  POTENTIAL_BLURB, type PotentialGrade,
-} from '../../engine/scouting.js';
+import { highSchoolLine, type PotentialGrade } from '../../engine/scouting.js';
 import { CONFERENCES, ALL_STATES } from '../../data/schools.js';
 import { prestigeStars } from '../../engine/program.js';
 import { Avatar } from '../Avatar.js';
@@ -31,7 +38,14 @@ import { FixedHeader, FloatingAction } from '../Sticky.js';
 import type { Hitter, Pitcher, Position } from '../../engine/types.js';
 
 type View = 'recruits' | 'targets' | 'commits' | 'needs' | 'roster';
-type Sheet = 'overview' | 'ratings' | 'stats' | 'schools';
+type Sheet = 'overview' | 'report' | 'stats' | 'schools';
+
+const SHEET_LABEL: Record<Sheet, string> = {
+  overview: 'OVERVIEW',
+  report: 'REPORT',
+  stats: 'HIGH SCHOOL',
+  schools: 'SCHOOLS',
+};
 
 /** Grades in order, so a "minimum potential" filter has something to compare. */
 const GRADE_RANK: Record<PotentialGrade, number> = {
@@ -107,6 +121,7 @@ export function Board() {
   }, [season, team, version]);
 
   const myStars = team ? prestigeStars(team.prestige) : 1;
+  const recruitingSkill = coach.skills.recruiting;
 
   const { list, matches, targets, commits, spent, locked } = useMemo(() => {
     const all = season?.recruiting.prospects ?? [];
@@ -135,13 +150,16 @@ export function Board() {
       if (filters.pos && slotOf(p) !== filters.pos) return false;
       if (filters.state && p.state !== filters.state) return false;
       if (filters.affordableOnly && !canPursue(p, myStars)) return false;
-      // Filtered on the *reported* numbers, because those are the only ones a
-      // coach has. Filtering on truth would leak the ratings the screen is
-      // deliberately hiding.
-      if (scoutedOverall(p.player, p.stars) < filters.minOverall) return false;
+      // Filtered on the *top* of the reported band, not on the truth and not on
+      // a midpoint. A coach asking for sixty overall is asking to be shown
+      // everybody who might be sixty, and his own reports are the only thing he
+      // has to go on — so a wide report keeps a player in, which is the cost of
+      // being bad at this said out loud. Filtering on the truth would leak the
+      // ratings the whole screen is built to hide.
+      if (reportedOverall(p, recruitingSkill).high < filters.minOverall) return false;
       // Potential is a grade, not a number — a minimum is a minimum grade.
       if (filters.minPotential > 0) {
-        const rank = GRADE_RANK[scoutedPotential(p.player, p.stars)];
+        const rank = GRADE_RANK[reportedPotential(p, recruitingSkill).high];
         if (rank < GRADE_RANK[wantedGrade(filters.minPotential)]) return false;
       }
       return true;
@@ -174,7 +192,7 @@ export function Board() {
       locked: shown.filter((p) => !canPursue(p, myStars))
         .sort((a, b) => b.stars - a.stars).slice(0, 5),
     };
-  }, [season, userTeam, version, pitch, myStars, filters]);
+  }, [season, userTeam, version, pitch, myStars, filters, recruitingSkill]);
 
   if (!season || !team || !pitch) return null;
 
@@ -526,15 +544,22 @@ function FilterPanel({
         ))}
       </div>
 
+      {/*
+        "Could be", not "is". These read against the top of each recruit's
+        reported band, because the truth is the one thing a filter cannot see —
+        so a wide report keeps a player in the list. That is not a bug to hide
+        in the label: a bad recruiter genuinely cannot rule anybody out, and the
+        wording has to say so or the filter looks broken.
+      */}
       <Slider
-        label="MIN OVERALL"
+        label="COULD BE OVERALL"
         value={filters.minOverall}
         onChange={(n) => set('minOverall', n)}
       />
       <Slider
         label={filters.minPotential > 0
-          ? `MIN POTENTIAL · ${wantedGrade(filters.minPotential)} OR BETTER`
-          : 'MIN POTENTIAL'}
+          ? `COULD REACH · ${wantedGrade(filters.minPotential)} OR BETTER`
+          : 'COULD REACH'}
         value={filters.minPotential}
         onChange={(n) => set('minPotential', n)}
       />
@@ -793,7 +818,7 @@ function ProspectSheet({
         </div>
 
         <div style={{ flex: 'none', display: 'flex', gap: 4, padding: '0 12px' }}>
-          {(['overview', 'ratings', 'stats', 'schools'] as Sheet[]).map((t) => (
+          {(['overview', 'report', 'stats', 'schools'] as Sheet[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -804,7 +829,7 @@ function ProspectSheet({
                 color: t === tab ? 'var(--cream)' : 'var(--dim)',
                 font: "700 8.5px var(--mono)", letterSpacing: '.08em',
               }}
-            >{t === 'stats' ? 'HIGH SCHOOL' : t.toUpperCase()}</button>
+            >{SHEET_LABEL[t]}</button>
           ))}
         </div>
 
@@ -817,7 +842,9 @@ function ProspectSheet({
               onSet={onSet}
             />
           )}
-          {tab === 'ratings' && <Ratings prospect={prospect} />}
+          {tab === 'report' && (
+            <Report prospect={prospect} recruitingSkill={recruitingSkill} />
+          )}
           {tab === 'stats' && <Stats prospect={prospect} />}
           {tab === 'schools' && <Schools prospect={prospect} userTeam={userTeam} />}
         </div>
@@ -840,10 +867,42 @@ function Overview({
   // The same call the week close will make, skill included, or the preview
   // undersells what the spend is actually worth.
   const gain = weeklyPoints(prospect, pitch, Math.max(spent, 1), coachPrestige, recruitingSkill);
-  const steps = [0, 2, 4, 6, 8, 10, 12].filter((n) => n <= MAX_PER_RECRUIT);
+  const overall = reportedOverall(prospect, recruitingSkill);
+  const ceiling = reportedPotential(prospect, recruitingSkill);
+  const hints = hintsFor(prospect);
 
   return (
     <>
+      {/*
+        The estimate first, because it is the thing the rest of the sheet is
+        an argument about. Two bands and one line of what people say — the full
+        report, tool by tool, is one tab across. Putting nothing here and making
+        the report a tab you had to find would hide the only number on the
+        screen that the decision turns on.
+      */}
+      <div style={{
+        marginBottom: 12, padding: '9px 11px 10px',
+        background: 'var(--field)', borderLeft: '3px solid var(--ink)',
+      }}>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'baseline' }}>
+          <div>
+            <div className="label">OVERALL</div>
+            <div style={{ font: "700 18px/1 var(--display)", marginTop: 3 }}>
+              {overall.low}&ndash;{overall.high}
+            </div>
+          </div>
+          <div>
+            <div className="label">CEILING</div>
+            <div style={{ font: "700 18px/1 var(--display)", marginTop: 3 }}>
+              {ceiling.low} &ndash; {ceiling.high}
+            </div>
+          </div>
+        </div>
+        <div style={{
+          marginTop: 8, font: "400 11.5px/1.45 var(--body)", color: 'var(--ink)',
+        }}>&ldquo;{hints.ceiling.text}&rdquo;</div>
+      </div>
+
       <div className="label">WHAT HE WANTS</div>
       <div style={{ marginTop: 5 }}>
         {wants.map((k) => (
@@ -1000,8 +1059,17 @@ function Step(
   );
 }
 
-/** Estimates, with the uncertainty shown rather than hidden behind a number. */
-function Ratings({ prospect }: { prospect: Prospect }) {
+/**
+ * The scouting report: two bands, two impressions, and the tools underneath.
+ *
+ * Nothing on this tab is a fact. Every number is a window your own recruiting
+ * skill decides the width of, and the two lines of prose are the only other
+ * evidence there is — vague on purpose, honest always, and drawn on two
+ * different things so that reading them together says more than either alone.
+ */
+function Report({
+  prospect, recruitingSkill,
+}: { prospect: Prospect; recruitingSkill: number }) {
   const p = prospect.player;
   const rows: [string, number][] = p.type === 'pitcher'
     ? [['K/9', (p as Pitcher).stuff], ['H/9', (p as Pitcher).movement],
@@ -1010,19 +1078,33 @@ function Ratings({ prospect }: { prospect: Prospect }) {
        ['DISCIPLINE', (p as Hitter).eye], ['SPEED', (p as Hitter).speed],
        ['REACTION', (p as Hitter).range], ['ARM STRENGTH', (p as Hitter).arm]];
 
+  const overall = reportedOverall(prospect, recruitingSkill);
+  const ceiling = reportedPotential(prospect, recruitingSkill);
+  const hints = hintsFor(prospect);
+
   return (
     <>
-      <div style={{ display: 'flex', marginBottom: 10 }}>
-        <Stat k="OVERALL" v={String(scoutedOverall(p, prospect.stars))} />
-        <Stat k="POTENTIAL" v={scoutedPotential(p, prospect.stars)} last />
+      <div style={{ display: 'flex', marginBottom: 12 }}>
+        <Stat k="OVERALL" v={`${overall.low}–${overall.high}`} />
+        <Stat k="CEILING" v={`${ceiling.low} – ${ceiling.high}`} last />
       </div>
 
+      {/* Two impressions, not one summary. See the note on `hintsFor`. */}
       <div style={{
-        marginBottom: 10, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
-      }}>{POTENTIAL_BLURB[scoutedPotential(p, prospect.stars)]}</div>
+        marginBottom: 12, padding: '10px 11px',
+        background: 'var(--field)', borderLeft: '3px solid var(--clay)',
+      }}>
+        <div className="label" style={{ marginBottom: 5 }}>WHAT THEY SAY</div>
+        <div style={{ font: "400 11.5px/1.5 var(--body)" }}>
+          &ldquo;{hints.ceiling.text}&rdquo;
+        </div>
+        <div style={{ marginTop: 6, font: "400 11.5px/1.5 var(--body)" }}>
+          &ldquo;{hints.development.text}&rdquo;
+        </div>
+      </div>
 
-      {rows.map(([label, value], i) => {
-        const { low, high } = scoutedRange(p.id, prospect.stars, value, i + 20);
+      {rows.map(([label, value]) => {
+        const { low, high } = reportedTool(prospect, value, recruitingSkill);
         return (
           <div key={label} style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -1036,11 +1118,20 @@ function Ratings({ prospect }: { prospect: Prospect }) {
         );
       })}
 
+      {/*
+        The one place the screen says out loud what the recruiting skill buys.
+        Without it the width is a mystery the player has to infer across two
+        careers, and the coach point that bought it goes uncredited.
+      */}
       <div style={{
-        marginTop: 10, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+        marginTop: 12, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
       }}>
-        Scouting reports, not measurements. The lower a recruit is rated, the less
-        anybody has watched him &mdash; and the wider these get.
+        Estimates, not measurements. Your reports run{' '}
+        <strong style={{ color: 'var(--ink)' }}>
+          {Math.round(reportWidth(recruitingSkill))} points wide
+        </strong>{' '}
+        at recruiting {recruitingSkill} &mdash; and he is somewhere inside them,
+        not in the middle. Nothing narrows these but the skill itself.
       </div>
     </>
   );

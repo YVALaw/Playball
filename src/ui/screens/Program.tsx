@@ -25,7 +25,7 @@ import { useState, type ReactNode } from 'react';
 import { useDynasty, useUserTeam, useConferenceTable } from '../../state/store.js';
 import type { SeasonRecord } from '../../state/store.js';
 import {
-  expectationFor, prestigeStars, rosterStrength, objectiveMet,
+  expectationFor, prestigeStars, rosterStrength, objectiveMet, coachStanding,
   SKILLS, SKILL_LABEL, type Objective,
 } from '../../engine/program.js';
 import {
@@ -343,6 +343,7 @@ function CoachSheet({ team }: { team: Owner }) {
   void version;
 
   const philosophy = philosophyOf(coach.philosophy);
+  const standing = coachStanding(coach);
   const region = REGION_OF_STATE[coach.homeState];
   const games = coach.careerWins + coach.careerLosses;
 
@@ -381,13 +382,17 @@ function CoachSheet({ team }: { team: Owner }) {
       }}>{coach.name}</div>
 
       {/*
-        The two counters are seasons *finished*, which is why this says nothing
-        about which year is in progress. The board tab already says "Year 3 at
-        the job", and a page carrying both a 2 and a 3 for the same span of time
-        makes the reader stop and work out which is lying.
+        What the sport calls him, rather than how long he has been at it.
+
+        This line used to read "seasons completed", which the two counters
+        either side of the portrait already say — so it spent the most legible
+        row on the page repeating the numbers directly above it. The standing is
+        earned from titles and deep runs, so it is the one thing here the
+        counters cannot tell you.
       */}
       <div className="label" style={{ marginTop: 4, textAlign: 'center' }}>
-        HEAD COACH · SEASONS COMPLETED
+        HEAD COACH · {standing.title.toUpperCase()}
+        {standing.lifer ? ' · LIFER' : ''}
       </div>
 
       <div style={{

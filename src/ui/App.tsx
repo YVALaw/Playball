@@ -30,6 +30,7 @@ import { Rankings } from './screens/Rankings.js';
 import { JobSearch } from './screens/JobSearch.js';
 import { Draft } from './screens/Draft.js';
 import { Wire } from './screens/Wire.js';
+import { Saves } from './screens/Saves.js';
 import { OpenTeam, TeamCard } from './screens/TeamCard.js';
 
 /**
@@ -74,6 +75,8 @@ function AppBody(
   const jobSearch = useDynasty((s) => s.jobSearch);
   const loadSlot = useDynasty((s) => s.loadSlot);
   const loadError = useDynasty((s) => s.loadError);
+  const newDynasty = useDynasty((s) => s.newDynasty);
+  const openOverlay = useDynasty((s) => s.openOverlay);
   const [checked, setChecked] = useState(false);
 
   /**
@@ -140,8 +143,10 @@ function AppBody(
               font: "400 12px/1.55 var(--body)",
             }}>
               <strong>Your saved dynasty could not be opened.</strong> It was
-              written by a different version of the game. Starting a new one is
-              the only way forward from here.
+              written by a different version of the game. Start a new one to get
+              in — then look under PROGRAM · SAVES, where every other dynasty on
+              this device is still listed, and this one will open again in the
+              build that wrote it.
               <div style={{
                 marginTop: 6, font: "400 10px var(--mono)", color: 'var(--dim)',
               }}>{loadError}</div>
@@ -159,6 +164,7 @@ function AppBody(
       <div className="app-frame" style={{
         display: 'flex', flexDirection: 'column', minHeight: 0,
       }}>
+        <SaveAlert topmost />
         <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
           flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
         }}>
@@ -193,7 +199,7 @@ function AppBody(
               world any more. Start a new one to carry on.
             </div>
             <button
-              onClick={() => useDynasty.setState({ season: null, needsTeam: true })}
+              onClick={newDynasty}
               className="tap"
               style={{
                 marginTop: 16, padding: '13px 22px',
@@ -267,6 +273,7 @@ function AppBody(
       <div className="app-frame" style={{
         display: 'flex', flexDirection: 'column', minHeight: 0,
       }}>
+        <SaveAlert topmost />
         <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
           flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
         }}>
@@ -306,6 +313,32 @@ function AppBody(
             }}>OFFSEASON</div>
           </div>
           {/*
+            The way to the saves menu for the whole of the offseason.
+
+            The bottom nav is gone from here by design — the offseason is a
+            sequence, not a place to browse — and it takes PROGRAM · SAVES with
+            it, for the six steps that contain most of what somebody would want
+            a copy of the dynasty before doing. Recruiting above all: three weeks
+            of decisions you cannot take back.
+
+            Deliberately not offered during the postseason, which is the other
+            frame with no nav. Saving mid-bracket is restricted to stage
+            boundaries on purpose (see `endManagedGame`), so a button promising a
+            copy of a half-played tournament would be promising something the
+            store does not actually support.
+          */}
+          <button
+            onClick={() => openOverlay('saves')}
+            className="tap"
+            style={{
+              flex: 'none', padding: '8px 9px',
+              background: 'rgba(246,241,230,.12)',
+              border: '1px solid rgba(246,241,230,.28)',
+              color: 'var(--cream)',
+              font: "700 8.5px var(--mono)", letterSpacing: '.12em',
+            }}
+          >SAVES</button>
+          {/*
             What the year came to, in the corner of every offseason screen.
             The season's own header carries the record here; once the season is
             over the record is history and the title is the headline.
@@ -327,6 +360,7 @@ function AppBody(
             );
           })()}
         </header>
+        <SaveAlert />
         <StepRail
           steps={PHASES.map((p) => ({ key: p, label: PHASE_LABEL[p] }))}
           at={PHASES.indexOf(phase)}
@@ -384,6 +418,8 @@ function AppBody(
           }}>{team.cw}-{team.cl} {team.conference}</div>
         </div>
       </header>
+
+      <SaveAlert />
 
       {/* Sub-nav */}
       <nav style={{
@@ -444,6 +480,52 @@ function AppBody(
       </nav>
       <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
     </div>
+  );
+}
+
+/**
+ * A save that did not go through, said out loud, on every frame the game has.
+ *
+ * `saveState` has been in the store since saving existed and nothing has ever
+ * rendered it, so a write that failed — storage refused, a second tab holding
+ * the database, a quota — was completely silent. The player carried on for an
+ * hour and lost the hour. The persistence file's own comment calls that the
+ * worst outcome available to this app, and a strip of clay across the top is a
+ * small price for never doing it.
+ *
+ * A row of the frame rather than something floating over it: it must not cover
+ * the nav, and it must not be dismissable, because the condition it reports does
+ * not go away when you stop looking at it. Tapping retries, which is worth
+ * offering — a failed open is not cached, so a blocking tab that has since been
+ * closed will simply work on the next attempt.
+ */
+function SaveAlert({ topmost }: { topmost?: boolean }) {
+  const saveState = useDynasty((s) => s.saveState);
+  const lastSaveError = useDynasty((s) => s.lastSaveError);
+  const saveNow = useDynasty((s) => s.saveNow);
+  if (saveState !== 'error') return null;
+  return (
+    <button
+      onClick={() => { void saveNow(); }}
+      className="tap"
+      style={{
+        flex: 'none', width: '100%', textAlign: 'left',
+        padding: '7px 14px 8px',
+        paddingTop: topmost ? 'calc(env(safe-area-inset-top) + 7px)' : 7,
+        background: 'var(--clay)', color: 'var(--cream)',
+      }}
+    >
+      <div style={{ font: "700 9px var(--mono)", letterSpacing: '.16em' }}>
+        NOT SAVED · TAP TO TRY AGAIN
+      </div>
+      <div style={{
+        marginTop: 2, font: "400 10px/1.35 var(--body)",
+        color: 'rgba(246,241,230,.82)',
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>
+        {lastSaveError ?? 'The last write to this device did not complete.'}
+      </div>
+    </button>
   );
 }
 
@@ -518,6 +600,10 @@ function TableOverlay() {
         {overlay === 'schedule' && <Schedule />}
         {overlay === 'standings' && <Standings />}
         {overlay === 'rankings' && <Rankings />}
+        {/* Not a table, but the same shape of thing: a screen laid over the one
+            you were on, with the screen underneath still mounted when you close
+            it. During the offseason it is the only way in — the nav is gone. */}
+        {overlay === 'saves' && <Saves />}
       </div>
     </div>
   );
@@ -636,6 +722,7 @@ function Screen({ id }: { id: string }) {
     case 'board': return <Board />;
     case 'draft': return <Draft />;
     case 'wire': return <Wire />;
+    case 'saves': return <Saves />;
     default: return <Placeholder id={id} />;
   }
 }

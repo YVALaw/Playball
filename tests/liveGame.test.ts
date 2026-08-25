@@ -336,8 +336,13 @@ describe('runners are conserved', () => {
 
       // Three men were involved and three are accounted for.
       expect(runnersOn(half.bases) + bat.runs + half.outs).toBe(3);
-      // And the man from first is either standing somewhere or was thrown out.
-      if (!half.bases.includes(onFirst)) expect(half.outs).toBe(1);
+      // And the man from first is standing somewhere, or was thrown out, or
+      // scored — exactly one of the three. A pitch getting past the catcher can
+      // move him to second before the hit, from where he can come all the way
+      // around, so "on a base or retired" is no longer the whole list.
+      if (!half.bases.includes(onFirst)) {
+        expect(half.outs + bat.hitLine(onFirst).r).toBe(1);
+      }
       // A fielder's range can still turn the scripted single into an out, which
       // is why this counts rather than asserting. When the hit does land, the
       // man on third scores every time — there is no holding him on a single.
@@ -377,8 +382,9 @@ describe('runners are conserved', () => {
     const { bats, field } = twoTeams(12);
     const bat = new TeamState(bats, false);
     const fld = new TeamState(field, true);
-    // First roll fails the beat-it-out chance, second forces the botch.
-    const rolls = [0.99, 0.0001];
+    // First roll keeps the pitch in front of the catcher, second fails the
+    // beat-it-out chance, third forces the botch.
+    const rolls = [0.99, 0.99, 0.0001];
     const rng: Rng = () => rolls.shift() ?? 0.99;
     const half = createHalfInning(
       bat, fld, 1, script([]), rng, () => {},
@@ -405,8 +411,9 @@ describe('runners are conserved', () => {
     const { bats, field } = twoTeams(13);
     const bat = new TeamState(bats, false);
     const fld = new TeamState(field, true);
-    // Beat it out, send the runner from first, and gun him down at third.
-    const rolls = [0.0001, 0.0001, 0.0001];
+    // Hold the pitch, then beat it out, send the runner from first, and gun him
+    // down at third.
+    const rolls = [0.99, 0.0001, 0.0001, 0.0001];
     const rng: Rng = () => rolls.shift() ?? 0.99;
     const half = createHalfInning(
       bat, fld, 1, script([]), rng, () => {},

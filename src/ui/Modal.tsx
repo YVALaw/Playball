@@ -13,7 +13,7 @@
 import type { ReactNode } from 'react';
 
 export function Modal(
-  { kicker, title, lines, tone = 'ink', action, onClose }:
+  { kicker, title, lines, tone = 'ink', action, onClose, cancel }:
   {
     kicker: string;
     title: string;
@@ -22,12 +22,24 @@ export function Modal(
     tone?: 'ink' | 'win' | 'clay';
     action: string;
     onClose: () => void;
+    /**
+     * The way out, for the one case where the button is not merely an
+     * acknowledgement.
+     *
+     * Announcing something and asking something look the same and are not: a
+     * modal you dismiss by tapping anywhere is right for "you are out of the
+     * tournament" and catastrophic for "delete this dynasty", because the scrim
+     * is most of the screen and a stray tap on it would be the answer. So while
+     * a `cancel` is offered, tapping outside means cancel — never the action —
+     * and the action is only ever the button itself.
+     */
+    cancel?: { label: string; onClick: () => void };
   },
 ) {
   const accent = tone === 'win' ? 'var(--win)' : tone === 'clay' ? 'var(--clay)' : 'var(--cream)';
   return (
     <div
-      onClick={onClose}
+      onClick={cancel ? cancel.onClick : onClose}
       className="fade-in"
       style={{
         position: 'absolute', inset: 0, zIndex: 40,
@@ -62,6 +74,22 @@ export function Modal(
             }}>{l}</div>
           ))}
         </div>
+        {/* The way out sits above the action rather than beside it. Side by
+            side, the two are the same size and a thumb aimed at one is a
+            thumb that can land on the other; stacked, the destructive one is
+            the one you have to reach past the safe one to get to. */}
+        {cancel && (
+          <button
+            onClick={cancel.onClick}
+            className="tap"
+            style={{
+              width: '100%', padding: '13px 0',
+              background: 'transparent', borderTop: '1px solid rgba(246,241,230,.2)',
+              color: 'rgba(246,241,230,.72)',
+              font: "700 11px var(--mono)", letterSpacing: '.16em',
+            }}
+          >{cancel.label}</button>
+        )}
         <button
           onClick={onClose}
           className="tap"

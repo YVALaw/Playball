@@ -96,6 +96,49 @@ export interface SaveSummary {
   savedAt: number;
   year: number;
   record: string;
+  /**
+   * Where the dynasty is being coached. Read off the season rather than stored
+   * beside the name, because the name is now the player's own text and a career
+   * can move between programs — so the school is a fact about the save, not a
+   * label somebody typed once and never revisited.
+   */
+  school: string;
+}
+
+/**
+ * The one slot the game writes to on its own, and the only reserved key.
+ *
+ * Lives here rather than in the store because it is a fact about the file
+ * format: everything that generates a key has to know which one is spoken for.
+ */
+export const AUTOSAVE_SLOT = 'auto';
+
+/**
+ * What every slot the player creates begins with.
+ *
+ * The reserved key above is a bare word and this is a prefix no bare word
+ * carries, which is the whole of the collision argument — it does not depend on
+ * anybody remembering to check.
+ */
+const SLOT_PREFIX = 'dyn-';
+
+/**
+ * The key a named save is filed under.
+ *
+ * Deliberately takes no name. A display name is text a player chose and a slot
+ * is a primary key, and the two have different rules: a dynasty called "auto"
+ * would be filed straight on top of the autosave and take a running career with
+ * it, and no amount of stripping punctuation out of the typed name makes that
+ * safe — it only makes the collision harder to reason about. So the typed name
+ * goes in `name`, where it is only ever read, and the key is generated: a prefix
+ * the reserved slot cannot wear, the clock so the ordering is at least sensible
+ * in a database viewer, and a random tail so two saves taken in the same
+ * millisecond are still two saves.
+ */
+export function newSlotId(now = Date.now(), rand = Math.random): string {
+  const stamp = Math.max(0, Math.floor(now)).toString(36);
+  const tail = Math.floor(rand() * 0x1000000).toString(36).padStart(5, '0');
+  return `${SLOT_PREFIX}${stamp}-${tail}`;
 }
 
 interface PlayballDB extends DBSchema {
@@ -375,6 +418,7 @@ export async function listSaves(): Promise<SaveSummary[]> {
         savedAt: f.savedAt,
         year: f.year,
         record: team ? `${team.w}-${team.l}` : '—',
+        school: team ? team.def.school : '—',
       };
     })
     .sort((a, b) => b.savedAt - a.savedAt);

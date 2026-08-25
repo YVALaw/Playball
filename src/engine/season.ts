@@ -16,7 +16,8 @@ import { simGame, type GameResult, type TeamState } from './game.js';
 import { CONFERENCES, type ConferenceDef, type SchoolDef } from '../data/schools.js';
 import { teamId } from './types.js';
 import type {
-  EngineName, HitLine, Hitter, PitchLine, Pitcher, PlayerId, Rng, Team, TeamId,
+  EngineName, FieldLine, HitLine, Hitter, PitchLine, Pitcher, PlayerId, Rng,
+  Team, TeamId,
 } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -82,6 +83,17 @@ export interface CareerYear {
   ab?: number; h?: number; hr?: number; rbi?: number; bb?: number; sb?: number;
   /** Pitchers. */
   w?: number; l?: number; outs?: number; er?: number; k?: number;
+  /**
+   * Gloves. Everyone who took the field, which is nearly everyone.
+   *
+   * Only the three that carry the story — how many came at him, how many he
+   * turned into outs, and how many he did not. Plays above expected is the
+   * difference against `expected`, and that stays out of the record book on
+   * purpose: it is measured against the team he happened to play for that year,
+   * so it does not mean the same thing in two different rows and cannot be
+   * summed down a career column.
+   */
+  chances?: number; plays?: number; errors?: number;
 }
 
 /**
@@ -101,6 +113,7 @@ export function archiveSeason(season: SeasonState, teamIndex: number, year: numb
   for (const p of roster) {
     const bat = season.batting.get(p.id);
     const pit = season.pitching.get(p.id);
+    const fld = season.fielding?.get(p.id);
     const played = (bat && bat.ab > 0) || (pit && pit.outs > 0);
     if (!played) continue;
 
@@ -111,6 +124,13 @@ export function archiveSeason(season: SeasonState, teamIndex: number, year: numb
         : {}),
       ...(pit && pit.outs > 0
         ? { w: pit.w, l: pit.l, outs: pit.outs, er: pit.er, k: pit.k }
+        : {}),
+      // A man can have a fielding line and no bat — a reliever who came in for
+      // one out and had a ball hit back at him — but the played test above is
+      // what decides whether the year is a season at all, and it should stay
+      // that way: nobody's career page wants a row for one comebacker.
+      ...(fld && fld.chances > 0
+        ? { chances: fld.chances, plays: fld.plays, errors: fld.errors }
         : {}),
     };
 
@@ -203,6 +223,7 @@ export interface BattingSeason extends HitLine { g: number }
 export interface PitchingSeason extends PitchLine {
   g: number; gs: number; w: number; l: number; sv: number;
 }
+export interface FieldingSeason extends FieldLine { g: number }
 
 /** One player's line in a single game. */
 export interface BoxLine {
@@ -279,6 +300,15 @@ export interface SeasonState {
   lastPitched: Map<PlayerId, number>;
   batting: Map<PlayerId, BattingSeason>;
   pitching: Map<PlayerId, PitchingSeason>;
+  /**
+   * What each man did with a glove, alongside the other two books.
+   *
+   * Optional in the type and only in the type: a save written before defensive
+   * statistics existed has no such map, and refusing to load a dynasty is the
+   * one thing a save file must never do. Read it through `fieldingFor`, which
+   * puts the map back when it finds it missing.
+   */
+  fielding?: Map<PlayerId, FieldingSeason>;
   results: GameSummary[];
   /**
    * Box scores for the user's games, by day. See BoxScore for why only his.
@@ -574,6 +604,7 @@ export function createSeason(
     lastPitched: new Map(),
     batting: new Map(),
     pitching: new Map(),
+    fielding: new Map(),
     results: [],
     boxScores: {},
     captureBoxFor: null,
@@ -627,6 +658,7 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
     lastPitched: new Map(),
     batting: new Map(),
     pitching: new Map(),
+    fielding: new Map(),
     results: [],
     // Last year's box scores belong to last year. The career lines do not —
     // they are the only copy, and they carry forward for as long as the dynasty
@@ -657,6 +689,26 @@ function pitchingFor(season: SeasonState, id: PlayerId): PitchingSeason {
   if (!line) {
     line = { g: 0, gs: 0, w: 0, l: 0, sv: 0, outs: 0, h: 0, r: 0, er: 0, bb: 0, k: 0, hr: 0, pitches: 0, bf: 0 };
     season.pitching.set(id, line);
+  }
+  return line;
+}
+
+/**
+ * The fielding book, created on demand — for the player, and for the map.
+ *
+ * The map itself is lazy on purpose. Batting and pitching have been on every
+ * save ever written; fielding has not, and a dynasty carried forward from before
+ * it existed arrives here with the property simply absent. Putting it back on
+ * first use is a two-word backfill that costs nothing and means an old save
+ * opens into a season that keeps score properly from its next pitch, rather than
+ * throwing on a `.get` of undefined.
+ */
+export function fieldingFor(season: SeasonState, id: PlayerId): FieldingSeason {
+  const map = (season.fielding ??= new Map());
+  let line = map.get(id);
+  if (!line) {
+    line = { g: 0, chances: 0, plays: 0, expected: 0, errors: 0, throwing: 0, pb: 0, sba: 0, cs: 0 };
+    map.set(id, line);
   }
   return line;
 }
@@ -697,6 +749,17 @@ function foldSide(
     s.bb += line.bb; s.k += line.k; s.hr += line.hr;
     s.pitches += line.pitches; s.bf += line.bf;
     if (line.player === side.starter) s.gs += 1;
+  }
+
+  // Pitchers appear in here as well as above: a comebacker is his play to make
+  // and his error to commit, so the fielding book is keyed on everybody who
+  // touched a ball rather than on the batting order.
+  for (const line of side.fielding.values()) {
+    const s = fieldingFor(season, line.player.id);
+    s.g += 1;
+    s.chances += line.chances; s.plays += line.plays; s.expected += line.expected;
+    s.errors += line.errors; s.throwing += line.throwing;
+    s.pb += line.pb; s.sba += line.sba; s.cs += line.cs;
   }
 
   // The decision goes to the pitcher of record, not the starter. Falls back to
@@ -1140,6 +1203,30 @@ export const slugging = (s: BattingSeason): number => {
   const singles = s.h - s.d - s.t - s.hr;
   return (singles + s.d * 2 + s.t * 3 + s.hr * 4) / s.ab;
 };
+/**
+ * Fielding percentage, on the only denominator this engine honestly has.
+ *
+ * NOT the scorer's number, which divides errors into putouts plus assists — and
+ * most of those assists and putouts are a throw to a first baseman the
+ * simulation never decides to make. What it divides by instead is balls hit at
+ * him, which is a quantity the engine really produces. It therefore runs a few
+ * points below a published fielding percentage and carries the same meaning:
+ * league-wide it lands around .960, against a real D1 figure near .967.
+ */
+export const fieldingPct = (s: FieldingSeason): number =>
+  s.chances === 0 ? 1 : (s.chances - s.errors) / s.chances;
+
+/**
+ * Outs he made that an average glove on his own team would not have. The single
+ * number for "is this a good defender", and the reason `expected` is recorded.
+ *
+ * Errors are inside it, because an error is a play not made. That also means the
+ * league average is not zero but slightly negative — about minus one per team
+ * per game, which is the league's error rate. Compare defenders to each other,
+ * not to zero. Add `errors` back if you want range alone.
+ */
+export const playsAboveExpected = (s: FieldingSeason): number => s.plays - s.expected;
+
 export const inningsPitched = (s: PitchingSeason): number => s.outs / 3;
 export const era = (s: PitchingSeason): number => {
   const ip = inningsPitched(s);

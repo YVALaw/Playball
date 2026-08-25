@@ -9,7 +9,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   expectationFor, objectivesFor, objectiveMet, gradeObjectives, judge,
-  type Mandate, type SeasonOutcome, type Expectation,
+  coachStanding, newCoach, LIFER_SEASONS,
+  type Mandate, type SeasonOutcome, type Expectation, type CoachState,
 } from '../src/engine/program.js';
 
 const MANDATES: Mandate[] = ['develop', 'build', 'compete', 'contend', 'championship'];
@@ -211,5 +212,67 @@ describe('the catcher', () => {
     const noodlePct = noodle.sb / noodle.attempts;
     const cannonPct = cannon.sb / cannon.attempts;
     expect(cannonPct).toBeLessThan(noodlePct);
+  });
+});
+
+describe('what they call you', () => {
+  // The line beside HEAD COACH used to read "seasons completed", which the two
+  // counters either side of the portrait already say. A standing has to be
+  // earned, so these pin the one property that matters: time served does not
+  // climb the ladder, and a trophy cannot be taken back off you.
+
+  const coachWith = (over: Partial<CoachState>): CoachState =>
+    ({ ...newCoach(), ...over });
+
+  it('starts nobody as anything', () => {
+    expect(coachStanding(newCoach()).title).toBe('Unproven');
+    expect(coachStanding(newCoach()).lifer).toBe(false);
+  });
+
+  it('does not promote a coach for merely surviving', () => {
+    // Twenty years of losing. Long service, no standing — this is the whole
+    // reason the line stopped counting seasons.
+    const timeServer = coachWith({
+      tenure: 20, careerWins: 300, careerLosses: 400, prestige: 30,
+    });
+    expect(coachStanding(timeServer).title).toBe('Journeyman');
+  });
+
+  it('never introduces a national champion as a journeyman', () => {
+    // Prestige decays when nothing happens, so a title winner having a thin
+    // decade would otherwise slide back down to the bottom of the ladder.
+    const champion = coachWith({
+      titles: 1, prestige: 20, careerWins: 200, careerLosses: 300,
+    });
+    expect(coachStanding(champion).title).toBe('Legendary');
+  });
+
+  it('climbs with what a coach has actually won', () => {
+    const order = ['Unproven', 'Journeyman', 'Respected', 'Established', 'Renowned', 'Legendary'];
+    const rung = (c: CoachState) => order.indexOf(coachStanding(c).title);
+
+    const nobody = newCoach();
+    const winning = coachWith({ careerWins: 120, careerLosses: 80, prestige: 45 });
+    const bidMaker = coachWith({
+      careerWins: 200, careerLosses: 120, prestige: 58, tournaments: 4,
+    });
+    const contender = coachWith({
+      careerWins: 300, careerLosses: 150, prestige: 72,
+      tournaments: 8, conferenceTitles: 3,
+    });
+
+    expect(rung(nobody)).toBeLessThan(rung(winning));
+    expect(rung(winning)).toBeLessThan(rung(bidMaker));
+    expect(rung(bidMaker)).toBeLessThan(rung(contender));
+  });
+
+  it('calls a man who stayed fifteen years a lifer, whatever else he is', () => {
+    // Deliberately apart from the ladder: it is the one thing here earned by
+    // staying rather than winning, so a bad run must not be able to take it.
+    const lifer = coachWith({ tenure: LIFER_SEASONS, careerWins: 200, careerLosses: 250 });
+    expect(coachStanding(lifer).lifer).toBe(true);
+
+    const nearly = coachWith({ tenure: LIFER_SEASONS - 1 });
+    expect(coachStanding(nearly).lifer).toBe(false);
   });
 });

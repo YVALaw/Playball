@@ -1,5 +1,5 @@
 // SigningDay.tsx
-// Where the whole class went.
+// Where the whole class went, and what they actually were.
 //
 // Three views, because a signing day report answers three different questions:
 // how everyone finished nationally, what you actually got, and where every
@@ -7,14 +7,22 @@
 // like a competition rather than a slot machine — losing a player to a program
 // you can name and click on is a rivalry, losing him into a void is a number
 // going down.
+//
+// This is also the screen where the guessing stops. All winter the board showed
+// bands and impressions; here the real overall and the real ceiling are printed
+// next to the report you were working from. That contrast is the payoff for the
+// whole system — a steal and a bust look identical while you are bidding, and
+// only ever become visible here.
 
 import { useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import {
-  PRIORITY_LABEL, PRIORITIES, byRank, type Prospect, type Priority,
+  PRIORITY_LABEL, PRIORITIES, byRank, reportedOverall, reportedPotential,
+  type Prospect, type Priority,
 } from '../../engine/recruiting.js';
-import { scoutedOverall, scoutedPotential, highSchoolLine } from '../../engine/scouting.js';
+import { highSchoolLine, potentialGrade, GRADE_LADDER } from '../../engine/scouting.js';
+import { overallOf } from '../../engine/ratings.js';
 import type { Pitcher } from '../../engine/types.js';
 import { Avatar } from '../Avatar.js';
 
@@ -35,11 +43,41 @@ const slotOf = (p: Prospect): string =>
 const topPriority = (p: Prospect): Priority =>
   [...PRIORITIES].sort((a, b) => p.priorities[b] - p.priorities[a])[0] as Priority;
 
+/**
+ * How the truth landed against the report you were working from.
+ *
+ * The band always contained him — that is how it was built — so the question is
+ * never whether you were wrong, it is *where inside your own report* he came
+ * out. The top of the band is the steal and the bottom is the one you paid over
+ * the odds for, and both are invisible until this screen.
+ *
+ * Deliberately silent in the middle. A verdict on every single signing turns
+ * into wallpaper, and then the two that mattered do not stand out.
+ */
+function verdict(
+  prospect: Prospect, recruitingSkill: number,
+): { short: string; long: string; tone: string } | null {
+  const truth = GRADE_LADDER.indexOf(potentialGrade(prospect.player.potential));
+  const band = reportedPotential(prospect, recruitingSkill);
+  if (band.low === band.high) return null;
+  if (truth === GRADE_LADDER.indexOf(band.high)) {
+    return { short: 'HIGH END', long: 'TOP OF YOUR REPORT', tone: 'var(--win)' };
+  }
+  if (truth === GRADE_LADDER.indexOf(band.low)) {
+    return { short: 'LOW END', long: 'BOTTOM OF YOUR REPORT', tone: 'var(--clay)' };
+  }
+  return null;
+}
+
 export function SigningDay() {
   const season = useDynasty((s) => s.season);
   const userTeam = useDynasty((s) => s.userTeam);
+  const coach = useDynasty((s) => s.coach);
   const next = useDynasty((s) => s.nextPhase);
   const team = useUserTeam();
+  // The coach phase runs before recruiting, so this is the same skill the board
+  // drew its bands with — the report shown here is the one you were reading.
+  const recruitingSkill = coach.skills.recruiting;
 
   const [view, setView] = useState<View>('mine');
   const [openId, setOpenId] = useState<string | null>(null);
@@ -127,8 +165,25 @@ export function SigningDay() {
             </div>
           )}
           {mine.map((p) => (
-            <RecruitRow key={p.id} p={p} onOpen={() => setOpenId(p.id)} />
+            <RecruitRow
+              key={p.id} p={p} onOpen={() => setOpenId(p.id)}
+              recruitingSkill={recruitingSkill}
+            />
           ))}
+        </div>
+      )}
+
+      {/*
+        Said once, at the top of your own class, rather than on every row. The
+        numbers on this screen are not the ones the board showed all winter and
+        a player who does not know that will read a bust as a bug.
+      */}
+      {view === 'mine' && mine.length > 0 && (
+        <div style={{
+          marginTop: 8, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+        }}>
+          Physicals are in. These are the real numbers, not your reports &mdash;
+          tap a name to see what you had him at.
         </div>
       )}
 
@@ -180,6 +235,7 @@ export function SigningDay() {
               key={p.id}
               p={p}
               onOpen={() => setOpenId(p.id)}
+              recruitingSkill={recruitingSkill}
               destination={season.teams[p.signedBy as number]?.def.abbr}
               mine={p.signedBy === userTeam}
             />
@@ -193,6 +249,7 @@ export function SigningDay() {
         <RecruitSheet
           prospect={open}
           userTeam={userTeam}
+          recruitingSkill={recruitingSkill}
           onClose={() => setOpenId(null)}
         />
       )}
@@ -202,8 +259,12 @@ export function SigningDay() {
 }
 
 function RecruitRow({
-  p, onOpen, destination, mine,
-}: { p: Prospect; onOpen: () => void; destination?: string; mine?: boolean }) {
+  p, onOpen, recruitingSkill, destination, mine,
+}: {
+  p: Prospect; onOpen: () => void; recruitingSkill: number;
+  destination?: string; mine?: boolean;
+}) {
+  const call = verdict(p, recruitingSkill);
   return (
     <button
       onClick={onOpen}
@@ -229,8 +290,23 @@ function RecruitRow({
           {p.committedWeek !== null ? ` · wk ${p.committedWeek}` : ''}
         </span>
       </span>
-      <span style={{ font: "600 12px var(--mono)", color: 'var(--dim)' }}>
-        {scoutedOverall(p.player, p.stars)}
+      {/*
+        The truth, both halves of it. The board printed a band here all winter
+        and a class review that printed the same band would have nothing to
+        review — the whole point of this row is that the guessing is over.
+      */}
+      <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+        <span style={{ font: "600 12px var(--mono)" }}>
+          {overallOf(p.player)}
+          <span style={{ color: 'var(--dim)' }}> · </span>
+          {potentialGrade(p.player.potential)}
+        </span>
+        {call && (
+          <span style={{
+            display: 'block', marginTop: 1,
+            font: "700 7px var(--mono)", letterSpacing: '.08em', color: call.tone,
+          }}>{call.short}</span>
+        )}
       </span>
       <span style={{ font: "600 11px var(--mono)", color: 'var(--clay)' }}>
         {'★'.repeat(p.stars)}
@@ -240,8 +316,10 @@ function RecruitRow({
 }
 
 function RecruitSheet({
-  prospect, userTeam, onClose,
-}: { prospect: Prospect; userTeam: number; onClose: () => void }) {
+  prospect, userTeam, recruitingSkill, onClose,
+}: {
+  prospect: Prospect; userTeam: number; recruitingSkill: number; onClose: () => void;
+}) {
   const season = useDynasty((s) => s.season);
   const p = prospect.player;
   const to = season?.teams[prospect.signedBy as number];
@@ -251,6 +329,10 @@ function RecruitSheet({
     .map(([t, pts]) => ({ team: Number(t), pts }))
     .filter((r) => r.pts > 0)
     .sort((a, b) => b.pts - a.pts);
+
+  const band = reportedOverall(prospect, recruitingSkill);
+  const ceiling = reportedPotential(prospect, recruitingSkill);
+  const call = verdict(prospect, recruitingSkill);
 
   return (
     <div
@@ -313,9 +395,43 @@ function RecruitSheet({
           </div>
 
           <div style={{ display: 'flex', marginTop: 12 }}>
-            <Stat k="OVERALL" v={String(scoutedOverall(p, prospect.stars))} />
-            <Stat k="POTENTIAL" v={scoutedPotential(p, prospect.stars)} />
+            <Stat k="OVERALL" v={String(overallOf(p))} />
+            <Stat k="CEILING" v={potentialGrade(p.potential)} />
             <Stat k="WANTED" v={PRIORITY_LABEL[topPriority(prospect)]} last />
+          </div>
+
+          {/*
+            What you had him at, printed under what he is.
+
+            The band always contained him, so this is never a gotcha about being
+            wrong — it is the width of your own ignorance, made visible at the
+            one moment it can be checked. A coach who keeps signing players who
+            come out at the bottom of his reports is being read by the rest of
+            the country, and a coach whose reports are eight points wide can see
+            what the coach points bought him.
+          */}
+          <div style={{
+            marginTop: 10, padding: '9px 11px', background: 'var(--field)',
+            borderLeft: `3px solid ${call ? call.tone : 'var(--faint)'}`,
+          }}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+            }}>
+              <span className="label">YOUR REPORT HAD HIM</span>
+              {call && (
+                <span style={{
+                  font: "700 8px var(--mono)", letterSpacing: '.1em', color: call.tone,
+                }}>{call.long}</span>
+              )}
+            </div>
+            <div style={{
+              marginTop: 4, font: "600 12.5px var(--mono)", color: 'var(--ink)',
+            }}>
+              {band.low}&ndash;{band.high}
+              <span style={{ color: 'var(--dim)' }}> overall &middot; </span>
+              {ceiling.low} &ndash; {ceiling.high}
+              <span style={{ color: 'var(--dim)' }}> ceiling</span>
+            </div>
           </div>
 
           <div className="label" style={{ marginTop: 14, marginBottom: 5 }}>LAST SPRING</div>

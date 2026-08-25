@@ -26,6 +26,9 @@
 
 import { makeHitter, makePitcher } from './players.js';
 import { overallOf } from './ratings.js';
+import {
+  GRADE_LADDER, potentialGrade, scoutNoise, type PotentialGrade,
+} from './scouting.js';
 import type { Player, PlayerId, Position, Rng } from './types.js';
 import { STATES_BY_REGION, type Region } from '../data/schools.js';
 
@@ -184,7 +187,25 @@ export const ACTIONS_PER_WEEK = RECRUITING_BUDGET;
  * ceiling nobody spotted comes out a two star, and finding him is the reward the
  * whole screen is built around.
  */
-export function starsFor(p: Player): number {
+/**
+ * The number the services actually rank on, before it is cut into stars.
+ *
+ * One function rather than a formula written twice, because the star rating and
+ * the national rank are supposed to be two readings of the same opinion. They
+ * were not. The rank was computed straight off `overallOf` and the **true**
+ * ceiling with no error at all, which made `#rank` the most informative thing on
+ * the board by a distance: a printed, perfectly ordered index of the truth,
+ * sitting on every row above an estimate that was deliberately vague. Sorting by
+ * it beat scouting, so scouting was decoration.
+ *
+ * Now the rank carries the same projection error the stars do, which is the
+ * thing the comment underneath the sort already claimed and the code did not do.
+ * A sharp player can still read something out of it — a recruit ranked well
+ * above where his reported ability would put him is being carried by a ceiling
+ * somebody believes in — and that inference is exactly the kind the board is
+ * meant to reward.
+ */
+export function serviceScore(p: Player): number {
   // Stable per player, so the same recruit is rated the same by everyone.
   let h = 7919;
   for (let i = 0; i < p.id.length; i++) h = (h * 31 + p.id.charCodeAt(i)) | 0;
@@ -193,7 +214,11 @@ export function starsFor(p: Player): number {
 
   // Weighted toward what he already does, because that is what a scout can
   // actually watch. The projection half carries the error.
-  const score = overallOf(p) * 0.74 + (p.potential + miss) * 0.26;
+  return overallOf(p) * 0.74 + (p.potential + miss) * 0.26;
+}
+
+export function starsFor(p: Player): number {
+  const score = serviceScore(p);
   if (score >= 68) return 5;
   if (score >= 60) return 4;
   if (score >= 52) return 3;
@@ -388,20 +413,364 @@ export function generateClass(year: number, teams: number, rng: Rng): RecruitCla
     });
   }
 
-  // Ranked once, nationally, on what the services think — a blend of what he is
-  // and what he might become, which is the same thing the stars are cut from.
+  // Ranked once, nationally, on what the services think — the same score the
+  // stars are cut from, error and all. See `serviceScore` for why it has to be
+  // that score and not the truth.
   //
   // The rank matters because a star rating puts a hundred and twenty players in
   // one bucket, which is no help when you are choosing between two of them. "The
   // 38th best player in the country" is a different proposition from "another
   // four star". Assigned here rather than derived on screen so every program is
   // looking at the same board.
-  prospects.sort((a, b) =>
-    (overallOf(b.player) * 0.45 + b.player.potential * 0.55)
-    - (overallOf(a.player) * 0.45 + a.player.potential * 0.55));
+  prospects.sort((a, b) => serviceScore(b.player) - serviceScore(a.player));
   prospects.forEach((p, i) => { p.rank = i + 1; });
 
   return { year, week: 0, prospects };
+}
+
+// ---------------------------------------------------------------------------
+// What you think he is
+// ---------------------------------------------------------------------------
+
+/*
+  The board used to print a recruit's overall as one number and his ceiling as
+  one letter. Both were near enough the truth, free, and identical for every
+  coach in the country — so there was nothing to scout, no way to be wrong, and
+  signing day could never surprise anybody. A screen that hands you the answer
+  is a screen with no decision on it.
+
+  What replaces it is an estimate, and reading the estimate is the skill.
+
+  **The window is as wide as you are bad at this.** Nothing else moves it — not
+  the recruit's star rating, not his rank, not how long you have been on him.
+  Recruiting happens in three weeks at the end of a season, so there is no room
+  for a scouting economy where you buy looks at individual players; the only
+  lever is what the coach himself knows, which is `coach.skills.recruiting`. It
+  runs 20 on your first day to 99, and the width runs 30 rating points down to
+  6 across that span. That is the entire payoff for the points you spend here,
+  so it has to be visible at a glance, and it is: a rookie's report says a kid
+  is somewhere between 40 and 70, which is most of the class, and a veteran's
+  says 61 to 67.
+
+  **The truth is inside the window but hardly ever in the middle.** A band the
+  answer sits at the centre of is an exact number with extra steps — you read
+  the midpoint and carry on. So the truth is placed by a draw that *avoids* the
+  centre: fewer than one recruit in ten lands within the middle fifth of his own
+  band. You cannot average your way out of it either, because every number on
+  the sheet — overall and each individual tool — is shifted by the same amount
+  in the same direction. A scout who is high on a player is high on all of him.
+
+  **Two vague signals, drawn on two different facts.** One line about how high
+  people think he can go, one about how much of him is still to come. Neither
+  settles anything alone; together they are evidence. A ceiling line that says
+  people are talking about the draft, next to a development line that says
+  everything is still in front of him, describes a very different bet from the
+  same first line beside "there is not much left to teach him".
+
+  **A hint is never false.** Every line carries the span of true grades it stays
+  honest for, and the spans overlap heavily. That overlap is load bearing: if
+  each line belonged to exactly one grade, a player who had seen it twice would
+  know the grade, the line would be the letter spelled out in words, and the
+  window would be decoration. So the pool a recruit draws from widens as his
+  ceiling rises but keeps the modest lines at the bottom of it — which is how an
+  S can honestly draw an understated line, and how a gem hides in plain sight.
+  Nothing said about him was untrue; it was only quiet.
+*/
+
+/** The lowest and the highest a report will commit to. */
+export interface ReportRange {
+  low: number;
+  high: number;
+}
+
+/** A ceiling written as a span of letters, because one letter would be a lie. */
+export interface GradeBand {
+  low: PotentialGrade;
+  high: PotentialGrade;
+}
+
+/** Where a coach sits between his first day on the job and the best in it. */
+const skillReach = (recruitingSkill: number): number =>
+  Math.max(0, Math.min(1, (recruitingSkill - 20) / 79));
+
+/**
+ * How many rating points a report spans, bottom to top.
+ *
+ * Thirty at the start of a career and six at the end of one, straight down the
+ * line between them. Linear because a coach point costs the same whichever one
+ * he is buying, and a curve would quietly make the middle of the track a worse
+ * deal than the ends without ever saying so on screen.
+ */
+export function reportWidth(recruitingSkill: number): number {
+  return 30 - 24 * skillReach(recruitingSkill);
+}
+
+/**
+ * How many grades of daylight a ceiling is written across, beyond the first.
+ *
+ * Never zero. A single letter is an exact answer, and the ceiling is the one
+ * thing on this screen nobody is ever allowed to be certain of — so the best
+ * recruiter alive still writes "A – S" and lives with it. Three steps at the
+ * bottom of the ladder is four letters of a six letter scale, which is close
+ * enough to useless to be worth fixing.
+ */
+export function reportGradeSteps(recruitingSkill: number): number {
+  return Math.max(1, Math.round(3 - 2 * skillReach(recruitingSkill)));
+}
+
+/**
+ * One salt per thing a report says, so the draws do not move together.
+ *
+ * `bias` is deliberately shared by the overall and every individual tool. Six
+ * independently placed bands would let a player average their midpoints and
+ * recover the truth to a third of the width the coach was supposed to be stuck
+ * with — the estimate defeated with arithmetic, which is exactly what this
+ * replaced. One bias for the whole sheet means averaging returns the bias.
+ */
+const SALT = {
+  bias: 3301,
+  ceiling: 3307,
+  ceilingHint: 3313,
+  developmentHint: 3319,
+} as const;
+
+/**
+ * Where the truth sits inside a window, as a fraction up from the bottom.
+ *
+ * Bowed away from the middle rather than uniform, so the midpoint is the least
+ * likely place for him to be instead of the most likely. Reading the centre of
+ * the band is still unbiased over a whole class — the draw is symmetric — but it
+ * is wrong on almost every individual recruit, which is the point. Held off the
+ * very edges too: a truth that were always the top or the bottom number would be
+ * just as readable as one that were always the middle.
+ */
+function truthPosition(id: string, salt: number): number {
+  const u = scoutNoise(id, salt);
+  const side = u < 0.5 ? -1 : 1;
+  const outward = Math.abs(u * 2 - 1);
+  return 0.5 + side * 0.44 * Math.pow(outward, 0.62);
+}
+
+/**
+ * A window of the coach's width with the truth somewhere inside it.
+ *
+ * The width is held exactly, even up against the ends of the rating scale: a
+ * band that got narrower near 99 would say "he is one of the best in the class"
+ * out of the side of its mouth. So it slides instead of shrinking, and the
+ * width goes on meaning only one thing, which is how good you are at this.
+ */
+function windowAround(truth: number, id: string, recruitingSkill: number): ReportRange {
+  const width = reportWidth(recruitingSkill);
+  const span = Math.round(width);
+  let low = Math.round(truth - truthPosition(id, SALT.bias) * width);
+  // Whatever the rounding did, he is inside his own band.
+  low = Math.max(truth - span, Math.min(truth, low));
+  low = Math.max(1, Math.min(99 - span, low));
+  return { low, high: low + span };
+}
+
+/** What a coach of this standard would put on the recruit's present ability. */
+export function reportedOverall(prospect: Prospect, recruitingSkill: number): ReportRange {
+  return windowAround(overallOf(prospect.player), prospect.id, recruitingSkill);
+}
+
+/** The same, for one individual tool. Shifted the same way — see `SALT`. */
+export function reportedTool(
+  prospect: Prospect, rating: number, recruitingSkill: number,
+): ReportRange {
+  return windowAround(rating, prospect.id, recruitingSkill);
+}
+
+/**
+ * What a coach of this standard would put on the ceiling.
+ *
+ * Graded on the true potential rather than on a blend of present and future,
+ * because the uncertainty now lives in the width of the band instead of in a
+ * fudge inside the number. The band is on the same letter scale a player you
+ * already own is graded against, so "we scouted him C to S and he came out A"
+ * is a sentence the class review can actually say.
+ */
+export function reportedPotential(
+  prospect: Prospect, recruitingSkill: number,
+): GradeBand {
+  const steps = reportGradeSteps(recruitingSkill);
+  const truth = GRADE_LADDER.indexOf(potentialGrade(prospect.player.potential));
+  const below = Math.min(
+    steps, Math.floor(truthPosition(prospect.id, SALT.ceiling) * (steps + 1)),
+  );
+  // Slid back onto the ladder at either end, never trimmed, for the same reason
+  // the numeric window slides.
+  const low = Math.max(0, Math.min(GRADE_LADDER.length - 1 - steps, truth - below));
+  return {
+    low: GRADE_LADDER[low] as PotentialGrade,
+    high: GRADE_LADDER[low + steps] as PotentialGrade,
+  };
+}
+
+/**
+ * A line a scout will say out loud, and the grades it stays honest for.
+ *
+ * `to` is not "the highest grade this describes well". It is the highest grade
+ * at which the line is still **true** — the point past which it stops being an
+ * understatement and starts being a lie. "He is close to the player he is going
+ * to be" is quiet praise for a C and simply false about an S, so it stops at C.
+ * "He plays hard, and that travels" is true of everybody, so it never stops, and
+ * a player who has watched two of those turn into All-Americans will start
+ * wondering about the third. That wondering is the whole game.
+ */
+export interface CeilingLine {
+  readonly text: string;
+  readonly from: PotentialGrade;
+  readonly to: PotentialGrade;
+}
+
+/**
+ * Everything the area men come back saying.
+ *
+ * Ordered from the most guarded to the loudest, which is also roughly the order
+ * of their floors — so the pool a recruit draws from is close to a prefix of
+ * this list extended upward, and a better ceiling means more to choose from
+ * without ever losing the quiet lines underneath.
+ */
+export const CEILING_LINES: readonly CeilingLine[] = [
+  { text: 'He is close to the player he is going to be.', from: 'D', to: 'C' },
+  { text: 'Polished for his age. Whether there is any more is the question.', from: 'D', to: 'B' },
+  { text: 'Nobody came back from seeing him with a story to tell.', from: 'D', to: 'B' },
+  { text: 'Our area man likes him more than the rankings do.', from: 'D', to: 'B' },
+  { text: 'There is no one loud thing about him. He just plays.', from: 'D', to: 'B' },
+  { text: 'He is going to have to earn every inch of it.', from: 'D', to: 'S+' },
+  { text: 'He would have to develop, but the frame is there.', from: 'D', to: 'S+' },
+  { text: 'He plays hard, and that travels.', from: 'D', to: 'S+' },
+  { text: 'Two years of good coaching and we would know a lot more.', from: 'D', to: 'S+' },
+  { text: 'The body is going to change. What happens after that, nobody can say.', from: 'D', to: 'S+' },
+  { text: 'Nobody has watched him enough to be confident either way.', from: 'D', to: 'S+' },
+  { text: 'Coaches in the area think he can play at this level.', from: 'C', to: 'A' },
+  { text: 'Late to the sport. Nobody is sure where his line goes.', from: 'C', to: 'S+' },
+  { text: 'The raw material is better than the results so far.', from: 'C', to: 'S+' },
+  { text: 'There is more here than the numbers say.', from: 'C', to: 'S+' },
+  { text: 'He has a tool you could build something around.', from: 'C', to: 'S+' },
+  { text: 'Every list has him somewhere. No two of them agree where.', from: 'C', to: 'S+' },
+  { text: 'He would not be the first out of that county to surprise people.', from: 'C', to: 'S+' },
+  { text: "Our man wrote 'interesting' and underlined it twice.", from: 'C', to: 'S+' },
+  { text: 'He is a better athlete than he is a baseball player, for now.', from: 'C', to: 'S+' },
+  { text: 'Scouts keep finding reasons to go back and see him again.', from: 'B', to: 'S+' },
+  { text: 'He has been the best player on every field he has been on.', from: 'B', to: 'S+' },
+  { text: 'Two programs offered him after one look.', from: 'B', to: 'S+' },
+  { text: 'The staff argued about him for an hour and got nowhere.', from: 'B', to: 'S+' },
+  { text: 'He does not look like a high school player out there.', from: 'B', to: 'S+' },
+  { text: 'If it ever comes together we will be glad we were early.', from: 'B', to: 'S+' },
+  { text: 'The upside is the reason he is on this list at all.', from: 'B', to: 'S+' },
+  { text: 'Our cross-checker moved a trip to go and see him.', from: 'B', to: 'S+' },
+  { text: 'People who saw him in the summer have not stopped talking about it.', from: 'B', to: 'S+' },
+  { text: 'There are people who believe he is the best in the state.', from: 'A', to: 'S+' },
+  { text: 'There is talk he will be drafted out of high school.', from: 'A', to: 'S+' },
+  { text: 'Every program in the country has been through his gym.', from: 'A', to: 'S+' },
+  { text: 'The area men have run out of comparisons.', from: 'A', to: 'S+' },
+  { text: 'Nobody on this staff wants to be the one who passed.', from: 'A', to: 'S+' },
+  { text: 'People stop what they are doing to watch him.', from: 'A', to: 'S+' },
+  { text: 'He has a chance to be something, and the room knows it.', from: 'A', to: 'S+' },
+  { text: 'Three head coaches have already been to his house.', from: 'A', to: 'S+' },
+];
+
+/**
+ * How much of him is still to come — the second signal, on a different fact.
+ *
+ * Drawn on the distance between what he can do now and what he will ever do,
+ * which is very nearly independent of how high that ceiling is: measured over a
+ * full class, every grade from D to A has finished players and projects in it.
+ * That independence is what makes the pair worth having. One line narrows the
+ * ceiling; the other says how much of the overall band is growth still owed
+ * rather than ability already on the field, and the two together bracket a
+ * recruit far better than either does alone.
+ */
+export type Rawness = 'finished' | 'close' | 'raw' | 'project';
+
+const RAWNESS_LADDER: readonly Rawness[] = ['finished', 'close', 'raw', 'project'];
+
+/**
+ * Which of those four he is.
+ *
+ * Cut at the quartiles of what a class actually produces rather than at round
+ * numbers: the median recruit has five points of growth left in him, so a cut
+ * at "twenty points is raw" would put the whole country in one band and say
+ * nothing about anybody.
+ */
+export function rawnessOf(p: Player): Rawness {
+  const left = p.potential - overallOf(p);
+  return left <= 3 ? 'finished' : left <= 8 ? 'close' : left <= 15 ? 'raw' : 'project';
+}
+
+export interface DevelopmentLine {
+  readonly text: string;
+  readonly from: Rawness;
+  readonly to: Rawness;
+}
+
+/** Spanning at least two bands each, for the same reason the ceiling lines do. */
+export const DEVELOPMENT_LINES: readonly DevelopmentLine[] = [
+  { text: 'There is not much left to teach him.', from: 'finished', to: 'close' },
+  { text: 'He is as far along as anybody in this class.', from: 'finished', to: 'close' },
+  { text: 'Physically he is already where he needs to be.', from: 'finished', to: 'close' },
+  { text: 'What he does, he does properly.', from: 'finished', to: 'close' },
+  { text: 'He is closer to ready than most of the names around him.', from: 'finished', to: 'close' },
+  { text: 'He has things to clean up, the way they all do at that age.', from: 'finished', to: 'raw' },
+  { text: 'The mechanics are ordinary. Nothing about them is broken.', from: 'finished', to: 'raw' },
+  { text: 'There is honest work left in him, and a year to do it.', from: 'close', to: 'raw' },
+  { text: 'A winter in a weight room would tell you a lot.', from: 'close', to: 'project' },
+  { text: 'The best of him only shows up in flashes.', from: 'close', to: 'project' },
+  { text: 'The distance between his good days and his bad ones is the story.', from: 'close', to: 'project' },
+  { text: 'He is some way from the finished article.', from: 'raw', to: 'project' },
+  { text: 'Everything about him is still in front of him.', from: 'raw', to: 'project' },
+  { text: 'Right now he is an athlete playing baseball.', from: 'raw', to: 'project' },
+  { text: 'Whoever takes him is taking a project.', from: 'raw', to: 'project' },
+  { text: 'He would need time before he helped anybody.', from: 'raw', to: 'project' },
+];
+
+/** The lines that stay honest about a recruit of this grade. */
+export const ceilingLinesFor = (grade: PotentialGrade): CeilingLine[] => {
+  const g = GRADE_LADDER.indexOf(grade);
+  return CEILING_LINES.filter(
+    (l) => GRADE_LADDER.indexOf(l.from) <= g && g <= GRADE_LADDER.indexOf(l.to),
+  );
+};
+
+/** The same, for how much of him is left to come. */
+export const developmentLinesFor = (band: Rawness): DevelopmentLine[] => {
+  const b = RAWNESS_LADDER.indexOf(band);
+  return DEVELOPMENT_LINES.filter(
+    (l) => RAWNESS_LADDER.indexOf(l.from) <= b && b <= RAWNESS_LADDER.indexOf(l.to),
+  );
+};
+
+export interface ScoutingHints {
+  ceiling: CeilingLine;
+  development: DevelopmentLine;
+}
+
+/**
+ * The two things anybody will say about him, fixed for the life of the recruit.
+ *
+ * Hashed out of his id, so they are the same on every render, after a reload,
+ * and in week three as in week one. Drawing them at render time instead would
+ * reshuffle the prose every time React looked at the row, which reads as the
+ * screen being broken rather than as uncertainty.
+ *
+ * They do not depend on the coach's skill either. Skill buys a narrower band,
+ * not different gossip, and a report whose *words* changed when you spent a
+ * coach point would make the two levers impossible to tell apart.
+ */
+export function hintsFor(prospect: Prospect): ScoutingHints {
+  const ceilings = ceilingLinesFor(potentialGrade(prospect.player.potential));
+  const developments = developmentLinesFor(rawnessOf(prospect.player));
+  return {
+    ceiling: pickLine(ceilings, prospect.id, SALT.ceilingHint),
+    development: pickLine(developments, prospect.id, SALT.developmentHint),
+  };
+}
+
+function pickLine<T>(pool: readonly T[], id: string, salt: number): T {
+  const i = Math.min(pool.length - 1, Math.floor(scoutNoise(id, salt) * pool.length));
+  return pool[i] as T;
 }
 
 // ---------------------------------------------------------------------------

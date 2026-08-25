@@ -164,11 +164,24 @@ function develop(p: Player, rng: Rng, growthMult = 1): number {
     p.range = bump(p.range);
     p.hands = bump(p.hands);
     p.arm = bump(p.arm);
+    p.armAccuracy = bump(p.armAccuracy);
+    p.blocking = bump(p.blocking);
+    p.bunt = bump(p.bunt);
+    p.steal = bump(p.steal);
   } else {
     p.stuff = bump(p.stuff);
     p.movement = bump(p.movement);
     p.control = bump(p.control);
     p.stamina = bump(p.stamina);
+    // A pitcher's glove develops now, and did not before — every fielding
+    // rating he had sat at its generated value for four years, which nobody
+    // noticed because nothing in the engine ever read them. Comebackers reach
+    // him now, so a senior who has been fielding his position since he was
+    // eighteen should be better at it than he was as a freshman.
+    p.range = bump(p.range);
+    p.hands = bump(p.hands);
+    p.arm = bump(p.arm);
+    p.armAccuracy = bump(p.armAccuracy);
     // Velocity is mph, not a 0 to 100 rating, so it cannot take the same delta.
     // Roughly a mile an hour for every twelve points of development.
     p.velocity = Math.round(clamp(p.velocity + delta * 0.08, 79, 103));
