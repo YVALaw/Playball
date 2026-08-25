@@ -131,6 +131,7 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 56 | **Player generation draw order is load-bearing.** Adding or removing an `rng()` call shifts every downstream number in the simulation. | Nothing. | header comment, `engine/players.ts` | SHIPPED |
 | 57 | **The report tab renames ratings.** A pitcher's `stuff` prints as `K/9`, `movement` as `H/9`, `control` as `BB/9`; a hitter's `eye` prints as `DISCIPLINE` and `range` as `REACTION`. | Different words from the ones the roster uses. | `Report` — `ui/screens/Board.tsx` | SHIPPED |
 | 58 | **Signing day judges your report, not the recruit.** It says "TOP OF YOUR REPORT" or "BOTTOM OF YOUR REPORT" and is deliberately silent in the middle. | Two labels, occasionally. | `verdict` — `ui/screens/SigningDay.tsx` | SHIPPED |
+| 59 | **The pool of names already taken is rebuilt from the save on every load**, and cannot be complete — a rival's graduated player is in no roster and in no record book, so his name comes back into circulation. | Occasionally two men with one name, on different teams. | `rebuildNameIndex` — `engine/season.ts`; `usedNames` — `engine/players.ts` | SHIPPED |
 
 ---
 
@@ -1713,6 +1714,37 @@ compiled perfectly and lost the offseason on every reload.
   **4000**; past that the game runs with `storageBlocked` set and saving off. A
   failed open is not cached, so closing the offending tab fixes it.
 
+### 11.5 Player identity, and the name pool a save cannot carry
+
+A `PlayerId` is **not** the display name. `nextPlayerId` (`engine/players.ts`)
+reads the generator's current position — `rng.state()`, which `rngFromState`
+restores exactly — puts it through Murmur3's finalizer and writes it as
+`p` plus seven base-36 digits. It costs no draw, which is why adding it moved no
+calibration golden; it is a bijection of the stream position, which is why two
+men cannot share one; and it is reproduced by a resumed save, which is why a
+seeded dynasty still replays.
+
+It used to be the name. Statistics, the record book, awards and box scores are
+all keyed on the id, so two men with one name were one man in all of them.
+
+**Old saves are grandfathered, not migrated.** A dynasty written before this
+carries name-shaped ids in its careers, its awards and its box scores, and keeps
+them. An id has to be unique and stable, not pretty, and the two spaces cannot
+collide — a name has a space in it and never starts lowercase.
+
+**The name pool is rebuilt on load.** `usedNames` in `engine/players.ts` keeps
+display names unique and has never been written into a save, so a cold reload
+began with every name in the world available again. `fromPortable` now calls
+`rebuildNameIndex`, which clears the pool and refills it from the three places a
+save keeps a name: the ninety-six rosters, the record book, and the recruiting
+board. Cleared rather than added to, so a dynasty opened second in a session
+draws the world it would have drawn on its own.
+
+It is deliberately not complete: a rival's shortstop who graduated three years
+ago is in no roster and in no record book — the book is your program only — so
+his name returns to circulation. Since identity no longer rides on the name that
+is a repeated name on somebody's bench and nothing more.
+
 ---
 
 ## 12. Planned systems — **PLANNED**
@@ -1784,6 +1816,12 @@ about twenty hidden gems per class either way.
   `season.careers`, before the statistics are wiped. Hitters get AB/H/HR/RBI/BB/SB,
   pitchers W/L/outs/ER/K, fielders chances/plays/errors. A year is written once, so
   re-entering the offseason cannot duplicate it.
+- Every row carries the player's **name**. The book is the last thing in a save
+  that remembers a man — rosters are rewritten each June and a departure notice
+  survives one offseason — and since §11.5 the id it is filed under is no longer
+  the name. `careerName` reads the row and falls back to the id for rows written
+  before the field existed, where the id *is* the name. Both the HALL tab and the
+  alumnus card on the player screen go through it.
 - `HISTORY` (`ui/screens/History.tsx`) is the season-by-season book for the program.
 - `PROGRAM → HALL` (`ui/screens/Program.tsx`) ranks the best players you have
   coached, bats by career hits and arms by career strikeouts, twelve each. It is

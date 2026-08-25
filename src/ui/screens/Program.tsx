@@ -29,7 +29,7 @@ import {
   SKILLS, SKILL_LABEL, type Objective,
 } from '../../engine/program.js';
 import {
-  seasonLength, regularRecord, seasonComplete,
+  careerName, seasonLength, regularRecord, seasonComplete,
   type CareerYear, type SeasonState,
 } from '../../engine/season.js';
 import { philosophyOf } from '../../engine/strategy.js';
@@ -520,11 +520,13 @@ function honoursByPlayer(history: SeasonRecord[]): Map<string, string[]> {
 /**
  * The record book, folded into one row per man.
  *
- * The book is keyed by player id, and a player id in this game *is* his name —
- * `makeHitter` and `makePitcher` build one from the other (engine/players.ts).
- * That is the only reason a list of men who left four years ago can be printed
- * at all: rosters are rewritten every June and the departure notices are kept
- * for one offseason, so nothing else in the save still remembers them.
+ * This is the only place a list of men who left four years ago can be printed
+ * from: rosters are rewritten every June and the departure notices are kept for
+ * one offseason, so nothing else in the save still remembers them. Which is why
+ * a career row carries the player's name — see `CareerYear` in engine/season.ts.
+ *
+ * Rows written before it did are filed under an id that *was* his name, and for
+ * those the key is still the answer.
  */
 function hallRows(
   careers: Record<PlayerId, CareerYear[]>,
@@ -536,7 +538,7 @@ function hallRows(
     for (const y of years) if (!teams.includes(y.team)) teams.push(y.team);
     return {
       id: playerId(id),
-      name: id,
+      name: careerName(playerId(id), years),
       first: years[0]?.year ?? 0,
       last: years[years.length - 1]?.year ?? 0,
       teams,

@@ -7,7 +7,7 @@
 // season. Real calendar dates are a presentation concern, and keeping them out
 // of here is what lets a season replay exactly from its seed.
 
-import { makeTeam, resetNames } from './players.js';
+import { makeTeam, reserveNames, resetNames } from './players.js';
 import { overallOf } from './ratings.js';
 import { initialPrestige } from './program.js';
 import { strategyFor, type Strategy } from './strategy.js';
@@ -79,6 +79,20 @@ export interface CareerYear {
   classYear: string;
   /** The program he played it for. */
   team: string;
+  /**
+   * What he was called, written on the row rather than looked up.
+   *
+   * The record book is the last thing in a save that remembers a man: rosters
+   * are rewritten every June and a departure notice survives one offseason, so
+   * four years after he left this is all there is. While the id was his name the
+   * book did not have to write it down. Now that it is not, the hall of fame and
+   * the alumnus card have nothing else to print.
+   *
+   * Optional because rows written before this field existed have none — and
+   * those are exactly the rows filed under an id that *is* the name, which is
+   * what both screens fall back to.
+   */
+  name?: string;
   /** Hitters. */
   ab?: number; h?: number; hr?: number; rbi?: number; bb?: number; sb?: number;
   /** Pitchers. */
@@ -95,6 +109,22 @@ export interface CareerYear {
    */
   chances?: number; plays?: number; errors?: number;
 }
+
+/**
+ * What a man was called, out of the only record that outlives him.
+ *
+ * Two screens ask this — the hall of fame lists him, the alumnus card opens him
+ * — and they must not answer differently, which is the whole reason it is one
+ * function and not two fallbacks written twice. Rows carry the name since ids
+ * stopped being names; older rows do not, and for those the key they are filed
+ * under is the name, because that is what an id was.
+ *
+ * Never empty. A career with no rows at all is a different question and belongs
+ * to the caller, who is the only one who knows whether he is a departed player
+ * or a bad id.
+ */
+export const careerName = (id: PlayerId, years: readonly CareerYear[]): string =>
+  years.find((y) => y.name)?.name ?? String(id);
 
 /**
  * Write one team's season into the record book.
@@ -118,7 +148,7 @@ export function archiveSeason(season: SeasonState, teamIndex: number, year: numb
     if (!played) continue;
 
     const row: CareerYear = {
-      year, classYear: p.classYear, team: rec.def.abbr,
+      year, classYear: p.classYear, team: rec.def.abbr, name: p.name,
       ...(bat && bat.ab > 0
         ? { ab: bat.ab, h: bat.h, hr: bat.hr, rbi: bat.rbi, bb: bat.bb, sb: bat.sb }
         : {}),
@@ -143,6 +173,64 @@ export function archiveSeason(season: SeasonState, teamIndex: number, year: numb
 
 export const regularRecord = (t: TeamRecord): { w: number; l: number } =>
   ({ w: t.rw ?? t.w, l: t.rl ?? t.l });
+
+/**
+ * The parts of a save a name can be hiding in. Loose enough to accept the stored
+ * shape as well as a live season, and to accept a dynasty old enough to predate
+ * any of the three.
+ */
+type NameSources = Partial<Pick<SeasonState, 'teams' | 'careers' | 'recruiting'>>;
+
+/**
+ * Every display name a save still knows about.
+ *
+ * Three places hold one. The ninety-six rosters, obviously. The record book,
+ * which outlives the roster and is the only trace of a man who has graduated.
+ * And the recruiting board, whose prospects are real generated players waiting
+ * to sign — leave them out and the first walk-on of the offseason can be handed
+ * the name of a recruit the coach is still chasing.
+ *
+ * A career row from before names were kept has none, and for those the key it is
+ * filed under is the name: that is what the old ids were.
+ */
+function namesIn(save: NameSources): string[] {
+  const names: string[] = [];
+  for (const t of save.teams ?? []) {
+    for (const p of [
+      ...t.team.lineup, ...t.team.bench, ...t.team.rotation, ...t.team.bullpen,
+    ]) names.push(p.name);
+  }
+  for (const [id, years] of Object.entries(save.careers ?? {})) {
+    names.push(years.find((y) => y.name)?.name ?? id);
+  }
+  for (const p of save.recruiting?.prospects ?? []) names.push(p.player.name);
+  return names;
+}
+
+/**
+ * Put the name pool back, from the save that is being opened.
+ *
+ * The pool lives in players.ts as module-level state and has never been written
+ * into a save, so a cold reload started the world with every name in it
+ * available again — and since an id used to *be* a name, the next man generated
+ * could land on top of somebody's career. Ids no longer work that way, so this
+ * is now the narrower job it always should have been: keeping the league from
+ * fielding two Cole Rourkes.
+ *
+ * Rebuilt rather than added to. The pool afterwards is exactly a function of the
+ * save, which is what stops a dynasty opened second in the same session from
+ * inheriting the first one's names and drawing a different world because of it.
+ *
+ * It cannot be complete and does not pretend to be: a rival's shortstop who
+ * graduated three years ago is in no roster and in no record book — the book is
+ * the user's program only — so his name comes back into circulation. That is a
+ * repeated name on some other team's bench, and nothing more, which is the whole
+ * reason identity was moved off the name first.
+ */
+export function rebuildNameIndex(save: NameSources): void {
+  resetNames();
+  reserveNames(namesIn(save));
+}
 
 export interface ScheduledGame {
   home: number;

@@ -129,9 +129,18 @@ export interface PitcherRatings extends FieldingRatings {
 
 interface PlayerCore {
   /**
-   * Unique within a league. Derived from the name, which the generator already
-   * guarantees is unique — deliberately not a module level counter, which is the
-   * shared mutable state that caused B8.
+   * Unique within a dynasty, and deliberately not the name.
+   *
+   * It was the name once. Everything that keeps a record keys on this — season
+   * statistics, the record book, awards, box scores — so two men called the same
+   * thing were one man in all of them, and the only guard was a set in
+   * players.ts that no save wrote down. A cold reload emptied it and handed the
+   * whole name pool back. `nextPlayerId` reads the generator's own position
+   * instead: unique, restored exactly by a resumed save, and costing no draw.
+   *
+   * Saves written before that carry name-shaped ids and keep them. An id has to
+   * be unique and stable, not pretty, and rewriting every key in a dynasty is
+   * the kind of migration that loses a career.
    */
   readonly id: PlayerId;
   name: string;

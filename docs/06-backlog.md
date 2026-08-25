@@ -61,16 +61,11 @@ is deferred to v1.0 and is explicitly exempt from the badge cap.
 Ahead of features, because every one of these corrupts something that already
 exists.
 
-- **A1 · Player ID collision** — `DECIDED`. `usedNames` in `players.ts` is a
-  module-global set that is never serialised and never rebuilt on load, and
-  `playerId(name)` makes the id *be* the name. After a cold reload a new recruit
-  can be generated holding an existing player's name, and since statistics,
-  careers, awards and box scores are all keyed by id, the two men merge. The fix
-  is opaque ids plus rebuilding the uniqueness index from every loaded roster
-  and career.
-  **Complication:** the Hall of Fame can name players who left four years ago
-  *because* the id is the name — departure notices survive only one offseason.
-  Opaque ids therefore require a name on `CareerYear` and a migration.
+- **A1 · Player ID collision** — SHIPPED. Ids come off the generator's stream
+  position instead of the name, old saves keep the name-shaped ids they were
+  written with, `CareerYear` carries the name so the hall of fame can still
+  print one, and a load rebuilds the name pool from the save. See
+  `05-systems-reference.md` §11.5 and §12.4.
 - **A2 · Fifteenth-inning failure** — `DECIDED`. A game reaching the fifteenth
   went undefined. Not yet reproduced; a seeded search for long games will find
   it.

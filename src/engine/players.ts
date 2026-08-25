@@ -12,7 +12,7 @@ import { GENERATED_POTENTIAL_CAP } from './scouting.js';
 import { FIRST, LAST } from '../data/names.js';
 import { playerId } from './types.js';
 import type {
-  Bats, ClassYear, Hand, Hitter, PitcherRole, Pitcher, Position, Rng, Team,
+  Bats, ClassYear, Hand, Hitter, PitcherRole, Pitcher, PlayerId, Position, Rng, Team,
 } from './types.js';
 
 const POSITIONS: readonly Position[] = ['C','1B','2B','3B','SS','LF','CF','RF','DH'];
@@ -85,8 +85,76 @@ function drawPlatoonSkill(rng: Rng, bats: Bats): number {
 }
 
 // Keep names unique across the whole league so two Rourkes never share a field.
+//
+// Cosmetic now rather than structural. While the id *was* the name this set was
+// the only thing standing between two men and one merged career; since
+// `nextPlayerId` it decides nothing more than whether a roster reads oddly. It
+// is still module-level state that no save has ever carried, which is why a load
+// puts it back — `rebuildNameIndex` in season.ts gathers the names, `resetNames`
+// and `reserveNames` are how they get here.
 const usedNames = new Set<string>();
 export function resetNames(): void { usedNames.clear(); }
+
+/**
+ * Take these names as already spoken for.
+ *
+ * Additive on purpose: the caller decides whether this is a fresh world or a
+ * second helping for one already standing, and only `resetNames` empties the
+ * pool.
+ */
+export function reserveNames(names: Iterable<string>): void {
+  for (const n of names) if (n) usedNames.add(n);
+}
+
+/**
+ * Murmur3's finalizer. A bijection on 32 bits, and that property is load bearing
+ * rather than a nicety: it is what carries the generator's promise of a distinct
+ * state through to a promise of a distinct id.
+ */
+function mix32(x: number): number {
+  let h = x >>> 0;
+  h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b) >>> 0;
+  h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35) >>> 0;
+  h ^= h >>> 16;
+  return h >>> 0;
+}
+
+/**
+ * A man's identity, taken from where the generator is standing rather than from
+ * what he is called.
+ *
+ * The id used to *be* the display name, which quietly made two men with one name
+ * into one man: season statistics, the record book, awards and box scores are
+ * all keyed by id, so the second Cole Rourke inherited the first one's career.
+ * The only thing keeping names apart was the set above, and no save has ever
+ * written it down — one cold reload emptied it and the next walk-on could be
+ * generated on top of somebody.
+ *
+ * The stream's own position is the one number in reach that is already unique,
+ * already restored exactly by a resumed save (`rngFromState` rebuilds the
+ * generator from it), and already free of the clock and of Math.random. Reading
+ * it costs no draw, which matters more than it sounds: every rng() call in this
+ * file sits in a fixed sequence and taking one for a name tag would move every
+ * calibration golden in the project.
+ *
+ * Two players collide only if the generator returns to the same state between
+ * them, and xorshift32 walks all 2^32-1 non-zero states before it repeats —
+ * four billion draws against the hundred million or so a long dynasty spends.
+ *
+ * The `p` prefix keeps the new ids out of the old ones' way. A save written
+ * before this carries name-shaped ids and keeps them; a name has a space in it
+ * and never starts lowercase, so the two spaces cannot meet.
+ */
+function nextPlayerId(rng: Rng): PlayerId {
+  const at = rng.state?.();
+  if (at === undefined) {
+    // The same refusal `toPortable` makes, for the same reason: a generator with
+    // no position cannot promise the one thing an id needs, which is to come out
+    // the same way twice.
+    throw new Error('this generator cannot make players: it has no state()');
+  }
+  return playerId(`p${mix32(at).toString(36).padStart(7, '0')}`);
+}
 
 function uniqueName(rng: Rng): string {
   for (let i = 0; i < 200; i++) {
@@ -165,6 +233,9 @@ const derived = (base: number, noise: number, sd: number): number =>
   Math.max(RATING_LO, Math.min(RATING_HI, base + noise * sd));
 
 export function makeHitter(rng: Rng, quality = 50, opts: HitterOpts = {}): Hitter {
+  // Taken before anything is drawn, so the id is the stream position this man
+  // was made at. Reads the generator, does not turn it.
+  const id = nextPlayerId(rng);
   const bats = opts.bats ?? drawBats(rng);
   const throws = opts.throws ?? drawThrows(rng, bats);
   const name = uniqueName(rng);
@@ -175,7 +246,7 @@ export function makeHitter(rng: Rng, quality = 50, opts: HitterOpts = {}): Hitte
   const p: Hitter = {
     type: 'hitter',
     potential: 0,
-    id: playerId(name),
+    id,
     name,
     pos,
     classYear: pick(rng, CLASSES),
@@ -229,6 +300,8 @@ export interface PitcherOpts {
 }
 
 export function makePitcher(rng: Rng, quality = 50, opts: PitcherOpts = {}): Pitcher {
+  // As in makeHitter: read the stream's position first, spend none of it.
+  const id = nextPlayerId(rng);
   const throws = opts.throws ?? (rng() < 0.28 ? 'L' : 'R');
   const role: PitcherRole = opts.role ?? 'SP';
   const sidearm = throws === 'R' && rng() < 0.08 && role === 'RP';
@@ -238,7 +311,7 @@ export function makePitcher(rng: Rng, quality = 50, opts: PitcherOpts = {}): Pit
   const p: Pitcher = {
     type: 'pitcher',
     potential: 0,
-    id: playerId(name),
+    id,
     name,
     pos: 'P',
     role,

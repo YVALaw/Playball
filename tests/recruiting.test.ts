@@ -33,11 +33,13 @@ import { seedRivalInterest } from '../src/state/store.js';
 import { CONFERENCES, type Region } from '../src/data/schools.js';
 
 // Names are unique for the life of the process, so a second call to
-// generateClass with a given seed does not produce the class the first one did:
-// different names mean different ids, and ids are what the scouting noise
-// hashes. Without this reset every test in this file quietly depends on its own
-// position in the file, and a change anywhere upstream reshuffles what each one
-// is actually asserting about.
+// generateClass with a given seed does not produce the class the first one did.
+// The mechanism is the rejection loop in `uniqueName`: a name already taken
+// costs two extra draws, and everything downstream of them lands somewhere else
+// — every rating in the class, and the stream position each man's id is read
+// from, which is in turn what the scouting noise hashes. Without this reset
+// every test in this file quietly depends on its own position in the file, and a
+// change anywhere upstream reshuffles what each one is actually asserting about.
 beforeEach(resetNames);
 
 const REGIONS: Region[] = [

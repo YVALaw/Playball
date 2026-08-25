@@ -12,7 +12,7 @@
 // — which also means it can never arrive out of step with the teams it belongs to.
 
 import { rngFromState } from '../engine/rng.js';
-import { buildSchedule, worldFromConferences } from '../engine/season.js';
+import { buildSchedule, rebuildNameIndex, worldFromConferences } from '../engine/season.js';
 import { strategyFor } from '../engine/strategy.js';
 import { initialPrestige } from '../engine/program.js';
 import { generateClass } from '../engine/recruiting.js';
@@ -52,6 +52,15 @@ export function fromPortable(p: Portable): SeasonState {
   // chances were ever recorded — and it means the season starts counting again
   // from the next pitch rather than every reader having to guard the map.
   p.season.fielding ??= new Map();
+
+  // A third thing no save carries, and the only one that lives outside the save
+  // entirely: the pool of names already spoken for is module state in
+  // players.ts, so arriving here means the process may know nothing about the
+  // world it is about to run. Rebuild it from the players this save holds. This
+  // is the one door every arrival comes through — a load, and every message the
+  // sim worker is handed — which is exactly why it belongs here and not at the
+  // call sites.
+  rebuildNameIndex(p.season);
 
   return {
     ...p.season,
