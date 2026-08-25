@@ -16,6 +16,7 @@ import { buildSchedule, rebuildNameIndex, worldFromConferences } from '../engine
 import { strategyFor } from '../engine/strategy.js';
 import { initialPrestige } from '../engine/program.js';
 import { generateClass } from '../engine/recruiting.js';
+import { seededBook } from '../engine/records.js';
 import { CONFERENCES } from '../data/schools.js';
 import type { SeasonState } from '../engine/season.js';
 
@@ -52,6 +53,16 @@ export function fromPortable(p: Portable): SeasonState {
   // chances were ever recorded — and it means the season starts counting again
   // from the next pitch rather than every reader having to guard the map.
   p.season.fielding ??= new Map();
+
+  // And the record book, which is the same rule with one extra clause. An empty
+  // book is *not* the truthful state for a save that predates it: the seeded
+  // NCAA marks are not something the dynasty earned, they are the starting
+  // position of every dynasty, and a career carried forward should arrive at the
+  // same book a new one opens with rather than at a blank page that reads as a
+  // bug. The streak counter alongside it is genuinely empty — nobody's scoreless
+  // run was ever being counted — so it starts at nothing.
+  p.season.records ??= seededBook();
+  p.season.scorelessOuts ??= new Map();
 
   // A third thing no save carries, and the only one that lives outside the save
   // entirely: the pool of names already spoken for is module state in

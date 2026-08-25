@@ -13,6 +13,9 @@ import { initialPrestige } from './program.js';
 import { strategyFor, type Strategy } from './strategy.js';
 import { generateClass, type RecruitClass } from './recruiting.js';
 import { simGame, type GameResult, type TeamState } from './game.js';
+import {
+  offer, recordGameMarks, seededBook, type RecordBook,
+} from './records.js';
 import { CONFERENCES, type ConferenceDef, type SchoolDef } from '../data/schools.js';
 import { teamId } from './types.js';
 import type {
@@ -369,6 +372,22 @@ export interface GameSummary {
 export interface SeasonState {
   config: SeasonConfig;
   rng: Rng;
+  /**
+   * The calendar year this season is being played in.
+   *
+   * The engine has never needed one — a day is an integer offset from opening
+   * day and that is what lets a season replay from its seed — but a record
+   * without a year is not a record, and the single-game marks are taken inside
+   * `recordResult`, which is three call layers below anybody holding the number.
+   * Threading it through every caller would have put a `year` parameter on the
+   * whole postseason for the sake of one string in a book.
+   *
+   * The store is the source of truth and stamps it on the way in, exactly as it
+   * stamps `captureBoxFor`; `nextSeason` carries it forward. Optional because a
+   * headless harness has no calendar at all, and because a save written before
+   * the book existed has none.
+   */
+  year?: number;
   teams: TeamRecord[];
   schedule: GameDay[];
   /** Next unplayed day in the schedule. */
@@ -420,6 +439,42 @@ export interface SeasonState {
    * else's shortstop.
    */
   careers: Record<PlayerId, CareerYear[]>;
+  /**
+   * The all-time book, league-wide and permanent. See engine/records.ts.
+   *
+   * On the season rather than in the store because the two things that write it
+   * are `recordResult`, which is pure engine and sees every game any program
+   * plays, and a scan of the season statistics. Carrying it here also means it
+   * rides `toPortable` with everything else — the save assembles the record field
+   * by field and a book kept beside it would have been dropped on the first
+   * reload.
+   *
+   * Optional so a dynasty from before it existed still opens; `fromPortable`
+   * gives that save the seeded book rather than an empty one, because a record
+   * book with nothing in it looks like a bug and a book with Incaviglia in it
+   * looks like a target.
+   */
+  records?: RecordBook;
+  /**
+   * How many outs each pitcher has gone without allowing a run, right now.
+   *
+   * The one piece of state the book adds beyond its holders, and it is here
+   * because a streak cannot be reconstructed from season totals: a man with a
+   * 3.10 ERA might have thrown twenty eight straight scoreless in the middle of
+   * it, and nothing in `pitching` remembers that. One number per arm, reset the
+   * moment he is scored on, offered to the book as it grows.
+   *
+   * The streak is measured in whole appearances, which understates it slightly:
+   * a start where he is scored on in the seventh ends the streak at zero rather
+   * than crediting the six scoreless innings in front of the run, because the
+   * game line records outs and runs and not the order they came in.
+   *
+   * There is deliberately no equivalent for a hitting streak. The mark is
+   * Ventura's 58 and forty five games cannot hold it, so no candidate this
+   * engine can produce would ever be offered — tracking one would be a map of
+   * fifteen hundred numbers maintained to answer a question with a fixed answer.
+   */
+  scorelessOuts?: Map<PlayerId, number>;
   /**
    * The recruiting class in front of the program right now.
    *
@@ -697,6 +752,10 @@ export function createSeason(
     boxScores: {},
     captureBoxFor: null,
     careers: {},
+    // A brand new dynasty opens with the real marks already standing, so the
+    // book has something in it on day one.
+    records: seededBook(),
+    scorelessOuts: new Map(),
     recruiting: generateClass(0, teams.length, rng),
     finalOrder: null,
     postseasonDay: null,
@@ -739,6 +798,10 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
   return {
     config,
     rng: prev.rng,
+    // A year passes. The store keeps its own count and restamps this on load,
+    // so the two cannot drift far; incrementing here is what keeps a season
+    // rolled inside the worker from dating its records to last year.
+    ...(prev.year === undefined ? {} : { year: prev.year + 1 }),
     teams,
     schedule: buildSchedule(config, world, rotation),
     dayIndex: 0,
@@ -747,6 +810,12 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
     batting: new Map(),
     pitching: new Map(),
     fielding: new Map(),
+    // The book is the one thing here that is not about a season. It carries
+    // forward for as long as the dynasty does, seeded if this save predates it.
+    records: prev.records ?? seededBook(),
+    // The streak does not: it is a single-season record, and a scoreless run
+    // does not survive an offseason and a new roster.
+    scorelessOuts: new Map(),
     results: [],
     // Last year's box scores belong to last year. The career lines do not —
     // they are the only copy, and they carry forward for as long as the dynasty
@@ -1142,6 +1211,49 @@ export function recordResult(
   foldSide(season, result.home, homeWon, margin, decision);
   foldSide(season, result.away, !homeWon, margin, decision);
 
+  // Into the all-time book, from the one door every finished game comes through.
+  //
+  // Gated on the same flag that decides whether the game happened at all: a
+  // replayed or exhibition game must not put a second no-hitter in the tally for
+  // the one no-hitter that was thrown.
+  if (opts.record ?? true) {
+    const book = (season.records ??= seededBook());
+    const year = season.year ?? 0;
+    recordGameMarks(
+      book, year,
+      { abbr: home.def.abbr, school: home.def.school },
+      { abbr: away.def.abbr, school: away.def.school },
+      result,
+    );
+
+    // The winning streak is taken here rather than at the close of the season
+    // because `streak` is a running number: it is only ever correct at the
+    // instant it is set, and a season-end scan would read whatever the team
+    // happened to finish on.
+    if (opts.standings ?? true) {
+      const winner = homeWon ? home : away;
+      offer(book, 'teamSeasonStreak', {
+        value: winner.streak, holder: winner.def.school, team: winner.def.abbr,
+        year, detail: `${winner.w}-${winner.l}`,
+      });
+    }
+
+    const outs = (season.scorelessOuts ??= new Map());
+    for (const side of [result.home, result.away]) {
+      for (const line of side.pitching.values()) {
+        if (line.outs === 0 && line.bf === 0) continue;
+        const run = line.r > 0 ? 0 : (outs.get(line.player.id) ?? 0) + line.outs;
+        outs.set(line.player.id, run);
+        if (run < 3) continue;
+        const team = side === result.home ? home : away;
+        offer(book, 'seasonScoreless', {
+          value: Math.floor(run / 3), holder: line.player.name,
+          team: team.def.abbr, year, id: line.player.id,
+        });
+      }
+    }
+  }
+
   const summary: GameSummary = {
     day: today,
     home: homeIndex,
@@ -1519,25 +1631,46 @@ export interface Leaderboards {
   fielding: LeaderRow[];
 }
 
+/**
+ * The bar a bat and an arm have to clear before a rate statistic about them
+ * means anything.
+ *
+ * The NCAA's own qualifiers: 2.0 plate appearances per team game for a batting
+ * title, 1.0 inning per team game for an ERA title. (MLB is stricter at 3.1 and
+ * 1.0.) Without the innings rule a reliever with twenty good innings outranks an
+ * ace with a hundred, which is not an ERA champion.
+ *
+ * The qualifier scales with games played, which is right at the end of a season
+ * and useless at the start of one: six games in it admits a hitter who is
+ * 10-for-17 and puts .588 at the top of the leaderboard. A floor keeps early
+ * season boards honest — nobody leads the nation on seventeen at bats.
+ *
+ * One function because there is one house convention. The record book asks the
+ * same question as the leaderboards and must not answer it differently: a rate
+ * that leads the country in June and a rate the book will not accept would be
+ * two different definitions of a season.
+ */
+export interface Qualifiers { minPA: number; minIP: number }
+
+export function qualifiers(season: SeasonState): Qualifiers {
+  const gamesPlayed = Math.max(...season.teams.map((t) => t.gp), 1);
+  const MIN_PA_FLOOR = 40;
+  const MIN_IP_FLOOR = 15;
+  return {
+    minPA: Math.max(MIN_PA_FLOOR, Math.floor(gamesPlayed * 2.0)),
+    minIP: Math.max(MIN_IP_FLOOR, Math.floor(gamesPlayed * 1.0)),
+  };
+}
+
 export function leaders(season: SeasonState, opts: LeaderOptions = {}): Leaderboards {
   const limit = opts.limit ?? 5;
   const teams = teamLookup(season);
   const names = nameLookup(season);
 
-  // The NCAA's own qualifiers: 2.0 plate appearances per team game for a
-  // batting title, 1.0 inning per team game for an ERA title. (MLB is stricter
-  // at 3.1 and 1.0.) Without the innings rule a reliever with twenty good
-  // innings outranks an ace with a hundred, which is not an ERA champion.
   const gamesPlayed = Math.max(...season.teams.map((t) => t.gp), 1);
-
-  // The NCAA qualifier scales with games played, which is right at the end of a
-  // season and useless at the start of one: six games in it admits a hitter who
-  // is 10-for-17 and puts .588 at the top of the leaderboard. A floor keeps
-  // early season boards honest — nobody leads the nation on seventeen at bats.
-  const MIN_PA_FLOOR = 40;
-  const MIN_IP_FLOOR = 15;
-  const minPA = opts.minPA ?? Math.max(MIN_PA_FLOOR, Math.floor(gamesPlayed * 2.0));
-  const minIP = opts.minIP ?? Math.max(MIN_IP_FLOOR, Math.floor(gamesPlayed * 1.0));
+  const bars = qualifiers(season);
+  const minPA = opts.minPA ?? bars.minPA;
+  const minIP = opts.minIP ?? bars.minIP;
   const minChances = opts.minChances
     ?? Math.max(BOARD_CHANCES_FLOOR, Math.floor(gamesPlayed * BOARD_CHANCES_PER_GAME));
 
@@ -1599,4 +1732,84 @@ export function leaders(season: SeasonState, opts: LeaderOptions = {}): Leaderbo
         );
       }),
   };
+}
+
+// ---------------------------------------------------------------------------
+// The all-time book, at the close of a season
+// ---------------------------------------------------------------------------
+
+/**
+ * Everything a finished season puts in the book.
+ *
+ * Here rather than in records.ts because it reads a whole `SeasonState` and the
+ * rate helpers that sit beside it — and because the three statistics maps are
+ * already league-wide, being exactly what the national leaderboards are computed
+ * from. So this is a scan of what is in hand at the end of June rather than a new
+ * store. Single-game marks cannot be taken this way, because the box score is
+ * gone by now; season marks cannot be taken the other way, because a season
+ * leader is not knowable until the season stops.
+ *
+ * Must run before `nextSeason` wipes the statistics. The store calls it next to
+ * `archiveSeason`, which lives under the same constraint for the same reason.
+ *
+ * Counts are only offered when there is something to offer. A category nobody has
+ * ever managed should read as open rather than as held by a man with none of
+ * them, and without the guard the first name out of the map takes it at zero.
+ */
+export function recordSeasonMarks(season: SeasonState, year: number): void {
+  const book = (season.records ??= seededBook());
+  const teams = teamLookup(season);
+  const names = nameLookup(season);
+  const { minPA, minIP } = qualifiers(season);
+
+  for (const [id, s] of season.batting) {
+    const who = {
+      holder: names.get(id) ?? String(id), team: teams.get(id) ?? '---', year, id,
+    };
+    const games = `${s.g} G`;
+    if (s.hr > 0) offer(book, 'seasonHR', { ...who, value: s.hr, detail: `${s.rbi} RBI` });
+    if (s.rbi > 0) offer(book, 'seasonRBI', { ...who, value: s.rbi, detail: `${s.hr} HR` });
+    if (s.h > 0) offer(book, 'seasonHits', { ...who, value: s.h, detail: `${s.ab} AB` });
+    if (s.r > 0) offer(book, 'seasonRuns', { ...who, value: s.r, detail: games });
+    if (s.sb > 0) offer(book, 'seasonSB', { ...who, value: s.sb, detail: `${s.cs} CS` });
+    if (s.d > 0) offer(book, 'seasonDoubles', { ...who, value: s.d, detail: games });
+    if (s.t > 0) offer(book, 'seasonTriples', { ...who, value: s.t, detail: games });
+    // Singles once, doubles twice, and so on, which folds to this.
+    const tb = s.h + s.d + s.t * 2 + s.hr * 3;
+    if (tb > 0) offer(book, 'seasonTB', { ...who, value: tb, detail: `${s.ab} AB` });
+
+    // The rates, behind the same bar the national leaderboards use.
+    if (s.ab + s.bb + s.hbp < minPA) continue;
+    offer(book, 'seasonAvg', {
+      ...who, value: battingAverage(s), detail: `${s.h}-for-${s.ab}`,
+    });
+    offer(book, 'seasonSlg', { ...who, value: slugging(s), detail: `${tb} TB` });
+  }
+
+  for (const [id, s] of season.pitching) {
+    const who = {
+      holder: names.get(id) ?? String(id), team: teams.get(id) ?? '---', year, id,
+    };
+    const ip = inningsPitched(s);
+    const shown = `${Math.floor(s.outs / 3)}.${s.outs % 3} IP`;
+    if (s.k > 0) offer(book, 'seasonK', { ...who, value: s.k, detail: shown });
+    if (s.w > 0) offer(book, 'seasonWins', { ...who, value: s.w, detail: `${s.l} L` });
+    if (s.sv > 0) offer(book, 'seasonSaves', { ...who, value: s.sv, detail: `${s.g} G` });
+    if (s.outs > 0) offer(book, 'seasonIP', { ...who, value: ip, detail: `${s.gs} GS` });
+
+    if (ip < minIP) continue;
+    offer(book, 'seasonERA', { ...who, value: era(s), detail: shown });
+    offer(book, 'seasonWHIP', { ...who, value: whip(s), detail: shown });
+    offer(book, 'seasonK9', { ...who, value: (s.k * 9) / ip, detail: `${s.k} K, ${shown}` });
+  }
+
+  for (const t of season.teams) {
+    if (t.gp === 0) continue;
+    const who = { holder: t.def.school, team: t.def.abbr, year };
+    const record = `${t.w}-${t.l}`;
+    offer(book, 'teamSeasonWins', { ...who, value: t.w, detail: record });
+    offer(book, 'teamSeasonDiff', {
+      ...who, value: t.rs - t.ra, detail: `${t.rs} RS, ${t.ra} RA`,
+    });
+  }
 }

@@ -132,6 +132,8 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 57 | **The report tab renames ratings.** A pitcher's `stuff` prints as `K/9`, `movement` as `H/9`, `control` as `BB/9`; a hitter's `eye` prints as `DISCIPLINE` and `range` as `REACTION`. | Different words from the ones the roster uses. | `Report` — `ui/screens/Board.tsx` | SHIPPED |
 | 58 | **Signing day judges your report, not the recruit.** It says "TOP OF YOUR REPORT" or "BOTTOM OF YOUR REPORT" and is deliberately silent in the middle. | Two labels, occasionally. | `verdict` — `ui/screens/SigningDay.tsx` | SHIPPED |
 | 59 | **The pool of names already taken is rebuilt from the save on every load**, and cannot be complete — a rival's graduated player is in no roster and in no record book, so his name comes back into circulation. | Occasionally two men with one name, on different teams. | `rebuildNameIndex` — `engine/season.ts`; `usedNames` — `engine/players.ts` | SHIPPED |
+| 60 | **A scoreless-innings streak is measured a whole appearance at a time.** Allowing a run in the seventh zeroes the streak rather than crediting the six scoreless innings before it, because the game line records outs and runs and not the order they came in. | A record that reads a little short. | `scorelessOuts`, `recordResult` — `engine/season.ts` | SHIPPED |
+| 61 | **A record must be beaten, not equalled**, including the seeded NCAA ones. | Stated on the record book screen; the incumbent simply staying put. | `offer` — `engine/records.ts` | SHIPPED |
 
 ---
 
@@ -1828,9 +1830,9 @@ about twenty hidden gems per class either way.
   ordered on counting statistics the game already prints rather than on a career
   score of nobody's devising.
 
-**What is planned:** a records book in the sense of all-time marks — best single
-season, career leaders, program and league records that persist and can be broken.
-The exact scope is not settled in the code. See Appendix B.
+**Shipped since:** the all-time book in the other sense — league-wide marks that
+persist and can be broken, seeded with real NCAA records. See §13. Career leaders
+are still the missing half of it, and for the reason given there.
 
 ### 12.5 Draft declaration and persuasion
 
@@ -1851,6 +1853,151 @@ step, no persuasion, and no screen for either.
 **Reality today:** the HALL tab described in §12.4 is a leaderboard of the best
 players you have coached, computed live from the record book. Nothing is inducted,
 nothing is permanent, and nobody is honoured.
+
+---
+
+## 13. The all-time record book — **SHIPPED**
+
+`src/engine/records.ts`, `recordSeasonMarks` in `src/engine/season.ts`,
+`src/ui/screens/RecordBook.tsx`
+
+League-wide across all ninety-six programs, permanent, and seeded with real NCAA
+marks so there is something to chase in the first week of the first season.
+
+### 13.1 Why it is cheap
+
+A record book does not need the seasons, it needs the **holders**: thirty-eight
+rows, each a value, a name, a program and a year. Every finished game already
+passes through `recordResult`, so a candidate is offered against the standing
+mark as it happens and thrown away the instant it fails to beat it. Keeping every
+player's line across ninety-six rosters is what would have been expensive, and
+none of it is needed to answer "who hit the most home runs anybody ever hit here".
+
+The book lives on `SeasonState.records`, which is what makes persistence free:
+`toPortable` spreads the season, so it rides the save with everything else rather
+than being a field somebody has to remember to name in `buildSaveFile`.
+
+### 13.2 Where each family is detected, and why there
+
+| Family | Where | Why there |
+|---|---|---|
+| Single game, player — HR, hits, RBI, runs, SB, pitcher K | `recordGameMarks`, from `recordResult` | The box score of a Tuesday in the Mountain conference is never written down. Both teams' per-player lines exist for about a microsecond, and this is the only moment they do |
+| Feats — perfect game, no-hitter, complete-game shutout | same | Needs the opposing team's hit and run totals against one pitcher's out count, which is a per-game fact |
+| Single season, player | `recordSeasonMarks`, from `rollYear` | `season.batting` / `pitching` are already league-wide — they are what the national leaderboards are computed from — so this is a scan of what is in hand, not a new store. A season leader is also not knowable until the season stops |
+| Team, single game — runs, hits, margin | `recordGameMarks` | As above |
+| Team, season — wins, run differential | `recordSeasonMarks` | Run differential is not monotonic, so a running check would record a mid-season peak |
+| Team, longest winning streak | `recordResult` | `TeamRecord.streak` is a running number, correct only at the instant it is set. A season-end scan reads whatever the team happened to finish on |
+| Coach career | `recordCoachMarks`, from `rollYear` | Reads `CoachState`, which lives in the store and not in the engine |
+
+Two things follow from this. The book is league-wide for free, because
+`recordResult` sees every game every program plays. And a replayed or exhibition
+game contributes nothing: the whole block is gated on `PlayOptions.record`, the
+same flag that decides whether the game counts at all, so one no-hitter cannot be
+tallied twice.
+
+**Ties go to the incumbent.** A mark has to be beaten, not equalled. That is the
+rule the seeded records need — matching Incaviglia is not passing him — and it is
+the only rule whose answer does not depend on the order two identical
+performances happened to be evaluated in, which across ninety-six programs
+playing the same afternoon is not a fact anybody should have to reason about. The
+screen says so at the bottom.
+
+**Rates use the leaderboards' own qualifier.** `qualifiers()` was factored out of
+`leaders()` so there is one house convention: two plate appearances per team game
+to be batting, one inning per team game to be pitching, with floors of 40 and 15.
+A rate that leads the country in June and a rate the book will not accept would
+be two different definitions of a season.
+
+**Counts are only offered when there is one to offer.** Without the guard, the
+first name out of the map takes an unset category at zero, and "0 stolen bases,
+held by a pitcher" is worse than an open row.
+
+### 13.3 The seeded marks, and the honest problem with them
+
+Twelve, all flagged `ncaa: true` in the data and badged **NCAA** on screen.
+Counting marks are scaled by games played — 45 against the 56-to-75 game seasons
+they were set in — and rates are taken exactly as they stand, because a .400
+average means the same thing at any season length.
+
+| Mark | Real | Games | In the book |
+|---|---|---|---|
+| Home runs, Incaviglia 1985 | 48 | 75 | 29 |
+| RBI, Incaviglia 1985 | 143 | 75 | 86 |
+| Total bases, Incaviglia 1985 | 285 | 75 | 171 |
+| Triples, Hagman 1980 | 17 | 63 | 12 |
+| Doubles, Hawpe 2000 | 36 | 75\* | 22 |
+| Wins, Loynd 1986 | 20 | 75\* | 12 |
+| Innings, Bannister 1976 | 186 | 75\* | 112 |
+| Consecutive scoreless innings, Helton 1994 | 47 | 75\* | 28 |
+| Batting average, Hagman 1980 | .551 | rate | .551 |
+| Slugging, Incaviglia 1985 | 1.140 | rate | 1.140 |
+| Strikeouts per nine, Wagner 2003 | 16.8 | rate | 16.8 |
+| Consecutive games hitting, Ventura 1987 | 58 | — | **58** |
+
+\* the source does not record a season length; `ERA_GAMES` = 75 stands in, which
+is the top of the band and the length of both seasons that *are* recorded. Guessing
+high scales a mark down, and a mark pitched too high is furniture.
+
+**Ventura's streak keeps its real number on purpose.** Forty five games cannot
+hold fifty eight, so the row can never change hands. One untouchable mark that
+exists to be admired is good and more than one turns a game system into a museum,
+so it is the only row carrying `RecordSpec.frozen`, the screen prints the reason
+instead of implying it is in reach, and nothing anywhere computes a candidate for
+it — there is no arrangement of a 45-game season that would produce one. A test
+asserts that exactly one row is frozen.
+
+**The thing to revisit.** One simulated season of the current engine produced
+these league bests: 9 HR, 56 RBI, 111 total bases, .427, .678 slugging, 5 triples,
+18 doubles, 11 wins, 96 innings, 10.9 K/9. So seven of the twelve seeds are out of
+reach of the run environment as it stands, not because of season length but
+because these were set with aluminium bats in the 1980s and the engine is
+calibrated to modern Division I. Scaling by games played is the decision on record
+(06-backlog.md, "Records are scaled, not literal") and the code follows it; the
+gap is written down so it can be argued about with numbers rather than
+rediscovered. Reachable today: innings, wins, doubles and the scoreless streak.
+
+### 13.4 The one piece of extra state
+
+`SeasonState.scorelessOuts`, one number per pitcher: how many outs he has gone
+without allowing a run. A streak cannot be reconstructed from season totals — a
+man with a 3.10 ERA may have thrown twenty eight straight scoreless in the middle
+of it — so this is the only thing the book keeps beyond its holders. It resets
+every June, because the record is a single-season one.
+
+It is an approximation and understates: the game line records outs and runs but
+not the order they came in, so a start where he is scored on in the seventh ends
+the streak at zero rather than crediting the six scoreless innings before the run.
+
+There is deliberately no equivalent for a hitting streak. The mark is 58 and can
+never be beaten, so a map of fifteen hundred numbers would be maintained to answer
+a question with a fixed answer.
+
+### 13.5 Where it is, and what it does not have
+
+`HISTORY` now has two sheets. **SEASONS** is the program book that was already
+there; **THE BOOK** is this. One screen rather than two nav entries for the reason
+`Program.tsx` gives in its own header — two record books one tap apart are two
+record books that eventually disagree — and it also means the screen is worth
+opening in March of year one, when the seasons half is still empty.
+
+A mark set by the program you currently coach is drawn in clay with a rule down
+its left edge, the same treatment a leaderboard gives one of yours. A row whose
+holder can still be found — a current roster anywhere in the country, or your own
+career archive — is a button that opens his card; one whose holder is gone is not,
+because a tap that opens an apology is worse than no tap.
+
+**There are no career records**, and the screen says so in as many words. They
+need archiving widened past your own program, which is the one genuinely expensive
+piece and is B13 in the backlog. Fielding records are also absent: the ranking
+statistic is plays above what an *average glove on his own team* would have made,
+which does not mean the same thing in two different rows and cannot be compared
+across seasons — the same reason `CareerYear` leaves it out.
+
+Saves written before the book existed come up with the **seeded** marks rather
+than an empty book. That is a different rule from the other backfills in
+`fromPortable`, and deliberately: an empty fielding map is the truthful state for
+a save that never recorded a chance, but an empty record book is not — the NCAA
+seeds are not something a dynasty earned, they are where every dynasty starts.
 
 ---
 
@@ -1879,9 +2026,10 @@ Things this document could not settle from the code, and must not guess at.
 1. **Tendencies.** No specification exists anywhere in the repository beyond the
    principle "power-neutral and double-edged". Which tendencies, what they attach
    to, and how they surface are all open.
-2. **The scope of the planned records book.** §12.4 describes what exists. Whether
-   the planned book means all-time single-season marks, career leaders, program
-   records, league records, or all four is not written down.
+2. ~~**The scope of the planned records book.**~~ Answered, and built: league-wide
+   single game, single season and team marks, plus the user's coaching career,
+   seeded with real NCAA records. Career leaders are the one part left out, and
+   §13.5 gives the reason. See §13.
 3. **Badge channels and situations.** The tiers, caps and earning routes are agreed
    (§12.1). Which channels can carry a badge, and how a situation is defined in
    engine terms, are not.

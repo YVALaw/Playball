@@ -13,10 +13,11 @@
 import { create } from 'zustand';
 import {
   createSeason, simNextDay, simSeason, seasonComplete, standings, nextSeason, rpi,
-  seasonLength, regularRecord, archiveSeason,
+  seasonLength, regularRecord, archiveSeason, recordSeasonMarks,
   recordResult, restedFirst,
   type SeasonState,
 } from '../engine/season.js';
+import { recordCoachMarks } from '../engine/records.js';
 import type { GameResult } from '../engine/game.js';
 import { playerId } from '../engine/types.js';
 import type { Hitter, Pitcher, PlayerId, Tactic } from '../engine/types.js';
@@ -709,6 +710,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // Whose games to keep box scores for. A season is built before anybody has
     // taken a job, so the engine cannot know this on its own.
     season.captureBoxFor = team ?? defaultUserTeam(season);
+    // And what year it is, which the engine has no other way of knowing and the
+    // record book cannot do without — a mark with no year against it is a rumour.
+    season.year = START_YEAR;
     const coach = newCoach(profile, contractFor(season.teams[team ?? 0]?.prestige ?? 50));
     applyCoachMods(season, team ?? defaultUserTeam(season), coach);
     applyPhilosophy(season, team ?? defaultUserTeam(season), coach);
@@ -1048,8 +1052,17 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const record = recordFor(get());
     const review = get().lastReview;
 
-    // Into the record book before the statistics are wiped.
+    // Into the record books before the statistics are wiped. Two different
+    // books: `archiveSeason` keeps your own men's career lines, and this keeps
+    // the country's all-time marks. Both read maps that `nextSeason` empties in
+    // a few lines' time, which is the only reason either has to happen here.
     archiveSeason(season, get().userTeam, year);
+    recordSeasonMarks(season, year);
+    const book = season.records;
+    const chair = season.teams[get().userTeam];
+    // Yours is the only career the world models, so it is the only one the
+    // coaching section can be about. The screen says so.
+    if (book && chair) recordCoachMarks(book, year, get().coach, chair.def.abbr);
 
     const done = (next: SeasonState, report: OffseasonReport): void => {
       const rolled = nextSeason(next);
@@ -1729,6 +1742,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // resume capturing for nobody.
     loaded.season.captureBoxFor = loaded.userTeam;
     loaded.season.boxScores ??= {};
+    // Restamped from the save's own year rather than trusted off the season, so
+    // a dynasty from before the engine carried one dates its records correctly
+    // from the next game it plays.
+    loaded.season.year = loaded.year;
     // Saves made before the dynasty layer carry no coach at all, and saves made
     // before the profile carry one with no age or hometown on it. Both come back
     // filled in rather than refusing to load or rendering holes.

@@ -54,6 +54,53 @@ Already built: generated potential is capped at 94, so no recruiting class,
 walk-on or rival roster can reach the grade. The store player that will hold it
 is deferred to v1.0 and is explicitly exempt from the badge cap.
 
+### Backward compatibility is not a constraint
+
+Testing runs from fresh saves. A change that would need a migration may simply
+require a new dynasty instead. This is not licence to corrupt a save silently —
+a load must still fail honestly rather than half-work — but no feature should be
+shaped around preserving a save written last week.
+
+### The draft is the MLB draft, and the price is your recruiting budget
+
+A player of yours is *drafted by a professional club*, and you get to talk him
+into coming back to school. Not a transfer, not a generic "leaving" roll.
+
+Eligibility is the real rule, confirmed: a four-year college player is eligible
+after **three years completed, or at age 21, whichever comes first**. So
+freshmen and sophomores are ordinarily safe, and the cliff arrives in year
+three — which is a rhythm worth having rather than a limitation. The age
+exception is how a phenomenal underclassman still gets exposed: a minority of
+recruits arrive at 19 or 20, and those men come into range early. (MLB has
+proposed moving eligibility to after the sophomore year from 2028, if we ever
+want the wider net.)
+
+**The pitch is the skill; the budget is the cost.** He hints at what is pulling
+him and you choose which case to make — draft stock, a role, a ring, your word —
+each credible only where the data supports it. Matching what he actually cares
+about multiplies what your money buys, exactly as `fit` multiplies a recruiting
+spend today, so a coach who reads his player keeps him for a fraction of what a
+coach guessing pays. A promise the depth chart contradicts should fail *and*
+still cost.
+
+What you spend is **recruiting budget**, and the sequencing is what makes it
+bite: the draft phase runs immediately before recruiting, so it is the same pool
+you are about to open the board with. Keep the ace or sign the class. Cost
+scales with where he was taken — a first rounder may be unkeepable at any price,
+a twentieth rounder is nearly free — and that gradient is the mechanic.
+
+A junior who returns comes back as a senior with no leverage, so talking him
+into staying is a bet made on his behalf.
+
+### Players have ages
+
+Real ages rather than class year alone. Freshmen arrive mostly at 18 with a
+genuine minority at 19 or 20 — gap years, late starters, junior college — and
+age ticks with the calendar. This is what makes the draft rule above express
+itself honestly instead of as a special case, and it is the foundation the
+progression and decline rework will want. Descriptive for now: nothing reads it
+except eligibility and the screens, so effects are not wired twice.
+
 ---
 
 ## A. Bugs and data integrity
@@ -76,18 +123,37 @@ exists.
   save whose world version differs.
 - **A4 · Seeding tiebreakers** — `DECIDED`. Ties currently resolve by whatever
   order the array happened to be in.
+- **A5 · A departing player's last season never reaches the record book** —
+  `DECIDED`, and the most damaging of these. `departAndDevelop` runs at the
+  draft phase and strips the departed off `lineup`/`bench`/`rotation`/`bullpen`;
+  `archiveSeason` runs later at the year roll and reads only those arrays. So
+  **every graduating senior's final year is lost**, and has always been lost.
+  That is the best season most players ever have, and it is exactly the data a
+  record book, a hall of fame and a career page read. Fix by archiving before
+  the draft phase, or by archiving the departed by id. Found while building
+  walk-ons; pre-existing, not caused by it.
+- **A6 · The draft screen's walk-on list is dead UI** — `DECIDED`, cosmetic.
+  `lastOffseason.walkOns` is only filled at the year roll, by which point the
+  phase has reset and the screen is unreachable. The block renders for nobody.
+  The class review now carries the projection instead, so this is either wired
+  to something real or deleted.
 
 ## B. Agreed and designed, not yet built
 
 Ordered by dependency. Records come first because badges, the hall of fame and
 half the achievements are all reading from the same book.
 
-- **B1 · The records book** — `DECIDED`. League-wide, not just your program.
-  Single game, single season, career, team, fielding, coach. The cheap insight:
-  only the *holders* need storing, roughly sixty rows, checked as each result
-  passes through `recordResult`. Storing every player's line across ninety-six
-  programs is what would be expensive, and it is not necessary.
-- **B2 · Seed the book with real NCAA marks** — `DECIDED`. See section D.
+- **B1 · The records book** — SHIPPED. League-wide, thirty-eight rows, holders
+  only. Single game and feats are taken inside `recordResult`; single season and
+  team season come off a scan at the year roll; coaching comes off `CoachState`.
+  Ties go to the incumbent. Career records are explicitly not in it — that is
+  B13. See `05-systems-reference.md` §13.
+- **B2 · Seed the book with real NCAA marks** — SHIPPED. Twelve seeds, counting
+  marks scaled by games played and rates left alone, flagged in the data and
+  badged **NCAA** on the screen. See §13.3, which also records the thing worth
+  revisiting: seven of the twelve are out of reach of the engine's run
+  environment, because they were set with aluminium bats and the calibration
+  targets are modern Division I. Scaling by games alone does not close that gap.
 - **B3 · Achievements** — `DECIDED`. One-time and permanent, as against records,
   which are there to be broken: Perfect Conference, Cinderella, Dynasty, Lifer,
   Kingmaker, Recruiter, Builder, Iron Will, Streak, Grand Slam.
@@ -97,14 +163,27 @@ half the achievements are all reading from the same book.
 - **B5 · Prestige penalty for two bad seasons running** — `DECIDED`.
 - **B6 · Conference and regional titles as real achievements** — `DECIDED`.
   Regional titles have no counter at all today.
-- **B7 · AI coach development** — `DECIDED`. You are currently the only coach in
-  a ninety-six program world who improves, which is a snowball with no brake.
-- **B8 · Walk-ons** — `DECIDED`. One season only, visibly marked as walk-ons,
-  and shown in the class review. Positional filling already works; they are
-  simply not flagged and they currently stay four years.
-- **B9 · Draft declaration** — `DECIDED`. Players say they are leaving and you
-  get to talk to them. Prerequisite for the hall of fame, since four years on a
-  roster is what makes a career.
+- **B7 · AI coaches get a career** — `DECIDED`, and the *deep* version, not a
+  drifting number. They improve, they are judged, they are sacked, and they move
+  between programs — the same life the player leads. The point is not fairness
+  for its own sake: without it you are the only coach in ninety-six programs who
+  ever gets better, and a dynasty that cannot be caught stops being a contest.
+  A rival who beat you being poached by a bigger school is the good outcome.
+- **B8 · Walk-ons** — SHIPPED. Marked, gone after exactly one season whatever
+  class year they arrived at, and projected into the class review by position
+  before they exist — a fact rather than an estimate, held to the real thing by
+  a test. See `05-systems-reference.md`.
+- **B9 · Draft declaration** — `DECIDED`, mechanic settled; see "The draft is the
+  MLB draft" above. Needs ages (B15) first. Prerequisite for the hall of fame,
+  since a career is what makes a man worth honouring.
+- **B15 · Player ages** — `DECIDED`. See the decision above. Small, and it gates
+  B9 and informs the progression rework.
+- **B16 · Detailed pitch types** — `DECIDED`. A real repertoire per pitcher.
+  Also the prerequisite for pitch-usage tendencies, so it and the usage half of
+  B11 are one job.
+- **B17 · Surface platoon splits** — `DECIDED`. `platoonSkill` already exists and
+  is deliberately hidden; contact and power against left and right handers is
+  what every other baseball game shows. Nearly free.
 - **B10 · Badges** — `DECIDED`, spec agreed. Four families (situational,
   physical, technical, makeup), three tiers, position-aware, playful names.
   Effects sized against the engine's own reference points: home-field advantage
@@ -122,14 +201,24 @@ half the achievements are all reading from the same book.
   telling you on the board all along. Some innate and visible, some
   earned, some coached. No decay — these are young men and there are no injuries.
   Not visible on other programs' players.
-- **B11 · Tendencies** — `DECIDED`. What a player *does*, as against how well he
-  does it, so they add identity without power creep. Double-edged by
-  construction: a free swinger walks less and ambushes more. Visible on
-  opponents, unlike badges, because a scouting report saying their leadoff man
-  runs is exactly what a defensive setting is for.
-- **B12 · Hall of Fame induction** — `DECIDED`. Replaces the career-leaders
-  placeholder now on the program page. Inducts on merit — four years of
-  competence is not a career worth honouring. Depends on B1 and B9.
+- **B11 · Tendencies** — `DECIDED`, and **all of them**, with pitch usage and
+  clutch as the priority pair. What a player *does*, as against how well he does
+  it, so they add identity without power creep. Double-edged by construction: a
+  free swinger walks less and ambushes more. Visible on opponents, unlike
+  badges, because a scouting report saying their leadoff man runs is exactly
+  what a defensive setting is for.
+  Buildable on today's engine: free swinger / patient, first-pitch hunter, green
+  light (per-player baserunning aggression — we have a team policy only),
+  nibbler / attacker, quick worker, and pull-happy / spray, which works because
+  the fielding rework gave us real batted-ball lanes to bias. Pitch usage needs
+  B16 first.
+- **B12 · Hall of Fame induction** — `DECIDED`. **Your own players only** — you
+  see the men you coached, not a national ballot. On merit, and the failure mode
+  to design against is explicit: *a man who holds one single-game record and was
+  otherwise ordinary must not get in*. Sustained excellence over a career, not a
+  spike. Replaces the career-leaders placeholder on the program page. Depends on
+  B1, B9, and on A5 — a hall of fame reading a record book that lost every
+  player's final season would honour the wrong men.
 - **B13 · Career records league-wide** — `DECIDED`. Requires widening archiving
   beyond your own program, which is the one genuinely expensive piece; single
   game and single season records have no such problem.
@@ -152,6 +241,12 @@ pipeline map with contested territory · MLB Decision Day, where juniors weigh
 draft stock against role, loyalty and development.
 
 ## D. The record marks
+
+**Shipped as section D stands** — the twelve verified single-season marks are
+seeded in `engine/records.ts` with the arithmetic in a comment, and the career
+table below is not, because career records are B13. This section stays because
+it is the provenance: it is where the numbers came from and what is still
+missing, and the seeds should not be edited without it.
 
 Gathered so far, from sources that could actually be read. The official NCAA
 records book is a two-hundred-page PDF that will not fetch; NCAA.com renders

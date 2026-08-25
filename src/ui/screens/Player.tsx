@@ -335,6 +335,10 @@ function Alumnus(
   const abbr = gone?.teamAbbr ?? last?.team ?? '';
   const classYear = gone?.classYear ?? last?.classYear ?? '—';
   const drafted = gone?.reason === 'drafted';
+  // A walk-on did not graduate and was not drafted — his one season was up.
+  // Saying "Graduated" over a freshman who was on the roster for a year is the
+  // kind of small lie that makes a player distrust every other line on a card.
+  const walkedOn = gone?.reason === 'walk-on';
 
   // The record book knows what he was without knowing what position he played:
   // a career line carries at bats or innings, so the shape of his years is the
@@ -350,7 +354,7 @@ function Alumnus(
           name={name}
           abbr={abbr}
           left={{ k: 'CLASS', v: classYear }}
-          right={{ k: 'EXIT', v: gone ? (drafted ? 'DRAFT' : 'GRAD') : '—' }}
+          right={{ k: 'EXIT', v: gone ? (drafted ? 'DRAFT' : walkedOn ? 'W-ON' : 'GRAD') : '—' }}
           sub={<>FORMER PLAYER{abbr ? ` · ${abbr}` : ''}</>}
           school={null}
           ovr={gone ? gone.overall : '—'}
@@ -364,7 +368,9 @@ function Alumnus(
         {active === 'overview' && (
           <>
             <Panel>
-              <Stat k="STATUS" v={gone ? (drafted ? 'Drafted' : 'Graduated') : 'Departed'} />
+              <Stat k="STATUS" v={gone
+                ? (drafted ? 'Drafted' : walkedOn ? 'Walk-on, year up' : 'Graduated')
+                : 'Departed'} />
               <Stat k="LAST CLASS" v={classYear in CLASS_NAME
                 ? CLASS_NAME[classYear as ClassYear] : classYear} />
               {abbr && <Stat k="PROGRAM" v={abbr} />}

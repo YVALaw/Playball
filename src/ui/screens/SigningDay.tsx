@@ -22,8 +22,9 @@ import {
   type Prospect, type Priority,
 } from '../../engine/recruiting.js';
 import { highSchoolLine, potentialGrade, GRADE_LADDER } from '../../engine/scouting.js';
+import { walkOnShortfall } from '../../engine/progression.js';
 import { overallOf } from '../../engine/ratings.js';
-import type { Pitcher } from '../../engine/types.js';
+import type { Pitcher, Player } from '../../engine/types.js';
 import { Avatar } from '../Avatar.js';
 
 type View = 'rankings' | 'mine' | 'all';
@@ -82,7 +83,7 @@ export function SigningDay() {
   const [view, setView] = useState<View>('mine');
   const [openId, setOpenId] = useState<string | null>(null);
 
-  const { rankings, mine, signed, myRank } = useMemo(() => {
+  const { rankings, mine, signed, myRank, walkOns } = useMemo(() => {
     const prospects = season?.recruiting.prospects ?? [];
     const byTeam = new Map<number, Prospect[]>();
     for (const p of prospects) {
@@ -91,6 +92,23 @@ export function SigningDay() {
       list.push(p);
       byTeam.set(p.signedBy, list);
     }
+
+    /*
+      What the class did not cover.
+
+      The roster is standing here half empty — the draft step emptied it and
+      nothing refills it until the year turns over — so the men who are on it
+      plus the men just signed are exactly the two inputs the year roll will
+      use. Read in board order rather than from `mine`, which is sorted for the
+      screen: the engine takes the class in the order the board holds it, and a
+      projection that disagreed on a tie would be a projection worth nothing.
+    */
+    const me = season?.teams[userTeam]?.team;
+    const roster: Player[] = me
+      ? [...me.lineup, ...me.bench, ...me.rotation, ...me.bullpen] : [];
+    const classPlayers = prospects
+      .filter((p) => p.signedBy === userTeam)
+      .map((p) => p.player);
 
     const table = [...byTeam.entries()]
       .map(([t, list]) => ({ team: t, list, points: classPoints(list) }))
@@ -106,6 +124,7 @@ export function SigningDay() {
       mine: (byTeam.get(userTeam) ?? []).slice().sort(byRank),
       signed: prospects.filter((p) => p.signedBy !== null).sort(byRank),
       myRank: table.findIndex((r) => r.team === userTeam) + 1,
+      walkOns: me ? walkOnShortfall(roster, classPlayers) : [],
     };
   }, [season, userTeam]);
 
@@ -187,6 +206,22 @@ export function SigningDay() {
         </div>
       )}
 
+      {/*
+        The men you did not sign, kept apart from the men you did.
+
+        Deliberately not rows in the class list above, and deliberately not
+        sorted in among them. A walk-on is what a program gets because it
+        missed; folding him into the class would let a coach who covered four
+        holes out of nine read a nine man class off this screen, which is the
+        opposite of what it is for.
+
+        Positions and counts rather than names, because the names do not exist
+        yet — these men are manufactured when the year rolls over, three taps
+        from here. What is knowable today is which spots the roster and the
+        class between them fail to cover, and that is exactly what arrives.
+      */}
+      {view === 'mine' && <WalkOnGroup rows={walkOns} />}
+
       {view === 'rankings' && (
         <div style={{
           marginTop: 10, border: '1px solid var(--faint)', background: 'var(--paper)',
@@ -255,6 +290,68 @@ export function SigningDay() {
       )}
     </div>
     </FixedHeader>
+  );
+}
+
+/**
+ * The shortfall, as a block of its own under the class.
+ *
+ * Muted rather than clay: every accent on this screen means "yours", and these
+ * are the spots nobody's signature covered. A class that covered everything says
+ * so in one line — the good outcome is worth printing, and a group that only
+ * ever appears when you failed teaches the player to dread the heading.
+ */
+function WalkOnGroup({ rows }: { rows: readonly { pos: string; count: number }[] }) {
+  const total = rows.reduce((a, r) => a + r.count, 0);
+
+  if (total === 0) {
+    return (
+      <div style={{
+        marginTop: 14, padding: '11px 12px',
+        border: '1px solid var(--faint)', background: 'var(--paper)',
+        font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
+      }}>
+        Every hole is covered. Nobody walks on this year &mdash; the whole roster
+        is men you went and got.
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>
+        WALK-ONS &middot; {total}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {rows.map((r, i) => (
+          <div
+            key={r.pos}
+            className="card-in"
+            style={{
+              padding: '7px 10px',
+              border: '1px solid var(--faint)',
+              background: 'var(--paper)',
+              animationDelay: `${i * 40}ms`,
+            }}
+          >
+            <div style={{
+              font: "700 11px var(--mono)", letterSpacing: '.08em', color: 'var(--ink)',
+            }}>{r.pos}</div>
+            <div style={{
+              marginTop: 2, font: "400 8.5px var(--mono)", color: 'var(--dim)',
+            }}>{r.count > 1 ? `${r.count} bodies` : 'one body'}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{
+        marginTop: 7, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+      }}>
+        These are the positions your class did not cover. They get filled in June
+        by whoever turns up, a long way below your own level &mdash; and a walk-on
+        is gone again the moment the season ends, so the hole is back on next
+        winter&rsquo;s board.
+      </div>
+    </>
   );
 }
 

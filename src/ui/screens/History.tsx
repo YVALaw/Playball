@@ -2,9 +2,22 @@
 // The record books. Without this a dynasty is just a series of unrelated
 // seasons — you roll the year, the rosters are rewritten, and the one before is
 // gone. This is the screen that makes five years mean something.
+//
+// Two sheets, because there are two books and they are the same object at two
+// scales. SEASONS is yours: what your program did, year by year, and who won
+// what while doing it. THE BOOK is the country's: the all-time marks across all
+// ninety-six programs, seeded with the real NCAA ones so there is history to
+// chase from the first game of the first season.
+//
+// They are one screen rather than two nav entries on purpose, and Program.tsx
+// gives the reason in its own header: two record books one tap apart are two
+// record books that eventually disagree. It also means the screen is worth
+// opening in March of year one, when the seasons half is still empty.
 
+import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
+import { RecordBook } from './RecordBook.js';
 import { FINISH_LABEL, type Finish } from '../../engine/postseason.js';
 
 /** Deep runs earn colour. Everything else stays quiet. */
@@ -16,14 +29,67 @@ const FINISH_COLOR: Record<Finish, string> = {
   champion: 'var(--clay)',
 };
 
+type Sheet = 'seasons' | 'book';
+
+const SHEET_LABEL: Record<Sheet, string> = {
+  seasons: 'SEASONS',
+  book: 'THE BOOK',
+};
+
 export function History() {
   const history = useDynasty((s) => s.history);
-  const openPlayer = useDynasty((s) => s.openPlayer);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
+  const [sheet, setSheet] = useState<Sheet>('seasons');
   void version;
 
   if (!team) return null;
+
+  const wins = history.reduce((a, s) => a + s.w, 0);
+  const losses = history.reduce((a, s) => a + s.l, 0);
+
+  return (
+    <FixedHeader
+      header={
+        <>
+          <div style={{ padding: '12px 14px 0' }}>
+            <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
+              <div className="label">
+                {sheet === 'seasons'
+                  ? `PROGRAM RECORD · ${history.length} SEASON${history.length === 1 ? '' : 'S'}`
+                  : 'ALL-TIME · NINETY-SIX PROGRAMS'}
+              </div>
+              <div style={{
+                font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              }}>{sheet === 'seasons' ? `${wins}-${losses}` : 'The Book'}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 4, padding: '10px 14px' }}>
+            {(['seasons', 'book'] as Sheet[]).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSheet(s)}
+                style={{
+                  flex: 1, padding: '8px 0',
+                  background: s === sheet ? 'var(--ink)' : 'var(--field)',
+                  border: s === sheet ? '1px solid var(--ink)' : '1px solid var(--faint)',
+                  color: s === sheet ? 'var(--cream)' : 'var(--dim)',
+                  font: "700 8.5px var(--mono)", letterSpacing: '.08em',
+                }}
+              >{SHEET_LABEL[s]}</button>
+            ))}
+          </div>
+        </>
+      }
+    >
+      {sheet === 'book' ? <RecordBook /> : <Seasons />}
+    </FixedHeader>
+  );
+}
+
+function Seasons() {
+  const history = useDynasty((s) => s.history);
+  const openPlayer = useDynasty((s) => s.openPlayer);
 
   if (history.length === 0) {
     return (
@@ -40,8 +106,6 @@ export function History() {
     );
   }
 
-  const wins = history.reduce((a, s) => a + s.w, 0);
-  const losses = history.reduce((a, s) => a + s.l, 0);
   const titles = history.filter((s) => s.finish === 'champion').length;
   const omaha = history.filter(
     (s) => s.finish === 'omaha' || s.finish === 'runner-up' || s.finish === 'champion',
@@ -49,20 +113,6 @@ export function History() {
   const rings = history.filter((s) => s.wonConference).length;
 
   return (
-    <FixedHeader
-      header={
-        <div style={{ padding: '12px 14px 10px' }}>
-          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-            <div className="label">
-              PROGRAM RECORD · {history.length} SEASON{history.length === 1 ? '' : 'S'}
-            </div>
-            <div style={{
-              font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-            }}>{wins}-{losses}</div>
-          </div>
-        </div>
-      }
-    >
     <div style={{ padding: '10px 14px 16px' }}>
       <div style={{
         display: 'flex',
@@ -157,7 +207,6 @@ export function History() {
         national field however the regular season went.
       </div>
     </div>
-    </FixedHeader>
   );
 }
 

@@ -156,6 +156,20 @@ interface PlayerCore {
    * raw freshman over a finished senior.
    */
   potential: number;
+  /**
+   * Nobody recruited him. He is here because a hole had to be filled.
+   *
+   * Without a mark on him a walk-on is an ordinary freshman the moment he lands,
+   * indistinguishable from a man you spent a scholarship on — which is both the
+   * wrong reading on the roster and the reason he used to stay four years and
+   * develop like a recruit. He gets one season and no more; see
+   * `departAndDevelop`.
+   *
+   * Optional so that every save written before this loads unchanged. A player
+   * with no flag was recruited, which is the truth for everybody who already
+   * exists.
+   */
+  walkOn?: boolean;
 }
 
 export interface Hitter extends PlayerCore, HitterRatings {

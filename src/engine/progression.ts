@@ -35,7 +35,16 @@ const BENCH_SIZE = 4;
 
 
 
-export type DepartureReason = 'graduated' | 'drafted';
+/**
+ * Why a man is no longer on the roster.
+ *
+ * 'walk-on' is not a third kind of exit so much as the absence of one: nobody
+ * recruited him, so nothing was holding him for a second year. He is reported
+ * with the graduating class because from the program's side the consequence is
+ * identical — the spot is open again — and a departure the report does not carry
+ * is a player who vanishes between two screens.
+ */
+export type DepartureReason = 'graduated' | 'drafted' | 'walk-on';
 
 export interface Departure {
   id: PlayerId;
@@ -69,7 +78,8 @@ export interface OffseasonReport {
    * on and plays there, thirteen points worse than the program's own level.
    * Reported from testing: "we should show the walk-ons that will be added to
    * the team", and he is right that it is the honest accounting of a class that
-   * came up short.
+   * came up short. They are also on a one year lease — see `Player.walkOn` — so
+   * a program that fills a spot this way is shopping for it again next winter.
    */
   walkOns: { id: PlayerId; name: string; pos: string; overall: number }[];
   /** Sum of overall gained across everyone who stayed. */
@@ -241,6 +251,7 @@ function refill(
     if (any) { any.pos = pos; return any; }
     const p = makeHitter(rng, team.quality - WALK_ON_PENALTY + gauss(rng) * 3, { pos });
     p.classYear = 'FR';
+    p.walkOn = true;
     collect?.push(p);
     return p;
   };
@@ -252,6 +263,7 @@ function refill(
     if (any) { any.role = role; return any; }
     const p = makePitcher(rng, team.quality - WALK_ON_PENALTY + gauss(rng) * 3, { role });
     p.classYear = 'FR';
+    p.walkOn = true;
     collect?.push(p);
     return p;
   };
@@ -301,6 +313,82 @@ function refill(
   team.rotation = rotation;
   team.bullpen = bullpen;
   return recruits;
+}
+
+/**
+ * Which spots this class is going to leave to walk-ons, worked out in advance.
+ *
+ * The class review happens on signing day and the walk-ons are not manufactured
+ * until the year rolls over, so at the moment the screen renders those men do
+ * not exist. The choice is between showing nothing until they do — a season too
+ * late, and not where the shortfall is a decision you could still feel bad about
+ * — and answering the question that *is* knowable now: which spots the survivors
+ * and the signed class between them fail to cover. That is a fact about the
+ * roster, not a guess, so this deliberately reports positions and counts and
+ * invents no names, ratings or ids. Nothing here is fabricated that could later
+ * disagree with the men who actually turn up.
+ *
+ * It walks `refill`'s placement in the same order, and the two must agree
+ * exactly — "projects on signing day exactly the men who turn up in June" in
+ * the tests is what holds them together, and it is not optional. It cannot
+ * simply *be* `refill`: that one draws from the generator to build bodies, and
+ * a screen may not spend the season's rng to render itself.
+ */
+export function walkOnShortfall(
+  survivors: readonly Player[], signed: readonly Player[],
+): { pos: string; count: number }[] {
+  const hitters = byOverall(survivors.filter((p): p is Hitter => p.type === 'hitter'));
+  const arms = byOverall(survivors.filter((p): p is Pitcher => p.type === 'pitcher'));
+  const signedHitters = byOverall(signed.filter((p): p is Hitter => p.type === 'hitter'));
+  const signedArms = byOverall(signed.filter((p): p is Pitcher => p.type === 'pitcher'));
+
+  const short: string[] = [];
+  // The same three-step choice `freshHitter` and `freshArm` make: somebody
+  // signed who plays here, else the best bat or arm signed, else nobody.
+  const takeHitter = (pos: Position): void => {
+    const exact = signedHitters.findIndex((h) => h.pos === pos);
+    if (exact >= 0) { signedHitters.splice(exact, 1); return; }
+    const any = signedHitters.shift();
+    if (any) return;
+    short.push(pos);
+  };
+  const takeArm = (role: 'SP' | 'RP'): void => {
+    const exact = signedArms.findIndex((a) => a.role === role);
+    if (exact >= 0) { signedArms.splice(exact, 1); return; }
+    const any = signedArms.shift();
+    if (any) return;
+    short.push(role);
+  };
+
+  for (const spot of LINEUP_SPOTS) {
+    const i = hitters.findIndex((h) => h.pos === spot);
+    if (i >= 0) hitters.splice(i, 1);
+    else takeHitter(spot);
+  }
+
+  let bench = hitters.splice(0, BENCH_SIZE).length;
+  while (bench < BENCH_SIZE) {
+    takeHitter(LINEUP_SPOTS[bench % LINEUP_SPOTS.length] as Position);
+    bench += 1;
+  }
+
+  const starters = arms.filter((p) => p.role === 'SP');
+  const relievers = arms.filter((p) => p.role === 'RP');
+  let rotation = starters.splice(0, ROTATION_SIZE).length;
+  while (rotation < ROTATION_SIZE) { takeArm('SP'); rotation += 1; }
+
+  let bullpen = Math.min(BULLPEN_SIZE, relievers.length + starters.length);
+  while (bullpen < BULLPEN_SIZE) { takeArm('RP'); bullpen += 1; }
+
+  // Grouped in the order the roster asked for them, which is the order the
+  // diamond reads in rather than alphabetical or by size.
+  const out: { pos: string; count: number }[] = [];
+  for (const pos of short) {
+    const row = out.find((r) => r.pos === pos);
+    if (row) row.count += 1;
+    else out.push({ pos, count: 1 });
+  }
+  return out;
 }
 
 /**
@@ -391,7 +479,17 @@ export function departAndDevelop(
 
     const survivors: Player[] = [];
     for (const p of roster) {
-      const reason = departure(p, rng);
+      /**
+       * A walk-on gets the season he was found for, and that is all.
+       *
+       * Deliberately asked before `departure` and independently of his class
+       * year. He is manufactured as a freshman today, but the rule is one
+       * *season*, not one class year, and reading it off the class year would
+       * quietly keep a walk-on who happened to arrive as an upperclassman for
+       * three more. Asking first also costs no rng draw, so nothing about who
+       * else leaves depends on how many walk-ons a program is carrying.
+       */
+      const reason = p.walkOn ? 'walk-on' as const : departure(p, rng);
       if (reason) {
         const row: Departure = {
           id: p.id,
@@ -464,6 +562,12 @@ export function fillRosters(
 
   let recruits = 0;
   const walkOns: OffseasonReport['walkOns'] = [];
+  // Whose walk-ons get written down, read the same way `departAndDevelop` reads
+  // whose holes get written down. The app sets both to the same program, so this
+  // only ever differs for a caller that names one and not the other — and a
+  // report with the user's holes and nobody's walk-ons is the half-answer that
+  // made this worth aligning.
+  const reportFor = opts.userTeam ?? season.captureBoxFor;
   for (const record of season.teams) {
     const team = record.team;
     const survivors: Player[] = [
@@ -472,7 +576,7 @@ export function fillRosters(
     const collected: Player[] = [];
     recruits += refill(
       team, survivors, rng, classFor.get(record.index) ?? [],
-      record.index === season.captureBoxFor ? collected : undefined,
+      record.index === reportFor ? collected : undefined,
     );
     for (const p of collected) {
       walkOns.push({

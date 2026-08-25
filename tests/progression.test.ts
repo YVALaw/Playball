@@ -5,7 +5,9 @@
 
 import { describe, it, expect } from 'vitest';
 import { createSeason, simSeason, nextSeason } from '../src/engine/season.js';
-import { advanceOffseason, departAndDevelop, fillRosters } from '../src/engine/progression.js';
+import {
+  advanceOffseason, departAndDevelop, fillRosters, walkOnShortfall,
+} from '../src/engine/progression.js';
 import { overallOf } from '../src/engine/ratings.js';
 import { makeRng } from '../src/engine/rng.js';
 import { CONFERENCES } from '../src/data/schools.js';
@@ -22,6 +24,35 @@ const rosterOf = (s: SeasonState, i: number): Player[] => {
 
 const everyone = (s: SeasonState): Player[] =>
   s.teams.flatMap((_, i) => rosterOf(s, i));
+
+const slotOf = (p: Player): string => (p.type === 'pitcher' ? p.role : p.pos);
+
+/**
+ * Hand every program a class that covers the hole it is about to have.
+ *
+ * `departAndDevelop` plus `fillRosters` with nobody signed is not a dynasty, and
+ * since walk-ons started leaving after a season it is not even a stable world:
+ * every replacement is a walk-on, every walk-on is gone again next June, and by
+ * year five the league is nothing but freshmen. That is the engine behaving
+ * correctly on an input the game never supplies — the store runs a recruiting
+ * window between the two halves of every offseason. This is the cheapest honest
+ * stand-in for one: exactly as many recruits as there are spots, at the
+ * positions the spots are at, which is what a program that recruits well gets.
+ */
+function signClasses(season: SeasonState): void {
+  for (const record of season.teams) {
+    const t = record.team;
+    const survivors = [...t.lineup, ...t.bench, ...t.rotation, ...t.bullpen];
+    for (const row of walkOnShortfall(survivors, [])) {
+      for (let i = 0; i < row.count; i++) {
+        const match = season.recruiting.prospects.find(
+          (p) => p.signedBy === null && slotOf(p.player) === row.pos,
+        );
+        if (match) match.signedBy = record.index;
+      }
+    }
+  }
+}
 
 describe('the offseason', () => {
   const rng = makeRng(2027);
@@ -121,9 +152,13 @@ describe('a dynasty across five years', () => {
   for (let year = 0; year < 5; year++) {
     simSeason(season);
     for (const p of everyone(season)) { seen.add(p.name); ids.add(p.id); }
-    const report = advanceOffseason(season, rng);
+    // The offseason in the order the game runs it: who leaves, then a class is
+    // signed against the holes that leaves, then the class arrives.
+    const report = departAndDevelop(season, rng);
+    signClasses(season);
+    const filled = fillRosters(season, rng);
     departures += report.graduated.length + report.drafted.length;
-    arrivals += report.recruits;
+    arrivals += filled.recruits;
     season = nextSeason(season);
   }
 
@@ -307,5 +342,143 @@ describe('the draft running before recruiting', () => {
     const full = after.lineup.length + after.bench.length
       + after.rotation.length + after.bullpen.length;
     expect(full).toBeGreaterThan(short);
+  });
+});
+
+describe('walk-ons', () => {
+  /** A played season with a class already signed to the user's program. */
+  const withClass = (seed: number, count: number): SeasonState => {
+    const s = createSeason(makeRng(seed), undefined, SMALL);
+    simSeason(s);
+    for (const p of s.recruiting.prospects.slice(0, count)) {
+      p.signedBy = 0;
+      p.committedWeek = 3;
+    }
+    return s;
+  };
+
+  it('marks the men it manufactures, and nobody it was handed', () => {
+    // Without the mark a walk-on is an ordinary freshman from the moment he
+    // lands, which is how he used to stay four years.
+    const s = withClass(2027, 6);
+    const recruited = new Set(
+      s.recruiting.prospects.filter((p) => p.signedBy === 0).map((p) => p.player.id),
+    );
+    advanceOffseason(s, s.rng, { userTeam: 0 });
+
+    const walkOns = everyone(s).filter((p) => p.walkOn);
+    expect(walkOns.length, 'nobody walked on anywhere').toBeGreaterThan(0);
+    for (const p of walkOns) expect(recruited.has(p.id)).toBe(false);
+
+    const landed = rosterOf(s, 0).filter((p) => recruited.has(p.id));
+    expect(landed.length).toBeGreaterThan(0);
+    for (const p of landed) expect(p.walkOn).toBeUndefined();
+  });
+
+  it('is gone after one season, where a signed freshman is not', () => {
+    const s = withClass(4242, 8);
+    advanceOffseason(s, s.rng, { userTeam: 0 });
+
+    const arrived = rosterOf(s, 0);
+    const walkOnIds = arrived.filter((p) => p.walkOn).map((p) => p.id);
+    const freshmen = arrived
+      .filter((p) => !p.walkOn && p.classYear === 'FR').map((p) => p.id);
+    expect(walkOnIds.length).toBeGreaterThan(0);
+    expect(freshmen.length).toBeGreaterThan(0);
+
+    // One season later, and only one.
+    const next = nextSeason(s);
+    simSeason(next);
+    const report = departAndDevelop(next, next.rng, { userTeam: 0 });
+    const onRoster = new Map(rosterOf(next, 0).map((p) => [p.id, p]));
+    const reasons = new Map(
+      [...report.graduated, ...report.drafted].map((d) => [d.id, d.reason]),
+    );
+
+    for (const id of walkOnIds) {
+      expect(onRoster.has(id), 'a walk-on stayed a second season').toBe(false);
+      // And he left through the report, rather than disappearing between two
+      // screens with nothing to say where he went.
+      expect(reasons.get(id), 'a walk-on left without a departure notice')
+        .toBe('walk-on');
+    }
+
+    // The men you actually signed are still yours — the rule is about how he
+    // arrived, not about being a freshman.
+    const stayed = freshmen.filter((id) => onRoster.has(id));
+    expect(stayed.length, 'the whole signed class left too').toBeGreaterThan(0);
+    for (const id of stayed) expect(onRoster.get(id)?.classYear).toBe('SO');
+  });
+
+  it('leaves after one season whatever class year he arrived in', () => {
+    // Every walk-on the engine builds today is a freshman, and the rule must
+    // not be reading that: one season is one season, and a body found to fill
+    // a hole in an upperclassman's spot is not owed three more years.
+    const s = createSeason(makeRng(88), undefined, SMALL);
+    simSeason(s);
+
+    const t = s.teams[0]!.team;
+    const marked = [t.lineup[0]!, t.bench[0]!, t.rotation[0]!];
+    for (const p of marked) p.walkOn = true;
+    const classes = marked.map((p) => p.classYear);
+    // Only worth asserting if the three are not all freshmen to begin with.
+    expect(new Set(classes).size).toBeGreaterThan(1);
+
+    const report = departAndDevelop(s, s.rng, { userTeam: 0 });
+    const onRoster = new Set(rosterOf(s, 0).map((p) => p.id));
+    const notices = new Map(report.graduated.map((d) => [d.id, d]));
+
+    for (const p of marked) {
+      expect(onRoster.has(p.id), `a ${p.classYear} walk-on stayed`).toBe(false);
+      expect(notices.get(p.id)?.reason).toBe('walk-on');
+    }
+  });
+
+  it('projects on signing day exactly the men who turn up in June', () => {
+    // The class review renders before anybody is manufactured, so it shows the
+    // shortfall rather than a cast list. This is the guarantee that makes that
+    // honest: what the screen counts is what the year roll builds.
+    for (const [seed, size] of [[415, 0], [415, 5], [911, 12], [777, 3]] as const) {
+      const s = withClass(seed, size);
+      departAndDevelop(s, s.rng, { userTeam: 0 });
+
+      const t = s.teams[0]!.team;
+      const survivors = [...t.lineup, ...t.bench, ...t.rotation, ...t.bullpen];
+      const signedClass = s.recruiting.prospects
+        .filter((p) => p.signedBy === 0).map((p) => p.player);
+      const projected = walkOnShortfall(survivors, signedClass);
+
+      const filled = fillRosters(s, s.rng, { userTeam: 0 });
+
+      const tally = (rows: readonly { pos: string; count: number }[]) => {
+        const out: Record<string, number> = {};
+        for (const r of rows) out[r.pos] = (out[r.pos] ?? 0) + r.count;
+        return out;
+      };
+      expect(
+        tally(projected),
+        `seed ${seed} with ${size} signed`,
+      ).toEqual(tally(filled.walkOns.map((w) => ({ pos: w.pos, count: 1 }))));
+    }
+  });
+
+  it('puts the hole back on the board the winter after', () => {
+    // The point of the one season rule from the coach's side: filling a spot
+    // with a walk-on does not solve it, it postpones it.
+    const s = withClass(31337, 0);
+    advanceOffseason(s, s.rng, { userTeam: 0 });
+    const spots = rosterOf(s, 0).filter((p) => p.walkOn)
+      .map((p) => (p.type === 'pitcher' ? p.role : p.pos));
+    expect(spots.length).toBeGreaterThan(0);
+
+    const next = nextSeason(s);
+    simSeason(next);
+    const report = departAndDevelop(next, next.rng, { userTeam: 0 });
+    const holes = new Set(report.holes.map((h) => h.pos));
+    // Not every walk-on's slot is a named hole — a bench body is counted as
+    // BENCH and a spare arm as RP — so this asks the weaker, true thing: the
+    // roster is short again, and it is short somewhere he was standing.
+    expect(report.holes.length).toBeGreaterThan(0);
+    expect(spots.some((p) => holes.has(p) || holes.has('BENCH'))).toBe(true);
   });
 });

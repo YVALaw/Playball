@@ -47,7 +47,14 @@ export function Draft() {
       round1: drafted.filter((d) => d.round === 1),
       round2: drafted.filter((d) => d.round === 2),
       // Seniors whose names were never called. Their careers are over.
-      undrafted: graduated.slice().sort((a, b) => b.overall - a.overall).slice(0, 40),
+      //
+      // Walk-ons ride in the same list because the report has two arrays and
+      // they belong in the one that is not the draft, but they are not this:
+      // nobody's career ended, a one year lease simply ran out. Filtered here
+      // rather than split upstream so the departing view still counts them as
+      // men you lost, which is what they are.
+      undrafted: graduated.filter((d) => d.reason === 'graduated')
+        .sort((a, b) => b.overall - a.overall).slice(0, 40),
       departing: [...drafted, ...graduated]
         .filter((d) => d.teamAbbr === abbr)
         .sort((a, b) => b.overall - a.overall),
@@ -211,7 +218,8 @@ export function Draft() {
             marginTop: 6, font: "400 11px/1.45 var(--body)", color: 'var(--dim)',
           }}>
             Nobody recruited them. Every scholarship you leave unspent is one of
-            these instead.
+            these instead &mdash; and each one is here for a season and then gone,
+            so the hole comes straight back.
           </div>
         </>
       )}
@@ -224,8 +232,17 @@ export function Draft() {
   );
 }
 
+/** What the row says he did, and what colour it says it in. */
+const EXIT: Record<Departure['reason'], { word: string; tag: string; tone: string }> = {
+  drafted: { word: 'drafted', tag: 'RD', tone: 'var(--win)' },
+  graduated: { word: 'graduated', tag: 'CAREER OVER', tone: 'var(--dim)' },
+  // Not an ending. Nobody recruited him, so nothing held him for a second year.
+  'walk-on': { word: 'walk-on', tag: 'YEAR UP', tone: 'var(--dim)' },
+};
+
 function DepartureRow({ d, pick, mine }: { d: Departure; pick?: number; mine: boolean }) {
   const openPlayer = useDynasty((s) => s.openPlayer);
+  const exit = EXIT[d.reason] ?? EXIT.graduated;
   return (
     <button
       onClick={() => openPlayer(d.id)}
@@ -253,13 +270,13 @@ function DepartureRow({ d, pick, mine }: { d: Departure; pick?: number; mine: bo
         <span style={{
           display: 'block', marginTop: 1, font: "400 10px var(--mono)", color: 'var(--dim)',
         }}>
-          {d.teamAbbr} · {d.classYear} · {d.reason === 'drafted' ? 'drafted' : 'graduated'}
+          {d.teamAbbr} · {d.classYear} · {exit.word}
         </span>
       </span>
       <span style={{
         font: "700 8px var(--mono)", letterSpacing: '.08em',
-        color: d.reason === 'drafted' ? 'var(--win)' : 'var(--dim)', whiteSpace: 'nowrap',
-      }}>{d.reason === 'drafted' ? `RD ${d.round ?? '—'}` : 'CAREER OVER'}</span>
+        color: exit.tone, whiteSpace: 'nowrap',
+      }}>{d.reason === 'drafted' ? `RD ${d.round ?? '—'}` : exit.tag}</span>
       <span style={{ font: "600 13px var(--mono)" }}>{d.overall}</span>
     </button>
   );
