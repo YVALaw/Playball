@@ -1482,3 +1482,55 @@ export function jobOffers(
         : 'A rebuild. They will give you time because nobody else wants it.',
   }));
 }
+
+/**
+ * The offers on a brand new coach's desk.
+ *
+ * The old creation screen printed all ninety six programs and let the player
+ * discover, school by school, which ones would take his call. This is the other
+ * way round: only the chairs that would genuinely ring a coach at rookie
+ * prestige, chosen the way a market chooses — the best jobs he can actually
+ * get, spread across the country rather than six seats in one league.
+ *
+ * Pure and deterministic: sorted on facts of the world with abbreviation as the
+ * final tiebreak, no rng touched, so the same seed always produces the same
+ * desk. At most two offers per conference, at most `limit` overall, and never
+ * none — if a world somehow priced every chair above a rookie, the single
+ * cheapest seat still calls, because a game that cannot be started is a bug and
+ * not a difficulty setting.
+ */
+export function startingOffers(
+  teams: readonly TeamRecord[],
+  limit = 6,
+): number[] {
+  const hireable = teams
+    .map((t) => ({ t, roster: rosterStrength(t.team) }))
+    .filter(({ t, roster }) => canBeHired(ROOKIE_PRESTIGE, t.prestige, roster))
+    // Best first: the strongest program that would have you, then the better
+    // roster, then the alphabet so ties cannot wander between renders.
+    .sort((a, b) =>
+      b.t.prestige - a.t.prestige
+      || b.roster - a.roster
+      || a.t.def.abbr.localeCompare(b.t.def.abbr));
+
+  const out: number[] = [];
+  const perConference = new Map<string, number>();
+  for (const { t } of hireable) {
+    const used = perConference.get(t.conference) ?? 0;
+    if (used >= 2) continue;
+    perConference.set(t.conference, used + 1);
+    out.push(t.index);
+    if (out.length >= limit) break;
+  }
+
+  if (out.length === 0) {
+    // Should be unreachable — one-star bars sit at zero — but a new coach must
+    // always have somewhere to start.
+    const cheapest = [...teams].sort((a, b) =>
+      requiredCoachPrestige(a.prestige, rosterStrength(a.team))
+      - requiredCoachPrestige(b.prestige, rosterStrength(b.team))
+      || a.def.abbr.localeCompare(b.def.abbr))[0];
+    if (cheapest) out.push(cheapest.index);
+  }
+  return out;
+}

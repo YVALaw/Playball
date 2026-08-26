@@ -1203,3 +1203,65 @@ export function allConference(season: SeasonState): AllConferencePick[] {
 // What is kept is the part that carries the weight — every round is a series, so
 // a bad Friday does not end your year, and the title is decided by a bracket
 // rather than by a single game.
+
+// ---------------------------------------------------------------------------
+// The school's own book
+// ---------------------------------------------------------------------------
+
+/**
+ * Write the finished season into every program's annals.
+ *
+ * Ninety six rows a year, whoever was coaching where. This is what makes a
+ * school a place with a past rather than a prestige number: take a new job in
+ * year eleven and its History page can show you the ten seasons it played while
+ * you were somewhere else. The user's *personal* career is a different record
+ * (the store's history) and the two must never be merged — a coach's 2029 and
+ * his school's 2029 agree only while he was in that chair.
+ *
+ * Idempotent by year, because the year roll is reachable twice from a reload
+ * mid-offseason: a season already in a school's book is not written again.
+ */
+export function recordSchoolAnnals(
+  season: SeasonState,
+  year: number,
+  post: PostseasonSummary | null,
+  userTeam?: number,
+  userCoach?: string,
+): void {
+  const rpi = rpiOrder(season);
+  const rank = new Map<number, number>();
+  rpi.forEach((r, i) => rank.set(r.team.index, i + 1));
+
+  // The final conference tables, frozen if the postseason froze them.
+  const order = season.finalOrder ?? standings(season).map((t) => t.index);
+  const placeOf = new Map<number, number>();
+  const counters = new Map<string, number>();
+  for (const idx of order) {
+    const conf = season.teams[idx]?.conference;
+    if (conf === undefined) continue;
+    const n = (counters.get(conf) ?? 0) + 1;
+    counters.set(conf, n);
+    placeOf.set(idx, n);
+  }
+
+  for (const t of season.teams) {
+    t.annals ??= [];
+    if (t.annals.some((a) => a.year === year)) continue;
+    const played = regularRecord(t);
+    t.annals.push({
+      year,
+      w: played.w,
+      l: played.l,
+      cw: t.cw,
+      cl: t.cl,
+      confPlace: placeOf.get(t.index) ?? 0,
+      rank: rank.get(t.index) ?? 0,
+      wonConference: post?.conferenceChampions.includes(t.index) ?? false,
+      madeTournament: post ? post.finish[t.index] !== undefined : false,
+      finish: post?.finish[t.index] ?? 'missed',
+      ...(t.index === userTeam
+        ? (userCoach ? { coach: userCoach } : {})
+        : (t.coach ? { coach: t.coach.name } : {})),
+    });
+  }
+}

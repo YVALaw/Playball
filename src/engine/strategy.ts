@@ -282,3 +282,45 @@ export function strategyFor(teamIndex: number): Strategy {
     alignment: pick(ALIGN_BY_TRAIT, 5),
   };
 }
+
+// ---------------------------------------------------------------------------
+// The automatic lineup card
+// ---------------------------------------------------------------------------
+
+/**
+ * A sound batting order for the nine men handed in.
+ *
+ * The classical construction, not an optimizer: the best pure hitter bats
+ * third, the best power bat cleans up, the best table-setter who can also run
+ * leads off, and the rest fall in by overall. It exists so a coach who does not
+ * want to hand-build an order gets a defensible one in a tap — the same nine
+ * men, every position intact, nobody duplicated and nobody dropped, which the
+ * caller can rely on because this only ever *reorders* the array it was given.
+ *
+ * Deterministic, and it consumes nothing: ties break on name so the same nine
+ * always produce the same card, and no rng is touched — pressing AUTO twice is
+ * pressing it once.
+ */
+export function autoBattingOrder(nine: readonly Hitter[]): Hitter[] {
+  const pool = [...nine];
+  const byName = (a: Hitter, b: Hitter): number => a.name.localeCompare(b.name);
+  const take = (score: (h: Hitter) => number): Hitter => {
+    pool.sort((a, b) => score(b) - score(a) || byName(a, b));
+    return pool.shift()!;
+  };
+
+  // Table-setting is contact and an eye; damage is power; the leadoff man
+  // additionally wants wheels, because his job continues after the walk.
+  const onBase = (h: Hitter): number => h.contact * 0.55 + h.eye * 0.45;
+  const damage = (h: Hitter): number => h.power * 0.7 + h.contact * 0.3;
+  const overall = (h: Hitter): number => h.contact + h.power + h.eye;
+
+  const third = take(overall);                                  // best hitter
+  const cleanup = take(damage);                                 // best power
+  const leadoff = take((h) => onBase(h) + h.speed * 0.35);      // gets on, runs
+  const second = take(onBase);                                  // moves him over
+  const fifth = take(damage);                                   // protection
+  const rest = [...pool].sort((a, b) => overall(b) - overall(a) || byName(a, b));
+
+  return [leadoff, second, third, cleanup, fifth, ...rest];
+}

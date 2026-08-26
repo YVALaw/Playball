@@ -119,6 +119,12 @@ export interface SaveFile {
    * would mean the badge came back the moment the app restarted.
    */
   inbox?: unknown;
+  /**
+   * Which first-visit tutorials have been shown. Screen ids, nothing more —
+   * losing this costs a re-taught screen, not a career, so it is the least
+   * precious field in the file. Absent on older saves, which simply teach.
+   */
+  tutorials?: unknown;
 }
 
 export interface SaveSummary {
@@ -308,6 +314,8 @@ export interface SaveExtras {
   coach?: unknown;
   /** The notification centre, read flags and all. */
   inbox?: unknown;
+  /** First-visit tutorial ids already shown. */
+  tutorials?: unknown;
 }
 
 /**
@@ -378,6 +386,9 @@ export function buildSaveFile(
     ...(Array.isArray(extras.inbox) && extras.inbox.length > 0
       ? { inbox: extras.inbox }
       : {}),
+    ...(Array.isArray(extras.tutorials) && extras.tutorials.length > 0
+      ? { tutorials: extras.tutorials }
+      : {}),
   };
 }
 
@@ -419,6 +430,8 @@ export interface LoadedDynasty {
   outcome: unknown;
   /** Empty for every save written before the inbox existed. */
   inbox: unknown;
+  /** First-visit tutorial ids. Empty for saves that predate teaching. */
+  tutorials: unknown;
 }
 
 /**
@@ -476,6 +489,7 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     review: file.review ?? null,
     outcome: file.outcome ?? null,
     inbox: file.inbox ?? [],
+    tutorials: file.tutorials ?? [],
   };
 }
 

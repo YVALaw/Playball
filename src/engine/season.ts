@@ -32,6 +32,10 @@ import { teamId } from './types.js';
 // Type only, and it has to stay that way: `hall.ts` reads `careerName` out of
 // this module, so a value import back the other way would be a runtime cycle.
 import type { Inductee } from './hall.js';
+// Type only, and it has to stay that way: `postseason.ts` is built on this
+// module, so a value import back the other way would be a runtime cycle. The
+// school annals speak the postseason's vocabulary for how a year ended.
+import type { Finish } from './postseason.js';
 import type {
   EngineName, FieldLine, HitLine, Hitter, PitchLine, Pitcher, Player, PlayerId, Rng,
   Team, TeamId,
@@ -441,6 +445,45 @@ export interface TeamRecord {
    * ninety five had before B7.
    */
   coach?: RivalCoach;
+  /**
+   * The school's own book: one row per finished season, whoever was coaching it.
+   *
+   * On the team record for the same reason the coach is — `nextSeason` spreads a
+   * record forward and the codec writes one whole, so a program's history rides
+   * every save and every year roll for free. This is what lets a coach who takes
+   * a new job in year eleven read what that school did during the ten years he
+   * was somewhere else. The user's *personal* career lives in the store's
+   * history and is a different fact: a coach's 2029 and his school's 2029 agree
+   * only while he was in that chair. Absent on saves from before it existed;
+   * rows only accumulate from the first June the save plays through.
+   */
+  annals?: SchoolSeason[];
+}
+
+/**
+ * One finished season, as the school remembers it.
+ *
+ * Only what the simulation actually computes. Fields that would need inventing
+ * (attendance, budgets) are deliberately absent; new real ones can be added
+ * later because every reader treats the row as open.
+ */
+export interface SchoolSeason {
+  year: number;
+  /** Regular season, the record the conference race was run on. */
+  w: number;
+  l: number;
+  cw: number;
+  cl: number;
+  /** Place in the final conference table, 1 based. 0 when never frozen. */
+  confPlace: number;
+  /** Final national ranking by RPI, 1 based. */
+  rank: number;
+  wonConference: boolean;
+  madeTournament: boolean;
+  /** How the year ended, same vocabulary the postseason uses. */
+  finish: Finish;
+  /** Who was in the chair. The user's name when it was the user. */
+  coach?: string;
 }
 
 export interface BattingSeason extends HitLine { g: number }

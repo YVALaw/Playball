@@ -57,6 +57,7 @@ import {
   conferenceLengths, REGIONAL_LENGTHS, NATIONAL_LENGTHS, regionOf,
   seasonAwards, allConference, coachOfTheYear,
   conferenceField, conferenceIds, conferenceTournament, singleElimination, REGIONS,
+  recordSchoolAnnals,
   type SeriesBracket,
   type Finish, type PostseasonSummary, type ConferenceTournament,
   type RegionalResult, type TournamentResult,
@@ -174,7 +175,9 @@ const holesFor = (record: { team: { lineup: unknown[]; bench: unknown[]; rotatio
 };
 import type { Region } from '../data/schools.js';
 import { makeRng } from '../engine/rng.js';
-import { strategyFor, strategyForPhilosophy, type Strategy } from '../engine/strategy.js';
+import {
+  autoBattingOrder, strategyFor, strategyForPhilosophy, type Strategy,
+} from '../engine/strategy.js';
 import { HOME_CONFERENCE, CONFERENCES } from '../data/schools.js';
 import {
   saveDynasty, loadDynasty, listSaves, deleteSave, newSlotId, AUTOSAVE_SLOT,
@@ -250,13 +253,13 @@ export interface TabDef {
 
 /** Bottom nav and the sub-nav under it, exactly as the mockup lays them out. */
 export const TABS: readonly TabDef[] = [
-  // The inbox sits beside the wire rather than being folded into it. They
-  // answer the same question about different things: the wire is derived from
-  // the live season and evaporates, the inbox is written down and is about you.
-  // See `engine/inbox.ts`.
+  // TODAY and the WIRE only. The inbox and the scorebook used to sit here too,
+  // and both were second doors to rooms with better entrances: the inbox is
+  // the bell on the top bar (reachable from every frame, offseason included),
+  // and the scorebook is where PLAY BALL takes you. A nav item that duplicates
+  // a control an inch away is one more thing to read on a phone.
   { id: 'home', label: 'HOME', screens: [
-    { id: 'today', label: 'TODAY' }, { id: 'wire', label: 'WIRE' },
-    { id: 'inbox', label: 'INBOX' }, { id: 'box', label: 'SCOREBOOK' }] },
+    { id: 'today', label: 'TODAY' }, { id: 'wire', label: 'WIRE' }] },
   // Statistics are your players, so they live with your players. Strategy is a
   // standing policy rather than a thing you check, so it sits with the program.
   // Awards are now part of the record books: only the ones your program won,
@@ -644,6 +647,38 @@ export interface DynastyStore {
   swapLineup: (a: number, b: number) => void;
   /** Move a starter up or down the weekend rotation. */
   moveRotation: (index: number, delta: number) => void;
+  /**
+   * Deal the current nine into a sound batting order in one tap.
+   *
+   * Reorders only — the same men, every position intact — through the engine's
+   * `autoBattingOrder`, so the card it produces obeys every rule a hand-built
+   * one does. Manual swaps stay available afterwards; AUTO is a starting point,
+   * not a lock.
+   */
+  autoLineup: () => void;
+  /**
+   * Play out the rest of the current week — today through the weekend series.
+   *
+   * The middle gear the dashboard was missing: SIM GAME advanced one day and
+   * the next press up simulated the entire season. A week is the unit the
+   * calendar actually thinks in (a midweek game, then the Friday–Sunday
+   * series), so it is the unit a casual session advances by.
+   */
+  simWeek: () => void;
+
+  /**
+   * Which first-visit tutorials have been shown, by screen id.
+   *
+   * On the save rather than the device, because a dynasty is the unit of
+   * "having learned this game": a second career on the same phone belongs to
+   * the same player and should not re-teach, which is why the list survives
+   * `newDynasty`. Reset lives on the saves screen, beside the other
+   * start-again controls.
+   */
+  seenTutorials: string[];
+  markTutorialSeen: (id: string) => void;
+  /** Forget every tutorial, so the next visit to each screen teaches again. */
+  resetTutorials: () => void;
 
   /**
    * Write the dynasty down. `name` is what the saves list will call it; left
@@ -1712,8 +1747,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   advanceDay: () => {
     const { season, version, busy } = get();
     // `busy` because a day simmed on the main thread while the worker holds the
-    // season is a day simmed into an object the worker's result will replace.
-    if (!season || busy || seasonComplete(season)) return;
+    // season is a day simmed into an object the worker's result will replace;
+    // `live` because tonight's game is still being played and the day it
+    // belongs to must not pass underneath it.
+    if (!season || busy || get().live || seasonComplete(season)) return;
     simNextDay(season);
     set({ version: version + 1 });
     get().noteSeasonNews();
@@ -1919,7 +1956,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       get().post({
         kind: 'board', year,
         link: { to: 'program', sheet: 'coach' },
-        title: 'Your standing has taken a hit',
+        title: 'Your prestige has taken a hit',
         body: `${review.badRun} seasons in a row the board did not accept. `
           + `Coaches around the country notice a pattern where they forgive an `
           + `accident — ${review.prestigePenalty} points off your reputation, on `
@@ -1949,6 +1986,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, year, busy } = get();
     if (!season || busy) return;
     set({ busy: true });
+
+    // Every program's finished season goes into its own book before anything
+    // resets — ninety six rows, the user's chair included, idempotent by year.
+    // This is what a school's History page reads, and it is deliberately not
+    // the coach's personal record: his career follows him, a school's past
+    // stays with the school.
+    recordSchoolAnnals(season, year, get().lastPostseason, get().userTeam, get().coach.name);
 
     /*
       The season is already in the record books: `settleSeason` writes it at the
@@ -2519,9 +2563,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, userTeam, version } = get();
     // `busy` because the worker owns the season during a sim — a game started
     // against that object would be recorded into whatever world replaces it.
-    // `live` because a second press must not build a second game over the one
-    // in progress, consuming the season's rng again.
-    if (!season || get().busy || get().live || seasonComplete(season)) return;
+    if (!season || get().busy) return;
+    // A game already in progress: PLAY BALL is the way back to it, not a
+    // second game over the top of it. The scorebook left the nav — this button
+    // is now the room's only door, so it has to open the room that exists.
+    if (get().live) { set({ tab: 'home', screen: 'box' }); return; }
+    if (seasonComplete(season)) return;
 
     // Play forward through any days we are not involved in. The world does not
     // wait, but our own game is left untouched for us to manage.
@@ -2702,6 +2749,53 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     void get().saveNow();
   },
 
+  autoLineup: () => {
+    const { season, userTeam, version } = get();
+    const team = season?.teams[userTeam]?.team;
+    if (!team || get().busy) return;
+    const dealt = autoBattingOrder(team.lineup);
+    // Same nine or nothing. The helper only reorders, but the invariant is
+    // cheap to hold at the door and a corrupted lineup is a corrupted season.
+    if (dealt.length !== team.lineup.length) return;
+    team.lineup.splice(0, team.lineup.length, ...dealt);
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  simWeek: () => {
+    const { season } = get();
+    // Same doors `advanceDay` guards, for the same reasons — plus `live`,
+    // because a week cannot pass while tonight's game is still being managed.
+    if (!season || get().busy || get().live || seasonComplete(season)) return;
+    const start = season.schedule[season.dayIndex]?.week;
+    if (start === undefined) return;
+    let guard = 0;
+    while (!seasonComplete(season)
+      && season.schedule[season.dayIndex]?.week === start
+      && guard++ < 10) {
+      simNextDay(season);
+    }
+    set({ version: get().version + 1 });
+    get().noteSeasonNews();
+    void get().saveNow();
+  },
+
+  seenTutorials: [],
+
+  markTutorialSeen: (id) => {
+    const seen = get().seenTutorials;
+    if (seen.includes(id)) return;
+    set({ seenTutorials: [...seen, id] });
+    // Written through, or a reload re-teaches whatever was learned since the
+    // last game ended.
+    void get().saveNow();
+  },
+
+  resetTutorials: () => {
+    set({ seenTutorials: [] });
+    void get().saveNow();
+  },
+
   saveState: 'idle',
   lastSaveError: null,
   loadError: null,
@@ -2732,6 +2826,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         review: get().lastReview,
         outcome: get().lastOutcome,
         inbox: get().inbox,
+        tutorials: get().seenTutorials,
       });
       if (ticket === saveTicket) set({ saveState: 'saved' });
     } catch (e) {
@@ -2790,6 +2885,35 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // before the in-game skills were wired — or one that predates a job change —
     // comes up with the edge on the right program.
     applyCoachMods(loaded.season, loaded.userTeam, coach);
+    /*
+      Older saves carry no school annals. The one program whose past such a
+      save *does* know is the user's own — his career rows name their school —
+      so rows that match the current chair seed its book, and every other
+      program's history honestly begins at the next June. Rows from before the
+      school was stamped on them are skipped rather than guessed at: a wrong
+      year in a permanent book is worse than a missing one. Idempotent by year,
+      so a save that already has real annals is left exactly as it was.
+    */
+    const chair = loaded.season.teams[loaded.userTeam];
+    if (chair) {
+      chair.annals ??= [];
+      for (const row of (loaded.history ?? []) as SeasonRecord[]) {
+        if (!row || typeof row.year !== 'number') continue;
+        if (row.school !== chair.def.school) continue;
+        if (chair.annals.some((a) => a.year === row.year)) continue;
+        chair.annals.push({
+          year: row.year, w: row.w, l: row.l, cw: row.cw, cl: row.cl,
+          // The career row's `rpi` is the *value*, not a place in a table, and
+          // the table it was computed against is gone — so the seeded year
+          // honestly has no rank rather than a rating dressed up as one.
+          confPlace: row.confPlace, rank: 0,
+          wonConference: row.wonConference,
+          madeTournament: row.finish !== 'missed', finish: row.finish,
+          coach: coach.name,
+        });
+      }
+      chair.annals.sort((a, b) => a.year - b.year);
+    }
     const bracket = usableBracket(loaded.bracket);
     /*
       The market, back on the table. Older saves stored `jobSearch: true` and
@@ -2837,6 +2961,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         : [],
       jobSearch,
       offers,
+      // Merged rather than replaced: what the player has learned is a fact
+      // about the player, not the save. Loading an old dynasty from before the
+      // tutorials existed must not re-teach nine screens to a veteran who has
+      // been playing all evening.
+      seenTutorials: [...new Set([
+        ...get().seenTutorials,
+        ...(Array.isArray(loaded.tutorials)
+          ? (loaded.tutorials as unknown[]).filter((t): t is string => typeof t === 'string')
+          : []),
+      ])],
       // Unread stays unread across a restart. It is the one thing the inbox
       // knows that nothing else in the save does.
       inbox: restoreInbox(loaded.inbox),
