@@ -234,7 +234,6 @@ export function Board() {
 
   const myStars = team ? prestigeStars(team.prestige) : 1;
   const homeState = team?.def.state ?? '';
-  const recruitingSkill = coach.skills.recruiting;
 
   const {
     list, matches, targets, commits, spent, locked, shortfall, covered,
