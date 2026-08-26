@@ -6,6 +6,8 @@
 
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
+import { FirstVisit } from '../Tutorial.js';
+import { teamColour } from '../Avatar.js';
 import { seasonComplete } from '../../engine/season.js';
 import {
   seasonAwards, allConference, coachOfTheYear, type CoachAwardReason,
@@ -64,12 +66,13 @@ export function Awards() {
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
             <div className="label">{year} HONOURS</div>
             <div style={{
-              font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
             }}>Awards</div>
           </div>
         </div>
       }
     >
+    <FirstVisit id="awards" />
     <div style={{ padding: '10px 14px 16px' }}>
 
       {/*
@@ -98,11 +101,11 @@ export function Awards() {
             <div style={{
               font: "800 20px/1 var(--display)", textTransform: 'uppercase',
               color: coach.team === team.index ? 'var(--clay)' : 'var(--ink)',
-            }}>{coach.team === team.index ? `${coachName} — ${coach.school}` : coach.school}</div>
+            }}>{coach.team === team.index ? `${coachName} · ${coach.school}` : coach.school}</div>
             <div style={{
               marginTop: 5, font: "400 11.5px var(--mono)", color: 'var(--dim)',
             }}>
-              {coach.wins}-{coach.losses} — {coach.line}
+              {coach.wins}-{coach.losses} · {coach.line}
             </div>
             <div style={{
               marginTop: 7, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
@@ -161,8 +164,14 @@ export function Awards() {
       <div style={{
         marginTop: 8, border: '1px solid var(--faint)', background: 'var(--paper)',
       }}>
+        {/*
+          Each row wears its school. The stripe down the left edge and the name
+          are both the program's own colour, so a first team reads as the
+          country it came from rather than a list of strangers.
+        */}
         {first.map((p, i) => {
           const ours = p.team === team.def.abbr;
+          const tint = teamColour(p.team);
           return (
             <button
               key={`${p.position}-${p.id}-${i}`}
@@ -172,14 +181,15 @@ export function Awards() {
                 display: 'grid', gridTemplateColumns: '30px 1fr 30px',
                 gap: 8, alignItems: 'center',
                 padding: '8px 10px', borderBottom: '1px solid var(--hairline)',
+                borderLeft: `3px solid ${tint}`,
                 background: ours ? 'rgba(168,68,42,.06)' : 'transparent',
               }}>
               <span style={{
-                font: "600 10px var(--mono)", letterSpacing: '.1em', color: 'var(--clay)',
+                font: "600 10px var(--mono)", letterSpacing: '.1em', color: 'var(--dim)',
               }}>{p.position}</span>
               <div style={{ minWidth: 0 }}>
                 <div style={{
-                  font: `${ours ? 600 : 400} 13px var(--body)`,
+                  font: `${ours ? 700 : 600} 13px var(--body)`, color: tint,
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>{p.name}</div>
                 <div style={{
@@ -187,7 +197,7 @@ export function Awards() {
                 }}>{p.line}</div>
               </div>
               <span style={{
-                font: "400 10px var(--mono)", color: 'var(--dim)', textAlign: 'right',
+                font: "600 10px var(--mono)", color: tint, textAlign: 'right',
               }}>{p.team}</span>
             </button>
           );

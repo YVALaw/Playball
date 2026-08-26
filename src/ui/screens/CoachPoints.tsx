@@ -13,6 +13,7 @@
 
 import { useDynasty } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
+import { FirstVisit } from '../Tutorial.js';
 import { SKILLS, SKILL_LABEL, SKILL_BLURB } from '../../engine/program.js';
 
 export function CoachPoints() {
@@ -34,12 +35,13 @@ export function CoachPoints() {
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
             <div className="label">{coach.name} · YEAR {coach.tenure}</div>
             <div style={{
-              font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
+              font: "800 22px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
             }}>Coach</div>
           </div>
         </div>
       }
     >
+    <FirstVisit id="coachpoints" />
     <div style={{ padding: '12px 14px 24px' }}>
       <div style={{
         padding: '12px', background: 'var(--paper)',
@@ -53,21 +55,22 @@ export function CoachPoints() {
           }}>{left}</span>
           <span style={{ font: "400 12px/1.4 var(--body)", color: 'var(--dim)' }}>
             {left > 0
-              ? 'points to spend. They do not carry over well — a coach who never improves gets left behind.'
+              ? 'points to spend. They do not carry over. A coach who never improves gets left behind.'
               : 'Nothing left to spend this year.'}
           </span>
         </div>
-        {/* The undo, stated before it is needed rather than discovered after.
-            Three points into the wrong skill is a thumb, not a decision, and
-            the only moment that can be true is while the step is still open. */}
-        {back > 0 && (
-          <div style={{
-            marginTop: 8, font: "400 11px/1.45 var(--body)", color: 'var(--dim)',
-          }}>
-            {back} point{back === 1 ? '' : 's'} put on this year can still come
-            off. Once you continue, they are his.
-          </div>
-        )}
+        {/* Always rendered, so pressing +1 never reflows the cards below —
+            reported from testing: "when placing the coach points the page
+            moves all the time". The line changes what it says, not whether
+            it is there. */}
+        <div style={{
+          marginTop: 8, minHeight: 32,
+          font: "400 11px/1.45 var(--body)", color: 'var(--dim)',
+        }}>
+          {back > 0
+            ? `${back} point${back === 1 ? '' : 's'} put on this year can still come off. Once you continue, they are his.`
+            : 'Anything you put on can come back off until you leave this step.'}
+        </div>
       </div>
 
       <div style={{ marginTop: 14 }}>
@@ -105,23 +108,22 @@ export function CoachPoints() {
               <div style={{ display: 'flex', gap: 6, marginTop: 9 }}>
                 {/* The undo sits beside the spend rather than at the bottom of
                     the screen, because the mistake it answers is made here, on
-                    this card, and a control that fixes a specific thing belongs
-                    next to the thing. Absent entirely until there is something
-                    to take back. */}
-                {(spentThisStep[k] ?? 0) > 0 && (
-                  <button
-                    onClick={() => refund(k)}
-                    className="tap"
-                    aria-label={`Take a point back off ${SKILL_LABEL[k]}`}
-                    style={{
-                      flex: 'none', padding: '10px 14px',
-                      background: 'transparent',
-                      border: '1px solid rgba(28,36,48,.42)',
-                      color: 'var(--ink)',
-                      font: "700 10px var(--mono)", letterSpacing: '.12em',
-                    }}
-                  >−1</button>
-                )}
+                    this card. Always rendered so the +1 button never changes
+                    width under a moving thumb; it merely wakes up once there
+                    is something to take back. */}
+                <button
+                  onClick={() => refund(k)}
+                  className="tap"
+                  disabled={(spentThisStep[k] ?? 0) === 0}
+                  aria-label={`Take a point back off ${SKILL_LABEL[k]}`}
+                  style={{
+                    flex: 'none', padding: '10px 14px',
+                    background: 'transparent',
+                    border: `1px solid ${(spentThisStep[k] ?? 0) > 0 ? 'rgba(28,36,48,.42)' : 'rgba(28,36,48,.12)'}`,
+                    color: (spentThisStep[k] ?? 0) > 0 ? 'var(--ink)' : 'rgba(28,36,48,.22)',
+                    font: "700 10px var(--mono)", letterSpacing: '.12em',
+                  }}
+                >−1</button>
                 <button
                   disabled={left <= 0 || maxed}
                   onClick={() => spend(k)}

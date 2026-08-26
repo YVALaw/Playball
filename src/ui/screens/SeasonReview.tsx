@@ -12,6 +12,7 @@
 
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
+import { FirstVisit } from '../Tutorial.js';
 import { Avatar } from '../Avatar.js';
 import { rpiOrder, standings, regularRecord } from '../../engine/season.js';
 import { overallOf } from '../../engine/ratings.js';
@@ -82,7 +83,7 @@ export function SeasonReview() {
       : finish === 'runner-up'
         ? { title: 'National runners up', note: 'One game short in Omaha. It counts, and it stings.' }
         : finish === 'omaha'
-          ? { title: 'Omaha', note: 'You made the College World Series — four teams out of ninety six.' }
+          ? { title: 'Omaha', note: 'You made the College World Series. Four teams out of ninety six.' }
           : wonConference
             ? {
                 title: `${team.conference} champions`,
@@ -104,12 +105,13 @@ export function SeasonReview() {
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
             <div className="label">{team.def.school} · {year}</div>
             <div style={{
-              font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
+              font: "800 22px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
             }}>The season</div>
           </div>
         </div>
       }
     >
+    <FirstVisit id="review" />
     <div style={{ padding: '3px 14px 24px' }}>
       {/*
         The banner, and only when the season earned one.
@@ -166,14 +168,18 @@ export function SeasonReview() {
         />
       </div>
 
-      {finish && (
+      {/*
+        The finish stripe only when the banner did not already say it. A June
+        that earned the big slab does not need the same fact repeated two
+        inches lower in a smaller voice.
+      */}
+      {finish && !banner && (
         <div style={{
           marginTop: 10, padding: '11px 12px',
           background: 'var(--paper)', borderLeft: '3px solid var(--clay)',
           font: "400 12.5px/1.5 var(--body)",
         }}>
           <strong>{FINISH_LABEL[finish]}</strong>
-          {post?.champion === team.index && ' — national champions.'}
         </div>
       )}
 

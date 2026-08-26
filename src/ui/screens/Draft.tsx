@@ -19,6 +19,7 @@
 import { useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
+import { FirstVisit } from '../Tutorial.js';
 import { draftChance } from '../../engine/progression.js';
 import type { Departure } from '../../engine/progression.js';
 import {
@@ -101,7 +102,7 @@ export function Draft() {
       <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
         <div className="label">{year} · {team.def.abbr}</div>
         <div style={{
-          font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
+          font: "800 22px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
         }}>Draft results</div>
       </div>
 
@@ -131,6 +132,7 @@ export function Draft() {
       </div>
       </div>
     }>
+    <FirstVisit id="draftphase" />
     <div style={{ padding: '10px 14px 22px' }}>
       {view === 'keep' && (
         <KeepList men={board?.men ?? []} left={left} pool={pool} abbr={team.def.abbr} />
@@ -182,15 +184,7 @@ export function Draft() {
       {view === 'board' && <NationalBoard rows={national} abbr={team.def.abbr} />}
 
       {view === 'undrafted' && (
-        <>
-          <Rows rows={undrafted} abbr={team.def.abbr} empty="Nobody here." />
-          <div style={{
-            marginTop: 8, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
-          }}>
-            Nobody called their name. For a senior that is the end of it — four
-            years, and then the game stops.
-          </div>
-        </>
+        <Rows rows={undrafted} abbr={team.def.abbr} empty="Nobody here." />
       )}
 
       {/*
@@ -226,6 +220,12 @@ function KeepList(
   { men, left, pool, abbr }:
   { men: readonly DraftedMan[]; left: number; pool: number; abbr: string },
 ) {
+  // The row is the player; the conversation lives in a sheet the row opens.
+  // Reported from testing: the inline version put four pitches, a stepper and
+  // two buttons under every name and the list stopped being a list.
+  const [open, setOpen] = useState<string | null>(null);
+  const talking = men.find((m) => m.player.id === open) ?? null;
+
   if (men.length === 0) {
     return (
       <div style={{
@@ -233,8 +233,8 @@ function KeepList(
         padding: '18px 12px', font: "400 12px/1.55 var(--body)", color: 'var(--dim)',
         textAlign: 'center',
       }}>
-        No club took a man of yours who still has eligibility. A senior has
-        nothing left to come back to, so there is nobody here to talk to.
+        No club took a man of yours who still has eligibility, so there is
+        nobody here to talk to.
       </div>
     );
   }
@@ -249,23 +249,78 @@ function KeepList(
           {left} OF {pool} LEFT
         </span>
       </div>
-      <div style={{
-        marginBottom: 12, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
-      }}>
-        This is the recruiting budget, and the board opens next. Whatever you put
-        on the table is gone whether he stays or not &mdash; so the question is
-        not only how much, it is which case you make. He will not tell you
-        outright.
+      <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+        {men.map((man) => (
+          <KeepRow
+            key={man.player.id}
+            man={man}
+            abbr={abbr}
+            onOpen={() => setOpen(man.player.id)}
+          />
+        ))}
       </div>
-      {men.map((man) => (
-        <KeepCard key={man.player.id} man={man} left={left} abbr={abbr} />
-      ))}
+      {talking && (
+        <KeepSheet man={talking} left={left} abbr={abbr} onClose={() => setOpen(null)} />
+      )}
     </>
   );
 }
 
-function KeepCard(
-  { man, left, abbr }: { man: DraftedMan; left: number; abbr: string },
+/** One man, one line, one state. The tap is the whole interface. */
+function KeepRow(
+  { man, abbr, onOpen }: { man: DraftedMan; abbr: string; onOpen: () => void },
+) {
+  const p = man.player;
+  const done = man.outcome !== 'pending';
+  const stayed = man.outcome === 'stayed';
+  return (
+    <button
+      onClick={onOpen}
+      className="tap"
+      style={{
+        width: '100%', textAlign: 'left', display: 'grid',
+        gridTemplateColumns: 'auto 1fr auto auto', gap: 9, alignItems: 'center',
+        padding: '10px 11px', background: 'transparent',
+        borderBottom: '1px solid var(--hairline)',
+        borderLeft: done
+          ? `3px solid ${stayed ? 'var(--win)' : 'var(--dim)'}`
+          : '3px solid var(--clay)',
+      }}
+    >
+      <Avatar id={p.id} team={abbr} size={32} />
+      <span style={{ minWidth: 0 }}>
+        <span style={{
+          display: 'block', font: "700 14px var(--body)",
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>{p.name}</span>
+        <span style={{
+          display: 'block', marginTop: 1, font: "400 10px var(--mono)", color: 'var(--dim)',
+        }}>
+          {slotOf(p)} · {p.classYear} · RD {man.round} · OVR {overallOf(p)}
+        </span>
+      </span>
+      <span style={{
+        font: "700 8.5px var(--mono)", letterSpacing: '.07em', whiteSpace: 'nowrap',
+        color: done ? (stayed ? 'var(--win)' : 'var(--dim)') : 'var(--clay)',
+      }}>
+        {done ? (stayed ? 'STAYING' : 'SIGNED') : 'ON THE PHONE'}
+      </span>
+      <span aria-hidden style={{ font: "400 13px var(--mono)", color: 'var(--dim)' }}>›</span>
+    </button>
+  );
+}
+
+/**
+ * The conversation, laid over the list.
+ *
+ * Everything the inline card used to hold — his hints, the four pitches, the
+ * money, the handshake — in a sheet that exists only while you are actually
+ * talking to him. After the answer, the same sheet reads back how the call
+ * went, so a decided row still has its story.
+ */
+function KeepSheet(
+  { man, left, abbr, onClose }:
+  { man: DraftedMan; left: number; abbr: string; onClose: () => void },
 ) {
   const keepPlayer = useDynasty((s) => s.keepPlayer);
   const releasePlayer = useDynasty((s) => s.releasePlayer);
@@ -281,156 +336,193 @@ function KeepCard(
   const set = (n: number) => setOffer(Math.max(0, Math.min(left, Math.round(n))));
 
   return (
-    <div style={{
-      border: '1px solid var(--faint)', background: 'var(--paper)', marginBottom: 12,
-      borderLeft: done
-        ? `3px solid ${stayed ? 'var(--win)' : 'var(--dim)'}`
-        : '3px solid var(--clay)',
-    }}>
-      <button
-        onClick={() => openPlayer(p.id)}
+    <div
+      onClick={onClose}
+      className="fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Talking to ${p.name}`}
+      style={{
+        position: 'absolute', inset: 0, zIndex: 40,
+        background: 'rgba(28,36,48,.62)',
+        display: 'grid', placeItems: 'end center', padding: 0,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="rise-in"
         style={{
-          width: '100%', textAlign: 'left', display: 'grid',
-          gridTemplateColumns: 'auto 1fr auto auto', gap: 9, alignItems: 'center',
-          padding: '10px 11px', background: 'transparent', border: 'none',
+          width: '100%', maxHeight: '86%', overflowY: 'auto',
+          background: 'var(--field)', borderTop: '2px solid var(--ink)',
         }}
       >
-        <Avatar id={p.id} team={abbr} size={32} />
-        <span style={{ minWidth: 0 }}>
-          <span style={{
-            display: 'block', font: "700 14px var(--body)",
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>{p.name}</span>
-          <span style={{
-            display: 'block', marginTop: 1, font: "400 10px var(--mono)", color: 'var(--dim)',
-          }}>{slotOf(p)} · {p.classYear} · AGE {p.age}</span>
-        </span>
-        <span style={{
-          font: "700 9px var(--mono)", letterSpacing: '.06em', color: 'var(--clay)',
-          whiteSpace: 'nowrap',
-        }}>RD {man.round}</span>
-        <span style={{ font: "600 14px var(--mono)" }}>{overallOf(p)}</span>
-      </button>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '10px 14px 0',
+        }}>
+          <button
+            onClick={() => openPlayer(p.id)}
+            style={{
+              display: 'flex', gap: 10, alignItems: 'center', textAlign: 'left',
+              background: 'transparent', padding: 0, minWidth: 0,
+            }}
+          >
+            <Avatar id={p.id} team={abbr} size={38} />
+            <span style={{ minWidth: 0 }}>
+              <span style={{
+                display: 'block', font: "800 17px/1 var(--display)", textTransform: 'uppercase',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>{p.name}</span>
+              <span style={{
+                display: 'block', marginTop: 3, font: "400 10px var(--mono)", color: 'var(--dim)',
+              }}>
+                {slotOf(p)} · {p.classYear} · OVR {overallOf(p)} · ROUND {man.round} PICK
+              </span>
+            </span>
+          </button>
+          <button
+            onClick={onClose}
+            className="tap"
+            aria-label="Close"
+            style={{
+              flex: 'none', padding: '8px 12px', minHeight: 36,
+              background: 'transparent', border: '1px solid rgba(28,36,48,.3)',
+              color: 'var(--dim)', font: "700 9.5px var(--mono)", letterSpacing: '.1em',
+            }}
+          >CLOSE</button>
+        </div>
 
-      <div style={{
-        padding: '0 11px 10px', font: "400 11.5px/1.5 var(--body)", color: 'var(--ink)',
-      }}>
-        &ldquo;{hints[0]}&rdquo;<br />
-        &ldquo;{hints[1]}&rdquo;
-      </div>
-
-      {!done && (
-        <div style={{ padding: '0 11px 11px' }}>
+        <div style={{ padding: '10px 14px 14px' }}>
           <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-            paddingTop: 9, borderTop: '1px solid var(--hairline)',
+            padding: '9px 11px', background: 'var(--paper)',
+            borderLeft: '3px solid var(--faint)',
+            font: "400 12px/1.55 var(--body)",
           }}>
-            <span className="label">WHAT A ROUND {man.round} MAN WANTS</span>
-            <span style={{ font: "700 15px var(--display)", color: 'var(--clay)' }}>{needs}</span>
+            &ldquo;{hints[0]}&rdquo;<br />
+            &ldquo;{hints[1]}&rdquo;
           </div>
 
-          <div style={{
-            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginTop: 9,
-          }}>
-            {KEEP_PITCHES.map((k) => (
-              <button
-                key={k}
-                onClick={() => setPitch(k)}
-                className="tap"
-                style={{
-                  padding: '9px 4px',
-                  background: k === pitch ? 'var(--ink)' : 'transparent',
-                  border: k === pitch ? '1px solid var(--ink)' : '1px solid rgba(28,36,48,.28)',
-                  color: k === pitch ? 'var(--cream)' : 'var(--ink)',
-                  font: "700 8.5px var(--mono)", letterSpacing: '.07em',
-                }}
-              >{KEEP_LABEL[k]}</button>
-            ))}
-          </div>
-
-          {pitch && (
+          {!done && (
             <>
               <div style={{
-                marginTop: 9, padding: '9px 10px', background: 'var(--field)',
-                borderLeft: '3px solid var(--ink)',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+                marginTop: 12,
               }}>
-                <div style={{ font: "400 12px/1.45 var(--body)" }}>
-                  &ldquo;{KEEP_CASE[pitch]}&rdquo;
-                </div>
-                <div style={{
-                  marginTop: 5, font: "400 10.5px/1.4 var(--mono)", color: 'var(--dim)',
-                }}>{KEEP_RESTS_ON[pitch]}</div>
+                <span className="label">WHAT A ROUND {man.round} MAN WANTS</span>
+                <span style={{ font: "700 15px var(--display)", color: 'var(--clay)' }}>{needs}</span>
               </div>
 
               <div style={{
-                display: 'flex', alignItems: 'center', gap: 6, marginTop: 10,
+                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginTop: 8,
               }}>
-                <span style={{
-                  font: "800 26px/1 var(--display)",
-                  color: offer > 0 ? 'var(--clay)' : 'var(--dim)',
-                  minWidth: 44, textAlign: 'right',
-                }}>{offer}</span>
-                <Step label="−10" onClick={() => set(offer - 10)} off={offer === 0} />
-                <Step label="−1" onClick={() => set(offer - 1)} off={offer === 0} />
-                <Step label="+1" onClick={() => set(offer + 1)} off={offer >= left} />
-                <Step label="+10" onClick={() => set(offer + 10)} off={offer >= left} />
-                <Step label="ALL" onClick={() => set(left)} off={offer >= left} wide />
+                {KEEP_PITCHES.map((k) => (
+                  <button
+                    key={k}
+                    onClick={() => setPitch(k)}
+                    className="tap"
+                    style={{
+                      padding: '9px 4px', minHeight: 36,
+                      background: k === pitch ? 'var(--ink)' : 'var(--paper)',
+                      border: k === pitch ? '1px solid var(--ink)' : '1px solid rgba(28,36,48,.28)',
+                      color: k === pitch ? 'var(--cream)' : 'var(--ink)',
+                      font: "700 8.5px var(--mono)", letterSpacing: '.07em',
+                    }}
+                  >{KEEP_LABEL[k]}</button>
+                ))}
               </div>
 
+              {pitch && (
+                <>
+                  <div style={{
+                    marginTop: 9, padding: '9px 10px', background: 'var(--paper)',
+                    borderLeft: '3px solid var(--ink)',
+                  }}>
+                    <div style={{ font: "400 12px/1.45 var(--body)" }}>
+                      &ldquo;{KEEP_CASE[pitch]}&rdquo;
+                    </div>
+                    <div style={{
+                      marginTop: 5, font: "400 10.5px/1.4 var(--mono)", color: 'var(--dim)',
+                    }}>{KEEP_RESTS_ON[pitch]}</div>
+                  </div>
+
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 6, marginTop: 10,
+                  }}>
+                    <span style={{
+                      font: "800 26px/1 var(--display)",
+                      color: offer > 0 ? 'var(--clay)' : 'var(--dim)',
+                      minWidth: 44, textAlign: 'right',
+                    }}>{offer}</span>
+                    <Step label="−10" onClick={() => set(offer - 10)} off={offer === 0} />
+                    <Step label="−1" onClick={() => set(offer - 1)} off={offer === 0} />
+                    <Step label="+1" onClick={() => set(offer + 1)} off={offer >= left} />
+                    <Step label="+10" onClick={() => set(offer + 10)} off={offer >= left} />
+                    <Step label="ALL" onClick={() => set(left)} off={offer >= left} wide />
+                  </div>
+
+                  <button
+                    onClick={() => keepPlayer(p.id, pitch, offer)}
+                    disabled={offer <= 0}
+                    style={{
+                      width: '100%', marginTop: 10, padding: '13px 10px',
+                      background: offer > 0 ? 'var(--clay)' : 'rgba(28,36,48,.12)',
+                      border: '1px solid transparent',
+                      color: offer > 0 ? 'var(--cream)' : 'var(--dim)',
+                      font: "700 11px var(--mono)", letterSpacing: '.1em',
+                    }}
+                  >MAKE THE CASE</button>
+                </>
+              )}
+
               <button
-                onClick={() => keepPlayer(p.id, pitch, offer)}
-                disabled={offer <= 0}
+                onClick={() => releasePlayer(p.id)}
                 style={{
-                  width: '100%', marginTop: 10, padding: '13px 10px',
-                  background: offer > 0 ? 'var(--clay)' : 'rgba(28,36,48,.12)',
-                  border: '1px solid transparent',
-                  color: offer > 0 ? 'var(--cream)' : 'var(--dim)',
-                  font: "700 11px var(--mono)", letterSpacing: '.1em',
+                  width: '100%', marginTop: 6, padding: '9px 10px',
+                  background: 'transparent', border: '1px solid rgba(28,36,48,.22)',
+                  color: 'var(--dim)', font: "700 9px var(--mono)", letterSpacing: '.08em',
                 }}
-              >MAKE THE CASE</button>
+              >SHAKE HIS HAND AND LET HIM GO</button>
             </>
           )}
 
-          <button
-            onClick={() => releasePlayer(p.id)}
-            style={{
-              width: '100%', marginTop: 6, padding: '9px 10px',
-              background: 'transparent', border: '1px solid rgba(28,36,48,.22)',
-              color: 'var(--dim)', font: "700 9px var(--mono)", letterSpacing: '.08em',
-            }}
-          >SHAKE HIS HAND AND LET HIM GO</button>
+          {done && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{
+                font: "700 10px var(--mono)", letterSpacing: '.08em',
+                color: stayed ? 'var(--win)' : 'var(--dim)',
+              }}>{stayed ? 'HE IS COMING BACK' : 'HE SIGNED'}</div>
+              <div style={{
+                marginTop: 5, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
+              }}>
+                {man.pitch === null
+                  ? 'You did not make a case, and he did not need one to make up his mind.'
+                  : (
+                    <>
+                      You made the case on <strong style={{ color: 'var(--ink)' }}>
+                        {KEEP_LABEL[man.pitch].toLowerCase()}
+                      </strong> and put <strong style={{ color: 'var(--ink)' }}>
+                        {man.offered}
+                      </strong> behind it. It was worth {Math.round(man.made)} against
+                      the {man.needed} a round {man.round} man wanted.
+                      {stayed
+                        ? ' He comes back a year older, a year better, and with no leverage at all next June. That is the bet you just made on his behalf.'
+                        : ' Not enough, and the money is spent.'}
+                    </>
+                  )}
+              </div>
+              <button
+                onClick={onClose}
+                className="tap"
+                style={{
+                  width: '100%', marginTop: 10, padding: '12px 10px',
+                  background: 'var(--ink)', border: '1px solid var(--ink)',
+                  color: 'var(--cream)', font: "700 10px var(--mono)", letterSpacing: '.1em',
+                }}
+              >BACK TO THE LIST</button>
+            </div>
+          )}
         </div>
-      )}
-
-      {done && (
-        <div style={{
-          padding: '9px 11px 11px', borderTop: '1px solid var(--hairline)',
-        }}>
-          <div style={{
-            font: "700 10px var(--mono)", letterSpacing: '.08em',
-            color: stayed ? 'var(--win)' : 'var(--dim)',
-          }}>{stayed ? 'HE IS COMING BACK' : 'HE SIGNED'}</div>
-          <div style={{
-            marginTop: 5, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
-          }}>
-            {man.pitch === null
-              ? 'You did not make a case, and he did not need one to make up his mind.'
-              : (
-                <>
-                  You made the case on <strong style={{ color: 'var(--ink)' }}>
-                    {KEEP_LABEL[man.pitch].toLowerCase()}
-                  </strong> and put <strong style={{ color: 'var(--ink)' }}>
-                    {man.offered}
-                  </strong> behind it. It was worth {Math.round(man.made)} against
-                  the {man.needed} a round {man.round} man wanted.
-                  {stayed
-                    ? ' He comes back a year older, a year better, and with no leverage at all next June — which is the bet you just made on his behalf.'
-                    : ' Not enough, and the money is spent.'}
-                </>
-              )}
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -502,13 +594,6 @@ function NationalBoard({ rows, abbr }: { rows: Departure[]; abbr: string }) {
   }
   return (
     <>
-      <div style={{
-        marginBottom: 10, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
-      }}>
-        Twenty rounds of thirty picks, fed by every high school and junior
-        college in the country as well as by programs like yours. A name in the
-        first round is two or three men in a year.
-      </div>
       {blocks.map((b) => (
         <div key={b.round} style={{ marginBottom: 10 }}>
           <div style={{
@@ -608,21 +693,14 @@ function DraftOdds(
         <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
           <div className="label">{team.def.abbr} · {year}</div>
           <div style={{
-            font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+            font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
           }}>The draft</div>
         </div>
       </div>
     }>
     <div style={{ padding: '10px 14px 20px' }}>
-      <div style={{ font: "400 12px/1.55 var(--body)", color: 'var(--dim)' }}>
-        A club may take a man once he has three years behind him &mdash; or the
-        moment he turns twenty one, whichever comes first. Seniors leave in June
-        whatever happens. Everybody else on this list is exposed, and the better
-        you develop one, the more the draft wants him.
-      </div>
-
       <div style={{
-        display: 'flex', marginTop: 12,
+        display: 'flex', marginTop: 2,
         border: '1px solid var(--faint)', background: 'var(--paper)',
       }}>
         <Tile k="SENIORS" v={String(seniors.length)} />

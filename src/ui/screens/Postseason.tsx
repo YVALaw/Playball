@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { Modal } from '../Modal.js';
+import { Lineup } from './Lineup.js';
 import { PostseasonMap } from '../PostseasonMap.js';
 import type { GraphInput } from '../postseasonGraph.js';
 import {
@@ -36,7 +37,7 @@ const LADDER = [
   {
     key: 'regional',
     name: 'REGIONAL',
-    blurb: `Your conference champion against the champion of the conference next door — one best of ${SERIES.regional} for the region. Four regions, four survivors.`,
+    blurb: `Your conference champion against the champion of the conference next door, one best of ${SERIES.regional} for the region. Four regions, four survivors.`,
   },
   {
     key: 'national',
@@ -51,7 +52,8 @@ const ordinal = (n: number): string => {
 };
 
 export function Postseason() {
-  const [modal, setModal] = useState<'in' | 'out' | null>(null);
+  const [modal, setModal] = useState<'in' | 'out' | 'won' | null>(null);
+  const [showLineup, setShowLineup] = useState(false);
 
   const season = useDynasty((s) => s.season);
   const bracket = useDynasty((s) => s.bracket);
@@ -100,6 +102,23 @@ export function Postseason() {
   const introKey = `${year}:in:${stageKey}`;
   const outKey = knockedOut && knockout ? `${year}:out:${knockout.kind}` : '';
 
+  /**
+   * Whether the tier on screen is finished, and whether you finished it on top.
+   * Computed up here because the modal effect needs both before the null-check
+   * return that the rest of the render waits behind.
+   */
+  const stagePlayed = bracket
+    ? (bracket.stage === 'conference' ? bracket.cups.length > 0
+      : bracket.stage === 'regional' ? bracket.regionals.length >= REGIONS.length
+      : bracket.national !== null)
+    : false;
+  const iWonStage = bracket !== null && stagePlayed && (
+    bracket.stage === 'conference' ? bracket.cups.some((c) => c.champion === userTeam)
+      : bracket.stage === 'regional' ? bracket.regionals.some((r) => r.champion === userTeam)
+      : bracket.national?.champion === userTeam
+  );
+  const winKey = iWonStage ? `${year}:win:${stageKey}` : '';
+
   useEffect(() => {
     if (!bracket) return;
     // Elimination first. A year that has just ended is never also a year that
@@ -109,6 +128,13 @@ export function Postseason() {
       setModal('out');
       return;
     }
+    // A trophy gets a card of its own — conference, regional, or the whole
+    // thing. Once per stage per year, like the elimination it mirrors.
+    if (winKey && !seen.includes(winKey)) {
+      markSeen(winKey);
+      setModal('won');
+      return;
+    }
     // And the welcome only where there is something to welcome you to: a live
     // run of your own, or a May that ended without one.
     if (stageKey === 'conference' && (inTheField ? stillIn : true)
@@ -116,7 +142,7 @@ export function Postseason() {
       markSeen(introKey);
       setModal('in');
     }
-  }, [bracket, stageKey, outKey, introKey, seen, markSeen, stillIn, inTheField]);
+  }, [bracket, stageKey, outKey, winKey, introKey, seen, markSeen, stillIn, inTheField]);
 
   if (!season || !team || !bracket) return null;
 
@@ -130,10 +156,6 @@ export function Postseason() {
 
   const mySeries = live ? liveSeries(live, userTeam) : null;
   const due = live && !iAmOut ? nextGameFor(live, userTeam) : null;
-
-  const stagePlayed = bracket.stage === 'conference' ? bracket.cups.length > 0
-    : bracket.stage === 'regional' ? bracket.regionals.length >= REGIONS.length
-    : bracket.national !== null;
 
   /** Which rung of the ladder is lit. */
   const rung = bracket.stage === 'conference' ? 0
@@ -173,26 +195,83 @@ export function Postseason() {
     // Read from the recorded elimination, not from the live bracket: by the
     // time a losing final renders there is no live bracket to read.
     const kind = knockout?.kind ?? myBracket?.kind ?? 'conference';
-    const where = kind === 'conference'
-      ? `the ${team.conference} tournament`
-      : kind === 'regional' ? `the ${regionName} regional`
-      : 'the last four';
     const round = knockout ? roundName(knockout.rounds, knockout.round) : '';
+    const inRound = round ? ` in the ${round.toLowerCase()}` : '';
+    // Losing the last game of the country is its own kind of season. "Knocked
+    // out" is the wrong words for a team one series from everything.
+    const lostFinal = kind === 'national' && knockout !== null
+      && knockout.round === knockout.rounds - 1;
+
+    if (kind === 'conference') {
+      return {
+        title: 'Out in May',
+        lines: [
+          `${team.def.school} fall${inRound} of the ${team.conference} tournament.`,
+          'The bats always go quiet at the worst possible time. Winter is for getting them loud again.',
+        ],
+      };
+    }
+    if (kind === 'regional') {
+      return {
+        title: 'Out at the regional',
+        lines: [
+          `${team.def.school} drop the ${regionName} regional${inRound}.`,
+          'A conference trophy and a June exit. Close enough to sting, good enough to be back.',
+        ],
+      };
+    }
+    if (lostFinal) {
+      return {
+        title: 'Runners up',
+        lines: [
+          `${team.def.school} lose the national final.`,
+          'One series short of everything. Second best in the whole country, and it still feels like this.',
+        ],
+      };
+    }
     return {
-      title: 'Knocked out',
+      title: 'Out at the last four',
       lines: [
-        `${team.def.school} are out of ${where}${round ? ` in the ${round.toLowerCase()}` : ''}.`,
-        'The season ends here. Only champions go on.',
+        `${team.def.school} fall in the national semifinal.`,
+        'Four teams left and yours was one of them. Seasons like this are why the banners exist.',
       ],
     };
   })();
+
+  /** The other kind of June: a trophy, sized to the tier it came from. */
+  const wonCard = bracket.stage === 'conference'
+    ? {
+        kicker: `${year} ${team.conference.toUpperCase()}`,
+        title: 'Conference champions',
+        lines: [
+          `${team.def.school} win the ${team.conference} tournament.`,
+          `Hang the banner and gas up the bus. The ${regionName} regional is waiting.`,
+        ],
+      }
+    : bracket.stage === 'regional'
+      ? {
+          kicker: `${year} ${regionName.toUpperCase()} REGIONAL`,
+          title: 'Regional champions',
+          lines: [
+            `${team.def.school} take the ${regionName} regional.`,
+            'Four teams left in the country and yours is one of them.',
+          ],
+        }
+      : {
+          kicker: `${year} NATIONAL FINAL`,
+          title: 'National champions',
+          lines: [
+            `${team.def.school} win it all.`,
+            'Nobody left to beat. Somewhere on campus a trophy case is being rearranged.',
+          ],
+        };
 
   const verdict = (() => {
     if (bracket.stage === 'conference' && myCup) {
       return {
         good: myCup.champion === userTeam,
         text: myCup.champion === userTeam
-          ? `${team.def.school} win the ${team.conference} — on to the ${regionName} regional.`
+          ? `${team.def.school} win the ${team.conference}. On to the ${regionName} regional.`
           : myCup.seeds.includes(userTeam)
             ? `${name(myCup.champion)} won the conference. Your season ends here.`
             : `You did not make the ${CONF_FIELD} team field. ${name(myCup.champion)} won it.`,
@@ -202,7 +281,7 @@ export function Postseason() {
       return {
         good: myRegional.champion === userTeam,
         text: myRegional.champion === userTeam
-          ? `${team.def.school} take the ${regionName} — you are in the last four.`
+          ? `${team.def.school} take the ${regionName}. You are in the last four.`
           : `${name(myRegional.champion)} take the ${regionName}. Your season ends here.`,
       };
     }
@@ -276,13 +355,56 @@ export function Postseason() {
       )}
       {modal === 'out' && (
         <Modal
-          kicker="KNOCKED OUT"
+          kicker="SEASON OVER"
           title={howFar.title}
           lines={howFar.lines}
           tone="clay"
           action="SEE THE REST OF IT"
           onClose={() => setModal(null)}
         />
+      )}
+      {modal === 'won' && (
+        <Modal
+          kicker={wonCard.kicker}
+          title={wonCard.title}
+          lines={wonCard.lines}
+          tone="win"
+          action="LET'S GO"
+          onClose={() => setModal(null)}
+        />
+      )}
+
+      {/*
+        The lineup, borrowed whole from the regular season and laid over June.
+        A sheet rather than a navigation: the bracket stays exactly where it
+        was, and DONE puts you back on it. Below the modals in the stack, so
+        an elimination card can still interrupt a coach mid tinker.
+      */}
+      {showLineup && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 30,
+          background: 'var(--field)', display: 'flex', flexDirection: 'column',
+        }}>
+          <div style={{
+            flex: 'none', display: 'flex', justifyContent: 'space-between',
+            alignItems: 'center', padding: '10px 14px',
+            borderBottom: '2px solid var(--ink)', background: 'var(--field)',
+          }}>
+            <div className="label">POSTSEASON · YOUR CARD</div>
+            <button
+              onClick={() => setShowLineup(false)}
+              className="tap"
+              style={{
+                padding: '8px 14px', minHeight: 36,
+                background: 'var(--ink)', border: '1px solid var(--ink)',
+                color: 'var(--cream)', font: "700 9.5px var(--mono)", letterSpacing: '.12em',
+              }}
+            >DONE</button>
+          </div>
+          <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+            <Lineup />
+          </div>
+        </div>
       )}
 
       {/*
@@ -297,7 +419,7 @@ export function Postseason() {
           }}>
             <div className="label">{year} POSTSEASON · STAGE {rung + 1} OF 3</div>
             <div style={{
-              font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
+              font: "800 22px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
             }}>{stageTitle}</div>
           </div>
 
@@ -342,19 +464,48 @@ export function Postseason() {
                 </div>
               </div>
             )}
+            {/* June does not lock the card. The dugout controls live in the
+                regular season frame, which this one deliberately is not, so
+                the door to the lineup has to be here. */}
+            {!iAmOut && (
+              <button
+                onClick={() => setShowLineup(true)}
+                className="tap"
+                style={{
+                  marginTop: 10, width: '100%', padding: '10px 0', minHeight: 40,
+                  background: 'var(--field)', border: '1px solid rgba(28,36,48,.4)',
+                  color: 'var(--ink)', font: "700 10px var(--mono)", letterSpacing: '.1em',
+                }}
+              >SET THE LINEUP</button>
+            )}
           </Section>
         </div>
       )}
 
+      {/*
+        How the tier ended, as a banner rather than a boxed "RESULT" section —
+        the map already says who advanced, so this strip's whole job is tone:
+        loud for a trophy, quiet for a season that ended.
+      */}
       {!live && stagePlayed && (
         <div style={{ padding: '0 14px' }}>
-          <Section title="RESULT">
+          <div style={{
+            marginTop: 18, padding: '12px 14px',
+            background: verdict.good ? 'var(--win)' : 'var(--paper)',
+            border: verdict.good ? 'none' : '1px solid var(--faint)',
+            borderLeft: verdict.good ? 'none' : '3px solid var(--clay)',
+          }}>
             <div style={{
-              font: "400 13px/1.5 var(--body)",
-              color: verdict.good ? 'var(--win)' : 'var(--ink)',
-              fontWeight: verdict.good ? 600 : 400,
+              font: "600 8.5px var(--mono)", letterSpacing: '.16em',
+              color: verdict.good ? 'rgba(246,241,230,.72)' : 'var(--dim)',
+            }}>
+              {rung === 0 ? 'CONFERENCE' : rung === 1 ? 'REGIONAL' : 'NATIONAL'} · SETTLED
+            </div>
+            <div style={{
+              marginTop: 4, font: `${verdict.good ? 600 : 400} 13px/1.5 var(--body)`,
+              color: verdict.good ? 'var(--cream)' : 'var(--ink)',
             }}>{verdict.text}</div>
-          </Section>
+          </div>
         </div>
       )}
 

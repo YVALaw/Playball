@@ -36,6 +36,7 @@ import { highSchoolLine } from '../../engine/scouting.js';
 import { CONFERENCES, ALL_STATES } from '../../data/schools.js';
 import { prestigeStars } from '../../engine/program.js';
 import { Avatar, teamColour } from '../Avatar.js';
+import { FirstVisit } from '../Tutorial.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import type { Hitter, Pitcher, Player, Position } from '../../engine/types.js';
 
@@ -150,7 +151,7 @@ export function pinnedAction(
     return {
       kind: 'close-filter',
       label: s.matches === 0
-        ? 'NOBODY MATCHES — BACK TO THE BOARD'
+        ? 'NOBODY MATCHES · BACK TO THE BOARD'
         : s.shown < s.matches
           ? `SHOW THE TOP ${s.shown} OF ${s.matches}`
           : `SHOW ${s.matches} RECRUIT${s.matches === 1 ? '' : 'S'}`,
@@ -348,7 +349,7 @@ export function Board() {
             RECRUITING · {live ? `WEEK ${week} OF ${RECRUITING_WEEKS}` : 'SIGNED'}
           </div>
           <div style={{
-            font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+            font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
           }}>The board</div>
         </div>
         {/*
@@ -423,6 +424,7 @@ export function Board() {
       </div>
       </div>
     }>
+    {live && <FirstVisit id="recruiting" />}
     <div style={{ padding: '10px 14px 20px' }}>
       {/* Filtering replaces the body rather than pushing it down. The rest of
           this branch is the board itself; see the note on the FILTER button. */}
@@ -463,16 +465,6 @@ export function Board() {
         </div>
       )}
 
-      {live && (
-        <div style={{
-          marginBottom: 10, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
-        }}>
-          {weekly} a week, spread how you like. Points carry over and
-          the most points signs him &mdash; so staying with somebody works, and
-          recruits come off the board every week you spend deciding. The best in
-          the country want more attention than one week can buy.
-        </div>
-      )}
 
       {view === 'needs' ? (
         <NeedsView short={shortfall} covered={covered} onPick={(pos) => {
@@ -891,11 +883,11 @@ function NeedsView(
         font: "400 11.5px/1.5 var(--body)", color: 'var(--ink)',
       }}>
         {total === 0
-          ? 'Every spot is covered. Nobody walks on this year — the whole roster '
+          ? 'Every spot is covered. Nobody walks on this year. The whole roster '
             + 'is men you went and got.'
           : `${total} walk-on${total === 1 ? '' : 's'} as it stands. Anything you do `
             + "not sign gets filled by whoever turns up, thirteen points below your "
-            + "program's own level — and he is gone again the moment the season ends."}
+            + "program's own level, and he is gone again the moment the season ends."}
       </div>
 
       {short.length > 0 && (
@@ -1192,7 +1184,7 @@ function Overview({
         }}>
           <strong style={{ color: 'var(--ink)' }}>He will not take the call.</strong>
           {' '}A {'★'.repeat(prospect.stars)} recruit hears out a{' '}
-          {'★'.repeat(reachFloor(prospect.stars))} program and up &mdash; one more
+          {'★'.repeat(reachFloor(prospect.stars))} program and up, one more
           rung down if he is from your own state, and he is not. Build the program
           up and players like him start listening.
         </div>
@@ -1206,7 +1198,7 @@ function Overview({
         }}>
           <strong style={{ color: 'var(--ink)' }}>He is in your pipeline.</strong>
           {' '}A kid from your own state will hear out a program a rung below
-          the one his grade would otherwise talk to &mdash; and proximity is worth
+          the one his grade would otherwise talk to, and proximity is worth
           full marks in the pitch on top of that.
         </div>
       )}
@@ -1415,7 +1407,7 @@ function Report({
         <strong style={{ color: 'var(--ink)' }}>
           {Math.round(reportWidth(recruitingSkill))} points wide
         </strong>{' '}
-        at recruiting {recruitingSkill} &mdash; and he is somewhere inside them,
+        at recruiting {recruitingSkill}, and he is somewhere inside them,
         not in the middle. Nothing narrows these but the skill itself.
       </div>
     </>

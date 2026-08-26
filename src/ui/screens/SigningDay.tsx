@@ -26,6 +26,7 @@ import { walkOnClass, walkOnSeed } from '../../engine/progression.js';
 import { overallOf } from '../../engine/ratings.js';
 import type { Pitcher, Player } from '../../engine/types.js';
 import { Avatar } from '../Avatar.js';
+import { FirstVisit } from '../Tutorial.js';
 
 type View = 'rankings' | 'mine' | 'all';
 
@@ -157,7 +158,7 @@ export function SigningDay() {
       <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
         <div className="label">SIGNING DAY</div>
         <div style={{
-          font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
+          font: "800 22px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
         }}>The class</div>
       </div>
 
@@ -188,6 +189,7 @@ export function SigningDay() {
       </div>
       </div>
     }>
+    <FirstVisit id="signing" />
     <div style={{ padding: '10px 14px 22px' }}>
       {view === 'mine' && (
         <div style={{
@@ -207,20 +209,6 @@ export function SigningDay() {
               recruitingSkill={recruitingSkill}
             />
           ))}
-        </div>
-      )}
-
-      {/*
-        Said once, at the top of your own class, rather than on every row. The
-        numbers on this screen are not the ones the board showed all winter and
-        a player who does not know that will read a bust as a bug.
-      */}
-      {view === 'mine' && mine.length > 0 && (
-        <div style={{
-          marginTop: 8, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
-        }}>
-          Physicals are in. These are the real numbers, not your reports &mdash;
-          tap a name to see what you had him at.
         </div>
       )}
 
@@ -354,7 +342,7 @@ function WalkOnGroup(
         border: '1px solid var(--faint)', background: 'var(--paper)',
         font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
       }}>
-        Every hole is covered. Nobody walks on this year &mdash; the whole roster
+        Every hole is covered. Nobody walks on this year. The whole roster
         is men you went and got.
       </div>
     );
@@ -404,14 +392,6 @@ function WalkOnGroup(
             }}>WALK-ON</span>
           </button>
         ))}
-      </div>
-      <div style={{
-        marginTop: 7, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
-      }}>
-        Nobody recruited these men. They turn up in June to fill what your class
-        did not, a long way below your own level &mdash; and a walk-on is gone
-        again the moment the season ends, so the hole is back on next
-        winter&rsquo;s board.
       </div>
     </>
   );
@@ -549,7 +529,7 @@ function RecruitSheet({
             <div style={{
               font: "700 17px/1.1 var(--display)", marginTop: 3, textTransform: 'uppercase',
               color: mine ? 'var(--clay)' : 'var(--ink)',
-            }}>{to?.def.school ?? 'nobody'}{mine ? ' — you' : ''}</div>
+            }}>{to?.def.school ?? 'nobody'}{mine ? ' · you' : ''}</div>
             {prospect.committedWeek !== null && (
               <div style={{
                 marginTop: 3, font: "400 11px var(--mono)", color: 'var(--dim)',

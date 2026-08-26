@@ -1263,7 +1263,7 @@ describe('the board screen', () => {
     expect(board({ filtersOpen: true, matches: 1, shown: 1 }).label)
       .toBe('SHOW 1 RECRUIT');
     expect(board({ filtersOpen: true, matches: 0, shown: 0 }).label)
-      .toBe('NOBODY MATCHES — BACK TO THE BOARD');
+      .toBe('NOBODY MATCHES · BACK TO THE BOARD');
   });
 
   it('lifts the row cap without changing what the filter caught', () => {
