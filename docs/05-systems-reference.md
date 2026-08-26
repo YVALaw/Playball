@@ -19,8 +19,8 @@ function it came from is named beside it.
 
 **Two, and this is the important half.** It is the register of **hidden and
 hinted mechanics** — the things a player experiences and cannot see. A scouting
-band that is deliberately not centred on the truth, a reach gate that silently
-removes half the recruiting board, a coach skill worth 79 ten-thousandths of a
+band that is deliberately not centred on the truth, a pipeline that quietly
+means one state rather than one region, a coach skill worth 79 ten-thousandths of a
 plate appearance. These are the parts of the design that are invisible by
 intent, and invisible-by-intent is one bad week away from
 forgotten-by-accident. Once nobody can say what a mechanic does, it stops being
@@ -35,7 +35,7 @@ rows; whatever is built next gets one on the day it does.
 ## How to keep it current
 
 - **A change to a number is a change to this document.** If you retune
-  `reportWidth`, `REACH_LADDER`, `SECURITY_DELTA` or any other constant named
+  `reportWidth`, `reachFloor`, `SECURITY_DELTA` or any other constant named
   here, update the row. A reference that is 90% right is worse than none,
   because it will be trusted.
 - **Cite functions and constants, never line numbers.** Lines drift within a
@@ -81,7 +81,9 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 7 | **Understatement is legal, falsehood is not.** A quiet line can belong to an S; no line can appear above the grade it stops being true at. | A line that may or may not be damning. | `CeilingLine.to` — `engine/recruiting.ts` | SHIPPED |
 | 8 | **The development line is drawn on growth remaining, which is near-independent of ceiling height.** | A second sentence that reads like more of the first. | `rawnessOf`, `DEVELOPMENT_LINES` — `engine/recruiting.ts` | SHIPPED |
 | 9 | **Star rating and national rank both carry projection error.** They are two readings of one noisy opinion, not of the truth. | `★★★★` and `#38`. | `serviceScore`, `starsFor` — `engine/recruiting.ts` | SHIPPED |
-| 10 | **The reach gate.** A recruit's `minProgram` silently removes him from your board. His own priorities, not a global rule, decide how far he comes down. | "He will not take the call." and a `Min. prestige: ★★★★` line. | `REACH_LADDER`, `reachOf`, `canPursue` — `engine/recruiting.ts` | SHIPPED |
+| 10 | ~~**The reach gate is a hidden per-recruit roll.**~~ **No longer hidden.** The floor is now one tier below the recruit's own grade, flat, and the prospect sheet prints it — so a coach can read the ladder off the screen instead of discovering it by tapping. The gate ignores the `minProgram` stored on an old save and reads his star rating, so one rule runs whatever the save remembers. | "He will not take the call. A ★★★★★ recruit hears out a ★★★★ program and up…" and a `Min. prestige: ★★★★` line. | `reachFloor`, `canPursue` — `engine/recruiting.ts`; §2.4 | SHIPPED |
+| 10a | **The pipeline is worth exactly one star of reach, and it is the program's home *state* rather than its region.** The sheet says a home-state recruit comes a rung down; it does not say the rule is `state`, so a coach in the Gulf may reasonably expect four states' worth of blue chips and get one state's. About 63% of states hold a five star in a given year. | "He is in your pipeline." on the sheet, and `− 1 here` beside the minimum prestige. | `inPipeline`, `PIPELINE_REACH_BONUS` — `engine/recruiting.ts`; §2.4 | SHIPPED |
+| 10b | **A program below four stars keeps one AI board slot two grades above itself**, which after the gate can only ever hold a home-state recruit. Without it the pipeline exception would exist for the human alone. | A small program with a blue chip on its board. | `aiTargets` — `engine/recruiting.ts`; §2.4 | SHIPPED |
 | 11 | **A recruit's priority weights.** The five weights are drawn per player and sum to 1; the screen names them but never prints the weights. | Priority labels and blurbs, strongest first. | `drawPriorities`, `PRIORITY_LABEL` — `engine/recruiting.ts` | SHIPPED |
 | 12 | **Fit multiplies effort rather than adding to it.** Hours spent on a recruit who does not want what you have are close to wasted. | A "+N pts a week" figure that is quietly small. | `weeklyPoints` — `engine/recruiting.ts` | SHIPPED |
 | 13 | **A five-star costs about 2.65× a two-star in banked points.** | Nothing. | `commitPointsFor`, `COMMIT_POINTS` — `engine/recruiting.ts` | SHIPPED |
@@ -92,6 +94,7 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 18 | **An uncontested recruit gets a scaled AI bonus, `1 + 0.18 × stars`.** | Blue chips rarely staying uncovered for long. | `aiTargets` — `engine/recruiting.ts` | SHIPPED |
 | 19 | **Recruiting budget scales with your program's star tier**, 40 up to 60. | The budget number on the board header. | `budgetFor` — `engine/recruiting.ts` | SHIPPED |
 | 20 | **A scholarship you do not spend becomes a walk-on 13 points below your program's level.** | A name on the roster with a bad rating. | `WALK_ON_PENALTY` — `engine/progression.ts`; §2.10 | SHIPPED |
+| 20b | **A walk-on is drawn on a private seed — the class year and the program index — rather than out of the world generator.** That is what lets the class review show him by name before he exists, and what makes the man on that card the man who reports in June. It also means `fillRosters` spends no season draws at all, so nothing about a program's walk-ons depends on how many programs were rebuilt before it. | A face and a rating on signing day for a man nobody signed. | `walkOnClass`, `walkOnSeed` — `engine/progression.ts`; §2.10 | SHIPPED |
 | 20a | **A walk-on is gone after one *season*, not after one class year.** He is manufactured as a freshman, and the question is asked before `departure` and independently of what the roster calls him — so a spot filled this way is a spot you are shopping for again next winter. Asking first also costs no `rng()` draw, so nothing about who else leaves depends on how many walk-ons a program is carrying. | A name that turns up for a year and is not there the next. | `Player.walkOn`, `departAndDevelop` — `engine/progression.ts`; §2.10 | SHIPPED |
 | 21 | **7% of generated freshmen get a large extra headroom draw** on top of ordinary headroom. This is the only reason hidden gems exist. | Nothing at all. | `projectPotential` — `engine/players.ts` | SHIPPED |
 | 21a | **No player the world makes may be given a ceiling above 94**, one below the S+ floor, and nothing on any screen says the grade is reserved. The gate is on the number rather than the letter, so development, the scouting bands and the draft all agree about it. | An S+ nobody ever scouts, and a top grade that reads as merely very rare. | `GENERATED_POTENTIAL_CAP`, `TOP_GENERATED_GRADE` — `engine/scouting.ts`; §1.6 | SHIPPED |
@@ -184,6 +187,11 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 90 | **The induction bar is absolute, not a quota**, so a great program inducts about every second year and a poor one may never induct anybody. Measured at 130: ten men in twenty seasons at the strongest program in the country, one at the median, none at the weakest. | An empty hall at a bad job. | `HALL_BAR` — `engine/hall.ts`; `tests/hall-probe.ts`; §19.4 | SHIPPED |
 | 91 | **Induction is decided when the draft step closes, not when it opens.** A drafted junior is off the roster from the first line of the offseason and may still be talked back onto it, so "his career is over" is not a settled question until the board is empty. A career also has to be over *everywhere* — a coach who moves jobs leaves sophomores behind. | Nothing, except the class never containing a man who comes back. | `nextPhase`, the `recruiting` branch — `state/store.ts`; `BallotInput.active` — `engine/hall.ts`; §19.5 | SHIPPED |
 | 92 | **Career records are kept as a running total per active player, pruned the year after he leaves**, rather than by archiving every program's seasons. The ledger is the size of the league — about 2,400 rows, 308 KB — instead of growing 375 KB a season for ever. Each row carries the year it was last folded in, because a running total is the one pass over a finished season that is not idempotent for free. | Nothing. | `CareerTotals`, `recordCareerMarks` — `engine/season.ts`; §13.6 | SHIPPED |
+| 93 | **The title beside HEAD COACH cannot climb more than one rung a season.** The prestige ladder is capped at `floor(games / 45)` rungs, so a first year cannot be better than JOURNEYMAN however it went. Trophies are exempt: they are floors, won on a day, and a first year champion is LEGENDARY that June. | A title that moves once a year. | `coachStanding` — `engine/program.ts`; §5 | SHIPPED |
+| 94 | **Coach of the Year compares each category against a normal year of its own kind**, not against the league's spread, because three of the four saliences are maxima over pools of different sizes and the largest of ninety six always beats the largest of eight. Without it two of the four categories never fired at all. | Four different citations over a career instead of one. | `TYPICAL_SALIENCE`, `coachAwardCandidates` — `engine/postseason.ts`; §7.2 | SHIPPED |
+| 95 | **The in-season inbox writers are scans, not events, and every card carries a keyed id.** The season can arrive finished from a worker in one press, so nothing may be read off state that is only true at a moment: runs come off the game log rather than the streak counter, and the halfway card counts the halfway game rather than the current record. A card posts once per year however many times the scan runs. | The same cards whether the season was simmed or played out. | `seasonNews`, `regularGames` — `state/store.ts`; `newItem`, `push` — `engine/inbox.ts`; §17.3a | SHIPPED |
+| 96 | **A skill point can be taken back until the offseason leaves the coach step**, and only the points this visit put on. The ledger is not saved, so a reload commits them. | A `−1` that appears on a skill you have just spent on, and is gone next time. | `spentThisStep`, `refundSkill` — `state/store.ts`; §4.1 | SHIPPED |
+| 97 | **The season goes into the record books at the board meeting, not at the year roll.** An award is resolved through the rosters, and by the year roll the departing class is off them — so a graduating Player of the Year's award reached no list at all, on the history screen or at the hall of fame ballot two steps later. | A history entry that appears one step earlier than it used to, with the leavers' awards on it. | `settleSeason`, `rollYear` — `state/store.ts`; §19.8 | SHIPPED |
 
 ---
 
@@ -641,11 +649,11 @@ table sorted twice.
 
 ### 2.4 Reach and prestige caps
 
-The hard gate. A recruit's `minProgram` is the lowest program tier, in prestige
-stars, that will get a hearing from him. This is a refusal, not a discount — a
-soft gate where a one-star program may chase a five star and gain almost nothing
-reads to the player as a bug, because the actions are spent, the button works, and
-nothing comes of it.
+The hard gate. A recruit hears out a program one grade above his own and no
+lower — with one exception, below. This is a refusal, not a discount: a soft
+gate where a one-star program may chase a five star and gain almost nothing
+reads to the player as a bug, because the actions are spent, the button works,
+and nothing comes of it.
 
 Program tier comes from `prestigeStars` (`engine/program.ts`):
 
@@ -657,62 +665,107 @@ Program tier comes from `prestigeStars` (`engine/program.ts`):
 | ★★ | ≥ 38 |
 | ★ | below 38 |
 
-`REACH_LADDER` — `floor` is where he starts, and every threshold in `steps` his
-flexibility clears takes him down one more tier. Flexibility is
-`priorities.playingTime + priorities.proximity`: wanting to play, or to play near
-home, is what brings a recruit down; wanting the name does not.
+**The rule, in the player's own words.** *"A 3 star school can only shoot for 4
+stars and under, a 2 star can shoot for a 3 star and under and so on, 4 and 5
+star schools can go for anyone they like. One thing I would add is if a school
+for example is 3 star but there are 5 stars in their pipeline they can shoot for
+them as well, but only if they are in the pipeline, and it only goes up one star
+— a 2 star school can shoot for a pipeline 4 star, a 1 star school can shoot for
+a 3 star pipeline player."*
 
-| Recruit stars | Floor | Steps (flexibility thresholds) | Reachable tiers |
+`reachFloor(stars)` is `max(1, min(4, stars − 1))`: the floor under a recruit is
+one tier below his own grade. Nothing is rated above five, so a four-star
+program clears every floor there is and the top two tiers see the whole board
+without a special case.
+
+| Recruit | Floor | May be called by | …and in his own state |
 |---|---|---|---|
-| ★★★★★ | 4 | 0.3333 | 4, or 3 |
-| ★★★★ | 4 | 0.32, 0.58 | 4, 3, or 2 |
-| ★★★ | 3 | 0.36, 0.485 | 3, 2, or 1 |
-| ★★ | 2 | 0.42 | 2, or 1 |
-| ★ | 1 | — | 1 |
+| ★★★★★ | 4 | ★★★★, ★★★★★ | ★★★ and up |
+| ★★★★ | 3 | ★★★ and up | ★★ and up |
+| ★★★ | 2 | ★★ and up | ★ and up |
+| ★★ | 1 | anybody | anybody |
+| ★ | 1 | anybody | anybody |
 
-The result is clamped to `[1, 4]`, so **nobody starts above four** — a class only
-the three programs at the top of the country may call is a class nobody else can
-compete for, and the point of the gate is a ladder, not a wall.
+**The pipeline is the program's own state**, which is the concept `fit` already
+scores proximity on — not its region. A region is four states and an eighth of
+the country, which would make the exception the rule; a state holds about **20.6
+recruits**, and **63% of states hold at least one five star** in a given year,
+mean 1.15. That is exactly the "there are 5 stars in their pipeline" the rule
+describes: a narrow, nameable door, open about two years in three.
 
-The numbers are read off the flexibility distribution the priority draw actually
-produces at each grade, which is why they are not a tidy sequence: a two star is a
-far more flexible animal than a five star, so the same threshold would mean
-something completely different to each of them.
+`canPursue(prospect, programStars, inPipeline)` is
+`programStars + (inPipeline ? 1 : 0) >= reachFloor(prospect.stars)`. It reads
+the recruit's **star rating**, not the `minProgram` field stored on him, so a
+dynasty saved under the older per-recruit ladder is judged by the same rule as a
+new one. `minProgram` is still written (it equals `reachFloor(stars)`) because
+the prospect sheet prints it.
 
-**Measured** against the priority draw itself — four hundred thousand sets of
-weights per grade, rather than counted off a class. A rung is a property of the
-draw, and a class of 720 holds only about forty five stars, which cannot tell one
-in twenty from one in ten:
+#### What it replaced, and why there is only one gate
 
-| Recruit stars | Will hear out a 3★ program | a 2★ | a 1★ |
-|---|---|---|---|
-| ★★★★★ | 5.4% (about 1 in 18) | — | — |
-| ★★★★ | 44.8% | 0.8% (about 1 in 130) | — |
-| ★★★ | all of them | 71.6% | 32.8% |
-| ★★ | all | all | 84.9% |
-| ★ | all | all | all |
+Until this change the floor was drawn **per recruit** from his own priorities: a
+kid who wanted playing time or home would hear out a program one or two tiers
+below him, and a kid who wanted the biggest name in the country would not come
+down at all. That ladder was measured against the priority draw — four hundred
+thousand sets of weights per grade — and tuned to it.
 
-So about **one five star in eighteen** will hear out a three-star program, **a
-shade under half** of four stars will, and only a four- or five-star program sees
-the whole board. Pooled over twenty-four generated classes those rates read 4.9%
-and 43.5%, which is what `recruiting.test.ts` pins.
+It has been **replaced rather than layered under** the new rule. The two
+disagreed in both directions: the ladder let a flexible five star hear out a
+three-star program that the new rule refuses, and let a rigid four star refuse a
+three-star program that the new rule admits. Two gates that disagree is a worse
+thing than either alone, and asked which should decide, the answer has to be the
+one a coach can read off the screen. A ladder you can see is a ladder you can
+climb deliberately; a hidden per-recruit roll is one you can only find out about
+by tapping.
 
-What a three-star program can actually pursue at the top of the board, over
-twenty-four classes: **0.5 of the top ten** on average (never more than two),
-**1.3 of the top twenty-five**, **6.6 of the top fifty**. At v0.6.8, the release
-the ladder was fitted against, the same measurement read 0.5, 1.9 and 7.8 — the
-gate is where it was cut, and marginally tighter if anything.
+What is lost with it is the identifiable outlier — the one four star in the class
+who would have come down two tiers for playing time. The pipeline replaces him,
+and is a better version of the same idea: still a specific, nameable set of
+players a small program can reach above its weight, but one the coach knows
+about before he spends a week on it.
 
-Two earlier readings of this section — 5% and 44%, then 11% and 50% — were each
-counted off a single class and read against each other as a drift. They were two
-samples of the same unchanged rate; the second one's five-star share rested on
-five players. The `REACH_LADDER` docstrings now quote the draw-measured figures
-and say where they came from.
+#### The invariant, measured
 
-`canPursue(prospect, programStars)` is simply `programStars >= prospect.minProgram`.
-When it fails the board prints: *"He will not take the call. A program of his
-calibre is not on his list at your level. Build the program up and players like
-him start listening."*
+The old ladder existed to answer *"I as a three star college have access to the
+very top players."* The new rule has to hold the same line, and it holds it
+harder. Measured over 24 generated classes of 720 (96 programs), `makeRng(4242 +
+i × 7919)`, names reset before each:
+
+| | ★ | ★★ | ★★★ | ★★★★ | ★★★★★ |
+|---|---|---|---|---|---|
+| of the top 10 | 0 | 0 | **0** | 10 | 10 |
+| of the top 25 | 0 | 0 | **0** | 25 | 25 |
+| of the top 50 | 0 | 0 | **9.8** (sd 5.2) | 50 | 50 |
+| whole board | 59.3% | 82.4% | 94.4% | 100% | 100% |
+
+The top fifty is **80.3% five stars and 19.7% four stars**, so the 9.8 a
+three-star program can call are the four stars in it and nothing else — not one
+five star, in any of the twenty-four classes. Under the ladder this replaced the
+same measurement read about twelve, and a handful of the top ten came through in
+a good year.
+
+With a pipeline in the best-case state for that class, a three-star program's
+top-fifty count rises from 9.8 to **14.2**, and a two-star program's from 0 to
+**1.0**. That is the door, and it is the size it was asked to be.
+
+The whole-board row is the other side of the gate: a board that is mostly locked
+rows is a screen that says no eight times and offers nothing, so even a one-star
+program can call **three fifths of the country**.
+
+When the gate refuses, the board prints: *"He will not take the call. A ★★★★★
+recruit hears out a ★★★★ program and up — one more rung down if he is from your
+own state, and he is not. Build the program up and players like him start
+listening."* When it lets a pipeline man through it says so too, on the prospect
+sheet.
+
+#### The AI works the same gate
+
+`aiTargets` asks `canPursue(p, tier, inPipeline(p, pitch.state))`, so the ninety
+five programs get the pipeline as well — a door only the human could walk
+through would not be a rule, it would be a cheat. A program below four stars
+also carries a **one-slot band two grades above itself**, which after the gate
+can only ever contain a home-state recruit; without it the exception would exist
+for the player alone and a blue chip in a small program's back yard would sit
+unchased.
 
 ### 2.5 The pitch, and fit
 
@@ -767,6 +820,72 @@ rather than replacing it.
 Prestige buys attention: facilities to show, a name that returns calls, a staff
 big enough to be in three states at once. Forty is what a nobody gets; a blue
 blood works with half again as much.
+
+### 2.7a The board screen: five tabs, one filter, one pinned button
+
+`ui/screens/Board.tsx`. Four views of the same class plus the roster it is meant
+to fix, because those are five different questions and answering them on one
+list means answering none of them well.
+
+**The pinned button.** One `FloatingAction`, and `pinnedAction` is the only
+place its label is decided. Filtering is a *mode* rather than a drawer — the
+panel replaces the body, because the header is pinned and a drawer opened from
+the bottom of a fourteen-hundred-pixel list is a control that appears to do
+nothing — and while the mode is on, the button closes it and says how many
+recruits are on the other side. Ending the week is the one irreversible act on
+this screen and does not belong under the thumb while somebody is tuning a
+filter.
+
+> **The bug this fixed.** Reported: the advance-week button stuck reading `SHOW
+> THE TOP 50 OF 518` where `END WEEK` belonged. The five view tabs live in the
+> *pinned header* and stayed live in filter mode, so tapping ROSTER changed the
+> tab underneath a panel that was still covering the body and still owned the
+> button. The tabs leave the mode now, and the two ternary branches that each
+> wrote their own label are one function with a test.
+
+**The filter.** Rebuilt from a panel of controls that fought each other:
+
+| Control | Notes |
+|---|---|
+| Position | Ten chips, one at a time |
+| Stars | Five buttons, **more than one at a time** — a union inside the star filter, an intersection with everything else |
+| Home state | A dropdown, thirty-five states, the program's own marked `· yours` |
+| In my pipeline | Your own state. The switch says what it is worth: a star of reach on top of your tier |
+| Nobody is on him | Recruits no program has banked a point on. A zero is not a suitor |
+| Within my reach only | Hides the men who will not take the call, and the OUT OF REACH block with them |
+
+Two sliders were removed rather than retuned. Overall and ceiling are shown as
+**intervals** now, and a slider against a band cannot mean anything precise:
+"at least sixty" against a report that says forty to seventy is a question with
+no honest answer, and the old code answered it on the top of the band — which
+quietly meant a rookie recruiter's filter excluded nobody at all. The star
+rating is the one measure of quality on this screen that is a single value
+rather than a window, so it is the one that can carry a filter.
+
+`matchesFilters(prospect, filters, homeState, programStars)` is exported and
+pure, and every clause of it is held to its own label by a test.
+
+**The row cap.** `ROW_CAP = 50`, sorted by `stars × fit`. Fifty is the answer to
+the question the tab is for and five hundred names is not a list anybody reads,
+but the cap lifts: `SHOW ALL 600` sits under the last row, and `BACK TO THE TOP
+50` under it once lifted. The number on the apply button is always what the
+filter *matched*, never what was drawn — the capped count reads 50 whatever you
+do, which is exactly the range where you need to be told whether the last tap
+did anything.
+
+**Colours.** Every recruit row carries a school: a three-pixel stripe in
+`teamColour(abbr)` and the abbreviation beside the standing. That is the school
+that signed him if the board has closed on him, and otherwise the one currently
+leading. A recruit you chased and lost stays on your TARGETS tab in the colours
+of the program that beat you, which is the whole point — losing somebody into a
+void is a number going down. A recruit nobody has called carries no colour,
+which pairs with the filter for exactly those men. The **jersey** on the avatar
+is only ever a school he has actually signed for; a face wearing the colours of
+a program still recruiting him would be the row telling a story the board has
+not finished.
+
+**NEEDS.** See §2.10 — the tab now reads `walkOnShortfall` off the roster in
+front of it, which is the same call the class review makes.
 
 ### 2.8 Commitments
 
@@ -863,13 +982,60 @@ class.
 
 **The coach is told before it matters, not afterwards.** `walkOnShortfall` runs on
 the class review, on signing day, when the shortfall is still something he could
-feel bad about — and it reports *positions and counts only*, inventing no names,
-ratings or ids, because the men themselves are not manufactured until the year
-rolls over. It walks `refill`'s placement in the same order, and a test asserts
-that it projects exactly the men who turn up in June: that is what makes the
-review a fact rather than an estimate. It cannot simply *be* `refill`, because
-`refill` draws from the generator to build bodies and a screen may not spend the
-season's rng to render itself.
+feel bad about. It walks `refill`'s placement in the same order, and a test
+asserts that it projects exactly the men who turn up in June: that is what makes
+the review a fact rather than an estimate.
+
+**And the board's NEEDS tab reads the same function.** It did not, and the two
+disagreed — reported: *"NEEDS said every position was covered, and the class
+review then brought walk-ons anyway."* Two causes, both on the tab:
+
+1. It read `lastOffseason.holes`, which the save loader deliberately does **not**
+   restore (`lastOffseason: null`). Any dynasty picked up mid-offseason therefore
+   showed an empty NEEDS tab and the words *"every spot the draft opened up is
+   covered"* over a roster four men short.
+2. Even with the report in hand it counted a signed player against **his own
+   position only**, where the rebuild spends him on the first hole it comes to
+   and then fills the bench out of whoever is left. A class of one catcher and
+   one starter against holes at C and SP read as fully covered while two bench
+   bodies walked on.
+
+The tab is now `walkOnShortfall(roster, class)` for what is still open, and
+`coveredSince(walkOnShortfall(roster, []), still)` for what the class has bought
+— two readings of one function, so they cannot drift. The count on the tab badge
+is the projected walk-on total. A test asserts the two sum to the original
+shortfall and that "nothing left" means the same thing on both screens.
+
+**And it names them.** Reported from testing: *"they arrive as names on a list
+with none of the information every other player has."* The review used to print
+positions and counts — "C · one body" — because the men were not manufactured
+until the year rolled and there was nothing honest to say about them.
+`walkOnClass` fixes the cause rather than the symptom: a program's walk-ons come
+off a **private rng seeded from the class year and the program index**
+(`walkOnSeed`), so they are a pure function of who survived, who signed, the
+program's quality and those two numbers — knowable on signing day, and knowable
+identically at the year roll. `fillRosters` hands `refill` that same list rather
+than drawing bodies of its own, so the catcher whose card you read on signing day
+is the catcher on the roster in June, down to his face. He gets everything a
+signed recruit gets: a portrait, the real overall, the real ceiling, last
+spring's line, a card. What he does not get is a "your report had him" block or a
+list of who else was in on him, because nobody scouted him and nobody was — and
+that absence is what makes him read as a walk-on rather than as a class.
+
+Two consequences worth writing down:
+
+- **The name pool.** A name costs a variable number of draws because
+  `uniqueName` rejects one already taken, so a man drawn twice against different
+  pools is two different men. `walkOnClass` hands its names straight back
+  (`releaseNames`) and `fillRosters` claims them per program as it goes — with
+  **the reported program processed first**, so its men are drawn against exactly
+  the pool the class review drew them against, reload or no reload.
+- **The world's rng.** `fillRosters` no longer spends the season generator on
+  bodies at all, which is a small correctness win — a program's walk-ons used to
+  depend on how many programs had been through the loop before it — and it means
+  every season after an offseason draws differently from before the change. No
+  rate moved; one statistical bound in `rivals.test.ts` was one chair wide and
+  has been widened, with the reason recorded there.
 
 The draft screen used to carry a walk-on list of its own. It drew nothing for
 anybody, every year — the real list is only known once `fillRosters` has run, by
@@ -965,6 +1131,16 @@ Unspent points carry over in the data; the screen warns they "do not carry over
 well", meaning a coach who does not improve falls behind, not that they are
 deleted.
 
+**A point can be taken back until the step closes.** Reported: three went into
+one skill by mistake and there was no way out. `spendSkill` records what this
+visit put on, per skill, in `spentThisStep`; `refundSkill` takes one off again
+and only ever from that ledger, which is what keeps it an undo rather than a
+respec — nothing earned in an earlier year can be moved. The ledger is cleared
+whenever the offseason leaves the step, by `nextPhase` or by the rail, and it is
+not saved, so a reload commits what is on the board. Leaving the screen is
+exactly what makes a decision a decision. The `−1` sits on the skill's own card,
+beside the spend, because that is where the mistake is made.
+
 ### 4.2 What each one actually does
 
 | Skill | Label | On-screen blurb | Real effect | Magnitude at 99 |
@@ -1040,6 +1216,21 @@ have existed before it: winning a region was counted nowhere at all.
 | Respected | `prestige >= 42` **or** career win pct > 0.55 |
 | Journeyman | has coached a game |
 | Unproven | otherwise |
+
+**A rung a season, and no faster.** The ladder above is then capped at
+`floor(games / BOOK_SEASON_GAMES)` rungs — one per season completed, and never
+below Journeyman for a man who has coached at all. Reported as UNPROVEN to
+RESPECTED in a single year with nothing won, which both halves of the table
+allowed: the win percentage clause has no minimum behind it, so one 25–14 spring
+reads as a career of winning baseball, and at a weak enough program a single big
+year carries prestige to 42 on its own. It is not prestige being volatile — a
+38–7 first season at a five star job moves it nine points, measured — it is a
+ladder that could be climbed faster than the calendar.
+
+The **floor is deliberately not capped**. Trophies are the other half of the
+design and they are won on a specific day: a first year national champion is
+LEGENDARY that June, and a first year conference champion is ESTABLISHED, which
+is the ladder saying what it has always said.
 
 Final title = whichever of the two is higher on
 `['Unproven','Journeyman','Respected','Established','Renowned','Legendary']`.
@@ -1363,6 +1554,29 @@ per-season standard deviation is what makes wins, win-jumps and run margins
 comparable at all — each becomes "how far outside a normal season was this". The
 loudest story wins.
 
+**And then divided again, by what a normal winner of that category scores.** The
+first version stopped at the paragraph above and the citation still read the same
+every June: measured over twenty seasons of the full world, the giant-killer
+fired **zero** times, wire-to-wire **once**, and overachievement took eleven. The
+reason was not the thresholds. Three of the four saliences are maxima over
+different sized pools — overachievement and the turnaround are the largest of
+ninety six draws, wire-to-wire the largest of the eight programs that won a
+league — and the largest of ninety six sits further from the mean than the
+largest of eight, every time. The question being answered was "which statistic
+has the fattest tail", and one statistic always won it.
+
+`TYPICAL_SALIENCE` is each category's median raw score over those twenty seasons
+— overachieved **2.6**, turnaround **2.5**, wireToWire **2.0** — so one is an
+ordinary year for that story and the comparison is like for like. The
+giant-killer is not measured and does not get one: it is binary and rare, and
+keeps a raw score high enough to win outright whenever it fires.
+
+Over the same twenty seasons the four now come out **7 / 8 / 5 / 0**
+(overachieved, turnaround, wireToWire, giantKiller), against 11 / 8 / 1 / 0
+before. `coachAwardCandidates` is exported so the test can see what reached the
+ballot rather than only what won it — a category that cannot be *constructed* is
+invisible to a count of winners.
+
 The baseline is self-calibrating: fit wins against roster strength across all
 programs by ordinary least squares, and overachievement is distance above the
 line. Roster strength is the mean overall of the lineup plus the top three of the
@@ -1371,24 +1585,42 @@ rotation.
 **A losing season wins nothing**, whatever the story. This holds for every
 category.
 
-| Reason | Fires when | Salience | Headline written |
+| Reason | Fires when | Raw salience | Headline written |
 |---|---|---|---|
 | `overachieved` | always — some team is furthest above the line | `gap / sd(residuals)` | "*X.X* wins above what that roster was worth" |
-| `giantKiller` | national champion whose roster ranked outside the top ten, winning record | **fixed 4.0** | "national champions with the No. *N* roster in the country" |
+| `giantKiller` | national champion at a program whose **prestige** ranks outside the country's top twelve, winning record | **fixed 4.0** | "national champions, and only the No. *N* name in the country" |
 | `turnaround` | biggest positive one-year jump in wins; needs `lastW`, so silent in year one | `jump / sd(jumps)` | "from *W–L* to *W–L* in one year" |
-| `wireToWire` | conference champion who also owned the best run margin per game | `bestDiff / sd(diffs)` | "outscored the country by *X.X* runs a game, wire to wire" |
+| `wireToWire` | the best run margin per game **among conference champions** | `margin / sd(diffs)` | "outscored the country by *X.X* runs a game" / "won the league at *X.X* runs a game" |
 
-The fixed 4.0 on GIANT-KILLER is high enough to win whenever it fires: a champion
-nobody saw coming is the story of that season, full stop. Both halves of
-WIRE-TO-WIRE are required — the margin alone is a stat, the title alone is a
-bracket.
+Two of those gates were rewritten because the format cannot supply what the old
+ones asked for — the same defect as a board objective with no seats behind it
+(§6.3a).
+
+**GIANT-KILLER used to read the champion's roster**, outside the country's top
+ten. The national field *is* the eight conference champions, and a program does
+not win a twelve team league without one of the best rosters in the country: over
+twenty seasons the champion's roster ranked between first and ninth every single
+time, and within the four in Omaha it was the strongest or second strongest every
+single time. Prestige is a different axis and it is the one the phrase means — a
+modest school with a loaded senior class is what the `compete` mandate exists
+for. The champion's prestige ranked first in thirteen of those twenty seasons and
+outside the top twelve in one, so the category now fires about one year in
+twenty, which is what a fixed 4.0 is for.
+
+**WIRE-TO-WIRE used to require the country's outright best margin** and then
+check whether that team had won its league — two independent events rather than
+one story, and the margin leader is usually a team that was knocked over in its
+conference tournament. It fired once in twenty seasons. The candidate is now the
+best margin among the programs that did win a league, which is the sentence read
+in the order it is spoken. Both halves are still required: the margin alone is a
+stat, the title alone is a bracket.
 
 Award subtitles, from `ui/screens/Awards.tsx`:
 
 | Reason | Subtitle |
 |---|---|
 | `overachieved` | Nobody got more out of less. The roster said no; the record said yes. |
-| `giantKiller` | The trophy went home with a roster that had no business holding it. |
+| `giantKiller` | The trophy went home to a school that had no business holding it. |
 | `turnaround` | The biggest one-year climb in the country, same school, same players. |
 | `wireToWire` | Won the league and outscored everybody doing it, start to finish. |
 
@@ -2273,6 +2505,17 @@ about twenty hidden gems per class either way.
   bases can be computed exactly: the hall of fame prices a career in runs, and
   without them the only available approximation was hits plus home runs, which
   scores every gap hitter in the archive as a singles hitter.
+- **The season in progress is a row too, and it is not archived.** The archive is
+  written once, in June, so between February and the draft step the year the
+  player is actually watching lives in `season.batting` and nowhere else — and a
+  card that read the archive alone showed a sophomore his freshman row and
+  nothing since. Reported as "after two seasons only one year shows, and the
+  numbers do not update in real time", which is one defect seen from two angles.
+  `liveCareerYear` (`engine/season.ts`) builds the row this season is going to
+  become, from the same private function `archiveSeason` uses so the two cannot
+  disagree; the card stacks it under the finished years, marks the year in clay
+  and says underneath that it goes into the book in June. Nothing is written: the
+  archive is still the only copy and is still written once.
 - `HISTORY` (`ui/screens/History.tsx`) is the season-by-season book for the program.
 - `PROGRAM → HALL` (`ui/screens/Program.tsx`) is now the men who have been
   **inducted** (§19), with the two career leaderboards kept underneath. They
@@ -3362,6 +3605,8 @@ has four sub-screens — TODAY, WIRE, INBOX, SCOREBOOK.
 | `draft` | How many of your men were taken, and Kingmaker if it fired |
 | `carousel` | Coaching changes |
 | `hall` | The induction class, once a June, and only in a June that has one |
+| `record` | A mark in the all-time book with your program's name on it, set this year |
+| `season` | A run of six wins or five defeats, and the RPI rungs — top 25, top 10, first |
 
 `hall` is the one kind that is about somebody other than the coach, and it has its
 own row rather than being folded in with `achievement` for exactly that reason: an
@@ -3381,6 +3626,57 @@ items that are about you. Two rules:
 A poach in or out of your conference is named at both ends, because a rival being
 taken by a bigger school is the single event the system exists to produce and
 should never be a number in a total.
+
+### 17.3a The season's own news — the four in-season writers
+
+Reported: "the inbox stayed empty for a whole season." It was. Every writer in
+the table above fires between the last game of one year and the first of the
+next, so the notification centre with a badge on the nav had nothing to put in it
+for the four months anybody was looking at it, and showed its empty state to a
+coach thirty games into a season.
+
+Four writers now run during the season, all in `seasonNews` in `state/store.ts`,
+called from every action that moves the calendar — `advanceDay`, `playSeason`,
+and the end of a managed game.
+
+| Card | Fires |
+|---|---|
+| `record` | any mark in `season.records` carrying your abbr and this year. The coaching section is skipped: those marks are re-offered every June for as long as you hold them, so they would post the same card a year for fifteen years, and the cabinet says it better |
+| `season`, a run | the longest run of wins reaches 6 or 10, or of defeats 5 or 9. Only the longer rung of the two is filed |
+| `season`, the poll | the RPI reaches the top 25, the top 10, or first — best rung only, and not before twelve games |
+| `board`, the halfway word | at the midpoint, the record at the turn against the number the board asked for in February. **The one card that fires every season**, and the reason one has to: a year in which the inbox says nothing until June teaches a player not to open it |
+
+**Every one of them is a scan, not an event, and that is the load-bearing
+property.** `playSeason` hands back a finished year from a worker, so nothing may
+be read off state that is only correct at a moment — not `TeamRecord.streak`,
+which says whatever the season happened to end on, and not the current record.
+They read the game log instead, count the bracket games off the end with
+`regularRecord`, and post through keyed ids (`newItem`), so a season simmed in
+one press files the same cards as one walked through a game at a time and a scan
+that runs fifty times files each card once. `tests/store.test.ts` pins both.
+
+### 17.3b Where a card goes when you tap it
+
+"A notification you cannot act on is pointless", and every card was one. A card
+now carries an optional `InboxLink`, a small closed set rather than a route:
+`player`, `team`, `program` (with a sheet), `book`, `schedule`. Cards with no
+sensible destination — how many of your men were drafted is not a place — carry
+no link, render as a flat card with no arrow, and do nothing. Which is which is
+visible before it is tapped.
+
+Every destination is an overlay or a card, because all three frames the app can
+be in have to honour it. That is also why the **inbox itself is an overlay now**,
+reached from a button in the top bar that carries the unread count: it was a HOME
+sub-screen, and HOME does not exist during the offseason or the postseason — the
+one stretch of the year when the verdict, the offers, the draft, the hall and
+every coaching change in the country are landing in it. The program page and the
+record book joined it as overlays for the same reason: they are where the cards
+point. (The postseason frame carries no top bar of its own and is the one place
+the button does not appear; it is four presses long and posts nothing.)
+
+Links are validated on the way off the disk like the rest of the card — an
+unknown target is dropped rather than reaching the screen as something that looks
+tappable and is not.
 
 ### 17.4 Reading, and the badge
 
@@ -3948,6 +4244,39 @@ different question and it is worth answering: who accumulated the most is a fact
 about a program, and a four year regular will out-hit a two year star every time
 while only one of them has a plaque.
 
+**They are now separated from the plaques by a rule and a heading that says what
+they are not** — `CAREER LEADERS · NOT INDUCTIONS` — and the empty state says it
+in words as well. Reported as "the hall of fame inducts after one season and
+inducts nobody remarkable": after one season the plaques are empty and those two
+tables hold two dozen ordinary freshmen, under a tab called HALL OF FAME. Nothing
+was inducted, and nothing could have been — the ballot refuses a man with one
+season, which `tests/store.test.ts` and `tests/hall.test.ts` both pin — but a
+screen that reads as an induction list is the same complaint whatever the engine
+did. (The dev save that prompted the report has three plaques with hand-made ids
+`hof1`–`hof3`, four consecutive senior years, and scores of 44 to 88 against a
+bar of 130: seeded fixture data, not a class the ballot produced. There is no
+`hall` inbox card beside them, which an induction always writes.)
+
+### 19.8 What the ballot could not see: a man's last June
+
+The honours half of a case (§19.4) was read from `history`, and `history` was
+written at the **year roll** — after the hall meets. So the ballot saw every
+season the coach had ever finished except the one that had just ended, which is
+the season a departing senior wins things in and the reason he is on the ballot
+at all.
+
+Underneath it was a second instance of the same mistake. `recordFor` resolves an
+award through `rosterIndex`, and it was called after `departAndDevelop` had
+emptied the rosters — so a graduating Player of the Year was not in the country
+any more and his award went into **no season's award list at all**, on the
+history screen as well as at the ballot. The men most likely to win something are
+the men most likely to have just left, so the loss was systematic.
+
+Both are fixed by writing the season into `history` at the **board meeting**
+(`settleSeason`), where the rosters that produced it are still standing. The year
+roll keeps a fallback for a career that was never graded — a reload landing past
+the review step — and refuses to write a year the books already have.
+
 ---
 
 ## Appendix A: stale comments and vestigial code found while writing this
@@ -4039,7 +4368,10 @@ Things this document could not settle from the code, and must not guess at.
     commit it was written on produced no class below 103 — so it was taken in a
     process that already had a name pool.
 
-    The reach gate went the same way and is answered with it — see §2.4. Its
-    rates are now measured against the priority draw, where four hundred
-    thousand samples per grade cost less than one class does, and
-    `recruiting.test.ts` pins every rung.
+    The reach gate went the same way and was answered with it — see §2.4. Its
+    rates were then measured against the priority draw, where four hundred
+    thousand samples per grade cost less than one class does. The gate has since
+    been replaced by a flat one-star-up rule with a pipeline exception, which is
+    a property of the star rating rather than of a draw and therefore has no
+    rate to measure at all; what is still measured, over twenty four classes, is
+    what the rule leaves open at the top of the board.

@@ -4,12 +4,14 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  createSeason, simSeason, standings, seasonLength, DEFAULT_SEASON,
+  createSeason, simSeason, standings, seasonLength, nextSeason, DEFAULT_SEASON,
 } from '../src/engine/season.js';
+import { departAndDevelop, fillRosters } from '../src/engine/progression.js';
+import { CONFERENCES } from '../src/data/schools.js';
 import {
   singleElimination, bestOf, conferenceTournament, seasonAwards, allConference, runPostseason,
   conferenceLengths, CONF_FIELD, clincher,
-  coachOfTheYear, freezeRegularSeason,
+  coachOfTheYear, coachAwardCandidates, freezeRegularSeason,
   type PostseasonSummary,
 } from '../src/engine/postseason.js';
 import { makeRng } from '../src/engine/rng.js';
@@ -299,22 +301,22 @@ describe('coach of the year', () => {
   });
 
   it('hands it to a national champion nobody saw coming', () => {
-    // Giant-killer is binary — either the champion was a top-ten roster or he
-    // was not — so it carries a fixed salience high enough to win whenever it
-    // fires. A title from the bottom half of the talent table is the story of
-    // that season, whatever the overachievement table says.
+    // Giant-killer is binary — either the champion is one of the names or he is
+    // not — so it carries a fixed salience high enough to win whenever it
+    // fires. A title at a program the country ranks fiftieth in reputation is
+    // the story of that season, whatever the overachievement table says.
+    //
+    // Read off prestige rather than off roster strength, and the reason is
+    // measured: the national field is the eight conference champions, so the
+    // champion's *roster* was inside the country's top ten in every one of
+    // twenty simulated seasons and the category could never fire. What the
+    // school is, is a different question from what this year's team is — and
+    // it is the one the phrase means.
     const s = createSeason(makeRng(1102));
     simSeason(s);
     freezeRegularSeason(s);
 
-    const strengthOf = (t: (typeof s.teams)[number]): number => {
-      const all = [
-        ...t.team.lineup.map((p) => overallOf(p)),
-        ...t.team.rotation.slice(0, 3).map((p) => overallOf(p)),
-      ];
-      return all.reduce((a, b) => a + b, 0) / all.length;
-    };
-    const ranked = [...s.teams].sort((a, b) => strengthOf(b) - strengthOf(a));
+    const ranked = [...s.teams].sort((a, b) => b.prestige - a.prestige);
     const david = ranked.slice(32).find((t) => (t.rw ?? t.w) > (t.rl ?? t.l))!;
 
     const post: PostseasonSummary = {
@@ -327,6 +329,66 @@ describe('coach of the year', () => {
     const award = coachOfTheYear(s, post)!;
     expect(award.reason).toBe('giantKiller');
     expect(award.team).toBe(david.index);
-    expect(award.line).toContain('roster in the country');
+    expect(award.line).toContain('name in the country');
+  });
+
+  /*
+    B20. The four categories were built so that the citation would not read the
+    same every June, and it did anyway: measured over twenty seasons of the full
+    world, the giant-killer fired zero times, wire-to-wire once, and
+    overachievement took eleven. Two of the four were dead.
+
+    Both were dead for the same reason and it was not their thresholds. Each
+    category's salience is a maximum over a different pool — overachievement and
+    the turnaround are the largest of ninety six draws, wire-to-wire the largest
+    of the eight who won a league — and the largest of ninety six sits further
+    from the mean than the largest of eight every single time. So the comparison
+    was not "which story was loudest" but "which statistic has the fattest
+    tail", and one statistic always won it.
+
+    This is the property that has to hold, and the only honest way to check it
+    is over a run of seasons: no category may take more than two thirds of the
+    awards, and at least three of the four have to be able to win at all.
+  */
+  it('does not tell the same story every June', () => {
+    let season = createSeason(makeRng(4242), DEFAULT_SEASON, [...CONFERENCES]);
+    season.year = 2027;
+    const seen: Record<string, number> = {};
+
+    const YEARS = 8;
+    for (let y = 0; y < YEARS; y++) {
+      simSeason(season);
+      const post = runPostseason(season);
+      const award = coachOfTheYear(season, post);
+      if (award) seen[award.reason] = (seen[award.reason] ?? 0) + 1;
+      departAndDevelop(season, season.rng, { userTeam: -1 });
+      fillRosters(season, season.rng, { userTeam: -1 });
+      season = nextSeason(season);
+    }
+
+    const kinds = Object.keys(seen);
+    expect(kinds.length).toBeGreaterThanOrEqual(2);
+    for (const n of Object.values(seen)) {
+      expect(n).toBeLessThan(YEARS * 0.7);
+    }
+    // And the one that used to take everything no longer does.
+    expect(seen.overachieved ?? 0).toBeLessThan(YEARS);
+  });
+
+  /*
+    The same property one level down, and the reason it is a separate test: a
+    category that never even reaches the ballot cannot be caught by counting
+    winners, because a rare category is *supposed* to be rare. What must not
+    happen is what happened to wire-to-wire — a candidate that could not be
+    constructed at all in nineteen seasons out of twenty.
+  */
+  it('offers more than one story to choose between', () => {
+    const s = createSeason(makeRng(4242), DEFAULT_SEASON, [...CONFERENCES]);
+    s.year = 2027;
+    simSeason(s);
+    const post = runPostseason(s);
+    const kinds = coachAwardCandidates(s, post).map((c) => c.reason);
+    expect(kinds).toContain('overachieved');
+    expect(kinds).toContain('wireToWire');
   });
 });

@@ -18,11 +18,14 @@ import { SKILLS, SKILL_LABEL, SKILL_BLURB } from '../../engine/program.js';
 export function CoachPoints() {
   const coach = useDynasty((s) => s.coach);
   const spend = useDynasty((s) => s.spendSkill);
+  const refund = useDynasty((s) => s.refundSkill);
+  const spentThisStep = useDynasty((s) => s.spentThisStep);
   const next = useDynasty((s) => s.nextPhase);
   const version = useDynasty((s) => s.version);
   void version;
 
   const left = coach.skillPoints;
+  const back = SKILLS.reduce((n, k) => n + (spentThisStep[k] ?? 0), 0);
 
   return (
     <FixedHeader
@@ -54,6 +57,17 @@ export function CoachPoints() {
               : 'Nothing left to spend this year.'}
           </span>
         </div>
+        {/* The undo, stated before it is needed rather than discovered after.
+            Three points into the wrong skill is a thumb, not a decision, and
+            the only moment that can be true is while the step is still open. */}
+        {back > 0 && (
+          <div style={{
+            marginTop: 8, font: "400 11px/1.45 var(--body)", color: 'var(--dim)',
+          }}>
+            {back} point{back === 1 ? '' : 's'} put on this year can still come
+            off. Once you continue, they are his.
+          </div>
+        )}
       </div>
 
       <div style={{ marginTop: 14 }}>
@@ -88,17 +102,38 @@ export function CoachPoints() {
                 marginTop: 7, font: "400 11.5px/1.45 var(--body)", color: 'var(--dim)',
               }}>{SKILL_BLURB[k]}</div>
 
-              <button
-                disabled={left <= 0 || maxed}
-                onClick={() => spend(k)}
-                style={{
-                  marginTop: 9, width: '100%', padding: '10px 0',
-                  background: left > 0 && !maxed ? 'var(--field)' : 'transparent',
-                  border: `1px solid ${left > 0 && !maxed ? 'rgba(28,36,48,.42)' : 'rgba(28,36,48,.15)'}`,
-                  color: left > 0 && !maxed ? 'var(--ink)' : 'rgba(28,36,48,.25)',
-                  font: "700 10px var(--mono)", letterSpacing: '.12em',
-                }}
-              >{maxed ? 'MAXED' : '+1 POINT'}</button>
+              <div style={{ display: 'flex', gap: 6, marginTop: 9 }}>
+                {/* The undo sits beside the spend rather than at the bottom of
+                    the screen, because the mistake it answers is made here, on
+                    this card, and a control that fixes a specific thing belongs
+                    next to the thing. Absent entirely until there is something
+                    to take back. */}
+                {(spentThisStep[k] ?? 0) > 0 && (
+                  <button
+                    onClick={() => refund(k)}
+                    className="tap"
+                    aria-label={`Take a point back off ${SKILL_LABEL[k]}`}
+                    style={{
+                      flex: 'none', padding: '10px 14px',
+                      background: 'transparent',
+                      border: '1px solid rgba(28,36,48,.42)',
+                      color: 'var(--ink)',
+                      font: "700 10px var(--mono)", letterSpacing: '.12em',
+                    }}
+                  >−1</button>
+                )}
+                <button
+                  disabled={left <= 0 || maxed}
+                  onClick={() => spend(k)}
+                  style={{
+                    flex: 1, padding: '10px 0',
+                    background: left > 0 && !maxed ? 'var(--field)' : 'transparent',
+                    border: `1px solid ${left > 0 && !maxed ? 'rgba(28,36,48,.42)' : 'rgba(28,36,48,.15)'}`,
+                    color: left > 0 && !maxed ? 'var(--ink)' : 'rgba(28,36,48,.25)',
+                    font: "700 10px var(--mono)", letterSpacing: '.12em',
+                  }}
+                >{maxed ? 'MAXED' : '+1 POINT'}</button>
+              </div>
             </div>
           );
         })}

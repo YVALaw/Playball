@@ -31,6 +31,7 @@ import { JobSearch } from './screens/JobSearch.js';
 import { Draft } from './screens/Draft.js';
 import { Wire } from './screens/Wire.js';
 import { Inbox } from './screens/Inbox.js';
+import { RecordBook } from './screens/RecordBook.js';
 import { unreadCount } from '../engine/inbox.js';
 import { Saves } from './screens/Saves.js';
 import { OpenTeam, TeamCard } from './screens/TeamCard.js';
@@ -317,6 +318,9 @@ function AppBody(
               color: 'var(--cream-dim)', textTransform: 'uppercase',
             }}>OFFSEASON</div>
           </div>
+          {/* The bottom nav is gone from here by design, and it took HOME ·
+              INBOX with it — during the six steps that have most to report. */}
+          <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
           {/*
             The way to the saves menu for the whole of the offseason.
 
@@ -413,6 +417,7 @@ function AppBody(
             color: 'var(--cream-dim)', textTransform: 'uppercase',
           }}>{team.def.nickname} &middot; {team.conference}</div>
         </div>
+        <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
         <div style={{ flex: 'none', textAlign: 'right' }}>
           <div style={{ font: "800 22px/0.9 var(--display)", color: 'var(--cream)' }}>
             {team.w}-{team.l}
@@ -513,6 +518,40 @@ function AppBody(
       </nav>
       <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
     </div>
+  );
+}
+
+/**
+ * The way into the inbox from anywhere, with the count on it.
+ *
+ * Reported: the inbox is unreachable outside the regular season. It was a HOME
+ * sub-screen, and HOME does not exist during the offseason or the postseason —
+ * so the one stretch of the year when it has the most to say, the verdict, the
+ * offers, the draft, the hall and every coaching change in the country, was the
+ * stretch you could not open it in.
+ *
+ * The top bar is the one piece of furniture both of those frames have, so the
+ * button lives there and opens the inbox as an overlay, which works over all
+ * three. The sub-nav count and the dot on HOME stay as they were: they are how
+ * you notice it while the season is on, and this is how you get to it when it
+ * is not.
+ */
+function InboxButton({ unread, onOpen }: { unread: number; onOpen: () => void }) {
+  return (
+    <button
+      onClick={onOpen}
+      className="tap"
+      aria-label={`Inbox${unread > 0 ? `, ${unread} unread` : ''}`}
+      style={{
+        flex: 'none', position: 'relative', padding: '8px 9px',
+        background: unread > 0 ? 'var(--clay)' : 'rgba(246,241,230,.12)',
+        border: `1px solid ${unread > 0 ? 'var(--clay)' : 'rgba(246,241,230,.28)'}`,
+        color: 'var(--cream)',
+        font: "700 8.5px var(--mono)", letterSpacing: '.12em',
+      }}
+    >
+      INBOX{unread > 0 ? ` ${unread > 9 ? '9+' : unread}` : ''}
+    </button>
   );
 }
 
@@ -637,6 +676,20 @@ function TableOverlay() {
             you were on, with the screen underneath still mounted when you close
             it. During the offseason it is the only way in — the nav is gone. */}
         {overlay === 'saves' && <Saves />}
+        {/* And the same argument again, for the three the inbox needs. The
+            inbox itself, because it is a HOME tab and HOME does not exist
+            during the offseason — which is precisely when it has the most to
+            say. The program page and the record book, because they are where
+            its cards point, and a card that is only tappable in one of the
+            three frames is not tappable. */}
+        {overlay === 'inbox' && <Inbox />}
+        {overlay === 'program' && <Program />}
+        {/* The one of these that does not pin its own header — it is normally
+            the second sheet of HISTORY, which does the pinning for it — so it
+            gets the scroller the container above deliberately does not have. */}
+        {overlay === 'book' && (
+          <div style={{ height: '100%', overflowY: 'auto' }}><RecordBook /></div>
+        )}
       </div>
     </div>
   );

@@ -10,11 +10,23 @@
 // it is deliberate — a card with a tick on it is a chore, and reading is not
 // supposed to be one. Nothing in the game waits on this screen: every item here
 // either happened already or is available somewhere it can be acted on.
+//
+// A card is now the way *to* the thing it is about. Reported, and correctly:
+// "a notification you cannot act on is pointless" — the card named a man, a
+// verdict, a program, and none of them opened. Every kind that has a
+// destination carries one (see `InboxLink`), and the kinds that genuinely have
+// none — how many of your men were drafted is not a place — are drawn as flat
+// cards with no arrow, so which is which is visible before it is tapped rather
+// than after.
 
 import { useEffect, useMemo } from 'react';
 import { useDynasty } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
-import { INBOX_LABEL, type InboxItem, type InboxKind } from '../../engine/inbox.js';
+import { useOpenTeam } from './TeamCard.js';
+import {
+  INBOX_LABEL, type InboxItem, type InboxKind, type InboxLink,
+} from '../../engine/inbox.js';
+import type { PlayerId } from '../../engine/types.js';
 
 /**
  * The stripe down the left of a card.
@@ -32,11 +44,40 @@ const KIND_TONE: Record<InboxKind, string> = {
   // Clay, with the achievements and the board. An induction is not something you
   // have to act on, but it is the loudest good news a program ever gets.
   hall: 'var(--clay)',
+  // The two in-season kinds. A mark in the book is permanent and reads with the
+  // hall; the season's own news is the quietest thing here.
+  record: 'var(--win)',
+  season: 'var(--dim)',
 };
+
+/**
+ * Where a card goes, resolved against the three frames the app can be in.
+ *
+ * Every destination is an overlay or a card, because the inbox is reachable
+ * from the offseason and the postseason now — and in both of those the tab bar
+ * does not exist, so anything that navigated by tab would be dead exactly where
+ * the inbox has the most to say.
+ */
+function useOpen(): (link: InboxLink) => void {
+  const openPlayer = useDynasty((s) => s.openPlayer);
+  const openOverlay = useDynasty((s) => s.openOverlay);
+  const setProgramSheet = useDynasty((s) => s.setProgramSheet);
+  const openTeam = useOpenTeam();
+  return (link) => {
+    switch (link.to) {
+      case 'player': openPlayer(link.id as PlayerId); return;
+      case 'team': openTeam(link.index); return;
+      case 'program': setProgramSheet(link.sheet); openOverlay('program'); return;
+      case 'book': openOverlay('book'); return;
+      case 'schedule': openOverlay('schedule');
+    }
+  };
+}
 
 export function Inbox() {
   const inbox = useDynasty((s) => s.inbox);
   const readInbox = useDynasty((s) => s.readInbox);
+  const open = useOpen();
 
   /*
     Read on arrival, not on the way out.
@@ -81,8 +122,10 @@ export function Inbox() {
             background: 'var(--paper)', textAlign: 'center',
             font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
           }}>
-            Nothing yet. Board verdicts, job offers, achievements, the draft and
-            every coaching change in your conference land here.
+            Nothing yet. A run of wins, a record one of your men has taken, the
+            board at the halfway mark, and then everything June brings — the
+            verdict, the draft, the hall, and every coaching change in your
+            conference.
           </div>
         )}
 
@@ -93,47 +136,74 @@ export function Inbox() {
               borderBottom: '1px solid var(--hairline)',
             }}>{year}</div>
             {items.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  padding: '10px 12px', marginBottom: 6,
-                  background: 'var(--paper)',
-                  border: '1px solid var(--faint)',
-                  borderLeft: `3px solid ${KIND_TONE[item.kind]}`,
-                }}
-              >
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-                  marginBottom: 3, gap: 8,
-                }}>
-                  <span style={{
-                    font: "700 8px var(--mono)", letterSpacing: '.14em',
-                    color: KIND_TONE[item.kind],
-                  }}>{INBOX_LABEL[item.kind]}</span>
-                  {/* The dot survives the visit that clears it, because the
-                      state was read before this rendered. It is the only thing
-                      distinguishing what is new from what has been sitting
-                      here since March. */}
-                  {!item.read && (
-                    <span style={{
-                      font: "700 8px var(--mono)", letterSpacing: '.12em',
-                      color: 'var(--clay)',
-                    }}>NEW</span>
-                  )}
-                </div>
-                <div style={{
-                  font: "700 14px/1.25 var(--display)", textTransform: 'uppercase',
-                }}>{item.title}</div>
-                {item.body !== '' && (
-                  <div style={{
-                    marginTop: 4, font: "400 12px/1.5 var(--body)", color: 'var(--dim)',
-                  }}>{item.body}</div>
-                )}
-              </div>
+              <Card key={item.id} item={item} onOpen={open} />
             ))}
           </div>
         ))}
       </div>
     </FixedHeader>
+  );
+}
+
+/**
+ * One card, tappable or not.
+ *
+ * A button when it goes somewhere and a plain div when it does not — rather
+ * than a button that shrugs — so the difference is in the thing itself and not
+ * in what happens after you press it. The arrow says the same thing again for
+ * anybody who is skimming.
+ */
+function Card({ item, onOpen }: { item: InboxItem; onOpen: (l: InboxLink) => void }) {
+  const tone = KIND_TONE[item.kind];
+  const body = (
+    <>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+        marginBottom: 3, gap: 8,
+      }}>
+        <span style={{
+          font: "700 8px var(--mono)", letterSpacing: '.14em', color: tone,
+        }}>{INBOX_LABEL[item.kind]}</span>
+        {/* The dot survives the visit that clears it, because the state was
+            read before this rendered. It is the only thing distinguishing what
+            is new from what has been sitting here since March. */}
+        {!item.read && (
+          <span style={{
+            font: "700 8px var(--mono)", letterSpacing: '.12em', color: 'var(--clay)',
+          }}>NEW</span>
+        )}
+      </div>
+      <div style={{
+        display: 'flex', alignItems: 'baseline', gap: 8,
+      }}>
+        <div style={{
+          flex: 1, font: "700 14px/1.25 var(--display)", textTransform: 'uppercase',
+        }}>{item.title}</div>
+        {item.link && (
+          <span style={{
+            flex: 'none', font: "700 13px var(--mono)", color: tone,
+          }}>›</span>
+        )}
+      </div>
+      {item.body !== '' && (
+        <div style={{
+          marginTop: 4, font: "400 12px/1.5 var(--body)", color: 'var(--dim)',
+        }}>{item.body}</div>
+      )}
+    </>
+  );
+
+  const skin = {
+    width: '100%', textAlign: 'left' as const, display: 'block',
+    padding: '10px 12px', marginBottom: 6,
+    background: 'var(--paper)',
+    border: '1px solid var(--faint)',
+    borderLeft: `3px solid ${tone}`,
+  };
+
+  if (!item.link) return <div style={skin}>{body}</div>;
+  const link = item.link;
+  return (
+    <button className="tap" style={skin} onClick={() => onOpen(link)}>{body}</button>
   );
 }

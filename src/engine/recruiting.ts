@@ -100,11 +100,9 @@ export interface Prospect {
    * comes of it. Refusing outright says what is true, which is that he is not
    * going to take the call.
    *
-   * How far he will come down depends on what he wants. A recruit who cares
-   * about playing time or staying near home will listen to a much smaller
-   * program than one who wants the biggest name in the country — which is what
-   * keeps a path open for a program recruiting against its weight, without
-   * opening it for everybody at once.
+   * Written down here for the screen to print; the gate itself reads
+   * `reachFloor(stars)` rather than this field, so a save made under the old
+   * per-recruit ladder is judged by the same rule as a new one. See `canPursue`.
    */
   minProgram: number;
   /**
@@ -333,89 +331,67 @@ function priorityWeights(stars: number, roll: () => number): Priorities {
 }
 
 /**
- * Where each grade of recruit starts, and what it takes to bring him lower.
+ * One star up, and no further.
  *
- * `floor` is the smallest program he will hear out before his own priorities are
- * consulted; every threshold in `steps` his flexibility clears takes him down one
- * more tier. Written as a ladder rather than as arithmetic on his star rating
- * because the honest answer is different at each rung, and a single formula has
- * to be bent out of shape to say so.
+ * His words, and the whole rule: *"a 3 star school can only shoot for 4 stars
+ * and under, a 2 star can shoot for a 3 star and under and so on, 4 and 5 star
+ * schools can go for anyone they like."* So the floor under a recruit is one
+ * below his own grade, and since nothing is rated above five, a four star
+ * program clears every floor there is and the top two tiers see the whole
+ * board without a special case.
  *
- * Nobody starts above four. A class the three programs at the top of the country
- * are the only ones allowed to call is a class nobody else can compete for, and
- * the point of the gate is a ladder, not a wall.
+ * This **replaces** the per-recruit reach ladder rather than sitting on top of
+ * it. That one gave every prospect a floor of his own, drawn off how badly he
+ * wanted to play or to stay near home, and it was measured and tuned against
+ * four hundred thousand draws — but two gates that disagree is a worse thing
+ * than either of them alone, and they did disagree in both directions: the
+ * ladder let a flexible five star hear out a three star program that this rule
+ * refuses, and it let a rigid four star refuse a three star program that this
+ * rule admits. Asked which of the two should decide, the answer has to be the
+ * one a coach can read off the screen. A ladder you can see is a ladder you
+ * can climb deliberately; a hidden per-recruit roll is one you can only find
+ * out about by tapping.
  *
- * The numbers are read off the flexibility distribution the priority draw
- * actually produces at each grade, which is why they are not a tidy sequence —
- * a two star is a far more flexible animal than a five star, so the same
- * threshold would mean something completely different to each of them.
- *
- * The frequencies quoted on each rung below are measured against that draw
- * directly — four hundred thousand sets of weights per grade — and not counted
- * off a generated class. That distinction is the whole reason this comment was
- * ever wrong. A class holds about forty five stars, so a one-in-eighteen rate is
- * two of them give or take one and a half; the rung was first written up as
- * "one in twenty-five" because the class in front of whoever wrote it happened
- * to contain two, and re-counting it later on a different class read one in
- * nine and looked like a regression. Neither number was ever the rate. A rung
- * is a property of the draw and has to be measured where the draw lives.
+ * What is lost with it is the identifiable outlier — the one four star in the
+ * class who would have come down two tiers for playing time. What replaces him
+ * is the pipeline, below, which is a better version of the same idea: still a
+ * specific, nameable set of players a small program can reach above its
+ * weight, but one the coach knows about before he spends a week on it.
  */
-const REACH_LADDER: Record<number, { floor: number; steps: readonly number[] }> = {
-  // A five star always hears out a four star program; only the ones who want
-  // the ball, or want home, come further than that — about one in eighteen.
-  // Unchanged since the retune: this rung was already doing its job.
-  5: { floor: 4, steps: [0.3333] },
-  // This is the rung the complaint was about. A shade under half of four stars
-  // will look at a three star program now, where it used to be every last one
-  // of them, and about one in a hundred and thirty at a two star.
-  4: { floor: 4, steps: [0.32, 0.58] },
-  // Below the blue chips the ladder is about the bottom of the country rather
-  // than the top: a three star is a *good* player at a small school, and a one
-  // star program getting nine in ten of them is what made the bottom two tiers
-  // of the prestige table interchangeable. Seven in ten will hear out a two star
-  // program and a third of them a one star.
-  3: { floor: 3, steps: [0.36, 0.485] },
-  // Five in six, which is close enough to open that the bottom rung is about
-  // the handful who will not come rather than the many who will.
-  2: { floor: 2, steps: [0.42] },
-  1: { floor: 1, steps: [] },
-};
+export const reachFloor = (stars: number): number =>
+  Math.max(1, Math.min(4, stars - 1));
 
 /**
- * How far down the ladder this recruit will listen.
+ * What a shared home state is worth: one more star of reach.
  *
- * The tolerance is his own: a kid who wants the ball as a freshman, or to stay
- * near his family, will hear out a program a tier or two below him, while one
- * chasing the biggest name in the country will not come down at all. That is
- * where the upsets live, and they are a property of the recruit rather than a
- * global percentage — so the four star a small program can actually take is a
- * specific, identifiable player rather than a lottery ticket.
- *
- * Reported from testing: "I as a three star college have access to the very top
- * players." He did. A three star program could pursue **every four star in the
- * country** and just under half the national top fifty, because the old formula
- * only ever tightened the gate for five stars — and the top fifty is barely half
- * five stars. That made prestige a budget modifier with a cosmetic gate attached
- * rather than a ladder you climb, which is the one thing a dynasty is for. Only
- * a four or five star program sees the whole board now; below that the ceiling
- * comes down a rung at a time.
+ * *"if a school for example is 3 star but there are 5 stars in their pipeline
+ * they can shoot for them as well, but only if they are in the pipeline, and it
+ * only goes up one star."* The pipeline is the concept `fit` already scores
+ * proximity on — a program's own state, not its region. A region is four states
+ * and an eighth of the country, which would make the exception the rule; a
+ * state is twenty recruits and one or two blue chips in a good year, which is
+ * exactly the "there are 5 stars in their pipeline" he described.
  */
-function reachOf(stars: number, priorities: Priorities): number {
-  // Wanting to play, or to play near home, is what brings a recruit down;
-  // wanting the name does not.
-  const flexible = priorities.playingTime + priorities.proximity;
-  const rung = REACH_LADDER[Math.max(1, Math.min(5, stars))] as
-    { floor: number; steps: readonly number[] };
+export const PIPELINE_REACH_BONUS = 1;
 
-  let min = rung.floor;
-  for (const step of rung.steps) if (flexible > step) min -= 1;
-  return Math.max(1, Math.min(4, min));
+/**
+ * Whether a program of this tier may recruit him at all.
+ *
+ * Reads `reachFloor(stars)` rather than the prospect's own `minProgram`, and
+ * that is deliberate: a dynasty saved under the old ladder carries floors drawn
+ * from a rule that no longer exists, and a gate that honoured them would run
+ * two different games depending on when the save was made.
+ */
+export function canPursue(
+  prospect: Prospect, programStars: number, inPipeline = false,
+): boolean {
+  const reach = programStars + (inPipeline ? PIPELINE_REACH_BONUS : 0);
+  return reach >= reachFloor(prospect.stars);
 }
 
-/** Whether a program of this tier may recruit him at all. */
-export function canPursue(prospect: Prospect, programStars: number): boolean {
-  return programStars >= prospect.minProgram;
-}
+/** Whether this recruit is in that program's pipeline: the same home state. */
+export const inPipeline = (prospect: Prospect, programState: string): boolean =>
+  prospect.state === programState;
 
 /**
  * The order any list of recruits reads in: national ranking, best first.
@@ -495,7 +471,7 @@ export function generateClass(year: number, teams: number, rng: Rng): RecruitCla
       hometown: home,
       state: STATES_BY_REGION[home][Math.floor(rng() * STATES_BY_REGION[home].length)] as string,
       priorities,
-      minProgram: reachOf(stars, priorities),
+      minProgram: reachFloor(stars),
       rank: 0,
       points: {},
       spent: {},
@@ -996,7 +972,10 @@ export function aiTargets(
 
   const available = prospects.filter((p) => {
     if (p.signedBy !== null) return false;
-    if (!canPursue(p, tier)) return false;
+    // The pipeline is the AI's too. A gate the ninety five could not use would
+    // hand the user a private exception, and the one thing this gate has to be
+    // is the same rule on both sides of the board.
+    if (!canPursue(p, tier, inPipeline(p, pitch.state))) return false;
     const best = atWeekStart[p.id] ?? 0;
     if (best <= 0) return true;
     const mine = p.points[team] ?? 0;
@@ -1029,12 +1008,13 @@ export function aiTargets(
   // programs that can chase the top of the class are the only coverage it has,
   // so their boards lean into it.
   //
-  // Four star recruits are the band that needs this most, and it is a direct
-  // consequence of the reach gate: two thirds of them will not hear from a three
-  // star program at all, so the fourteen elite programs are the entire market
-  // for them. With the old split those programs pointed more slots at five stars
-  // than the country produces and the four stars underneath went unsigned, which
-  // is the same "nobody is on him" failure one tier down.
+  // Four star recruits are the band that needs this most. Under the reach gate
+  // they were nearly the elite programs' private market and went unsigned when
+  // those boards pointed more slots at five stars than the country produces —
+  // the same "nobody is on him" failure one tier down. The one-star-up rule has
+  // since opened them to every three star program in the league, so the band is
+  // no longer starved; the split stays because the failure it fixed was about
+  // where an elite board points, and that has not changed.
   const plan: { stars: number; share: number }[] =
     tier >= 5 ? [
       { stars: 5, share: 0.50 },
@@ -1045,8 +1025,14 @@ export function aiTargets(
       { stars: 4, share: 0.48 },
       { stars: 3, share: 0.17 },
     ] : [
-      { stars: tier + 1, share: 0.30 },
-      { stars: tier, share: 0.40 },
+      // Two grades up is the pipeline band and nothing else — `available` has
+      // already thrown out everybody this program has no business calling, so
+      // whoever is left in here is a home state kid the gate let through. One
+      // slot, because that is how many of them a small program tends to have,
+      // and it comes out of the safe end of the board rather than the middle.
+      { stars: tier + 2, share: 0.08 },
+      { stars: tier + 1, share: 0.28 },
+      { stars: tier, share: 0.38 },
       { stars: tier - 1, share: 0.20 },
       { stars: tier - 2, share: 0.10 },
     ];

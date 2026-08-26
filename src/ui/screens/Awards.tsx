@@ -18,7 +18,7 @@ import {
  */
 const COACH_BODY: Record<CoachAwardReason, string> = {
   overachieved: 'Nobody got more out of less. The roster said no; the record said yes.',
-  giantKiller: 'The trophy went home with a roster that had no business holding it.',
+  giantKiller: 'The trophy went home to a school that had no business holding it.',
   turnaround: 'The biggest one-year climb in the country, same school, same players.',
   wireToWire: 'Won the league and outscored everybody doing it, start to finish.',
 };
@@ -77,10 +77,11 @@ export function Awards() {
         to whoever was handed the best roster, and it says nothing.
 
         Four stories can win it: beating what the roster was worth, winning it
-        all without a top-ten roster, the biggest one-year turnaround, and a
-        conference title on the country's best run margin. The engine picks
-        whichever was loudest this season and writes the headline stat itself;
-        the card just renders it.
+        all at a school nobody has heard of, the biggest one-year turnaround, and
+        a conference title on the best run margin of anybody who won one. The
+        engine picks whichever was loudest this season, measured against what a
+        normal year of that story looks like, and writes the headline stat
+        itself; the card just renders it.
       */}
       {coach && (
         <div style={{

@@ -421,6 +421,56 @@ describe('what they call you', () => {
     expect(coachStanding(nearly).lifer).toBe(false);
   });
 
+  /*
+    Reported: UNPROVEN to RESPECTED in a single season, with nothing won.
+
+    Two rungs on one year, and the ladder allowed it twice over. The career win
+    percentage clause had no minimum behind it, so one 25-14 spring read as a
+    career of winning baseball; and at a weak enough program a single big year
+    can carry prestige to the 42 the same rung asks for. Neither is prestige
+    being volatile — a 38-7 first season at a five star job moves it nine points,
+    measured — so the fix is the ladder rather than the number under it: the
+    earned title cannot exceed one rung per season played.
+  */
+  it('cannot climb more than one rung on a season with nothing won', () => {
+    const order = ['Unproven', 'Journeyman', 'Respected', 'Established', 'Renowned', 'Legendary'];
+    const rung = (c: CoachState) => order.indexOf(coachStanding(c).title);
+
+    // One season, 25-14, no bid and no trophy. .641 is well over the old
+    // shortcut and it is still one year of work.
+    const winning = coachWith({ careerWins: 25, careerLosses: 14, prestige: 34 });
+    expect(coachStanding(winning).title).toBe('Journeyman');
+    expect(rung(winning)).toBe(rung(newCoach()) + 1);
+
+    // And the other route in: a first year so far above a poor program that
+    // personal standing reaches the Respected band on its own.
+    const overachieved = coachWith({ careerWins: 40, careerLosses: 5, prestige: 46 });
+    expect(coachStanding(overachieved).title).toBe('Journeyman');
+  });
+
+  it('opens the next rung the season after, once there is a career under it', () => {
+    // The cap is a speed limit, not a ceiling. The same coach with a second
+    // year behind him is what the ladder was always meant to describe.
+    const second = coachWith({ careerWins: 52, careerLosses: 38, prestige: 46 });
+    expect(coachStanding(second).title).toBe('Respected');
+  });
+
+  it('still lets a trophy be a floor on the day it is won', () => {
+    // Trophies are deliberately outside the cap. A man who wins the thing in
+    // his first June is not a journeyman that afternoon, whatever a ladder
+    // climbed with seasons has to say about it.
+    const champion = coachWith({
+      careerWins: 40, careerLosses: 8, titles: 1, tournaments: 1,
+      conferenceTitles: 1, regionalTitles: 1, prestige: 40,
+    });
+    expect(coachStanding(champion).title).toBe('Legendary');
+
+    const leagueWinner = coachWith({
+      careerWins: 30, careerLosses: 15, conferenceTitles: 1, tournaments: 1, prestige: 33,
+    });
+    expect(coachStanding(leagueWinner).title).toBe('Established');
+  });
+
   it('does not hand a lifer a winner\'s title for the tenure alone', () => {
     // The load-bearing case for the whole ladder, and the failure it replaced:
     // fifteen years and nothing won reads as LIFER beside a title he has not

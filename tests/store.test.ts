@@ -13,7 +13,7 @@ import { useDynasty, PHASES, boardBudget } from '../src/state/store.js';
 import { windowBudget } from '../src/engine/recruiting.js';
 import { prestigeStars } from '../src/engine/program.js';
 import type { DraftBoard } from '../src/engine/draft.js';
-import { createSeason, simSeason } from '../src/engine/season.js';
+import { createSeason, simSeason, seasonComplete } from '../src/engine/season.js';
 import type { SeasonState, TeamRecord } from '../src/engine/season.js';
 import type { OffseasonReport } from '../src/engine/progression.js';
 import type { Player, PlayerId } from '../src/engine/types.js';
@@ -34,7 +34,8 @@ import {
   COACH_SKIN, COACH_HAIR, CUT_LABEL, BEARD_LABEL,
 } from '../src/ui/CoachPortrait.js';
 import { makeRng } from '../src/engine/rng.js';
-import { unreadCount } from '../src/engine/inbox.js';
+import { restoreInbox, unreadCount } from '../src/engine/inbox.js';
+import { buildCase } from '../src/engine/hall.js';
 
 // Saving touches IndexedDB, which node does not have. The store already treats
 // a failed save as a surfaced error rather than a crash, so the tests simply
@@ -825,5 +826,223 @@ describe('the hall of fame meets when the draft settles', () => {
     await useDynasty.getState().nextPhase();
     expect((useDynasty.getState().season?.hall ?? []).length).toBe(hall.length);
     expect(useDynasty.getState().inbox.filter((i) => i.kind === 'hall').length).toBe(1);
+  });
+
+  /*
+    The ballot meets in the June after a man's last game, and it could not see
+    what he won in it.
+
+    Two things had to move to fix that and they are the same mistake twice.
+    `history` was written at the year roll, which happens after the hall meets —
+    so the honours handed to the ballot were every season the coach had ever
+    finished except the one that had just ended, which is the season a departing
+    senior wins things in. And the record itself was assembled after
+    `departAndDevelop` had emptied the rosters, so an award could no longer be
+    resolved to the man who won it: the graduating Player of the Year was not in
+    the country any more, and his award went into no list at all.
+
+    Both are fixed by writing the season down at the board meeting, where the
+    rosters that produced it are still standing.
+  */
+  it('reads what a man won in the season he has just finished', async () => {
+    useDynasty.getState().start(7373, 0);
+    const season = useDynasty.getState().season as SeasonState;
+    simSeason(season);
+    const me = season.teams[0] as TeamRecord;
+    const year = useDynasty.getState().year;
+    const abbr = me.def.abbr;
+    useDynasty.setState({ history: [], inbox: [] });
+
+    // The board meets, which is when the season goes into the books.
+    useDynasty.getState().settleSeason();
+    const closing = useDynasty.getState().history.find((h) => h.year === year);
+    expect(closing).toBeDefined();
+    const voted = closing!.awards ?? [];
+    expect(voted.length).toBeGreaterThan(0);
+
+    // Somebody at this program the country voted for this June.
+    const who = voted[0]!.id as PlayerId;
+    const his = voted.filter((a) => a.id === who).map((a) => a.title);
+
+    // And he has just played his last game: two seasons in the book, and off
+    // every roster in the country, which is what makes a career finished.
+    for (const arr of [me.team.lineup, me.team.bench, me.team.rotation, me.team.bullpen]) {
+      const at = arr.findIndex((p) => String(p.id) === String(who));
+      if (at >= 0) arr.splice(at, 1);
+    }
+    const rows = [
+      greatYear(year - 1, 'JR', abbr, String(who)),
+      greatYear(year, 'SR', abbr, String(who)),
+    ];
+    season.careers[who] = rows;
+
+    useDynasty.setState({ phase: 'draft', furthestPhase: PHASES.indexOf('draft') });
+    await useDynasty.getState().nextPhase();
+
+    const inducted = (useDynasty.getState().season?.hall ?? [])
+      .find((m) => String(m.id) === String(who));
+    expect(inducted).toBeDefined();
+    // The case that put him in is the one with this June on it.
+    expect(inducted!.score).toBe(Math.round(buildCase(who, rows, his).score));
+    expect(inducted!.score).toBeGreaterThan(Math.round(buildCase(who, rows, []).score));
+  });
+
+  it('does not write the same season into the books twice', async () => {
+    useDynasty.getState().start(4242, 0);
+    const season = useDynasty.getState().season as SeasonState;
+    simSeason(season);
+    useDynasty.setState({ history: [] });
+
+    useDynasty.getState().settleSeason();
+    expect(useDynasty.getState().history).toHaveLength(1);
+
+    await useDynasty.getState().rollYear();
+    // The year roll used to be where this was written. It is the fallback now,
+    // and a fallback that fires on top of the real thing is a duplicated season
+    // in the record book for ever.
+    expect(useDynasty.getState().history).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+/*
+  The season's own news, which the inbox did not have any of.
+
+  Reported: "the inbox stayed empty for a whole season." It was: every writer in
+  the store fired between the last game of one year and the first of the next,
+  so a notification centre with a badge on the nav had nothing to put in it for
+  the four months anybody was looking. These pin the four in-season writers and,
+  more importantly, the property that makes them trustworthy — a season simmed
+  in one press has to file the same cards as one walked through a day at a time,
+  because the fast path is the one most people use and it only ever sees the
+  finished year.
+*/
+describe('the inbox during a season', () => {
+  it('has something to say about an ordinary season', async () => {
+    useDynasty.getState().start(4242, 0);
+    useDynasty.setState({ inbox: [] });
+    const year = useDynasty.getState().year;
+
+    await useDynasty.getState().playSeason();
+
+    const mine = useDynasty.getState().inbox.filter((i) => i.year === year);
+    expect(mine.length).toBeGreaterThan(0);
+    // The board at the halfway mark is the one that fires every year, whatever
+    // kind of season it was, and it is why "empty all season" cannot happen
+    // again quietly.
+    expect(mine.some((i) => i.id.endsWith('halfway'))).toBe(true);
+  });
+
+  it('files the same cards however the season was played', async () => {
+    // Day by day, the whole way. Nothing here may depend on the live streak
+    // counter or on the current record, both of which say something different
+    // at the end of a season than they did in April.
+    useDynasty.getState().start(4242, 0);
+    useDynasty.setState({ inbox: [] });
+    let guard = 0;
+    while (!seasonComplete(useDynasty.getState().season as SeasonState) && guard++ < 200) {
+      useDynasty.getState().advanceDay();
+    }
+    const walked = useDynasty.getState().inbox.map((i) => i.id).sort();
+
+    useDynasty.getState().start(4242, 0);
+    useDynasty.setState({ inbox: [] });
+    await useDynasty.getState().playSeason();
+    const simmed = useDynasty.getState().inbox.map((i) => i.id).sort();
+
+    // The runs and the poll report the best rung reached, so a season handed
+    // over finished files the top one and never the ones under it. Everything
+    // it does file, the slow walk filed too.
+    expect(simmed.length).toBeGreaterThan(0);
+    for (const id of simmed) expect(walked).toContain(id);
+  });
+
+  it('does not repeat itself when the scan runs again', () => {
+    useDynasty.getState().start(4242, 0);
+    useDynasty.setState({ inbox: [] });
+    const season = useDynasty.getState().season as SeasonState;
+    simSeason(season);
+
+    useDynasty.getState().noteSeasonNews();
+    const once = useDynasty.getState().inbox.length;
+    expect(once).toBeGreaterThan(0);
+    // Every writer is a scan rather than an event, and the calendar moves a
+    // great many times. Keyed ids are what makes that safe.
+    useDynasty.getState().noteSeasonNews();
+    useDynasty.getState().noteSeasonNews();
+    expect(useDynasty.getState().inbox.length).toBe(once);
+  });
+
+  it('gives a card somewhere to go, and leaves the ones with nowhere inert', () => {
+    useDynasty.getState().start(4242, 0);
+    useDynasty.setState({ inbox: [] });
+    const season = useDynasty.getState().season as SeasonState;
+    simSeason(season);
+    useDynasty.getState().noteSeasonNews();
+    useDynasty.getState().settleSeason();
+
+    const inbox = useDynasty.getState().inbox;
+    const verdict = inbox.find((i) => i.kind === 'board' && i.id.endsWith('halfway') === false);
+    expect(verdict?.link).toEqual({ to: 'program', sheet: 'board' });
+
+    // And the destinations survive a reload, which is the only place a link can
+    // quietly become undefined.
+    const back = restoreInbox(JSON.parse(JSON.stringify(inbox)) as unknown);
+    expect(back.find((i) => i.id === verdict?.id)?.link).toEqual(verdict?.link);
+    // A link with a target this build does not know is dropped rather than
+    // reaching the screen as a card that looks tappable and is not.
+    const junk = restoreInbox([{
+      id: 'x-1', year: 2027, kind: 'board', title: 'T', body: '', read: false,
+      link: { to: 'nowhere' },
+    }]);
+    expect(junk[0]?.link).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('points can be taken back until the step closes', () => {
+  it('gives a point back, and refuses once the offseason has moved on', () => {
+    useDynasty.getState().start(4242, 0);
+    useDynasty.setState({
+      phase: 'coach',
+      furthestPhase: PHASES.indexOf('signing'),
+      spentThisStep: {},
+    });
+    const start = useDynasty.getState().coach.skills.offense;
+    useDynasty.setState({
+      coach: { ...useDynasty.getState().coach, skillPoints: 3 },
+    });
+
+    // Three into the wrong skill, which is the report exactly.
+    for (let i = 0; i < 3; i++) useDynasty.getState().spendSkill('offense');
+    expect(useDynasty.getState().coach.skills.offense).toBe(start + 3);
+    expect(useDynasty.getState().coach.skillPoints).toBe(0);
+
+    // Two of them back, and spent where they were meant to go.
+    useDynasty.getState().refundSkill('offense');
+    useDynasty.getState().refundSkill('offense');
+    expect(useDynasty.getState().coach.skills.offense).toBe(start + 1);
+    expect(useDynasty.getState().coach.skillPoints).toBe(2);
+    useDynasty.getState().spendSkill('training');
+    useDynasty.getState().spendSkill('training');
+    expect(useDynasty.getState().coach.skills.training).toBe(start + 2);
+
+    // The step closes. What was spent is his.
+    useDynasty.getState().goPhase('draft');
+    useDynasty.getState().refundSkill('training');
+    expect(useDynasty.getState().coach.skills.training).toBe(start + 2);
+    expect(useDynasty.getState().coach.skillPoints).toBe(0);
+  });
+
+  it('will not refund a point it did not put there', () => {
+    // The difference between an undo and a respec. Nothing earned in an earlier
+    // year can be taken off, however many points are on the skill.
+    useDynasty.getState().start(4242, 0);
+    useDynasty.setState({ phase: 'coach', spentThisStep: {} });
+    const before = useDynasty.getState().coach.skills.recruiting;
+    useDynasty.getState().refundSkill('recruiting');
+    expect(useDynasty.getState().coach.skills.recruiting).toBe(before);
   });
 });

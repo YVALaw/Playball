@@ -818,9 +818,64 @@ export interface CoachAward {
   line: string;
 }
 
-export function coachOfTheYear(
+/** One story this season could be told as, and how loudly it was told. */
+export interface CoachAwardCandidate {
+  team: number;
+  school: string;
+  wins: number;
+  losses: number;
+  expected: number;
+  strength: number;
+  reason: CoachAwardReason;
+  line: string;
+  /**
+   * How far outside a normal season this was, on its own category's scale —
+   * see {@link TYPICAL_SALIENCE}. One is an ordinary year for this story.
+   */
+  salience: number;
+  /** Before normalisation, which is what the tuning table is measured in. */
+  raw: number;
+}
+
+/**
+ * What a normal year's winner scores, per category, before normalising.
+ *
+ * The four saliences are not on one scale and treating them as though they were
+ * is why the citation read the same every June. Three of them are maxima over
+ * different sized pools: overachievement and the turnaround are the largest of
+ * ninety six draws, wire-to-wire is the largest of the eight programs that won
+ * a league, and the largest of ninety six is systematically further from the
+ * mean than the largest of eight. Dividing each by its own typical winner is
+ * what makes "how unusual was this, for this kind of story" the question being
+ * asked, rather than "which statistic has the fattest tail".
+ *
+ * Measured with `coachAwardCandidates` over twenty seasons of the full world
+ * (seed 4242), taking the median of each category's raw score:
+ *
+ *   overachieved  2.6    turnaround  2.5    wireToWire  2.0
+ *
+ * The giant-killer is not a measurement and does not get one. It is binary and
+ * it fires perhaps one year in five, so it carries a raw score high enough to
+ * win outright whenever it happens — a champion nobody saw coming is the story
+ * of that season, full stop.
+ */
+const TYPICAL_SALIENCE: Record<CoachAwardReason, number> = {
+  overachieved: 2.6,
+  turnaround: 2.5,
+  wireToWire: 2.0,
+  giantKiller: 1,
+};
+
+/**
+ * Every story the season could be told as, loudest first.
+ *
+ * Exported for the test that holds this honest: a category that cannot fire in
+ * a normal world is a promise the game does not keep, and the only way to check
+ * that is to look at the candidates rather than at the one that won.
+ */
+export function coachAwardCandidates(
   season: SeasonState, post?: PostseasonSummary | null,
-): CoachAward | null {
+): CoachAwardCandidate[] {
   const strengthOf = (t: TeamRecord): number => {
     const all: number[] = [
       ...t.team.lineup.map((p) => overallOf(p)),
@@ -833,7 +888,7 @@ export function coachOfTheYear(
     const rec = { w: t.rw ?? t.w, l: t.rl ?? t.l };
     return { t, strength: strengthOf(t), wins: rec.w, losses: rec.l };
   });
-  if (rows.length < 4) return null;
+  if (rows.length < 4) return [];
 
   const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
   const sd = (xs: number[]): number => {
@@ -855,7 +910,7 @@ export function coachOfTheYear(
   // A losing season wins nothing, whatever the story. This holds for every
   // category, not just overachievement.
   const eligible = rows.filter((r) => r.wins > r.losses);
-  if (eligible.length === 0) return null;
+  if (eligible.length === 0) return [];
 
   type Candidate = {
     row: typeof rows[number];
@@ -882,20 +937,42 @@ export function coachOfTheYear(
     line: `${bestGap.toFixed(1)} wins above what that roster was worth`,
   });
 
-  // GIANT-KILLER — the national champion, when he was not supposed to be: a
-  // roster outside the top ten of ninety six. Binary and rare, so it carries a
-  // fixed salience high enough to win whenever it fires — a champion nobody
-  // saw coming is the story of that season, full stop.
+  /*
+    GIANT-KILLER — the national champion at a program that has no business
+    winning one.
+
+    Read off what the *school* is rather than what the roster is, and the first
+    version is why. It asked for a roster outside the country's top ten, which
+    reads reasonably and is very nearly unreachable: the national field is the
+    eight conference champions, and a program does not win a twelve team league
+    without one of the best rosters in the country. Measured over twenty seasons
+    the champion's roster ranked between first and ninth every single time, and
+    within the four in Omaha it was the strongest or the second strongest every
+    single time. The category could not fire, which is the same defect as a
+    board objective the format has no seats for (see `objectivesFor` in
+    engine/program.ts) — a promise the game does not keep.
+
+    Prestige is a different axis and it is the one the phrase actually means. A
+    modest school with a loaded senior class is exactly the situation the
+    `compete` mandate exists for, and when one of those wins it all it is the
+    story of the decade rather than of the season. Over the same twenty seasons
+    the champion's prestige ranked 1st thirteen times and outside the top twelve
+    once, so the gate below fires about one year in twenty.
+
+    Binary and genuinely rare, so it keeps a fixed salience high enough to win
+    outright whenever it does fire.
+  */
   if (post) {
-    const byStrength = [...rows].sort((a, b) => b.strength - a.strength);
-    const champRank = byStrength.findIndex((r) => r.t.index === post.champion) + 1;
     const champ = rows.find((r) => r.t.index === post.champion);
-    if (champ && champRank > 10 && champ.wins > champ.losses) {
+    const rank = champ
+      ? rows.filter((r) => r.t.prestige > champ.t.prestige).length + 1
+      : 0;
+    if (champ && rank > 12 && champ.wins > champ.losses) {
       candidates.push({
         row: champ,
         reason: 'giantKiller',
         salience: 4.0,
-        line: `national champions with the No. ${champRank} roster in the country`,
+        line: `national champions, and only the No. ${rank} name in the country`,
       });
     }
   }
@@ -922,41 +999,72 @@ export function coachOfTheYear(
     }
   }
 
-  // WIRE-TO-WIRE — a conference champion who also owned the country's best run
-  // margin per game: dominant in the standings and dominant on the field, all
-  // season long. Both halves are required — the margin alone is a stat, the
-  // title alone is a bracket.
+  /*
+    WIRE-TO-WIRE — a conference champion who was also nobody's idea of a fair
+    fight: dominant in the standings and dominant on the field, all season long.
+    Both halves are required, because the margin alone is a stat and the title
+    alone is a bracket.
+
+    The first version asked for the country's *outright* best run margin and
+    then checked whether that team happened to have won its league. That is two
+    independent events rather than one story, and it fired once in twenty
+    seasons: the margin leader is usually a team that got knocked over in its
+    conference tournament. The candidate is now the best margin *among*
+    conference champions, which is the same sentence read in the order it is
+    spoken — he won his league, and of everybody who did, he outscored the lot.
+
+    The salience is still measured against the whole country's spread, so a year
+    when no champion was especially dominant scores low and loses to whatever
+    else the season had to say. That is the part doing the work: the category is
+    now allowed to compete every June instead of being decided by a coincidence.
+  */
   if (post) {
     const diffOf = (r: typeof rows[number]): number =>
       r.t.gp > 0 ? (r.t.rs - r.t.ra) / r.t.gp : 0;
-    const diffs = rows.map(diffOf);
-    const diffSd = sd(diffs);
-    const bestDiff = Math.max(...diffs);
-    const leader = rows.find((r) => diffOf(r) === bestDiff);
-    if (
-      leader && diffSd > 0 && leader.wins > leader.losses
-      && post.conferenceChampions.includes(leader.t.index)
-    ) {
+    const diffSd = sd(rows.map(diffOf));
+    const champions = eligible.filter((r) => post.conferenceChampions.includes(r.t.index));
+    const leader = champions.length > 0
+      ? champions.reduce((a, b) => (diffOf(b) > diffOf(a) ? b : a))
+      : null;
+    if (leader && diffSd > 0 && diffOf(leader) > 0) {
+      const best = Math.max(...rows.map(diffOf));
+      const margin = diffOf(leader);
       candidates.push({
         row: leader,
         reason: 'wireToWire',
-        salience: bestDiff / diffSd,
-        line: `outscored the country by ${bestDiff.toFixed(1)} runs a game, wire to wire`,
+        salience: margin / diffSd,
+        line: margin >= best
+          ? `outscored the country by ${margin.toFixed(1)} runs a game, wire to wire`
+          : `won the league at ${margin.toFixed(1)} runs a game, wire to wire`,
       });
     }
   }
 
-  const winner = candidates.reduce((a, b) => (b.salience > a.salience ? b : a));
-  return {
-    team: winner.row.t.index,
-    school: winner.row.t.def.school,
-    wins: winner.row.wins,
-    losses: winner.row.losses,
-    expected: Math.round(expectedOf(winner.row) * 10) / 10,
-    strength: Math.round(winner.row.strength),
-    reason: winner.reason,
-    line: winner.line,
-  };
+  return candidates
+    .map((c) => ({
+      team: c.row.t.index,
+      school: c.row.t.def.school,
+      wins: c.row.wins,
+      losses: c.row.losses,
+      expected: Math.round(expectedOf(c.row) * 10) / 10,
+      strength: Math.round(c.row.strength),
+      reason: c.reason,
+      line: c.line,
+      salience: c.salience / TYPICAL_SALIENCE[c.reason],
+      raw: c.salience,
+    }))
+    .sort((a, b) => b.salience - a.salience);
+}
+
+export function coachOfTheYear(
+  season: SeasonState, post?: PostseasonSummary | null,
+): CoachAward | null {
+  const winner = coachAwardCandidates(season, post)[0];
+  if (!winner) return null;
+  const { salience, raw, ...award } = winner;
+  void salience;
+  void raw;
+  return award;
 }
 
 export function seasonAwards(season: SeasonState): Award[] {

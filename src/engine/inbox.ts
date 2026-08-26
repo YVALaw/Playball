@@ -35,7 +35,35 @@ export type InboxKind =
   | 'achievement'
   | 'draft'
   | 'carousel'
-  | 'hall';
+  | 'hall'
+  // The two that fire between February and June. Everything above is written
+  // in the offseason, which is why the inbox used to be empty for the whole of
+  // the season it is meant to be reporting on — see §17.3a.
+  | 'record'
+  | 'season';
+
+/**
+ * Where a card goes when it is tapped.
+ *
+ * A notification you cannot act on is a notification with half of it missing:
+ * the card names a man, a program or a verdict, and the thing it names has a
+ * page in this app. Every destination here is one that can be opened from
+ * anywhere — an overlay or a card — because the inbox itself is now reachable
+ * from anywhere, including the offseason and the postseason, where the ordinary
+ * navigation does not exist.
+ *
+ * Deliberately a small closed set rather than a route string. Some cards have
+ * no sensible destination — how many of your men were drafted is not a place —
+ * and those carry no link at all and are drawn as plain cards, which is the
+ * honest treatment: inventing a destination for them would teach the player
+ * that tapping is a guess.
+ */
+export type InboxLink =
+  | { to: 'player'; id: string }
+  | { to: 'team'; index: number }
+  | { to: 'program'; sheet: 'board' | 'coach' | 'hall' }
+  | { to: 'book' }
+  | { to: 'schedule' };
 
 export interface InboxItem {
   /** Unique, and stable across a reload so React keys do not shuffle. */
@@ -48,6 +76,8 @@ export interface InboxItem {
   /** A sentence or two under it. Never essential — the title carries it. */
   body: string;
   read: boolean;
+  /** What the card is about, where that is somewhere the app can open. */
+  link?: InboxLink;
 }
 
 export const INBOX_LABEL: Record<InboxKind, string> = {
@@ -60,6 +90,8 @@ export const INBOX_LABEL: Record<InboxKind, string> = {
   // This is the one thing the inbox says about somebody else: a man who played
   // for you, honoured for what he did while he was here.
   hall: 'THE HALL',
+  record: 'THE BOOK',
+  season: 'THE SEASON',
 };
 
 /**
@@ -92,14 +124,32 @@ let counter = 0;
 /** For tests, which need two runs of the same script to agree. */
 export const resetInboxIds = (): void => { counter = 0; };
 
-/** A new item, unread, with an id nothing else in the list will collide with. */
-export function newItem(item: Omit<InboxItem, 'id' | 'read'>): InboxItem {
+/**
+ * A new item, unread, with an id nothing else in the list will collide with.
+ *
+ * `key` is for the things that are *found* rather than announced. A board
+ * verdict happens once, at a moment, and a counter is the whole requirement.
+ * A record your program now holds is a fact discovered by a scan, and the scan
+ * runs again every time the calendar moves — so those carry a key, the id is
+ * built from it, and {@link push} refuses the second copy. Scoped by year on
+ * purpose: the same thing happening again next season is news again.
+ */
+export function newItem(item: Omit<InboxItem, 'id' | 'read'> & { key?: string }): InboxItem {
+  const { key, ...rest } = item;
+  if (key !== undefined) return { ...rest, id: `${item.year}-${key}`, read: false };
   counter += 1;
-  return { ...item, id: `${item.year}-${counter}`, read: false };
+  return { ...rest, id: `${item.year}-${counter}`, read: false };
 }
 
-/** Newest first, and trimmed. */
+/**
+ * Newest first, and trimmed.
+ *
+ * A keyed item already in the list is not posted again — that is what makes a
+ * scan safe to run on every advance. The counter cannot collide with a key: an
+ * id is only ever matched whole.
+ */
 export function push(inbox: readonly InboxItem[], item: InboxItem): InboxItem[] {
+  if (inbox.some((i) => i.id === item.id)) return [...inbox];
   return [item, ...inbox].slice(0, INBOX_LIMIT);
 }
 
@@ -109,6 +159,28 @@ export const unreadCount = (inbox: readonly InboxItem[]): number =>
 /** Everything read. What opening the screen does, and the only way to clear it. */
 export const markAllRead = (inbox: readonly InboxItem[]): InboxItem[] =>
   (inbox.every((i) => i.read) ? [...inbox] : inbox.map((i) => ({ ...i, read: true })));
+
+/**
+ * A destination off the disk.
+ *
+ * Checked rather than trusted for the same reason the rest of the card is: a
+ * link written by a build that spelled a target differently would reach the
+ * screen as a card that looks tappable and goes nowhere, which is worse than
+ * one that was never tappable at all.
+ */
+function validLink(saved: unknown): saved is InboxLink {
+  if (!saved || typeof saved !== 'object') return false;
+  const l = saved as Partial<InboxLink> & { id?: unknown; index?: unknown; sheet?: unknown };
+  switch (l.to) {
+    case 'player': return typeof l.id === 'string';
+    case 'team': return typeof l.index === 'number';
+    case 'program':
+      return l.sheet === 'board' || l.sheet === 'coach' || l.sheet === 'hall';
+    case 'book':
+    case 'schedule': return true;
+    default: return false;
+  }
+}
 
 /**
  * A list off the disk, with anything malformed dropped.
@@ -135,6 +207,7 @@ export function restoreInbox(saved: unknown): InboxItem[] {
       id: i.id, year: i.year, kind: i.kind,
       title: i.title, body: typeof i.body === 'string' ? i.body : '',
       read: i.read === true,
+      ...(validLink(i.link) ? { link: i.link } : {}),
     });
   }
   return out.slice(0, INBOX_LIMIT);

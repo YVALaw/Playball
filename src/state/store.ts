@@ -12,14 +12,16 @@
 
 import { create } from 'zustand';
 import {
-  createSeason, simNextDay, simSeason, seasonComplete, standings, nextSeason, rpi,
+  createSeason, simNextDay, simSeason, seasonComplete, standings, nextSeason, rpi, rpiOrder,
   seasonLength, regularRecord, archiveSeason, recordSeasonMarks,
   recordCareerMarks, recordResult, restedFirst,
-  type SeasonState,
+  type SeasonState, type TeamRecord,
 } from '../engine/season.js';
 import { activeIds, honoursByPlayer, inductees } from '../engine/hall.js';
 import { BADGES } from '../engine/badges.js';
-import { recordCoachMarks } from '../engine/records.js';
+import {
+  recordCoachMarks, RECORDS, type RecordKey, type RecordMark,
+} from '../engine/records.js';
 import { overallOf } from '../engine/ratings.js';
 import type { GameResult } from '../engine/game.js';
 import { playerId } from '../engine/types.js';
@@ -33,7 +35,7 @@ import {
   letHimGo, makeTheCase, sceneFrom, type KeepPitch, type KeepScene,
 } from '../engine/draft.js';
 import {
-  newCoach, restoreCoach, reviewSeason, jobOffers, rosterStrength, contractFor,
+  newCoach, restoreCoach, reviewSeason, jobOffers, rosterStrength, contractFor, playerBoard,
   prestigeStars, skillPoints, takeChair,
   type CoachState, type CoachSkills, type CoachProfile, type JobOffer, type Review,
   type SeasonOutcome,
@@ -62,7 +64,8 @@ import {
 import {
   SCHOLARSHIPS, RECRUITING_BUDGET, MAX_PER_RECRUIT, RECRUITING_WEEKS, budgetFor,
   weeklyBudget, windowBudget,
-  aiTargets, weeklyPoints, closeWeek, resetWeeklySpend, canPursue, leadersAtWeekStart,
+  aiTargets, weeklyPoints, closeWeek, resetWeeklySpend, canPursue, inPipeline,
+  leadersAtWeekStart,
 } from '../engine/recruiting.js';
 import { pitchFor, developmentScore } from '../engine/pitch.js';
 
@@ -191,6 +194,13 @@ import {
 import type { SimProgress } from './simWorker.js';
 
 export type Tab = 'home' | 'team' | 'season' | 'program';
+
+/** A screen laid over whatever frame the game is in. See `overlay` below. */
+export type Overlay =
+  'schedule' | 'standings' | 'rankings' | 'saves' | 'inbox' | 'program' | 'book';
+
+/** The three tabs of the program page, which is addressable from the inbox. */
+export type ProgramSheet = 'board' | 'coach' | 'hall';
 
 /**
  * The offseason, as a sequence you are walked through rather than a set of tabs
@@ -405,6 +415,25 @@ export interface DynastyStore {
   releasePlayer: (id: PlayerId) => void;
   /** Put a skill point into one of the coach's four attributes. */
   spendSkill: (skill: keyof CoachSkills) => void;
+  /**
+   * Take a point back off a skill, if it was put there on this visit.
+   *
+   * Reported: three points went into one skill by mistake and there was no way
+   * back. Spending is still permanent — a coach does not get to redistribute a
+   * career every June — but it is only permanent from the moment the step
+   * closes, which is the difference between a decision and a slip of the thumb.
+   */
+  refundSkill: (skill: keyof CoachSkills) => void;
+  /**
+   * What has been spent since the coach step opened, per skill.
+   *
+   * The ledger is what makes an undo an undo rather than a respec: only points
+   * put on during this visit can come off, so the four skills cannot be
+   * rearranged years later. Cleared when the step is left — including by a
+   * reload, which is honest, since leaving the screen is exactly what commits
+   * them.
+   */
+  spentThisStep: Partial<Record<keyof CoachSkills, number>>;
   /** Close the books on the season just played. Called when the review opens. */
   settleSeason: () => void;
   /** Re-enter the offseason sequence. The phase is not persisted, so a reload
@@ -423,10 +452,21 @@ export interface DynastyStore {
   /**
    * File something. Everything that posts goes through here so the trim and the
    * id are in one place rather than at a dozen call sites.
+   *
+   * `key` makes the post idempotent within its year — see `newItem`. Anything
+   * written by a scan rather than by an event needs it, because a scan runs
+   * again every time the calendar moves.
    */
-  post: (item: Omit<InboxItem, 'id' | 'read'>) => void;
+  post: (item: Omit<InboxItem, 'id' | 'read'> & { key?: string }) => void;
   /** What opening the screen does. Nothing else clears the badge. */
   readInbox: () => void;
+  /**
+   * What has happened to you since the last time the calendar moved.
+   *
+   * Called after anything that advances the season — a day, a managed game, a
+   * whole year in the worker. See the writers in `seasonNews`.
+   */
+  noteSeasonNews: () => void;
 
   /**
    * Begin a dynasty. Pass a team index to choose the job, and the profile the
@@ -547,9 +587,28 @@ export interface DynastyStore {
    * stretch containing every decision somebody would want a copy of the dynasty
    * before making.
    */
-  overlay: 'schedule' | 'standings' | 'rankings' | 'saves' | null;
-  openOverlay: (o: 'schedule' | 'standings' | 'rankings' | 'saves') => void;
+  /**
+   * The inbox, the program page and the record book are in here for a third
+   * reason, and it is the one that made the inbox worth building twice: they are
+   * where the *cards* point. An item that names a man, a program or a verdict
+   * has to be able to open it from wherever the card was read, and the card can
+   * now be read during the offseason and the postseason — where there is no nav
+   * at all. A destination that only works in one of the three frames is a
+   * notification that is tappable on Tuesdays.
+   */
+  overlay: Overlay | null;
+  openOverlay: (o: Overlay) => void;
   closeOverlay: () => void;
+  /**
+   * Which sheet the program page opens on.
+   *
+   * In the store rather than in `Program.tsx`'s own state because it is now
+   * addressed from outside — a board verdict in the inbox opens the board, an
+   * achievement opens the cabinet — and a component that owns its tab cannot be
+   * told which tab to be on.
+   */
+  programSheet: ProgramSheet;
+  setProgramSheet: (s: ProgramSheet) => void;
 
   /** Whose card is open. Cleared when you navigate away. */
   selectedPlayer: PlayerId | null;
@@ -840,13 +899,193 @@ function postCarousel(
         : m.kind === 'retired'
           ? `${m.coach} retires at ${m.school}`
           : `${m.school} hire ${m.coach}`;
-    store.post({ kind: 'carousel', year, title, body: m.detail });
+    store.post({
+      kind: 'carousel', year, title, body: m.detail,
+      // The program the move is about, which is the page with the man on it.
+      ...(m.team !== undefined ? { link: { to: 'team' as const, index: m.team } } : {}),
+    });
   }
   if (counted > 0) {
     store.post({
       kind: 'carousel', year,
       title: `${counted} more coaching change${counted === 1 ? '' : 's'} around the country`,
       body: 'Outside your conference. The full picture is on the rankings table.',
+    });
+  }
+}
+
+/*
+  ---------------------------------------------------------------------------
+  The season's own news
+  ---------------------------------------------------------------------------
+
+  Reported: "the inbox stayed empty for a whole season." It did, and it was
+  built that way. Every writer in this file — the verdict, the offers, the
+  achievements, the draft, the carousel, the hall — fires between the last game
+  of one year and the first of the next, so the notification centre had nothing
+  to say during the four months it is actually being looked at, and the screen
+  showed its empty state to a coach who was thirty games into a season.
+
+  What follows is the other half: four things that happen *while* you are
+  playing, filed as they happen. They are scans rather than events, because the
+  calendar does not advance one day at a time — `playSeason` hands back a
+  finished year from a worker — so every one of them is keyed and idempotent
+  and produces the same cards whether the season was simmed in one press or
+  walked through a game at a time. See `newItem`.
+
+  The volume rule is the carousel's, applied to a season: a card has to be
+  something you would tell somebody about. A typical year files two to five.
+*/
+
+/** Whether a mark in the book belongs to this program, set this season. */
+const freshMark = (mark: RecordMark, abbr: string, year: number): boolean =>
+  mark.team === abbr && mark.year === year;
+
+/**
+ * Your regular season so far, oldest first, as a list of won or lost.
+ *
+ * Off the game log rather than off the live `TeamRecord`, and that is what
+ * makes every writer below path-independent. A season simmed in one press
+ * arrives finished — `streak` says whatever it happened to end on and `w`/`l`
+ * are the final numbers — so anything read off the record would describe a
+ * different season depending on how the player chose to play it. The log is the
+ * same either way.
+ *
+ * Bracket games are recorded through the same door and have to come off the
+ * end, or a run of wins quietly spans May and June. They are counted out rather
+ * than filtered by the calendar: `day` is the simulation's clock and runs well
+ * past the length of the schedule even in the regular season, whereas
+ * `regularRecord` is the frozen count of exactly the games that belong here.
+ */
+function regularGames(season: SeasonState, rec: TeamRecord): boolean[] {
+  const team = rec.index;
+  const played = regularRecord(rec);
+  const out: boolean[] = [];
+  for (const g of season.results) {
+    if (g.home !== team && g.away !== team) continue;
+    out.push(g.home === team ? g.homeRuns > g.awayRuns : g.awayRuns > g.homeRuns);
+  }
+  return out.slice(0, played.w + played.l);
+}
+
+/** The longest run of each kind in a list of results. */
+function bestRuns(games: readonly boolean[]): { won: number; lost: number } {
+  let won = 0;
+  let lost = 0;
+  let w = 0;
+  let l = 0;
+  for (const win of games) {
+    if (win) { w += 1; l = 0; } else { l += 1; w = 0; }
+    won = Math.max(won, w);
+    lost = Math.max(lost, l);
+  }
+  return { won, lost };
+}
+
+/** Runs long enough to be worth a card, and what to call one. */
+const RUN_MARKS: readonly { at: number; won: boolean; title: string }[] = [
+  { at: 6, won: true, title: 'Six in a row' },
+  { at: 10, won: true, title: 'Ten straight' },
+  { at: 5, won: false, title: 'Five straight defeats' },
+  { at: 9, won: false, title: 'Nine straight defeats' },
+];
+
+function seasonNews(store: DynastyStore): void {
+  const { season, userTeam, year } = store;
+  const me = season?.teams[userTeam];
+  if (!season || !me) return;
+  if (season.results.length === 0) return;
+
+  /*
+    THE BOOK. A mark in the all-time book with your program's name against it,
+    set this year. Game records and feats are offered on the night they happen,
+    so these arrive during the season; the season and career sections are
+    written in June and arrive then. Either way the man who set it is one tap
+    away, which is the whole reason the card exists rather than the player
+    finding out months later by scrolling the book.
+
+    The coaching section is deliberately skipped. Those marks are re-offered
+    every June for as long as you hold them, so they would post a card a year
+    for fifteen years saying the same thing, and the cabinet on the coach page
+    already says it better.
+  */
+  for (const [key, mark] of Object.entries(season.records ?? {})) {
+    if (!mark || !freshMark(mark, me.def.abbr, year)) continue;
+    const spec = RECORDS[key as RecordKey];
+    if (spec.group === 'coach') continue;
+    store.post({
+      kind: 'record', year, key: `book-${key}`,
+      title: `${mark.holder} — ${spec.label.toLowerCase()}`,
+      body: `The all-time ${spec.group} record${mark.detail ? `, ${mark.detail}` : ''}. `
+        + 'It is in the book under your program now.',
+      link: mark.id ? { to: 'player', id: mark.id } : { to: 'book' },
+    });
+  }
+
+  const played = regularGames(season, me);
+  const won = played.filter(Boolean).length;
+
+  // A RUN. Six wins is a thing people notice; five defeats is a thing the board
+  // notices. Only the longer of the two rungs is filed, so a season simmed in
+  // one press does not report the same ten game run twice on its way past six.
+  const runs = bestRuns(played);
+  for (const r of RUN_MARKS) {
+    const run = r.won ? runs.won : runs.lost;
+    if (run < r.at) continue;
+    if (RUN_MARKS.some((o) => o.won === r.won && o.at > r.at && run >= o.at)) continue;
+    store.post({
+      kind: 'season', year, key: `run-${r.won ? 'w' : 'l'}-${r.at}`,
+      title: r.title,
+      body: r.won
+        ? `${run} straight wins. The country's tables are on the season tab.`
+        : `${run} in a row the wrong way. The schedule says where it went.`,
+      link: { to: 'schedule' },
+    });
+  }
+
+  // THE POLL. Only the three rungs that mean anything, and only the best one
+  // reached — three cards in one press saying you passed 25th, 10th and first
+  // is the same news three times.
+  if (played.length >= 12) {
+    const rank = rpiOrder(season).findIndex((r) => r.team.index === userTeam) + 1;
+    const at = [1, 10, 25].find((n) => rank > 0 && rank <= n);
+    if (at !== undefined) {
+      store.post({
+        kind: 'season', year, key: `rpi-${at}`,
+        title: at === 1 ? 'Number one in the country' : `Into the top ${at}`,
+        body: `${me.def.school} are ${rank === 1 ? 'top' : `No. ${rank}`} in the RPI at `
+          + `${won}-${played.length - won}.`,
+        link: { to: 'program', sheet: 'board' },
+      });
+    }
+  }
+
+  /*
+    THE BOARD, at the halfway mark.
+
+    The one card that fires every single season, and the reason one has to. The
+    inbox is where a coach is told things, and a year in which it says nothing
+    at all until June teaches him not to open it — so the season's own midpoint
+    is reported against the number the board gave him in February. It is not a
+    new judgement and it does not move anything: the checklist is the same one
+    the program page has been showing all along.
+
+    Counted at the halfway game rather than from the current record, so the card
+    says the same thing whether it was posted the night it happened or found by
+    the scan after a season was simmed in one press.
+  */
+  const games = seasonLength(season.config);
+  const half = Math.floor(games / 2);
+  if (played.length >= half) {
+    const at = played.slice(0, half);
+    const w = at.filter(Boolean).length;
+    const want = playerBoard(me.prestige, rosterStrength(me.team), games).expectation;
+    store.post({
+      kind: 'board', year, key: 'halfway',
+      title: 'Halfway, and the board is watching',
+      body: `${w}-${half - w} at the turn, on for ${Math.round((w / half) * games)} wins `
+        + `against the ${want.targetWins} they asked for. ${want.detail}`,
+      link: { to: 'program', sheet: 'board' },
     });
   }
 }
@@ -927,10 +1166,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (!prospect || prospect.signedBy !== null) return;
 
     // Out of reach for a program this size. Refused here as well as hidden in
-    // the screen, so the rule holds wherever the call comes from.
+    // the screen, so the rule holds wherever the call comes from — and with the
+    // pipeline, because a gate that forgets it here refuses the one recruit the
+    // board has just told the coach he can chase. A home state kid is worth a
+    // star of reach; see `canPursue`.
     const me = get().season?.teams[userTeam];
     const myStars = me ? prestigeStars(me.prestige) : 1;
-    if (!canPursue(prospect, myStars)) return;
+    if (!canPursue(prospect, myStars, inPipeline(prospect, me?.def.state ?? ''))) return;
 
     // A full class cannot sign anybody else, so there is nothing to spend on him.
     const signed = season.recruiting.prospects
@@ -1045,6 +1287,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           kind: 'achievement', year: get().year,
           title: ACHIEVEMENTS[id].name.toUpperCase(),
           body: `${top.prospect.player.name}, the number one recruit in the country, is coming here.`,
+          link: { to: 'program', sheet: 'coach' },
         });
       }
     }
@@ -1116,7 +1359,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
     // Nothing carries over between steps. A table left open over the season
     // review would still be sitting over the top of recruiting.
-    set({ overlay: null, selectedPlayer: null });
+    //
+    // The skill ledger goes with them, and that is the whole of the rule about
+    // taking points back: they can come off until the step is left, and leaving
+    // it is what commits them.
+    set({ overlay: null, selectedPlayer: null, spentThisStep: {} });
 
     const at = PHASES.indexOf(phase);
     const next = PHASES[at + 1] ?? null;
@@ -1161,6 +1408,17 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         already in are passed in as `inducted` and are never reconsidered.
       */
       const hallYear = get().year;
+      /*
+        `history` now includes the season that has just ended — it is written at
+        the board meeting rather than at the year roll (see `settleSeason`) —
+        which is what lets this line be as simple as it looks.
+
+        It was not, and the ballot was reading every season the coach had ever
+        finished *except* the last one. That is the season a graduating senior
+        wins things in, and he is on the ballot precisely because it was his
+        last, so the case that went to the vote was systematically missing the
+        honours that argue for him.
+      */
       const going = inductees({
         careers: season.careers ?? {},
         active: activeIds(season.teams),
@@ -1178,6 +1436,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
             : `${going.length} men go into the hall`,
           body: `${going.map((m) => `${m.name}, ${m.line}`).join('. ')}. `
             + 'The plaques are on the program page, under HALL OF FAME.',
+          // One man opens his own card; a class opens the wall they are on.
+          link: going.length === 1 && going[0]
+            ? { to: 'player', id: going[0].id }
+            : { to: 'program', sheet: 'hall' },
         });
       }
 
@@ -1282,6 +1544,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
               kind: 'achievement', year,
               title: ACHIEVEMENTS[id].name.toUpperCase(),
               body: `${first.name} went first overall. Nobody in the country was taken ahead of one of yours.`,
+              link: { to: 'program', sheet: 'coach' },
             });
           }
         }
@@ -1344,7 +1607,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   spendSkill: (skill) => {
-    const { coach, season, userTeam, version } = get();
+    const { coach, season, userTeam, version, spentThisStep } = get();
     if (coach.skillPoints <= 0) return;
     if (coach.skills[skill] >= 99) return;
     const next = {
@@ -1355,7 +1618,32 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // The in-game skills live on the team record too; keep the copy current the
     // moment a point lands, or the next game plays at last year's numbers.
     if (season) applyCoachMods(season, userTeam, next);
-    set({ coach: next, version: version + 1 });
+    set({
+      coach: next,
+      spentThisStep: { ...spentThisStep, [skill]: (spentThisStep[skill] ?? 0) + 1 },
+      version: version + 1,
+    });
+  },
+
+  spentThisStep: {},
+
+  refundSkill: (skill) => {
+    const { coach, season, userTeam, version, spentThisStep } = get();
+    const on = spentThisStep[skill] ?? 0;
+    // Only what this visit put there. Nothing else can come off, which is what
+    // keeps this an undo rather than a way to rebuild a coach from scratch.
+    if (on <= 0) return;
+    const next = {
+      ...coach,
+      skillPoints: coach.skillPoints + 1,
+      skills: { ...coach.skills, [skill]: coach.skills[skill] - 1 },
+    };
+    if (season) applyCoachMods(season, userTeam, next);
+    set({
+      coach: next,
+      spentThisStep: { ...spentThisStep, [skill]: on - 1 },
+      version: version + 1,
+    });
   },
 
   advanceDay: () => {
@@ -1363,6 +1651,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (!season || seasonComplete(season)) return;
     simNextDay(season);
     set({ version: version + 1 });
+    get().noteSeasonNews();
   },
 
   playSeason: async () => {
@@ -1375,6 +1664,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // than a dead button.
       simSeason(season);
       set({ version: get().version + 1, busy: false });
+      get().noteSeasonNews();
       void get().saveNow();
       return;
     }
@@ -1390,6 +1680,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         busy: false,
         progress: null,
       });
+      // A whole year arriving at once is still a year of things that happened
+      // to you, and the scan is written so that a season simmed in one press
+      // files the same cards as one walked through a day at a time.
+      get().noteSeasonNews();
       void get().saveNow();
     } catch (e) {
       set({
@@ -1450,7 +1744,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       Read against `tenure`, which is this season counted — a man finishing his
       fifteenth year is a Lifer at the meeting that closes it, not a year later.
       `titleLastYear` comes off the history array rather than off a flag on the
-      coach: the array is written at the year roll and is therefore exactly "the
+      coach: the array is read here before this season is added to it, and is
+      therefore exactly "the
       seasons before this one", which is the question Dynasty asks.
 
       The two game-level feats are read off the season and not recomputed. By
@@ -1494,9 +1789,29 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // played with has to be restamped before the next season starts.
     syncCoachMods(season, userTeam, coach.skills);
 
+    /*
+      The season, into the record books, here rather than at the year roll.
+
+      It moved for the reason the archive moved before it: `departAndDevelop`
+      empties every roster at the draft step, and `recordFor` resolves an award
+      through `rosterIndex` — so a Player of the Year who graduated in June was
+      simply not in the country any more by the time the record was assembled,
+      and his award went into no season's list at all. The men most likely to
+      win something are the men most likely to have just left, which made the
+      loss systematic rather than occasional.
+
+      Written at the board meeting, the rosters that produced the season are
+      still standing and every winner resolves. It also means `history` is
+      complete by the time the hall of fame meets two steps later, which is the
+      other half of the same bug: the ballot could not read a man's final-year
+      honours because nothing had written them down yet.
+    */
+    const record = recordFor(get());
+
     set({
       lastReview: review,
       lastOutcome: outcome,
+      history: record ? [...get().history, record] : get().history,
       coach: {
         ...coach,
         prestige: review.coachPrestigeAfter,
@@ -1521,10 +1836,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       kind: 'board', year,
       title: BOARD_HEADLINE[review.verdict],
       body: review.message,
+      link: { to: 'program', sheet: 'board' },
     });
     if (review.prestigePenalty > 0) {
       get().post({
         kind: 'board', year,
+        link: { to: 'program', sheet: 'coach' },
         title: 'Your standing has taken a hit',
         body: `${review.badRun} seasons in a row the board did not accept. `
           + `Coaches around the country notice a pattern where they forgive an `
@@ -1539,6 +1856,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         kind: 'achievement', year,
         title: spec.name.toUpperCase(),
         body: row?.detail ? `${spec.note} ${capitalise(row.detail)}.` : spec.note,
+        // The cabinet, which is where the thing he just earned is kept.
+        link: { to: 'program', sheet: 'coach' },
       });
     }
     postCarousel(get(), year, me.conference, rivals.moves);
@@ -1549,15 +1868,23 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (!season || busy) return;
     set({ busy: true });
 
-    // Written into the record books before the offseason overwrites the rosters
-    // that produced it. A dynasty that forgets last season is just a series of
-    // unrelated seasons.
-    const record = recordFor(get());
+    /*
+      The season is already in the record books: `settleSeason` writes it at the
+      board meeting, where the rosters that produced it are still standing and an
+      award still resolves to a man. This is the fallback for the one case that
+      does not go through that door — a career that was never graded, which is
+      what a reload landing past the review step looks like — and it is a worse
+      record than the one above, because by now the departing class is gone and
+      its awards cannot be named. Better than no season at all, and it cannot
+      double up: the record for a year already written is not written again.
+    */
+    const last = get().history[get().history.length - 1];
+    const record = last?.year === year ? null : recordFor(get());
     const review = get().lastReview;
 
-    // The season itself was written down on the way into the draft, along with
-    // the all-time book — see `nextPhase`. Nothing is archived here, because by
-    // now every man who left is off the roster this would have read.
+    // The all-time book was written on the way into the draft — see `nextPhase`.
+    // Nothing is archived here, because by now every man who left is off the
+    // roster this would have read.
 
     const done = (next: SeasonState, report: OffseasonReport): void => {
       const rolled = nextSeason(next);
@@ -1626,6 +1953,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           kind: 'offer', year: year + 1,
           title: `${o.school} want to talk to you`,
           body: `${o.conference}, ${prestigeStars(o.prestige)} star. ${o.pitch}`,
+          // The program itself. Taking the job is the job search screen's, which
+          // is the whole frame while you are out of work; this is the page that
+          // says what you would be taking on.
+          link: { to: 'team', index: o.team },
         });
       }
       void get().saveNow();
@@ -1657,7 +1988,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   goPhase: (phase) => {
     const at = PHASES.indexOf(phase);
     if (at < 0 || at > get().furthestPhase) return;
-    set({ phase, overlay: null, selectedPlayer: null, version: get().version + 1 });
+    set({
+      phase, overlay: null, selectedPlayer: null, spentThisStep: {},
+      version: get().version + 1,
+    });
   },
   selectedPlayer: null,
   coach: newCoach(),
@@ -1668,6 +2002,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   inbox: [],
   post: (item) => set({ inbox: push(get().inbox, newItem(item)) }),
+  noteSeasonNews: () => {
+    const before = get().inbox;
+    seasonNews(get());
+    // One version bump for the whole scan rather than one per card, and none at
+    // all when there was nothing to say — every caller is already re-rendering
+    // for its own reasons and a scan that finds nothing must not add a frame.
+    if (get().inbox !== before) set({ version: get().version + 1 });
+  },
   readInbox: () => {
     const inbox = get().inbox;
     if (unreadCount(inbox) === 0) return;
@@ -1737,6 +2079,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   overlay: null,
   openOverlay: (o) => set({ overlay: o }),
   closeOverlay: () => set({ overlay: null }),
+  programSheet: 'board',
+  setProgramSheet: (s) => set({ programSheet: s, version: get().version + 1 }),
 
   openPlayer: (id) => set({ selectedPlayer: id }),
 
@@ -2193,6 +2537,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     });
 
     set({ live: null, liveMeta: null, version: version + 1, screen: 'today' });
+    get().noteSeasonNews();
     await get().saveNow();
   },
 

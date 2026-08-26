@@ -37,7 +37,7 @@ import { Avatar, teamColour } from '../Avatar.js';
 import { FixedHeader } from '../Sticky.js';
 import {
   battingAverage, onBase, slugging, era, whip, inningsPitched,
-  fieldingPct, playsAboveExpected, fieldingContext, careerName,
+  fieldingPct, playsAboveExpected, fieldingContext, careerName, liveCareerYear,
 } from '../../engine/season.js';
 import type { BoxScore, CareerYear, SeasonState } from '../../engine/season.js';
 import type { Departure } from '../../engine/progression.js';
@@ -316,7 +316,9 @@ export function Player() {
         {active === 'ratings' && <Ratings p={p} isOurs={isOurs} />}
         {active === 'stats' && <ThisSeason p={p} />}
         {active === 'games' && <Games id={p.id} owner={owner} isOurs={isOurs} />}
-        {active === 'history' && <Career id={p.id} isPitcher={isPitcher} isOurs={isOurs} />}
+        {active === 'history' && (
+          <Career id={p.id} owner={owner} isPitcher={isPitcher} isOurs={isOurs} />
+        )}
       </div>
     </FixedHeader>
   );
@@ -1152,11 +1154,16 @@ function Games({ id, owner, isOurs }: { id: PlayerId; owner: Owner; isOurs: bool
  * the season by season table, which is the only thing that can show a man
  * developing and is therefore the expensive one. See §13.6.
  */
-function Career({ id, isPitcher, isOurs }: { id: PlayerId; isPitcher: boolean; isOurs: boolean }) {
+function Career(
+  { id, owner, isPitcher, isOurs }:
+  { id: PlayerId; owner: Owner; isPitcher: boolean; isOurs: boolean },
+) {
   const season = useDynasty((s) => s.season);
-  const years = season?.careers?.[id] ?? [];
+  const version = useDynasty((s) => s.version);
+  void version;
+  const archived = season?.careers?.[id] ?? [];
 
-  if (!isOurs && years.length === 0) {
+  if (!isOurs && archived.length === 0) {
     return (
       <>
         <Head>COLLEGE CAREER</Head>
@@ -1165,11 +1172,38 @@ function Career({ id, isPitcher, isOurs }: { id: PlayerId; isPitcher: boolean; i
     );
   }
 
+  /*
+    The year he is playing, stacked under the years he has played.
+
+    The archive is written in June, so between February and the draft step the
+    season in front of the player is in `season.batting` and nowhere else — and
+    this table read the archive alone. Reported as "after two seasons only one
+    year shows, and the numbers do not update in real time", which is one
+    defect seen from two angles: a sophomore in May had his freshman row and no
+    second one, and nothing on the tab moved when he went four for four.
+
+    The live row is the same row `archiveSeason` will write in June, computed by
+    the same function, and it is marked as unfinished rather than presented as
+    a result. Filtered rather than concatenated blindly, because between the
+    draft step and the year roll the archive already holds this year and the two
+    would print twice.
+  */
+  const live = isOurs && season ? liveCareerYear(season, owner.index, id) : null;
+  const years = live
+    ? [...archived.filter((y) => y.year !== live.year), live]
+    : archived;
+
   return (
     <>
       <Head>COLLEGE CAREER</Head>
-      <CareerTable years={years} isPitcher={isPitcher} />
-      <CareerGlove years={years} />
+      <CareerTable years={years} isPitcher={isPitcher} live={live?.year} />
+      <CareerGlove years={years} live={live?.year} />
+      {live && (
+        <Note>
+          The bottom row is the season in progress. It goes into the book in
+          June, with whatever it says on the last day.
+        </Note>
+      )}
     </>
   );
 }
@@ -1185,7 +1219,7 @@ function Career({ id, isPitcher, isOurs }: { id: PlayerId; isPitcher: boolean; i
  * not mean the same thing in two rows and a career column of it would be adding
  * up numbers that are not on the same scale.
  */
-function CareerGlove({ years }: { years: CareerYear[] }) {
+function CareerGlove({ years, live }: { years: CareerYear[]; live?: number }) {
   const played = years.filter((y) => (y.chances ?? 0) > 0);
   if (played.length === 0) return null;
 
@@ -1210,7 +1244,10 @@ function CareerGlove({ years }: { years: CareerYear[] }) {
               gap: 6, alignItems: 'baseline',
               padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
             }}>
-              <span style={{ font: "700 12px var(--display)" }}>{y.year}</span>
+              <span style={{
+                font: "700 12px var(--display)",
+                color: y.year === live ? 'var(--clay)' : 'var(--ink)',
+              }}>{y.year}</span>
               <span style={{ font: "400 10px var(--mono)", color: 'var(--dim)' }}>{y.classYear}</span>
               <span style={{ font: "500 11px var(--mono)" }}>{ch}</span>
               <span style={{ font: "500 11px var(--mono)" }}>{y.plays ?? 0}</span>
@@ -1226,11 +1263,13 @@ function CareerGlove({ years }: { years: CareerYear[] }) {
   );
 }
 
-function CareerTable({ years, isPitcher }: { years: CareerYear[]; isPitcher: boolean }) {
+function CareerTable(
+  { years, isPitcher, live }: { years: CareerYear[]; isPitcher: boolean; live?: number },
+) {
   const cols = isPitcher ? '42px 32px 1fr 46px 42px 38px' : '42px 32px 1fr 46px 34px 38px';
 
   if (years.length === 0) {
-    return <Panel><Empty>No completed seasons yet.</Empty></Panel>;
+    return <Panel><Empty>Nothing yet. He has not been in a game.</Empty></Panel>;
   }
 
   return (

@@ -150,6 +150,27 @@ export function reserveNames(names: Iterable<string>): void {
 }
 
 /**
+ * Give these names back, so generating the same men again produces the same men.
+ *
+ * The pool is the one input to a generator that is not the seed, and the number
+ * of draws a name costs depends on it — so a body made twice from one seed comes
+ * out different the second time, because the first attempt is now sitting in
+ * here rejecting itself. That is fine for a world generated once and fatal for
+ * the walk-ons, which the class review has to be able to show *before* the year
+ * roll manufactures them and which must then turn up as exactly the men it drew.
+ *
+ * So `walkOnClass` hands its names straight back. The cost is that two walk-ons
+ * at different programs may end up sharing one, which the pool would otherwise
+ * have prevented: three hundred and fifty first names against seven hundred
+ * surnames is a quarter of a million pairs, so it happens about once every three
+ * seasons somewhere in the league. Since `nextPlayerId` a shared name merges
+ * nothing and costs nothing but a second look.
+ */
+export function releaseNames(names: Iterable<string>): void {
+  for (const n of names) usedNames.delete(n);
+}
+
+/**
  * Murmur3's finalizer. A bijection on 32 bits, and that property is load bearing
  * rather than a nicety: it is what carries the generator's promise of a distinct
  * state through to a promise of a distinct id.

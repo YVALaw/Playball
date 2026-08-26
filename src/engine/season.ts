@@ -33,7 +33,7 @@ import { teamId } from './types.js';
 // this module, so a value import back the other way would be a runtime cycle.
 import type { Inductee } from './hall.js';
 import type {
-  EngineName, FieldLine, HitLine, Hitter, PitchLine, Pitcher, PlayerId, Rng,
+  EngineName, FieldLine, HitLine, Hitter, PitchLine, Pitcher, Player, PlayerId, Rng,
   Team, TeamId,
 } from './types.js';
 
@@ -217,37 +217,82 @@ export function archiveSeason(season: SeasonState, teamIndex: number, year: numb
     ...rec.team.lineup, ...rec.team.bench, ...rec.team.rotation, ...rec.team.bullpen,
   ];
   for (const p of roster) {
-    const bat = season.batting.get(p.id);
-    const pit = season.pitching.get(p.id);
-    const fld = season.fielding?.get(p.id);
-    const played = (bat && bat.ab > 0) || (pit && pit.outs > 0);
-    if (!played) continue;
-
-    const row: CareerYear = {
-      year, classYear: p.classYear, team: rec.def.abbr, name: p.name,
-      ...(bat && bat.ab > 0
-        ? {
-          ab: bat.ab, h: bat.h, d: bat.d, t: bat.t,
-          hr: bat.hr, rbi: bat.rbi, bb: bat.bb, sb: bat.sb,
-        }
-        : {}),
-      ...(pit && pit.outs > 0
-        ? { w: pit.w, l: pit.l, outs: pit.outs, er: pit.er, k: pit.k }
-        : {}),
-      // A man can have a fielding line and no bat — a reliever who came in for
-      // one out and had a ball hit back at him — but the played test above is
-      // what decides whether the year is a season at all, and it should stay
-      // that way: nobody's career page wants a row for one comebacker.
-      ...(fld && fld.chances > 0
-        ? { chances: fld.chances, plays: fld.plays, errors: fld.errors }
-        : {}),
-    };
+    const row = seasonRow(season, rec, p, year);
+    if (!row) continue;
 
     const list = season.careers[p.id] ?? [];
     // A year is written once. Re-entering the offseason must not duplicate it.
     if (list.some((r) => r.year === year)) continue;
     season.careers[p.id] = [...list, row];
   }
+}
+
+/**
+ * One man's line for one season, in the shape the record book keeps.
+ *
+ * Null for a man who never appeared: a line of zeroes is not a season.
+ *
+ * Shared by the two callers that must not disagree — the archive above, and
+ * {@link liveCareerYear} below, which is the same row for a year that is still
+ * being played. Written twice they would eventually round a different way, and
+ * the whole point of showing the live row is that it becomes the archived one
+ * unchanged.
+ */
+function seasonRow(
+  season: SeasonState, rec: TeamRecord, p: Player, year: number,
+): CareerYear | null {
+  const bat = season.batting.get(p.id);
+  const pit = season.pitching.get(p.id);
+  const fld = season.fielding?.get(p.id);
+  const played = (bat && bat.ab > 0) || (pit && pit.outs > 0);
+  if (!played) return null;
+
+  return {
+    year, classYear: p.classYear, team: rec.def.abbr, name: p.name,
+    ...(bat && bat.ab > 0
+      ? {
+        ab: bat.ab, h: bat.h, d: bat.d, t: bat.t,
+        hr: bat.hr, rbi: bat.rbi, bb: bat.bb, sb: bat.sb,
+      }
+      : {}),
+    ...(pit && pit.outs > 0
+      ? { w: pit.w, l: pit.l, outs: pit.outs, er: pit.er, k: pit.k }
+      : {}),
+    // A man can have a fielding line and no bat — a reliever who came in for
+    // one out and had a ball hit back at him — but the played test above is
+    // what decides whether the year is a season at all, and it should stay
+    // that way: nobody's career page wants a row for one comebacker.
+    ...(fld && fld.chances > 0
+      ? { chances: fld.chances, plays: fld.plays, errors: fld.errors }
+      : {}),
+  };
+}
+
+/**
+ * The season in progress, as the row it is going to become.
+ *
+ * A career page reads the archive, and the archive is written in June — so from
+ * the first pitch of February until the draft step nine months later, the year
+ * the player is actually watching is not on the page. Reported as "after two
+ * seasons only one year shows, and the numbers do not update": both halves of
+ * that are this. The man's second spring is live in `season.batting`, his first
+ * is in the book, and the card was only ever showing one of the two places.
+ *
+ * So the card asks for this and stacks it under the archived years, marked as
+ * unfinished. Nothing is written down — the archive is still the only copy, and
+ * it is still written once, in June, by `archiveSeason`. This is the same row
+ * computed early so the page can be honest about the year in front of it.
+ */
+export function liveCareerYear(
+  season: SeasonState, teamIndex: number, id: PlayerId,
+): CareerYear | null {
+  const rec = season.teams[teamIndex];
+  if (!rec) return null;
+  const p = [
+    ...rec.team.lineup, ...rec.team.bench, ...rec.team.rotation, ...rec.team.bullpen,
+  ].find((x) => x.id === id);
+  if (!p) return null;
+  return seasonRow(season, rec, p, season.year ?? 0);
 }
 
 export const regularRecord = (t: TeamRecord): { w: number; l: number } =>

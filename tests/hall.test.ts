@@ -19,7 +19,7 @@ import {
   activeIds, HALL_BAR, MIN_SEASONS, PEAK_SEASONS,
 } from '../src/engine/hall.js';
 import {
-  createSeason, simSeason, nextSeason, archiveSeason, DEFAULT_SEASON,
+  createSeason, simSeason, nextSeason, archiveSeason, liveCareerYear, DEFAULT_SEASON,
   type CareerYear, type SeasonState,
 } from '../src/engine/season.js';
 import { seasonAwards, allConference } from '../src/engine/postseason.js';
@@ -288,6 +288,78 @@ describe('the ballot', () => {
     });
     expect(going.length).toBe(2);
     expect(going[0]!.score).toBeGreaterThanOrEqual(going[1]!.score);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+/*
+  Reported: "after two seasons only one year shows on a player's card, and the
+  numbers do not update in real time."
+
+  Both halves are the same thing. The archive is written once, in June, on the
+  way into the draft step — so from February until then the season the player is
+  actually watching is in `season.batting` and nowhere else, and a card that read
+  the archive alone showed a sophomore his freshman row and nothing since. The
+  fix is not to archive earlier, which would put an unfinished year in a record
+  book; it is for the card to be able to ask for the row this season is going to
+  become.
+*/
+describe('the season in progress is a row too', () => {
+  const played = (): SeasonState => {
+    const season = createSeason(makeRng(9091), DEFAULT_SEASON, CONFERENCES.slice(0, 2));
+    season.year = 2027;
+    simSeason(season);
+    return season;
+  };
+
+  it('gives a man his second year while he is still playing it', () => {
+    const season = played();
+    archiveSeason(season, 0, 2027);
+
+    // Somebody who actually played, and his year in the book.
+    const man = season.teams[0]!.team.lineup.find(
+      (p) => (season.batting.get(p.id)?.ab ?? 0) > 20,
+    )!;
+    expect(season.careers[man.id]).toHaveLength(1);
+
+    // A second season, live: the year rolls, the statistics are wiped, and he
+    // starts hitting again. This is May of his second year.
+    const next = nextSeason(season);
+    next.year = 2028;
+    simSeason(next);
+
+    const archived = next.careers[man.id] ?? [];
+    const live = liveCareerYear(next, 0, man.id);
+    expect(archived).toHaveLength(1);
+    expect(live).not.toBeNull();
+    expect(live!.year).toBe(2028);
+
+    // Which is what the card stacks: one finished year and the one in front of
+    // him. Before this it had the first and no way to reach the second.
+    const rows = [...archived.filter((y) => y.year !== live!.year), live!];
+    expect(rows.map((y) => y.year)).toEqual([2027, 2028]);
+  });
+
+  it('is the same row June will write, and does not write it', () => {
+    const season = played();
+    const man = season.teams[0]!.team.lineup.find(
+      (p) => (season.batting.get(p.id)?.ab ?? 0) > 20,
+    )!;
+
+    const live = liveCareerYear(season, 0, man.id);
+    // Nothing is recorded by looking.
+    expect(season.careers[man.id]).toBeUndefined();
+
+    archiveSeason(season, 0, 2027);
+    expect(season.careers[man.id]).toEqual([live]);
+  });
+
+  it('says nothing about a man who has not been in a game', () => {
+    const season = createSeason(makeRng(9091), DEFAULT_SEASON, CONFERENCES.slice(0, 2));
+    season.year = 2027;
+    const man = season.teams[0]!.team.lineup[0]!;
+    expect(liveCareerYear(season, 0, man.id)).toBeNull();
   });
 });
 

@@ -7,7 +7,9 @@ import { describe, it, expect } from 'vitest';
 import { createSeason, simSeason, nextSeason } from '../src/engine/season.js';
 import {
   advanceOffseason, departAndDevelop, fillRosters, walkOnShortfall,
+  walkOnClass, walkOnSeed,
 } from '../src/engine/progression.js';
+import { coveredSince } from '../src/ui/screens/Board.js';
 import { AI_KEEP_SHARE } from '../src/engine/draft.js';
 import { windowBudget } from '../src/engine/recruiting.js';
 import { overallOf } from '../src/engine/ratings.js';
@@ -558,6 +560,108 @@ describe('walk-ons', () => {
         tally(projected),
         `seed ${seed} with ${size} signed`,
       ).toEqual(tally(filled.walkOns.map((w) => ({ pos: w.pos, count: 1 }))));
+    }
+  });
+
+  it('projects the men themselves, name for name and face for face', () => {
+    /*
+      Reported from testing: "they arrive as names on a list with none of the
+      information every other player has." The class review shows walk-ons as
+      players now — a face, a rating, a card — which is only honest if the men
+      on it are the men who report in June. This is that guarantee, and it is
+      the reason the walk-ons come off a seed of their own rather than out of
+      the middle of the ninety six program loop.
+
+      Ids as well as names, because the face is drawn from the id: a card that
+      showed a different man's portrait would be a lie the coach could see.
+    */
+    for (const [seed, size] of [[415, 0], [911, 6], [777, 3]] as const) {
+      const s = withClass(seed, size);
+      departAndDevelop(s, s.rng, { userTeam: 0 });
+
+      const t = s.teams[0]!.team;
+      const survivors = [...t.lineup, ...t.bench, ...t.rotation, ...t.bullpen];
+      const signedClass = s.recruiting.prospects
+        .filter((p) => p.signedBy === 0).map((p) => p.player);
+
+      // Exactly the call the class review makes.
+      const shown = walkOnClass(
+        survivors, signedClass, t.quality, walkOnSeed(s.recruiting.year, 0),
+      );
+      // And twice, because React renders a screen twice under StrictMode and a
+      // preview that spent a name on the first pass would draw a different man
+      // on the second.
+      const again = walkOnClass(
+        survivors, signedClass, t.quality, walkOnSeed(s.recruiting.year, 0),
+      );
+      expect(again.map((p) => p.id)).toEqual(shown.map((p) => p.id));
+      expect(again.map((p) => p.name)).toEqual(shown.map((p) => p.name));
+
+      const filled = fillRosters(s, s.rng, { userTeam: 0 });
+      const arrived = filled.walkOns;
+      expect(arrived.length, `seed ${seed}`).toBe(shown.length);
+      expect(new Set(arrived.map((w) => w.id)))
+        .toEqual(new Set(shown.map((p) => p.id)));
+      expect(new Set(arrived.map((w) => w.name)))
+        .toEqual(new Set(shown.map((p) => p.name)));
+      expect(new Set(arrived.map((w) => w.overall)))
+        .toEqual(new Set(shown.map((p) => overallOf(p))));
+      // And they read as walk-ons rather than as a class anybody recruited.
+      for (const p of shown) {
+        expect(p.walkOn).toBe(true);
+        expect(p.classYear).toBe('FR');
+      }
+    }
+  });
+
+  it('agrees with what the NEEDS tab tells the coach he is short', () => {
+    /*
+      Reported from testing: "NEEDS said every position was covered, and the
+      class review then brought walk-ons anyway."
+
+      Two causes, both on the tab. It read `lastOffseason.holes`, which a reload
+      does not restore — so any dynasty picked up mid-offseason showed an empty
+      NEEDS tab over a roster four men short. And with the report in hand it
+      counted a signed player against his own position, where the roster rebuild
+      spends him on the first hole it comes to and fills the bench out of
+      whoever is left. Both tabs read `walkOnShortfall` now, off the roster in
+      front of them, and this holds them to it.
+    */
+    for (const [seed, size] of [[415, 0], [415, 4], [911, 9], [777, 3]] as const) {
+      const s = withClass(seed, size);
+      departAndDevelop(s, s.rng, { userTeam: 0 });
+
+      const t = s.teams[0]!.team;
+      const survivors = [...t.lineup, ...t.bench, ...t.rotation, ...t.bullpen];
+      const signedClass = s.recruiting.prospects
+        .filter((p) => p.signedBy === 0).map((p) => p.player);
+
+      // The two things the tab draws: what is still open, and what the class
+      // has already bought — the second being the difference between the two
+      // projections rather than a count of signings by position.
+      const before = walkOnShortfall(survivors, []);
+      const still = walkOnShortfall(survivors, signedClass);
+      const covered = coveredSince(before, still);
+
+      const total = (rows: readonly { pos: string; count: number }[]) =>
+        rows.reduce((a, r) => a + r.count, 0);
+
+      // Nothing is invented and nothing is lost: every spot the roster was short
+      // of is either covered by the class or waiting for a walk-on.
+      expect(total(covered) + total(still)).toBe(total(before));
+      for (const row of covered) expect(row.count).toBeGreaterThan(0);
+      // A class cannot cover more of a position than was open there.
+      const openAt = new Map(before.map((r) => [r.pos, r.count]));
+      for (const row of covered) {
+        expect(row.count).toBeLessThanOrEqual(openAt.get(row.pos) ?? 0);
+      }
+
+      // And "every position is covered" means exactly what the class review
+      // means by it — the case the coach was lied to about.
+      const filled = fillRosters(s, s.rng, { userTeam: 0 });
+      expect(total(still) === 0, `seed ${seed} with ${size} signed`)
+        .toBe(filled.walkOns.length === 0);
+      expect(total(still)).toBe(filled.walkOns.length);
     }
   });
 

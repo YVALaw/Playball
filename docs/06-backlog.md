@@ -184,6 +184,23 @@ exists.
   twice, and the class review already carries it *before* signing day, where it
   is something the coach can still act on rather than a receipt. A comment in
   `Draft.tsx` records why the block is gone.
+- **A8 · The advance-week button stuck on the filter's label** — SHIPPED.
+  Reported: *"SHOW THE TOP 50 OF 518"* where `END WEEK` belonged. Filtering is a
+  mode that swaps the pinned action, and the five view tabs live in the pinned
+  header and stayed live while the panel was up — so tapping ROSTER moved the
+  tab underneath a panel that was still covering the body and still owned the
+  button. The tabs leave the mode now, and the label comes off one exported
+  `pinnedAction` rather than off two branches of a ternary that each wrote their
+  own. See `05-systems-reference.md` §2.7a.
+- **A9 · NEEDS and the class review disagreed about the same shortfall** —
+  SHIPPED. Reported: *"NEEDS said every position was covered, and the class
+  review then brought walk-ons anyway."* NEEDS was the one lying, twice over. It
+  read `lastOffseason.holes`, which the save loader deliberately does not
+  restore, so any dynasty picked up mid-offseason showed an empty tab over a
+  roster four men short; and with the report in hand it counted a signed player
+  against his own position only, where the rebuild spends him on the first hole
+  it comes to and fills the bench out of whoever is left. Both screens read
+  `walkOnShortfall` off the live roster now. See §2.10.
 
 ## B. Agreed and designed, not yet built
 
@@ -585,6 +602,29 @@ half the achievements are all reading from the same book.
   worth watching in a way that a page of 1980s names is not.
 - **B14 · The S+ store player** — deferred to v1.0. 82 overall on arrival, 99
   potential, ten badges, faster progression, exempt from the cap.
+- **B18 · The reach gate becomes a ladder you can read** — SHIPPED, and it
+  **replaces** the per-recruit floor rather than sitting on top of it. A program
+  may pursue recruits one star grade above itself, and one further inside its own
+  state; four- and five-star programs clear every floor there is. The old ladder
+  drew a floor per recruit from his priorities — measured and tuned against four
+  hundred thousand draws — and the two disagreed in both directions, so keeping
+  both would have been two gates arguing. Between a hidden roll and a rule
+  printed on the prospect sheet, the readable one wins. Measured: a three-star
+  program can call **none** of the national top 25 in any of 24 classes and 9.8
+  of the top 50 on average, all of them four stars; with a pipeline that rises to
+  14.2. See `05-systems-reference.md` §2.4.
+- **B19 · The recruiting filter, rebuilt** — SHIPPED. A dropdown for home state,
+  multi-select stars, a pipeline switch, a "nobody is on him" switch, and a
+  liftable fifty-row cap. The two sliders were removed rather than retuned:
+  overall and ceiling are intervals now, and a slider against a band cannot mean
+  anything precise. See §2.7a.
+- **B20 · Walk-ons get the treatment every other player gets** — SHIPPED.
+  Reported: *"they arrive as names on a list with none of the information every
+  other player has."* They are drawn on a private seed from the class year and
+  the program index, which is what lets the class review name them, show their
+  faces and open their cards on signing day and still have those be the men who
+  report in June. They still read as walk-ons: no scouting band, no list of
+  rivals, a one-year lease said out loud. See §2.10.
 
 ## C. Depth systems — each needs its own design pass
 
@@ -692,10 +732,12 @@ Fold in opportunistically rather than as a work item of their own.
   five-star count swings by a fifth of itself from seed to seed, and
   `generateClass` is not even a function of its arguments, because `uniqueName`
   spends a variable number of draws against a module-level name pool. The rung
-  rates are measured against the priority draw now and pinned by
+  rates were then measured against the priority draw and pinned by
   `recruiting.test.ts`; a draw-count canary in `identity.test.ts` catches the
   stray `rng()` this was mistaken for. See `05-systems-reference.md` §2.2, §2.4
-  and appendix B item 10.
+  and appendix B item 10. **The rungs themselves are gone since B18** — the gate
+  is a property of the star rating now and has no rate to drift — but the
+  method is the point and it outlives them.
 - **Other calibration figures in the systems reference taken from one sample.**
   The reach gate was the one somebody happened to re-read; it will not be the
   only one. Any figure quoted off a single class, a single season or a single

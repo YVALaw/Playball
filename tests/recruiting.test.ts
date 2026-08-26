@@ -11,7 +11,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  generateClass, aiTargets, closeWeek, resetWeeklySpend, weeklyPoints, fit, canPursue,
+  generateClass, aiTargets, closeWeek, resetWeeklySpend, weeklyPoints, fit,
+  canPursue, inPipeline, reachFloor,
   leadersAtWeekStart, byRank,
   PRIORITIES, RECRUITING_WEEKS, SCHOLARSHIPS, RECRUITING_BUDGET, MAX_PER_RECRUIT,
   commitPointsFor, budgetFor, weeklyBudget, windowBudget,
@@ -30,7 +31,10 @@ import { makeRng } from '../src/engine/rng.js';
 import { resetNames } from '../src/engine/players.js';
 import { createSeason } from '../src/engine/season.js';
 import { seedRivalInterest } from '../src/state/store.js';
-import { CONFERENCES, type Region } from '../src/data/schools.js';
+import { ALL_STATES, CONFERENCES, type Region } from '../src/data/schools.js';
+import {
+  pinnedAction, matchesFilters, anyFilter, NO_FILTERS, ROW_CAP,
+} from '../src/ui/screens/Board.js';
 
 // Names are unique for the life of the process, so a second call to
 // generateClass with a given seed does not produce the class the first one did.
@@ -367,24 +371,27 @@ describe('the seeded board the player walks into', () => {
     expect(top.filter((p) => suitorsOf(p) === 0).length).toBe(0);
   });
 
-  it('still finds suitors for the four stars the reach gate narrowed', () => {
-    // The interaction the reach retune risks. Two thirds of four stars will not
-    // hear from a three star program any more, which leaves the fourteen elite
-    // programs as their entire market — and if that market is too small to cover
-    // the band, the tightening has simply moved the "nobody is on him" failure
-    // down one tier instead of fixing anything.
+  it('finds suitors for the five stars only the top two tiers can call', () => {
+    // The band the gate narrows most. A five star hears from a four star
+    // program and up, plus whoever happens to be in his own state — so the
+    // fourteen or so elite programs are very nearly his whole market, and if
+    // that market is too small to cover the band the gate has simply moved the
+    // "nobody is on him" failure up one tier instead of fixing anything.
+    //
+    // This used to be the four star band, back when a three star program could
+    // not call two thirds of it. The one-star-up rule opened that band to every
+    // three star program in the league, which is most of them; five stars are
+    // where the squeeze lives now.
     const season = createSeason(makeRng(2468), undefined, CONFERENCES);
     seedRivalInterest(season, 0);
 
     const suitorsOf = (p: Prospect): number =>
       Object.values(p.points).filter((v) => v > 0).length;
-    const fours = season.recruiting.prospects.filter((p) => p.stars === 4);
-    const eliteOnly = fours.filter((p) => p.minProgram >= 4);
+    const fives = season.recruiting.prospects.filter((p) => p.stars === 5);
 
-    // The gate really is shut on most of them...
-    expect(eliteOnly.length).toBeGreaterThan(fours.length / 3);
-    // ...and every one of them still has somebody in the conversation.
-    expect(eliteOnly.filter((p) => suitorsOf(p) === 0).length).toBe(0);
+    expect(fives.length).toBeGreaterThan(20);
+    for (const p of fives) expect(canPursue(p, 3)).toBe(false);
+    expect(fives.filter((p) => suitorsOf(p) === 0).length).toBe(0);
   });
 });
 
@@ -446,127 +453,175 @@ describe('a class reads in ranking order', () => {
   });
 });
 
-describe('prestige gates who will even listen', () => {
-  it('keeps five stars away from small programs entirely', () => {
-    const { prospects } = generateClass(2027, 64, makeRng(4242));
-    const fives = prospects.filter((p) => p.stars === 5);
-    expect(fives.length).toBeGreaterThan(20);
-    for (const p of fives) {
-      expect(canPursue(p, 1), 'a one star program got a hearing from a five star').toBe(false);
-      expect(canPursue(p, 2), 'a two star program got a hearing from a five star').toBe(false);
-    }
-  });
-
+describe('a program reaches one star above itself, and one more at home', () => {
   /*
-    Every rung of the ladder, against the share its own docstring claims.
+    The rule this replaced, and why there is only one of them now.
 
-    This is the test whose absence let the gate be reported as a regression it
-    was not. What existed was a bound on one class — "fewer than half the five
-    stars come down to a three star program" — which is loose enough to pass
-    whether the true rate is one in twenty or one in three, and the tight
-    figures lived only in prose. So the prose was checked by hand, on one class,
-    which is the one place they cannot be read: a class holds about forty five
-    stars and the rate is about five percent, so the honest reading of any
-    single class is "two, give or take two". Counted that way the rung read one
-    in twenty-five the day it was cut and one in nine a few months later with
-    nothing in between having touched it.
+    There used to be a per-recruit floor drawn off how badly a prospect wanted
+    playing time or home — a measured, tuned thing, and invisible. It has been
+    replaced rather than layered under the new rule, because the two disagreed
+    in both directions: the old ladder let a flexible five star hear out a three
+    star program that the new rule refuses, and let a rigid four star refuse a
+    three star program that the new rule admits. Two gates that disagree is a
+    worse thing than either alone, and between a hidden roll and a ladder a
+    coach can read off the screen, the readable one has to win.
 
-    Twenty-four classes pool about a thousand five stars, which is enough to
-    tell five percent from ten. The bands are roughly three standard errors
-    wide around the rate the priority draw actually produces, so a rung that has
-    genuinely moved fails and a class that came out lucky does not.
+    What is measured here is the whole of it: floor by grade, the pipeline
+    exception, and the invariant the old gate existed for — a three star program
+    cannot reach the top of the national board.
   */
-  it('lets each grade down the ladder at the rate its rung claims', () => {
-    const CLASSES = 24;
-    const pop = [0, 0, 0, 0, 0, 0];
-    const at = [0, 1, 2, 3, 4, 5].map(() => [0, 0, 0, 0, 0]);
-    for (let i = 0; i < CLASSES; i++) {
-      // An empty name pool before each one. The rejection loop in `uniqueName`
-      // spends draws, so a class generated second in a process is a different
-      // class from the same seed — which is the other half of how the figures
-      // in these docstrings came to be unreproducible.
-      resetNames();
-      const { prospects } = generateClass(2027, 96, makeRng(4242 + i * 7919));
-      for (const p of prospects) { pop[p.stars]!++; at[p.stars]![p.minProgram]!++; }
+
+  /** One recruit of each grade, in the state the fixtures call home. */
+  const gradedClass = () => {
+    resetNames();
+    return generateClass(2027, 96, makeRng(4242)).prospects;
+  };
+
+  it('lets a program call one grade up and refuses two', () => {
+    const prospects = gradedClass();
+    const at = (stars: number) => prospects.find((p) => p.stars === stars) as Prospect;
+
+    // The table is the rule, written out. Rows are program tiers, columns the
+    // best grade of recruit that tier may call with no pipeline in play.
+    const ceiling: Record<number, number> = { 1: 2, 2: 3, 3: 4, 4: 5, 5: 5 };
+    for (const tier of [1, 2, 3, 4, 5]) {
+      for (const stars of [1, 2, 3, 4, 5]) {
+        expect(
+          canPursue(at(stars), tier),
+          `a ${tier} star program and a ${stars} star recruit`,
+        ).toBe(stars <= (ceiling[tier] as number));
+      }
     }
-
-    /** The share of a grade that will hear out a program of `tier` or smaller. */
-    const downTo = (stars: number, tier: number): number => {
-      let n = 0;
-      for (let m = 1; m <= tier; m++) n += at[stars]![m]!;
-      return n / pop[stars]!;
-    };
-
-    expect(pop[5]).toBeGreaterThan(800);
-    expect(downTo(5, 3)).toBeGreaterThan(0.032);   // "about one in eighteen"
-    expect(downTo(5, 3)).toBeLessThan(0.078);
-    expect(downTo(5, 2)).toBe(0);                  // nobody starts above four
-
-    expect(downTo(4, 3)).toBeGreaterThan(0.41);    // "a shade under half"
-    expect(downTo(4, 3)).toBeLessThan(0.49);
-    expect(downTo(4, 2)).toBeGreaterThan(0.003);   // "one in a hundred and thirty"
-    expect(downTo(4, 2)).toBeLessThan(0.018);
-
-    expect(downTo(3, 2)).toBeGreaterThan(0.69);    // "seven in ten"
-    expect(downTo(3, 2)).toBeLessThan(0.745);
-    expect(downTo(3, 1)).toBeGreaterThan(0.30);    // "a third of them"
-    expect(downTo(3, 1)).toBeLessThan(0.36);
-
-    expect(downTo(2, 1)).toBeGreaterThan(0.83);    // "five in six"
-    expect(downTo(2, 1)).toBeLessThan(0.87);
-
-    // A one star recruit is nobody's gate, and a floor of one with no steps has
-    // nowhere below it to go.
-    expect(downTo(1, 1)).toBe(1);
   });
 
-  it('keeps the very top of the board out of a three star program\'s reach', () => {
-    // The user's sentence, measured where it can be measured: "I as a three
-    // star college have access to the very top players." A handful of the top
-    // fifty is the drama the gate is for; the top ten has to be somebody else's
-    // board almost every year, and that is a claim about the average season
-    // rather than about one lucky draw.
+  it('adds exactly one more grade inside the program\'s own state', () => {
+    const prospects = gradedClass();
+    const at = (stars: number) => prospects.find((p) => p.stars === stars) as Prospect;
+
+    // His words: "a 2 star school can shoot for a pipeline 4 star, a 1 star
+    // school can shoot for a 3 star pipeline player."
+    const ceiling: Record<number, number> = { 1: 3, 2: 4, 3: 5, 4: 5, 5: 5 };
+    for (const tier of [1, 2, 3, 4, 5]) {
+      for (const stars of [1, 2, 3, 4, 5]) {
+        const home = at(stars).state;
+        expect(
+          canPursue(at(stars), tier, inPipeline(at(stars), home)),
+          `a ${tier} star program and a home state ${stars} star`,
+        ).toBe(stars <= (ceiling[tier] as number));
+      }
+    }
+  });
+
+  it('gives the pipeline to the recruit\'s state and nowhere else', () => {
+    const prospects = gradedClass();
+    const five = prospects.find((p) => p.stars === 5) as Prospect;
+    const elsewhere = ALL_STATES.find((s) => s !== five.state) as string;
+
+    expect(inPipeline(five, five.state)).toBe(true);
+    expect(inPipeline(five, elsewhere)).toBe(false);
+    // The region is not the pipeline. Four states and an eighth of the country
+    // would make the exception the rule.
+    expect(canPursue(five, 3, inPipeline(five, five.state))).toBe(true);
+    expect(canPursue(five, 3, inPipeline(five, elsewhere))).toBe(false);
+  });
+
+  it('does not read the floor stored on an old save', () => {
+    // `minProgram` was drawn per recruit under the ladder this replaced, and a
+    // dynasty saved then still carries those numbers. The gate reads his star
+    // rating instead, so one rule runs whatever the save remembers.
+    const prospects = gradedClass();
+    const five = { ...prospects.find((p) => p.stars === 5) as Prospect, minProgram: 1 };
+    expect(canPursue(five, 1)).toBe(false);
+    expect(canPursue(five, 3)).toBe(false);
+    expect(canPursue(five, 4)).toBe(true);
+
+    const two = { ...prospects.find((p) => p.stars === 2) as Prospect, minProgram: 5 };
+    expect(canPursue(two, 1)).toBe(true);
+  });
+
+  it('writes the floor it actually uses onto every prospect', () => {
+    // The board prints it, so it has to be the same number the gate applies.
+    for (const p of gradedClass()) {
+      expect(p.minProgram).toBe(reachFloor(p.stars));
+      expect(canPursue(p, p.minProgram)).toBe(true);
+      expect(canPursue(p, p.minProgram - 1)).toBe(false);
+    }
+  });
+
+  it('keeps the top of the national board out of a three star program\'s reach', () => {
+    /*
+      The invariant the whole gate exists for, measured the way the retune it
+      replaces was measured: across twenty four classes rather than one, because
+      the top fifty is a sample of fifty and the count swings by five either way
+      on the draw. A threshold read off a single seed records which board came
+      up that day.
+
+      Measured here: the top fifty is 80% five stars, and a three star program
+      opens **9.8 of it on average** — every one of them a four star — against a
+      mean of about twelve under the ladder this replaced. The top twenty five
+      is zero in all twenty four classes, which is stronger than the old gate
+      managed: it let a handful of the top ten through in a good year.
+    */
     const CLASSES = 24;
     const tens: number[] = [];
     const twentyFives: number[] = [];
+    const fifties: number[] = [];
+    let fivesOpenToThree = 0;
+
     for (let i = 0; i < CLASSES; i++) {
       resetNames();
       const { prospects } = generateClass(2027, 96, makeRng(4242 + i * 7919));
       const ranked = [...prospects].sort(byRank);
       tens.push(ranked.slice(0, 10).filter((p) => canPursue(p, 3)).length);
       twentyFives.push(ranked.slice(0, 25).filter((p) => canPursue(p, 3)).length);
+      const open = ranked.slice(0, 50).filter((p) => canPursue(p, 3));
+      fifties.push(open.length);
+      fivesOpenToThree += open.filter((p) => p.stars === 5).length;
     }
     const mean = (xs: number[]): number => xs.reduce((a, b) => a + b, 0) / xs.length;
 
-    expect(mean(tens)).toBeLessThan(1.5);
-    for (const n of tens) expect(n).toBeLessThanOrEqual(4);
-    expect(mean(twentyFives)).toBeLessThan(3.5);
-    for (const n of twentyFives) expect(n).toBeLessThanOrEqual(8);
+    for (const n of tens) expect(n).toBe(0);
+    for (const n of twentyFives) expect(n).toBe(0);
+    expect(mean(fifties)).toBeLessThan(14);
+    // Not one of them, ever. The four stars in the top fifty are the whole of
+    // what a three star program can call, and the rule says so exactly.
+    expect(fivesOpenToThree).toBe(0);
   });
 
-  it('leaves a narrow door open for a program recruiting above its weight', () => {
-    // The Campus Dynasty behaviour: landing a big prospect from the lower
-    // leagues is rare, not impossible. A gate with no door at all would make
-    // prestige a ceiling instead of a ladder.
-    const { prospects } = generateClass(2027, 64, makeRng(4242));
-    const fives = prospects.filter((p) => p.stars === 5);
-    const reachableAtThree = fives.filter((p) => canPursue(p, 3));
-    expect(reachableAtThree.length).toBeGreaterThan(0);
-    expect(reachableAtThree.length).toBeLessThan(fives.length / 2);
+  it('shuts the bottom of the ladder out of the top of the board entirely', () => {
+    const SEEDS = [4242, 101, 202, 303, 404, 505, 606, 707];
+    for (const seed of SEEDS) {
+      resetNames();
+      const { prospects } = generateClass(2027, 64, makeRng(seed));
+      const top = [...prospects].sort(byRank).slice(0, 50);
+      expect(top.filter((p) => canPursue(p, 1)).length).toBe(0);
+      expect(top.filter((p) => canPursue(p, 2)).length).toBe(0);
+      // And the top two tiers work the whole of it, which is the other half of
+      // the rule: "4 and 5 star schools can go for anyone they like."
+      expect(top.filter((p) => canPursue(p, 4)).length).toBe(50);
+      expect(top.filter((p) => canPursue(p, 5)).length).toBe(50);
+    }
   });
 
-  it('opens the door for the reasons it should', () => {
-    // A five star only comes down for a program that can offer what he wants —
-    // playing time or home. One chasing the biggest name does not come down.
-    const { prospects } = generateClass(2027, 64, makeRng(4242));
-    const fives = prospects.filter((p) => p.stars === 5);
-    const flexible = fives.filter((p) => canPursue(p, 3));
-    const rigid = fives.filter((p) => !canPursue(p, 4));
-
-    const openness = (list: typeof fives) => list.length === 0 ? 0
-      : list.reduce((a, p) => a + p.priorities.playingTime + p.priorities.proximity, 0) / list.length;
-
-    expect(openness(flexible)).toBeGreaterThan(openness(rigid));
+  it('leaves the pipeline as the one door into the top of the class', () => {
+    // A small program is not shut out of blue chips, it is shut out of *other
+    // people's* blue chips. About one state in three has no five star in a
+    // given year and the rest have one or two, so the door is real and narrow.
+    let withDoor = 0;
+    let states = 0;
+    for (let i = 0; i < 8; i++) {
+      resetNames();
+      const { prospects } = generateClass(2027, 96, makeRng(4242 + i * 7919));
+      for (const st of new Set(prospects.map((p) => p.state))) {
+        states += 1;
+        const reachable = prospects.filter(
+          (p) => p.stars === 5 && canPursue(p, 3, inPipeline(p, st)),
+        );
+        if (reachable.length > 0) withDoor += 1;
+      }
+    }
+    expect(withDoor / states).toBeGreaterThan(0.4);
+    expect(withDoor / states).toBeLessThan(0.9);
   });
 
   it('never leaves a program with nobody to recruit', () => {
@@ -575,69 +630,6 @@ describe('prestige gates who will even listen', () => {
       const open = prospects.filter((p) => canPursue(p, tier));
       expect(open.length, `a ${tier} star program had nothing to chase`).toBeGreaterThan(200);
     }
-  });
-
-  it('only lets a four or five star program work the whole board', () => {
-    // The line the user drew: "only 4 and 5 stars are actually able to reach all
-    // players, from 3 and down should all have some caps based on their
-    // prestige." Everything below four is capped, and the cap tightens all the
-    // way down rather than only biting at the top of the class.
-    const { prospects } = generateClass(2027, 64, makeRng(4242));
-    const share = (tier: number) =>
-      prospects.filter((p) => canPursue(p, tier)).length / prospects.length;
-
-    expect(share(5)).toBe(1);
-    expect(share(4)).toBe(1);
-    expect(share(3)).toBeLessThan(1);
-    expect(share(3)).toBeGreaterThan(share(2));
-    expect(share(2)).toBeGreaterThan(share(1));
-
-    // The specific hole this closed: a three star program could pursue *every*
-    // four star in the country, so the only rung the gate ever cost anybody was
-    // the five stars.
-    const fours = prospects.filter((p) => p.stars === 4);
-    expect(fours.length).toBeGreaterThan(40);
-    expect(fours.filter((p) => canPursue(p, 3)).length).toBeLessThan(fours.length * 0.6);
-  });
-
-  it('keeps the top of the national board away from a three star program', () => {
-    // The complaint this retune answers: "I as a three star college have access
-    // to the very top players." The top fifty is only about half five stars, and
-    // the old gate tightened for five stars alone — so every four star in the
-    // country was open and a three star program could pursue nearly half of the
-    // national top fifty. A handful is the drama; half is a broken ladder.
-    // Measured across eight classes rather than one.
-    //
-    // The top fifty is a sample of fifty prospects, and the count of them a
-    // three star program can pursue swings from five to eighteen depending on
-    // which board got drawn — measured over forty classes, mean 11, sd 2.9. A
-    // threshold read off a single seed therefore records which board was drawn
-    // the day it was written, not how tight the gate is: it passed at eight and
-    // would have failed at fifteen with nothing about the gate having changed,
-    // which is exactly what happened the first time the player generator
-    // consumed a different number of random draws.
-    const SEEDS = [4242, 101, 202, 303, 404, 505, 606, 707];
-    const boards = SEEDS.map((seed) => {
-      const { prospects } = generateClass(2027, 64, makeRng(seed));
-      return [...prospects].sort(byRank).slice(0, 50);
-    });
-    const openAt = (tier: number): number[] =>
-      boards.map((top) => top.filter((p) => canPursue(p, tier)).length);
-    const mean = (xs: number[]): number => xs.reduce((a, b) => a + b, 0) / xs.length;
-
-    for (const n of openAt(5)) expect(n).toBe(50);
-    for (const n of openAt(4)) expect(n).toBe(50);
-    // A dozen is still the line, now drawn where it can be seen: on the average
-    // board, not on one lucky one. Below it the top of the class is a reach,
-    // above it it is a menu — and no single board may ever open half of it,
-    // which is the complaint this whole gate answers.
-    expect(mean(openAt(3))).toBeLessThan(14);
-    for (const n of openAt(3)) expect(n).toBeLessThan(25);
-    // The bottom of the ladder stays shut out of the top of the board outright,
-    // which was already true and is the half of "caps based on their prestige"
-    // that has to be a wall rather than a slope.
-    for (const n of openAt(2)) expect(n).toBeLessThanOrEqual(1);
-    for (const n of openAt(1)) expect(n).toBeLessThanOrEqual(1);
   });
 
   it('leaves a small program a class to sign out of what it can reach', () => {
@@ -650,37 +642,51 @@ describe('prestige gates who will even listen', () => {
       expect(open.length / prospects.length,
         `a ${tier} star program's board was mostly locked`).toBeGreaterThan(0.5);
     }
+    // And the ceiling still tightens all the way down rather than only biting
+    // at the top of the class.
+    const share = (tier: number) =>
+      prospects.filter((p) => canPursue(p, tier)).length / prospects.length;
+    expect(share(5)).toBe(1);
+    expect(share(4)).toBe(1);
+    expect(share(3)).toBeLessThan(1);
+    expect(share(3)).toBeGreaterThan(share(2));
+    expect(share(2)).toBeGreaterThan(share(1));
   });
 
-  it('still sends somebody after the four stars it just shut three star programs out of', () => {
-    // The risk the retune carries. Two thirds of four stars will not hear from a
-    // three star program now, which leaves the elite programs as their entire
-    // market — and a prospect nobody may chase is worse than a prospect anybody
-    // may chase. The AI's board plans lean into the four star band to pay for it.
+  it('holds the AI to the same gate, pipeline included', () => {
     const rng = makeRng(99);
     const recruits = generateClass(2027, 64, rng);
-    const elite = program(0.9);
-    const strong = program(0.65);
-
-    const foursOn = (pitch: Pitch) =>
-      aiTargets(0, pitch, 45, recruits.prospects, 8, rng)
-        .filter((b) => b.prospect.stars === 4).length;
-
-    // One more slot apiece than the boards carried before the gate moved.
-    expect(foursOn(elite)).toBeGreaterThanOrEqual(3);
-    expect(foursOn(strong)).toBeGreaterThanOrEqual(4);
+    for (const [prestige, tier] of [[0.15, 1], [0.42, 2], [0.5, 3]] as const) {
+      const small = program(prestige, { playingTime: () => 0.9, state: 'TX' });
+      expect(small.stars).toBe(tier);
+      for (const { prospect } of aiTargets(0, small, 45, recruits.prospects, 8, rng)) {
+        expect(
+          canPursue(prospect, tier, inPipeline(prospect, small.state)),
+          `a ${tier} star program put a board slot on a ${prospect.stars} star from ${prospect.state}`,
+        ).toBe(true);
+      }
+    }
   });
 
-  it('stops the AI chasing recruits it is barred from', () => {
-    const rng = makeRng(99);
-    const recruits = generateClass(2027, 64, rng);
-    const small = program(0.15, { playingTime: () => 0.9 });   // a one star program
+  it('sends a small program after the blue chip in its own back yard', () => {
+    // The pipeline is not the user's private exception. A program whose home
+    // state holds a five star should have him on its board, or the door only
+    // ever opens for the human.
+    const rng = makeRng(7);
+    const recruits = generateClass(2027, 96, rng);
+    const home = [...new Set(recruits.prospects.map((p) => p.state))]
+      .find((st) => recruits.prospects.some((p) => p.stars === 5 && p.state === st)) as string;
+    const small = program(0.5, { state: home, region: 'Gulf' });
+    expect(small.stars).toBe(3);
+
     const board = aiTargets(0, small, 45, recruits.prospects, 8, rng);
+    expect(board.some((b) => b.prospect.stars === 5)).toBe(true);
     for (const { prospect } of board) {
-      expect(canPursue(prospect, 1)).toBe(true);
+      if (prospect.stars === 5) expect(prospect.state).toBe(home);
     }
   });
 });
+
 
 describe('the price of a top recruit', () => {
   it('scales with what he is', () => {
@@ -1155,5 +1161,176 @@ describe('the top of the ladder is reserved', () => {
     // Derived, so it cannot drift away from the cap it describes.
     expect(TOP_GENERATED_GRADE).toBe('S');
     expect(potentialGrade(GENERATED_POTENTIAL_CAP + 1)).toBe('S+');
+  });
+});
+
+describe('the board screen', () => {
+  /*
+    The two things on the recruiting board that are decisions rather than
+    layout: what the pinned button says, and what the filter panel keeps.
+
+    Both used to be written inline in the JSX, and both went wrong there. The
+    button was assembled at two branches of a ternary and the branch that owned
+    it came apart from the state it described; the filter was six clauses in a
+    closure nobody could hold to its own labels. They are functions now, and
+    this is what they promise.
+  */
+
+  const board = (over: Partial<Parameters<typeof pinnedAction>[0]> = {}) =>
+    pinnedAction({ filtersOpen: false, live: true, week: 1, matches: 0, shown: 0, ...over });
+
+  it('says END WEEK when the filter is closed, and never the filter\'s label', () => {
+    // Reported from testing: the advance-week button reading "SHOW THE TOP 50
+    // OF 518" where END WEEK belonged. Whatever the board has matched, a closed
+    // filter is a week you can end.
+    for (const week of [1, 2]) {
+      for (const matches of [0, 1, 50, 518]) {
+        const a = board({ week, matches, shown: Math.min(matches, 50) });
+        expect(a.kind).toBe('end-week');
+        expect(a.label).toBe(`END WEEK ${week}`);
+        expect(a.label).not.toMatch(/SHOW|MATCH/);
+      }
+    }
+  });
+
+  it('hands the last week over to signing day instead of ending it', () => {
+    const a = board({ week: RECRUITING_WEEKS });
+    expect(a.kind).toBe('signing-day');
+    expect(a.label).toBe('SIGNING DAY');
+  });
+
+  it('shows nothing at all once the window has closed', () => {
+    expect(board({ live: false }).kind).toBe(null);
+    // Except while filtering, which is a thing you can still do on a shut board.
+    expect(board({ live: false, filtersOpen: true, matches: 3, shown: 3 }).kind)
+      .toBe('close-filter');
+  });
+
+  it('counts the class behind the filter, and says when it is capped', () => {
+    expect(board({ filtersOpen: true, matches: 518, shown: 50 }).label)
+      .toBe('SHOW THE TOP 50 OF 518');
+    expect(board({ filtersOpen: true, matches: 518, shown: 518 }).label)
+      .toBe('SHOW 518 RECRUITS');
+    expect(board({ filtersOpen: true, matches: 1, shown: 1 }).label)
+      .toBe('SHOW 1 RECRUIT');
+    expect(board({ filtersOpen: true, matches: 0, shown: 0 }).label)
+      .toBe('NOBODY MATCHES — BACK TO THE BOARD');
+  });
+
+  it('lifts the row cap without changing what the filter caught', () => {
+    // Fifty is the default and the whole class is one tap away. The number on
+    // the button is what the filter matched either way — the capped count is
+    // the wrong one to print, because it reads 50 whatever you do.
+    expect(ROW_CAP).toBe(50);
+    const capped = board({ filtersOpen: true, matches: 600, shown: ROW_CAP });
+    const lifted = board({ filtersOpen: true, matches: 600, shown: 600 });
+    expect(capped.label).toContain('600');
+    expect(lifted.label).toContain('600');
+    expect(capped.label).toContain(String(ROW_CAP));
+    expect(lifted.label).not.toContain('TOP');
+  });
+
+  describe('each filter narrows to what it claims', () => {
+    const classOf = () => {
+      resetNames();
+      return generateClass(2027, 96, makeRng(4242)).prospects;
+    };
+    const HOME = 'TX';
+
+    it('keeps everybody when nothing is set', () => {
+      const prospects = classOf();
+      expect(prospects.filter((p) => matchesFilters(p, NO_FILTERS, HOME, 3)).length)
+        .toBe(prospects.length);
+      expect(anyFilter(NO_FILTERS)).toBe(false);
+    });
+
+    it('narrows to one position and one state', () => {
+      const prospects = classOf();
+      const byPos = prospects.filter(
+        (p) => matchesFilters(p, { ...NO_FILTERS, pos: 'C' }, HOME, 3),
+      );
+      expect(byPos.length).toBeGreaterThan(0);
+      expect(byPos.length).toBeLessThan(prospects.length);
+      for (const p of byPos) expect(p.player.pos).toBe('C');
+
+      const byState = prospects.filter(
+        (p) => matchesFilters(p, { ...NO_FILTERS, state: 'LA' }, HOME, 3),
+      );
+      expect(byState.length).toBeGreaterThan(0);
+      for (const p of byState) expect(p.state).toBe('LA');
+    });
+
+    it('takes more than one star rating at a time', () => {
+      const prospects = classOf();
+      const only = (stars: number[]) =>
+        prospects.filter((p) => matchesFilters(p, { ...NO_FILTERS, stars }, HOME, 3));
+
+      const fours = only([4]);
+      const threes = only([3]);
+      const both = only([4, 3]);
+      expect(fours.length).toBeGreaterThan(0);
+      expect(threes.length).toBeGreaterThan(0);
+      // A union inside the star filter, not an intersection — which is the one
+      // way a multi-select can silently mean the opposite of what it looks like.
+      expect(both.length).toBe(fours.length + threes.length);
+      for (const p of both) expect([3, 4]).toContain(p.stars);
+    });
+
+    it('shows only the program\'s own state for the pipeline', () => {
+      const prospects = classOf();
+      const home = prospects.filter(
+        (p) => matchesFilters(p, { ...NO_FILTERS, pipelineOnly: true }, HOME, 3),
+      );
+      expect(home.length).toBeGreaterThan(0);
+      for (const p of home) expect(p.state).toBe(HOME);
+      // And a pipeline four star is in it for a three star program, which the
+      // gate would refuse him anywhere else.
+      const reach = prospects.filter(
+        (p) => matchesFilters(p, { ...NO_FILTERS, pipelineOnly: true, reachOnly: true }, HOME, 3),
+      );
+      expect(reach.some((p) => p.stars === 5)).toBe(
+        prospects.some((p) => p.stars === 5 && p.state === HOME),
+      );
+    });
+
+    it('shows only the men nobody has called', () => {
+      const prospects = classOf();
+      // Nobody has spent anything on a fresh class, so put somebody in on two.
+      (prospects[0] as Prospect).points[7] = 4;
+      (prospects[1] as Prospect).points[7] = 0.0;
+      const quiet = prospects.filter(
+        (p) => matchesFilters(p, { ...NO_FILTERS, untouchedOnly: true }, HOME, 3),
+      );
+      expect(quiet.length).toBe(prospects.length - 1);
+      expect(quiet).not.toContain(prospects[0]);
+      // A zero is not a suitor. A program that took its points back off him is
+      // not somebody who is on him.
+      expect(quiet).toContain(prospects[1]);
+    });
+
+    it('hides the men who will not take the call, and only those', () => {
+      const prospects = classOf();
+      const reachable = prospects.filter(
+        (p) => matchesFilters(p, { ...NO_FILTERS, reachOnly: true }, HOME, 3),
+      );
+      for (const p of reachable) {
+        expect(canPursue(p, 3, inPipeline(p, HOME))).toBe(true);
+      }
+      const hidden = prospects.filter((p) => !reachable.includes(p));
+      expect(hidden.length).toBeGreaterThan(0);
+      for (const p of hidden) expect(p.stars).toBe(5);
+    });
+
+    it('stacks, so two filters mean both', () => {
+      const prospects = classOf();
+      const set = { ...NO_FILTERS, pos: 'SP', stars: [3] };
+      const got = prospects.filter((p) => matchesFilters(p, set, HOME, 3));
+      expect(got.length).toBeGreaterThan(0);
+      for (const p of got) {
+        expect(p.stars).toBe(3);
+        expect(p.player.type).toBe('pitcher');
+      }
+      expect(anyFilter(set)).toBe(true);
+    });
   });
 });

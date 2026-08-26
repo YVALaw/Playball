@@ -22,12 +22,15 @@ import {
   type Prospect, type Priority,
 } from '../../engine/recruiting.js';
 import { highSchoolLine, potentialGrade, GRADE_LADDER } from '../../engine/scouting.js';
-import { walkOnShortfall } from '../../engine/progression.js';
+import { walkOnClass, walkOnSeed } from '../../engine/progression.js';
 import { overallOf } from '../../engine/ratings.js';
 import type { Pitcher, Player } from '../../engine/types.js';
 import { Avatar } from '../Avatar.js';
 
 type View = 'rankings' | 'mine' | 'all';
+
+/** Whichever man's card is open — a recruit you bid on, or one who just turned up. */
+type Open = { kind: 'recruit'; id: string } | { kind: 'walkOn'; id: string } | null;
 
 /**
  * Class strength, weighted so quality beats quantity.
@@ -81,7 +84,7 @@ export function SigningDay() {
   const recruitingSkill = coach.skills.recruiting;
 
   const [view, setView] = useState<View>('mine');
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<Open>(null);
 
   const { rankings, mine, signed, myRank, walkOns } = useMemo(() => {
     const prospects = season?.recruiting.prospects ?? [];
@@ -94,7 +97,7 @@ export function SigningDay() {
     }
 
     /*
-      What the class did not cover.
+      Who turns up because the class did not cover it.
 
       The roster is standing here half empty — the draft step emptied it and
       nothing refills it until the year turns over — so the men who are on it
@@ -102,6 +105,11 @@ export function SigningDay() {
       use. Read in board order rather than from `mine`, which is sorted for the
       screen: the engine takes the class in the order the board holds it, and a
       projection that disagreed on a tie would be a projection worth nothing.
+
+      These are men, not a count of spots. They do not exist yet — nothing
+      manufactures them until three taps from here — and they are still exactly
+      the men who arrive, because `fillRosters` draws its walk-ons from this
+      same call on this same seed. See `walkOnClass`.
     */
     const me = season?.teams[userTeam]?.team;
     const roster: Player[] = me
@@ -124,13 +132,23 @@ export function SigningDay() {
       mine: (byTeam.get(userTeam) ?? []).slice().sort(byRank),
       signed: prospects.filter((p) => p.signedBy !== null).sort(byRank),
       myRank: table.findIndex((r) => r.team === userTeam) + 1,
-      walkOns: me ? walkOnShortfall(roster, classPlayers) : [],
+      walkOns: me && season
+        ? walkOnClass(
+          roster, classPlayers, me.quality,
+          walkOnSeed(season.recruiting.year, userTeam),
+        )
+        : [],
     };
   }, [season, userTeam]);
 
   if (!season || !team) return null;
 
-  const open = season.recruiting.prospects.find((p) => p.id === openId) ?? null;
+  const openRecruit = openId?.kind === 'recruit'
+    ? season.recruiting.prospects.find((p) => p.id === openId.id) ?? null
+    : null;
+  const openWalkOn = openId?.kind === 'walkOn'
+    ? walkOns.find((p) => p.id === openId.id) ?? null
+    : null;
 
   return (
     // The class totals and the three views hold still; the names scroll.
@@ -185,7 +203,7 @@ export function SigningDay() {
           )}
           {mine.map((p) => (
             <RecruitRow
-              key={p.id} p={p} onOpen={() => setOpenId(p.id)}
+              key={p.id} p={p} onOpen={() => setOpenId({ kind: 'recruit', id: p.id })}
               recruitingSkill={recruitingSkill}
             />
           ))}
@@ -215,12 +233,21 @@ export function SigningDay() {
         holes out of nine read a nine man class off this screen, which is the
         opposite of what it is for.
 
-        Positions and counts rather than names, because the names do not exist
-        yet — these men are manufactured when the year rolls over, three taps
-        from here. What is knowable today is which spots the roster and the
-        class between them fail to cover, and that is exactly what arrives.
+        Reported from testing: "they arrive as names on a list with none of the
+        information every other player has." They were positions and counts,
+        because the men were not manufactured until the year rolled and there
+        was nothing honest to print. They are drawn on their own seed now — see
+        `walkOnClass` — so the face and the rating on this card belong to the
+        man who reports in June, and the only thing separating him from the
+        class above is that nobody went and got him.
       */}
-      {view === 'mine' && <WalkOnGroup rows={walkOns} />}
+      {view === 'mine' && (
+        <WalkOnGroup
+          men={walkOns}
+          abbr={team.def.abbr}
+          onOpen={(id) => setOpenId({ kind: 'walkOn', id })}
+        />
+      )}
 
       {view === 'rankings' && (
         <div style={{
@@ -269,7 +296,7 @@ export function SigningDay() {
             <RecruitRow
               key={p.id}
               p={p}
-              onOpen={() => setOpenId(p.id)}
+              onOpen={() => setOpenId({ kind: 'recruit', id: p.id })}
               recruitingSkill={recruitingSkill}
               destination={season.teams[p.signedBy as number]?.def.abbr}
               mine={p.signedBy === userTeam}
@@ -280,11 +307,20 @@ export function SigningDay() {
 
       <FloatingAction label="START NEXT SEASON" onClick={() => void next()} />
 
-      {open && (
+      {openRecruit && (
         <RecruitSheet
-          prospect={open}
+          prospect={openRecruit}
           userTeam={userTeam}
           recruitingSkill={recruitingSkill}
+          onClose={() => setOpenId(null)}
+        />
+      )}
+
+      {openWalkOn && (
+        <WalkOnSheet
+          man={openWalkOn}
+          school={team.def.school}
+          abbr={team.def.abbr}
           onClose={() => setOpenId(null)}
         />
       )}
@@ -293,18 +329,25 @@ export function SigningDay() {
   );
 }
 
-/**
- * The shortfall, as a block of its own under the class.
- *
- * Muted rather than clay: every accent on this screen means "yours", and these
- * are the spots nobody's signature covered. A class that covered everything says
- * so in one line — the good outcome is worth printing, and a group that only
- * ever appears when you failed teaches the player to dread the heading.
- */
-function WalkOnGroup({ rows }: { rows: readonly { pos: string; count: number }[] }) {
-  const total = rows.reduce((a, r) => a + r.count, 0);
+const slotFor = (p: Player): string =>
+  p.type === 'pitcher' ? (p as Pitcher).role : p.pos;
 
-  if (total === 0) {
+/**
+ * The men who turn up, as a block of its own under the class.
+ *
+ * Muted rather than clay: every accent on this screen means "yours", and a
+ * walk-on is the opposite of that — he is what the program gets because nobody
+ * went and got anybody. Same row as a signing, same face, same numbers, one
+ * grade of colour quieter and under a heading that says what he is. A class
+ * that covered everything says so in one line, because the good outcome is
+ * worth printing and a group that only ever appears when you failed teaches the
+ * player to dread the heading.
+ */
+function WalkOnGroup(
+  { men, abbr, onOpen }:
+  { men: readonly Player[]; abbr: string; onOpen: (id: string) => void },
+) {
+  if (men.length === 0) {
     return (
       <div style={{
         marginTop: 14, padding: '11px 12px',
@@ -320,35 +363,54 @@ function WalkOnGroup({ rows }: { rows: readonly { pos: string; count: number }[]
   return (
     <>
       <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>
-        WALK-ONS &middot; {total}
+        WALK-ONS &middot; {men.length}
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {rows.map((r, i) => (
-          <div
-            key={r.pos}
+      <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+        {men.map((p, i) => (
+          <button
+            key={p.id}
+            onClick={() => onOpen(p.id)}
             className="card-in"
             style={{
-              padding: '7px 10px',
-              border: '1px solid var(--faint)',
-              background: 'var(--paper)',
-              animationDelay: `${i * 40}ms`,
+              width: '100%', textAlign: 'left',
+              display: 'grid', gridTemplateColumns: 'auto 1fr auto auto',
+              gap: 9, alignItems: 'center',
+              padding: '10px 11px', borderBottom: '1px solid var(--hairline)',
+              background: 'transparent', animationDelay: `${i * 40}ms`,
             }}
           >
-            <div style={{
-              font: "700 11px var(--mono)", letterSpacing: '.08em', color: 'var(--ink)',
-            }}>{r.pos}</div>
-            <div style={{
-              marginTop: 2, font: "400 8.5px var(--mono)", color: 'var(--dim)',
-            }}>{r.count > 1 ? `${r.count} bodies` : 'one body'}</div>
-          </div>
+            <Avatar id={p.id} team={abbr} size={34} />
+            <span style={{ minWidth: 0 }}>
+              <span style={{
+                display: 'block', font: "400 13px var(--body)",
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>{p.name}</span>
+              <span style={{
+                display: 'block', marginTop: 1, font: "400 10px var(--mono)",
+                color: 'var(--dim)',
+              }}>
+                {slotFor(p)} &middot; age {p.age} &middot; one year
+              </span>
+            </span>
+            <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+              <span style={{ font: "600 12px var(--mono)" }}>
+                {overallOf(p)}
+                <span style={{ color: 'var(--dim)' }}> &middot; </span>
+                {potentialGrade(p.potential)}
+              </span>
+            </span>
+            <span style={{
+              font: "700 7.5px var(--mono)", letterSpacing: '.1em', color: 'var(--dim)',
+            }}>WALK-ON</span>
+          </button>
         ))}
       </div>
       <div style={{
         marginTop: 7, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
       }}>
-        These are the positions your class did not cover. They get filled in June
-        by whoever turns up, a long way below your own level &mdash; and a walk-on
-        is gone again the moment the season ends, so the hole is back on next
+        Nobody recruited these men. They turn up in June to fill what your class
+        did not, a long way below your own level &mdash; and a walk-on is gone
+        again the moment the season ends, so the hole is back on next
         winter&rsquo;s board.
       </div>
     </>
@@ -573,6 +635,104 @@ function RecruitSheet({
               })}
             </>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A walk-on's card, which is a recruit's card with the recruiting taken out.
+ *
+ * Everything a signed man gets — the face, the real overall, the real ceiling,
+ * last spring's line — because he is a player on your roster and a player on
+ * your roster is knowable. What is missing is missing for a reason: there is no
+ * "your report had him" block, because you never had him at anything, and no
+ * list of who else was in on him, because nobody was. That absence is the whole
+ * difference between this card and the one next to it, and it says more about
+ * what a walk-on is than a label would.
+ */
+function WalkOnSheet(
+  { man, school, abbr, onClose }:
+  { man: Player; school: string; abbr: string; onClose: () => void },
+) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'absolute', inset: 0, background: 'rgba(28,36,48,.55)',
+        display: 'flex', alignItems: 'flex-end', zIndex: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', height: '72%',
+          display: 'flex', flexDirection: 'column',
+          background: 'var(--paper)', borderTop: '3px solid var(--dim)',
+        }}
+      >
+        <div style={{
+          flex: 'none', padding: '7px 12px', background: 'var(--ink)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <span style={{
+            font: "600 9px var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
+          }}>WALK-ON &middot; ONE YEAR</span>
+          <button onClick={onClose} style={{
+            font: "600 9px var(--mono)", letterSpacing: '.14em', color: 'rgba(246,241,230,.8)',
+          }}>CLOSE</button>
+        </div>
+
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '13px 12px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Avatar id={man.id} team={abbr} size={54} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ font: "800 22px/1 var(--display)", textTransform: 'uppercase' }}>
+                {man.name}
+              </div>
+              <div style={{ marginTop: 3, font: "400 11px var(--mono)", color: 'var(--dim)' }}>
+                {slotFor(man)} &middot; age {man.age} &middot; bats {man.bats}
+                {' '}&middot; throws {man.throws}
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            marginTop: 12, padding: '11px 12px', background: 'var(--field)',
+            borderLeft: '3px solid var(--dim)',
+          }}>
+            <div className="label">TURNED UP AT</div>
+            <div style={{
+              font: "700 17px/1.1 var(--display)", marginTop: 3, textTransform: 'uppercase',
+            }}>{school}</div>
+            <div style={{
+              marginTop: 5, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+            }}>
+              Nobody offered him anything and nobody had to. He fills a spot your
+              class left open, and he is off the roster again next June whatever
+              he does with it.
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', marginTop: 12 }}>
+            <Stat k="OVERALL" v={String(overallOf(man))} />
+            <Stat k="CEILING" v={potentialGrade(man.potential)} />
+            <Stat k="CLASS" v={man.classYear} last />
+          </div>
+
+          <div className="label" style={{ marginTop: 14, marginBottom: 5 }}>LAST SPRING</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+            {highSchoolLine(man).map((row) => (
+              <div key={row.label} style={{
+                width: '33.33%', padding: '7px 0',
+                borderBottom: '1px solid var(--hairline)',
+              }}>
+                <div className="label">{row.label}</div>
+                <div style={{ font: "700 15px/1 var(--display)", marginTop: 3 }}>{row.value}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

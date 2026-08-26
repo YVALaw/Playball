@@ -23,21 +23,21 @@
 import { useMemo, useState } from 'react';
 import { boardBudget, useDynasty, useUserTeam } from '../../state/store.js';
 import {
-  fit, weeklyPoints, canPursue, byRank, PRIORITIES, PRIORITY_LABEL, PRIORITY_BLURB,
+  fit, weeklyPoints, canPursue, inPipeline, reachFloor, byRank,
+  PRIORITIES, PRIORITY_LABEL, PRIORITY_BLURB,
   SCHOLARSHIPS, MAX_PER_RECRUIT, RECRUITING_WEEKS,
   reportedOverall, reportedPotential, reportedTool, reportWidth, hintsFor,
   type Prospect, type Priority,
 } from '../../engine/recruiting.js';
+import { walkOnShortfall } from '../../engine/progression.js';
 import { pitchFor, developmentScore } from '../../engine/pitch.js';
 import { overallOf } from '../../engine/ratings.js';
-import {
-  highSchoolLine, GRADE_LADDER, TOP_GENERATED_GRADE, type PotentialGrade,
-} from '../../engine/scouting.js';
+import { highSchoolLine } from '../../engine/scouting.js';
 import { CONFERENCES, ALL_STATES } from '../../data/schools.js';
 import { prestigeStars } from '../../engine/program.js';
-import { Avatar } from '../Avatar.js';
+import { Avatar, teamColour } from '../Avatar.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
-import type { Hitter, Pitcher, Position } from '../../engine/types.js';
+import type { Hitter, Pitcher, Player, Position } from '../../engine/types.js';
 
 type View = 'recruits' | 'targets' | 'commits' | 'needs' | 'roster';
 type Sheet = 'overview' | 'report' | 'stats' | 'schools';
@@ -48,35 +48,6 @@ const SHEET_LABEL: Record<Sheet, string> = {
   stats: 'HIGH SCHOOL',
   schools: 'SCHOOLS',
 };
-
-/**
- * Grades in order, so a "minimum potential" filter has something to compare.
- *
- * Read off the ladder rather than written out again. The list was a literal
- * until a grade was inserted into the middle of it, and a filter that has not
- * heard of A+ does not fail loudly — it silently rates it below A and hides the
- * players it was asked to find.
- */
-const GRADE_RANK: Record<PotentialGrade, number> = {
-  '?': 0,
-  ...Object.fromEntries(GRADE_LADDER.map((g, i) => [g, i + 1])),
-} as Record<PotentialGrade, number>;
-
-/**
- * What the "minimum potential" slider is asking for at each notch.
- *
- * Stops at the best grade the world actually produces. S+ belongs to a store
- * player and nobody else, so a notch for it would be a filter that always
- * returns an empty board.
- */
-const GRADE_STEPS: PotentialGrade[] =
-  GRADE_LADDER.slice(0, GRADE_LADDER.indexOf(TOP_GENERATED_GRADE) + 1);
-
-const wantedGrade = (min: number): PotentialGrade =>
-  GRADE_STEPS[Math.min(
-    GRADE_STEPS.length - 1,
-    Math.max(0, Math.ceil(min / (100 / GRADE_STEPS.length)) - 1),
-  )] as PotentialGrade;
 
 const VIEW_LABEL: Record<View, string> = {
   recruits: 'RECRUITS',
@@ -89,17 +60,137 @@ const VIEW_LABEL: Record<View, string> = {
 const POSITIONS: readonly (Position | 'SP' | 'RP')[] =
   ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'SP', 'RP'];
 
-interface Filters {
+/**
+ * What the board can be narrowed by.
+ *
+ * There were two sliders here, on reported overall and reported ceiling, and
+ * they had to go: both of those are printed as *intervals* now, and a slider
+ * against a band cannot mean anything precise. "At least sixty" against a
+ * report that says forty to seventy is a question with no honest answer — the
+ * old code answered it on the top of the band, which quietly meant a rookie
+ * recruiter's filter excluded nobody at all. The star rating is the one measure
+ * of quality on this screen that is a single value rather than a window, so it
+ * is the one that can carry a filter.
+ */
+export interface Filters {
   pos: string | null;
-  minOverall: number;
-  minPotential: number;
   state: string | null;
-  affordableOnly: boolean;
+  /** Star ratings to keep. Empty means every one of them. */
+  stars: readonly number[];
+  /** Only recruits from this program's own state. */
+  pipelineOnly: boolean;
+  /** Only recruits no program has put a point on yet. */
+  untouchedOnly: boolean;
+  /** Hide the men who will not take the call. */
+  reachOnly: boolean;
 }
 
-const NO_FILTERS: Filters = {
-  pos: null, minOverall: 0, minPotential: 0, state: null, affordableOnly: false,
+export const NO_FILTERS: Filters = {
+  pos: null, state: null, stars: [], pipelineOnly: false,
+  untouchedOnly: false, reachOnly: false,
 };
+
+export const anyFilter = (f: Filters): boolean =>
+  f.pos !== null || f.state !== null || f.stars.length > 0
+  || f.pipelineOnly || f.untouchedOnly || f.reachOnly;
+
+/**
+ * Whether a recruit survives the filter set, at a program of this tier.
+ *
+ * Exported and pure so the panel can be held to what its labels say. Every
+ * clause is an intersection: two stars picked is a union *within* the star
+ * filter and nothing else changes about it, which is the one place a filter
+ * panel can quietly mean the opposite of what it looks like.
+ */
+export function matchesFilters(
+  p: Prospect, f: Filters, homeState: string, programStars: number,
+): boolean {
+  if (f.pos && slotOf(p) !== f.pos) return false;
+  if (f.state && p.state !== f.state) return false;
+  if (f.stars.length > 0 && !f.stars.includes(p.stars)) return false;
+  if (f.pipelineOnly && !inPipeline(p, homeState)) return false;
+  if (f.untouchedOnly && !untouched(p)) return false;
+  if (f.reachOnly && !canPursue(p, programStars, inPipeline(p, homeState))) return false;
+  return true;
+}
+
+/**
+ * How many rows the board draws before it asks whether you meant it.
+ *
+ * Five hundred names is not a list anybody reads, and the top fifty by fit is
+ * the answer to the question the screen is for. But a cap you cannot lift is a
+ * cap that hides the class from a coach who has narrowed it deliberately, so
+ * there is a button under the last row.
+ */
+export const ROW_CAP = 50;
+
+/** Whether anybody at all has put a point on him. */
+export const untouched = (p: Prospect): boolean =>
+  !Object.values(p.points).some((v) => v > 0);
+
+export type PinnedKind = 'close-filter' | 'end-week' | 'signing-day' | null;
+
+/**
+ * The one button pinned to the bottom, and the only place its label is decided.
+ *
+ * Reported from testing: the advance-week button stuck on "SHOW THE TOP 50 OF
+ * 518" where END WEEK belonged. Filtering is a mode that swaps this button —
+ * ending the week is irreversible and does not belong under the thumb while
+ * somebody is tuning a filter — but the five view tabs sit in the *pinned
+ * header*, which stays live in filter mode. Tapping ROSTER while the panel was
+ * open changed the tab underneath it and left the mode on, so the screen looked
+ * like the roster tab and the button still belonged to the filter. The tabs
+ * leave the mode now, and the label is computed here, once, from state rather
+ * than assembled at two branches of the JSX.
+ */
+export function pinnedAction(
+  s: { filtersOpen: boolean; live: boolean; week: number; matches: number; shown: number },
+): { kind: PinnedKind; label: string } {
+  if (s.filtersOpen) {
+    return {
+      kind: 'close-filter',
+      label: s.matches === 0
+        ? 'NOBODY MATCHES — BACK TO THE BOARD'
+        : s.shown < s.matches
+          ? `SHOW THE TOP ${s.shown} OF ${s.matches}`
+          : `SHOW ${s.matches} RECRUIT${s.matches === 1 ? '' : 'S'}`,
+    };
+  }
+  if (!s.live) return { kind: null, label: '' };
+  return s.week >= RECRUITING_WEEKS
+    ? { kind: 'signing-day', label: 'SIGNING DAY' }
+    : { kind: 'end-week', label: `END WEEK ${s.week}` };
+}
+
+/**
+ * What the class has already covered, as the difference between two projections.
+ *
+ * NEEDS and the class review used to answer the same question two ways: the
+ * review projected the walk-ons by replaying the roster rebuild, and this tab
+ * counted signings against a list of holes handed to it by the draft step. They
+ * disagreed, and the tab was the one lying — twice over. It read
+ * `lastOffseason.holes`, which a reload does not restore, so any dynasty picked
+ * up mid-offseason showed an empty NEEDS tab and the words "every spot the
+ * draft opened up is covered" over a roster that was four men short. And even
+ * with the report in hand it counted a signed player against his own position
+ * only, where the rebuild spends him on the first hole it comes to and fills
+ * the bench out of whoever is left.
+ *
+ * Both tabs read `walkOnShortfall` now. What is still open is what it returns;
+ * what is covered is what it stopped returning once the class was added.
+ */
+export function coveredSince(
+  before: readonly { pos: string; count: number }[],
+  after: readonly { pos: string; count: number }[],
+): { pos: string; count: number }[] {
+  const left = new Map(after.map((r) => [r.pos, r.count]));
+  const out: { pos: string; count: number }[] = [];
+  for (const row of before) {
+    const done = row.count - (left.get(row.pos) ?? 0);
+    if (done > 0) out.push({ pos: row.pos, count: done });
+  }
+  return out;
+}
 
 /** How the chase is going, said in words rather than a raw point total. */
 function standing(mine: number, best: number, anyone: boolean): { label: string; tone: string } {
@@ -132,6 +223,7 @@ export function Board() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const lastWeek = useDynasty((s) => s.lastWeek);
 
   const pitch = useMemo(() => {
@@ -141,10 +233,17 @@ export function Board() {
   }, [season, team, version]);
 
   const myStars = team ? prestigeStars(team.prestige) : 1;
+  const homeState = team?.def.state ?? '';
   const recruitingSkill = coach.skills.recruiting;
 
-  const { list, matches, targets, commits, spent, locked } = useMemo(() => {
+  const {
+    list, matches, targets, commits, spent, locked, shortfall, covered,
+  } = useMemo(() => {
     const all = season?.recruiting.prospects ?? [];
+    // One gate, asked the same way everywhere on this screen: the program's
+    // tier, plus a star for a recruit out of its own state.
+    const reaches = (p: Prospect): boolean =>
+      canPursue(p, myStars, inPipeline(p, homeState));
 
     // Anyone this program has ever put money on stays on the target list until
     // he is resolved — signed here or signed somewhere else.
@@ -166,35 +265,26 @@ export function Board() {
     const signed = all.filter((p) => p.signedBy === userTeam);
 
     const open = all.filter((p) => p.signedBy === null);
-    const passes = (p: Prospect): boolean => {
-      if (filters.pos && slotOf(p) !== filters.pos) return false;
-      if (filters.state && p.state !== filters.state) return false;
-      if (filters.affordableOnly && !canPursue(p, myStars)) return false;
-      // Filtered on the *top* of the reported band, not on the truth and not on
-      // a midpoint. A coach asking for sixty overall is asking to be shown
-      // everybody who might be sixty, and his own reports are the only thing he
-      // has to go on — so a wide report keeps a player in, which is the cost of
-      // being bad at this said out loud. Filtering on the truth would leak the
-      // ratings the whole screen is built to hide.
-      if (reportedOverall(p, recruitingSkill).high < filters.minOverall) return false;
-      // Potential is a grade, not a number — a minimum is a minimum grade.
-      if (filters.minPotential > 0) {
-        const rank = GRADE_RANK[reportedPotential(p, recruitingSkill).high];
-        if (rank < GRADE_RANK[wantedGrade(filters.minPotential)]) return false;
-      }
-      return true;
-    };
-
-    const shown = open.filter(passes);
-    const reachable = shown.filter((p) => canPursue(p, myStars));
+    const shown = open.filter((p) => matchesFilters(p, filters, homeState, myStars));
+    const reachable = shown.filter(reaches);
     const ranked = pitch
       ? [...reachable].sort((a, b) => (b.stars * fit(b, pitch)) - (a.stars * fit(a, pitch)))
       : reachable;
 
+    // The roster the class is being signed into, and the class itself in the
+    // order the board holds it — not the order this screen sorts it into. The
+    // year roll takes the class as it comes off the board, and a projection
+    // that disagreed with it on a tie would be a projection worth nothing.
+    const roster: Player[] = team
+      ? [...team.team.lineup, ...team.team.bench, ...team.team.rotation, ...team.team.bullpen]
+      : [];
+    const classPlayers = signed.map((p) => p.player);
+    const still = walkOnShortfall(roster, classPlayers);
+
     return {
-      list: ranked.slice(0, 50),
-      // What the filter actually caught, before the board's fifty row cap. The
-      // capped number is the wrong one to put on the apply button: it reads 50
+      list: showAll ? ranked : ranked.slice(0, ROW_CAP),
+      // What the filter actually caught, before the board's row cap. The capped
+      // number is the wrong one to put on the apply button: it reads 50
       // whatever you do until you have narrowed the country down past fifty
       // players, which is exactly the range where you need to be told whether
       // the last tap did anything.
@@ -207,22 +297,23 @@ export function Board() {
       // The class you have landed, in the same national order the signing day
       // report reads in. Two screens showing the same eight names with the same
       // #rank on each row must agree about which of them is first.
-      commits: signed.sort(byRank),
+      commits: signed.slice().sort(byRank),
       spent: used,
-      locked: shown.filter((p) => !canPursue(p, myStars))
+      locked: filters.reachOnly ? [] : shown.filter((p) => !reaches(p))
         .sort((a, b) => b.stars - a.stars).slice(0, 5),
+      shortfall: still,
+      covered: coveredSince(walkOnShortfall(roster, []), still),
     };
-  }, [season, userTeam, version, pitch, myStars, filters, recruitingSkill]);
+  }, [season, team, userTeam, version, pitch, myStars, homeState, filters, showAll]);
 
   if (!season || !team || !pitch) return null;
 
   const week = season.recruiting.week;
 
-  // The brief, straight off the draft that just ran.
-  const holes = useDynasty.getState().lastOffseason?.holes ?? [];
-  const needNote = holes.length === 0 ? null
-    : `You are short ${holes.map((h) => (h.count > 1 ? `${h.count} ${h.pos}` : h.pos)).join(', ')}. `
-      + 'Anything you do not sign gets filled by a walk-on.';
+  // What the class has still not covered, counted off the roster in front of
+  // you rather than off the draft's report. The report is not restored by a
+  // reload — see `coveredSince` — and the roster always is.
+  const stillShort = shortfall.reduce((a, r) => a + r.count, 0);
   const open = season.recruiting.prospects.find((p) => p.id === openId) ?? null;
   // What a week is worth here, after the draft phase took whatever it took to
   // keep somebody. The header prints the honest number, so a coach who talked
@@ -232,8 +323,8 @@ export function Board() {
   const left = weekly - spent;
   const live = week >= 1 && week <= RECRUITING_WEEKS;
   const full = commits.length >= SCHOLARSHIPS;
-  const activeFilters = filters.pos !== null || filters.state !== null
-    || filters.minOverall > 0 || filters.minPotential > 0 || filters.affordableOnly;
+  const activeFilters = anyFilter(filters);
+  const pinned = pinnedAction({ filtersOpen, live, week, matches, shown: list.length });
 
   return (
     /*
@@ -306,7 +397,16 @@ export function Board() {
         {(['recruits', 'targets', 'commits', 'needs', 'roster'] as View[]).map((v) => (
           <button
             key={v}
-            onClick={() => setView(v)}
+            onClick={() => {
+              setView(v);
+              // Leaving filter mode is the whole point of this line. The tabs
+              // are in the pinned header and stay live while the panel is up,
+              // so without it a tap moved the tab underneath a panel that was
+              // still covering the body and still owned the pinned button —
+              // which is how END WEEK ended up reading "SHOW THE TOP 50 OF
+              // 518" on a screen that looked like the roster tab.
+              setFiltersOpen(false);
+            }}
             style={{
               flex: 1, padding: '8px 0',
               background: v === view ? 'var(--clay)' : 'var(--paper)',
@@ -318,7 +418,7 @@ export function Board() {
             {VIEW_LABEL[v]}
             {v === 'targets' && targets.length > 0 ? ` ${targets.length}` : ''}
             {v === 'commits' && commits.length > 0 ? ` ${commits.length}` : ''}
-            {v === 'needs' && holes.length > 0 ? ` ${holes.length}` : ''}
+            {v === 'needs' && stillShort > 0 ? ` ${stillShort}` : ''}
           </button>
         ))}
       </div>
@@ -327,7 +427,14 @@ export function Board() {
     <div style={{ padding: '10px 14px 20px' }}>
       {/* Filtering replaces the body rather than pushing it down. The rest of
           this branch is the board itself; see the note on the FILTER button. */}
-      {filtersOpen ? <FilterPanel filters={filters} onChange={setFilters} /> : <>
+      {filtersOpen ? (
+        <FilterPanel
+          filters={filters}
+          onChange={setFilters}
+          homeState={homeState}
+          myStars={myStars}
+        />
+      ) : <>
       {live && lastWeek && (
         <div style={{
           marginBottom: 10, border: '1px solid var(--clay)',
@@ -369,7 +476,7 @@ export function Board() {
       )}
 
       {view === 'needs' ? (
-        <NeedsView holes={holes} filled={commits} onPick={(pos) => {
+        <NeedsView short={shortfall} covered={covered} onPick={(pos) => {
           setFilters({ ...NO_FILTERS, pos });
           setView('recruits');
         }} />
@@ -395,11 +502,34 @@ export function Board() {
                 key={p.id}
                 p={p}
                 userTeam={userTeam}
+                season={season}
                 onOpen={() => setOpenId(p.id)}
                 signed={view === 'commits'}
               />
             ))}
           </div>
+
+          {/*
+            The cap, and the way out of it.
+
+            Fifty rows sorted by fit is the answer to the question this tab is
+            for, and five hundred names is not a list anybody reads. But a coach
+            who has filtered down to "four star catchers" and gets fifty of them
+            has been told a number and shown a slice of it, so the last row is
+            followed by the whole class if he wants it.
+          */}
+          {view === 'recruits' && matches > list.length && (
+            <CapButton
+              label={`SHOW ALL ${matches}`}
+              onClick={() => setShowAll(true)}
+            />
+          )}
+          {view === 'recruits' && showAll && matches > ROW_CAP && (
+            <CapButton
+              label={`BACK TO THE TOP ${ROW_CAP}`}
+              onClick={() => setShowAll(false)}
+            />
+          )}
 
           {view === 'recruits' && locked.length > 0 && (
             <>
@@ -410,14 +540,18 @@ export function Board() {
                 border: '1px solid var(--faint)', background: 'var(--paper)', opacity: 0.72,
               }}>
                 {locked.map((p) => (
-                  <Row key={p.id} p={p} userTeam={userTeam} onOpen={() => setOpenId(p.id)} />
+                  <Row
+                    key={p.id} p={p} userTeam={userTeam} season={season}
+                    onOpen={() => setOpenId(p.id)}
+                  />
                 ))}
               </div>
               <div style={{
                 marginTop: 6, font: "400 11px/1.45 var(--body)", color: 'var(--dim)',
               }}>
-                These will not take your call yet. Build the program up and
-                players like them start listening.
+                A program of yours can call a recruit one grade above it, and one
+                more than that inside your own state. Build the program up and
+                players like these start listening.
               </div>
             </>
           )}
@@ -431,7 +565,8 @@ export function Board() {
           coachPrestige={coach.prestige}
           recruitingSkill={coach.skills.recruiting}
           pitch={pitch}
-          reachable={canPursue(open, myStars)}
+          reachable={canPursue(open, myStars, inPipeline(open, homeState))}
+          pipeline={inPipeline(open, homeState)}
           live={live}
           full={full && open.signedBy === null}
           left={left}
@@ -451,36 +586,47 @@ export function Board() {
         tuning a position filter is a trap rather than a convenience. While the
         filter is open the only thing the button can do is close it, and it says
         how many recruits are waiting on the other side.
+
+        One button and one label, decided by `pinnedAction`. It was two branches
+        of this ternary each writing their own, which is how the label and the
+        state it described came apart.
       */}
-      {filtersOpen ? (
+      {pinned.kind !== null && (
         <FloatingAction
-          label={matches === 0
-            ? 'NOBODY MATCHES — BACK TO THE BOARD'
-            : matches > list.length
-              ? `SHOW THE TOP ${list.length} OF ${matches}`
-              : `SHOW ${matches} RECRUIT${matches === 1 ? '' : 'S'}`}
-          onClick={() => setFiltersOpen(false)}
-          secondary={activeFilters
+          label={pinned.label}
+          onClick={() => {
+            if (pinned.kind === 'close-filter') setFiltersOpen(false);
+            else if (pinned.kind === 'signing-day') { advanceWeek(); void nextPhase(); }
+            else advanceWeek();
+          }}
+          secondary={pinned.kind === 'close-filter' && activeFilters
             ? { label: 'CLEAR EVERY FILTER', onClick: () => setFilters(NO_FILTERS) }
             : null}
         />
-      ) : live ? (
-        <FloatingAction
-          label={week >= RECRUITING_WEEKS ? 'SIGNING DAY' : `END WEEK ${week}`}
-          onClick={() => {
-            if (week >= RECRUITING_WEEKS) { advanceWeek(); void nextPhase(); }
-            else advanceWeek();
-          }}
-        />
-      ) : null}
+      )}
     </div>
     </FixedHeader>
   );
 }
 
+/**
+ * One recruit, in the colours of whoever has him.
+ *
+ * Every row carries a school: the one that signed him if the board has closed
+ * on him, otherwise the one leading the chase. That colour is the point —
+ * "keep the ones I lost on the board, tinted with the colour of the school that
+ * took him, so I can see who beat me" — and it is worth as much before the
+ * signature as after it, because the school in front of you on a recruit you
+ * are still working is the fact the week's spending turns on. A recruit nobody
+ * has called carries no colour at all, which is its own signal and pairs with
+ * the filter for exactly those men.
+ */
 function Row({
-  p, userTeam, onOpen, signed,
-}: { p: Prospect; userTeam: number; onOpen: () => void; signed?: boolean }) {
+  p, userTeam, season, onOpen, signed,
+}: {
+  p: Prospect; userTeam: number; season: { teams: { def: { abbr: string } }[] };
+  onOpen: () => void; signed?: boolean;
+}) {
   const spent = p.spent[userTeam] ?? 0;
   const points = Object.values(p.points);
   const best = points.length ? Math.max(...points) : 0;
@@ -490,6 +636,14 @@ function Row({
       ? { label: 'LOST HIM', tone: 'var(--clay)' }
       : standing(p.points[userTeam] ?? 0, best, points.length > 0);
 
+  // Whoever has him: the program he signed with, else the one in front.
+  const leader = p.signedBy !== null ? p.signedBy
+    : points.length > 0
+      ? Number(Object.entries(p.points).sort((a, b) => b[1] - a[1])[0]?.[0])
+      : null;
+  const abbr = leader !== null ? season.teams[leader]?.def.abbr : undefined;
+  const colour = abbr ? teamColour(abbr) : 'transparent';
+
   return (
     <button
       onClick={onOpen}
@@ -497,11 +651,15 @@ function Row({
         width: '100%', textAlign: 'left',
         display: 'grid', gridTemplateColumns: 'auto 1fr auto auto',
         gap: 9, alignItems: 'center',
-        padding: '10px 11px', borderBottom: '1px solid var(--hairline)',
+        padding: '10px 11px 10px 8px', borderBottom: '1px solid var(--hairline)',
+        borderLeft: `3px solid ${colour}`,
         background: spent > 0 && !signed ? 'rgba(168,68,42,.10)' : 'transparent',
       }}
     >
-      <Avatar id={p.id} size={34} />
+      {/* The jersey is only ever a school he has actually signed for. A face
+          wearing the colours of a program still recruiting him would be the
+          row telling a story the board has not finished. */}
+      <Avatar id={p.id} team={p.signedBy !== null ? abbr : undefined} size={34} />
       <span style={{ minWidth: 0 }}>
         <span style={{
           display: 'block', font: `${spent > 0 ? 700 : 400} 13px var(--body)`,
@@ -521,11 +679,29 @@ function Row({
         {spent > 0 && !signed && (
           <span style={{ display: 'block', color: 'var(--clay)' }}>{spent} spent</span>
         )}
+        {abbr && leader !== userTeam && (
+          <span style={{ display: 'block', color: colour }}>{abbr}</span>
+        )}
       </span>
       <span style={{
         font: "600 11px var(--mono)", color: 'var(--clay)', whiteSpace: 'nowrap',
       }}>{'★'.repeat(p.stars)}</span>
     </button>
+  );
+}
+
+/** The way past the row cap, and the way back to it. */
+function CapButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="tap"
+      style={{
+        width: '100%', marginTop: 8, padding: '10px 0',
+        background: 'var(--paper)', border: '1px solid rgba(28,36,48,.28)',
+        color: 'var(--ink)', font: "700 9.5px var(--mono)", letterSpacing: '.1em',
+      }}
+    >{label}</button>
   );
 }
 
@@ -535,12 +711,28 @@ function Row({
  * Clearing and applying live on the pinned button underneath — the two things
  * you do *to* the filter set belong together and in the one place on this screen
  * that never scrolls away, which is the same argument the header is built on.
+ *
+ * Four controls and three switches, where there were two chip fields and two
+ * sliders that fought each other. Reported from testing: "the filter has grown
+ * into a panel of controls that fight each other." Thirty five states as chips
+ * was two thirds of the panel's height for a thing you pick one of, so it is a
+ * dropdown; the sliders read against bands and could not mean anything precise,
+ * so they are gone and the star rating — the one measure on this board that is
+ * a single value and not a window — carries the quality filter instead.
  */
 function FilterPanel({
-  filters, onChange,
-}: { filters: Filters; onChange: (f: Filters) => void }) {
+  filters, onChange, homeState, myStars,
+}: {
+  filters: Filters; onChange: (f: Filters) => void;
+  homeState: string; myStars: number;
+}) {
   const set = <K extends keyof Filters>(k: K, v: Filters[K]) =>
     onChange({ ...filters, [k]: v });
+
+  const toggleStar = (n: number) =>
+    set('stars', filters.stars.includes(n)
+      ? filters.stars.filter((s) => s !== n)
+      : [...filters.stars, n].sort((a, b) => b - a));
 
   return (
     <div style={{
@@ -558,47 +750,68 @@ function FilterPanel({
         ))}
       </div>
 
-      <div className="label" style={{ marginTop: 11, marginBottom: 5 }}>HOME STATE</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-        {ALL_STATES.map((st) => (
-          <Chip
-            key={st}
-            on={filters.state === st}
-            onClick={() => set('state', filters.state === st ? null : st)}
-          >{st}</Chip>
+      {/*
+        More than one at a time, because "four stars and up" and "the threes and
+        twos I can actually sign" are both real questions and neither is a
+        single grade. The stars are the only quality reading on this board that
+        is not an interval — every other number the screen shows is a window as
+        wide as the coach is bad at this — so they are the only one a filter can
+        be honest about.
+      */}
+      <div className="label" style={{ marginTop: 11, marginBottom: 5 }}>STARS</div>
+      <div style={{ display: 'flex', gap: 4 }}>
+        {[5, 4, 3, 2, 1].map((n) => (
+          <button
+            key={n}
+            onClick={() => toggleStar(n)}
+            style={{
+              flex: 1, padding: '7px 0',
+              background: filters.stars.includes(n) ? 'var(--clay)' : 'var(--field)',
+              border: `1px solid ${filters.stars.includes(n) ? 'var(--clay)' : 'rgba(28,36,48,.2)'}`,
+              color: filters.stars.includes(n) ? 'var(--cream)' : 'var(--ink)',
+              font: "700 10px var(--mono)", letterSpacing: '.04em',
+            }}
+          >{n}★</button>
         ))}
       </div>
 
-      {/*
-        "Could be", not "is". These read against the top of each recruit's
-        reported band, because the truth is the one thing a filter cannot see —
-        so a wide report keeps a player in the list. That is not a bug to hide
-        in the label: a bad recruiter genuinely cannot rule anybody out, and the
-        wording has to say so or the filter looks broken.
-      */}
-      <Slider
-        label="COULD BE OVERALL"
-        value={filters.minOverall}
-        onChange={(n) => set('minOverall', n)}
-      />
-      <Slider
-        label={filters.minPotential > 0
-          ? `COULD REACH · ${wantedGrade(filters.minPotential)} OR BETTER`
-          : 'COULD REACH'}
-        value={filters.minPotential}
-        onChange={(n) => set('minPotential', n)}
-      />
-
-      <button
-        onClick={() => set('affordableOnly', !filters.affordableOnly)}
+      <div className="label" style={{ marginTop: 11, marginBottom: 5 }}>HOME STATE</div>
+      <select
+        value={filters.state ?? ''}
+        onChange={(e) => set('state', e.target.value === '' ? null : e.target.value)}
         style={{
-          marginTop: 10, width: '100%', padding: '9px 0',
-          background: filters.affordableOnly ? 'var(--clay)' : 'var(--field)',
-          border: `1px solid ${filters.affordableOnly ? 'var(--clay)' : 'rgba(28,36,48,.28)'}`,
-          color: filters.affordableOnly ? 'var(--cream)' : 'var(--ink)',
-          font: "700 9.5px var(--mono)", letterSpacing: '.1em',
+          width: '100%', padding: '9px 8px',
+          background: 'var(--field)', border: '1px solid rgba(28,36,48,.28)',
+          color: 'var(--ink)', font: "600 12px var(--mono)",
+          borderRadius: 0, appearance: 'none',
         }}
-      >WITHIN MY REACH ONLY</button>
+      >
+        <option value="">ANYWHERE</option>
+        {ALL_STATES.map((st) => (
+          <option key={st} value={st}>{st}{st === homeState ? ' · yours' : ''}</option>
+        ))}
+      </select>
+
+      <div style={{ marginTop: 11, display: 'grid', gap: 6 }}>
+        <Switch
+          on={filters.pipelineOnly}
+          onClick={() => set('pipelineOnly', !filters.pipelineOnly)}
+          label={`IN MY PIPELINE${homeState ? ` · ${homeState}` : ''}`}
+          note={`Your own state. Worth a star of reach on top of your ${'★'.repeat(myStars)}.`}
+        />
+        <Switch
+          on={filters.untouchedOnly}
+          onClick={() => set('untouchedOnly', !filters.untouchedOnly)}
+          label="NOBODY IS ON HIM"
+          note="No program has spent a point on him yet."
+        />
+        <Switch
+          on={filters.reachOnly}
+          onClick={() => set('reachOnly', !filters.reachOnly)}
+          label="WITHIN MY REACH ONLY"
+          note="Hides the men who will not take the call."
+        />
+      </div>
     </div>
   );
 }
@@ -620,82 +833,78 @@ function Chip({ on, onClick, children }: {
   );
 }
 
-function Slider({ label, value, onChange }: {
-  label: string; value: number; onChange: (n: number) => void;
+/** A switch with its own sentence, because none of these explain themselves. */
+function Switch({ on, onClick, label, note }: {
+  on: boolean; onClick: () => void; label: string; note: string;
 }) {
   return (
-    <div style={{ marginTop: 11 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <span className="label">{label}</span>
-        <span style={{ font: "700 11px var(--mono)", color: 'var(--clay)' }}>
-          {value > 0 ? value : 'ANY'}
-        </span>
-      </div>
-      <input
-        type="range"
-        min={0}
-        max={80}
-        step={5}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        style={{ width: '100%', marginTop: 4, accentColor: 'var(--clay)' }}
-      />
-    </div>
+    <button
+      onClick={onClick}
+      className="tap"
+      style={{
+        width: '100%', textAlign: 'left', padding: '8px 10px',
+        background: on ? 'var(--clay)' : 'var(--field)',
+        border: `1px solid ${on ? 'var(--clay)' : 'rgba(28,36,48,.28)'}`,
+      }}
+    >
+      <span style={{
+        display: 'block', font: "700 9.5px var(--mono)", letterSpacing: '.1em',
+        color: on ? 'var(--cream)' : 'var(--ink)',
+      }}>{label}</span>
+      <span style={{
+        display: 'block', marginTop: 3, font: "400 10.5px/1.35 var(--body)",
+        color: on ? 'rgba(246,241,230,.78)' : 'var(--dim)',
+      }}>{note}</span>
+    </button>
   );
 }
 
-/** The roster the class is meant to fix. */
 /**
- * What the draft took, as a list you can act on.
+ * What the class has not covered, as a list you can act on.
  *
- * This was a sentence under the header — "you are short 1B, 2B, 4 BENCH" — which
- * said the right thing in the place you stop reading. As its own tab it is a
- * checklist: every hole, whether the class has covered it yet, and a tap that
- * filters the board down to players who play there.
+ * The same projection the class review prints, read off the same function on
+ * the same two inputs — the roster standing in front of you and the men you
+ * have signed. It used to count signings against the draft's own list of holes
+ * and got a different answer, which is how a tab reading COVERED down its whole
+ * length was followed three taps later by a class review that brought walk-ons.
+ * See `coveredSince` for the two ways that went wrong.
+ *
+ * A row here is not a hole in the abstract. It is a man who will turn up in
+ * June, at that position, thirteen points below your own level, unless somebody
+ * signs first — which is why the tap filters the board to players who play
+ * there.
  */
 function NeedsView(
-  { holes, filled, onPick }:
+  { short, covered, onPick }:
   {
-    holes: { pos: string; count: number }[];
-    filled: Prospect[];
+    short: readonly { pos: string; count: number }[];
+    covered: readonly { pos: string; count: number }[];
     onPick: (pos: string) => void;
   },
 ) {
-  if (holes.length === 0) {
-    return (
-      <div style={{
-        marginTop: 10, padding: '18px 12px', border: '1px solid var(--faint)',
-        background: 'var(--paper)', font: "400 12px/1.55 var(--body)", color: 'var(--dim)',
-        textAlign: 'center',
-      }}>
-        Nobody left. Every spot the draft opened up is covered.
-      </div>
-    );
-  }
-
-  const signedAt = (pos: string): number =>
-    filled.filter((p) => slotOf(p) === pos).length;
+  const total = short.reduce((a, r) => a + r.count, 0);
 
   return (
     <div style={{ marginTop: 10 }}>
       <div style={{
         marginBottom: 10, padding: '9px 11px', background: 'var(--paper)',
-        borderLeft: '3px solid var(--clay)',
+        borderLeft: `3px solid ${total === 0 ? 'var(--win)' : 'var(--clay)'}`,
         font: "400 11.5px/1.5 var(--body)", color: 'var(--ink)',
       }}>
-        The draft and graduation left these open. Anything you do not sign gets
-        filled by a walk-on — thirteen points below your program's own level.
+        {total === 0
+          ? 'Every spot is covered. Nobody walks on this year — the whole roster '
+            + 'is men you went and got.'
+          : `${total} walk-on${total === 1 ? '' : 's'} as it stands. Anything you do `
+            + "not sign gets filled by whoever turns up, thirteen points below your "
+            + "program's own level — and he is gone again the moment the season ends."}
       </div>
 
-      <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-        {holes.map((h) => {
-          const got = h.pos === 'BENCH' ? 0 : signedAt(h.pos);
-          const done = got >= h.count;
-          return (
+      {short.length > 0 && (
+        <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+          {short.map((h) => (
             <button
               key={h.pos}
-              onClick={() => h.pos !== 'BENCH' && onPick(h.pos)}
-              disabled={h.pos === 'BENCH'}
+              onClick={() => onPick(h.pos)}
               className="tap"
               style={{
                 width: '100%', textAlign: 'left',
@@ -706,21 +915,50 @@ function NeedsView(
               }}
             >
               <span style={{
-                font: "700 13px var(--mono)", letterSpacing: '.06em',
-                color: done ? 'var(--win)' : 'var(--clay)',
+                font: "700 13px var(--mono)", letterSpacing: '.06em', color: 'var(--clay)',
               }}>{h.pos}</span>
               <span style={{ font: "400 11.5px/1.4 var(--body)", color: 'var(--dim)' }}>
-                {h.count > 1 ? `${h.count} to replace` : 'one to replace'}
-                {h.pos !== 'BENCH' && ` · ${got} signed`}
+                {h.count > 1 ? `${h.count} walk-ons` : 'one walk-on'} unless you sign
               </span>
               <span style={{
-                font: "700 8px var(--mono)", letterSpacing: '.1em',
-                color: done ? 'var(--win)' : 'var(--dim)',
-              }}>{done ? 'COVERED' : h.pos === 'BENCH' ? 'DEPTH' : 'SHOW ME →'}</span>
+                font: "700 8px var(--mono)", letterSpacing: '.1em', color: 'var(--dim)',
+              }}>SHOW ME →</span>
             </button>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
+
+      {/* What the class has already bought. A tab that only ever lists what is
+          still wrong teaches the coach that signing somebody changes nothing. */}
+      {covered.length > 0 && (
+        <>
+          <div className="label" style={{ marginTop: 16, marginBottom: 6 }}>
+            YOUR CLASS COVERED
+          </div>
+          <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+            {covered.map((h) => (
+              <div
+                key={h.pos}
+                style={{
+                  display: 'grid', gridTemplateColumns: '52px 1fr auto',
+                  gap: 10, alignItems: 'center',
+                  padding: '10px 11px', borderBottom: '1px solid var(--hairline)',
+                }}
+              >
+                <span style={{
+                  font: "700 13px var(--mono)", letterSpacing: '.06em', color: 'var(--win)',
+                }}>{h.pos}</span>
+                <span style={{ font: "400 11.5px/1.4 var(--body)", color: 'var(--dim)' }}>
+                  {h.count > 1 ? `${h.count} spots` : 'one spot'} the class fills
+                </span>
+                <span style={{
+                  font: "700 8px var(--mono)", letterSpacing: '.1em', color: 'var(--win)',
+                }}>COVERED</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -773,12 +1011,12 @@ function RosterView() {
 }
 
 function ProspectSheet({
-  prospect, userTeam, coachPrestige, recruitingSkill, pitch, reachable, live, full, left,
-  onSet, onClose,
+  prospect, userTeam, coachPrestige, recruitingSkill, pitch, reachable, pipeline,
+  live, full, left, onSet, onClose,
 }: {
   prospect: Prospect; userTeam: number; coachPrestige: number; recruitingSkill: number;
   pitch: ReturnType<typeof pitchFor>;
-  reachable: boolean; live: boolean; full: boolean; left: number;
+  reachable: boolean; pipeline: boolean; live: boolean; full: boolean; left: number;
   onSet: (n: number) => void; onClose: () => void;
 }) {
   const [tab, setTab] = useState<Sheet>('overview');
@@ -861,7 +1099,8 @@ function ProspectSheet({
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px' }}>
           {tab === 'overview' && (
             <Overview
-              prospect={prospect} pitch={pitch} reachable={reachable} live={live}
+              prospect={prospect} pitch={pitch} reachable={reachable}
+              pipeline={pipeline} live={live}
               full={full} spent={spent} left={left} coachPrestige={coachPrestige}
               recruitingSkill={recruitingSkill}
               onSet={onSet}
@@ -879,10 +1118,11 @@ function ProspectSheet({
 }
 
 function Overview({
-  prospect, pitch, reachable, live, full, spent, left, coachPrestige, recruitingSkill, onSet,
+  prospect, pitch, reachable, pipeline, live, full, spent, left,
+  coachPrestige, recruitingSkill, onSet,
 }: {
   prospect: Prospect; pitch: ReturnType<typeof pitchFor>;
-  reachable: boolean; live: boolean; full: boolean;
+  reachable: boolean; pipeline: boolean; live: boolean; full: boolean;
   spent: number; left: number; coachPrestige: number; recruitingSkill: number;
   onSet: (n: number) => void;
 }) {
@@ -952,8 +1192,23 @@ function Overview({
           font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
         }}>
           <strong style={{ color: 'var(--ink)' }}>He will not take the call.</strong>
-          {' '}A program of his calibre is not on his list at your level. Build the
-          program up and players like him start listening.
+          {' '}A {'★'.repeat(prospect.stars)} recruit hears out a{' '}
+          {'★'.repeat(reachFloor(prospect.stars))} program and up &mdash; one more
+          rung down if he is from your own state, and he is not. Build the program
+          up and players like him start listening.
+        </div>
+      )}
+
+      {reachable && pipeline && (
+        <div style={{
+          marginTop: 12, padding: '11px 12px', background: 'var(--field)',
+          borderLeft: '3px solid var(--win)',
+          font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
+        }}>
+          <strong style={{ color: 'var(--ink)' }}>He is in your pipeline.</strong>
+          {' '}A kid from your own state will hear out a program a rung below
+          the one his grade would otherwise talk to &mdash; and proximity is worth
+          full marks in the pitch on top of that.
         </div>
       )}
 
@@ -1056,7 +1311,13 @@ function Overview({
             marginTop: 8, font: "400 10.5px var(--mono)", color: 'var(--dim)',
           }}>
             <span>Budget: <strong style={{ color: 'var(--ink)' }}>{left}</strong> left</span>
-            <span>Min. prestige: {'★'.repeat(prospect.minProgram)}</span>
+            {/* Off his star rating, not off the floor stored on him: a save
+                made under the old per-recruit ladder carries a number the gate
+                no longer reads. See `canPursue`. */}
+            <span>
+              Min. prestige: {'★'.repeat(reachFloor(prospect.stars))}
+              {pipeline ? ' − 1 here' : ''}
+            </span>
           </div>
         </div>
       )}

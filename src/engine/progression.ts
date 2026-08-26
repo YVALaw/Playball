@@ -14,12 +14,12 @@ import {
   visibleValue, yearsOfLeverage,
   type DraftBoard, type DraftedMan,
 } from './draft.js';
-import { ageFor, makeHitter, makePitcher } from './players.js';
+import { ageFor, makeHitter, makePitcher, releaseNames, reserveNames } from './players.js';
 import { prestigeStars } from './program.js';
 import { overallOf, clamp } from './ratings.js';
 import { windowBudget } from './recruiting.js';
 import type { Prospect } from './recruiting.js';
-import { gauss } from './rng.js';
+import { gauss, makeRng } from './rng.js';
 import type { SeasonState } from './season.js';
 import type {
   ClassYear, Hitter, Pitcher, Player, PlayerId, Position, Rng, Team,
@@ -268,7 +268,7 @@ const byOverall = <T extends Player>(xs: T[]): T[] =>
  */
 function refill(
   team: Team, survivors: Player[], rng: Rng, signed: Player[] = [],
-  collect?: Player[],
+  collect?: Player[], walkOns: readonly Player[] = [],
 ): number {
   const hitters = byOverall(survivors.filter((p): p is Hitter => p.type === 'hitter'));
   const arms = byOverall(survivors.filter((p): p is Pitcher => p.type === 'pitcher'));
@@ -278,6 +278,18 @@ function refill(
   const signedHitters = byOverall(signed.filter((p): p is Hitter => p.type === 'hitter'));
   const signedArms = byOverall(signed.filter((p): p is Pitcher => p.type === 'pitcher'));
 
+  // The men who walk on, drawn in advance and queued by the spot they were
+  // drawn for. `walkOnClass` walks this same placement order, so the queue holds
+  // exactly what the loops below are about to ask for — and the class review
+  // three taps back has already shown the coach these very men. The fallback
+  // draw is a safety net for a caller that supplied nothing.
+  const spare = new Map<string, Player[]>();
+  for (const p of walkOns) {
+    const key = p.type === 'pitcher' ? (p as Pitcher).role : p.pos;
+    const queue = spare.get(key);
+    if (queue) queue.push(p); else spare.set(key, [p]);
+  }
+
   const freshHitter = (pos: Position): Hitter => {
     recruits += 1;
     // Somebody you actually recruited who plays here, else the best bat signed,
@@ -286,12 +298,8 @@ function refill(
     if (exact >= 0) return signedHitters.splice(exact, 1)[0] as Hitter;
     const any = signedHitters.shift();
     if (any) { any.pos = pos; return any; }
-    const p = makeHitter(rng, team.quality - WALK_ON_PENALTY + gauss(rng) * 3, { pos });
-    p.classYear = 'FR';
-    // Generated at whatever class year the draw handed him, so his age has to
-    // come back into step with the freshman the roster is about to call him.
-    p.age = ageFor(p.id, 'FR');
-    p.walkOn = true;
+    const p = (spare.get(pos)?.shift() as Hitter | undefined)
+      ?? (walkOnHitter(rng, team.quality, pos));
     collect?.push(p);
     return p;
   };
@@ -301,10 +309,8 @@ function refill(
     if (exact >= 0) return signedArms.splice(exact, 1)[0] as Pitcher;
     const any = signedArms.shift();
     if (any) { any.role = role; return any; }
-    const p = makePitcher(rng, team.quality - WALK_ON_PENALTY + gauss(rng) * 3, { role });
-    p.classYear = 'FR';
-    p.age = ageFor(p.id, 'FR');
-    p.walkOn = true;
+    const p = (spare.get(role)?.shift() as Pitcher | undefined)
+      ?? (walkOnArm(rng, team.quality, role));
     collect?.push(p);
     return p;
   };
@@ -354,6 +360,79 @@ function refill(
   team.rotation = rotation;
   team.bullpen = bullpen;
   return recruits;
+}
+
+/**
+ * One walk-on, at the level a program that missed on him ends up with.
+ *
+ * Split out so the man the class review shows and the man the year roll puts on
+ * the roster come off one piece of code rather than two that resemble each
+ * other. Everything about him except the draws is fixed here: a freshman, aged
+ * back into step with that, and marked — `Player.walkOn` is what puts him on a
+ * one year lease and what the departure notice reads next June.
+ */
+function walkOnHitter(rng: Rng, quality: number, pos: Position): Hitter {
+  const p = makeHitter(rng, quality - WALK_ON_PENALTY + gauss(rng) * 3, { pos });
+  p.classYear = 'FR';
+  // Generated at whatever class year the draw handed him, so his age has to
+  // come back into step with the freshman the roster is about to call him.
+  p.age = ageFor(p.id, 'FR');
+  p.walkOn = true;
+  return p;
+}
+
+function walkOnArm(rng: Rng, quality: number, role: 'SP' | 'RP'): Pitcher {
+  const p = makePitcher(rng, quality - WALK_ON_PENALTY + gauss(rng) * 3, { role });
+  p.classYear = 'FR';
+  p.age = ageFor(p.id, 'FR');
+  p.walkOn = true;
+  return p;
+}
+
+/**
+ * The stream a program's walk-ons come out of.
+ *
+ * Its own, rather than the season's. Walk-ons used to be drawn from the world
+ * generator in the middle of a loop over ninety six programs, which made a
+ * given program's men a function of every draw every program before it had
+ * spent — unknowable from outside the loop, and therefore impossible to show
+ * anybody before the loop ran. Off a seed of their own they are a function of
+ * the year and the program and nothing else, which is what lets the class
+ * review print the men who are actually coming.
+ */
+export const walkOnSeed = (year: number, team: number): number =>
+  (((year + 1) * 2654435761) ^ ((team + 1) * 40503)) >>> 0 || 1;
+
+/**
+ * The men who will walk on, by name, before anybody has walked on.
+ *
+ * The class review runs on signing day and the roster is not rebuilt until the
+ * year turns over, so these men do not exist yet at the moment the screen draws
+ * them — and the screen shows them anyway, with faces and ratings and a card,
+ * because "four bodies at C, 1B, SP, RP" is not information a coach can feel
+ * anything about. What makes that honest rather than a mock-up is that these
+ * *are* the men: `refill` takes its walk-ons from this same call, so the
+ * catcher whose card you read on signing day is the catcher on the roster in
+ * June, down to his face.
+ *
+ * Names go straight back to the pool — see `releaseNames` — because the pool is
+ * the one thing that would make the second call differ from the first.
+ */
+export function walkOnClass(
+  survivors: readonly Player[], signed: readonly Player[],
+  quality: number, seed: number,
+): Player[] {
+  const rng = makeRng(seed);
+  const made: Player[] = [];
+  for (const row of walkOnShortfall(survivors, signed)) {
+    for (let i = 0; i < row.count; i++) {
+      made.push(row.pos === 'SP' || row.pos === 'RP'
+        ? walkOnArm(rng, quality, row.pos)
+        : walkOnHitter(rng, quality, row.pos as Position));
+    }
+  }
+  releaseNames(made.map((p) => p.name));
+  return made;
 }
 
 /**
@@ -814,15 +893,40 @@ export function fillRosters(
   // report with the user's holes and nobody's walk-ons is the half-answer that
   // made this worth aligning.
   const reportFor = opts.userTeam ?? season.captureBoxFor;
-  for (const record of season.teams) {
+
+  /*
+    The reported program goes first, and that ordering is load bearing.
+
+    A walk-on's name is drawn against the pool of names already in the world,
+    which grows as this loop runs — so a program's men depend on how many
+    programs went before it. That is fine for ninety five of them and fatal for
+    the one whose men the class review has already printed, because the review
+    ran with no walk-ons anywhere in the pool. Putting him first is what makes
+    his June identical to the June he was shown. Everybody else reserves as they
+    go, which is what keeps two walk-ons in one country from sharing a name.
+  */
+  const order = [...season.teams].sort(
+    (a, b) => Number(b.index === reportFor) - Number(a.index === reportFor),
+  );
+
+  for (const record of order) {
     const team = record.team;
     const survivors: Player[] = [
       ...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen,
     ];
     const collected: Player[] = [];
+    const signedHere = classFor.get(record.index) ?? [];
+    // Drawn off the program and the year rather than out of the middle of this
+    // loop, so the men are the ones the class review already named.
+    const bodies = walkOnClass(
+      survivors, signedHere, team.quality,
+      walkOnSeed(season.recruiting.year, record.index),
+    );
+    reserveNames(bodies.map((p) => p.name));
     recruits += refill(
-      team, survivors, rng, classFor.get(record.index) ?? [],
+      team, survivors, rng, signedHere,
       record.index === reportFor ? collected : undefined,
+      bodies,
     );
     for (const p of collected) {
       walkOns.push({

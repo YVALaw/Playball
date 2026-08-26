@@ -21,7 +21,7 @@
 // one "reputation" bar would hide the only interesting case — a good coach doing
 // well at a bad job.
 
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { ACHIEVEMENTS, ACHIEVEMENT_IDS } from '../../engine/achievements.js';
 import { useDynasty, useUserTeam, useConferenceTable } from '../../state/store.js';
 import {
@@ -62,7 +62,12 @@ export function Program() {
   const year = useDynasty((s) => s.year);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
-  const [sheet, setSheet] = useState<Sheet>('board');
+  // In the store rather than in a `useState`, because the page is addressed
+  // from outside now: an inbox card about the board opens the board, and one
+  // about an achievement opens the cabinet. A component that owns its own tab
+  // cannot be told which tab to be on.
+  const sheet = useDynasty((s) => s.programSheet);
+  const setSheet = useDynasty((s) => s.setProgramSheet);
   void version;
 
   if (!season || !team) return null;
@@ -637,17 +642,23 @@ function HallSheet() {
 
   return (
     <>
-      <Head>THE HALL</Head>
+      <Head>
+        {inducted.length === 0
+          ? 'THE HALL · NOBODY IN IT YET'
+          : `THE HALL · ${inducted.length} INDUCTED`}
+      </Head>
       {inducted.length === 0
         ? (
           <Panel>
             <Empty>
-              Empty. The hall meets every June, once the draft has settled, and it
-              only ever looks at men whose careers are finished — so nobody can go
-              in until he has left. It wants a career rather than an afternoon:
-              two seasons at the very least, and sustained production across them
-              weighed against the best two years of it. One enormous game does not
-              count for anything here.
+              Nobody has been inducted, and the tables further down are not the
+              hall — they are who has piled up the most, which is a different
+              question. The hall meets every June, once the draft has settled,
+              and it only ever looks at men whose careers are finished, so nobody
+              can go in until he has left. It wants a career rather than an
+              afternoon: two seasons at the very least, and sustained production
+              across them weighed against the best two years of it. One enormous
+              game does not count for anything here.
             </Empty>
           </Panel>
         )
@@ -661,16 +672,33 @@ function HallSheet() {
           />
         ))}
 
-      {/* Named apart from the plaques above, or the first table reads as the
-          rest of the hall. Two different questions, one screen. */}
-      <div style={{ marginTop: 18 }}>
+      {/*
+        Named apart from the plaques above, and now separated from them, because
+        the two were read as one list. Reported as "the hall of fame inducts
+        after one season and inducts nobody remarkable": after one season the
+        plaques are empty and these two tables hold two dozen ordinary freshmen,
+        under a tab called HALL OF FAME. Nobody was inducted — the ballot is
+        right and refuses anybody with one season — but the screen was saying
+        otherwise, which comes to the same thing.
+
+        So the section gets a rule of its own and a heading that says what it is
+        not. Two different questions, one screen, and the screen has to say which
+        is which loudly enough to survive being skimmed.
+      */}
+      <div style={{
+        marginTop: 22, paddingTop: 14, borderTop: '2px solid var(--ink)',
+      }}>
+        <div className="label" style={{ color: 'var(--clay)' }}>
+          CAREER LEADERS · NOT INDUCTIONS
+        </div>
         <div style={{
-          font: "400 11px/1.5 var(--body)", color: 'var(--dim)', marginBottom: 8,
+          marginTop: 6, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+          marginBottom: 10,
         }}>
-          <strong style={{ color: 'var(--ink)' }}>Career leaders.</strong> Who
-          accumulated the most, which is not the same question as who was great —
-          four years of turning up will out-hit two years of being the best player
-          in the country.
+          Who accumulated the most, which is not the same question as who was
+          great — four years of turning up will out-hit two years of being the
+          best player in the country. Nobody on these tables is in the hall
+          unless he has a plaque above.
         </div>
         <Head>BATTING · BY CAREER HITS</Head>
       </div>

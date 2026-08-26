@@ -21,6 +21,10 @@ import {
   LIFER_SEASONS, restoreAchievements, type AchievementLog,
 } from './achievements.js';
 import { overallOf } from './ratings.js';
+// A season's worth of games, which is what the title ladder counts seasons in.
+// Shared with the record book rather than written down twice — a test pins it
+// against `seasonLength(DEFAULT_SEASON)`, so it cannot drift from the calendar.
+import { BOOK_SEASON_GAMES } from './records.js';
 import { FIRST, LAST } from '../data/names.js';
 import { ALL_STATES } from '../data/schools.js';
 import { DEFAULT_PHILOSOPHY, isPhilosophyId, type PhilosophyId } from './strategy.js';
@@ -1017,6 +1021,37 @@ export interface CoachStanding {
   lifer: boolean;
 }
 
+/**
+ * The rungs, bottom to top. The order is the ladder.
+ */
+const TITLE_ORDER: readonly CoachTitle[] =
+  ['Unproven', 'Journeyman', 'Respected', 'Established', 'Renowned', 'Legendary'];
+
+/**
+ * At most one rung a season, and the reason is what the word is supposed to
+ * mean.
+ *
+ * Reported: UNPROVEN to RESPECTED in a single year with nothing won. Both
+ * halves of the ladder allowed it. `winPct > 0.55` is a career rate with no
+ * career under it, so one 25-14 spring read as a decade of winning baseball;
+ * and a first season at a weak program can put prestige within reach of 42 on
+ * its own. Neither is prestige being volatile — measured, a 38-7 first year
+ * moves it nine points — it is a ladder that could be climbed faster than the
+ * calendar.
+ *
+ * So the earned title is capped at one rung per completed season. A man who has
+ * coached one year cannot be introduced as anything better than a journeyman,
+ * however that year went, because "respected" is a statement about a body of
+ * work and one season is not one.
+ *
+ * The trophy floors below are deliberately *not* capped. They are the other
+ * half of the design and they are earned by winning a specific thing rather
+ * than by climbing: a first year national champion is Legendary in June, and
+ * nobody would call that too fast.
+ */
+const earnedCap = (games: number): number =>
+  (games <= 0 ? 0 : Math.max(1, Math.floor(games / BOOK_SEASON_GAMES)));
+
 export function coachStanding(coach: CoachState): CoachStanding {
   const games = coach.careerWins + coach.careerLosses;
   const winPct = games === 0 ? 0 : coach.careerWins / games;
@@ -1037,7 +1072,7 @@ export function coachStanding(coach: CoachState): CoachStanding {
   else if (games > 0) floor = 'Journeyman';
 
   // And the ladder itself, which can lift him above that floor but never below.
-  const earned: CoachTitle =
+  const climbed: CoachTitle =
     coach.prestige >= 80 && coach.titles > 0 ? 'Legendary'
     : coach.prestige >= 68 ? 'Renowned'
     : coach.prestige >= 55 ? 'Established'
@@ -1045,9 +1080,11 @@ export function coachStanding(coach: CoachState): CoachStanding {
     : games > 0 ? 'Journeyman'
     : 'Unproven';
 
-  const ORDER: CoachTitle[] =
-    ['Unproven', 'Journeyman', 'Respected', 'Established', 'Renowned', 'Legendary'];
-  const title = ORDER.indexOf(earned) >= ORDER.indexOf(floor) ? earned : floor;
+  const earned = TITLE_ORDER[
+    Math.min(TITLE_ORDER.indexOf(climbed), earnedCap(games))
+  ] ?? 'Unproven';
+
+  const title = TITLE_ORDER.indexOf(earned) >= TITLE_ORDER.indexOf(floor) ? earned : floor;
 
   return { title, lifer: coach.tenure >= LIFER_SEASONS };
 }
