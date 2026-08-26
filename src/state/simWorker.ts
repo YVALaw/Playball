@@ -1,7 +1,7 @@
 // simWorker.ts
 // The simulation, off the main thread.
 //
-// A full 64-team season takes a few hundred milliseconds on a desktop and will be several
+// A full 96-team season takes a few hundred milliseconds on a desktop and will be several
 // times that on a mid-range phone. Run on the main thread that is a frozen
 // screen — no scroll, no tap response, no spinner, because a spinner needs
 // frames too. So the world crosses to a worker, gets played, and comes back.
@@ -14,7 +14,6 @@
 
 import * as Comlink from 'comlink';
 import { simNextDay, seasonComplete } from '../engine/season.js';
-import { advanceOffseason, type OffseasonReport, type OffseasonOpts } from '../engine/progression.js';
 import { fromPortable, toPortable, type Portable } from './seasonCodec.js';
 
 export interface SimProgress {
@@ -36,26 +35,19 @@ const api = {
     const season = fromPortable(portable);
     const total = season.schedule.length;
 
+    // Guarded like every other loop in the codebase. A season that somehow
+    // never completes must come back as an error, not hang this thread and the
+    // promise on the other side of it forever.
+    let guard = 0;
     while (!seasonComplete(season)) {
+      if (guard++ > total + 30) {
+        throw new Error('the season never completed — a schedule that cannot finish');
+      }
       simNextDay(season);
       if (onProgress) await onProgress({ day: season.dayIndex, totalDays: total });
     }
 
     return toPortable(season);
-  },
-
-  simDay(portable: Portable): Portable {
-    const season = fromPortable(portable);
-    if (!seasonComplete(season)) simNextDay(season);
-    return toPortable(season);
-  },
-
-  offseason(
-    portable: Portable, opts: OffseasonOpts = {},
-  ): { portable: Portable; report: OffseasonReport } {
-    const season = fromPortable(portable);
-    const report = advanceOffseason(season, season.rng, opts);
-    return { portable: toPortable(season), report };
   },
 };
 

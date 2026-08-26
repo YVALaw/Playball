@@ -75,6 +75,16 @@ export interface SaveFile {
   /** True while the coach has been dismissed and has not taken a new job. */
   jobSearch?: unknown;
   /**
+   * The chairs that would take his call while he is out of work.
+   *
+   * The one companion `jobSearch` cannot live without. A save that recorded
+   * the dismissal but not the offers came back as a job-search screen with
+   * nothing on it — no rows, no nav, no way forward — and the career was
+   * unrecoverable. Optional so older saves load; the store regenerates a
+   * missing list from the same rule that built it.
+   */
+  offers?: unknown;
+  /**
    * The postseason in progress, stage by stage.
    *
    * Same reason `phase` is here: without it a reload between stages drops the
@@ -292,6 +302,8 @@ export interface SaveExtras {
   postseasonSeen?: unknown;
   /** True while the coach has no job. Without it, a reload rehires him. */
   jobSearch?: unknown;
+  /** The offers on the table while he has no job. See `SaveFile.offers`. */
+  offers?: unknown;
   /** Optional so saves predating the dynasty layer still load. */
   coach?: unknown;
   /** The notification centre, read flags and all. */
@@ -340,6 +352,12 @@ export function buildSaveFile(
       ? { postseasonSeen: extras.postseasonSeen }
       : {}),
     ...(extras.jobSearch ? { jobSearch: true } : {}),
+    // Beside `jobSearch`, because the two are one fact: dismissed, with these
+    // chairs willing to talk. Saving the flag without the offers produced a
+    // job-search screen with nothing on it and no way forward.
+    ...(Array.isArray(extras.offers) && extras.offers.length > 0
+      ? { offers: extras.offers }
+      : {}),
     // Where the offseason had got to. Widening `SaveExtras` alone was not
     // enough — this record is built field by field, so anything not named here
     // is silently dropped no matter what the type says it accepts.
@@ -392,6 +410,8 @@ export interface LoadedDynasty {
   postseasonSeen: unknown;
   /** Whether the coach is currently out of a job. */
   jobSearch: unknown;
+  /** The offers on his table if he is. Null on saves that predate storing them. */
+  offers: unknown;
   /** Where the offseason sequence had got to, and the verdict behind it. */
   phase: unknown;
   furthestPhase: unknown;
@@ -450,6 +470,7 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     knockout: file.knockout ?? null,
     postseasonSeen: file.postseasonSeen ?? [],
     jobSearch: file.jobSearch ?? false,
+    offers: file.offers ?? null,
     phase: file.phase ?? null,
     furthestPhase: file.furthestPhase ?? null,
     review: file.review ?? null,

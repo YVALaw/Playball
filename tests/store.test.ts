@@ -45,10 +45,9 @@ const STALE_WEEK = { closed: 3, yours: ['Somebody Signed'], gone: 5 };
 
 describe('the week recap does not outlive its window', () => {
   it('starts a new dynasty with no recap on the board', () => {
-    useDynasty.setState({ lastWeek: STALE_WEEK, lastCommits: ['Somebody Signed'] });
+    useDynasty.setState({ lastWeek: STALE_WEEK });
     useDynasty.getState().start(4242, 0);
     expect(useDynasty.getState().lastWeek).toBeNull();
-    expect(useDynasty.getState().lastCommits).toEqual([]);
   });
 
   it('clears the recap when a new recruiting window opens', async () => {
@@ -59,7 +58,6 @@ describe('the week recap does not outlive its window', () => {
       phase: 'draft',
       furthestPhase: PHASES.indexOf('draft'),
       lastWeek: STALE_WEEK,
-      lastCommits: ['Somebody Signed'],
     });
 
     await useDynasty.getState().nextPhase();
@@ -69,7 +67,6 @@ describe('the week recap does not outlive its window', () => {
     expect(s.season?.recruiting.week).toBe(1);
     // The window is live and nothing has closed yet: no banner.
     expect(s.lastWeek).toBeNull();
-    expect(s.lastCommits).toEqual([]);
   });
 
   it('keeps the recap through the week that follows it', () => {
@@ -404,6 +401,15 @@ describe('a coaching philosophy reaches the field', () => {
     useDynasty.getState().start(4242, 0, { ...DEFAULT_PROFILE, philosophy: 'power' });
     useDynasty.getState().setStrategy('bunt', 'often');
 
+    // Accepting is guarded on the offer actually being on the table — a
+    // double-tap's second click finds an empty list and does nothing — so the
+    // table has to be set the way rollYear would have set it.
+    useDynasty.setState({
+      offers: [{
+        team: 5, school: 'Somewhere State', conference: 'GULF',
+        prestige: 50, pitch: 'Come coach here.',
+      }],
+    });
     await useDynasty.getState().acceptOffer(5);
 
     const teams = useDynasty.getState().season?.teams;

@@ -189,7 +189,7 @@ import { WORLD_SEED, START_YEAR } from './world.js';
 // Re-exported so the screens that already import it from here keep working.
 export { WORLD_SEED, START_YEAR, careerSeed } from './world.js';
 import {
-  workerAvailable, simSeasonInWorker, offseasonInWorker,
+  workerAvailable, simSeasonInWorker, disposeWorker,
 } from './simClient.js';
 import type { SimProgress } from './simWorker.js';
 
@@ -401,8 +401,18 @@ export interface DynastyStore {
   lastOffseason: OffseasonReport | null;
   /** Which step of the offseason is on screen, or null during the season. */
   phase: Phase;
-  /** Move to the next step. At the end of the sequence, rolls the year over. */
-  nextPhase: () => Promise<void>;
+  /**
+   * Move to the next step. At the end of the sequence, rolls the year over.
+   *
+   * `from` is the step the pressed button was rendered on. Passing it makes a
+   * doubled call harmless: the second invocation still says "leave the coach
+   * step", the store has already left it, and nothing happens — where an
+   * unqualified second call would read the *new* phase and advance again,
+   * skipping a whole step (and, past the coach step, releasing every drafted
+   * man without the retention screen ever appearing). Omitted, the call is
+   * unconditional — the form the tests and the store's own tail use.
+   */
+  nextPhase: (from?: Phase) => Promise<void>;
   /**
    * Make one of the four cases to a man a professional club has just taken.
    *
@@ -518,8 +528,6 @@ export interface DynastyStore {
    * The stage results it folds into `bracket` are what survive.
    */
   myBracket: MyBracket | null;
-  /** The game you are due to play next in it, if there is one. */
-  myNextGame: () => { a: number; b: number; round: string } | null;
   /** Take your own bracket game. Opens the manage screen. */
   manageBracketGame: () => void;
   /**
@@ -622,8 +630,6 @@ export interface DynastyStore {
   recruit: (prospectId: PlayerId, actions: number) => void;
   /** Bank the week, let recruits commit, and move to the next one. */
   advanceRecruitingWeek: () => void;
-  /** Recruits who committed to you in the week just closed. */
-  lastCommits: string[];
   /**
    * What the week that just closed actually did.
    *
@@ -1096,6 +1102,34 @@ function defaultUserTeam(season: SeasonState): number {
   return home?.index ?? 0;
 }
 
+/**
+ * Re-entrancy latch for `nextPhase`. A fast double-tap on CONTINUE delivered
+ * two clicks before the first call's `set` landed, and the second call read the
+ * *new* phase and advanced again — the draft step could vanish between two
+ * taps, releasing every drafted man unseen. One press, one step.
+ */
+let phaseAdvancing = false;
+
+/**
+ * Which season-simulation request is current. `playSeason` hands the whole
+ * season to a worker and, minutes of taps later, replaces the store's season
+ * with whatever comes back. If the user loaded a different dynasty (or started
+ * a new one) in the meantime, that result describes a world that no longer
+ * exists — applying it overwrote the freshly loaded save with the old career.
+ * Bumped by anything that changes which world is live; a completion whose
+ * generation is stale is dropped on the floor.
+ */
+let simGeneration = 0;
+
+/**
+ * Which save request is the latest. Saves are fire-and-forget from a dozen
+ * call sites — every recruiting spend fires one — and they all share one
+ * status field. Unordered, a failing older write could stamp 'error' over a
+ * newer success, and the other way round. Only the newest request gets to
+ * report.
+ */
+let saveTicket = 0;
+
 export const useDynasty = create<DynastyStore>((set, get) => ({
   season: null,
   userTeam: 0,
@@ -1108,7 +1142,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   busy: false,
   progress: null,
   lastOffseason: null,
-  lastCommits: [],
   lastWeek: null,
   phase: null,
 
@@ -1143,7 +1176,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       screen: 'today',
       lastOffseason: null,
       lastWeek: null,
-      lastCommits: [],
       inbox: [],
     });
     void get().saveNow();
@@ -1158,7 +1190,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   recruit: (prospectId, actions) => {
     const { season, userTeam, version } = get();
-    if (!season) return;
+    if (!season || get().busy) return;
     // Only during the window. Outside it the board is a scouting list.
     if (season.recruiting.week < 1 || season.recruiting.week > RECRUITING_WEEKS) return;
 
@@ -1209,8 +1241,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
    * gets to see the other's spend first.
    */
   advanceRecruitingWeek: () => {
-    const { season, userTeam, coach, version } = get();
-    if (!season) return;
+    const { season, userTeam, coach, version, busy } = get();
+    if (!season || busy) return;
     const recruits = season.recruiting;
     if (recruits.week < 1 || recruits.week > RECRUITING_WEEKS) return;
 
@@ -1269,7 +1301,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const yours = mineThisWeek.map((c) => c.prospect.player.name);
     set({
       version: version + 1,
-      lastCommits: yours,
       lastWeek: { closed, yours, gone: commits.length - yours.length },
     });
 
@@ -1291,6 +1322,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         });
       }
     }
+
+    // A closed week is banked points, commitments and a burned third of the
+    // window — irreversible, and until now unsaved.
+    void get().saveNow();
   },
 
   keepPlayer: (id, pitch, offer) => {
@@ -1353,9 +1388,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
    * moves the game forward once the season ends, and it cannot skip a phase that
    * still has a decision waiting in it.
    */
-  nextPhase: async () => {
-    const { phase, season } = get();
-    if (!season || phase === null) return;
+  nextPhase: async (from) => {
+    const { phase, season, busy } = get();
+    if (!season || phase === null || busy) return;
+    // The press named the step it was leaving, and the store is no longer on
+    // it: a doubled press, already honoured. See the interface note.
+    if (from !== undefined && from !== phase) return;
+    // One step per press, however fast the presses come. See `phaseAdvancing`.
+    if (phaseAdvancing) return;
+    phaseAdvancing = true;
+    try {
 
     // Nothing carries over between steps. A table left open over the season
     // review would still be sitting over the top of recruiting.
@@ -1443,8 +1485,19 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         });
       }
 
-      seedRivalInterest(season, get().userTeam);
-      season.recruiting.week = 1;
+      /*
+        Guarded the same way `departAndDevelop` is, and for the same reason:
+        the rail lets you walk back to the draft step and come forward again.
+        `seedRivalInterest` is explicitly additive — run twice it doubled the
+        whole country's head start on the class — and rewinding `week` to 1
+        handed the player a fresh three-week window with the weeks already
+        played still banked. First arrival seeds the board and starts the
+        clock; a revisit changes neither.
+      */
+      if (get().furthestPhase < PHASES.indexOf('recruiting')) {
+        seedRivalInterest(season, get().userTeam);
+        season.recruiting.week = 1;
+      }
       set({
         phase: next,
         furthestPhase: Math.max(get().furthestPhase, PHASES.indexOf(next)),
@@ -1452,7 +1505,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         // over" recap surviving into this year's week 1 read as the window
         // being already finished.
         lastWeek: null,
-        lastCommits: [],
         version: get().version + 1,
       });
       void get().saveNow();
@@ -1604,6 +1656,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         : get().furthestPhase,
       version: get().version + 1,
     });
+    // The quiet transitions (awards→review, review→coach) moved prestige, the
+    // carousel, the history entry and spent skill points without ever writing a
+    // save — a reload after any of them silently lost the lot.
+    void get().saveNow();
+    } finally {
+      phaseAdvancing = false;
+    }
   },
 
   spendSkill: (skill) => {
@@ -1623,6 +1682,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       spentThisStep: { ...spentThisStep, [skill]: (spentThisStep[skill] ?? 0) + 1 },
       version: version + 1,
     });
+    // The point is already off the coach; a reload before the draft step's save
+    // used to lose the rating while keeping it spent.
+    void get().saveNow();
   },
 
   spentThisStep: {},
@@ -1644,20 +1706,27 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       spentThisStep: { ...spentThisStep, [skill]: on - 1 },
       version: version + 1,
     });
+    void get().saveNow();
   },
 
   advanceDay: () => {
-    const { season, version } = get();
-    if (!season || seasonComplete(season)) return;
+    const { season, version, busy } = get();
+    // `busy` because a day simmed on the main thread while the worker holds the
+    // season is a day simmed into an object the worker's result will replace.
+    if (!season || busy || seasonComplete(season)) return;
     simNextDay(season);
     set({ version: version + 1 });
     get().noteSeasonNews();
+    // A day is a game for every team in the country; it was the largest single
+    // mutation in the game that never wrote a save.
+    void get().saveNow();
   },
 
   playSeason: async () => {
     const { season, busy } = get();
     if (!season || busy) return;
     set({ busy: true, progress: null });
+    const generation = ++simGeneration;
 
     if (!workerAvailable) {
       // No worker: the screen freezes, but the game still works. Better a hang
@@ -1672,8 +1741,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     try {
       const result = await simSeasonInWorker(
         toPortable(season),
-        (p) => set({ progress: p }),
+        (p) => { if (generation === simGeneration) set({ progress: p }); },
       );
+      // Stale: the user loaded another dynasty or started over while the worker
+      // ran. The result describes a world that is no longer on screen; applying
+      // it would overwrite the freshly loaded save with the old one.
+      if (generation !== simGeneration) return;
       set({
         season: fromPortable(result),
         version: get().version + 1,
@@ -1686,10 +1759,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       get().noteSeasonNews();
       void get().saveNow();
     } catch (e) {
+      // Routed somewhere the player can actually see. This used to write only
+      // `lastSaveError`, which nothing renders unless `saveState` is 'error' —
+      // a failed sim un-dimmed the button and looked like nothing happened.
       set({
         busy: false,
         progress: null,
-        lastSaveError: e instanceof Error ? e.message : String(e),
+        saveState: 'error',
+        lastSaveError: `The season could not be simulated: ${e instanceof Error ? e.message : String(e)}`,
       });
     }
   },
@@ -1861,6 +1938,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       });
     }
     postCarousel(get(), year, me.conference, rivals.moves);
+
+    // Prestige, the coach's career line, skill points, the history entry and a
+    // whole rival year just happened; none of it was persisted before the draft
+    // step's save, so a reload from the review or coach screens lost it all.
+    void get().saveNow();
   },
 
   rollYear: async () => {
@@ -1935,7 +2017,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         // to whether the player had tapped a card.
         lastReview: null,
         lastWeek: null,
-        lastCommits: [],
         furthestPhase: 0,
         coach,
         // Being let go puts you on the market immediately. Nobody waits.
@@ -1999,7 +2080,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   offers: [],
 
   clearReview: () => set({ lastReview: null }),
-
   inbox: [],
   post: (item) => set({ inbox: push(get().inbox, newItem(item)) }),
   noteSeasonNews: () => {
@@ -2020,6 +2100,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   acceptOffer: async (team) => {
     const { season, coach, userTeam, year } = get();
     if (!season) return;
+    // Only an offer that is actually on the table. Accepting clears the list in
+    // the same breath, so a double-tap's second click — or a tap on a second
+    // offer after the first was taken — finds nothing here and does nothing,
+    // instead of seating coaches twice and posting duplicate carousel news.
+    if (!get().offers.some((o) => o.team === team)) return;
     // The new job's games are the ones worth keeping now.
     season.captureBoxFor = team;
     // A new job is a clean slate with a patient board, but your reputation
@@ -2086,10 +2171,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   closePlayer: () => set({ selectedPlayer: null }),
 
-
   playPostseason: async () => {
     const { season, busy, version } = get();
     if (!season || busy || !seasonComplete(season) || get().lastPostseason) return;
+    // A bracket already exists: the postseason is running. A second press used
+    // to re-freeze the regular season, throw away seven finished conference
+    // tournaments, and replay the whole of June on top of itself — sixty extra
+    // days on the calendar from one double-tap.
+    if (get().bracket) return;
 
     // Freeze the regular season before a single bracket game moves a record.
     // This is the one unambiguous boundary, which is why it happens here rather
@@ -2237,6 +2326,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   advanceBracket: () => {
     const { season, bracket, version } = get();
     if (!season || !bracket) return;
+    // A tier can only be left once it is actually finished. Your own tournament
+    // still live means the tier is not done; and a stage whose results are not
+    // all on the books yet must not be walked past — a double-tap used to step
+    // conference → regional → national in one gesture, staging the national
+    // round off an empty regional list.
+    if (get().myBracket) return;
+    if (bracket.stage === 'conference'
+      && bracket.cups.length < conferenceIds(season).length) return;
+    if (bracket.stage === 'regional'
+      && bracket.regionals.length < REGIONS.length) return;
 
     if (bracket.stage === 'conference') {
       set({ bracket: { ...bracket, stage: 'regional' }, version: version + 1 });
@@ -2257,11 +2356,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   myBracket: null,
 
-  myNextGame: () => {
-    const { myBracket, userTeam } = get();
-    return myBracket ? nextGameFor(myBracket.state, userTeam) : null;
-  },
-
   /**
    * Take your own bracket game.
    *
@@ -2272,7 +2366,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
    */
   manageBracketGame: () => {
     const { season, myBracket, userTeam, version } = get();
-    if (!season || !myBracket) return;
+    if (!season || !myBracket || get().busy) return;
+    // A game is already being managed. Building a second LiveGame would consume
+    // the season's rng again and silently discard the one in progress.
+    if (get().live) return;
     const next = nextGameFor(myBracket.state, userTeam);
     if (!next) return;
 
@@ -2420,7 +2517,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   startManagedGame: () => {
     const { season, userTeam, version } = get();
-    if (!season || seasonComplete(season)) return;
+    // `busy` because the worker owns the season during a sim — a game started
+    // against that object would be recorded into whatever world replaces it.
+    // `live` because a second press must not build a second game over the one
+    // in progress, consuming the season's rng again.
+    if (!season || get().busy || get().live || seasonComplete(season)) return;
 
     // Play forward through any days we are not involved in. The world does not
     // wait, but our own game is left untouched for us to manage.
@@ -2429,7 +2530,15 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       const d = season.schedule[season.dayIndex];
       return !!d?.games.some((g) => g.home === userTeam || g.away === userTeam);
     };
-    while (!seasonComplete(season) && !hasMine() && guard++ < 60) simNextDay(season);
+    let simmed = 0;
+    while (!seasonComplete(season) && !hasMine() && guard++ < 60) { simNextDay(season); simmed++; }
+    if (simmed > 0) {
+      // Those days consumed the season's rng. Unsaved, a reload replayed them
+      // from the older stream and produced a *different* league — the save has
+      // to move forward with the world. The save file never carries `live`, so
+      // writing here does not half-save the game about to be played.
+      void get().saveNow();
+    }
     if (seasonComplete(season)) return;
 
     const day = season.schedule[season.dayIndex];
@@ -2528,6 +2637,17 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       return;
     }
 
+    // Defence in depth behind the guards on `loadSlot` and `startManagedGame`:
+    // a game must only ever be written into the season it was played against.
+    // A finished season taking a forty-sixth game, or a game recorded after the
+    // calendar has moved past its day, is corruption however it got here — the
+    // orphaned game is dropped rather than written.
+    const today = season.schedule[season.dayIndex];
+    if (seasonComplete(season) || !today || today.day !== liveMeta.day) {
+      set({ live: null, liveMeta: null, version: version + 1, screen: 'today' });
+      return;
+    }
+
     // The rest of the day happens now, with our game held out, then ours is
     // written down through the same path a simulated game takes.
     simNextDay(season, { hold: userTeam });
@@ -2544,7 +2664,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   setStrategy: (key, value) => {
     const { season, userTeam, version } = get();
     const me = season?.teams[userTeam];
-    if (!me) return;
+    if (!me || get().busy) return;
     // Mutated in place: the engine reads TeamRecord.strategy when it builds each
     // game, so this is live from the next pitch onward.
     me.strategy = { ...me.strategy, [key]: value };
@@ -2555,7 +2675,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   swapLineup: (a, b) => {
     const { season, userTeam, version } = get();
     const team = season?.teams[userTeam]?.team;
-    if (!team) return;
+    if (!team || get().busy) return;
     const order = team.lineup;
     const x = order[a];
     const y = order[b];
@@ -2569,7 +2689,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   moveRotation: (index, delta) => {
     const { season, userTeam, version } = get();
     const team = season?.teams[userTeam]?.team;
-    if (!team) return;
+    if (!team || get().busy) return;
     const to = index + delta;
     const rot = team.rotation;
     if (to < 0 || to >= rot.length) return;
@@ -2590,6 +2710,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, year, userTeam, history, lastPostseason } = get();
     if (!season) return;
     const team = season.teams[userTeam];
+    const ticket = ++saveTicket;
     set({ saveState: 'saving', lastSaveError: null });
     try {
       await saveDynasty(slot, name ?? (team ? team.def.school : 'Dynasty'), season, year, userTeam, {
@@ -2600,6 +2721,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         knockout: get().knockout,
         postseasonSeen: get().postseasonSeen,
         jobSearch: get().jobSearch,
+        // The offers themselves, not just the fact of being on the market.
+        // `jobSearch: true` with no offers stored was a career that could
+        // never be resumed: the job screen renders the list, and an empty
+        // one has no way forward.
+        offers: get().offers,
         coach: get().coach,
         phase: get().phase,
         furthestPhase: get().furthestPhase,
@@ -2607,11 +2733,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         outcome: get().lastOutcome,
         inbox: get().inbox,
       });
-      set({ saveState: 'saved' });
+      if (ticket === saveTicket) set({ saveState: 'saved' });
     } catch (e) {
       // A failed save must say so. Silently losing a dynasty is the worst
-      // outcome this app has available to it.
-      set({ saveState: 'error', lastSaveError: e instanceof Error ? e.message : String(e) });
+      // outcome this app has available to it. Stale requests stay quiet — a
+      // newer save has already reported, and its answer is the true one.
+      if (ticket === saveTicket) {
+        set({ saveState: 'error', lastSaveError: e instanceof Error ? e.message : String(e) });
+      }
     }
   },
 
@@ -2662,6 +2791,25 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // comes up with the edge on the right program.
     applyCoachMods(loaded.season, loaded.userTeam, coach);
     const bracket = usableBracket(loaded.bracket);
+    /*
+      The market, back on the table. Older saves stored `jobSearch: true` and
+      nothing else — the screen that renders the offers came up empty, with no
+      nav and no way out, and the career was over in a way no button could
+      undo. A modern save carries the offers; an old one gets them regenerated
+      from the same predicate `rollYear` used to make them, which is honest
+      because a chair's willingness to hire is a fact about the world, not a
+      dice roll that must be preserved.
+    */
+    const jobSearch = Boolean(loaded.jobSearch);
+    const offers = jobSearch
+      ? (Array.isArray(loaded.offers) && loaded.offers.length > 0
+        ? loaded.offers as JobOffer[]
+        : jobOffers(coach, loaded.season.teams, (t) => t.prestige, loaded.userTeam, 4,
+          (t) => !t.coach || coach.prestige > t.coach.prestige))
+      : [];
+    // A world is being swapped underneath everything else in flight: any sim
+    // result still coming back from the worker describes the old one.
+    simGeneration += 1;
     set({
       season: loaded.season,
       year: loaded.year,
@@ -2687,7 +2835,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       postseasonSeen: Array.isArray(loaded.postseasonSeen)
         ? (loaded.postseasonSeen as string[]).filter((k) => typeof k === 'string')
         : [],
-      jobSearch: Boolean(loaded.jobSearch),
+      jobSearch,
+      offers,
       // Unread stays unread across a restart. It is the one thing the inbox
       // knows that nothing else in the save does.
       inbox: restoreInbox(loaded.inbox),
@@ -2728,7 +2877,21 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // Week recaps are not saved, and a stale one from the previous session
       // would sit over a board it does not describe.
       lastWeek: null,
-      lastCommits: [],
+      /*
+        And the game in progress, which belongs to the dynasty being put down.
+        The saves menu is reachable mid-game; left set, the old game stayed on
+        screen over the new world and RECORD wrote its result into a season it
+        was never played against — a finished 45-game season took a 46th game,
+        credited to the wrong rosters, and saved it.
+      */
+      live: null,
+      liveMeta: null,
+      // A sim that was running belonged to the old world too; the generation
+      // bump above makes its result unwelcome, and the flags come home.
+      busy: false,
+      progress: null,
+      // The skill ledger is a fact about a step of the *old* career's offseason.
+      spentThisStep: {},
     });
     return true;
   },
@@ -2761,18 +2924,30 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   deleteSlot: async (slot) => {
+    let failure: string | null = null;
     try {
       await deleteSave(slot);
-      set({ savesError: null });
     } catch (e) {
-      set({ savesError: e instanceof Error ? e.message : String(e) });
+      failure = e instanceof Error ? e.message : String(e);
     }
     await get().refreshSaves();
+    // After the refresh, which clears `savesError` on success — a delete that
+    // failed used to have its message wiped by the very refresh that followed
+    // it, so the row simply stayed and the screen never said why.
+    set({ savesError: failure });
   },
 
-  newDynasty: () => set({
+  newDynasty: () => {
+    // The old world is gone; a sim still in flight for it must not land, and
+    // its worker has nothing left to do.
+    simGeneration += 1;
+    disposeWorker();
+    set({
     season: null,
     needsTeam: true,
+    busy: false,
+    progress: null,
+    spentThisStep: {},
     // The career being left takes all of its furniture with it. `start` clears
     // the history and the offers and stops there, which was safe only while the
     // creation screen could be reached from nowhere but a cold boot.
@@ -2791,7 +2966,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     lastOutcome: null,
     lastOffseason: null,
     lastWeek: null,
-    lastCommits: [],
     history: [],
     // Somebody else's post. `start` does not clear it either, and an inbox is
     // exactly the kind of furniture that would follow a player into a new
@@ -2800,20 +2974,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     overlay: null,
     selectedPlayer: null,
     loadError: null,
-  }),
+    });
+  },
 }));
 
 /**
- * The seed the world is built from.
- *
- * Exported because the team-selection screen generates the same world to show
- * real roster numbers before you sign. Both sides must use this constant — if
- * they ever seed differently the screen goes back to advertising a job that does
- * not exist.
+ * The record you coach. Null before a dynasty is started.
  */
-
-
-/** The record you coach. Null before a dynasty is started. */
 export function useUserTeam() {
   return useDynasty((s) => (s.season ? s.season.teams[s.userTeam] ?? null : null));
 }
