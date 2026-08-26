@@ -65,18 +65,16 @@ type RatingKey<T> = { [K in keyof T]: T[K] extends number ? K : never }[keyof T]
  * nobody outside this file should have to learn them. "Stuff 72" and "Hands 61"
  * are house vocabulary; K/9 and Fielding are what a player already knows from
  * every other baseball game, and a rating you have to be taught is a rating you
- * do not read.
- *
- * The descriptions stay, because a familiar name still does not say what the
- * simulation does with it.
+ * do not read. Under those names the bars need no captions, and a card without
+ * captions fits a whole player above the fold.
  */
-const HITTER_BARS: Array<[RatingKey<Hitter>, string, string]> = [
-  ['contact', 'CONTACT', 'Hits for average, and strikes out less'],
-  ['power', 'POWER', 'Home runs and extra base hits'],
-  ['eye', 'DISCIPLINE', 'Draws walks, chases less'],
-  ['speed', 'SPEED', 'Triples, infield hits, extra bases'],
-  ['steal', 'BASE STEALING', 'The jump, not the wheels. Reads a pitcher and leaves on the first move'],
-  ['bunt', 'BUNTING', 'Gets the sacrifice down when the call is on'],
+const HITTER_BARS: Array<[RatingKey<Hitter>, string]> = [
+  ['contact', 'CONTACT'],
+  ['power', 'POWER'],
+  ['eye', 'DISCIPLINE'],
+  ['speed', 'SPEED'],
+  ['steal', 'BASE STEALING'],
+  ['bunt', 'BUNTING'],
 ];
 
 /**
@@ -87,11 +85,11 @@ const HITTER_BARS: Array<[RatingKey<Hitter>, string, string]> = [
  * ask about a position player, and a coach deciding whether this man can play
  * shortstop should not have to skip past his power to find out.
  */
-const HITTER_GLOVE_BARS: Array<[RatingKey<Hitter>, string, string]> = [
-  ['range', 'REACTION', 'First step and ground covered — turns would-be hits into outs'],
-  ['hands', 'FIELDING', 'Handles what he reaches. Low fielding is how a routine play becomes an error'],
-  ['arm', 'ARM STRENGTH', 'Keeps runners from taking the extra base. Behind the plate, throws them out'],
-  ['armAccuracy', 'ACCURACY', 'Where the throw goes. A wild one puts the runner up a base as well as on'],
+const HITTER_GLOVE_BARS: Array<[RatingKey<Hitter>, string]> = [
+  ['range', 'REACTION'],
+  ['hands', 'FIELDING'],
+  ['arm', 'ARM STRENGTH'],
+  ['armAccuracy', 'ACCURACY'],
 ];
 
 /**
@@ -106,16 +104,15 @@ const HITTER_GLOVE_BARS: Array<[RatingKey<Hitter>, string, string]> = [
  * real. A backup catcher's shows; a shortstop's does not exist as far as this
  * screen is concerned, and if he ever moves behind the plate it will.
  */
-const CATCHER_BAR: [RatingKey<Hitter>, string, string] =
-  ['blocking', 'BLOCKING', 'Keeps the ball in front of him. Fewer passed balls, fewer runners moving up'];
+const CATCHER_BAR: [RatingKey<Hitter>, string] = ['blocking', 'BLOCKING'];
 
-const PITCHER_BARS: Array<[RatingKey<Pitcher>, string, string]> = [
-  ['stuff', 'K/9', 'Misses bats. This is the strikeout rating'],
-  ['movement', 'H/9', 'Suppresses hits and home runs'],
-  ['control', 'BB/9', 'Throws strikes. Fewer walks and hit batters'],
-  ['stamina', 'STAMINA', 'How deep into a start he can go'],
-  ['groundBall', 'GB RATE', 'Keeps it on the ground, sets up double plays'],
-  ['holdRunners', 'PICKOFF', 'Keeps baserunners honest'],
+const PITCHER_BARS: Array<[RatingKey<Pitcher>, string]> = [
+  ['stuff', 'K/9'],
+  ['movement', 'H/9'],
+  ['control', 'BB/9'],
+  ['stamina', 'STAMINA'],
+  ['groundBall', 'GB RATE'],
+  ['holdRunners', 'PICKOFF'],
 ];
 
 /**
@@ -126,11 +123,11 @@ const PITCHER_BARS: Array<[RatingKey<Pitcher>, string, string]> = [
  * six bars and no defence at all — while the fielding line underneath was
  * quietly charging him errors for a rating nobody could see.
  */
-const PITCHER_GLOVE_BARS: Array<[RatingKey<Pitcher>, string, string]> = [
-  ['range', 'REACTION', 'Off the mound on a comebacker or a bunt'],
-  ['hands', 'FIELDING', 'Handles what he gets to'],
-  ['arm', 'ARM STRENGTH', 'The throw over, and the throw to first'],
-  ['armAccuracy', 'ACCURACY', 'Where it goes. The throw across is the one a pitcher airmails'],
+const PITCHER_GLOVE_BARS: Array<[RatingKey<Pitcher>, string]> = [
+  ['range', 'REACTION'],
+  ['hands', 'FIELDING'],
+  ['arm', 'ARM STRENGTH'],
+  ['armAccuracy', 'ACCURACY'],
 ];
 
 const CLASS_NAME: Record<ClassYear, string> = {
@@ -462,7 +459,7 @@ function CardHead(
 
       <div style={{
         marginTop: 6, textAlign: 'center',
-        font: "800 26px/0.95 var(--display)", textTransform: 'uppercase',
+        font: "800 21px/0.95 var(--display)", textTransform: 'uppercase',
       }}>{name}</div>
 
       <div className="label" style={{ marginTop: 4, textAlign: 'center' }}>{sub}</div>
@@ -645,14 +642,14 @@ function Badges({ p }: { p: AnyPlayer }) {
 
 function Ratings({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   const isPitcher = p.type === 'pitcher';
-  const glove: Array<[string, string, string, number]> = isPitcher
-    ? PITCHER_GLOVE_BARS.map(([k, l, n]) => [k, l, n, (p as Pitcher)[k]])
+  const glove: Array<[string, string, number]> = isPitcher
+    ? PITCHER_GLOVE_BARS.map(([k, l]) => [k, l, (p as Pitcher)[k]])
     : [
-      ...HITTER_GLOVE_BARS.map(([k, l, n]) =>
-        [k, l, n, (p as Hitter)[k]] as [string, string, string, number]),
+      ...HITTER_GLOVE_BARS.map(([k, l]) =>
+        [k, l, (p as Hitter)[k]] as [string, string, number]),
       ...(p.pos === 'C'
-        ? [[CATCHER_BAR[0], CATCHER_BAR[1], CATCHER_BAR[2], (p as Hitter).blocking] as
-            [string, string, string, number]]
+        ? [[CATCHER_BAR[0], CATCHER_BAR[1], (p as Hitter).blocking] as
+            [string, string, number]]
         : []),
     ];
 
@@ -661,11 +658,11 @@ function Ratings({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
       <Head>SCOUTING</Head>
       <BarGroup title={isPitcher ? 'PITCHING' : 'HITTING'}>
         {isPitcher
-          ? PITCHER_BARS.map(([key, label, note]) => (
-            <Bar key={key} label={label} note={note} value={Math.round((p as Pitcher)[key])} />
+          ? PITCHER_BARS.map(([key, label]) => (
+            <Bar key={key} label={label} value={Math.round((p as Pitcher)[key])} />
           ))
-          : HITTER_BARS.map(([key, label, note]) => (
-            <Bar key={key} label={label} note={note} value={Math.round((p as Hitter)[key])} />
+          : HITTER_BARS.map(([key, label]) => (
+            <Bar key={key} label={label} value={Math.round((p as Hitter)[key])} />
           ))}
         {isPitcher && (
           <div style={{
@@ -682,11 +679,9 @@ function Ratings({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
 
       {isPitcher && <Repertoire p={p as Pitcher} />}
 
-      <Platoon p={p} />
-
       <BarGroup title={isPitcher ? 'FIELDING' : `FIELDING · ${p.pos}`}>
-        {glove.map(([key, label, note, value]) => (
-          <Bar key={key} label={label} note={note} value={Math.round(value)} />
+        {glove.map(([key, label, value]) => (
+          <Bar key={key} label={label} value={Math.round(value)} />
         ))}
       </BarGroup>
 
@@ -746,6 +741,9 @@ function Repertoire({ p }: { p: Pitcher }) {
 /**
  * The split, which the engine has always had and never once shown.
  *
+ * It lives on the STATS sheet, not RATINGS: vs-RHP and vs-LHP are a production
+ * table, and the reader looking for it is the one already reading his line.
+ *
  * The arithmetic lives in `platoonSplit` rather than here, so that what the card
  * prints and what the simulation does are the same function — a display that
  * re-derived the split from `platoonSkill` on its own would eventually disagree
@@ -792,30 +790,23 @@ function Platoon({ p }: { p: AnyPlayer }) {
           </div>
         ))}
       </div>
-      <Note>
-        {/*
-          The pitcher gets his own sentence, because the two he used to share
-          with the hitter were both wrong on the mound. One named a CONTACT and
-          a POWER row that only a hitter's table has; the other announced a
-          reverse split, which no pitcher in the game can have — the generator
-          gives an arm a split between nought and a tenth, so the only two cases
-          here are a man with one and a man without, and half of them are
-          without. A panel reading "+0.0%  +0.0%" has to say so itself, or it
-          reads as a number the card failed to work out.
-        */}
-        {p.type !== 'hitter'
-          ? (p.platoonSkill === 0
-            ? 'No split to speak of. Left and right handed batters get the same man, '
-              + 'so there is nothing here to match up against and nothing to hide.'
-            : 'Read it as what he gives up: below nought is production taken away. '
-              + 'The same-handed batter is the one he suppresses, which is the whole '
-              + 'argument for having a left hander to bring in.')
-          : switchHitter
-            ? 'He turns around, so he has the better side of it against everybody. Switch hitters carry small splits by construction.'
-            : p.platoonSkill < 0
-              ? 'A reverse split: he is genuinely better against his own hand, which is rare and real.'
-              : 'Contact and power move by different amounts from one split, because a change in production is a small move on the power curve and a large one on the contact curve.'}
-      </Note>
+      {/*
+        Only the panels that would otherwise mislead get a sentence. A pitcher
+        with no split prints "+0.0%  +0.0%", which reads as a number the card
+        failed to work out unless it says so itself; a switch hitter and a
+        reverse split are the two cases where the table means something
+        different from what a reader would assume. An ordinary split explains
+        itself.
+      */}
+      {p.type !== 'hitter' && p.platoonSkill === 0 && (
+        <Note>No split to speak of. Lefties and righties get the same man.</Note>
+      )}
+      {p.type === 'hitter' && switchHitter && (
+        <Note>He turns around, so the matchup is his against everybody.</Note>
+      )}
+      {p.type === 'hitter' && !switchHitter && p.platoonSkill < 0 && (
+        <Note>A reverse split. Better against his own hand, which is rare and real.</Note>
+      )}
     </>
   );
 }
@@ -888,13 +879,6 @@ function Tendencies({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
           );
         })}
       </div>
-      {isOurs && (
-        <Note>
-          You learn what a man is like by watching him play, not by signing him.
-          Every game your program plays adds to what you have seen — the rarer the
-          thing, the longer it takes to be sure of it.
-        </Note>
-      )}
     </>
   );
 }
@@ -977,6 +961,7 @@ function ThisSeason({ p }: { p: AnyPlayer }) {
           ) : <Empty>Has not appeared yet this season.</Empty>
         )}
       </Panel>
+      <Platoon p={p} />
       <Fielding p={p} />
     </>
   );
@@ -1066,10 +1051,8 @@ function Fielding({ p }: { p: AnyPlayer }) {
       </Panel>
 
       <Note>
-        Plays above average counts outs he made that an average glove on his own
-        team would not have, with his errors already taken off. The league runs
-        below zero on it — an error is a play nobody made — so the honest reading
-        is the gap to the league line and the rank, not the sign.
+        Plays above average is outs an average glove would not have made, errors
+        already off. Read the gap to the league line, not the sign.
       </Note>
     </>
   );
@@ -1400,20 +1383,17 @@ const ordinal = (n: number): string => {
 };
 
 /** A rating, drawn against the full scale so the shape of a player is readable. */
-function Bar({ label, note, value }: { label: string; note: string; value: number }) {
+function Bar({ label, value }: { label: string; value: number }) {
   const width = Math.max(0, Math.min(100, value));
   return (
     <div style={{ marginBottom: 11 }}>
       <div style={{
         display: 'flex', justifyContent: 'space-between',
-        alignItems: 'baseline', marginBottom: 2,
+        alignItems: 'baseline', marginBottom: 4,
       }}>
         <span className="label">{label}</span>
         <span style={{ font: "600 11px var(--mono)", color: 'var(--dim)' }}>{value}</span>
       </div>
-      <div style={{
-        font: "400 10px/1.3 var(--body)", color: 'var(--dim)', marginBottom: 4,
-      }}>{note}</div>
       <div style={{ height: 6, background: 'rgba(28,36,48,.09)' }}>
         <div style={{
           width: `${width}%`, height: '100%',

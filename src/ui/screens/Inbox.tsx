@@ -109,7 +109,7 @@ export function Inbox() {
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
             <div className="label">WHAT HAPPENED TO YOU</div>
             <div style={{
-              font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
             }}>The inbox</div>
           </div>
         </div>

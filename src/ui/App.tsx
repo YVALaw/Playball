@@ -35,6 +35,7 @@ import { RecordBook } from './screens/RecordBook.js';
 import { unreadCount } from '../engine/inbox.js';
 import { Saves } from './screens/Saves.js';
 import { OpenTeam, TeamCard } from './screens/TeamCard.js';
+import { Colleges } from './screens/Colleges.js';
 import { CoachPortrait } from './CoachPortrait.js';
 import { seasonDate } from './format.js';
 import { prestigeStars } from '../engine/program.js';
@@ -68,9 +69,7 @@ function AppBody(
   const screen = useDynasty((s) => s.screen);
   const go = useDynasty((s) => s.go);
   const setScreen = useDynasty((s) => s.setScreen);
-  const coach = useDynasty((s) => s.coach);
   const year = useDynasty((s) => s.year);
-  const setProgramSheet = useDynasty((s) => s.setProgramSheet);
   // The chrome prints live numbers now — the record, the date, the roster —
   // and the engine mutates in place, so the version counter is what tells this
   // component a day has been played.
@@ -88,7 +87,6 @@ function AppBody(
   const selectedPlayer = useDynasty((s) => s.selectedPlayer);
   const furthestPhase = useDynasty((s) => s.furthestPhase);
   const goPhase = useDynasty((s) => s.goPhase);
-  const lastPostseason = useDynasty((s) => s.lastPostseason);
   const jobSearch = useDynasty((s) => s.jobSearch);
   const loadSlot = useDynasty((s) => s.loadSlot);
   const loadError = useDynasty((s) => s.loadError);
@@ -335,29 +333,33 @@ function AppBody(
           boundaries (see `endManagedGame`), so a button promising a copy of a
           half-played tournament would promise something the store does not do.
         */}
-        <header style={{
-          flex: 'none', height: 44, padding: '0 14px',
-          paddingTop: 'env(safe-area-inset-top)',
-          boxSizing: 'content-box',
-          display: 'flex', alignItems: 'center', gap: 10,
-          background: 'var(--navy)',
-          backgroundImage:
-            'repeating-linear-gradient(90deg, rgba(255,255,255,.09) 0 1px, transparent 1px 7px)',
-          borderBottom: '3px solid var(--clay)',
-        }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              font: "800 18px/0.95 var(--display)", letterSpacing: '.02em',
-              color: 'var(--cream)', textTransform: 'uppercase',
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>{team.def.school}</div>
-            <div style={{
-              font: "500 9px/1.4 var(--mono)", letterSpacing: '.18em',
-              color: 'var(--cream-dim)', textTransform: 'uppercase',
-            }}>POSTSEASON</div>
-          </div>
-          <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
-        </header>
+        {/* The bar steps aside while a game is being managed — the dugout owns
+            the whole screen, the same rule the regular season follows. */}
+        {!live && (
+          <header style={{
+            flex: 'none', height: 44, padding: '0 14px',
+            paddingTop: 'env(safe-area-inset-top)',
+            boxSizing: 'content-box',
+            display: 'flex', alignItems: 'center', gap: 10,
+            background: 'var(--navy)',
+            backgroundImage:
+              'repeating-linear-gradient(90deg, rgba(255,255,255,.09) 0 1px, transparent 1px 7px)',
+            borderBottom: '3px solid var(--clay)',
+          }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                font: "800 18px/0.95 var(--display)", letterSpacing: '.02em',
+                color: 'var(--cream)', textTransform: 'uppercase',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>{team.def.school}</div>
+              <div style={{
+                font: "500 9px/1.4 var(--mono)", letterSpacing: '.18em',
+                color: 'var(--cream-dim)', textTransform: 'uppercase',
+              }}>POSTSEASON</div>
+            </div>
+            <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
+          </header>
+        )}
         <SaveAlert topmost />
         <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
           flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
@@ -398,55 +400,13 @@ function AppBody(
             }}>OFFSEASON</div>
           </div>
           {/* The bottom nav is gone from here by design, and it took HOME ·
-              INBOX with it — during the six steps that have most to report. */}
+              INBOX with it — during the six steps that have most to report.
+              The portrait menu carries PROFILE and SAVES, exactly the pair the
+              missing nav owes this frame; the season badge that used to fill
+              the corner is gone, because the review screen already says what
+              the year came to and a header is not a trophy shelf. */}
           <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
-          {/*
-            The way to the saves menu for the whole of the offseason.
-
-            The bottom nav is gone from here by design — the offseason is a
-            sequence, not a place to browse — and it takes PROGRAM · SAVES with
-            it, for the six steps that contain most of what somebody would want
-            a copy of the dynasty before doing. Recruiting above all: three weeks
-            of decisions you cannot take back.
-
-            Deliberately not offered during the postseason, which is the other
-            frame with no nav. Saving mid-bracket is restricted to stage
-            boundaries on purpose (see `endManagedGame`), so a button promising a
-            copy of a half-played tournament would be promising something the
-            store does not actually support.
-          */}
-          <button
-            onClick={() => openOverlay('saves')}
-            className="tap"
-            style={{
-              flex: 'none', padding: '8px 9px',
-              background: 'rgba(246,241,230,.12)',
-              border: '1px solid rgba(246,241,230,.28)',
-              color: 'var(--cream)',
-              font: "700 8.5px var(--mono)", letterSpacing: '.12em',
-            }}
-          >SAVES</button>
-          {/*
-            What the year came to, in the corner of every offseason screen.
-            The season's own header carries the record here; once the season is
-            over the record is history and the title is the headline.
-          */}
-          {(() => {
-            const badge = seasonBadge(lastPostseason, team);
-            if (!badge) return null;
-            return (
-              <div style={{ flex: 'none', textAlign: 'right', maxWidth: 150 }}>
-                <div style={{
-                  font: "800 18px/0.9 var(--display)", color: 'var(--cream)',
-                  textTransform: 'uppercase',
-                }}>{badge.big}</div>
-                <div style={{
-                  font: "400 8px/1.4 var(--mono)", letterSpacing: '.1em',
-                  color: 'rgba(246,241,230,.55)', textTransform: 'uppercase',
-                }}>{badge.small}</div>
-              </div>
-            );
-          })()}
+          <CoachMenuButton />
         </header>
         <SaveAlert />
         <StepRail
@@ -464,6 +424,30 @@ function AppBody(
           {phase === 'recruiting' && <Board />}
           {phase === 'signing' && <SigningDay />}
           {phase === 'draft' && <Draft />}
+        </main>
+        <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
+      </div>
+    );
+  }
+
+  /*
+    A game in progress owns the screen. No school masthead, no portrait, no
+    record, no nav — reported from testing: "when we are playing we dont need
+    to see the team name, the coach pic, inbox and record up there." The
+    scoreboard is the header; BACK TO THE DESK inside the dugout is the way
+    out, and the game keeps until it is finished or simmed.
+  */
+  if (live && screen === 'box') {
+    return (
+      <div className="app-frame" style={{
+        display: 'flex', flexDirection: 'column', minHeight: 0,
+      }}>
+        <SaveAlert topmost />
+        <main ref={mainRef} style={{
+          flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative',
+          background: 'var(--field)',
+        }}>
+          <Manage />
         </main>
         <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
       </div>
@@ -505,38 +489,21 @@ function AppBody(
           <div style={{
             font: "800 21px/0.95 var(--display)", letterSpacing: '.02em',
             color: 'var(--cream)', textTransform: 'uppercase',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>{team.def.school}</div>
+          {/* The record rides the identity line in small print. The big block
+              it used to occupy is gone — the season tab carries the numbers,
+              and the header got its right half back. */}
           <div style={{
-            font: "500 9px/1.4 var(--mono)", letterSpacing: '.18em',
+            font: "500 9px/1.4 var(--mono)", letterSpacing: '.14em',
             color: 'var(--cream-dim)', textTransform: 'uppercase',
-          }}>{team.def.nickname} &middot; {team.conference}</div>
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {team.def.nickname} &middot; {team.conference} &middot; {team.w}-{team.l}
+          </div>
         </div>
         <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
-        {/* You, in the corner of every screen. Tapping the face opens the
-            coach profile — the same door the program tab's COACH sheet is. */}
-        <button
-          onClick={() => { setProgramSheet('coach'); openOverlay('program'); }}
-          aria-label="Coach profile"
-          className="tap"
-          style={{
-            flex: 'none', width: 40, height: 40, minWidth: 40, padding: 0,
-            borderRadius: '50%', overflow: 'hidden',
-            border: '2px solid rgba(246,241,230,.4)',
-            background: 'var(--paper)',
-            display: 'grid', placeItems: 'center',
-          }}
-        >
-          <CoachPortrait look={coach.look} size={36} />
-        </button>
-        <div style={{ flex: 'none', textAlign: 'right' }}>
-          <div style={{ font: "800 22px/0.9 var(--display)", color: 'var(--cream)' }}>
-            {team.w}-{team.l}
-          </div>
-          <div style={{
-            font: "400 8.5px/1.4 var(--mono)", letterSpacing: '.12em',
-            color: 'rgba(246,241,230,.55)',
-          }}>{team.cw}-{team.cl} {team.conference}</div>
-        </div>
+        <CoachMenuButton />
       </header>
 
       <SaveAlert />
@@ -558,7 +525,9 @@ function AppBody(
                 background: on ? 'var(--field)' : 'transparent',
                 borderRight: '1px solid rgba(28,36,48,.1)',
                 boxShadow: on ? 'inset 0 -3px 0 var(--clay)' : 'none',
-                font: "600 10px var(--mono)", letterSpacing: '.14em',
+                // Five labels have to share the same 360 pixels four used to.
+                font: `600 ${tabDef.screens.length >= 5 ? '8.5px' : '10px'} var(--mono)`,
+                letterSpacing: tabDef.screens.length >= 5 ? '.08em' : '.14em',
                 color: on ? 'var(--clay)' : 'var(--dim)',
               }}
             >
@@ -836,25 +805,77 @@ function BackBar({ onBack }: { onBack: () => void }) {
 }
 
 /**
- * What the season came to, in three words.
+ * You, in the corner, and the little menu behind your face.
  *
- * Null when there is nothing to say, because a banner reading "MISSED THE
- * TOURNAMENT" every June is a banner nobody reads. Silence is the honest
- * treatment of a year that did not go anywhere.
+ * The face used to be a straight door to the coach profile; it is a menu now
+ * because the header could not afford a button per destination and the two
+ * things a player reaches for from anywhere — who am I, and my saves — belong
+ * behind the one control that is always there. Tapping the scrim or picking an
+ * item puts the header back exactly as it was.
  */
-function seasonBadge(
-  post: { champion: number; finish: Record<number, string> } | null,
-  team: { index: number; conference: string },
-): { big: string; small: string } | null {
-  if (!post) return null;
-  const finish = post.finish[team.index];
-  if (post.champion === team.index) {
-    return { big: 'CHAMPS', small: 'National title' };
-  }
-  if (finish === 'runner-up') return { big: 'RUNNERS UP', small: 'Omaha final' };
-  if (finish === 'omaha') return { big: 'OMAHA', small: 'College World Series' };
-  if (finish === 'regional') return { big: 'REGIONAL', small: 'National tournament' };
-  return null;
+function CoachMenuButton() {
+  const coach = useDynasty((s) => s.coach);
+  const setProgramSheet = useDynasty((s) => s.setProgramSheet);
+  const openOverlay = useDynasty((s) => s.openOverlay);
+  const [open, setOpen] = useState(false);
+
+  const item = (label: string, run: () => void, last?: boolean) => (
+    <button
+      role="menuitem"
+      onClick={() => { setOpen(false); run(); }}
+      className="tap"
+      style={{
+        display: 'block', width: '100%', textAlign: 'left',
+        padding: '12px 16px', minHeight: 40,
+        background: 'transparent',
+        borderBottom: last ? 'none' : '1px solid rgba(246,241,230,.14)',
+        color: 'var(--cream)', font: "700 9.5px var(--mono)", letterSpacing: '.14em',
+      }}
+    >{label}</button>
+  );
+
+  return (
+    <div style={{ position: 'relative', flex: 'none' }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Coach menu"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="tap"
+        style={{
+          width: 40, height: 40, minWidth: 40, padding: 0,
+          borderRadius: '50%', overflow: 'hidden',
+          border: `2px solid ${open ? 'var(--cream)' : 'rgba(246,241,230,.4)'}`,
+          background: 'var(--paper)',
+          display: 'grid', placeItems: 'center',
+        }}
+      >
+        <CoachPortrait look={coach.look} size={36} />
+      </button>
+      {open && (
+        <>
+          <div
+            onClick={() => setOpen(false)}
+            style={{ position: 'fixed', inset: 0, zIndex: 44 }}
+          />
+          <div
+            role="menu"
+            className="card-in"
+            style={{
+              position: 'absolute', top: 46, right: 0, zIndex: 45,
+              minWidth: 168,
+              background: 'var(--navy)',
+              border: '1px solid rgba(246,241,230,.28)',
+              boxShadow: '0 12px 34px rgba(0,0,0,.4)',
+            }}
+          >
+            {item('COACH PROFILE', () => { setProgramSheet('coach'); openOverlay('program'); })}
+            {item('SAVES', () => openOverlay('saves'), true)}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -909,6 +930,7 @@ function Screen({ id }: { id: string }) {
     case 'box': return <Manage />;
     case 'history': return <History />;
     case 'records': return <Program />;
+    case 'colleges': return <Colleges />;
     case 'strategy': return <StrategyScreen />;
     // 'board' and 'draft' are deliberately absent: both are offseason phases
     // now, rendered by the phase frame. Routed here they would mount outside

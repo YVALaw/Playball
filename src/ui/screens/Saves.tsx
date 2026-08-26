@@ -141,7 +141,7 @@ export function Saves() {
               : `${saves.length} DYNAST${saves.length === 1 ? 'Y' : 'IES'} ON THIS DEVICE`}
           </div>
           <div style={{
-            font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+            font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
           }}>Saves</div>
         </div>
       </div>
@@ -355,7 +355,7 @@ export function Saves() {
               // device — but it is almost never what somebody in the middle of a
               // season means to do, and the reason it is nearly useless there is
               // worth saying rather than leaving them to discover.
-              ? 'This is the slot the game writes to on its own. If a career is being played, the next thing that happens in it writes a new one straight back — so deleting this only helps if you are about to load something else or start again.'
+              ? 'This is the slot the game writes to on its own. If a career is being played, the next thing that happens in it writes a new one straight back, so deleting this only helps if you are about to load something else or start again.'
               : 'There is no second copy of this dynasty and no way back to it once it is gone.',
           ]}
           cancel={{ label: 'KEEP IT', onClick: () => setAsk(null) }}

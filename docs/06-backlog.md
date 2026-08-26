@@ -725,6 +725,30 @@ development.~~ Shipped as part of B9, and it is the draft screen: he hints at
 what is pulling him and you make one of four cases. It never needed a day of its
 own.
 
+### From the overhaul feedback pass (August 2026) — plan before building
+
+- **Coach title ladder.** `coachStanding` currently derives a title from bare
+  counters, which is how a coach demoted himself to "journeyman" after one
+  quiet year. Wanted: an explicit list of achievements or levels per title —
+  what earns Journeyman, Riser, Contender, Legend and the rest — so a title,
+  once earned, reads as a rank rather than a mood. The user also wants each
+  title to carry a small in-game boost eventually; the boost is explicitly
+  **not** to be coded until the ladder itself is designed and agreed.
+- **Recruiting budget balancing and player swaying.** The retention pitch
+  (draft KEEP) and the weekly board should feed one economy the player can
+  bend: swaying a player has to be a deeper negotiation than one offer number.
+  Needs its own design pass before any code.
+- **School visual identities.** Emblems or crests per program, worn on the
+  team card, the colleges directory, the wire and the postseason map. Asset
+  strategy undecided (generated vs drawn); do not bolt on ad hoc.
+- **Awards night presentation.** The awards screen could deal each award as a
+  flip card, one reveal at a time, the way a broadcast does it. Presentation
+  only; the engine already picks the winners.
+- **Saves behind a settings sheet.** The portrait menu now carries SAVES; the
+  eventual home is a proper settings sheet (saves, tutorial reset, sound,
+  eventually preferences) opened from the same menu, and the SAVES sub-nav tab
+  retires when that lands.
+
 ## D. The record marks
 
 **Shipped as section D stands** — the twelve verified single-season marks are

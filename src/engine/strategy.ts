@@ -198,7 +198,7 @@ export const PHILOSOPHIES: readonly Philosophy[] = [
   {
     id: 'smallball',
     name: 'SMALL BALL',
-    blurb: 'His teams run, bunt and take the extra base — and get thrown out doing it.',
+    blurb: 'His teams run, bunt and take the extra base, and get thrown out doing it.',
     strategy: {
       running: 'aggressive', steals: 'constant', bunt: 'often',
       hook: 'standard', alignment: 'straight',

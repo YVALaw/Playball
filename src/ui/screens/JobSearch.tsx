@@ -37,7 +37,7 @@ export function JobSearch() {
         <div style={{ borderBottom: '2px solid var(--clay)', paddingBottom: 8 }}>
           <div className="label" style={{ color: 'var(--clay)' }}>OUT OF A JOB</div>
           <div style={{
-            font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
+            font: "800 22px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
           }}>{coach.name}</div>
           {/*
             Where the profile made at the start of the career shows up: this is

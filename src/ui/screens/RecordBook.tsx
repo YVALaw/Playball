@@ -29,7 +29,7 @@ const SECTIONS: Array<{ group: RecordGroup; title: string; note: string }> = [
   },
   {
     group: 'feat', title: 'FEATS',
-    note: 'Not records — one no-hitter is not more than another. The number is '
+    note: 'Not records. One no-hitter is not more than another. The number is '
       + 'how many the country has seen, and the name is the last man to do it.',
   },
   {

@@ -20,37 +20,86 @@ import type { Hitter, Pitcher, Player } from '../../engine/types.js';
 
 type Mode = 'all' | 'bat' | 'arm';
 
+/** The order a lineup card thinks in; pitcher roles ride at the end. */
+const SLOT_ORDER = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH'];
+
+const slotOf = (p: Player): string =>
+  p.type === 'pitcher' ? (p as Pitcher).role : p.pos;
+
 export function Roster() {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
   const openPlayer = useDynasty((s) => s.openPlayer);
   const [mode, setMode] = useState<Mode>('all');
+  /*
+    The filters, both optional and both toggles. Reported from testing: "in
+    teams in the roster we need a filter so we can filter players like if i
+    want to see players in a position or year." One class, one spot, or both
+    at once; tapping the active chip clears it.
+  */
+  const [yearF, setYearF] = useState<string | null>(null);
+  const [posF, setPosF] = useState<string | null>(null);
   void version;
 
   if (!season || !team) return null;
 
-  const hitters = [...team.team.lineup, ...team.team.bench];
-  const arms = [...team.team.rotation, ...team.team.bullpen];
+  const hittersAll = [...team.team.lineup, ...team.team.bench];
+  const armsAll = [...team.team.rotation, ...team.team.bullpen];
+
+  const keep = (p: Player): boolean =>
+    (yearF === null || p.classYear === yearF)
+    && (posF === null || slotOf(p) === posF);
+
+  const hitters = hittersAll.filter(keep);
+  const arms = armsAll.filter(keep);
   const everybody: Player[] = [...hitters, ...arms]
     .sort((a, b) => overallOf(b) - overallOf(a));
+
+  // Only spots somebody actually plays get a chip, in scorebook order.
+  const slots = [...new Set([...hittersAll, ...armsAll].map(slotOf))]
+    .sort((a, b) => {
+      const ai = SLOT_ORDER.indexOf(a); const bi = SLOT_ORDER.indexOf(b);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi) || a.localeCompare(b);
+    });
+
+  const filtered = yearF !== null || posF !== null;
+  const shown = mode === 'all' ? everybody.length : mode === 'bat' ? hitters.length : arms.length;
 
   return (
     <FixedHeader
       header={
         <div style={{ padding: '12px 14px 10px' }}>
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-            <div className="label">ROSTER · {hitters.length + arms.length} PLAYERS</div>
+            <div className="label">
+              ROSTER · {filtered
+                ? `${shown} OF ${hittersAll.length + armsAll.length}`
+                : `${hittersAll.length + armsAll.length} PLAYERS`}
+            </div>
             <div style={{
-              font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
               color: teamColour(team.def.abbr),
             }}>{team.def.school}</div>
           </div>
 
-          <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+          <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
             <Chip on={mode === 'all'} onClick={() => setMode('all')}>ALL</Chip>
             <Chip on={mode === 'bat'} onClick={() => setMode('bat')}>HITTERS</Chip>
             <Chip on={mode === 'arm'} onClick={() => setMode('arm')}>PITCHERS</Chip>
+          </div>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
+            {(['FR', 'SO', 'JR', 'SR'] as const).map((y) => (
+              <Facet key={y} on={yearF === y} onClick={() => setYearF(yearF === y ? null : y)}>
+                {y}
+              </Facet>
+            ))}
+            <span style={{ width: 6 }} />
+            {slots.map((s) => (
+              <Facet key={s} on={posF === s} onClick={() => setPosF(posF === s ? null : s)}>
+                {s}
+              </Facet>
+            ))}
           </div>
         </div>
       }
@@ -61,6 +110,14 @@ export function Roster() {
         border: '1px solid var(--faint)', background: 'var(--paper)',
       }}>
         <Head mode={mode} />
+        {shown === 0 && (
+          <div style={{
+            padding: '16px 12px', textAlign: 'center',
+            font: "400 12px/1.5 var(--body)", color: 'var(--dim)',
+          }}>
+            Nobody fits that filter. Whole roster, no such man.
+          </div>
+        )}
         {mode === 'all'
           ? everybody.map((p) => (
               <Cells
@@ -113,10 +170,6 @@ export function Roster() {
               ))}
       </div>
 
-      <div style={{ marginTop: 10, font: "400 11px/1.5 var(--body)", color: 'var(--dim)' }}>
-        <strong>OVR</strong> is where a player is now, <strong>POT</strong> a letter for where he could
-        end up. Seniors leave in June whatever happens; juniors leave if the draft wants them.
-      </div>
     </div>
     </FixedHeader>
   );
@@ -134,6 +187,26 @@ function Chip(
         border: `1px solid ${on ? 'var(--clay)' : 'rgba(28,36,48,.25)'}`,
         color: on ? 'var(--cream)' : 'rgba(28,36,48,.6)',
         font: "600 10px var(--mono)", letterSpacing: '.14em',
+      }}
+    >{children}</button>
+  );
+}
+
+/** The small toggles: a class year or a spot on the field. */
+function Facet(
+  { on, onClick, children }: { on: boolean; onClick: () => void; children: string },
+) {
+  return (
+    <button
+      onClick={onClick}
+      className="tap"
+      aria-pressed={on}
+      style={{
+        padding: '6px 9px', minHeight: 30,
+        background: on ? 'var(--ink)' : 'transparent',
+        border: `1px solid ${on ? 'var(--ink)' : 'rgba(28,36,48,.22)'}`,
+        color: on ? 'var(--cream)' : 'rgba(28,36,48,.55)',
+        font: "600 9px var(--mono)", letterSpacing: '.08em',
       }}
     >{children}</button>
   );

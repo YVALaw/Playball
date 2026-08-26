@@ -107,7 +107,7 @@ export function TeamCard({ index }: { index: number }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="label">{t.conference} · {stars} STAR PROGRAM</div>
               <div style={{
-                font: "800 26px/0.95 var(--display)", marginTop: 3,
+                font: "800 21px/0.95 var(--display)", marginTop: 3,
                 textTransform: 'uppercase', color: teamColour(t.def.abbr),
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{t.def.school}</div>
@@ -374,7 +374,7 @@ function Roster({ t, season }: { t: Record_; season: SeasonState }) {
 
       <Note>
         Tap a name for his card. You can see what a rival has done and what he
-        can do now — how much further he might go is his coach's to know.
+        can do now. How much further he might go is his coach's to know.
       </Note>
     </>
   );

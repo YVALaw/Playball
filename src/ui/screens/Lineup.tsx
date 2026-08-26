@@ -64,7 +64,7 @@ export function Lineup() {
             <div>
               <div className="label">BATTING ORDER</div>
               <div style={{
-                font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+                font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
               }}>Lineup card</div>
             </div>
             {/* One tap deals a sound order — best hitter third, power fourth,

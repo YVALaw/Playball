@@ -50,7 +50,12 @@ type Owner = SeasonState['teams'][number];
 
 type Sheet = 'board' | 'coach' | 'hall';
 
-const SHEETS: Sheet[] = ['board', 'coach', 'hall'];
+/**
+ * COACH is not on the strip. The portrait in the top bar is the door to the
+ * coach now — it is on every screen, so a second door here was a duplicate —
+ * and when the sheet does open on 'coach' the whole frame changes shape below.
+ */
+const SHEETS: Sheet[] = ['board', 'hall'];
 
 const SHEET_LABEL: Record<Sheet, string> = {
   board: 'BOARD',
@@ -76,12 +81,35 @@ export function Program() {
   if (!season || !team) return null;
 
   /*
+    The coach's page stands alone. Reported from testing: "in the coach
+    information should only be coach information" — the school masthead and the
+    BOARD and HALL tabs are the program's furniture, and the man's card kept
+    wearing them. Opened from the portrait, the sheet now carries a slim kicker
+    and nothing else; the program's own frame comes back the moment the sheet
+    does not say 'coach'.
+  */
+  if (sheet === 'coach') {
+    return (
+      <FixedHeader header={
+        <div style={{ padding: '12px 14px 8px' }}>
+          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
+            <div className="label">HEAD COACH · {year}</div>
+          </div>
+        </div>
+      }>
+        <div style={{ padding: '12px 14px 20px' }}>
+          <CoachSheet team={team} />
+        </div>
+      </FixedHeader>
+    );
+  }
+
+  /*
     The school stays in the pinned header rather than riding one of the tabs.
 
-    Every tab here is about the same job at the same place — even the hall, which
-    is the men who played for you at it — so the name of the school is the one
-    line that is true on all three, and a title that scrolled away would leave
-    the coach's page looking like it belonged to nobody in particular.
+    Both tabs here are about the same job at the same place — even the hall,
+    which is the men who played for you at it — so the name of the school is
+    the one line that is true on both.
   */
   return (
     <FixedHeader header={
@@ -90,7 +118,7 @@ export function Program() {
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
             <div className="label">{team.conference} · {year}</div>
             <div style={{
-              font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
             }}>{team.def.school}</div>
           </div>
         </div>
@@ -106,7 +134,6 @@ export function Program() {
     }>
       <div style={{ padding: '12px 14px 20px' }}>
         {sheet === 'board' && <BoardSheet team={team} />}
-        {sheet === 'coach' && <CoachSheet team={team} />}
         {sheet === 'hall' && <HallSheet />}
       </div>
     </FixedHeader>
@@ -406,7 +433,7 @@ function CoachSheet({ team }: { team: Owner }) {
 
       <div style={{
         marginTop: 6, textAlign: 'center',
-        font: "800 26px/0.95 var(--display)", textTransform: 'uppercase',
+        font: "800 21px/0.95 var(--display)", textTransform: 'uppercase',
       }}>{coach.name}</div>
 
       {/*
@@ -474,7 +501,7 @@ function CoachSheet({ team }: { team: Owner }) {
               k="COACH PRESTIGE"
               v={String(coach.prestige)}
               value={coach.prestige}
-              note="What the rest of the country thinks of you. It decides whose call you get — the program's own prestige is a different number, and it stays with the school."
+              note="What the rest of the country thinks of you. It decides whose call you get. The program's own prestige is a different number, and it stays with the school."
               last
             />
           </Panel>
@@ -551,7 +578,7 @@ function CoachSheet({ team }: { team: Owner }) {
           <Note>
             {coach.skillPoints > 0
               ? 'Points are spent on the coach step of the offseason, where they can still be taken back before the step closes.'
-              : 'Points arrive at the board meeting each June — three for a season, more for silverware — and are spent on the coach step.'}
+              : 'Points arrive at the board meeting each June, three for a season and more for silverware, and are spent on the coach step.'}
           </Note>
         </>
       )}
@@ -561,8 +588,9 @@ function CoachSheet({ team }: { team: Owner }) {
       {view === 'trophies' && (
         <>
           <Head>TROPHY CASE</Head>
-          {/* Only what the career has actually won. A new coach gets an honest
-              empty shelf, not a checklist of ambitions. */}
+          {/* The three shelves always hang, zeros included. A banner reading 0
+              says what there is to win here; a paragraph saying the case was
+              empty said the same thing in more room and less baseball. */}
           {(() => {
             const titles = history.filter((r) => r.finish === 'champion');
             const omahaYears = history.filter((r) =>
@@ -573,21 +601,6 @@ function CoachSheet({ team }: { team: Owner }) {
               { k: 'TRIPS TO OMAHA', n: omaha, years: omahaYears, tone: 'var(--navy)' },
               { k: 'CONFERENCE TITLES', n: coach.conferenceTitles, years: confYears, tone: 'var(--win)' },
             ];
-            const empty = shelves.every((s) => s.n === 0) && cabinet.length === 0;
-            if (empty) {
-              return (
-                <Panel>
-                  <div style={{
-                    padding: '16px 12px', textAlign: 'center',
-                    font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
-                  }}>
-                    The case is empty. Conference titles, trips to Omaha and a
-                    national championship all hang here — win one and it stays
-                    for ever, wherever you coach next.
-                  </div>
-                </Panel>
-              );
-            }
             return (
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                 {shelves.map((s) => (
@@ -746,8 +759,8 @@ function CareerView({ history, coach }: { history: SeasonRecord[]; coach: CoachS
         </div>
       ))}
       <Note>
-        Your career, wherever it was coached. Each school's own history —
-        including the years you were somewhere else — is on its HISTORY screen.
+        Your career, wherever it was coached. Each school's own history,
+        including the years you were somewhere else, is on its HISTORY screen.
       </Note>
     </>
   );

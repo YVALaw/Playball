@@ -279,7 +279,11 @@ export const TABS: readonly TabDef[] = [
   // is present and nothing is half-decided, which is the only safe moment to
   // put a career down and pick a different one up.
   { id: 'program', label: 'PROGRAM', screens: [
-    { id: 'records', label: 'PROGRAM' }, { id: 'history', label: 'HISTORY' },
+    { id: 'records', label: 'PROGRAM' },
+    // The whole country, one door. Every other route to a rival's page goes
+    // through a table that happens to mention them; this one is the directory.
+    { id: 'colleges', label: 'COLLEGES' },
+    { id: 'history', label: 'HISTORY' },
     { id: 'strategy', label: 'STRATEGY' }, { id: 'saves', label: 'SAVES' }] },
 ];
 

@@ -61,7 +61,7 @@ export function History() {
                   : 'ALL-TIME · NINETY-SIX PROGRAMS'}
               </div>
               <div style={{
-                font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+                font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
               }}>{sheet === 'seasons' ? (annals.length > 0 ? `${wins}-${losses}` : 'History') : 'The Book'}</div>
             </div>
           </div>
@@ -235,8 +235,8 @@ function Seasons({ annals }: { annals: SchoolSeason[] }) {
 
       <div style={{ marginTop: 10, font: "400 11px/1.5 var(--body)", color: 'var(--dim)' }}>
         ★ marks a conference tournament title, which carries an automatic bid to the
-        national field however the regular season went. This is the school's book —
-        your own career, wherever it was coached, is on your coach profile.
+        national field however the regular season went. This is the school's book.
+        Your own career, wherever it was coached, is on your coach profile.
       </div>
     </div>
   );

@@ -43,8 +43,29 @@ export function Schedule() {
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
             <div className="label">SCHEDULE · {year}</div>
             <div style={{
-              font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
             }}>{regularRecord(team).w}-{regularRecord(team).l} overall</div>
+          </div>
+          {/* The program's vitals, moved off the dashboard. The season tab is
+              where you come to ask how the year is going, so the year's three
+              numbers live here now. */}
+          <div style={{
+            display: 'flex', marginTop: 8,
+            border: '1px solid var(--faint)', background: 'var(--paper)',
+          }}>
+            {([
+              ['OVERALL', `${team.w}-${team.l}`],
+              ['CONFERENCE', `${team.cw}-${team.cl}`],
+              ['RUN DIFF', `${team.rs - team.ra > 0 ? '+' : ''}${team.rs - team.ra}`],
+            ] as const).map(([k, v], i) => (
+              <div key={k} style={{
+                flex: 1, padding: '7px 8px',
+                borderRight: i < 2 ? '1px solid var(--hairline)' : 'none',
+              }}>
+                <div className="label">{k}</div>
+                <div style={{ font: "700 16px/1 var(--display)", marginTop: 2 }}>{v}</div>
+              </div>
+            ))}
           </div>
         </div>
       }
@@ -132,7 +153,7 @@ export function Schedule() {
  * only carries a final score answers "did we win" and nothing else — the reason
  * to look back at a game in March is to find out who did it.
  */
-function BoxScoreSheet(
+export function BoxScoreSheet(
   { box, season, onClose }:
   { box: BoxScore; season: SeasonState; onClose: () => void },
 ) {

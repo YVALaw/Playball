@@ -273,7 +273,7 @@ export function objectivesFor(mandate: Mandate, targetWins: number): Objective[]
     key: 'wins', label: `Win ${targetWins} games`, required: true, target: targetWins,
   };
   const stretch: Objective = {
-    key: 'stretchWins', label: `Win ${targetWins + 4} — ahead of schedule`,
+    key: 'stretchWins', label: `Win ${targetWins + 4}, ahead of schedule`,
     required: false, target: targetWins + 4,
   };
   const bid = (required: boolean): Objective =>

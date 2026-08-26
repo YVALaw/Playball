@@ -14,7 +14,7 @@ export function Placeholder({ id }: { id: string }) {
   return (
     <div style={{ padding: '28px 16px', textAlign: 'center' }}>
       <div style={{
-        font: "800 26px/1 var(--display)", textTransform: 'uppercase',
+        font: "800 21px/1 var(--display)", textTransform: 'uppercase',
         color: 'var(--faint)',
       }}>{id}</div>
       <div style={{

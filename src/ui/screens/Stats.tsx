@@ -82,7 +82,7 @@ export function Stats() {
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
             <div className="label">{scope === 'fielding' ? 'IN THE FIELD' : 'LEADERS'}</div>
             <div style={{
-              font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
             }}>{scope === 'national' ? 'National' : team.def.school}</div>
           </div>
 
@@ -152,7 +152,7 @@ export function Stats() {
           <div style={{ marginTop: 10, font: "400 11px/1.5 var(--body)", color: 'var(--dim)' }}>
             <strong>CH</strong> is balls hit at him; <strong>+/100</strong> the outs he made that
             an average glove would not have, per hundred of them, errors already deducted. Zero is
-            not average — an error is a play nobody made, so the whole league sits at{' '}
+            not average. An error is a play nobody made, so the whole league sits at{' '}
             <strong>{fmtRate(leagueFieldingRate(season))}</strong>. Above that line is a man
             helping his pitcher.
           </div>

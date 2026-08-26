@@ -330,7 +330,7 @@ const SEEDS: Partial<Record<RecordKey, RecordMark>> = {
   seasonHR: {
     value: 18, holder: 'Pete Incaviglia',
     team: 'Oklahoma State', year: 1985,
-    detail: 'real mark 48 in 75 games — sources give 48 or 45', ncaa: true,
+    detail: 'real mark 48 in 75 games; sources give 48 or 45', ncaa: true,
   },
   seasonRBI: {
     value: 93, holder: 'Pete Incaviglia',

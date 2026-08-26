@@ -530,7 +530,7 @@ function StepHead(
         ))}
       </div>
       <div style={{
-        font: "800 30px/0.95 var(--display)", marginTop: 7, textTransform: 'uppercase',
+        font: "800 22px/0.95 var(--display)", marginTop: 7, textTransform: 'uppercase',
       }}>{title}</div>
     </div>
   );

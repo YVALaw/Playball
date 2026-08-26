@@ -2,16 +2,18 @@
 // The hub. Where you are in the season, how the program is doing, and the one
 // button that moves the year forward.
 
+import { useRef, useState } from 'react';
 import { FINISH_LABEL } from '../../engine/postseason.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import {
   seasonComplete, rpiOrder, seasonLength, era,
-  type SeasonState, type TeamRecord,
+  type SeasonState, type TeamRecord, type GameSummary,
 } from '../../engine/season.js';
-import { Rule, Tile, Card } from '../components/Kit.js';
+import { Rule, Card } from '../components/Kit.js';
 import { FixedHeader } from '../Sticky.js';
 import { FirstVisit } from '../Tutorial.js';
 import { useOpenTeam } from './TeamCard.js';
+import { BoxScoreSheet } from './Schedule.js';
 import { seasonDate } from '../format.js';
 import type { Pitcher } from '../../engine/types.js';
 
@@ -49,6 +51,7 @@ export function Today() {
   const year = useDynasty((s) => s.year);
   const advanceDay = useDynasty((s) => s.advanceDay);
   const simWeek = useDynasty((s) => s.simWeek);
+  const playSeason = useDynasty((s) => s.playSeason);
   const startManagedGame = useDynasty((s) => s.startManagedGame);
   const playPostseason = useDynasty((s) => s.playPostseason);
   const lastPostseason = useDynasty((s) => s.lastPostseason);
@@ -60,11 +63,33 @@ export function Today() {
   const team = useUserTeam();
   void version;                         // in-place mutation: see store.ts
 
+  /*
+    The 0.8 second breath before a sim resolves.
+
+    A day sims in a couple of milliseconds, and a result that appears the same
+    frame the thumb lands reads as though nothing was played. The pause is
+    honest about what it is — a beat, in the button itself, with a ring — and
+    it doubles as the rapid-fire guard for these two controls.
+  */
+  const [thinking, setThinking] = useState<'game' | 'week' | null>(null);
+  const thinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const think = (which: 'game' | 'week', run: () => void): void => {
+    if (thinking !== null) return;
+    setThinking(which);
+    thinkTimer.current = setTimeout(() => {
+      thinkTimer.current = null;
+      setThinking(null);
+      run();
+    }, 800);
+  };
+
+  /** A finished game, opened off the results strip. */
+  const [openGame, setOpenGame] = useState<GameSummary | null>(null);
+
   if (!season || !team) return null;
 
   const done = seasonComplete(season);
   const day = season.schedule[season.dayIndex];
-  const diff = team.rs - team.ra;
 
   // Where the program sits nationally. Recomputed rather than cached — 96 teams
   // is cheap and a stale rank on the hub screen is worse than the work.
@@ -149,7 +174,7 @@ export function Today() {
                   : `WEEK ${day?.week ?? 1} · ${day?.kind === 'series' ? 'CONFERENCE SERIES' : 'MIDWEEK'}`}
               </div>
               <div style={{
-                font: "800 34px/0.9 var(--display)", marginTop: 4, textTransform: 'uppercase',
+                font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
               }}>{done ? `${year} FINAL` : seasonDate(year, day?.day ?? 0)}</div>
             </div>
             <div style={{
@@ -165,15 +190,8 @@ export function Today() {
     >
     <div style={{ padding: '10px 14px 16px' }}>
       <FirstVisit id="today" />
-      <div style={{
-        display: 'flex',
-        border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
-        <Tile k="OVERALL" v={`${team.w}-${team.l}`} />
-        <Tile k="CONFERENCE" v={`${team.cw}-${team.cl}`} />
-        <Tile k="RUN DIFF" v={`${diff > 0 ? '+' : ''}${diff}`} last />
-      </div>
-
+      {/* The record tiles used to sit here. They live on the season tab now —
+          the dashboard is for what happens next, not for how it has gone. */}
       {todayGame && opponent && (
         <button
           onClick={() => openTeam(opponent.index)}
@@ -283,13 +301,36 @@ export function Today() {
             <Action
               label={live ? 'BACK TO THE GAME' : todayGame ? 'PLAY BALL' : 'NEXT GAME'}
               primary full
-              disabled={busy}
+              disabled={busy || thinking !== null}
               onClick={startManagedGame}
             />
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <Action label={todayGame ? 'SIM GAME' : 'ADVANCE'} disabled={busy || !!live} onClick={advanceDay} />
-            <Action label="SIM WEEK" disabled={busy || !!live} onClick={simWeek} />
+            <Action
+              label={todayGame ? 'SIM GAME' : 'ADVANCE'}
+              spinning={thinking === 'game'}
+              disabled={busy || !!live || thinking === 'week'}
+              onClick={() => think('game', advanceDay)}
+            />
+            <Action
+              label="SIM WEEK"
+              spinning={thinking === 'week'}
+              disabled={busy || !!live || thinking === 'game'}
+              onClick={() => think('week', simWeek)}
+            />
+          </div>
+          {/*
+            The whole year at one press, kept while the game is still being
+            tested. Scheduled to leave before v1.0 — a dynasty player should
+            live the season, but a tester needs to reach June before lunch.
+          */}
+          <div style={{ marginTop: 8 }}>
+            <Action
+              label="SIM SEASON"
+              full
+              disabled={busy || !!live || thinking !== null}
+              onClick={() => void playSeason()}
+            />
           </div>
         </div>
       ) : (
@@ -366,11 +407,16 @@ export function Today() {
                 - (season.teams[winner]?.prestige ?? 50);
               const mine = g.home === team.index || g.away === team.index;
               return (
-                <div key={i} style={{
-                  display: 'flex', alignItems: 'baseline', gap: 8,
-                  padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
-                  background: mine ? 'rgba(168,68,42,.06)' : 'transparent',
-                }}>
+                <button
+                  key={i}
+                  onClick={() => setOpenGame(g)}
+                  className="tap"
+                  style={{
+                    width: '100%', textAlign: 'left',
+                    display: 'flex', alignItems: 'baseline', gap: 8,
+                    padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
+                    background: mine ? 'rgba(168,68,42,.06)' : 'transparent',
+                  }}>
                   <span style={{
                     flex: 1, font: "400 11px var(--mono)",
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -394,14 +440,128 @@ export function Today() {
                   <span style={{ font: "700 12px var(--mono)" }}>
                     {g.awayRuns}-{g.homeRuns}
                   </span>
-                </div>
+                </button>
               );
             })}
           </div>
         </>
       )}
     </div>
+
+    {/*
+      How it played out. The user's own game has a full box score in the save,
+      so it opens the real one; everyone else's carries a summary card — the
+      final, the shape of it, and both doors.
+    */}
+    {openGame && (
+      openGame.day in (season.boxScores ?? {})
+        && (openGame.home === team.index || openGame.away === team.index)
+        ? (
+          <BoxScoreSheet
+            box={season.boxScores[openGame.day]!}
+            season={season}
+            onClose={() => setOpenGame(null)}
+          />
+        )
+        : (
+          <GameSheet
+            g={openGame}
+            season={season}
+            year={year}
+            onClose={() => setOpenGame(null)}
+            onTeam={(i) => { setOpenGame(null); openTeam(i); }}
+          />
+        )
+    )}
     </FixedHeader>
+  );
+}
+
+/**
+ * The card for a game the save has no box for: the result, said properly.
+ * Every other program's games keep only their summary, and a summary shown
+ * well beats a box score invented badly.
+ */
+function GameSheet(
+  { g, season, year, onClose, onTeam }:
+  {
+    g: GameSummary; season: SeasonState; year: number;
+    onClose: () => void; onTeam: (i: number) => void;
+  },
+) {
+  const home = season.teams[g.home];
+  const away = season.teams[g.away];
+  if (!home || !away) return null;
+  const homeWon = g.homeRuns > g.awayRuns;
+
+  const Row = ({ i, school, runs, won }: {
+    i: number; school: string; runs: number; won: boolean;
+  }) => (
+    <button
+      onClick={() => onTeam(i)}
+      className="tap"
+      style={{
+        width: '100%', display: 'flex', justifyContent: 'space-between',
+        alignItems: 'center', gap: 10, padding: '11px 12px',
+        background: 'transparent', borderBottom: '1px solid var(--hairline)',
+        textAlign: 'left',
+      }}
+    >
+      <span style={{
+        font: `800 17px/1 var(--display)`, textTransform: 'uppercase',
+        color: won ? 'var(--ink)' : 'var(--dim)',
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>{school}</span>
+      <span style={{
+        font: "800 22px/1 var(--display)",
+        color: won ? 'var(--clay)' : 'var(--dim)',
+      }}>{runs}</span>
+    </button>
+  );
+
+  return (
+    <div
+      onClick={onClose}
+      className="fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${away.def.school} at ${home.def.school}`}
+      style={{
+        position: 'absolute', inset: 0, background: 'rgba(28,36,48,.55)',
+        display: 'flex', alignItems: 'flex-end', zIndex: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="sheet"
+        style={{
+          width: '100%', background: 'var(--paper)', borderTop: '3px solid var(--clay)',
+        }}
+      >
+        <div style={{
+          padding: '7px 12px', background: 'var(--clay)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <span style={{
+            font: "600 9px var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
+          }}>
+            FINAL{g.innings > 9 ? ` · ${g.innings} INNINGS` : ''}
+            {' · '}{seasonDate(year, g.day).toUpperCase()}
+          </span>
+          <button onClick={onClose} style={{
+            font: "600 9px var(--mono)", letterSpacing: '.14em', color: 'rgba(246,241,230,.8)',
+          }}>CLOSE</button>
+        </div>
+        <Row i={g.away} school={away.def.school} runs={g.awayRuns} won={!homeWon} />
+        <Row i={g.home} school={home.def.school} runs={g.homeRuns} won={homeWon} />
+        <div style={{
+          padding: '9px 12px 13px', font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+        }}>
+          Tap a school for the full picture. Box scores only survive for your
+          own games; everyone else phones theirs in.
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -443,13 +603,18 @@ function Postseason() {
 }
 
 function Action(
-  { label, onClick, primary, full, disabled }:
-  { label: string; onClick: () => void; primary?: boolean; full?: boolean; disabled?: boolean },
+  { label, onClick, primary, full, disabled, spinning }:
+  {
+    label: string; onClick: () => void; primary?: boolean; full?: boolean;
+    disabled?: boolean;
+    /** The button itself is where the wait shows: ring in, label dimmed. */
+    spinning?: boolean;
+  },
 ) {
   return (
     <button
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || spinning}
       style={{
         flex: full ? undefined : 1,
         width: full ? '100%' : undefined,
@@ -459,6 +624,10 @@ function Action(
         color: primary ? 'var(--cream)' : 'var(--ink)',
         font: "700 13px var(--display)", letterSpacing: '.14em',
       }}
-    >{label}</button>
+    >
+      {spinning
+        ? <span className="spinner" aria-label={`${label} in progress`} />
+        : label}
+    </button>
   );
 }

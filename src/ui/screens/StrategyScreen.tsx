@@ -46,7 +46,7 @@ const GROUPS: Array<Group<keyof Strategy>> = [
     options: [
       { value: 'never', label: 'NEVER', cost: 'Everyone swings' },
       { value: 'rare', label: 'RARE', cost: 'Only the bottom of the order, only when a run decides it' },
-      { value: 'often', label: 'OFTEN', cost: 'Moves runners, and costs you runs on balance — bunting usually does' },
+      { value: 'often', label: 'OFTEN', cost: 'Moves runners, and costs you runs on balance. Bunting usually does' },
     ],
   },
   {
@@ -87,7 +87,7 @@ export function StrategyScreen() {
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
             <div className="label">HOW YOU PLAY</div>
             <div style={{
-              font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
             }}>Strategy</div>
           </div>
         </div>
