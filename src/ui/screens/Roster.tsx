@@ -2,37 +2,38 @@
 // Your players. This is the screen where the dynasty becomes legible — class
 // years show you who is about to leave, and the gap between overall and
 // potential shows you who is worth waiting on.
+//
+// Three views of one list: everybody, the bats, the arms. The glove work that
+// used to be a third tab here lives with the rest of the numbers on the STATS
+// screen now — fielding is a statistic, not a separate species of player.
 
 import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { FixedHeader } from '../Sticky.js';
+import { FirstVisit } from '../Tutorial.js';
 import { overallOf } from '../../engine/ratings.js';
 import { potentialGrade } from '../../engine/scouting.js';
-import {
-  battingAverage, era, inningsPitched, fieldingPct, paePer100, leagueFieldingRate,
-  rankableChances, type FieldingSeason,
-} from '../../engine/season.js';
+import { battingAverage, era, inningsPitched } from '../../engine/season.js';
 import { pct } from '../format.js';
 import type { Hitter, Pitcher, Player } from '../../engine/types.js';
 
-type Mode = 'bat' | 'arm' | 'glove';
-
-/** A signed rate, in the same units the leaderboard and the player card use. */
-const fmtRate = (v: number): string => `${v > 0 ? '+' : ''}${v.toFixed(1)}`;
+type Mode = 'all' | 'bat' | 'arm';
 
 export function Roster() {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
   const openPlayer = useDynasty((s) => s.openPlayer);
-  const [mode, setMode] = useState<Mode>('bat');
+  const [mode, setMode] = useState<Mode>('all');
   void version;
 
   if (!season || !team) return null;
 
   const hitters = [...team.team.lineup, ...team.team.bench];
   const arms = [...team.team.rotation, ...team.team.bullpen];
+  const everybody: Player[] = [...hitters, ...arms]
+    .sort((a, b) => overallOf(b) - overallOf(a));
 
   return (
     <FixedHeader
@@ -47,65 +48,40 @@ export function Roster() {
           </div>
 
           <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+            <Chip on={mode === 'all'} onClick={() => setMode('all')}>ALL</Chip>
             <Chip on={mode === 'bat'} onClick={() => setMode('bat')}>HITTERS</Chip>
             <Chip on={mode === 'arm'} onClick={() => setMode('arm')}>PITCHERS</Chip>
-            {/* Everybody who takes the field, pitchers included — a comebacker
-                is a chance and the mound has a glove now. */}
-            <Chip on={mode === 'glove'} onClick={() => setMode('glove')}>GLOVES</Chip>
           </div>
         </div>
       }
     >
     <div style={{ padding: '10px 14px 16px' }}>
+      <FirstVisit id="roster" />
       <div style={{
         border: '1px solid var(--faint)', background: 'var(--paper)',
       }}>
         <Head mode={mode} />
-        {mode === 'glove' ? (
-          (() => {
-            // Below this, one booted ball is a rate of minus fifty and the
-            // column would be shouting noise at the reader. Those men keep their
-            // counts and show a dash where the rate goes, under everybody the
-            // season has actually said something about.
-            const bar = rankableChances(season);
-            const rows = [...hitters, ...arms]
-              .map((p) => ({ p, line: season.fielding?.get(p.id) }))
-              .filter((r): r is { p: Player; line: FieldingSeason } =>
-                r.line !== undefined && r.line.chances > 0)
-              // The best glove first, which on a roster of twenty three men is
-              // the question the tab exists to answer. On the rate rather than
-              // the total, or the shortstop who played every inning finishes
-              // below a reserve who handled six balls cleanly.
-              .sort((a, b) => {
-                const qa = a.line.chances >= bar ? 1 : 0;
-                const qb = b.line.chances >= bar ? 1 : 0;
-                if (qa !== qb) return qb - qa;
-                if (qa === 0) return b.line.chances - a.line.chances;
-                return paePer100(b.line) - paePer100(a.line)
-                  || b.line.chances - a.line.chances;
-              });
-            if (rows.length === 0) {
-              return (
-                <div style={{
-                  padding: '12px 10px', font: "400 12px var(--body)", color: 'var(--dim)',
-                }}>Nothing has been hit at anybody yet.</div>
-              );
-            }
-            return rows.map(({ p, line }) => (
-              <GloveRow
+        {mode === 'all'
+          ? everybody.map((p) => (
+              <Cells
                 key={p.id}
-                abbr={team.def.abbr}
-                p={p}
-                line={line}
-                rated={line.chances >= bar}
-                starter={p.type === 'hitter'
-                  ? team.team.lineup.includes(p)
-                  : team.team.rotation.includes(p)}
+                grid={ALL_GRID}
+                highlight={p.type === 'hitter'
+                  ? team.team.lineup.includes(p as Hitter)
+                  : team.team.rotation.includes(p as Pitcher)}
                 onClick={() => openPlayer(p.id)}
+                playerId={p.id}
+                teamAbbr={team.def.abbr}
+                values={[
+                  p.name,
+                  p.type === 'pitcher' ? (p as Pitcher).role : p.pos,
+                  p.classYear,
+                  String(overallOf(p)),
+                  potentialGrade(p.potential),
+                ]}
               />
-            ));
-          })()
-        ) : mode === 'bat'
+            ))
+          : mode === 'bat'
           ? hitters
               .map((p) => ({ p, line: season.batting.get(p.id) }))
               .sort((a, b) => overallOf(b.p) - overallOf(a.p))
@@ -138,20 +114,8 @@ export function Roster() {
       </div>
 
       <div style={{ marginTop: 10, font: "400 11px/1.5 var(--body)", color: 'var(--dim)' }}>
-        {mode === 'glove' ? (
-          <>
-            <strong>CH</strong> is balls hit at him; <strong>+/100</strong> the outs he made that
-            an average glove would not have, per hundred of them, errors already deducted. Zero is
-            not average — an error is a play nobody made, so the whole league sits at{' '}
-            <strong>{fmtRate(leagueFieldingRate(season))}</strong>. Above that line is a man
-            helping his pitcher.
-          </>
-        ) : (
-          <>
-            <strong>OVR</strong> is where a player is now, <strong>POT</strong> a letter for where he could
-            end up. Seniors leave in June whatever happens; juniors leave if the draft wants them.
-          </>
-        )}
+        <strong>OVR</strong> is where a player is now, <strong>POT</strong> a letter for where he could
+        end up. Seniors leave in June whatever happens; juniors leave if the draft wants them.
       </div>
     </div>
     </FixedHeader>
@@ -165,7 +129,7 @@ function Chip(
     <button
       onClick={onClick}
       style={{
-        padding: '6px 12px',
+        padding: '8px 14px', minHeight: 36,
         background: on ? 'var(--clay)' : 'transparent',
         border: `1px solid ${on ? 'var(--clay)' : 'rgba(28,36,48,.25)'}`,
         color: on ? 'var(--cream)' : 'rgba(28,36,48,.6)',
@@ -176,13 +140,15 @@ function Chip(
 }
 
 const GRID = '30px 1fr 30px 26px 30px 30px 44px 30px';
+/** The everybody view: the five columns that describe any player. */
+const ALL_GRID = '30px 1fr 34px 26px 34px 34px';
 
 function Head({ mode }: { mode: Mode }) {
   const cols = mode === 'bat'
-    ? ['', 'PLAYER', 'POS', 'CL', 'OVR', 'POT', 'AVG', 'HR']
+    ? ['', 'PLAYER', 'POS', 'YR', 'OVR', 'POT', 'AVG', 'HR']
     : mode === 'arm'
-      ? ['', 'PLAYER', 'ROL', 'CL', 'OVR', 'POT', 'ERA', 'IP']
-      : ['', 'PLAYER', 'POS', 'CH', 'PO', 'E', 'PCT', '+/100'];
+      ? ['', 'PLAYER', 'ROL', 'YR', 'OVR', 'POT', 'ERA', 'IP']
+      : ['', 'PLAYER', 'POS', 'YR', 'OVR', 'POT'];
   return (
     <div style={{
       // Pinned to the top of the scroller. The title and the hitters/pitchers
@@ -190,7 +156,7 @@ function Head({ mode }: { mode: Mode }) {
       // is HR belongs with them, and it is the only part of the table you cannot
       // work out from the numbers themselves.
       position: 'sticky', top: 0, zIndex: 1, background: 'var(--paper)',
-      display: 'grid', gridTemplateColumns: GRID, gap: 4,
+      display: 'grid', gridTemplateColumns: mode === 'all' ? ALL_GRID : GRID, gap: 4,
       padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
     }}>
       {cols.map((c, i) => (
@@ -204,10 +170,10 @@ function Head({ mode }: { mode: Mode }) {
 const classColor = (cl: string): string => (cl === 'SR' ? 'var(--clay)' : 'var(--ink)');
 
 function Cells(
-  { values, highlight, onClick, playerId, teamAbbr }:
+  { values, highlight, onClick, playerId, teamAbbr, grid = GRID }:
   {
     values: string[]; highlight?: boolean; onClick?: () => void;
-    playerId?: string; teamAbbr?: string;
+    playerId?: string; teamAbbr?: string; grid?: string;
   },
 ) {
   return (
@@ -217,7 +183,7 @@ function Cells(
         width: '100%',
         textAlign: 'left',
         display: 'grid',
-        gridTemplateColumns: GRID,
+        gridTemplateColumns: grid,
         gap: 4,
         alignItems: 'center',
         padding: '7px 10px',
@@ -269,43 +235,6 @@ function HitterRow(
         potentialGrade(p.potential),
         played ? pct(avg) : '—',
         String(hr),
-      ]}
-    />
-  );
-}
-
-/**
- * One man's season in the field.
- *
- * PO is plays made, not the scorer's putout — the engine counts balls hit at him
- * and what he did with them, which is the only denominator it honestly has (see
- * `fieldingPct`). The last column is the number worth reading: fielding
- * percentage flatters whoever never has to move, and plays made above an average
- * glove does not. Per hundred chances, the same unit the national board and the
- * player card use, so a catcher and a centre fielder are on one scale.
- */
-function GloveRow(
-  { p, line, rated, starter, onClick, abbr }:
-  {
-    p: Player; line: FieldingSeason; rated: boolean; starter: boolean;
-    onClick: () => void; abbr?: string;
-  },
-) {
-  const rate = paePer100(line);
-  return (
-    <Cells
-      highlight={starter}
-      onClick={onClick}
-      playerId={p.id}
-      teamAbbr={abbr}
-      values={[
-        p.name,
-        p.type === 'pitcher' ? 'P' : p.pos,
-        String(line.chances),
-        String(line.plays),
-        String(line.errors),
-        pct(fieldingPct(line)),
-        rated ? fmtRate(rate) : '—',
       ]}
     />
   );

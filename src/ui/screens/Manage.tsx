@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PlayerName } from '../PlayerName.js';
+import { FirstVisit } from '../Tutorial.js';
 import { overallOf } from '../../engine/ratings.js';
 import { useDynasty } from '../../state/store.js';
 import { lazy, Suspense } from 'react';
@@ -181,6 +182,7 @@ export function Manage() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <FirstVisit id="manage" />
       {/*
         One scoreboard, not two. The linescore used to sit in its own paper block
         underneath this strip, which meant the score was printed twice and the

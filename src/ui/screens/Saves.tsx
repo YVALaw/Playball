@@ -87,6 +87,7 @@ export function Saves() {
   const refreshSaves = useDynasty((s) => s.refreshSaves);
   const saveAs = useDynasty((s) => s.saveAs);
   const deleteSlot = useDynasty((s) => s.deleteSlot);
+  const resetTutorials = useDynasty((s) => s.resetTutorials);
   const loadSlot = useDynasty((s) => s.loadSlot);
   const newDynasty = useDynasty((s) => s.newDynasty);
   const saveState = useDynasty((s) => s.saveState);
@@ -108,6 +109,7 @@ export function Saves() {
    */
   const [removing, setRemoving] = useState(false);
   const [ask, setAsk] = useState<Ask | null>(null);
+  const [tutorialsReset, setTutorialsReset] = useState(false);
   /**
    * Re-read on a timer so "just now" does not still say "just now" an hour
    * later. Cheap, and the alternative is a screen that quietly lies about how
@@ -287,6 +289,31 @@ export function Saves() {
             onDelete={() => setAsk({ kind: 'delete', save: s })}
           />
         ))}
+
+        {/* ------------------------------------------------------------------
+            Help. The first-visit tutorials teach each screen once and then stay
+            out of the way; this is the one place they can be asked back.
+        */}
+        <div style={{
+          marginTop: 22, paddingTop: 14, borderTop: '2px solid var(--ink)',
+        }}>
+          <div className="label">HELP</div>
+          <div style={{
+            marginTop: 5, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
+          }}>
+            Each screen introduces itself the first time you open it, then stays
+            quiet. Reset them and every screen teaches again on its next visit.
+          </div>
+          <button
+            onClick={() => { resetTutorials(); setTutorialsReset(true); }}
+            className="tap"
+            style={{
+              width: '100%', marginTop: 10, padding: '12px 10px', minHeight: 44,
+              background: 'transparent', border: '1px solid rgba(28,36,48,.4)',
+              color: 'var(--ink)', font: "700 10px var(--mono)", letterSpacing: '.12em',
+            }}
+          >{tutorialsReset ? 'THEY WILL SHOW AGAIN' : 'SHOW THE TUTORIALS AGAIN'}</button>
+        </div>
 
         {/* ------------------------------------------------------------------
             And the way out of all of them. Down here, outlined rather than

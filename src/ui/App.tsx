@@ -35,6 +35,9 @@ import { RecordBook } from './screens/RecordBook.js';
 import { unreadCount } from '../engine/inbox.js';
 import { Saves } from './screens/Saves.js';
 import { OpenTeam, TeamCard } from './screens/TeamCard.js';
+import { CoachPortrait } from './CoachPortrait.js';
+import { seasonDate } from './format.js';
+import { prestigeStars } from '../engine/program.js';
 
 /**
  * The app, and the one piece of navigation state that is not in the store.
@@ -65,6 +68,14 @@ function AppBody(
   const screen = useDynasty((s) => s.screen);
   const go = useDynasty((s) => s.go);
   const setScreen = useDynasty((s) => s.setScreen);
+  const coach = useDynasty((s) => s.coach);
+  const year = useDynasty((s) => s.year);
+  const setProgramSheet = useDynasty((s) => s.setProgramSheet);
+  // The chrome prints live numbers now — the record, the date, the roster —
+  // and the engine mutates in place, so the version counter is what tells this
+  // component a day has been played.
+  const version = useDynasty((s) => s.version);
+  void version;
   const team = useUserTeam();
   // Selected as a number rather than as the list, so a card being marked read
   // does not re-render the whole chrome.
@@ -461,6 +472,21 @@ function AppBody(
 
   const tabDef = TABS.find((t) => t.id === tab) ?? TABS[0]!;
 
+  /*
+    One live number under each bottom-nav label — the date, the roster count,
+    the record, the program's stars. The menu reports rather than just labels,
+    which saves a trip for exactly the questions a player asks most often.
+  */
+  const today = season.schedule[season.dayIndex];
+  const menCount = team.team.lineup.length + team.team.bench.length
+    + team.team.rotation.length + team.team.bullpen.length;
+  const navMeta: Record<string, string> = {
+    home: today ? seasonDate(year, today.day).split(' ').slice(1).join(' ').toUpperCase() : 'FINAL',
+    team: `${menCount} MEN`,
+    season: `${team.w}-${team.l}`,
+    program: '★'.repeat(prestigeStars(team.prestige)),
+  };
+
   return (
     <div className="app-frame" style={{ color: 'var(--ink)' }}>
       {/* Top bar. The pinstripe is a uniform, and the clay rule under it is the
@@ -486,6 +512,22 @@ function AppBody(
           }}>{team.def.nickname} &middot; {team.conference}</div>
         </div>
         <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
+        {/* You, in the corner of every screen. Tapping the face opens the
+            coach profile — the same door the program tab's COACH sheet is. */}
+        <button
+          onClick={() => { setProgramSheet('coach'); openOverlay('program'); }}
+          aria-label="Coach profile"
+          className="tap"
+          style={{
+            flex: 'none', width: 40, height: 40, minWidth: 40, padding: 0,
+            borderRadius: '50%', overflow: 'hidden',
+            border: '2px solid rgba(246,241,230,.4)',
+            background: 'var(--paper)',
+            display: 'grid', placeItems: 'center',
+          }}
+        >
+          <CoachPortrait look={coach.look} size={36} />
+        </button>
         <div style={{ flex: 'none', textAlign: 'right' }}>
           <div style={{ font: "800 22px/0.9 var(--display)", color: 'var(--cream)' }}>
             {team.w}-{team.l}
@@ -521,16 +563,6 @@ function AppBody(
               }}
             >
               {s.label}
-              {/* The count, not a dot. "Three things happened" is worth
-                  crossing the screen for and "something happened" is not, and
-                  at ten characters wide the sub-nav has room for one digit. */}
-              {s.id === 'inbox' && unread > 0 && (
-                <span style={{
-                  display: 'inline-block', minWidth: 14, padding: '1px 3px',
-                  background: 'var(--clay)', color: 'var(--cream)',
-                  font: "700 9px/1.3 var(--mono)", textAlign: 'center',
-                }}>{unread > 9 ? '9+' : unread}</span>
-              )}
             </button>
           );
         })}
@@ -557,7 +589,7 @@ function AppBody(
               key={t.id}
               onClick={() => go(t.id as Tab)}
               style={{
-                flex: 1, padding: '9px 0 11px', textAlign: 'center',
+                flex: 1, padding: '8px 0 9px', textAlign: 'center',
                 background: on ? 'rgba(168,68,42,.85)' : 'transparent',
               }}
             >
@@ -570,8 +602,8 @@ function AppBody(
                 {/* Unread has to be visible from wherever the player normally
                     is, and where he normally is is not the home tab. A dot on
                     the bottom bar is the only mark that survives being three
-                    screens away — the count itself is on the sub-nav, one tap
-                    closer, where there is room to print it. */}
+                    screens away — the count itself is on the top-bar bell, one
+                    tap away, where there is room to print it. */}
                 {t.id === 'home' && unread > 0 && (
                   <span style={{
                     position: 'absolute', top: -3, right: -8,
@@ -580,6 +612,11 @@ function AppBody(
                   }} />
                 )}
               </div>
+              <div style={{
+                marginTop: 3,
+                font: "400 8px/1 var(--mono)", letterSpacing: '.1em',
+                color: on ? 'rgba(246,241,230,.75)' : 'rgba(246,241,230,.38)',
+              }}>{navMeta[t.id] ?? ''}</div>
             </button>
           );
         })}

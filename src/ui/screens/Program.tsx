@@ -21,12 +21,14 @@
 // one "reputation" bar would hide the only interesting case — a good coach doing
 // well at a bad job.
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ACHIEVEMENTS, ACHIEVEMENT_IDS } from '../../engine/achievements.js';
-import { useDynasty, useUserTeam, useConferenceTable } from '../../state/store.js';
+import {
+  useDynasty, useUserTeam, useConferenceTable, type SeasonRecord,
+} from '../../state/store.js';
 import {
   expectationFor, prestigeStars, rosterStrength, objectiveMet, coachStanding,
-  SKILLS, SKILL_LABEL, type Objective,
+  SKILLS, SKILL_LABEL, type Objective, type CoachState,
 } from '../../engine/program.js';
 import {
   careerName, seasonLength, regularRecord, seasonComplete,
@@ -35,11 +37,12 @@ import {
 import { honoursByPlayer, type Inductee } from '../../engine/hall.js';
 import { RECORDS, type RecordKey } from '../../engine/records.js';
 import { philosophyOf } from '../../engine/strategy.js';
-import { REGION_OF_STATE } from '../../data/schools.js';
+import { REGION_OF_STATE, CONFERENCES } from '../../data/schools.js';
 import { playerId, type PlayerId } from '../../engine/types.js';
 import { CoachPortrait } from '../CoachPortrait.js';
 import { teamColour } from '../Avatar.js';
 import { FixedHeader } from '../Sticky.js';
+import { FirstVisit } from '../Tutorial.js';
 import { pct } from '../format.js';
 
 /** The record for one program, as the season carries it. */
@@ -227,8 +230,8 @@ function BoardSheet({ team }: { team: Owner }) {
             <div style={{
               marginTop: 10, display: 'flex', gap: 14, flexWrap: 'wrap',
             }}>
-              <Delta k="PROGRAM" from={review.prestigeBefore} to={review.prestigeAfter} />
-              <Delta k="YOUR STANDING" from={review.coachPrestigeBefore} to={review.coachPrestigeAfter} />
+              <Delta k="PROGRAM PRESTIGE" from={review.prestigeBefore} to={review.prestigeAfter} />
+              <Delta k="COACH PRESTIGE" from={review.coachPrestigeBefore} to={review.coachPrestigeAfter} />
               <Delta k="SECURITY" from={review.securityBefore} to={review.securityAfter} />
             </div>
             {!review.fired && (
@@ -289,7 +292,7 @@ function BoardSheet({ team }: { team: Owner }) {
         display: 'flex',
         border: '1px solid var(--faint)', background: 'var(--paper)',
       }}>
-        <Tile k="PRESTIGE" v={'★'.repeat(stars) + '☆'.repeat(5 - stars)} accent />
+        <Tile k="PROGRAM PRESTIGE" v={'★'.repeat(stars) + '☆'.repeat(5 - stars)} accent />
         <Tile k="ROSTER OVR" v={String(roster)} />
         <Tile k="CONTRACT" v={`${coach.contractYears}y`} accent={coach.contractYears <= 1} last />
       </div>
@@ -328,6 +331,7 @@ function BoardSheet({ team }: { team: Owner }) {
           <Seat security={coach.security} />
         </div>
       </div>
+      <FirstVisit id="program" />
     </>
   );
 }
@@ -344,10 +348,22 @@ function BoardSheet({ team }: { team: Owner }) {
  * first thing to scroll away. What stays pinned is the school and the tabs,
  * which is what you actually navigate by.
  */
+/** The four rooms of the profile. The hero above them never changes. */
+type CoachView = 'overview' | 'skills' | 'career' | 'trophies';
+
+/** What each skill buys, in the same words the coach step uses. */
+const SKILL_NOTE: Record<string, string> = {
+  offense: 'Your hitters take slightly better at-bats, every game.',
+  defense: 'Balls in play against you become outs a little more often.',
+  training: 'Your returning players develop further between seasons.',
+  recruiting: 'Every hour on a recruit counts for more, and your scouting reports run tighter.',
+};
+
 function CoachSheet({ team }: { team: Owner }) {
   const coach = useDynasty((s) => s.coach);
   const history = useDynasty((s) => s.history);
   const version = useDynasty((s) => s.version);
+  const [view, setView] = useState<CoachView>('overview');
   void version;
 
   const philosophy = philosophyOf(coach.philosophy);
@@ -413,137 +429,345 @@ function CoachSheet({ team }: { team: Owner }) {
         color: teamColour(team.def.abbr),
       }}>{team.def.school.toUpperCase()} · {team.conference}</div>
 
-      <Head>INFORMATION</Head>
-      <Panel>
-        <Stat k="AGE" v={String(coach.age)} />
-        <Stat k="FROM" v={region ? `${coach.homeState} · ${region}` : coach.homeState} />
-        <Stat k="CAREER EXPERIENCE" v={seasonWord(careerSeasons)} />
-        <Stat k="AT THIS SCHOOL" v={seasonWord(coach.tenure)} />
-        <Stat
-          k="CONTRACT"
-          v={coach.contractYears > 0
-            ? `${coach.contractYears} of ${coach.contractLength} years left`
-            : 'Final year'}
-        />
-        <Meter
-          k="YOUR STANDING"
-          v={String(coach.prestige)}
-          value={coach.prestige}
-          note="What the rest of the country thinks of you. It decides whose call you get."
-          last
-        />
-      </Panel>
+      {/* The profile's rooms. The hero above never changes; these decide what
+          is under it. Four small rooms beat one long corridor on a phone.
 
-      <div style={{ marginTop: 14 }}>
-        <Head>THE RECORD</Head>
-        <Panel>
-          <Stat k="RECORD" v={`${coach.careerWins}-${coach.careerLosses}`} />
-          <Stat k="WIN PCT" v={games > 0 ? pct(coach.careerWins / games) : '—'} />
-          <Stat k="TOURNAMENT BIDS" v={String(coach.tournaments)} />
-          <Stat k="CONFERENCE TITLES" v={String(coach.conferenceTitles)} />
-          {/* One row per thing there is to win, in the order the pyramid is
-              climbed. The regional row is what B6 added; the trip to Omaha
-              beside it is the same event under the name the player knows it by,
-              which is exactly why they print the same number. */}
-          <Stat k="REGIONAL TITLES" v={String(coach.regionalTitles)} />
-          <Stat k="TRIPS TO OMAHA" v={String(omaha)} />
-          <Stat k="NATIONAL TITLES" v={String(coach.titles)} last />
-        </Panel>
+          A fifth room — JOBS, where an established coach browses openings,
+          applies and interviews — is deliberately absent until that system is
+          real. When it lands, it plugs in here: add 'jobs' to CoachView, a
+          chip below, and a JobsView beside CareerView reading `jobOffers`
+          (engine/program.ts) with an application flow on top. An empty tab
+          promising interviews that do not exist would be worse than no tab;
+          the mid-career market meanwhile keeps its existing door — offers
+          arrive in the inbox and on the BOARD sheet when a coach is let go. */}
+      <div style={{ display: 'flex', gap: 5, marginBottom: 12 }}>
+        {(['overview', 'skills', 'career', 'trophies'] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            style={{
+              flex: 1, padding: '8px 0', minHeight: 36,
+              background: view === v ? 'var(--clay)' : 'transparent',
+              border: `1px solid ${view === v ? 'var(--clay)' : 'rgba(28,36,48,.25)'}`,
+              color: view === v ? 'var(--cream)' : 'rgba(28,36,48,.6)',
+              font: "600 9px var(--mono)", letterSpacing: '.1em',
+            }}
+          >{v.toUpperCase()}</button>
+        ))}
       </div>
 
-      {/*
-        The cabinet.
-
-        Only what he has actually done, and deliberately no greyed-out rows for
-        the rest. An achievement is one-time and permanent, so a list of the ten
-        with eight crossed off is a checklist, and a checklist on this page would
-        be a set of instructions about how to play a game that is supposed to be
-        about running a program. What is unearned is simply absent.
-      */}
-      {cabinet.length > 0 && (
-        <div style={{ marginTop: 14 }}>
-          <Head>ACHIEVEMENTS</Head>
+      {view === 'overview' && (
+        <>
+          <Head>INFORMATION</Head>
           <Panel>
-            {cabinet.map((id, i) => {
-              const row = coach.achievements[id];
-              return (
-                <div
-                  key={id}
-                  style={{
-                    padding: '9px 12px',
-                    borderBottom: i === cabinet.length - 1
-                      ? 'none' : '1px solid var(--hairline)',
-                  }}
-                >
-                  <div style={{
-                    display: 'flex', justifyContent: 'space-between',
-                    alignItems: 'baseline', gap: 8,
-                  }}>
-                    <span style={{
-                      font: "800 14px/1.1 var(--display)", textTransform: 'uppercase',
-                    }}>{ACHIEVEMENTS[id].name}</span>
-                    <span style={{
-                      font: "600 10px var(--mono)", color: 'var(--clay)', whiteSpace: 'nowrap',
-                    }}>{row?.team} {row?.year}</span>
-                  </div>
-                  <div style={{
-                    marginTop: 3, font: "400 11.5px/1.45 var(--body)", color: 'var(--dim)',
-                  }}>{row?.detail ?? ACHIEVEMENTS[id].note}</div>
-                </div>
-              );
-            })}
+            <Stat k="AGE" v={String(coach.age)} />
+            <Stat k="FROM" v={region ? `${coach.homeState} · ${region}` : coach.homeState} />
+            <Stat k="CAREER EXPERIENCE" v={seasonWord(careerSeasons)} />
+            <Stat k="AT THIS SCHOOL" v={seasonWord(coach.tenure)} />
+            <Stat
+              k="CONTRACT"
+              v={coach.contractYears > 0
+                ? `${coach.contractYears} of ${coach.contractLength} years left`
+                : 'Final year'}
+            />
+            <Meter
+              k="COACH PRESTIGE"
+              v={String(coach.prestige)}
+              value={coach.prestige}
+              note="What the rest of the country thinks of you. It decides whose call you get — the program's own prestige is a different number, and it stays with the school."
+              last
+            />
           </Panel>
-          <Note>
-            Earned once and kept for ever, wherever you coach next. Records are
-            the other half of the book, and those exist to be broken.
-          </Note>
-        </div>
+
+          <div style={{ marginTop: 14 }}>
+            <Head>THE RECORD</Head>
+            <Panel>
+              <Stat k="CAREER" v={`${coach.careerWins}-${coach.careerLosses}`} />
+              <Stat k="WIN PCT" v={games > 0 ? pct(coach.careerWins / games) : '—'} />
+              <Stat k="THIS SEASON" v={`${team.w}-${team.l}`} />
+              <Stat k="TOURNAMENT BIDS" v={String(coach.tournaments)} />
+              <Stat k="CONFERENCE TITLES" v={String(coach.conferenceTitles)} />
+              {/* One row per thing there is to win, in the order the pyramid is
+                  climbed. The regional row is what B6 added; the trip to Omaha
+                  beside it is the same event under the name the player knows it
+                  by, which is exactly why they print the same number. */}
+              <Stat k="REGIONAL TITLES" v={String(coach.regionalTitles)} />
+              <Stat k="TRIPS TO OMAHA" v={String(omaha)} />
+              <Stat k="NATIONAL TITLES" v={String(coach.titles)} last />
+            </Panel>
+          </div>
+
+          <div style={{ marginTop: 14 }}>
+            <Head>STRATEGY</Head>
+            {/*
+              The name and the sentence both come out of the engine. They are
+              printed on the creation step as well, and one copy of a sentence in
+              two screens is two sentences that eventually say different things.
+            */}
+            <Panel>
+              <div style={{ padding: '11px 12px' }}>
+                <div style={{
+                  font: "800 20px/1 var(--display)", textTransform: 'uppercase',
+                }}>{philosophy.name}</div>
+                <div style={{
+                  marginTop: 6, font: "400 12px/1.5 var(--body)",
+                }}>{philosophy.blurb}</div>
+              </div>
+            </Panel>
+            <Note>
+              What he carries between programs. It sets five controls the first day he
+              arrives, and every one of them is yours to change on the strategy screen.
+            </Note>
+          </div>
+        </>
       )}
 
-      <div style={{ marginTop: 14 }}>
-        <Head>STRATEGY</Head>
-        {/*
-          The name and the sentence both come out of the engine. They are printed
-          on the creation step as well, and one copy of a sentence in two screens
-          is two sentences that eventually say different things.
-        */}
-        <Panel>
-          <div style={{ padding: '11px 12px' }}>
-            <div style={{
-              font: "800 20px/1 var(--display)", textTransform: 'uppercase',
-            }}>{philosophy.name}</div>
-            <div style={{
-              marginTop: 6, font: "400 12px/1.5 var(--body)",
-            }}>{philosophy.blurb}</div>
+      {view === 'skills' && (
+        <>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+          }}>
+            <Head>FOUR SKILLS</Head>
+            {coach.skillPoints > 0 && (
+              <span style={{
+                font: "700 9px var(--mono)", letterSpacing: '.1em', color: 'var(--clay)',
+              }}>{coach.skillPoints} POINT{coach.skillPoints === 1 ? '' : 'S'} UNSPENT</span>
+            )}
           </div>
-        </Panel>
-        <Note>
-          What he carries between programs. It sets five controls the first day he
-          arrives, and every one of them is yours to change on the strategy screen.
-        </Note>
-      </div>
-
-      <div style={{ marginTop: 14 }}>
-        <Head>RATINGS</Head>
-        <div style={{
-          marginTop: 8, padding: '12px 12px 4px',
-          border: '1px solid var(--faint)', background: 'var(--paper)',
-        }}>
+          {/* Values and what each one buys. The +1 controls live on the coach
+              step of the offseason — the one moment spending is valid — so this
+              page reports rather than pretending to a button that would refuse. */}
           {SKILLS.map((k) => (
-            <Bar key={k} label={SKILL_LABEL[k]} value={coach.skills[k]} />
+            <div key={k} style={{
+              marginTop: 8, padding: '11px 12px 6px',
+              border: '1px solid var(--faint)', background: 'var(--paper)',
+            }}>
+              <Bar label={SKILL_LABEL[k]} value={coach.skills[k]} />
+              <div style={{
+                margin: '2px 0 6px', font: "400 11.5px/1.45 var(--body)", color: 'var(--dim)',
+              }}>{SKILL_NOTE[k]}</div>
+            </div>
           ))}
-        </div>
-        {coach.skillPoints > 0 && (
           <Note>
-            <span style={{ color: 'var(--clay)' }}>
-              {coach.skillPoints} point{coach.skillPoints === 1 ? '' : 's'} unspent.
-            </span>{' '}
-            They are spent on the coach step of the offseason.
+            {coach.skillPoints > 0
+              ? 'Points are spent on the coach step of the offseason, where they can still be taken back before the step closes.'
+              : 'Points arrive at the board meeting each June — three for a season, more for silverware — and are spent on the coach step.'}
           </Note>
-        )}
-      </div>
+        </>
+      )}
+
+      {view === 'career' && <CareerView history={history} coach={coach} />}
+
+      {view === 'trophies' && (
+        <>
+          <Head>TROPHY CASE</Head>
+          {/* Only what the career has actually won. A new coach gets an honest
+              empty shelf, not a checklist of ambitions. */}
+          {(() => {
+            const titles = history.filter((r) => r.finish === 'champion');
+            const omahaYears = history.filter((r) =>
+              r.finish === 'omaha' || r.finish === 'runner-up' || r.finish === 'champion');
+            const confYears = history.filter((r) => r.wonConference);
+            const shelves = [
+              { k: 'NATIONAL TITLES', n: coach.titles, years: titles, tone: 'var(--clay)' },
+              { k: 'TRIPS TO OMAHA', n: omaha, years: omahaYears, tone: 'var(--navy)' },
+              { k: 'CONFERENCE TITLES', n: coach.conferenceTitles, years: confYears, tone: 'var(--win)' },
+            ];
+            const empty = shelves.every((s) => s.n === 0) && cabinet.length === 0;
+            if (empty) {
+              return (
+                <Panel>
+                  <div style={{
+                    padding: '16px 12px', textAlign: 'center',
+                    font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
+                  }}>
+                    The case is empty. Conference titles, trips to Omaha and a
+                    national championship all hang here — win one and it stays
+                    for ever, wherever you coach next.
+                  </div>
+                </Panel>
+              );
+            }
+            return (
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                {shelves.map((s) => (
+                  <div key={s.k} style={{
+                    flex: 1, padding: '10px 8px 12px', textAlign: 'center',
+                    background: 'var(--paper)', border: '1px solid var(--faint)',
+                    borderTop: `3px solid ${s.tone}`,
+                  }}>
+                    <div className="label">{s.k}</div>
+                    <div style={{
+                      marginTop: 4, font: "800 26px/1 var(--display)",
+                      color: s.n > 0 ? s.tone : 'var(--faint)',
+                    }}>{s.n}</div>
+                    <div style={{
+                      marginTop: 3, font: "400 8.5px var(--mono)", color: 'var(--dim)',
+                    }}>
+                      {s.years.slice(0, 3).map((r) => r.year).join(' · ') || '—'}
+                      {s.years.length > 3 ? ' …' : ''}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/*
+            The cabinet.
+
+            Only what he has actually done, and deliberately no greyed-out rows
+            for the rest. An achievement is one-time and permanent, so a list of
+            the ten with eight crossed off is a checklist, and a checklist on
+            this page would be a set of instructions about how to play a game
+            that is supposed to be about running a program. What is unearned is
+            simply absent.
+          */}
+          {cabinet.length > 0 && (
+            <div style={{ marginTop: 14 }}>
+              <Head>ACHIEVEMENTS</Head>
+              <Panel>
+                {cabinet.map((id, i) => {
+                  const row = coach.achievements[id];
+                  return (
+                    <div
+                      key={id}
+                      style={{
+                        padding: '9px 12px',
+                        borderBottom: i === cabinet.length - 1
+                          ? 'none' : '1px solid var(--hairline)',
+                      }}
+                    >
+                      <div style={{
+                        display: 'flex', justifyContent: 'space-between',
+                        alignItems: 'baseline', gap: 8,
+                      }}>
+                        <span style={{
+                          font: "800 14px/1.1 var(--display)", textTransform: 'uppercase',
+                        }}>{ACHIEVEMENTS[id].name}</span>
+                        <span style={{
+                          font: "600 10px var(--mono)", color: 'var(--clay)', whiteSpace: 'nowrap',
+                        }}>{row?.team} {row?.year}</span>
+                      </div>
+                      <div style={{
+                        marginTop: 3, font: "400 11.5px/1.45 var(--body)", color: 'var(--dim)',
+                      }}>{row?.detail ?? ACHIEVEMENTS[id].note}</div>
+                    </div>
+                  );
+                })}
+              </Panel>
+              <Note>
+                Earned once and kept for ever, wherever you coach next. Records are
+                the other half of the book, and those exist to be broken.
+              </Note>
+            </div>
+          )}
+        </>
+      )}
+      <FirstVisit id="coach" />
     </>
   );
+}
+
+/**
+ * The coach's own year-by-year, which is not the school's.
+ *
+ * His 2029 and his school's 2029 agree only while he was in that chair — the
+ * school's version lives on the HISTORY screen and keeps running when he
+ * leaves. This one follows the man: every season he has coached, grouped by
+ * where he coached it.
+ */
+function CareerView({ history, coach }: { history: SeasonRecord[]; coach: CoachState }) {
+  if (history.length === 0) {
+    return (
+      <>
+        <Head>YEAR BY YEAR</Head>
+        <Panel>
+          <div style={{
+            padding: '16px 12px', textAlign: 'center',
+            font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
+          }}>
+            No seasons on the record yet. The first one goes in at the June
+            board meeting.
+          </div>
+        </Panel>
+      </>
+    );
+  }
+
+  // Grouped by school, in the order the career visited them.
+  const spans: { school: string; rows: SeasonRecord[] }[] = [];
+  for (const r of history) {
+    const school = r.school ?? 'Unknown';
+    const last = spans[spans.length - 1];
+    if (last && last.school === school) last.rows.push(r);
+    else spans.push({ school, rows: [r] });
+  }
+
+  return (
+    <>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+      }}>
+        <Head>YEAR BY YEAR</Head>
+        <span style={{ font: "600 9px var(--mono)", color: 'var(--dim)' }}>
+          {coach.careerWins}-{coach.careerLosses} CAREER
+        </span>
+      </div>
+      {spans.map((span, si) => (
+        <div key={`${span.school}-${si}`} style={{ marginTop: si === 0 ? 8 : 12 }}>
+          <div style={{
+            font: "700 10px var(--mono)", letterSpacing: '.1em',
+            color: teamColour(
+              span.rows[0]?.school !== undefined ? abbrOfSchool(span.school) : '',
+            ),
+            marginBottom: 4,
+          }}>{span.school.toUpperCase()} · {seasonWord(span.rows.length)}</div>
+          <Panel>
+            {span.rows.map((r, i) => (
+              <div key={r.year} style={{
+                display: 'grid', gridTemplateColumns: '40px 56px 1fr auto',
+                gap: 8, alignItems: 'baseline', padding: '8px 12px',
+                borderBottom: i === span.rows.length - 1 ? 'none' : '1px solid var(--hairline)',
+              }}>
+                <span style={{ font: "700 13px var(--display)" }}>{r.year}</span>
+                <span style={{ font: "400 11px var(--mono)" }}>{r.w}-{r.l}</span>
+                <span style={{
+                  font: "400 11px var(--body)", color: 'var(--dim)',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{FINISH_WORD[r.finish] ?? r.finish}{r.wonConference ? ' · conference champions' : ''}</span>
+                <span style={{
+                  font: "700 11px var(--mono)",
+                  color: r.finish === 'champion' ? 'var(--clay)' : 'transparent',
+                }}>◆</span>
+              </div>
+            ))}
+          </Panel>
+        </div>
+      ))}
+      <Note>
+        Your career, wherever it was coached. Each school's own history —
+        including the years you were somewhere else — is on its HISTORY screen.
+      </Note>
+    </>
+  );
+}
+
+const FINISH_WORD: Record<string, string> = {
+  missed: 'Missed the tournament',
+  regional: 'Regional',
+  omaha: 'Omaha',
+  'runner-up': 'National runner-up',
+  champion: 'NATIONAL CHAMPION',
+};
+
+/** Best-effort colour lookup for a school named in an old career row. */
+function abbrOfSchool(school: string): string {
+  for (const c of CONFERENCES) {
+    const hit = c.schools.find((s) => s.school === school);
+    if (hit) return hit.abbr;
+  }
+  return '';
 }
 
 const seasonWord = (n: number): string => `${n} season${n === 1 ? '' : 's'}`;

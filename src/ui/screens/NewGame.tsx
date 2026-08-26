@@ -12,9 +12,12 @@
 // their own words, and how long they are giving you.
 //
 // The second is that **you cannot have any job you like.** A contender does not
-// hand its program to someone who has never run one. Most of the board is locked
-// on day one and it stays visible while it is locked, because a ladder you cannot
-// see is not a ladder — it is just a short list that quietly gets longer.
+// hand its program to someone who has never run one. So the final step is a
+// desk with the offers that actually came — the handful of chairs the hiring
+// ladder says would ring a rookie, picked by `startingOffers` with at least one
+// guaranteed — rather than a directory of ninety six schools you page through
+// discovering which ones would take the call. The ladder itself is still
+// visible where it matters: mid-career, the job market prices every move.
 //
 // Three steps, in that order: who you are, how your teams play, where you work.
 //
@@ -33,16 +36,17 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import {
-  CONFERENCES, STATES_BY_REGION, type ConferenceDef, type SchoolDef,
+  CONFERENCES, STATES_BY_REGION, type SchoolDef,
 } from '../../data/schools.js';
 import {
   prestigeStars, expectationFor, contractFor, requiredCoachPrestige,
-  canBeHired, hireGateNote, ROOKIE_PRESTIGE, rosterStrength,
+  canBeHired, hireGateNote, ROOKIE_PRESTIGE, rosterStrength, startingOffers,
   randomProfile, clampAge, MIN_COACH_AGE, MAX_COACH_AGE, DEFAULT_LOOK,
   type CoachProfile, type CoachLook, type Mandate, type Objective,
 } from '../../engine/program.js';
 import {
-  PHILOSOPHIES, philosophyOf, DEFAULT_PHILOSOPHY, type PhilosophyId,
+  PHILOSOPHIES, philosophyOf, DEFAULT_PHILOSOPHY, strategyForPhilosophy,
+  type PhilosophyId,
 } from '../../engine/strategy.js';
 import { useDynasty, careerSeed } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
@@ -90,15 +94,8 @@ function archetype(prestige: number, quality: number): string | null {
   return null;
 }
 
-const TIER_WORD: Record<number, string> = {
-  1: 'a power league',
-  2: 'a solid league',
-  3: 'a modest league',
-};
-
 export function NewGame() {
   const start = useDynasty((s) => s.start);
-  const [conference, setConference] = useState<ConferenceDef>(CONFERENCES[0] as ConferenceDef);
   const [picked, setPicked] = useState<SchoolDef | null>(null);
 
   /**
@@ -157,9 +154,21 @@ export function NewGame() {
   };
 
   const rivalOf = (school: SchoolDef): SchoolDef | undefined =>
-    conference.schools.find((s) => s.abbr === school.rival);
+    CONFERENCES.flatMap((c) => c.schools).find((s) => s.abbr === school.rival);
 
-  const openCount = conference.schools.filter((s) => preview(s).open).length;
+  const confNameOf = (school: SchoolDef): string =>
+    CONFERENCES.find((c) => c.schools.some((s) => s.abbr === school.abbr))?.name ?? '';
+
+  /**
+   * The programs that actually rang. The old screen printed all ninety six and
+   * let the player discover which would take his call; this is the market as a
+   * rookie really meets it — the handful of genuine offers, chosen by the same
+   * hiring ladder every later job change uses, with at least one guaranteed.
+   */
+  const offers = useMemo(
+    () => startingOffers(world.teams).map((i) => world.teams[i]!.def),
+    [world],
+  );
 
   if (step === 0) {
     return (
@@ -203,27 +212,15 @@ export function NewGame() {
     <FixedHeader
       header={
         <div style={{ padding: '12px 14px 8px' }}>
-          {/*
-            Title, who you are, and the region chips stay put. The program list
-            runs twelve deep and the chips are how you move between regions —
-            scrolling them off means scrolling back up every time you want to
-            look somewhere else.
-          */}
           <StepHead n={3} title="Take a job" onBack={() => setStep(1)} />
 
           {/*
-            Who you are and what you are worth, on the line the standing box used
-            to take five for. What that box said in prose — nobody has heard of
-            you, the good jobs will not take the call — the board already says
-            per row with NEEDS 38 and a padlock, and says properly in the offer
-            sheet where `hireGateNote` explains the particular job you tapped.
-            Saying it a third time at the top cost the list about a fifth of the
-            screen, and the list is the reason anybody is here.
-
-            The face and the philosophy ride along on the same line, because the
-            two steps behind this one are otherwise invisible from here — and a
-            choice you cannot see from the screen after it is a choice you are
-            entitled to think was not saved.
+            Who you are and what you are worth, on one line above the offers.
+            The face and the philosophy ride along because the two steps behind
+            this one are otherwise invisible from here — and a choice you
+            cannot see from the screen after it is a choice you are entitled to
+            think was not saved. Coach Prestige sits at the end of the line: it
+            is the number that decided which offers exist at all.
           */}
           <button
             onClick={() => setStep(0)}
@@ -252,41 +249,8 @@ export function NewGame() {
             <span style={{
               font: "600 9px var(--mono)", letterSpacing: '.1em',
               color: 'var(--dim)', whiteSpace: 'nowrap',
-            }}>STANDING {ROOKIE_PRESTIGE}</span>
+            }}>COACH PRESTIGE {ROOKIE_PRESTIGE}</span>
           </button>
-
-          <div className="label" style={{ marginTop: 12, marginBottom: 6 }}>REGION</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-            {CONFERENCES.map((c) => {
-              const on = c.id === conference.id;
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => { setConference(c); setPicked(null); }}
-                  style={{
-                    padding: '8px 11px',
-                    background: on ? 'var(--clay)' : 'var(--paper)',
-                    border: `1px solid ${on ? 'var(--clay)' : 'rgba(28,36,48,.28)'}`,
-                    color: on ? 'var(--cream)' : 'var(--ink)',
-                    font: "700 10px var(--mono)", letterSpacing: '.06em',
-                  }}
-                >{c.region.toUpperCase()}</button>
-              );
-            })}
-          </div>
-
-          {/*
-            The league's name and what class of league it is. The one line blurb
-            that used to follow was weather and atmosphere — nothing in it moves
-            a game or picks a job, and it wrapped to two lines on a phone.
-          */}
-          <div style={{
-            marginTop: 8, font: "400 11.5px/1.4 var(--body)", color: 'var(--dim)',
-          }}>
-            <strong style={{ color: 'var(--ink)' }}>{conference.name}</strong>
-            {' · '}{TIER_WORD[conference.tier]}
-          </div>
-
         </div>
       }
     >
@@ -295,14 +259,17 @@ export function NewGame() {
         display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
         marginTop: 4, marginBottom: 6,
       }}>
-        <span className="label">PROGRAM</span>
+        <span className="label">THE OFFERS</span>
         <span style={{ font: "600 9px var(--mono)", color: 'var(--dim)' }}>
-          {openCount} OF {conference.schools.length} WILL HIRE YOU
+          {offers.length} PROGRAM{offers.length === 1 ? '' : 'S'} CALLED
         </span>
       </div>
 
+      {/* Only the chairs that actually rang. Coach Prestige is what opens
+          doors, and at 25 these are the doors that opened — the rest of the
+          country will start calling once there is a record to point at. */}
       <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-        {conference.schools.map((school) => {
+        {offers.map((school) => {
           const p = preview(school);
           return (
             <button
@@ -310,46 +277,50 @@ export function NewGame() {
               onClick={() => setPicked(school)}
               style={{
                 width: '100%', textAlign: 'left',
-                display: 'grid', gridTemplateColumns: '3px 1fr auto auto',
+                display: 'grid', gridTemplateColumns: '3px 1fr auto',
                 gap: 9, alignItems: 'center',
-                padding: '10px 11px 10px 0',
+                padding: '11px 11px 11px 0',
                 borderBottom: '1px solid var(--hairline)',
                 background: 'transparent',
-                opacity: p.open ? 1 : 0.55,
               }}
             >
               {/* The school's colour, so a program is recognisable before you
                   have learned its name. */}
-              <span style={{
-                alignSelf: 'stretch', background: school.color,
-                opacity: p.open ? 1 : 0.5,
-              }} />
+              <span style={{ alignSelf: 'stretch', background: school.color }} />
               <span style={{ minWidth: 0, paddingLeft: 8 }}>
                 <span style={{
-                  display: 'block', font: "400 13px var(--body)",
+                  display: 'block', font: "400 13.5px var(--body)",
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>{school.school}</span>
                 <span style={{
                   display: 'block', marginTop: 1,
                   font: "400 10px var(--mono)", color: 'var(--dim)',
                 }}>
-                  {school.abbr} · {school.nickname}
+                  {confNameOf(school)} · roster {p.roster} · {p.contract} year deal
                   {p.tag && <span style={{ color: 'var(--clay)' }}> · {p.tag}</span>}
                 </span>
               </span>
               <span style={{
-                font: "700 8.5px var(--mono)", letterSpacing: '.08em',
-                color: 'var(--dim)', whiteSpace: 'nowrap', textAlign: 'right',
+                textAlign: 'right', paddingRight: 11, whiteSpace: 'nowrap',
               }}>
-                {p.open ? MANDATE_LABEL[p.expectation.mandate] : `NEEDS ${p.needs}`}
+                <span style={{
+                  display: 'block', font: "600 11px var(--mono)", color: 'var(--clay)',
+                }}>{'★'.repeat(p.stars)}</span>
+                <span style={{
+                  display: 'block', marginTop: 2,
+                  font: "700 8px var(--mono)", letterSpacing: '.08em', color: 'var(--dim)',
+                }}>{MANDATE_LABEL[p.expectation.mandate]}</span>
               </span>
-              <span style={{
-                font: "600 11px var(--mono)", whiteSpace: 'nowrap', paddingRight: 11,
-                color: p.open ? 'var(--clay)' : 'var(--dim)',
-              }}>{p.open ? '★'.repeat(p.stars) : '🔒'}</span>
             </button>
           );
         })}
+      </div>
+
+      <div style={{
+        marginTop: 8, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+      }}>
+        Tap an offer to read the board's mandate before you sign. Better
+        programs answer once your prestige gives them a reason to.
       </div>
 
       {/*
@@ -399,7 +370,7 @@ export function NewGame() {
                 }}>{picked.school}</div>
                 <div style={{
                   marginTop: 3, font: "400 11px var(--mono)", color: 'var(--dim)',
-                }}>{picked.nickname} · {conference.name}</div>
+                }}>{picked.nickname} · {confNameOf(picked)}</div>
 
                 <div style={{ display: 'flex', marginTop: 12 }}>
                   <Stat k="REPUTATION" v={'★'.repeat(p.stars) + '☆'.repeat(5 - p.stars)} />
@@ -544,8 +515,22 @@ function StepHead(
         ) : <span className="label">NEW DYNASTY</span>}
         <span className="label">STEP {n} OF 3</span>
       </div>
+      {/* The road so far, at a glance: done, here, still to come. Colour is
+          not the only signal — the count above says the same thing in words. */}
+      <div
+        role="img"
+        aria-label={`Step ${n} of 3`}
+        style={{ display: 'flex', gap: 3, marginTop: 7 }}
+      >
+        {[1, 2, 3].map((i) => (
+          <span key={i} style={{
+            flex: 1, height: 4,
+            background: i < n ? 'var(--win)' : i === n ? 'var(--clay)' : 'var(--faint)',
+          }} />
+        ))}
+      </div>
       <div style={{
-        font: "800 30px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
+        font: "800 30px/0.95 var(--display)", marginTop: 7, textTransform: 'uppercase',
       }}>{title}</div>
     </div>
   );
@@ -597,7 +582,17 @@ function Identity(
           border: '1px solid var(--faint)', background: 'var(--paper)',
         }}>
           <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <CoachPortrait look={look} size={104} />
+            {/* The face in a ring, and it repaints the instant a swatch below
+                is tapped — the controls only mean anything as things that
+                change this picture. The same circular treatment the top bar
+                wears, so the man made here is recognisably the man up there. */}
+            <div style={{
+              width: 116, height: 116, borderRadius: '50%', overflow: 'hidden',
+              border: '3px solid var(--ink)', background: 'var(--field)',
+              display: 'grid', placeItems: 'center',
+            }}>
+              <CoachPortrait look={look} size={104} />
+            </div>
           </div>
 
           {/*
@@ -707,7 +702,7 @@ function Identity(
           step, which does, says so in its own words.
         */}
         <FloatingAction
-          label="HOW YOUR TEAMS PLAY"
+          label="SET YOUR PLAN"
           onClick={onDone}
           secondary={{ label: 'SOMEBODY ELSE', onClick: onShuffle }}
           note="None of this changes how a game is played. The next step does."
@@ -741,7 +736,7 @@ function PlayStyle(
 ) {
   return (
     <FixedHeader header={<div style={{ padding: '12px 14px 8px' }}>
-      <StepHead n={2} title="How you coach" onBack={onBack} />
+      <StepHead n={2} title="Set your plan" onBack={onBack} />
     </div>}>
       <div style={{ padding: '12px 14px 0' }}>
         <div style={{ font: "400 12px/1.5 var(--body)", color: 'var(--dim)' }}>
@@ -784,19 +779,48 @@ function PlayStyle(
                 <div style={{
                   marginTop: 4, font: "400 11.5px/1.45 var(--body)", color: 'var(--dim)',
                 }}>{p.blurb}</div>
+                {/* The five settings this bench actually sets, spelled out — a
+                    plan you can read is a plan, a name alone is a vibe. Each
+                    chip is one of the strategy screen's own controls. */}
+                <div style={{
+                  marginTop: 7, display: 'flex', flexWrap: 'wrap', gap: 4,
+                }}>
+                  {planChips(p.id).map((chip) => (
+                    <span key={chip} style={{
+                      font: "600 7.5px var(--mono)", letterSpacing: '.08em',
+                      padding: '2px 6px 3px',
+                      background: on ? 'rgba(168,68,42,.14)' : 'var(--field)',
+                      border: '1px solid var(--faint)',
+                      color: on ? 'var(--clay)' : 'var(--dim)',
+                    }}>{chip}</span>
+                  ))}
+                </div>
               </button>
             );
           })}
         </div>
 
         <FloatingAction
-          label="LOOK AT THE JOBS"
+          label="FIND A JOB"
           onClick={onDone}
           note="Not a lock. Every one of these is five settings you can change on the strategy screen once the season starts."
         />
       </div>
     </FixedHeader>
   );
+}
+
+/** The five policy chips a philosophy sets, in the strategy screen's words. */
+function planChips(id: PhilosophyId): string[] {
+  const s = strategyForPhilosophy(id);
+  const alignment = { straight: 'STRAIGHT UP', situational: 'SITUATIONAL', shift: 'FULL SHIFT' };
+  return [
+    `RUN ${s.running.toUpperCase()}`,
+    `STEAL ${s.steals.toUpperCase()}`,
+    `BUNT ${s.bunt.toUpperCase()}`,
+    `HOOK ${s.hook.toUpperCase()}`,
+    alignment[s.alignment],
+  ];
 }
 
 /** One labelled line of choices inside the appearance panel. */

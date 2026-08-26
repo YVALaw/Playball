@@ -1,16 +1,23 @@
 // Stats.tsx
-// Leaderboards. National by default, because a 64 team world is the point of
-// having one — but your own program is what you actually care about, so it can
-// be filtered down.
+// The numbers, all of them in one destination. Leaderboards — national by
+// default, because a ninety six team world is the point of having one, and
+// filterable down to your own program — plus your roster's glove work, which
+// used to be a separate GLOVES tab on the roster and is a statistic like any
+// other: batting, pitching and fielding live behind one set of chips now.
 
 import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
-import { leaders, leagueFieldingRate, type LeaderRow } from '../../engine/season.js';
+import { FirstVisit } from '../Tutorial.js';
+import { Avatar } from '../Avatar.js';
+import {
+  leaders, leagueFieldingRate, fieldingPct, paePer100, rankableChances,
+  type LeaderRow, type FieldingSeason,
+} from '../../engine/season.js';
 import { pct } from '../format.js';
-import type { PlayerId } from '../../engine/types.js';
+import type { Player, PlayerId } from '../../engine/types.js';
 
-type Scope = 'national' | 'team';
+type Scope = 'national' | 'team' | 'fielding';
 
 /** A signed rate, so a fielder's line and the league's read in the same units. */
 const fmtRate = (v: number): string => `${v > 0 ? '+' : ''}${v.toFixed(1)}`;
@@ -38,6 +45,25 @@ export function Stats() {
     ? leaders(season, { limit: 5, minPA: 1, minIP: 1, minChances: 20, team: team.def.abbr })
     : leaders(season);
 
+  // The roster's glove work, exactly as the old GLOVES tab kept it: every man
+  // with a chance recorded, best rate first among the qualified, the rest by
+  // volume with a dash where the rate would be shouting noise.
+  const bar = rankableChances(season);
+  const gloveRows = [
+    ...team.team.lineup, ...team.team.bench, ...team.team.rotation, ...team.team.bullpen,
+  ]
+    .map((p) => ({ p: p as Player, line: season.fielding?.get(p.id) }))
+    .filter((r): r is { p: Player; line: FieldingSeason } =>
+      r.line !== undefined && r.line.chances > 0)
+    .sort((a, b) => {
+      const qa = a.line.chances >= bar ? 1 : 0;
+      const qb = b.line.chances >= bar ? 1 : 0;
+      if (qa !== qb) return qb - qa;
+      if (qa === 0) return b.line.chances - a.line.chances;
+      return paePer100(b.line) - paePer100(a.line)
+        || b.line.chances - a.line.chances;
+    });
+
   if (!played) {
     return (
       <div style={{ padding: '28px 16px', textAlign: 'center' }}>
@@ -54,7 +80,7 @@ export function Stats() {
       header={
         <div style={{ padding: '12px 14px 10px' }}>
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-            <div className="label">LEADERS</div>
+            <div className="label">{scope === 'fielding' ? 'IN THE FIELD' : 'LEADERS'}</div>
             <div style={{
               font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
             }}>{scope === 'national' ? 'National' : team.def.school}</div>
@@ -63,11 +89,78 @@ export function Stats() {
           <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
             <Chip on={scope === 'national'} onClick={() => setScope('national')}>NATIONAL</Chip>
             <Chip on={scope === 'team'} onClick={() => setScope('team')}>MY TEAM</Chip>
+            {/* Everybody who takes the field, pitchers included — a comebacker
+                is a chance and the mound has a glove. The roster's third tab
+                until fielding moved in with the other numbers. */}
+            <Chip on={scope === 'fielding'} onClick={() => setScope('fielding')}>FIELDING</Chip>
           </div>
         </div>
       }
     >
+      {scope === 'fielding' ? (
+        <div style={{ padding: '10px 14px 16px' }}>
+          <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+            <div style={{
+              position: 'sticky', top: 0, zIndex: 1, background: 'var(--paper)',
+              display: 'grid', gridTemplateColumns: GLOVE_GRID, gap: 4,
+              padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
+            }}>
+              {['', 'PLAYER', 'POS', 'CH', 'PO', 'E', 'PCT', '+/100'].map((c, i) => (
+                <span key={i} className="label" style={{ textAlign: i > 1 ? 'right' : 'left' }}>{c}</span>
+              ))}
+            </div>
+            {gloveRows.length === 0 && (
+              <div style={{
+                padding: '12px 10px', font: "400 12px var(--body)", color: 'var(--dim)',
+              }}>Nothing has been hit at anybody yet.</div>
+            )}
+            {gloveRows.map(({ p, line }) => (
+              <button
+                key={p.id}
+                onClick={() => openPlayer(p.id)}
+                style={{
+                  width: '100%', textAlign: 'left',
+                  display: 'grid', gridTemplateColumns: GLOVE_GRID, gap: 4,
+                  alignItems: 'center', padding: '7px 10px',
+                  borderBottom: '1px solid var(--hairline)',
+                  background: (p.type === 'hitter'
+                    ? team.team.lineup.includes(p)
+                    : team.team.rotation.includes(p))
+                    ? 'rgba(168,68,42,.05)' : 'transparent',
+                }}
+              >
+                <Avatar id={p.id} team={team.def.abbr} size={26} />
+                <span style={{
+                  font: "400 12px var(--body)",
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{p.name}</span>
+                <span style={{ font: "400 11px var(--mono)", textAlign: 'right' }}>
+                  {p.type === 'pitcher' ? 'P' : p.pos}
+                </span>
+                <span style={{ font: "400 11px var(--mono)", textAlign: 'right' }}>{line.chances}</span>
+                <span style={{ font: "400 11px var(--mono)", textAlign: 'right' }}>{line.plays}</span>
+                <span style={{ font: "400 11px var(--mono)", textAlign: 'right' }}>{line.errors}</span>
+                <span style={{ font: "400 11px var(--mono)", textAlign: 'right' }}>
+                  {pct(fieldingPct(line))}
+                </span>
+                <span style={{ font: "600 11px var(--mono)", textAlign: 'right' }}>
+                  {line.chances >= bar ? fmtRate(paePer100(line)) : '—'}
+                </span>
+              </button>
+            ))}
+          </div>
+          <div style={{ marginTop: 10, font: "400 11px/1.5 var(--body)", color: 'var(--dim)' }}>
+            <strong>CH</strong> is balls hit at him; <strong>+/100</strong> the outs he made that
+            an average glove would not have, per hundred of them, errors already deducted. Zero is
+            not average — an error is a play nobody made, so the whole league sits at{' '}
+            <strong>{fmtRate(leagueFieldingRate(season))}</strong>. Above that line is a man
+            helping his pitcher.
+          </div>
+          <FirstVisit id="stats" />
+        </div>
+      ) : (
       <div style={{ padding: '2px 14px 16px' }}>
+        <FirstVisit id="stats" />
         <Board title="BATTING AVERAGE" rows={boards.average} fmt={pct} mark={team.def.abbr} onPick={openPlayer} />
         <Board title="HOME RUNS" rows={boards.homeRuns} fmt={String} mark={team.def.abbr} onPick={openPlayer} />
         <Board title="RUNS BATTED IN" rows={boards.rbi} fmt={String} mark={team.def.abbr} onPick={openPlayer} />
@@ -100,9 +193,13 @@ export function Stats() {
           that line is a fielder helping his pitcher.
         </div>
       </div>
+      )}
     </FixedHeader>
   );
 }
+
+/** Avatar, name, position, then the five glove columns. */
+const GLOVE_GRID = '30px 1fr 26px 30px 30px 22px 42px 38px';
 
 function Chip(
   { on, onClick, children }: { on: boolean; onClick: () => void; children: string },

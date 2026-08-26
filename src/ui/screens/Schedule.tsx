@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { teamColour } from '../Avatar.js';
 import { FixedHeader } from '../Sticky.js';
+import { FirstVisit } from '../Tutorial.js';
 import { LineScore } from '../LineScore.js';
 import { regularRecord } from '../../engine/season.js';
 import type { BoxScore, BoxLine, SeasonState } from '../../engine/season.js';
@@ -49,6 +50,7 @@ export function Schedule() {
       }
     >
     <div style={{ padding: '2px 14px 16px' }}>
+      <FirstVisit id="season" />
       <div style={{
         border: '1px solid var(--faint)', background: 'var(--paper)',
       }}>

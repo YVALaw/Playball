@@ -4,21 +4,22 @@
 // gone. This is the screen that makes five years mean something.
 //
 // Two sheets, because there are two books and they are the same object at two
-// scales. SEASONS is yours: what your program did, year by year, and who won
-// what while doing it. THE BOOK is the country's: the all-time marks across all
-// ninety-six programs, seeded with the real NCAA ones so there is history to
-// chase from the first game of the first season.
+// scales. SEASONS is the school's: what THIS PROGRAM did, year by year,
+// whoever was coaching it — take a new job and this page shows you the years
+// the school played while you were somewhere else. THE BOOK is the country's:
+// the all-time marks across all ninety-six programs, seeded with the real NCAA
+// ones so there is history to chase from the first game of the first season.
 //
-// They are one screen rather than two nav entries on purpose, and Program.tsx
-// gives the reason in its own header: two record books one tap apart are two
-// record books that eventually disagree. It also means the screen is worth
-// opening in March of year one, when the seasons half is still empty.
+// The coach's own career is deliberately not here. His years follow him, on
+// the coach profile's CAREER tab; a school's years stay with the school, and
+// mixing the two books is how both end up wrong.
 
 import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
 import { RecordBook } from './RecordBook.js';
 import { FINISH_LABEL, type Finish } from '../../engine/postseason.js';
+import type { SchoolSeason } from '../../engine/season.js';
 
 /** Deep runs earn colour. Everything else stays quiet. */
 const FINISH_COLOR: Record<Finish, string> = {
@@ -37,7 +38,6 @@ const SHEET_LABEL: Record<Sheet, string> = {
 };
 
 export function History() {
-  const history = useDynasty((s) => s.history);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
   const [sheet, setSheet] = useState<Sheet>('seasons');
@@ -45,8 +45,9 @@ export function History() {
 
   if (!team) return null;
 
-  const wins = history.reduce((a, s) => a + s.w, 0);
-  const losses = history.reduce((a, s) => a + s.l, 0);
+  const annals = team.annals ?? [];
+  const wins = annals.reduce((a, s) => a + s.w, 0);
+  const losses = annals.reduce((a, s) => a + s.l, 0);
 
   return (
     <FixedHeader
@@ -56,12 +57,12 @@ export function History() {
             <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
               <div className="label">
                 {sheet === 'seasons'
-                  ? `PROGRAM RECORD · ${history.length} SEASON${history.length === 1 ? '' : 'S'}`
+                  ? `${team.def.school.toUpperCase()} · ${annals.length} SEASON${annals.length === 1 ? '' : 'S'} ON RECORD`
                   : 'ALL-TIME · NINETY-SIX PROGRAMS'}
               </div>
               <div style={{
                 font: "800 26px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-              }}>{sheet === 'seasons' ? `${wins}-${losses}` : 'The Book'}</div>
+              }}>{sheet === 'seasons' ? (annals.length > 0 ? `${wins}-${losses}` : 'History') : 'The Book'}</div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 4, padding: '10px 14px' }}>
@@ -70,7 +71,7 @@ export function History() {
                 key={s}
                 onClick={() => setSheet(s)}
                 style={{
-                  flex: 1, padding: '8px 0',
+                  flex: 1, padding: '8px 0', minHeight: 36,
                   background: s === sheet ? 'var(--ink)' : 'var(--field)',
                   border: s === sheet ? '1px solid var(--ink)' : '1px solid var(--faint)',
                   color: s === sheet ? 'var(--cream)' : 'var(--dim)',
@@ -82,35 +83,53 @@ export function History() {
         </>
       }
     >
-      {sheet === 'book' ? <RecordBook /> : <Seasons />}
+      {sheet === 'book' ? <RecordBook /> : <Seasons annals={annals} />}
     </FixedHeader>
   );
 }
 
-function Seasons() {
+/**
+ * The school's own book, one row per finished season.
+ *
+ * Written for every program in the country each June by `recordSchoolAnnals`,
+ * so the page works the same whether you have been here ten years or ten
+ * minutes. The awards under a year are the one borrowing from the coach's
+ * record: they name this school's own players, so they belong under this
+ * school's season — but only for the years the save actually captured them.
+ */
+function Seasons({ annals }: { annals: SchoolSeason[] }) {
   const history = useDynasty((s) => s.history);
   const openPlayer = useDynasty((s) => s.openPlayer);
+  const coachName = useDynasty((s) => s.coach.name);
+  const team = useUserTeam();
 
-  if (history.length === 0) {
+  if (!team) return null;
+
+  if (annals.length === 0) {
     return (
       <div style={{ padding: '28px 16px', textAlign: 'center' }}>
         <div className="label">NO SEASONS ON RECORD</div>
         <div style={{
           marginTop: 8, font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
-          maxWidth: 260, margin: '8px auto 0',
+          maxWidth: 270, margin: '8px auto 0',
         }}>
-          Finish a season and roll the year over. Everything you do from here is
-          written down.
+          The school writes a season into its book every June. Careers begun
+          before the book existed start it with their next finished year.
         </div>
       </div>
     );
   }
 
-  const titles = history.filter((s) => s.finish === 'champion').length;
-  const omaha = history.filter(
+  const titles = annals.filter((s) => s.finish === 'champion').length;
+  const omaha = annals.filter(
     (s) => s.finish === 'omaha' || s.finish === 'runner-up' || s.finish === 'champion',
   ).length;
-  const rings = history.filter((s) => s.wonConference).length;
+  const rings = annals.filter((s) => s.wonConference).length;
+
+  const awardsFor = (year: number) => history
+    .find((r) => r.year === year && r.school === team.def.school)?.awards ?? [];
+
+  const rows = [...annals].sort((a, b) => b.year - a.year);
 
   return (
     <div style={{ padding: '10px 14px 16px' }}>
@@ -140,13 +159,16 @@ function Seasons() {
           ))}
         </div>
 
-        {[...history].reverse().map((s) => (
+        {rows.map((s) => {
+          const awards = awardsFor(s.year);
+          const notYou = s.coach !== undefined && s.coach !== coachName;
+          return (
           <div key={s.year}>
             <div style={{
               display: 'grid', gridTemplateColumns: '40px 52px 30px 1fr',
               gap: 6, alignItems: 'center',
               padding: '9px 10px',
-              borderBottom: (s.awards ?? []).length > 0
+              borderBottom: awards.length > 0 || notYou
                 ? 'none' : '1px solid var(--hairline)',
               background: s.finish === 'champion' ? 'rgba(168,68,42,.08)' : 'transparent',
             }}>
@@ -154,30 +176,38 @@ function Seasons() {
               <span style={{ font: "400 11px var(--mono)" }}>{s.w}-{s.l}</span>
               <span style={{
                 font: "400 11px var(--mono)", color: 'var(--dim)',
-              }}>{ordinal(s.confPlace)}</span>
+              }}>{s.confPlace > 0 ? ordinal(s.confPlace) : '—'}</span>
               <span style={{
                 font: `${s.finish === 'champion' ? 600 : 400} 11px var(--body)`,
                 color: FINISH_COLOR[s.finish],
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
                 {s.wonConference ? '★ ' : ''}{FINISH_LABEL[s.finish]}
+                {Number.isInteger(s.rank) && s.rank > 0 && s.rank <= 25 ? ` · #${s.rank}` : ''}
               </span>
             </div>
 
-            {/*
-              What your own players won that year, under the year they won it.
+            {/* Whose bench it was, when it was not yours. Your own years say
+                nothing — a book that repeated your name forty times would. */}
+            {notYou && (
+              <div style={{
+                padding: '0 10px 8px 46px',
+                borderBottom: awards.length > 0 ? 'none' : '1px solid var(--hairline)',
+                font: "500 9px var(--mono)", letterSpacing: '.08em', color: 'var(--dim)',
+              }}>COACH {s.coach?.toUpperCase()}</div>
+            )}
 
-              The awards screen used to list the whole country's winners, which
-              is a list of other people's achievements filed under your program's
-              history. These are yours, and they are the reason a year is
-              remembered as more than a record.
+            {/*
+              What this school's own players won that year, under the year they
+              won it. Only the years you coached carry them — the save only
+              keeps award detail for your own seasons.
             */}
-            {(s.awards ?? []).length > 0 && (
+            {awards.length > 0 && (
               <div style={{
                 padding: '0 10px 9px 46px', borderBottom: '1px solid var(--hairline)',
                 background: s.finish === 'champion' ? 'rgba(168,68,42,.08)' : 'transparent',
               }}>
-                {(s.awards ?? []).map((a, i) => (
+                {awards.map((a, i) => (
                   <button
                     key={`${a.id}-${i}`}
                     onClick={() => openPlayer(a.id)}
@@ -199,12 +229,14 @@ function Seasons() {
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div style={{ marginTop: 10, font: "400 11px/1.5 var(--body)", color: 'var(--dim)' }}>
         ★ marks a conference tournament title, which carries an automatic bid to the
-        national field however the regular season went.
+        national field however the regular season went. This is the school's book —
+        your own career, wherever it was coached, is on your coach profile.
       </div>
     </div>
   );
