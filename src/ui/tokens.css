@@ -230,3 +230,12 @@ button {
   .grow, .tap { transition: none; }
   .tap:active { transform: none; }
 }
+
+/* Keyboard focus, made visible. The app is built for thumbs, but it runs in a
+   browser today and every interactive element is a bare button with its
+   default outline stripped by use — a keyboard user had no way to see where
+   they were. Only :focus-visible, so a tap never paints a ring. */
+:focus-visible {
+  outline: 2px solid var(--clay);
+  outline-offset: 2px;
+}

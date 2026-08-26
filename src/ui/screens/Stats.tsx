@@ -38,8 +38,6 @@ export function Stats() {
     ? leaders(season, { limit: 5, minPA: 1, minIP: 1, minChances: 20, team: team.def.abbr })
     : leaders(season);
 
-  const mine = (rows: LeaderRow[]): LeaderRow[] => rows;
-
   if (!played) {
     return (
       <div style={{ padding: '28px 16px', textAlign: 'center' }}>
@@ -70,11 +68,11 @@ export function Stats() {
       }
     >
       <div style={{ padding: '2px 14px 16px' }}>
-        <Board title="BATTING AVERAGE" rows={mine(boards.average)} fmt={pct} mark={team.def.abbr} onPick={openPlayer} />
-        <Board title="HOME RUNS" rows={mine(boards.homeRuns)} fmt={String} mark={team.def.abbr} onPick={openPlayer} />
-        <Board title="RUNS BATTED IN" rows={mine(boards.rbi)} fmt={String} mark={team.def.abbr} onPick={openPlayer} />
-        <Board title="EARNED RUN AVERAGE" rows={mine(boards.era)} fmt={(v) => v.toFixed(2)} mark={team.def.abbr} onPick={openPlayer} />
-        <Board title="STRIKEOUTS" rows={mine(boards.strikeouts)} fmt={String} mark={team.def.abbr} onPick={openPlayer} />
+        <Board title="BATTING AVERAGE" rows={boards.average} fmt={pct} mark={team.def.abbr} onPick={openPlayer} />
+        <Board title="HOME RUNS" rows={boards.homeRuns} fmt={String} mark={team.def.abbr} onPick={openPlayer} />
+        <Board title="RUNS BATTED IN" rows={boards.rbi} fmt={String} mark={team.def.abbr} onPick={openPlayer} />
+        <Board title="EARNED RUN AVERAGE" rows={boards.era} fmt={(v) => v.toFixed(2)} mark={team.def.abbr} onPick={openPlayer} />
+        <Board title="STRIKEOUTS" rows={boards.strikeouts} fmt={String} mark={team.def.abbr} onPick={openPlayer} />
         {/*
           The defensive board ranks on plays made above what an average glove
           would have made of the same chances, not on errors — fewest errors in
@@ -86,7 +84,7 @@ export function Stats() {
         */}
         <Board
           title="PLAYS ABOVE AVERAGE / 100 CH"
-          rows={mine(boards.fielding)}
+          rows={boards.fielding}
           fmt={fmtRate}
           detail
           mark={team.def.abbr}

@@ -227,7 +227,7 @@ export function SeasonReview() {
         </>
       )}
 
-      <FloatingAction label="CONTINUE" onClick={() => void next()} />
+      <FloatingAction label="CONTINUE" onClick={() => void next('review')} />
     </div>
     </FixedHeader>
   );

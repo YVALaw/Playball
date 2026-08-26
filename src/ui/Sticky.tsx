@@ -11,7 +11,7 @@
 // than letting it ride the content. A control you have to go looking for is a
 // control the player has to think about, and neither of these deserves a thought.
 
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 
 /**
  * A screen with a header that stays put while the body scrolls.
@@ -47,7 +47,7 @@ export function FixedHeader(
  * and thirty signings put CONTINUE in the same place.
  */
 export function FloatingAction(
-  { label, onClick, note, secondary }:
+  { label, onClick, note, secondary, disabled }:
   {
     label: string;
     onClick: () => void;
@@ -61,8 +61,27 @@ export function FloatingAction(
      * had to go find.
      */
     secondary?: { label: string; onClick: () => void } | null;
+    disabled?: boolean;
   },
 ) {
+  /*
+    One press means one press. Every load-bearing button in the game rides this
+    component — END WEEK, CONTINUE, the postseason advance — and a fast
+    double-tap used to deliver both clicks: two recruiting weeks burned, an
+    offseason step skipped, a postseason stage walked past unseen. The store
+    guards the corrupting cases, but the pacing ones (two *legitimate*
+    advances a heartbeat apart) can only be caught at the button, because by
+    the second tap the screen has re-rendered and the action really would be
+    valid. Long enough to outlast a double-tap, short enough that deliberate
+    play never meets it.
+  */
+  const lastTap = useRef(0);
+  const once = (fn: () => void) => (): void => {
+    const now = Date.now();
+    if (now - lastTap.current < 600) return;
+    lastTap.current = now;
+    fn();
+  };
   return (
     <div style={{
       position: 'sticky', bottom: 0, zIndex: 10,
@@ -72,7 +91,7 @@ export function FloatingAction(
     }}>
       {secondary && (
         <button
-          onClick={secondary.onClick}
+          onClick={once(secondary.onClick)}
           className="tap"
           style={{
             width: '100%', padding: '11px 10px', marginBottom: 8,
@@ -89,10 +108,12 @@ export function FloatingAction(
         }}>{note}</div>
       )}
       <button
-        onClick={onClick}
+        onClick={once(onClick)}
+        disabled={disabled}
         style={{
           width: '100%', padding: '15px 10px',
           background: 'var(--clay)', border: '1px solid var(--clay)',
+          opacity: disabled ? 0.45 : 1,
           color: 'var(--cream)', font: "700 12px/1.25 var(--mono)", letterSpacing: '.1em',
           // Long labels wrap rather than running off the end of the button —
           // between words only. `anywhere` is for unbroken strings like a URL:

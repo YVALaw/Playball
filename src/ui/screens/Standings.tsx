@@ -74,7 +74,7 @@ export function Standings() {
           marginTop: 10, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
         }}>
           {season.teams.length} programs across {new Set(season.teams.map((t) => t.conference)).size} conferences.
-          The top eight here make the conference tournament. Tap a program to read its page.
+          The top six here make the conference tournament. Tap a program to read its page.
         </div>
       </div>
     </FixedHeader>
@@ -111,8 +111,8 @@ function Row(
               ? "500 8.5px var(--mono)"
               : `${highlight ? 600 : 400} 11px var(--mono)`,
             letterSpacing: head ? '.14em' : 0,
-            // The team column carries the program's own colour. Sixty four names
-            // in one typeface are sixty four strings; in their own colours they
+            // The team column carries the program's own colour. Ninety six names
+            // in one typeface are ninety six strings; in their own colours they
             // become places you start to recognise on sight.
             color: head ? 'rgba(28,36,48,.5)'
               : i === 1 && tint ? tint

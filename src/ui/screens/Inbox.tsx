@@ -69,7 +69,7 @@ function useOpen(): (link: InboxLink) => void {
       case 'team': openTeam(link.index); return;
       case 'program': setProgramSheet(link.sheet); openOverlay('program'); return;
       case 'book': openOverlay('book'); return;
-      case 'schedule': openOverlay('schedule');
+      case 'schedule': openOverlay('schedule'); return;
     }
   };
 }

@@ -172,7 +172,18 @@ export function NewGame() {
           ...randomProfile(makeRng(careerSeed())),
           philosophy: coach.philosophy ?? DEFAULT_PHILOSOPHY,
         })}
-        onDone={() => setStep(1)}
+        onDone={() => {
+          // A blank name is not a name. Clearing the field and pressing on
+          // used to carry an empty identity to the job board — the summary
+          // strip read "42 · AL · POWER" with nobody in it — and the world
+          // then quietly christened him "Coach". The prefilled man comes back
+          // instead, the same fallback the screen opened with.
+          const name = coach.name.trim();
+          if (name !== coach.name || name.length === 0) {
+            setCoach({ ...coach, name: name.length > 0 ? name : suggestion.name });
+          }
+          setStep(1);
+        }}
       />
     );
   }

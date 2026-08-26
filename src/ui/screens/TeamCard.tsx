@@ -1,7 +1,7 @@
 // TeamCard.tsx
 // Somebody else's program, in tabs.
 //
-// A standings table is sixty four abbreviations, and until now that is all they
+// A standings table is ninety six abbreviations, and until now that is all they
 // were: BAY beat you 7-2 in March and there was nowhere to go and find out who
 // BAY are. A conference you cannot look into is a list of strings you are
 // ranked against, which is the same complaint the national rankings screen was
@@ -78,7 +78,7 @@ export function TeamCard({ index }: { index: number }) {
 
   const reg = regularRecord(t);
   const stars = prestigeStars(t.prestige);
-  // Recomputed rather than cached: sixty four teams is cheap, and a stale rank
+  // Recomputed rather than cached: ninety six teams is cheap, and a stale rank
   // on a page whose whole job is "who are these people" is worse than the work.
   const rank = t.gp === 0
     ? 0

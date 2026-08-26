@@ -166,7 +166,7 @@ export function Lineup() {
 
       <div style={{ marginTop: 10, font: "400 11px/1.5 var(--body)", color: 'var(--dim)' }}>
         Your Friday arm starts the opener of every conference series. The midweek starter
-        takes all nine non-conference games — {midweekInnings.toFixed(0)} innings so far.
+        takes all twelve non-conference games — {midweekInnings.toFixed(0)} innings so far.
       </div>
     </div>
     </FixedHeader>

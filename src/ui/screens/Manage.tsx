@@ -92,7 +92,9 @@ export function Manage() {
       x: landing.x, y: landing.y, kind: battedBall,
       hit: !wasOut, tick: ballTick.current,
     });
-  }, [landing?.x, landing?.y, battedBall, version]);
+    // `wasOut` is read above and belongs here: identical landing coordinates
+    // with a different outcome must still refresh what the ball flashes.
+  }, [landing?.x, landing?.y, battedBall, wasOut, version]);
 
   // Who crossed the plate on the last play. The engine reports it as an advance
   // to base 4, which is the only record of a man scoring — he is off the bases
@@ -344,6 +346,10 @@ export function Manage() {
                 disabled={!o.available}
                 style={{
                   padding: '7px 8px', textAlign: 'left', flex: 'none',
+                  // The platform floor for a thumb. These measured 41px — under
+                  // both Apple's 44pt and Android's 48dp guidance — and they
+                  // are the most-tapped controls in the game.
+                  minHeight: 44,
                   // Available calls are raised paper with a real border. The
                   // unavailable ones recede rather than merely dimming, so the
                   // difference is obvious at arm's length on a phone.
@@ -380,7 +386,7 @@ export function Manage() {
             <button
               onClick={() => void endManagedGame()}
               style={{
-                padding: '11px 0', background: 'var(--clay)',
+                padding: '11px 0', minHeight: 44, background: 'var(--clay)',
                 border: '1px solid var(--clay)', color: 'var(--cream)',
                 font: "600 10px var(--mono)", letterSpacing: '.1em',
               }}
@@ -431,7 +437,7 @@ function Small(
       onClick={onClick}
       disabled={disabled}
       style={{
-        flex: 'none', padding: '8px 0',
+        flex: 'none', padding: '8px 0', minHeight: 44,
         background: disabled ? 'transparent' : 'var(--paper)',
         border: disabled ? '1px dashed rgba(28,36,48,.16)' : '1px solid rgba(28,36,48,.42)',
         boxShadow: disabled ? 'none' : '0 1px 0 rgba(28,36,48,.16)',
@@ -497,5 +503,3 @@ function Picker(
     </div>
   );
 }
-
-

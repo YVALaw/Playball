@@ -124,21 +124,30 @@ export function Awards() {
                 font: "600 9px var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
               }}>{a.title.toUpperCase()}</span>
             </div>
-            <button
-              onClick={() => a.id && openPlayer(a.id)}
-              style={{
-                width: '100%', textAlign: 'left', padding: '10px 12px 12px',
-                background: 'transparent',
-              }}
-            >
-              <div style={{
-                font: "800 20px/1 var(--display)", textTransform: 'uppercase',
-                color: ours ? 'var(--clay)' : 'var(--ink)',
-              }}>{a.name}</div>
-              <div style={{
-                marginTop: 5, font: "400 11px var(--mono)", color: 'var(--dim)',
-              }}>{a.team} · {a.line}</div>
-            </button>
+            {/* A button only when there is a man to open. The record book
+                settled this exact case with a div — "a tap that opens nothing
+                is worse than no tap at all" — and a winner with no id was a
+                button that silently swallowed the press. */}
+            {(() => {
+              const body = (
+                <>
+                  <div style={{
+                    font: "800 20px/1 var(--display)", textTransform: 'uppercase',
+                    color: ours ? 'var(--clay)' : 'var(--ink)',
+                  }}>{a.name}</div>
+                  <div style={{
+                    marginTop: 5, font: "400 11px var(--mono)", color: 'var(--dim)',
+                  }}>{a.team} · {a.line}</div>
+                </>
+              );
+              const box = {
+                width: '100%', textAlign: 'left' as const,
+                padding: '10px 12px 12px', background: 'transparent',
+              };
+              return a.id
+                ? <button onClick={() => openPlayer(a.id!)} style={box}>{body}</button>
+                : <div style={box}>{body}</div>;
+            })()}
           </div>
         );
       })}
@@ -185,7 +194,7 @@ export function Awards() {
         })}
       </div>
       {phase !== null && (
-        <FloatingAction label="SEASON REVIEW" onClick={() => void nextPhase()} />
+        <FloatingAction label="SEASON REVIEW" onClick={() => void nextPhase('awards')} />
       )}
     </div>
     </FixedHeader>

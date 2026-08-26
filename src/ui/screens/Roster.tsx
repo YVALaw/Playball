@@ -234,7 +234,9 @@ function Cells(
       {playerId
         ? <Avatar id={playerId} team={teamAbbr} size={26} />
         : <span />}
-      {values.slice(1).map((v0, i0) => { const i = i0 + 1; const v = v0; return (
+      {/* `i` starts at 1 because the avatar above occupies the grid's first
+          column; the style rules below are written against grid position. */}
+      {values.map((v0, i0) => { const i = i0 + 1; const v = v0; return (
         <span key={i} style={{
           font: `400 ${i === 1 ? 12 : 11}px ${i === 1 ? 'var(--body)' : 'var(--mono)'}`,
           textAlign: i > 1 ? 'right' : 'left',
@@ -260,7 +262,6 @@ function HitterRow(
       playerId={p.id}
       teamAbbr={abbr}
       values={[
-        starter ? '•' : '',
         p.name,
         p.pos,
         p.classYear,
@@ -298,7 +299,6 @@ function GloveRow(
       playerId={p.id}
       teamAbbr={abbr}
       values={[
-        starter ? '•' : '',
         p.name,
         p.type === 'pitcher' ? 'P' : p.pos,
         String(line.chances),
@@ -325,7 +325,6 @@ function PitcherRow(
       playerId={p.id}
       teamAbbr={abbr}
       values={[
-        rotation ? '•' : '',
         p.name,
         p.role,
         p.classYear,

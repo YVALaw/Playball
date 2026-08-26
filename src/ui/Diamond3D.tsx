@@ -20,6 +20,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { BattedBall, PlayerId } from '../engine/types.js';
+// The 2D field, kept close for the one device this canvas cannot serve.
+import { Diamond } from './Diamond.js';
 
 export interface Runner {
   id: PlayerId;
@@ -606,6 +608,32 @@ function CameraRig() {
   return null;
 }
 
+/**
+ * Frames only while something moves.
+ *
+ * The canvas used to render continuously between pitches — the documented
+ * battery cost of the 3D field, burning GPU time on a scene where nothing had
+ * changed since the last decision. The frameloop is 'demand' now, and this
+ * asks for frames in a window after each new play; every animation in the
+ * scene (ball flight, a runner's lerp, the trip home) finishes well inside
+ * it. When the window closes the park simply holds its last frame, which for
+ * a static scene is indistinguishable from rendering it again.
+ */
+function DemandDriver({ stamp }: { stamp: string }) {
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    let raf = 0;
+    const until = performance.now() + 3500;
+    const loop = (): void => {
+      invalidate();
+      if (performance.now() < until) raf = requestAnimationFrame(loop);
+    };
+    loop();
+    return () => cancelAnimationFrame(raf);
+  }, [stamp, invalidate]);
+  return null;
+}
+
 export function Diamond3D({
   runners, scoreTick = 0, ball = null, scored, height = 150,
 }: Props) {
@@ -635,9 +663,23 @@ export function Diamond3D({
     opened.current = true;
   }, [runners]);
 
-  // A device that cannot give us WebGL gets nothing rather than a crash. The
-  // caller supplies the fallback.
+  // A device that cannot give us WebGL gets the 2D diamond rather than a
+  // crash — or an empty box, which is what "the caller supplies the fallback"
+  // actually produced: the Suspense fallback in Manage only covers *loading*
+  // this chunk, not the canvas failing after it arrived. The game promised a
+  // field on every device; this is where the promise is kept.
   const [ok, setOk] = useState(true);
+
+  if (!ok) {
+    return (
+      <div style={{
+        width: '100%', height, position: 'relative',
+        display: 'grid', placeItems: 'center',
+      }}>
+        <Diamond runners={runners} scoreTick={scoreTick} size={Math.min(height - 8, 132)} />
+      </div>
+    );
+  }
 
   return (
     <div style={{ width: '100%', height, position: 'relative' }}>
@@ -648,7 +690,14 @@ export function Diamond3D({
           camera={{ fov: 42, near: 0.1, far: 60 }}
           onError={() => setOk(false)}
           style={{ touchAction: 'pan-y' }}
+          frameloop="demand"
         >
+          <DemandDriver stamp={[
+            scoreTick,
+            ball?.tick ?? 0,
+            runners.map((x) => `${x.id}${x.base}`).join(','),
+            finishing.length,
+          ].join(':')} />
           <CameraRig />
           <Field />
           <Plate tick={scoreTick} />

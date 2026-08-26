@@ -10,7 +10,7 @@
 // Dismissable by tapping anywhere, because a modal you have to aim at is a
 // modal that has outstayed its welcome.
 
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 
 export function Modal(
   { kicker, title, lines, tone = 'ink', action, onClose, cancel }:
@@ -37,10 +37,39 @@ export function Modal(
   },
 ) {
   const accent = tone === 'win' ? 'var(--win)' : tone === 'clay' ? 'var(--clay)' : 'var(--cream)';
+
+  /*
+    A dialog a keyboard can leave and a screen reader can name. The app is
+    built for thumbs, but it runs in a browser today and every dialog was a
+    div: no Escape, no role, focus left sitting behind the scrim on whatever
+    opened it. Escape follows the scrim's rule — cancel when one exists, never
+    the action for a destructive ask. Focus lands on the safest control on
+    open and goes home when the dialog closes.
+  */
+  const dismiss = cancel ? cancel.onClick : onClose;
+  const dismissRef = useRef(dismiss);
+  dismissRef.current = dismiss;
+  const firstButton = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    firstButton.current?.focus();
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') { e.stopPropagation(); dismissRef.current(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      opener?.focus();
+    };
+  }, []);
+
   return (
     <div
-      onClick={cancel ? cancel.onClick : onClose}
+      onClick={dismiss}
       className="fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${kicker} ${title}`}
       style={{
         position: 'absolute', inset: 0, zIndex: 40,
         background: 'rgba(28,36,48,.62)',
@@ -77,9 +106,12 @@ export function Modal(
         {/* The way out sits above the action rather than beside it. Side by
             side, the two are the same size and a thumb aimed at one is a
             thumb that can land on the other; stacked, the destructive one is
-            the one you have to reach past the safe one to get to. */}
+            the one you have to reach past the safe one to get to. It is also
+            where focus starts, so Enter on a fresh dialog acknowledges or
+            cancels — it never destroys. */}
         {cancel && (
           <button
+            ref={firstButton}
             onClick={cancel.onClick}
             className="tap"
             style={{
@@ -91,6 +123,7 @@ export function Modal(
           >{cancel.label}</button>
         )}
         <button
+          ref={cancel ? undefined : firstButton}
           onClick={onClose}
           className="tap"
           style={{

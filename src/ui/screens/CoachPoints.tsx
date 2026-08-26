@@ -141,7 +141,7 @@ export function CoachPoints() {
 
       <FloatingAction
         label={left > 0 ? `CONTINUE · ${left} UNSPENT` : 'TO THE DRAFT'}
-        onClick={() => void next()}
+        onClick={() => void next('coach')}
       />
     </div>
     </FixedHeader>

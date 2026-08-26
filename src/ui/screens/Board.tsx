@@ -595,7 +595,7 @@ export function Board() {
           label={pinned.label}
           onClick={() => {
             if (pinned.kind === 'close-filter') setFiltersOpen(false);
-            else if (pinned.kind === 'signing-day') { advanceWeek(); void nextPhase(); }
+            else if (pinned.kind === 'signing-day') { advanceWeek(); void nextPhase('recruiting'); }
             else advanceWeek();
           }}
           secondary={pinned.kind === 'close-filter' && activeFilters

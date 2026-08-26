@@ -210,7 +210,7 @@ export function Draft() {
           note={pending > 0
             ? `${pending} ${pending === 1 ? 'man is' : 'men are'} still waiting on an answer. Leaving now signs ${pending === 1 ? 'him' : 'them'}.`
             : undefined}
-          onClick={() => void nextPhase()}
+          onClick={() => void nextPhase('draft')}
         />
       )}
     </div>
@@ -659,7 +659,7 @@ function DraftOdds(
         behind it.
       */}
       {phase !== null && (
-        <FloatingAction label="TO RECRUITING" onClick={() => void nextPhase()} />
+        <FloatingAction label="TO RECRUITING" onClick={() => void nextPhase('draft')} />
       )}
     </div>
     </FixedHeader>

@@ -124,8 +124,8 @@ export function Avatar({ id, team, number, size = 40 }: Props) {
 /**
  * The program's colour, from the frozen school table.
  *
- * Exported because a school's name should carry it too. Sixty four programs in
- * one typeface are sixty four strings; in their own colours they are places you
+ * Exported because a school's name should carry it too. Ninety six programs in
+ * one typeface are ninety six strings; in their own colours they are places you
  * start to recognise, which is most of what makes a league feel inhabited.
  */
 export function teamColour(abbr?: string): string {

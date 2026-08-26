@@ -1,21 +1,13 @@
 // Placeholder.tsx
-// Screens the mockup specifies that are not built yet. Named rather than blank
-// so the navigation is honest about what exists.
+// The safety net behind the screen switch. Every id the nav can produce has a
+// real screen now, so in ordinary play this never renders — it exists for an
+// id nothing routes to yet, and it names the one feature that genuinely is
+// planned rather than pretending built screens are still on the way. The old
+// list here described eleven screens as "built later" years after they were
+// built.
 
 const BUILT_LATER: Record<string, string> = {
-  wire: 'The news feed, once games generate headlines.',
-  box: 'Line score, play log and box — needs a live game first.',
-  roster: 'Hitters and pitchers with season lines.',
-  lineup: 'Tap-to-swap batting order and the weekend rotation.',
-  strategy: 'The five coaching policies.',
-  sched: 'The 33 game calendar, results as they land.',
-  stats: 'National and conference leaderboards.',
-  board: 'The recruiting board. Phase 4.',
-  portal: 'Transfer portal, both directions. Phase 4.',
-  draft: 'Who the draft took in June.',
-  awards: 'Player, Pitcher and Freshman of the Year.',
-  history: 'Season by season program record.',
-  records: 'The program record book.',
+  portal: 'Transfer portal, both directions. Not built.',
 };
 
 export function Placeholder({ id }: { id: string }) {

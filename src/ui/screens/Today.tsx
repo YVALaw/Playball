@@ -18,10 +18,7 @@ export function Today() {
   const startManagedGame = useDynasty((s) => s.startManagedGame);
   const playPostseason = useDynasty((s) => s.playPostseason);
   const lastPostseason = useDynasty((s) => s.lastPostseason);
-  const go = useDynasty((s) => s.go);
   const playSeason = useDynasty((s) => s.playSeason);
-  const rollYear = useDynasty((s) => s.rollYear);
-  const setScreen = useDynasty((s) => s.setScreen);
   const openOffseason = useDynasty((s) => s.openOffseason);
   const busy = useDynasty((s) => s.busy);
   const progress = useDynasty((s) => s.progress);
@@ -153,19 +150,25 @@ export function Today() {
             behind a duller label above it — which put the one screen the whole
             engine exists to drive second in line behind watching it happen to
             you. The big button now takes you to the mound.
+
+            All three are genuinely disabled while a sim runs. The store guards
+            them too, but a button that only *looks* dead invites the tap that
+            used to start a managed game against a season the worker was about
+            to replace.
           */}
           <div style={{ marginTop: 12 }}>
             <Action
               label={todayGame ? 'PLAY BALL' : 'NEXT GAME'}
               primary full
+              disabled={busy}
               onClick={startManagedGame}
             />
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <Action label={todayGame ? 'SIM GAME' : 'ADVANCE'} onClick={advanceDay} />
+            <Action label={todayGame ? 'SIM GAME' : 'ADVANCE'} disabled={busy} onClick={advanceDay} />
             {/* Testing only. A season you can skip in one press is a season
                 nobody plays, and this comes out before we ship. */}
-            <Action label={busy ? 'SIMULATING…' : 'SIM SEASON'} onClick={() => void playSeason()} />
+            <Action label={busy ? 'SIMULATING…' : 'SIM SEASON'} disabled={busy} onClick={() => void playSeason()} />
           </div>
         </div>
       ) : (
@@ -175,6 +178,7 @@ export function Today() {
               <Action
                 label={busy ? 'PLAYING…' : 'PLAY THE POSTSEASON'}
                 onClick={() => void playPostseason()}
+                disabled={busy}
                 primary
                 full
               />
@@ -259,12 +263,13 @@ function Postseason() {
 }
 
 function Action(
-  { label, onClick, primary, full }:
-  { label: string; onClick: () => void; primary?: boolean; full?: boolean },
+  { label, onClick, primary, full, disabled }:
+  { label: string; onClick: () => void; primary?: boolean; full?: boolean; disabled?: boolean },
 ) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       style={{
         flex: full ? undefined : 1,
         width: full ? '100%' : undefined,

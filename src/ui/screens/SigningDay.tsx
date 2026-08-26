@@ -305,7 +305,7 @@ export function SigningDay() {
         </div>
       )}
 
-      <FloatingAction label="START NEXT SEASON" onClick={() => void next()} />
+      <FloatingAction label="START NEXT SEASON" onClick={() => void next('signing')} />
 
       {openRecruit && (
         <RecruitSheet

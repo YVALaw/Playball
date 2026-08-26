@@ -411,6 +411,18 @@ function SaveRow(
       </div>
 
       {removing ? (
+        auto ? (
+          // The one row delete mode leaves alone. This slot IS the career
+          // being played — delete it, close the app before the next autosave,
+          // and the career is gone with no copy and no warning that meant it.
+          // Ending a career is NEW DYNASTY's job, below, which says exactly
+          // what it costs.
+          <div style={{
+            width: '100%', padding: '11px 10px', textAlign: 'center',
+            borderTop: '1px solid var(--hairline)',
+            color: 'var(--dim)', font: "400 10px var(--mono)", letterSpacing: '.08em',
+          }}>THE CAREER BEING PLAYED · NEW DYNASTY REPLACES IT</div>
+        ) : (
         <button
           onClick={onDelete}
           className="tap"
@@ -420,6 +432,7 @@ function SaveRow(
             color: 'var(--clay)', font: "700 10.5px var(--mono)", letterSpacing: '.14em',
           }}
         >DELETE…</button>
+        )
       ) : (
         <button
           onClick={onLoad}

@@ -182,7 +182,7 @@ export interface GameLogRow {
  * Every game this man appeared in, oldest first.
  *
  * Matched on the player id rather than the name, because two Tyler Johnsons in
- * a sixty four school world is a matter of time and a game log that silently
+ * a ninety six school world is a matter of time and a game log that silently
  * merges them is worse than no game log.
  *
  * Only ever finds anything for the user's program and the current year: box

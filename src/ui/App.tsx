@@ -170,12 +170,48 @@ function AppBody(
       <div className="app-frame" style={{
         display: 'flex', flexDirection: 'column', minHeight: 0,
       }}>
+        {/*
+          The one frame that can genuinely dead-end — an older save carried
+          `jobSearch` without the offers, and the screen below rendered
+          "NOBODY IS CALLING" with no nav and no way anywhere else. The offers
+          are persisted (and regenerated) now, but a way out stays here on
+          principle: a terminal frame always offers the saves menu, the same
+          escape the unreadable-save and stalled-storage screens give.
+        */}
+        <header style={{
+          flex: 'none', height: 44, padding: '0 14px',
+          paddingTop: 'env(safe-area-inset-top)',
+          boxSizing: 'content-box',
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: 'var(--navy)',
+          backgroundImage:
+            'repeating-linear-gradient(90deg, rgba(255,255,255,.09) 0 1px, transparent 1px 7px)',
+          borderBottom: '3px solid var(--clay)',
+        }}>
+          <div style={{
+            flex: 1, minWidth: 0,
+            font: "800 18px/0.95 var(--display)", letterSpacing: '.02em',
+            color: 'var(--cream)', textTransform: 'uppercase',
+          }}>THE MARKET</div>
+          <button
+            onClick={() => openOverlay('saves')}
+            className="tap"
+            style={{
+              flex: 'none', padding: '8px 9px',
+              background: 'rgba(246,241,230,.12)',
+              border: '1px solid rgba(246,241,230,.28)',
+              color: 'var(--cream)',
+              font: "700 8.5px var(--mono)", letterSpacing: '.12em',
+            }}
+          >SAVES</button>
+        </header>
         <SaveAlert topmost />
         <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
           flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
         }}>
           <JobSearch />
         </main>
+        <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
       </div>
     );
   }
@@ -279,6 +315,38 @@ function AppBody(
       <div className="app-frame" style={{
         display: 'flex', flexDirection: 'column', minHeight: 0,
       }}>
+        {/*
+          A slim top bar, for the one piece of furniture June cannot do
+          without: the inbox. The frame used to render no header at all, which
+          made the notification centre unreachable for the whole postseason —
+          the stretch of the year with the most to report. SAVES stays off
+          this bar on purpose: mid-bracket saving is restricted to stage
+          boundaries (see `endManagedGame`), so a button promising a copy of a
+          half-played tournament would promise something the store does not do.
+        */}
+        <header style={{
+          flex: 'none', height: 44, padding: '0 14px',
+          paddingTop: 'env(safe-area-inset-top)',
+          boxSizing: 'content-box',
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: 'var(--navy)',
+          backgroundImage:
+            'repeating-linear-gradient(90deg, rgba(255,255,255,.09) 0 1px, transparent 1px 7px)',
+          borderBottom: '3px solid var(--clay)',
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              font: "800 18px/0.95 var(--display)", letterSpacing: '.02em',
+              color: 'var(--cream)', textTransform: 'uppercase',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>{team.def.school}</div>
+            <div style={{
+              font: "500 9px/1.4 var(--mono)", letterSpacing: '.18em',
+              color: 'var(--cream-dim)', textTransform: 'uppercase',
+            }}>POSTSEASON</div>
+          </div>
+          <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
+        </header>
         <SaveAlert topmost />
         <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
           flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
@@ -805,8 +873,10 @@ function Screen({ id }: { id: string }) {
     case 'history': return <History />;
     case 'records': return <Program />;
     case 'strategy': return <StrategyScreen />;
-    case 'board': return <Board />;
-    case 'draft': return <Draft />;
+    // 'board' and 'draft' are deliberately absent: both are offseason phases
+    // now, rendered by the phase frame. Routed here they would mount outside
+    // the window they live in — the Board with no pinned action and no way
+    // forward at all. An unknown id falls through to the placeholder instead.
     case 'wire': return <Wire />;
     case 'inbox': return <Inbox />;
     case 'saves': return <Saves />;
