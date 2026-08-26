@@ -340,7 +340,7 @@ is a rewrite.
 | Single game, headless | under 5 ms | ~0.4 ms |
 | Full league season | under 3 s in a Worker | inside it by a wide margin |
 | Screen transition | under 100 ms | never measured |
-| Initial bundle, 3D excluded | under 250 KB gzipped | never measured |
+| Initial bundle, 3D excluded | under 250 KB gzipped | 203 KB gzipped (2026-08-26 build; 3D chunk 243 KB gzipped, loaded lazily) |
 | 3D field on a mid-range Android | 30 fps during ball flight | never run on a phone |
 
 The two engine figures are from the August calibration pass and have not been

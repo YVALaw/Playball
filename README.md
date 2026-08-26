@@ -21,9 +21,9 @@ What is missing is the phone. No Capacitor project, no Android build, no
 keystore, no store listing, no onboarding. It is deliberately last — nothing
 else waits on it.
 
-The engine is calibrated multi-seed against sourced NCAA D1 rates. 687 tests
-across 26 files, including determinism goldens and calibration as a regression
-test.
+The engine is calibrated multi-seed against sourced NCAA D1 rates. 740 tests
+across 27 files, including determinism goldens, calibration as a regression
+test, and a concurrency suite pinning the store's double-press guards.
 
 | Not built yet | |
 |---|---|
