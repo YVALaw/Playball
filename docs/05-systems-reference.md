@@ -84,6 +84,7 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 10 | ~~**The reach gate is a hidden per-recruit roll.**~~ **No longer hidden.** The floor is now one tier below the recruit's own grade, flat, and the prospect sheet prints it — so a coach can read the ladder off the screen instead of discovering it by tapping. The gate ignores the `minProgram` stored on an old save and reads his star rating, so one rule runs whatever the save remembers. | "He will not take the call. A ★★★★★ recruit hears out a ★★★★ program and up…" and a `Min. prestige: ★★★★` line. | `reachFloor`, `canPursue` — `engine/recruiting.ts`; §2.4 | SHIPPED |
 | 10a | **The pipeline is worth exactly one star of reach, and it is the program's home *state* rather than its region.** The sheet says a home-state recruit comes a rung down; it does not say the rule is `state`, so a coach in the Gulf may reasonably expect four states' worth of blue chips and get one state's. About 63% of states hold a five star in a given year. | "He is in your pipeline." on the sheet, and `− 1 here` beside the minimum prestige. | `inPipeline`, `PIPELINE_REACH_BONUS` — `engine/recruiting.ts`; §2.4 | SHIPPED |
 | 10b | **A program below four stars keeps one AI board slot two grades above itself**, which after the gate can only ever hold a home-state recruit. Without it the pipeline exception would exist for the human alone. | A small program with a blue chip on its board. | `aiTargets` — `engine/recruiting.ts`; §2.4 | SHIPPED |
+| 10c | **A home-state recruit is worth up to a quarter more fit, and the size depends on how small the program is** — ×1.25 at one star, nothing at all at five. The sheet says he is in your pipeline; it does not say what that is worth in the courtship, or that a blue blood gets none of it. | Local recruits who stay when they used to leave. | `PIPELINE_EDGE`, `fit` — `engine/recruiting.ts`; §2.5a | SHIPPED |
 | 11 | **A recruit's priority weights.** The five weights are drawn per player and sum to 1; the screen names them but never prints the weights. | Priority labels and blurbs, strongest first. | `drawPriorities`, `PRIORITY_LABEL` — `engine/recruiting.ts` | SHIPPED |
 | 12 | **Fit multiplies effort rather than adding to it.** Hours spent on a recruit who does not want what you have are close to wasted. | A "+N pts a week" figure that is quietly small. | `weeklyPoints` — `engine/recruiting.ts` | SHIPPED |
 | 13 | **A five-star costs about 2.65× a two-star in banked points.** | Nothing. | `commitPointsFor`, `COMMIT_POINTS` — `engine/recruiting.ts` | SHIPPED |
@@ -723,6 +724,11 @@ and is a better version of the same idea: still a specific, nameable set of
 players a small program can reach above its weight, but one the coach knows
 about before he spends a week on it.
 
+**Reach is no longer all the pipeline buys.** A door that only lets you make the
+call is worse than no door at all if you then lose every one of those recruits,
+which is what measurement found. A home-state recruit is now worth a courtship
+edge as well, sized so it belongs to the small programs: see §2.5a.
+
 #### The invariant, measured
 
 The old ladder existed to answer *"I as a three star college have access to the
@@ -783,10 +789,66 @@ A program is reduced to five things, each on 0–1, all read off real season sta
 ```
 proximity = same state ? 1 : same region ? 0.55 : 0.15
 fit       = Σ (his weight for k) × (your score for k)
+            × (same state ? 1 + 0.25 × ((5 − yourStars) / 4)²  : 1)     // capped at 1
 ```
 
 Three steps rather than two, because collapsing state and region made a Louisiana
 kid treat a school in his own town exactly like one four states away.
+
+#### 2.5a The pipeline edge
+
+Reported: *"during recruitment, we have to give a bit of a boost to players in the
+pipeline, I was just running through some seasons and it was rough to get a good
+player."* The pipeline bought **reach** and nothing else — the right to call a
+recruit a tier above you, with no help in keeping him — so a small program could
+see the best player in its own back yard and still lose him to everybody else,
+which is arguably worse than never having seen him.
+
+The edge sits **outside the weighted sum** rather than inside `proximity`,
+because it is not the thing the recruit was asked about. The five weights price
+how much he wants to be near home; this prices the rest of it — the staff that
+has watched him since he was fourteen, the family in the stands, the summer team
+the pitching coach runs. A kid who does not care about distance still knows these
+people.
+
+| Program | Edge on a home-state recruit |
+|---|---|
+| ★ | ×1.250 |
+| ★★ | ×1.141 |
+| ★★★ | ×1.063 |
+| ★★★★ | ×1.016 |
+| ★★★★★ | ×1 — nothing |
+
+**Squared rather than straight, and that is the part measurement decided.** A
+linear ramp lifts every tier below the top at once, so the small program's
+*relative* position — the only thing that decides a contested recruit — barely
+moves. Measured over 12 seeded windows of 96 programs, a linear ×1.34-at-one-star
+ramp took a four star recruit off a blue blood **63%** of the time in his own
+state, while a four star *program* went from keeping 9.1% of its own local board
+to 12.5%: general inflation rather than an edge for anybody.
+
+Measured, before → after, same twelve windows. "Kept" is the share of the
+home-state recruits the reach gate lets that tier call who signed there — a
+cohort fixed by the rules, not by which of them the program chose to work, since
+the boost moves that choice as well:
+
+| Program | kept at home | when somebody else was on him too | mean stars signed | best signee |
+|---|---|---|---|---|
+| ★ | 22.6% → **29.5%** | 25.2% → **32.4%** | 1.74 → 1.75 | 2.65 → 2.72 |
+| ★★ | 20.1% → **25.6%** | 21.1% → **29.6%** | 2.08 → 2.14 | 3.45 → 3.54 |
+| ★★★ | 15.6% → 18.0% | 20.6% → 24.9% | 2.92 → 2.94 | 4.31 → 4.40 |
+| ★★★★ | 9.1% → 9.6% | 12.1% → 11.8% | 4.01 → 4.04 | 4.92 → 4.91 |
+| ★★★★★ | 6.7% → 6.8% | 8.8% → 8.3% | 4.32 → 4.29 | 5.00 → 5.00 |
+
+And the head to head the size was chosen against — a recruit in a small school's
+own state, worked by that school (★★ or below) and by a big one (★★★★ or above)
+at the same time. The local school kept **25.3% → 39.9%** of them, and of the
+four star recruits in that set — the pipeline reach case, a two star program
+calling a man two grades up — **21.7% → 44.2%**. The bigger program still usually
+wins, which is the line: an edge, not a guarantee.
+
+The whole league signs about 1.4% fewer recruits than it did (657 → 648 of ~720),
+which is the cost of boards concentrating harder on their own states.
 
 ### 2.6 Points
 
@@ -925,7 +987,7 @@ league does not function as one enormous queue.
 |---|---|
 | ★★★★★ | 5★ 0.50, 4★ 0.38, 3★ 0.12 |
 | ★★★★ | 5★ 0.35, 4★ 0.48, 3★ 0.17 |
-| ★★★ and below | tier+1 0.30, tier 0.40, tier−1 0.20, tier−2 0.10 |
+| ★★★ and below | tier+2 0.08, tier+1 0.28, tier 0.38, tier−1 0.20, tier−2 0.10 |
 
 The top of the ladder gets its own plans because a five-star program has no tier
 above it, and four stars need it most: two thirds of them will not hear from a
@@ -1185,59 +1247,72 @@ The word beside HEAD COACH is earned, not served. The line used to read "seasons
 completed", which is a fact the two counters either side of the portrait already
 state; twenty quiet years does not make anybody renowned.
 
-Two things are computed and the better of them wins.
-
-**The floor** — a trophy is a floor, not a bonus. Whatever prestige says this
-month, the man who won it does not drop below the rung it bought.
-
-| Floor | Condition |
-|---|---|
-| Legendary | `titles > 0` |
-| Renowned | `regionalTitles > 0` |
-| Established | `conferenceTitles > 0` or `tournaments >= 3` |
-| Respected | `tournaments > 0` |
-| Journeyman | has coached a game |
-| Unproven | otherwise |
-
-One rung per thing there is to win, which is what makes the ladder legible: a bid
-is RESPECTED, a league is ESTABLISHED, a region — Omaha — is RENOWNED, and the
-country is LEGENDARY. Three tournament appearances stand in for a league title
-because a program that keeps qualifying and never wins the thing is still
-somebody the sport has heard of. The regional rung arrived with B6 and could not
-have existed before it: winning a region was counted nowhere at all.
-
-**The ladder** — evaluated top down, first match wins.
+**The cabinet is the whole ladder.** One table, read top down, first match wins.
 
 | Title | Condition |
 |---|---|
-| Legendary | `prestige >= 80` **and** `titles > 0` |
-| Renowned | `prestige >= 68` |
-| Established | `prestige >= 55` |
-| Respected | `prestige >= 42` **or** career win pct > 0.55 |
+| Legendary | `titles >= 1` — a national championship |
+| Renowned | `regionalTitles >= 2` **or** `conferenceTitles >= 4` |
+| Established | `regionalTitles >= 1` **or** `conferenceTitles >= 2` **or** `tournaments >= 3` |
+| Respected | `tournaments >= 1` **or** `conferenceTitles >= 1` — a bid |
 | Journeyman | has coached a game |
-| Unproven | otherwise |
+| Unproven | has not |
 
-**A rung a season, and no faster.** The ladder above is then capped at
-`floor(games / BOOK_SEASON_GAMES)` rungs — one per season completed, and never
-below Journeyman for a man who has coached at all. Reported as UNPROVEN to
-RESPECTED in a single year with nothing won, which both halves of the table
-allowed: the win percentage clause has no minimum behind it, so one 25–14 spring
-reads as a career of winning baseball, and at a weak enough program a single big
-year carries prestige to 42 on its own. It is not prestige being volatile — a
-38–7 first season at a five star job moves it nine points, measured — it is a
-ladder that could be climbed faster than the calendar.
+Every rung is a day: the June you first qualified, the June you did it again, the
+June you got out of your region, the June you won the country. Nothing here can
+move on a season in which none of those happened, and nothing here can be taken
+away — a bad decade costs a man his job long before it costs him his name.
 
-The **floor is deliberately not capped**. Trophies are the other half of the
-design and they are won on a specific day: a first year national champion is
-LEGENDARY that June, and a first year conference champion is ESTABLISHED, which
-is the ladder saying what it has always said.
+**Prestige is not in it, at any weight.** It used to carry the climb, on the
+reasoning that prestige is already the number that moves on overachievement and
+decays when nothing happens. That was wrong about what a title is. Reported:
+*"the coach title keeps upgrading or changing every season, these titles are
+supposed to be based in achievements"* — and measured over thirty seasons of
+ninety six programs, **13.1% of the coach-seasons in which a man won nothing at
+all changed what he was called**, in both directions. It is not a tiebreaker
+either: two coaches with the same cabinet get the same word, because a
+tiebreaker that moves every November is the same bug with a smaller step.
 
-Final title = whichever of the two is higher on
-`['Unproven','Journeyman','Respected','Established','Renowned','Legendary']`.
+**Why the counts are what they are.** A bid and a conference title are the same
+event in today's format — the eight conference champions *are* the eight-team
+national field — and **half of that field wins a region**, four regionals with
+one champion each. So a trip to the last four is not the rarity its name
+suggests. With one region worth RENOWNED the band above Established measured
+four times the size of it: a ladder that got wider as it went up. Two regions is
+the honest price, because at even odds per trip that is a coach who kept getting
+there. `tournaments` and `conferenceTitles` are still counted apart because the
+expanded postseason (twenty bids, at-larges) separates them, and on that day the
+table already says the right thing: three at-large trips is ESTABLISHED, and a
+league title is worth more than a trip.
+
+A first year national champion is LEGENDARY that afternoon. That is one program
+of ninety six in one year of thirty, and a ladder that made him wait would be
+measuring patience rather than achievement.
+
+**Measured across a league**, 30 seasons, seed 4242, all 96 chairs on the AI
+(`npm run carousel -- 30 4242`):
+
+| | unproven | journeyman | respected | established | renowned | legendary |
+|---|---|---|---|---|---|---|
+| year 10 | 0 | 68 | 7 | 10 | 5 | 6 |
+| year 20 | 8 | 57 | 10 | 9 | 5 | 7 |
+| year 30 | 4 | 71 | 7 | 7 | 2 | 5 |
+
+It thins as it climbs, which is the shape a ladder is supposed to have, and the
+same run reports **0.0%** of quiet coach-seasons changing a title. The one
+remaining move that is not a trophy is a rookie's first completed season ending
+UNPROVEN, which is a statement about having coached rather than about having won.
+Three quarters of the league sitting at JOURNEYMAN is honest arithmetic: eight
+league titles a year, concentrated in the programs that keep winning them.
 
 **LIFER** is separate and additive: `tenure >= LIFER_SEASONS` (**15**) at the
 *current* job. It is the one thing here earned by staying instead of winning, and a
 bad run cannot take it away — it reads alongside the title, e.g. `RENOWNED · LIFER`.
+
+`coachStanding` takes a `CoachRecord`, which is the handful of `CoachState`
+fields a title may look at. Narrower than the whole coach because the ninety five
+men in the other chairs wear these titles too and a `RivalCoach` is not a
+`CoachState`.
 
 ---
 
@@ -1723,6 +1798,39 @@ disturbed.
 `freezeRegularSeason` snapshots `rw`/`rl` before a single bracket game moves a
 record. Tournament games still accumulate statistics — NCAA season totals include
 tournament play — but the board judges `regularRecord`.
+
+### 8.5a The map camera: it moves only when it has to
+
+`ui/PostseasonMap.tsx`. One tier is drawn at a time and the camera follows your
+next unresolved series, re-pointing whenever a game is played. Reported: *"when
+playing the post season if i hit simulate this game it keeps dragging the camera
+instead of staying where I was at the moment."* Easing the move did not answer
+it. The complaint is not that the travel is abrupt, it is that pressing SIMULATE
+takes the board out from under you at all.
+
+**The rule is now: do not move what the reader can already see.** Before
+re-pointing, the follow effect asks whether the target card is whole on the
+screen — its box, in the camera's current offset, inset by ten pixels so a
+matchup half against the bezel does not count. If it is, the effect returns and
+the camera is not touched at all; the transform on the canvas node comes out
+byte-identical across the press. If it is not, the camera travels to it exactly
+as before, which is what keeps a live series from hiding off screen with no hint.
+
+Two exemptions, both structural rather than preference:
+
+- **A tier change always moves.** Each tier is laid out from its own origin, so
+  the point being left and the point being arrived at are numbers in two
+  different coordinate spaces and "already visible" is not a question that can
+  be asked across the cut. The first paint is a tier change, which is what still
+  opens the map pointed at your own bracket.
+- **Nothing of yours in the tier holds.** A coach who is out, or who never
+  qualified, is watching somebody else's June, and re-centring the board under
+  him on every press is the same complaint with nothing of his own on screen to
+  justify it.
+
+Everything else is unchanged: within a tier the move glides (170–460 ms, scaled
+by distance), across tiers it cuts, a finger on the glass cancels a move in
+flight, and `prefers-reduced-motion` makes every move a cut.
 
 ### 8.6 Finishes
 

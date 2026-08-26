@@ -63,6 +63,22 @@ const GLIDE_MAX_MS = 460;
 /** The screen distance beyond which a move is as slow as it will ever get. */
 const GLIDE_FULL_PX = 520;
 
+/**
+ * How much clear glass a card needs around it to count as already on screen.
+ *
+ * Reported: *"when playing the post season if i hit simulate this game it keeps
+ * dragging the camera instead of staying where I was at the moment"*. Easing the
+ * move did not answer it, because the complaint is not that the travel is abrupt
+ * — it is that pressing SIMULATE takes the board out from under you at all.
+ *
+ * So the camera now only moves when the series it wants to show you is not
+ * already in front of you, which is the rule maps settle on: do not move what
+ * the reader can see. A card touching the edge does not count — half a matchup
+ * against the bezel is the case the follow exists for — hence a margin rather
+ * than a plain intersection test.
+ */
+const HOLD_MARGIN = 10;
+
 /** Ease in and out, so the camera sets off and arrives rather than cutting. */
 const ease = (t: number): number =>
   (t < 0.5 ? 4 * t * t * t : 1 - ((-2 * t + 2) ** 3) / 2);
@@ -284,6 +300,24 @@ export function PostseasonMap(
   const applyRef = useRef(applyTransform);
   applyRef.current = applyTransform;
 
+  /**
+   * Is this box whole on the screen from where the camera is standing now?
+   *
+   * Read off `camRef` and not off `cam`, because the answer has to be about
+   * where the board actually is — a drag writes the node without telling React,
+   * and asking the committed camera would say a series is visible when the
+   * player has just pushed it off the side.
+   */
+  const onScreen = (p: Box, kk: number): boolean => {
+    const o = offsetFor(camRef.current, kk);
+    const left = o.x + p.x * kk;
+    const top = o.y + p.y * kk;
+    return left >= HOLD_MARGIN
+      && top >= HOLD_MARGIN
+      && left + p.w * kk <= size.w - HOLD_MARGIN
+      && top + p.h * kk <= size.h - HOLD_MARGIN;
+  };
+
   const stopGlide = (): void => {
     if (tweenRef.current === null) return;
     cancelAnimationFrame(tweenRef.current);
@@ -390,6 +424,23 @@ export function PostseasonMap(
     // same reason, there being nowhere to have travelled from.
     const cut = lastViewRef.current !== view;
     lastViewRef.current = view;
+
+    // The board stays where you left it if what changed is already in front of
+    // you. Pressing SIMULATE THIS GAME while watching your own series is the
+    // common case by a distance, and the camera answering it by travelling —
+    // however smoothly — is the board being pulled out from under your thumb.
+    //
+    // A tier change is exempt and has to be: the point being left and the point
+    // being arrived at are numbers in two different coordinate spaces, so
+    // "already visible" is not a question that can be asked across the cut —
+    // and the first paint is a tier change, which is what still lets the map
+    // open pointed at your own bracket.
+    //
+    // Nothing of yours in the tier holds as well. A coach who is out, or who
+    // never qualified, is watching somebody else's June: re-centring the board
+    // under him on every press is the same complaint with nothing of his own on
+    // the screen to justify it.
+    if (!cut && (!p || onScreen(p, k))) return;
     glideTo(c, k, cut);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusKey, layout, view]);

@@ -23,8 +23,8 @@ import { createSeason, simSeason, nextSeason, DEFAULT_SEASON, type SeasonState }
 import { runPostseason } from '../src/engine/postseason.js';
 import { departAndDevelop, fillRosters, holesFor } from '../src/engine/progression.js';
 import {
-  gradeObjectives, leagueShape, prestigeStars, rivalExpectation, rosterStrength,
-  type Mandate, type Verdict,
+  coachStanding, gradeObjectives, leagueShape, prestigeStars, rivalExpectation, rosterStrength,
+  type CoachTitle, type Mandate, type Verdict,
 } from '../src/engine/program.js';
 import { runRivalYear, seatCoaches, syncCoachMods } from '../src/engine/rivals.js';
 import {
@@ -98,6 +98,28 @@ const byMandate: Record<Mandate, { n: number; cleared: number }> = {
 };
 let askedTotal = 0;
 let wonTotal = 0;
+/**
+ * What the league is called, and how often the name moves for no reason.
+ *
+ * Reported: *"the coach title keeps upgrading or changing every season, these
+ * titles are supposed to be based in achievements"*. Two numbers answer that and
+ * neither can be read off one season. DRIFT is the share of coach-seasons in
+ * which a man who won nothing at all — no bid, no league, no region, no country
+ * — is introduced differently in November than he was in May. TITLES is the
+ * spread across the ninety six chairs, which is the other half of the question:
+ * a ladder nobody climbs and a ladder everybody finishes are both broken.
+ */
+const TITLE_LADDER: readonly CoachTitle[] =
+  ['Unproven', 'Journeyman', 'Respected', 'Established', 'Renowned', 'Legendary'];
+const drift = { quiet: 0, moved: 0, debut: 0 };
+const titleSnapshots: { year: number; spread: Record<CoachTitle, number> }[] = [];
+const spreadNow = (): Record<CoachTitle, number> => {
+  const out = {
+    Unproven: 0, Journeyman: 0, Respected: 0, Established: 0, Renowned: 0, Legendary: 0,
+  } as Record<CoachTitle, number>;
+  for (const t of season.teams) if (t.coach) out[coachStanding(t.coach).title] += 1;
+  return out;
+};
 
 console.log(`\n${N} programs, ${YEARS} seasons, seed ${SEED}`);
 console.log('seeded prestige: mean %s  sd %s',
@@ -152,10 +174,41 @@ for (let y = 0; y < YEARS; y++) {
   const prestige = season.teams.map((t) => t.prestige);
   const roster = season.teams.map((t) => rosterStrength(t.team));
 
+  // Who was called what going into the review, and whether he had anything to
+  // show for the year. Keyed on the coach object rather than on the chair,
+  // because a chair that changes hands is a different man and not a drift.
+  const before = new Map<object, { title: CoachTitle; won: boolean }>();
+  for (const t of season.teams) {
+    if (!t.coach) continue;
+    before.set(t.coach, {
+      title: coachStanding(t.coach).title,
+      won: post.finish[t.index] !== undefined
+        || post.conferenceChampions.includes(t.index)
+        || post.regionChampions.includes(t.index)
+        || post.champion === t.index,
+    });
+  }
+
   const { moves, verdicts } = runRivalYear(season, post, {
     year: season.year ?? 0, userTeam: -1, games: 45,
   });
   syncCoachMods(season, -1, null);
+
+  for (const t of season.teams) {
+    const was = t.coach ? before.get(t.coach) : undefined;
+    if (!was || was.won) continue;
+    drift.quiet += 1;
+    const now = coachStanding(t.coach as NonNullable<typeof t.coach>).title;
+    if (now === was.title) continue;
+    drift.moved += 1;
+    // A rookie finishing his first season stops being unproven, which is the
+    // one move on the ladder that is about having coached rather than about
+    // having won. Counted apart so it cannot be read as the reported drift.
+    if (was.title === 'Unproven') drift.debut += 1;
+  }
+  if ((y + 1) % 10 === 0 || y === YEARS - 1) {
+    titleSnapshots.push({ year: season.year ?? 0, spread: spreadNow() });
+  }
 
   const count = (k: string): number => moves.filter((m) => m.kind === k).length;
   const sacked = count('sacked');
@@ -220,6 +273,16 @@ console.log('required boxes missed, per year, out of %d programs (sole = what it
 for (const [k, v] of Object.entries(boxTotals).sort((a, b) => b[1] - a[1])) {
   console.log('  %s %s   sole %s',
     k.padEnd(16), (v / YEARS).toFixed(1).padStart(5), ((soleTotals[k] ?? 0) / YEARS).toFixed(1));
+}
+console.log('title drift   %s%% of quiet coach-seasons changed the man\'s title (%d of %d)',
+  (100 * drift.moved / Math.max(1, drift.quiet)).toFixed(1), drift.moved, drift.quiet);
+console.log('  of which    %d were a first season ending UNPROVEN; %s%% is the rest',
+  drift.debut,
+  (100 * (drift.moved - drift.debut) / Math.max(1, drift.quiet)).toFixed(1));
+console.log('coach titles  unpr/jour/resp/estb/renw/lgnd, of %d chairs:', N);
+for (const snap of titleSnapshots) {
+  console.log('  %s  %s', String(snap.year).padStart(4),
+    TITLE_LADDER.map((t) => String(snap.spread[t]).padStart(3)).join('/'));
 }
 console.log('clear rate by mandate:');
 for (const m of Object.keys(byMandate) as Mandate[]) {

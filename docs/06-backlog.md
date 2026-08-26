@@ -201,6 +201,50 @@ exists.
   against his own position only, where the rebuild spends him on the first hole
   it comes to and fills the bench out of whoever is left. Both screens read
   `walkOnShortfall` off the live roster now. See §2.10.
+- **A10 · The postseason camera moved on every press** — SHIPPED. Reported:
+  *"when playing the post season if i hit simulate this game it keeps dragging
+  the camera instead of staying where I was at the moment."* An earlier pass
+  made the move *glide* rather than cut, which was the wrong half of the
+  problem: he is not objecting to the easing, he is objecting to the board
+  moving at all under a press he made while watching his own series.
+
+  The follow effect now asks whether the target card is already whole on the
+  screen and returns without touching the camera if it is — verified in the
+  browser, the canvas transform is byte-identical across a SIMULATE THIS GAME
+  press. A card that is off screen still gets travelled to, because a live
+  series hiding off the edge with no hint is the failure the follow exists to
+  prevent. Tier changes and "nothing of yours in this tier" are exempt and have
+  to be. See `05-systems-reference.md` §8.5a.
+- **A11 · The coach title drifted on results rather than on achievements** —
+  SHIPPED. Reported: *"the coach tittle keeps upgrading or changing every
+  season, these tittles are supposed to be based in achievements."* The ladder
+  was carried by coach prestige, which moves on overachievement and decays when
+  nothing happens; capping the climb at one rung a season slowed the drift
+  without removing it. Measured over thirty seasons of ninety six programs,
+  **13.1%** of the coach-seasons in which a man won nothing at all changed what
+  he was called.
+
+  The cabinet is the whole ladder now — bids, league titles, regions, the
+  country — and prestige is not in it at any weight, not even as a tiebreaker.
+  The same measurement reports **0.0%**, the only remaining quiet move being a
+  rookie's first completed season ending UNPROVEN. Two regions rather than one
+  for RENOWNED, because half the tournament field wins a region in this format
+  and the band above Established measured four times the size of it. LIFER is
+  untouched and still separate. See `05-systems-reference.md` §5, and B4 below
+  for what it replaced.
+- **A12 · The pipeline bought reach and nothing else** — SHIPPED. Reported:
+  *"during recruitment, we have to give a bit of a boost to players in the
+  pipeline, I was just running through some seasons and it was rough to get a
+  good player."* A small program could see the best player in its own back yard,
+  legally call him, and lose him to everybody else — a door that only lets you
+  make the call, which is arguably worse than no door.
+
+  A home-state recruit now carries a courtship edge in `fit`, scaled by how
+  small the program is and squared so it belongs to the bottom of the ladder:
+  ×1.25 at one star, nothing at five. Measured over twelve seeded windows, a
+  small school working a local recruit against a big one kept **25.3% → 39.9%**
+  of them, and the bigger program still usually wins. See
+  `05-systems-reference.md` §2.5a.
 
 ## B. Agreed and designed, not yet built
 
@@ -249,14 +293,15 @@ half the achievements are all reading from the same book.
   rather than winning, so a bad run cannot take it away, and it reads alongside
   the title rather than instead of it (`RENOWNED · LIFER`).
 
-  Two ladders, and the higher wins. Prestige carries the climb because prestige is
-  already the number that moves on overachievement and decays when nothing
-  happens, which is what a reputation should do. Trophies act as **floors** on top
-  of it, one rung per thing there is to win: a bid is Respected, a league is
-  Established, a region is Renowned, the country is Legendary. So a national
-  champion is never introduced as a journeyman however the last two seasons went,
-  and twenty quiet years does not make anybody renowned — a test pins exactly
-  that. See §5.
+  It shipped as **two ladders with the higher winning** — trophies as floors under
+  a climb carried by coach prestige — and that half has since been taken out
+  again. Prestige moving on overachievement and decaying when nothing happens is
+  the right behaviour for a *reputation* and the wrong behaviour for a *title*,
+  which is what A11 above is: measured, one quiet coach-season in eight changed
+  the word beside HEAD COACH. The cabinet is the whole ladder now, and the two
+  properties this entry was written for still hold and are still pinned by tests
+  — a national champion is never introduced as a journeyman, and twenty quiet
+  years does not make anybody renowned. See §5.
 - **B5 · Prestige penalty for two bad seasons running** — SHIPPED.
   `CoachState.badRun` counts consecutive `missed`/`failed` verdicts;
   `badRunPenalty` is `5 + (badRun − 2) × 3` off coach prestige from the second
@@ -613,6 +658,13 @@ half the achievements are all reading from the same book.
   program can call **none** of the national top 25 in any of 24 classes and 9.8
   of the top 50 on average, all of them four stars; with a pipeline that rises to
   14.2. See `05-systems-reference.md` §2.4.
+
+  **Reach turned out not to be enough on its own**, which A12 above is: being
+  allowed to call a man you then lose every time is a door onto a wall. The
+  pipeline now also carries a courtship edge, and the two halves are deliberately
+  different shapes — the reach is a flat one star for everybody, because it has
+  to be readable off the screen, and the edge is scaled by program size, because
+  a blue blood wins its own state without help. See §2.5a.
 - **B19 · The recruiting filter, rebuilt** — SHIPPED. A dropdown for home state,
   multi-select stars, a pipeline switch, a "nobody is on him" switch, and a
   liftable fifty-row cap. The two sliders were removed rather than retuned:

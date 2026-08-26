@@ -880,6 +880,44 @@ export interface Pitch {
 }
 
 /**
+ * What the home town is worth beyond what the recruit says it is worth.
+ *
+ * Reported: *"during recruitment, we have to give a bit of a boost to players in
+ * the pipeline, I was just running through some seasons and it was rough to get
+ * a good player"*. The pipeline bought reach and nothing else — the right to
+ * *call* a recruit a tier above the program, with no help at all in keeping him
+ * — so a small program could now see the best player in its own back yard and
+ * still lose him to everybody else, which is arguably worse than never having
+ * seen him.
+ *
+ * It is deliberately outside the weighted sum rather than a bigger `proximity`
+ * score, because it is not the thing the recruit was asked about. The five
+ * weights price how much he wants to be near home; this prices the rest of it —
+ * the staff that has watched him since he was fourteen, the family in the
+ * stands, the summer team the pitching coach runs. A kid who does not care about
+ * distance still knows these people.
+ *
+ * **Scaled by how small the program is**, and that is the load-bearing half. A
+ * blue blood recruits its own state on the strength of being a blue blood and
+ * measured, wins those recruits at the same rate with or without this; handing
+ * it a local bonus as well would just move the whole board up and change
+ * nothing. What a one star program has to sell *is* the neighbourhood, so it
+ * gets the whole of it and the five star gets none.
+ *
+ * **Squared rather than straight**, which is the part measurement decided. A
+ * linear ramp lifted every tier below the top at once, so the small program's
+ * *relative* position — the only thing that decides a contested recruit — barely
+ * moved: it took a four star kid off a blue blood 63% of the time in his own
+ * state, while a four star *program* went from keeping 9.1% of its local board
+ * to 12.5%, which is a general inflation rather than an edge for anybody. The
+ * square hands the same lift to the bottom of the ladder (22.6% → 29.5%) and
+ * almost none to the top of it (9.1% → 9.6%).
+ */
+export const PIPELINE_EDGE = 0.25;
+const pipelineEdge = (stars: number): number =>
+  PIPELINE_EDGE * Math.max(0, Math.min(1, (5 - stars) / 4)) ** 2;
+
+/**
  * How well a program matches one recruit, from 0 to 1.
  *
  * A weighted sum, and that is the entire design: the weights are his, the scores
@@ -896,13 +934,16 @@ export function fit(prospect: Prospect, pitch: Pitch): number {
     pitch.state === prospect.state ? 1
     : pitch.region === prospect.hometown ? 0.55
     : 0.15;
-  return (
+  const base =
     w.prestige * pitch.prestige
     + w.playingTime * pitch.playingTime(prospect)
     + w.winning * pitch.winning
     + w.proximity * proximity
-    + w.development * pitch.development
-  );
+    + w.development * pitch.development;
+  if (pitch.state !== prospect.state) return base;
+  // Capped at 1 because that is what a fit is, and because the programs whose
+  // scores are already up against the ceiling are the ones this is not for.
+  return Math.min(1, base * (1 + pipelineEdge(pitch.stars)));
 }
 
 /**

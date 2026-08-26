@@ -169,6 +169,55 @@ describe('fit', () => {
     expect(fit(p, program(0.5, { region: 'Gulf' })))
       .toBeGreaterThan(fit(p, program(0.5, { region: 'Northeast' })));
   });
+
+  /*
+    The pipeline edge. Reported: "during recruitment, we have to give a bit of a
+    boost to players in the pipeline, I was just running through some seasons and
+    it was rough to get a good player."
+
+    Every recruit here has his proximity weight set to zero, which is the whole
+    trick of these three: whatever is left between a program at home and the
+    same program in the next state along cannot be the recruit's own wish to stay
+    near his mother, because he has said he does not have one. It is the edge and
+    nothing else.
+  */
+  const indifferentToHome = (p: Prospect): void => {
+    p.state = 'LA';
+    p.priorities = {
+      prestige: 0.34, playingTime: 0.26, winning: 0.2, proximity: 0, development: 0.2,
+    };
+  };
+
+  it('gives a small program something at home the recruit never asked for', () => {
+    const { prospects } = generateClass(2027, 16, makeRng(7));
+    const p = prospects[0] as Prospect;
+    indifferentToHome(p);
+    expect(fit(p, program(0.2, { state: 'LA' })))
+      .toBeGreaterThan(fit(p, program(0.2, { state: 'TX' })));
+  });
+
+  it('gives a blue blood nothing at home, because it does not need it', () => {
+    // Exactly nothing, not merely less. A blue blood wins its own state on the
+    // strength of being a blue blood — measured, at the same rate with the edge
+    // as without it — so a bonus on top would move every score and settle
+    // nothing.
+    const { prospects } = generateClass(2027, 16, makeRng(7));
+    const p = prospects[0] as Prospect;
+    indifferentToHome(p);
+    expect(fit(p, program(0.95, { state: 'LA' })))
+      .toBe(fit(p, program(0.95, { state: 'TX' })));
+  });
+
+  it('is an edge and not a guarantee', () => {
+    // The line the size of this was chosen against: a one star program at home
+    // is a live threat to a five star program from out of state, and still not
+    // the favourite for a recruit who wants the name.
+    const { prospects } = generateClass(2027, 16, makeRng(7));
+    const p = prospects[0] as Prospect;
+    indifferentToHome(p);
+    expect(fit(p, program(0.2, { state: 'LA' })))
+      .toBeLessThan(fit(p, program(0.95, { state: 'TX' })));
+  });
 });
 
 describe('points, not a lottery', () => {

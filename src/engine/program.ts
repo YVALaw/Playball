@@ -21,10 +21,6 @@ import {
   LIFER_SEASONS, restoreAchievements, type AchievementLog,
 } from './achievements.js';
 import { overallOf } from './ratings.js';
-// A season's worth of games, which is what the title ladder counts seasons in.
-// Shared with the record book rather than written down twice — a test pins it
-// against `seasonLength(DEFAULT_SEASON)`, so it cannot drift from the calendar.
-import { BOOK_SEASON_GAMES } from './records.js';
 import { FIRST, LAST } from '../data/names.js';
 import { ALL_STATES } from '../data/schools.js';
 import { DEFAULT_PHILOSOPHY, isPhilosophyId, type PhilosophyId } from './strategy.js';
@@ -991,11 +987,19 @@ export const ROOKIE_PRESTIGE = 25;
  * he has actually done — so the ladder is climbed with titles and deep runs,
  * not with attendance. Twenty quiet years does not make anybody renowned.
  *
- * Prestige carries most of it because prestige is already the number that moves
- * on overachievement and decays when nothing happens, which is exactly the
- * behaviour a reputation should have. The trophies act as floors on top of it:
- * a national champion is never introduced as a journeyman, however the last two
- * seasons went.
+ * It used to be carried by prestige, on the reasoning that prestige is already
+ * the number that moves on overachievement and decays when nothing happens.
+ * That reasoning was wrong about what a title is. Reported: *"the coach title
+ * keeps upgrading or changing every season, these titles are supposed to be
+ * based in achievements"* — and measured over thirty seasons of ninety six
+ * programs, **13.1% of the coach-seasons in which a man won nothing at all
+ * changed what he was called**, in both directions. That is a rating wandering,
+ * not a reputation.
+ *
+ * So the cabinet is the whole ladder now and prestige is not in it at any
+ * weight. Not as a tiebreaker either: two coaches with the same cabinet get the
+ * same word, because a tiebreaker that moves every November is the reported bug
+ * with a smaller step size.
  */
 export type CoachTitle =
   | 'Unproven' | 'Journeyman' | 'Respected' | 'Established' | 'Renowned' | 'Legendary';
@@ -1022,69 +1026,79 @@ export interface CoachStanding {
 }
 
 /**
- * The rungs, bottom to top. The order is the ladder.
+ * The part of a coach a standing is read off.
+ *
+ * Narrower than `CoachState` because the ninety five men in the other chairs
+ * wear these titles too and a `RivalCoach` is not a `CoachState` — he has no
+ * philosophy, no achievements and no home state, none of which a title has ever
+ * asked about. Naming the fields is also the shortest honest statement of what
+ * the ladder is allowed to look at.
  */
-const TITLE_ORDER: readonly CoachTitle[] =
-  ['Unproven', 'Journeyman', 'Respected', 'Established', 'Renowned', 'Legendary'];
+export type CoachRecord = Pick<
+  CoachState,
+  'careerWins' | 'careerLosses' | 'titles' | 'conferenceTitles'
+  | 'regionalTitles' | 'tournaments' | 'tenure'
+>;
 
 /**
- * At most one rung a season, and the reason is what the word is supposed to
- * mean.
+ * How much of each thing a rung asks for.
  *
- * Reported: UNPROVEN to RESPECTED in a single year with nothing won. Both
- * halves of the ladder allowed it. `winPct > 0.55` is a career rate with no
- * career under it, so one 25-14 spring read as a decade of winning baseball;
- * and a first season at a weak program can put prestige within reach of 42 on
- * its own. Neither is prestige being volatile — measured, a 38-7 first year
- * moves it nine points — it is a ladder that could be climbed faster than the
- * calendar.
+ * The ladder is six rungs and there are only three things a coach can actually
+ * win, so the upper rungs have to be reached by doing a smaller thing more than
+ * once. Repetition is the right currency for it, and the format is the reason
+ * the counts are what they are rather than one apiece.
  *
- * So the earned title is capped at one rung per completed season. A man who has
- * coached one year cannot be introduced as anything better than a journeyman,
- * however that year went, because "respected" is a statement about a body of
- * work and one season is not one.
+ * **A bid and a conference title are the same event today**: the eight
+ * conference champions *are* the eight-team national field. And **half of that
+ * field wins a region** — four regionals, one champion each — so a trip to the
+ * last four is not the rarity its name suggests. Measured over thirty seasons
+ * with one region worth RENOWNED, the band above Established was four times the
+ * size of it: a ladder that got wider as it went up. Two regions is the honest
+ * price, because at even odds per trip that is a coach who kept getting there.
  *
- * The trophy floors below are deliberately *not* capped. They are the other
- * half of the design and they are earned by winning a specific thing rather
- * than by climbing: a first year national champion is Legendary in June, and
- * nobody would call that too fast.
+ * The two counters are kept apart anyway, because the expanded postseason
+ * (twenty bids, at-larges) separates them and on the day it lands this table
+ * already says the right thing — three at-large trips is Established, and a
+ * league title is worth more than a trip.
  */
-const earnedCap = (games: number): number =>
-  (games <= 0 ? 0 : Math.max(1, Math.floor(games / BOOK_SEASON_GAMES)));
+const RENOWNED_REGIONS = 2;
+const RENOWNED_LEAGUES = 4;
+const ESTABLISHED_LEAGUES = 2;
+const ESTABLISHED_BIDS = 3;
 
-export function coachStanding(coach: CoachState): CoachStanding {
+/**
+ * The ladder, read top down: the best thing on the shelf is the word.
+ *
+ * | Legendary   | a national title                                     |
+ * | Renowned    | two regional titles, or four league titles           |
+ * | Established | a regional title, two league titles, or three bids   |
+ * | Respected   | a tournament bid                                     |
+ * | Journeyman  | has coached a game                                   |
+ * | Unproven    | has not                                              |
+ *
+ * Every rung is a day: the June you first qualified, the June you did it again,
+ * the June you got out of your region, the June you won the country. Nothing
+ * here can move on a season in which none of those happened, which is the whole
+ * point of the rewrite — and nothing here can be taken away either, so a bad
+ * decade costs a man his job long before it costs him his name.
+ *
+ * A first year national champion is LEGENDARY that afternoon. That is not too
+ * fast: it is one of ninety six programs in one of thirty years, and a ladder
+ * that made him wait would be measuring patience rather than achievement.
+ */
+export function coachStanding(coach: CoachRecord): CoachStanding {
   const games = coach.careerWins + coach.careerLosses;
-  const winPct = games === 0 ? 0 : coach.careerWins / games;
 
-  // A trophy is a floor, not a bonus. Whatever prestige says this month, the
-  // man who won it does not drop below the rung it bought.
-  //
-  // One rung per thing there is to win, which is what makes the ladder legible:
-  // a bid is Respected, a league is Established, a region — Omaha — is
-  // Renowned, and the country is Legendary. Three tournament appearances stand
-  // in for a league title because a program that keeps qualifying and never
-  // wins the thing is still somebody the sport has heard of.
-  let floor: CoachTitle = 'Unproven';
-  if (coach.titles > 0) floor = 'Legendary';
-  else if (coach.regionalTitles > 0) floor = 'Renowned';
-  else if (coach.conferenceTitles > 0 || coach.tournaments >= 3) floor = 'Established';
-  else if (coach.tournaments > 0) floor = 'Respected';
-  else if (games > 0) floor = 'Journeyman';
-
-  // And the ladder itself, which can lift him above that floor but never below.
-  const climbed: CoachTitle =
-    coach.prestige >= 80 && coach.titles > 0 ? 'Legendary'
-    : coach.prestige >= 68 ? 'Renowned'
-    : coach.prestige >= 55 ? 'Established'
-    : coach.prestige >= 42 || winPct > 0.55 ? 'Respected'
+  const title: CoachTitle =
+    coach.titles > 0 ? 'Legendary'
+    : coach.regionalTitles >= RENOWNED_REGIONS
+      || coach.conferenceTitles >= RENOWNED_LEAGUES ? 'Renowned'
+    : coach.regionalTitles > 0
+      || coach.conferenceTitles >= ESTABLISHED_LEAGUES
+      || coach.tournaments >= ESTABLISHED_BIDS ? 'Established'
+    : coach.tournaments > 0 || coach.conferenceTitles > 0 ? 'Respected'
     : games > 0 ? 'Journeyman'
     : 'Unproven';
-
-  const earned = TITLE_ORDER[
-    Math.min(TITLE_ORDER.indexOf(climbed), earnedCap(games))
-  ] ?? 'Unproven';
-
-  const title = TITLE_ORDER.indexOf(earned) >= TITLE_ORDER.indexOf(floor) ? earned : floor;
 
   return { title, lifer: coach.tenure >= LIFER_SEASONS };
 }
