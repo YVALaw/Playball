@@ -1,6 +1,6 @@
 # Systems Reference: what the game does, and what it does not say
 
-**Last updated:** August 25, 2026
+**Last updated:** August 26, 2026
 **Companion docs:** `01-roadmap.md` for the product and stack, `06-backlog.md` for
 what is agreed and not yet built, `02-sim-engine-spec.md` for engine internals,
 `03-engine-salvage-audit.md` for the forked engine copies,
@@ -99,7 +99,7 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 20a | **A walk-on is gone after one *season*, not after one class year.** He is manufactured as a freshman, and the question is asked before `departure` and independently of what the roster calls him — so a spot filled this way is a spot you are shopping for again next winter. Asking first also costs no `rng()` draw, so nothing about who else leaves depends on how many walk-ons a program is carrying. | A name that turns up for a year and is not there the next. | `Player.walkOn`, `departAndDevelop` — `engine/progression.ts`; §2.10 | SHIPPED |
 | 21 | **7% of generated freshmen get a large extra headroom draw** on top of ordinary headroom. This is the only reason hidden gems exist. | Nothing at all. | `projectPotential` — `engine/players.ts` | SHIPPED |
 | 21a | **No player the world makes may be given a ceiling above 94**, one below the S+ floor, and nothing on any screen says the grade is reserved. The gate is on the number rather than the letter, so development, the scouting bands and the draft all agree about it. | An S+ nobody ever scouts, and a top grade that reads as merely very rare. | `GENERATED_POTENTIAL_CAP`, `TOP_GENERATED_GRADE` — `engine/scouting.ts`; §1.6 | SHIPPED |
-| 22 | ~~**Platoon skill is a hidden per-player number.**~~ **Surfaced, as B17.** The number itself is still not printed, but what it does to a man is: THE SPLIT panel on the ratings tab shows his contact and power against each hand and the production swing underneath, off the same arithmetic `platoonMultiplier` uses. The distribution can still go negative, so real reverse-split players exist and the card says so. | Two columns, VS RHP and VS LHP. | `drawPlatoonSkill` — `engine/players.ts`; `platoonSplit`, `platoonMultiplier` — `engine/ratings.ts`; §18.7 | SHIPPED |
+| 22 | ~~**Platoon skill is a hidden per-player number.**~~ **Surfaced, as B17.** The number itself is still not printed, but what it does to a man is: THE SPLIT panel on the player card (the STATS sheet, since §20) shows his contact and power against each hand and the production swing underneath, off the same arithmetic `platoonMultiplier` uses. The distribution can still go negative, so real reverse-split players exist and the card says so. | Two columns, VS RHP and VS LHP. | `drawPlatoonSkill` — `engine/players.ts`; `platoonSplit`, `platoonMultiplier` — `engine/ratings.ts`; §18.7 | SHIPPED |
 | 23 | **The coach's OFFENSE skill is worth 1 basis point per point**, capping at ×1.0079 on the whole offensive vector. Home field is ×1.020. | A blurb: "slightly better at-bats". | `TeamState.coachOffMult` — `engine/game.ts` | SHIPPED |
 | 24 | **DEFENSE likewise, ×0.9921 at the cap**, applied to singles, doubles and triples only. | A blurb. | `TeamState.coachDefMult`, `log5Outcome` — `engine/game.ts`, `engine/engines.ts` | SHIPPED |
 | 25 | **TRAINING scales only the systematic pull toward potential, never the noise** — ×1.158 at 99. | Slightly better development years. | `develop`, `OffseasonOpts.training` — `engine/progression.ts` | SHIPPED |
@@ -193,6 +193,12 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 95 | **The in-season inbox writers are scans, not events, and every card carries a keyed id.** The season can arrive finished from a worker in one press, so nothing may be read off state that is only true at a moment: runs come off the game log rather than the streak counter, and the halfway card counts the halfway game rather than the current record. A card posts once per year however many times the scan runs. | The same cards whether the season was simmed or played out. | `seasonNews`, `regularGames` — `state/store.ts`; `newItem`, `push` — `engine/inbox.ts`; §17.3a | SHIPPED |
 | 96 | **A skill point can be taken back until the offseason leaves the coach step**, and only the points this visit put on. The ledger is not saved, so a reload commits them. | A `−1` that appears on a skill you have just spent on, and is gone next time. | `spentThisStep`, `refundSkill` — `state/store.ts`; §4.1 | SHIPPED |
 | 97 | **The season goes into the record books at the board meeting, not at the year roll.** An award is resolved through the rosters, and by the year roll the departing class is off them — so a graduating Player of the Year's award reached no list at all, on the history screen or at the hall of fame ballot two steps later. | A history entry that appears one step earlier than it used to, with the leavers' awards on it. | `settleSeason`, `rollYear` — `state/store.ts`; §19.8 | SHIPPED |
+| 98 | **The wire's variety is a hash, not a roll.** Which template a story wears comes off `vary(seed, count)`, a stable hash of the story's own content, so the paper reads differently story to story and identically render to render — and reading it never consumes a random draw. | A paper whose stories do not all sound alike. | `vary`, `wire` — `engine/wire.ts`; §20.1 | SHIPPED |
+| 99 | **An old save seeds only the current chair's annals, and a seeded year carries no national rank.** The coach's career rows name his school and back-fill its book; `rank: 0` on those rows, because the career row's `rpi` is a value and printing it as a rank shipped "#0.493…" once. The other ninety-five programs start their books with their next finished June. | A history page that works on a save older than the feature. | `loadSlot` — `state/store.ts`; `recordSchoolAnnals` — `engine/postseason.ts`; §20.2 | SHIPPED |
+| 100 | **The rookie job market is at most two offers per conference, always at least one, and every offer would genuinely hire you.** Filtered through the same `canBeHired` ladder the mid-career market uses, deterministic per world. | Six schools on the desk instead of ninety-six in a browser. | `startingOffers` — `engine/program.ts`; §20.3 | SHIPPED |
+| 101 | **The preseason national table is a projection: roster strength weighted three to one over prestige, shown until the league has about four games a team.** Never persisted, never fed back into anything — the screen labels it a projection but not the blend. | "PRESEASON POWER RANKING · PROJECTED", then one day the real RPI table. | `Rankings.tsx` (display only); `rosterStrength` — `engine/program.ts`; §20.7 | SHIPPED |
+| 102 | **An extra-base hit lands deep whatever station its fielder keeps.** A double no shallower than 0.68 of the field, a triple 0.88, pushed along the handling fielder's side — because the man credited with the play is the man it went past, and placing the ball at his feet told the story backwards. Same stable hash, no dice. | A triple that visibly reaches the wall. | `landingFor` — `engine/game.ts`; §20.8 | SHIPPED |
+| 103 | **The 0.8 seconds under SIM GAME and SIM WEEK computes nothing.** The sim runs after the ring, in milliseconds; the pause exists so a night of baseball does not resolve faster than a thumb can lift, and it doubles as those buttons' rapid-fire guard. | A spinner in the button. | `Today.tsx` (display only); §20.5 | SHIPPED |
 
 ---
 
@@ -3701,7 +3707,9 @@ Folding one into the other would put a row that evaporates when you press "next
 day" in the same scroll as a row from your first season, under one heading, with
 two different rules for disappearing. Two screens on the same tab is the honest
 shape: same question, next to each other, still distinguishable. HOME therefore
-has four sub-screens — TODAY, WIRE, INBOX, SCOREBOOK.
+carries TODAY and WIRE; since the interface overhaul (§20) the inbox is the bell
+on the top bar — reachable from every frame, offseason included — and the
+scorebook is where PLAY BALL takes you, so neither needs a nav door of its own.
 
 ### 17.3 What files, and at what volume
 
@@ -4147,6 +4155,12 @@ inventing a symmetry the engine does not have.
 Index row 22 is therefore retired as a hidden mechanic: the number itself is
 still not printed, but what it does to a man is.
 
+**Where it lives moved in the overhaul (§20): the panel is on the STATS sheet
+now, not RATINGS.** VS RHP and VS LHP are a production table, and the reader
+looking for it is the one already reading his line. The arithmetic did not
+move — it is still `platoonSplit`, still the same function the simulation
+spends.
+
 ### 18.8 What it cost, measured
 
 The eight-seed sweep and the bracket probe, before and after the whole block:
@@ -4384,6 +4398,149 @@ Both are fixed by writing the season into `history` at the **board meeting**
 (`settleSeason`), where the rosters that produced it are still standing. The year
 roll keeps a fallback for a career that was never graded — a reload landing past
 the review step — and refuses to write a year the books already have.
+
+---
+
+## 20. The interface overhaul — **SHIPPED**
+
+`src/engine/wire.ts`, `recordSchoolAnnals` — `src/engine/postseason.ts`,
+`startingOffers` — `src/engine/program.ts`, `autoBattingOrder` —
+`src/engine/strategy.ts`, `src/ui/Tutorial.tsx`, `src/ui/tutorials.ts`, and the
+screens.
+
+Two passes in late August 2026: the overhaul itself (offers instead of a
+directory, the newspaper, the coach profile, per-school history, first-visit
+teaching) and a feedback batch played against it (the full-screen game, the
+defense, win cards, the portrait menu, the colleges directory, preseason
+rankings, filters, and a general war on explainer text). Most of it is
+presentation and is documented by the screens themselves; what belongs here is
+the engine- and store-level machinery underneath, because every piece of it
+obeys the same rule the event stream does — **reporting must never change what
+happens** — and that constraint shaped all of them.
+
+### 20.1 The wire
+
+`wire()` in `engine/wire.ts` derives the country's news fresh from the live
+season on every render and throws it away (§17.2 has the argument for why it is
+not the inbox). Ten kinds — upset, streak, rout, ranking, milestone, race,
+close, sweep, gem, power — deduplicated and interleaved so a page is never one
+kind of story.
+
+**It consumes no random draws.** Template variety comes from `vary(seed, count)`,
+a stable hash of the story's own content, so the same season renders the same
+paper forever and reading it moves nothing. The determinism is pinned by
+`tests/overhaul.test.ts`, which renders the wire twice and asserts the rng
+state did not move. The `an()` helper exists because "a 11-run margin" shipped
+once and a newspaper that cannot manage its articles is not a newspaper.
+
+### 20.2 Every school keeps a book
+
+`TeamRecord.annals` is a `SchoolSeason[]` per program — year, record,
+conference record and place, national rank, how June ended, and **the name of
+the coach who sat the chair that year**, the user's or the rival's. Written for
+all ninety-six programs by `recordSchoolAnnals` at the top of `rollYear`,
+before anything resets; idempotent by year, so a reload mid-offseason cannot
+write a season twice. It survives `nextSeason` because the team records
+themselves do.
+
+This is what makes HISTORY the *school's* book rather than the coach's: take a
+new job and the page shows the years the school played while you were somewhere
+else, each with the man who coached them. The coach's own career stays on his
+profile, and mixing the two books is how both end up wrong.
+
+**The migration is deliberately modest.** A pre-annals save seeds only the
+current chair's book, from the coach `history` rows that name that school —
+with `rank: 0`, because the career row's `rpi` is a value, not a rank, and a
+seeded year printed as "#0.493…" is exactly what shipped for an afternoon
+before the guard went in. Nothing is invented for the other ninety-five; their
+books start with their next finished season.
+
+### 20.3 A rookie gets offers, not a directory
+
+`startingOffers(teams, limit = 6)` builds the new-coach job market: up to six
+programs, every one of which would actually hire a rookie
+(`canBeHired(ROOKIE_PRESTIGE, prestige, rosterStrength)`), at most two per
+conference so the desk spans the country, at least one guaranteed so the game
+can always start, and deterministic for a given world. The old step-three
+region browser is gone: choosing from ninety-six schools you cannot have was a
+directory pretending to be a decision.
+
+### 20.4 Teaching that remembers
+
+`<FirstVisit id="…" />` (`ui/Tutorial.tsx`) shows the copy in
+`ui/tutorials.ts` once per id per career: dialog semantics, Escape and
+backdrop dismiss, one to three short pages in a bench coach's voice.
+`seenTutorials` rides the save and is **union-merged on load**, so loading an
+older slot never re-teaches what the player has learned since; a reset button
+on the saves screen wipes it on purpose. Fifteen ids cover the season screens
+and every offseason step — the offseason ones replaced the paragraphs the
+draft, board and signing screens used to open with.
+
+### 20.5 The gears on the desk
+
+`simWeek()` advances day by day until the schedule's week number changes, under
+the same busy/live guards as `advanceDay`, and saves once at the end. SIM
+SEASON survives on the dashboard **for testing only** and is scheduled to leave
+before v1.0.
+
+**The 0.8 seconds under SIM GAME and SIM WEEK is theater.** A day sims in
+milliseconds and a result that appears the same frame the thumb lands reads as
+though nothing was played, so the button shows a ring, waits 800ms, then runs
+the sim — nothing computes during the pause, and it doubles as the rapid-fire
+guard for those two controls.
+
+### 20.6 AUTO deals a card
+
+`autoBattingOrder(nine)` in `engine/strategy.ts`: classical order — best
+hitter third, most power cleanup — as a pure reorder of the nine men handed to
+it. It never reassigns a position and never touches the bench, it is
+deterministic, and pressing it twice is pressing it once. The store's
+`autoLineup` is the only caller.
+
+### 20.7 The preseason poll
+
+Until the league has about four games a team behind it
+(`season.results.length < season.teams.length * 2`), the national table is a
+**projected power ranking**: `rosterStrength × 0.75 + prestige × 0.25`,
+computed in the screen, labelled as a projection, and never persisted — RPI
+over no games is the tiebreak backstop wearing a table's clothes, and the poll
+exists so opening week is not ordered by a coin. The moment the threshold
+passes, the real RPI table takes over and the projection is never seen again.
+
+### 20.8 The game on its own screen
+
+A live game owns the viewport: no masthead, no portrait, no record, no nav —
+the scoreboard clears the notch itself and BACK TO THE DESK returns to the
+dashboard with the game kept (PLAY BALL reads BACK TO THE GAME until it is
+finished). The matchup strip names both halves of every plate appearance, and
+the call buttons carry a 500ms guard, because two taps a heartbeat apart used
+to submit two plate appearances and the manager never saw the second
+situation.
+
+**The landing coordinate is honest about extra-base hits now.** `landingFor`
+places a ball at the station of the fielder who handled it, which told a
+triple's story backwards — the man it went *past* drew it dying at his feet. A
+double lands no shallower than `y = 0.68` and a triple no shallower than
+`0.88`, pushed along the fielder's side of the field, still derived from the
+same stable hash and still costing the simulation no dice (index row 55's rule,
+extended).
+
+The defense on the 3D field is presentation over that coordinate: nine dots at
+their stations, the nearest non-battery man runs the ball down (the pitcher
+carries a distance handicap and the catcher never chases), and after the
+outcome blink the ball is lobbed back to the mound while the fielder walks
+home. The engine decided everything before the first frame drew.
+
+### 20.9 June's cards
+
+The postseason announces a trophy as loudly as an exit: winning the
+conference, the regional or the title each raises a card once, keyed
+`${year}:win:${stage}` in `postseasonSeen` exactly as the eliminations are
+keyed, and the elimination copy is written per tier — losing the national
+final reads *Runners up*, not *Knocked out*. The boxed RESULT section became a
+settled banner, loud for a trophy and quiet for an ending, and the lineup card
+is reachable from inside the bracket as a sheet laid over June, so the dugout
+controls no longer require leaving the one frame the year was played for.
 
 ---
 

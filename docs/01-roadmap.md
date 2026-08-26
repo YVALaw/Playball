@@ -1,6 +1,6 @@
 # Roadmap
 
-**Last updated:** August 25, 2026
+**Last updated:** August 26, 2026
 **Supersedes:** v3, which by the end was wrong about most of what it claimed
 **Companion docs:** `05-systems-reference.md` for what the game does today,
 `06-backlog.md` for what it is going to do and why, `02-sim-engine-spec.md` for
@@ -38,13 +38,22 @@ regular season, and a career an athletic director can end. Ships to Android.
 
 ## Where it stands
 
-**v0.7.4 plus five feature blocks, and the loop is closed.** Take a job, play or
-simulate a season, manage a postseason run a game at a time, hand out awards,
-spend coaching points, read a recruiting board that is honest about being vague,
-argue the draft out of taking your junior, and start again in February — against
-ninety-five rival programs run by men with careers of their own. Twenty-six test
-files cover it, calibration among them, so the engine cannot drift without
-something failing.
+**v0.7.4 plus five feature blocks, an audit pass, and an interface overhaul —
+the loop is closed and the screens have been through a war.** Take a job from a
+desk of genuine offers, play or simulate a season, manage a postseason run a
+game at a time on a full-screen field with a defense on it, hand out awards,
+spend coaching points, read a recruiting board that is honest about being
+vague, argue the draft out of taking your junior, and start again in February —
+against ninety-five rival programs run by men with careers of their own.
+Twenty-eight test files cover it, calibration among them, so the engine cannot
+drift without something failing.
+
+The August 2026 interface overhaul and its feedback pass are described in §20
+of the systems reference: first-visit tutorials that persist, the wire as a
+newspaper, per-school annals, a standalone coach profile behind a portrait
+menu, a colleges directory, preseason power rankings, roster filters, win cards
+in June, a draft conversation in a sheet, and honest ball flight with fielders
+who chase it.
 
 **What is missing is the phone.** There is no Capacitor project, no Android
 build, no keystore, no store listing. The whole point of the project is a phone
@@ -129,6 +138,17 @@ Ticked means opened and checked, August 2026. Detail on any line is in
 - [x] Named save slots on top of the autosave, with no limit
 - [x] The 2D diamond (`src/ui/Diamond.tsx` — never `Field2D.tsx`), the play log,
       and box scores that can be reopened in September
+- [x] First-visit tutorials that ride the save and merge on load, with a reset
+      on the saves screen — §20.4
+- [x] The wire as a newspaper: ten story kinds, hash-varied templates, zero
+      random draws consumed — §20.1
+- [x] Per-school annals written for all ninety-six programs every June, with
+      the sitting coach's name on each year — §20.2
+- [x] A rookie job market of real offers instead of a school browser — §20.3
+- [x] SIM WEEK, SIM GAME with its 0.8s ring, tappable results, a preseason
+      power ranking until RPI means something, roster filters, a colleges
+      directory, and the coach profile standalone behind the portrait menu —
+      §20.5–§20.9
 
 **The career** — §5, §6
 
@@ -174,20 +194,25 @@ one that keeps the rest of the file honest.
 `src/ui/Diamond3D.tsx`. It is lazy loaded and code split, the park is primitives
 and flat colours with no lights at all, device pixel ratio is capped at 1.6, and
 the ball flies along the engine's own landing coordinate with a separate profile
-per batted-ball type so a grounder and a fly are told apart at a glance. What the
-plan listed and never got:
+per batted-ball type so a grounder and a fly are told apart at a glance. The
+August passes closed the two items that mattered most; what is left:
 
-- [ ] **Fielders.** There are none in the scene. Runners and the ball, and
-      nothing else stands on the field
-- [ ] **Instanced markers.** Every runner is his own mesh. Harmless at three of
-      them, and not what was planned for nine
-- [ ] **Camera easing between three fixed positions.** There is one camera behind
-      the plate and it never moves
-- [ ] **`frameloop="demand"`.** The canvas renders continuously, including
-      between pitches when nothing has moved. This is the item with a real
-      battery cost on the target device
+- [x] **Fielders.** Nine dots in the other uniform: they hold their stations,
+      the nearest man runs a ball in play down, and the throw comes back to the
+      mound — §20.8. Presentation only, over the engine's own coordinate
+- [x] **`frameloop="demand"`.** The canvas renders in a window after each play
+      and holds its last frame between pitches — the battery item, closed in
+      the audit pass
+- [x] **An honest landing.** A double carries to the gap and a triple to the
+      wall, whatever station the handling fielder keeps — §20.8. The park also
+      gained foul poles, a capped wall, batter's boxes, on-deck circles and a
+      scoreboard
+- [ ] **Instanced markers.** Every runner and fielder is his own mesh. Twelve
+      small spheres, so still harmless, and still not what was planned
+- [ ] **Camera easing between three fixed positions.** There is one camera
+      behind the plate and it never moves
 - [ ] **A 2D/3D toggle.** The 2D diamond survives only as the fallback shown
-      while the 3D chunk loads. That is not a setting and not a choice
+      while the 3D chunk loads, or when WebGL fails. That is not a setting
 - [ ] **Thirty frames a second on a mid-range Android, measured.** Never measured
       on any phone, because the game has never run on one
 
@@ -197,84 +222,83 @@ to invest in this track again, and nothing else on it is urgent.
 
 ### Everything else that is part-done
 
-- [~] **The MLB draft.** Departures are automatic and the coach has no say. The
-      persuasion half — reading what a man wants and paying for him out of the
-      recruiting budget — is agreed and unbuilt (backlog B9, and it needs ages
-      first; §12.5 records exactly what the automatic version does today)
-- [~] **The coaching carousel.** You move between jobs; nobody else does. Rival
-      coaches never improve, are never judged and are never poached, so you are
-      the only coach in ninety-six programs who gets better (B7)
+Two entries that used to sit here are done and gone: the draft's persuasion half
+shipped as B9 (§14 — ages, eligibility, the four pitches, and since the
+overhaul the whole conversation lives in a sheet the KEEP row opens), and the
+coaching carousel shipped as B7/B7a (§16 — rival coaches improve, get judged,
+get sacked and get poached). What genuinely remains part-done:
+
+- [~] **Coach titles.** The ladder is honest (A11) and lopsided: seventy-one of
+      ninety-six coaches read Journeyman at year thirty, because the counters
+      run out below a conference title. B21 is the design brief — a named list
+      of achievements per rung — and the feedback pass added that titles should
+      eventually carry a small gameplay boost, explicitly not before the ladder
+      itself is designed
 - [~] **Eligibility.** Graduation and draft eligibility are real; redshirts do
       not exist anywhere in the codebase
 - [~] **Android.** Safe-area insets are done and were done early, correctly. The
       hardware back button is not wired, because there is nothing to wire it to
       yet
-- [~] **Accessibility.** Reduced motion is honoured throughout. Focus states and
-      text scaling are not: every size in the app is in pixels
+- [~] **Accessibility.** Reduced motion is honoured throughout, and the overhaul
+      added dialog semantics, Escape handling and focus restoration to the
+      modals and sheets. Focus states elsewhere and text scaling are not:
+      every size in the app is in pixels
+- [~] **SIM SEASON.** On the dashboard for testing, scheduled to leave before
+      v1.0
 
 ---
 
 ## What is next, in order
 
 The ordering principle is that a system should not be built on top of data that
-is known to be wrong, and that the things a player touches come before the things
-that surround them.
+is known to be wrong, and that the things a player touches come before the
+things that surround them. The previous list's first five items — the
+data-integrity bugs, ages and the arguable draft, badges and tendencies, and
+the rest of the career — have all shipped and been ticked above; what follows
+is what is genuinely left.
 
-1. **The data-integrity bugs.** Backlog section A, and A5 first: a departing
-   player's last season never reaches the record book, so every graduating
-   senior's best year has always been lost. A hall of fame reading that book
-   would honour the wrong men, which is why this comes before the hall of fame
-   and not after it.
+1. **The coach title ladder.** B21, and it is the only feedback item with a
+   design brief already written: a named list of achievements per rung, cheap
+   enough to hold for ninety-five rivals, with the distribution as the test —
+   no rung holding most of the league, the top staying rare. The eventual
+   per-title gameplay boost waits behind it.
 
-2. **Ages, then a draft you can argue with.** B15 then B9. Ages are small and
-   they are what makes the eligibility rule express itself honestly instead of as
-   a special case; the persuasion mechanic is the first place the recruiting
-   budget has to do two jobs at once, and that tension is the point.
+2. **The other design passes the feedback opened.** Recruiting budget balancing
+   and player swaying, school visual identities, awards-night presentation, and
+   the settings sheet the portrait menu is waiting for. All parked in backlog
+   section C by agreement; none may be built before it is specified.
 
-3. **Badges and tendencies.** B10, B11, B16, B17. The largest addition to the
-   hidden layer, and the one that gives two players with the same ratings
-   different identities. Every badge that ships gets a row in the hidden
-   mechanics index on the day it lands — that rule is not negotiable, because an
-   invisible system nobody wrote down stops being a design and becomes folklore.
+3. **The postseason, expanded.** Top four in the country straight into an
+   eight-team national tournament, sixteen more into four regionals of four —
+   the format in the backlog's locked decisions, still unbuilt. It stays behind
+   the player-facing work on purpose: today's three-tier format works, and now
+   has its win cards and its lineup door.
 
-4. **The rest of the career.** Achievements, coach titles, conference and
-   regional honours, rival coaches with careers of their own, hall-of-fame
-   induction, league-wide career records. B3 through B7, B12, B13.
+4. **The depth systems, one design pass each.** Backlog section C — the
+   transfer portal, injuries, morale, opponent scouting, a progression rework
+   and the rest. Listing them is not designing them.
 
-5. **The postseason, rebuilt.** Top four in the country straight into an
-   eight-team national tournament, sixteen more into four regionals of four. The
-   shape and the reasoning are in the backlog. It comes after the player-facing
-   systems on purpose: today's format works, and a bracket rewrite pays off less
-   per week than anything above it.
+5. **The small unscheduled gameplay.** Redshirts, a depth chart with position
+   eligibility, facilities to spend on, recruits drafted out of high school,
+   an AI that reads a run-expectancy matrix. Backlog G2; each folds into a
+   stage above when somebody wants it.
 
-6. **The depth systems, one design pass each.** Backlog section C — the transfer
-   portal, injuries, morale, scouting reports, a progression rework and the rest.
-   Listing them is not designing them, and none may be built before it has been
-   specified on its own.
-
-7. **Shipping.** Capacitor, a first APK on a real device, the back button, a
+6. **Shipping.** Capacitor, a first APK on a real device, the back button, a
    keystore generated and backed up somewhere permanent, a signed AAB, a store
-   listing, onboarding for the first ten minutes, and the accessibility work.
-   Last, and blocking nothing. Onboarding is sized against the game as it will be
-   by then, which by that point includes scouting bands, philosophies, badges and
-   a record book to explain.
+   listing, onboarding for the first ten minutes, and the accessibility work —
+   minus what the tutorial system already covers, which since the overhaul is
+   most of the first ten minutes. Removing SIM SEASON belongs to this stage
+   too. Last, and blocking nothing.
 
 ## Missing and unscheduled
 
-Real gaps with no slot yet. Each is small enough to fold into a stage above when
-somebody wants it.
+Now scheduled: the small gameplay gaps that used to sit here — the depth chart,
+facilities, recruits drafted out of high school, the run-expectancy AI — are
+stage 5 above and catalogued in backlog G2. What remains genuinely unslotted:
 
-- **A depth chart with position eligibility.** There is a lineup editor; who can
-  credibly play where is not modelled
-- **Facilities to spend on.** Facilities exist as something a recruit weighs and
-  nothing else — there is no upgrade and no budget for one
-- **Recruits drafted out of high school who never arrive.** Signed, then gone
-  before they play a game. Cheap to build, and it stings in the right way
-- **An AI that reads a run-expectancy matrix.** The opponent calls only the
-  sacrifice, on a heuristic. This is the difference between a manager who bunts
-  by rule and one who bunts when the base-out state says to
 - **Injuries and season-long fatigue.** Bullpen rest and in-game fatigue are
-  modelled; nothing accumulates across a year
+  modelled; nothing accumulates across a year. A section C design pass when it
+  comes
 
 ## Deferred, and why
 

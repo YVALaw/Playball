@@ -649,7 +649,10 @@ function Identity(
           style={{
             width: '100%', padding: '11px 10px', background: 'var(--paper)',
             border: '1px solid rgba(28,36,48,.28)', borderRadius: 0,
-            color: 'var(--ink)', font: "400 15px var(--body)",
+            // 16px is the floor, not a taste. A focused input under 16px makes
+            // a phone browser zoom the whole page in, and it does not zoom back
+            // out when the keyboard leaves — reported from creating a coach.
+            color: 'var(--ink)', font: "400 16px var(--body)",
           }}
         />
 

@@ -202,7 +202,7 @@ export function Saves() {
             <div style={{
               marginTop: 5, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
             }}>
-              {team.def.school} as they stand right now — {year}, {team.w}-{team.l} —
+              {team.def.school} as they stand right now, {year}, {team.w}-{team.l},
               filed under a name of your own and left alone from then on. Take one
               before anything you might want to come back from.
             </div>
@@ -215,7 +215,9 @@ export function Saves() {
                 width: '100%', marginTop: 9, padding: '11px 10px',
                 background: 'var(--field)',
                 border: '1px solid rgba(28,36,48,.28)', borderRadius: 0,
-                color: 'var(--ink)', font: "400 14px var(--body)",
+                // 16px floor: anything smaller makes a phone browser zoom in on
+                // focus and stay zoomed. Same fix as the coach name input.
+                color: 'var(--ink)', font: "400 16px var(--body)",
               }}
             />
             <button

@@ -532,8 +532,10 @@ half the achievements are all reading from the same book.
   disagree with the bar. Nothing about a repertoire is stored: it is hashed off
   the player's id, exactly as arrival age is, so it costs the generator no draw.
   See `05-systems-reference.md` §18.2.
-- **B17 · Surface platoon splits** — SHIPPED. THE SPLIT panel on the ratings tab,
-  two columns, VS RHP and VS LHP: contact and power as effective ratings and the
+- **B17 · Surface platoon splits** — SHIPPED. THE SPLIT panel on the player
+  card — the STATS sheet since the overhaul, because vs-RHP and vs-LHP is a
+  production table and its reader is already reading his line — two columns,
+  VS RHP and VS LHP: contact and power as effective ratings and the
   production swing underneath. The arithmetic is `platoonSplit` in
   `engine/ratings.ts` rather than in the screen, so what the card prints and what
   `platoonMultiplier` does are the same function.
@@ -727,13 +729,11 @@ own.
 
 ### From the overhaul feedback pass (August 2026) — plan before building
 
-- **Coach title ladder.** `coachStanding` currently derives a title from bare
-  counters, which is how a coach demoted himself to "journeyman" after one
-  quiet year. Wanted: an explicit list of achievements or levels per title —
-  what earns Journeyman, Riser, Contender, Legend and the rest — so a title,
-  once earned, reads as a rank rather than a mood. The user also wants each
-  title to carry a small in-game boost eventually; the boost is explicitly
-  **not** to be coded until the ladder itself is designed and agreed.
+- **Coach title ladder.** This is **B21 above**, which already carries the
+  design brief and the measured lopsidedness — do not design it twice. What
+  the feedback pass adds to B21: the user wants each title to eventually carry
+  a small in-game boost, and the boost is explicitly **not** to be coded until
+  the ladder itself is designed and agreed.
 - **Recruiting budget balancing and player swaying.** The retention pitch
   (draft KEEP) and the weekly board should feed one economy the player can
   bend: swaying a player has to be a deeper negotiation than one offer number.
@@ -929,11 +929,11 @@ Fold in opportunistically rather than as a work item of their own.
 
 ## G. From the original roadmap, never built
 
-`01-roadmap.md` carries sixty-two unticked boxes, most of them stale — the work
-shipped and nobody went back to tick them. What follows is what is genuinely
-still missing, verified against the source rather than read off the list. The
-roadmap should be reconciled against this section and then trusted again, or
-retired in favour of this file.
+The roadmap was reconciled against this section on August 26, 2026 — its stale
+"what is next" list (five shipped items deep) was rewritten, its half-built
+section purged of the draft and the carousel, and its 3D checklist re-ticked —
+so it can be trusted again. What follows is what is genuinely still missing,
+verified against the source rather than read off any list.
 
 ### G1 · Shipping. Nothing of this exists.
 
@@ -964,27 +964,35 @@ gap in the plan and it is not a small job.
   heuristic. This is the difference between an opponent who bunts by rule and
   one who bunts when the base-out state says to.
 
-### G3 · The 3D track — audited
+### G3 · The 3D track — audited, then half of it closed
 
 Done: lazy loaded and code split, every material unlit so there is no lighting
 cost, DPR capped at 1.6, and ball flight driven off the engine's landing
-coordinate with a profile per batted-ball type.
+coordinate with a profile per batted-ball type. The August passes closed the
+two items that mattered:
 
-Missing, and the first one is the surprise:
+- ~~**There are no fielders in the scene.**~~ SHIPPED in the feedback pass:
+  nine dots at their stations, the nearest non-battery man chases a ball in
+  play and the throw comes back to the mound. Presentation over the engine's
+  own coordinate — see §20.8 of the systems reference, which also records the
+  landing fix that made the chase worth watching (a triple used to die at the
+  station of the man it went past).
+- ~~**`frameloop` is the default `always`.**~~ SHIPPED in the audit pass:
+  `frameloop="demand"` with an invalidation window after each play, so the
+  park holds its last frame between pitches. The battery item, closed.
+- The park gained foul poles, a capped wall, batter's boxes, on-deck circles
+  and a scoreboard in the feedback pass. Park *effects* — geometry that
+  changes play, the short porch you can see — remain G4's open item.
 
-- **There are no fielders in the scene.** Only the runners and the ball. Nine
-  men are simulated in detail and none of them is drawn.
-- Runners are individual meshes rather than instanced.
+Still missing:
+
+- Runners and fielders are individual meshes rather than instanced. Twelve
+  small spheres, so still harmless.
 - **One fixed camera that never moves.** No easing, no three positions.
-- **`frameloop` is the default `always`**, so the canvas renders continuously
-  between pitches. The only item here with a real battery cost, and the one to
-  fix first.
-- No 2D/3D toggle. The 2D diamond survives only as the Suspense fallback while
-  the chunk loads, which is not a setting.
+- No 2D/3D toggle. The 2D diamond survives as the Suspense fallback and the
+  WebGL-failure fallback, which is not a setting.
 - Thirty frames a second has never been measured, because the game has never
   run on a phone.
-
-Park geometry (see G4) belongs to this track.
 
 ### G4 · The roadmap's open questions, now closed
 

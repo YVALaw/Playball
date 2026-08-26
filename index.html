@@ -3,8 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <!-- viewport-fit=cover is what lets env(safe-area-inset-*) report real values
-         on a notched Android device. Without it the gesture bar sits on the nav. -->
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+         on a notched Android device. Without it the gesture bar sits on the nav.
+         maximum-scale=1 stops the browser zooming the page in when a text input
+         takes focus (reported from coach creation: the zoom arrived with the
+         keyboard and never left). The app is a fixed-frame game with no pinch
+         content, and its inputs also hold the 16px floor so the zoom would have
+         nothing to trigger on either way. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#223247" />
     <title>Playball</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
