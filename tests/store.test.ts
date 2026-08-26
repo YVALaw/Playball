@@ -1046,3 +1046,68 @@ describe('points can be taken back until the step closes', () => {
     expect(useDynasty.getState().coach.skills.recruiting).toBe(before);
   });
 });
+
+describe('how far the offseason got, across a reload', () => {
+  // `phase` is where the coach is standing; `furthestPhase` is how far the
+  // career has ever walked. They are usually the same number and the whole
+  // point of keeping both is the moment they are not.
+
+  it('remembers every step already walked, so the rail is not greyed out', () => {
+    useDynasty.getState().start(4242, 0);
+    useDynasty.setState({
+      phase: 'recruiting',
+      furthestPhase: PHASES.indexOf('recruiting'),
+    });
+    const { season, coach } = useDynasty.getState();
+    if (!season) throw new Error('no season');
+
+    const file = buildSaveFile('slot', 'Dynasty', season, 2029, 0, {
+      coach,
+      phase: 'recruiting',
+      furthestPhase: PHASES.indexOf('recruiting'),
+    });
+
+    expect(file.furthestPhase).toBe(PHASES.indexOf('recruiting'));
+  });
+
+  it('writes a furthest step of nought rather than dropping it', () => {
+    // The record is assembled field by field on a truthiness test, and nought
+    // is a real answer here — the first step of the offseason. Dropped, a
+    // reload cannot tell "has been nowhere" from "was never written down", and
+    // the two have opposite consequences at the draft.
+    const { season, coach } = useDynasty.getState();
+    if (!season) throw new Error('no season');
+
+    const file = buildSaveFile('slot', 'Dynasty', season, 2029, 0, {
+      coach, phase: 'awards', furthestPhase: 0,
+    });
+
+    expect(file).toHaveProperty('furthestPhase');
+    expect(file.furthestPhase).toBe(0);
+  });
+
+  it('keeps the furthest step when the save was taken on an earlier one', () => {
+    // The load-bearing case. Walking back moves `phase` and deliberately leaves
+    // `furthestPhase` alone, and reading the inbox — which the top bar offers
+    // at any moment — writes a save. So a save genuinely says `coach` while the
+    // career had reached recruiting.
+    //
+    // Deriving the furthest step from `phase` here would report 2 rather than
+    // 4, which is not merely a greyed-out rail: `nextPhase` runs the offseason
+    // departures only while the furthest step is short of the draft, so the
+    // walk forward would graduate a second class and lose any man kept out of
+    // the draft at the cost of a recruiting budget.
+    const { season, coach } = useDynasty.getState();
+    if (!season) throw new Error('no season');
+
+    const file = buildSaveFile('slot', 'Dynasty', season, 2029, 0, {
+      coach,
+      phase: 'coach',
+      furthestPhase: PHASES.indexOf('recruiting'),
+    });
+
+    expect(file.phase).toBe('coach');
+    expect(file.furthestPhase).toBe(PHASES.indexOf('recruiting'));
+    expect(file.furthestPhase as number).toBeGreaterThan(PHASES.indexOf('draft'));
+  });
+});

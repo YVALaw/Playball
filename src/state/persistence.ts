@@ -57,6 +57,17 @@ export interface SaveFile {
    * before the offseason became a sequence still load.
    */
   phase?: unknown;
+  /**
+   * How far into the offseason this career has ever got.
+   *
+   * Not derivable from `phase`, and the difference is load bearing. Walking
+   * back a step moves `phase` and deliberately leaves this where it was, so a
+   * save taken while the player is looking at an earlier step records the two
+   * disagreeing — which is exactly the state that has to survive. Recomputing
+   * it from `phase` on the way in would hand the offseason permission to run
+   * the departures a second time.
+   */
+  furthestPhase?: unknown;
   review?: unknown;
   outcome?: unknown;
   /** The postseason of the current year, if it has been played. */
@@ -267,6 +278,8 @@ function db(): Promise<IDBPDatabase<PlayballDB>> {
 
 export interface SaveExtras {
   phase?: unknown;
+  /** The furthest step this career has reached. See `SaveFile`. */
+  furthestPhase?: unknown;
   review?: unknown;
   outcome?: unknown;
   history?: unknown[];
@@ -331,6 +344,14 @@ export function buildSaveFile(
     // enough — this record is built field by field, so anything not named here
     // is silently dropped no matter what the type says it accepts.
     ...(extras.phase ? { phase: extras.phase } : {}),
+    // Tested for presence rather than for truth, unlike every line around it.
+    // Nought is a real value here — it means the offseason has only ever been
+    // as far as its first step — and the truthiness idiom this record is built
+    // on would throw it away and let a reload believe the departures had never
+    // run.
+    ...(extras.furthestPhase !== undefined
+      ? { furthestPhase: extras.furthestPhase }
+      : {}),
     ...(extras.review ? { review: extras.review } : {}),
     ...(extras.outcome ? { outcome: extras.outcome } : {}),
     // Same rule again, and this one is the easiest of the lot to lose: an inbox
@@ -373,6 +394,7 @@ export interface LoadedDynasty {
   jobSearch: unknown;
   /** Where the offseason sequence had got to, and the verdict behind it. */
   phase: unknown;
+  furthestPhase: unknown;
   review: unknown;
   outcome: unknown;
   /** Empty for every save written before the inbox existed. */
@@ -429,6 +451,7 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     postseasonSeen: file.postseasonSeen ?? [],
     jobSearch: file.jobSearch ?? false,
     phase: file.phase ?? null,
+    furthestPhase: file.furthestPhase ?? null,
     review: file.review ?? null,
     outcome: file.outcome ?? null,
     inbox: file.inbox ?? [],

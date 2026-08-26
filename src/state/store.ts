@@ -2602,6 +2602,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         jobSearch: get().jobSearch,
         coach: get().coach,
         phase: get().phase,
+        furthestPhase: get().furthestPhase,
         review: get().lastReview,
         outcome: get().lastOutcome,
         inbox: get().inbox,
@@ -2694,6 +2695,26 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // rather than stranding the player on the dashboard with a week of
       // recruiting budget already spent and nowhere to spend the rest.
       phase: (loaded.phase ?? null) as Phase,
+      /**
+       * And how far he had got, which is a different fact from where he is.
+       *
+       * Left at nought, a reload greyed out every step the player had already
+       * walked: the rail refuses anything past this number, so a career picked
+       * up at recruiting could not look back at its own awards or draft.
+       *
+       * Falling back to the position of `phase` is the obvious repair and is
+       * wrong in a way worth naming. Walking back a step moves `phase` and
+       * deliberately leaves this alone, and the inbox — reachable from the top
+       * bar at any moment — writes a save when it is read. So a save genuinely
+       * can say `coach` while the career had reached recruiting, and deriving
+       * from it would hand the draft step permission to run the departures a
+       * second time: another class graduated, and any man kept out of the draft
+       * paid for and lost. The fallback is therefore only for a save written
+       * before this was stored, where no better answer exists.
+       */
+      furthestPhase: typeof loaded.furthestPhase === 'number'
+        ? loaded.furthestPhase
+        : Math.max(0, PHASES.indexOf((loaded.phase ?? null) as Exclude<Phase, null>)),
       lastReview: (loaded.review ?? null) as Review | null,
       lastOutcome: (loaded.outcome ?? null) as SeasonOutcome | null,
       version: get().version + 1,
