@@ -145,8 +145,14 @@ const MOUND = '#b89a75';
 const GRASS_LIGHT = '#456f4d';
 const TRACK = '#b08a5e';
 const WALL = '#2f5a3c';
+const WALL_CAP = '#c9d2c5';
 const FENCE = '#cfd6cd';
 const POLE = '#9aa3a8';
+const FOUL_POLE = '#d9b83a';
+const BOARD = '#1c2430';
+const BOARD_FACE = '#31435f';
+/** The defense. The other uniform on the field. */
+const FIELDER = '#2b3b55';
 /** What the ball flashes on arrival: an out, and a man aboard. */
 const OUT_RED = '#c4382a';
 const HIT_BLUE = '#2f6fb0';
@@ -370,6 +376,13 @@ function Plate({ tick }: { tick: number }) {
  * The arc height scales with distance, which is what separates a bloop into
  * shallow left from a drive to the gap without either being animated specially.
  */
+/** When the outcome blink ends and the throw back in begins, after arrival. */
+const PICKUP_AT = 0.62;
+/** How long the throw back to the mound takes. */
+const RETURN_DUR = 0.55;
+/** Where a fielded ball goes home to: the pitcher's spot. */
+const MOUND_SPOT = new THREE.Vector3(0, 0, -1.71);
+
 function BallInFlight({ hit }: { hit: BallHit }) {
   const ball = useRef<THREE.Mesh>(null);
   const mark = useRef<THREE.Mesh>(null);
@@ -390,23 +403,34 @@ function BallInFlight({ hit }: { hit: BallHit }) {
 
     const b = ball.current;
     if (b) {
-      // Along the ground in a straight line; the shape is all in the height.
-      const travel = homer ? p * 1.25 : p;
-      b.position.set(target.x * travel, 0, target.z * travel);
-      b.position.y = flightHeight(hit.kind, travel, distance, homer);
-      // On arrival the ball itself takes the colour of the outcome and blinks,
-      // so a play reads off the field before the log line is scanned. Three
-      // pulses is enough to register and short enough not to hold up the
-      // next call.
       const mat = b.material as THREE.MeshBasicMaterial;
-      if (p >= 1) {
-        const since = t.current - flight;
-        const blink = Math.sin(since * 22) > 0;
-        mat.color.set(blink ? (hit.hit ? HIT_BLUE : OUT_RED) : CREAM);
-      } else {
+      const since = t.current - flight;
+
+      if (!homer && since >= PICKUP_AT) {
+        // The throw back in. A ball that lay in left field until the next
+        // pitch teleported it home was the field admitting it was a picture;
+        // the fielder who ran it down lobs it back to the mound instead.
+        const k = Math.min(1, (since - PICKUP_AT) / RETURN_DUR);
+        b.position.lerpVectors(target, MOUND_SPOT, k);
+        b.position.y = BALL_REST + Math.sin(k * Math.PI) * 1.15;
         mat.color.set(CREAM);
+        b.visible = k < 1;
+      } else {
+        // Along the ground in a straight line; the shape is all in the height.
+        const travel = homer ? p * 1.25 : p;
+        b.position.set(target.x * travel, 0, target.z * travel);
+        b.position.y = flightHeight(hit.kind, travel, distance, homer);
+        // On arrival the ball itself takes the colour of the outcome and
+        // blinks, so a play reads off the field before the log line is
+        // scanned. Three pulses, then the throw in above takes over.
+        if (p >= 1) {
+          const blink = Math.sin(since * 22) > 0;
+          mat.color.set(blink ? (hit.hit ? HIT_BLUE : OUT_RED) : CREAM);
+        } else {
+          mat.color.set(CREAM);
+        }
+        b.visible = homer ? t.current < flight + 0.5 : true;
       }
-      b.visible = t.current < flight + (homer ? 0.5 : 0.62);
     }
 
     const m = mark.current;
@@ -439,6 +463,105 @@ function BallInFlight({ hit }: { hit: BallHit }) {
           opacity={0.9}
         />
       </mesh>
+    </group>
+  );
+}
+
+/**
+ * Where the nine defenders stand, in world space.
+ *
+ * The same normalized spots the engine's landing table thinks in, run through
+ * `toWorld` by hand — except the catcher, who belongs behind the plate where
+ * the camera can see him, not on top of it.
+ */
+const STATIONS: readonly [number, number, number][] = [
+  [0, 0, 0.55],                      // C
+  [0, 0, -1.71],                     // P
+  [2.32, 0, -2.88],                  // 1B
+  [1.68, 0, -3.06],                  // 2B
+  [-1.68, 0, -3.06],                 // SS
+  [-2.32, 0, -2.88],                 // 3B
+  [-4.32, 0, -6.48],                 // LF
+  [0, 0, -7.74],                     // CF
+  [4.32, 0, -6.48],                  // RF
+];
+
+/** How fast a defender covers ground. A touch quicker than a runner. */
+const FIELDER_SPEED = 3.9;
+
+/**
+ * The defense, which used to not exist.
+ *
+ * Nine dots in the other uniform, standing where their positions stand. When a
+ * ball is put in play the nearest man runs it down — arriving around the time
+ * the ball does — waits out the outcome blink, and walks back to his station
+ * while the throw comes in. Presentation only: the engine has already decided
+ * everything, this is the field acting it out.
+ */
+function Defense({ ball }: { ball: BallHit | null }) {
+  const refs = useRef<(THREE.Mesh | null)[]>([]);
+  const t = useRef(0);
+
+  // Everything at the dots' own height, so a distance check never fights a
+  // constant vertical offset it can only lose to.
+  const stations = useMemo(
+    () => STATIONS.map((s) => new THREE.Vector3(s[0], 0.26, s[2])), [],
+  );
+
+  const chase = useMemo(() => {
+    if (!ball || ball.y > 1) return null;
+    const [tx, , tz] = toWorld(ball.x, ball.y);
+    const target = new THREE.Vector3(tx, 0.26, tz);
+    let best = 0;
+    let bestD = Infinity;
+    stations.forEach((s, i) => {
+      // The battery stays home: the catcher never chases, and the pitcher
+      // only fields what is practically at his feet.
+      if (i === 0) return;
+      const d = s.distanceToSquared(target);
+      const handicap = i === 1 ? 6 : 0;
+      if (d + handicap < bestD) { bestD = d + handicap; best = i; }
+    });
+    const flight = flightSeconds(ball.kind, target.length(), false);
+    return { i: best, target, flight };
+  }, [ball?.tick, stations]);
+
+  useEffect(() => { t.current = 0; }, [ball?.tick]);
+
+  useFrame((_, delta) => {
+    t.current += delta;
+    stations.forEach((station, i) => {
+      const m = refs.current[i];
+      if (!m) return;
+      // Where this man should be heading right now: the ball while the play
+      // is live, his station once the throw is on its way in.
+      let goal = station;
+      if (chase !== null && i === chase.i
+        && t.current <= chase.flight + PICKUP_AT + RETURN_DUR) {
+        goal = chase.target;
+      }
+      const gap = m.position.distanceTo(goal);
+      if (gap < 0.02) return;
+      const step = FIELDER_SPEED * delta;
+      if (gap <= step) { m.position.copy(goal); return; }
+      m.position.addScaledVector(
+        goal.clone().sub(m.position).divideScalar(gap), step,
+      );
+    });
+  });
+
+  return (
+    <group>
+      {stations.map((s, i) => (
+        <mesh
+          key={i}
+          ref={(el) => { refs.current[i] = el; }}
+          position={[s.x, s.y, s.z]}
+        >
+          <sphereGeometry args={[0.28, 10, 8]} />
+          <meshBasicMaterial color={FIELDER} />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -551,6 +674,67 @@ function Field() {
         <meshBasicMaterial color={FENCE} side={THREE.DoubleSide} transparent opacity={0.5} />
       </mesh>
 
+      {/* The wall wears a cap rail, which is most of what makes it read as a
+          wall rather than a green cliff the grass falls off. */}
+      <mesh position={[0, 0.86, -3.4]}>
+        <cylinderGeometry
+          args={[8.94, 8.94, 0.07, 32, 1, true, -Math.PI * 0.25, Math.PI * 1.5]}
+        />
+        <meshBasicMaterial color={WALL_CAP} side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* Foul poles, where the lines meet the wall. Yellow, because eighty
+          years of ballparks have made that the one colour that means "fair
+          ends here" without a label. */}
+      {[1, -1].map((side) => (
+        <mesh key={side} position={[side * 7.76, 0.95, -7.76]}>
+          <cylinderGeometry args={[0.06, 0.06, 1.9, 6]} />
+          <meshBasicMaterial color={FOUL_POLE} />
+        </mesh>
+      ))}
+
+      {/* Batter's boxes and the on-deck circles: chalk, not furniture. */}
+      {[1, -1].map((side) => (
+        <mesh
+          key={`box-${side}`}
+          position={[side * 0.62, 0.004, 0.12]}
+          rotation={[-Math.PI / 2, 0, 0]}
+        >
+          <planeGeometry args={[0.4, 0.68]} />
+          <meshBasicMaterial color={CREAM} transparent opacity={0.28} />
+        </mesh>
+      ))}
+      {[1, -1].map((side) => (
+        <mesh
+          key={`deck-${side}`}
+          position={[side * 1.75, 0.004, 1.05]}
+          rotation={[-Math.PI / 2, 0, 0]}
+        >
+          <circleGeometry args={[0.26, 14]} />
+          <meshBasicMaterial color={CREAM} transparent opacity={0.3} />
+        </mesh>
+      ))}
+
+      {/* The scoreboard over center field. It shows nothing legible at this
+          size and does not need to; a dark slab on legs above the wall is
+          what says "ballpark" from four hundred feet. */}
+      <group position={[0, 0, -12.75]}>
+        {[1, -1].map((side) => (
+          <mesh key={side} position={[side * 1.0, 0.6, 0]}>
+            <cylinderGeometry args={[0.06, 0.06, 1.2, 5]} />
+            <meshBasicMaterial color={POLE} />
+          </mesh>
+        ))}
+        <mesh position={[0, 1.75, 0]}>
+          <boxGeometry args={[2.7, 1.2, 0.14]} />
+          <meshBasicMaterial color={BOARD} />
+        </mesh>
+        <mesh position={[0, 1.75, 0.08]}>
+          <planeGeometry args={[2.3, 0.8]} />
+          <meshBasicMaterial color={BOARD_FACE} />
+        </mesh>
+      </group>
+
       {/* Light towers. Specks at this size, and the silhouette is the point. */}
       {[[-7.4, 1.2], [7.4, 1.2], [-5.6, -9.6], [5.6, -9.6]].map(([x, z], i) => (
         <group key={i} position={[x as number, 0, z as number]}>
@@ -623,7 +807,9 @@ function DemandDriver({ stamp }: { stamp: string }) {
   const invalidate = useThree((s) => s.invalidate);
   useEffect(() => {
     let raf = 0;
-    const until = performance.now() + 3500;
+    // Long enough for the slowest sequence in the scene: a deep fly, the
+    // outcome blink, the throw back in, and the fielder's walk to his station.
+    const until = performance.now() + 4600;
     const loop = (): void => {
       invalidate();
       if (performance.now() < until) raf = requestAnimationFrame(loop);
@@ -701,6 +887,7 @@ export function Diamond3D({
           <CameraRig />
           <Field />
           <Plate tick={scoreTick} />
+          <Defense ball={ball} />
           {([1, 2, 3] as const).map((b) => <Base key={b} at={b} />)}
           {runners.map((r) => (
             <RunnerDot

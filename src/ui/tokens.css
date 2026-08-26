@@ -215,6 +215,17 @@ button {
 .fade-in { animation: fadeIn 260ms ease-out both; }
 .pulse   { animation: pulseClay 1.8s ease-in-out infinite; }
 
+/* The little ring a button wears while it pretends to think. Functional
+   feedback rather than decoration, so reduced motion keeps it. */
+@keyframes spinRound { to { transform: rotate(360deg); } }
+.spinner {
+  display: inline-block; width: 11px; height: 11px;
+  border: 2px solid currentColor; border-top-color: transparent;
+  border-radius: 50%;
+  vertical-align: -2px;
+  animation: spinRound 700ms linear infinite;
+}
+
 /* A screen arriving. Applied by the frame, so every screen gets it without
    remembering to. */
 .screen-in { animation: riseIn 260ms cubic-bezier(.2, .8, .3, 1) both; }

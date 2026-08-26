@@ -43,6 +43,8 @@ export function Manage() {
   const autoFinish = useDynasty((s) => s.autoFinish);
   const endManagedGame = useDynasty((s) => s.endManagedGame);
   const startManagedGame = useDynasty((s) => s.startManagedGame);
+  const bracket = useDynasty((s) => s.bracket);
+  const go = useDynasty((s) => s.go);
   const [modal, setModal] = useState<Modal>(null);
   const [scoreTick, setScoreTick] = useState(0);
   const [ball, setBall] = useState<BallHit | null>(null);
@@ -50,6 +52,20 @@ export function Manage() {
   const lastRuns = useRef(0);
   const logRef = useRef<HTMLDivElement>(null);
   void version;
+
+  /*
+    One press is one call. Reported from testing: "right now i can rapid fire
+    the first button" — two taps a heartbeat apart submitted two plate
+    appearances, the second on a situation the manager never saw. Long enough
+    to swallow a double-tap, short enough that deliberate play never meets it.
+  */
+  const lastCall = useRef(0);
+  const once = (fn: () => void) => (): void => {
+    const now = Date.now();
+    if (now - lastCall.current < 500) return;
+    lastCall.current = now;
+    fn();
+  };
 
   /**
    * The log follows the game down.
@@ -191,7 +207,12 @@ export function Manage() {
         82px. What went is the giant 22px run total and the full school names —
         the abbreviation and a bold R say the same thing in a third of the space.
       */}
-      <div style={{ flex: 'none', background: 'var(--navy)', padding: '8px 12px 9px' }}>
+      {/* The game owns the whole screen now — no app header above — so the
+          scoreboard is the top of the viewport and clears the notch itself. */}
+      <div style={{
+        flex: 'none', background: 'var(--navy)', padding: '8px 12px 9px',
+        paddingTop: 'calc(env(safe-area-inset-top) + 8px)',
+      }}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           height: 13,
@@ -268,27 +289,46 @@ export function Manage() {
         </div>
         <div style={{ minWidth: 0, flex: 'none' }}>
           {d ? (
+            /*
+              Both halves of the matchup, always. The strip used to name only
+              your own man, which meant managing your defense against a batter
+              the screen refused to identify. Two short rows: who is up, who is
+              throwing, your side in ink and theirs no dimmer than readable.
+            */
             <>
-              <div className="label">
-                {d.side === 'offense' ? 'AT THE PLATE' : 'ON THE MOUND'}
+              <div style={{
+                display: 'flex', alignItems: 'baseline', gap: 7, minWidth: 0,
+              }}>
+                <span className="label" style={{ flex: 'none', width: 44 }}>AT BAT</span>
+                <PlayerName
+                  id={d.batter.id}
+                  style={{
+                    font: "700 13px/1.15 var(--display)", textTransform: 'uppercase',
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    color: d.side === 'offense' ? 'var(--ink)' : 'var(--dim)',
+                  }}
+                >{d.batter.name}</PlayerName>
+                <span style={{
+                  flex: 'none', font: "400 9px var(--mono)", color: 'var(--dim)',
+                  whiteSpace: 'nowrap',
+                }}>{d.batter.pos} · {d.batter.bats}</span>
               </div>
               <div style={{
-                display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 2,
+                display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 2, minWidth: 0,
               }}>
+                <span className="label" style={{ flex: 'none', width: 44 }}>PITCHING</span>
                 <PlayerName
-                  id={d.side === 'offense' ? d.batter.id : d.pitcher.id}
+                  id={d.pitcher.id}
                   style={{
-                    font: "700 15px/1.1 var(--display)", textTransform: 'uppercase',
+                    font: "700 13px/1.15 var(--display)", textTransform: 'uppercase',
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    color: d.side === 'defense' ? 'var(--ink)' : 'var(--dim)',
                   }}
-                >{d.side === 'offense' ? d.batter.name : d.pitcher.name}</PlayerName>
+                >{d.pitcher.name}</PlayerName>
                 <span style={{
-                  font: "400 9.5px var(--mono)", color: 'var(--dim)', whiteSpace: 'nowrap',
-                }}>
-                  {d.side === 'offense'
-                    ? `${d.batter.pos} · ${d.batter.bats} vs ${d.pitcher.throws}HP`
-                    : `${d.pitcher.throws}HP`}
-                </span>
+                  flex: 'none', font: "400 9px var(--mono)", color: 'var(--dim)',
+                  whiteSpace: 'nowrap',
+                }}>{d.pitcher.throws}HP</span>
               </div>
             </>
           ) : (
@@ -344,7 +384,7 @@ export function Manage() {
             {d.options.map((o) => (
               <button
                 key={o.tactic}
-                onClick={() => o.available && submitTactic(o.tactic)}
+                onClick={once(() => o.available && submitTactic(o.tactic))}
                 disabled={!o.available}
                 style={{
                   padding: '7px 8px', textAlign: 'left', flex: 'none',
@@ -379,7 +419,13 @@ export function Manage() {
                 ? live.benchAvailable.length === 0
                 : live.bullpenAvailable.length === 0}
             >{d.side === 'offense' ? 'PINCH HIT' : 'BULLPEN'}</Small>
-            <Small onClick={autoFinish}>SIM THE REST</Small>
+            <Small onClick={once(autoFinish)}>SIM THE REST</Small>
+            {/* The way out without ending anything. The game keeps, the
+                dashboard's PLAY BALL turns into BACK TO THE GAME, and June
+                does not get this door because June's frame is the bracket. */}
+            {bracket === null && (
+              <Small onClick={() => go('home')}>BACK TO THE DESK</Small>
+            )}
           </>
         ) : (
           <>

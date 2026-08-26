@@ -1406,6 +1406,25 @@ function landingFor(
     return { x: clamp(dir * 1.15, -0.95, 0.95), y: 1.08 };
   }
 
+  /*
+    An extra-base hit went PAST the man, and the landing has to say so.
+
+    The fielder charged with the play is the man who eventually ran it down,
+    and placing the ball at his station told the story backwards: a triple
+    "fielded by the first baseman" (it went down the line past him) drew a
+    ball that died at first base while the log read triple. Reported from
+    testing, in exactly those words. A double carries to the gap and a triple
+    to the wall, pushed along the fielder's side of the field — still derived
+    from the same stable hash, still no dice.
+  */
+  if (event === 'double' || event === 'triple') {
+    const deep = event === 'double' ? 0.68 : 0.88;
+    const y = clamp(Math.max(spot.y + 0.06, deep) + jitter() * 0.3, 0, 1.0);
+    const dir = spot.x === 0 ? jitter() * 4 : spot.x * 1.35;
+    const limit = y * 0.94;
+    return { x: clamp(dir + jitter(), -limit, limit), y };
+  }
+
   const depth =
     kind === 'fly' ? 0.10
     : kind === 'line' ? 0.03
