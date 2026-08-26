@@ -168,6 +168,8 @@ export class TeamState {
   readonly team: Team;
   readonly isHome: boolean;
   readonly order: Hitter[];
+  /** The starting nine, frozen before any substitution touches `order`. */
+  readonly starters: readonly Hitter[];
   spot = 0;
   runs = 0;
   hits = 0;
@@ -253,6 +255,11 @@ export class TeamState {
     this.team = team;
     this.isHome = isHome;
     this.order = lineup.slice(0, 9);
+    // The nine who took the field for the first pitch. `order` is mutated by
+    // every pinch hit, so by the last out it says who *finished* the game —
+    // the box score needs who started it, both to label substitutes and to
+    // print a starter who was lifted before he ever batted.
+    this.starters = this.order.slice();
     const starter = team.rotation[starterIndex] ?? team.rotation[0];
     if (!starter) throw new Error(`${team.name} has no starting pitcher`);
     this.pitcher = starter;
@@ -680,6 +687,11 @@ export function createHalfInning(
       const buntOuts = outs;
       const res = sacrifice(bases, batter, outs, rng, bLine, pLine, blame, pitcher, note);
       addOuts(res.outs);
+      // A beaten-out bunt is a hit everywhere a hit is counted. The batting and
+      // pitching lines already took it inside `sacrifice`; the team counter —
+      // the H column of the line score — did not, so the box score's team hits
+      // ran one short of its own player lines every time a bunt got down.
+      if (res.hit) bat.hits++;
       pLine.bf++;
       // The pitch he bunted. It was thrown, the event stream has always said so,
       // and the pitching line did not count it — so a game with a bunt in it
@@ -1621,7 +1633,7 @@ function sacrifice(
   bLine: BattingLine, pLine: PitchingLine,
   blame: Map<Hitter, Pitcher>, pitcher: Pitcher,
   note?: Say,
-): { outs: number; text: string; scored: Hitter[] } {
+): { outs: number; text: string; scored: Hitter[]; hit?: boolean } {
   const scored: Hitter[] = [];
   const leadIndex = bases[2] ? 2 : bases[1] ? 1 : bases[0] ? 0 : -1;
   if (leadIndex < 0) {
@@ -1642,7 +1654,9 @@ function sacrifice(
     const retired = advanceOnHit(
       bases, batter, 1, rng, scored, blame, pitcher, RUNNING.balanced, 50, note,
     );
-    return { outs: retired, text: 'beats out a bunt single!', scored };
+    // Flagged so the caller can credit the *team* hit column too — the batting
+    // and pitching lines above are per-man books and do not reach it.
+    return { outs: retired, text: 'beats out a bunt single!', scored, hit: true };
   }
 
   // Botched: the lead runner is forced, which is the disaster case.

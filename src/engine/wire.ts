@@ -84,7 +84,10 @@ export function wire(season: SeasonState, limit = 24): WireItem[] {
         team: winner,
         against: loser,
         weight: 20 + margin,
-        text: `${name(winner)} runs ${abbr(loser)} out of the yard, ${Math.max(g.homeRuns, g.awayRuns)}-${Math.min(g.homeRuns, g.awayRuns)}`,
+        // Both sides by name. The loser used to be an abbreviation in the same
+        // sentence that spelled the winner out — "Atchafalaya State runs UTC
+        // out of the yard" reads like two different papers filed one line.
+        text: `${name(winner)} runs ${name(loser)} out of the yard, ${Math.max(g.homeRuns, g.awayRuns)}-${Math.min(g.homeRuns, g.awayRuns)}`,
       });
     }
   }

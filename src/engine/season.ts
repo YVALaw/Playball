@@ -1379,8 +1379,14 @@ export function playGame(
 /** A hitter's day, the way a newspaper would set it. */
 function battingLines(side: GameResult['home']): BoxLine[] {
   const out: BoxLine[] = [];
+  // Who actually started, so a substitute can be labelled as one. `pos` is the
+  // man's roster position, and printing it for a pinch hitter produced two DH
+  // rows in one box while saying nothing about how he got into the game.
+  const started = new Set(side.starters.map((p) => p.id));
   for (const l of side.batting.values()) {
-    if (l.ab === 0 && l.bb === 0 && l.hbp === 0) continue;
+    // Anybody with a batting entry appeared at the plate — including a man
+    // whose only trip was a sacrifice, which takes no time at bat. The old
+    // filter on ab/bb/hbp dropped him from the box with his RBI.
     const extras: string[] = [];
     if (l.d) extras.push(`${l.d} 2B`);
     if (l.t) extras.push(`${l.t} 3B`);
@@ -1390,9 +1396,17 @@ function battingLines(side: GameResult['home']): BoxLine[] {
     if (l.k) extras.push(`${l.k} K`);
     if (l.sb) extras.push(`${l.sb} SB`);
     out.push({
-      id: l.player.id, name: l.player.name, slot: l.player.pos,
+      id: l.player.id, name: l.player.name,
+      slot: started.has(l.player.id) ? l.player.pos : 'PH',
       line: `${l.h}-${l.ab}${extras.length ? ', ' + extras.join(', ') : ''}`,
     });
+  }
+  // A starter lifted before he ever batted still played the field and belongs
+  // in the book — he used to vanish from his own game entirely.
+  for (const p of side.starters) {
+    if (!side.batting.has(p.name)) {
+      out.push({ id: p.id, name: p.name, slot: p.pos, line: '0-0' });
+    }
   }
   return out;
 }
