@@ -302,6 +302,34 @@ half the achievements are all reading from the same book.
   properties this entry was written for still hold and are still pinned by tests
   — a national champion is never introduced as a journeyman, and twenty quiet
   years does not make anybody renowned. See §5.
+- **B21 · Give every title its own list of achievements** — `DECIDED`, not yet
+  built. The ladder is honest now and it is also lopsided: measured at year
+  thirty, **seventy one of ninety six coaches are Journeyman**, four are
+  Unproven, and the top four rungs share the remaining twenty one. That is one
+  word doing almost all the work, and it is a word that means "has coached a
+  game" — so most of the league wears a title that says nothing about them.
+
+  The cause is that the counters run out below a conference title. `CoachState`
+  knows about bids, conference titles, regional titles and national titles, and
+  nothing else, so there is nothing to spend on the bottom half of the ladder:
+  a coach can take a cellar program to four straight winning seasons and stay
+  exactly where a man who has coached one game sits.
+
+  What this wants is **a named list of achievements per rung**, not a threshold
+  on a single counter — the same shape as the ten one-time achievements already
+  in the game, and probably drawing on them. Things the bottom of the ladder
+  could honestly be made of: a winning season, a run of them, a conference
+  tournament appearance (the top six of twelve — reaching June at all), a
+  finish above where the program was picked, surviving a rebuild, taking a
+  program up a star tier. Any of those would let an ordinary good coach at an
+  ordinary program earn a word that fits him.
+
+  Two things to settle when it is designed. Several of those need a counter
+  that neither `CoachState` nor `RivalCoach` carries, and rival coaches wear
+  these titles too, so anything added has to be cheap enough to hold for
+  ninety-five of them and has to survive a save. And the distribution is the
+  test: no rung should hold most of the league, and the top should stay rare —
+  five Legendary in ninety-six at thirty years is right, and should not move.
 - **B5 · Prestige penalty for two bad seasons running** — SHIPPED.
   `CoachState.badRun` counts consecutive `missed`/`failed` verdicts;
   `badRunPenalty` is `5 + (badRun − 2) × 3` off coach prestige from the second
