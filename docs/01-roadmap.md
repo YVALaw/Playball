@@ -252,62 +252,49 @@ get sacked and get poached). What genuinely remains part-done:
 
 ## What is next, in order
 
-The ordering principle is that a system should not be built on top of data that
-is known to be wrong, and that the things a player touches come before the
-things that surround them. The previous list's first five items — the
-data-integrity bugs, ages and the arguable draft, badges and tendencies, and
-the rest of the career — have all shipped and been ticked above; what follows
-is what is genuinely left.
+**This list is now a pointer.** The scope, the platform, the money and the
+depth question were all settled in August 2026, and the route from here is
+fifteen staged steps in **`07-v1-plan.md`** — which supersedes the ordering
+that used to live in this section. What follows is the two-minute version.
 
-1. **The coach title ladder.** B21, and it is the only feedback item with a
-   design brief already written: a named list of achievements per rung, cheap
-   enough to hold for ninety-five rivals, with the distribution as the test —
-   no rung holding most of the league, the top staying rare. The eventual
-   per-title gameplay boost waits behind it.
+The one decision that shapes all of it: **a player chooses how deep a game he
+wants**, at coach creation and changeable after. The engine always models
+everything; the mode decides what he is *asked* about, and anything that
+touches the league is on for everybody or off for everybody. See *Decisions
+locked* in `06-backlog.md`.
 
-2. **The minigame, presented properly.** The largest piece of interface work
-   left: a bigger field, fielders labelled by position, a base-state banner,
-   batter and pitcher as cards with their season lines, count and outs as
-   indicators, calls as wide buttons with their reason underneath, and the
-   two controls that do not exist yet — LINE SCORE and REPLAY. Backlog
-   section C carries the detail and the constraints.
+1. **Stop the game lying, and stop it losing things** — A13's elimination card,
+   the tournament cards, a thirty-season soak, and resuming a game a phone call
+   interrupted (H14).
+2. **How you want to play** — the depth preset, per-system toggles, and the
+   settings sheet that has never existed (H18).
+3. **The dugout** — the presentation rebuild, plus mound visits, the bench
+   coach taking over, opponent scouting and pitch calling (H11–H13, H15).
+4. **The coach** — creation as an interview, personality badges, assistant
+   coaches, press conferences, the JOBS tab, the title ladder (H1, H6, H7).
+5. **The roster becomes a roster** — depth chart, real DH, redshirts, position
+   changes, academic eligibility, two-way players (H5, H10).
+6. **Players as people** — injuries, season fatigue, playing time, morale,
+   captains (H8).
+7. **The transfer portal.**
+8. **The economy** — budget rebalance, swaying, facilities.
+9. **The world** — conference realignment, rivalry recognition, series stakes
+   (H3, H4, H19).
+10. **The dynasty remembers** — alumni in the professional game, signature
+    moments (H2, H9).
+11. **Broadcast** — big-moment presentation, sound and haptics, the wire
+    upgraded, emblems, awards night (H16, H17, H20).
+12. **The simulation's last mile** — run-expectancy AI, park geometry, the rest
+    of the 3D track, the measurement debt.
+13. **The store** — the S+ player and Play Billing.
+14. **The phone** — Capacitor and an APK on real hardware. Deferred to here
+    because there is no Android device yet; the two errands at the top of the
+    plan are what keeps that safe.
+15. **Ship.**
 
-3. **A13, the elimination card that buries a living team.** A conference
-   final loser has finished second and is on his way to a regional; the card
-   still tells him his season is over. Small, and it is the game lying to a
-   player at the moment he most needs the truth.
-
-4. **The other design passes the feedback opened.** Recruiting budget balancing
-   and player swaying, school visual identities, awards-night presentation
-   (flip cards plus a three.js celebration for a winner of your own), and
-   the settings sheet the portrait menu is waiting for. All parked in backlog
-   section C by agreement; none may be built before it is specified.
-
-5. ~~**The postseason, expanded.**~~ **Shipped, August 26** — and bigger than
-   the locked sketch: eight-team double-elimination conference tournaments
-   with the top four advancing, sixteen best-of-three regional championship
-   series, a twenty-team national field with top-four protection and at-large
-   bids, an opening round for seeds 13–20, two eight-team double-elimination
-   national brackets under a winners/losers toggle, and a best-of-three
-   championship series. The backlog's locked-decisions entry records the
-   final shape; `engine/doubleElim.ts` is the new machinery.
-
-6. **The depth systems, one design pass each.** Backlog section C — the
-   transfer portal, injuries, morale, opponent scouting, a progression rework
-   and the rest. Listing them is not designing them.
-
-7. **The small unscheduled gameplay.** Redshirts, a depth chart with position
-   eligibility, facilities to spend on, recruits drafted out of high school,
-   an AI that reads a run-expectancy matrix. Backlog G2; each folds into a
-   stage above when somebody wants it.
-
-8. **Shipping.** Capacitor, a first APK on a real device, the back button, a
-   keystore generated and backed up somewhere permanent, a signed AAB, a store
-   listing, onboarding for the first ten minutes, and the accessibility work —
-   minus what the tutorial system already covers, which since the overhaul is
-   most of the first ten minutes. Removing SIM SEASON **and the loaded
-   Pascagoula Tech test roster** belongs to this stage too. Last, and
-   blocking nothing.
+Stages 5 → 6 → 7 are a chain and cannot be reordered. Stage 2 is foundational.
+Stages 9, 10 and 11 are independent and are the ones to move earlier when the
+big systems get heavy.
 
 ## Missing and unscheduled
 

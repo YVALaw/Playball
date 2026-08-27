@@ -1,9 +1,9 @@
 # The v1.0 Plan
 
-**Written:** August 26, 2026 · **Revised:** August 26, 2026 (stage order)
+**Written:** August 26, 2026 · **Revised:** August 26, 2026 (feature pass)
 **Companion docs:** `01-roadmap.md` for the order at a glance, `06-backlog.md`
-for the decisions behind each item, `05-systems-reference.md` for what the
-game does today.
+§H for the feature set and the argument behind each, `05-systems-reference.md`
+for what the game does today.
 
 ---
 
@@ -11,257 +11,329 @@ game does today.
 
 | Question | Answer |
 |---|---|
-| Scope | **Everything.** Polish, the parked design passes, *and* the depth systems. |
+| Scope | **Everything.** Polish, the parked design passes, the depth systems, and the August feature set. |
 | Platform | **Android first**, iOS when the means exist. |
 | Money | **Free, with the S+ player as an in-app purchase.** |
 | Date | **None.** Ship when it is right. |
 | The phone | **No Android device yet**, so the device work waits until late. |
+| Depth | **Two ways to play**, chosen at creation and changeable after. See below. |
 
-## Two errands that cost nothing and should happen now
+## The decision that shapes everything else
 
-Neither is a stage and neither needs a phone.
+**A player chooses how deep a game he wants, and the game respects it.**
 
-**Create the Play Console app record and the merchant account.** This is a web
-console and a form. It needs no build and no device, and it starts two clocks
-that are otherwise sitting at the end of the project: a merchant account can
-take days to verify, and in-app products cannot be tested until an app record
-exists with something uploaded to a testing track. Doing it now costs an
-afternoon and removes the only genuinely unpredictable wait in the whole plan.
+Coach creation asks whether this is a full roleplay career or a casual one, and
+that answer sets a preset. Everything the feature set adds — press conferences,
+academic eligibility, captains, pitch calling, mound visits, scouting reports —
+sits behind it.
 
-**Take a throttled performance profile in the browser.** The one question the
+Three rules keep that from becoming two games in one codebase, and they are not
+negotiable:
+
+**One. The engine always models everything.** The mode never changes what the
+simulation does; it changes what the player is *asked about*. Casual does not
+turn injuries off, it answers the injury question for you. The moment the mode
+reaches into the engine, the ninety-five rival programs are living in a
+different world from yours and every comparison in the game is a lie.
+
+**Two. Anything that touches the world is on for everybody or off for
+everybody.** Conference realignment, academic eligibility, injuries — these are
+properties of the league, not preferences. A casual player and a full-depth
+player in the same save must see the same league.
+
+**Three. The preset is a preset, not a cage.** Individual toggles sit behind it,
+so "casual, but I want to call pitches" is a thing a person can have, and the
+mode can be changed mid-career without starting over.
+
+## Two errands that cost nothing and need no phone
+
+**Create the Play Console record and merchant account.** A web form that starts
+two clocks otherwise sitting at the end of the project: merchant verification
+takes days, and in-app products cannot be tested until an app record exists.
+
+**Take a throttled performance profile in the browser.** The question the
 deferred phone work leaves open is whether the 3D field holds a frame rate on
-mid-range Android hardware. A Chrome profile with 4× CPU throttling and a
-mobile viewport is not the same measurement, but it is close enough to catch a
-disaster — and a disaster here is the sort that changes the design rather than
-the code, which is exactly what you do not want to discover after the dugout
-has been rebuilt around a bigger field.
-
-**The risk of deferring the device work, stated plainly.** If the field turns
-out not to hold a frame rate on real hardware, the fix may be architectural —
-the 2D diamond becoming the default and 3D becoming the setting, rather than
-the other way round. Stage 2 rebuilds the dugout around a *larger* 3D field.
-The throttled profile above is the cheap hedge against building on sand, and
-it is why it belongs at the top of this document rather than in stage 11.
+mid-range hardware. A Chrome profile at 4× CPU throttle is not the same
+measurement, but it catches a disaster — and a disaster here changes the design
+rather than the code, which matters because stage 3 rebuilds the dugout around
+a *larger* field.
 
 ---
 
-## Stage 1 · Stop the game lying
+## Stage 1 · Stop the game lying, and stop it losing things
 
-**Size:** small · **Value:** high per hour
+**Size:** small–medium · **Value:** high per hour
 
 - **A13** — the elimination card that tells a conference finalist his season is
-  over when second place sends him to a regional. Branch on `placings`, and put
-  the stake on screen *before* the final rather than leaving "the reset" to
-  explain itself.
-- **Tournament win/lose cards** — they carry the biggest emotional moments in
-  the game and are currently a title and two lines in a box.
+  over when second place sends him to a regional.
+- **Tournament win/lose cards** — they carry the biggest moments in the game
+  and are a title and two lines in a box.
 - **A thirty-season soak** — the new postseason machinery has never run more
-  than a few years. Watch for drift, orphaned state, growth in save size, and
-  any June that fails to seat twenty unique national teams.
+  than a few years.
+- **Resume an interrupted game (R1).** Phones interrupt. A backgrounded live
+  game is lost today, because `LiveGame` is a running coroutine with closures
+  on it. The fix is not to serialise the coroutine: persist the **day-start
+  snapshot and the list of decisions made**, and replay them on load. The
+  engine is deterministic and every decision is a small enum, so a replay lands
+  on exactly the same sixth inning. This is the most player-hostile behaviour
+  the game currently has on the platform it is shipping to.
 
-**Exit:** nothing the game says about what happened is false.
+**Exit:** nothing the game says is false, and nothing a phone call can destroy.
 
-## Stage 2 · The dugout
+## Stage 2 · How you want to play
+
+**Size:** medium · **Foundational — everything after it reads this**
+
+- **The depth choice** at coach creation: full roleplay career or casual.
+  Presented as a question about how you like to play, not a difficulty menu.
+- **Per-system toggles** behind the preset, and a way to change the mode
+  mid-career.
+- **The settings sheet (R4)** — sound, haptics, field 2D/3D, text size,
+  reduced motion, tutorials reset, and saves migrating in from the portrait
+  menu. Stored per device rather than in the save: preferences follow the
+  phone, not the dynasty.
+
+**Exit:** every system built after this has a documented answer for what it
+does in casual mode.
+
+**Decisions:** whether there are two modes or three; what the casual preset
+actually turns off; whether the mode is visible anywhere after creation.
+
+## Stage 3 · The dugout
 
 **Size:** large · **Value:** highest of any feature left
 
-The screen a player spends the most time on. Backlog section C carries the
-full brief: a much larger field, fielders labelled by position, a base-state
-banner, batter and pitcher as cards with their season lines, count and outs as
-indicators, calls as wide buttons with their reason underneath, and the two
-controls that do not exist — **LINE SCORE** and **REPLAY**.
+The redesign, plus four things that belong on the same screen.
 
-Constraints: the play log keeps real room, the 3D chunk stays lazy, the 2D
-diamond stays the fallback, and the house identity wins wherever it disagrees
-with the reference.
+- **The presentation rebuild** — a much larger field, fielders labelled by
+  position, a base-state banner, batter and pitcher as cards with their season
+  lines, count and outs as indicators, calls as wide buttons with their reason
+  underneath, and the two missing controls: **LINE SCORE** and **REPLAY**.
+- **Mound visits and pitcher confidence** — a limited resource that settles a
+  wobbling arm.
+- **Let the bench coach take it (R6)** — a third button beside SIM THE REST.
+  Two behaviours worth having: *watch* (the game plays itself with the field
+  animating, so you can just see it) and *to the next moment* (default calls
+  until something worth managing arrives — men in scoring position, late and
+  close, a pitcher on fumes). SIM THE REST is all-or-nothing today, so a
+  player up nine runs faces forty taps or total surrender.
+- **Opponent scouting reports** — spend prep before a series to learn the other
+  side's tendencies. The tendencies already exist and are already hidden until
+  watched; this is the other way to learn them.
+- **Pitch-by-pitch calling** — full-depth mode only. Eleven pitch types and
+  per-pitcher repertoires already exist in the engine; this is the UI that
+  spends them.
 
-**Exit:** the dugout matches the reference in substance, in our own clothes.
+**Exit:** the dugout is the best screen in the game.
 
-## Stage 3 · The coach
+## Stage 4 · The coach
 
-**Size:** medium–large · **New stage**
+**Size:** large
 
-The one part of the game that is still a form. Everything else has a system
-behind it; the man you play as is four sliders and a name.
+The last part of the game that is still a form.
 
-- **Creation as an interview, not a form.** Instead of setting skills
-  directly, you answer baseball questions with real positions and real
-  tradeoffs — what you do with a man on second and nobody out, what you say to
-  a junior leaning pro, whether you would rather have the best bat in the
-  league or the deepest staff. The answers derive your skills, your philosophy
-  and your starting experience. Nobody picks "recruiting 40"; everybody has an
-  opinion about the bunt.
-- **Coach personality badges**, drawn from those answers and worn for the whole
-  career the way a player's badges are. PLAYERS' COACH, OLD SCHOOL, CLOSER,
-  DEVELOPER, PROGRAM BUILDER. Each names one channel the way player badges do —
-  they must not be a second, vaguer copy of the four skills.
-- **The JOBS tab** — promised in `Program.tsx`'s own comment and never built. An
-  established coach browses openings, applies, and interviews, rather than
-  waiting for a phone to ring. The hiring ladder and `jobOffers` already exist;
-  what is missing is the door and the application flow.
-- **The coach title ladder (B21)** — a named list of achievements per rung,
-  because seventy-one of ninety-six coaches read "Journeyman" at year thirty.
-  The small per-title gameplay boost is designed *after* the ladder is.
+- **Creation as an interview.** Answer baseball questions with real positions
+  and real tradeoffs; the answers derive your skills, philosophy and starting
+  experience. Nobody picks "recruiting 40"; everybody has an opinion about the
+  bunt.
+- **Coach personality badges** drawn from those answers and worn for a career,
+  the way a player's are. Each names one channel — not a vaguer copy of the
+  four skills.
+- **Assistant coaches.** A pitching coach, a hitting coach, a recruiting
+  coordinator, each with ratings that stack on yours. They get poached, and a
+  good one leaves to become a head coach — which plugs into the carousel that
+  already runs ninety-five rival careers. The single biggest personality
+  addition available.
+- **Press conferences.** Two or three questions after a big win or a bad loss;
+  the answers move prestige, morale and how recruits see you. Reads the
+  personality badges above.
+- **The JOBS tab** — promised in `Program.tsx`'s own comment and never built.
+  Browse openings, apply, interview.
+- **The coach title ladder (B21)** — a named list of achievements per rung.
 
 **Exit:** two coaches with the same record are visibly different men.
 
-**Decisions needed at the door:** how many questions, and whether they are the
-same every time or drawn from a pool; whether badges are visible to the player
-or inferred from behaviour; whether an interview can be failed.
+**Decisions:** what an assistant costs, and in what currency — prestige and
+reputation keep them independent of stage 8's money, which is probably the
+cleaner answer; whether an interview can be failed; whether press conferences
+are skippable in casual.
 
-## Stage 4 · The roster becomes a roster
+## Stage 5 · The roster becomes a roster
 
-**Size:** large · **Unblocks:** stages 5, 6 and part of 7
+**Size:** large · **Unblocks:** 6, 7 and part of 8
 
 - **Depth chart with position eligibility** — a competence per position, not a
   boolean
-- **Real DH handling** — `naturalPos` derives what a generated "DH" actually
-  is; this is the other half, the coach assigning the slot
-- **Redshirts** — no concept exists anywhere; interacts with ages, eligibility
-  and the draft
+- **Real DH handling** — the coach assigns the slot
+- **Redshirts**
 - **Position changes and position-change training**
+- **Academic eligibility** — a man fails a class and sits. Uniquely college,
+  and it makes recruiting a kid with questions a real decision.
+- **Two-way players** — deferred for years and the decision has aged badly.
+  Modern college baseball is full of them, and it is the most distinctive thing
+  in the sport right now. Genuinely hard: one man in two rating systems with
+  fatigue crossing both.
 
 **Exit:** you manage a roster rather than reading a list.
 
 **Decisions:** how position competence is modelled; whether a redshirt is a
-coach's call or a rule; whether position changes are permanent.
+coach's call or a rule; how academic risk is surfaced during recruiting;
+whether a two-way player is a generated type or something a coach makes.
 
-## Stage 5 · Players as people
+## Stage 6 · Players as people
 
-**Size:** large · **Needs:** stage 4
+**Size:** large · **Needs:** stage 5
 
 - **Injuries** — the system that needs a depth chart most
-- **Season-long fatigue and workload** — nothing accumulates across a year
-  today, so a staff can be ridden all season for free
-- **Playing-time expectations** — a recruit promised a job who sits
-- **Morale** — what the three above move, and the reason the portal has teeth
+- **Season-long fatigue and workload**
+- **Playing-time expectations**
+- **Morale**
+- **Team captains and leadership** — a vote or your appointment; captains damp
+  morale swings and mentor freshmen, which gives veterans a role beyond their
+  stat line
 
-**Exit:** a season has attrition, and a bench that notices.
+**Exit:** a season has attrition, and a clubhouse that notices.
 
-**Decisions:** how punishing injuries are; whether they are visible to
-recruiting and the draft; whether morale is a number or only behaviour.
+## Stage 7 · The transfer portal
 
-## Stage 6 · The transfer portal
+**Size:** medium · **Needs:** stages 5 and 6
 
-**Size:** medium · **Needs:** stages 4 and 5
+Both directions or it is not a portal.
 
-Both directions or it is not a portal: men leave because they sit, and men
-arrive because they sat somewhere else.
-
-**Exit:** a roster can change between Junes without a draft or a signing day.
-
-**Decisions:** window or always open; whether you can lose a man mid-season;
-how it interacts with the scholarship count.
-
-## Stage 7 · The economy
+## Stage 8 · The economy
 
 **Size:** medium–large
 
-- **Recruiting budget rebalance** — fitted when the budget did one job; it now
-  signs a class and keeps a drafted player, and facilities make it three
-- **Player swaying** — the draft KEEP pitch is one offer number today
-- **Facilities and budget upgrades** — facilities exist as a recruiting pitch
-  attribute and nothing else
+Recruiting budget rebalance · player swaying as real negotiation · facilities
+and budget upgrades.
 
-**Exit:** every dollar has at least two things it could have been.
+## Stage 9 · The world
 
-**Decisions:** whether facilities money is the recruiting currency or a
-separate program budget; what facilities actually buy.
+**Size:** medium · **New stage**
 
-## Stage 8 · Identity
+- **Conference realignment** — every few years programs move leagues on
+  prestige and market. A twenty-year dynasty where the conferences never change
+  is a spreadsheet; one where your rival defects to a bigger league is college
+  sports.
+- **Rivalry recognition** — `rival` is already in the school data and does
+  almost nothing. Not a trophy: a series record that persists, a wire story
+  every time it is played, a line in both schools' annals, and the rivalry
+  named on the Today card when it comes round.
+- **Series stakes (R8)** — the Today card grows a line of what tonight is
+  worth. Half of this shipped with the overhaul (game number and series lead);
+  what is missing is the rivalry line and the clinching line.
 
-**Size:** medium · **Independent — can move earlier**
+**Exit:** ninety-six programs behave like a country rather than a table.
 
+**Decisions:** how often realignment fires and whether the user's program can
+be moved against his will.
+
+## Stage 10 · The dynasty remembers
+
+**Size:** medium · **New stage**
+
+- **Alumni in the pros** — every departure is already recorded with a reason.
+  Show what happened next: a former recruit in Double-A, one who made an
+  All-Star team, one who washed out. Nothing motivates a long dynasty more,
+  and the data is already in the save.
+- **Signature moments** — a player's card remembers his walk-off, his
+  no-hitter, the day he went five for five. Box scores and feats are already
+  captured; this is the layer that turns them into a life.
+
+**Exit:** a fifteen-year save is a history rather than a number.
+
+## Stage 11 · Broadcast
+
+**Size:** medium–large · **New stage**
+
+- **Big-moment presentation (R5)** — the peaks currently render like a Tuesday
+  groundout. Leverage styling in the managed game, a scoreboard that changes
+  tone during a no-hitter, and one full-screen card for a walk-off, a clincher
+  or a title.
+- **Sound and haptics (R3)** — the game is completely silent. A dozen short
+  samples (bat crack, glove pop, the umpire's third strike, a crowd swell that
+  scales with leverage, a walk-off roar) and haptics on contact and on outs.
+  The cheapest personality multiplier the game has not spent.
+- **The wire, upgraded** — more kinds, better prose, and the stories the new
+  systems create: a realignment, a coach poached, a man three hits from a
+  record before he gets there rather than after.
 - **School emblems or crests** on the team card, the directory, the wire and
-  the bracket. Asset strategy undecided.
-- **Awards night** — flip cards, one reveal at a time, and a three.js
-  celebration when the winner is one of yours. The 3D chunk stays lazy.
-- **Settings sheet** — saves migrate in from the portrait menu.
+  the bracket.
+- **Awards night** — flip cards, one reveal at a time, and a celebration when
+  the winner is one of yours.
 
-**Exit:** ninety-six programs look like ninety-six places.
+**Exit:** the game sounds and looks like the sport it is about.
 
-## Stage 9 · The simulation's last mile
+## Stage 12 · The simulation's last mile
 
 **Size:** medium
 
-- **An AI that reads a run-expectancy matrix** rather than a heuristic
-- **Recruits drafted out of high school** who never arrive
-- **Park effects as geometry** — a short porch you can see
-- The rest of the 3D track: camera easing, instanced markers, a real 2D/3D
-  toggle
-- Measurement debt: the walk deficit's last point (§18.8), `sim.ts parity`
-  (T1), single-sample calibration figures
+Run-expectancy AI · recruits drafted out of high school · park effects as
+geometry · camera easing, instanced markers, a real 2D/3D toggle · the
+measurement debt (the walk deficit, `sim.ts parity`, single-sample calibration
+figures).
 
-**Exit:** the engine has no known lies and the field has no known gaps.
+## Stage 13 · The store
 
-## Stage 10 · The store
+**Size:** medium–large · **Needs:** the Console record
 
-**Size:** medium–large · **Needs:** the Console record from the errands above
-
-- **The S+ player himself** — 82 overall on arrival, 99 potential, ten badges,
-  exempt from the badge cap. The gate reserving the grade is already built.
-- **Play Billing** — purchase, restore, receipt validation, and the offline
-  case.
-
-**Exit:** money can change hands and the game is honest about what it bought.
+The S+ player himself, and Play Billing with purchase, restore, receipt
+validation and the offline case.
 
 **Decisions, and these are the important ones:** what the purchase grants — one
 player per dynasty, one per save, a recruit who appears in your class, or a
 create-a-player; consumable or permanent; and what happens to a dynasty already
-in progress when it is bought. This wants its own design pass before any
-billing code.
+in progress. Its own design pass before any billing code.
 
-## Stage 11 · The phone
+## Stage 14 · The phone
 
-**Size:** small–medium · **Deferred here because there is no device yet**
+**Size:** small–medium · **Deferred — no device yet**
 
-- Capacitor project, Android platform, `dist` wired to the shell
-- A debug APK on a **real device**
-- **Measure:** frame rate during ball flight, cold start, on-device bundle size
-- **Verify:** IndexedDB survives force-quit, safe-area insets on a notched
-  device, WebView version
-- Hardware back button
+Capacitor, an APK on real hardware, the frame-rate measurement, IndexedDB
+across a force-quit, safe-area insets, the hardware back button. Everything
+except the frame rate can be answered on an emulator, so the emulator pass can
+be pulled forward alone if the wait runs long.
 
-Everything here except the frame-rate measurement can be answered on an
-emulator, so if the wait for hardware runs long, the emulator pass can be
-pulled forward on its own and only the measurement left behind.
-
-**Exit:** an APK on a real phone that plays a season, with a measured frame
-rate written into `05-systems-reference.md`.
-
-## Stage 12 · Ship
+## Stage 15 · Ship
 
 **Size:** medium
 
-- **Onboarding** for the first ten minutes
-- **Accessibility** — focus states, text scaling. Every size is in pixels
-  today; reduced motion is done.
-- **Remove the test aids** — SIM SEASON, the loaded Pascagoula Tech roster and
-  its guaranteed offer
-- **Keystore generated and backed up somewhere permanent**
-- Signed AAB, listing, screenshots, privacy policy, content rating
-- **Closed beta**, then open
-
-**Exit:** v1.0 on the Play Store.
+Onboarding for the first ten minutes · accessibility (focus states; text
+scaling now has a home in stage 2's settings sheet) · **remove the test aids**
+(SIM SEASON, the loaded Pascagoula Tech roster) · keystore generated and backed
+up permanently · signed AAB, listing, screenshots, privacy policy, content
+rating · closed beta, then open.
 
 ---
 
 ## The order, and why
 
-Stages 4 → 5 → 6 are a chain and cannot be reordered: a depth chart makes
+**Stage 2 is foundational.** Every feature after it needs a documented answer
+for what it does in casual mode, and retrofitting that answer is far more
+expensive than writing it as you go.
+
+**Stages 5 → 6 → 7 are a chain** and cannot be reordered: a depth chart makes
 injuries possible, injuries and playing time make morale mean something, and
 morale is what gives the portal its teeth.
 
-Everything else has slack. Stages 7 and 8 are independent and can move earlier
-for a change of pace. Stage 3 sits where it does because the coach is the
-thing the player *is*, and it is cheap next to the roster systems.
+**Stages 9, 10 and 11 are independent** of everything above and of each other.
+They are the ones to move earlier when the big systems get heavy — and stage 11
+in particular will feel like a bigger jump in quality than its size suggests,
+because silence is the loudest thing about the game right now.
 
-The phone moved from first to eleventh on the user's call, with no device to
-hand and no date to hit. The two errands at the top of this document are what
-keeps that safe.
+Stage 4's assistant coaches touch stage 8's money if they are paid for, which
+is the argument for paying them in prestige instead. Decide that at stage 4's
+door, not stage 8's.
+
+## What did not make the list
+
+From the feature pass: a human poll alongside RPI, weather and park conditions,
+fan support and attendance, live bracketology, mentorship pairs, defensive
+positioning. From the earlier report: exhibition games, classic-finish
+scenarios, share cards. All stay in `06-backlog.md`; none of them is a reason
+to delay a release.
 
 ## How this document stays true
 
 A stage moves out of this file when it ships, and what it did moves into
-`05-systems-reference.md` on the same commit. A stage that changes shape while
-it is being built gets changed here first.
+`05-systems-reference.md` on the same commit.

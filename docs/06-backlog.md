@@ -48,6 +48,37 @@ engine half, pinned by the double-elimination and national-field suites in
 `tests/bracket.test.ts` and the whole-postseason suite in
 `tests/postseason.test.ts`.
 
+### Two ways to play, and three rules that keep it one game
+
+**`DECIDED`, August 2026.** Coach creation asks whether this is a full roleplay
+career or a casual one, and that answer presets everything the feature set adds
+— press conferences, academic eligibility, captains, pitch calling, mound
+visits, scouting reports. A player chooses how deep a game he wants.
+
+The risk is obvious: two modes is how a codebase becomes two games and a
+simulation becomes two simulations. Three rules prevent it, and they bind
+every feature built from here.
+
+**One. The engine always models everything.** The mode never changes what the
+simulation does, only what the player is *asked about*. Casual does not turn
+injuries off; it answers the injury question for you. The moment a mode reaches
+into the engine, the ninety-five rival programs are living in a different world
+from yours and every comparison in the game — the rankings, the record book,
+coach of the year — is a lie.
+
+**Two. Anything that touches the world is on for everybody or off for
+everybody.** Realignment, academic eligibility, injuries: these are properties
+of the league, not preferences. Two coaches in the same save see the same
+league.
+
+**Three. The preset is a preset, not a cage.** Per-system toggles sit behind
+it, so "casual, but I want to call pitches" is available, and the mode can
+change mid-career without starting over.
+
+Staged as stage 2 of `07-v1-plan.md`, deliberately early: every feature after
+it needs a documented answer for what it does in casual mode, and retrofitting
+that answer is far more expensive than writing it as you go.
+
 ### Records are scaled, not literal — **revisited, and the method changed**
 
 The principle stands: a seeded mark is corrected so it can actually be chased,
@@ -1106,3 +1137,201 @@ Still missing:
   turned out to be — something that changes who is on the mound rather than what
   the mound does. It wants the same treatment that found pace: isolate a channel,
   measure it against the sweep, dial it. See `05-systems-reference.md` §18.8.
+
+## H. The v1.0 feature set — agreed August 2026
+
+Chosen from a slate of eighteen proposals plus the surviving items of the
+casual-mobile report (`Playball Next`, R1–R10). All are `DECIDED` and staged in
+`07-v1-plan.md`; this section holds the argument for each, which the plan
+deliberately does not.
+
+Everything here obeys the depth-mode rules in *Decisions locked* above: the
+engine models it for all ninety-six programs, and the mode decides how much the
+player is asked about it.
+
+### H1 · Assistant coaches
+
+A pitching coach, a hitting coach and a recruiting coordinator, each with
+ratings that stack on the head coach's. They can be poached by rival programs,
+and a good one leaves to become a head coach somewhere — which is not a new
+system but a new *input* to the carousel that already runs ninety-five rival
+careers, retires them, sacks them and promotes them.
+
+The largest personality gain available for the work, because it turns the
+coaching skills from four numbers a player spends points on into a staff he
+assembles. **Open question at the door: what an assistant costs.** Paying them
+out of stage 8's money couples two economies that are cleaner apart; paying in
+prestige and reputation keeps them independent and reads truer — a good
+assistant takes the job because the program is going somewhere.
+
+### H2 · Alumni in the professional game
+
+Every departure is already recorded with a reason, a round and a year
+(`Departure`, `engine/progression.ts`), and career rows survive for as long as
+the dynasty does. What is missing is the two lines that say what happened next:
+a former recruit hitting .280 in Double-A, one who made an All-Star team, one
+who washed out in a year.
+
+Cheap relative to its payoff, because the data exists and the men are already
+named. It is also the single strongest reason to keep a save alive for fifteen
+years, which is exactly what a dynasty game wants.
+
+### H3 · Conference realignment
+
+Every few years programs move leagues on prestige and market. A twenty-year
+save where the conferences never move is a spreadsheet; one where your rival
+defects to a bigger league is the sport.
+
+Touches more than it looks: the schedule generator, the regions
+(`REGIONS` pairs conferences into regionals), the per-school annals, and the
+record book's conference marks. **Open question: whether the user's program can
+be moved against his will** — it is the most interesting version and the most
+likely to feel arbitrary, so it wants a rule the player can read.
+
+### H4 · Rivalry recognition — *not* a trophy
+
+`rival` has been in `data/schools.ts` since the world was built and does almost
+nothing. Deliberately **not** a trophy in a case: a persistent series record, a
+wire story every time the game is played, a line in both schools' annals, and
+the rivalry named on the Today card when it comes round. Recognition that lives
+in the record rather than an object that lives in a cabinet.
+
+### H5 · Academic eligibility
+
+A man fails a class and sits. Uniquely college, unavailable to every other
+baseball game, and it makes recruiting a kid with questions into a real
+decision rather than a rating comparison. Reads naturally against the scouting
+bands already in the game: academic risk is another thing a report can be vague
+about.
+
+### H6 · Press conferences
+
+Two or three questions after a big win or a bad loss, answered in the coach's
+own voice. Moves prestige, morale and how recruits see you. It is the payoff
+for H7's personality badges — without them the answers are flavour, with them
+they are consistent with a man the player built.
+
+### H7 · Coach creation as an interview, and personality badges
+
+Instead of setting four skills directly, answer baseball questions with real
+positions and real tradeoffs — the bunt with a man on second and nobody out,
+what you say to a junior leaning pro, the best bat in the league against the
+deepest staff. The answers derive the skills, the philosophy and the starting
+experience, and hang **personality badges** that are worn for the whole career
+the way a player's are.
+
+The rule player badges already follow applies here: each badge names one
+channel and one situation. A personality badge that is a vaguer restatement of
+`recruiting` or `training` is worse than no badge, because it makes the four
+skills mean less rather than the coach mean more.
+
+### H8 · Team captains and leadership
+
+A vote or the coach's appointment. Captains damp morale swings and mentor
+freshmen, which gives a veteran a role beyond his stat line and gives the
+morale system (H-adjacent, stage 6) something a player can actually *do* about
+it rather than only watch.
+
+### H9 · Signature moments
+
+A player's card remembers his walk-off, his no-hitter, the day he went five for
+five. Box scores are captured for the user's program and feats already exist as
+a counted, named thing (`noFeats`, `engine/achievements.ts`); this is the layer
+that turns them from a tally into a life. Pairs with H2 — a man whose card
+remembers his moments and then tells you he is in Triple-A is a person.
+
+### H10 · Two-way players
+
+Deferred for years, and the decision has aged badly: modern college baseball is
+full of them and it is the most distinctive thing in the sport right now.
+
+Genuinely hard, which is why it was deferred and why it is honest to say so:
+one man in two rating systems, fatigue crossing both, a lineup card and a
+rotation that both claim him, and every leaderboard needing to decide which
+half of him it is ranking. Not a small feature wearing a big hat.
+
+### H11 · Mound visits and pitcher confidence
+
+A limited resource that settles a wobbling arm. Small, tactile and very
+baseball, and it gives the managed game a decision between "leave him in" and
+"go get him" that currently does not exist — today the only lever is the
+bullpen.
+
+### H12 · Opponent scouting reports
+
+Spend preparation before a series to learn the other side's tendencies. The
+tendencies are already modelled, already hidden until watched, and already
+surfaced on a rival's player card — this is the second route to that knowledge
+and the one that costs something.
+
+### H13 · Pitch-by-pitch calling
+
+Full-depth mode only. Eleven pitch types with per-pitcher repertoires and usage
+shares already exist in the engine (§18.1); nothing in the UI spends them. The
+expensive half is presentation, not simulation.
+
+### H14 · Resume an interrupted game — R1
+
+Phones interrupt, and a backgrounded live game is lost today because
+`LiveGame` is a running coroutine carrying closures. The fix is not to
+serialise the coroutine: persist the **day-start snapshot and the ordered list
+of decisions**, and replay them on load. The engine is deterministic and every
+decision is a small enum, so the replay lands on exactly the same sixth inning.
+
+Marked *essential* by the mobile report and it is right: this is the most
+player-hostile behaviour the game has on the platform it is shipping to.
+
+### H15 · Let the bench coach take it — R6
+
+A third button beside SIM THE REST, in two behaviours worth having: **watch**,
+where the game plays itself with the field animating and the player just
+looks; and **to the next moment**, where the bench coach makes the default call
+until something worth managing arrives — men in scoring position, late and
+close, a pitcher on fumes. Today a manager up nine runs faces forty taps or
+total surrender, and nothing in between.
+
+### H16 · Big-moment presentation — R5
+
+The peaks render like a Tuesday groundout. Leverage styling in the managed
+game, a scoreboard that changes tone during a no-hitter, and one full-screen
+card for a walk-off, a clincher or a title.
+
+### H17 · Sound and haptics — R3
+
+The game is completely silent — no audio API is used anywhere. A dozen short
+samples (bat crack, glove pop, the umpire's third strike, a crowd swell scaling
+with leverage, a walk-off roar) and haptics on contact and on outs. The
+cheapest personality multiplier the game has never spent, and on a phone,
+silence reads as unfinished.
+
+### H18 · The settings sheet — R4
+
+There is no settings surface at all. Sound, haptics, field 2D/3D, text size,
+reduced motion, the tutorial reset, and saves migrating in from the portrait
+menu. **Stored per device rather than in the save**: preferences follow the
+phone, not the dynasty. It is also where the depth-mode toggles live, which is
+why it is staged early rather than with the other presentation work.
+
+### H19 · Series stakes on the Today card — R8
+
+Half shipped with the overhaul: the game number and the series lead are on the
+card. What is missing is the rest of the sentence — the rivalry when it comes
+round (H4), and what tonight would clinch.
+
+### H20 · The wire, upgraded
+
+More kinds, better prose, and the stories the new systems create: a
+realignment, an assistant poached, a man three hits from a record *before* he
+breaks it rather than after. The wire consumes no random draws and must
+continue not to (index row 98).
+
+### Considered and not taken
+
+From the same slate, and kept here because a rejected idea with a reason is
+worth more than a forgotten one: a **human poll alongside RPI** (a good story,
+but a second ranking to explain), **weather and park conditions** (cheap and
+good — a candidate to fold into stage 11 if it wants filling out),
+**fan support and attendance**, **live bracketology**, **mentorship pairs**
+(largely covered by H8), and **defensive positioning** (the strongest of the
+rejected six; worth revisiting after the dugout rebuild). From the mobile
+report: **exhibition games**, **classic-finish scenarios** and **share cards**.
