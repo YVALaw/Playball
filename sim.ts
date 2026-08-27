@@ -216,13 +216,10 @@ else if (cmd === 'season') {
     );
   }
 
-  // --- the national stage: twenty in, opening round, two brackets, a series ---
+  // --- the national stage: twenty in, two ten-team brackets, a series ---
   const national = stageNational(season, cups, regionals);
   console.log('\n=== National tournament — twenty team field ===');
   console.log(`   protected: ${national.field.protectedTeams.map(abbr).join(' ')}`);
-  for (const o of national.opening) {
-    console.log(`   opening  #${o.aSeed} ${abbr(o.seeds[0]!)} vs #${o.bSeed} ${abbr(o.seeds[1]!)} -> ${abbr(o.champion)}`);
-  }
   console.log(`   bracket A -> ${school(national.bracketA.champion)}`);
   console.log(`   bracket B -> ${school(national.bracketB.champion)}`);
   console.log(`\n   NATIONAL CHAMPION: ${school(national.champion)} (${conf(national.champion)})`);

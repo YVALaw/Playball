@@ -544,8 +544,6 @@ export function allConferenceTournaments(
 export const SERIES = {
   /** A regional championship: one best of three. */
   regional: 3,
-  /** The national opening round: seeds 13–20, best of three. */
-  opening: 3,
   /** The national championship series. */
   final: 3,
 } as const;
@@ -595,10 +593,17 @@ export const PROTECTED_BIDS = 4;
 export const NATIONAL_BIDS = REGIONS.length * CONF_ADVANCE + PROTECTED_BIDS;
 
 /**
- * Programs that reach the national showdown proper — the sixteen-team double
- * elimination the opening round feeds. "Omaha", as the game names the trip.
+ * Programs that reach the national showdown proper. "Omaha", as the game names
+ * the trip.
+ *
+ * The same number as the field now, and that is the change: a best-of-three
+ * opening round used to cut twenty to sixteen before the showdown began, and it
+ * was a single-elimination gate standing in front of a double elimination
+ * tournament. Everybody who qualifies now plays in the showdown itself, with
+ * the bottom four of each half playing their way through a first round they can
+ * survive losing.
  */
-export const OMAHA_BERTHS = 16;
+export const OMAHA_BERTHS = NATIONAL_BIDS;
 
 /** The regional stage: sixteen best-of-three series. */
 export const REGIONAL_LENGTHS: readonly number[] = [SERIES.regional];
@@ -761,15 +766,20 @@ export function selectNationalField(
 }
 
 /**
- * The opening round: seeds 13–20 play a best of three for the last four
- * places in the showdown. A protected team is never in it — that is what the
- * regular season bought — so if one has fallen that far in the seeding, it
- * swaps up with the best unprotected seed above the line.
+ * Keep the protected four out of the seeds that have to play their way in.
+ *
+ * Seeds 13–20 are the ones who land in a play-in round once the field is split,
+ * and a top-four regular season is supposed to buy exemption from exactly that.
+ * `selectNationalField` gives a protected team no artificial perch, so one that
+ * won nothing in June can drift below the line; when it does it swaps up with
+ * the lowest unprotected seed above it.
+ *
+ * This is all that survives of the old opening round, and it is the half worth
+ * keeping: the round itself is gone, but the promise the regular season made
+ * about it is not.
  */
-export function openingPairs(field: NationalField): { a: number; b: number }[] {
+export function seatProtected(field: NationalField): void {
   const seeds = [...field.seeds];
-  // Keep the protected out of 13–20: swap any that fell below the line with
-  // the lowest unprotected seed above it.
   for (let i = 12; i < seeds.length; i++) {
     const t = seeds[i]!;
     if (!field.protectedTeams.includes(t)) continue;
@@ -782,45 +792,25 @@ export function openingPairs(field: NationalField): { a: number; b: number }[] {
     }
   }
   field.seeds.splice(0, field.seeds.length, ...seeds);
-  return [
-    { a: seeds[12]!, b: seeds[19]! },
-    { a: seeds[13]!, b: seeds[18]! },
-    { a: seeds[14]!, b: seeds[17]! },
-    { a: seeds[15]!, b: seeds[16]! },
-  ];
-}
-
-/** One opening series result, kept with who it was for the map. */
-export interface OpeningResult extends TournamentResult {
-  aSeed: number;
-  bSeed: number;
-}
-
-export function stageOpening(
-  season: SeasonState, field: NationalField,
-): OpeningResult[] {
-  const seedOf = new Map(field.seeds.map((t, i) => [t, i + 1]));
-  return openingPairs(field).map((p) => ({
-    ...singleElimination(season, [p.a, p.b], [SERIES.opening]),
-    aSeed: seedOf.get(p.a) ?? 0,
-    bSeed: seedOf.get(p.b) ?? 0,
-  }));
 }
 
 /**
- * The sixteen of the showdown, split into two eight-team double eliminations.
+ * The twenty of the showdown, split into two ten-team double eliminations.
  *
  * Snaked so the top two seeds are on opposite sides and strength spreads:
- * bracket A takes 1, 4, 5, 8, 9, 12 and two opening winners; B takes 2, 3,
- * 6, 7, 10, 11 and the other two.
+ * bracket A takes overall 1, 4, 5, 8, 9, 12, 13, 16, 17, 20 — B the rest.
+ * Within each half those become seeds 1–10, so the bottom four of each, which
+ * is overall 13–20, are the ones who play in. That is the same eight teams the
+ * old opening round used to take, arriving at the same place by a route that
+ * cannot end their season in one night.
  */
 export function splitShowdown(
-  sixteen: readonly number[],
+  field: readonly number[],
 ): { bracketA: number[]; bracketB: number[] } {
   const A: number[] = [];
   const B: number[] = [];
-  sixteen.forEach((t, i) => {
-    // 0-indexed snake: A gets 0,3,4,7,8,11,12,15 — B the rest.
+  field.forEach((t, i) => {
+    // 0-indexed snake: A gets 0,3,4,7,8,11,12,15,16,19 — B the rest.
     (i % 4 === 0 || i % 4 === 3 ? A : B).push(t);
   });
   return { bracketA: A, bracketB: B };
@@ -828,7 +818,6 @@ export function splitShowdown(
 
 export interface NationalResult {
   field: NationalField;
-  opening: OpeningResult[];
   bracketA: TournamentResult & { placings: number[] };
   bracketB: TournamentResult & { placings: number[] };
   /** The championship series between the two bracket champions. */
@@ -842,16 +831,12 @@ export function stageNational(
   regionals: readonly RegionalSeries[],
 ): NationalResult {
   const field = selectNationalField(season, cups, regionals);
-  const opening = stageOpening(season, field);
-  const sixteen = [
-    ...field.seeds.slice(0, 12),
-    ...opening.map((o) => o.champion),
-  ];
-  const { bracketA, bracketB } = splitShowdown(sixteen);
+  seatProtected(field);
+  const { bracketA, bracketB } = splitShowdown(field.seeds);
   const A = deAsResult(runDoubleElim(season, bracketA));
   const B = deAsResult(runDoubleElim(season, bracketB));
   const final = bestOf(season, SERIES.final, A.champion, B.champion, 'National championship');
-  return { field, opening, bracketA: A, bracketB: B, final, champion: final.champion };
+  return { field, bracketA: A, bracketB: B, final, champion: final.champion };
 }
 
 // ---------------------------------------------------------------------------
@@ -862,9 +847,14 @@ export function stageNational(
  * How far a program got. Ordered worst to best.
  *
  * 'regional' — finished top four of its conference tournament and played a
- * regional championship series. 'national' — made the twenty-team national
- * field but went out in the opening round. 'omaha' — reached the sixteen-team
- * national showdown. The last two are the championship series.
+ * regional championship series. 'omaha' — reached the national showdown. The
+ * last two are the championship series.
+ *
+ * 'national' is history. It meant "made the twenty-team field but went out in
+ * the opening round", and there is no opening round any more — every team that
+ * qualifies now plays in the showdown itself. Nothing produces the value, and
+ * it stays in the union because saves written before the change still carry it
+ * and a history screen must be able to read them.
  */
 export type Finish =
   | 'missed' | 'regional' | 'national' | 'omaha' | 'runner-up' | 'champion';
@@ -916,12 +906,11 @@ export function summarize(
   // Reaching the regionals is the postseason proper: everybody in one earned
   // it with a top-four conference finish.
   for (const r of regionals) for (const t of r.seeds) finish[t] = 'regional';
-  for (const t of national.field.seeds) finish[t] = 'national';
-  const sixteen = [
-    ...national.field.seeds.slice(0, 12),
-    ...national.opening.map((o) => o.champion),
-  ];
-  for (const t of sixteen) finish[t] = 'omaha';
+  // Everybody in the field is in the showdown now. The line above this used to
+  // mark all twenty 'national' and then promote the sixteen who survived the
+  // opening round; with the play-in living inside the winners bracket, there is
+  // no group left between "qualified" and "reached the showdown".
+  for (const t of national.field.seeds) finish[t] = 'omaha';
   const runnerUp = national.final.eliminated[0];
   if (runnerUp !== undefined) finish[runnerUp] = 'runner-up';
   finish[national.champion] = 'champion';

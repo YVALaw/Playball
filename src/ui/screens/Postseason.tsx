@@ -213,16 +213,6 @@ export function Postseason() {
         ],
       };
     }
-    if (kind === 'opening') {
-      return {
-        good: false,
-        title: 'Out in the opening round',
-        lines: [
-          `${team.def.school} fall in the national opening round.`,
-          'Twenty teams made the field. You were one of them.',
-        ],
-      };
-    }
     if (kind === 'final') {
       return {
         good: false,
@@ -301,8 +291,7 @@ export function Postseason() {
         // tournament wondering when it was played.
         : bracket.stage === 'national'
           ? {
-              label: !nat || nat.opening.length < 4 ? 'PLAY THE OPENING ROUND'
-                : (!nat.bracketA || !nat.bracketB) ? 'PLAY THE SHOWDOWN'
+              label: (!nat?.bracketA || !nat.bracketB) ? 'PLAY THE SHOWDOWN'
                 : 'PLAY THE CHAMPIONSHIP',
               run: advance,
             }
@@ -970,70 +959,10 @@ function NationalStage(
         </div>
 
         <div style={{
-          paddingBottom: 3, marginBottom: 6, borderBottom: '2px solid var(--ink)',
-        }}>
-          <span className="label">OPENING ROUND · SEEDS 13–20 · BEST OF 3</span>
-        </div>
-        {myBracket?.kind === 'opening' && myBracket.format === 'series' && (
-          <LiveSeriesCard
-            state={myBracket.state}
-            aLabel={`#${seeds.indexOf(myBracket.state.seeds[0] ?? -1) + 1}`}
-            bLabel={`#${seeds.indexOf(myBracket.state.seeds[1] ?? -1) + 1}`}
-            abbr={abbr}
-            userTeam={userTeam}
-          />
-        )}
-        {/*
-          Every pairing, played or not. The four series used to appear only
-          once they had results, so a player arriving at this stage saw an
-          empty tab and then, one press later, four finished series he never
-          saw start. The matchups are drawn from the seeding — which is fixed
-          the moment the field is chosen — and fill in as they are played.
-        */}
-        {([[12, 19], [13, 18], [14, 17], [15, 16]] as const).map(([hi, lo], i) => {
-          const a = seeds[hi]; const b = seeds[lo];
-          if (a === undefined || b === undefined) return null;
-          const live = myBracket?.kind === 'opening' && myBracket.format === 'series'
-            && myBracket.state.seeds.includes(a) && myBracket.state.seeds.includes(b)
-            ? myBracket : null;
-          if (live) {
-            return (
-              <LiveSeriesCard
-                key={i}
-                state={live.state}
-                aLabel={`#${hi + 1}`} bLabel={`#${lo + 1}`}
-                abbr={abbr} userTeam={userTeam}
-              />
-            );
-          }
-          const done = nat.opening.find(
-            (o) => o.seeds.includes(a) && o.seeds.includes(b),
-          );
-          if (done) {
-            return (
-              <SeriesResultCard
-                key={i}
-                r={{ ...done, aLabel: `#${done.aSeed}`, bLabel: `#${done.bSeed}` }}
-                abbr={abbr}
-                userTeam={userTeam}
-                tag="FINAL"
-              />
-            );
-          }
-          return (
-            <PendingSeriesCard
-              key={i}
-              a={a} b={b}
-              aLabel={`#${hi + 1}`} bLabel={`#${lo + 1}`}
-              abbr={abbr} userTeam={userTeam}
-            />
-          );
-        })}
-        <div style={{
           marginTop: 4, font: "400 calc(10px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
         }}>
           P marks a protected top four seed from the regular season. Protection
-          buys the field and the bye, never a banner.
+          buys the field and a bye past the play-in, never a banner.
         </div>
       </div>
     );

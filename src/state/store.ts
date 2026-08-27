@@ -66,11 +66,11 @@ import {
   seasonAwards, allConference, coachOfTheYear,
   conferenceField, conferenceIds, conferenceTournament, singleElimination, REGIONS,
   recordSchoolAnnals,
-  selectNationalField, openingPairs, splitShowdown, stageOpening, bestOf,
+  selectNationalField, seatProtected, splitShowdown, bestOf,
   type SeriesBracket,
   type Finish, type PostseasonSummary, type ConferenceTournament,
   type RegionalSeries, type TournamentResult, type NationalField,
-  type OpeningResult, type NationalResult,
+  type NationalResult,
 } from '../engine/postseason.js';
 import {
   startDoubleElim, stepDoubleElim, runDoubleElim, liveSlotFor, slotName,
@@ -310,13 +310,16 @@ export const TABS: readonly TabDef[] = [
 /** How far through the postseason we are, and what has happened so far. */
 /**
  * The national stage, in progress. Grown piece by piece so a reload resumes
- * exactly where June stood: the field is selected once, the opening series
- * accumulate to four, the two showdown brackets land when they finish, and
- * the championship series closes it.
+ * exactly where June stood: the field is selected once, the two showdown
+ * brackets land when they finish, and the championship series closes it.
+ *
+ * There used to be a fourth field here, `opening`, holding four best-of-three
+ * series that cut the field from twenty to sixteen. It is gone: those eight
+ * teams now play their way in *inside* the winners bracket, where losing costs
+ * a drop to the losers side rather than a season.
  */
 export interface NationalProgress {
   field: NationalField;
-  opening: OpeningResult[];
   bracketA: DoubleElimResult | null;
   bracketB: DoubleElimResult | null;
   final: TournamentResult | null;
@@ -345,7 +348,7 @@ export interface PostseasonProgress {
  * off regional order and dropping yours on the end would reseed the country.
  */
 export type MyBracketKind =
-  | 'conference' | 'regional' | 'opening' | 'national' | 'final';
+  | 'conference' | 'regional' | 'national' | 'final';
 
 export type MyBracket =
   | {
@@ -357,7 +360,7 @@ export type MyBracket =
       preplayed: Map<string, GameResult>;
     }
   | {
-      kind: 'regional' | 'opening' | 'final';
+      kind: 'regional' | 'final';
       format: 'series';
       state: SeriesBracket;
       /** The regional's identity, carried so the result can be filed. */
@@ -873,7 +876,7 @@ function portableMyBracket(mine: MyBracket | null): StoredMyBracket | null {
 const STAGE_KINDS: Record<string, MyBracket['kind'][]> = {
   conference: ['conference'],
   regional: ['regional'],
-  national: ['opening', 'national', 'final'],
+  national: ['national', 'final'],
 };
 
 /**
@@ -907,7 +910,7 @@ function usableMyBracket(
   }
 
   if (m.format === 'series'
-    && (m.kind === 'regional' || m.kind === 'opening' || m.kind === 'final')) {
+    && (m.kind === 'regional' || m.kind === 'final')) {
     const s = m.state as Partial<SeriesBracket> | undefined;
     if (!s || !Array.isArray(s.rounds) || !Array.isArray(s.seeds)) return null;
     if (s.done) return null;
@@ -988,7 +991,7 @@ function usableKnockout(saved: unknown, year: number): Knockout | null {
   if (!saved || typeof saved !== 'object') return null;
   const k = saved as Partial<Knockout>;
   if (k.year !== year) return null;
-  const kinds: MyBracketKind[] = ['conference', 'regional', 'opening', 'national', 'final'];
+  const kinds: MyBracketKind[] = ['conference', 'regional', 'national', 'final'];
   if (!k.kind || !kinds.includes(k.kind)) return null;
   if (typeof k.label !== 'string') return null;
   // `advanced` and `placing` arrived with A13. A save written before them
@@ -2631,18 +2634,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, bracket, userTeam, version } = get();
     if (!season || !bracket || bracket.stage !== 'national' || get().myBracket) return;
 
-    // The field, selected exactly once. `openingPairs` also settles the
-    // protection swaps, so it runs here rather than lazily at drawing time.
+    // The field, selected exactly once. `seatProtected` settles the protection
+    // swaps at the same moment, so the seeding a screen draws is the seeding
+    // the tournament is played from.
     let national = bracket.national;
     if (!national) {
       const field = selectNationalField(season, bracket.cups, bracket.regionals);
-      openingPairs(field);
-      national = { field, opening: [], bracketA: null, bracketB: null, final: null };
+      seatProtected(field);
+      national = { field, bracketA: null, bracketB: null, final: null };
       set({ bracket: { ...bracket, national }, version: version + 1 });
     }
-    const b = get().bracket!;
-    const nat = b.national!;
-    const seeds = nat.field.seeds;
 
     /*
       Nothing resolves off screen.
@@ -2658,63 +2659,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       press, like every other thing in June that is worth looking at.
     */
 
-    // The opening round: seeds 13 through 20, best of three.
-    if (nat.opening.length < 4) {
-      const pairs = [
-        { a: seeds[12]!, b: seeds[19]! },
-        { a: seeds[13]!, b: seeds[18]! },
-        { a: seeds[14]!, b: seeds[17]! },
-        { a: seeds[15]!, b: seeds[16]! },
-      ];
-      const played = (p: { a: number; b: number }): boolean =>
-        nat.opening.some((o) => o.seeds.includes(p.a) && o.seeds.includes(p.b));
-      const mine = pairs.find((p) =>
-        (p.a === userTeam || p.b === userTeam) && !played(p));
-      if (mine) {
-        const others = nat.opening.length > 0 ? nat.opening
-          : pairs.filter((p) => p !== mine).map((p) => ({
-            ...singleElimination(season, [p.a, p.b], [SERIES.opening]),
-            aSeed: seeds.indexOf(p.a) + 1,
-            bSeed: seeds.indexOf(p.b) + 1,
-          }));
-        set({
-          bracket: { ...b, national: { ...nat, opening: others } },
-          myBracket: {
-            kind: 'opening', format: 'series',
-            state: startSeriesBracket(season, [mine.a, mine.b], [SERIES.opening]),
-            preplayed: new Map(),
-          },
-          version: get().version + 1,
-        });
-        return;
-      }
-      if (!advance) return;                 // the pairs are on screen, waiting
-      const opening = pairs.map((p) => {
-        const done = nat.opening.find((o) => o.seeds.includes(p.a) && o.seeds.includes(p.b));
-        return done ?? {
-          ...singleElimination(season, [p.a, p.b], [SERIES.opening]),
-          aSeed: seeds.indexOf(p.a) + 1,
-          bSeed: seeds.indexOf(p.b) + 1,
-        };
-      });
-      set({
-        bracket: { ...b, national: { ...nat, opening } },
-        version: get().version + 1,
-      });
-      return;                               // the results are the next thing to read
-    }
-
     const b2 = get().bracket!;
     const nat2 = b2.national!;
-    if (nat2.opening.length < 4) return;
 
-    // The sixteen, split into two eight-team double eliminations.
+    // The twenty, split into two ten-team double eliminations.
     if (nat2.bracketA === null || nat2.bracketB === null) {
-      const sixteen = [
-        ...seeds.slice(0, 12),
-        ...nat2.opening.map((o) => o.champion),
-      ];
-      const { bracketA, bracketB } = splitShowdown(sixteen);
+      const { bracketA, bracketB } = splitShowdown(nat2.field.seeds);
       const mineIsA = nat2.bracketA === null && bracketA.includes(userTeam);
       const mineIsB = nat2.bracketB === null && bracketB.includes(userTeam);
 
@@ -2777,7 +2727,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       if (!advance) return;                 // the matchup is on screen, waiting
       const final = bestOf(season, SERIES.final, A, B, 'National championship');
       const summary = summarize(b3.cups, b3.regionals, {
-        field: nat3.field, opening: nat3.opening,
+        field: nat3.field,
         bracketA: nat3.bracketA, bracketB: nat3.bracketB,
         final, champion: final.champion,
       });
@@ -3104,24 +3054,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         },
         myBracket: null, version: version + 1,
       });
-    } else if (myBracket.kind === 'opening' && myBracket.format === 'series') {
-      const mine = resultOf(myBracket.state);
-      const nat = bracket.national!;
-      const seeds = nat.field.seeds;
-      set({
-        bracket: {
-          ...bracket,
-          national: {
-            ...nat,
-            opening: [...nat.opening, {
-              ...mine,
-              aSeed: seeds.indexOf(mine.seeds[0] ?? -1) + 1,
-              bSeed: seeds.indexOf(mine.seeds[1] ?? -1) + 1,
-            }],
-          },
-        },
-        myBracket: null, version: version + 1,
-      });
     } else if (myBracket.kind === 'national' && myBracket.format === 'double') {
       // Your half is finished, so the other one runs out its remaining nights
       // here rather than holding the championship up. A stage boundary is the
@@ -3148,7 +3080,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       const mine = resultOf(myBracket.state);
       const nat = bracket.national!;
       const summary = summarize(bracket.cups, bracket.regionals, {
-        field: nat.field, opening: nat.opening,
+        field: nat.field,
         bracketA: nat.bracketA!, bracketB: nat.bracketB!,
         final: mine, champion: mine.champion,
       });

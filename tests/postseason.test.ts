@@ -243,12 +243,24 @@ describe('the whole postseason', () => {
     expect(result.finish[result.champion]).toBe('champion');
   });
 
-  it('sends exactly sixteen to the showdown', () => {
+  it('sends the whole field to the showdown, because there is nothing in the way', () => {
+    /*
+      This used to expect sixteen, and the sixteen were what survived a
+      best-of-three opening round that cut the twenty-team field down to the
+      size of the brackets. That round is gone: the bottom four of each half
+      play their way in inside the winners bracket instead, where losing drops
+      you to the losers side rather than ending your season.
+
+      So there is no longer any group between "qualified for the tournament"
+      and "reached the showdown", and 'omaha' means the field.
+    */
     const values = Object.values(result.finish);
     const inOmaha = values.filter(
       (f) => f === 'omaha' || f === 'runner-up' || f === 'champion',
     );
-    expect(inOmaha).toHaveLength(16);
+    expect(inOmaha).toHaveLength(NATIONAL_BIDS);
+    // And nobody is left in the state that round used to produce.
+    expect(values.filter((f) => f === 'national')).toHaveLength(0);
   });
 
   it('sends the conference count on: eight champions, four per league advance', () => {

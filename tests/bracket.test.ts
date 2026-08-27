@@ -19,11 +19,11 @@ import {
   stageRegionals, stageNational, regionalPairing, freezeRegularSeason,
   REGIONAL_LENGTHS, REGIONS, regionOf,
   CONF_FIELD, CONF_ADVANCE, SERIES, NATIONAL_BIDS, PROTECTED_BIDS,
-  protectedTopFour, selectNationalField, openingPairs, splitShowdown,
+  protectedTopFour, selectNationalField, seatProtected, splitShowdown,
 } from '../src/engine/postseason.js';
 import {
   startDoubleElim, stepDoubleElim, runDoubleElim, resultOfDE, placings,
-  liveSlotFor, readySlots,
+  liveSlotFor, readySlots, gamesOf, slotName,
 } from '../src/engine/doubleElim.js';
 import { createSeason, simSeason, currentDay, restedFirst } from '../src/engine/season.js';
 import { makeRng } from '../src/engine/rng.js';
@@ -726,46 +726,45 @@ describe('the national field', () => {
     for (const t of field.atLarge) expect(champions.has(t)).toBe(false);
   });
 
-  it('never sends a protected team through the opening round', () => {
+  it('never makes a protected team play its way in', () => {
+    // The opening round is gone, but the promise the regular season made about
+    // it is not: a top-four finish still buys a bye past the play-in, which is
+    // now seeds 13–20 of the field once it splits.
     for (const seed of [902, 903, 904]) {
       const { s, cups, regionals } = build(seed);
       const field = selectNationalField(s, cups, regionals);
-      const pairs = openingPairs(field);
-      expect(pairs).toHaveLength(4);
-      for (const p of pairs) {
-        expect(field.protectedTeams).not.toContain(p.a);
-        expect(field.protectedTeams).not.toContain(p.b);
-      }
-      // And the pairs are exactly seeds 13 through 20, outside in.
-      const inRound = new Set(pairs.flatMap((p) => [p.a, p.b]));
-      expect(inRound.size).toBe(8);
-      for (const t of field.seeds.slice(12)) expect(inRound.has(t)).toBe(true);
+      seatProtected(field);
+      const playIn = field.seeds.slice(12);
+      expect(playIn).toHaveLength(8);
+      for (const t of playIn) expect(field.protectedTeams).not.toContain(t);
+      // And the seeding is still a permutation of the same twenty.
+      expect(new Set(field.seeds).size).toBe(20);
     }
   });
 
   it('splits the showdown with the top two seeds apart', () => {
-    const sixteen = Array.from({ length: 16 }, (_, i) => 100 + i);
-    const { bracketA, bracketB } = splitShowdown(sixteen);
-    expect(bracketA).toHaveLength(8);
-    expect(bracketB).toHaveLength(8);
-    expect(new Set([...bracketA, ...bracketB]).size).toBe(16);
+    const twenty = Array.from({ length: 20 }, (_, i) => 100 + i);
+    const { bracketA, bracketB } = splitShowdown(twenty);
+    expect(bracketA).toHaveLength(10);
+    expect(bracketB).toHaveLength(10);
+    expect(new Set([...bracketA, ...bracketB]).size).toBe(20);
     expect(bracketA).toContain(100);
     expect(bracketB).toContain(101);
+    // The bottom four of each half — the ones who play in — are exactly the
+    // eight the old opening round used to take.
+    const playIn = [...bracketA.slice(6), ...bracketB.slice(6)];
+    expect(new Set(playIn)).toEqual(new Set(twenty.slice(12)));
   });
 
   it('runs the whole stage to one champion, with the arithmetic intact', () => {
     const { s, cups, regionals } = build(905);
     const national = stageNational(s, cups, regionals);
 
-    expect(national.opening).toHaveLength(4);
-    const sixteen = [
-      ...national.field.seeds.slice(0, 12),
-      ...national.opening.map((o) => o.champion),
-    ];
-    expect(new Set(sixteen).size).toBe(16);
+    // Everybody who qualified is in the showdown now: no round stands between
+    // the field and the tournament.
     const all = [...national.bracketA.seeds, ...national.bracketB.seeds];
-    expect(new Set(all).size).toBe(16);
-    for (const t of all) expect(sixteen).toContain(t);
+    expect(new Set(all).size).toBe(20);
+    for (const t of all) expect(national.field.seeds).toContain(t);
 
     // The championship series is the two bracket champions, and its winner
     // is the country's.
@@ -780,12 +779,141 @@ describe('the national field', () => {
 describe('the series lengths', () => {
   it('are the format the backlog locked', () => {
     expect(SERIES.regional).toBe(3);
-    expect(SERIES.opening).toBe(3);
     expect(SERIES.final).toBe(3);
+    // There is no third length any more: the opening round's best-of-three is
+    // gone, and the play-in that replaced it plays single games inside the
+    // showdown like every other winners-bracket round.
+    expect(Object.keys(SERIES)).toEqual(['regional', 'final']);
     expect(REGIONAL_LENGTHS).toHaveLength(1);
     expect(CONF_FIELD).toBe(8);
     expect(CONF_ADVANCE).toBe(4);
     expect(NATIONAL_BIDS).toBe(20);
     expect(KNOCKOUT8).toHaveLength(3);
+  });
+});
+
+/*
+  Ten teams, and the round that stopped being a guillotine.
+
+  The national showdown used to trim twenty teams to sixteen with a
+  best-of-three opening round, and the problem with it was never the extra
+  games — it was that a single-elimination gate stood in front of a double
+  elimination tournament. A team could win its conference, win its regional,
+  lose one series and be finished, in an event whose entire promise is that one
+  bad night does not end you.
+
+  Now the two extra teams per bracket play their way in, and losing that game
+  costs what losing any first game costs: you drop to the losers side and keep
+  playing.
+*/
+describe('ten-team double elimination', () => {
+  const ten = (seed: number) => {
+    const s = world(seed);
+    freezeRegularSeason(s);
+    const seeds = Array.from({ length: 10 }, (_, i) => i);
+    return { s, seeds, de: runDoubleElim(s, seeds) };
+  };
+
+  it('still sends nobody home on one loss, and everybody on two', () => {
+    const { de } = ten(6101);
+    expect(de.done).toBe(true);
+    expect(de.eliminated).toHaveLength(9);
+    expect(new Set(de.eliminated).size).toBe(9);
+    for (const t of de.eliminated) expect(de.losses.get(t)).toBe(2);
+    // The champion carries at most the one the reset final can hand him.
+    expect(de.losses.get(de.champion!)).toBeLessThanOrEqual(1);
+  });
+
+  it('plays eighteen games, nineteen with the reset', () => {
+    // Not a magic number: every game is exactly one loss, nine teams leave with
+    // two apiece, and the champion leaves with nought or one.
+    for (const seed of [6101, 6102, 6103, 6104, 6105]) {
+      const { de } = ten(seed);
+      const games = gamesOf(de).length;
+      const reset = de.final[1]!.winner !== null;
+      expect(games).toBe(reset ? 19 : 18);
+      const losses = [...de.losses.values()].reduce((a, b) => a + b, 0);
+      expect(losses).toBe(games);
+    }
+  });
+
+  it('sits the top six down while the bottom four play in', () => {
+    // Read at the draw rather than after the fact: once the tournament has been
+    // played the two holes behind the play-in are filled by its winners, and
+    // the bracket correctly shows eight names where six byes were.
+    const s = world(6107);
+    freezeRegularSeason(s);
+    const seeds = Array.from({ length: 10 }, (_, i) => i);
+    const de = startDoubleElim(s, seeds);
+    const playIn = de.winners[0]!;
+    expect(playIn).toHaveLength(2);
+    // Seeds 7v10 and 8v9, by the same best-against-worst rule used everywhere.
+    expect([playIn[0]!.aSeed, playIn[0]!.bSeed]).toEqual([7, 10]);
+    expect([playIn[1]!.aSeed, playIn[1]!.bSeed]).toEqual([8, 9]);
+    // And the six byed teams are already standing in the round behind it.
+    const seated = de.winners[1]!.flatMap((s) => [s.a, s.b]).filter((t) => t !== null);
+    expect(seated).toHaveLength(6);
+    expect(new Set(seated)).toEqual(new Set(seeds.slice(0, 6)));
+  });
+
+  it('keeps a play-in loser alive, which is the whole point of the change', () => {
+    for (const seed of [6101, 6102, 6103, 6104, 6105, 6106]) {
+      const { de } = ten(seed);
+      for (const s of de.winners[0]!) {
+        const loser = s.winner === s.a ? s.b : s.a;
+        // He lost his first game and was not eliminated by it: he appears in
+        // the losers bracket, and it took a second defeat to put him out.
+        const played = gamesOf(de).filter(
+          (g) => g.winner === loser || g.loser === loser).length;
+        expect(played).toBeGreaterThan(1);
+      }
+    }
+  });
+
+  it('never gives anybody an immediate rematch with the team that beat him', () => {
+    // The crossing rules exist for this, and the play-in makes them harder:
+    // a play-in loser must not meet his own conqueror one game later.
+    for (const seed of [6101, 6102, 6103, 6104]) {
+      const { de } = ten(seed);
+      for (const s of de.winners[0]!) {
+        const loser = s.winner === s.a ? s.b : s.a;
+        const conqueror = s.winner;
+        const next = de.losers[0]!.find((x) => x.a === loser || x.b === loser);
+        if (!next) continue;
+        const opponent = next.a === loser ? next.b : next.a;
+        expect(opponent).not.toBe(conqueror);
+      }
+    }
+  });
+
+  it('settles a finish order the same way the eight-team bracket does', () => {
+    const { de } = ten(6109);
+    const top4 = placings(de);
+    expect(top4[0]).toBe(de.champion);
+    expect(new Set(top4).size).toBe(4);
+    // Third fell in the losers final, fourth in the losers semifinal — read off
+    // the last two losers rounds, whichever indexes those happen to be.
+    const rows = de.losers;
+    const lf = rows[rows.length - 1]![0]!;
+    const ls = rows[rows.length - 2]![0]!;
+    expect(top4[2]).toBe(lf.winner === lf.a ? lf.b : lf.a);
+    expect(top4[3]).toBe(ls.winner === ls.a ? ls.b : ls.a);
+  });
+
+  it('names its rounds for what they are', () => {
+    const { de } = ten(6110);
+    expect(slotName(de.winners[0]![0]!)).toBe('Play-in');
+    expect(slotName(de.winners[1]![0]!)).toBe('Opening round');
+    expect(slotName(de.winners[3]![0]!)).toBe('Winners final');
+    expect(slotName(de.losers[4]![0]!)).toBe('Losers final');
+    expect(slotName(de.final[0]!)).toBe('Championship');
+  });
+
+  it('refuses a size it was not built for', () => {
+    const s = world(6111);
+    freezeRegularSeason(s);
+    for (const n of [4, 9, 12, 16]) {
+      expect(() => runDoubleElim(s, Array.from({ length: n }, (_, i) => i))).toThrow();
+    }
   });
 });

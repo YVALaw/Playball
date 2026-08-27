@@ -45,6 +45,17 @@ export interface DESlot {
   bSeed: number;
   game: BracketGame | null;
   winner: number | null;
+  /**
+   * What this round is called, baked in when the bracket is built.
+   *
+   * Stored rather than derived because the same (side, round) means different
+   * things at different sizes — round 0 of the winners bracket is the opening
+   * round in an eight-team tournament and the play-in in a ten-team one — and
+   * `slotName` is called from the store and two screens with nothing but the
+   * slot in hand. Naming it once, where the shape is known, beats threading the
+   * shape through every caller.
+   */
+  name?: string;
 }
 
 export interface DoubleElim {
@@ -66,41 +77,191 @@ export interface DoubleElim {
   seedOf: Map<number, number>;
 }
 
-const slot = (side: 'W' | 'L' | 'F', round: number, i: number): DESlot => ({
+const slot = (
+  side: 'W' | 'L' | 'F', round: number, i: number, name?: string,
+): DESlot => ({
   side, round, slot: i, a: null, b: null, aSeed: 0, bSeed: 0,
   game: null, winner: null,
+  ...(name ? { name } : {}),
 });
+
+/** Where a decided slot sends somebody: a slot to sit in, or out of the field. */
+type Target = { side: 'W' | 'L' | 'F'; round: number; slot: number; first: boolean };
+
+interface Shape {
+  /** How many slots in each winners round, then each losers round. */
+  winners: number[];
+  losers: number[];
+  /** What each round is called, in order. */
+  wNames: string[];
+  lNames: string[];
+  /** Who plays in the first winners round, as seed pairs (1-based). */
+  open: [number, number][];
+  /** The winner of a decided slot goes here. `null` means the trophy. */
+  win: (s: DESlot) => Target | null;
+  /** And the loser here. `null` means out of the tournament. */
+  lose: (s: DESlot) => Target | null;
+}
+
+const W = (round: number, slotIdx: number, first: boolean): Target =>
+  ({ side: 'W', round, slot: slotIdx, first });
+const L = (round: number, slotIdx: number, first: boolean): Target =>
+  ({ side: 'L', round, slot: slotIdx, first });
+const F = (first: boolean): Target => ({ side: 'F', round: 0, slot: 0, first });
+
+/**
+ * The eight-team tournament, exactly as it has always been played.
+ *
+ * Transcribed from the routing this file used to express as a chain of ifs, and
+ * the existing tests are the proof of the transcription: the game count, the
+ * finish order, the "steps to the same tournament as running it in one go"
+ * property and every conference tournament in the soak all read this table now.
+ */
+const EIGHT: Shape = {
+  winners: [4, 2, 1],
+  losers: [2, 2, 1, 1],
+  wNames: ['Opening round', 'Winners semifinal', 'Winners final'],
+  lNames: ['Elimination round', 'Losers round 2', 'Losers semifinal', 'Losers final'],
+  open: [[1, 8], [4, 5], [2, 7], [3, 6]],
+  win: (s) => {
+    if (s.side === 'W') {
+      if (s.round === 0) return W(1, Math.floor(s.slot / 2), s.slot % 2 === 0);
+      if (s.round === 1) return W(2, 0, s.slot === 0);
+      return F(true);
+    }
+    if (s.round === 0) return L(1, s.slot, true);
+    if (s.round === 1) return L(2, 0, s.slot === 0);
+    if (s.round === 2) return L(3, 0, true);
+    return F(false);                       // losers final: he earns the champion
+  },
+  lose: (s) => {
+    if (s.side !== 'W') return null;       // a second loss is the end of it
+    if (s.round === 0) return L(0, Math.floor(s.slot / 2), s.slot % 2 === 0);
+    // Crossed, so a team cannot meet the same opponent one game after losing
+    // to him.
+    if (s.round === 1) return L(1, 1 - s.slot, false);
+    return L(3, 0, false);
+  },
+};
+
+/**
+ * Ten teams: the same tournament with a play-in bolted onto the front of the
+ * winners bracket.
+ *
+ * This replaced a separate best-of-three opening round that trimmed a twenty
+ * team national field to sixteen, and the reason it had to go is not that it
+ * was an extra round — it is that it was a *single elimination* gate standing
+ * in front of a double elimination tournament. A team could arrive having won
+ * its conference and its regional, lose one series, and be finished, in an
+ * event whose whole promise is that one bad night does not end you.
+ *
+ * Here the two extra teams per bracket play their way in, and losing that game
+ * costs exactly what losing any other first game costs: you drop to the losers
+ * side and keep playing. Six teams sit it out, which is what a better regular
+ * season is supposed to buy.
+ *
+ * Eighteen games, nineteen with the reset — which is the arithmetic checking
+ * itself, since nine teams must be eliminated at two losses each.
+ */
+const TEN: Shape = {
+  winners: [2, 4, 2, 1],
+  losers: [2, 2, 2, 1, 1],
+  wNames: ['Play-in', 'Opening round', 'Winners semifinal', 'Winners final'],
+  lNames: [
+    'Elimination round', 'Losers round 2', 'Losers round 3',
+    'Losers semifinal', 'Losers final',
+  ],
+  // Seeds 1–6 are byed. The play-in is the bottom four, paired as they would
+  // be anywhere else: best against worst.
+  open: [[7, 10], [8, 9]],
+  win: (s) => {
+    if (s.side === 'W') {
+      // The play-in winners take the two lowest positions in the eight-team
+      // bracket behind them, so a bye is worth what a bye should be worth.
+      if (s.round === 0) return W(1, s.slot === 0 ? 0 : 2, false);
+      if (s.round === 1) return W(2, Math.floor(s.slot / 2), s.slot % 2 === 0);
+      if (s.round === 2) return W(3, 0, s.slot === 0);
+      return F(true);
+    }
+    if (s.round === 0) return L(1, s.slot, true);
+    if (s.round === 1) return L(2, s.slot, true);
+    if (s.round === 2) return L(3, 0, s.slot === 0);
+    if (s.round === 3) return L(4, 0, true);
+    return F(false);
+  },
+  lose: (s) => {
+    if (s.side !== 'W') return null;
+    if (s.round === 0) return L(0, s.slot, true);
+    if (s.round === 1) {
+      /*
+        Which of the four opening-round losers drops into the play-in losers'
+        round, and which waits one.
+
+        Slots 1 and 3 are the games with no play-in team in them (4v5 and 3v6),
+        and they are the ones sent down to meet the play-in losers. Sending
+        slot 0 or 2 could pair a play-in loser against the very team that
+        knocked him out an hour earlier, which is the rematch the crossing rule
+        exists to prevent everywhere else in this bracket.
+      */
+      if (s.slot === 1) return L(0, 0, false);
+      if (s.slot === 3) return L(0, 1, false);
+      return L(1, s.slot === 0 ? 0 : 1, false);
+    }
+    if (s.round === 2) return L(2, 1 - s.slot, false);
+    return L(4, 0, false);                 // the winners final's loser
+  },
+};
+
+const SHAPES: Record<number, Shape> = { 8: EIGHT, 10: TEN };
 
 /** Build the whole structure up front, every slot drawn, TBD where empty. */
 export function startDoubleElim(
   season: SeasonState, seeds: readonly number[],
 ): DoubleElim {
-  if (seeds.length !== 8) {
-    throw new Error(`double elimination is built for eight, got ${seeds.length}`);
+  const shape = SHAPES[seeds.length];
+  if (!shape) {
+    throw new Error(
+      `double elimination is built for eight or ten, got ${seeds.length}`);
   }
 
-  const winners = [
-    [slot('W', 0, 0), slot('W', 0, 1), slot('W', 0, 2), slot('W', 0, 3)],
-    [slot('W', 1, 0), slot('W', 1, 1)],
-    [slot('W', 2, 0)],
+  const winners = shape.winners.map((n, r) =>
+    Array.from({ length: n }, (_, i) => slot('W', r, i, shape.wNames[r])));
+  const losers = shape.losers.map((n, r) =>
+    Array.from({ length: n }, (_, i) => slot('L', r, i, shape.lNames[r])));
+  const final = [
+    slot('F', 0, 0, 'Championship'),
+    slot('F', 1, 0, 'Championship · the reset'),
   ];
-  const losers = [
-    [slot('L', 0, 0), slot('L', 0, 1)],
-    [slot('L', 1, 0), slot('L', 1, 1)],
-    [slot('L', 2, 0)],
-    [slot('L', 3, 0)],
-  ];
-  const final = [slot('F', 0, 0), slot('F', 1, 0)];
 
-  const order = seedOrder(8);
-  for (let i = 0; i < 4; i++) {
+  shape.open.forEach(([seedA, seedB], i) => {
     const s = winners[0]![i]!;
-    const seedA = order[i * 2]!;
-    const seedB = order[i * 2 + 1]!;
     s.a = seeds[seedA - 1] ?? null;
     s.b = seeds[seedB - 1] ?? null;
     s.aSeed = seedA;
     s.bSeed = seedB;
+  });
+
+  // The byes. Anybody not in the first round is already standing in the round
+  // behind it, and the routing table says exactly where — `open` names who
+  // plays, so whoever it does not name is seeded straight through.
+  if (shape.winners[0]! < 4 && winners[1]) {
+    const playing = new Set(shape.open.flat());
+    const order = seedOrder(8);
+    // The eight positions of the bracket behind the play-in: six real seeds,
+    // and two holes the play-in winners will fill.
+    const byes = [...Array(seeds.length)].map((_, i) => i + 1)
+      .filter((seed) => !playing.has(seed));
+    for (let i = 0; i < 4; i++) {
+      const s = winners[1]![i]!;
+      const seatA = order[i * 2]!;
+      const seatB = order[i * 2 + 1]!;
+      // Seat n of the eight-bracket is the nth byed seed, for n up to six.
+      const from = (seat: number): number | null => byes[seat - 1] ?? null;
+      const sa = from(seatA);
+      const sb = from(seatB);
+      if (sa !== null) { s.a = seeds[sa - 1] ?? null; s.aSeed = sa; }
+      if (sb !== null) { s.b = seeds[sb - 1] ?? null; s.bSeed = sb; }
+    }
   }
 
   return {
@@ -115,6 +276,11 @@ export function startDoubleElim(
   };
 }
 
+/** Which tournament this is, read off its own shape. */
+function shapeOf(state: DoubleElim): Shape {
+  return SHAPES[state.seeds.length] ?? EIGHT;
+}
+
 /** Feed a decided slot's winner and loser to wherever the structure sends them. */
 function propagate(state: DoubleElim, s: DESlot): void {
   const winner = s.winner as number;
@@ -122,8 +288,12 @@ function propagate(state: DoubleElim, s: DESlot): void {
   const wSeed = s.winner === s.a ? s.aSeed : s.bSeed;
   const lSeed = s.winner === s.a ? s.bSeed : s.aSeed;
 
-  const put = (into: DESlot, team: number, seed: number, first: boolean): void => {
-    if (first) { into.a = team; into.aSeed = seed; }
+  const put = (t: Target, team: number, seed: number): void => {
+    const rows = t.side === 'W' ? state.winners
+      : t.side === 'L' ? state.losers : null;
+    const into = rows ? rows[t.round]?.[t.slot] : state.final[0];
+    if (!into) return;
+    if (t.first) { into.a = team; into.aSeed = seed; }
     else { into.b = team; into.bSeed = seed; }
   };
 
@@ -133,34 +303,13 @@ function propagate(state: DoubleElim, s: DESlot): void {
     if (n >= 2) state.eliminated.push(team);
   };
 
-  if (s.side === 'W' && s.round === 0) {
-    put(state.winners[1]![Math.floor(s.slot / 2)]!, winner, wSeed, s.slot % 2 === 0);
+  if (s.side !== 'F') {
+    const shape = shapeOf(state);
+    const to = shape.win(s);
+    if (to) put(to, winner, wSeed);
     fell(loser);
-    put(state.losers[0]![Math.floor(s.slot / 2)]!, loser, lSeed, s.slot % 2 === 0);
-    return;
-  }
-  if (s.side === 'W' && s.round === 1) {
-    put(state.winners[2]![0]!, winner, wSeed, s.slot === 0);
-    fell(loser);
-    // Crossed into the losers bracket, so a team cannot meet the same
-    // opponent again one game after losing to him.
-    put(state.losers[1]![1 - s.slot]!, loser, lSeed, false);
-    return;
-  }
-  if (s.side === 'W' && s.round === 2) {
-    put(state.final[0]!, winner, wSeed, true);
-    fell(loser);
-    put(state.losers[3]![0]!, loser, lSeed, false);
-    return;
-  }
-
-  if (s.side === 'L') {
-    fell(loser);
-    if (s.round === 0) { put(state.losers[1]![s.slot]!, winner, wSeed, true); return; }
-    if (s.round === 1) { put(state.losers[2]![0]!, winner, wSeed, s.slot === 0); return; }
-    if (s.round === 2) { put(state.losers[3]![0]!, winner, wSeed, true); return; }
-    // Losers final: the survivor earns the winners champion.
-    put(state.final[0]!, winner, wSeed, false);
+    const down = shape.lose(s);
+    if (down) put(down, loser, lSeed);
     return;
   }
 
@@ -197,11 +346,20 @@ export function liveSlotFor(state: DoubleElim, team: number): DESlot | null {
   return readySlots(state).find((s) => s.a === team || s.b === team) ?? null;
 }
 
-/** What a slot is called on screen and in the log. */
+/**
+ * What a slot is called on screen and in the log.
+ *
+ * The name is baked into the slot when the bracket is built, because the same
+ * (side, round) means different things at different sizes. The fallback covers
+ * one real case rather than being defensive for its own sake: a tournament
+ * saved by a build before names were stored comes back without them, and the
+ * eight-team names are what every such save was.
+ */
 export function slotName(s: DESlot): string {
+  if (s.name) return s.name;
   if (s.side === 'F') return s.round === 0 ? 'Championship' : 'Championship · the reset';
-  if (s.side === 'W') return ['Opening round', 'Winners semifinal', 'Winners final'][s.round]!;
-  return ['Elimination round', 'Losers round 2', 'Losers semifinal', 'Losers final'][s.round]!;
+  if (s.side === 'W') return EIGHT.wNames[s.round] ?? 'Winners bracket';
+  return EIGHT.lNames[s.round] ?? 'Losers bracket';
 }
 
 /** Play one slot's game, on the season's own dice. */
@@ -281,9 +439,14 @@ export function placings(state: DoubleElim): number[] {
   // changes who they are, so the first final answers for both.
   const runnerUp = state.final[0]!.a === state.champion
     ? state.final[0]!.b : state.final[0]!.a;
-  const lf = state.losers[3]![0]!;
+  // Counted back from the end rather than indexed at 3 and 2, so the same
+  // reading works whichever size this bracket is: the last losers round is
+  // always the losers final and the one before it always the semifinal, and
+  // both are always a single game.
+  const rows = state.losers;
+  const lf = rows[rows.length - 1]![0]!;
   const third = lf.winner === lf.a ? lf.b : lf.a;
-  const ls = state.losers[2]![0]!;
+  const ls = rows[rows.length - 2]![0]!;
   const fourth = ls.winner === ls.a ? ls.b : ls.a;
   return [state.champion, runnerUp as number, third as number, fourth as number];
 }

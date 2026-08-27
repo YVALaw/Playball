@@ -69,7 +69,6 @@ function brackets(seasons: number): void {
     const regionals = stageRegionals(season, cups);
     for (const r of regionals) tally(r, out);
     const national = stageNational(season, cups, regionals);
-    for (const o of national.opening) tally(o, out);
     tally(national.bracketA, out);
     tally(national.bracketB, out);
     tally(national.final, out);

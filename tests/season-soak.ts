@@ -11,8 +11,13 @@
 // quietly losing a team. Those never show up in a two-season test and they are
 // exactly what somebody playing a fifteen-year career hits.
 //
-//   npm run soak            30 seasons
-//   npm run soak -- 60      more of them
+//   npm run soak                    30 seasons of the usual world
+//   npm run soak -- 60              more of them
+//   npm run soak -- 30 11111        a different world, same thirty years
+//
+// The seed argument exists because a single world cannot tell signal from
+// noise, and one measurement here was briefly mistaken for a regression until
+// four more worlds said otherwise.
 
 import { createSeason, simSeason, nextSeason } from '../src/engine/season.js';
 import type { SeasonState } from '../src/engine/season.js';
@@ -120,23 +125,29 @@ function auditJune(season: SeasonState, year: number): void {
     if (!field.includes(t)) fail(year, 'a protected team missed the national field');
   }
 
-  if (national.opening.length !== 4) {
-    fail(year, `${national.opening.length} opening series, expected 4`);
-  }
-  const inOpening = national.opening.flatMap((o) => o.seeds);
-  if (new Set(inOpening).size !== 8) fail(year, 'the opening round did not hold eight distinct teams');
-  for (const t of inOpening) {
+  /*
+    The play-in, which used to be an opening round.
+
+    The audit that stood here checked that four best-of-three series trimmed
+    twenty teams to sixteen. There is no such round now — the bottom four of
+    each half play their way in *inside* the winners bracket — so what is
+    checked is the promise that survived it: a protected team never has to.
+  */
+  const playIn = field.slice(12);
+  if (playIn.length !== 8) fail(year, `${playIn.length} teams below the bye line, expected 8`);
+  for (const t of playIn) {
     if (national.field.protectedTeams.includes(t)) {
-      fail(year, 'a protected team was drawn into the opening round');
+      fail(year, 'a protected team was left to play its way in');
     }
   }
 
-  const sixteen = [...field.slice(0, 12), ...national.opening.map((o) => o.champion)];
-  if (new Set(sixteen).size !== 16) fail(year, 'the showdown field is not sixteen distinct teams');
   const inBrackets = [...national.bracketA.seeds, ...national.bracketB.seeds];
-  if (new Set(inBrackets).size !== 16) fail(year, 'the two showdown brackets overlap');
+  if (new Set(inBrackets).size !== 20) fail(year, 'the two showdown brackets overlap');
+  if (national.bracketA.seeds.length !== 10 || national.bracketB.seeds.length !== 10) {
+    fail(year, 'the showdown did not split into two halves of ten');
+  }
   for (const t of inBrackets) {
-    if (!sixteen.includes(t)) fail(year, 'a bracket contains a team not in the sixteen');
+    if (!field.includes(t)) fail(year, 'a bracket contains a team not in the field');
   }
   if (![national.bracketA.champion, national.bracketB.champion].includes(national.champion)) {
     fail(year, 'the champion did not win either bracket');
@@ -194,9 +205,9 @@ function weigh(season: SeasonState): number {
   return n;
 }
 
-function soak(years: number): void {
+function soak(years: number, worldSeed = 20260827): void {
   resetNames();
-  let season = createSeason(makeRng(20260827));
+  let season = createSeason(makeRng(worldSeed));
   const weights: number[] = [];
   const start = Date.now();
 
@@ -241,7 +252,24 @@ function soak(years: number): void {
     `${byTeam.size} different champions in ${years}`
     + `, most by one program ${most?.[1] ?? 0} (${most?.[0] ?? '—'})`,
   );
-  if (byTeam.size < years / 3) {
+  /*
+    The threshold, and why it is not where it was.
+
+    It was `years / 3` — ten in thirty — which was the number the very first
+    soak happened to print. An alarm set at the observed value fires on noise,
+    and it duly did: measured across five different worlds the format produces
+    9, 10, 9, 10, 9 distinct champions in thirty years, so half of all worlds
+    tripped it while nothing was wrong.
+
+    Nine or ten is still high concentration — the real tournament produces
+    closer to sixteen — and that remains an open balance question in
+    `06-backlog.md` §F rather than something this probe should decide. What the
+    probe is for is catching a *collapse*: a change that suddenly makes the same
+    three programs win everything. Six in thirty is comfortably below anything
+    measured and far above the runaway case, so it catches the regression
+    without crying about the weather.
+  */
+  if (byTeam.size < years / 5) {
     fail(0, `only ${byTeam.size} programs won anything in ${years} years`);
   }
 
@@ -261,4 +289,4 @@ function soak(years: number): void {
   process.exitCode = 1;
 }
 
-soak(Number(process.argv[2] ?? 30));
+soak(Number(process.argv[2] ?? 30), Number(process.argv[3] ?? 20260827));
