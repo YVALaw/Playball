@@ -739,8 +739,10 @@ own.
   team card, the colleges directory, the wire and the postseason map. Asset
   strategy undecided (generated vs drawn); do not bolt on ad hoc.
 - **Awards night presentation.** The awards screen could deal each award as a
-  flip card, one reveal at a time, the way a broadcast does it. Presentation
-  only; the engine already picks the winners.
+  flip card, one reveal at a time, the way a broadcast does it — and the
+  feedback pass added a three.js celebration (fireworks or similar) when a
+  winner is one of the user's own players. Presentation only; the engine
+  already picks the winners, and the 3D chunk should stay lazy.
 - **Saves behind a settings sheet.** The portrait menu now carries SAVES; the
   eventual home is a proper settings sheet (saves, tutorial reset, sound,
   eventually preferences) opened from the same menu, and the SAVES sub-nav tab
