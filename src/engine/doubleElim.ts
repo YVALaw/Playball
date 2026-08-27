@@ -380,7 +380,11 @@ function playSlot(
   const ready = preplayed?.get(pairKey(s.a, s.b));
   const summary = ready
     ? recordResult(state.season, home, away, ready, {
-        conference: false, standings: true, record: true,
+        // `postseason` matters here even though the game is already played:
+        // it is what puts the line in June's own book. Without it the only
+        // postseason statistics missing from the league would be the user's,
+        // because his are the games that arrive down this branch.
+        conference: false, standings: true, record: true, postseason: true,
       })
     : playGame(state.season, home, away, {
         conference: false,

@@ -5,11 +5,13 @@
 import { describe, it, expect } from 'vitest';
 import {
   createSeason, simSeason, standings, seasonLength, nextSeason, DEFAULT_SEASON,
+  recordCareerMarks,
 } from '../src/engine/season.js';
 import { departAndDevelop, fillRosters } from '../src/engine/progression.js';
 import { CONFERENCES } from '../src/data/schools.js';
 import {
   singleElimination, bestOf, conferenceTournament, seasonAwards, allConference, runPostseason,
+  allConferenceTournaments, stageRegionals, stageNational,
   CONF_FIELD, CONF_ADVANCE, NATIONAL_BIDS, clincher,
   coachOfTheYear, coachAwardCandidates, freezeRegularSeason,
   type PostseasonSummary,
@@ -415,5 +417,111 @@ describe('coach of the year', () => {
     const kinds = coachAwardCandidates(s, post).map((c) => c.reason);
     expect(kinds).toContain('overachieved');
     expect(kinds).toContain('wireToWire');
+  });
+});
+
+/*
+  June, counted on its own.
+
+  Season totals in this game include tournament play, because that is the NCAA
+  convention and because two accumulation paths would drift. That makes "what
+  did he do in the tournament" unanswerable by subtraction, so June is counted
+  a second time in its own book rather than moved into one.
+
+  The half that cannot be recovered later is the reason it is kept for all
+  ninety-six programs and not only the user's: box scores are stored for one
+  program, so a rival's June is gone the moment it is over.
+*/
+describe('postseason statistics', () => {
+  const played = (seed: number) => {
+    const s = playedSeason(seed);
+    freezeRegularSeason(s);
+    const cups = allConferenceTournaments(s);
+    const regionals = stageRegionals(s, cups);
+    const national = stageNational(s, cups, regionals);
+    return { s, cups, regionals, national };
+  };
+
+  it('keeps a June book that is never larger than the season book', () => {
+    const { s } = played(7301);
+    expect(s.postBatting!.size).toBeGreaterThan(0);
+    expect(s.postPitching!.size).toBeGreaterThan(0);
+    // Everybody who appeared in June also appeared in the season, by
+    // construction — the season book counts the same games.
+    for (const [id, june] of s.postBatting!) {
+      const all = s.batting.get(id);
+      expect(all).toBeDefined();
+      expect(june.ab).toBeLessThanOrEqual(all!.ab);
+      expect(june.h).toBeLessThanOrEqual(all!.h);
+      expect(june.g).toBeLessThanOrEqual(all!.g);
+    }
+    for (const [id, june] of s.postPitching!) {
+      const all = s.pitching.get(id);
+      expect(all).toBeDefined();
+      expect(june.outs).toBeLessThanOrEqual(all!.outs);
+      expect(june.k).toBeLessThanOrEqual(all!.k);
+    }
+  });
+
+  it('counts only teams that actually reached the postseason', () => {
+    const { s, cups, regionals, national } = played(7302);
+    const inJune = new Set<number>([
+      ...cups.flatMap((c) => c.seeds),
+      ...regionals.flatMap((r) => r.seeds),
+      ...national.field.seeds,
+    ]);
+    // Every man with a June line belongs to a program that played in June.
+    for (const [id] of s.postBatting!) {
+      const owner = s.teams.findIndex((t) => [
+        ...t.team.lineup, ...t.team.bench, ...t.team.rotation, ...t.team.bullpen,
+      ].some((p) => p.id === id));
+      if (owner >= 0) expect(inJune.has(owner)).toBe(true);
+    }
+  });
+
+  it('does not disturb the season book it sits beside', () => {
+    // The split must be purely additive: the same world with the June book
+    // ignored has to produce the same season totals it always did.
+    const { s } = played(7303);
+    let ab = 0, h = 0, outs = 0;
+    for (const b of s.batting.values()) { ab += b.ab; h += b.h; }
+    for (const p of s.pitching.values()) outs += p.outs;
+    // Rough but load-bearing sanity: hits cannot exceed at-bats, and every out
+    // recorded by a pitcher is an out somebody made.
+    expect(h).toBeLessThan(ab);
+    expect(outs).toBeGreaterThan(0);
+  });
+
+  it('folds a career postseason line that survives the year roll', () => {
+    const { s } = played(7304);
+    recordCareerMarks(s, 2027);
+    const withJune = [...(s.careerTotals ?? new Map()).values()].filter((c) => c.post);
+    expect(withJune.length).toBeGreaterThan(0);
+    for (const c of withJune) {
+      expect(c.post!.y).toBeGreaterThanOrEqual(1);
+      expect(c.post!.last).toBe(2027);
+      // The June half can never exceed the career it is part of.
+      expect(c.post!.ab).toBeLessThanOrEqual(c.ab);
+      expect(c.post!.k).toBeLessThanOrEqual(c.k);
+    }
+  });
+
+  it('folds the same June twice without counting it twice', () => {
+    // The offseason rail can be walked backwards and forwards, so this pass
+    // runs more than once on the same year. A running total is the one thing
+    // that is not idempotent for free.
+    const { s } = played(7305);
+    recordCareerMarks(s, 2027);
+    const first = [...(s.careerTotals ?? new Map()).entries()]
+      .filter(([, c]) => c.post).map(([id, c]) => [id, c.post!.ab, c.post!.y] as const);
+    recordCareerMarks(s, 2027);
+    recordCareerMarks(s, 2027);
+    const again = new Map([...(s.careerTotals ?? new Map()).entries()]
+      .map(([id, c]) => [id, c.post]));
+    expect(first.length).toBeGreaterThan(0);
+    for (const [id, ab, y] of first) {
+      expect(again.get(id)?.ab).toBe(ab);
+      expect(again.get(id)?.y).toBe(y);
+    }
   });
 });

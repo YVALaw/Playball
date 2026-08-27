@@ -177,6 +177,31 @@ export interface CareerTotals {
   ab: number; h: number; d: number; t: number; hr: number;
   r: number; rbi: number; sb: number;
   outs: number; w: number; l: number; er: number; k: number;
+  /**
+   * And the same career, June only.
+   *
+   * A separate line rather than a flag, because the two questions are different
+   * and both get asked: what a man did over four years, and what he did when it
+   * mattered. "He hit .380 in three tournaments" is the kind of fact a dynasty
+   * is actually made of, and it is unrecoverable after the fact — box scores are
+   * kept only for the user's own program, so a rival's June would be gone.
+   *
+   * Optional, because every career row written before postseason splits existed
+   * has none, and a man who has never reached June has none either. A missing
+   * line and a line of zeroes mean the same thing to every reader.
+   */
+  post?: PostTotals;
+}
+
+/** A career's postseason half. The same columns, counted only in June. */
+export interface PostTotals {
+  /** Tournaments appeared in — the postseason's equivalent of seasons. */
+  y: number;
+  /** The last June folded in, for the same idempotence reason `last` exists. */
+  last: number;
+  ab: number; h: number; d: number; t: number; hr: number;
+  r: number; rbi: number; sb: number;
+  outs: number; w: number; l: number; er: number; k: number;
 }
 
 /**
@@ -583,6 +608,21 @@ export interface SeasonState {
   lastPitched: Map<PlayerId, number>;
   batting: Map<PlayerId, BattingSeason>;
   pitching: Map<PlayerId, PitchingSeason>;
+  /**
+   * June only, kept alongside the season totals rather than instead of them.
+   *
+   * NCAA season totals include tournament play and this game has always
+   * followed that, so  and  keep counting through the
+   * postseason. These two count the same games a second time, on their own, so
+   * a screen can ask what a man did in June without subtracting one book from
+   * another and hoping the rounding agrees.
+   *
+   * Optional in the type and only in the type: a save written before the split
+   * existed has neither, and refusing to load a dynasty is the one thing a save
+   * file must never do.
+   */
+  postBatting?: Map<PlayerId, BattingSeason>;
+  postPitching?: Map<PlayerId, PitchingSeason>;
   /**
    * What each man did with a glove, alongside the other two books.
    *
@@ -1037,6 +1077,8 @@ export function createSeason(
     lastPitched: new Map(),
     batting: new Map(),
     pitching: new Map(),
+    postBatting: new Map(),
+    postPitching: new Map(),
     fielding: new Map(),
     results: [],
     boxScores: {},
@@ -1101,6 +1143,8 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
     lastPitched: new Map(),
     batting: new Map(),
     pitching: new Map(),
+    postBatting: new Map(),
+    postPitching: new Map(),
     fielding: new Map(),
     // The book is the one thing here that is not about a season. It carries
     // forward for as long as the dynasty does, seeded if this save predates it.
@@ -1145,6 +1189,33 @@ function battingFor(season: SeasonState, id: PlayerId): BattingSeason {
   if (!line) {
     line = { g: 0, ab: 0, r: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, hbp: 0, sb: 0, cs: 0 };
     season.batting.set(id, line);
+  }
+  return line;
+}
+
+/**
+ * The same two books again, June only.
+ *
+ * Lazy for the reason  is: a save written before the split
+ * existed arrives with the maps simply absent, and putting one back when it is
+ * missing is cheaper than a migration and impossible to get wrong.
+ */
+function postBattingFor(season: SeasonState, id: PlayerId): BattingSeason {
+  if (!season.postBatting) season.postBatting = new Map();
+  let line = season.postBatting.get(id);
+  if (!line) {
+    line = { g: 0, ab: 0, r: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, hbp: 0, sb: 0, cs: 0 };
+    season.postBatting.set(id, line);
+  }
+  return line;
+}
+
+function postPitchingFor(season: SeasonState, id: PlayerId): PitchingSeason {
+  if (!season.postPitching) season.postPitching = new Map();
+  let line = season.postPitching.get(id);
+  if (!line) {
+    line = { g: 0, gs: 0, w: 0, l: 0, sv: 0, outs: 0, h: 0, r: 0, er: 0, bb: 0, k: 0, hr: 0, pitches: 0, bf: 0 };
+    season.postPitching.set(id, line);
   }
   return line;
 }
@@ -1198,6 +1269,7 @@ function foldSide(
   won: boolean,
   margin: number,
   decision: Decision,
+  june = false,
 ): void {
   for (const line of side.batting.values()) {
     const s = battingFor(season, line.player.id);
@@ -1205,6 +1277,16 @@ function foldSide(
     s.ab += line.ab; s.r += line.r; s.h += line.h; s.d += line.d; s.t += line.t;
     s.hr += line.hr; s.rbi += line.rbi; s.bb += line.bb; s.k += line.k;
     s.hbp += line.hbp; s.sb += line.sb; s.cs += line.cs;
+    // The same game a second time, in its own book. Season totals include
+    // tournament play — that is the NCAA convention and this game has always
+    // followed it — so June is counted twice on purpose rather than moved.
+    if (june) {
+      const j = postBattingFor(season, line.player.id);
+      j.g += 1;
+      j.ab += line.ab; j.r += line.r; j.h += line.h; j.d += line.d; j.t += line.t;
+      j.hr += line.hr; j.rbi += line.rbi; j.bb += line.bb; j.k += line.k;
+      j.hbp += line.hbp; j.sb += line.sb; j.cs += line.cs;
+    }
   }
 
   for (const line of side.pitching.values()) {
@@ -1214,6 +1296,14 @@ function foldSide(
     s.bb += line.bb; s.k += line.k; s.hr += line.hr;
     s.pitches += line.pitches; s.bf += line.bf;
     if (line.player === side.starter) s.gs += 1;
+    if (june) {
+      const j = postPitchingFor(season, line.player.id);
+      j.g += 1;
+      j.outs += line.outs; j.h += line.h; j.r += line.r; j.er += line.er;
+      j.bb += line.bb; j.k += line.k; j.hr += line.hr;
+      j.pitches += line.pitches; j.bf += line.bf;
+      if (line.player === side.starter) j.gs += 1;
+    }
   }
 
   // Pitchers appear in here as well as above: a comebacker is his play to make
@@ -1236,10 +1326,15 @@ function foldSide(
     : decision.loser ?? side.starter;
   const line = pitchingFor(season, credited.id);
   if (won) line.w += 1; else line.l += 1;
+  if (june) {
+    const j = postPitchingFor(season, credited.id);
+    if (won) j.w += 1; else j.l += 1;
+  }
 
   // A save needs a reliever who finished a close win he did not win himself.
   if (won && side.pitcher !== side.starter && side.pitcher !== credited && margin <= 3) {
     pitchingFor(season, side.pitcher.id).sv += 1;
+    if (june) postPitchingFor(season, side.pitcher.id).sv += 1;
   }
 }
 
@@ -1599,8 +1694,9 @@ export function recordResult(
     winner: result.winningPitcher,
     loser: result.losingPitcher,
   };
-  foldSide(season, result.home, homeWon, margin, decision);
-  foldSide(season, result.away, !homeWon, margin, decision);
+  const june = opts.postseason === true;
+  foldSide(season, result.home, homeWon, margin, decision, june);
+  foldSide(season, result.away, !homeWon, margin, decision, june);
 
   // Into the all-time book, from the one door every finished game comes through.
   //
@@ -2388,6 +2484,50 @@ export function recordCareerMarks(season: SeasonState, year: number): void {
         er: base.er + (pit?.er ?? 0),
         k: base.k + (pit?.k ?? 0),
       };
+
+      /*
+        And the June half of the same career.
+
+        Folded here rather than anywhere else because this is the one pass that
+        already runs once a year, over every roster in the country, with the
+        idempotence problem already solved — and a running postseason total has
+        exactly the same problem for exactly the same reason. `post.last` is
+        the tournament already folded in, so walking the offseason rail
+        backwards and forwards cannot count a June twice.
+
+        A man who never reached June carries no line at all rather than a line
+        of zeroes: the map is one row per active player already, and the
+        cheapest row is the one that is not there.
+      */
+      const jBat = season.postBatting?.get(p.id);
+      const jPit = season.postPitching?.get(p.id);
+      const playedJune = (jBat && jBat.g > 0) || (jPit && jPit.g > 0);
+      const priorPost = before?.post;
+      if (playedJune || priorPost) {
+        const pBase: PostTotals = priorPost ?? {
+          y: 0, last: 0,
+          ab: 0, h: 0, d: 0, t: 0, hr: 0, r: 0, rbi: 0, sb: 0,
+          outs: 0, w: 0, l: 0, er: 0, k: 0,
+        };
+        total.post = priorPost?.last === year ? priorPost : {
+          y: pBase.y + (playedJune ? 1 : 0),
+          last: year,
+          ab: pBase.ab + (jBat?.ab ?? 0),
+          h: pBase.h + (jBat?.h ?? 0),
+          d: pBase.d + (jBat?.d ?? 0),
+          t: pBase.t + (jBat?.t ?? 0),
+          hr: pBase.hr + (jBat?.hr ?? 0),
+          r: pBase.r + (jBat?.r ?? 0),
+          rbi: pBase.rbi + (jBat?.rbi ?? 0),
+          sb: pBase.sb + (jBat?.sb ?? 0),
+          outs: pBase.outs + (jPit?.outs ?? 0),
+          w: pBase.w + (jPit?.w ?? 0),
+          l: pBase.l + (jPit?.l ?? 0),
+          er: pBase.er + (jPit?.er ?? 0),
+          k: pBase.k + (jPit?.k ?? 0),
+        };
+      }
+
       next.set(p.id, total);
 
       const who = { holder: p.name, team: rec.def.abbr, year, id: p.id };

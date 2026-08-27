@@ -80,6 +80,15 @@ export function fromPortable(p: Portable): SeasonState {
   // from the next pitch rather than every reader having to guard the map.
   p.season.fielding ??= new Map();
 
+  // And exactly the same rule for June's own two books, which are newer still.
+  // A save from before the postseason split simply has no record of who hit in
+  // which tournament, and no amount of arithmetic can recover it — season
+  // totals include June rather than excluding it, so there is nothing to
+  // subtract. Empty is the truthful state, and the split starts counting from
+  // this dynasty's next postseason.
+  p.season.postBatting ??= new Map();
+  p.season.postPitching ??= new Map();
+
   // And one that only exists for the width of an offseason: a save written
   // between the draft phase and signing day carries a board, and a board from
   // before the other ninety five programs could keep anybody has no ledger of
