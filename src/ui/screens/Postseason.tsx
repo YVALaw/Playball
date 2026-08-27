@@ -55,6 +55,7 @@ export function Postseason() {
   const season = useDynasty((s) => s.season);
   const bracket = useDynasty((s) => s.bracket);
   const myBracket = useDynasty((s) => s.myBracket);
+  const sideShow = useDynasty((s) => s.sideShow);
   const advance = useDynasty((s) => s.advanceBracket);
   const manage = useDynasty((s) => s.manageBracketGame);
   const sim = useDynasty((s) => s.simBracket);
@@ -257,7 +258,17 @@ export function Postseason() {
                 : 'END THE SEASON',
             run: advance,
           }
-        : { label: 'CONTINUE', run: advance };
+        // The national stage names its own next step, because "CONTINUE" over
+        // four different things is how a player ends up looking at a finished
+        // tournament wondering when it was played.
+        : bracket.stage === 'national'
+          ? {
+              label: !nat || nat.opening.length < 4 ? 'PLAY THE OPENING ROUND'
+                : (!nat.bracketA || !nat.bracketB) ? 'PLAY THE SHOWDOWN'
+                : 'PLAY THE CHAMPIONSHIP',
+              run: advance,
+            }
+          : { label: 'CONTINUE', run: advance };
 
   return (
     <>
@@ -399,6 +410,7 @@ export function Postseason() {
               <NationalStage
                 nat={nat}
                 myBracket={myBracket}
+                sideShow={sideShow}
                 view={natView}
                 abbr={abbr}
                 userTeam={userTeam}
@@ -695,6 +707,34 @@ function SeriesResultCard(
   );
 }
 
+/** A matchup that exists and has not been played. Both names, no scores. */
+function PendingSeriesCard(
+  { a, b, aLabel, bLabel, abbr, userTeam }:
+  {
+    a: number; b: number; aLabel: string; bLabel: string;
+    abbr: (i: number) => string; userTeam: number;
+  },
+) {
+  const mine = a === userTeam || b === userTeam;
+  return (
+    <div style={{
+      marginBottom: 6,
+      border: mine ? '1.5px solid var(--clay)' : '1px solid var(--faint)',
+      background: 'var(--paper)',
+    }}>
+      <div style={{
+        padding: '3px 9px', background: 'var(--field)',
+        borderBottom: '1px solid var(--hairline)',
+        font: "600 8px var(--mono)", letterSpacing: '.14em', color: 'var(--dim)',
+      }}>BEST OF 3 · NOT PLAYED</div>
+      <TeamLine team={a} label={aLabel} wins={0} champion={false}
+        abbr={abbr} userTeam={userTeam} top />
+      <TeamLine team={b} label={bLabel} wins={0} champion={false}
+        abbr={abbr} userTeam={userTeam} />
+    </div>
+  );
+}
+
 /** The user's live series, game by game. */
 function LiveSeriesCard(
   { state, aLabel, bLabel, abbr, userTeam }:
@@ -777,10 +817,11 @@ function TeamLine(
 // ---------------------------------------------------------------------------
 
 function NationalStage(
-  { nat, myBracket, view, abbr, userTeam }:
+  { nat, myBracket, sideShow, view, abbr, userTeam }:
   {
     nat: NationalProgress | null;
     myBracket: ReturnType<typeof useDynasty.getState>['myBracket'];
+    sideShow: ReturnType<typeof useDynasty.getState>['sideShow'];
     view: NatView;
     abbr: (i: number) => string;
     userTeam: number;
@@ -836,14 +877,52 @@ function NationalStage(
             userTeam={userTeam}
           />
         )}
-        {nat.opening.map((o, i) => (
-          <SeriesResultCard
-            key={i}
-            r={{ ...o, aLabel: `#${o.aSeed}`, bLabel: `#${o.bSeed}` }}
-            abbr={abbr}
-            userTeam={userTeam}
-          />
-        ))}
+        {/*
+          Every pairing, played or not. The four series used to appear only
+          once they had results, so a player arriving at this stage saw an
+          empty tab and then, one press later, four finished series he never
+          saw start. The matchups are drawn from the seeding — which is fixed
+          the moment the field is chosen — and fill in as they are played.
+        */}
+        {([[12, 19], [13, 18], [14, 17], [15, 16]] as const).map(([hi, lo], i) => {
+          const a = seeds[hi]; const b = seeds[lo];
+          if (a === undefined || b === undefined) return null;
+          const live = myBracket?.kind === 'opening' && myBracket.format === 'series'
+            && myBracket.state.seeds.includes(a) && myBracket.state.seeds.includes(b)
+            ? myBracket : null;
+          if (live) {
+            return (
+              <LiveSeriesCard
+                key={i}
+                state={live.state}
+                aLabel={`#${hi + 1}`} bLabel={`#${lo + 1}`}
+                abbr={abbr} userTeam={userTeam}
+              />
+            );
+          }
+          const done = nat.opening.find(
+            (o) => o.seeds.includes(a) && o.seeds.includes(b),
+          );
+          if (done) {
+            return (
+              <SeriesResultCard
+                key={i}
+                r={{ ...done, aLabel: `#${done.aSeed}`, bLabel: `#${done.bSeed}` }}
+                abbr={abbr}
+                userTeam={userTeam}
+                tag="FINAL"
+              />
+            );
+          }
+          return (
+            <PendingSeriesCard
+              key={i}
+              a={a} b={b}
+              aLabel={`#${hi + 1}`} bLabel={`#${lo + 1}`}
+              abbr={abbr} userTeam={userTeam}
+            />
+          );
+        })}
         <div style={{
           marginTop: 4, font: "400 10px/1.5 var(--body)", color: 'var(--dim)',
         }}>
@@ -854,34 +933,58 @@ function NationalStage(
     );
   }
 
-  // The showdown: two eight-team double eliminations, then the championship.
-  const half = (
-    which: 'A' | 'B',
-    result: { winners: DESlot0[][] } | null,
-  ): DECols | null => {
+  /*
+    The showdown: two eight-team double eliminations, then the championship.
+
+    Each half is one of three things and the header says which: the one you
+    are playing, the one being played beside it, or a finished result. Before
+    this, a live bracket sat next to a finished one with nothing to
+    distinguish them, which is what read as "everything is already played".
+  */
+  const half = (which: 'A' | 'B'): { de: DECols; tag: string; tone: string } | null => {
     if (myBracket?.kind === 'national' && myBracket.format === 'double'
       && myBracket.half === which) {
       const s = myBracket.state;
-      return { winners: s.winners, losers: s.losers, final: s.final };
+      return {
+        de: { winners: s.winners, losers: s.losers, final: s.final },
+        tag: 'YOUR BRACKET · LIVE', tone: 'var(--clay)',
+      };
+    }
+    if (sideShow && sideShow.half === which) {
+      const s = sideShow.state;
+      return {
+        de: { winners: s.winners, losers: s.losers, final: s.final },
+        tag: 'LIVE', tone: 'var(--ink)',
+      };
     }
     const r = which === 'A' ? nat.bracketA : nat.bracketB;
-    void result;
-    return r ? { winners: r.winners, losers: r.losers, final: r.final } : null;
+    return r
+      ? {
+          de: { winners: r.winners, losers: r.losers, final: r.final },
+          tag: 'FINAL', tone: 'var(--dim)',
+        }
+      : null;
   };
-  const A = half('A', null);
-  const B = half('B', null);
 
   return (
     <>
-      {[['A', A] as const, ['B', B] as const].map(([label, de]) => (
+      {(['A', 'B'] as const).map((label) => {
+        const h = half(label);
+        return (
         <div key={label} style={{ marginBottom: 10 }}>
           <div style={{
             margin: '0 14px 4px', paddingBottom: 3, borderBottom: '2px solid var(--ink)',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
           }}>
             <span className="label">NATIONAL BRACKET {label}</span>
+            {h && (
+              <span style={{
+                font: "700 8px var(--mono)", letterSpacing: '.1em', color: h.tone,
+              }}>{h.tag}</span>
+            )}
           </div>
-          {de
-            ? <DoubleElimMap de={de} view={view === 'losers' ? 'losers' : 'winners'}
+          {h
+            ? <DoubleElimMap de={h.de} view={view === 'losers' ? 'losers' : 'winners'}
                 abbr={abbr} userTeam={userTeam} />
             : (
               <div style={{
@@ -889,7 +992,8 @@ function NationalStage(
               }}>Waiting on the opening round.</div>
             )}
         </div>
-      ))}
+        );
+      })}
 
       <div style={{ padding: '0 14px', marginBottom: 10 }}>
         <div style={{
@@ -917,10 +1021,6 @@ function NationalStage(
     </>
   );
 }
-
-// A local alias so the half() helper can type its unused parameter without
-// importing the slot type twice.
-type DESlot0 = import('../../engine/doubleElim.js').DESlot;
 
 const ordinal = (n: number): string => {
   const suffix = n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th';

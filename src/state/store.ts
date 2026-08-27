@@ -545,8 +545,17 @@ export interface DynastyStore {
   advanceBracket: () => void;
   /** Open whatever stage the bracket is on. Called on arrival, not by a press. */
   openStage: () => void;
-  /** The national stage's own sub-steps: field, opening, showdown, final. */
-  openNationalStep: () => void;
+  /**
+   * The national stage's own sub-steps: field, opening, showdown, final.
+   *
+   * `advance` is a press rather than an arrival — see the note inside. A step
+   * you are only watching resolves on a press and never behind your back.
+   */
+  openNationalStep: (advance?: boolean) => void;
+  /** The half of the showdown you are not in, played alongside yours. */
+  sideShow: { half: 'A' | 'B'; state: DoubleElim } | null;
+  /** One night of it, filed into the results when it finishes. */
+  stepSideShow: () => void;
   /**
    * The furthest step of the offseason you have reached this year.
    *
@@ -870,6 +879,40 @@ function usableMyBracket(
     };
   }
   return null;
+}
+
+/**
+ * The other half of the showdown, flattened for the disk and back.
+ *
+ * Same treatment as your own tournament: the season reference is stripped on
+ * the way out and put back on the way in, and anything that does not arrive
+ * whole is refused rather than half-restored — `openNationalStep` will simply
+ * resolve that bracket instead.
+ */
+type StoredSideShow = { half: 'A' | 'B'; state: Omit<DoubleElim, 'season'> };
+
+function portableSideShow(
+  side: { half: 'A' | 'B'; state: DoubleElim } | null,
+): StoredSideShow | null {
+  if (!side) return null;
+  const { season, ...state } = side.state;
+  void season;
+  return { half: side.half, state };
+}
+
+function usableSideShow(
+  saved: unknown, season: SeasonState, bracket: PostseasonProgress | null,
+): { half: 'A' | 'B'; state: DoubleElim } | null {
+  if (!saved || typeof saved !== 'object' || !bracket) return null;
+  if (bracket.stage !== 'national') return null;
+  const s = saved as Partial<StoredSideShow>;
+  if (s.half !== 'A' && s.half !== 'B') return null;
+  const st = s.state as Partial<DoubleElim> | undefined;
+  if (!st || !Array.isArray(st.winners) || !Array.isArray(st.seeds)) return null;
+  if (st.done) return null;
+  if (!(st.appearances instanceof Map) || !(st.seedOf instanceof Map)
+    || !(st.losses instanceof Map)) return null;
+  return { half: s.half, state: { ...(st as Omit<DoubleElim, 'season'>), season } };
 }
 
 /** A saved elimination, refused unless it belongs to the year being loaded. */
@@ -2341,6 +2384,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     set({
       bracket: { stage: 'conference', cups: [], regionals: [], national: null },
       // Last June's ending, and everything it was told, belong to last June.
+      sideShow: null,
       knockout: null,
       postseasonSeen: [],
       version: version + 1,
@@ -2474,7 +2518,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
    * lands exactly where June stood; a step the user is not part of resolves
    * on arrival, the same rule every stage follows.
    */
-  openNationalStep: () => {
+  openNationalStep: (advance = false) => {
     const { season, bracket, userTeam, version } = get();
     if (!season || !bracket || bracket.stage !== 'national' || get().myBracket) return;
 
@@ -2490,6 +2534,20 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const b = get().bracket!;
     const nat = b.national!;
     const seeds = nat.field.seeds;
+
+    /*
+      Nothing resolves off screen.
+
+      Reported from testing: "the opening wasn't clear — when I went into
+      winners or losers all games appeared to be played out already." They
+      were: arriving at this stage used to play every series and every
+      bracket the user was not personally in, all inside the effect that
+      opens the stage, so the first thing anybody saw was a finished
+      tournament. `advance` is the difference between *arriving somewhere*
+      and *pressing the button*: arriving only ever starts a tournament of
+      your own, and a step you are watching rather than playing waits for a
+      press, like every other thing in June that is worth looking at.
+    */
 
     // The opening round: seeds 13 through 20, best of three.
     if (nat.opening.length < 4) {
@@ -2521,6 +2579,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         });
         return;
       }
+      if (!advance) return;                 // the pairs are on screen, waiting
       const opening = pairs.map((p) => {
         const done = nat.opening.find((o) => o.seeds.includes(p.a) && o.seeds.includes(p.b));
         return done ?? {
@@ -2533,6 +2592,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         bracket: { ...b, national: { ...nat, opening } },
         version: get().version + 1,
       });
+      return;                               // the results are the next thing to read
     }
 
     const b2 = get().bracket!;
@@ -2546,30 +2606,44 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         ...nat2.opening.map((o) => o.champion),
       ];
       const { bracketA, bracketB } = splitShowdown(sixteen);
-      const inA = bracketA.includes(userTeam);
-      const inB = bracketB.includes(userTeam);
+      const mineIsA = nat2.bracketA === null && bracketA.includes(userTeam);
+      const mineIsB = nat2.bracketB === null && bracketB.includes(userTeam);
 
-      const next: NationalProgress = { ...nat2 };
-      if (nat2.bracketA === null && !inA) {
-        next.bracketA = resultOfDE(runDoubleElim(season, bracketA));
-      }
-      if (nat2.bracketB === null && !inB) {
-        next.bracketB = resultOfDE(runDoubleElim(season, bracketB));
-      }
-      if (inA || inB) {
+      /*
+        Both halves of the showdown play at the same pace.
+
+        The other bracket used to be run to its champion the moment yours
+        began, so the screen showed one finished tournament beside one that
+        had not started — which is what read as "everything is already
+        played". It is a live tournament now, stepped a night at a time
+        beside yours by `simBracket`, and folded into the results when it
+        finishes.
+      */
+      if (mineIsA || mineIsB) {
+        const otherHalf = mineIsA ? 'B' : 'A';
+        const otherDone = mineIsA ? nat2.bracketB : nat2.bracketA;
         set({
-          bracket: { ...b2, national: next },
           myBracket: {
             kind: 'national', format: 'double',
-            state: startDoubleElim(season, inA ? bracketA : bracketB),
-            half: inA ? 'A' : 'B',
+            state: startDoubleElim(season, mineIsA ? bracketA : bracketB),
+            half: mineIsA ? 'A' : 'B',
             preplayed: new Map(),
+          },
+          sideShow: otherDone ? null : {
+            half: otherHalf,
+            state: startDoubleElim(season, mineIsA ? bracketB : bracketA),
           },
           version: get().version + 1,
         });
         return;
       }
+
+      if (!advance) return;                 // the sixteen are on screen, waiting
+      const next: NationalProgress = { ...nat2 };
+      if (nat2.bracketA === null) next.bracketA = resultOfDE(runDoubleElim(season, bracketA));
+      if (nat2.bracketB === null) next.bracketB = resultOfDE(runDoubleElim(season, bracketB));
       set({ bracket: { ...b2, national: next }, version: get().version + 1 });
+      return;
     }
 
     const b3 = get().bracket!;
@@ -2591,6 +2665,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         });
         return;
       }
+      if (!advance) return;                 // the matchup is on screen, waiting
       const final = bestOf(season, SERIES.final, A, B, 'National championship');
       const summary = summarize(b3.cups, b3.regionals, {
         field: nat3.field, opening: nat3.opening,
@@ -2603,6 +2678,35 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         version: get().version + 1,
       });
     }
+  },
+
+  sideShow: null,
+
+  /**
+   * Step the other half of the showdown, and file it when it is finished.
+   *
+   * Called from wherever your own tournament is stepped, so the two stay in
+   * lockstep — see the note in `openNationalStep`.
+   */
+  stepSideShow: () => {
+    const { bracket, sideShow, version } = get();
+    if (!sideShow) return;
+    if (!sideShow.state.done) stepDoubleElim(sideShow.state);
+    if (!sideShow.state.done) { set({ version: version + 1 }); return; }
+
+    const nat = bracket?.national;
+    if (!bracket || !nat) { set({ sideShow: null, version: version + 1 }); return; }
+    const done = resultOfDE(sideShow.state);
+    set({
+      bracket: {
+        ...bracket,
+        national: sideShow.half === 'A'
+          ? { ...nat, bracketA: done }
+          : { ...nat, bracketB: done },
+      },
+      sideShow: null,
+      version: version + 1,
+    });
   },
 
   /** Leave a finished tier for the next one, which opens itself. */
@@ -2632,9 +2736,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       void get().saveNow();
       return;
     }
-    // The national stage advances through its own sub-steps until the trophy.
+    // The national stage advances through its own sub-steps until the trophy,
+    // and this is a press, so a step you are watching resolves now.
     if (bracket.national === null || bracket.national.final === null) {
-      get().openNationalStep();
+      get().openNationalStep(true);
       void get().saveNow();
       return;
     }
@@ -2717,23 +2822,27 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       else stepDoubleElim(myBracket.state, preplayed);
     };
 
+    // The other half of the showdown keeps pace, night for night, so the two
+    // brackets on screen are always at the same point in the tournament.
+    const both = (): void => { step(); get().stepSideShow(); };
+
     if (mode === 'game') {
-      step();
+      both();
     } else if (mode === 'round') {
       if (myBracket.format === 'series') {
         // To the end of this round, however many nights that takes.
         const from = myBracket.state.roundIndex;
         let guard = 0;
         while (!myBracket.state.done && myBracket.state.roundIndex === from
-          && guard++ < 40) step();
+          && guard++ < 40) both();
       } else {
         // A double elimination has no single round index: one night is the
         // honest unit, every playable game played.
-        step();
+        both();
       }
     } else {
       let guard = 0;
-      while (!state.done && guard++ < 200) step();
+      while (!state.done && guard++ < 200) both();
     }
 
     set({ version: version + 1 });
@@ -2841,11 +2950,21 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         myBracket: null, version: version + 1,
       });
     } else if (myBracket.kind === 'national' && myBracket.format === 'double') {
-      const nat = bracket.national!;
+      // Your half is finished, so the other one runs out its remaining nights
+      // here rather than holding the championship up. A stage boundary is the
+      // one place the world is allowed to catch up in a single step.
+      const side = get().sideShow;
+      if (side) {
+        let guard = 0;
+        while (!side.state.done && guard++ < 40) stepDoubleElim(side.state);
+        get().stepSideShow();
+      }
+      const after = get().bracket ?? bracket;
+      const nat = after.national!;
       const done = resultOfDE(myBracket.state);
       set({
         bracket: {
-          ...bracket,
+          ...after,
           national: myBracket.half === 'A'
             ? { ...nat, bracketA: done }
             : { ...nat, bracketB: done },
@@ -2983,6 +3102,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         mb.preplayed.set(pairKey(liveMeta.home, liveMeta.away), live.result);
         if (mb.format === 'series') stepBracket(mb.state, mb.preplayed);
         else stepDoubleElim(mb.state, mb.preplayed);
+        // And the other half of the showdown plays its night too.
+        get().stepSideShow();
       }
       set({ live: null, liveMeta: null, version: version + 1 });
       // The postseason screen is not mounted right now — it is behind this
@@ -3126,6 +3247,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         postseason: lastPostseason,
         bracket: get().bracket,
         myBracket: portableMyBracket(get().myBracket),
+        sideShow: portableSideShow(get().sideShow),
         knockout: get().knockout,
         postseasonSeen: get().postseasonSeen,
         jobSearch: get().jobSearch,
@@ -3266,6 +3388,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // stage again rather than skipping the part you were in.
       bracket,
       myBracket: usableMyBracket(loaded.myBracket, loaded.season, bracket),
+      sideShow: usableSideShow(loaded.sideShow, loaded.season, bracket),
       // How June ended and what it has already said about it. Both are only
       // ever read against the year on them, so a save from an older build —
       // which carries neither — resumes with nothing said and nothing lost.
@@ -3403,6 +3526,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     furthestPhase: 0,
     bracket: null,
     myBracket: null,
+    sideShow: null,
     knockout: null,
     postseasonSeen: [],
     lastPostseason: null,

@@ -100,6 +100,8 @@ export interface SaveFile {
    * regional, since you never won anything to qualify with.
    */
   myBracket?: unknown;
+  /** The other half of the national showdown, mid-tournament. */
+  sideShow?: unknown;
   /**
    * How your run in the postseason ended, and what June has already told you.
    *
@@ -303,6 +305,8 @@ export interface SaveExtras {
   bracket?: unknown;
   /** Your own half-played tournament, so a reload resumes inside it. */
   myBracket?: unknown;
+  /** The other half of the national showdown, mid-tournament. */
+  sideShow?: unknown;
   /** The end of your June, and the modals it has already shown. */
   knockout?: unknown;
   postseasonSeen?: unknown;
@@ -355,6 +359,7 @@ export function buildSaveFile(
     // field by field, so widening the types above and stopping there would
     // compile and still drop them.
     ...(extras.myBracket ? { myBracket: extras.myBracket } : {}),
+    ...(extras.sideShow ? { sideShow: extras.sideShow } : {}),
     ...(extras.knockout ? { knockout: extras.knockout } : {}),
     ...(Array.isArray(extras.postseasonSeen) && extras.postseasonSeen.length > 0
       ? { postseasonSeen: extras.postseasonSeen }
@@ -416,6 +421,7 @@ export interface LoadedDynasty {
   bracket: unknown;
   /** Your own tournament inside it, still being played. */
   myBracket: unknown;
+  sideShow: unknown;
   /** How your run in it ended, and which modals have already been shown. */
   knockout: unknown;
   postseasonSeen: unknown;
@@ -480,6 +486,7 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     postseason: file.postseason ?? null,
     bracket: file.bracket ?? null,
     myBracket: file.myBracket ?? null,
+    sideShow: file.sideShow ?? null,
     knockout: file.knockout ?? null,
     postseasonSeen: file.postseasonSeen ?? [],
     jobSearch: file.jobSearch ?? false,

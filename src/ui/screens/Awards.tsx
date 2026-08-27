@@ -121,7 +121,7 @@ export function Awards() {
         return (
           <div key={a.title} style={{
             marginTop: 12, border: '1px solid var(--faint)', background: 'var(--paper)',
-            borderLeft: `3px solid ${tint}`,
+            borderLeft: `6px solid ${tint}`,
           }}>
             <div style={{ padding: '6px 10px', background: 'var(--clay)' }}>
               <span style={{
@@ -140,10 +140,15 @@ export function Awards() {
                     color: 'var(--ink)',
                   }}>{a.name}</div>
                   <div style={{
-                    marginTop: 5, font: "400 11px var(--mono)", color: 'var(--dim)',
+                    marginTop: 6, font: "400 11px var(--mono)",
+                    color: 'rgba(28,36,48,.68)',
+                    display: 'flex', alignItems: 'center', gap: 7,
                   }}>
-                    <span style={{ color: tint, fontWeight: 700 }}>{a.team}</span>
-                    {' · '}{a.line}
+                    <span style={{
+                      padding: '3px 7px', background: tint, color: 'var(--cream)',
+                      font: "700 10px var(--mono)", letterSpacing: '.06em',
+                    }}>{a.team}</span>
+                    {a.line}
                   </div>
                 </>
               );
@@ -152,7 +157,7 @@ export function Awards() {
               // letters stay ink.
               const box = {
                 width: '100%', textAlign: 'left' as const,
-                padding: '10px 12px 12px', background: `${tint}24`,
+                padding: '10px 12px 12px', background: `${tint}4d`,
               };
               return a.id
                 ? <button onClick={() => openPlayer(a.id!)} style={box}>{body}</button>
@@ -187,27 +192,33 @@ export function Awards() {
               onClick={() => openPlayer(p.id)}
               style={{
                 width: '100%', textAlign: 'left',
-                display: 'grid', gridTemplateColumns: '30px 1fr 30px',
+                display: 'grid', gridTemplateColumns: '26px 1fr auto',
                 gap: 8, alignItems: 'center',
                 padding: '8px 10px', borderBottom: '1px solid var(--hairline)',
-                borderLeft: `3px solid ${tint}`,
-                // The hex wash: a school colour at 14% over the paper.
-                background: `${tint}24`,
+                // A wide solid edge and a real wash. The first version ran the
+                // colour at 14% and it was invisible at arm's length; this is
+                // 30%, which is as far as it can go with ink on top of it.
+                borderLeft: `6px solid ${tint}`,
+                background: `${tint}4d`,
               }}>
               <span style={{
-                font: "600 10px var(--mono)", letterSpacing: '.1em', color: 'var(--dim)',
+                font: "700 10px var(--mono)", letterSpacing: '.08em',
+                color: 'rgba(28,36,48,.62)',
               }}>{p.position}</span>
               <div style={{ minWidth: 0 }}>
                 <div style={{
-                  font: `${ours ? 700 : 600} 13px var(--body)`, color: 'var(--ink)',
+                  font: `${ours ? 800 : 700} 13px var(--body)`, color: 'var(--ink)',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>{p.name}</div>
                 <div style={{
-                  font: "400 10px var(--mono)", color: 'var(--dim)',
+                  font: "400 10px var(--mono)", color: 'rgba(28,36,48,.68)',
                 }}>{p.line}</div>
               </div>
+              {/* The school as a solid chip: the strongest the colour can be
+                  said, on the one element that carries no long text. */}
               <span style={{
-                font: "700 10px var(--mono)", color: tint, textAlign: 'right',
+                padding: '3px 7px', background: tint, color: 'var(--cream)',
+                font: "700 10px var(--mono)", letterSpacing: '.06em',
               }}>{p.team}</span>
             </button>
           );
