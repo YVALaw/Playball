@@ -312,7 +312,9 @@ export function rivalOutcome(
     conferenceRank: better + 1,
     conferenceSize: size,
     wonConference: post?.conferenceChampions.includes(record.index) ?? false,
-    madeTournament: finish !== undefined,
+    // The twenty-team field is the tournament; a regional exit is not a bid.
+    madeTournament: post?.nationalField?.includes(record.index)
+      ?? (finish !== undefined && finish !== 'regional'),
     wonRegional: post?.regionChampions.includes(record.index) ?? false,
     reachedOmaha: finish === 'omaha' || finish === 'runner-up' || finish === 'champion',
     wonTitle: post?.champion === record.index,

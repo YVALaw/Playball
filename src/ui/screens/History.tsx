@@ -25,6 +25,7 @@ import type { SchoolSeason } from '../../engine/season.js';
 const FINISH_COLOR: Record<Finish, string> = {
   missed: 'var(--dim)',
   regional: 'var(--ink)',
+  national: 'var(--ink)',
   omaha: 'var(--clay)',
   'runner-up': 'var(--clay)',
   champion: 'var(--clay)',

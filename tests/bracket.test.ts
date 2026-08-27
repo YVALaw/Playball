@@ -1,4 +1,4 @@
-// bracket.test.ts
+﻿// bracket.test.ts
 // A bracket you can draw before it starts, and take a game out of.
 //
 // The format changed for one reason: double elimination has no full bracket to
@@ -15,11 +15,16 @@ import { describe, it, expect } from 'vitest';
 import {
   singleElimination, startSeriesBracket, stepBracket, nextGameFor, liveSeries,
   resultOf, pairKey, seedOrder, roundName, clincher, hostOfGame,
-  conferenceField, conferenceIds, conferenceTournament, allConferenceTournaments,
+  conferenceField, conferenceIds, allConferenceTournaments,
   stageRegionals, stageNational, regionalPairing, freezeRegularSeason,
-  conferenceLengths, REGIONAL_LENGTHS, NATIONAL_LENGTHS, REGIONS, regionOf,
-  CONF_FIELD, SERIES,
+  REGIONAL_LENGTHS, REGIONS, regionOf,
+  CONF_FIELD, CONF_ADVANCE, SERIES, NATIONAL_BIDS, PROTECTED_BIDS,
+  protectedTopFour, selectNationalField, openingPairs, splitShowdown,
 } from '../src/engine/postseason.js';
+import {
+  startDoubleElim, stepDoubleElim, runDoubleElim, resultOfDE, placings,
+  liveSlotFor, readySlots,
+} from '../src/engine/doubleElim.js';
 import { createSeason, simSeason, currentDay, restedFirst } from '../src/engine/season.js';
 import { makeRng } from '../src/engine/rng.js';
 import { simGame } from '../src/engine/game.js';
@@ -29,6 +34,9 @@ const world = (seed: number) => {
   simSeason(s);
   return s;
 };
+
+/** A generic eight-team knockout, for the tests about the tree machinery. */
+const KNOCKOUT8 = [3, 3, 3];
 
 describe('seeding a knockout tree', () => {
   it('puts one against the worst, and keeps one and two apart until the final', () => {
@@ -148,7 +156,7 @@ describe('June has a calendar', () => {
     freezeRegularSeason(s);
     const before = new Map(s.lastPitched);
     const { field } = conferenceField(s, s.teams[0]?.conference ?? 'GULF');
-    const b = startSeriesBracket(s, field, conferenceLengths());
+    const b = startSeriesBracket(s, field, KNOCKOUT8);
     stepBracket(b);
 
     let checked = 0;
@@ -175,7 +183,7 @@ describe('June has a calendar', () => {
     freezeRegularSeason(s);
     const before = Object.keys(s.boxScores).length;
     const { field } = conferenceField(s, s.teams[0]?.conference ?? 'GULF');
-    const b = startSeriesBracket(s, field, conferenceLengths());
+    const b = startSeriesBracket(s, field, KNOCKOUT8);
     let guard = 0;
     while (!b.done && guard++ < 100) stepBracket(b);
 
@@ -207,7 +215,7 @@ describe('rotations in a bracket', () => {
       for (const conf of conferenceIds(s)) {
         const { field } = conferenceField(s, conf);
         s.captureBoxFor = field[0] as number;   // the top seed, who has a bye
-        const b = startSeriesBracket(s, field, conferenceLengths());
+        const b = startSeriesBracket(s, field, KNOCKOUT8);
         let guard = 0;
         while (b.roundIndex === 0 && guard++ < 20) stepBracket(b);
         stepBracket(b);                          // one semifinal game
@@ -365,7 +373,7 @@ describe('the end of your run', () => {
       season: s, userTeam: me, year: 2099,
       bracket: { stage: 'regional', cups: [], regionals: [], national: null },
       myBracket: {
-        kind: 'regional', state,
+        kind: 'regional', format: 'series', state,
         preplayed: new Map([[pairKey(me, foe), defeatFor(s, final, me)]]),
       },
       knockout: null, postseasonSeen: [],
@@ -379,7 +387,7 @@ describe('the end of your run', () => {
     expect(after.knockout).not.toBeNull();
     expect(after.knockout!.year).toBe(2099);
     expect(after.knockout!.kind).toBe('regional');
-    expect(roundName(after.knockout!.rounds, after.knockout!.round)).toBe('Final');
+    expect(after.knockout!.label).toBe('final');
 
     // And the result the screen reads its verdict from says the same thing, so
     // nothing downstream can congratulate him for it.
@@ -395,40 +403,54 @@ describe('the end of your run', () => {
     // being played. Nothing folds the bracket away here, and the elimination
     // still has to be recorded — the screen's own copy of it is a round old by
     // the time anything renders.
+    // The user's conference tournament is a double elimination now, so the
+    // mid-tournament loss is a first loss that drops him to the losers
+    // bracket, and the run ends only on the second.
     const me = 0;
-    const rest = s.teams.filter((t) => t.index !== me).slice(0, 3).map((t) => t.index);
-    const state = startSeriesBracket(s, [me, ...rest], [1, 1]);
-    const mine = state.rounds[0]!.find((x) => x.a === me || x.b === me)!;
+    const { field } = conferenceField(s, s.teams[me]!.conference);
+    const seeds = field.includes(me) ? field : [me, ...field.slice(0, 7)];
+    const state = startDoubleElim(s, seeds.slice(0, 8));
+    const mine = state.winners[0]!.find((x) => x.a === me || x.b === me)!;
     const foe = (mine.a === me ? mine.b : mine.a) as number;
 
     useDynasty.setState({
       season: s, userTeam: me, year: 2099,
       bracket: { stage: 'conference', cups: [], regionals: [], national: null },
       myBracket: {
-        kind: 'conference', state,
+        kind: 'conference', format: 'double', state,
         preplayed: new Map([[pairKey(me, foe), defeatFor(s, mine, me)]]),
       },
       knockout: null, postseasonSeen: [],
     });
 
+    // One loss is not a knockout in a double elimination.
     useDynasty.getState().simBracket('round');
-    const mid = useDynasty.getState();
-    expect(mid.myBracket).not.toBeNull();
-    expect(mid.knockout).not.toBeNull();
-    expect(roundName(mid.knockout!.rounds, mid.knockout!.round)).toBe('Semifinal');
+    const mid1 = useDynasty.getState();
+    expect(mid1.myBracket).not.toBeNull();
+    expect((mid1.myBracket!.state as { losses: Map<number, number> })
+      .losses.get(me)).toBe(1);
 
-    // Watching the rest of it out is what a knocked-out coach does, and it must
-    // not rewrite where his own year ended.
+    // Play it out. Whether the run ends in the losers bracket or with the
+    // trophy, the fact the store keeps has to match the structure's.
     useDynasty.getState().simBracket('rest');
     const end = useDynasty.getState();
     expect(end.myBracket).toBeNull();
-    expect(end.knockout).toEqual(mid.knockout);
-    expect(end.bracket!.cups[0]!.champion).not.toBe(me);
+    const cup = end.bracket!.cups[0]!;
+    if (cup.champion === me) {
+      expect(end.knockout).toBeNull();
+    } else {
+      expect(end.knockout).not.toBeNull();
+      expect(end.knockout!.kind).toBe('conference');
+      expect(end.knockout!.label.length).toBeGreaterThan(0);
+    }
+    // The finished cup carries its top four, read off the bracket.
+    expect(cup.placings).toHaveLength(4);
+    expect(cup.placings![0]).toBe(cup.champion);
   });
 });
 
 describe('the conference tournament', () => {
-  it('takes half the league, so finishing seventh costs you something', () => {
+  it('takes eight of twelve, so finishing ninth costs you something', () => {
     const s = world(78);
     const conf = s.teams[0]!.conference;
     const { field, missed } = conferenceField(s, conf);
@@ -445,166 +467,248 @@ describe('the conference tournament', () => {
     expect(new Set(ids).size).toBe(ids.length);
     for (const t of s.teams) expect(ids).toContain(t.conference);
   });
+});
 
+describe('double elimination', () => {
+  it('sends nobody home on one loss, everybody on two', () => {
+    const s = world(4801);
+    freezeRegularSeason(s);
+    const seeds = Array.from({ length: 8 }, (_, i) => i);
+    const de = runDoubleElim(s, seeds);
+
+    expect(de.done).toBe(true);
+    expect(seeds).toContain(de.champion);
+    // Seven go out, each with exactly two losses.
+    expect(de.eliminated).toHaveLength(7);
+    expect(new Set(de.eliminated).size).toBe(7);
+    for (const t of de.eliminated) expect(de.losses.get(t)).toBe(2);
+    expect(de.losses.get(de.champion!)).toBeLessThanOrEqual(1);
+  });
+
+  it('plays fourteen games, fifteen with the reset', () => {
+    for (const seed of [4802, 4803, 4804, 4805]) {
+      const s = world(seed);
+      freezeRegularSeason(s);
+      const de = runDoubleElim(s, Array.from({ length: 8 }, (_, i) => i));
+      const games = resultOfDE(de).games.length;
+      const reset = de.final[1]!.game !== null;
+      expect(games).toBe(reset ? 15 : 14);
+      // The reset only exists when the losers survivor took the first final.
+      if (reset) {
+        expect(de.final[0]!.winner).toBe(de.final[0]!.b);
+      }
+    }
+  });
+
+  it('settles a full finish order off the structure', () => {
+    const s = world(4806);
+    freezeRegularSeason(s);
+    const seeds = Array.from({ length: 8 }, (_, i) => i);
+    const de = runDoubleElim(s, seeds);
+    const top4 = placings(de);
+    expect(top4).toHaveLength(4);
+    expect(new Set(top4).size).toBe(4);
+    expect(top4[0]).toBe(de.champion);
+    for (const t of top4) expect(seeds).toContain(t);
+    // Third and fourth were eliminated; first was not.
+    expect(de.eliminated).toContain(top4[2]);
+    expect(de.eliminated).toContain(top4[3]);
+    expect(de.eliminated).not.toContain(top4[0]);
+  });
+
+  it('steps to the same tournament as running it in one go', () => {
+    const a = world(4807);
+    const b = world(4807);
+    freezeRegularSeason(a);
+    freezeRegularSeason(b);
+    const seeds = Array.from({ length: 8 }, (_, i) => i);
+
+    const whole = runDoubleElim(a, seeds);
+    const stepped = startDoubleElim(b, seeds);
+    let guard = 0;
+    while (!stepped.done && guard++ < 40) stepDoubleElim(stepped);
+
+    expect(stepped.champion).toBe(whole.champion);
+    expect(resultOfDE(stepped).games.length).toBe(resultOfDE(whole).games.length);
+    expect(stepped.eliminated).toEqual(whole.eliminated);
+  });
+
+  it('takes a game played by hand and counts it the same', () => {
+    const s = world(4808);
+    freezeRegularSeason(s);
+    const seeds = Array.from({ length: 8 }, (_, i) => i);
+    const de = startDoubleElim(s, seeds);
+    const slot = liveSlotFor(de, seeds[0]!)!;
+    const host = slot.aSeed <= slot.bSeed ? slot.a! : slot.b!;
+    const guest = host === slot.a ? slot.b! : slot.a!;
+    const byHand = simGame(s.teams[host]!.team, s.teams[guest]!.team, makeRng(9), {});
+    const preplayed = new Map([[pairKey(slot.a!, slot.b!), byHand]]);
+    stepDoubleElim(de, preplayed);
+    expect(slot.game!.homeRuns).toBe(byHand.home.runs);
+    expect(preplayed.size).toBe(0);
+  });
+
+  it('always has something playable until it is done', () => {
+    const s = world(4809);
+    freezeRegularSeason(s);
+    const de = startDoubleElim(s, Array.from({ length: 8 }, (_, i) => i));
+    let guard = 0;
+    while (!de.done && guard++ < 40) {
+      expect(readySlots(de).length).toBeGreaterThan(0);
+      stepDoubleElim(de);
+    }
+    expect(de.done).toBe(true);
+    expect(readySlots(de)).toHaveLength(0);
+  });
 });
 
 describe('the pyramid', () => {
-  it('advances only champions, at every tier', () => {
-    // The whole reason the format is shaped this way: one rule, all the way up.
-    // Win your conference, win your region, win the country. Nothing is
-    // selected, so there is nothing to explain.
+  it('advances the top four finishers of every conference', () => {
     const s = world(808);
     freezeRegularSeason(s);
     const cups = allConferenceTournaments(s);
     const regionals = stageRegionals(s, cups);
-    const national = stageNational(s, regionals);
 
     const conferenceChampions = new Set(cups.map((c) => c.champion));
     expect(conferenceChampions.size).toBe(conferenceIds(s).length);
 
-    // Every team in a regional won its conference.
-    for (const r of regionals) {
-      for (const t of r.seeds) expect(conferenceChampions.has(t)).toBe(true);
+    // Every cup settled a top four off the bracket.
+    for (const c of cups) {
+      expect(c.placings).toHaveLength(CONF_ADVANCE);
+      expect(c.placings![0]).toBe(c.champion);
+      expect(new Set(c.placings).size).toBe(CONF_ADVANCE);
     }
 
-    // Every team in the national tournament won its region.
-    const regionChampions = new Set(regionals.map((r) => r.champion));
-    expect(regionChampions.size).toBe(REGIONS.length);
-    for (const t of national.seeds) expect(regionChampions.has(t)).toBe(true);
-    expect(regionChampions.has(national.champion)).toBe(true);
+    // Sixteen regional series; every team in one finished top four.
+    expect(regionals).toHaveLength(16);
+    const advancers = new Set(cups.flatMap((c) => c.placings ?? []));
+    for (const r of regionals) {
+      for (const t of r.seeds) expect(advancers.has(t)).toBe(true);
+    }
+    // Sixteen distinct regional champions, each a banner.
+    const regionChampions = regionals.map((r) => r.champion);
+    expect(new Set(regionChampions).size).toBe(16);
   });
 
-  it('pairs each region from the two conferences that sit in it', () => {
+  it('pairs each region across its two conferences, champions apart', () => {
     const s = world(811);
     freezeRegularSeason(s);
     const cups = allConferenceTournaments(s);
     const pairings = regionalPairing(s, cups);
 
-    expect(pairings).toHaveLength(REGIONS.length);
-    for (const r of pairings) {
-      expect(r.seeds).toHaveLength(2);
-      const region = REGIONS.find((x) => x.id === r.id);
-      expect(region).toBeDefined();
-      // Both teams come from conferences in this region, and from different ones.
-      const confs = r.seeds.map((t) => s.teams[t]!.conference);
+    expect(pairings).toHaveLength(REGIONS.length * 4);
+    const championOf = new Map(cups.map((c) => [c.conference, c.champion]));
+    for (const p of pairings) {
+      const region = REGIONS.find((x) => x.id === p.id)!;
+      const confs = [p.a, p.b].map((t) => s.teams[t]!.conference);
+      // Cross-conference, both from this region.
       expect(new Set(confs).size).toBe(2);
-      for (const c of confs) expect(region!.conferences).toContain(c);
-      for (const c of confs) expect(regionOf(c)).toBe(r.id);
+      for (const c of confs) expect(region.conferences).toContain(c);
+      for (const c of confs) expect(regionOf(c)).toBe(p.id);
+      // The two conference champions never meet for a regional banner.
+      const champs = [...championOf.values()];
+      expect(champs.includes(p.a) && champs.includes(p.b)).toBe(false);
     }
   });
 
-  it('seeds the regional by regular season record', () => {
-    // Winning your conference does not make the forty five games irrelevant:
-    // the better record still hosts the odd game of the series.
+  it('seeds each regional series by regular season record', () => {
     const s = world(812);
     freezeRegularSeason(s);
     const cups = allConferenceTournaments(s);
-    for (const r of regionalPairing(s, cups)) {
+    for (const r of stageRegionals(s, cups)) {
       const [a, b] = r.seeds as [number, number];
       const ra = s.teams[a]!;
       const rb = s.teams[b]!;
       expect(ra.rw ?? ra.w).toBeGreaterThanOrEqual(rb.rw ?? rb.w);
     }
   });
-
-  it('keeps June shorter than the season that earned it', () => {
-    const s = world(813);
-    freezeRegularSeason(s);
-    const cups = allConferenceTournaments(s);
-    const regionals = stageRegionals(s, cups);
-    const national = stageNational(s, regionals);
-
-    const champ = national.champion;
-    const played = (games: readonly { home: number; away: number }[]): number =>
-      games.filter((g) => g.home === champ || g.away === champ).length;
-
-    const total = played(cups.find((c) => c.seeds.includes(champ))?.games ?? [])
-      + played(regionals.find((r) => r.seeds.includes(champ))?.games ?? [])
-      + played(national.games);
-
-    // Six series at worst: three of three, one of five, two of seven.
-    expect(total).toBeLessThanOrEqual(3 * 3 + 5 + 7 * 2);
-    expect(total).toBeGreaterThan(5);
-  });
 });
 
-describe('the postseason map', () => {
-  it('is one graph from conferences to a champion', async () => {
-    const { buildGraph, layoutGraph } = await import('../src/ui/postseasonGraph.js');
-    const s = world(909);
+describe('the national field', () => {
+  const build = (seed: number) => {
+    const s = world(seed);
     freezeRegularSeason(s);
     const cups = allConferenceTournaments(s);
     const regionals = stageRegionals(s, cups);
-    const national = stageNational(s, regionals);
+    return { s, cups, regionals };
+  };
 
-    const g = buildGraph({ season: s, userTeam: 0, cups, regionals, national, live: null });
+  it('seats twenty unique teams: sixteen banners plus protection and at-large', () => {
+    const { s, cups, regionals } = build(901);
+    const field = selectNationalField(s, cups, regionals);
 
-    expect(g.nodes.some((n) => n.kind === 'champ')).toBe(true);
-    expect(g.edges.some((e) => e.kind === 'qualifies')).toBe(true);
+    expect(field.seeds).toHaveLength(NATIONAL_BIDS);
+    expect(new Set(field.seeds).size).toBe(NATIONAL_BIDS);
+    // Every regional champion is in; every protected team is in; nobody twice.
+    for (const t of field.regionalChampions) expect(field.seeds).toContain(t);
+    for (const t of field.protectedTeams) expect(field.seeds).toContain(t);
+    expect(field.protectedTeams).toHaveLength(PROTECTED_BIDS);
+    expect(field.protectedTeams).toEqual(protectedTopFour(s));
+    // A protected team that won its regional does not eat an at-large slot.
+    const champions = new Set(field.regionalChampions);
+    for (const t of field.atLarge) expect(champions.has(t)).toBe(false);
+  });
 
-    // Every edge joins two nodes that exist, and nothing points backwards.
-    const layout = layoutGraph(g);
-    for (const e of g.edges) {
-      const from = layout.pos.get(e.from);
-      const to = layout.pos.get(e.to);
-      expect(from).toBeDefined();
-      expect(to).toBeDefined();
-      expect((to as { x: number }).x).toBeGreaterThan((from as { x: number }).x);
-    }
-
-    // Nothing overlaps: two cards in the same column keep their distance.
-    const byColumn = new Map<number, { y: number; h: number }[]>();
-    for (const n of g.nodes) {
-      const p = layout.pos.get(n.id);
-      if (!p) continue;
-      const list = byColumn.get(p.x) ?? [];
-      list.push(p);
-      byColumn.set(p.x, list);
-    }
-    for (const list of byColumn.values()) {
-      list.sort((a, b) => a.y - b.y);
-      for (let i = 1; i < list.length; i++) {
-        const prev = list[i - 1] as { y: number; h: number };
-        expect((list[i] as { y: number }).y).toBeGreaterThanOrEqual(prev.y + prev.h - 0.01);
+  it('never sends a protected team through the opening round', () => {
+    for (const seed of [902, 903, 904]) {
+      const { s, cups, regionals } = build(seed);
+      const field = selectNationalField(s, cups, regionals);
+      const pairs = openingPairs(field);
+      expect(pairs).toHaveLength(4);
+      for (const p of pairs) {
+        expect(field.protectedTeams).not.toContain(p.a);
+        expect(field.protectedTeams).not.toContain(p.b);
       }
+      // And the pairs are exactly seeds 13 through 20, outside in.
+      const inRound = new Set(pairs.flatMap((p) => [p.a, p.b]));
+      expect(inRound.size).toBe(8);
+      for (const t of field.seeds.slice(12)) expect(inRound.has(t)).toBe(true);
     }
   });
 
-  it('draws all three tiers from the first press', async () => {
-    // Nothing has been played here. The map still has to be a map: eight
-    // conference trees, four regional series, and the last four above them.
-    const { buildGraph } = await import('../src/ui/postseasonGraph.js');
-    const s = world(910);
-    freezeRegularSeason(s);
+  it('splits the showdown with the top two seeds apart', () => {
+    const sixteen = Array.from({ length: 16 }, (_, i) => 100 + i);
+    const { bracketA, bracketB } = splitShowdown(sixteen);
+    expect(bracketA).toHaveLength(8);
+    expect(bracketB).toHaveLength(8);
+    expect(new Set([...bracketA, ...bracketB]).size).toBe(16);
+    expect(bracketA).toContain(100);
+    expect(bracketB).toContain(101);
+  });
 
-    const g = buildGraph({
-      season: s, userTeam: 0, cups: [], regionals: [], national: null, live: null,
-    });
+  it('runs the whole stage to one champion, with the arithmetic intact', () => {
+    const { s, cups, regionals } = build(905);
+    const national = stageNational(s, cups, regionals);
 
-    // A field of six pads up to an eight slot tree: four, then two, then one.
-    let slots = 1;
-    while (slots < CONF_FIELD) slots *= 2;
-    const conf = g.nodes.filter((n) => n.kind === 'series' && n.bracket.startsWith('c-'));
-    expect(conf).toHaveLength(conferenceIds(s).length * (slots - 1));
+    expect(national.opening).toHaveLength(4);
+    const sixteen = [
+      ...national.field.seeds.slice(0, 12),
+      ...national.opening.map((o) => o.champion),
+    ];
+    expect(new Set(sixteen).size).toBe(16);
+    const all = [...national.bracketA.seeds, ...national.bracketB.seeds];
+    expect(new Set(all).size).toBe(16);
+    for (const t of all) expect(sixteen).toContain(t);
 
-    const regional = g.nodes.filter((n) => n.kind === 'series' && n.bracket.startsWith('reg-'));
-    expect(regional).toHaveLength(REGIONS.length);
-
-    const nat = g.nodes.filter((n) => n.kind === 'series' && n.bracket === 'nat');
-    expect(nat).toHaveLength(3);   // two semifinals and a final
-
-    const champ = g.nodes.find((n) => n.kind === 'champ');
-    expect(champ && champ.kind === 'champ' && champ.team).toBeNull();
+    // The championship series is the two bracket champions, and its winner
+    // is the country's.
+    expect(national.final.seeds).toEqual(
+      expect.arrayContaining([national.bracketA.champion, national.bracketB.champion]),
+    );
+    expect([national.bracketA.champion, national.bracketB.champion])
+      .toContain(national.champion);
   });
 });
 
 describe('the series lengths', () => {
-  it('get longer as the stakes do', () => {
-    expect(SERIES.conference).toBeLessThan(SERIES.regional);
-    expect(SERIES.regional).toBeLessThan(SERIES.national);
-    // Six teams is three rounds; a region is one series; the last four is two.
-    expect(conferenceLengths()).toHaveLength(3);
+  it('are the format the backlog locked', () => {
+    expect(SERIES.regional).toBe(3);
+    expect(SERIES.opening).toBe(3);
+    expect(SERIES.final).toBe(3);
     expect(REGIONAL_LENGTHS).toHaveLength(1);
-    expect(NATIONAL_LENGTHS).toHaveLength(2);
+    expect(CONF_FIELD).toBe(8);
+    expect(CONF_ADVANCE).toBe(4);
+    expect(NATIONAL_BIDS).toBe(20);
+    expect(KNOCKOUT8).toHaveLength(3);
   });
 });

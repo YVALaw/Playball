@@ -504,6 +504,9 @@ describe('a long dynasty does not tear the league apart', () => {
       topHalf: Math.ceil(size / 2) * conferences.length,
       topThree: 3 * conferences.length,
       conferenceTitle: conferences.length,
+      // Sixteen regional banners a June: four finishers per conference, one
+      // series each against the conference next door.
+      regionalTitle: 16,
       tournament: NATIONAL_BIDS,
       omaha: OMAHA_BERTHS,
       title: 1,
@@ -516,7 +519,7 @@ describe('a long dynasty does not tear the league apart', () => {
     // And the boxes with the least room really are being asked for, so this is
     // not passing because the checklist quietly stopped requiring placement.
     expect(peakDemand.topThree ?? 0).toBeGreaterThan(0);
-    expect(peakDemand.conferenceTitle ?? 0).toBeGreaterThan(0);
+    expect(peakDemand.regionalTitle ?? 0).toBeGreaterThan(0);
   });
 
   it('grades ninety five boards at the rate it was tuned for', () => {

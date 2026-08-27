@@ -45,10 +45,12 @@ function meetExactly(e: Expectation): SeasonOutcome {
     wins: e.targetWins, losses: 33 - e.targetWins,
     conferenceRank: 1, conferenceSize: 8,
     wonConference: required('conferenceTitle'),
-    // Winning the conference is reaching the national field in today's format,
-    // so a season that ticks the one ticks the other whether it was asked to or
+    wonRegional: required('regionalTitle'),
+    // A regional banner guarantees a seat in the twenty-team field, so a
+    // season that ticks the one ticks the other whether it was asked to or
     // not. Anything else would be a season that cannot happen.
-    madeTournament: required('conferenceTitle') || required('tournament'),
+    madeTournament: required('conferenceTitle') || required('regionalTitle')
+      || required('tournament'),
   });
 }
 
@@ -91,6 +93,8 @@ describe('the checklist', () => {
     topHalf: Math.ceil(confSize / 2) * conferences.length,
     topThree: 3 * conferences.length,
     conferenceTitle: conferences.length,
+    // Sixteen regional banners a June under the expanded format.
+    regionalTitle: 16,
     tournament: NATIONAL_BIDS,
     omaha: OMAHA_BERTHS,
     title: 1,
@@ -723,8 +727,15 @@ describe('your board, pinned', () => {
   it('reaches the same verdict on the same season it always reached', () => {
     // 225 programs × 5 seasons × 4 seats. Move any of these four and the board
     // the player is standing in front of is not the board that was tuned.
+    //
+    // Re-pinned once, deliberately, when the postseason expanded: the
+    // championship mandate's required trophy moved from the conference title
+    // to the regional banner, and the synthetic grid's conference-winning
+    // fixtures do not carry one — so its championship rows grade harder here.
+    // The live-league tuning tests in `rivals.test.ts` (clear rate, turnover,
+    // capacity) are the real gauge and did not move.
     expect(sweep().verdicts)
-      .toEqual({ exceeded: 1636, met: 400, missed: 724, failed: 1740 });
+      .toEqual({ exceeded: 1636, met: 360, missed: 608, failed: 1896 });
   });
 
   it('asks for the same wins and moves security by the same amount', () => {
@@ -733,17 +744,14 @@ describe('your board, pinned', () => {
     // taking a box the format could not supply off the list, not by lowering the
     // number beside it, which would have hidden the incoherence behind a digit.
     expect(wins).toBe(107620);
-    expect(security).toBe(-15179);
+    expect(security).toBe(-17940);
   });
 
   it('keeps and lets go of exactly the same men, by the same two routes', () => {
     const { fired, sacked, notRenewed, extended } = sweep();
-    expect(fired).toBe(1767);
-    // Sackings did not move at all. Nobody is fired mid-contract who was not
-    // fired mid-contract before — the whole of the difference is at the renewal
-    // bar, where 18 men now have enough security to be kept on.
-    expect(sacked).toBe(1232);
-    expect(notRenewed).toBe(535);
+    expect(fired).toBe(1816);
+    expect(sacked).toBe(1252);
+    expect(notRenewed).toBe(564);
     expect(extended).toBe(1227);
   });
 

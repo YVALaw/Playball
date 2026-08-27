@@ -68,7 +68,11 @@ function brackets(seasons: number): void {
     for (const c of cups) tally(c, out);
     const regionals = stageRegionals(season, cups);
     for (const r of regionals) tally(r, out);
-    tally(stageNational(season, regionals), out);
+    const national = stageNational(season, cups, regionals);
+    for (const o of national.opening) tally(o, out);
+    tally(national.bracketA, out);
+    tally(national.bracketB, out);
+    tally(national.final, out);
   }
   const mean = wins.reduce((a, b) => a + b, 0) / wins.length;
   const sd = Math.sqrt(wins.reduce((a, b) => a + (b - mean) ** 2, 0) / wins.length);

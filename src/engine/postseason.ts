@@ -12,6 +12,10 @@ import {
 import type {
   BattingSeason, GameSummary, PitchingSeason, SeasonState, TeamRecord,
 } from './season.js';
+import {
+  runDoubleElim, resultOfDE,
+  type DoubleElim, type DoubleElimResult,
+} from './doubleElim.js';
 import { overallOf } from './ratings.js';
 import type { ClassYear, PlayerId, Position } from './types.js';
 import type { GameResult } from './game.js';
@@ -454,11 +458,19 @@ export interface ConferenceTournament extends TournamentResult {
   conference: string;
   /** Teams that missed the field entirely. */
   missed: number[];
+  /**
+   * Champion, runner-up, third, fourth — the four this conference sends to
+   * the regionals, in the order the bracket itself decided. Absent on results
+   * written by the old knockout format; those saves re-run the stage.
+   */
+  placings?: number[];
+  /** The double-elimination structure, so a finished cup draws like a live one. */
+  de?: Omit<DoubleElimResult, 'seeds' | 'games' | 'champion' | 'eliminated' | 'placings'>;
 }
 
 /**
- * Top `size` teams by conference record. Six of twelve, so half the league is
- * finished in May and finishing seventh costs you something real.
+ * Top `size` teams by conference record. Eight of twelve, so a third of the
+ * league is finished in May and finishing ninth costs you something real.
  */
 export function conferenceField(
   season: SeasonState,
@@ -488,13 +500,29 @@ export function conferenceTournament(
   size: number = CONF_FIELD,
 ): ConferenceTournament {
   const { field, missed } = conferenceField(season, conference, size);
+  const de = runDoubleElim(season, field);
   return {
-    ...singleElimination(season, field, conferenceLengths()),
+    ...deAsResult(de),
     conference, missed,
   };
 }
 
-/** Every conference crowns a champion. Eight automatic bids to the national field. */
+/** A finished double elimination, wearing the shape every stage list expects. */
+export function deAsResult(
+  de: DoubleElim,
+): TournamentResult & { placings: number[]; de: ConferenceTournament['de'] } {
+  const r = resultOfDE(de);
+  return {
+    seeds: r.seeds,
+    games: r.games,
+    champion: r.champion,
+    eliminated: r.eliminated,
+    placings: r.placings,
+    de: { winners: r.winners, losers: r.losers, final: r.final },
+  };
+}
+
+/** Every conference crowns a champion. Eight of the country's banners a June. */
 export function allConferenceTournaments(
   season: SeasonState,
   size: number = CONF_FIELD,
@@ -507,43 +535,40 @@ export function allConferenceTournaments(
 // ---------------------------------------------------------------------------
 
 /**
- * How long each round's series is.
+ * How long each stage's series is.
  *
- * The one place to change the length of June. Every extra game is a game the
- * player presses through, so these numbers are a pacing decision as much as a
- * format one — a champion plays `CONFERENCE_ROUNDS + 4` series to win it all.
+ * The one place to change the length of June. The conference and national
+ * showdowns are double elimination and play single games; everything else is
+ * a best-of.
  */
 export const SERIES = {
-  /** Six of twelve, three rounds. */
-  conference: 3,
-  /** Two conference champions, one series. */
-  regional: 5,
-  /** The four regional champions: semifinal and final. */
-  national: 7,
+  /** A regional championship: one best of three. */
+  regional: 3,
+  /** The national opening round: seeds 13–20, best of three. */
+  opening: 3,
+  /** The national championship series. */
+  final: 3,
 } as const;
 
 /**
- * Teams from each conference.
+ * Teams from each conference tournament: eight of twelve, double elimination.
  *
- * Six of twelve, so half the league is finished in May and qualifying is
- * something you earn over forty five games. Six in an eight slot bracket also
- * byes the top two seeds, which is the regular season's other reward: win your
- * league and you need two series for the title instead of three.
+ * A third of the league is finished in May, and the top four *finishers* of
+ * each tournament — read off the bracket, not assigned — go on to the
+ * regionals.
  */
-export const CONF_FIELD = 6;
+export const CONF_FIELD = 8;
 
-/** One length per round. Six teams is three rounds, the first with two byes. */
-export function conferenceLengths(): number[] {
-  return [SERIES.conference, SERIES.conference, SERIES.conference];
-}
+/** How many each conference sends on. */
+export const CONF_ADVANCE = 4;
 
 /**
  * The four regions, each a pair of conferences.
  *
- * The postseason is a pyramid and this is its middle tier: win your conference,
- * then beat the champion of the conference next door, then play the other three
- * survivors for the country. One rule the whole way up — you advance by winning
- * something — which is what the old at-large field could never say.
+ * The postseason is a pyramid and this is its middle tier: finish top four in
+ * your conference tournament, then win a best-of-three against the
+ * neighbouring conference for a regional banner. Sixteen of those series,
+ * sixteen regional champions.
  */
 export const REGIONS: readonly { id: string; name: string; conferences: readonly string[] }[] = [
   { id: 'SOUTH', name: 'South', conferences: ['GULF', 'ATL'] },
@@ -557,54 +582,42 @@ export const regionOf = (conference: string): string =>
   REGIONS.find((r) => r.conferences.includes(conference))?.id ?? 'SOUTH';
 
 /**
- * How many programs the national field seats.
+ * How many programs the national field seats: sixteen regional champions plus
+ * four protected or at-large bids.
  *
- * Derived from the regions rather than written down, because it is not a number
- * anybody looks up for its own sake — it is the ceiling on how many boards may
- * *require* a bid. A checklist that asks more programs than this to reach the
- * tournament is asking for something the format cannot hand out, and that is a
- * broken board rather than a hard one. `objectivesFor` in `program.ts` is where
- * the ask is spent and a test in `program.test.ts` holds the two together.
- *
- * Eight today: one champion per conference, paired into four regionals. The
- * expanded format in the backlog seats twenty, and this moves with it.
+ * It is not a number anybody looks up for its own sake — it is the ceiling on
+ * how many boards may *require* a bid. A checklist that asks more programs
+ * than this to reach the tournament is asking for something the format cannot
+ * hand out. `objectivesFor` in `program.ts` is where the ask is spent and a
+ * test in `program.test.ts` holds the two together.
  */
-export const NATIONAL_BIDS =
-  REGIONS.reduce((n, r) => n + r.conferences.length, 0);
-
-/** Programs that reach Omaha: one per region. The next ceiling up. */
-export const OMAHA_BERTHS = REGIONS.length;
-
-/** A regional is one series; the national tree is a semifinal and a final. */
-export const REGIONAL_LENGTHS: readonly number[] = [SERIES.regional];
-export const NATIONAL_LENGTHS: readonly number[] = [SERIES.national, SERIES.national];
+export const PROTECTED_BIDS = 4;
+export const NATIONAL_BIDS = REGIONS.length * CONF_ADVANCE + PROTECTED_BIDS;
 
 /**
- * A regional: the two conference champions of one region, one series.
- *
- * Seeded by regular season record, so those forty five games still decide who
- * hosts the odd game even after both teams have won their leagues. Two league
- * champions finishing on the same number of wins is common enough that the tie
- * mattered: it used to be settled by which conference is listed first in
- * `REGIONS`, so one half of every region hosted for ever.
+ * Programs that reach the national showdown proper — the sixteen-team double
+ * elimination the opening round feeds. "Omaha", as the game names the trip.
  */
-export function regionalPairing(
-  season: SeasonState, cups: readonly ConferenceTournament[],
-): { id: string; name: string; seeds: number[] }[] {
-  const championOf = new Map(cups.map((c) => [c.conference, c.champion]));
-  return REGIONS.map((r) => ({
-    id: r.id,
-    name: r.name,
-    seeds: seedByRecord(season, r.conferences
-      .map((c) => championOf.get(c))
-      .filter((t): t is number => t !== undefined)),
-  })).filter((r) => r.seeds.length > 1);
+export const OMAHA_BERTHS = 16;
+
+/** The regional stage: sixteen best-of-three series. */
+export const REGIONAL_LENGTHS: readonly number[] = [SERIES.regional];
+
+/** One regional championship series: who, from where, and how it went. */
+export interface RegionalSeries extends TournamentResult {
+  region: string;
+  name: string;
+  /** "GULF #1" and the like, so a card can say what each man won to be here. */
+  aLabel: string;
+  bLabel: string;
 }
+
+export interface RegionalResult extends RegionalSeries {}
 
 /**
  * Bracket seeding, by regular season wins and then the standings tiebreakers.
  *
- * `regularRecord` rather than the live one because both callers run in the
+ * `regularRecord` rather than the live one because every caller runs in the
  * middle of June, with earlier rounds already in the books.
  */
 function seedByRecord(season: SeasonState, indices: readonly number[]): number[] {
@@ -614,66 +627,269 @@ function seedByRecord(season: SeasonState, indices: readonly number[]): number[]
   return seedTeams(season, teams, (t) => regularRecord(t).w).map((t) => t.index);
 }
 
-/** Every regional played out. Four champions, one per region. */
-export function stageRegionals(
+/**
+ * The sixteen regional pairings: each region crosses its two conferences'
+ * finishers, first against fourth and second against third, both directions.
+ *
+ * A conference that could not fill its four (which the format never produces,
+ * but a hand-edited save could) simply fields fewer series.
+ */
+export function regionalPairing(
   season: SeasonState, cups: readonly ConferenceTournament[],
-): RegionalResult[] {
-  return regionalPairing(season, cups).map((r) => ({
-    ...singleElimination(season, r.seeds, REGIONAL_LENGTHS),
-    region: r.id,
-    name: r.name,
-  }));
+): { id: string; name: string; a: number; b: number; aLabel: string; bLabel: string }[] {
+  void season;
+  const finishers = new Map(cups.map((c) => [
+    c.conference,
+    c.placings ?? [c.champion],
+  ]));
+  const out: { id: string; name: string; a: number; b: number; aLabel: string; bLabel: string }[] = [];
+  for (const r of REGIONS) {
+    const [confA, confB] = r.conferences;
+    const A = finishers.get(confA ?? '') ?? [];
+    const B = finishers.get(confB ?? '') ?? [];
+    // A1 v B4, A2 v B3, B1 v A4, B2 v A3 — every series is somebody's champion
+    // or contender against the conference next door, and the two champions
+    // cannot meet each other for a regional banner.
+    const pairs: [number | undefined, number | undefined, string, string][] = [
+      [A[0], B[3], `${confA} #1`, `${confB} #4`],
+      [A[1], B[2], `${confA} #2`, `${confB} #3`],
+      [B[0], A[3], `${confB} #1`, `${confA} #4`],
+      [B[1], A[2], `${confB} #2`, `${confA} #3`],
+    ];
+    for (const [a, b, aLabel, bLabel] of pairs) {
+      if (a === undefined || b === undefined) continue;
+      out.push({ id: r.id, name: r.name, a, b, aLabel, bLabel });
+    }
+  }
+  return out;
 }
 
-export interface RegionalResult extends TournamentResult {
-  region: string;
-  name: string;
+/** Every regional series played out. Sixteen champions, sixteen banners. */
+export function stageRegionals(
+  season: SeasonState, cups: readonly ConferenceTournament[],
+): RegionalSeries[] {
+  return regionalPairing(season, cups).map((p) => {
+    // The better regular season hosts the odd game, which is the last thing
+    // those forty five games are still paying for at this stage.
+    const seeds = seedByRecord(season, [p.a, p.b]);
+    return {
+      ...singleElimination(season, seeds, REGIONAL_LENGTHS),
+      region: p.id,
+      name: p.name,
+      aLabel: p.aLabel,
+      bLabel: p.bLabel,
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// The national field
+// ---------------------------------------------------------------------------
+
+/**
+ * The four teams the regular season protects.
+ *
+ * Locked before a postseason game is played: the top four of the final
+ * regular-season national table. Protection means the national field cannot
+ * happen without them and the opening round cannot touch them. It is not a
+ * banner and it is not a seed — a protected team that goes out early in its
+ * conference and its regional still travels, and travels humbler.
+ */
+export function protectedTopFour(season: SeasonState): number[] {
+  return rpiOrder(season).slice(0, PROTECTED_BIDS).map((r) => r.team.index);
+}
+
+export interface NationalField {
+  /** All twenty, in seed order, best first. */
+  seeds: number[];
+  /** The sixteen who won a regional banner. */
+  regionalChampions: number[];
+  /** The regular season's locked top four, qualified or not. */
+  protectedTeams: number[];
+  /** Teams in the field on protection or at-large, not a banner. */
+  atLarge: number[];
 }
 
 /**
- * The national tournament: four regional champions, a semifinal and a final.
+ * Twenty unique teams: sixteen regional champions, every protected team that
+ * did not win its regional, and at-large bids off the national table until
+ * the field is full.
  *
- * Seeded by regular season record, which is the last thing those forty five
- * games are still paying for.
+ * Seeding is the regular season's order with a thumb on the scale for June:
+ * a regional banner is worth a bump, and a protected team that failed to win
+ * anything keeps its access but not its perch.
  */
+export function selectNationalField(
+  season: SeasonState, cups: readonly ConferenceTournament[],
+  regionals: readonly RegionalSeries[],
+): NationalField {
+  const regionalChampions = regionals.map((r) => r.champion);
+  const protectedTeams = protectedTopFour(season);
+  const field = new Set<number>(regionalChampions);
+  const atLarge: number[] = [];
+
+  // Protection first: a top-four team that did not win a regional is added,
+  // never duplicated.
+  for (const t of protectedTeams) {
+    if (!field.has(t)) { field.add(t); atLarge.push(t); }
+  }
+
+  // Then the best of the rest by the national table until twenty.
+  const table = rpiOrder(season).map((r) => r.team.index);
+  for (const t of table) {
+    if (field.size >= NATIONAL_BIDS) break;
+    if (!field.has(t)) { field.add(t); atLarge.push(t); }
+  }
+
+  /*
+    Seed score: national table position, credited for what June added. A
+    regional banner is two rungs, a conference banner one. Protected teams get
+    no artificial perch — their regular season already put them high — but
+    they can fall past teams that won things they did not.
+  */
+  const rank = new Map(table.map((t, i) => [t, i]));
+  const conferenceChampions = new Set(cups.map((c) => c.champion));
+  const score = (t: number): number => {
+    let s = rank.get(t) ?? 99;
+    if (regionalChampions.includes(t)) s -= 2;
+    if (conferenceChampions.has(t)) s -= 1;
+    return s;
+  };
+  const seeds = [...field].sort((a, b) => score(a) - score(b) || (rank.get(a) ?? 99) - (rank.get(b) ?? 99));
+
+  return { seeds, regionalChampions, protectedTeams, atLarge };
+}
+
+/**
+ * The opening round: seeds 13–20 play a best of three for the last four
+ * places in the showdown. A protected team is never in it — that is what the
+ * regular season bought — so if one has fallen that far in the seeding, it
+ * swaps up with the best unprotected seed above the line.
+ */
+export function openingPairs(field: NationalField): { a: number; b: number }[] {
+  const seeds = [...field.seeds];
+  // Keep the protected out of 13–20: swap any that fell below the line with
+  // the lowest unprotected seed above it.
+  for (let i = 12; i < seeds.length; i++) {
+    const t = seeds[i]!;
+    if (!field.protectedTeams.includes(t)) continue;
+    for (let j = 11; j >= 0; j--) {
+      const u = seeds[j]!;
+      if (!field.protectedTeams.includes(u)) {
+        seeds[i] = u; seeds[j] = t;
+        break;
+      }
+    }
+  }
+  field.seeds.splice(0, field.seeds.length, ...seeds);
+  return [
+    { a: seeds[12]!, b: seeds[19]! },
+    { a: seeds[13]!, b: seeds[18]! },
+    { a: seeds[14]!, b: seeds[17]! },
+    { a: seeds[15]!, b: seeds[16]! },
+  ];
+}
+
+/** One opening series result, kept with who it was for the map. */
+export interface OpeningResult extends TournamentResult {
+  aSeed: number;
+  bSeed: number;
+}
+
+export function stageOpening(
+  season: SeasonState, field: NationalField,
+): OpeningResult[] {
+  const seedOf = new Map(field.seeds.map((t, i) => [t, i + 1]));
+  return openingPairs(field).map((p) => ({
+    ...singleElimination(season, [p.a, p.b], [SERIES.opening]),
+    aSeed: seedOf.get(p.a) ?? 0,
+    bSeed: seedOf.get(p.b) ?? 0,
+  }));
+}
+
+/**
+ * The sixteen of the showdown, split into two eight-team double eliminations.
+ *
+ * Snaked so the top two seeds are on opposite sides and strength spreads:
+ * bracket A takes 1, 4, 5, 8, 9, 12 and two opening winners; B takes 2, 3,
+ * 6, 7, 10, 11 and the other two.
+ */
+export function splitShowdown(
+  sixteen: readonly number[],
+): { bracketA: number[]; bracketB: number[] } {
+  const A: number[] = [];
+  const B: number[] = [];
+  sixteen.forEach((t, i) => {
+    // 0-indexed snake: A gets 0,3,4,7,8,11,12,15 — B the rest.
+    (i % 4 === 0 || i % 4 === 3 ? A : B).push(t);
+  });
+  return { bracketA: A, bracketB: B };
+}
+
+export interface NationalResult {
+  field: NationalField;
+  opening: OpeningResult[];
+  bracketA: TournamentResult & { placings: number[] };
+  bracketB: TournamentResult & { placings: number[] };
+  /** The championship series between the two bracket champions. */
+  final: TournamentResult;
+  champion: number;
+}
+
+/** The whole national stage at once, for a summer nobody is watching. */
 export function stageNational(
-  season: SeasonState, regionals: readonly RegionalResult[],
-): TournamentResult {
-  return singleElimination(
-    season, seedByRecord(season, regionals.map((r) => r.champion)), NATIONAL_LENGTHS,
-  );
+  season: SeasonState, cups: readonly ConferenceTournament[],
+  regionals: readonly RegionalSeries[],
+): NationalResult {
+  const field = selectNationalField(season, cups, regionals);
+  const opening = stageOpening(season, field);
+  const sixteen = [
+    ...field.seeds.slice(0, 12),
+    ...opening.map((o) => o.champion),
+  ];
+  const { bracketA, bracketB } = splitShowdown(sixteen);
+  const A = deAsResult(runDoubleElim(season, bracketA));
+  const B = deAsResult(runDoubleElim(season, bracketB));
+  const final = bestOf(season, SERIES.final, A.champion, B.champion, 'National championship');
+  return { field, opening, bracketA: A, bracketB: B, final, champion: final.champion };
 }
 
 // ---------------------------------------------------------------------------
 // The whole postseason, packaged
 // ---------------------------------------------------------------------------
 
-/** How far a program got. Ordered worst to best. */
+/**
+ * How far a program got. Ordered worst to best.
+ *
+ * 'regional' — finished top four of its conference tournament and played a
+ * regional championship series. 'national' — made the twenty-team national
+ * field but went out in the opening round. 'omaha' — reached the sixteen-team
+ * national showdown. The last two are the championship series.
+ */
 export type Finish =
-  | 'missed' | 'regional' | 'omaha' | 'runner-up' | 'champion';
+  | 'missed' | 'regional' | 'national' | 'omaha' | 'runner-up' | 'champion';
 
 export interface PostseasonSummary {
   /** Conference tournament winners, by team index. Eight of them. */
   conferenceChampions: number[];
-  /** Regional winners: the last four. */
+  /** Regional series winners: sixteen banners. */
   regionChampions: number[];
+  /** The twenty-team national field, in seed order. */
+  nationalField?: number[];
+  /** The regular season's locked top four. Qualification metadata, not a banner. */
+  protectedTeams?: number[];
   champion: number;
   /** Only contains teams that got out of their conference. */
   finish: Record<number, Finish>;
 }
 
 /**
- * Run every conference tournament, then the national bracket, and reduce it to
- * what a dynasty actually wants to remember: who won their league, who made the
- * field, and how far each of them got.
- */
-/**
  * The postseason, one stage at a time.
  *
  * `runPostseason` does the whole thing in a single call, which is right for the
  * ninety five programs nobody is watching and wrong for the one that is: a coach
  * who wins twenty five games and then sees a summary screen has not been to the
- * postseason, he has been told about it. These four functions are the same work,
+ * postseason, he has been told about it. These functions are the same work,
  * stopped where there is something worth looking at.
  *
  * Each returns plain results, so progress through the stages is ordinary
@@ -693,21 +909,28 @@ export function stageConferenceTournaments(season: SeasonState): ConferenceTourn
 /** Reduce the finished stages to the summary a dynasty remembers. */
 export function summarize(
   cups: readonly ConferenceTournament[],
-  regionals: readonly RegionalResult[],
-  national: TournamentResult,
+  regionals: readonly RegionalSeries[],
+  national: NationalResult,
 ): PostseasonSummary {
   const finish: Record<number, Finish> = {};
-  // Winning a conference is reaching the regionals, which is the postseason
-  // proper: every team in it got there by winning something.
+  // Reaching the regionals is the postseason proper: everybody in one earned
+  // it with a top-four conference finish.
   for (const r of regionals) for (const t of r.seeds) finish[t] = 'regional';
-  for (const r of regionals) finish[r.champion] = 'omaha';
-  const runnerUp = national.eliminated[national.eliminated.length - 1];
+  for (const t of national.field.seeds) finish[t] = 'national';
+  const sixteen = [
+    ...national.field.seeds.slice(0, 12),
+    ...national.opening.map((o) => o.champion),
+  ];
+  for (const t of sixteen) finish[t] = 'omaha';
+  const runnerUp = national.final.eliminated[0];
   if (runnerUp !== undefined) finish[runnerUp] = 'runner-up';
   finish[national.champion] = 'champion';
 
   return {
     conferenceChampions: cups.map((c) => c.champion),
     regionChampions: regionals.map((r) => r.champion),
+    nationalField: national.field.seeds,
+    protectedTeams: national.field.protectedTeams,
     champion: national.champion,
     finish,
   };
@@ -721,12 +944,13 @@ export function runPostseason(season: SeasonState): PostseasonSummary {
 
   const cups = allConferenceTournaments(season);
   const regionals = stageRegionals(season, cups);
-  return summarize(cups, regionals, stageNational(season, regionals));
+  return summarize(cups, regionals, stageNational(season, cups, regionals));
 }
 
 export const FINISH_LABEL: Record<Finish, string> = {
   missed: 'Missed the tournament',
   regional: 'Regional',
+  national: 'National tournament',
   omaha: 'Omaha',
   'runner-up': 'National runner-up',
   champion: 'NATIONAL CHAMPION',
@@ -1257,7 +1481,10 @@ export function recordSchoolAnnals(
       confPlace: placeOf.get(t.index) ?? 0,
       rank: rank.get(t.index) ?? 0,
       wonConference: post?.conferenceChampions.includes(t.index) ?? false,
-      madeTournament: post ? post.finish[t.index] !== undefined : false,
+      // A seat in the national field, not merely a June appearance — the
+      // finish records every regional participant now.
+      madeTournament: post?.nationalField?.includes(t.index)
+        ?? (post ? post.finish[t.index] !== undefined && post.finish[t.index] !== 'regional' : false),
       finish: post?.finish[t.index] ?? 'missed',
       ...(t.index === userTeam
         ? (userCoach ? { coach: userCoach } : {})

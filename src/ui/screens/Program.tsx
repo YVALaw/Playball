@@ -203,7 +203,11 @@ function BoardSheet({ team }: { team: Owner }) {
     conferenceRank: done ? rank : 0,
     conferenceSize: table.length,
     wonConference: post?.conferenceChampions.includes(team.index) ?? false,
-    madeTournament: finish !== undefined,
+    // The twenty-team national field, when the summary carries it; the finish
+    // ladder covers a summary written before the format grew.
+    madeTournament: post?.nationalField
+      ? post.nationalField.includes(team.index)
+      : ['national', 'omaha', 'runner-up', 'champion'].includes(finish ?? ''),
     wonRegional: post?.regionChampions.includes(team.index) ?? false,
     reachedOmaha: ['omaha', 'runner-up', 'champion'].includes(finish ?? ''),
     wonTitle: post?.champion === team.index,
@@ -225,7 +229,8 @@ function BoardSheet({ team }: { team: Owner }) {
    * became possible.
    */
   const settledFor = (key: string): boolean =>
-    key === 'tournament' || key === 'omaha' || key === 'conferenceTitle' || key === 'title'
+    key === 'tournament' || key === 'omaha' || key === 'conferenceTitle'
+      || key === 'regionalTitle' || key === 'title'
       ? post !== null
       : done;
 

@@ -104,6 +104,28 @@ export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
         + 'to the bench coach for good, so save it for the blowouts.',
     },
   ],
+  postseason: [
+    {
+      title: 'How June works',
+      body: 'Three championships, stacked. Eight of your twelve make the '
+        + 'conference tournament, double elimination, so one bad night drops '
+        + 'you to the losers bracket instead of the bus home. Finish top four '
+        + 'and you move on.',
+    },
+    {
+      title: 'Regionals and the big dance',
+      body: 'Top four finishers play a best of three against the conference '
+        + 'next door. Sixteen regional champions plus four protected bids '
+        + 'make the twenty team national field: seeds 13 to 20 play in, the '
+        + 'sixteen split into two brackets, and the last two play for it all.',
+    },
+    {
+      title: 'The toggle is your friend',
+      body: 'WINNERS shows who is alive the easy way, LOSERS shows who is '
+        + 'alive the hard way. Finish in the top four of the regular season '
+        + 'nationally and your national bid is protected whatever June does.',
+    },
+  ],
   awards: [
     {
       title: 'Hardware night',

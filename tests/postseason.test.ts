@@ -10,7 +10,7 @@ import { departAndDevelop, fillRosters } from '../src/engine/progression.js';
 import { CONFERENCES } from '../src/data/schools.js';
 import {
   singleElimination, bestOf, conferenceTournament, seasonAwards, allConference, runPostseason,
-  conferenceLengths, CONF_FIELD, clincher,
+  CONF_FIELD, CONF_ADVANCE, NATIONAL_BIDS, clincher,
   coachOfTheYear, coachAwardCandidates, freezeRegularSeason,
   type PostseasonSummary,
 } from '../src/engine/postseason.js';
@@ -26,7 +26,7 @@ function playedSeason(seed = 2027) {
 describe('the knockout bracket', () => {
   const season = playedSeason();
   const seeds = standings(season, 'PAC').slice(0, CONF_FIELD).map((t) => t.index);
-  const result = singleElimination(season, seeds, conferenceLengths());
+  const result = singleElimination(season, seeds, [3, 3, 3]);
 
   it('crowns exactly one champion from the field', () => {
     expect(seeds).toContain(result.champion);
@@ -42,7 +42,7 @@ describe('the knockout bracket', () => {
   it('sends a team home the moment it loses a series, and not before', () => {
     // One loss ends you, but a loss is a series rather than a game — so a team
     // that goes out can still have won games on the way.
-    const bestOf = conferenceLengths()[0] as number;
+    const bestOf = 3;
     const need = clincher(bestOf);
     for (const round of result.rounds ?? []) {
       for (const s of round) {
@@ -203,28 +203,36 @@ describe('the whole postseason', () => {
     expect(new Set(result.conferenceChampions).size).toBe(confs.size);
   });
 
-  it('takes the last four from the four regions', () => {
-    // Nothing is selected any more: you reach the national tournament by
-    // winning your conference and then your region. One rule the whole way up.
-    expect(result.regionChampions).toHaveLength(4);
-    expect(new Set(result.regionChampions).size).toBe(4);
-    for (const t of result.regionChampions) {
-      expect(result.conferenceChampions).toContain(t);
-    }
+  it('hangs sixteen regional banners', () => {
+    expect(result.regionChampions).toHaveLength(16);
+    expect(new Set(result.regionChampions).size).toBe(16);
   });
 
-  it('crowns a champion from the last four', () => {
-    expect(result.regionChampions).toContain(result.champion);
+  it('seats a twenty team national field, champion inside it', () => {
+    expect(result.nationalField).toHaveLength(NATIONAL_BIDS);
+    expect(new Set(result.nationalField).size).toBe(NATIONAL_BIDS);
+    expect(result.nationalField).toContain(result.champion);
+    // Every regional champion travels; the protected four travel too.
+    for (const t of result.regionChampions) {
+      expect(result.nationalField).toContain(t);
+    }
+    expect(result.protectedTeams).toHaveLength(4);
+    for (const t of result.protectedTeams!) {
+      expect(result.nationalField).toContain(t);
+    }
     expect(result.finish[result.champion]).toBe('champion');
   });
 
-  it('records a finish for every conference champion and nobody else', () => {
-    // Getting out of your conference is what puts you in the record: the eight
-    // champions, and nobody who did not win a league.
+  it('records a finish for every regional participant and nobody else', () => {
+    // Finishing top four of your conference tournament is what puts you in
+    // the record: thirty-two of them, and the at-large additions on top.
     const placed = Object.keys(result.finish).map(Number);
-    expect(placed).toHaveLength(result.conferenceChampions.length);
-    for (const team of placed) {
-      expect(result.conferenceChampions).toContain(team);
+    // The 32 regional teams plus any at-large team that was not one of them.
+    const expected = new Set<number>();
+    for (const t of result.nationalField!) expected.add(t);
+    expect(placed.length).toBeGreaterThanOrEqual(32);
+    for (const t of result.nationalField!) {
+      expect(placed).toContain(t);
     }
   });
 
@@ -235,12 +243,17 @@ describe('the whole postseason', () => {
     expect(result.finish[result.champion]).toBe('champion');
   });
 
-  it('sends the four regional winners to Omaha', () => {
+  it('sends exactly sixteen to the showdown', () => {
     const values = Object.values(result.finish);
     const inOmaha = values.filter(
       (f) => f === 'omaha' || f === 'runner-up' || f === 'champion',
     );
-    expect(inOmaha).toHaveLength(4);
+    expect(inOmaha).toHaveLength(16);
+  });
+
+  it('sends the conference count on: eight champions, four per league advance', () => {
+    void CONF_ADVANCE;
+    expect(result.conferenceChampions).toHaveLength(8);
   });
 });
 

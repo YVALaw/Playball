@@ -1,59 +1,56 @@
 // Postseason.tsx
-// June, on one map.
+// June, in three championships.
 //
-// Reported from testing, over and over, and finally settled by changing the
-// format rather than the drawing. Double elimination is what college baseball
-// plays and it is the best drama the sport has — but its losers' bracket
-// pairings do not exist until somebody loses, so **there is no full bracket to
-// draw**. Every attempt at one could only ever show the next round, which is
-// what "we were supposed to see all the bracket before it all started" was
-// asking for and never getting.
+// CONFERENCE: eight of twelve into a double elimination, top four finishers
+// advance, the champion hangs a banner. REGIONALS: sixteen best-of-three
+// championship series crossing neighbouring conferences, sixteen banners.
+// NATIONAL: those sixteen champions plus four protected or at-large bids,
+// twenty in all — seeds 13 to 20 play an opening round, the sixteen split
+// into two double-elimination brackets, and the two bracket champions play a
+// best-of-three for the country.
 //
-// A knockout tree of series is determined by its seeding. The whole thing can be
-// drawn on day one with TBD in the empty slots, and the drama moves into series
-// length: best of three in the conference, best of five to the last four, best
-// of seven from there.
+// The screen's rules, all reported from testing: the explanatory card is
+// gone and the brackets own the room it ate; winners and losers are two
+// views under a toggle rather than one giant map; every bracket card wears
+// its school's colour; and the action button is pinned to the frame so it
+// sits in the same place whatever tab is up.
 
 import { useEffect, useState } from 'react';
-import { useDynasty, useUserTeam } from '../../state/store.js';
-import { FixedHeader, FloatingAction } from '../Sticky.js';
+import { useDynasty, useUserTeam, type NationalProgress } from '../../state/store.js';
+import { FloatingAction } from '../Sticky.js';
 import { Modal } from '../Modal.js';
 import { Lineup } from './Lineup.js';
-import { PostseasonMap } from '../PostseasonMap.js';
-import type { GraphInput } from '../postseasonGraph.js';
+import { DoubleElimMap, type DECols } from '../DoubleElimMap.js';
+import { teamColour } from '../Avatar.js';
 import {
   conferenceField, liveSeries, nextGameFor, hostOfGame, roundName, clincher,
-  regionOf, REGIONS, SERIES, CONF_FIELD,
+  regionOf, REGIONS, CONF_FIELD, CONF_ADVANCE,
 } from '../../engine/postseason.js';
-import type { Series, SeriesBracket } from '../../engine/postseason.js';
+import type {
+  Series, SeriesBracket, RegionalSeries, ConferenceTournament, TournamentResult,
+} from '../../engine/postseason.js';
+import { liveSlotFor, slotName, type DoubleElim } from '../../engine/doubleElim.js';
+import { FirstVisit } from '../Tutorial.js';
 
-/** The three parts of June, as the player thinks of them. */
-const LADDER = [
-  {
-    key: 'conference',
-    name: 'CONFERENCE',
-    blurb: `The top ${CONF_FIELD} of your twelve team conference, knockout, every round a best of ${SERIES.conference}. Half the league is already finished in May; win this and you are your conference champion.`,
-  },
-  {
-    key: 'regional',
-    name: 'REGIONAL',
-    blurb: `Your conference champion against the champion of the conference next door, one best of ${SERIES.regional} for the region. Four regions, four survivors.`,
-  },
-  {
-    key: 'national',
-    name: 'NATIONAL',
-    blurb: `The four regional champions. A semifinal and a final, both best of ${SERIES.national}, and the last team standing takes the country.`,
-  },
-];
+type ConfView = 'winners' | 'losers';
+type NatView = 'opening' | 'winners' | 'losers';
 
-const ordinal = (n: number): string => {
-  const suffix = n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th';
-  return `${n}${suffix}`;
-};
+/*
+  The toggles remember themselves across an unmount — managing a game covers
+  this screen, and coming back to a different tab than you left reads as the
+  screen forgetting you. Module scope on purpose: session-long, never saved,
+  exactly the lifetime a view preference deserves.
+*/
+let confViewMemo: ConfView = 'winners';
+let natViewMemo: NatView = 'opening';
 
 export function Postseason() {
   const [modal, setModal] = useState<'in' | 'out' | 'won' | null>(null);
   const [showLineup, setShowLineup] = useState(false);
+  const [confView, setConfView0] = useState<ConfView>(confViewMemo);
+  const [natView, setNatView0] = useState<NatView>(natViewMemo);
+  const setConfView = (v: ConfView): void => { confViewMemo = v; setConfView0(v); };
+  const setNatView = (v: NatView): void => { natViewMemo = v; setNatView0(v); };
 
   const season = useDynasty((s) => s.season);
   const bracket = useDynasty((s) => s.bracket);
@@ -74,26 +71,12 @@ export function Postseason() {
   // Opening a stage is not a decision, so it is not a press.
   useEffect(() => { openStage(); }, [openStage, bracket?.stage, version]);
 
-  const live: SeriesBracket | null = myBracket ? myBracket.state : null;
-  /**
-   * Out of it — from the store when there is no bracket left to ask.
-   *
-   * Losing the deciding game of a tier removes the bracket in the same commit
-   * that decides it, so a screen that only knew how to look at `live` could see
-   * an elimination only when the tournament carried on without you.
-   */
   const knockedOut = knockout !== null && knockout.year === year;
-  const iAmOut = live ? live.eliminated.includes(userTeam) : knockedOut;
+  const iAmOut = myBracket
+    ? myBracket.state.eliminated.includes(userTeam)
+    : knockedOut;
   const stageKey = bracket?.stage ?? '';
 
-  /**
-   * The one moment worth stopping the screen for is the one it cannot see.
-   *
-   * Both flags live in the store rather than in a ref: managing a game unmounts
-   * this screen, and a remounted ref believes it has never spoken — which is
-   * how the qualification modal came back after a game and the elimination
-   * modal never came at all.
-   */
   const stillIn = myBracket !== null && !knockedOut;
   const mySeed = season && team
     ? conferenceField(season, team.conference).field.indexOf(userTeam) + 1
@@ -102,41 +85,35 @@ export function Postseason() {
   const introKey = `${year}:in:${stageKey}`;
   const outKey = knockedOut && knockout ? `${year}:out:${knockout.kind}` : '';
 
-  /**
-   * Whether the tier on screen is finished, and whether you finished it on top.
-   * Computed up here because the modal effect needs both before the null-check
-   * return that the rest of the render waits behind.
-   */
+  /** Whether the tier on screen is finished, and whether you won something. */
+  const nat = bracket?.national ?? null;
   const stagePlayed = bracket
-    ? (bracket.stage === 'conference' ? bracket.cups.length > 0
-      : bracket.stage === 'regional' ? bracket.regionals.length >= REGIONS.length
-      : bracket.national !== null)
+    ? (bracket.stage === 'conference' ? bracket.cups.length >= 8
+      : bracket.stage === 'regional' ? bracket.regionals.length >= 16
+      : nat !== null && nat.final !== null)
     : false;
-  const iWonStage = bracket !== null && stagePlayed && (
-    bracket.stage === 'conference' ? bracket.cups.some((c) => c.champion === userTeam)
-      : bracket.stage === 'regional' ? bracket.regionals.some((r) => r.champion === userTeam)
-      : bracket.national?.champion === userTeam
+  const wonConference = bracket?.cups.some((c) => c.champion === userTeam) ?? false;
+  const wonRegional = bracket?.regionals.some((r) => r.champion === userTeam) ?? false;
+  const wonTitle = nat?.final?.champion === userTeam;
+  const iWonStage = bracket !== null && (
+    bracket.stage === 'conference' ? (stagePlayed && wonConference)
+      : bracket.stage === 'regional' ? (stagePlayed && wonRegional)
+      : wonTitle
   );
   const winKey = iWonStage ? `${year}:win:${stageKey}` : '';
 
   useEffect(() => {
     if (!bracket) return;
-    // Elimination first. A year that has just ended is never also a year that
-    // is about to begin, whatever stage the bracket says it is on.
     if (outKey && !seen.includes(outKey)) {
       markSeen(outKey);
       setModal('out');
       return;
     }
-    // A trophy gets a card of its own — conference, regional, or the whole
-    // thing. Once per stage per year, like the elimination it mirrors.
     if (winKey && !seen.includes(winKey)) {
       markSeen(winKey);
       setModal('won');
       return;
     }
-    // And the welcome only where there is something to welcome you to: a live
-    // run of your own, or a May that ended without one.
     if (stageKey === 'conference' && (inTheField ? stillIn : true)
       && !seen.includes(introKey)) {
       markSeen(introKey);
@@ -149,37 +126,18 @@ export function Postseason() {
   const name = (i: number): string => season.teams[i]?.def.school ?? '?';
   const abbr = (i: number): string => season.teams[i]?.def.abbr ?? '?';
 
-  const myCup = bracket.cups.find((c) => c.conference === team.conference) ?? null;
-  const myRegionId = regionOf(team.conference);
-  const myRegional = bracket.regionals.find((r) => r.region === myRegionId) ?? null;
-  const regionName = REGIONS.find((r) => r.id === myRegionId)?.name ?? myRegionId;
-
-  const mySeries = live ? liveSeries(live, userTeam) : null;
-  const due = live && !iAmOut ? nextGameFor(live, userTeam) : null;
-
-  /** Which rung of the ladder is lit. */
   const rung = bracket.stage === 'conference' ? 0
     : bracket.stage === 'regional' ? 1 : 2;
-
   const stageTitle = rung === 0 ? `${team.conference} tournament`
-    : rung === 1 ? `${regionName} regional` : 'The last four';
-
-  const graphInput: GraphInput = {
-    season,
-    userTeam,
-    cups: bracket.cups,
-    regionals: bracket.regionals,
-    national: bracket.national,
-    live: myBracket ? { kind: myBracket.kind, state: myBracket.state } : null,
-  };
+    : rung === 1 ? 'The regionals' : 'The national tournament';
 
   const qualified = inTheField
     ? {
         good: true,
         title: `${team.conference} tournament`,
         lines: [
-          `${team.def.school} are the ${ordinal(mySeed)} seed of ${CONF_FIELD}.`,
-          `Win it and you play the ${regionName} regional. Lose once and the year is over.`,
+          `${team.def.school} are the ${ordinal(mySeed)} seed of ${CONF_FIELD}. Double elimination: lose once and you drop to the losers bracket, lose twice and it is winter.`,
+          `Finish top ${CONF_ADVANCE} and you play a regional championship series. Win THAT and the national field is calling.`,
         ],
       }
     : {
@@ -187,26 +145,18 @@ export function Postseason() {
         title: 'Season over',
         lines: [
           `${team.def.school} finished outside the top ${CONF_FIELD} of the ${team.conference}.`,
-          'Half the league goes home in May, and this year that is you.',
+          'A third of the league goes home in May, and this year that is you.',
         ],
       };
 
   const howFar = (() => {
-    // Read from the recorded elimination, not from the live bracket: by the
-    // time a losing final renders there is no live bracket to read.
-    const kind = knockout?.kind ?? myBracket?.kind ?? 'conference';
-    const round = knockout ? roundName(knockout.rounds, knockout.round) : '';
-    const inRound = round ? ` in the ${round.toLowerCase()}` : '';
-    // Losing the last game of the country is its own kind of season. "Knocked
-    // out" is the wrong words for a team one series from everything.
-    const lostFinal = kind === 'national' && knockout !== null
-      && knockout.round === knockout.rounds - 1;
-
+    const kind = knockout?.kind ?? 'conference';
+    const where = knockout?.label ? ` in the ${knockout.label}` : '';
     if (kind === 'conference') {
       return {
         title: 'Out in May',
         lines: [
-          `${team.def.school} fall${inRound} of the ${team.conference} tournament.`,
+          `${team.def.school} fall${where} of the ${team.conference} tournament.`,
           'The bats always go quiet at the worst possible time. Winter is for getting them loud again.',
         ],
       };
@@ -215,50 +165,58 @@ export function Postseason() {
       return {
         title: 'Out at the regional',
         lines: [
-          `${team.def.school} drop the ${regionName} regional${inRound}.`,
-          'A conference trophy and a June exit. Close enough to sting, good enough to be back.',
+          `${team.def.school} drop the regional championship series.`,
+          'Top four in the conference and a June exit. Close enough to sting, good enough to be back.',
         ],
       };
     }
-    if (lostFinal) {
+    if (kind === 'opening') {
+      return {
+        title: 'Out in the opening round',
+        lines: [
+          `${team.def.school} fall in the national opening round.`,
+          'Twenty teams made the field and you were one of them. The showdown will still be there next June.',
+        ],
+      };
+    }
+    if (kind === 'final') {
       return {
         title: 'Runners up',
         lines: [
-          `${team.def.school} lose the national final.`,
+          `${team.def.school} lose the national championship series.`,
           'One series short of everything. Second best in the whole country, and it still feels like this.',
         ],
       };
     }
     return {
-      title: 'Out at the last four',
+      title: 'Out of the showdown',
       lines: [
-        `${team.def.school} fall in the national semifinal.`,
-        'Four teams left and yours was one of them. Seasons like this are why the banners exist.',
+        `${team.def.school} take their second loss${where}.`,
+        'Sixteen teams reach the showdown and most of the country never sees it. Seasons like this are why the banners exist.',
       ],
     };
   })();
 
-  /** The other kind of June: a trophy, sized to the tier it came from. */
   const wonCard = bracket.stage === 'conference'
     ? {
         kicker: `${year} ${team.conference.toUpperCase()}`,
         title: 'Conference champions',
         lines: [
           `${team.def.school} win the ${team.conference} tournament.`,
-          `Hang the banner and gas up the bus. The ${regionName} regional is waiting.`,
+          'Hang the banner and gas up the bus. A regional championship series is waiting.',
         ],
       }
     : bracket.stage === 'regional'
       ? {
-          kicker: `${year} ${regionName.toUpperCase()} REGIONAL`,
+          kicker: `${year} REGIONAL CHAMPIONSHIP`,
           title: 'Regional champions',
           lines: [
-            `${team.def.school} take the ${regionName} regional.`,
-            'Four teams left in the country and yours is one of them.',
+            `${team.def.school} take their regional series.`,
+            'A second banner for the gym, and a guaranteed seat at the national table.',
           ],
         }
       : {
-          kicker: `${year} NATIONAL FINAL`,
+          kicker: `${year} NATIONAL CHAMPIONSHIP`,
           title: 'National champions',
           lines: [
             `${team.def.school} win it all.`,
@@ -266,36 +224,12 @@ export function Postseason() {
           ],
         };
 
-  const verdict = (() => {
-    if (bracket.stage === 'conference' && myCup) {
-      return {
-        good: myCup.champion === userTeam,
-        text: myCup.champion === userTeam
-          ? `${team.def.school} win the ${team.conference}. On to the ${regionName} regional.`
-          : myCup.seeds.includes(userTeam)
-            ? `${name(myCup.champion)} won the conference. Your season ends here.`
-            : `You did not make the ${CONF_FIELD} team field. ${name(myCup.champion)} won it.`,
-      };
-    }
-    if (bracket.stage === 'regional' && myRegional) {
-      return {
-        good: myRegional.champion === userTeam,
-        text: myRegional.champion === userTeam
-          ? `${team.def.school} take the ${regionName}. You are in the last four.`
-          : `${name(myRegional.champion)} take the ${regionName}. Your season ends here.`,
-      };
-    }
-    if (bracket.national) {
-      return {
-        good: bracket.national.champion === userTeam,
-        text: bracket.national.champion === userTeam
-          ? `${team.def.school} are national champions.`
-          : `${name(bracket.national.champion)} win the national title.`,
-      };
-    }
-    return { good: false, text: 'Still being played.' };
-  })();
-
+  /** What the pinned button does right now. */
+  const due = myBracket
+    ? (myBracket.format === 'series'
+      ? nextGameFor(myBracket.state, userTeam) !== null
+      : liveSlotFor(myBracket.state, userTeam) !== null)
+    : false;
   const action: {
     label: string;
     run: () => void;
@@ -306,32 +240,20 @@ export function Postseason() {
         run: manage,
         secondary: { label: 'SIMULATE THIS GAME', onClick: () => sim('game') },
       }
-    : live
+    : myBracket
       ? {
-          // Not your series: the whole round at once. One game per press is
-          // the right size when you are in it and far too small when you
-          // are not. And once you are out you are watching, not playing —
-          // offering to "play" the semifinal of a tournament that knocked you
-          // out in the quarterfinal reads as though you were still in it.
-          label: `${iAmOut ? 'SEE' : 'PLAY'} THE ${
-            roundName(live.rounds.length, live.roundIndex).toUpperCase()}`,
+          label: iAmOut ? 'SEE THE NEXT GAMES' : 'PLAY THE NEXT GAMES',
           run: () => sim('round'),
-          // Only once you are out. While you are alive but waiting, running to
-          // the end of the tournament would run your own games with it, which
-          // is exactly what taking them one at a time exists to prevent.
           secondary: iAmOut
             ? { label: 'SIM TO THE END OF THE TOURNAMENT', onClick: () => sim('rest') }
             : null,
         }
       : stagePlayed
         ? {
-            // What the press does depends on how the tier went. "ON TO THE
-            // REGIONALS" over a season that just ended reads as an invitation
-            // to a tournament you are not in.
             label: bracket.stage === 'conference'
-              ? (verdict.good ? 'ON TO THE REGIONALS' : 'SEE THE REGIONALS')
+              ? (wonConference ? 'ON TO THE REGIONALS' : 'SEE THE REGIONALS')
               : bracket.stage === 'regional'
-                ? (verdict.good ? 'ON TO THE LAST FOUR' : 'SEE THE LAST FOUR')
+                ? (wonRegional ? 'ON TO THE NATIONALS' : 'SEE THE NATIONALS')
                 : 'END THE SEASON',
             run: advance,
           }
@@ -339,10 +261,6 @@ export function Postseason() {
 
   return (
     <>
-      {/*
-        The modals stay outside the screen's own scroller. They cover the frame,
-        and a cover that lives inside the box it is covering scrolls with it.
-      */}
       {modal === 'in' && (
         <Modal
           kicker={`${year} POSTSEASON`}
@@ -374,12 +292,6 @@ export function Postseason() {
         />
       )}
 
-      {/*
-        The lineup, borrowed whole from the regular season and laid over June.
-        A sheet rather than a navigation: the bracket stays exactly where it
-        was, and DONE puts you back on it. Below the modals in the stack, so
-        an elimination card can still interrupt a coach mid tinker.
-      */}
       {showLineup && (
         <div style={{
           position: 'absolute', inset: 0, zIndex: 30,
@@ -408,226 +320,609 @@ export function Postseason() {
       )}
 
       {/*
-        Which stage this is, and how far through June you are, pinned. Both are
-        the answer to "where am I", and a map 430 pixels tall pushes them off
-        the top of the screen the moment you go looking at the bracket.
+        The frame: pinned header (title + stage nav + secondary toggle),
+        scrolling brackets, and the action button OUTSIDE the scroller so it
+        holds its position whatever tab is up and however long its content is.
       */}
-      <FixedHeader header={
-        <div style={{ padding: '14px 0 12px' }}>
-          <div style={{
-            margin: '0 14px', borderBottom: '2px solid var(--ink)', paddingBottom: 8,
-          }}>
-            <div className="label">{year} POSTSEASON · STAGE {rung + 1} OF 3</div>
-            <div style={{
-              font: "800 22px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
-            }}>{stageTitle}</div>
-          </div>
-
-          <Ladder at={rung} />
-        </div>
-      }>
-      <div style={{ padding: '12px 0 22px' }}>
-      <PostseasonMap
-        section={rung === 0 ? 'conf' : rung === 1 ? 'regional' : 'national'}
-        input={graphInput}
-        abbr={abbr}
-        name={name}
-        height={430}
-        focusKey={`${bracket.stage}:${live ? live.roundIndex : 9}:${
-          live ? live.rounds.flat().reduce((a, s) => a + s.games.length, 0) : 0}`}
-      />
-
-      {live && (
-        <div style={{ padding: '0 14px' }}>
-          <Section title="YOUR SERIES">
-            <SeriesPanel
-              series={mySeries}
-              userTeam={userTeam}
-              out={iAmOut}
-              name={name}
-              rounds={live.rounds.length}
-              lengths={live.lengths}
-            />
-            {due && mySeries && (
+      <div style={{
+        position: 'absolute', inset: 0,
+        display: 'flex', flexDirection: 'column', minHeight: 0,
+      }}>
+        <FirstVisit id="postseason" />
+        <div style={{
+          flex: 'none', background: 'var(--field)',
+          borderBottom: '1px solid var(--faint)',
+        }}>
+          <div style={{ padding: '10px 14px 0' }}>
+            <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
+              <div className="label">{year} POSTSEASON · STAGE {rung + 1} OF 3</div>
               <div style={{
-                marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--hairline)',
-              }}>
-                <div className="label">
-                  GAME {mySeries.games.length + 1} OF {live.lengths[mySeries.round]}
-                </div>
-                <div style={{
-                  font: "700 20px/1.1 var(--display)", marginTop: 4,
-                  textTransform: 'uppercase',
-                }}>
-                  {hostOfGame(mySeries, mySeries.games.length) === userTeam ? 'vs ' : 'at '}
-                  {name(due.a === userTeam ? due.b : due.a)}
-                </div>
-              </div>
-            )}
-            {/* June does not lock the card. The dugout controls live in the
-                regular season frame, which this one deliberately is not, so
-                the door to the lineup has to be here. */}
-            {!iAmOut && (
-              <button
-                onClick={() => setShowLineup(true)}
-                className="tap"
-                style={{
-                  marginTop: 10, width: '100%', padding: '10px 0', minHeight: 40,
-                  background: 'var(--field)', border: '1px solid rgba(28,36,48,.4)',
-                  color: 'var(--ink)', font: "700 10px var(--mono)", letterSpacing: '.1em',
-                }}
-              >SET THE LINEUP</button>
-            )}
-          </Section>
-        </div>
-      )}
-
-      {/*
-        How the tier ended, as a banner rather than a boxed "RESULT" section —
-        the map already says who advanced, so this strip's whole job is tone:
-        loud for a trophy, quiet for a season that ended.
-      */}
-      {!live && stagePlayed && (
-        <div style={{ padding: '0 14px' }}>
-          <div style={{
-            marginTop: 18, padding: '12px 14px',
-            background: verdict.good ? 'var(--win)' : 'var(--paper)',
-            border: verdict.good ? 'none' : '1px solid var(--faint)',
-            borderLeft: verdict.good ? 'none' : '3px solid var(--clay)',
-          }}>
-            <div style={{
-              font: "600 8.5px var(--mono)", letterSpacing: '.16em',
-              color: verdict.good ? 'rgba(246,241,230,.72)' : 'var(--dim)',
-            }}>
-              {rung === 0 ? 'CONFERENCE' : rung === 1 ? 'REGIONAL' : 'NATIONAL'} · SETTLED
+                font: "800 21px/0.95 var(--display)", marginTop: 3, textTransform: 'uppercase',
+              }}>{stageTitle}</div>
             </div>
-            <div style={{
-              marginTop: 4, font: `${verdict.good ? 600 : 400} 13px/1.5 var(--body)`,
-              color: verdict.good ? 'var(--cream)' : 'var(--ink)',
-            }}>{verdict.text}</div>
+          </div>
+
+          <StageRail at={rung} />
+
+          {bracket.stage === 'conference' && (
+            <SubToggle
+              options={[['winners', 'WINNERS'], ['losers', 'LOSERS']]}
+              at={confView}
+              onGo={(v) => setConfView(v as ConfView)}
+            />
+          )}
+          {bracket.stage === 'national' && (
+            <SubToggle
+              options={[['opening', 'OPENING'], ['winners', 'WINNERS'], ['losers', 'LOSERS']]}
+              at={natView}
+              onGo={(v) => setNatView(v as NatView)}
+            />
+          )}
+        </div>
+
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+          <div style={{ padding: '8px 0 10px' }}>
+            {myBracket && !iAmOut && <YourNext
+              myBracket={myBracket} userTeam={userTeam} name={name}
+              onLineup={() => setShowLineup(true)}
+            />}
+
+            {bracket.stage === 'conference' && (
+              <ConferenceStage
+                cups={bracket.cups}
+                mine={myBracket?.kind === 'conference' && myBracket.format === 'double'
+                  ? myBracket.state : null}
+                myConference={team.conference}
+                view={confView}
+                abbr={abbr}
+                userTeam={userTeam}
+              />
+            )}
+
+            {bracket.stage === 'regional' && (
+              <RegionalStage
+                regionals={bracket.regionals}
+                mine={myBracket?.kind === 'regional' && myBracket.format === 'series'
+                  ? {
+                      state: myBracket.state,
+                      meta: myBracket.meta ?? null,
+                    }
+                  : null}
+                myRegion={regionOf(team.conference)}
+                season={season}
+                abbr={abbr}
+                userTeam={userTeam}
+              />
+            )}
+
+            {bracket.stage === 'national' && (
+              <NationalStage
+                nat={nat}
+                myBracket={myBracket}
+                view={natView}
+                abbr={abbr}
+                userTeam={userTeam}
+              />
+            )}
           </div>
         </div>
-      )}
 
-      {/* The gutter the button bar expects, given to the bar alone.
-          The bar bleeds 14px into its parent's padding so its background can
-          reach the edges of the screen while the button inside stays inset.
-          Every other screen that uses it is padded; this one cannot be, because
-          the map is full bleed on purpose — so the bar came out 28px wider than
-          the screen and June scrolled sideways. The gutter goes here instead.
-          It carries the pinning too: a sticky box is confined to its own
-          containing block, so a wrapper this tight would otherwise leave the
-          button parked at the bottom of the content rather than the frame. */}
-      <div style={{ position: 'sticky', bottom: 0, zIndex: 10, padding: '0 14px' }}>
-        <FloatingAction
-          label={action.label}
-          onClick={action.run}
-          secondary={action.secondary ?? null}
-        />
+        {/* Pinned to the frame, not the scroll. Same spot, every tab. */}
+        <div style={{
+          flex: 'none', padding: '0 14px',
+          background: 'var(--field)', borderTop: '1px solid var(--faint)',
+        }}>
+          <FloatingAction
+            label={action.label}
+            onClick={action.run}
+            secondary={action.secondary ?? null}
+          />
+        </div>
       </div>
-      </div>
-      </FixedHeader>
     </>
   );
 }
 
-/** Where you are in June, and what this part of it is. */
-function Ladder({ at }: { at: number }) {
+// ---------------------------------------------------------------------------
+// Header furniture
+// ---------------------------------------------------------------------------
+
+/** Where you are in June. The blurbs are gone; the tutorial teaches instead. */
+function StageRail({ at }: { at: number }) {
+  const NAMES = ['CONFERENCE', 'REGIONALS', 'NATIONAL'];
   return (
-    <div style={{ margin: '12px 14px 0' }}>
-      <div style={{ display: 'flex', gap: 3 }}>
-        {LADDER.map((l, i) => (
-          <div key={l.key} style={{ flex: 1 }}>
-            <div style={{
-              height: 4,
-              background: i < at ? 'rgba(168,68,42,.42)'
-                : i === at ? 'var(--clay)' : 'var(--faint)',
-              transition: 'background 220ms ease',
-            }} />
-            <div style={{
-              marginTop: 5, font: "600 8px var(--mono)", letterSpacing: '.08em',
-              color: i === at ? 'var(--clay)' : 'var(--dim)', textAlign: 'center',
-            }}>{l.name}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{
-        marginTop: 9, padding: '10px 12px', background: 'var(--paper)',
-        borderLeft: '3px solid var(--clay)', font: "400 12px/1.5 var(--body)",
-      }}>{LADDER[at]?.blurb}</div>
+    <div style={{ margin: '8px 14px 0', display: 'flex', gap: 3 }}>
+      {NAMES.map((n, i) => (
+        <div key={n} style={{ flex: 1 }}>
+          <div style={{
+            height: 4,
+            background: i < at ? 'rgba(168,68,42,.42)'
+              : i === at ? 'var(--clay)' : 'var(--faint)',
+            transition: 'background 220ms ease',
+          }} />
+          <div style={{
+            marginTop: 4, font: "600 8px var(--mono)", letterSpacing: '.08em',
+            color: i === at ? 'var(--clay)' : 'var(--dim)', textAlign: 'center',
+          }}>{n}</div>
+        </div>
+      ))}
     </div>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+/** The winners/losers (and opening) toggle, in the app's own clothes. */
+function SubToggle(
+  { options, at, onGo }:
+  { options: [string, string][]; at: string; onGo: (v: string) => void },
+) {
+  return (
+    <div style={{ display: 'flex', gap: 4, padding: '8px 14px 8px' }}>
+      {options.map(([v, label]) => (
+        <button
+          key={v}
+          onClick={() => onGo(v)}
+          className="tap"
+          style={{
+            flex: 1, padding: '7px 0', minHeight: 32,
+            background: v === at ? 'var(--clay)' : 'var(--paper)',
+            border: v === at ? '1px solid var(--clay)' : '1px solid rgba(28,36,48,.28)',
+            color: v === at ? 'var(--cream)' : 'var(--ink)',
+            font: "700 8.5px var(--mono)", letterSpacing: '.1em',
+          }}
+        >{label}</button>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Your next game
+// ---------------------------------------------------------------------------
+
+/** What you are due to play, and the door to your lineup. */
+function YourNext(
+  { myBracket, userTeam, name, onLineup }:
+  {
+    myBracket: NonNullable<ReturnType<typeof useDynasty.getState>['myBracket']>;
+    userTeam: number;
+    name: (i: number) => string;
+    onLineup: () => void;
+  },
+) {
+  let line: string | null = null;
+  let sub: string | null = null;
+
+  if (myBracket.format === 'series') {
+    const next = nextGameFor(myBracket.state, userTeam);
+    const s = liveSeries(myBracket.state, userTeam);
+    if (next && s) {
+      const host = hostOfGame(s, s.games.length);
+      const other = next.a === userTeam ? next.b : next.a;
+      line = `${host === userTeam ? 'vs' : 'at'} ${name(other)}`;
+      const wins = (t: number): number => s.games.filter((g) => g.winner === t).length;
+      const len = myBracket.state.lengths[s.round] ?? 3;
+      sub = `Game ${s.games.length + 1} of ${len} · you ${wins(userTeam)}-${wins(other)} · first to ${clincher(len)}`;
+    }
+  } else {
+    const slot = liveSlotFor(myBracket.state, userTeam);
+    if (slot && slot.a !== null && slot.b !== null) {
+      const host = slot.side === 'F' ? slot.a
+        : (slot.aSeed <= slot.bSeed ? slot.a : slot.b);
+      const other = slot.a === userTeam ? slot.b : slot.a;
+      line = `${host === userTeam ? 'vs' : 'at'} ${name(other)}`;
+      const losses = myBracket.state.losses.get(userTeam) ?? 0;
+      sub = `${slotName(slot)} · ${losses === 0 ? 'unbeaten' : 'one loss, elimination baseball'}`;
+    }
+  }
+  if (!line) return null;
+
+  return (
+    <div style={{ padding: '0 14px', marginBottom: 8 }}>
+      <div style={{
+        border: '1px solid var(--faint)', borderLeft: '3px solid var(--clay)',
+        background: 'var(--paper)', padding: '9px 11px',
+        display: 'flex', alignItems: 'center', gap: 10,
+      }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            font: "700 15px/1.1 var(--display)", textTransform: 'uppercase',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>{line}</div>
+          {sub && <div style={{
+            marginTop: 2, font: "400 9.5px var(--mono)", color: 'var(--dim)',
+          }}>{sub}</div>}
+        </div>
+        <button
+          onClick={onLineup}
+          className="tap"
+          style={{
+            flex: 'none', padding: '8px 10px', minHeight: 36,
+            background: 'var(--field)', border: '1px solid rgba(28,36,48,.4)',
+            color: 'var(--ink)', font: "700 8.5px var(--mono)", letterSpacing: '.08em',
+          }}
+        >LINEUP</button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Stage bodies
+// ---------------------------------------------------------------------------
+
+function ConferenceStage(
+  { cups, mine, myConference, view, abbr, userTeam }:
+  {
+    cups: ConferenceTournament[];
+    mine: DoubleElim | null;
+    myConference: string;
+    view: ConfView;
+    abbr: (i: number) => string;
+    userTeam: number;
+  },
+) {
+  // Yours first, live or finished; then the rest of the country.
+  const rows: { conference: string; de: DECols; you: boolean }[] = [];
+  if (mine) {
+    rows.push({
+      conference: myConference, you: true,
+      de: { winners: mine.winners, losers: mine.losers, final: mine.final },
+    });
+  }
+  for (const c of [...cups].sort((a, b) =>
+    (a.conference === myConference ? -1 : 0) - (b.conference === myConference ? -1 : 0))) {
+    if (!c.de) continue;
+    rows.push({
+      conference: c.conference,
+      you: c.conference === myConference,
+      de: c.de as DECols,
+    });
+  }
+
   return (
     <>
-      <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>{title}</div>
-      <div style={{
-        padding: '12px', border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>{children}</div>
+      {rows.map((r) => (
+        <div key={r.conference} style={{ marginBottom: 10 }}>
+          <div style={{
+            margin: '0 14px 4px', paddingBottom: 3,
+            borderBottom: '2px solid var(--ink)',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+          }}>
+            <span className="label" style={{ color: r.you ? 'var(--clay)' : 'var(--ink)' }}>
+              {r.conference}{r.you ? ' · YOU' : ''}
+            </span>
+          </div>
+          <DoubleElimMap de={r.de} view={view} abbr={abbr} userTeam={userTeam} />
+        </div>
+      ))}
     </>
   );
 }
 
-/**
- * The series you are in, as a score and a sentence.
- *
- * A best of seven at 2-2 is a different situation from a best of three at 1-1,
- * and the number alone does not say which — so the line underneath says what one
- * more win, or one more loss, would mean.
- */
-function SeriesPanel(
-  { series, userTeam, out, name, rounds, lengths }:
+function RegionalStage(
+  { regionals, mine, myRegion, season, abbr, userTeam }:
   {
-    series: Series | null;
+    regionals: RegionalSeries[];
+    mine: {
+      state: SeriesBracket;
+      meta: { region: string; name: string; aLabel: string; bLabel: string } | null;
+    } | null;
+    myRegion: string;
+    season: { teams: ReadonlyArray<{ def: { abbr: string } }> };
+    abbr: (i: number) => string;
     userTeam: number;
-    out: boolean;
-    name: (i: number) => string;
-    rounds: number;
-    lengths: readonly number[];
   },
 ) {
-  if (out || !series) {
+  void season;
+  const byRegion = new Map<string, RegionalSeries[]>();
+  for (const r of regionals) {
+    byRegion.set(r.region, [...(byRegion.get(r.region) ?? []), r]);
+  }
+  const order = [...REGIONS].sort((a, b) =>
+    (a.id === myRegion ? -1 : 0) - (b.id === myRegion ? -1 : 0));
+
+  return (
+    <>
+      {order.map((region) => {
+        const list = byRegion.get(region.id) ?? [];
+        const mineHere = mine && (mine.meta?.region ?? myRegion) === region.id
+          ? mine : null;
+        if (list.length === 0 && !mineHere) return null;
+        return (
+          <div key={region.id} style={{ padding: '0 14px', marginBottom: 12 }}>
+            <div style={{
+              paddingBottom: 3, marginBottom: 6, borderBottom: '2px solid var(--ink)',
+            }}>
+              <span className="label" style={{
+                color: region.id === myRegion ? 'var(--clay)' : 'var(--ink)',
+              }}>
+                {region.name.toUpperCase()} REGIONAL
+                {region.id === myRegion ? ' · YOU' : ''}
+              </span>
+            </div>
+            {mineHere && (
+              <LiveSeriesCard
+                state={mineHere.state}
+                aLabel={mineHere.meta?.aLabel ?? ''}
+                bLabel={mineHere.meta?.bLabel ?? ''}
+                abbr={abbr}
+                userTeam={userTeam}
+              />
+            )}
+            {list.map((r, i) => (
+              <SeriesResultCard key={i} r={r} abbr={abbr} userTeam={userTeam} />
+            ))}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+/** A finished (or simulated) best-of-three, as a card. */
+function SeriesResultCard(
+  { r, abbr, userTeam, tag }:
+  { r: RegionalSeries | (TournamentResult & { aLabel?: string; bLabel?: string });
+    abbr: (i: number) => string; userTeam: number; tag?: string },
+) {
+  const a = r.seeds[0]; const b = r.seeds[1];
+  if (a === undefined || b === undefined) return null;
+  const winsOf = (t: number): number => r.games.filter(
+    (g) => (g.homeRuns > g.awayRuns ? g.home : g.away) === t,
+  ).length;
+  return (
+    <div style={{
+      marginBottom: 6,
+      border: (a === userTeam || b === userTeam)
+        ? '1.5px solid var(--clay)' : '1px solid var(--faint)',
+      background: 'var(--paper)',
+    }}>
+      {tag && (
+        <div style={{
+          padding: '3px 9px', background: 'var(--ink)',
+          font: "600 8px var(--mono)", letterSpacing: '.14em', color: 'var(--cream)',
+        }}>{tag}</div>
+      )}
+      <TeamLine
+        team={a} label={(r as RegionalSeries).aLabel} wins={winsOf(a)}
+        champion={r.champion === a} abbr={abbr} userTeam={userTeam} top
+      />
+      <TeamLine
+        team={b} label={(r as RegionalSeries).bLabel} wins={winsOf(b)}
+        champion={r.champion === b} abbr={abbr} userTeam={userTeam}
+      />
+    </div>
+  );
+}
+
+/** The user's live series, game by game. */
+function LiveSeriesCard(
+  { state, aLabel, bLabel, abbr, userTeam }:
+  {
+    state: SeriesBracket; aLabel: string; bLabel: string;
+    abbr: (i: number) => string; userTeam: number;
+  },
+) {
+  const s: Series | undefined = state.rounds[0]?.[0];
+  if (!s || s.a === null || s.b === null) return null;
+  const wins = (t: number): number => s.games.filter((g) => g.winner === t).length;
+  const len = state.lengths[0] ?? 3;
+  return (
+    <div style={{
+      marginBottom: 6, border: '1.5px solid var(--clay)', background: 'var(--paper)',
+    }}>
+      <div style={{
+        padding: '3px 9px', background: 'var(--clay)',
+        font: "600 8px var(--mono)", letterSpacing: '.14em', color: 'var(--cream)',
+      }}>
+        BEST OF {len} · {s.winner === null
+          ? `GAME ${s.games.length + 1}`
+          : 'FINAL'}
+      </div>
+      <TeamLine
+        team={s.a} label={aLabel} wins={wins(s.a)}
+        champion={s.winner === s.a} abbr={abbr} userTeam={userTeam} top
+      />
+      <TeamLine
+        team={s.b} label={bLabel} wins={wins(s.b)}
+        champion={s.winner === s.b} abbr={abbr} userTeam={userTeam}
+      />
+    </div>
+  );
+}
+
+function TeamLine(
+  { team, label, wins, champion, abbr, userTeam, top }:
+  {
+    team: number; label?: string; wins: number; champion: boolean;
+    abbr: (i: number) => string; userTeam: number; top?: boolean;
+  },
+) {
+  const tint = teamColour(abbr(team));
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8,
+      padding: '6px 9px',
+      borderBottom: top ? '1px solid var(--hairline)' : 'none',
+      borderLeft: `3px solid ${tint}`,
+      background: champion ? `${tint}1c` : 'transparent',
+    }}>
+      <span style={{
+        flex: 'none', font: `${champion ? 700 : 600} 12px var(--mono)`,
+        color: tint, letterSpacing: '.04em',
+      }}>
+        {abbr(team)}{team === userTeam ? ' ★' : ''}
+      </span>
+      {label && (
+        <span style={{
+          font: "400 8.5px var(--mono)", color: 'var(--dim)', letterSpacing: '.06em',
+        }}>{label}</span>
+      )}
+      <span style={{ flex: 1 }} />
+      {champion && (
+        <span style={{
+          font: "700 7.5px var(--mono)", letterSpacing: '.1em', color: tint,
+        }}>CHAMPIONS</span>
+      )}
+      <span style={{
+        font: `${champion ? 800 : 600} 14px var(--display)`,
+        minWidth: 14, textAlign: 'right',
+      }}>{wins}</span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// The national stage
+// ---------------------------------------------------------------------------
+
+function NationalStage(
+  { nat, myBracket, view, abbr, userTeam }:
+  {
+    nat: NationalProgress | null;
+    myBracket: ReturnType<typeof useDynasty.getState>['myBracket'];
+    view: NatView;
+    abbr: (i: number) => string;
+    userTeam: number;
+  },
+) {
+  if (!nat) {
     return (
-      <div style={{ font: "400 13px/1.5 var(--body)", color: 'var(--clay)' }}>
-        {out
-          ? 'Your run is over. The rest of the bracket plays on.'
-          : 'Waiting on the round below to finish.'}
+      <div style={{
+        padding: '20px 14px', textAlign: 'center',
+        font: "400 12px/1.5 var(--body)", color: 'var(--dim)',
+      }}>The field is being announced.</div>
+    );
+  }
+  const seeds = nat.field.seeds;
+
+  if (view === 'opening') {
+    return (
+      <div style={{ padding: '0 14px' }}>
+        <div style={{
+          paddingBottom: 3, marginBottom: 6, borderBottom: '2px solid var(--ink)',
+        }}>
+          <span className="label">SEEDS 1–12 · BYE TO THE SHOWDOWN</span>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
+          {seeds.slice(0, 12).map((t, i) => (
+            <span key={t} style={{
+              padding: '4px 8px',
+              border: t === userTeam ? '1.5px solid var(--clay)' : '1px solid var(--faint)',
+              borderLeft: `3px solid ${teamColour(abbr(t))}`,
+              background: 'var(--paper)',
+              font: "600 9.5px var(--mono)", color: teamColour(abbr(t)),
+            }}>
+              <span style={{ color: 'var(--dim)' }}>{i + 1} </span>
+              {abbr(t)}{t === userTeam ? ' ★' : ''}
+              {nat.field.protectedTeams.includes(t) && (
+                <span style={{ color: 'var(--dim)' }}> · P</span>
+              )}
+            </span>
+          ))}
+        </div>
+
+        <div style={{
+          paddingBottom: 3, marginBottom: 6, borderBottom: '2px solid var(--ink)',
+        }}>
+          <span className="label">OPENING ROUND · SEEDS 13–20 · BEST OF 3</span>
+        </div>
+        {myBracket?.kind === 'opening' && myBracket.format === 'series' && (
+          <LiveSeriesCard
+            state={myBracket.state}
+            aLabel={`#${seeds.indexOf(myBracket.state.seeds[0] ?? -1) + 1}`}
+            bLabel={`#${seeds.indexOf(myBracket.state.seeds[1] ?? -1) + 1}`}
+            abbr={abbr}
+            userTeam={userTeam}
+          />
+        )}
+        {nat.opening.map((o, i) => (
+          <SeriesResultCard
+            key={i}
+            r={{ ...o, aLabel: `#${o.aSeed}`, bLabel: `#${o.bSeed}` }}
+            abbr={abbr}
+            userTeam={userTeam}
+          />
+        ))}
+        <div style={{
+          marginTop: 4, font: "400 10px/1.5 var(--body)", color: 'var(--dim)',
+        }}>
+          P marks a protected top four seed from the regular season. Protection
+          buys the field and the bye, never a banner.
+        </div>
       </div>
     );
   }
 
-  const mineIsA = series.a === userTeam;
-  const wins = (team: number | null): number =>
-    series.games.filter((g) => g.winner === team).length;
-  const me = wins(mineIsA ? series.a : series.b);
-  const them = wins(mineIsA ? series.b : series.a);
-  const other = mineIsA ? series.b : series.a;
-  const need = clincher(lengths[series.round] ?? 3);
-
-  const line = series.winner === userTeam ? 'Series won.'
-    : series.winner !== null ? 'Series lost.'
-    : me === need - 1 && them === need - 1 ? 'Winner takes the series.'
-    : me === need - 1 ? 'One more win takes it.'
-    : them === need - 1 ? 'One more loss ends it.'
-    : me > them ? 'Ahead in the series.'
-    : me < them ? 'Behind in the series.'
-    : me === 0 ? 'Not started.' : 'Level.';
+  // The showdown: two eight-team double eliminations, then the championship.
+  const half = (
+    which: 'A' | 'B',
+    result: { winners: DESlot0[][] } | null,
+  ): DECols | null => {
+    if (myBracket?.kind === 'national' && myBracket.format === 'double'
+      && myBracket.half === which) {
+      const s = myBracket.state;
+      return { winners: s.winners, losers: s.losers, final: s.final };
+    }
+    const r = which === 'A' ? nat.bracketA : nat.bracketB;
+    void result;
+    return r ? { winners: r.winners, losers: r.losers, final: r.final } : null;
+  };
+  const A = half('A', null);
+  const B = half('B', null);
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 9 }}>
-        <span style={{ font: "800 26px/1 var(--display)" }}>{me}-{them}</span>
-        <span style={{ font: "400 12px var(--body)", color: 'var(--dim)' }}>{line}</span>
-      </div>
-      <div style={{
-        marginTop: 5, font: "400 11.5px var(--mono)", color: 'var(--dim)',
-      }}>
-        {roundName(rounds, series.round)}
-        {other !== null ? ` · vs ${name(other)}` : ''}
-        {` · best of ${lengths[series.round]}`}
+      {[['A', A] as const, ['B', B] as const].map(([label, de]) => (
+        <div key={label} style={{ marginBottom: 10 }}>
+          <div style={{
+            margin: '0 14px 4px', paddingBottom: 3, borderBottom: '2px solid var(--ink)',
+          }}>
+            <span className="label">NATIONAL BRACKET {label}</span>
+          </div>
+          {de
+            ? <DoubleElimMap de={de} view={view === 'losers' ? 'losers' : 'winners'}
+                abbr={abbr} userTeam={userTeam} />
+            : (
+              <div style={{
+                padding: '10px 14px', font: "400 11px var(--body)", color: 'var(--dim)',
+              }}>Waiting on the opening round.</div>
+            )}
+        </div>
+      ))}
+
+      <div style={{ padding: '0 14px', marginBottom: 10 }}>
+        <div style={{
+          paddingBottom: 3, marginBottom: 6, borderBottom: '2px solid var(--ink)',
+        }}>
+          <span className="label">NATIONAL CHAMPIONSHIP · BEST OF 3</span>
+        </div>
+        {myBracket?.kind === 'final' && myBracket.format === 'series' ? (
+          <LiveSeriesCard
+            state={myBracket.state}
+            aLabel="BRACKET A" bLabel="BRACKET B"
+            abbr={abbr} userTeam={userTeam}
+          />
+        ) : nat.final ? (
+          <SeriesResultCard
+            r={{ ...nat.final, aLabel: 'BRACKET A', bLabel: 'BRACKET B' }}
+            abbr={abbr} userTeam={userTeam}
+          />
+        ) : (
+          <div style={{
+            padding: '8px 0', font: "400 11px var(--body)", color: 'var(--dim)',
+          }}>The two bracket champions meet here.</div>
+        )}
       </div>
     </>
   );
 }
+
+// A local alias so the half() helper can type its unused parameter without
+// importing the slot type twice.
+type DESlot0 = import('../../engine/doubleElim.js').DESlot;
+
+const ordinal = (n: number): string => {
+  const suffix = n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th';
+  return `${n}${suffix}`;
+};

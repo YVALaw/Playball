@@ -179,7 +179,7 @@ export type Mandate = 'develop' | 'build' | 'compete' | 'contend' | 'championshi
  */
 export type ObjectiveKey =
   | 'wins' | 'stretchWins' | 'winningSeason' | 'notLast'
-  | 'topHalf' | 'topThree' | 'conferenceTitle'
+  | 'topHalf' | 'topThree' | 'conferenceTitle' | 'regionalTitle'
   | 'tournament' | 'omaha' | 'title';
 
 export interface Objective {
@@ -249,11 +249,15 @@ export interface Expectation {
  *   stay out of the cellar   88 seats   ~60 asked   develop and build
  *   finish above .500        unrationed ~15 asked   compete
  *   top three                24 seats   ~19 asked   contend and championship
- *   win the conference        8 seats    ~5 asked   championship alone
+ *   win the regional         16 seats   ~5–9 asked  championship alone
  *
- * The top two rungs are close to full and are meant to be — they peak at 22 of
- * 24 and 7 of 8 — so a change that makes either mandate commoner breaks the
- * arithmetic, and that is what the tests are watching.
+ * The top rungs are close to full and are meant to be, so a change that makes
+ * either mandate commoner breaks the arithmetic, and that is what the tests
+ * are watching. The championship rung moved when the postseason expanded:
+ * requiring the *conference* title (8 seats) broke the moment a settled league
+ * carried nine championship boards in one year — the long-dynasty capacity
+ * test caught exactly that — and the regional banner is the same kind of
+ * trophy with twice the seats, now that sixteen of them hang a June.
  *
  * Each rung is also asked of programs the format selects *for* rather than
  * against, which is the second half of the rule and the reason "not last" is
@@ -261,12 +265,10 @@ export interface Expectation {
  * has eleven ways out of it, whereas a rebuild cannot be above the median of a
  * league it is defining the bottom of.
  *
- * The day the postseason grows — the backlog's expanded format seats twenty —
- * `NATIONAL_BIDS` moves and a bid becomes a requirement a contender's board can
- * honestly make again. That is a judgement to take deliberately rather than a
- * constant to wire in here, so it is not automatic; the test in
- * `program.test.ts` reads `NATIONAL_BIDS` off the postseason and fails the day
- * this list asks for more of anything than the format awards.
+ * The expanded format seats `NATIONAL_BIDS` of twenty, so a bid is no longer
+ * the same event as a conference title — it can be earned by a regional
+ * banner, protection or an at-large. It stays a bonus at every mandate: a
+ * required bid would ask the selection committee rather than the team.
  */
 export function objectivesFor(mandate: Mandate, targetWins: number): Objective[] {
   const wins: Objective = {
@@ -279,9 +281,11 @@ export function objectivesFor(mandate: Mandate, targetWins: number): Objective[]
   const bid = (required: boolean): Objective =>
     ({ key: 'tournament', label: 'Reach the national tournament', required });
   const omaha = (required: boolean): Objective =>
-    ({ key: 'omaha', label: 'Reach Omaha', required });
+    ({ key: 'omaha', label: 'Reach the national showdown', required });
   const confTitle = (required: boolean): Objective =>
     ({ key: 'conferenceTitle', label: 'Win the conference', required });
+  const regTitle = (required: boolean): Objective =>
+    ({ key: 'regionalTitle', label: 'Win your regional', required });
 
   switch (mandate) {
     case 'develop':
@@ -320,14 +324,15 @@ export function objectivesFor(mandate: Mandate, targetWins: number): Objective[]
       return [
         wins,
         { key: 'topThree', label: 'Finish top three in the conference', required: true },
-        // The asymmetry the mandates exist for, and it is finally the one the
-        // docstring claims: the same trophy a contender is praised for is the
-        // job here. It is not a harder ask than the bid it replaces — in today's
-        // format they are the same event, since the field *is* the eight
-        // conference champions — but it stays honest when the field grows and a
-        // bid stops meaning you won anything.
-        confTitle(true),
-        bid(false), omaha(false),
+        // The asymmetry the mandates exist for: the trophy a contender is
+        // praised for is the job here. The *regional* banner rather than the
+        // conference one, because sixteen of those hang a June against eight
+        // conference titles, and a settled league can carry nine championship
+        // boards in a bad year — a required box needs more seats than askers.
+        // The conference title stays on the list as the bonus it is for
+        // everybody else one rung down.
+        regTitle(true),
+        confTitle(false), bid(false), omaha(false),
         { key: 'title', label: 'Win the national title', required: false },
       ];
   }
@@ -351,6 +356,7 @@ export function objectiveMet(objective: Objective, o: SeasonOutcome): boolean {
     case 'topHalf': return ranked && o.conferenceRank <= half;
     case 'topThree': return ranked && o.conferenceRank <= 3;
     case 'conferenceTitle': return o.wonConference;
+    case 'regionalTitle': return o.wonRegional;
     case 'tournament': return o.madeTournament;
     case 'omaha': return o.reachedOmaha;
     case 'title': return o.wonTitle;
