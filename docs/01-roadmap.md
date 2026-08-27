@@ -5,7 +5,9 @@
 **Companion docs:** `05-systems-reference.md` for what the game does today,
 `06-backlog.md` for what it is going to do and why, `02-sim-engine-spec.md` for
 engine internals, `04-implementation-plan.md` for the build log and the defect
-register.
+register, **`07-v1-plan.md` for the staged route to v1.0** — which supersedes
+the ordered list below now that the scope, the platform and the money are
+settled.
 
 ---
 
