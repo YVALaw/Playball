@@ -243,6 +243,30 @@ exists.
   of them, and the bigger program still usually wins. See
   `05-systems-reference.md` §2.5a.
 
+- **A13 · The elimination card says the season is over when it is not** —
+  `DECIDED`, not yet built. Reported: *"sadly our team went to losers and when
+  we got to the finals we won the first and lost the second and got knocked
+  out."* The bracket behaved correctly — a losers-bracket survivor has to beat
+  an unbeaten winners-bracket champion twice, which is what the reset final is
+  — but the screen then told him the wrong thing twice over.
+
+  **The bug.** `noteKnockout` fires on elimination from *this tournament*, and
+  the conference branch of `howFar` in `Postseason.tsx` still reads "Out in
+  May… winter is for getting them loud again". Under the expanded format the
+  top **four** finishers advance, so a team losing the conference final has
+  finished second and is on its way to a regional championship series. The
+  game announces a funeral to a team that is still alive.
+
+  **The fix, two parts.** The card has to branch on whether the conference
+  tournament's `placings` put you in the top `CONF_ADVANCE` — "Out of the
+  conference tournament, and on to the regionals" against a real "season
+  over" for fifth and below. And the stake should be on screen *before* the
+  final rather than inferred after it: the championship slot knows which side
+  arrived unbeaten, so `YourNext` can say "win two to take this" to the team
+  that needs two and "win one" to the team that needs one. "Championship ·
+  the reset" is bracket jargon and should not be the first time a player
+  learns the rule.
+
 ## B. Agreed and designed, not yet built
 
 Ordered by dependency. Records come first because badges, the hall of fame and
@@ -726,6 +750,25 @@ own.
 
 ### From the overhaul feedback pass (August 2026) — plan before building
 
+- **The minigame, presented properly.** `DECIDED`, and the largest piece of
+  interface work still outstanding. The dugout screen works and does not yet
+  *look* like the reference the user supplied. What that layout has and this
+  one does not: a **much larger field** (it is 118px of a 178px strip today,
+  and the park is the reason anybody is on this screen), fielders **labelled
+  by position** rather than anonymous dots, a **base-state banner** across
+  the field's foot ("RUNNERS ON FIRST AND SECOND"), the batter and the
+  pitcher as **cards with their season line under them** (AVG/HR/RBI and
+  IP/K/PC) rather than one text row each, the count and outs in the top bar
+  as **B/S/OUT indicators**, and the calls as **wide buttons with a reason
+  underneath** ("SWING — let him hit", "STEAL — Okafor, 82 speed"). Plus two
+  controls that do not exist: **LINE SCORE** (the linescore is folded into
+  the scoreboard strip today and cannot be opened on its own) and **REPLAY**
+  (re-run the last play's animation, which the ball and the fielders can
+  already do — `playPlan` is deterministic off `BallHit`).
+  Constraints: it is a phone screen and the play log has to keep real room;
+  the 3D chunk stays lazy and the 2D diamond stays the fallback; and the
+  reference is a reference, not a skin — the house identity (cream, navy,
+  clay, the condensed display face) wins wherever the two disagree.
 - **Coach title ladder.** This is **B21 above**, which already carries the
   design brief and the measured lopsidedness — do not design it twice. What
   the feedback pass adds to B21: the user wants each title to eventually carry
@@ -1010,17 +1053,24 @@ Still missing:
 
 ### G5 · Debt
 
-- **Source files that say the world has 64 programs.** Mostly done: the engine,
-  the state layer, the data file, `Rankings.tsx`, `Today.tsx` and `Wire.tsx` are
-  swept, along with the `PostseasonProgress` comment below. Four UI files were
-  outside that pass and still carry one — `Avatar.tsx`, `Player.tsx`,
-  `Standings.tsx`, `TeamCard.tsx` — and they are listed in appendix A of the
-  systems reference. `Program.tsx`'s went with B12, because it was screen copy
-  rather than a comment. **One correction to an earlier draft of
-  this line, which claimed none of it reached the screen: one did.**
-  `SeasonReview.tsx` told a coach who made Omaha he was one of "four teams out
-  of sixty four", and that was copy the player reads. It is fixed. The rest is
-  comments, and debt rather than a bug.
+- ~~**Source files that say the world has 64 programs.**~~ **Closed.** The
+  four UI files this entry named — `Avatar.tsx`, `Player.tsx`,
+  `Standings.tsx`, `TeamCard.tsx` — went with the overhaul's rewrites, and a
+  repo-wide sweep on 2026-08-26 finds no stale world size left. The two
+  surviving "sixty-four"s are both real: a sixty-four unit portrait box in
+  `CoachPortrait.tsx` and the draft's sixty-four first-round picks in
+  `Draft.tsx`. One of these did once reach the screen — `SeasonReview.tsx`
+  told a coach who made Omaha he was one of "four teams out of sixty four" —
+  which is the reason the entry was kept open long after it read as comments
+  only.
+
+- **New debt from the August feature work, to clear before v1.0.** Both are
+  deliberate and both are flagged in the code that carries them: the
+  **SIM SEASON** button on the dashboard (`Today.tsx`, a testing gear that a
+  dynasty player should never see), and the **loaded Pascagoula Tech roster**
+  — five men at 99 plus a guaranteed rookie offer, in `store.start` and
+  `NewGame.tsx`, gated out of vitest so the suite still tests the game rather
+  than the hack.
 - **T1** in `04-implementation-plan.md` still stands: `sim.ts parity` hardcodes
   a 68-against-38 matchup and prints a verdict it fails by its own criterion.
   Correction to an earlier draft: **B5 is closed**, not open. The implementation

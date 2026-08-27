@@ -263,12 +263,25 @@ is what is genuinely left.
    no rung holding most of the league, the top staying rare. The eventual
    per-title gameplay boost waits behind it.
 
-2. **The other design passes the feedback opened.** Recruiting budget balancing
-   and player swaying, school visual identities, awards-night presentation, and
+2. **The minigame, presented properly.** The largest piece of interface work
+   left: a bigger field, fielders labelled by position, a base-state banner,
+   batter and pitcher as cards with their season lines, count and outs as
+   indicators, calls as wide buttons with their reason underneath, and the
+   two controls that do not exist yet — LINE SCORE and REPLAY. Backlog
+   section C carries the detail and the constraints.
+
+3. **A13, the elimination card that buries a living team.** A conference
+   final loser has finished second and is on his way to a regional; the card
+   still tells him his season is over. Small, and it is the game lying to a
+   player at the moment he most needs the truth.
+
+4. **The other design passes the feedback opened.** Recruiting budget balancing
+   and player swaying, school visual identities, awards-night presentation
+   (flip cards plus a three.js celebration for a winner of your own), and
    the settings sheet the portrait menu is waiting for. All parked in backlog
    section C by agreement; none may be built before it is specified.
 
-3. ~~**The postseason, expanded.**~~ **Shipped, August 26** — and bigger than
+5. ~~**The postseason, expanded.**~~ **Shipped, August 26** — and bigger than
    the locked sketch: eight-team double-elimination conference tournaments
    with the top four advancing, sixteen best-of-three regional championship
    series, a twenty-team national field with top-four protection and at-large
@@ -277,16 +290,16 @@ is what is genuinely left.
    championship series. The backlog's locked-decisions entry records the
    final shape; `engine/doubleElim.ts` is the new machinery.
 
-4. **The depth systems, one design pass each.** Backlog section C — the
+6. **The depth systems, one design pass each.** Backlog section C — the
    transfer portal, injuries, morale, opponent scouting, a progression rework
    and the rest. Listing them is not designing them.
 
-5. **The small unscheduled gameplay.** Redshirts, a depth chart with position
+7. **The small unscheduled gameplay.** Redshirts, a depth chart with position
    eligibility, facilities to spend on, recruits drafted out of high school,
    an AI that reads a run-expectancy matrix. Backlog G2; each folds into a
    stage above when somebody wants it.
 
-6. **Shipping.** Capacitor, a first APK on a real device, the back button, a
+8. **Shipping.** Capacitor, a first APK on a real device, the back button, a
    keystore generated and backed up somewhere permanent, a signed AAB, a store
    listing, onboarding for the first ten minutes, and the accessibility work —
    minus what the tutorial system already covers, which since the overhaul is
