@@ -10,6 +10,10 @@ for what the game does today.
 
 **Where the work stands: stages 1 through 4 are done. Stage 5, the dugout, is next.**
 
+**Eighteen stages now.** The old stage 5 was split: the dugout is presentation
+over a stream the engine already emits, and the systems that reach *into* the
+simulation are their own stage behind it.
+
 ---
 
 ## What was decided
@@ -189,64 +193,119 @@ attempts.
 
 ## Stage 5 · The dugout
 
-**Size:** large · **Value:** highest of any feature left
+**Size:** large · **Value:** highest of any feature left · **No engine risk**
 
-The redesign, plus four things that belong on the same screen.
+Split out of the old stage 5 deliberately. Everything here is presentation over
+a stream the engine already emits, so the best screen in the game can land
+without putting a calibrated simulation at risk in the same pass. What reaches
+*into* the engine is stage 6.
 
 - **The presentation rebuild** — a much larger field, fielders labelled by
   position, a base-state banner, batter and pitcher as cards with their season
   lines, count and outs as indicators, calls as wide buttons with their reason
   underneath, and the two missing controls: **LINE SCORE** and **REPLAY**.
-- **Mound visits and pitcher confidence** — a limited resource that settles a
-  wobbling arm.
-- **Let the bench coach take it (R6)** — a third button beside SIM THE REST.
-  Two behaviours worth having: *watch* (the game plays itself with the field
-  animating, so you can just see it) and *to the next moment* (default calls
-  until something worth managing arrives — men in scoring position, late and
-  close, a pitcher on fumes). SIM THE REST is all-or-nothing today, so a
-  player up nine runs faces forty taps or total surrender.
-- **Opponent scouting reports** — spend prep before a series to learn the other
-  side's tendencies. The tendencies already exist and are already hidden until
-  watched; this is the other way to learn them.
-- **Pitch-by-pitch calling** — full-depth mode only. Eleven pitch types and
-  per-pitcher repertoires already exist in the engine; this is the UI that
-  spends them.
+- **Let the bench coach take it (R6)** — a third button beside SIM THE REST, in
+  two behaviours: *watch* (the game plays itself with the field animating, so
+  you can just see it) and *to the next moment* (default calls until something
+  worth managing arrives — men in scoring position, late and close, a pitcher
+  on fumes). SIM THE REST is all-or-nothing today, so a player up nine runs
+  faces forty taps or total surrender.
 
 **Exit:** the dugout is the best screen in the game.
 
-## Stage 6 · The coach
+**Do first, and it needs no phone:** the throttled browser performance profile.
+This stage rebuilds the dugout around a *larger* 3D field, and a frame-rate
+disaster there changes the design rather than the code.
+
+## Stage 6 · The dugout's depth
+
+**Size:** medium–large · **Touches the simulation — calibration applies**
+
+The half of the old stage 5 that reaches into the engine. Both items are
+depth-mode gated and both need the measured treatment fatigue got: isolate the
+channel, measure it against the calibration sweep, dial it.
+
+- **Pitcher confidence, alongside fatigue.** Fatigue is already real and always
+  has been — a stamina-derived pitch budget (stamina 80 is roughly 98 pitches),
+  then a multiplier degrading to a floor of 0.55, feeding every plate
+  appearance, with times-through-the-order beside it. Confidence is the *new*
+  channel: a hidden per-outing state that drifts on what just happened — a
+  walk, a home run, a long inning — and feeds the plate appearance the way
+  fatigue does. Both are taken into account, which is the arrangement asked
+  for.
+- **Mound visits.** A limited resource that steadies a wobbling arm, which is
+  what gives confidence something to be for.
+- **Opponent scouting reports.** Spend prep before a series to learn the other
+  side's tendencies. The tendencies already exist and are already hidden until
+  watched; this is the second route to them and the one that costs something.
+
+**Exit:** a pitcher's outing has a shape, and you can do something about it.
+
+**Cut from v1.0: pitch-by-pitch calling.** Not deferred — dropped, and the
+reason is worth keeping. The shipping engine resolves a plate appearance with
+log5 and *then* sequences pitches backwards to land on that outcome, so a pitch
+you called could not change anything. The three ways out were: make the call a
+real input the way a bunt is (honest, but a new calibrated channel for a
+full-depth-only feature), run a different engine for managed games (breaks the
+rule that managing must not change the odds, and makes every record slightly
+dishonest), or leave it as theatre. Dropping it is the fourth. The eleven pitch
+types and per-pitcher repertoires stay exactly what they already are: what
+colours the play-by-play, and what tendencies and scouting are made of.
+
+
+## Stage 7 · The coach
 
 **Size:** large
 
-The last part of the game that is still a form.
+The last part of the game that is still a form — and the stage that finally
+makes the job market a market.
 
 - **Creation as an interview.** Answer baseball questions with real positions
   and real tradeoffs; the answers derive your skills, philosophy and starting
   experience. Nobody picks "recruiting 40"; everybody has an opinion about the
-  bunt.
+  bunt. **It cannot be failed** — answers shape you, they never reject you.
+- **The offers you get depend on who you said you were.** Today
+  `startingOffers` produces the same handful of schools every career, which
+  makes the interview decorative. The desk becomes a function of **your answers,
+  your skills and your prestige** together, so two coaches created on the same
+  seed get different phones ringing. This is what makes step two matter, and it
+  is the reason the interview is in this stage rather than being cosmetic.
 - **Coach personality badges** drawn from those answers and worn for a career,
   the way a player's are. Each names one channel — not a vaguer copy of the
   four skills.
-- **Assistant coaches.** A pitching coach, a hitting coach, a recruiting
-  coordinator, each with ratings that stack on yours. They get poached, and a
-  good one leaves to become a head coach — which plugs into the carousel that
-  already runs ninety-five rival careers. The single biggest personality
-  addition available.
 - **Press conferences.** Two or three questions after a big win or a bad loss;
-  the answers move prestige, morale and how recruits see you. Reads the
-  personality badges above.
-- **The JOBS tab** — promised in `Program.tsx`'s own comment and never built.
-  Browse openings, apply, interview.
+  the answers move prestige, morale and how recruits see you. Reads the badges.
+  **Skipped entirely in casual** — no conference, no inbox card, nothing to do —
+  with the sports information director's neutral answer applied underneath, so
+  a casual career and a full one still live in the same world.
+- **The JOBS tab**, promised in `Program.tsx`'s own comment and never built —
+  and deliberately *not* a permanent directory. A chair appears there when the
+  world says it might: the wire reporting that a school is looking, or that a
+  coach three bad years in is under pressure. Browse what is genuinely open,
+  see which would have you and which would not and why, and apply. The hiring
+  ladder and `canBeHired` already price every move; this is the screen that
+  finally spends them.
+- **Look for a job while you are still under contract.** Today a move only
+  happens when somebody calls. Going looking is the other half of a career, and
+  it is what makes a contract's remaining years mean something.
+- **A proven winner recruits better.** A coach with banners behind him gets a
+  real edge on the board — reputation doing work in the place a player feels it
+  most.
 - **The coach title ladder (B21)** — a named list of achievements per rung.
 
-**Exit:** two coaches with the same record are visibly different men.
+**Exit:** two coaches with the same record are visibly different men, and the
+job market is somewhere you can act rather than only be acted upon.
 
-**Decisions:** what an assistant costs, and in what currency — prestige and
-reputation keep them independent of stage 10's money, which is probably the
-cleaner answer; whether an interview can be failed; whether press conferences
-are skippable in casual.
+**Moved out:** assistant coaches now live with the money that pays them, in the
+economy stage. They were the plan's "single biggest personality addition" and
+that is exactly why they should not ship on a budget invented for them alone.
 
-## Stage 7 · The roster becomes a roster
+**Decisions:** how much of the offer table the interview should move, against
+prestige and skills; how long a chair stays open on the JOBS tab before it is
+filled by somebody else; whether applying and being turned down costs anything.
+
+
+## Stage 8 · The roster becomes a roster
 
 **Size:** large · **Unblocks:** 6, 7 and part of 8
 
@@ -268,7 +327,7 @@ are skippable in casual.
 coach's call or a rule; how academic risk is surfaced during recruiting;
 whether a two-way player is a generated type or something a coach makes.
 
-## Stage 8 · Players as people
+## Stage 9 · Players as people
 
 **Size:** large · **Needs:** stage 7
 
@@ -282,20 +341,37 @@ whether a two-way player is a generated type or something a coach makes.
 
 **Exit:** a season has attrition, and a clubhouse that notices.
 
-## Stage 9 · The transfer portal
+## Stage 10 · The transfer portal
 
 **Size:** medium · **Needs:** stages 7 and 8
 
 Both directions or it is not a portal.
 
-## Stage 10 · The economy
+## Stage 11 · The economy, and the staff it pays for
 
-**Size:** medium–large
+**Size:** large
 
 Recruiting budget rebalance · player swaying as real negotiation · facilities
 and budget upgrades.
 
-## Stage 11 · The world
+- **Assistant coaches.** A pitching coach, a hitting coach, a recruiting
+  coordinator, each with ratings that stack on yours. They get poached, and a
+  good one leaves to become a head coach — which plugs into the carousel that
+  already runs ninety-five rival careers.
+
+  They live here rather than in the coach stage because of what they cost:
+  **the program's money**, decided deliberately over prestige or the recruiting
+  pool. That makes hiring a hitting coach a real argument with the facilities
+  and the board, which is the whole point of an economy — and it is why they
+  should not ship first on a budget invented for them alone.
+
+**Exit:** money is a decision with more than one sensible answer.
+
+**Decisions:** whether an assistant's salary is annual or a signing cost;
+whether you can be outbid for one mid-career; what a poached coordinator does
+to next year's class.
+
+## Stage 12 · The world
 
 **Size:** medium · **New stage**
 
@@ -316,7 +392,7 @@ and budget upgrades.
 **Decisions:** how often realignment fires and whether the user's program can
 be moved against his will.
 
-## Stage 12 · The dynasty remembers
+## Stage 13 · The dynasty remembers
 
 **Size:** medium · **New stage**
 
@@ -330,7 +406,7 @@ be moved against his will.
 
 **Exit:** a fifteen-year save is a history rather than a number.
 
-## Stage 13 · Broadcast
+## Stage 14 · Broadcast
 
 **Size:** medium–large · **New stage**
 
@@ -352,7 +428,7 @@ be moved against his will.
 
 **Exit:** the game sounds and looks like the sport it is about.
 
-## Stage 14 · The simulation's last mile
+## Stage 15 · The simulation's last mile
 
 **Size:** medium
 
@@ -361,7 +437,7 @@ geometry · camera easing, instanced markers, a real 2D/3D toggle · the
 measurement debt (the walk deficit, `sim.ts parity`, single-sample calibration
 figures).
 
-## Stage 15 · The store
+## Stage 16 · The store
 
 **Size:** medium–large · **Needs:** the Console record
 
@@ -373,7 +449,7 @@ player per dynasty, one per save, a recruit who appears in your class, or a
 create-a-player; consumable or permanent; and what happens to a dynasty already
 in progress. Its own design pass before any billing code.
 
-## Stage 16 · The phone
+## Stage 17 · The phone
 
 **Size:** small–medium · **Deferred — no device yet**
 
@@ -382,7 +458,7 @@ across a force-quit, safe-area insets, the hardware back button. Everything
 except the frame rate can be answered on an emulator, so the emulator pass can
 be pulled forward alone if the wait runs long.
 
-## Stage 17 · Ship
+## Stage 18 · Ship
 
 **Size:** medium
 

@@ -1180,7 +1180,7 @@ Everything here obeys the depth-mode rules in *Decisions locked* above: the
 engine models it for all ninety-six programs, and the mode decides how much the
 player is asked about it.
 
-### H1 · Assistant coaches
+### H1 · Assistant coaches — **moved to the economy stage**
 
 A pitching coach, a hitting coach and a recruiting coordinator, each with
 ratings that stack on the head coach's. They can be poached by rival programs,
@@ -1295,7 +1295,7 @@ tendencies are already modelled, already hidden until watched, and already
 surfaced on a rival's player card — this is the second route to that knowledge
 and the one that costs something.
 
-### H13 · Pitch-by-pitch calling
+### H13 · Pitch-by-pitch calling — **DROPPED from v1.0, see §J**
 
 Full-depth mode only. Eleven pitch types with per-pitcher repertoires and usage
 shares already exist in the engine (§18.1); nothing in the UI spends them. The
@@ -1490,3 +1490,95 @@ because they are related:
 - **The season record is too easy to lose** beside the inbox badge. Bigger, or
   — the preferred answer — moved up beside the date in the header, where the
   eye is already going.
+
+---
+
+## J. The career, opened up — planning pass, August 27 2026
+
+Raised while planning stages 5 to 7. The theme is one the plan had not stated:
+**a coaching career is currently something that happens to you.** Offers arrive,
+you take one or you do not. Everything below is about making it something you
+act on, and most of it is cheap because the machinery already exists — the
+hiring ladder prices every move, the carousel runs ninety-five rival careers,
+and the wire already reports what happens to them. None of it is wired to a
+screen the player can use.
+
+All `DECIDED` unless noted, and staged in `07-v1-plan.md`.
+
+### J1 · The offers you get depend on who you said you were — **stage 7**
+
+`startingOffers` produces the same handful of schools every career. That makes
+coach creation decorative: you answer questions about how you see the game and
+then the same six programs ring regardless. The desk becomes a function of
+**the interview answers, the derived skills, and coach prestige** together.
+
+The interview still cannot be failed. Shaping the offers is not the same as
+rejecting the coach, and the difference matters: every set of answers produces
+a valid man with a career in front of him, and what changes is which chairs
+find him interesting.
+
+### J2 · A job board that is not always open — **stage 7**
+
+The JOBS tab has been promised in `Program.tsx`'s own comment for a long time,
+and the obvious version of it — a permanent directory of ninety-six programs —
+is the wrong one, for the same reason the recruiting directory was replaced by
+a desk of real offers. A chair should appear because *something happened*: the
+wire says a school is looking, or that a coach three bad years in is under
+pressure. The tab shows what is genuinely open, says which would have you and
+which would not and why, and lets you apply.
+
+This is the carousel becoming visible. It has been running rival careers for a
+long time with nothing but a wire story to show for it.
+
+### J3 · Look for a job while under contract — **stage 7**
+
+Today a move happens only when somebody calls. Going looking is the other half
+of a career, and it is what finally makes the years left on a contract mean
+something: leaving early should cost, staying should be a choice rather than
+the absence of one.
+
+### J4 · A proven winner recruits better — **stage 7**
+
+Banners behind you should be worth something on the board. Coach prestige
+currently decides which jobs will have you and nothing else; this puts it where
+a player feels it every week.
+
+### J5 · An international call — **`PROPOSED`, after v1.0**
+
+Flagged explicitly as later: a national team ringing a college coach — the WBC,
+or an equivalent — as a career event that is not another school. Recorded here
+so it is not lost, deliberately unscheduled, and it wants its own design pass
+rather than a corner of the jobs board.
+
+### J6 · Pitcher confidence, beside fatigue — **stage 6**
+
+Asked for as the MLB The Show arrangement, where fatigue and confidence are
+both taken into account. **Fatigue is already real and always has been** — a
+stamina-derived pitch budget, a multiplier degrading to a floor of 0.55, fed
+into every plate appearance, with times-through-the-order beside it. Confidence
+is the genuinely new channel: a hidden per-outing state that drifts on what
+just happened and gives a mound visit something to be for.
+
+It is a new input to the plate appearance, so it gets the treatment the pace
+channel and the situational layer got: isolate it, measure it against the
+calibration sweep, dial it. A channel added by eye is how a tuned engine stops
+being tuned.
+
+### Considered and dropped: pitch-by-pitch calling
+
+Not deferred. **Dropped from v1.0**, and the reason is worth keeping because it
+is not obvious. The shipping engine resolves a plate appearance with log5 and
+*then* sequences pitches backwards to land on that outcome — so a pitch the
+player called could not change anything that had not already been decided.
+
+Three ways out existed and all were worse than the cut. Making the call a real
+input before log5 resolves is honest, but it is a new calibrated channel built
+for a full-depth-only feature. Running the free pitch model for managed games
+only breaks the rule that managing must not change the odds, which would make
+every ranking and record in the game slightly dishonest. Leaving it as theatre
+is the one thing this game does not do.
+
+The eleven pitch types and per-pitcher repertoires stay exactly what they are:
+what colours the play-by-play, and what tendencies and scouting reports are
+made of. Its row comes off the settings sheet — a greyed row promising
+something that is not coming is worse than no row.

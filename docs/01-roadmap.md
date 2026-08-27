@@ -255,7 +255,7 @@ get sacked and get poached). What genuinely remains part-done:
 
 **This list is now a pointer.** The scope, the platform, the money and the
 depth question were all settled in August 2026, and the route from here is
-seventeen staged steps in **`07-v1-plan.md`** — which supersedes the ordering
+eighteen staged steps in **`07-v1-plan.md`** — which supersedes the ordering
 that used to live in this section. What follows is the two-minute version.
 
 The one decision that shapes all of it: **a player chooses how deep a game he
@@ -276,34 +276,42 @@ locked* in `06-backlog.md`.
 4. ✅ **Give the screen back** — the oversized roster filters, the recruit
    pipeline line, the prospect sheet, the offseason action button that moves,
    and the season record nobody can find (§I).
-5. **The dugout** — the presentation rebuild, plus mound visits, the bench
-   coach taking over, opponent scouting and pitch calling (H11–H13, H15).
-6. **The coach** — creation as an interview, personality badges, assistant
-   coaches, press conferences, the JOBS tab, the title ladder (H1, H6, H7).
-7. **The roster becomes a roster** — depth chart, real DH, redshirts, position
+5. **The dugout** — the presentation rebuild and the bench coach taking over
+   (H15). Presentation only; no engine risk.
+6. **The dugout's depth** — pitcher confidence beside the fatigue that already
+   exists, mound visits, opponent scouting (H11, H12, §J6). Touches the
+   simulation, so calibration applies. *Pitch calling is dropped — see §J.*
+7. **The coach** — creation as an interview, offers that depend on your
+   answers, personality badges, press conferences, a jobs board that opens only
+   when the world says so, looking for work under contract, a proven winner's
+   recruiting edge, the title ladder (H6, H7, §J1–J4).
+8. **The roster becomes a roster** — depth chart, real DH, redshirts, position
    changes, academic eligibility, two-way players (H5, H10).
-8. **Players as people** — injuries, season fatigue, playing time, morale,
+9. **Players as people** — injuries, season fatigue, playing time, morale,
    captains (H8).
-9. **The transfer portal.**
-10. **The economy** — budget rebalance, swaying, facilities.
-11. **The world** — conference realignment, rivalry recognition, series stakes
+10. **The transfer portal.**
+11. **The economy, and the staff it pays for** — budget rebalance, swaying,
+    facilities, and assistant coaches, who live with the money that buys them
+    (H1).
+12. **The world** — conference realignment, rivalry recognition, series stakes
     (H3, H4, H19).
-12. **The dynasty remembers** — alumni in the professional game, signature
+13. **The dynasty remembers** — alumni in the professional game, signature
     moments (H2, H9).
-13. **Broadcast** — big-moment presentation, sound and haptics, the wire
+14. **Broadcast** — big-moment presentation, sound and haptics, the wire
     upgraded, emblems, awards night (H16, H17, H20).
-14. **The simulation's last mile** — run-expectancy AI, park geometry, the rest
+15. **The simulation's last mile** — run-expectancy AI, park geometry, the rest
     of the 3D track, the measurement debt.
-15. **The store** — the S+ player and Play Billing.
-16. **The phone** — Capacitor and an APK on real hardware. Deferred to here
+16. **The store** — the S+ player and Play Billing.
+17. **The phone** — Capacitor and an APK on real hardware. Deferred to here
     because there is no Android device yet; the two errands at the top of the
     plan are what keeps that safe.
-17. **Ship.**
+18. **Ship.**
 
-Stages 7 → 8 → 9 are a chain and cannot be reordered. Stage 2 is foundational.
-Stages 11, 12 and 13 are independent and are the ones to move earlier when the
+Stages 8 → 9 → 10 are a chain and cannot be reordered. Stage 2 is foundational.
+Stages 12, 13 and 14 are independent and are the ones to move earlier when the
 big systems get heavy. Stages 3 and 4 both came out of playing the game in
-August 2026 and are cheap relative to what they fix.
+August 2026 and are cheap relative to what they fix; 5 and 6 are the old stage
+5, split so the screen can land without the engine's tuning riding on it.
 
 ## Missing and unscheduled
 

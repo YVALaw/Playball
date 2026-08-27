@@ -26,6 +26,19 @@ the top of it is always current. Everything older lives in git.
 | `06-backlog.md` | The decisions and the argument behind each. §H is the agreed feature set, §I the pass that produced stages 3 and 4; *Decisions locked* holds the rules that bind every feature. |
 | `05-systems-reference.md` | What the game does **today**, including the hidden-mechanics index. A feature that shipped moves in here on the same commit. |
 | `01-roadmap.md` | Two-minute view. Its ordered list is now a pointer at `07`. |
+| `artifacts/playball-v1.html` | **The published plan.** Same content as `07`, as a page. See the rule below — it is not optional. |
+
+### The artifact is part of "done"
+
+The v1.0 plan is published as an artifact and **that is the copy actually being
+read**. It has drifted from the repo once already, showing fifteen stages with
+stage 1 unstarted while the code had moved well past both.
+
+So: **when a stage closes, or when scope is added or dropped, the artifact is
+updated in the same pass as the markdown.** Its source is
+`docs/artifacts/playball-v1.html` — edit that and republish to the same URL,
+which keeps the link stable. Publishing a new file path would create a second
+artifact and split the record in two.
 
 **The house rules that are not negotiable**, all of them earned the hard way:
 
@@ -106,30 +119,45 @@ honest fix — see §24.1 before touching `Sticky.tsx`.
 
 ---
 
-## What is next — stage 5, the dugout
+## What is next — stages 5, 6 and 7, planned August 27
 
-`07-v1-plan.md` has the brief. It is the largest single stage left and the
-plan calls it the highest-value thing remaining:
+**The old stage 5 was split, so there are eighteen stages now.** The reason is
+worth keeping: the dugout rebuild is presentation over a stream the engine
+already emits, while mound visits, confidence and scouting all reach *into* a
+calibrated simulation. Putting them in one stage meant a tuning problem in the
+last item could hold up a screen that was already finished.
 
-- The presentation rebuild — a much larger field, fielders labelled by position,
-  a base-state banner, batter and pitcher as cards, calls as wide buttons with
-  their reason underneath, plus **LINE SCORE** and **REPLAY**.
-- Mound visits and pitcher confidence.
-- Let the bench coach take it — *watch*, and *to the next moment*.
-- Opponent scouting reports.
-- Pitch-by-pitch calling, full-depth only.
+**Stage 5 — the dugout.** The presentation rebuild plus the bench coach taking
+over (*watch*, and *to the next moment*). No engine risk at all. **Take the
+throttled browser profile first**: this rebuilds the dugout around a *larger* 3D
+field, and a frame-rate disaster there changes the design rather than the code.
 
-**Four of those five already have rows waiting in `state/depth.ts`** —
-`moundVisits`, `pitchCalling`, `scouting` — greyed out on the settings sheet
-with "arrives with the dugout". Building them means filling in the row, not
-inventing the plumbing. Each needs a documented answer for what casual does,
-which is stage 2's exit condition and now the standing rule.
+**Stage 6 — the dugout's depth.** Pitcher confidence beside the fatigue that
+already exists, mound visits that give it something to be for, and opponent
+scouting. Both new channels get the treatment the pace channel got: isolate,
+measure against the calibration sweep, dial. `moundVisits` and `scouting`
+already have greyed rows waiting in `state/depth.ts`.
 
-**Before starting it, take the throttled browser profile** the plan has been
-carrying as an errand. Stage 5 rebuilds the dugout around a *larger* 3D field,
-and a frame-rate disaster there changes the design rather than the code. There
-is still no Android device, so stage 16 stays deferred; the emulator pass can be
-pulled forward at any time.
+**Stage 7 — the coach**, and it is bigger than the old brief. Beyond the
+interview, the badges and the title ladder, it is where the job market stops
+being something that happens to you: offers that depend on your interview
+answers rather than the same six schools every career, a JOBS tab that opens
+only when the wire says a chair is genuinely going, looking for work while
+under contract, and a proven winner recruiting better. `06-backlog.md` §J has
+the argument for each.
+
+**Two things decided in that planning pass that bind later work:**
+
+- **Pitch-by-pitch calling is dropped from v1.0** — not deferred. The engine
+  resolves a plate appearance with log5 and *then* sequences pitches backwards
+  to match, so a called pitch could not change anything already decided. §J
+  records the three rejected ways out. Its greyed row comes off the settings
+  sheet.
+- **Assistant coaches moved to the economy stage**, because they are paid from
+  the program's money and should not ship first on a budget invented for them.
+
+There is still no Android device, so the phone stage stays deferred; the
+emulator pass can be pulled forward at any time.
 
 ---
 
