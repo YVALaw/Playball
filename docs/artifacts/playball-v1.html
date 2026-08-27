@@ -1,0 +1,480 @@
+<title>Playball to v1.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --ink: #1c2430; --navy: #223247; --clay: #a8442a;
+    --paper: #fbf7ee; --field: #f2ece0; --cream: #f6f1e6; --dim: #6d7480;
+    --hair: rgba(28, 36, 48, .14); --faint: rgba(28, 36, 48, .09); --win: #3f6f4a;
+    --display: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --body: 'Source Sans 3', system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #ece7dc; --navy: #9fb3cd; --clay: #d9714f;
+      --paper: #1a212b; --field: #141a22; --cream: #f6f1e6; --dim: #97a0ad;
+      --hair: rgba(236, 231, 220, .16); --faint: rgba(236, 231, 220, .10); --win: #7fb08c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #ece7dc; --navy: #9fb3cd; --clay: #d9714f;
+    --paper: #1a212b; --field: #141a22; --cream: #f6f1e6; --dim: #97a0ad;
+    --hair: rgba(236, 231, 220, .16); --faint: rgba(236, 231, 220, .10); --win: #7fb08c;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--field); color: var(--ink);
+    font: 400 16px/1.6 var(--body); -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px 80px; }
+
+  header.top {
+    background: var(--navy);
+    background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 1px, transparent 1px 7px);
+    border-bottom: 4px solid var(--clay);
+    padding: 34px 20px 26px; margin-bottom: 34px;
+  }
+  .top-in { max-width: 860px; margin: 0 auto; }
+  .kicker {
+    font: 600 10px var(--mono); letter-spacing: .22em;
+    color: rgba(246,241,230,.66); text-transform: uppercase;
+  }
+  h1 {
+    font: 800 clamp(38px, 8vw, 62px)/0.92 var(--display);
+    text-transform: uppercase; letter-spacing: .01em;
+    color: var(--cream); margin: 8px 0 0; text-wrap: balance;
+  }
+  .sub { margin-top: 10px; max-width: 56ch; font: 400 15px/1.55 var(--body); color: rgba(246,241,230,.76); }
+
+  .decisions {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1px; background: var(--hair); border: 1px solid var(--hair); margin-bottom: 30px;
+  }
+  .dec { background: var(--paper); padding: 12px 14px 14px; }
+  .dec dt { font: 600 9px var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--dim); }
+  .dec dd { margin: 5px 0 0; font: 700 17px/1.15 var(--display); text-transform: uppercase; color: var(--clay); }
+  .dec dd.plain { color: var(--ink); }
+
+  .callout { border-left: 5px solid var(--clay); background: var(--paper); padding: 16px 18px 18px; margin-bottom: 22px; }
+  .callout.quiet { border-left-color: var(--navy); }
+  .callout h2 { font: 700 21px/1.1 var(--display); text-transform: uppercase; margin: 0 0 8px; letter-spacing: .01em; }
+  .callout p { margin: 0 0 10px; }
+  .callout p:last-child { margin-bottom: 0; }
+  .rules { margin: 10px 0 0; padding-left: 18px; }
+  .rules li { margin-bottom: 6px; }
+
+  h2.section {
+    font: 700 13px var(--mono); letter-spacing: .18em; text-transform: uppercase;
+    color: var(--dim); border-bottom: 2px solid var(--ink); padding-bottom: 7px; margin: 34px 0 22px;
+  }
+  ol.stages { list-style: none; padding: 0; margin: 0; }
+  li.stage {
+    display: grid; grid-template-columns: 54px 1fr; gap: 16px;
+    padding-bottom: 24px; margin-bottom: 24px; border-bottom: 1px solid var(--hair);
+  }
+  li.stage:last-child { border-bottom: none; }
+  .num { font: 800 34px/1 var(--display); color: var(--clay); padding-top: 2px; font-variant-numeric: tabular-nums; }
+  .stage h3 { font: 700 25px/1.05 var(--display); text-transform: uppercase; margin: 0 0 6px; letter-spacing: .01em; text-wrap: balance; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .chip {
+    font: 600 9px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+    padding: 3px 7px; border: 1px solid var(--hair); color: var(--dim); background: var(--paper);
+  }
+  .chip.sz-s { border-color: var(--win); color: var(--win); }
+  .chip.sz-m { border-color: var(--navy); color: var(--navy); }
+  .chip.sz-l { border-color: var(--clay); color: var(--clay); }
+  .chip.dep { background: transparent; }
+  .chip.done { border-color: var(--win); background: var(--win); color: var(--cream); }
+  .chip.new { border-color: var(--clay); background: var(--clay); color: var(--cream); }
+  li.stage.done .num { color: var(--win); }
+  li.stage.done h3 { color: var(--dim); }
+  li.stage.done h3::after {
+    content: "✓"; color: var(--win); font-family: var(--body);
+    font-size: .7em; margin-left: .4em; vertical-align: .12em;
+  }
+  .did { font: italic 400 14px/1.5 var(--body); color: var(--dim); }
+  .stage p { margin: 0 0 10px; }
+  .stage ul { margin: 0 0 10px; padding-left: 18px; }
+  .stage li { margin-bottom: 4px; }
+  .exit { font: 400 14px/1.5 var(--body); background: var(--paper); border-left: 3px solid var(--win); padding: 8px 12px; margin-top: 10px; }
+  .exit b { font: 600 9px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--win); display: block; margin-bottom: 2px; }
+  .decide { font: 400 14px/1.5 var(--body); background: var(--paper); border-left: 3px solid var(--clay); padding: 8px 12px; margin-top: 8px; }
+  .decide b { font: 600 9px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--clay); display: block; margin-bottom: 2px; }
+  code { font: 500 13px var(--mono); background: var(--faint); padding: 1px 4px; border-radius: 2px; }
+  .chain { margin: 0 0 20px; padding: 12px 14px; background: var(--paper); border: 1px dashed var(--hair); font: 400 14px/1.5 var(--body); color: var(--dim); }
+  footer.end { margin-top: 40px; padding-top: 18px; border-top: 2px solid var(--ink); font: 400 14px/1.6 var(--body); color: var(--dim); }
+  @media (max-width: 560px) {
+    li.stage { grid-template-columns: 38px 1fr; gap: 12px; }
+    .num { font-size: 26px; }
+    .stage h3 { font-size: 21px; }
+  }
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="kicker">Playball · implementation plan · revised August 27</div>
+    <h1>The road to v1.0</h1>
+    <p class="sub">Seventeen stages, ordered by what unblocks what. The game is
+    already deep; this is the work that turns it into a product with a
+    personality, on a phone. <strong style="color:var(--cream)">Stage 1 is
+    done.</strong> Stages 3 and 4 are new — they came out of playing the
+    postseason that stage 1 shipped.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <dl class="decisions">
+    <div class="dec"><dt>Scope</dt><dd>Everything</dd></div>
+    <div class="dec"><dt>Platform</dt><dd>Android first</dd></div>
+    <div class="dec"><dt>Money</dt><dd>S+ as IAP</dd></div>
+    <div class="dec"><dt>Date</dt><dd class="plain">Ship when right</dd></div>
+    <div class="dec"><dt>Depth</dt><dd>Two ways to play</dd></div>
+  </dl>
+
+  <div class="callout">
+    <h2>The decision that shapes everything else</h2>
+    <p><strong>A player chooses how deep a game he wants, and the game respects
+    it.</strong> Coach creation asks whether this is a full roleplay career or a
+    casual one, and that answer presets everything the feature set adds — press
+    conferences, academic eligibility, captains, pitch calling, mound visits,
+    scouting reports.</p>
+    <p>Three rules keep that from becoming two games in one codebase, and they
+    aren't negotiable:</p>
+    <ol class="rules">
+      <li><strong>The engine always models everything.</strong> The mode changes
+      what the player is <em>asked about</em>, never what the simulation does.
+      Casual doesn't turn injuries off — it answers the injury question for you.
+      The moment a mode reaches into the engine, the 95 rival programs live in a
+      different world from yours and every comparison in the game is a lie.</li>
+      <li><strong>Anything that touches the world is on for everybody or off for
+      everybody.</strong> Realignment, eligibility, injuries: properties of the
+      league, not preferences.</li>
+      <li><strong>The preset is a preset, not a cage.</strong> Per-system toggles
+      sit behind it, and the mode can change mid-career.</li>
+    </ol>
+  </div>
+
+  <div class="callout quiet">
+    <h2>Two errands that need no phone</h2>
+    <p><strong>Create the Play Console record and merchant account.</strong> A web
+    form that starts two clocks otherwise sitting at the end of the project:
+    merchant verification takes days, and in-app products can't be tested until
+    an app record exists.</p>
+    <p><strong>Take a throttled performance profile in the browser.</strong> The
+    open question the deferred phone work leaves is whether the 3D field holds a
+    frame rate on mid-range hardware. 4× CPU throttle isn't the same measurement
+    but it catches a disaster — and stage 5 rebuilds the dugout around a
+    <em>larger</em> field.</p>
+  </div>
+
+  <h2 class="section">The stages</h2>
+
+  <ol class="stages">
+
+    <li class="stage done">
+      <div class="num">01</div>
+      <div>
+        <h3>Stop the game lying, and stop it losing things</h3>
+        <div class="chips"><span class="chip done">Done · August 2026</span><span class="chip dep">768 tests green</span></div>
+        <ul>
+          <li><strong>A13</strong> — the elimination card that says your season is over when second place sends you to a regional. <span class="did">Wider than reported: a protected team losing its regional got the same funeral. Where you fell is now written at the moment you fall, because that's the only moment the bracket still knows.</span></li>
+          <li><strong>Tournament win/lose cards</strong> — they carry the biggest moments in the game and are a title and two lines in a box. <span class="did">Cut to a headline and one line. The full big-moment treatment is stage 13 and wasn't worth doing twice.</span></li>
+          <li><strong>A thirty-season soak</strong> — the new postseason machinery has never run more than a few years. <span class="did"><code>npm run soak</code>. Thirty Junes, no structural faults — but it found a balance question instead, below.</span></li>
+          <li><strong>Resume an interrupted game.</strong> A backgrounded live game is lost today because <code>LiveGame</code> is a running coroutine. Don't serialise the coroutine — persist the day-start snapshot and the ordered list of decisions, and replay. The engine is deterministic, so the replay lands on exactly the same sixth inning. The most player-hostile behaviour the game has on the platform it ships to. <span class="did">Built exactly that way, in the regular season and the postseason both — the second only after a save restriction that had quietly gone stale was deleted rather than worked around.</span></li>
+        </ul>
+        <div class="exit"><b>Exit — met</b>Nothing the game says is false, and nothing a phone call can destroy.</div>
+        <div class="decide"><b>What the soak turned up</b>Ten different champions in thirty years, one program taking eight, where real college baseball produces about sixteen. Nothing is broken — double elimination, top-four protection and best-of-threes are cutting upsets exactly as designed. Whether a dynasty game <em>wants</em> that much order at the top is a decision, and it's open. The save also grows about 12&nbsp;KB a year.</div>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">02</div>
+      <div>
+        <h3>How you want to play</h3>
+        <div class="chips"><span class="chip sz-m">Medium</span><span class="chip dep">Foundational — everything after reads this</span></div>
+        <ul>
+          <li>The <strong>depth choice</strong> at coach creation, framed as how you like to play rather than a difficulty menu</li>
+          <li><strong>Per-system toggles</strong> behind the preset, and a way to change the mode mid-career</li>
+          <li><strong>The settings sheet</strong> — sound, haptics, field 2D/3D, text size, reduced motion, tutorial reset, and saves migrating in. Stored per device: preferences follow the phone, not the dynasty.</li>
+        </ul>
+        <div class="exit"><b>Exit</b>Every system built after this has a documented answer for what it does in casual mode.</div>
+        <div class="decide"><b>Decisions at the door</b>Two modes or three; what casual actually turns off; whether the mode is visible anywhere after creation.</div>
+      </div>
+    </li>
+
+
+    <li class="stage">
+      <div class="num">03</div>
+      <div>
+        <h3>June, made legible</h3>
+        <div class="chips"><span class="chip new">New</span><span class="chip sz-l">Medium–large</span><span class="chip dep">From playing it</span></div>
+        <p>The postseason was rebuilt, then played. The verdict is worth stating
+        precisely, because it decides what gets touched: <strong>the format is
+        not the complaint.</strong> Double elimination, the regionals and the
+        showdown brackets all did what they were built to do. What fails is the
+        screen's account of them.</p>
+        <ul>
+          <li><strong>Cut the opening round.</strong> It exists for one arithmetical reason — twenty teams have to become sixteen — and that reason is invisible from where the player sits. You arrive in a round you didn't know existed, against an opponent you can't place, for a prize that is only <em>being in the next round</em>. It's the one stage of June with no story. Fold those teams into the winners bracket and let the bracket decide where everyone goes.</li>
+          <li><strong>A modal for every title game.</strong> Conference, regional, national — the biggest game of a stage should come to you, not sit in a slot you have to know to open.</li>
+          <li><strong>A card for the champion.</strong> Today the winner is a thin stripe at the foot of the page, and the national title sits so far down it was missed entirely. The loudest event in a season currently reads like a footnote.</li>
+          <li><strong>Tap a bracket game to see it.</strong> Line score, the pitchers, the swing of it. The box scores already exist and are already reopenable — this is routing, not new data.</li>
+          <li><strong>Postseason statistics.</strong> There is no way to see them at all. June is the half of a season people remember.</li>
+          <li><strong>Say so when a season really is over.</strong> The other half of A13: stage 1 stopped the false funerals, this stops the silence for a team that missed the conference final and won't reach the national field.</li>
+          <li><strong>Less text on the June cards.</strong> The out-of-the-showdown card is liked and still over-written.</li>
+        </ul>
+        <div class="exit"><b>Exit</b>A player can read his own June at a glance, and knows the moment it ends.</div>
+        <div class="decide"><b>Decisions at the door</b>What replaces the opening round exactly — byes for the protected four, a larger winners bracket, or a smaller field. Whether the modal is the win card or a different component. How far back postseason stats reach on an old save. And the cut gets re-measured against the soak rather than assumed neutral: protection and the best-of-threes are already the prime suspects in the champion-concentration finding above.</div>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">04</div>
+      <div>
+        <h3>Give the screen back</h3>
+        <div class="chips"><span class="chip new">New</span><span class="chip sz-s">Small</span><span class="chip dep">High value per hour</span></div>
+        <p>Five separate reports, one complaint. A phone screen is the scarcest
+        resource in the game, and each of these spends it on something worth
+        less than the room it takes. Grouped because they're one skill and one
+        afternoon — scattered, each would land in a stage months away.</p>
+        <ul>
+          <li>The <strong>two roster filters are far too big</strong>, costing more room than they save</li>
+          <li><strong>"He is in your pipeline" comes off the recruit rows</strong> — a sentence where a mark would do</li>
+          <li>The <strong>prospect sheet opens too small.</strong> Bigger, so more of it reads at once — and deliberately not full screen</li>
+          <li>The <strong>offseason action button moves between tabs.</strong> A tab with less content lets it ride up, so the one control meant to be in the same place every time isn't. Pin it.</li>
+          <li>The <strong>season record is too easy to lose</strong> beside the inbox badge. Bigger — or better, up beside the date in the header, where the eye already goes.</li>
+        </ul>
+        <div class="exit"><b>Exit</b>Nothing on screen is bigger than its importance.</div>
+      </div>
+    </li>
+    <li class="stage">
+      <div class="num">05</div>
+      <div>
+        <h3>The dugout</h3>
+        <div class="chips"><span class="chip sz-l">Large</span><span class="chip dep">Highest value of anything left</span></div>
+        <ul>
+          <li><strong>The presentation rebuild</strong> — a much larger field, fielders labelled by position, a base-state banner, batter and pitcher as cards with their season lines, count and outs as indicators, calls as wide buttons with their reason underneath, plus <strong>LINE SCORE</strong> and <strong>REPLAY</strong></li>
+          <li><strong>Mound visits and pitcher confidence</strong> — today the only lever is the bullpen</li>
+          <li><strong>Let the bench coach take it</strong> — <em>watch</em> (the game plays itself with the field animating) and <em>to the next moment</em> (default calls until something worth managing arrives). Today it's forty taps or total surrender.</li>
+          <li><strong>Opponent scouting reports</strong> — the tendencies already exist and hide until watched; this is the second route to them</li>
+          <li><strong>Pitch-by-pitch calling</strong>, full-depth mode only. Eleven pitch types and per-pitcher repertoires already exist; nothing spends them.</li>
+        </ul>
+        <div class="exit"><b>Exit</b>The dugout is the best screen in the game.</div>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">06</div>
+      <div>
+        <h3>The coach</h3>
+        <div class="chips"><span class="chip sz-l">Large</span></div>
+        <p>The last part of the game that is still a form.</p>
+        <ul>
+          <li><strong>Creation as an interview</strong> — answer baseball questions with real positions and real tradeoffs, and the answers derive your skills, philosophy and starting experience. Nobody picks "recruiting 40"; everybody has an opinion about the bunt.</li>
+          <li><strong>Personality badges</strong> worn for a career, the way a player's are. Each names one channel — not a vaguer copy of the four skills.</li>
+          <li><strong>Assistant coaches</strong> — a pitching coach, a hitting coach, a recruiting coordinator, each stacking on you. Poachable, and a good one leaves to become a head coach, which plugs into the carousel already running 95 rival careers. The biggest personality gain available.</li>
+          <li><strong>Press conferences</strong> — two or three questions after a big win or a bad loss, moving prestige, morale and how recruits see you</li>
+          <li><strong>The JOBS tab</strong>, promised in <code>Program.tsx</code>'s own comment and never built</li>
+          <li><strong>The coach title ladder</strong> — 71 of 96 coaches read "Journeyman" at year thirty</li>
+        </ul>
+        <div class="exit"><b>Exit</b>Two coaches with the same record are visibly different men.</div>
+        <div class="decide"><b>Decisions at the door</b>What an assistant costs, and in what currency — prestige keeps them independent of stage 8's money, which is probably cleaner. Whether an interview can be failed. Whether press conferences are skippable in casual.</div>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">07</div>
+      <div>
+        <h3>The roster becomes a roster</h3>
+        <div class="chips"><span class="chip sz-l">Large</span><span class="chip dep">Unblocks 08, 09 and part of 10</span></div>
+        <ul>
+          <li><strong>Depth chart with position eligibility</strong> — a competence per position, not a boolean</li>
+          <li><strong>Real DH handling</strong> — the coach assigns the slot</li>
+          <li><strong>Redshirts</strong>, position changes and position-change training</li>
+          <li><strong>Academic eligibility</strong> — a man fails a class and sits. Uniquely college, and it makes recruiting a kid with questions a real decision.</li>
+          <li><strong>Two-way players</strong> — deferred for years and the decision has aged badly. Genuinely hard: one man in two rating systems with fatigue crossing both.</li>
+        </ul>
+        <div class="exit"><b>Exit</b>You manage a roster rather than reading a list.</div>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">08</div>
+      <div>
+        <h3>Players as people</h3>
+        <div class="chips"><span class="chip sz-l">Large</span><span class="chip dep">Needs 07</span></div>
+        <ul>
+          <li><strong>Injuries</strong> — the system that needs a depth chart most</li>
+          <li><strong>Season-long fatigue and workload</strong> — nothing accumulates across a year today</li>
+          <li><strong>Playing-time expectations</strong> and <strong>morale</strong></li>
+          <li><strong>Team captains</strong> — damp morale swings and mentor freshmen, which gives a veteran a role beyond his stat line and gives the player something to <em>do</em> about morale rather than only watch it</li>
+        </ul>
+        <div class="exit"><b>Exit</b>A season has attrition, and a clubhouse that notices.</div>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">09</div>
+      <div>
+        <h3>The transfer portal</h3>
+        <div class="chips"><span class="chip sz-m">Medium</span><span class="chip dep">Needs 07 + 08</span></div>
+        <p>Both directions or it isn't a portal: men leave because they sit, and
+        men arrive because they sat somewhere else.</p>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">10</div>
+      <div>
+        <h3>The economy</h3>
+        <div class="chips"><span class="chip sz-l">Medium–large</span></div>
+        <p>Recruiting budget rebalance · player swaying as a real negotiation ·
+        facilities and budget upgrades. Every dollar should have at least two
+        things it could have been.</p>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">11</div>
+      <div>
+        <h3>The world</h3>
+        <div class="chips"><span class="chip sz-m">Medium</span><span class="chip dep">Independent</span></div>
+        <ul>
+          <li><strong>Conference realignment</strong> — a twenty-year save where the conferences never move is a spreadsheet; one where your rival defects to a bigger league is college sports</li>
+          <li><strong>Rivalry recognition</strong> — <em>not</em> a trophy. A persistent series record, a wire story every time it's played, a line in both schools' annals, and the rivalry named on the Today card. <code>rival</code> has been in the data since the world was built and does almost nothing.</li>
+          <li><strong>Series stakes</strong> — half shipped already; what's missing is the rivalry line and what tonight would clinch</li>
+        </ul>
+        <div class="exit"><b>Exit</b>Ninety-six programs behave like a country rather than a table.</div>
+        <div class="decide"><b>Decisions at the door</b>How often realignment fires, and whether your program can be moved against your will — the most interesting version and the most likely to feel arbitrary.</div>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">12</div>
+      <div>
+        <h3>The dynasty remembers</h3>
+        <div class="chips"><span class="chip sz-m">Medium</span><span class="chip dep">Independent</span></div>
+        <ul>
+          <li><strong>Alumni in the professional game</strong> — every departure is already recorded with a reason and a round. Show what happened next: Double-A, an All-Star team, washed out in a year. Nothing motivates a long save more, and the data is already there.</li>
+          <li><strong>Signature moments</strong> — a card that remembers his walk-off, his no-hitter, the day he went five for five. Box scores and feats are captured; this turns a tally into a life.</li>
+        </ul>
+        <div class="exit"><b>Exit</b>A fifteen-year save is a history rather than a number.</div>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">13</div>
+      <div>
+        <h3>Broadcast</h3>
+        <div class="chips"><span class="chip sz-l">Medium–large</span><span class="chip dep">Bigger felt jump than its size</span></div>
+        <ul>
+          <li><strong>Big-moment presentation</strong> — the peaks render like a Tuesday groundout. Leverage styling, a scoreboard that changes tone during a no-hitter, one full-screen card for a walk-off or a title.</li>
+          <li><strong>Sound and haptics</strong> — the game is completely silent. A dozen samples, a crowd swell that scales with leverage, haptics on contact and outs. The cheapest personality multiplier never spent.</li>
+          <li><strong>The wire, upgraded</strong> — the stories the new systems create: a realignment, an assistant poached, a man three hits from a record <em>before</em> he breaks it</li>
+          <li><strong>School emblems</strong> and <strong>awards night</strong> (flip cards, and a celebration when the winner is one of yours)</li>
+        </ul>
+        <div class="exit"><b>Exit</b>The game sounds and looks like the sport it's about.</div>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">14</div>
+      <div>
+        <h3>The simulation's last mile</h3>
+        <div class="chips"><span class="chip sz-m">Medium</span></div>
+        <p>Run-expectancy AI · recruits drafted out of high school · park effects
+        as geometry · camera easing, instanced markers, a real 2D/3D toggle ·
+        the measurement debt (the walk deficit, <code>sim.ts parity</code>,
+        single-sample calibration figures).</p>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">15</div>
+      <div>
+        <h3>The store</h3>
+        <div class="chips"><span class="chip sz-l">Medium–large</span><span class="chip dep">Needs the Console record</span></div>
+        <p>The S+ player himself, and Play Billing with purchase, restore,
+        receipt validation and the offline case.</p>
+        <div class="decide"><b>Decisions at the door — the important ones</b>What the purchase grants: one player per dynasty, one per save, a recruit who appears in your class, or a create-a-player. Consumable or permanent. And what happens to a dynasty already in progress. Its own design pass before any billing code.</div>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">16</div>
+      <div>
+        <h3>The phone</h3>
+        <div class="chips"><span class="chip sz-m">Small–medium</span><span class="chip dep">Deferred — no device yet</span></div>
+        <p>Capacitor, an APK on real hardware, the frame-rate measurement,
+        IndexedDB across a force-quit, safe-area insets, the hardware back
+        button. Everything except the frame rate can be answered on an emulator,
+        so the emulator pass can be pulled forward alone if the wait runs long.</p>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">17</div>
+      <div>
+        <h3>Ship</h3>
+        <div class="chips"><span class="chip sz-m">Medium</span></div>
+        <p>Onboarding for the first ten minutes · accessibility (focus states;
+        text scaling now has a home in stage 2) · <strong>remove the test
+        aids</strong> (SIM SEASON, the loaded Pascagoula roster) · <strong>keystore
+        generated and backed up permanently</strong> · signed AAB, listing,
+        screenshots, privacy policy, content rating · closed beta, then open.</p>
+        <div class="exit"><b>Exit</b>v1.0 on the Play Store.</div>
+      </div>
+    </li>
+
+  </ol>
+
+  <h2 class="section">The order, and why</h2>
+
+  <p class="chain"><strong>Stage 2 is foundational.</strong> Every feature after
+  it needs a documented answer for what it does in casual mode, and retrofitting
+  that answer is far more expensive than writing it as you go.</p>
+
+  <p class="chain"><strong>Stages 7 → 8 → 9 are a chain and can't be
+  reordered.</strong> A depth chart makes injuries possible; injuries and playing
+  time make morale mean something; morale is what gives the portal its teeth.</p>
+
+  <p class="chain"><strong>Stages 11, 12 and 13 are independent</strong> of
+  everything above and of each other — the ones to move earlier when the big
+  systems get heavy. Stage 13 in particular will feel like a bigger jump than
+  its size suggests, because silence is the loudest thing about the game right
+  now.</p>
+
+  <p class="chain"><strong>Stages 3 and 4 are cheap relative to what they
+  fix</strong>, and both exist because the game got played rather than reasoned
+  about. That is the argument for keeping them early: stage 1 shipped a
+  postseason, an evening with it produced thirteen findings, and none of them
+  were things a plan would have predicted.</p>
+
+  <p class="chain"><strong>One rule came out of that evening and is now
+  policy</strong>, because it generated more than half of stage 3: <em>a card is
+  a visual telling of where you are and what you achieved, in simple wording. A
+  card does not explain.</em> Whatever needs explaining belongs in a tutorial, a
+  tooltip, or nowhere.</p>
+
+  <footer class="end">
+    <p><strong>Considered and not taken:</strong> a human poll alongside RPI,
+    weather and park conditions, fan support and attendance, live bracketology,
+    mentorship pairs, defensive positioning, exhibition games, classic-finish
+    scenarios, share cards. All stay in the backlog with the reason attached —
+    a rejected idea with a reason is worth more than a forgotten one.</p>
+    <p style="margin-top:14px"><em>The record of this plan lives in
+    <code>docs/07-v1-plan.md</code>, and the argument for each feature in
+    <code>docs/06-backlog.md</code> — §H for the feature set, §I for the pass
+    that produced stages 3 and 4. What stage 1 actually built is written up in
+    <code>docs/05-systems-reference.md</code> §21, and
+    <code>docs/08-handoff.md</code> says where the last session stopped. A stage
+    moves out when it ships, and what it did moves into the systems reference on
+    the same commit.</em></p>
+  </footer>
+
+</div>
+
