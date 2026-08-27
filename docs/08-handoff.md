@@ -8,6 +8,14 @@ the top of it is always current. Everything older lives in git.
 
 **Last session:** August 27, 2026 · **Branch:** `blocks-batch` · **Pushed.**
 
+> **Read this first if you are picking up after stage 4.** Stages 1–4 shipped and
+> were then *played*, and the play produced eight more fixes — all of them
+> landed, all in git. Two are worth carrying as lessons rather than history:
+> a UI complaint is never allowed to move league balance (see
+> `doubleElim.ts`'s note on the night boundary), and driving the DOM with
+> JavaScript proves a thing *exists*, not that a human can reach it. Three of
+> the eight were features that existed and could not be opened.
+
 ---
 
 ## Read these first, in this order
