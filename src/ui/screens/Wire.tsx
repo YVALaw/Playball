@@ -51,14 +51,14 @@ function Kicker({ item, mine }: { item: WireItem; mine: boolean }) {
       display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4,
     }}>
       <span style={{
-        font: "700 8px var(--mono)", letterSpacing: '.14em',
+        font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.14em',
         padding: '2px 6px 3px',
         background: KIND_TONE[item.kind], color: 'var(--cream)',
       }}>{KIND_LABEL[item.kind]}</span>
       <span style={{ flex: 1, borderTop: '1px solid var(--faint)' }} />
       {mine && (
         <span style={{
-          font: "700 8px var(--mono)", letterSpacing: '.12em', color: 'var(--clay)',
+          font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.12em', color: 'var(--clay)',
         }}>■ YOUR PROGRAM</span>
       )}
     </div>
@@ -92,7 +92,7 @@ export function Wire() {
               paper. The volume number is the dynasty's own age. */}
           <div style={{
             display: 'flex', justifyContent: 'space-between',
-            font: "500 7.5px var(--mono)", letterSpacing: '.18em', color: 'var(--dim)',
+            font: "500 calc(7.5px * var(--ts)) var(--mono)", letterSpacing: '.18em', color: 'var(--dim)',
           }}>
             <span>VOL. {year - 2026} · THE COUNTRY'S GAME</span>
             <span>{team.conference} EDITION</span>
@@ -102,13 +102,13 @@ export function Wire() {
             textAlign: 'center', padding: '2px 0 3px',
           }}>
             <span style={{
-              font: "800 34px/1 var(--display)", textTransform: 'uppercase', letterSpacing: '.02em',
+              font: "800 calc(34px * var(--ts))/1 var(--display)", textTransform: 'uppercase', letterSpacing: '.02em',
             }}>The Wire</span>
           </div>
           <div style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
             borderBottom: '3px double var(--ink)', padding: '3px 0 4px',
-            font: "500 8px var(--mono)", letterSpacing: '.14em', color: 'var(--dim)',
+            font: "500 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'var(--dim)',
           }}>
             <span>{seasonDate(year, day).toUpperCase()} · {year}</span>
             <span>{played > 0 ? 'LATE EDITION' : 'FIRST EDITION'}</span>
@@ -123,7 +123,7 @@ export function Wire() {
         <div style={{
           marginTop: 16, padding: '18px 12px', border: '1px solid var(--faint)',
           background: 'var(--paper)', textAlign: 'center',
-          font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
+          font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
         }}>
           Nothing on the wire yet. Play some games and the country will start
           making noise.
@@ -138,16 +138,16 @@ export function Wire() {
         }}>
           <Kicker item={lead} mine={lead.team === userTeam || lead.against === userTeam} />
           <div style={{
-            font: "800 26px/1.02 var(--display)", textTransform: 'uppercase',
+            font: "800 calc(26px * var(--ts))/1.02 var(--display)", textTransform: 'uppercase',
           }}>{lead.text}</div>
           {lead.detail && (
             <div style={{
-              marginTop: 7, font: "italic 400 13px/1.5 var(--body)", color: 'var(--ink)',
+              marginTop: 7, font: "italic 400 calc(13px * var(--ts))/1.5 var(--body)", color: 'var(--ink)',
             }}>{lead.detail}</div>
           )}
           <div style={{
             marginTop: 8, paddingTop: 5, borderTop: '1px solid var(--hairline)',
-            font: "500 7.5px var(--mono)", letterSpacing: '.16em', color: 'var(--dim)',
+            font: "500 calc(7.5px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--dim)',
           }}>BY THE {team.conference} DESK</div>
         </div>
       )}
@@ -173,11 +173,11 @@ export function Wire() {
                 }}>
                   <Kicker item={item} mine={mine} />
                   <div style={{
-                    font: "800 17px/1.1 var(--display)", textTransform: 'uppercase',
+                    font: "800 calc(17px * var(--ts))/1.1 var(--display)", textTransform: 'uppercase',
                   }}>{item.text}</div>
                   {item.detail && (
                     <div style={{
-                      marginTop: 4, font: "400 12px/1.5 var(--body)", color: 'var(--dim)',
+                      marginTop: 4, font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
                     }}>{item.detail}</div>
                   )}
                 </div>
@@ -208,8 +208,8 @@ export function Wire() {
                   background: mine ? 'var(--clay)' : KIND_TONE[item.kind],
                   position: 'relative', top: -1,
                 }} />
-                <span style={{ font: "400 12px/1.5 var(--body)" }}>
-                  <b style={{ font: "700 12px/1.5 var(--body)" }}>{item.text}.</b>
+                <span style={{ font: "400 calc(12px * var(--ts))/1.5 var(--body)" }}>
+                  <b style={{ font: "700 calc(12px * var(--ts))/1.5 var(--body)" }}>{item.text}.</b>
                   {item.detail ? ` ${item.detail}` : ''}
                 </span>
               </div>

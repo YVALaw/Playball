@@ -170,7 +170,7 @@ export function Manage() {
       <div style={{ padding: '28px 16px', textAlign: 'center' }}>
         <div className="label">NO GAME IN PROGRESS</div>
         <div style={{
-          marginTop: 8, marginBottom: 14, font: "400 12px/1.6 var(--body)",
+          marginTop: 8, marginBottom: 14, font: "400 calc(12px * var(--ts))/1.6 var(--body)",
           color: 'var(--dim)', maxWidth: 250, marginLeft: 'auto', marginRight: 'auto',
         }}>
           Take the dugout and call every plate appearance of your next game.
@@ -180,7 +180,7 @@ export function Manage() {
           style={{
             padding: '11px 18px', background: 'var(--clay)',
             border: '1px solid var(--clay)', color: 'var(--cream)',
-            font: "600 11px var(--mono)", letterSpacing: '.14em',
+            font: "600 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.14em',
           }}
         >MANAGE NEXT GAME</button>
       </div>
@@ -248,11 +248,11 @@ export function Manage() {
           height: 13,
         }}>
           <span style={{
-            font: "600 10px var(--mono)", letterSpacing: '.16em', color: 'rgba(246,241,230,.72)',
+            font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'rgba(246,241,230,.72)',
           }}>{inning}</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <span style={{
-              font: "500 9px var(--mono)", letterSpacing: '.14em',
+              font: "500 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em',
               color: 'rgba(246,241,230,.5)',
             }}>OUT</span>
             {[0, 1, 2].map((i) => (
@@ -333,13 +333,13 @@ export function Manage() {
                 <PlayerName
                   id={d.batter.id}
                   style={{
-                    font: "700 13px/1.15 var(--display)", textTransform: 'uppercase',
+                    font: "700 calc(13px * var(--ts))/1.15 var(--display)", textTransform: 'uppercase',
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     color: d.side === 'offense' ? 'var(--ink)' : 'var(--dim)',
                   }}
                 >{d.batter.name}</PlayerName>
                 <span style={{
-                  flex: 'none', font: "400 9px var(--mono)", color: 'var(--dim)',
+                  flex: 'none', font: "400 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)',
                   whiteSpace: 'nowrap',
                 }}>{d.batter.pos} · {d.batter.bats}</span>
               </div>
@@ -350,13 +350,13 @@ export function Manage() {
                 <PlayerName
                   id={d.pitcher.id}
                   style={{
-                    font: "700 13px/1.15 var(--display)", textTransform: 'uppercase',
+                    font: "700 calc(13px * var(--ts))/1.15 var(--display)", textTransform: 'uppercase',
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     color: d.side === 'defense' ? 'var(--ink)' : 'var(--dim)',
                   }}
                 >{d.pitcher.name}</PlayerName>
                 <span style={{
-                  flex: 'none', font: "400 9px var(--mono)", color: 'var(--dim)',
+                  flex: 'none', font: "400 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)',
                   whiteSpace: 'nowrap',
                 }}>{d.pitcher.throws}HP</span>
               </div>
@@ -365,7 +365,7 @@ export function Manage() {
             <>
               <div className="label">FINAL</div>
               <div style={{
-                marginTop: 3, font: "700 17px/1.1 var(--display)", textTransform: 'uppercase',
+                marginTop: 3, font: "700 calc(17px * var(--ts))/1.1 var(--display)", textTransform: 'uppercase',
               }}>
                 {homeRuns > awayRuns ? home?.def.school : away?.def.school} win
               </div>
@@ -388,7 +388,7 @@ export function Manage() {
           return (
             <div key={i} style={{
               padding: '3px 0',
-              font: `${i === recent.length - 1 ? 600 : 400} 12px/1.45 var(--body)`,
+              font: `${i === recent.length - 1 ? 600 : 400} calc(12px * var(--ts))/1.45 var(--body)`,
               color: call ? 'var(--clay)' : sub ? 'var(--dim)' : 'var(--ink)',
               opacity: i === recent.length - 1 ? 1 : 0.75,
             }}>{line.replace(/^\[[a-z]+\]\s*/, '').trim()}</div>
@@ -440,11 +440,11 @@ export function Manage() {
                 }}
               >
                 <div style={{
-                  font: "700 10px var(--mono)", letterSpacing: '.04em',
+                  font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.04em',
                   color: o.available ? 'var(--ink)' : 'rgba(28,36,48,.34)',
                 }}>{o.label}</div>
                 <div style={{
-                  marginTop: 1, font: "400 9.5px/1.25 var(--body)",
+                  marginTop: 1, font: "400 calc(9.5px * var(--ts))/1.25 var(--body)",
                   color: o.available ? 'var(--dim)' : 'rgba(28,36,48,.28)',
                 }}>{o.note}</div>
               </button>
@@ -485,7 +485,7 @@ export function Manage() {
               style={{
                 padding: '11px 0', minHeight: 44, background: 'var(--clay)',
                 border: '1px solid var(--clay)', color: 'var(--cream)',
-                font: "600 10px var(--mono)", letterSpacing: '.1em',
+                font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.1em',
               }}
             >RECORD</button>
           </>
@@ -539,7 +539,7 @@ function Small(
         border: disabled ? '1px dashed rgba(28,36,48,.16)' : '1px solid rgba(28,36,48,.42)',
         boxShadow: disabled ? 'none' : '0 1px 0 rgba(28,36,48,.16)',
         color: disabled ? 'rgba(28,36,48,.3)' : 'var(--ink)',
-        font: "700 9.5px var(--mono)", letterSpacing: '.08em',
+        font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
       }}
     >{children}</button>
   );
@@ -570,11 +570,11 @@ function Picker(
       >
         <div style={{ padding: '9px 14px', background: 'var(--navy)' }}>
           <span style={{
-            font: "600 10px var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
+            font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
           }}>{title}</span>
         </div>
         {rows.length === 0 && (
-          <div style={{ padding: 14, font: "400 12px var(--body)", color: 'var(--dim)' }}>
+          <div style={{ padding: 14, font: "400 calc(12px * var(--ts)) var(--body)", color: 'var(--dim)' }}>
             Nobody left.
           </div>
         )}
@@ -587,12 +587,12 @@ function Picker(
               borderBottom: '1px solid var(--hairline)', background: 'var(--paper)',
             }}
           >
-            <span style={{ font: "400 13px var(--body)" }}>{r.name}</span>
+            <span style={{ font: "400 calc(13px * var(--ts)) var(--body)" }}>{r.name}</span>
             <span style={{
-              float: 'right', font: "700 13px var(--mono)", marginLeft: 10,
+              float: 'right', font: "700 calc(13px * var(--ts)) var(--mono)", marginLeft: 10,
             }}>{r.rating}</span>
             <span style={{
-              float: 'right', font: "400 10px var(--mono)", color: 'var(--dim)',
+              float: 'right', font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
             }}>{r.note}</span>
           </button>
         ))}

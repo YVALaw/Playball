@@ -14,11 +14,11 @@ export function Placeholder({ id }: { id: string }) {
   return (
     <div style={{ padding: '28px 16px', textAlign: 'center' }}>
       <div style={{
-        font: "800 21px/1 var(--display)", textTransform: 'uppercase',
+        font: "800 calc(21px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
         color: 'var(--faint)',
       }}>{id}</div>
       <div style={{
-        marginTop: 10, font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
+        marginTop: 10, font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
         maxWidth: 260, marginLeft: 'auto', marginRight: 'auto',
       }}>{BUILT_LATER[id] ?? 'Not built yet.'}</div>
     </div>

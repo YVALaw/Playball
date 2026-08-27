@@ -48,7 +48,7 @@ function Strip(
       {cells.map((c, i) => (
         <span key={i} style={{
           flex: 'none', width, height, lineHeight: `${height}px`, textAlign: 'center',
-          font: `${dim ? 500 : 600} ${sizes?.[i] ?? (dim ? 9 : 10)}px var(--mono)`,
+          font: `${dim ? 500 : 600} calc(${sizes?.[i] ?? (dim ? 9 : 10)}px * var(--ts)) var(--mono)`,
           color: dim ? DIM(tone) : INK(tone),
         }}>{c}</span>
       ))}
@@ -82,13 +82,13 @@ export function LineScore(
         {rows.map((row) => (
           <div key={row.abbr} style={{
             height: g.row, lineHeight: `${g.row}px`, whiteSpace: 'nowrap',
-            font: `700 ${tone === 'navy' ? 11 : 10}px var(--mono)`,
+            font: `700 calc(${tone === 'navy' ? 11 : 10}px * var(--ts)) var(--mono)`,
             letterSpacing: '.04em', color: INK(tone),
           }}>
             {tone === 'navy' && (
               <span style={{
                 display: 'inline-block', width: 8,
-                color: 'var(--clay)', font: "600 11px var(--mono)",
+                color: 'var(--clay)', font: "600 calc(11px * var(--ts)) var(--mono)",
               }}>{row.batting ? '•' : ''}</span>
             )}
             {row.abbr}

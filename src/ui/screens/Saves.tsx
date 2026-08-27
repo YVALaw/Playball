@@ -141,7 +141,7 @@ export function Saves() {
               : `${saves.length} DYNAST${saves.length === 1 ? 'Y' : 'IES'} ON THIS DEVICE`}
           </div>
           <div style={{
-            font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+            font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
           }}>Saves</div>
         </div>
       </div>
@@ -200,7 +200,7 @@ export function Saves() {
           }}>
             <div className="label">SAVE A COPY</div>
             <div style={{
-              marginTop: 5, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
+              marginTop: 5, font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
             }}>
               {team.def.school} as they stand right now, {year}, {team.w}-{team.l},
               filed under a name of your own and left alone from then on. Take one
@@ -217,7 +217,7 @@ export function Saves() {
                 border: '1px solid rgba(28,36,48,.28)', borderRadius: 0,
                 // 16px floor: anything smaller makes a phone browser zoom in on
                 // focus and stay zoomed. Same fix as the coach name input.
-                color: 'var(--ink)', font: "400 16px var(--body)",
+                color: 'var(--ink)', font: "400 calc(16px * var(--ts)) var(--body)",
               }}
             />
             <button
@@ -230,7 +230,7 @@ export function Saves() {
               style={{
                 width: '100%', marginTop: 8, padding: '12px 10px',
                 background: 'var(--clay)', border: '1px solid var(--clay)',
-                color: 'var(--cream)', font: "700 11px var(--mono)", letterSpacing: '.12em',
+                color: 'var(--cream)', font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.12em',
                 opacity: saveState === 'saving' ? 0.6 : 1,
               }}
             >{saveState === 'saving' ? 'SAVING…' : 'SAVE A COPY'}</button>
@@ -255,7 +255,7 @@ export function Saves() {
                   padding: '7px 11px', background: 'transparent',
                   border: `1px solid ${removing ? 'var(--clay)' : 'var(--faint)'}`,
                   color: removing ? 'var(--clay)' : 'var(--dim)',
-                  font: "700 8.5px var(--mono)", letterSpacing: '.12em',
+                  font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
                 }}
               >{removing ? 'DONE' : 'DELETE…'}</button>
             )}
@@ -267,7 +267,7 @@ export function Saves() {
             <div className="label">NOTHING SAVED YET</div>
             <div style={{
               maxWidth: 270, margin: '8px auto 0',
-              font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
+              font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
             }}>
               The game writes your career down on its own as you play, so this
               list fills itself. Copies you take by hand appear here too.
@@ -301,7 +301,7 @@ export function Saves() {
         }}>
           <div className="label">HELP</div>
           <div style={{
-            marginTop: 5, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
+            marginTop: 5, font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
           }}>
             Each screen introduces itself the first time you open it, then stays
             quiet. Reset them and every screen teaches again on its next visit.
@@ -312,7 +312,7 @@ export function Saves() {
             style={{
               width: '100%', marginTop: 10, padding: '12px 10px', minHeight: 44,
               background: 'transparent', border: '1px solid rgba(28,36,48,.4)',
-              color: 'var(--ink)', font: "700 10px var(--mono)", letterSpacing: '.12em',
+              color: 'var(--ink)', font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.12em',
             }}
           >{tutorialsReset ? 'THEY WILL SHOW AGAIN' : 'SHOW THE TUTORIALS AGAIN'}</button>
         </div>
@@ -327,7 +327,7 @@ export function Saves() {
         }}>
           <div className="label">START AGAIN</div>
           <div style={{
-            marginTop: 5, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
+            marginTop: 5, font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
           }}>
             A new world, a new job and a coach of your own. The career you are in
             now keeps its place on the list above only if you have saved a copy of
@@ -339,7 +339,7 @@ export function Saves() {
             style={{
               width: '100%', marginTop: 10, padding: '13px 10px',
               background: 'transparent', border: '1px solid var(--ink)',
-              color: 'var(--ink)', font: "700 11px var(--mono)", letterSpacing: '.12em',
+              color: 'var(--ink)', font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.12em',
             }}
           >NEW DYNASTY</button>
         </div>
@@ -426,16 +426,16 @@ function SaveRow(
           </div>
         )}
         <div style={{
-          font: "700 19px/1.05 var(--display)", marginTop: auto ? 3 : 0,
+          font: "700 calc(19px * var(--ts))/1.05 var(--display)", marginTop: auto ? 3 : 0,
           textTransform: 'uppercase',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>{save.name}</div>
         <div style={{
-          marginTop: 3, font: "400 10px var(--mono)", letterSpacing: '.06em',
+          marginTop: 3, font: "400 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.06em',
           color: 'var(--dim)',
         }}>{meta}</div>
         <div style={{
-          marginTop: 2, font: "400 11px var(--body)", color: 'var(--dim)',
+          marginTop: 2, font: "400 calc(11px * var(--ts)) var(--body)", color: 'var(--dim)',
         }}>saved {agoLabel(save.savedAt, now)}</div>
       </div>
 
@@ -449,7 +449,7 @@ function SaveRow(
           <div style={{
             width: '100%', padding: '11px 10px', textAlign: 'center',
             borderTop: '1px solid var(--hairline)',
-            color: 'var(--dim)', font: "400 10px var(--mono)", letterSpacing: '.08em',
+            color: 'var(--dim)', font: "400 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.08em',
           }}>THE CAREER BEING PLAYED · NEW DYNASTY REPLACES IT</div>
         ) : (
         <button
@@ -458,7 +458,7 @@ function SaveRow(
           style={{
             width: '100%', padding: '11px 10px',
             background: 'transparent', borderTop: '1px solid var(--hairline)',
-            color: 'var(--clay)', font: "700 10.5px var(--mono)", letterSpacing: '.14em',
+            color: 'var(--clay)', font: "700 calc(10.5px * var(--ts)) var(--mono)", letterSpacing: '.14em',
           }}
         >DELETE…</button>
         )
@@ -469,7 +469,7 @@ function SaveRow(
           style={{
             width: '100%', padding: '11px 10px',
             background: 'transparent', borderTop: '1px solid var(--hairline)',
-            color: 'var(--ink)', font: "700 10.5px var(--mono)", letterSpacing: '.14em',
+            color: 'var(--ink)', font: "700 calc(10.5px * var(--ts)) var(--mono)", letterSpacing: '.14em',
           }}
         >LOAD</button>
       )}
@@ -492,13 +492,13 @@ function Notice(
       background: 'var(--paper)', borderLeft: '3px solid var(--clay)',
       padding: '10px 12px', marginBottom: 14,
     }}>
-      <div style={{ font: "700 13px/1.3 var(--body)" }}>{title}</div>
+      <div style={{ font: "700 calc(13px * var(--ts))/1.3 var(--body)" }}>{title}</div>
       <div style={{
-        marginTop: 5, font: "400 11.5px/1.55 var(--body)", color: 'var(--dim)',
+        marginTop: 5, font: "400 calc(11.5px * var(--ts))/1.55 var(--body)", color: 'var(--dim)',
       }}>{children}</div>
       {detail && (
         <div style={{
-          marginTop: 6, font: "400 9.5px/1.5 var(--mono)", color: 'var(--dim)',
+          marginTop: 6, font: "400 calc(9.5px * var(--ts))/1.5 var(--mono)", color: 'var(--dim)',
           overflowWrap: 'anywhere',
         }}>{detail}</div>
       )}
@@ -509,7 +509,7 @@ function Notice(
           style={{
             marginTop: 9, padding: '8px 14px',
             background: 'transparent', border: '1px solid var(--clay)',
-            color: 'var(--clay)', font: "700 9.5px var(--mono)", letterSpacing: '.12em',
+            color: 'var(--clay)', font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
           }}
         >{action.label}</button>
       )}

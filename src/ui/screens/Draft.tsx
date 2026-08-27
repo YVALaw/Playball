@@ -102,7 +102,7 @@ export function Draft() {
       <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
         <div className="label">{year} · {team.def.abbr}</div>
         <div style={{
-          font: "800 22px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
+          font: "800 calc(22px * var(--ts))/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
         }}>Draft results</div>
       </div>
 
@@ -125,7 +125,7 @@ export function Draft() {
               background: v === view ? 'var(--clay)' : 'var(--paper)',
               border: v === view ? '1px solid var(--clay)' : '1px solid rgba(28,36,48,.28)',
               color: v === view ? 'var(--cream)' : 'var(--ink)',
-              font: "700 8px var(--mono)", letterSpacing: '.06em',
+              font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.06em',
             }}
           >{VIEW_LABEL[v]}{v === 'keep' && pending > 0 ? ` ${pending}` : ''}</button>
         ))}
@@ -165,10 +165,10 @@ export function Draft() {
                     }}
                   >
                     <div style={{
-                      font: "700 11px var(--mono)", letterSpacing: '.08em', color: 'var(--clay)',
+                      font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.08em', color: 'var(--clay)',
                     }}>{h.pos}</div>
                     <div style={{
-                      marginTop: 2, font: "400 8.5px var(--mono)", color: 'var(--dim)',
+                      marginTop: 2, font: "400 calc(8.5px * var(--ts)) var(--mono)", color: 'var(--dim)',
                     }}>{h.count > 1 ? `${h.count} needed` : 'need one'}</div>
                   </div>
                 ))}
@@ -230,7 +230,7 @@ function KeepList(
     return (
       <div style={{
         border: '1px solid var(--faint)', background: 'var(--paper)',
-        padding: '18px 12px', font: "400 12px/1.55 var(--body)", color: 'var(--dim)',
+        padding: '18px 12px', font: "400 calc(12px * var(--ts))/1.55 var(--body)", color: 'var(--dim)',
         textAlign: 'center',
       }}>
         No club took a man of yours who still has eligibility, so there is
@@ -245,7 +245,7 @@ function KeepList(
         marginBottom: 7,
       }}>
         <span className="label">THE PHONE CALLS</span>
-        <span style={{ font: "600 10px var(--mono)", color: 'var(--dim)' }}>
+        <span style={{ font: "600 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
           {left} OF {pool} LEFT
         </span>
       </div>
@@ -290,22 +290,22 @@ function KeepRow(
       <Avatar id={p.id} team={abbr} size={32} />
       <span style={{ minWidth: 0 }}>
         <span style={{
-          display: 'block', font: "700 14px var(--body)",
+          display: 'block', font: "700 calc(14px * var(--ts)) var(--body)",
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>{p.name}</span>
         <span style={{
-          display: 'block', marginTop: 1, font: "400 10px var(--mono)", color: 'var(--dim)',
+          display: 'block', marginTop: 1, font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
         }}>
           {slotOf(p)} · {p.classYear} · RD {man.round} · OVR {overallOf(p)}
         </span>
       </span>
       <span style={{
-        font: "700 8.5px var(--mono)", letterSpacing: '.07em', whiteSpace: 'nowrap',
+        font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.07em', whiteSpace: 'nowrap',
         color: done ? (stayed ? 'var(--win)' : 'var(--dim)') : 'var(--clay)',
       }}>
         {done ? (stayed ? 'STAYING' : 'SIGNED') : 'ON THE PHONE'}
       </span>
-      <span aria-hidden style={{ font: "400 13px var(--mono)", color: 'var(--dim)' }}>›</span>
+      <span aria-hidden style={{ font: "400 calc(13px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>›</span>
     </button>
   );
 }
@@ -370,11 +370,11 @@ function KeepSheet(
             <Avatar id={p.id} team={abbr} size={38} />
             <span style={{ minWidth: 0 }}>
               <span style={{
-                display: 'block', font: "800 17px/1 var(--display)", textTransform: 'uppercase',
+                display: 'block', font: "800 calc(17px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{p.name}</span>
               <span style={{
-                display: 'block', marginTop: 3, font: "400 10px var(--mono)", color: 'var(--dim)',
+                display: 'block', marginTop: 3, font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
               }}>
                 {slotOf(p)} · {p.classYear} · OVR {overallOf(p)} · ROUND {man.round} PICK
               </span>
@@ -387,7 +387,7 @@ function KeepSheet(
             style={{
               flex: 'none', padding: '8px 12px', minHeight: 36,
               background: 'transparent', border: '1px solid rgba(28,36,48,.3)',
-              color: 'var(--dim)', font: "700 9.5px var(--mono)", letterSpacing: '.1em',
+              color: 'var(--dim)', font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.1em',
             }}
           >CLOSE</button>
         </div>
@@ -396,7 +396,7 @@ function KeepSheet(
           <div style={{
             padding: '9px 11px', background: 'var(--paper)',
             borderLeft: '3px solid var(--faint)',
-            font: "400 12px/1.55 var(--body)",
+            font: "400 calc(12px * var(--ts))/1.55 var(--body)",
           }}>
             &ldquo;{hints[0]}&rdquo;<br />
             &ldquo;{hints[1]}&rdquo;
@@ -409,7 +409,7 @@ function KeepSheet(
                 marginTop: 12,
               }}>
                 <span className="label">WHAT A ROUND {man.round} MAN WANTS</span>
-                <span style={{ font: "700 15px var(--display)", color: 'var(--clay)' }}>{needs}</span>
+                <span style={{ font: "700 calc(15px * var(--ts)) var(--display)", color: 'var(--clay)' }}>{needs}</span>
               </div>
 
               <div style={{
@@ -425,7 +425,7 @@ function KeepSheet(
                       background: k === pitch ? 'var(--ink)' : 'var(--paper)',
                       border: k === pitch ? '1px solid var(--ink)' : '1px solid rgba(28,36,48,.28)',
                       color: k === pitch ? 'var(--cream)' : 'var(--ink)',
-                      font: "700 8.5px var(--mono)", letterSpacing: '.07em',
+                      font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.07em',
                     }}
                   >{KEEP_LABEL[k]}</button>
                 ))}
@@ -437,11 +437,11 @@ function KeepSheet(
                     marginTop: 9, padding: '9px 10px', background: 'var(--paper)',
                     borderLeft: '3px solid var(--ink)',
                   }}>
-                    <div style={{ font: "400 12px/1.45 var(--body)" }}>
+                    <div style={{ font: "400 calc(12px * var(--ts))/1.45 var(--body)" }}>
                       &ldquo;{KEEP_CASE[pitch]}&rdquo;
                     </div>
                     <div style={{
-                      marginTop: 5, font: "400 10.5px/1.4 var(--mono)", color: 'var(--dim)',
+                      marginTop: 5, font: "400 calc(10.5px * var(--ts))/1.4 var(--mono)", color: 'var(--dim)',
                     }}>{KEEP_RESTS_ON[pitch]}</div>
                   </div>
 
@@ -449,7 +449,7 @@ function KeepSheet(
                     display: 'flex', alignItems: 'center', gap: 6, marginTop: 10,
                   }}>
                     <span style={{
-                      font: "800 26px/1 var(--display)",
+                      font: "800 calc(26px * var(--ts))/1 var(--display)",
                       color: offer > 0 ? 'var(--clay)' : 'var(--dim)',
                       minWidth: 44, textAlign: 'right',
                     }}>{offer}</span>
@@ -468,7 +468,7 @@ function KeepSheet(
                       background: offer > 0 ? 'var(--clay)' : 'rgba(28,36,48,.12)',
                       border: '1px solid transparent',
                       color: offer > 0 ? 'var(--cream)' : 'var(--dim)',
-                      font: "700 11px var(--mono)", letterSpacing: '.1em',
+                      font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.1em',
                     }}
                   >MAKE THE CASE</button>
                 </>
@@ -479,7 +479,7 @@ function KeepSheet(
                 style={{
                   width: '100%', marginTop: 6, padding: '9px 10px',
                   background: 'transparent', border: '1px solid rgba(28,36,48,.22)',
-                  color: 'var(--dim)', font: "700 9px var(--mono)", letterSpacing: '.08em',
+                  color: 'var(--dim)', font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.08em',
                 }}
               >SHAKE HIS HAND AND LET HIM GO</button>
             </>
@@ -488,11 +488,11 @@ function KeepSheet(
           {done && (
             <div style={{ marginTop: 12 }}>
               <div style={{
-                font: "700 10px var(--mono)", letterSpacing: '.08em',
+                font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.08em',
                 color: stayed ? 'var(--win)' : 'var(--dim)',
               }}>{stayed ? 'HE IS COMING BACK' : 'HE SIGNED'}</div>
               <div style={{
-                marginTop: 5, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
+                marginTop: 5, font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
               }}>
                 {man.pitch === null
                   ? 'You did not make a case, and he did not need one to make up his mind.'
@@ -516,7 +516,7 @@ function KeepSheet(
                 style={{
                   width: '100%', marginTop: 10, padding: '12px 10px',
                   background: 'var(--ink)', border: '1px solid var(--ink)',
-                  color: 'var(--cream)', font: "700 10px var(--mono)", letterSpacing: '.1em',
+                  color: 'var(--cream)', font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.1em',
                 }}
               >BACK TO THE LIST</button>
             </div>
@@ -541,7 +541,7 @@ function Step(
         background: 'transparent',
         border: '1px solid rgba(28,36,48,.22)',
         color: off ? 'rgba(28,36,48,.22)' : 'var(--ink)',
-        font: "700 10px var(--mono)",
+        font: "700 calc(10px * var(--ts)) var(--mono)",
       }}
     >{label}</button>
   );
@@ -556,7 +556,7 @@ function Rows({ rows, abbr, empty }: { rows: Departure[]; abbr: string; empty: s
     <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
       {rows.length === 0 && (
         <div style={{
-          padding: '18px 12px', font: "400 12px/1.55 var(--body)", color: 'var(--dim)',
+          padding: '18px 12px', font: "400 calc(12px * var(--ts))/1.55 var(--body)", color: 'var(--dim)',
           textAlign: 'center',
         }}>{empty}</div>
       )}
@@ -587,7 +587,7 @@ function NationalBoard({ rows, abbr }: { rows: Departure[]; abbr: string }) {
     return (
       <div style={{
         border: '1px solid var(--faint)', background: 'var(--paper)',
-        padding: '18px 12px', font: "400 12px/1.55 var(--body)", color: 'var(--dim)',
+        padding: '18px 12px', font: "400 calc(12px * var(--ts))/1.55 var(--body)", color: 'var(--dim)',
         textAlign: 'center',
       }}>No club took anybody. That has never happened.</div>
     );
@@ -601,7 +601,7 @@ function NationalBoard({ rows, abbr }: { rows: Departure[]; abbr: string }) {
             marginBottom: 5,
           }}>
             <span className="label">ROUND {b.round}</span>
-            <span style={{ font: "400 9px var(--mono)", color: 'var(--dim)' }}>
+            <span style={{ font: "400 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
               {b.men.length}
             </span>
           </div>
@@ -641,24 +641,24 @@ function DepartureRow({ d, mine }: { d: Departure; mine: boolean }) {
       <Avatar id={d.id} team={d.teamAbbr} size={30} />
       <span style={{ minWidth: 0 }}>
         <span style={{
-          display: 'block', font: `${mine ? 700 : 400} 13px var(--body)`,
+          display: 'block', font: `${mine ? 700 : 400} calc(13px * var(--ts)) var(--body)`,
           color: mine ? 'var(--clay)' : 'var(--ink)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>{d.name}</span>
         <span style={{
-          display: 'block', marginTop: 1, font: "400 10px var(--mono)", color: 'var(--dim)',
+          display: 'block', marginTop: 1, font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
         }}>
           {d.teamAbbr} · {d.classYear} · {d.age} · {d.returned ? 'came back' : exit.word}
         </span>
       </span>
       <span style={{
-        font: "700 8px var(--mono)", letterSpacing: '.08em',
+        font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.08em',
         color: d.returned ? 'var(--win)' : exit.tone, whiteSpace: 'nowrap',
       }}>
         {d.returned ? 'STAYED'
           : d.reason === 'drafted' ? `RD ${d.round ?? '—'}` : exit.tag}
       </span>
-      <span style={{ font: "600 13px var(--mono)" }}>{d.overall}</span>
+      <span style={{ font: "600 calc(13px * var(--ts)) var(--mono)" }}>{d.overall}</span>
     </button>
   );
 }
@@ -693,7 +693,7 @@ function DraftOdds(
         <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
           <div className="label">{team.def.abbr} · {year}</div>
           <div style={{
-            font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+            font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
           }}>The draft</div>
         </div>
       </div>
@@ -764,19 +764,19 @@ function OddsRow({ player, odds }: { player: Player; odds: number | null }) {
     >
       <span style={{ minWidth: 0 }}>
         <span style={{
-          display: 'block', font: "400 13px var(--body)",
+          display: 'block', font: "400 calc(13px * var(--ts)) var(--body)",
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>{player.name}</span>
         <span style={{
-          display: 'block', marginTop: 1, font: "400 10px var(--mono)", color: 'var(--dim)',
+          display: 'block', marginTop: 1, font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
         }}>
           {slotOf(player)} · {player.classYear} · AGE {player.age}
         </span>
       </span>
       <span style={{
-        font: "700 8.5px var(--mono)", letterSpacing: '.08em', color: tone, whiteSpace: 'nowrap',
+        font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em', color: tone, whiteSpace: 'nowrap',
       }}>{word}</span>
-      <span style={{ font: "600 13px var(--mono)" }}>{overallOf(player)}</span>
+      <span style={{ font: "600 calc(13px * var(--ts)) var(--mono)" }}>{overallOf(player)}</span>
     </button>
   );
 }
@@ -792,7 +792,7 @@ function Tile(
     }}>
       <div className="label">{k}</div>
       <div style={{
-        font: "700 20px/1 var(--display)", marginTop: 3,
+        font: "700 calc(20px * var(--ts))/1 var(--display)", marginTop: 3,
         color: tone ?? (accent ? 'var(--clay)' : 'var(--ink)'),
       }}>{v}</div>
     </div>

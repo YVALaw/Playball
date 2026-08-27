@@ -60,7 +60,7 @@ export function StepRail(
             }} />
             <div style={{
               marginTop: 5,
-              font: "600 8px/1.3 var(--mono)", letterSpacing: '.06em',
+              font: "600 calc(8px * var(--ts))/1.3 var(--mono)", letterSpacing: '.06em',
               textAlign: 'center',
               color: here ? 'var(--clay)'
                 : i <= furthest ? 'rgba(28,36,48,.62)' : 'rgba(28,36,48,.34)',

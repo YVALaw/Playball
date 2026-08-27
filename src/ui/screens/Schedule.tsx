@@ -43,7 +43,7 @@ export function Schedule() {
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
             <div className="label">SCHEDULE · {year}</div>
             <div style={{
-              font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
             }}>{regularRecord(team).w}-{regularRecord(team).l} overall</div>
           </div>
           {/* The program's vitals, moved off the dashboard. The season tab is
@@ -63,7 +63,7 @@ export function Schedule() {
                 borderRight: i < 2 ? '1px solid var(--hairline)' : 'none',
               }}>
                 <div className="label">{k}</div>
-                <div style={{ font: "700 16px/1 var(--display)", marginTop: 2 }}>{v}</div>
+                <div style={{ font: "700 calc(16px * var(--ts))/1 var(--display)", marginTop: 2 }}>{v}</div>
               </div>
             ))}
           </div>
@@ -101,23 +101,23 @@ export function Schedule() {
                 background: 'transparent',
               }}
             >
-              <span style={{ font: "400 10px var(--mono)", color: 'var(--dim)' }}>
+              <span style={{ font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
                 {seasonDate(year, day.day)}
               </span>
-              <span style={{ font: "400 11px var(--mono)", color: 'var(--dim)' }}>
+              <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
                 {home ? 'vs' : '@'}
               </span>
               <span style={{
-                font: "400 12px var(--body)",
+                font: "400 calc(12px * var(--ts)) var(--body)",
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{opponent?.def.school ?? '—'}</span>
               <span style={{
-                font: "600 11px var(--mono)",
+                font: "600 calc(11px * var(--ts)) var(--mono)",
                 color: won === null ? 'var(--dim)' : (won ? 'var(--win)' : 'var(--loss)'),
                 textAlign: 'right',
               }}>{won === null ? '' : (won ? 'W' : 'L')}</span>
               <span style={{
-                font: "400 11px var(--mono)", textAlign: 'right',
+                font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right',
                 color: won === null ? 'rgba(28,36,48,.35)' : 'var(--ink)',
               }}>
                 {result ? `${us}-${them}` : day.kind === 'series' ? 'series' : 'mid'}
@@ -171,10 +171,10 @@ export function BoxScoreSheet(
         padding: '6px 0', borderBottom: '2px solid var(--ink)',
       }}>
         <span style={{
-          font: "700 14px var(--display)", textTransform: 'uppercase',
+          font: "700 calc(14px * var(--ts)) var(--display)", textTransform: 'uppercase',
           color: teamColour(abbr),
         }}>{label}</span>
-        <span style={{ font: "800 20px/1 var(--display)" }}>{runs}</span>
+        <span style={{ font: "800 calc(20px * var(--ts))/1 var(--display)" }}>{runs}</span>
       </div>
       {[...batting, ...pitching].map((l) => (
         <button
@@ -187,14 +187,14 @@ export function BoxScoreSheet(
           }}
         >
           <span style={{
-            font: "600 9px var(--mono)", color: 'var(--dim)', minWidth: 26,
+            font: "600 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)', minWidth: 26,
           }}>{l.slot}</span>
           <span style={{
-            flex: 1, font: "400 12px var(--body)",
+            flex: 1, font: "400 calc(12px * var(--ts)) var(--body)",
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>{l.name}</span>
           <span style={{
-            font: "400 10px var(--mono)", color: 'var(--dim)', whiteSpace: 'nowrap',
+            font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)', whiteSpace: 'nowrap',
           }}>{l.line}</span>
         </button>
       ))}
@@ -222,10 +222,10 @@ export function BoxScoreSheet(
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <span style={{
-            font: "600 9px var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
+            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
           }}>BOX SCORE · {box.innings} INNINGS</span>
           <button onClick={onClose} style={{
-            font: "600 9px var(--mono)", letterSpacing: '.14em', color: 'rgba(246,241,230,.8)',
+            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(246,241,230,.8)',
           }}>CLOSE</button>
         </div>
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px' }}>

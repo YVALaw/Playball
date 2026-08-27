@@ -37,14 +37,14 @@ export function JobSearch() {
         <div style={{ borderBottom: '2px solid var(--clay)', paddingBottom: 8 }}>
           <div className="label" style={{ color: 'var(--clay)' }}>OUT OF A JOB</div>
           <div style={{
-            font: "800 22px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
+            font: "800 calc(22px * var(--ts))/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
           }}>{coach.name}</div>
           {/*
             Where the profile made at the start of the career shows up: this is
             the one screen that is about the man rather than the program.
           */}
           <div style={{
-            marginTop: 3, font: "400 10px var(--mono)", color: 'var(--dim)',
+            marginTop: 3, font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
           }}>{coach.age} · {coach.homeState}</div>
         </div>
       </div>
@@ -77,7 +77,7 @@ export function JobSearch() {
       {offers.length === 0 && (
         <div style={{
           padding: '14px 12px', border: '1px solid var(--faint)', background: 'var(--paper)',
-          font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
+          font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
         }}>
           No program will have you at {coach.prestige}. Prestige is what opens
           the board, and yours is too low.
@@ -99,23 +99,23 @@ export function JobSearch() {
               display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
             }}>
               <span style={{
-                font: "800 19px/1 var(--display)", textTransform: 'uppercase',
+                font: "800 calc(19px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
               }}>{o.school}</span>
-              <span style={{ font: "600 11px var(--mono)", color: 'var(--clay)' }}>
+              <span style={{ font: "600 calc(11px * var(--ts)) var(--mono)", color: 'var(--clay)' }}>
                 {'★'.repeat(stars)}{'☆'.repeat(5 - stars)}
               </span>
             </div>
             <div style={{
-              marginTop: 3, font: "500 9px var(--mono)", letterSpacing: '.14em',
+              marginTop: 3, font: "500 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em',
               color: 'var(--dim)', textTransform: 'uppercase',
             }}>{o.conference}</div>
             <div style={{
-              marginTop: 7, font: "400 12px/1.5 var(--body)", color: 'var(--dim)',
+              marginTop: 7, font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
             }}>{o.pitch}</div>
             <div style={{
               marginTop: 9, padding: '9px 0', textAlign: 'center',
               background: 'var(--clay)', color: 'var(--cream)',
-              font: "700 10px var(--mono)", letterSpacing: '.14em',
+              font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.14em',
             }}>TAKE THE JOB</div>
           </button>
         );
@@ -133,7 +133,7 @@ function Tile({ k, v, accent, last }: { k: string; v: string; accent?: boolean; 
     }}>
       <div className="label">{k}</div>
       <div style={{
-        font: "700 20px/1 var(--display)", marginTop: 3,
+        font: "700 calc(20px * var(--ts))/1 var(--display)", marginTop: 3,
         color: accent ? 'var(--clay)' : 'var(--ink)',
       }}>{v}</div>
     </div>

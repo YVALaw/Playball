@@ -109,7 +109,7 @@ export function Inbox() {
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
             <div className="label">WHAT HAPPENED TO YOU</div>
             <div style={{
-              font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
             }}>The inbox</div>
           </div>
         </div>
@@ -120,7 +120,7 @@ export function Inbox() {
           <div style={{
             marginTop: 16, padding: '18px 12px', border: '1px solid var(--faint)',
             background: 'var(--paper)', textAlign: 'center',
-            font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
+            font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
           }}>
             Nothing yet. A run of wins, a record one of your men has taken, the
             board at the halfway mark, and then everything June brings — the
@@ -162,14 +162,14 @@ function Card({ item, onOpen }: { item: InboxItem; onOpen: (l: InboxLink) => voi
         marginBottom: 3, gap: 8,
       }}>
         <span style={{
-          font: "700 8px var(--mono)", letterSpacing: '.14em', color: tone,
+          font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: tone,
         }}>{INBOX_LABEL[item.kind]}</span>
         {/* The dot survives the visit that clears it, because the state was
             read before this rendered. It is the only thing distinguishing what
             is new from what has been sitting here since March. */}
         {!item.read && (
           <span style={{
-            font: "700 8px var(--mono)", letterSpacing: '.12em', color: 'var(--clay)',
+            font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.12em', color: 'var(--clay)',
           }}>NEW</span>
         )}
       </div>
@@ -177,17 +177,17 @@ function Card({ item, onOpen }: { item: InboxItem; onOpen: (l: InboxLink) => voi
         display: 'flex', alignItems: 'baseline', gap: 8,
       }}>
         <div style={{
-          flex: 1, font: "700 14px/1.25 var(--display)", textTransform: 'uppercase',
+          flex: 1, font: "700 calc(14px * var(--ts))/1.25 var(--display)", textTransform: 'uppercase',
         }}>{item.title}</div>
         {item.link && (
           <span style={{
-            flex: 'none', font: "700 13px var(--mono)", color: tone,
+            flex: 'none', font: "700 calc(13px * var(--ts)) var(--mono)", color: tone,
           }}>›</span>
         )}
       </div>
       {item.body !== '' && (
         <div style={{
-          marginTop: 4, font: "400 12px/1.5 var(--body)", color: 'var(--dim)',
+          marginTop: 4, font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
         }}>{item.body}</div>
       )}
     </>

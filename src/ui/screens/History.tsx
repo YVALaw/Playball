@@ -62,7 +62,7 @@ export function History() {
                   : 'ALL-TIME · NINETY-SIX PROGRAMS'}
               </div>
               <div style={{
-                font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+                font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
               }}>{sheet === 'seasons' ? (annals.length > 0 ? `${wins}-${losses}` : 'History') : 'The Book'}</div>
             </div>
           </div>
@@ -76,7 +76,7 @@ export function History() {
                   background: s === sheet ? 'var(--ink)' : 'var(--field)',
                   border: s === sheet ? '1px solid var(--ink)' : '1px solid var(--faint)',
                   color: s === sheet ? 'var(--cream)' : 'var(--dim)',
-                  font: "700 8.5px var(--mono)", letterSpacing: '.08em',
+                  font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
                 }}
               >{SHEET_LABEL[s]}</button>
             ))}
@@ -111,7 +111,7 @@ function Seasons({ annals }: { annals: SchoolSeason[] }) {
       <div style={{ padding: '28px 16px', textAlign: 'center' }}>
         <div className="label">NO SEASONS ON RECORD</div>
         <div style={{
-          marginTop: 8, font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
+          marginTop: 8, font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
           maxWidth: 270, margin: '8px auto 0',
         }}>
           The school writes a season into its book every June. Careers begun
@@ -173,13 +173,13 @@ function Seasons({ annals }: { annals: SchoolSeason[] }) {
                 ? 'none' : '1px solid var(--hairline)',
               background: s.finish === 'champion' ? 'rgba(168,68,42,.08)' : 'transparent',
             }}>
-              <span style={{ font: "700 13px var(--display)" }}>{s.year}</span>
-              <span style={{ font: "400 11px var(--mono)" }}>{s.w}-{s.l}</span>
+              <span style={{ font: "700 calc(13px * var(--ts)) var(--display)" }}>{s.year}</span>
+              <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)" }}>{s.w}-{s.l}</span>
               <span style={{
-                font: "400 11px var(--mono)", color: 'var(--dim)',
+                font: "400 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)',
               }}>{s.confPlace > 0 ? ordinal(s.confPlace) : '—'}</span>
               <span style={{
-                font: `${s.finish === 'champion' ? 600 : 400} 11px var(--body)`,
+                font: `${s.finish === 'champion' ? 600 : 400} calc(11px * var(--ts)) var(--body)`,
                 color: FINISH_COLOR[s.finish],
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
@@ -194,7 +194,7 @@ function Seasons({ annals }: { annals: SchoolSeason[] }) {
               <div style={{
                 padding: '0 10px 8px 46px',
                 borderBottom: awards.length > 0 ? 'none' : '1px solid var(--hairline)',
-                font: "500 9px var(--mono)", letterSpacing: '.08em', color: 'var(--dim)',
+                font: "500 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.08em', color: 'var(--dim)',
               }}>COACH {s.coach?.toUpperCase()}</div>
             )}
 
@@ -218,11 +218,11 @@ function Seasons({ annals }: { annals: SchoolSeason[] }) {
                     }}
                   >
                     <span style={{
-                      font: "600 9px var(--mono)", letterSpacing: '.08em',
+                      font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.08em',
                       color: 'var(--clay)',
                     }}>{a.title.toUpperCase()}</span>
                     <span style={{
-                      marginLeft: 6, font: "400 11px var(--body)",
+                      marginLeft: 6, font: "400 calc(11px * var(--ts)) var(--body)",
                       borderBottom: '1px dotted rgba(28,36,48,.35)',
                     }}>{a.name}</span>
                   </button>
@@ -234,7 +234,7 @@ function Seasons({ annals }: { annals: SchoolSeason[] }) {
         })}
       </div>
 
-      <div style={{ marginTop: 10, font: "400 11px/1.5 var(--body)", color: 'var(--dim)' }}>
+      <div style={{ marginTop: 10, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
         ★ marks a conference tournament title, which carries an automatic bid to the
         national field however the regular season went. This is the school's book.
         Your own career, wherever it was coached, is on your coach profile.
@@ -251,7 +251,7 @@ function Tile({ k, v, last }: { k: string; v: number; last?: boolean }) {
     }}>
       <div className="label">{k}</div>
       <div style={{
-        font: "700 24px/1 var(--display)", marginTop: 2,
+        font: "700 calc(24px * var(--ts))/1 var(--display)", marginTop: 2,
         color: v > 0 ? 'var(--clay)' : 'var(--ink)',
       }}>{v}</div>
     </div>

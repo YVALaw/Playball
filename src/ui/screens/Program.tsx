@@ -118,7 +118,7 @@ export function Program() {
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
             <div className="label">{team.conference} · {year}</div>
             <div style={{
-              font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
             }}>{team.def.school}</div>
           </div>
         </div>
@@ -156,7 +156,7 @@ function TabStrip(
             background: s === at ? 'var(--ink)' : 'var(--field)',
             border: s === at ? '1px solid var(--ink)' : '1px solid var(--faint)',
             color: s === at ? 'var(--cream)' : 'var(--dim)',
-            font: "700 8.5px var(--mono)", letterSpacing: '.08em',
+            font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
           }}
         >
           {SHEET_LABEL[s]}
@@ -248,16 +248,16 @@ function BoardSheet({ team }: { team: Owner }) {
             background: review.fired ? 'var(--clay)' : 'var(--ink)',
           }}>
             <span style={{
-              font: "600 9px var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
+              font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
             }}>{review.fired ? 'DISMISSED' : 'BOARD REVIEW'}</span>
           </div>
           <div style={{ padding: '12px' }}>
             <div style={{
-              font: "800 22px/1 var(--display)", textTransform: 'uppercase',
+              font: "800 calc(22px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
               color: review.fired ? 'var(--clay)' : 'var(--ink)',
             }}>{verdictWord(review.verdict)}</div>
             <div style={{
-              marginTop: 7, font: "400 12px/1.55 var(--body)",
+              marginTop: 7, font: "400 calc(12px * var(--ts))/1.55 var(--body)",
             }}>{review.message}</div>
             <div style={{
               marginTop: 10, display: 'flex', gap: 14, flexWrap: 'wrap',
@@ -268,7 +268,7 @@ function BoardSheet({ team }: { team: Owner }) {
             </div>
             {!review.fired && (
               <div style={{
-                marginTop: 9, font: "400 11.5px/1.45 var(--body)", color: 'var(--dim)',
+                marginTop: 9, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
               }}>
                 {review.extended
                   ? 'A new deal on the table.'
@@ -281,7 +281,7 @@ function BoardSheet({ team }: { team: Owner }) {
                 style={{
                   marginTop: 12, padding: '8px 14px', background: 'var(--field)',
                   border: '1px solid rgba(28,36,48,.42)',
-                  font: "700 9.5px var(--mono)", letterSpacing: '.1em',
+                  font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.1em',
                 }}
               >UNDERSTOOD</button>
             )}
@@ -305,15 +305,15 @@ function BoardSheet({ team }: { team: Owner }) {
               <div style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
               }}>
-                <span style={{ font: "700 15px var(--display)", textTransform: 'uppercase' }}>
+                <span style={{ font: "700 calc(15px * var(--ts)) var(--display)", textTransform: 'uppercase' }}>
                   {o.school}
                 </span>
-                <span style={{ font: "600 10px var(--mono)", color: 'var(--clay)' }}>
+                <span style={{ font: "600 calc(10px * var(--ts)) var(--mono)", color: 'var(--clay)' }}>
                   {'★'.repeat(prestigeStars(o.prestige))}
                 </span>
               </div>
               <div style={{
-                marginTop: 3, font: "400 11px/1.4 var(--body)", color: 'var(--dim)',
+                marginTop: 3, font: "400 calc(11px * var(--ts))/1.4 var(--body)", color: 'var(--dim)',
               }}>{o.conference} · {o.pitch}</div>
             </button>
           ))}
@@ -336,7 +336,7 @@ function BoardSheet({ team }: { team: Owner }) {
         <div style={{
           padding: '11px 12px', border: '1px solid var(--faint)', background: 'var(--paper)',
         }}>
-          <div style={{ font: "400 13px/1.5 var(--body)" }}>{expectation.summary}</div>
+          <div style={{ font: "400 calc(13px * var(--ts))/1.5 var(--body)" }}>{expectation.summary}</div>
 
           {/*
             The list, not a sentence. A mandate you can only read is atmosphere —
@@ -353,7 +353,7 @@ function BoardSheet({ team }: { team: Owner }) {
 
           <div style={{
             marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--hairline)',
-            font: "400 11.5px/1.45 var(--body)", color: 'var(--dim)',
+            font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
           }}>
             Year {coach.tenure + 1} at the job.{' '}
             {coach.contractYears > 0
@@ -438,7 +438,7 @@ function CoachSheet({ team }: { team: Owner }) {
 
       <div style={{
         marginTop: 6, textAlign: 'center',
-        font: "800 21px/0.95 var(--display)", textTransform: 'uppercase',
+        font: "800 calc(21px * var(--ts))/0.95 var(--display)", textTransform: 'uppercase',
       }}>{coach.name}</div>
 
       {/*
@@ -457,7 +457,7 @@ function CoachSheet({ team }: { team: Owner }) {
 
       <div style={{
         marginTop: 3, marginBottom: 12, textAlign: 'center',
-        font: "600 10px var(--mono)", letterSpacing: '.1em',
+        font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.1em',
         color: teamColour(team.def.abbr),
       }}>{team.def.school.toUpperCase()} · {team.conference}</div>
 
@@ -482,7 +482,7 @@ function CoachSheet({ team }: { team: Owner }) {
               background: view === v ? 'var(--clay)' : 'transparent',
               border: `1px solid ${view === v ? 'var(--clay)' : 'rgba(28,36,48,.25)'}`,
               color: view === v ? 'var(--cream)' : 'rgba(28,36,48,.6)',
-              font: "600 9px var(--mono)", letterSpacing: '.1em',
+              font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.1em',
             }}
           >{v.toUpperCase()}</button>
         ))}
@@ -539,10 +539,10 @@ function CoachSheet({ team }: { team: Owner }) {
             <Panel>
               <div style={{ padding: '11px 12px' }}>
                 <div style={{
-                  font: "800 20px/1 var(--display)", textTransform: 'uppercase',
+                  font: "800 calc(20px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
                 }}>{philosophy.name}</div>
                 <div style={{
-                  marginTop: 6, font: "400 12px/1.5 var(--body)",
+                  marginTop: 6, font: "400 calc(12px * var(--ts))/1.5 var(--body)",
                 }}>{philosophy.blurb}</div>
               </div>
             </Panel>
@@ -562,7 +562,7 @@ function CoachSheet({ team }: { team: Owner }) {
             <Head>FOUR SKILLS</Head>
             {coach.skillPoints > 0 && (
               <span style={{
-                font: "700 9px var(--mono)", letterSpacing: '.1em', color: 'var(--clay)',
+                font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: 'var(--clay)',
               }}>{coach.skillPoints} POINT{coach.skillPoints === 1 ? '' : 'S'} UNSPENT</span>
             )}
           </div>
@@ -576,7 +576,7 @@ function CoachSheet({ team }: { team: Owner }) {
             }}>
               <Bar label={SKILL_LABEL[k]} value={coach.skills[k]} />
               <div style={{
-                margin: '2px 0 6px', font: "400 11.5px/1.45 var(--body)", color: 'var(--dim)',
+                margin: '2px 0 6px', font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
               }}>{SKILL_NOTE[k]}</div>
             </div>
           ))}
@@ -616,11 +616,11 @@ function CoachSheet({ team }: { team: Owner }) {
                   }}>
                     <div className="label">{s.k}</div>
                     <div style={{
-                      marginTop: 4, font: "800 26px/1 var(--display)",
+                      marginTop: 4, font: "800 calc(26px * var(--ts))/1 var(--display)",
                       color: s.n > 0 ? s.tone : 'var(--faint)',
                     }}>{s.n}</div>
                     <div style={{
-                      marginTop: 3, font: "400 8.5px var(--mono)", color: 'var(--dim)',
+                      marginTop: 3, font: "400 calc(8.5px * var(--ts)) var(--mono)", color: 'var(--dim)',
                     }}>
                       {s.years.slice(0, 3).map((r) => r.year).join(' · ') || '—'}
                       {s.years.length > 3 ? ' …' : ''}
@@ -661,14 +661,14 @@ function CoachSheet({ team }: { team: Owner }) {
                         alignItems: 'baseline', gap: 8,
                       }}>
                         <span style={{
-                          font: "800 14px/1.1 var(--display)", textTransform: 'uppercase',
+                          font: "800 calc(14px * var(--ts))/1.1 var(--display)", textTransform: 'uppercase',
                         }}>{ACHIEVEMENTS[id].name}</span>
                         <span style={{
-                          font: "600 10px var(--mono)", color: 'var(--clay)', whiteSpace: 'nowrap',
+                          font: "600 calc(10px * var(--ts)) var(--mono)", color: 'var(--clay)', whiteSpace: 'nowrap',
                         }}>{row?.team} {row?.year}</span>
                       </div>
                       <div style={{
-                        marginTop: 3, font: "400 11.5px/1.45 var(--body)", color: 'var(--dim)',
+                        marginTop: 3, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
                       }}>{row?.detail ?? ACHIEVEMENTS[id].note}</div>
                     </div>
                   );
@@ -703,7 +703,7 @@ function CareerView({ history, coach }: { history: SeasonRecord[]; coach: CoachS
         <Panel>
           <div style={{
             padding: '16px 12px', textAlign: 'center',
-            font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
+            font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
           }}>
             No seasons on the record yet. The first one goes in at the June
             board meeting.
@@ -728,14 +728,14 @@ function CareerView({ history, coach }: { history: SeasonRecord[]; coach: CoachS
         display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
       }}>
         <Head>YEAR BY YEAR</Head>
-        <span style={{ font: "600 9px var(--mono)", color: 'var(--dim)' }}>
+        <span style={{ font: "600 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
           {coach.careerWins}-{coach.careerLosses} CAREER
         </span>
       </div>
       {spans.map((span, si) => (
         <div key={`${span.school}-${si}`} style={{ marginTop: si === 0 ? 8 : 12 }}>
           <div style={{
-            font: "700 10px var(--mono)", letterSpacing: '.1em',
+            font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.1em',
             color: teamColour(
               span.rows[0]?.school !== undefined ? abbrOfSchool(span.school) : '',
             ),
@@ -748,14 +748,14 @@ function CareerView({ history, coach }: { history: SeasonRecord[]; coach: CoachS
                 gap: 8, alignItems: 'baseline', padding: '8px 12px',
                 borderBottom: i === span.rows.length - 1 ? 'none' : '1px solid var(--hairline)',
               }}>
-                <span style={{ font: "700 13px var(--display)" }}>{r.year}</span>
-                <span style={{ font: "400 11px var(--mono)" }}>{r.w}-{r.l}</span>
+                <span style={{ font: "700 calc(13px * var(--ts)) var(--display)" }}>{r.year}</span>
+                <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)" }}>{r.w}-{r.l}</span>
                 <span style={{
-                  font: "400 11px var(--body)", color: 'var(--dim)',
+                  font: "400 calc(11px * var(--ts)) var(--body)", color: 'var(--dim)',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>{FINISH_WORD[r.finish] ?? r.finish}{r.wonConference ? ' · conference champions' : ''}</span>
                 <span style={{
-                  font: "700 11px var(--mono)",
+                  font: "700 calc(11px * var(--ts)) var(--mono)",
                   color: r.finish === 'champion' ? 'var(--clay)' : 'transparent',
                 }}>◆</span>
               </div>
@@ -934,7 +934,7 @@ function HallSheet() {
           CAREER LEADERS · NOT INDUCTIONS
         </div>
         <div style={{
-          marginTop: 6, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+          marginTop: 6, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
           marginBottom: 10,
         }}>
           Who accumulated the most, which is not the same question as who was
@@ -1049,14 +1049,14 @@ function Plaque(
         <span className="label" style={{ color: 'var(--clay)' }}>
           INDUCTED {man.year}
         </span>
-        <span style={{ font: "400 9px var(--mono)", color: 'var(--dim)' }}>
+        <span style={{ font: "400 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
           {span} · {man.teams.join(' · ')}
         </span>
       </div>
       <div style={{
-        font: "800 19px/1.05 var(--display)", textTransform: 'uppercase', marginTop: 3,
+        font: "800 calc(19px * var(--ts))/1.05 var(--display)", textTransform: 'uppercase', marginTop: 3,
       }}>{man.name}</div>
-      <div style={{ marginTop: 3, font: "500 11px var(--mono)", color: 'var(--ink)' }}>
+      <div style={{ marginTop: 3, font: "500 calc(11px * var(--ts)) var(--mono)", color: 'var(--ink)' }}>
         {man.line}
       </div>
       {honours.length > 0 && (
@@ -1065,7 +1065,7 @@ function Plaque(
         }}>
           {honours.map((t) => (
             <span key={t} style={{
-              font: "600 8px var(--mono)", letterSpacing: '.08em', color: 'var(--clay)',
+              font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.08em', color: 'var(--clay)',
             }}>{t.toUpperCase()}</span>
           ))}
         </div>
@@ -1073,7 +1073,7 @@ function Plaque(
       {marks.length > 0 && (
         <div style={{
           marginTop: 5, paddingTop: 5, borderTop: '1px solid var(--hairline)',
-          font: "400 9.5px/1.5 var(--mono)", color: 'var(--dim)',
+          font: "400 calc(9.5px * var(--ts))/1.5 var(--mono)", color: 'var(--dim)',
         }}>
           STILL HOLDS · {marks.join(' · ')}
         </div>
@@ -1123,16 +1123,16 @@ function HallRowView(
       }}
     >
       <span style={{
-        font: "400 12px var(--body)",
+        font: "400 calc(12px * var(--ts)) var(--body)",
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         borderBottom: '1px dotted rgba(28,36,48,.35)',
       }}>{row.name}</span>
       {values.map((v, i) => (
-        <span key={i} style={{ font: "500 11px var(--mono)", textAlign: 'right' }}>{v}</span>
+        <span key={i} style={{ font: "500 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>{v}</span>
       ))}
       <span style={{
         gridColumn: '1 / -1', marginTop: 2,
-        font: "400 9px var(--mono)", color: 'var(--dim)',
+        font: "400 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)',
       }}>{span} · {row.teams.join(' · ')}</span>
       {row.honours.length > 0 && (
         <span style={{
@@ -1141,12 +1141,12 @@ function HallRowView(
         }}>
           {row.honours.slice(0, 3).map((t) => (
             <span key={t} style={{
-              font: "600 8px var(--mono)", letterSpacing: '.08em', color: 'var(--clay)',
+              font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.08em', color: 'var(--clay)',
             }}>{t.toUpperCase()}</span>
           ))}
           {row.honours.length > 3 && (
             <span style={{
-              font: "600 8px var(--mono)", letterSpacing: '.08em', color: 'var(--dim)',
+              font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.08em', color: 'var(--dim)',
             }}>+{row.honours.length - 3}</span>
           )}
         </span>
@@ -1187,21 +1187,21 @@ function Box({
     <div style={{
       display: 'flex', alignItems: 'baseline', gap: 8, padding: '4px 0',
     }}>
-      <span style={{ font: "700 11px var(--mono)", color: tone, width: 12 }}>{mark}</span>
+      <span style={{ font: "700 calc(11px * var(--ts)) var(--mono)", color: tone, width: 12 }}>{mark}</span>
       <span style={{
-        flex: 1, font: `${met ? 600 : 400} 12px/1.4 var(--body)`,
+        flex: 1, font: `${met ? 600 : 400} calc(12px * var(--ts))/1.4 var(--body)`,
         color: open ? 'var(--ink)' : met ? 'var(--ink)' : 'var(--dim)',
       }}>
         {objective.label}
         {!objective.required && (
           <span style={{
-            marginLeft: 6, font: "600 8px var(--mono)", letterSpacing: '.1em',
+            marginLeft: 6, font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em',
             color: 'var(--dim)',
           }}>BONUS</span>
         )}
       </span>
       {progress && (
-        <span style={{ font: "600 10px var(--mono)", color: 'var(--dim)' }}>{progress}</span>
+        <span style={{ font: "600 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>{progress}</span>
       )}
     </div>
   );
@@ -1221,7 +1221,7 @@ function Seat({ security }: { security: number }) {
       }}>
         <span className="label">YOUR SEAT</span>
         <span style={{
-          font: "700 10px var(--mono)", letterSpacing: '.1em', color: tone,
+          font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: tone,
         }}>{label}</span>
       </div>
       <div style={{ height: 6, background: 'rgba(28,36,48,.09)' }}>
@@ -1240,7 +1240,7 @@ function Delta({ k, from, to }: { k: string; from: number; to: number }) {
   return (
     <div>
       <div className="label">{k}</div>
-      <div style={{ font: "600 13px var(--mono)", marginTop: 2 }}>
+      <div style={{ font: "600 calc(13px * var(--ts)) var(--mono)", marginTop: 2 }}>
         {from} <span style={{
           color: flat ? 'var(--dim)' : up ? 'var(--win)' : 'var(--clay)',
         }}>{flat ? '→' : up ? '↑' : '↓'} {to}</span>
@@ -1257,7 +1257,7 @@ function Tile({ k, v, accent, last }: { k: string; v: string; accent?: boolean; 
     }}>
       <div className="label">{k}</div>
       <div style={{
-        font: "700 20px/1 var(--display)", marginTop: 3,
+        font: "700 calc(20px * var(--ts))/1 var(--display)", marginTop: 3,
         color: accent ? 'var(--clay)' : 'var(--ink)',
       }}>{v}</div>
     </div>
@@ -1270,7 +1270,7 @@ function Flank({ k, v, align }: { k: string; v: string; align: 'left' | 'right' 
     <div style={{ minWidth: 56, textAlign: align }}>
       <div className="label">{k}</div>
       <div style={{
-        marginTop: 1, font: "800 20px/1 var(--display)", textTransform: 'uppercase',
+        marginTop: 1, font: "800 calc(20px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
       }}>{v}</div>
     </div>
   );
@@ -1294,7 +1294,7 @@ function Panel({ children }: { children: ReactNode }) {
 
 function Note({ children }: { children: ReactNode }) {
   return (
-    <div style={{ marginTop: 8, font: "400 11px/1.5 var(--body)", color: 'var(--dim)' }}>
+    <div style={{ marginTop: 8, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
       {children}
     </div>
   );
@@ -1302,7 +1302,7 @@ function Note({ children }: { children: ReactNode }) {
 
 function Empty({ children }: { children: ReactNode }) {
   return (
-    <div style={{ padding: '12px', font: "400 12px/1.5 var(--body)", color: 'var(--dim)' }}>
+    <div style={{ padding: '12px', font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
       {children}
     </div>
   );
@@ -1316,7 +1316,7 @@ function Stat({ k, v, last }: { k: string; v: string; last?: boolean }) {
       borderBottom: last ? 'none' : '1px solid var(--hairline)',
     }}>
       <span className="label">{k}</span>
-      <span style={{ font: "600 14px var(--mono)", textAlign: 'right' }}>{v}</span>
+      <span style={{ font: "600 calc(14px * var(--ts)) var(--mono)", textAlign: 'right' }}>{v}</span>
     </div>
   );
 }
@@ -1335,7 +1335,7 @@ function Meter(
         display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10,
       }}>
         <span className="label">{k}</span>
-        <span style={{ font: "600 14px var(--mono)" }}>{v}</span>
+        <span style={{ font: "600 calc(14px * var(--ts)) var(--mono)" }}>{v}</span>
       </div>
       <div style={{ height: 6, background: 'rgba(28,36,48,.09)', marginTop: 6 }}>
         <div style={{
@@ -1345,7 +1345,7 @@ function Meter(
       </div>
       {note && (
         <div style={{
-          marginTop: 6, font: "400 10.5px/1.4 var(--body)", color: 'var(--dim)',
+          marginTop: 6, font: "400 calc(10.5px * var(--ts))/1.4 var(--body)", color: 'var(--dim)',
         }}>{note}</div>
       )}
     </div>
@@ -1361,7 +1361,7 @@ function Bar({ label, value }: { label: string; value: number }) {
         alignItems: 'baseline', marginBottom: 4,
       }}>
         <span className="label">{label}</span>
-        <span style={{ font: "600 11px var(--mono)", color: 'var(--dim)' }}>{value}</span>
+        <span style={{ font: "600 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>{value}</span>
       </div>
       <div style={{ height: 6, background: 'rgba(28,36,48,.09)' }}>
         <div style={{

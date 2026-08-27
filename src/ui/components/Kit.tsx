@@ -16,7 +16,7 @@ export function Tile({ k, v, last }: { k: string; v: string; last?: boolean }) {
       borderRight: last ? undefined : '1px solid var(--hairline)',
     }}>
       <div className="label">{k}</div>
-      <div style={{ font: "700 24px/1 var(--display)", marginTop: 2 }}>{v}</div>
+      <div style={{ font: "700 calc(24px * var(--ts))/1 var(--display)", marginTop: 2 }}>{v}</div>
     </div>
   );
 }
@@ -33,10 +33,10 @@ export function Card(
         padding: '6px 10px', background: 'var(--clay)',
       }}>
         <span style={{
-          font: "600 9px var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
+          font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
         }}>{tag}</span>
         {note && <span style={{
-          font: "600 9px var(--mono)", letterSpacing: '.16em',
+          font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em',
           color: 'rgba(246,241,230,.75)',
         }}>{note}</span>}
       </div>

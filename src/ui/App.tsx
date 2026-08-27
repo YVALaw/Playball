@@ -155,7 +155,7 @@ function AppBody(
             <div style={{
               margin: '12px 14px 0', padding: '11px 12px',
               background: 'var(--paper)', borderLeft: '3px solid var(--clay)',
-              font: "400 12px/1.55 var(--body)",
+              font: "400 calc(12px * var(--ts))/1.55 var(--body)",
             }}>
               <strong>Your saved dynasty could not be opened.</strong> It was
               written by a different version of the game. Start a new one to get
@@ -163,7 +163,7 @@ function AppBody(
               this device is still listed, and this one will open again in the
               build that wrote it.
               <div style={{
-                marginTop: 6, font: "400 10px var(--mono)", color: 'var(--dim)',
+                marginTop: 6, font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
               }}>{loadError}</div>
             </div>
           )}
@@ -199,7 +199,7 @@ function AppBody(
         }}>
           <div style={{
             flex: 1, minWidth: 0,
-            font: "800 18px/0.95 var(--display)", letterSpacing: '.02em',
+            font: "800 calc(18px * var(--ts))/0.95 var(--display)", letterSpacing: '.02em',
             color: 'var(--cream)', textTransform: 'uppercase',
           }}>THE MARKET</div>
           <button
@@ -210,7 +210,7 @@ function AppBody(
               background: 'rgba(246,241,230,.12)',
               border: '1px solid rgba(246,241,230,.28)',
               color: 'var(--cream)',
-              font: "700 8.5px var(--mono)", letterSpacing: '.12em',
+              font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
             }}
           >SAVES</button>
         </header>
@@ -241,10 +241,10 @@ function AppBody(
         }}>
           <div>
             <div style={{
-              font: "800 24px/1 var(--display)", textTransform: 'uppercase',
+              font: "800 calc(24px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
             }}>Save is unreadable</div>
             <div style={{
-              marginTop: 10, font: "400 12.5px/1.6 var(--body)", color: 'var(--dim)',
+              marginTop: 10, font: "400 calc(12.5px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
             }}>
               The dynasty on this device points at a program that is not in the
               world any more. Start a new one to carry on.
@@ -255,7 +255,7 @@ function AppBody(
               style={{
                 marginTop: 16, padding: '13px 22px',
                 background: 'var(--clay)', border: '1px solid var(--clay)',
-                color: 'var(--cream)', font: "700 11px var(--mono)", letterSpacing: '.14em',
+                color: 'var(--cream)', font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.14em',
               }}
             >NEW DYNASTY</button>
           </div>
@@ -269,17 +269,17 @@ function AppBody(
         }}>
           <div>
             <div style={{
-              font: "800 24px/1 var(--display)", textTransform: 'uppercase',
+              font: "800 calc(24px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
             }}>Cannot reach your saves</div>
             <div style={{
-              marginTop: 10, font: "400 12.5px/1.6 var(--body)", color: 'var(--dim)',
+              marginTop: 10, font: "400 calc(12.5px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
             }}>
               This browser is not letting the game open its local storage. That
               usually means another tab has the game open, or site data is
               blocked for this address.
             </div>
             <div style={{
-              marginTop: 8, font: "400 12.5px/1.6 var(--body)", color: 'var(--dim)',
+              marginTop: 8, font: "400 calc(12.5px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
             }}>
               You can play anyway — nothing will be saved between sessions.
             </div>
@@ -292,7 +292,7 @@ function AppBody(
               style={{
                 marginTop: 16, padding: '13px 22px',
                 background: 'var(--clay)', border: '1px solid var(--clay)',
-                color: 'var(--cream)', font: "700 11px var(--mono)", letterSpacing: '.14em',
+                color: 'var(--cream)', font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.14em',
               }}
             >PLAY WITHOUT SAVING</button>
           </div>
@@ -303,7 +303,7 @@ function AppBody(
     return (
       <div className="app-frame" style={{
         display: 'grid', placeItems: 'center',
-        font: "700 20px var(--display)", letterSpacing: '.08em',
+        font: "700 calc(20px * var(--ts)) var(--display)", letterSpacing: '.08em',
       }}>
         BUILDING THE LEAGUE…
       </div>
@@ -348,12 +348,12 @@ function AppBody(
           }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
-                font: "800 18px/0.95 var(--display)", letterSpacing: '.02em',
+                font: "800 calc(18px * var(--ts))/0.95 var(--display)", letterSpacing: '.02em',
                 color: 'var(--cream)', textTransform: 'uppercase',
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>{team.def.school}</div>
               <div style={{
-                font: "500 9px/1.4 var(--mono)", letterSpacing: '.18em',
+                font: "500 calc(9px * var(--ts))/1.4 var(--mono)", letterSpacing: '.18em',
                 color: 'var(--cream-dim)', textTransform: 'uppercase',
               }}>POSTSEASON</div>
             </div>
@@ -391,11 +391,11 @@ function AppBody(
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              font: "800 21px/0.95 var(--display)", letterSpacing: '.02em',
+              font: "800 calc(21px * var(--ts))/0.95 var(--display)", letterSpacing: '.02em',
               color: 'var(--cream)', textTransform: 'uppercase',
             }}>{team.def.school}</div>
             <div style={{
-              font: "500 9px/1.4 var(--mono)", letterSpacing: '.18em',
+              font: "500 calc(9px * var(--ts))/1.4 var(--mono)", letterSpacing: '.18em',
               color: 'var(--cream-dim)', textTransform: 'uppercase',
             }}>OFFSEASON</div>
           </div>
@@ -487,7 +487,7 @@ function AppBody(
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
-            font: "800 21px/0.95 var(--display)", letterSpacing: '.02em',
+            font: "800 calc(21px * var(--ts))/0.95 var(--display)", letterSpacing: '.02em',
             color: 'var(--cream)', textTransform: 'uppercase',
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>{team.def.school}</div>
@@ -495,7 +495,7 @@ function AppBody(
               it used to occupy is gone — the season tab carries the numbers,
               and the header got its right half back. */}
           <div style={{
-            font: "500 9px/1.4 var(--mono)", letterSpacing: '.14em',
+            font: "500 calc(9px * var(--ts))/1.4 var(--mono)", letterSpacing: '.14em',
             color: 'var(--cream-dim)', textTransform: 'uppercase',
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
@@ -526,7 +526,7 @@ function AppBody(
                 borderRight: '1px solid rgba(28,36,48,.1)',
                 boxShadow: on ? 'inset 0 -3px 0 var(--clay)' : 'none',
                 // Five labels have to share the same 360 pixels four used to.
-                font: `600 ${tabDef.screens.length >= 5 ? '8.5px' : '10px'} var(--mono)`,
+                font: `600 calc(${tabDef.screens.length >= 5 ? 8.5 : 10}px * var(--ts)) var(--mono)`,
                 letterSpacing: tabDef.screens.length >= 5 ? '.08em' : '.14em',
                 color: on ? 'var(--clay)' : 'var(--dim)',
               }}
@@ -563,7 +563,7 @@ function AppBody(
               }}
             >
               <div style={{
-                font: "700 12px/1 var(--display)", letterSpacing: '.12em',
+                font: "700 calc(12px * var(--ts))/1 var(--display)", letterSpacing: '.12em',
                 color: on ? 'var(--cream)' : 'rgba(246,241,230,.5)',
                 position: 'relative', display: 'inline-block',
               }}>
@@ -583,7 +583,7 @@ function AppBody(
               </div>
               <div style={{
                 marginTop: 3,
-                font: "400 8px/1 var(--mono)", letterSpacing: '.1em',
+                font: "400 calc(8px * var(--ts))/1 var(--mono)", letterSpacing: '.1em',
                 color: on ? 'rgba(246,241,230,.75)' : 'rgba(246,241,230,.38)',
               }}>{navMeta[t.id] ?? ''}</div>
             </button>
@@ -621,7 +621,7 @@ function InboxButton({ unread, onOpen }: { unread: number; onOpen: () => void })
         background: unread > 0 ? 'var(--clay)' : 'rgba(246,241,230,.12)',
         border: `1px solid ${unread > 0 ? 'var(--clay)' : 'rgba(246,241,230,.28)'}`,
         color: 'var(--cream)',
-        font: "700 8.5px var(--mono)", letterSpacing: '.12em',
+        font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
       }}
     >
       INBOX{unread > 0 ? ` ${unread > 9 ? '9+' : unread}` : ''}
@@ -661,11 +661,11 @@ function SaveAlert({ topmost }: { topmost?: boolean }) {
         background: 'var(--clay)', color: 'var(--cream)',
       }}
     >
-      <div style={{ font: "700 9px var(--mono)", letterSpacing: '.16em' }}>
+      <div style={{ font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em' }}>
         NOT SAVED · TAP TO TRY AGAIN
       </div>
       <div style={{
-        marginTop: 2, font: "400 10px/1.35 var(--body)",
+        marginTop: 2, font: "400 calc(10px * var(--ts))/1.35 var(--body)",
         color: 'rgba(246,241,230,.82)',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
@@ -797,7 +797,7 @@ function BackBar({ onBack }: { onBack: () => void }) {
         style={{
           padding: '11px 18px', background: 'rgba(246,241,230,.14)',
           border: '1px solid rgba(246,241,230,.32)',
-          color: 'var(--cream)', font: "700 12px var(--mono)", letterSpacing: '.14em',
+          color: 'var(--cream)', font: "700 calc(12px * var(--ts)) var(--mono)", letterSpacing: '.14em',
         }}
       >← BACK</button>
     </div>
@@ -829,7 +829,7 @@ function CoachMenuButton() {
         padding: '12px 16px', minHeight: 40,
         background: 'transparent',
         borderBottom: last ? 'none' : '1px solid rgba(246,241,230,.14)',
-        color: 'var(--cream)', font: "700 9.5px var(--mono)", letterSpacing: '.14em',
+        color: 'var(--cream)', font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.14em',
       }}
     >{label}</button>
   );

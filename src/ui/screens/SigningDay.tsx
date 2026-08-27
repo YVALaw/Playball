@@ -158,7 +158,7 @@ export function SigningDay() {
       <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
         <div className="label">SIGNING DAY</div>
         <div style={{
-          font: "800 22px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
+          font: "800 calc(22px * var(--ts))/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
         }}>The class</div>
       </div>
 
@@ -182,7 +182,7 @@ export function SigningDay() {
                 background: v === view ? 'var(--clay)' : 'var(--paper)',
                 border: v === view ? '1px solid var(--clay)' : '1px solid rgba(28,36,48,.28)',
                 color: v === view ? 'var(--cream)' : 'var(--ink)',
-                font: "700 8.5px var(--mono)", letterSpacing: '.08em',
+                font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
               }}
             >{label}</button>
           ))}
@@ -197,7 +197,7 @@ export function SigningDay() {
         }}>
           {mine.length === 0 && (
             <div style={{
-              padding: '18px 12px', font: "400 12px/1.55 var(--body)", color: 'var(--dim)',
+              padding: '18px 12px', font: "400 calc(12px * var(--ts))/1.55 var(--body)", color: 'var(--dim)',
             }}>
               Nobody signed. Every hole on the roster gets filled by a walk-on, and
               a walk-on is a long way below the players you were bidding on.
@@ -252,25 +252,25 @@ export function SigningDay() {
                 background: isMine ? 'rgba(168,68,42,.10)' : 'transparent',
               }}>
                 <span style={{
-                  font: "600 11px var(--mono)", color: 'var(--dim)',
+                  font: "600 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)',
                   minWidth: 20, textAlign: 'right',
                 }}>{i + 1}</span>
                 <span style={{
-                  font: `${isMine ? 700 : 400} 12.5px var(--body)`,
+                  font: `${isMine ? 700 : 400} calc(12.5px * var(--ts)) var(--body)`,
                   color: isMine ? 'var(--clay)' : 'var(--ink)',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>{t?.def.school ?? '?'}</span>
-                <span style={{ font: "400 10px var(--mono)", color: 'var(--dim)' }}>
+                <span style={{ font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
                   {row.list.length} signed
                 </span>
-                <span style={{ font: "600 12px var(--mono)" }}>{row.points}</span>
+                <span style={{ font: "600 calc(12px * var(--ts)) var(--mono)" }}>{row.points}</span>
               </div>
             );
           })}
           {myRank > 25 && (
             <div style={{
               padding: '9px 11px', background: 'rgba(168,68,42,.10)',
-              font: "600 12px var(--mono)", color: 'var(--clay)',
+              font: "600 calc(12px * var(--ts)) var(--mono)", color: 'var(--clay)',
             }}>#{myRank} &nbsp; {team.def.school}</div>
           )}
         </div>
@@ -340,7 +340,7 @@ function WalkOnGroup(
       <div style={{
         marginTop: 14, padding: '11px 12px',
         border: '1px solid var(--faint)', background: 'var(--paper)',
-        font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
+        font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
       }}>
         Every hole is covered. Nobody walks on this year. The whole roster
         is men you went and got.
@@ -370,25 +370,25 @@ function WalkOnGroup(
             <Avatar id={p.id} team={abbr} size={34} />
             <span style={{ minWidth: 0 }}>
               <span style={{
-                display: 'block', font: "400 13px var(--body)",
+                display: 'block', font: "400 calc(13px * var(--ts)) var(--body)",
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{p.name}</span>
               <span style={{
-                display: 'block', marginTop: 1, font: "400 10px var(--mono)",
+                display: 'block', marginTop: 1, font: "400 calc(10px * var(--ts)) var(--mono)",
                 color: 'var(--dim)',
               }}>
                 {slotFor(p)} &middot; age {p.age} &middot; one year
               </span>
             </span>
             <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-              <span style={{ font: "600 12px var(--mono)" }}>
+              <span style={{ font: "600 calc(12px * var(--ts)) var(--mono)" }}>
                 {overallOf(p)}
                 <span style={{ color: 'var(--dim)' }}> &middot; </span>
                 {potentialGrade(p.potential)}
               </span>
             </span>
             <span style={{
-              font: "700 7.5px var(--mono)", letterSpacing: '.1em', color: 'var(--dim)',
+              font: "700 calc(7.5px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: 'var(--dim)',
             }}>WALK-ON</span>
           </button>
         ))}
@@ -418,11 +418,11 @@ function RecruitRow({
       <Avatar id={p.id} team={destination} size={34} />
       <span style={{ minWidth: 0 }}>
         <span style={{
-          display: 'block', font: `${mine ? 700 : 400} 13px var(--body)`,
+          display: 'block', font: `${mine ? 700 : 400} calc(13px * var(--ts)) var(--body)`,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>{p.player.name}</span>
         <span style={{
-          display: 'block', marginTop: 1, font: "400 10px var(--mono)", color: 'var(--dim)',
+          display: 'block', marginTop: 1, font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
         }}>
           #{p.rank} · {slotOf(p)} · {p.state}
           {destination ? ` · → ${destination}` : ''}
@@ -435,7 +435,7 @@ function RecruitRow({
         review — the whole point of this row is that the guessing is over.
       */}
       <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-        <span style={{ font: "600 12px var(--mono)" }}>
+        <span style={{ font: "600 calc(12px * var(--ts)) var(--mono)" }}>
           {overallOf(p.player)}
           <span style={{ color: 'var(--dim)' }}> · </span>
           {potentialGrade(p.player.potential)}
@@ -443,11 +443,11 @@ function RecruitRow({
         {call && (
           <span style={{
             display: 'block', marginTop: 1,
-            font: "700 7px var(--mono)", letterSpacing: '.08em', color: call.tone,
+            font: "700 calc(7px * var(--ts)) var(--mono)", letterSpacing: '.08em', color: call.tone,
           }}>{call.short}</span>
         )}
       </span>
-      <span style={{ font: "600 11px var(--mono)", color: 'var(--clay)' }}>
+      <span style={{ font: "600 calc(11px * var(--ts)) var(--mono)", color: 'var(--clay)' }}>
         {'★'.repeat(p.stars)}
       </span>
     </button>
@@ -496,10 +496,10 @@ function RecruitSheet({
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <span style={{
-            font: "600 9px var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
+            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
           }}>{'★'.repeat(prospect.stars)} · {prospect.state}</span>
           <button onClick={onClose} style={{
-            font: "600 9px var(--mono)", letterSpacing: '.14em', color: 'rgba(246,241,230,.8)',
+            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(246,241,230,.8)',
           }}>CLOSE</button>
         </div>
 
@@ -507,10 +507,10 @@ function RecruitSheet({
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Avatar id={p.id} team={to?.def.abbr} size={54} />
             <div style={{ minWidth: 0 }}>
-              <div style={{ font: "800 22px/1 var(--display)", textTransform: 'uppercase' }}>
+              <div style={{ font: "800 calc(22px * var(--ts))/1 var(--display)", textTransform: 'uppercase' }}>
                 {p.name}
               </div>
-              <div style={{ marginTop: 3, font: "400 11px var(--mono)", color: 'var(--dim)' }}>
+              <div style={{ marginTop: 3, font: "400 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
                 {/* Age, because a class is not all one age. A freshman who
                     arrives at twenty is draft eligible after one season, and
                     the day you sign him is the day to know it. */}
@@ -527,12 +527,12 @@ function RecruitSheet({
           }}>
             <div className="label">SIGNED WITH</div>
             <div style={{
-              font: "700 17px/1.1 var(--display)", marginTop: 3, textTransform: 'uppercase',
+              font: "700 calc(17px * var(--ts))/1.1 var(--display)", marginTop: 3, textTransform: 'uppercase',
               color: mine ? 'var(--clay)' : 'var(--ink)',
             }}>{to?.def.school ?? 'nobody'}{mine ? ' · you' : ''}</div>
             {prospect.committedWeek !== null && (
               <div style={{
-                marginTop: 3, font: "400 11px var(--mono)", color: 'var(--dim)',
+                marginTop: 3, font: "400 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)',
               }}>committed in week {prospect.committedWeek}</div>
             )}
           </div>
@@ -563,12 +563,12 @@ function RecruitSheet({
               <span className="label">YOUR REPORT HAD HIM</span>
               {call && (
                 <span style={{
-                  font: "700 8px var(--mono)", letterSpacing: '.1em', color: call.tone,
+                  font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: call.tone,
                 }}>{call.long}</span>
               )}
             </div>
             <div style={{
-              marginTop: 4, font: "600 12.5px var(--mono)", color: 'var(--ink)',
+              marginTop: 4, font: "600 calc(12.5px * var(--ts)) var(--mono)", color: 'var(--ink)',
             }}>
               {band.low}&ndash;{band.high}
               <span style={{ color: 'var(--dim)' }}> overall &middot; </span>
@@ -585,7 +585,7 @@ function RecruitSheet({
                 borderBottom: '1px solid var(--hairline)',
               }}>
                 <div className="label">{row.label}</div>
-                <div style={{ font: "700 15px/1 var(--display)", marginTop: 3 }}>{row.value}</div>
+                <div style={{ font: "700 calc(15px * var(--ts))/1 var(--display)", marginTop: 3 }}>{row.value}</div>
               </div>
             ))}
           </div>
@@ -603,11 +603,11 @@ function RecruitSheet({
                   <div key={r.team} style={{
                     display: 'flex', justifyContent: 'space-between',
                     padding: '5px 0', borderBottom: '1px solid var(--hairline)',
-                    font: `${isMine ? 700 : 400} 12px var(--body)`,
+                    font: `${isMine ? 700 : 400} calc(12px * var(--ts)) var(--body)`,
                     color: won ? 'var(--win)' : isMine ? 'var(--clay)' : 'var(--dim)',
                   }}>
                     <span>{t?.def.school ?? '?'}{isMine ? ' (you)' : ''}</span>
-                    <span style={{ font: "600 10px var(--mono)" }}>
+                    <span style={{ font: "600 calc(10px * var(--ts)) var(--mono)" }}>
                       {Math.round(r.pts)}{won ? ' · SIGNED' : ''}
                     </span>
                   </div>
@@ -657,10 +657,10 @@ function WalkOnSheet(
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <span style={{
-            font: "600 9px var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
+            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
           }}>WALK-ON &middot; ONE YEAR</span>
           <button onClick={onClose} style={{
-            font: "600 9px var(--mono)", letterSpacing: '.14em', color: 'rgba(246,241,230,.8)',
+            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(246,241,230,.8)',
           }}>CLOSE</button>
         </div>
 
@@ -668,10 +668,10 @@ function WalkOnSheet(
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Avatar id={man.id} team={abbr} size={54} />
             <div style={{ minWidth: 0 }}>
-              <div style={{ font: "800 22px/1 var(--display)", textTransform: 'uppercase' }}>
+              <div style={{ font: "800 calc(22px * var(--ts))/1 var(--display)", textTransform: 'uppercase' }}>
                 {man.name}
               </div>
-              <div style={{ marginTop: 3, font: "400 11px var(--mono)", color: 'var(--dim)' }}>
+              <div style={{ marginTop: 3, font: "400 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
                 {slotFor(man)} &middot; age {man.age} &middot; bats {man.bats}
                 {' '}&middot; throws {man.throws}
               </div>
@@ -684,10 +684,10 @@ function WalkOnSheet(
           }}>
             <div className="label">TURNED UP AT</div>
             <div style={{
-              font: "700 17px/1.1 var(--display)", marginTop: 3, textTransform: 'uppercase',
+              font: "700 calc(17px * var(--ts))/1.1 var(--display)", marginTop: 3, textTransform: 'uppercase',
             }}>{school}</div>
             <div style={{
-              marginTop: 5, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+              marginTop: 5, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
             }}>
               Nobody offered him anything and nobody had to. He fills a spot your
               class left open, and he is off the roster again next June whatever
@@ -709,7 +709,7 @@ function WalkOnSheet(
                 borderBottom: '1px solid var(--hairline)',
               }}>
                 <div className="label">{row.label}</div>
-                <div style={{ font: "700 15px/1 var(--display)", marginTop: 3 }}>{row.value}</div>
+                <div style={{ font: "700 calc(15px * var(--ts))/1 var(--display)", marginTop: 3 }}>{row.value}</div>
               </div>
             ))}
           </div>
@@ -727,7 +727,7 @@ function Tile({ k, v, accent, last }: { k: string; v: string; accent?: boolean; 
     }}>
       <div className="label">{k}</div>
       <div style={{
-        font: "700 22px/1 var(--display)", marginTop: 4,
+        font: "700 calc(22px * var(--ts))/1 var(--display)", marginTop: 4,
         color: accent ? 'var(--clay)' : 'var(--ink)',
       }}>{v}</div>
     </div>
@@ -742,7 +742,7 @@ function Stat({ k, v, last }: { k: string; v: string; last?: boolean }) {
       paddingLeft: last ? 8 : 0,
     }}>
       <div className="label">{k}</div>
-      <div style={{ font: "700 14px/1.1 var(--display)", marginTop: 3 }}>{v}</div>
+      <div style={{ font: "700 calc(14px * var(--ts))/1.1 var(--display)", marginTop: 3 }}>{v}</div>
     </div>
   );
 }

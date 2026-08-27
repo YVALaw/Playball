@@ -80,7 +80,7 @@ export function Roster() {
                 : `${hittersAll.length + armsAll.length} PLAYERS`}
             </div>
             <div style={{
-              font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
               color: teamColour(team.def.abbr),
             }}>{team.def.school}</div>
           </div>
@@ -126,7 +126,7 @@ export function Roster() {
         {shown === 0 && (
           <div style={{
             padding: '16px 12px', textAlign: 'center',
-            font: "400 12px/1.5 var(--body)", color: 'var(--dim)',
+            font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
           }}>
             Nobody fits that filter. Whole roster, no such man.
           </div>
@@ -199,7 +199,7 @@ function Chip(
         background: on ? 'var(--clay)' : 'transparent',
         border: `1px solid ${on ? 'var(--clay)' : 'rgba(28,36,48,.25)'}`,
         color: on ? 'var(--cream)' : 'rgba(28,36,48,.6)',
-        font: "600 10px var(--mono)", letterSpacing: '.14em',
+        font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.14em',
       }}
     >{children}</button>
   );
@@ -237,7 +237,7 @@ function Select(
           color: on ? 'var(--cream)' : 'var(--ink)',
           // 16px is the floor on anything a phone can focus, or the browser
           // zooms the page in and stays there. Same rule as the text inputs.
-          font: "600 16px var(--mono)",
+          font: "600 calc(16px * var(--ts)) var(--mono)",
           appearance: 'none', WebkitAppearance: 'none',
         }}
       >
@@ -313,7 +313,7 @@ function Cells(
           column; the style rules below are written against grid position. */}
       {values.map((v0, i0) => { const i = i0 + 1; const v = v0; return (
         <span key={i} style={{
-          font: `400 ${i === 1 ? 12 : 11}px ${i === 1 ? 'var(--body)' : 'var(--mono)'}`,
+          font: `400 calc(${i === 1 ? 12 : 11}px * var(--ts)) ${i === 1 ? 'var(--body)' : 'var(--mono)'}`,
           textAlign: i > 1 ? 'right' : 'left',
           color: i === 3 ? classColor(v) : 'var(--ink)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',

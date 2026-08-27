@@ -349,7 +349,7 @@ export function Board() {
             RECRUITING · {live ? `WEEK ${week} OF ${RECRUITING_WEEKS}` : 'SIGNED'}
           </div>
           <div style={{
-            font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+            font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
           }}>The board</div>
         </div>
         {/*
@@ -379,7 +379,7 @@ export function Board() {
             background: filtersOpen || activeFilters ? 'var(--clay)' : 'var(--paper)',
             border: `1px solid ${filtersOpen || activeFilters ? 'var(--clay)' : 'rgba(28,36,48,.28)'}`,
             color: filtersOpen || activeFilters ? 'var(--cream)' : 'var(--ink)',
-            font: "700 9px var(--mono)", letterSpacing: '.1em',
+            font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.1em',
           }}
         >FILTER{activeFilters ? ' ON' : ''}</button>
       </div>
@@ -412,7 +412,7 @@ export function Board() {
               background: v === view ? 'var(--clay)' : 'var(--paper)',
               border: v === view ? '1px solid var(--clay)' : '1px solid rgba(28,36,48,.28)',
               color: v === view ? 'var(--cream)' : 'var(--ink)',
-              font: "700 8.5px var(--mono)", letterSpacing: '.08em',
+              font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
             }}
           >
             {VIEW_LABEL[v]}
@@ -443,10 +443,10 @@ export function Board() {
         }}>
           <div style={{ padding: '5px 10px', background: 'var(--clay)' }}>
             <span style={{
-              font: "700 9px var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
+              font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
             }}>WEEK {lastWeek.closed} IS OVER</span>
           </div>
-          <div style={{ padding: '10px 11px', font: "400 12px/1.5 var(--body)" }}>
+          <div style={{ padding: '10px 11px', font: "400 calc(12px * var(--ts))/1.5 var(--body)" }}>
             {lastWeek.yours.length > 0 ? (
               <div style={{ marginBottom: 6 }}>
                 <strong>Committed to you:</strong> {lastWeek.yours.join(', ')}.
@@ -480,7 +480,7 @@ export function Board() {
           }}>
             {(view === 'recruits' ? list : view === 'targets' ? targets : commits).length === 0 && (
               <div style={{
-                padding: '18px 12px', font: "400 12px var(--body)", color: 'var(--dim)',
+                padding: '18px 12px', font: "400 calc(12px * var(--ts)) var(--body)", color: 'var(--dim)',
                 textAlign: 'center',
               }}>
                 {view === 'targets' ? 'Nobody on your board yet.'
@@ -538,7 +538,7 @@ export function Board() {
                 ))}
               </div>
               <div style={{
-                marginTop: 6, font: "400 11px/1.45 var(--body)", color: 'var(--dim)',
+                marginTop: 6, font: "400 calc(11px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
               }}>
                 A program of yours can call a recruit one grade above it, and one
                 more than that inside your own state. Build the program up and
@@ -653,17 +653,17 @@ function Row({
       <Avatar id={p.id} team={p.signedBy !== null ? abbr : undefined} size={34} />
       <span style={{ minWidth: 0 }}>
         <span style={{
-          display: 'block', font: `${spent > 0 ? 700 : 400} 13px var(--body)`,
+          display: 'block', font: `${spent > 0 ? 700 : 400} calc(13px * var(--ts)) var(--body)`,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>{p.player.name}</span>
         <span style={{
-          display: 'block', marginTop: 1, font: "400 10px var(--mono)", color: 'var(--dim)',
+          display: 'block', marginTop: 1, font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
         }}>
           #{p.rank} · {slotOf(p)} · {p.state} · {PRIORITY_LABEL[topPriority(p)]}
         </span>
       </span>
       <span style={{
-        font: "700 8.5px var(--mono)", letterSpacing: '.08em', color: s.tone,
+        font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em', color: s.tone,
         whiteSpace: 'nowrap', textAlign: 'right',
       }}>
         {s.label}
@@ -675,7 +675,7 @@ function Row({
         )}
       </span>
       <span style={{
-        font: "600 11px var(--mono)", color: 'var(--clay)', whiteSpace: 'nowrap',
+        font: "600 calc(11px * var(--ts)) var(--mono)", color: 'var(--clay)', whiteSpace: 'nowrap',
       }}>{'★'.repeat(p.stars)}</span>
     </button>
   );
@@ -690,7 +690,7 @@ function CapButton({ label, onClick }: { label: string; onClick: () => void }) {
       style={{
         width: '100%', marginTop: 8, padding: '10px 0',
         background: 'var(--paper)', border: '1px solid rgba(28,36,48,.28)',
-        color: 'var(--ink)', font: "700 9.5px var(--mono)", letterSpacing: '.1em',
+        color: 'var(--ink)', font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.1em',
       }}
     >{label}</button>
   );
@@ -760,7 +760,7 @@ function FilterPanel({
               background: filters.stars.includes(n) ? 'var(--clay)' : 'var(--field)',
               border: `1px solid ${filters.stars.includes(n) ? 'var(--clay)' : 'rgba(28,36,48,.2)'}`,
               color: filters.stars.includes(n) ? 'var(--cream)' : 'var(--ink)',
-              font: "700 10px var(--mono)", letterSpacing: '.04em',
+              font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.04em',
             }}
           >{n}★</button>
         ))}
@@ -773,7 +773,7 @@ function FilterPanel({
         style={{
           width: '100%', padding: '9px 8px',
           background: 'var(--field)', border: '1px solid rgba(28,36,48,.28)',
-          color: 'var(--ink)', font: "600 12px var(--mono)",
+          color: 'var(--ink)', font: "600 calc(12px * var(--ts)) var(--mono)",
           borderRadius: 0, appearance: 'none',
         }}
       >
@@ -818,7 +818,7 @@ function Chip({ on, onClick, children }: {
         background: on ? 'var(--clay)' : 'var(--field)',
         border: `1px solid ${on ? 'var(--clay)' : 'rgba(28,36,48,.2)'}`,
         color: on ? 'var(--cream)' : 'var(--ink)',
-        font: "700 9px var(--mono)", letterSpacing: '.06em',
+        font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.06em',
       }}
     >{children}</button>
   );
@@ -839,11 +839,11 @@ function Switch({ on, onClick, label, note }: {
       }}
     >
       <span style={{
-        display: 'block', font: "700 9.5px var(--mono)", letterSpacing: '.1em',
+        display: 'block', font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.1em',
         color: on ? 'var(--cream)' : 'var(--ink)',
       }}>{label}</span>
       <span style={{
-        display: 'block', marginTop: 3, font: "400 10.5px/1.35 var(--body)",
+        display: 'block', marginTop: 3, font: "400 calc(10.5px * var(--ts))/1.35 var(--body)",
         color: on ? 'rgba(246,241,230,.78)' : 'var(--dim)',
       }}>{note}</span>
     </button>
@@ -880,7 +880,7 @@ function NeedsView(
       <div style={{
         marginBottom: 10, padding: '9px 11px', background: 'var(--paper)',
         borderLeft: `3px solid ${total === 0 ? 'var(--win)' : 'var(--clay)'}`,
-        font: "400 11.5px/1.5 var(--body)", color: 'var(--ink)',
+        font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--ink)',
       }}>
         {total === 0
           ? 'Every spot is covered. Nobody walks on this year. The whole roster '
@@ -906,13 +906,13 @@ function NeedsView(
               }}
             >
               <span style={{
-                font: "700 13px var(--mono)", letterSpacing: '.06em', color: 'var(--clay)',
+                font: "700 calc(13px * var(--ts)) var(--mono)", letterSpacing: '.06em', color: 'var(--clay)',
               }}>{h.pos}</span>
-              <span style={{ font: "400 11.5px/1.4 var(--body)", color: 'var(--dim)' }}>
+              <span style={{ font: "400 calc(11.5px * var(--ts))/1.4 var(--body)", color: 'var(--dim)' }}>
                 {h.count > 1 ? `${h.count} walk-ons` : 'one walk-on'} unless you sign
               </span>
               <span style={{
-                font: "700 8px var(--mono)", letterSpacing: '.1em', color: 'var(--dim)',
+                font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: 'var(--dim)',
               }}>SHOW ME →</span>
             </button>
           ))}
@@ -937,13 +937,13 @@ function NeedsView(
                 }}
               >
                 <span style={{
-                  font: "700 13px var(--mono)", letterSpacing: '.06em', color: 'var(--win)',
+                  font: "700 calc(13px * var(--ts)) var(--mono)", letterSpacing: '.06em', color: 'var(--win)',
                 }}>{h.pos}</span>
-                <span style={{ font: "400 11.5px/1.4 var(--body)", color: 'var(--dim)' }}>
+                <span style={{ font: "400 calc(11.5px * var(--ts))/1.4 var(--body)", color: 'var(--dim)' }}>
                   {h.count > 1 ? `${h.count} spots` : 'one spot'} the class fills
                 </span>
                 <span style={{
-                  font: "700 8px var(--mono)", letterSpacing: '.1em', color: 'var(--win)',
+                  font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: 'var(--win)',
                 }}>COVERED</span>
               </div>
             ))}
@@ -985,13 +985,13 @@ function RosterView() {
               >
                 <Avatar id={p.id} size={28} />
                 <span style={{
-                  font: "400 12.5px var(--body)",
+                  font: "400 calc(12.5px * var(--ts)) var(--body)",
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>{p.name}</span>
-                <span style={{ font: "400 10px var(--mono)", color: 'var(--dim)' }}>
+                <span style={{ font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
                   {p.type === 'pitcher' ? (p as Pitcher).role : p.pos} · {p.classYear}
                 </span>
-                <span style={{ font: "600 12px var(--mono)" }}>{overallOf(p)}</span>
+                <span style={{ font: "600 calc(12px * var(--ts)) var(--mono)" }}>{overallOf(p)}</span>
               </button>
             ))}
           </div>
@@ -1048,10 +1048,10 @@ function ProspectSheet({
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <span style={{
-            font: "600 9px var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
+            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
           }}>{'★'.repeat(prospect.stars)} · {prospect.state}</span>
           <button onClick={onClose} style={{
-            font: "600 9px var(--mono)", letterSpacing: '.14em', color: 'rgba(246,241,230,.8)',
+            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(246,241,230,.8)',
           }}>CLOSE</button>
         </div>
 
@@ -1061,10 +1061,10 @@ function ProspectSheet({
         }}>
           <Avatar id={p.id} size={54} />
           <div style={{ minWidth: 0 }}>
-          <div style={{ font: "800 22px/1 var(--display)", textTransform: 'uppercase' }}>
+          <div style={{ font: "800 calc(22px * var(--ts))/1 var(--display)", textTransform: 'uppercase' }}>
             {p.name}
           </div>
-          <div style={{ marginTop: 3, font: "400 11px var(--mono)", color: 'var(--dim)' }}>
+          <div style={{ marginTop: 3, font: "400 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
             {slotOf(prospect)} &middot; bats {p.bats} &middot; throws {p.throws}
             {' '}&middot; <span style={{ color: s.tone }}>{s.label}</span>
           </div>
@@ -1081,7 +1081,7 @@ function ProspectSheet({
                 background: t === tab ? 'var(--ink)' : 'var(--field)',
                 border: 'none',
                 color: t === tab ? 'var(--cream)' : 'var(--dim)',
-                font: "700 8.5px var(--mono)", letterSpacing: '.08em',
+                font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
               }}
             >{SHEET_LABEL[t]}</button>
           ))}
@@ -1143,19 +1143,19 @@ function Overview({
         <div style={{ display: 'flex', gap: 14, alignItems: 'baseline' }}>
           <div>
             <div className="label">OVERALL</div>
-            <div style={{ font: "700 18px/1 var(--display)", marginTop: 3 }}>
+            <div style={{ font: "700 calc(18px * var(--ts))/1 var(--display)", marginTop: 3 }}>
               {overall.low}&ndash;{overall.high}
             </div>
           </div>
           <div>
             <div className="label">CEILING</div>
-            <div style={{ font: "700 18px/1 var(--display)", marginTop: 3 }}>
+            <div style={{ font: "700 calc(18px * var(--ts))/1 var(--display)", marginTop: 3 }}>
               {ceiling.low} &ndash; {ceiling.high}
             </div>
           </div>
         </div>
         <div style={{
-          marginTop: 8, font: "400 11.5px/1.45 var(--body)", color: 'var(--ink)',
+          marginTop: 8, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--ink)',
         }}>&ldquo;{hints.ceiling.text}&rdquo;</div>
       </div>
 
@@ -1166,10 +1166,10 @@ function Overview({
             display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
             padding: '6px 0', borderBottom: '1px solid var(--hairline)',
           }}>
-            <span style={{ font: "600 11px var(--mono)", letterSpacing: '.06em' }}>
+            <span style={{ font: "600 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.06em' }}>
               {PRIORITY_LABEL[k]}
             </span>
-            <span style={{ font: "400 11px var(--body)", color: 'var(--dim)' }}>
+            <span style={{ font: "400 calc(11px * var(--ts)) var(--body)", color: 'var(--dim)' }}>
               {PRIORITY_BLURB[k]}
             </span>
           </div>
@@ -1180,7 +1180,7 @@ function Overview({
         <div style={{
           marginTop: 12, padding: '11px 12px', background: 'var(--field)',
           borderLeft: '3px solid var(--clay)',
-          font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
+          font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
         }}>
           <strong style={{ color: 'var(--ink)' }}>He will not take the call.</strong>
           {' '}A {'★'.repeat(prospect.stars)} recruit hears out a{' '}
@@ -1194,7 +1194,7 @@ function Overview({
         <div style={{
           marginTop: 12, padding: '11px 12px', background: 'var(--field)',
           borderLeft: '3px solid var(--win)',
-          font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
+          font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
         }}>
           <strong style={{ color: 'var(--ink)' }}>He is in your pipeline.</strong>
           {' '}A kid from your own state will hear out a program a rung below
@@ -1207,7 +1207,7 @@ function Overview({
         <div style={{
           marginTop: 12, padding: '11px 12px', background: 'var(--field)',
           borderLeft: '3px solid var(--clay)',
-          font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
+          font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
         }}>
           <strong style={{ color: 'var(--ink)' }}>Your class is full.</strong>
           {' '}Every scholarship is spoken for.
@@ -1218,7 +1218,7 @@ function Overview({
         <div style={{ marginTop: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <span className="label">YOUR OFFER</span>
-            <span style={{ font: "700 11px var(--mono)", color: 'var(--clay)' }}>
+            <span style={{ font: "700 calc(11px * var(--ts)) var(--mono)", color: 'var(--clay)' }}>
               +{Math.round(gain)} pts a week
             </span>
           </div>
@@ -1233,7 +1233,7 @@ function Overview({
             display: 'flex', alignItems: 'center', gap: 12, marginTop: 8,
           }}>
             <span style={{
-              font: "800 26px/1 var(--display)", color: spent > 0 ? 'var(--clay)' : 'var(--dim)',
+              font: "800 calc(26px * var(--ts))/1 var(--display)", color: spent > 0 ? 'var(--clay)' : 'var(--dim)',
               minWidth: 34, textAlign: 'right',
             }}>{spent}</span>
             {/*
@@ -1292,14 +1292,14 @@ function Overview({
                 flex: 'none', padding: '6px 9px', background: 'transparent',
                 border: '1px solid rgba(28,36,48,.22)',
                 color: spent > 0 ? 'var(--dim)' : 'rgba(28,36,48,.2)',
-                font: "700 8.5px var(--mono)", letterSpacing: '.08em',
+                font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
               }}
             >OFF</button>
           </div>
 
           <div style={{
             display: 'flex', justifyContent: 'space-between',
-            marginTop: 8, font: "400 10.5px var(--mono)", color: 'var(--dim)',
+            marginTop: 8, font: "400 calc(10.5px * var(--ts)) var(--mono)", color: 'var(--dim)',
           }}>
             <span>Budget: <strong style={{ color: 'var(--ink)' }}>{left}</strong> left</span>
             {/* Off his star rating, not off the floor stored on him: a save
@@ -1330,7 +1330,7 @@ function Step(
         background: disabled ? 'transparent' : 'var(--field)',
         border: `1px solid ${disabled ? 'rgba(28,36,48,.14)' : 'rgba(28,36,48,.34)'}`,
         color: disabled ? 'rgba(28,36,48,.22)' : 'var(--ink)',
-        font: "700 18px var(--mono)", lineHeight: 1,
+        font: "700 calc(18px * var(--ts)) var(--mono)", lineHeight: 1,
       }}
     >{label}</button>
   );
@@ -1372,10 +1372,10 @@ function Report({
         background: 'var(--field)', borderLeft: '3px solid var(--clay)',
       }}>
         <div className="label" style={{ marginBottom: 5 }}>WHAT THEY SAY</div>
-        <div style={{ font: "400 11.5px/1.5 var(--body)" }}>
+        <div style={{ font: "400 calc(11.5px * var(--ts))/1.5 var(--body)" }}>
           &ldquo;{hints.ceiling.text}&rdquo;
         </div>
-        <div style={{ marginTop: 6, font: "400 11.5px/1.5 var(--body)" }}>
+        <div style={{ marginTop: 6, font: "400 calc(11.5px * var(--ts))/1.5 var(--body)" }}>
           &ldquo;{hints.development.text}&rdquo;
         </div>
       </div>
@@ -1387,8 +1387,8 @@ function Report({
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             padding: '7px 0', borderBottom: '1px solid var(--hairline)',
           }}>
-            <span style={{ font: "600 10px var(--mono)", letterSpacing: '.08em' }}>{label}</span>
-            <span style={{ font: "600 12px var(--mono)", color: 'var(--dim)' }}>
+            <span style={{ font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.08em' }}>{label}</span>
+            <span style={{ font: "600 calc(12px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
               {low}&ndash;{high}
             </span>
           </div>
@@ -1401,7 +1401,7 @@ function Report({
         careers, and the coach point that bought it goes uncredited.
       */}
       <div style={{
-        marginTop: 12, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+        marginTop: 12, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
       }}>
         Estimates, not measurements. Your reports run{' '}
         <strong style={{ color: 'var(--ink)' }}>
@@ -1426,12 +1426,12 @@ function Stats({ prospect }: { prospect: Prospect }) {
             borderBottom: '1px solid var(--hairline)',
           }}>
             <div className="label">{row.label}</div>
-            <div style={{ font: "700 16px/1 var(--display)", marginTop: 3 }}>{row.value}</div>
+            <div style={{ font: "700 calc(16px * var(--ts))/1 var(--display)", marginTop: 3 }}>{row.value}</div>
           </div>
         ))}
       </div>
       <div style={{
-        marginTop: 10, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+        marginTop: 10, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
       }}>
         High school numbers, against high school pitching. Everybody's look
         absurd; what matters is whose look absurd for the right reasons.
@@ -1454,7 +1454,7 @@ function Schools({ prospect, userTeam }: { prospect: Prospect; userTeam: number 
     <>
       <div className="label" style={{ marginBottom: 6 }}>WHO ELSE IS IN</div>
       {rivals.length === 0 && (
-        <div style={{ font: "400 12px/1.55 var(--body)", color: 'var(--dim)' }}>
+        <div style={{ font: "400 calc(12px * var(--ts))/1.55 var(--body)", color: 'var(--dim)' }}>
           Nobody has been to see him. That is an opportunity or a warning, and the
           only way to find out is to spend on him.
         </div>
@@ -1468,10 +1468,10 @@ function Schools({ prospect, userTeam }: { prospect: Prospect; userTeam: number 
               display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
             }}>
               <span style={{
-                font: `${mine ? 700 : 400} 12.5px var(--body)`,
+                font: `${mine ? 700 : 400} calc(12.5px * var(--ts)) var(--body)`,
                 color: mine ? 'var(--clay)' : 'var(--ink)',
               }}>{t?.def.school ?? '?'}{mine ? ' (you)' : ''}</span>
-              <span style={{ font: "600 10px var(--mono)", color: 'var(--dim)' }}>
+              <span style={{ font: "600 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
                 {Math.round(r.pts)}
               </span>
             </div>
@@ -1496,7 +1496,7 @@ function Tile({ k, v, accent, last }: { k: string; v: string; accent?: boolean; 
     }}>
       <div className="label">{k}</div>
       <div style={{
-        font: "700 17px/1 var(--display)", marginTop: 3,
+        font: "700 calc(17px * var(--ts))/1 var(--display)", marginTop: 3,
         color: accent ? 'var(--clay)' : 'var(--ink)',
       }}>{v}</div>
     </div>
@@ -1511,7 +1511,7 @@ function Stat({ k, v, last }: { k: string; v: string; last?: boolean }) {
       paddingLeft: last ? 10 : 0,
     }}>
       <div className="label">{k}</div>
-      <div style={{ font: "700 20px/1 var(--display)", marginTop: 3 }}>{v}</div>
+      <div style={{ font: "700 calc(20px * var(--ts))/1 var(--display)", marginTop: 3 }}>{v}</div>
     </div>
   );
 }

@@ -460,7 +460,7 @@ function CardHead(
 
       <div style={{
         marginTop: 6, textAlign: 'center',
-        font: "800 21px/0.95 var(--display)", textTransform: 'uppercase',
+        font: "800 calc(21px * var(--ts))/0.95 var(--display)", textTransform: 'uppercase',
       }}>{name}</div>
 
       <div className="label" style={{ marginTop: 4, textAlign: 'center' }}>{sub}</div>
@@ -468,7 +468,7 @@ function CardHead(
       {school && (
         <div style={{
           marginTop: 3, textAlign: 'center',
-          font: "600 10px var(--mono)", letterSpacing: '.1em',
+          font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.1em',
           color: teamColour(abbr),
         }}>{school.name.toUpperCase()} · {school.conference}</div>
       )}
@@ -490,7 +490,7 @@ function Flank({ k, v, align }: { k: string; v: string; align: 'left' | 'right' 
     <div style={{ minWidth: 52, textAlign: align }}>
       <div className="label">{k}</div>
       <div style={{
-        marginTop: 1, font: "800 20px/1 var(--display)", textTransform: 'uppercase',
+        marginTop: 1, font: "800 calc(20px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
       }}>{v}</div>
     </div>
   );
@@ -511,7 +511,7 @@ function TabStrip(
             background: s === at ? 'var(--ink)' : 'var(--field)',
             border: s === at ? '1px solid var(--ink)' : '1px solid var(--faint)',
             color: s === at ? 'var(--cream)' : 'var(--dim)',
-            font: "700 8.5px var(--mono)", letterSpacing: '.08em',
+            font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
           }}
         >{SHEET_LABEL[s]}</button>
       ))}
@@ -625,12 +625,12 @@ function Badges({ p }: { p: AnyPlayer }) {
                   alignItems: 'baseline', gap: 10,
                 }}>
                   <span style={{
-                    font: "700 12px var(--display)", letterSpacing: '.02em', color: 'var(--clay)',
+                    font: "700 calc(12px * var(--ts)) var(--display)", letterSpacing: '.02em', color: 'var(--clay)',
                   }}>{BADGES[b.id].label}</span>
                   <span className="label" style={{ color: 'var(--dim)' }}>{TIER_NAME[b.tier]}</span>
                 </div>
                 <div style={{
-                  font: "400 10px/1.4 var(--body)", color: 'var(--dim)', marginTop: 2,
+                  font: "400 calc(10px * var(--ts))/1.4 var(--body)", color: 'var(--dim)', marginTop: 2,
                 }}>{BADGES[b.id].note}</div>
               </div>
             ))}
@@ -671,7 +671,7 @@ function Ratings({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
             display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
           }}>
             <span className="label">FASTBALL</span>
-            <span style={{ font: "600 13px var(--mono)" }}>
+            <span style={{ font: "600 calc(13px * var(--ts)) var(--mono)" }}>
               {(p as Pitcher).velocity} mph
             </span>
           </div>
@@ -721,7 +721,7 @@ function Repertoire({ p }: { p: Pitcher }) {
               alignItems: 'baseline', marginBottom: 3, gap: 8,
             }}>
               <span className="label">{PITCHES[o.id].name}</span>
-              <span style={{ font: "600 11px var(--mono)", color: 'var(--dim)' }}>
+              <span style={{ font: "600 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
                 {speedOf(p, o.id)} · {Math.round(o.usage * 100)}%
               </span>
             </div>
@@ -786,8 +786,8 @@ function Platoon({ p }: { p: AnyPlayer }) {
             borderBottom: i === rows.length - 1 ? 'none' : '1px solid var(--hairline)',
           }}>
             <span className="label">{k}</span>
-            <span style={{ font: "600 14px var(--mono)", minWidth: 46, textAlign: 'right' }}>{r}</span>
-            <span style={{ font: "600 14px var(--mono)", minWidth: 46, textAlign: 'right' }}>{l}</span>
+            <span style={{ font: "600 calc(14px * var(--ts)) var(--mono)", minWidth: 46, textAlign: 'right' }}>{r}</span>
+            <span style={{ font: "600 calc(14px * var(--ts)) var(--mono)", minWidth: 46, textAlign: 'right' }}>{l}</span>
           </div>
         ))}
       </div>
@@ -854,7 +854,7 @@ function Tendencies({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
                 alignItems: 'baseline', gap: 10,
               }}>
                 <span style={{
-                  font: "600 12px var(--display)", letterSpacing: '.02em',
+                  font: "600 calc(12px * var(--ts)) var(--display)", letterSpacing: '.02em',
                   color: known && label ? 'var(--clay)' : 'var(--dim)',
                 }}>
                   {known ? (label ?? 'NOTHING UNUSUAL') : 'STILL WATCHING'}
@@ -863,7 +863,7 @@ function Tendencies({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
               </div>
               {known && label && (
                 <div style={{
-                  font: "400 10px/1.4 var(--body)", color: 'var(--dim)', marginTop: 3,
+                  font: "400 calc(10px * var(--ts))/1.4 var(--body)", color: 'var(--dim)', marginTop: 3,
                 }}>
                   {(tendenciesOf(p)[slot] ?? 0) > 0 ? spec.plusNote : spec.minusNote}
                 </div>
@@ -1099,18 +1099,18 @@ function Games({ id, owner, isOurs }: { id: PlayerId; owner: Owner; isOurs: bool
                 padding: '8px 10px', borderBottom: '1px solid var(--hairline)',
               }}
             >
-              <span style={{ font: "400 10px var(--mono)", color: 'var(--dim)' }}>
+              <span style={{ font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
                 {seasonDate(year, r.day)} · {r.home ? 'vs' : '@'} {r.opponent}
               </span>
               <span style={{
-                font: "600 10px var(--mono)", textAlign: 'right',
+                font: "600 calc(10px * var(--ts)) var(--mono)", textAlign: 'right',
                 color: r.won ? 'var(--win)' : 'var(--loss)',
               }}>{r.won ? 'W' : 'L'} {r.us}-{r.them}</span>
               <span style={{
-                gridColumn: '1 / -1', marginTop: 2, font: "400 12px var(--body)",
+                gridColumn: '1 / -1', marginTop: 2, font: "400 calc(12px * var(--ts)) var(--body)",
               }}>
                 <span style={{
-                  font: "600 9px var(--mono)", color: 'var(--dim)', marginRight: 7,
+                  font: "600 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)', marginRight: 7,
                 }}>{r.slot}</span>
                 {r.line}
               </span>
@@ -1231,29 +1231,29 @@ function CareerTable(
           padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
         }}>
           <span style={{
-            font: "700 12px var(--display)",
+            font: "700 calc(12px * var(--ts)) var(--display)",
             color: y.year === live ? 'var(--clay)' : 'var(--ink)',
           }}>{y.year}</span>
-          <span style={{ font: "400 10px var(--mono)", color: 'var(--dim)' }}>{y.classYear}</span>
-          <span style={{ font: "400 10px var(--mono)", color: 'var(--dim)' }}>{y.team}</span>
+          <span style={{ font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>{y.classYear}</span>
+          <span style={{ font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>{y.team}</span>
           {isPitcher ? (
             <>
-              <span style={{ font: "500 11px var(--mono)" }}>{y.w ?? 0}-{y.l ?? 0}</span>
-              <span style={{ font: "500 11px var(--mono)" }}>
+              <span style={{ font: "500 calc(11px * var(--ts)) var(--mono)" }}>{y.w ?? 0}-{y.l ?? 0}</span>
+              <span style={{ font: "500 calc(11px * var(--ts)) var(--mono)" }}>
                 {y.outs ? ((y.er ?? 0) * 27 / y.outs).toFixed(2) : '—'}
               </span>
-              <span style={{ font: "500 11px var(--mono)" }}>{y.k ?? 0}</span>
+              <span style={{ font: "500 calc(11px * var(--ts)) var(--mono)" }}>{y.k ?? 0}</span>
             </>
           ) : (
             <>
-              <span style={{ font: "500 11px var(--mono)" }}>
+              <span style={{ font: "500 calc(11px * var(--ts)) var(--mono)" }}>
                 {y.ab ? pct((y.h ?? 0) / y.ab) : '—'}
               </span>
-              <span style={{ font: "500 11px var(--mono)" }}>{y.hr ?? 0}</span>
-              <span style={{ font: "500 11px var(--mono)" }}>{y.rbi ?? 0}</span>
+              <span style={{ font: "500 calc(11px * var(--ts)) var(--mono)" }}>{y.hr ?? 0}</span>
+              <span style={{ font: "500 calc(11px * var(--ts)) var(--mono)" }}>{y.rbi ?? 0}</span>
             </>
           )}
-          <span style={{ font: "500 11px var(--mono)", color: 'var(--dim)' }}>
+          <span style={{ font: "500 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
             {(y.chances ?? 0) > 0 ? (y.errors ?? 0) : '—'}
           </span>
         </div>
@@ -1271,7 +1271,7 @@ function Nobody() {
     <div style={{ padding: '28px 16px', textAlign: 'center' }}>
       <div className="label">NO PLAYER SELECTED</div>
       <div style={{
-        marginTop: 8, font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
+        marginTop: 8, font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
       }}>Tap a name on the roster.</div>
     </div>
   );
@@ -1295,7 +1295,7 @@ function Panel({ children }: { children: ReactNode }) {
 
 function Note({ children }: { children: ReactNode }) {
   return (
-    <div style={{ marginTop: 8, font: "400 11px/1.5 var(--body)", color: 'var(--dim)' }}>
+    <div style={{ marginTop: 8, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
       {children}
     </div>
   );
@@ -1303,7 +1303,7 @@ function Note({ children }: { children: ReactNode }) {
 
 function Empty({ children }: { children: ReactNode }) {
   return (
-    <div style={{ padding: '12px', font: "400 12px/1.5 var(--body)", color: 'var(--dim)' }}>
+    <div style={{ padding: '12px', font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
       {children}
     </div>
   );
@@ -1317,7 +1317,7 @@ function Tile({ k, v, accent, last }: { k: string; v: string; accent?: boolean; 
     }}>
       <div className="label">{k}</div>
       <div style={{
-        font: "700 24px/1 var(--display)", marginTop: 2,
+        font: "700 calc(24px * var(--ts))/1 var(--display)", marginTop: 2,
         color: accent ? 'var(--clay)' : 'var(--ink)',
       }}>{v}</div>
     </div>
@@ -1332,7 +1332,7 @@ function Stat({ k, v, last }: { k: string; v: string; last?: boolean }) {
       borderBottom: last ? 'none' : '1px solid var(--hairline)',
     }}>
       <span className="label">{k}</span>
-      <span style={{ font: "600 14px var(--mono)", textAlign: 'right' }}>{v}</span>
+      <span style={{ font: "600 calc(14px * var(--ts)) var(--mono)", textAlign: 'right' }}>{v}</span>
     </div>
   );
 }
@@ -1354,7 +1354,7 @@ function Bar({ label, value }: { label: string; value: number }) {
         alignItems: 'baseline', marginBottom: 4,
       }}>
         <span className="label">{label}</span>
-        <span style={{ font: "600 11px var(--mono)", color: 'var(--dim)' }}>{value}</span>
+        <span style={{ font: "600 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>{value}</span>
       </div>
       <div style={{ height: 6, background: 'rgba(28,36,48,.09)' }}>
         <div style={{

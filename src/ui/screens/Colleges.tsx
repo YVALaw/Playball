@@ -44,7 +44,7 @@ export function Colleges() {
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
             <div className="label">{season.teams.length} PROGRAMS · {byConference.length} CONFERENCES</div>
             <div style={{
-              font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
             }}>Colleges</div>
           </div>
         </div>
@@ -62,7 +62,7 @@ export function Colleges() {
               display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
             }}>
               <span className="label">{c.name}</span>
-              <span style={{ font: "400 9px var(--mono)", color: 'var(--dim)' }}>
+              <span style={{ font: "400 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
                 {c.teams.length}
               </span>
             </div>
@@ -86,23 +86,23 @@ export function Colleges() {
                     }}
                   >
                     <span style={{
-                      font: "700 10px var(--mono)", letterSpacing: '.06em',
+                      font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.06em',
                       color: teamColour(t.def.abbr),
                     }}>{t.def.abbr}</span>
                     <span style={{ minWidth: 0 }}>
                       <span style={{
-                        display: 'block', font: `${mine ? 700 : 400} 12.5px var(--body)`,
+                        display: 'block', font: `${mine ? 700 : 400} calc(12.5px * var(--ts)) var(--body)`,
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       }}>{t.def.school}</span>
                       <span style={{
-                        display: 'block', font: "400 9px var(--mono)", color: 'var(--dim)',
+                        display: 'block', font: "400 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)',
                       }}>{t.def.nickname}</span>
                     </span>
                     <span style={{
-                      font: "600 9px var(--mono)", color: 'var(--clay)', whiteSpace: 'nowrap',
+                      font: "600 calc(9px * var(--ts)) var(--mono)", color: 'var(--clay)', whiteSpace: 'nowrap',
                     }}>{'★'.repeat(stars)}</span>
                     <span style={{
-                      font: "400 11px var(--mono)", color: 'var(--dim)',
+                      font: "400 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)',
                       minWidth: 38, textAlign: 'right',
                     }}>{t.w}-{t.l}</span>
                   </button>

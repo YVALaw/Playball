@@ -89,16 +89,16 @@ export function FirstVisit({ id }: { id: string }) {
             style={{
               padding: '6px 9px', background: 'transparent',
               border: '1px solid var(--faint)', color: 'var(--dim)',
-              font: "700 8.5px var(--mono)", letterSpacing: '.14em',
+              font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.14em',
             }}
           >SKIP</button>
         </div>
         <div style={{ padding: '8px 12px 12px' }}>
           <div style={{
-            font: "800 22px/1 var(--display)", textTransform: 'uppercase',
+            font: "800 calc(22px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
           }}>{current.title}</div>
           <div style={{
-            marginTop: 7, font: "400 12.5px/1.55 var(--body)", color: 'var(--ink)',
+            marginTop: 7, font: "400 calc(12.5px * var(--ts))/1.55 var(--body)", color: 'var(--ink)',
           }}>{current.body}</div>
         </div>
         <div style={{
@@ -120,7 +120,7 @@ export function FirstVisit({ id }: { id: string }) {
               padding: '11px 22px', minHeight: 44,
               background: 'var(--clay)', border: '1px solid var(--clay)',
               color: 'var(--cream)',
-              font: "700 11px var(--mono)", letterSpacing: '.14em',
+              font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.14em',
             }}
           >{last ? 'GOT IT' : 'NEXT'}</button>
         </div>

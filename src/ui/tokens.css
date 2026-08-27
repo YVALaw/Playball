@@ -25,6 +25,20 @@
   --display: 'Big Shoulders Display', sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
   --body: 'Source Sans 3', system-ui, sans-serif;
+
+  /* The text scale.
+   *
+   * Every font size in the app is written `calc(<n>px * var(--ts))`, so this
+   * one number is the whole of the text-size setting. It defaults to 1, which
+   * is the design exactly as drawn — a save that has never opened settings
+   * looks precisely as it always did.
+   *
+   * It lives on :root rather than on the app frame because a bottom sheet and
+   * the live-game screen both render outside the frame's subtree, and type that
+   * did not scale in a sheet would be worse than type that did not scale at
+   * all. The device settings write it here; it is never stored in the save,
+   * because a preference belongs to the phone rather than the dynasty. */
+  --ts: 1;
 }
 
 * { box-sizing: border-box; }
@@ -127,7 +141,7 @@ body {
 
 /* Labels: small, wide-tracked, upper. Used for every column head and tag. */
 .label {
-  font: 500 8.5px var(--mono);
+  font: 500 calc(8.5px * var(--ts)) var(--mono);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: rgba(28, 36, 48, 0.5);

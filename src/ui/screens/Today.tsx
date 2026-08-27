@@ -170,17 +170,17 @@ export function Today() {
           }}>
             <div>
               <div style={{
-                font: "500 9px/1 var(--mono)", letterSpacing: '.2em', color: 'var(--dim)',
+                font: "500 calc(9px * var(--ts))/1 var(--mono)", letterSpacing: '.2em', color: 'var(--dim)',
               }}>
                 {done ? 'REGULAR SEASON COMPLETE'
                   : `WEEK ${day?.week ?? 1} · ${day?.kind === 'series' ? 'CONFERENCE SERIES' : 'MIDWEEK'}`}
               </div>
               <div style={{
-                font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+                font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
               }}>{done ? `${year} FINAL` : seasonDate(year, day?.day ?? 0)}</div>
             </div>
             <div style={{
-              textAlign: 'right', font: "500 9.5px/1.6 var(--mono)", color: 'var(--dim)',
+              textAlign: 'right', font: "500 calc(9.5px * var(--ts))/1.6 var(--mono)", color: 'var(--dim)',
             }}>
               RPI #{rank || '—'}<br />
               {team.streak === 0 ? 'No streak'
@@ -210,15 +210,15 @@ export function Today() {
         }}>
           <div style={{ padding: '6px 11px', background: 'var(--clay)' }}>
             <span style={{
-              font: "600 8.5px var(--mono)", letterSpacing: '.18em', color: 'var(--cream)',
+              font: "600 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.18em', color: 'var(--cream)',
             }}>GAME IN PROGRESS</span>
           </div>
           <div style={{ padding: '11px 12px 12px' }}>
             <div style={{
-              font: "800 18px/1 var(--display)", textTransform: 'uppercase',
+              font: "800 calc(18px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
             }}>{pendingGame.line}</div>
             <div style={{
-              marginTop: 5, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
+              marginTop: 5, font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
             }}>You left this one on the field.</div>
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
               <Action label="PICK IT UP" primary onClick={() => void resumeGame(true)} />
@@ -244,11 +244,11 @@ export function Today() {
             note={`GAME ${team.gp + 1} OF ${seasonLength(season.config)}`}
           >
             <div style={{ padding: '12px 12px 10px' }}>
-              <div style={{ font: "800 22px/1 var(--display)", textTransform: 'uppercase' }}>
+              <div style={{ font: "800 calc(22px * var(--ts))/1 var(--display)", textTransform: 'uppercase' }}>
                 {atHome ? 'vs ' : 'at '}{opponent.def.school}
               </div>
               <div style={{
-                marginTop: 4, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+                marginTop: 4, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
               }}>
                 {opponent.def.nickname} · {opponent.w}-{opponent.l}
                 {' '}({opponent.cw}-{opponent.cl} {opponent.conference})
@@ -258,7 +258,7 @@ export function Today() {
                 {opponent.streak <= -3 ? ` · lost ${-opponent.streak} straight` : ''}
               </div>
               <div style={{
-                marginTop: 7, font: "400 10.5px/1.5 var(--mono)", color: 'var(--ink)',
+                marginTop: 7, font: "400 calc(10.5px * var(--ts))/1.5 var(--mono)", color: 'var(--ink)',
               }}>
                 {armLine(ourArm)} <span style={{ color: 'var(--dim)' }}>vs</span> {armLine(theirArm)}
               </div>
@@ -281,10 +281,10 @@ export function Today() {
                   borderLeft: i > 0 ? '1px solid var(--hairline)' : 'none',
                 }}>
                   <div className="label">{k}</div>
-                  <div style={{ marginTop: 2, font: "700 15px var(--display)" }}>
+                  <div style={{ marginTop: 2, font: "700 calc(15px * var(--ts)) var(--display)" }}>
                     {us}
                     <span style={{
-                      font: "400 10px var(--mono)", color: 'var(--dim)', marginLeft: 6,
+                      font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)', marginLeft: 6,
                     }}>{them}</span>
                   </div>
                 </div>
@@ -296,7 +296,7 @@ export function Today() {
 
       {!todayGame && !done && (
         <Card tag="OFF DAY" note={`WEEK ${day?.week ?? 1}`}>
-          <div style={{ padding: '12px', font: "400 12px/1.5 var(--body)", color: 'var(--dim)' }}>
+          <div style={{ padding: '12px', font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
             No game scheduled. Bullpen work and situational defense.
           </div>
         </Card>
@@ -310,7 +310,7 @@ export function Today() {
             display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
           }}>
             <span className="label">SIMULATING</span>
-            <span style={{ font: "500 9.5px var(--mono)", color: 'var(--dim)' }}>
+            <span style={{ font: "500 calc(9.5px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
               DAY {progress.day} OF {progress.totalDays}
             </span>
           </div>
@@ -390,16 +390,16 @@ export function Today() {
               }}>
                 <div style={{ padding: '6px 12px', background: 'var(--clay)' }}>
                   <span style={{
-                    font: "600 9px var(--mono)", letterSpacing: '.2em', color: 'var(--cream)',
+                    font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.2em', color: 'var(--cream)',
                   }}>{year} · THE REGULAR SEASON IS IN THE BOOKS</span>
                 </div>
                 <div style={{ padding: '14px 12px 15px', textAlign: 'center' }}>
                   <div style={{
-                    font: "800 26px/0.95 var(--display)", textTransform: 'uppercase',
+                    font: "800 calc(26px * var(--ts))/0.95 var(--display)", textTransform: 'uppercase',
                     color: 'var(--cream)',
                   }}>June is here</div>
                   <div style={{
-                    marginTop: 7, font: "400 12px/1.55 var(--body)",
+                    marginTop: 7, font: "400 calc(12px * var(--ts))/1.55 var(--body)",
                     color: 'rgba(246,241,230,.72)', maxWidth: 300,
                     marginLeft: 'auto', marginRight: 'auto',
                   }}>
@@ -432,7 +432,7 @@ export function Today() {
                 full
               />
               <div style={{
-                marginTop: 8, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+                marginTop: 8, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
               }}>
                 Awards, the board's verdict, your own development, then three
                 weeks of recruiting and the draft.
@@ -454,7 +454,7 @@ export function Today() {
             <div className="label">
               {lastNightDay === (day?.day ?? 0) - 1 || done ? 'LAST NIGHT' : 'LATEST'} IN THE {team.conference}
             </div>
-            <div style={{ font: "500 9px var(--mono)", color: 'var(--dim)' }}>
+            <div style={{ font: "500 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
               {seasonDate(year, lastNightDay).toUpperCase()}
             </div>
           </div>
@@ -482,7 +482,7 @@ export function Today() {
                     background: mine ? 'rgba(168,68,42,.06)' : 'transparent',
                   }}>
                   <span style={{
-                    flex: 1, font: "400 11px var(--mono)",
+                    flex: 1, font: "400 calc(11px * var(--ts)) var(--mono)",
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
                     <b style={{ fontWeight: homeWon ? 400 : 700 }}>{away.def.abbr}</b>
@@ -490,18 +490,18 @@ export function Today() {
                     <b style={{ fontWeight: homeWon ? 700 : 400 }}>{home.def.abbr}</b>
                     {gap >= 12 && (
                       <span style={{
-                        marginLeft: 6, font: "600 8px var(--mono)", color: 'var(--clay)',
+                        marginLeft: 6, font: "600 calc(8px * var(--ts)) var(--mono)", color: 'var(--clay)',
                         letterSpacing: '.1em',
                       }}>UPSET</span>
                     )}
                     {g.innings > 9 && (
                       <span style={{
-                        marginLeft: 6, font: "600 8px var(--mono)", color: 'var(--dim)',
+                        marginLeft: 6, font: "600 calc(8px * var(--ts)) var(--mono)", color: 'var(--dim)',
                         letterSpacing: '.1em',
                       }}>F/{g.innings}</span>
                     )}
                   </span>
-                  <span style={{ font: "700 12px var(--mono)" }}>
+                  <span style={{ font: "700 calc(12px * var(--ts)) var(--mono)" }}>
                     {g.awayRuns}-{g.homeRuns}
                   </span>
                 </button>
@@ -572,12 +572,12 @@ function GameSheet(
       }}
     >
       <span style={{
-        font: `800 17px/1 var(--display)`, textTransform: 'uppercase',
+        font: `800 calc(17px * var(--ts))/1 var(--display)`, textTransform: 'uppercase',
         color: won ? 'var(--ink)' : 'var(--dim)',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>{school}</span>
       <span style={{
-        font: "800 22px/1 var(--display)",
+        font: "800 calc(22px * var(--ts))/1 var(--display)",
         color: won ? 'var(--clay)' : 'var(--dim)',
       }}>{runs}</span>
     </button>
@@ -607,19 +607,19 @@ function GameSheet(
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <span style={{
-            font: "600 9px var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
+            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
           }}>
             FINAL{g.innings > 9 ? ` · ${g.innings} INNINGS` : ''}
             {' · '}{seasonDate(year, g.day).toUpperCase()}
           </span>
           <button onClick={onClose} style={{
-            font: "600 9px var(--mono)", letterSpacing: '.14em', color: 'rgba(246,241,230,.8)',
+            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(246,241,230,.8)',
           }}>CLOSE</button>
         </div>
         <Row i={g.away} school={away.def.school} runs={g.awayRuns} won={!homeWon} />
         <Row i={g.home} school={home.def.school} runs={g.homeRuns} won={homeWon} />
         <div style={{
-          padding: '9px 12px 13px', font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+          padding: '9px 12px 13px', font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
         }}>
           Tap a school for the full picture. Box scores only survive for your
           own games; everyone else phones theirs in.
@@ -647,16 +647,16 @@ function Postseason() {
     }}>
       <div style={{ padding: '6px 10px', background: big ? 'var(--clay)' : 'var(--navy)' }}>
         <span style={{
-          font: "600 9px var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
+          font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
         }}>POSTSEASON</span>
       </div>
       <div style={{ padding: '11px 12px 12px' }}>
         <div style={{
-          font: "800 22px/1 var(--display)", textTransform: 'uppercase',
+          font: "800 calc(22px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
           color: big ? 'var(--clay)' : 'var(--ink)',
         }}>{FINISH_LABEL[me]}</div>
         <div style={{
-          marginTop: 6, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+          marginTop: 6, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
         }}>
           {wonConference ? 'Won the conference tournament. ' : ''}
           {big ? 'Nobody can take this one away.' : `${champion} won the national title.`}
@@ -686,7 +686,7 @@ function Action(
         background: primary ? 'var(--clay)' : 'transparent',
         border: `1px solid ${primary ? 'var(--clay)' : 'var(--faint)'}`,
         color: primary ? 'var(--cream)' : 'var(--ink)',
-        font: "700 13px var(--display)", letterSpacing: '.14em',
+        font: "700 calc(13px * var(--ts)) var(--display)", letterSpacing: '.14em',
       }}
     >
       {spinning

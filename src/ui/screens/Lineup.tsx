@@ -64,7 +64,7 @@ export function Lineup() {
             <div>
               <div className="label">BATTING ORDER</div>
               <div style={{
-                font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+                font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
               }}>Lineup card</div>
             </div>
             {/* One tap deals a sound order — best hitter third, power fourth,
@@ -76,7 +76,7 @@ export function Lineup() {
               style={{
                 flex: 'none', padding: '9px 13px', minHeight: 40, marginBottom: 2,
                 background: 'transparent', border: '1px solid var(--clay)',
-                color: 'var(--clay)', font: "700 10px var(--mono)", letterSpacing: '.12em',
+                color: 'var(--clay)', font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.12em',
               }}
             >AUTO</button>
           </div>
@@ -90,7 +90,7 @@ export function Lineup() {
             you may not have memorised needs to say it did something.
           */}
           <div style={{
-            marginTop: 8, font: "400 11px/1.5 var(--body)",
+            marginTop: 8, font: "400 calc(11px * var(--ts))/1.5 var(--body)",
             color: picked === null ? (dealt ? 'var(--win)' : 'var(--dim)') : 'var(--clay)',
           }}>
             {picked !== null
@@ -121,21 +121,21 @@ export function Lineup() {
                 background: on ? 'rgba(168,68,42,.12)' : 'transparent',
               }}
             >
-              <span style={{ font: "700 13px var(--display)", color: 'var(--dim)' }}>{i + 1}</span>
+              <span style={{ font: "700 calc(13px * var(--ts)) var(--display)", color: 'var(--dim)' }}>{i + 1}</span>
               {/* The position as baseball says it — C, SS, CF — rather than
                   the scorer's 2-6-8. The abbreviations are what every other
                   screen prints, and a lineup card is not a scorebook. */}
-              <span style={{ font: "500 10px var(--mono)", color: 'var(--clay)' }}>
+              <span style={{ font: "500 calc(10px * var(--ts)) var(--mono)", color: 'var(--clay)' }}>
                 {p.pos}
               </span>
               <span style={{
-                font: `${on ? 600 : 400} 13px var(--body)`,
+                font: `${on ? 600 : 400} calc(13px * var(--ts)) var(--body)`,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{p.name}</span>
               <span style={{
-                font: "400 10px var(--mono)", color: 'var(--dim)', textAlign: 'right',
+                font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)', textAlign: 'right',
               }}>{overallOf(p)}</span>
-              <span style={{ font: "400 11px var(--mono)", textAlign: 'right' }}>
+              <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>
                 {line && line.ab > 0 ? pct(battingAverage(line)) : '—'}
               </span>
             </button>
@@ -161,16 +161,16 @@ export function Lineup() {
               padding: '9px 10px', borderBottom: '1px solid var(--hairline)',
             }}>
               <span style={{
-                font: "700 11px var(--display)", letterSpacing: '.1em', color: 'var(--clay)',
+                font: "700 calc(11px * var(--ts)) var(--display)", letterSpacing: '.1em', color: 'var(--clay)',
               }}>{SLOTS[i]}</span>
               <span style={{
-                font: "400 13px var(--body)",
+                font: "400 calc(13px * var(--ts)) var(--body)",
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{p.name}</span>
               <span style={{
-                font: "400 10px var(--mono)", color: 'var(--dim)', textAlign: 'right',
+                font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)', textAlign: 'right',
               }}>{overallOf(p)}</span>
-              <span style={{ font: "400 11px var(--mono)", textAlign: 'right' }}>
+              <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>
                 {line && line.outs > 0 ? era(line).toFixed(2) : '—'}
               </span>
               <span style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
@@ -185,7 +185,7 @@ export function Lineup() {
         })}
       </div>
 
-      <div style={{ marginTop: 10, font: "400 11px/1.5 var(--body)", color: 'var(--dim)' }}>
+      <div style={{ marginTop: 10, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
         Your Friday arm starts the opener of every conference series. The midweek starter
         takes all twelve non-conference games — {midweekInnings.toFixed(0)} innings so far.
       </div>
@@ -212,20 +212,20 @@ export function Lineup() {
               padding: '8px 10px', borderBottom: '1px solid var(--hairline)',
             }}>
               <span style={{
-                font: "600 9px var(--mono)", letterSpacing: '.08em', color: 'var(--dim)',
+                font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.08em', color: 'var(--dim)',
               }}>{p.role}</span>
               <span style={{
-                font: "400 13px var(--body)",
+                font: "400 calc(13px * var(--ts)) var(--body)",
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{p.name}</span>
               <span style={{
-                font: "400 10px var(--mono)", color: 'var(--dim)', textAlign: 'right',
+                font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)', textAlign: 'right',
               }}>{overallOf(p)}</span>
-              <span style={{ font: "400 11px var(--mono)", textAlign: 'right' }}>
+              <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>
                 {line && line.outs > 0 ? era(line).toFixed(2) : '—'}
               </span>
               <span style={{
-                font: "400 10px var(--mono)", color: 'var(--dim)', textAlign: 'right',
+                font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)', textAlign: 'right',
               }}>{ip > 0 ? `${ip.toFixed(0)} IP` : '—'}</span>
             </div>
           );
@@ -249,7 +249,7 @@ function Nudge(
         width: 20, height: 20, lineHeight: '18px', textAlign: 'center',
         border: '1px solid var(--faint)',
         color: disabled ? 'rgba(28,36,48,.2)' : 'var(--ink)',
-        font: '11px var(--mono)',
+        font: 'calc(11px * var(--ts)) var(--mono)',
       }}
     >{children}</button>
   );

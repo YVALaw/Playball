@@ -248,11 +248,11 @@ export function NewGame() {
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{
                 display: 'block', overflow: 'hidden', textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap', font: "600 11px var(--mono)",
+                whiteSpace: 'nowrap', font: "600 calc(11px * var(--ts)) var(--mono)",
               }}>{coach.name}</span>
               <span style={{
                 display: 'block', overflow: 'hidden', textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap', font: "400 10px var(--mono)", color: 'var(--dim)',
+                whiteSpace: 'nowrap', font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
               }}>
                 {coach.age}{' · '}{coach.homeState}{' · '}
                 {philosophyOf(coach.philosophy ?? DEFAULT_PHILOSOPHY).name}
@@ -260,7 +260,7 @@ export function NewGame() {
               </span>
             </span>
             <span style={{
-              font: "600 9px var(--mono)", letterSpacing: '.1em',
+              font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.1em',
               color: 'var(--dim)', whiteSpace: 'nowrap',
             }}>COACH PRESTIGE {ROOKIE_PRESTIGE}</span>
           </button>
@@ -273,7 +273,7 @@ export function NewGame() {
         marginTop: 4, marginBottom: 6,
       }}>
         <span className="label">THE OFFERS</span>
-        <span style={{ font: "600 9px var(--mono)", color: 'var(--dim)' }}>
+        <span style={{ font: "600 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
           {offers.length} PROGRAM{offers.length === 1 ? '' : 'S'} CALLED
         </span>
       </div>
@@ -302,12 +302,12 @@ export function NewGame() {
               <span style={{ alignSelf: 'stretch', background: school.color }} />
               <span style={{ minWidth: 0, paddingLeft: 8 }}>
                 <span style={{
-                  display: 'block', font: "400 13.5px var(--body)",
+                  display: 'block', font: "400 calc(13.5px * var(--ts)) var(--body)",
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>{school.school}</span>
                 <span style={{
                   display: 'block', marginTop: 1,
-                  font: "400 10px var(--mono)", color: 'var(--dim)',
+                  font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
                 }}>
                   {confNameOf(school)} · roster {p.roster} · {p.contract} year deal
                   {p.tag && <span style={{ color: 'var(--clay)' }}> · {p.tag}</span>}
@@ -317,11 +317,11 @@ export function NewGame() {
                 textAlign: 'right', paddingRight: 11, whiteSpace: 'nowrap',
               }}>
                 <span style={{
-                  display: 'block', font: "600 11px var(--mono)", color: 'var(--clay)',
+                  display: 'block', font: "600 calc(11px * var(--ts)) var(--mono)", color: 'var(--clay)',
                 }}>{'★'.repeat(p.stars)}</span>
                 <span style={{
                   display: 'block', marginTop: 2,
-                  font: "700 8px var(--mono)", letterSpacing: '.08em', color: 'var(--dim)',
+                  font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.08em', color: 'var(--dim)',
                 }}>{MANDATE_LABEL[p.expectation.mandate]}</span>
               </span>
             </button>
@@ -330,7 +330,7 @@ export function NewGame() {
       </div>
 
       <div style={{
-        marginTop: 8, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+        marginTop: 8, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
       }}>
         Tap an offer to read the board's mandate before you sign. Better
         programs answer once your prestige gives them a reason to.
@@ -366,12 +366,12 @@ export function NewGame() {
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               }}>
                 <span style={{
-                  font: "600 9px var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
+                  font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
                 }}>{p.open ? 'THE OFFER' : 'NOT YET'}</span>
                 <button
                   onClick={() => setPicked(null)}
                   style={{
-                    font: "600 9px var(--mono)", letterSpacing: '.14em',
+                    font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em',
                     color: 'rgba(246,241,230,.85)',
                   }}
                 >BACK</button>
@@ -379,10 +379,10 @@ export function NewGame() {
 
               <div style={{ padding: '13px 12px 16px' }}>
                 <div style={{
-                  font: "800 22px/1 var(--display)", textTransform: 'uppercase',
+                  font: "800 calc(22px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
                 }}>{picked.school}</div>
                 <div style={{
-                  marginTop: 3, font: "400 11px var(--mono)", color: 'var(--dim)',
+                  marginTop: 3, font: "400 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)',
                 }}>{picked.nickname} · {confNameOf(picked)}</div>
 
                 <div style={{ display: 'flex', marginTop: 12 }}>
@@ -397,9 +397,9 @@ export function NewGame() {
                   <div style={{
                     marginTop: 11, padding: '8px 10px',
                     border: `1px solid ${picked.color}`, borderLeftWidth: 3,
-                    font: "400 11.5px/1.45 var(--body)",
+                    font: "400 calc(11.5px * var(--ts))/1.45 var(--body)",
                   }}>
-                    <strong style={{ font: "700 9px var(--mono)", letterSpacing: '.1em' }}>
+                    <strong style={{ font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.1em' }}>
                       {p.tag}
                     </strong>
                     <br />
@@ -415,7 +415,7 @@ export function NewGame() {
 
                 {rival && (
                   <div style={{
-                    marginTop: 9, font: "400 11.5px/1.45 var(--body)", color: 'var(--dim)',
+                    marginTop: 9, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
                   }}>
                     Rivalry: <strong style={{ color: 'var(--ink)' }}>{rival.school}</strong>.
                     Three games a year, every year.
@@ -426,7 +426,7 @@ export function NewGame() {
                   marginTop: 12, paddingTop: 11, borderTop: '1px solid var(--hairline)',
                 }}>
                   <div className="label">THE MANDATE · {MANDATE_LABEL[p.expectation.mandate]}</div>
-                  <div style={{ marginTop: 5, font: "400 13px/1.5 var(--body)" }}>
+                  <div style={{ marginTop: 5, font: "400 calc(13px * var(--ts))/1.5 var(--body)" }}>
                     {p.expectation.summary}
                   </div>
 
@@ -444,13 +444,13 @@ export function NewGame() {
 
                 <div style={{
                   marginTop: 10, padding: '9px 10px', background: 'var(--field)',
-                  font: "400 11.5px/1.45 var(--body)", color: 'var(--dim)',
+                  font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
                 }}>{MANDATE_NOTE[p.expectation.mandate]}</div>
 
                 {p.open ? (
                   <>
                     <div style={{
-                      marginTop: 10, font: "400 11.5px/1.45 var(--body)", color: 'var(--dim)',
+                      marginTop: 10, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
                     }}>
                       They are giving you <strong style={{ color: 'var(--ink)' }}>
                         {p.contract} seasons</strong>. Meet the mandate and they will
@@ -464,7 +464,7 @@ export function NewGame() {
                         marginTop: 14, width: '100%', padding: '13px 0',
                         background: picked.color, border: `1px solid ${picked.color}`,
                         color: 'var(--cream)',
-                        font: "700 11px var(--mono)", letterSpacing: '.14em',
+                        font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.14em',
                       }}
                     >SIGN WITH {picked.abbr}</button>
                   </>
@@ -477,7 +477,7 @@ export function NewGame() {
                       THEY WANT {p.needs} · YOU ARE {ROOKIE_PRESTIGE}
                     </div>
                     <div style={{
-                      marginTop: 5, font: "400 12px/1.5 var(--body)",
+                      marginTop: 5, font: "400 calc(12px * var(--ts))/1.5 var(--body)",
                     }}>{p.gate}</div>
                   </div>
                 )}
@@ -487,7 +487,7 @@ export function NewGame() {
                   style={{
                     marginTop: 8, width: '100%', padding: '10px 0',
                     background: 'transparent', border: '1px solid rgba(28,36,48,.28)',
-                    font: "600 10px var(--mono)", letterSpacing: '.12em', color: 'var(--dim)',
+                    font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.12em', color: 'var(--dim)',
                   }}
                 >LOOK AT OTHER JOBS</button>
               </div>
@@ -521,7 +521,7 @@ function StepHead(
             onClick={onBack}
             className="tap"
             style={{
-              font: "600 9px var(--mono)", letterSpacing: '.14em',
+              font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em',
               color: 'var(--clay)', padding: '2px 10px 2px 0',
             }}
           >‹ BACK</button>
@@ -543,7 +543,7 @@ function StepHead(
         ))}
       </div>
       <div style={{
-        font: "800 22px/0.95 var(--display)", marginTop: 7, textTransform: 'uppercase',
+        font: "800 calc(22px * var(--ts))/0.95 var(--display)", marginTop: 7, textTransform: 'uppercase',
       }}>{title}</div>
     </div>
   );
@@ -579,7 +579,7 @@ function Identity(
       <StepHead n={1} title="Your coach" />
     </div>}>
       <div style={{ padding: '12px 14px 0' }}>
-        <div style={{ font: "400 12px/1.5 var(--body)", color: 'var(--dim)' }}>
+        <div style={{ font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
           Already filled in. Change what you like, or go straight on.
         </div>
 
@@ -665,7 +665,7 @@ function Identity(
             // 16px is the floor, not a taste. A focused input under 16px makes
             // a phone browser zoom the whole page in, and it does not zoom back
             // out when the keyboard leaves — reported from creating a coach.
-            color: 'var(--ink)', font: "400 16px var(--body)",
+            color: 'var(--ink)', font: "400 calc(16px * var(--ts)) var(--body)",
           }}
         />
 
@@ -684,7 +684,7 @@ function Identity(
           <Nudge label="−" onClick={() => set('age', clampAge(profile.age - 1))} />
           <div style={{
             flex: 1, textAlign: 'center', padding: '11px 0',
-            font: "700 20px/1 var(--display)",
+            font: "700 calc(20px * var(--ts))/1 var(--display)",
           }}>{profile.age}</div>
           <Nudge label="+" onClick={() => set('age', clampAge(profile.age + 1))} />
         </div>
@@ -702,7 +702,7 @@ function Identity(
           style={{
             width: '100%', padding: '11px 10px', background: 'var(--paper)',
             border: '1px solid rgba(28,36,48,.28)', borderRadius: 0,
-            color: 'var(--ink)', font: "600 14px var(--mono)", letterSpacing: '.04em',
+            color: 'var(--ink)', font: "600 calc(14px * var(--ts)) var(--mono)", letterSpacing: '.04em',
           }}
         >
           {Object.entries(STATES_BY_REGION).map(([region, states]) => (
@@ -755,7 +755,7 @@ function PlayStyle(
       <StepHead n={2} title="Set your plan" onBack={onBack} />
     </div>}>
       <div style={{ padding: '12px 14px 0' }}>
-        <div style={{ font: "400 12px/1.5 var(--body)", color: 'var(--dim)' }}>
+        <div style={{ font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
           Pick the bench you want to run. Whoever hires you plays this way from
           the first pitch.
         </div>
@@ -781,19 +781,19 @@ function PlayStyle(
                   alignItems: 'baseline', gap: 8,
                 }}>
                   <span style={{
-                    font: "700 11px var(--mono)", letterSpacing: '.08em',
+                    font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.08em',
                     color: on ? 'var(--clay)' : 'var(--ink)',
                   }}>{p.name}</span>
                   {/* The check the reference puts on the chosen row. A row that
                       is only marked by its background reads as a hover state. */}
                   {on && (
                     <span style={{
-                      font: "700 12px var(--mono)", color: 'var(--clay)', lineHeight: 1,
+                      font: "700 calc(12px * var(--ts)) var(--mono)", color: 'var(--clay)', lineHeight: 1,
                     }}>✓</span>
                   )}
                 </div>
                 <div style={{
-                  marginTop: 4, font: "400 11.5px/1.45 var(--body)", color: 'var(--dim)',
+                  marginTop: 4, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
                 }}>{p.blurb}</div>
                 {/* The five settings this bench actually sets, spelled out — a
                     plan you can read is a plan, a name alone is a vibe. Each
@@ -803,7 +803,7 @@ function PlayStyle(
                 }}>
                   {planChips(p.id).map((chip) => (
                     <span key={chip} style={{
-                      font: "600 7.5px var(--mono)", letterSpacing: '.08em',
+                      font: "600 calc(7.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
                       padding: '2px 6px 3px',
                       background: on ? 'rgba(168,68,42,.14)' : 'var(--field)',
                       border: '1px solid var(--faint)',
@@ -886,7 +886,7 @@ function Chip(
         background: on ? 'var(--clay)' : 'var(--paper)',
         border: `1px solid ${on ? 'var(--clay)' : 'rgba(28,36,48,.28)'}`,
         color: on ? 'var(--cream)' : 'var(--ink)',
-        font: "700 9.5px var(--mono)", letterSpacing: '.06em',
+        font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.06em',
       }}
     >{label}</button>
   );
@@ -899,7 +899,7 @@ function Nudge({ label, onClick }: { label: string; onClick: () => void }) {
       onClick={onClick}
       style={{
         width: 54, background: 'transparent',
-        font: "600 18px/1 var(--mono)", color: 'var(--clay)',
+        font: "600 calc(18px * var(--ts))/1 var(--mono)", color: 'var(--clay)',
       }}
     >{label}</button>
   );
@@ -910,14 +910,14 @@ function Ask({ objective }: { objective: Objective }) {
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 0' }}>
       <span style={{
-        font: "700 11px var(--mono)", width: 12,
+        font: "700 calc(11px * var(--ts)) var(--mono)", width: 12,
         color: objective.required ? 'var(--clay)' : 'rgba(28,36,48,.34)',
       }}>{objective.required ? '•' : '◦'}</span>
-      <span style={{ flex: 1, font: "400 12px/1.4 var(--body)" }}>
+      <span style={{ flex: 1, font: "400 calc(12px * var(--ts))/1.4 var(--body)" }}>
         {objective.label}
         {!objective.required && (
           <span style={{
-            marginLeft: 6, font: "600 8px var(--mono)", letterSpacing: '.1em',
+            marginLeft: 6, font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em',
             color: 'var(--dim)',
           }}>BONUS</span>
         )}
@@ -934,7 +934,7 @@ function Stat({ k, v, last }: { k: string; v: string; last?: boolean }) {
       paddingLeft: last ? 10 : 0,
     }}>
       <div className="label">{k}</div>
-      <div style={{ font: "700 18px/1 var(--display)", marginTop: 3 }}>{v}</div>
+      <div style={{ font: "700 calc(18px * var(--ts))/1 var(--display)", marginTop: 3 }}>{v}</div>
     </div>
   );
 }

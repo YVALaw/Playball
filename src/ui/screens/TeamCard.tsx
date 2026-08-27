@@ -70,7 +70,7 @@ export function TeamCard({ index }: { index: number }) {
       <div style={{ padding: '28px 16px', textAlign: 'center' }}>
         <div className="label">NO PROGRAM SELECTED</div>
         <div style={{
-          marginTop: 8, font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
+          marginTop: 8, font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
         }}>Tap a team in the conference table or the national rankings.</div>
       </div>
     );
@@ -100,19 +100,19 @@ export function TeamCard({ index }: { index: number }) {
               background: teamColour(t.def.abbr),
             }}>
               <span style={{
-                font: "800 15px var(--display)", letterSpacing: '.04em',
+                font: "800 calc(15px * var(--ts)) var(--display)", letterSpacing: '.04em',
                 color: 'var(--cream)',
               }}>{t.def.abbr}</span>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="label">{t.conference} · {stars} STAR PROGRAM</div>
               <div style={{
-                font: "800 21px/0.95 var(--display)", marginTop: 3,
+                font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 3,
                 textTransform: 'uppercase', color: teamColour(t.def.abbr),
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{t.def.school}</div>
               <div style={{
-                marginTop: 2, font: "400 11px/1.35 var(--body)", color: 'var(--dim)',
+                marginTop: 2, font: "400 calc(11px * var(--ts))/1.35 var(--body)", color: 'var(--dim)',
               }}>{t.def.nickname}</div>
             </div>
           </div>
@@ -150,7 +150,7 @@ function TabStrip({ at, onGo }: { at: Sheet; onGo: (s: Sheet) => void }) {
             background: s === at ? 'var(--ink)' : 'var(--field)',
             border: s === at ? '1px solid var(--ink)' : '1px solid var(--faint)',
             color: s === at ? 'var(--cream)' : 'var(--dim)',
-            font: "700 8.5px var(--mono)", letterSpacing: '.08em',
+            font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
           }}
         >{SHEET_LABEL[s]}</button>
       ))}
@@ -233,14 +233,14 @@ function Overview(
                 borderBottom: i === h2h.games.length - 1
                   ? 'none' : '1px solid var(--hairline)',
               }}>
-                <span style={{ font: "400 11px var(--mono)", color: 'var(--dim)' }}>
+                <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
                   {seasonDate(year, g.day)} {g.home ? 'vs' : '@'}
                 </span>
                 <span style={{
-                  font: "700 11px var(--mono)", textAlign: 'right',
+                  font: "700 calc(11px * var(--ts)) var(--mono)", textAlign: 'right',
                   color: g.us > g.them ? 'var(--win)' : 'var(--loss)',
                 }}>{g.us > g.them ? 'W' : 'L'}</span>
-                <span style={{ font: "600 12px var(--mono)", textAlign: 'right' }}>
+                <span style={{ font: "600 calc(12px * var(--ts)) var(--mono)", textAlign: 'right' }}>
                   {g.us}-{g.them}
                 </span>
               </div>
@@ -437,13 +437,13 @@ function PlayerRow(
     >
       <Avatar id={id} team={abbr} size={22} />
       <span style={{
-        font: "400 12px var(--body)",
+        font: "400 calc(12px * var(--ts)) var(--body)",
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>{name}</span>
-      <span style={{ font: "400 11px var(--mono)", textAlign: 'right' }}>{slot}</span>
-      <span style={{ font: "400 11px var(--mono)", textAlign: 'right' }}>{ovr}</span>
-      <span style={{ font: "400 11px var(--mono)", textAlign: 'right' }}>{a}</span>
-      <span style={{ font: "400 11px var(--mono)", textAlign: 'right' }}>{b}</span>
+      <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>{slot}</span>
+      <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>{ovr}</span>
+      <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>{a}</span>
+      <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>{b}</span>
     </button>
   );
 }
@@ -507,22 +507,22 @@ function Results({ t, me, season }: { t: Record_; me: Record_ | null; season: Se
               gap: 6, alignItems: 'center',
               padding: '8px 10px', borderBottom: '1px solid var(--hairline)',
             }}>
-              <span style={{ font: "400 10px var(--mono)", color: 'var(--dim)' }}>
+              <span style={{ font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
                 {seasonDate(year, r.day)}
               </span>
-              <span style={{ font: "400 11px var(--mono)", color: 'var(--dim)' }}>
+              <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
                 {r.home ? 'vs' : '@'}
               </span>
               <span style={{
-                font: "400 12px var(--body)",
+                font: "400 calc(12px * var(--ts)) var(--body)",
                 color: r.opponent ? teamColour(r.opponent.def.abbr) : 'var(--ink)',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{r.opponent?.def.school ?? '—'}</span>
               <span style={{
-                font: "600 11px var(--mono)", textAlign: 'right',
+                font: "600 calc(11px * var(--ts)) var(--mono)", textAlign: 'right',
                 color: won ? 'var(--win)' : 'var(--loss)',
               }}>{won ? 'W' : 'L'}</span>
-              <span style={{ font: "400 11px var(--mono)", textAlign: 'right' }}>
+              <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>
                 {r.us}-{r.theirs}
               </span>
             </div>
@@ -560,7 +560,7 @@ function Panel({ children }: { children: ReactNode }) {
 
 function Note({ children }: { children: ReactNode }) {
   return (
-    <div style={{ marginTop: 8, font: "400 11px/1.5 var(--body)", color: 'var(--dim)' }}>
+    <div style={{ marginTop: 8, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
       {children}
     </div>
   );
@@ -575,7 +575,7 @@ function Tile({ k, v, last }: { k: string; v: string; last?: boolean }) {
       <div className="label" style={{
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>{k}</div>
-      <div style={{ font: "700 22px/1 var(--display)", marginTop: 2 }}>{v}</div>
+      <div style={{ font: "700 calc(22px * var(--ts))/1 var(--display)", marginTop: 2 }}>{v}</div>
     </div>
   );
 }
@@ -589,7 +589,7 @@ function Stat({ k, v, last }: { k: string; v: string; last?: boolean }) {
     }}>
       <span className="label">{k}</span>
       <span style={{
-        font: "600 13px var(--mono)", textAlign: 'right',
+        font: "600 calc(13px * var(--ts)) var(--mono)", textAlign: 'right',
       }}>{v}</span>
     </div>
   );

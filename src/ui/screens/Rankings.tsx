@@ -56,7 +56,7 @@ export function Rankings() {
               {preseason ? 'PRESEASON POWER RANKING · PROJECTED' : 'NATIONAL RANKINGS · RPI'}
             </div>
             <div style={{
-              font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
             }}>The country</div>
           </div>
         </div>
@@ -145,7 +145,7 @@ export function Rankings() {
         </div>
 
         <div style={{
-          marginTop: 10, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+          marginTop: 10, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
         }}>
           {preseason
             ? 'A projection off the rosters, nothing more. Once the games start counting, the real table takes over and nobody remembers the poll.'

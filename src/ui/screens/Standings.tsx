@@ -29,7 +29,7 @@ export function Standings() {
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
             <div className="label">CONFERENCE TABLE</div>
             <div style={{
-              font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
             }}>{team.conference}</div>
           </div>
         </div>
@@ -71,7 +71,7 @@ export function Standings() {
         </div>
 
         <div style={{
-          marginTop: 10, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+          marginTop: 10, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
         }}>
           {season.teams.length} programs across {new Set(season.teams.map((t) => t.conference)).size} conferences.
           The top six here make the conference tournament. Tap a program to read its page.

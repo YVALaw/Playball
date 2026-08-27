@@ -88,18 +88,18 @@ export function Modal(
       >
         <div style={{ padding: '18px 18px 16px', textAlign: 'center' }}>
           <div style={{
-            font: "600 8.5px var(--mono)", letterSpacing: '.2em',
+            font: "600 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.2em',
             color: 'rgba(246,241,230,.6)',
           }}>{kicker}</div>
           <div style={{
-            font: "800 30px/1 var(--display)", marginTop: 8,
+            font: "800 calc(30px * var(--ts))/1 var(--display)", marginTop: 8,
             color: accent === 'var(--cream)' ? 'var(--cream)' : accent,
             textTransform: 'uppercase',
           }}>{title}</div>
           {lines.map((l, i) => (
             <div key={i} style={{
               marginTop: i === 0 ? 10 : 6,
-              font: "400 12.5px/1.5 var(--body)", color: 'rgba(246,241,230,.72)',
+              font: "400 calc(12.5px * var(--ts))/1.5 var(--body)", color: 'rgba(246,241,230,.72)',
             }}>{l}</div>
           ))}
         </div>
@@ -118,7 +118,7 @@ export function Modal(
               width: '100%', padding: '13px 0',
               background: 'transparent', borderTop: '1px solid rgba(246,241,230,.2)',
               color: 'rgba(246,241,230,.72)',
-              font: "700 11px var(--mono)", letterSpacing: '.16em',
+              font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.16em',
             }}
           >{cancel.label}</button>
         )}
@@ -130,7 +130,7 @@ export function Modal(
             width: '100%', padding: '14px 0',
             background: accent === 'var(--cream)' ? 'var(--clay)' : accent,
             border: 'none', color: 'var(--cream)',
-            font: "700 11px var(--mono)", letterSpacing: '.16em',
+            font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.16em',
           }}
         >{action}</button>
       </div>

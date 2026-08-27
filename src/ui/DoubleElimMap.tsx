@@ -110,10 +110,10 @@ function Row(
       background: won ? `${tint}1c` : 'transparent',
     }}>
       <span style={{
-        font: "600 8px var(--mono)", color: 'var(--dim)', minWidth: 10,
+        font: "600 calc(8px * var(--ts)) var(--mono)", color: 'var(--dim)', minWidth: 10,
       }}>{seed > 0 ? seed : ''}</span>
       <span style={{
-        flex: 1, font: `${won ? 700 : 500} 10.5px var(--mono)`,
+        flex: 1, font: `${won ? 700 : 500} calc(10.5px * var(--ts)) var(--mono)`,
         letterSpacing: '.04em',
         color: team === null ? 'rgba(28,36,48,.3)' : tint,
         whiteSpace: 'nowrap',
@@ -122,7 +122,7 @@ function Row(
         {team === userTeam ? ' ★' : ''}
       </span>
       <span style={{
-        font: `${won ? 700 : 400} 10px var(--mono)`,
+        font: `${won ? 700 : 400} calc(10px * var(--ts)) var(--mono)`,
         color: won ? 'var(--ink)' : 'var(--dim)',
       }}>{runs !== null ? runs : ''}</span>
     </div>

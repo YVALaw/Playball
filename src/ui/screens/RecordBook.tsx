@@ -86,7 +86,7 @@ export function RecordBook() {
 
   return (
     <div style={{ padding: '12px 14px 20px' }}>
-      <div style={{ font: "400 12px/1.55 var(--body)", color: 'var(--dim)' }}>
+      <div style={{ font: "400 calc(12px * var(--ts))/1.55 var(--body)", color: 'var(--dim)' }}>
         Every program in the country, for as long as this dynasty has run. Marks
         tagged <Tag /> are the real ones, corrected for the league you are chasing
         them in — most were set with aluminium bats — and each sits where a great
@@ -109,7 +109,7 @@ export function RecordBook() {
 
       <div style={{
         marginTop: 18, paddingTop: 10, borderTop: '1px solid var(--faint)',
-        font: "400 11px/1.55 var(--body)", color: 'var(--dim)',
+        font: "400 calc(11px * var(--ts))/1.55 var(--body)", color: 'var(--dim)',
       }}>
         A mark has to be <strong>beaten</strong>. Equalling one leaves it where it
         is.
@@ -145,7 +145,7 @@ function Section(
         ))}
       </div>
       <div style={{
-        marginTop: 5, font: "400 10.5px/1.5 var(--body)", color: 'var(--dim)',
+        marginTop: 5, font: "400 calc(10.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
       }}>{note}</div>
     </div>
   );
@@ -169,7 +169,7 @@ function Row(
       </span>
       <span style={{
         gridColumn: 2, gridRow: '1 / span 2', alignSelf: 'center', textAlign: 'right',
-        font: `${ours ? 800 : 700} 15px var(--mono)`,
+        font: `${ours ? 800 : 700} calc(15px * var(--ts)) var(--mono)`,
         // The dash on an unset row was drawn in --faint, which is the border
         // token: a fifth of the ink, and on paper that is not quiet, it is gone.
         // --dim is the token for text that should recede, and it is already what
@@ -179,7 +179,7 @@ function Row(
 
       <span style={{
         gridColumn: 1, marginTop: 2,
-        font: `${ours ? 600 : 400} 11.5px/1.35 var(--body)`,
+        font: `${ours ? 600 : 400} calc(11.5px * var(--ts))/1.35 var(--body)`,
         color: mark ? (ours ? 'var(--clay)' : 'var(--ink)') : 'var(--dim)',
         overflow: 'hidden', textOverflow: 'ellipsis',
       }}>
@@ -187,19 +187,19 @@ function Row(
           ? (
             <>
               {mark.holder}
-              <span style={{ color: 'var(--dim)', font: "400 10px var(--mono)" }}>
+              <span style={{ color: 'var(--dim)', font: "400 calc(10px * var(--ts)) var(--mono)" }}>
                 {' '}· {mark.team} · {mark.year}
               </span>
               {mark.ncaa && <Tag />}
               {mark.detail && (
                 <span style={{
-                  display: 'block', font: "400 10px var(--mono)", color: 'var(--dim)',
+                  display: 'block', font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
                 }}>{mark.detail}</span>
               )}
               {spec.frozen && (
                 <span style={{
                   display: 'block', marginTop: 2,
-                  font: "italic 400 10.5px/1.4 var(--body)", color: 'var(--dim)',
+                  font: "italic 400 calc(10.5px * var(--ts))/1.4 var(--body)", color: 'var(--dim)',
                 }}>{spec.frozen}</span>
               )}
             </>
@@ -231,7 +231,7 @@ function Tag() {
     <span style={{
       marginLeft: 5, padding: '1px 4px',
       border: '1px solid var(--clay)', color: 'var(--clay)',
-      font: "600 8px var(--mono)", letterSpacing: '.1em', whiteSpace: 'nowrap',
+      font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em', whiteSpace: 'nowrap',
     }}>NCAA</span>
   );
 }

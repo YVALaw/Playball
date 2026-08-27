@@ -35,7 +35,7 @@ export function CoachPoints() {
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
             <div className="label">{coach.name} · YEAR {coach.tenure}</div>
             <div style={{
-              font: "800 22px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
+              font: "800 calc(22px * var(--ts))/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
             }}>Coach</div>
           </div>
         </div>
@@ -50,10 +50,10 @@ export function CoachPoints() {
       }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{
-            font: "800 30px/1 var(--display)",
+            font: "800 calc(30px * var(--ts))/1 var(--display)",
             color: left > 0 ? 'var(--clay)' : 'var(--dim)',
           }}>{left}</span>
-          <span style={{ font: "400 12px/1.4 var(--body)", color: 'var(--dim)' }}>
+          <span style={{ font: "400 calc(12px * var(--ts))/1.4 var(--body)", color: 'var(--dim)' }}>
             {left > 0
               ? 'points to spend. They do not carry over. A coach who never improves gets left behind.'
               : 'Nothing left to spend this year.'}
@@ -65,7 +65,7 @@ export function CoachPoints() {
             it is there. */}
         <div style={{
           marginTop: 8, minHeight: 32,
-          font: "400 11px/1.45 var(--body)", color: 'var(--dim)',
+          font: "400 calc(11px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
         }}>
           {back > 0
             ? `${back} point${back === 1 ? '' : 's'} put on this year can still come off. Once you continue, they are his.`
@@ -89,9 +89,9 @@ export function CoachPoints() {
                 display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
               }}>
                 <span style={{
-                  font: "700 12px var(--mono)", letterSpacing: '.1em',
+                  font: "700 calc(12px * var(--ts)) var(--mono)", letterSpacing: '.1em',
                 }}>{SKILL_LABEL[k]}</span>
-                <span style={{ font: "700 20px/1 var(--display)" }}>{value}</span>
+                <span style={{ font: "700 calc(20px * var(--ts))/1 var(--display)" }}>{value}</span>
               </div>
 
               <div style={{ height: 6, background: 'rgba(28,36,48,.09)', marginTop: 6 }}>
@@ -102,7 +102,7 @@ export function CoachPoints() {
               </div>
 
               <div style={{
-                marginTop: 7, font: "400 11.5px/1.45 var(--body)", color: 'var(--dim)',
+                marginTop: 7, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
               }}>{SKILL_BLURB[k]}</div>
 
               <div style={{ display: 'flex', gap: 6, marginTop: 9 }}>
@@ -121,7 +121,7 @@ export function CoachPoints() {
                     background: 'transparent',
                     border: `1px solid ${(spentThisStep[k] ?? 0) > 0 ? 'rgba(28,36,48,.42)' : 'rgba(28,36,48,.12)'}`,
                     color: (spentThisStep[k] ?? 0) > 0 ? 'var(--ink)' : 'rgba(28,36,48,.22)',
-                    font: "700 10px var(--mono)", letterSpacing: '.12em',
+                    font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.12em',
                   }}
                 >−1</button>
                 <button
@@ -132,7 +132,7 @@ export function CoachPoints() {
                     background: left > 0 && !maxed ? 'var(--field)' : 'transparent',
                     border: `1px solid ${left > 0 && !maxed ? 'rgba(28,36,48,.42)' : 'rgba(28,36,48,.15)'}`,
                     color: left > 0 && !maxed ? 'var(--ink)' : 'rgba(28,36,48,.25)',
-                    font: "700 10px var(--mono)", letterSpacing: '.12em',
+                    font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.12em',
                   }}
                 >{maxed ? 'MAXED' : '+1 POINT'}</button>
               </div>

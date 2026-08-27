@@ -46,7 +46,7 @@ export function Awards() {
       <div style={{ padding: '28px 16px', textAlign: 'center' }}>
         <div className="label">SEASON IN PROGRESS</div>
         <div style={{
-          marginTop: 8, font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
+          marginTop: 8, font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
           maxWidth: 250, margin: '8px auto 0',
         }}>
           Awards are handed out when the regular season is over.
@@ -66,7 +66,7 @@ export function Awards() {
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
             <div className="label">{year} HONOURS</div>
             <div style={{
-              font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
             }}>Awards</div>
           </div>
         </div>
@@ -94,21 +94,21 @@ export function Awards() {
         }}>
           <div style={{ padding: '6px 10px', background: 'var(--clay)' }}>
             <span style={{
-              font: "600 9px var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
+              font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
             }}>COACH OF THE YEAR</span>
           </div>
           <div style={{ padding: '10px 12px 12px' }}>
             <div style={{
-              font: "800 20px/1 var(--display)", textTransform: 'uppercase',
+              font: "800 calc(20px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
               color: coach.team === team.index ? 'var(--clay)' : 'var(--ink)',
             }}>{coach.team === team.index ? `${coachName} · ${coach.school}` : coach.school}</div>
             <div style={{
-              marginTop: 5, font: "400 11.5px var(--mono)", color: 'var(--dim)',
+              marginTop: 5, font: "400 calc(11.5px * var(--ts)) var(--mono)", color: 'var(--dim)',
             }}>
               {coach.wins}-{coach.losses} · {coach.line}
             </div>
             <div style={{
-              marginTop: 7, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
+              marginTop: 7, font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
             }}>
               {COACH_BODY[coach.reason]}
             </div>
@@ -125,7 +125,7 @@ export function Awards() {
           }}>
             <div style={{ padding: '6px 10px', background: 'var(--clay)' }}>
               <span style={{
-                font: "600 9px var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
+                font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
               }}>{a.title.toUpperCase()}</span>
             </div>
             {/* A button only when there is a man to open. The record book
@@ -136,17 +136,17 @@ export function Awards() {
               const body = (
                 <>
                   <div style={{
-                    font: "800 20px/1 var(--display)", textTransform: 'uppercase',
+                    font: "800 calc(20px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
                     color: 'var(--ink)',
                   }}>{a.name}</div>
                   <div style={{
-                    marginTop: 6, font: "400 11px var(--mono)",
+                    marginTop: 6, font: "400 calc(11px * var(--ts)) var(--mono)",
                     color: 'rgba(28,36,48,.68)',
                     display: 'flex', alignItems: 'center', gap: 7,
                   }}>
                     <span style={{
                       padding: '3px 7px', background: tint, color: 'var(--cream)',
-                      font: "700 10px var(--mono)", letterSpacing: '.06em',
+                      font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.06em',
                     }}>{a.team}</span>
                     {a.line}
                   </div>
@@ -202,23 +202,23 @@ export function Awards() {
                 background: `${tint}4d`,
               }}>
               <span style={{
-                font: "700 10px var(--mono)", letterSpacing: '.08em',
+                font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.08em',
                 color: 'rgba(28,36,48,.62)',
               }}>{p.position}</span>
               <div style={{ minWidth: 0 }}>
                 <div style={{
-                  font: `${ours ? 800 : 700} 13px var(--body)`, color: 'var(--ink)',
+                  font: `${ours ? 800 : 700} calc(13px * var(--ts)) var(--body)`, color: 'var(--ink)',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>{p.name}</div>
                 <div style={{
-                  font: "400 10px var(--mono)", color: 'rgba(28,36,48,.68)',
+                  font: "400 calc(10px * var(--ts)) var(--mono)", color: 'rgba(28,36,48,.68)',
                 }}>{p.line}</div>
               </div>
               {/* The school as a solid chip: the strongest the colour can be
                   said, on the one element that carries no long text. */}
               <span style={{
                 padding: '3px 7px', background: tint, color: 'var(--cream)',
-                font: "700 10px var(--mono)", letterSpacing: '.06em',
+                font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.06em',
               }}>{p.team}</span>
             </button>
           );

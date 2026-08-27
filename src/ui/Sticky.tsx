@@ -96,14 +96,14 @@ export function FloatingAction(
           style={{
             width: '100%', padding: '11px 10px', marginBottom: 8,
             background: 'transparent', border: '1px solid rgba(28,36,48,.4)',
-            color: 'var(--ink)', font: "700 10px/1.25 var(--mono)", letterSpacing: '.1em',
+            color: 'var(--ink)', font: "700 calc(10px * var(--ts))/1.25 var(--mono)", letterSpacing: '.1em',
             whiteSpace: 'normal', overflowWrap: 'break-word',
           }}
         >{secondary.label}</button>
       )}
       {note && (
         <div style={{
-          marginBottom: 8, font: "400 11px/1.45 var(--body)", color: 'var(--dim)',
+          marginBottom: 8, font: "400 calc(11px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
           textAlign: 'center',
         }}>{note}</div>
       )}
@@ -114,7 +114,7 @@ export function FloatingAction(
           width: '100%', padding: '15px 10px',
           background: 'var(--clay)', border: '1px solid var(--clay)',
           opacity: disabled ? 0.45 : 1,
-          color: 'var(--cream)', font: "700 12px/1.25 var(--mono)", letterSpacing: '.1em',
+          color: 'var(--cream)', font: "700 calc(12px * var(--ts))/1.25 var(--mono)", letterSpacing: '.1em',
           // Long labels wrap rather than running off the end of the button —
           // between words only. `anywhere` is for unbroken strings like a URL:
           // on a label it licenses a break in the middle of a word, which is

@@ -69,7 +69,7 @@ export function Stats() {
       <div style={{ padding: '28px 16px', textAlign: 'center' }}>
         <div className="label">NO GAMES PLAYED</div>
         <div style={{
-          marginTop: 8, font: "400 12px/1.6 var(--body)", color: 'var(--dim)',
+          marginTop: 8, font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
         }}>Leaderboards fill in once the season starts.</div>
       </div>
     );
@@ -82,7 +82,7 @@ export function Stats() {
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
             <div className="label">{scope === 'fielding' ? 'IN THE FIELD' : 'LEADERS'}</div>
             <div style={{
-              font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
             }}>{scope === 'national' ? 'National' : team.def.school}</div>
           </div>
 
@@ -111,7 +111,7 @@ export function Stats() {
             </div>
             {gloveRows.length === 0 && (
               <div style={{
-                padding: '12px 10px', font: "400 12px var(--body)", color: 'var(--dim)',
+                padding: '12px 10px', font: "400 calc(12px * var(--ts)) var(--body)", color: 'var(--dim)',
               }}>Nothing has been hit at anybody yet.</div>
             )}
             {gloveRows.map(({ p, line }) => (
@@ -131,25 +131,25 @@ export function Stats() {
               >
                 <Avatar id={p.id} team={team.def.abbr} size={26} />
                 <span style={{
-                  font: "400 12px var(--body)",
+                  font: "400 calc(12px * var(--ts)) var(--body)",
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>{p.name}</span>
-                <span style={{ font: "400 11px var(--mono)", textAlign: 'right' }}>
+                <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>
                   {p.type === 'pitcher' ? 'P' : p.pos}
                 </span>
-                <span style={{ font: "400 11px var(--mono)", textAlign: 'right' }}>{line.chances}</span>
-                <span style={{ font: "400 11px var(--mono)", textAlign: 'right' }}>{line.plays}</span>
-                <span style={{ font: "400 11px var(--mono)", textAlign: 'right' }}>{line.errors}</span>
-                <span style={{ font: "400 11px var(--mono)", textAlign: 'right' }}>
+                <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>{line.chances}</span>
+                <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>{line.plays}</span>
+                <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>{line.errors}</span>
+                <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>
                   {pct(fieldingPct(line))}
                 </span>
-                <span style={{ font: "600 11px var(--mono)", textAlign: 'right' }}>
+                <span style={{ font: "600 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>
                   {line.chances >= bar ? fmtRate(paePer100(line)) : '—'}
                 </span>
               </button>
             ))}
           </div>
-          <div style={{ marginTop: 10, font: "400 11px/1.5 var(--body)", color: 'var(--dim)' }}>
+          <div style={{ marginTop: 10, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
             <strong>CH</strong> is balls hit at him; <strong>+/100</strong> the outs he made that
             an average glove would not have, per hundred of them, errors already deducted. Zero is
             not average. An error is a play nobody made, so the whole league sits at{' '}
@@ -184,7 +184,7 @@ export function Stats() {
           onPick={openPlayer}
         />
         <div style={{
-          marginTop: 8, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
+          marginTop: 8, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
         }}>
           Outs he made that an average glove would not have, per hundred balls hit
           at him, once enough has been hit at him to mean something. Zero is not
@@ -212,7 +212,7 @@ function Chip(
         background: on ? 'var(--clay)' : 'transparent',
         border: `1px solid ${on ? 'var(--clay)' : 'rgba(28,36,48,.25)'}`,
         color: on ? 'var(--cream)' : 'rgba(28,36,48,.6)',
-        font: "600 10px var(--mono)", letterSpacing: '.14em',
+        font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.14em',
       }}
     >{children}</button>
   );
@@ -237,7 +237,7 @@ function Board(
       <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
         {rows.length === 0 && (
           <div style={{
-            padding: '9px 10px', font: "400 11px var(--body)", color: 'var(--dim)',
+            padding: '9px 10px', font: "400 calc(11px * var(--ts)) var(--body)", color: 'var(--dim)',
           }}>Nobody qualified yet.</div>
         )}
         {rows.map((r, i) => {
@@ -254,23 +254,23 @@ function Board(
               borderLeft: ours ? '3px solid var(--clay)' : '3px solid transparent',
               background: ours ? 'rgba(168,68,42,.15)' : 'transparent',
             }}>
-              <span style={{ font: "400 10px var(--mono)", color: 'var(--dim)' }}>{i + 1}</span>
+              <span style={{ font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>{i + 1}</span>
               <span style={{
-                font: `${ours ? 600 : 400} 12px var(--body)`,
+                font: `${ours ? 600 : 400} calc(12px * var(--ts)) var(--body)`,
                 color: ours ? 'var(--clay)' : 'var(--ink)',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{r.name}</span>
               <span style={{
-                font: `${ours ? 700 : 400} 10px var(--mono)`,
+                font: `${ours ? 700 : 400} calc(10px * var(--ts)) var(--mono)`,
                 color: ours ? 'var(--clay)' : 'var(--dim)', textAlign: 'right',
               }}>{r.team}</span>
               <span style={{
-                font: "600 12px var(--mono)", textAlign: 'right',
+                font: "600 calc(12px * var(--ts)) var(--mono)", textAlign: 'right',
               }}>{fmt(r.value)}</span>
               {detail && (
                 <span style={{
                   gridColumn: '2 / -1', marginTop: 1,
-                  font: "400 9.5px var(--mono)", color: 'var(--dim)',
+                  font: "400 calc(9.5px * var(--ts)) var(--mono)", color: 'var(--dim)',
                 }}>{r.detail}</span>
               )}
             </button>

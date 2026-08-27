@@ -105,7 +105,7 @@ export function SeasonReview() {
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
             <div className="label">{team.def.school} · {year}</div>
             <div style={{
-              font: "800 22px/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
+              font: "800 calc(22px * var(--ts))/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
             }}>The season</div>
           </div>
         </div>
@@ -127,15 +127,15 @@ export function SeasonReview() {
           textAlign: 'center',
         }}>
           <div style={{
-            font: "600 8.5px var(--mono)", letterSpacing: '.2em',
+            font: "600 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.2em',
             color: 'rgba(246,241,230,.6)',
           }}>FINISHED</div>
           <div style={{
-            font: "800 34px/1 var(--display)", marginTop: 6,
+            font: "800 calc(34px * var(--ts))/1 var(--display)", marginTop: 6,
             color: 'var(--cream)', textTransform: 'uppercase',
           }}>{banner.title}</div>
           <div style={{
-            marginTop: 7, font: "400 12px/1.5 var(--body)",
+            marginTop: 7, font: "400 calc(12px * var(--ts))/1.5 var(--body)",
             color: 'rgba(246,241,230,.68)',
           }}>{banner.note}</div>
         </div>
@@ -177,7 +177,7 @@ export function SeasonReview() {
         <div style={{
           marginTop: 10, padding: '11px 12px',
           background: 'var(--paper)', borderLeft: '3px solid var(--clay)',
-          font: "400 12.5px/1.5 var(--body)",
+          font: "400 calc(12.5px * var(--ts))/1.5 var(--body)",
         }}>
           <strong>{FINISH_LABEL[finish]}</strong>
         </div>
@@ -196,10 +196,10 @@ export function SeasonReview() {
             <Avatar id={mvp.id} team={team.def.abbr} size={46} />
             <span>
               <span style={{
-                display: 'block', font: "700 18px/1 var(--display)", textTransform: 'uppercase',
+                display: 'block', font: "700 calc(18px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
               }}>{mvp.name}</span>
               <span style={{
-                display: 'block', marginTop: 4, font: "400 11.5px var(--mono)", color: 'var(--dim)',
+                display: 'block', marginTop: 4, font: "400 calc(11.5px * var(--ts)) var(--mono)", color: 'var(--dim)',
               }}>{mvp.line}</span>
             </span>
           </button>
@@ -227,7 +227,7 @@ export function SeasonReview() {
             </div>
             <div style={{
               marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--hairline)',
-              font: "400 12px/1.55 var(--body)",
+              font: "400 calc(12px * var(--ts))/1.55 var(--body)",
             }}>{review.message}</div>
           </div>
         </>
@@ -254,7 +254,7 @@ function Tile(
     >
       <div className="label">{k}</div>
       <div style={{
-        font: "700 22px/1 var(--display)", marginTop: 4,
+        font: "700 calc(22px * var(--ts))/1 var(--display)", marginTop: 4,
         color: onClick ? 'var(--clay)' : 'var(--ink)',
       }}>{v}</div>
     </button>
@@ -266,7 +266,7 @@ function Step({ k, v, tone, accent }: { k: string; v: string; tone?: string; acc
     <div>
       <div className="label">{k}</div>
       <div style={{
-        font: `700 ${accent ? 26 : 22}px/1 var(--display)`, marginTop: 3,
+        font: `700 calc(${accent ? 26 : 22}px * var(--ts))/1 var(--display)`, marginTop: 3,
         color: tone ?? (accent ? 'var(--clay)' : 'var(--ink)'),
       }}>{v}</div>
     </div>

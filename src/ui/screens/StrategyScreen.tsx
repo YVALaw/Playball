@@ -87,7 +87,7 @@ export function StrategyScreen() {
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
             <div className="label">HOW YOU PLAY</div>
             <div style={{
-              font: "800 21px/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
+              font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
             }}>Strategy</div>
           </div>
         </div>
@@ -95,7 +95,7 @@ export function StrategyScreen() {
     >
     <div style={{ padding: '10px 14px 16px' }}>
       <div style={{
-        font: "400 11.5px/1.55 var(--body)", color: 'var(--dim)',
+        font: "400 calc(11.5px * var(--ts))/1.55 var(--body)", color: 'var(--dim)',
       }}>
         These are live from the next pitch. Every setting gives something up —
         there is no column here that is simply better than the others.
@@ -106,7 +106,7 @@ export function StrategyScreen() {
           <div className="label">{g.title}</div>
           <div style={{
             marginTop: 2, marginBottom: 6,
-            font: "400 11px/1.4 var(--body)", color: 'var(--dim)',
+            font: "400 calc(11px * var(--ts))/1.4 var(--body)", color: 'var(--dim)',
           }}>{g.note}</div>
 
           {g.options.map((o) => {
@@ -127,17 +127,17 @@ export function StrategyScreen() {
                   display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
                 }}>
                   <span style={{
-                    font: "700 10.5px var(--mono)", letterSpacing: '.08em',
+                    font: "700 calc(10.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
                     color: on ? 'var(--clay)' : 'var(--ink)',
                   }}>{o.label}</span>
                   {on && (
                     <span style={{
-                      font: "600 9px var(--mono)", letterSpacing: '.12em', color: 'var(--clay)',
+                      font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.12em', color: 'var(--clay)',
                     }}>IN USE</span>
                   )}
                 </div>
                 <div style={{
-                  marginTop: 3, font: "400 11px/1.4 var(--body)", color: 'var(--dim)',
+                  marginTop: 3, font: "400 calc(11px * var(--ts))/1.4 var(--body)", color: 'var(--dim)',
                 }}>{o.cost}</div>
               </button>
             );

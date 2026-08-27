@@ -72,7 +72,7 @@ export function Avatar({ id, team, number, size = 40 }: Props) {
       <text
         x="32" y="61"
         textAnchor="middle"
-        style={{ font: "700 9px var(--mono)", fill: 'var(--cream)', opacity: 0.9 }}
+        style={{ font: "700 calc(9px * var(--ts)) var(--mono)", fill: 'var(--cream)', opacity: 0.9 }}
       >{shirt}</text>
 
       {/* Neck, then the head. */}

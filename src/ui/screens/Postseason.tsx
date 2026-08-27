@@ -360,7 +360,7 @@ export function Postseason() {
               style={{
                 padding: '8px 14px', minHeight: 36,
                 background: 'var(--ink)', border: '1px solid var(--ink)',
-                color: 'var(--cream)', font: "700 9.5px var(--mono)", letterSpacing: '.12em',
+                color: 'var(--cream)', font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
               }}
             >DONE</button>
           </div>
@@ -388,7 +388,7 @@ export function Postseason() {
             <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
               <div className="label">{year} POSTSEASON · STAGE {rung + 1} OF 3</div>
               <div style={{
-                font: "800 21px/0.95 var(--display)", marginTop: 3, textTransform: 'uppercase',
+                font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 3, textTransform: 'uppercase',
               }}>{stageTitle}</div>
             </div>
           </div>
@@ -428,13 +428,13 @@ export function Postseason() {
                 }}>
                   <div style={{ padding: '5px 11px', background: 'var(--clay)' }}>
                     <span style={{
-                      font: "600 8.5px var(--mono)", letterSpacing: '.18em',
+                      font: "600 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.18em',
                       color: 'var(--cream)',
                     }}>GAME IN PROGRESS</span>
                   </div>
                   <div style={{ padding: '10px 12px 11px' }}>
                     <div style={{
-                      font: "800 16px/1 var(--display)", textTransform: 'uppercase',
+                      font: "800 calc(16px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
                     }}>{pendingGame.line}</div>
                     <div style={{ display: 'flex', gap: 8, marginTop: 9 }}>
                       <button
@@ -443,7 +443,7 @@ export function Postseason() {
                         style={{
                           flex: 1, padding: '11px 8px', minHeight: 42,
                           background: 'var(--clay)', border: '1px solid var(--clay)',
-                          color: 'var(--cream)', font: "700 10px var(--mono)",
+                          color: 'var(--cream)', font: "700 calc(10px * var(--ts)) var(--mono)",
                           letterSpacing: '.1em',
                         }}
                       >PICK IT UP</button>
@@ -453,7 +453,7 @@ export function Postseason() {
                         style={{
                           flex: 1, padding: '11px 8px', minHeight: 42,
                           background: 'transparent', border: '1px solid rgba(28,36,48,.4)',
-                          color: 'var(--ink)', font: "700 10px var(--mono)",
+                          color: 'var(--ink)', font: "700 calc(10px * var(--ts)) var(--mono)",
                           letterSpacing: '.1em',
                         }}
                       >LET THEM FINISH</button>
@@ -543,7 +543,7 @@ function StageRail({ at }: { at: number }) {
             transition: 'background 220ms ease',
           }} />
           <div style={{
-            marginTop: 4, font: "600 8px var(--mono)", letterSpacing: '.08em',
+            marginTop: 4, font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.08em',
             color: i === at ? 'var(--clay)' : 'var(--dim)', textAlign: 'center',
           }}>{n}</div>
         </div>
@@ -569,7 +569,7 @@ function SubToggle(
             background: v === at ? 'var(--clay)' : 'var(--paper)',
             border: v === at ? '1px solid var(--clay)' : '1px solid rgba(28,36,48,.28)',
             color: v === at ? 'var(--cream)' : 'var(--ink)',
-            font: "700 8.5px var(--mono)", letterSpacing: '.1em',
+            font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.1em',
           }}
         >{label}</button>
       ))}
@@ -643,11 +643,11 @@ function YourNext(
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
-            font: "700 15px/1.1 var(--display)", textTransform: 'uppercase',
+            font: "700 calc(15px * var(--ts))/1.1 var(--display)", textTransform: 'uppercase',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>{line}</div>
           {sub && <div style={{
-            marginTop: 2, font: "400 9.5px var(--mono)", color: 'var(--dim)',
+            marginTop: 2, font: "400 calc(9.5px * var(--ts)) var(--mono)", color: 'var(--dim)',
           }}>{sub}</div>}
         </div>
         <button
@@ -656,7 +656,7 @@ function YourNext(
           style={{
             flex: 'none', padding: '8px 10px', minHeight: 36,
             background: 'var(--field)', border: '1px solid rgba(28,36,48,.4)',
-            color: 'var(--ink)', font: "700 8.5px var(--mono)", letterSpacing: '.08em',
+            color: 'var(--ink)', font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
           }}
         >LINEUP</button>
       </div>
@@ -798,7 +798,7 @@ function SeriesResultCard(
       {tag && (
         <div style={{
           padding: '3px 9px', background: 'var(--ink)',
-          font: "600 8px var(--mono)", letterSpacing: '.14em', color: 'var(--cream)',
+          font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'var(--cream)',
         }}>{tag}</div>
       )}
       <TeamLine
@@ -831,7 +831,7 @@ function PendingSeriesCard(
       <div style={{
         padding: '3px 9px', background: 'var(--field)',
         borderBottom: '1px solid var(--hairline)',
-        font: "600 8px var(--mono)", letterSpacing: '.14em', color: 'var(--dim)',
+        font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'var(--dim)',
       }}>BEST OF 3 · NOT PLAYED</div>
       <TeamLine team={a} label={aLabel} wins={0} champion={false}
         abbr={abbr} userTeam={userTeam} top />
@@ -859,7 +859,7 @@ function LiveSeriesCard(
     }}>
       <div style={{
         padding: '3px 9px', background: 'var(--clay)',
-        font: "600 8px var(--mono)", letterSpacing: '.14em', color: 'var(--cream)',
+        font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'var(--cream)',
       }}>
         BEST OF {len} · {s.winner === null
           ? `GAME ${s.games.length + 1}`
@@ -894,24 +894,24 @@ function TeamLine(
       background: champion ? `${tint}1c` : 'transparent',
     }}>
       <span style={{
-        flex: 'none', font: `${champion ? 700 : 600} 12px var(--mono)`,
+        flex: 'none', font: `${champion ? 700 : 600} calc(12px * var(--ts)) var(--mono)`,
         color: tint, letterSpacing: '.04em',
       }}>
         {abbr(team)}{team === userTeam ? ' ★' : ''}
       </span>
       {label && (
         <span style={{
-          font: "400 8.5px var(--mono)", color: 'var(--dim)', letterSpacing: '.06em',
+          font: "400 calc(8.5px * var(--ts)) var(--mono)", color: 'var(--dim)', letterSpacing: '.06em',
         }}>{label}</span>
       )}
       <span style={{ flex: 1 }} />
       {champion && (
         <span style={{
-          font: "700 7.5px var(--mono)", letterSpacing: '.1em', color: tint,
+          font: "700 calc(7.5px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: tint,
         }}>CHAMPIONS</span>
       )}
       <span style={{
-        font: `${champion ? 800 : 600} 14px var(--display)`,
+        font: `${champion ? 800 : 600} calc(14px * var(--ts)) var(--display)`,
         minWidth: 14, textAlign: 'right',
       }}>{wins}</span>
     </div>
@@ -937,7 +937,7 @@ function NationalStage(
     return (
       <div style={{
         padding: '20px 14px', textAlign: 'center',
-        font: "400 12px/1.5 var(--body)", color: 'var(--dim)',
+        font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
       }}>The field is being announced.</div>
     );
   }
@@ -958,7 +958,7 @@ function NationalStage(
               border: t === userTeam ? '1.5px solid var(--clay)' : '1px solid var(--faint)',
               borderLeft: `3px solid ${teamColour(abbr(t))}`,
               background: 'var(--paper)',
-              font: "600 9.5px var(--mono)", color: teamColour(abbr(t)),
+              font: "600 calc(9.5px * var(--ts)) var(--mono)", color: teamColour(abbr(t)),
             }}>
               <span style={{ color: 'var(--dim)' }}>{i + 1} </span>
               {abbr(t)}{t === userTeam ? ' ★' : ''}
@@ -1030,7 +1030,7 @@ function NationalStage(
           );
         })}
         <div style={{
-          marginTop: 4, font: "400 10px/1.5 var(--body)", color: 'var(--dim)',
+          marginTop: 4, font: "400 calc(10px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
         }}>
           P marks a protected top four seed from the regular season. Protection
           buys the field and the bye, never a banner.
@@ -1085,7 +1085,7 @@ function NationalStage(
             <span className="label">NATIONAL BRACKET {label}</span>
             {h && (
               <span style={{
-                font: "700 8px var(--mono)", letterSpacing: '.1em', color: h.tone,
+                font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: h.tone,
               }}>{h.tag}</span>
             )}
           </div>
@@ -1094,7 +1094,7 @@ function NationalStage(
                 abbr={abbr} userTeam={userTeam} />
             : (
               <div style={{
-                padding: '10px 14px', font: "400 11px var(--body)", color: 'var(--dim)',
+                padding: '10px 14px', font: "400 calc(11px * var(--ts)) var(--body)", color: 'var(--dim)',
               }}>Waiting on the opening round.</div>
             )}
         </div>
@@ -1120,7 +1120,7 @@ function NationalStage(
           />
         ) : (
           <div style={{
-            padding: '8px 0', font: "400 11px var(--body)", color: 'var(--dim)',
+            padding: '8px 0', font: "400 calc(11px * var(--ts)) var(--body)", color: 'var(--dim)',
           }}>The two bracket champions meet here.</div>
         )}
       </div>
