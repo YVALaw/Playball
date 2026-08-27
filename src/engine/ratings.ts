@@ -505,10 +505,23 @@ export function battedBallType(
  * player here, because a badge lookup in this file would make `ratings.ts`
  * import `badges.ts`, which imports `scouting.ts`, which imports this.
  */
+/**
+ * How many pitches this arm has before he starts losing anything.
+ *
+ * Pulled out of `fatigueMultiplier` so the screen can draw a stamina bar
+ * against the same number the simulation fades him on. It was inline, which
+ * meant the only way to show a pitcher's endurance was to write the formula
+ * down a second time in the UI — and a duplicated constant is a constant that
+ * eventually disagrees with itself.
+ */
+export function pitchBudget(pitcher: Pitcher): number {
+  return 30 + pitcher.stamina * 0.85;      // stamina 80 gives roughly 98 pitches
+}
+
 export function fatigueMultiplier(
   pitcher: Pitcher, pitchCount: number, slope = 1,
 ): number {
-  const budget = 30 + pitcher.stamina * 0.85; // stamina 80 gives roughly 98 pitches
+  const budget = pitchBudget(pitcher);
   if (pitchCount <= budget) return 1;
   return Math.max(0.55, 1 - (pitchCount - budget) * CONTEXT.fatigueSlopePerPitch * slope);
 }

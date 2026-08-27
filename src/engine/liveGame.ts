@@ -12,6 +12,7 @@
 // simulation drive it. The only thing that differs is who decides when to step.
 
 import { createHalfInning, TeamState, RULES, type SimOptions } from './game.js';
+import { pitchBudget } from './ratings.js';
 import type { GameResult } from './game.js';
 import { ENGINES } from './engines.js';
 import type {
@@ -29,6 +30,28 @@ export interface Decision {
   homeRuns: number;
   batter: Hitter;
   pitcher: Pitcher;
+  /**
+   * The man on the mound's outing so far, for the screen.
+   *
+   * Fatigue has always been real — past `pitchBudget` an arm loses
+   * effectiveness on a slope down to a floor — and the dugout showed his name
+   * and his throwing hand and nothing else. So the game asked you to decide
+   * when to go to the bullpen while telling you nothing to decide on.
+   *
+   * Reported, never computed here: reading a counter and a rating takes no
+   * random draws, which is the rule the whole reporting layer keeps.
+   */
+  outing: {
+    /** Pitches thrown in this game by this man. */
+    pitches: number;
+    /** What he has before he starts fading. Draw the bar against this. */
+    budget: number;
+    /** Outs he has recorded, so a card can print an innings figure. */
+    outs: number;
+    strikeouts: number;
+    /** Whether he came out of the pen rather than starting. */
+    relief: boolean;
+  };
   /**
    * Who is standing where, with identity. The booleans above say a base is
    * occupied; this says *which runner* is on it, which is what lets the diamond
@@ -272,6 +295,13 @@ export function createLiveGame(
       homeRuns: home.runs,
       batter,
       pitcher,
+      outing: {
+        pitches: fld().pitcherPitches,
+        budget: pitchBudget(pitcher),
+        outs: fld().pitchLine(pitcher).outs,
+        strikeouts: fld().pitchLine(pitcher).k,
+        relief: pitcher !== fld().starter,
+      },
       options: offense ? OFFENSE(bases, current.outs) : DEFENSE(bases, current.outs),
     };
   };

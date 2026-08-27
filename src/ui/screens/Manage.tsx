@@ -10,6 +10,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { PlayerName } from '../PlayerName.js';
 import { FirstVisit } from '../Tutorial.js';
 import { overallOf } from '../../engine/ratings.js';
+import { battingAverage } from '../../engine/season.js';
+import { pct } from '../format.js';
 import { useDynasty } from '../../state/store.js';
 import { handles } from '../../state/depth.js';
 import { readPrefs } from '../../state/devicePrefs.js';
@@ -30,7 +32,7 @@ import type { BallHit } from '../Diamond3D.js';
 
 const Diamond3D = lazy(() =>
   import('../Diamond3D.js').then((m) => ({ default: m.Diamond3D })));
-import type { Hitter, Pitcher } from '../../engine/types.js';
+import type { Hitter, Pitcher, PlayerId } from '../../engine/types.js';
 
 type Modal = 'pinch' | 'pen' | null;
 
@@ -48,6 +50,8 @@ export function Manage() {
   // their field preference in the middle of an at-bat, and re-reading storage
   // on every pitch to find that out would be absurd.
   const [flatField] = useState(() => readPrefs().field === '2d');
+  // The full linescore, on request rather than always. See the top bar.
+  const [showLine, setShowLine] = useState(false);
   const submitTactic = useDynasty((s) => s.submitTactic);
   const pinchHitFor = useDynasty((s) => s.pinchHitFor);
   const bringIn = useDynasty((s) => s.bringIn);
@@ -241,26 +245,35 @@ export function Manage() {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <FirstVisit id="manage" />
       {/*
-        One scoreboard, not two. The linescore used to sit in its own paper block
-        underneath this strip, which meant the score was printed twice and the
-        pair of them ate 145px of a phone screen whose whole job is the field and
-        the play log. Folded in, the R column IS the score and the strip costs
-        82px. What went is the giant 22px run total and the full school names —
-        the abbreviation and a bold R say the same thing in a third of the space.
+        The top bar, rebuilt to the mock.
+
+        It used to carry a full linescore, which printed the score twice and
+        spent 82px of a screen whose whole job is the field. The strip now says
+        the four things you glance at — which half of which inning, how many
+        out, and the score — and the linescore itself is a tap behind LINE
+        SCORE, where a fourteen-inning game can have all the room it needs.
+
+        There is deliberately no ball-strike count. This game is managed a
+        plate appearance at a time rather than a pitch at a time, so at the
+        moment you are asked for a call the count is always nothing-and-nothing;
+        a count only exists *inside* a resolved at bat, which is why the log
+        prints one. Drawing "B 0 S 0" on every decision would be furniture that
+        never changes.
       */}
-      {/* The game owns the whole screen now — no app header above — so the
-          scoreboard is the top of the viewport and clears the notch itself. */}
       <div style={{
-        flex: 'none', background: 'var(--navy)', padding: '8px 12px 9px',
-        paddingTop: 'calc(env(safe-area-inset-top) + 8px)',
+        flex: 'none', background: 'var(--navy)', padding: '7px 12px 8px',
+        paddingTop: 'calc(env(safe-area-inset-top) + 7px)',
       }}>
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          height: 13,
+          display: 'flex', alignItems: 'center', gap: 10, minHeight: 18,
         }}>
           <span style={{
-            font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'rgba(246,241,230,.72)',
-          }}>{inning}</span>
+            font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.12em',
+            color: 'var(--cream)', whiteSpace: 'nowrap',
+          }}>
+            {inning}
+          </span>
+          <span style={{ flex: 1 }} />
           <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <span style={{
               font: "500 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em',
@@ -268,33 +281,73 @@ export function Manage() {
             }}>OUT</span>
             {[0, 1, 2].map((i) => (
               <span key={i} style={{
-                width: 7, height: 7, borderRadius: '50%',
+                width: 8, height: 8, transform: 'rotate(45deg)',
                 border: '1px solid rgba(246,241,230,.45)',
                 background: i < outs ? 'var(--clay)' : 'transparent',
                 transition: 'background 180ms ease',
               }} />
             ))}
           </span>
+          <button
+            onClick={() => { void saveNow(); go('home'); }}
+            className="tap"
+            style={{
+              flex: 'none', padding: '5px 10px',
+              border: '1px solid rgba(246,241,230,.35)',
+              color: 'var(--cream)',
+              font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
+            }}
+          >EXIT</button>
         </div>
-        <div style={{ marginTop: 4 }}>
-          <LineScore
-            tone="navy"
-            innings={innCols}
-            rows={[
-              {
-                abbr: away?.def.abbr ?? 'AWY', cells: cellsFor('away'),
-                r: awayRuns, h: r.away.hits, e: r.away.errors,
-                batting: d?.half === 'top',
-              },
-              {
-                abbr: home?.def.abbr ?? 'HOM', cells: cellsFor('home'),
-                r: homeRuns, h: r.home.hits, e: r.home.errors,
-                batting: d?.half === 'bottom',
-              },
-            ]}
-          />
+
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, marginTop: 6,
+        }}>
+          <Side abbr={away?.def.abbr ?? 'AWY'} runs={awayRuns} batting={d?.half === 'top'} />
+          <span style={{
+            width: 7, height: 7, transform: 'rotate(45deg)',
+            background: 'rgba(246,241,230,.35)', flex: 'none',
+          }} />
+          <Side abbr={home?.def.abbr ?? 'HOM'} runs={homeRuns} batting={d?.half === 'bottom'} home />
+          <span style={{ flex: 1 }} />
+          <button
+            onClick={() => setShowLine((v) => !v)}
+            className="tap"
+            style={{
+              flex: 'none', padding: '5px 10px',
+              border: '1px solid rgba(246,241,230,.35)',
+              background: showLine ? 'rgba(246,241,230,.16)' : 'transparent',
+              color: 'var(--cream)',
+              font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
+            }}
+          >LINE SCORE</button>
         </div>
+
+        {/* The full strip, on request. Kept out of the permanent furniture
+            because it answers a question you ask a few times a game, not on
+            every plate appearance. */}
+        {showLine && (
+          <div style={{ marginTop: 7 }} className="card-in">
+            <LineScore
+              tone="navy"
+              innings={innCols}
+              rows={[
+                {
+                  abbr: away?.def.abbr ?? 'AWY', cells: cellsFor('away'),
+                  r: awayRuns, h: r.away.hits, e: r.away.errors,
+                  batting: d?.half === 'top',
+                },
+                {
+                  abbr: home?.def.abbr ?? 'HOM', cells: cellsFor('home'),
+                  r: homeRuns, h: r.home.hits, e: r.home.errors,
+                  batting: d?.half === 'bottom',
+                },
+              ]}
+            />
+          </div>
+        )}
       </div>
+
 
       {/*
         Everything below the scoreboard is one row: the field and the log on the
@@ -312,85 +365,102 @@ export function Manage() {
         plate cropped off the bottom. The play log below still gets the remaining
         height, which on a phone is the larger share.
       */}
+      {/*
+        The field, roughly doubled, with the situation written across the
+        bottom of it.
+
+        It was 118px inside a 178px block that also held the matchup, which is
+        the complaint the rebuild exists to answer. The diamond says *where* the
+        runners are; the banner says what that means — "runners on first and
+        second" is the sentence a manager says to himself, and it sits on the
+        field rather than above the calls because it belongs to the picture.
+      */}
       <div style={{
-        flex: 'none', height: 178, boxSizing: 'border-box',
-        display: 'flex', flexDirection: 'column', gap: 4,
-        padding: '8px 12px 6px', borderBottom: '1px solid var(--faint)',
+        flex: 'none', position: 'relative',
+        borderBottom: '1px solid var(--faint)',
         background: 'var(--paper)',
       }}>
-        <div style={{ flex: 'none', width: '100%', height: 118 }}>
+        <div style={{ flex: 'none', width: '100%', height: 210 }}>
           {/* The 2D diamond was always the fallback for a device without WebGL;
               settings simply lets somebody choose it. Picking it also means
               three.js is never fetched at all, which is 600KB a slower phone
               does not have to spend on a renderer its owner did not want. */}
           {flatField ? (
-            <Diamond runners={d?.runners ?? []} scoreTick={scoreTick} size={112} />
+            <Diamond runners={d?.runners ?? []} scoreTick={scoreTick} size={200} />
           ) : (
             <Suspense fallback={
-              <Diamond runners={d?.runners ?? []} scoreTick={scoreTick} size={112} />
+              <Diamond runners={d?.runners ?? []} scoreTick={scoreTick} size={200} />
             }>
               <Diamond3D
                 runners={d?.runners ?? []} scoreTick={scoreTick}
-                ball={ball} scored={{ runners: scoredRunners, tick: scoreTick }} height={118}
+                ball={ball} scored={{ runners: scoredRunners, tick: scoreTick }} height={210}
               />
             </Suspense>
           )}
+        {/* The situation, over the foot of the field. */}
+        {d && (
+          <div style={{
+            position: 'absolute', left: 0, bottom: 0,
+            padding: '5px 12px 6px',
+            background: 'rgba(28,36,48,.86)',
+            maxWidth: '86%',
+          }}>
+            <span style={{
+              font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
+              color: 'var(--cream)', textTransform: 'uppercase',
+            }}>{baseState(d.bases, d.outs)}</span>
+          </div>
+        )}
+      </div>
+
+      {/*
+        The matchup, as two cards.
+
+        The strip it replaces was two lines of names, which is the least a
+        screen can say about the only two men who matter. Each card now carries
+        the three numbers you would actually want — what he is hitting, what the
+        arm has done today — and the pitcher's card carries the thing the dugout
+        never showed at all: how far into his outing he is.
+      */}
+      {d && (
+        <div style={{
+          flex: 'none', display: 'flex', gap: 1,
+          background: 'var(--faint)', borderBottom: '1px solid var(--faint)',
+        }}>
+          <ManCard
+            kicker="AT BAT"
+            corner=""
+            id={d.batter.id}
+            name={d.batter.name}
+            sub={`${d.batter.pos} · ${d.batter.bats} vs ${d.pitcher.throws}HP`}
+            mine={d.side === 'offense'}
+            stats={batterLine(season, d.batter.id)}
+          />
+          <ManCard
+            kicker="PITCHING"
+            corner={d.outing.relief ? 'RELIEF' : 'START'}
+            id={d.pitcher.id}
+            name={d.pitcher.name}
+            sub={`${d.pitcher.throws}HP · ${d.outing.relief ? 'relief' : 'starter'}`}
+            mine={d.side === 'defense'}
+            stats={[
+              { k: 'IP', v: inningsFrom(d.outing.outs) },
+              { k: 'K', v: String(d.outing.strikeouts) },
+              { k: 'PC', v: String(d.outing.pitches) },
+            ]}
+            gauges={[
+              {
+                label: 'ARM',
+                /* Fatigue is real and always has been: past his budget an arm
+                   loses effectiveness on a slope down to a floor of 0.55. The
+                   bar is that budget, drawn. */
+                fill: Math.min(1, d.outing.pitches / Math.max(1, d.outing.budget)),
+                over: d.outing.pitches > d.outing.budget,
+              },
+            ]}
+          />
         </div>
-        <div style={{ minWidth: 0, flex: 'none' }}>
-          {d ? (
-            /*
-              Both halves of the matchup, always. The strip used to name only
-              your own man, which meant managing your defense against a batter
-              the screen refused to identify. Two short rows: who is up, who is
-              throwing, your side in ink and theirs no dimmer than readable.
-            */
-            <>
-              <div style={{
-                display: 'flex', alignItems: 'baseline', gap: 7, minWidth: 0,
-              }}>
-                <span className="label" style={{ flex: 'none', width: 44 }}>AT BAT</span>
-                <PlayerName
-                  id={d.batter.id}
-                  style={{
-                    font: "700 calc(13px * var(--ts))/1.15 var(--display)", textTransform: 'uppercase',
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    color: d.side === 'offense' ? 'var(--ink)' : 'var(--dim)',
-                  }}
-                >{d.batter.name}</PlayerName>
-                <span style={{
-                  flex: 'none', font: "400 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)',
-                  whiteSpace: 'nowrap',
-                }}>{d.batter.pos} · {d.batter.bats}</span>
-              </div>
-              <div style={{
-                display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 2, minWidth: 0,
-              }}>
-                <span className="label" style={{ flex: 'none', width: 44 }}>PITCHING</span>
-                <PlayerName
-                  id={d.pitcher.id}
-                  style={{
-                    font: "700 calc(13px * var(--ts))/1.15 var(--display)", textTransform: 'uppercase',
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    color: d.side === 'defense' ? 'var(--ink)' : 'var(--dim)',
-                  }}
-                >{d.pitcher.name}</PlayerName>
-                <span style={{
-                  flex: 'none', font: "400 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)',
-                  whiteSpace: 'nowrap',
-                }}>{d.pitcher.throws}HP</span>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="label">FINAL</div>
-              <div style={{
-                marginTop: 3, font: "700 calc(17px * var(--ts))/1.1 var(--display)", textTransform: 'uppercase',
-              }}>
-                {homeRuns > awayRuns ? home?.def.school : away?.def.school} win
-              </div>
-            </>
-          )}
-        </div>
+      )}
       </div>
 
       <div ref={logRef} style={{
@@ -543,6 +613,183 @@ export function Manage() {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * One team's half of the score line.
+ *
+ * The batting side is marked rather than merely brighter: a dot beside the
+ * abbreviation says whose half it is without a second row of text, and it is
+ * the one thing on this bar that changes every half inning.
+ */
+/**
+ * The situation, in the words a manager would use.
+ *
+ * The diamond already says which bags are occupied; this says what that adds up
+ * to. Deliberately a sentence rather than a code — "runners on first and
+ * second, two away" is read at a glance, and "1-2, 2 out" has to be decoded.
+ */
+function baseState(bases: [boolean, boolean, boolean], outs: number): string {
+  const [first, second, third] = bases;
+  const on = [first && 'first', second && 'second', third && 'third']
+    .filter((x): x is string => typeof x === 'string');
+  const away = outs === 0 ? 'nobody out' : outs === 1 ? 'one away' : 'two away';
+
+  if (on.length === 3) return `bases loaded, ${away}`;
+  if (on.length === 0) return `bases empty, ${away}`;
+  if (on.length === 1) return `runner on ${on[0]}, ${away}`;
+  return `runners on ${on[0]} and ${on[1]}, ${away}`;
+}
+
+/** Outs into the innings figure a box score prints: 5 outs is 1.2. */
+const inningsFrom = (outs: number): string =>
+  `${Math.floor(outs / 3)}.${outs % 3}`;
+
+/**
+ * The batter's season line, for his card.
+ *
+ * Three numbers, chosen because they are the three anybody asks about a hitter
+ * before a plate appearance. A man with no at bats yet gets dashes rather than
+ * a .000 that reads as a slump.
+ */
+function batterLine(
+  season: ReturnType<typeof useDynasty.getState>['season'],
+  id: PlayerId,
+): { k: string; v: string }[] {
+  const line = season?.batting.get(id);
+  if (!line || line.ab === 0) {
+    return [{ k: 'AVG', v: '—' }, { k: 'HR', v: '—' }, { k: 'RBI', v: '—' }];
+  }
+  return [
+    { k: 'AVG', v: pct(battingAverage(line)) },
+    { k: 'HR', v: String(line.hr) },
+    { k: 'RBI', v: String(line.rbi) },
+  ];
+}
+
+/**
+ * One of the two men in the matchup.
+ *
+ * Both cards are the same component so they cannot drift into two designs, and
+ * the side that belongs to you is marked rather than merely brighter — you are
+ * always one of these two, and which one changes every half inning.
+ *
+ * `gauges` is a list rather than one bar on purpose. Fatigue is the only real
+ * one today; pitcher confidence arrives with the stage that builds it, and the
+ * card is laid out so the second bar slots in beside the first rather than
+ * needing this rewritten. A bar reading a value that does not exist would be
+ * theatre, so there is exactly one until there are two.
+ */
+function ManCard(
+  { kicker, corner, id, name, sub, mine, stats, gauges }: {
+    kicker: string;
+    corner: string;
+    id: PlayerId;
+    name: string;
+    sub: string;
+    mine: boolean;
+    stats: { k: string; v: string }[];
+    gauges?: { label: string; fill: number; over: boolean }[];
+  },
+) {
+  return (
+    <div style={{
+      flex: 1, minWidth: 0, background: 'var(--paper)', padding: '6px 9px 7px',
+      borderTop: `2px solid ${mine ? 'var(--clay)' : 'transparent'}`,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+        <span className="label" style={{ color: mine ? 'var(--clay)' : undefined }}>{kicker}</span>
+        <span style={{ flex: 1 }} />
+        <span style={{
+          font: "500 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em',
+          color: 'var(--dim)',
+        }}>{corner}</span>
+      </div>
+      <PlayerName
+        id={id}
+        style={{
+          display: 'block', marginTop: 2,
+          font: "800 calc(14px * var(--ts))/1.05 var(--display)",
+          textTransform: 'uppercase',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          color: mine ? 'var(--ink)' : 'var(--dim)',
+        }}
+      >{name}</PlayerName>
+      <div style={{
+        marginTop: 1,
+        font: "400 calc(8.5px * var(--ts))/1.3 var(--mono)", color: 'var(--dim)',
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      }}>{sub}</div>
+
+      <div style={{ display: 'flex', gap: 10, marginTop: 5 }}>
+        {stats.map((s) => (
+          <span key={s.k} style={{ minWidth: 0 }}>
+            <span style={{
+              display: 'block',
+              font: "500 calc(7.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
+              color: 'var(--dim)',
+            }}>{s.k}</span>
+            <span style={{
+              display: 'block',
+              font: "700 calc(11.5px * var(--ts))/1.1 var(--body)",
+              fontVariantNumeric: 'tabular-nums',
+            }}>{s.v}</span>
+          </span>
+        ))}
+      </div>
+
+      {gauges && gauges.map((g) => (
+        <div key={g.label} style={{ marginTop: 5 }}>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+          }}>
+            <span style={{
+              font: "500 calc(7px * var(--ts)) var(--mono)", letterSpacing: '.12em',
+              color: g.over ? 'var(--clay)' : 'var(--dim)',
+            }}>{g.label}</span>
+            {g.over && (
+              <span style={{
+                font: "600 calc(7px * var(--ts)) var(--mono)", letterSpacing: '.1em',
+                color: 'var(--clay)',
+              }}>PAST HIS BUDGET</span>
+            )}
+          </div>
+          <div style={{
+            marginTop: 2, height: 3, background: 'var(--faint)', overflow: 'hidden',
+          }}>
+            <div className="grow" style={{
+              width: `${Math.round(g.fill * 100)}%`, height: '100%',
+              background: g.over ? 'var(--clay)' : 'var(--win)',
+            }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Side(
+  { abbr, runs, batting, home }:
+  { abbr: string; runs: number; batting?: boolean; home?: boolean },
+) {
+  const name = (
+    <span style={{
+      font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.12em',
+      color: batting ? 'var(--cream)' : 'rgba(246,241,230,.55)',
+    }}>{abbr}</span>
+  );
+  const score = (
+    <span style={{
+      font: `800 calc(20px * var(--ts))/1 var(--display)`,
+      color: batting ? 'var(--cream)' : 'rgba(246,241,230,.75)',
+      fontVariantNumeric: 'tabular-nums',
+    }}>{runs}</span>
+  );
+  return (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+      {home ? <>{score}{name}</> : <>{name}{score}</>}
+    </span>
   );
 }
 
