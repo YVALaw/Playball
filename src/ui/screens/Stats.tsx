@@ -17,7 +17,7 @@ import {
 import { pct } from '../format.js';
 import type { Player, PlayerId } from '../../engine/types.js';
 
-type Scope = 'national' | 'team' | 'fielding';
+type Scope = 'national' | 'team' | 'june' | 'fielding';
 
 /** A signed rate, so a fielder's line and the league's read in the same units. */
 const fmtRate = (v: number): string => `${v > 0 ? '+' : ''}${v.toFixed(1)}`;
@@ -37,7 +37,19 @@ export function Stats() {
   // Filter to the roster BEFORE ranking, and drop the qualifier: a nine man
   // lineup cannot fill a top five against a national minimum, and on your own
   // team you want to see everybody including the bench.
-  const boards = scope === 'team'
+  /*
+    June, on its own.
+
+    The qualifiers have to come down and they have to come down hard: the
+    national bar is built for fifty games and a tournament is at most a
+    fortnight, so leaving it in place produces an empty screen rather than a
+    leaderboard. One at-bat and one out are the honest floor for a sample this
+    short, and the row's own detail says how few.
+  */
+  const juneBoards = leaders(season, { limit: 5, minPA: 1, minIP: 1, minChances: 1, june: true });
+  const anyJune = (season.postBatting?.size ?? 0) > 0 || (season.postPitching?.size ?? 0) > 0;
+
+  const boards = scope === 'june' ? juneBoards : scope === 'team'
     // The bat and arm qualifiers go to 1 on your own roster so the bench shows
     // up. The glove keeps a real bar even here: it is ranked on a rate, and a
     // rate off two chances is not a season. Low enough that a catcher and a
@@ -80,15 +92,27 @@ export function Stats() {
       header={
         <div style={{ padding: '12px 14px 10px' }}>
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-            <div className="label">{scope === 'fielding' ? 'IN THE FIELD' : 'LEADERS'}</div>
+            <div className="label">{
+              scope === 'fielding' ? 'IN THE FIELD'
+                : scope === 'june' ? 'WHEN IT MATTERED' : 'LEADERS'
+            }</div>
             <div style={{
               font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-            }}>{scope === 'national' ? 'National' : team.def.school}</div>
+            }}>{
+              scope === 'national' ? 'National'
+                : scope === 'june' ? 'The postseason' : team.def.school
+            }</div>
           </div>
 
           <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
             <Chip on={scope === 'national'} onClick={() => setScope('national')}>NATIONAL</Chip>
             <Chip on={scope === 'team'} onClick={() => setScope('team')}>MY TEAM</Chip>
+            {/* Only once there is a June to look at. A tab that is always there
+                and always empty for nine months of every year teaches a player
+                to stop pressing it. */}
+            {anyJune && (
+              <Chip on={scope === 'june'} onClick={() => setScope('june')}>POSTSEASON</Chip>
+            )}
             {/* Everybody who takes the field, pitchers included — a comebacker
                 is a chance and the mound has a glove. The roster's third tab
                 until fielding moved in with the other numbers. */}

@@ -2209,6 +2209,15 @@ export interface LeaderOptions {
    * rarely has anybody in the national top five.
    */
   team?: string;
+  /**
+   * Rank June instead of the season.
+   *
+   * Reads the postseason books rather than the season ones, and nothing else
+   * changes — the same sorts, the same rows, the same shape out. The caller is
+   * responsible for the qualifiers, because a national minimum built for fifty
+   * games would empty a leaderboard covering at most a fortnight.
+   */
+  june?: boolean;
 }
 
 export interface Leaderboards {
@@ -2294,8 +2303,10 @@ export function leaders(season: SeasonState, opts: LeaderOptions = {}): Leaderbo
   const onTeam = (id: PlayerId): boolean =>
     opts.team === undefined || teams.get(id) === opts.team;
 
-  const bat = [...season.batting.entries()].filter(([id]) => onTeam(id));
-  const pit = [...season.pitching.entries()].filter(([id]) => onTeam(id));
+  const batBook = opts.june ? (season.postBatting ?? new Map()) : season.batting;
+  const pitBook = opts.june ? (season.postPitching ?? new Map()) : season.pitching;
+  const bat = [...batBook.entries()].filter(([id]) => onTeam(id));
+  const pit = [...pitBook.entries()].filter(([id]) => onTeam(id));
   // Optional on the save: a dynasty rolled forward from before the defensive
   // layer has no fielding map at all until the next pitch is thrown.
   const fld = [...(season.fielding ?? new Map<PlayerId, FieldingSeason>()).entries()]

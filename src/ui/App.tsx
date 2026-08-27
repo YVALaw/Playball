@@ -368,8 +368,66 @@ function AppBody(
           {/* A bracket game you took yourself is managed on the same screen a
               regular season game is, so nothing about June feels like a
               different game than the one you played in April. */}
-          {live ? <Manage /> : <Postseason />}
+          {live ? <Manage /> : (tab === 'home' ? <Postseason /> : <Screen id={screen} />)}
         </main>
+        {/*
+          The nav comes back to June.
+
+          It was taken away on the argument that the postseason is a sequence
+          with an order and deserves the whole screen, and that argument was
+          half right: the *bracket* deserves the screen, and it still has it.
+          What the rule cost was everything else — reported plainly as wanting
+          to see the roster during the postseason, and it applies just as much
+          to who is hitting and where the year stands.
+
+          So the bar returns with JUNE in the home slot instead of TODAY: the
+          bracket is what the home tab means for as long as the bracket exists,
+          and the other three are the screens they have always been. It stays
+          away while a game is being managed, which is the one place the
+          original argument holds completely.
+        */}
+        {!live && (
+          <nav style={{
+            flex: 'none', display: 'flex',
+            background: 'var(--ink)', borderTop: '3px solid var(--clay)',
+            paddingBottom: 'env(safe-area-inset-bottom)',
+          }}>
+            {TABS.map((t) => {
+              const on = tab === t.id;
+              const label = t.id === 'home' ? 'JUNE' : t.label;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => go(t.id as Tab)}
+                  style={{
+                    flex: 1, padding: '8px 0 9px', textAlign: 'center',
+                    background: on ? 'rgba(168,68,42,.85)' : 'transparent',
+                  }}
+                >
+                  <div style={{
+                    font: "700 calc(12px * var(--ts))/1 var(--display)", letterSpacing: '.12em',
+                    color: on ? 'var(--cream)' : 'rgba(246,241,230,.5)',
+                    position: 'relative', display: 'inline-block',
+                  }}>
+                    {label}
+                    {t.id === 'home' && unread > 0 && (
+                      <span style={{
+                        position: 'absolute', top: -3, right: -8,
+                        width: 6, height: 6, borderRadius: '50%',
+                        background: 'var(--clay)',
+                      }} />
+                    )}
+                  </div>
+                  <div style={{
+                    marginTop: 3,
+                    font: "400 calc(8px * var(--ts))/1 var(--mono)", letterSpacing: '.1em',
+                    color: on ? 'rgba(246,241,230,.75)' : 'rgba(246,241,230,.38)',
+                  }}>{t.id === 'home' ? 'THE BRACKET' : ''}</div>
+                </button>
+              );
+            })}
+          </nav>
+        )}
         <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
       </div>
     );
