@@ -1425,6 +1425,29 @@ function landingFor(
     return { x: clamp(dir + jitter(), -limit, limit), y };
   }
 
+  /*
+    A single found grass, and the coordinate has to say where.
+
+    Reported from testing: "a ball was caught by the first base but the guy who
+    hit it got on base and two runs scored." The simulation was right — a
+    single with men on second and third scores two — and the *picture* was
+    wrong, because the ball was drawn dying at the station of the man credited
+    with fielding it, which is what a catch looks like. A single off an
+    outfielder drops in front of him; one off an infielder is a ball through
+    the hole, past his station rather than in his glove.
+  */
+  const outfield = fielder.pos === 'LF' || fielder.pos === 'CF' || fielder.pos === 'RF';
+  if (event === 'single') {
+    const y = outfield
+      ? clamp(spot.y - 0.12 + jitter() * 0.4, 0.30, 1.0)   // in front of him
+      : clamp(spot.y + 0.14 + jitter() * 0.4, 0.10, 1.0);  // through the hole
+    // Pushed off his station rather than onto it: a hit is a ball nobody was
+    // standing on.
+    const away = spot.x === 0 ? jitter() * 3 : spot.x * 1.18;
+    const limit = y * 0.94;
+    return { x: clamp(away + jitter(), -limit, limit), y };
+  }
+
   const depth =
     kind === 'fly' ? 0.10
     : kind === 'line' ? 0.03

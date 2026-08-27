@@ -46,6 +46,16 @@ export interface BallHit {
    * the field says how the play ended without waiting for the log line.
    */
   hit: boolean;
+  /**
+   * Whether it was caught on the fly.
+   *
+   * The difference between a catch and a hit is the whole readability of the
+   * play and it is not derivable from `hit` alone: a ground out is an out
+   * where the ball reached the dirt, and a dropped fly is a ball that reached
+   * the dirt and was not an out. Caught balls stop in a glove at glove height;
+   * everything else lands, rolls, and gets chased down.
+   */
+  caught: boolean;
   /** Bumped per play, so the same spot twice still replays the animation. */
   tick: number;
 }
@@ -376,97 +386,6 @@ function Plate({ tick }: { tick: number }) {
  * The arc height scales with distance, which is what separates a bloop into
  * shallow left from a drive to the gap without either being animated specially.
  */
-/** When the outcome blink ends and the throw back in begins, after arrival. */
-const PICKUP_AT = 0.62;
-/** How long the throw back to the mound takes. */
-const RETURN_DUR = 0.55;
-/** Where a fielded ball goes home to: the pitcher's spot. */
-const MOUND_SPOT = new THREE.Vector3(0, 0, -1.71);
-
-function BallInFlight({ hit }: { hit: BallHit }) {
-  const ball = useRef<THREE.Mesh>(null);
-  const mark = useRef<THREE.Mesh>(null);
-  const t = useRef(0);
-
-  const homer = hit.y > 1;
-  const target = useMemo(() => new THREE.Vector3(...toWorld(hit.x, hit.y)), [hit.x, hit.y]);
-  const distance = useMemo(() => target.length(), [target]);
-
-  // Restart on every play, including a ball hit to the same place twice.
-  useEffect(() => { t.current = 0; }, [hit.tick]);
-
-  useFrame((_, delta) => {
-    t.current += delta;
-
-    const flight = flightSeconds(hit.kind, distance, homer);
-    const p = Math.min(1, t.current / flight);
-
-    const b = ball.current;
-    if (b) {
-      const mat = b.material as THREE.MeshBasicMaterial;
-      const since = t.current - flight;
-
-      if (!homer && since >= PICKUP_AT) {
-        // The throw back in. A ball that lay in left field until the next
-        // pitch teleported it home was the field admitting it was a picture;
-        // the fielder who ran it down lobs it back to the mound instead.
-        const k = Math.min(1, (since - PICKUP_AT) / RETURN_DUR);
-        b.position.lerpVectors(target, MOUND_SPOT, k);
-        b.position.y = BALL_REST + Math.sin(k * Math.PI) * 1.15;
-        mat.color.set(CREAM);
-        b.visible = k < 1;
-      } else {
-        // Along the ground in a straight line; the shape is all in the height.
-        const travel = homer ? p * 1.25 : p;
-        b.position.set(target.x * travel, 0, target.z * travel);
-        b.position.y = flightHeight(hit.kind, travel, distance, homer);
-        // On arrival the ball itself takes the colour of the outcome and
-        // blinks, so a play reads off the field before the log line is
-        // scanned. Three pulses, then the throw in above takes over.
-        if (p >= 1) {
-          const blink = Math.sin(since * 22) > 0;
-          mat.color.set(blink ? (hit.hit ? HIT_BLUE : OUT_RED) : CREAM);
-        } else {
-          mat.color.set(CREAM);
-        }
-        b.visible = homer ? t.current < flight + 0.5 : true;
-      }
-    }
-
-    const m = mark.current;
-    if (m) {
-      // The spot pulses only once the ball has arrived, and never for a homer —
-      // nobody fielded it, so there is no spot to look at.
-      const after = t.current - flight;
-      const show = !homer && after > 0 && after < 0.9;
-      m.visible = show;
-      if (show) {
-        const k = after / 0.9;
-        const s2 = 0.4 + k * 1.5;
-        m.scale.set(s2, s2, s2);
-        (m.material as THREE.MeshBasicMaterial).opacity = 1 - k;
-      }
-    }
-  });
-
-  return (
-    <group>
-      <mesh ref={ball}>
-        <sphereGeometry args={[0.17, 8, 6]} />
-        <meshBasicMaterial color={CREAM} />
-      </mesh>
-      <mesh ref={mark} position={target} rotation={[-Math.PI / 2, 0, 0]} visible={false}>
-        <ringGeometry args={[0.34, 0.5, 16]} />
-        <meshBasicMaterial
-          color={hit.hit ? HIT_BLUE : OUT_RED}
-          transparent
-          opacity={0.9}
-        />
-      </mesh>
-    </group>
-  );
-}
-
 /**
  * Where the nine defenders stand, in world space.
  *
@@ -486,63 +405,264 @@ const STATIONS: readonly [number, number, number][] = [
   [4.32, 0, -6.48],                  // RF
 ];
 
-/** How fast a defender covers ground. A touch quicker than a runner. */
+/** The height the dots ride at, so a distance check is a flat one. */
+const DOT_Y = 0.26;
+/** How fast a defender covers ground when he is not beating a ball there. */
 const FIELDER_SPEED = 3.9;
+/** How high a caught ball is held. A glove, not the turf. */
+const GLOVE_Y = 1.05;
+/** How long a ground ball rolls after it lands before it is run down. */
+const ROLL_DUR = 0.55;
+/** The beat between the play resolving and the throw leaving his hand. */
+const HOLD_DUR = 0.42;
+/** How long any throw takes, whatever it is throwing at. */
+const THROW_DUR = 0.5;
+/** Where a fielded ball goes home to when there is no play to make. */
+const MOUND_SPOT = new THREE.Vector3(0, 0, -1.71);
 
 /**
- * The defense, which used to not exist.
+ * The whole play, worked out once, so the ball and the defense are acting from
+ * the same script.
  *
- * Nine dots in the other uniform, standing where their positions stand. When a
- * ball is put in play the nearest man runs it down — arriving around the time
- * the ball does — waits out the outcome blink, and walks back to his station
- * while the throw comes in. Presentation only: the engine has already decided
- * everything, this is the field acting it out.
+ * Reported from testing: *"all balls seem to be reaching the players which
+ * makes it feel like it was an out but it wasn't… I'd like to see the ball
+ * actually fall on the ground and the players chase it and then throw it
+ * wherever they need to."* Both halves of that used to be guessed at
+ * separately — the ball had one timeline, the fielder another — so they
+ * agreed only by luck and the picture read as a catch every time.
+ *
+ * Pure arithmetic on the engine's own coordinate. It invents nothing about
+ * what happened: `caught` and `hit` are facts off the play, and everything
+ * here is when and where to draw them.
  */
-function Defense({ ball }: { ball: BallHit | null }) {
-  const refs = useRef<(THREE.Mesh | null)[]>([]);
+export interface PlayPlan {
+  /** Where the ball first meets glove or grass. */
+  target: THREE.Vector3;
+  /** Where it comes to rest, past the landing spot when it rolls. */
+  rest: THREE.Vector3;
+  /** Seconds of flight before it gets there. */
+  flight: number;
+  /** Which station index runs it down. -1 when nobody does (a home run). */
+  chaser: number;
+  /** When the fielder has it in his hand. */
+  pickup: number;
+  /** Where he throws it, and when the throw leaves. */
+  throwTo: THREE.Vector3;
+  throwAt: number;
+  /** When the ball is done and the fielder may walk back. */
+  done: number;
+  caught: boolean;
+  homer: boolean;
+}
+
+export function playPlan(hit: BallHit, stations: THREE.Vector3[]): PlayPlan {
+  const [tx, , tz] = toWorld(hit.x, hit.y);
+  const homer = hit.y > 1;
+  const target = new THREE.Vector3(tx, hit.caught ? GLOVE_Y : BALL_REST, tz);
+  const flight = flightSeconds(hit.kind, new THREE.Vector3(tx, 0, tz).length(), homer);
+
+  // A ball on the ground keeps going. Rolling outward from the plate is the
+  // cheap honest direction: it is where the bat sent it.
+  const rest = hit.caught || homer
+    ? target.clone()
+    : new THREE.Vector3(tx, BALL_REST, tz).multiplyScalar(1.09);
+
+  if (homer) {
+    return {
+      target, rest, flight, chaser: -1,
+      pickup: flight, throwTo: MOUND_SPOT, throwAt: flight + 9, done: flight + 0.5,
+      caught: false, homer: true,
+    };
+  }
+
+  // Whoever is closest to where it finishes. The battery stays home: a catcher
+  // never chases and a pitcher only fields what is at his feet.
+  const spot = new THREE.Vector3(rest.x, DOT_Y, rest.z);
+  let chaser = 1;
+  let bestD = Infinity;
+  stations.forEach((s, i) => {
+    if (i === 0) return;
+    const d = s.distanceToSquared(spot) + (i === 1 ? 6 : 0);
+    if (d < bestD) { bestD = d; chaser = i; }
+  });
+
+  // A catch happens at the moment of arrival by definition, so the man has to
+  // be there; a ball on the ground is run down after it stops rolling.
+  const arrive = hit.caught
+    ? flight
+    : Math.max(
+      flight + ROLL_DUR,
+      (stations[chaser]?.distanceTo(spot) ?? 0) / FIELDER_SPEED,
+    );
+  const pickup = arrive + HOLD_DUR;
+
+  /*
+    Where the throw goes, which is the part that tells the story.
+
+    A ground ball out is a throw to first — that is the play being made. A hit
+    goes to the cutoff, second base, because the batter is standing on a bag
+    and nobody is being retired. A catch just comes back to the pitcher.
+  */
+  const throwTo = hit.caught
+    ? MOUND_SPOT
+    : hit.hit
+      ? new THREE.Vector3(...BAG[2])
+      : new THREE.Vector3(...BAG[1]);
+
+  return {
+    target, rest, flight, chaser,
+    pickup, throwTo, throwAt: pickup,
+    done: pickup + THROW_DUR,
+    caught: hit.caught, homer: false,
+  };
+}
+
+/**
+ * The ball, from the plate to wherever the play ends.
+ *
+ * Four movements, and which ones run depends on what happened: the flight,
+ * the roll, the outcome blink while a fielder gets to it, and the throw. A
+ * home run skips all but the first and leaves.
+ */
+function BallInFlight({ hit, plan }: { hit: BallHit; plan: PlayPlan }) {
+  const ball = useRef<THREE.Mesh>(null);
+  const mark = useRef<THREE.Mesh>(null);
   const t = useRef(0);
 
-  // Everything at the dots' own height, so a distance check never fights a
-  // constant vertical offset it can only lose to.
-  const stations = useMemo(
-    () => STATIONS.map((s) => new THREE.Vector3(s[0], 0.26, s[2])), [],
+  const distance = useMemo(
+    () => new THREE.Vector3(plan.target.x, 0, plan.target.z).length(), [plan],
   );
 
-  const chase = useMemo(() => {
-    if (!ball || ball.y > 1) return null;
-    const [tx, , tz] = toWorld(ball.x, ball.y);
-    const target = new THREE.Vector3(tx, 0.26, tz);
-    let best = 0;
-    let bestD = Infinity;
-    stations.forEach((s, i) => {
-      // The battery stays home: the catcher never chases, and the pitcher
-      // only fields what is practically at his feet.
-      if (i === 0) return;
-      const d = s.distanceToSquared(target);
-      const handicap = i === 1 ? 6 : 0;
-      if (d + handicap < bestD) { bestD = d + handicap; best = i; }
-    });
-    const flight = flightSeconds(ball.kind, target.length(), false);
-    return { i: best, target, flight };
-  }, [ball?.tick, stations]);
-
-  useEffect(() => { t.current = 0; }, [ball?.tick]);
+  // Restart on every play, including a ball hit to the same place twice.
+  useEffect(() => { t.current = 0; }, [hit.tick]);
 
   useFrame((_, delta) => {
     t.current += delta;
+    const now = t.current;
+    const b = ball.current;
+
+    if (b) {
+      const mat = b.material as THREE.MeshBasicMaterial;
+      const p = Math.min(1, now / plan.flight);
+
+      if (now < plan.flight) {
+        // Along the ground in a straight line; the shape is all in the height.
+        const travel = plan.homer ? p * 1.25 : p;
+        b.position.set(plan.target.x * travel, 0, plan.target.z * travel);
+        b.position.y = flightHeight(hit.kind, travel, distance, plan.homer);
+        mat.color.set(CREAM);
+        b.visible = true;
+      } else if (plan.homer) {
+        const travel = Math.min(1.25, (now / plan.flight) * 1.25);
+        b.position.set(plan.target.x * travel, 0, plan.target.z * travel);
+        b.position.y = flightHeight(hit.kind, travel, distance, true);
+        b.visible = now < plan.flight + 0.5;
+      } else if (now < plan.throwAt) {
+        // Landed. A caught ball is held where it was caught; a live one rolls
+        // out and then lies there while the man runs it down.
+        const roll = plan.caught
+          ? 1
+          : Math.min(1, (now - plan.flight) / ROLL_DUR);
+        b.position.lerpVectors(plan.target, plan.rest, roll);
+        b.position.y = plan.caught ? GLOVE_Y : BALL_REST;
+        // The outcome, blinked, so a play reads off the field before the log
+        // line is scanned.
+        const blink = Math.sin((now - plan.flight) * 22) > 0;
+        mat.color.set(blink ? (hit.hit ? HIT_BLUE : OUT_RED) : CREAM);
+        b.visible = true;
+      } else {
+        // The throw. Where it goes is the play being made — see `playPlan`.
+        const k = Math.min(1, (now - plan.throwAt) / THROW_DUR);
+        b.position.lerpVectors(plan.rest, plan.throwTo, k);
+        b.position.y = BALL_REST + Math.sin(k * Math.PI) * 1.15;
+        mat.color.set(CREAM);
+        b.visible = k < 1;
+      }
+    }
+
+    const m = mark.current;
+    if (m) {
+      // The spot where it finished, pulsed once. Never for a homer — nobody
+      // fielded it, so there is no spot to look at — and never for a catch,
+      // where the glove is the event rather than the grass.
+      const after = now - plan.flight;
+      const show = !plan.homer && !plan.caught && after > 0 && after < 0.9;
+      m.visible = show;
+      if (show) {
+        const k = after / 0.9;
+        const s2 = 0.4 + k * 1.5;
+        m.scale.set(s2, s2, s2);
+        (m.material as THREE.MeshBasicMaterial).opacity = 1 - k;
+      }
+    }
+  });
+
+  return (
+    <group>
+      <mesh ref={ball}>
+        <sphereGeometry args={[0.17, 8, 6]} />
+        <meshBasicMaterial color={CREAM} />
+      </mesh>
+      <mesh
+        ref={mark}
+        position={[plan.rest.x, 0.02, plan.rest.z]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        visible={false}
+      >
+        <ringGeometry args={[0.34, 0.5, 16]} />
+        <meshBasicMaterial
+          color={hit.hit ? HIT_BLUE : OUT_RED}
+          transparent
+          opacity={0.9}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+/**
+ * The defense, acting out the plan the ball is following.
+ *
+ * Nine dots in the other uniform, standing where their positions stand. One of
+ * them goes and gets it — fast enough to be under a catch, at a run for
+ * anything on the ground — holds it while the outcome blinks, throws, and
+ * walks back. Presentation only: the engine decided all of it before the first
+ * frame drew.
+ */
+function Defense(
+  { plan, stations }: { plan: PlayPlan | null; stations: THREE.Vector3[] },
+) {
+  const refs = useRef<(THREE.Mesh | null)[]>([]);
+  const t = useRef(0);
+
+  useEffect(() => { t.current = 0; }, [plan]);
+
+  useFrame((_, delta) => {
+    t.current += delta;
+    const now = t.current;
     stations.forEach((station, i) => {
       const m = refs.current[i];
       if (!m) return;
-      // Where this man should be heading right now: the ball while the play
-      // is live, his station once the throw is on its way in.
-      let goal = station;
-      if (chase !== null && i === chase.i
-        && t.current <= chase.flight + PICKUP_AT + RETURN_DUR) {
-        goal = chase.target;
-      }
+
+      const chasing = plan !== null && i === plan.chaser && now <= plan.done;
+      const goal = chasing
+        ? new THREE.Vector3(plan.rest.x, DOT_Y, plan.rest.z)
+        : station;
+
       const gap = m.position.distanceTo(goal);
       if (gap < 0.02) return;
-      const step = FIELDER_SPEED * delta;
+
+      /*
+        A man under a fly ball has to be there when it lands, so his speed is
+        whatever that takes; everything else is a run. Without this the ball
+        was caught by nobody — it stopped in mid air a second before the dot
+        supposed to have caught it arrived.
+      */
+      const speed = chasing && plan.caught
+        ? Math.max(FIELDER_SPEED, gap / Math.max(0.15, plan.flight - now))
+        : FIELDER_SPEED;
+
+      const step = speed * delta;
       if (gap <= step) { m.position.copy(goal); return; }
       m.position.addScaledVector(
         goal.clone().sub(m.position).divideScalar(gap), step,
@@ -856,6 +976,15 @@ export function Diamond3D({
   // field on every device; this is where the promise is kept.
   const [ok, setOk] = useState(true);
 
+  // One script for the play, read by the ball and by the nine men chasing it.
+  const stations = useMemo(
+    () => STATIONS.map((s) => new THREE.Vector3(s[0], DOT_Y, s[2])), [],
+  );
+  const plan = useMemo(
+    () => (ball ? playPlan(ball, stations) : null),
+    [ball?.tick, ball?.x, ball?.y, ball?.kind, ball?.hit, ball?.caught, stations],
+  );
+
   if (!ok) {
     return (
       <div style={{
@@ -887,7 +1016,7 @@ export function Diamond3D({
           <CameraRig />
           <Field />
           <Plate tick={scoreTick} />
-          <Defense ball={ball} />
+          <Defense plan={plan} stations={stations} />
           {([1, 2, 3] as const).map((b) => <Base key={b} at={b} />)}
           {runners.map((r) => (
             <RunnerDot
@@ -897,7 +1026,7 @@ export function Diamond3D({
               colour={CLAY}
             />
           ))}
-          {ball && <BallInFlight key={ball.tick} hit={ball} />}
+          {ball && plan && <BallInFlight key={ball.tick} hit={ball} plan={plan} />}
           {finishing.map((f) => (
             <ScoringRunner
               key={f.key}

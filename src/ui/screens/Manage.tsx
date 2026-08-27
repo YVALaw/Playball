@@ -45,6 +45,7 @@ export function Manage() {
   const startManagedGame = useDynasty((s) => s.startManagedGame);
   const bracket = useDynasty((s) => s.bracket);
   const go = useDynasty((s) => s.go);
+  const saveNow = useDynasty((s) => s.saveNow);
   const [modal, setModal] = useState<Modal>(null);
   const [scoreTick, setScoreTick] = useState(0);
   const [ball, setBall] = useState<BallHit | null>(null);
@@ -107,11 +108,40 @@ export function Manage() {
     ballTick.current += 1;
     setBall({
       x: landing.x, y: landing.y, kind: battedBall,
-      hit: !wasOut, tick: ballTick.current,
+      hit: !wasOut,
+      // Caught on the fly, which is not the same question as "was it an out":
+      // a ground out reached the dirt and a dropped fly did not retire
+      // anybody. The field draws a catch as a glove and everything else as a
+      // ball on the grass with somebody running after it.
+      caught: wasOut && battedBall !== 'ground',
+      tick: ballTick.current,
     });
     // `wasOut` is read above and belongs here: identical landing coordinates
     // with a different outcome must still refresh what the ball flashes.
   }, [landing?.x, landing?.y, battedBall, wasOut, version]);
+
+  /*
+    The calls sleep while the play is on the field.
+
+    Reported from testing: *"you didn't work in the minigame's buttons to grey
+    them out when the sim is doing an action so we don't tap the button fifty
+    times real quick."* The 500ms tap guard stopped the double press; it did
+    not stop a manager calling the next plate appearance over the top of an
+    animation he had not watched. The window is the length of the play — a
+    little over a second for anything on the ground, longer for a ball hit to
+    the wall — and it is cosmetic in the sense that the engine has already
+    resolved everything, and load-bearing in the sense that the play is the
+    thing you are here for.
+  */
+  const [playing, setPlaying] = useState(false);
+  useEffect(() => {
+    if (!landing || !battedBall) return undefined;
+    setPlaying(true);
+    // Roughly the plan's own length: flight, roll, the hold, and the throw.
+    const ms = battedBall === 'ground' ? 1500 : 1900;
+    const timer = setTimeout(() => setPlaying(false), ms);
+    return () => clearTimeout(timer);
+  }, [landing?.x, landing?.y, battedBall, version]);
 
   // Who crossed the plate on the last play. The engine reports it as an advance
   // to base 4, which is the only record of a man scoring — he is off the bases
@@ -381,11 +411,16 @@ export function Manage() {
         {d ? (
           <>
             <div className="label">{d.side === 'offense' ? 'BATTING' : 'IN THE FIELD'}</div>
-            {d.options.map((o) => (
+            {d.options.map((o) => {
+              // Off while the play is on the field, and off because the
+              // situation forbids it, are two different greys: one comes back
+              // in a second, the other is telling you why it cannot be done.
+              const live0 = o.available && !playing;
+              return (
               <button
                 key={o.tactic}
-                onClick={once(() => o.available && submitTactic(o.tactic))}
-                disabled={!o.available}
+                onClick={once(() => live0 && submitTactic(o.tactic))}
+                disabled={!live0}
                 style={{
                   padding: '7px 8px', textAlign: 'left', flex: 'none',
                   // The platform floor for a thumb. These measured 41px — under
@@ -395,11 +430,13 @@ export function Manage() {
                   // Available calls are raised paper with a real border. The
                   // unavailable ones recede rather than merely dimming, so the
                   // difference is obvious at arm's length on a phone.
-                  background: o.available ? 'var(--paper)' : 'transparent',
+                  background: live0 ? 'var(--paper)' : 'transparent',
                   border: o.available
                     ? '1px solid rgba(28,36,48,.42)'
                     : '1px dashed rgba(28,36,48,.16)',
-                  boxShadow: o.available ? '0 1px 0 rgba(28,36,48,.16)' : 'none',
+                  opacity: o.available && playing ? 0.45 : 1,
+                  transition: 'opacity 160ms ease, background 160ms ease',
+                  boxShadow: live0 ? '0 1px 0 rgba(28,36,48,.16)' : 'none',
                 }}
               >
                 <div style={{
@@ -411,20 +448,32 @@ export function Manage() {
                   color: o.available ? 'var(--dim)' : 'rgba(28,36,48,.28)',
                 }}>{o.note}</div>
               </button>
-            ))}
+              );
+            })}
             <div style={{ flex: 1 }} />
             <Small
               onClick={() => setModal(d.side === 'offense' ? 'pinch' : 'pen')}
-              disabled={d.side === 'offense'
+              disabled={playing || (d.side === 'offense'
                 ? live.benchAvailable.length === 0
-                : live.bullpenAvailable.length === 0}
+                : live.bullpenAvailable.length === 0)}
             >{d.side === 'offense' ? 'PINCH HIT' : 'BULLPEN'}</Small>
-            <Small onClick={once(autoFinish)}>SIM THE REST</Small>
-            {/* The way out without ending anything. The game keeps, the
-                dashboard's PLAY BALL turns into BACK TO THE GAME, and June
-                does not get this door because June's frame is the bracket. */}
+            <Small onClick={once(autoFinish)} disabled={playing}>SIM THE REST</Small>
+            {/* The way out without ending anything, and it writes on the way.
+                Reported from testing: "going back to the desk from the
+                minigame should save the progress as it is at the moment we
+                exit." What it can honestly save is the dynasty — the season,
+                the roster, the calendar — because a half-played game is a
+                running coroutine (`LiveGame` carries `submit` and `finish` as
+                closures) and there is nothing serialisable to write. So the
+                game keeps in memory and BACK TO THE GAME resumes it, while
+                the save makes sure that stepping away cannot cost anything
+                that already happened. June does not get this door: its frame
+                is the bracket, and mid-bracket saving is restricted to stage
+                boundaries on purpose. */}
             {bracket === null && (
-              <Small onClick={() => go('home')}>BACK TO THE DESK</Small>
+              <Small onClick={() => { void saveNow(); go('home'); }}>
+                BACK TO THE DESK
+              </Small>
             )}
           </>
         ) : (
