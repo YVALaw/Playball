@@ -255,7 +255,7 @@ get sacked and get poached). What genuinely remains part-done:
 
 **This list is now a pointer.** The scope, the platform, the money and the
 depth question were all settled in August 2026, and the route from here is
-fifteen staged steps in **`07-v1-plan.md`** — which supersedes the ordering
+seventeen staged steps in **`07-v1-plan.md`** — which supersedes the ordering
 that used to live in this section. What follows is the two-minute version.
 
 The one decision that shapes all of it: **a player chooses how deep a game he
@@ -269,39 +269,47 @@ locked* in `06-backlog.md`.
    interrupted (H14).
 2. **How you want to play** — the depth preset, per-system toggles, and the
    settings sheet that has never existed (H18).
-3. **The dugout** — the presentation rebuild, plus mound visits, the bench
+3. **June, made legible** — cut the opening round, a modal for every title
+   game, a real card for a champion instead of a stripe, tappable bracket
+   games, postseason statistics, and telling a team when it is actually out
+   (§I).
+4. **Give the screen back** — the oversized roster filters, the recruit
+   pipeline line, the prospect sheet, the offseason action button that moves,
+   and the season record nobody can find (§I).
+5. **The dugout** — the presentation rebuild, plus mound visits, the bench
    coach taking over, opponent scouting and pitch calling (H11–H13, H15).
-4. **The coach** — creation as an interview, personality badges, assistant
+6. **The coach** — creation as an interview, personality badges, assistant
    coaches, press conferences, the JOBS tab, the title ladder (H1, H6, H7).
-5. **The roster becomes a roster** — depth chart, real DH, redshirts, position
+7. **The roster becomes a roster** — depth chart, real DH, redshirts, position
    changes, academic eligibility, two-way players (H5, H10).
-6. **Players as people** — injuries, season fatigue, playing time, morale,
+8. **Players as people** — injuries, season fatigue, playing time, morale,
    captains (H8).
-7. **The transfer portal.**
-8. **The economy** — budget rebalance, swaying, facilities.
-9. **The world** — conference realignment, rivalry recognition, series stakes
-   (H3, H4, H19).
-10. **The dynasty remembers** — alumni in the professional game, signature
+9. **The transfer portal.**
+10. **The economy** — budget rebalance, swaying, facilities.
+11. **The world** — conference realignment, rivalry recognition, series stakes
+    (H3, H4, H19).
+12. **The dynasty remembers** — alumni in the professional game, signature
     moments (H2, H9).
-11. **Broadcast** — big-moment presentation, sound and haptics, the wire
+13. **Broadcast** — big-moment presentation, sound and haptics, the wire
     upgraded, emblems, awards night (H16, H17, H20).
-12. **The simulation's last mile** — run-expectancy AI, park geometry, the rest
+14. **The simulation's last mile** — run-expectancy AI, park geometry, the rest
     of the 3D track, the measurement debt.
-13. **The store** — the S+ player and Play Billing.
-14. **The phone** — Capacitor and an APK on real hardware. Deferred to here
+15. **The store** — the S+ player and Play Billing.
+16. **The phone** — Capacitor and an APK on real hardware. Deferred to here
     because there is no Android device yet; the two errands at the top of the
     plan are what keeps that safe.
-15. **Ship.**
+17. **Ship.**
 
-Stages 5 → 6 → 7 are a chain and cannot be reordered. Stage 2 is foundational.
-Stages 9, 10 and 11 are independent and are the ones to move earlier when the
-big systems get heavy.
+Stages 7 → 8 → 9 are a chain and cannot be reordered. Stage 2 is foundational.
+Stages 11, 12 and 13 are independent and are the ones to move earlier when the
+big systems get heavy. Stages 3 and 4 both came out of playing the game in
+August 2026 and are cheap relative to what they fix.
 
 ## Missing and unscheduled
 
 Now scheduled: the small gameplay gaps that used to sit here — the depth chart,
 facilities, recruits drafted out of high school, the run-expectancy AI — are
-stage 5 above and catalogued in backlog G2. What remains genuinely unslotted:
+stage 7 above and catalogued in backlog G2. What remains genuinely unslotted:
 
 - **Injuries and season-long fatigue.** Bullpen rest and in-game fatigue are
   modelled; nothing accumulates across a year. A section C design pass when it

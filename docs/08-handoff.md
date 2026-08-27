@@ -15,8 +15,8 @@ the top of it is always current. Everything older lives in git.
 
 | File | What it is |
 |---|---|
-| `07-v1-plan.md` | **The route.** Fifteen staged steps to v1.0. This is the north star. |
-| `06-backlog.md` | The decisions and the argument behind each. §H is the agreed feature set; *Decisions locked* holds the depth-mode rules that bind every feature. |
+| `07-v1-plan.md` | **The route.** Seventeen staged steps to v1.0. This is the north star. |
+| `06-backlog.md` | The decisions and the argument behind each. §H is the agreed feature set, §I is the August 27 pass from playing the rebuilt postseason; *Decisions locked* holds the depth-mode rules that bind every feature. |
 | `05-systems-reference.md` | What the game does **today**, including the hidden-mechanics index. A feature that shipped moves in here on the same commit. |
 | `01-roadmap.md` | Two-minute view. Its ordered list is now a pointer at `07`. |
 
@@ -89,7 +89,7 @@ same lie, and is also still alive.
 Per direction — *simple but appealing, explanatory text removed*. Win cards are
 a kicker, a headline and one line. The qualification card lost its two-sentence
 format lecture. The full big-moment treatment (leverage styling, sound,
-full-screen celebration) is **stage 11**, deliberately not done twice.
+full-screen celebration) is **stage 13**, deliberately not done twice.
 
 ### 4. Resume an interrupted game — the big one
 
@@ -161,6 +161,39 @@ what it does in casual mode.
 **Open decisions at stage 2's door:** two modes or three; what casual actually
 turns off; whether the mode is visible anywhere after creation.
 
+### And then stages 3 and 4, which are new
+
+Both were added on **August 27, 2026**, out of playing the rebuilt postseason.
+Neither is large, both are high value per hour, and the argument for every item
+is in `06-backlog.md` §I.
+
+**Stage 3, "June, made legible."** The verdict from playing the new postseason
+was that the *format* works and the *screen* does not. Six items, one of them
+structural: **cut the opening round** and let the winners bracket decide where
+teams go — it exists only to trim twenty to sixteen and is the one stage of
+June a player meets with no idea why he is in it. That one is engine work
+touching `openingPairs`, the protection swap, `stageOpening`, the save guards
+and the soak, so it gets designed before anything is deleted — and whatever
+replaces it must be re-run against the soak, because protection and the
+best-of-threes are already the prime suspects in the champion-concentration
+finding below. The other five: a modal for every title game, a real card for a
+champion instead of the stripe at the foot of the page (the national title is
+currently missed entirely), tappable bracket games, postseason statistics
+(there is no way to see them at all), and telling a team when it genuinely is
+eliminated — the other half of A13.
+
+**Stage 4, "Give the screen back."** Five small reports, one complaint: the
+roster filters are far too big, "he is in your pipeline" is a sentence where a
+mark would do, the prospect sheet opens too small (bigger, but deliberately not
+full screen), the offseason action button rides up on tabs with less content,
+and the season record beside the inbox badge is too easy to lose — preferably
+moved beside the date in the header.
+
+**One rule came out of this pass and is now standing policy**, because it
+generated more than half of stage 3: *a card is a visual telling of where you
+are and what you achieved, in simple wording. A card does not explain.*
+Whatever needs explaining belongs in a tutorial, a tooltip, or nowhere.
+
 ---
 
 ## Open questions carried forward
@@ -170,13 +203,13 @@ turns off; whether the mode is visible anywhere after creation.
   the price of a format that rewards the best team, or add variance. Do not
   touch it casually — it interacts with the carousel's turnover targets and the
   board's clear rate, both of which are tuned and pinned.
-- **Is there an Android device yet?** Stage 14 (the phone) is deferred for want
+- **Is there an Android device yet?** Stage 16 (the phone) is deferred for want
   of one. Everything in it except the frame-rate measurement can be done on an
   emulator, so the emulator pass can be pulled forward at any time.
 - **Two errands that need no phone and should happen whenever convenient:** the
   Play Console record and merchant account (merchant verification takes days
   and it is the only unpredictable wait in the plan), and a throttled browser
-  performance profile as a cheap hedge on the frame-rate question — stage 3
+  performance profile as a cheap hedge on the frame-rate question — stage 5
   rebuilds the dugout around a *larger* 3D field.
 
 ## Test aids currently in the build — remove before v1.0

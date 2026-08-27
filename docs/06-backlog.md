@@ -1179,7 +1179,7 @@ careers, retires them, sacks them and promotes them.
 The largest personality gain available for the work, because it turns the
 coaching skills from four numbers a player spends points on into a staff he
 assembles. **Open question at the door: what an assistant costs.** Paying them
-out of stage 8's money couples two economies that are cleaner apart; paying in
+out of stage 10's money couples two economies that are cleaner apart; paying in
 prestige and reputation keeps them independent and reads truer — a good
 assistant takes the job because the program is going somewhere.
 
@@ -1248,7 +1248,7 @@ skills mean less rather than the coach mean more.
 
 A vote or the coach's appointment. Captains damp morale swings and mentor
 freshmen, which gives a veteran a role beyond his stat line and gives the
-morale system (H-adjacent, stage 6) something a player can actually *do* about
+morale system (H-adjacent, stage 8) something a player can actually *do* about
 it rather than only watch.
 
 ### H9 · Signature moments
@@ -1355,8 +1355,121 @@ continue not to (index row 98).
 From the same slate, and kept here because a rejected idea with a reason is
 worth more than a forgotten one: a **human poll alongside RPI** (a good story,
 but a second ranking to explain), **weather and park conditions** (cheap and
-good — a candidate to fold into stage 11 if it wants filling out),
+good — a candidate to fold into stage 13 if it wants filling out),
 **fan support and attendance**, **live bracketology**, **mentorship pairs**
 (largely covered by H8), and **defensive positioning** (the strongest of the
 rejected six; worth revisiting after the dugout rebuild). From the mobile
 report: **exhibition games**, **classic-finish scenarios** and **share cards**.
+
+---
+
+## I. From playing the rebuilt postseason — August 27, 2026
+
+The expanded postseason shipped, and then it got played. What came back is
+worth separating carefully: **the format is not the complaint.** Double
+elimination, the regionals and the showdown brackets all did what they were
+designed to do. The complaint is that the screen does not tell you what the
+format is doing, and that several recent additions have quietly eaten the
+screen. All of it is `DECIDED`, staged as **stages 3 and 4** of
+`07-v1-plan.md`.
+
+One rule generated more than half of this list and is now standing policy:
+
+> **A card is a visual telling of where you are and what you achieved, in
+> simple wording. A card does not explain.** Whatever needs explaining belongs
+> in a tutorial, a tooltip or nowhere.
+
+### I1 · The opening round comes out
+
+Reported: it *"is confusing as heck and I think it is not really needed."*
+
+Both halves are right, and the second is the important one. The opening round
+exists for one arithmetical reason — the national field is twenty and the
+showdown brackets seat sixteen, so four games have to happen first — and that
+reason is invisible from the screen. A player arrives in a round he did not
+know existed, against an opponent he cannot place, for a prize that is only "be
+in the next round". It is the one stage of June with no story.
+
+**The direction: fold those teams into the winners bracket and let the bracket
+decide where everyone goes.** That is a real design question rather than a
+deletion, and the shape has to be chosen before anything is cut — a bye
+structure for the protected four, a larger winners bracket, or a smaller field
+are all live options with different consequences for how many games a champion
+plays.
+
+**What it touches**, and this is why it is designed and not improvised:
+`openingPairs`, the protection swap, `stageOpening` and `splitShowdown` in
+`engine/postseason.ts`; `NationalProgress` and the `usableSideShow` /
+`portableSideShow` save guards in the store; the national-field tests; and the
+soak's audit of "protection never drawn into the opening round", which becomes
+an assertion about something else or stops existing. Also worth knowing before
+choosing: **protection and the best-of-threes are already suspected of damping
+upsets** (§F, the champion-concentration finding), so whatever replaces the
+opening round should be checked against the soak rather than assumed neutral.
+
+### I2 · A title game deserves a modal
+
+Every competition's championship — conference, regional, national — should open
+a modal with the information in it, rather than living only as a slot in the
+bracket that the player has to know to look at. The biggest game of a stage
+should come to you.
+
+### I3 · A champion is not a stripe
+
+Today the winner appears as a thin stripe at the foot of the page, and the
+national champion sits so far down that it was missed completely: *"I didn't
+even know it was down there."* That is the single loudest event in a season
+rendered quieter than a box score. It wants a card, and the national title
+wants the loudest one in the game.
+
+Related and deliberately staged later: the full big-moment treatment (H16,
+stage 13) is the *presentation* layer — leverage styling, sound, a full-screen
+celebration. I3 is the *information* fix and should not wait for it.
+
+### I4 · A bracket game you can tap
+
+Asked for more than once and still not built. A bracket where every game is a
+frozen score is a table with corners on it. Tapping one should open what
+happened: the line score, the pitchers, the swing of it. The box scores already
+exist and are already reopenable in September — this is routing, not new data.
+
+### I5 · Postseason statistics
+
+There is no way to see them at all. June is the half of a season people
+remember, and who hit in it is currently unknowable once the bracket is gone.
+Open question worth settling early: how far back this reaches on a save that
+predates it.
+
+### I6 · Say so when a season is actually over
+
+The other half of A13. Stage 1 stopped the game announcing funerals for teams
+that were still alive; the reverse case is a team that missed the conference
+final and whose record will not reach the national field, left with no
+statement at all and a bracket it can still open. If a team is out, the game
+should say it is out, plainly and once.
+
+### I7 · The out-of-the-showdown card, and every card after it
+
+The card itself is liked. It is simply still over-written. See the rule at the
+top of this section — it applies to this card, to the cards tidied in stage 1,
+and to every card added from here.
+
+### I8 · The screen is being eaten
+
+Five separate reports, one complaint. A phone screen is the scarcest resource
+in the game, and each of these spends it on something worth less than the space
+it takes. Staged together because they are one skill and one afternoon, not
+because they are related:
+
+- **The two roster filters are far too big** — added to help the roster and
+  currently costing more room than they save.
+- **"He is in your pipeline" comes off the recruit rows.** A sentence where a
+  mark would do.
+- **The prospect sheet opens too small.** Bigger, so more of it reads at once —
+  and deliberately *not* full screen, which was specified.
+- **The offseason action button moves between tabs.** Reported earlier and not
+  yet fixed: a tab with less content lets the button ride up, so the one
+  control that is meant to be in the same place every time is not. Pin it.
+- **The season record is too easy to lose** beside the inbox badge. Bigger, or
+  — the preferred answer — moved up beside the date in the header, where the
+  eye is already going.
