@@ -1037,8 +1037,15 @@ function ProspectSheet({
             same "the app keeps changing shape" problem the manage screen had.
             The sheet is a fixed panel now and the body scrolls inside it, so
             switching tabs moves nothing but the text.
+
+            Taller than it was — 72% left a scouting report scrolling inside a
+            panel with a third of the screen dimmed above it, and it was
+            reported as simply too small. Deliberately not full height: the
+            strip of board still showing behind it is what says this is a sheet
+            over a list rather than a screen you navigated to, and it is the
+            thing you tap to get out.
           */
-          width: '100%', height: '72%',
+          width: '100%', height: '86%',
           display: 'flex', flexDirection: 'column',
           background: 'var(--paper)', borderTop: '3px solid var(--clay)',
         }}
@@ -1190,16 +1197,26 @@ function Overview({
         </div>
       )}
 
+      {/*
+        A mark, where three sentences used to be.
+
+        Reported as taking too much of the screen, and it was: a paragraph
+        explaining the home-state rule sat on every in-state recruit's card
+        for ever, long after the player had learned the rule. The advantage
+        itself is already visible where it does its work — it is in his
+        interest and in the pitch — so the card only has to say that it
+        applies.
+      */}
       {reachable && pipeline && (
         <div style={{
-          marginTop: 12, padding: '11px 12px', background: 'var(--field)',
+          marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '4px 9px', background: 'var(--field)',
           borderLeft: '3px solid var(--win)',
-          font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
         }}>
-          <strong style={{ color: 'var(--ink)' }}>He is in your pipeline.</strong>
-          {' '}A kid from your own state will hear out a program a rung below
-          the one his grade would otherwise talk to, and proximity is worth
-          full marks in the pitch on top of that.
+          <span style={{
+            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em',
+            color: 'var(--win)',
+          }}>IN YOUR PIPELINE</span>
         </div>
       )}
 

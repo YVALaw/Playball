@@ -159,6 +159,14 @@ button {
 /* Scrollbars off — this is a phone surface. */
 ::-webkit-scrollbar { width: 0; height: 0; }
 
+/* Room under a screen's content for the action bar pinned below it.
+ *
+ * `FixedHeader` renders its action *outside* the scroller now (see Sticky.tsx
+ * for why sticky could not be made to hold), so the bar overlaps nothing — but
+ * the last card on a long step would otherwise end flush against it with no
+ * breathing room. */
+.screen-scroll { padding-bottom: 4px; }
+
 /* ---------------------------------------------------------------------------
    Bottom sheets
    ---------------------------------------------------------------------------

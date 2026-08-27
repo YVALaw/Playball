@@ -40,6 +40,10 @@ export function CoachPoints() {
           </div>
         </div>
       }
+      action={<FloatingAction
+    label={left > 0 ? `CONTINUE · ${left} UNSPENT` : 'TO THE DRAFT'}
+    onClick={() => void next('coach')}
+  />}
     >
     <FirstVisit id="coachpoints" />
     <div style={{ padding: '12px 14px 24px' }}>
@@ -140,11 +144,6 @@ export function CoachPoints() {
           );
         })}
       </div>
-
-      <FloatingAction
-        label={left > 0 ? `CONTINUE · ${left} UNSPENT` : 'TO THE DRAFT'}
-        onClick={() => void next('coach')}
-      />
     </div>
     </FixedHeader>
   );

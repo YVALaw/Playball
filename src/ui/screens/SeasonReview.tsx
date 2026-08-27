@@ -110,6 +110,7 @@ export function SeasonReview() {
           </div>
         </div>
       }
+      action={<FloatingAction label="CONTINUE" onClick={() => void next('review')} />}
     >
     <FirstVisit id="review" />
     <div style={{ padding: '3px 14px 24px' }}>
@@ -232,8 +233,6 @@ export function SeasonReview() {
           </div>
         </>
       )}
-
-      <FloatingAction label="CONTINUE" onClick={() => void next('review')} />
     </div>
     </FixedHeader>
   );

@@ -71,6 +71,9 @@ export function Awards() {
           </div>
         </div>
       }
+      action={phase !== null && (
+        <FloatingAction label="SEASON REVIEW" onClick={() => void nextPhase('awards')} />
+      )}
     >
     <FirstVisit id="awards" />
     <div style={{ padding: '10px 14px 16px' }}>
@@ -224,9 +227,6 @@ export function Awards() {
           );
         })}
       </div>
-      {phase !== null && (
-        <FloatingAction label="SEASON REVIEW" onClick={() => void nextPhase('awards')} />
-      )}
     </div>
     </FixedHeader>
   );

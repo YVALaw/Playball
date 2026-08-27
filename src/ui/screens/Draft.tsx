@@ -131,7 +131,17 @@ export function Draft() {
         ))}
       </div>
       </div>
-    }>
+    }
+      action={phase !== null && (
+    <FloatingAction
+      label="TO RECRUITING"
+      note={pending > 0
+        ? `${pending} ${pending === 1 ? 'man is' : 'men are'} still waiting on an answer. Leaving now signs ${pending === 1 ? 'him' : 'them'}.`
+        : undefined}
+      onClick={() => void nextPhase('draft')}
+    />
+  )}
+    >
     <FirstVisit id="draftphase" />
     <div style={{ padding: '10px 14px 22px' }}>
       {view === 'keep' && (
@@ -197,16 +207,6 @@ export function Draft() {
         shortfall now, before signing day rather than after it, where it is a
         thing you can still do something about instead of a receipt.
       */}
-
-      {phase !== null && (
-        <FloatingAction
-          label="TO RECRUITING"
-          note={pending > 0
-            ? `${pending} ${pending === 1 ? 'man is' : 'men are'} still waiting on an answer. Leaving now signs ${pending === 1 ? 'him' : 'them'}.`
-            : undefined}
-          onClick={() => void nextPhase('draft')}
-        />
-      )}
     </div>
     </FixedHeader>
   );
@@ -697,7 +697,11 @@ function DraftOdds(
           }}>The draft</div>
         </div>
       </div>
-    }>
+    }
+      action={phase !== null && (
+    <FloatingAction label="TO RECRUITING" onClick={() => void nextPhase('draft')} />
+  )}
+    >
     <div style={{ padding: '10px 14px 20px' }}>
       <div style={{
         display: 'flex', marginTop: 2,
@@ -736,9 +740,6 @@ function DraftOdds(
         draft phase — and without a button it was a dead end with the dynasty
         behind it.
       */}
-      {phase !== null && (
-        <FloatingAction label="TO RECRUITING" onClick={() => void nextPhase('draft')} />
-      )}
     </div>
     </FixedHeader>
   );

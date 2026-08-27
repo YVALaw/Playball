@@ -550,16 +550,36 @@ function AppBody(
             color: 'var(--cream)', textTransform: 'uppercase',
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>{team.def.school}</div>
-          {/* The record rides the identity line in small print. The big block
-              it used to occupy is gone — the season tab carries the numbers,
-              and the header got its right half back. */}
           <div style={{
             font: "500 calc(9px * var(--ts))/1.4 var(--mono)", letterSpacing: '.14em',
             color: 'var(--cream-dim)', textTransform: 'uppercase',
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
-            {team.def.nickname} &middot; {team.conference} &middot; {team.w}-{team.l}
+            {team.def.nickname} &middot; {team.conference}
           </div>
+        </div>
+        {/*
+          The record, out of the small print.
+
+          It rode the identity line at nine point beside the nickname and the
+          conference, and it was reported as hard to see and easy to lose —
+          which it was: the one number that changes every day was set in the
+          same weight as two that never change. It gets its own block, at the
+          top of the screen where the eye already goes, and nothing else moved
+          to make room. Overall only; the conference record is a tap away on
+          the standings and the header is meant to be getting lighter, not
+          heavier.
+        */}
+        <div style={{ flex: 'none', textAlign: 'right', lineHeight: 1 }}>
+          <div style={{
+            font: "500 calc(7.5px * var(--ts)) var(--mono)", letterSpacing: '.16em',
+            color: 'rgba(246,241,230,.5)', textTransform: 'uppercase',
+          }}>RECORD</div>
+          <div style={{
+            marginTop: 2,
+            font: "800 calc(17px * var(--ts))/1 var(--display)",
+            color: 'var(--cream)', fontVariantNumeric: 'tabular-nums',
+          }}>{team.w}-{team.l}</div>
         </div>
         <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
         <CoachMenuButton />

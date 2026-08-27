@@ -22,7 +22,8 @@ import { useRef, type ReactNode } from 'react';
  * *made of* belongs in the body.
  */
 export function FixedHeader(
-  { header, children }: { header: ReactNode; children: ReactNode },
+  { header, children, action }:
+  { header: ReactNode; children: ReactNode; action?: ReactNode },
 ) {
   return (
     <div style={{
@@ -33,7 +34,32 @@ export function FixedHeader(
         flex: 'none', background: 'var(--field)',
         borderBottom: '1px solid var(--faint)',
       }}>{header}</div>
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>{children}</div>
+      <div className="screen-scroll" style={{
+        flex: 1, minHeight: 0, overflowY: 'auto',
+      }}>{children}</div>
+      {/*
+        The action, outside the scroller.
+
+        Reported: on an offseason step with less content the button rides up
+        and sits under the text rather than at the bottom, so the one control
+        that is meant to be in the same place every single time is not.
+
+        It was `position: sticky; bottom: 0` inside the scrolling body, and
+        that can only ever be half a solution — sticky pins an element while
+        its containing block reaches the edge being stuck to, and on a short
+        step the body stops halfway down the screen and takes the button with
+        it. Making the body fill the scroller was tried and is not enough
+        either: a screen that passes several children puts the button inside a
+        later one, and a column flex container with `overflow` under-reports
+        its own scroll height, so the fix worked on some steps and not others.
+
+        A row of the frame cannot move, whatever any step's content does. This
+        is the same arrangement the postseason screen already uses and the same
+        reason it uses it.
+      */}
+      {action !== undefined && (
+        <div style={{ flex: 'none' }}>{action}</div>
+      )}
     </div>
   );
 }
@@ -84,8 +110,17 @@ export function FloatingAction(
   };
   return (
     <div style={{
-      position: 'sticky', bottom: 0, zIndex: 10,
-      margin: '18px -14px 0', padding: '12px 14px',
+      /*
+        A row of the frame, not a sticky element inside the scroller. See
+        `FixedHeader` for the whole argument; the short version is that sticky
+        cannot hold a position the content is allowed to end above.
+
+        The gradient stays: rendered as the last row of the frame it sits over
+        nothing, but the postseason screen still places one of these directly
+        over its bracket, and a hard edge there reads as a seam.
+      */
+      zIndex: 10,
+      padding: '12px 14px',
       paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
       background: 'linear-gradient(to top, var(--field) 68%, rgba(242,236,224,0))',
     }}>

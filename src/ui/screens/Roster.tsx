@@ -43,6 +43,18 @@ export function Roster() {
   */
   const [yearF, setYearF] = useState<string | null>(null);
   const [posF, setPosF] = useState<string | null>(null);
+  /*
+    And behind an icon, because two labelled selects is a whole row of screen
+    standing above the list they filter.
+
+    Reported: the filters were far too big and eating the space the roster pass
+    was trying to win back. They were also the *second* attempt — nineteen
+    wrapping chips came first — and the lesson both times is that filtering is
+    something you do occasionally to a list you read constantly. So the list
+    keeps the room and the controls come to it, with the button carrying a mark
+    when a filter is on so a filtered roster can never look like a short one.
+  */
+  const [filterSheet, setFilterSheet] = useState(false);
   void version;
 
   if (!season || !team) return null;
@@ -89,31 +101,34 @@ export function Roster() {
             <Chip on={mode === 'all'} onClick={() => setMode('all')}>ALL</Chip>
             <Chip on={mode === 'bat'} onClick={() => setMode('bat')}>HITTERS</Chip>
             <Chip on={mode === 'arm'} onClick={() => setMode('arm')}>PITCHERS</Chip>
+            <div style={{ flex: 1 }} />
+            {/* The filters, one tap away instead of a row of screen away. The
+                dot is not decoration: a filtered roster and a short roster
+                look identical, and the count in the header only says so if you
+                read it. */}
+            <button
+              onClick={() => setFilterSheet(true)}
+              aria-label="Filter the roster"
+              className="tap"
+              style={{
+                minHeight: 36, padding: '8px 12px',
+                background: filtered ? 'var(--ink)' : 'transparent',
+                border: `1px solid ${filtered ? 'var(--ink)' : 'rgba(28,36,48,.25)'}`,
+                color: filtered ? 'var(--cream)' : 'rgba(28,36,48,.6)',
+                font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.14em',
+                display: 'flex', alignItems: 'center', gap: 5,
+              }}
+            >
+              FILTER
+              {filtered && (
+                <span style={{
+                  width: 5, height: 5, borderRadius: '50%', background: 'var(--clay)',
+                }} />
+              )}
+            </button>
           </div>
 
-          {/*
-            Two selects, not two rows of chips.
 
-            The chips were the first attempt and they were the wrong shape:
-            nineteen of them wrapped to three lines and ate the top of a screen
-            whose whole problem is vertical room. Reported as exactly that.
-            A native select is one line, opens the platform's own picker, and
-            is the control a phone user already knows.
-          */}
-          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-            <Select
-              label="YEAR"
-              value={yearF}
-              options={['FR', 'SO', 'JR', 'SR']}
-              onChange={setYearF}
-            />
-            <Select
-              label="POS"
-              value={posF}
-              options={slots}
-              onChange={setPosF}
-            />
-          </div>
         </div>
       }
     >
@@ -184,6 +199,63 @@ export function Roster() {
       </div>
 
     </div>
+    {filterSheet && (
+      <>
+        <div
+          className="sheet-scrim"
+          onClick={() => setFilterSheet(false)}
+          style={{
+            position: 'absolute', inset: 0, zIndex: 40,
+            background: 'rgba(28,36,48,.45)',
+          }}
+        />
+        <div className="sheet" style={{
+          position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 41,
+          background: 'var(--field)', borderTop: '3px solid var(--clay)',
+          padding: '14px 14px calc(16px + env(safe-area-inset-bottom))',
+        }}>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+            borderBottom: '2px solid var(--ink)', paddingBottom: 6, marginBottom: 12,
+          }}>
+            <span className="label">FILTER THE ROSTER</span>
+            {filtered && (
+              <button
+                onClick={() => { setYearF(null); setPosF(null); }}
+                className="tap"
+                style={{
+                  font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em',
+                  color: 'var(--clay)',
+                }}
+              >CLEAR</button>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Select
+              label="YEAR"
+              value={yearF}
+              options={['FR', 'SO', 'JR', 'SR']}
+              onChange={setYearF}
+            />
+            <Select
+              label="POS"
+              value={posF}
+              options={slots}
+              onChange={setPosF}
+            />
+          </div>
+          <button
+            onClick={() => setFilterSheet(false)}
+            className="tap"
+            style={{
+              width: '100%', marginTop: 14, padding: '12px 0', minHeight: 44,
+              background: 'var(--ink)', color: 'var(--cream)',
+              font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.14em',
+            }}
+          >SHOW {shown} {shown === 1 ? 'PLAYER' : 'PLAYERS'}</button>
+        </div>
+      </>
+    )}
     </FixedHeader>
   );
 }

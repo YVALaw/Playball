@@ -188,7 +188,9 @@ export function SigningDay() {
           ))}
       </div>
       </div>
-    }>
+    }
+      action={<FloatingAction label="START NEXT SEASON" onClick={() => void next('signing')} />}
+    >
     <FirstVisit id="signing" />
     <div style={{ padding: '10px 14px 22px' }}>
       {view === 'mine' && (
@@ -292,8 +294,6 @@ export function SigningDay() {
           ))}
         </div>
       )}
-
-      <FloatingAction label="START NEXT SEASON" onClick={() => void next('signing')} />
 
       {openRecruit && (
         <RecruitSheet
