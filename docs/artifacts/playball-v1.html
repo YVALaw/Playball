@@ -116,13 +116,14 @@
 
 <header class="top">
   <div class="top-in">
-    <div class="kicker">Playball · implementation plan · revised August 27</div>
+    <div class="kicker">Playball · implementation plan · stages 1–4 shipped</div>
     <h1>The road to v1.0</h1>
     <p class="sub">Seventeen stages, ordered by what unblocks what. The game is
     already deep; this is the work that turns it into a product with a
-    personality, on a phone. <strong style="color:var(--cream)">Stage 1 is
-    done.</strong> Stages 3 and 4 are new — they came out of playing the
-    postseason that stage 1 shipped.</p>
+    personality, on a phone. <strong style="color:var(--cream)">The first four
+    are done.</strong> Three and four did not exist when this plan was written —
+    they came out of playing what stage 1 shipped, and were built the same day
+    they were reported.</p>
   </div>
 </header>
 
@@ -192,51 +193,51 @@
       </div>
     </li>
 
-    <li class="stage">
+    <li class="stage done">
       <div class="num">02</div>
       <div>
         <h3>How you want to play</h3>
-        <div class="chips"><span class="chip sz-m">Medium</span><span class="chip dep">Foundational — everything after reads this</span></div>
+        <div class="chips"><span class="chip done">Done · August 2026</span><span class="chip dep">Everything after reads this</span></div>
         <ul>
           <li>The <strong>depth choice</strong> at coach creation, framed as how you like to play rather than a difficulty menu</li>
           <li><strong>Per-system toggles</strong> behind the preset, and a way to change the mode mid-career</li>
           <li><strong>The settings sheet</strong> — sound, haptics, field 2D/3D, text size, reduced motion, tutorial reset, and saves migrating in. Stored per device: preferences follow the phone, not the dynasty.</li>
         </ul>
-        <div class="exit"><b>Exit</b>Every system built after this has a documented answer for what it does in casual mode.</div>
-        <div class="decide"><b>Decisions at the door</b>Two modes or three; what casual actually turns off; whether the mode is visible anywhere after creation.</div>
+        <div class="exit"><b>Exit — met</b>Every system built after this has a documented answer for what it does in casual mode. The catalogue carries one per system, unbuilt ones included, so the answer gets written before the system is.</div>
+        <div class="decide"><b>The rule it all rests on</b>The engine always models everything; the mode changes what you are <em>asked</em>, never what the simulation does. Casual doesn't turn the bullpen off — it hands it to a pitching coach, which is what the other ninety-five programs have always had. A casual save and a full save are the same world, with the same records and the same hall of fame. Two modes, casual handling lineups and the pen, silently. Text size is real: all 582 font sizes now go through one number.</div>
       </div>
     </li>
 
 
-    <li class="stage">
+    <li class="stage done">
       <div class="num">03</div>
       <div>
         <h3>June, made legible</h3>
-        <div class="chips"><span class="chip new">New</span><span class="chip sz-l">Medium–large</span><span class="chip dep">From playing it</span></div>
+        <div class="chips"><span class="chip done">Done · August 2026</span><span class="chip dep">Reported and built the same day</span></div>
         <p>The postseason was rebuilt, then played. The verdict is worth stating
         precisely, because it decides what gets touched: <strong>the format is
         not the complaint.</strong> Double elimination, the regionals and the
         showdown brackets all did what they were built to do. What fails is the
         screen's account of them.</p>
         <ul>
-          <li><strong>Cut the opening round.</strong> It exists for one arithmetical reason — twenty teams have to become sixteen — and that reason is invisible from where the player sits. You arrive in a round you didn't know existed, against an opponent you can't place, for a prize that is only <em>being in the next round</em>. It's the one stage of June with no story. Fold those teams into the winners bracket and let the bracket decide where everyone goes.</li>
+          <li><strong>Cut the opening round.</strong> Its real sin turned out not to be the extra games: it was a <em>single-elimination gate standing in front of a double elimination tournament</em>. You could win your conference, win your regional, lose one series and be finished, in an event whose whole promise is that one bad night doesn't end you. <span class="did">Those eight teams now play their way in inside the winners bracket, where losing drops you to the losers side. Two ten-team halves; eighteen games each, nineteen with the reset — arithmetic rather than a chosen number, since nine teams must go out at two losses apiece.</span></li>
           <li><strong>A modal for every title game.</strong> Conference, regional, national — the biggest game of a stage should come to you, not sit in a slot you have to know to open.</li>
-          <li><strong>A card for the champion.</strong> Today the winner is a thin stripe at the foot of the page, and the national title sits so far down it was missed entirely. The loudest event in a season currently reads like a footnote.</li>
+          <li><strong>A card for the champion.</strong> The winner was a thin stripe at the foot of the page, and the national title sat so far down it was missed entirely. <span class="did">A card at the top now, at three intensities from a conference banner to the country — one component, so the escalation itself tells you what you won. A rival's title gets the same card in navy and no takeover.</span></li>
           <li><strong>Tap a bracket game to see it.</strong> Line score, the pitchers, the swing of it. The box scores already exist and are already reopenable — this is routing, not new data.</li>
-          <li><strong>Postseason statistics.</strong> There is no way to see them at all. June is the half of a season people remember.</li>
+          <li><strong>Postseason statistics.</strong> There was no way to see them at all. <span class="did">June is counted a second time rather than moved — season totals include tournament play, so it couldn't be got by subtraction — and kept for all ninety-six programs, with career totals that survive the year roll.</span></li>
           <li><strong>Say so when a season really is over.</strong> The other half of A13: stage 1 stopped the false funerals, this stops the silence for a team that missed the conference final and won't reach the national field.</li>
           <li><strong>Less text on the June cards.</strong> The out-of-the-showdown card is liked and still over-written.</li>
         </ul>
-        <div class="exit"><b>Exit</b>A player can read his own June at a glance, and knows the moment it ends.</div>
-        <div class="decide"><b>Decisions at the door</b>What replaces the opening round exactly — byes for the protected four, a larger winners bracket, or a smaller field. Whether the modal is the win card or a different component. How far back postseason stats reach on an old save. And the cut gets re-measured against the soak rather than assumed neutral: protection and the best-of-threes are already the prime suspects in the champion-concentration finding above.</div>
+        <div class="exit"><b>Exit — met</b>A player can read his own June at a glance, and knows the moment it ends.</div>
+        <div class="decide"><b>What the re-measurement said</b>The cut was checked against the soak rather than assumed neutral, and it moved nothing: nine or ten distinct champions in thirty years either way, measured across five worlds. The concentration is the format, not the opening round, and it stays an open question rather than something quietly tuned away. The soak's own canary had been set at exactly the first number it printed, so it was firing on noise; it is a fifth of the years now, which catches a collapse instead of the weather.</div>
       </div>
     </li>
 
-    <li class="stage">
+    <li class="stage done">
       <div class="num">04</div>
       <div>
         <h3>Give the screen back</h3>
-        <div class="chips"><span class="chip new">New</span><span class="chip sz-s">Small</span><span class="chip dep">High value per hour</span></div>
+        <div class="chips"><span class="chip done">Done · August 2026</span><span class="chip dep">One afternoon, five reports</span></div>
         <p>Five separate reports, one complaint. A phone screen is the scarcest
         resource in the game, and each of these spends it on something worth
         less than the room it takes. Grouped because they're one skill and one
@@ -245,10 +246,10 @@
           <li>The <strong>two roster filters are far too big</strong>, costing more room than they save</li>
           <li><strong>"He is in your pipeline" comes off the recruit rows</strong> — a sentence where a mark would do</li>
           <li>The <strong>prospect sheet opens too small.</strong> Bigger, so more of it reads at once — and deliberately not full screen</li>
-          <li>The <strong>offseason action button moves between tabs.</strong> A tab with less content lets it ride up, so the one control meant to be in the same place every time isn't. Pin it.</li>
-          <li>The <strong>season record is too easy to lose</strong> beside the inbox badge. Bigger — or better, up beside the date in the header, where the eye already goes.</li>
+          <li>The <strong>offseason action button moves between tabs.</strong> A tab with less content let it ride up, so the one control meant to be in the same place every time wasn't. <span class="did">Two attempts. It was <code>position: sticky</code>, which can only ever be half a solution — sticky pins while its containing block reaches the edge, and a short step stops halfway down the screen. It's a row of the frame now: measured across all six offseason tabs, two pixels from the bottom every time.</span></li>
+          <li>The <strong>season record is too easy to lose</strong> beside the inbox badge. <span class="did">It was riding the identity line at nine point, next to two things that never change. Its own block now, overall only.</span></li>
         </ul>
-        <div class="exit"><b>Exit</b>Nothing on screen is bigger than its importance.</div>
+        <div class="exit"><b>Exit — met</b>Nothing on screen is bigger than its importance.</div>
       </div>
     </li>
     <li class="stage">
@@ -264,6 +265,7 @@
           <li><strong>Pitch-by-pitch calling</strong>, full-depth mode only. Eleven pitch types and per-pitcher repertoires already exist; nothing spends them.</li>
         </ul>
         <div class="exit"><b>Exit</b>The dugout is the best screen in the game.</div>
+        <div class="decide"><b>Already half-plumbed</b>Mound visits, pitch calling and scouting reports all have rows waiting on the settings sheet, greyed and labelled "arrives with the dugout" — building them is filling in a row rather than inventing the plumbing, and each needs its documented answer for what casual does. Take the throttled browser profile first: this stage rebuilds the dugout around a <em>larger</em> 3D field, and a frame-rate disaster there changes the design rather than the code.</div>
       </div>
     </li>
 
@@ -448,11 +450,12 @@
   its size suggests, because silence is the loudest thing about the game right
   now.</p>
 
-  <p class="chain"><strong>Stages 3 and 4 are cheap relative to what they
-  fix</strong>, and both exist because the game got played rather than reasoned
-  about. That is the argument for keeping them early: stage 1 shipped a
-  postseason, an evening with it produced thirteen findings, and none of them
-  were things a plan would have predicted.</p>
+  <p class="chain"><strong>Stages 3 and 4 were cheap relative to what they
+  fixed</strong>, and both existed because the game got played rather than
+  reasoned about. Stage 1 shipped a postseason, an evening with it produced
+  thirteen findings, none of them things a plan would have predicted, and all
+  thirteen were built the same day they were reported. That is the argument for
+  playing the thing early and often.</p>
 
   <p class="chain"><strong>One rule came out of that evening and is now
   policy</strong>, because it generated more than half of stage 3: <em>a card is
