@@ -225,18 +225,18 @@ describe('the wire reports without touching the dice', () => {
 });
 
 describe('the duplicated nav doors are gone, their rooms are not', () => {
-  it('HOME carries TODAY and WIRE only; inbox and scorebook live elsewhere', () => {
+  it('HOME carries TODAY and WIRE only; inbox and scorebook live elsewhere', async () => {
     const home = TABS.find((t) => t.id === 'home')!;
     expect(home.screens.map((s) => s.id)).toEqual(['today', 'wire']);
     // The scorebook screen id still resolves — PLAY BALL routes there.
     useDynasty.getState().start(4242, 0);
-    useDynasty.getState().startManagedGame();
+    await useDynasty.getState().startManagedGame();
     expect(useDynasty.getState().screen).toBe('box');
     expect(useDynasty.getState().live).not.toBeNull();
     // And PLAY BALL is the way back to a game in progress, not a second game.
     useDynasty.getState().go('home');
     const live = useDynasty.getState().live;
-    useDynasty.getState().startManagedGame();
+    await useDynasty.getState().startManagedGame();
     expect(useDynasty.getState().live).toBe(live);
     expect(useDynasty.getState().screen).toBe('box');
   });

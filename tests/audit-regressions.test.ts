@@ -149,7 +149,7 @@ describe('an orphaned managed game is dropped, not recorded', () => {
   it('refuses to write a game after the calendar moved past its day', async () => {
     useDynasty.getState().start(4242, 0);
     const season = useDynasty.getState().season!;
-    useDynasty.getState().startManagedGame();
+    await useDynasty.getState().startManagedGame();
     const live = useDynasty.getState().live;
     expect(live).not.toBeNull();
     useDynasty.getState().autoFinish();
@@ -187,7 +187,7 @@ describe('loading a save clears the game being played', () => {
     // A different dynasty is played in the meantime, mid-game.
     useDynasty.getState().newDynasty();
     useDynasty.getState().start(7777, 1);
-    useDynasty.getState().startManagedGame();
+    await useDynasty.getState().startManagedGame();
     expect(useDynasty.getState().live).not.toBeNull();
 
     const ok = await useDynasty.getState().loadSlot('market-slot');

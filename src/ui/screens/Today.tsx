@@ -59,6 +59,8 @@ export function Today() {
   const busy = useDynasty((s) => s.busy);
   const progress = useDynasty((s) => s.progress);
   const live = useDynasty((s) => s.live);
+  const pendingGame = useDynasty((s) => s.pendingGame);
+  const resumeGame = useDynasty((s) => s.resumeGame);
   const openTeam = useOpenTeam();
   const team = useUserTeam();
   void version;                         // in-place mutation: see store.ts
@@ -190,6 +192,41 @@ export function Today() {
     >
     <div style={{ padding: '10px 14px 16px' }}>
       <FirstVisit id="today" />
+
+      {/*
+        The game a phone call took away, offered back.
+
+        Above everything, because it is the only thing on this screen that is
+        already in progress — and offered rather than restored, because being
+        teleported into the seventh inning of a game you had forgotten is its
+        own kind of disorienting. Declining does not un-play the day: the
+        bench coach finishes it, which is what happens to a manager who walks
+        out of a dugout anyway.
+      */}
+      {pendingGame && (
+        <div className="rise-in" style={{
+          marginBottom: 12, border: '1px solid var(--clay)',
+          borderLeft: '5px solid var(--clay)', background: 'var(--paper)',
+        }}>
+          <div style={{ padding: '6px 11px', background: 'var(--clay)' }}>
+            <span style={{
+              font: "600 8.5px var(--mono)", letterSpacing: '.18em', color: 'var(--cream)',
+            }}>GAME IN PROGRESS</span>
+          </div>
+          <div style={{ padding: '11px 12px 12px' }}>
+            <div style={{
+              font: "800 18px/1 var(--display)", textTransform: 'uppercase',
+            }}>{pendingGame.line}</div>
+            <div style={{
+              marginTop: 5, font: "400 11.5px/1.5 var(--body)", color: 'var(--dim)',
+            }}>You left this one on the field.</div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              <Action label="PICK IT UP" primary onClick={() => void resumeGame(true)} />
+              <Action label="LET THEM FINISH" onClick={() => void resumeGame(false)} />
+            </div>
+          </div>
+        </div>
+      )}
       {/* The record tiles used to sit here. They live on the season tab now —
           the dashboard is for what happens next, not for how it has gone. */}
       {todayGame && opponent && (
@@ -302,7 +339,7 @@ export function Today() {
               label={live ? 'BACK TO THE GAME' : todayGame ? 'PLAY BALL' : 'NEXT GAME'}
               primary full
               disabled={busy || thinking !== null}
-              onClick={startManagedGame}
+              onClick={() => void startManagedGame()}
             />
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>

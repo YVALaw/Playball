@@ -176,7 +176,7 @@ export function Manage() {
           Take the dugout and call every plate appearance of your next game.
         </div>
         <button
-          onClick={startManagedGame}
+          onClick={() => void startManagedGame()}
           style={{
             padding: '11px 18px', background: 'var(--clay)',
             border: '1px solid var(--clay)', color: 'var(--cream)',

@@ -199,6 +199,9 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 101 | **The preseason national table is a projection: roster strength weighted three to one over prestige, shown until the league has about four games a team.** Never persisted, never fed back into anything — the screen labels it a projection but not the blend. | "PRESEASON POWER RANKING · PROJECTED", then one day the real RPI table. | `Rankings.tsx` (display only); `rosterStrength` — `engine/program.ts`; §20.7 | SHIPPED |
 | 102 | **An extra-base hit lands deep whatever station its fielder keeps.** A double no shallower than 0.68 of the field, a triple 0.88, pushed along the handling fielder's side — because the man credited with the play is the man it went past, and placing the ball at his feet told the story backwards. Same stable hash, no dice. | A triple that visibly reaches the wall. | `landingFor` — `engine/game.ts`; §20.8 | SHIPPED |
 | 103 | **The 0.8 seconds under SIM GAME and SIM WEEK computes nothing.** The sim runs after the ring, in milliseconds; the pause exists so a night of baseball does not resolve faster than a thumb can lift, and it doubles as those buttons' rapid-fire guard. | A spinner in the button. | `Today.tsx` (display only); §20.5 | SHIPPED |
+| 104 | **An interrupted game is replayed, not restored.** A `LiveGame` cannot be serialised, so what is kept is the season generator's position at the first pitch plus every call since; taking the offer rebuilds the identical game off them. The save is written *before* the game is created so the anchor is real. | An offer to pick up the game you were in when the phone rang, on the same pitch. | `state/liveJournal.ts`; `pendingFromJournal`, `resumeGame` — `state/store.ts`; §21.1 | SHIPPED |
+| 105 | **The journal is the one thing not kept in IndexedDB.** `localStorage`, because an IndexedDB write is async and the event it exists to survive is the OS killing a backgrounded tab, where a pending write is a lost write. No memory fallback — the tests supply a real `Storage` instead. | Nothing, until a tab dies mid-game and the game is still there. | `readJournal`, `writeJournal` — `state/liveJournal.ts`; §21.1 | SHIPPED |
+| 106 | **Where you fell is recorded when you fall, not afterwards.** A double elimination only knows a team's finish at the moment of its second loss, so `noteKnockout` writes `placing` and `advanced` there — and a regional exit asks `protectedTopFour` instead, which is arithmetic over a finished season. Second, third and fourth in a conference are still alive, and so is a protected team that lost a regional. | "Runners up · ON TO THE REGIONAL" where it used to say the season was over. | `noteKnockout` — `state/store.ts`; `howFar` — `ui/screens/Postseason.tsx`; §21.2 | SHIPPED |
 
 ---
 
@@ -4571,6 +4574,97 @@ final reads *Runners up*, not *Knocked out*. The boxed RESULT section became a
 settled banner, loud for a trophy and quiet for an ending, and the lineup card
 is reachable from inside the bracket as a sheet laid over June, so the dugout
 controls no longer require leaving the one frame the year was played for.
+
+---
+
+## 21. A game you can put down — **SHIPPED**
+
+`src/state/liveJournal.ts`, `startManagedGame` / `manageBracketGame` /
+`resumeGame` / `pendingFromJournal` — `src/state/store.ts`, `tests/resume.test.ts`,
+`tests/season-soak.ts`.
+
+The first stage of the v1.0 route (`07-v1-plan.md`), August 2026: stop the game
+lying about a season that is still alive, and stop it losing a game to a phone
+call. Two independent fixes and one new probe.
+
+### 21.1 A live game is replayed, not restored
+
+A `LiveGame` is a coroutine — it holds closures, a suspended generator and a
+reference to the season's own rng — and none of that survives `JSON.stringify`.
+So an interrupted game is not saved. **It is journalled and replayed.**
+
+The journal is an anchor and a list. The anchor is the season generator's exact
+position at the first pitch, plus the two teams, the starters and which dugout
+is yours. The list is every call since, as a small enum: `{k:'tactic'}`,
+`{k:'pinch'}`, `{k:'pen'}`. Replay rebuilds the game off `rngFromState(anchor)`
+and re-submits the calls in order, which lands on the identical game because
+the engine is deterministic and the calls were the only inputs.
+
+Three details carry the whole thing:
+
+- **It lives in `localStorage`, deliberately.** Everything else the game owns is
+  in IndexedDB, and this one thing is not, because an IndexedDB write is async
+  and the event this exists to survive is the OS killing a backgrounded tab —
+  where a pending async write is a lost write. `setItem` returns when the bytes
+  are down. The module has no memory fallback, and `tests/resume.test.ts`
+  supplies a real `Storage` shim rather than asking for one: a journal held in
+  memory dies with the tab, which is precisely the moment it was written for.
+- **`startManagedGame` and `manageBracketGame` are `async` and await the save
+  before creating the game.** The replay is only exact if the season on disk
+  stands where it stood at the first pitch, so the anchor is written first and
+  the game is built second.
+- **A call is journalled before the engine is stepped**, so a crash inside the
+  engine replays into the same crash rather than quietly skipping the call that
+  caused it.
+
+`pendingFromJournal` validates slot, year and rng state together — another
+dynasty, another season or a generator that has moved on are all the same
+answer, because replaying into any of them would invent a game rather than
+recover one. Taking the offer replays and hands back the clipboard; declining
+replays and calls `finish()`, so the day still happens, it just happens without
+you. Both prompts exist, on the dashboard and inside the bracket, because June
+renders its own frame and would otherwise have swallowed the offer.
+
+**This also removed a restriction that had gone stale.** `endManagedGame`
+refused to save mid-bracket, on the grounds that a live sub-bracket could not be
+serialised. That stopped being true when `portableMyBracket` landed in the
+overhaul, and `sideShow` joined it in the national redesign; the guard was
+protecting against a hazard that no longer existed, and it was the only thing
+standing between the postseason and this feature.
+
+### 21.2 The card that buried living teams — A13
+
+Losing a conference final told the coach his season was over. It is not: the top
+four in a conference all reach a regional, and so does a protected top-four
+program that just lost one.
+
+`Knockout` gained `advanced` and `placing`, both computed in `noteKnockout` **at
+the moment of elimination**, because that is the only moment the structure still
+knows where a team fell — a double elimination writes the finish in the slot the
+second loss came in (championship 2nd, losers final 3rd, losers semifinal 4th).
+Regional exits ask `protectedTopFour(season)` instead, which is arithmetic over
+a finished season and needs no bracket at all. The card then reads *Runners up*
+or *Third in the league* with a winning tone and a button that says ON TO THE
+REGIONAL, or a real ending for fifth and below.
+
+**The stake now appears before the game rather than after it.** A bracket-reset
+final says *you must win this AND the next one*, because the original confusion
+was a manager having no way to know he needed two.
+
+### 21.3 The soak — `npm run soak`
+
+`tests/season-soak.ts` runs thirty seasons headless and audits every June:
+conference fields and placings, one-loss survival, sixteen regional series with
+distinct champions, a twenty-team national field with no duplicates, protection
+never drawn into the opening round, a clean split into two brackets, exactly one
+champion and one runner-up, twelve programs a conference, nine men in a lineup,
+one annals row per program per year. Thirty Junes, no structural faults.
+
+It measures two things besides: the save grows about 12 KB a year (15 KB → 371
+KB at year thirty), and the format produces **ten distinct champions in thirty
+years against a real-world sixteen**. The second is a balance question, not a
+bug, and it is open — `06-backlog.md` §F carries the argument. The soak fails
+below `years / 3` champions, so the number is watched from here.
 
 ---
 

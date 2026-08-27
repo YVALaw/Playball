@@ -15,6 +15,7 @@
     "parity-sweep": "tsx tests/parity-sweep.ts",
     "balance": "tsx tests/block-probe.ts",
     "carousel": "tsx tests/carousel-probe.ts",
+    "soak": "tsx tests/season-soak.ts",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",

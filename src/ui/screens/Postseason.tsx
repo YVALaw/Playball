@@ -56,6 +56,8 @@ export function Postseason() {
   const bracket = useDynasty((s) => s.bracket);
   const myBracket = useDynasty((s) => s.myBracket);
   const sideShow = useDynasty((s) => s.sideShow);
+  const pendingGame = useDynasty((s) => s.pendingGame);
+  const resumeGame = useDynasty((s) => s.resumeGame);
   const advance = useDynasty((s) => s.advanceBracket);
   const manage = useDynasty((s) => s.manageBracketGame);
   const sim = useDynasty((s) => s.simBracket);
@@ -135,94 +137,130 @@ export function Postseason() {
   const qualified = inTheField
     ? {
         good: true,
-        title: `${team.conference} tournament`,
+        title: `${ordinal(mySeed)} seed`,
         lines: [
-          `${team.def.school} are the ${ordinal(mySeed)} seed of ${CONF_FIELD}. Double elimination: lose once and you drop to the losers bracket, lose twice and it is winter.`,
-          `Finish top ${CONF_ADVANCE} and you play a regional championship series. Win THAT and the national field is calling.`,
+          `Double elimination. Two losses and it is winter.`,
+          `Finish top ${CONF_ADVANCE} and you play a regional.`,
         ],
       }
     : {
         good: false,
         title: 'Season over',
         lines: [
-          `${team.def.school} finished outside the top ${CONF_FIELD} of the ${team.conference}.`,
-          'A third of the league goes home in May, and this year that is you.',
+          `${team.def.school} finished outside the top ${CONF_FIELD}.`,
+          'A third of the league goes home in May.',
         ],
       };
 
+  /*
+    Where the year stopped — or didn't.
+
+    Reported from testing: *"we won the first and lost the second and got
+    knocked out."* He had, of that tournament, and the card told him his
+    season was over. It was not: second place in a conference tournament goes
+    to a regional, and a protected top-four seed reaches the national field
+    whatever its regional does. `knockout.advanced` is the store's answer to
+    that, worked out at the moment of elimination.
+
+    Kept short on purpose. These cards are read at the loudest moment in a
+    season and a paragraph is not read at all.
+  */
   const howFar = (() => {
     const kind = knockout?.kind ?? 'conference';
     const where = knockout?.label ? ` in the ${knockout.label}` : '';
+    const place = knockout?.placing ?? 0;
+
+    if (kind === 'conference' && knockout?.advanced) {
+      const finished = place === 2 ? 'Runners up'
+        : place === 3 ? 'Third in the league'
+        : 'Fourth in the league';
+      return {
+        good: true,
+        title: finished,
+        lines: [
+          `${team.def.school} are out of the ${team.conference} tournament.`,
+          'But the top four travel. A regional championship series is next.',
+        ],
+      };
+    }
     if (kind === 'conference') {
       return {
+        good: false,
         title: 'Out in May',
         lines: [
           `${team.def.school} fall${where} of the ${team.conference} tournament.`,
-          'The bats always go quiet at the worst possible time. Winter is for getting them loud again.',
+          'Winter is for getting the bats loud again.',
+        ],
+      };
+    }
+    if (kind === 'regional' && knockout?.advanced) {
+      return {
+        good: true,
+        title: 'Protected',
+        lines: [
+          `${team.def.school} lose the regional championship series.`,
+          'The regular season already bought the national field. You travel anyway.',
         ],
       };
     }
     if (kind === 'regional') {
       return {
+        good: false,
         title: 'Out at the regional',
         lines: [
-          `${team.def.school} drop the regional championship series.`,
-          'Top four in the conference and a June exit. Close enough to sting, good enough to be back.',
+          `${team.def.school} lose the regional championship series.`,
+          'One series from the national field. Close enough to sting.',
         ],
       };
     }
     if (kind === 'opening') {
       return {
+        good: false,
         title: 'Out in the opening round',
         lines: [
           `${team.def.school} fall in the national opening round.`,
-          'Twenty teams made the field and you were one of them. The showdown will still be there next June.',
+          'Twenty teams made the field. You were one of them.',
         ],
       };
     }
     if (kind === 'final') {
       return {
+        good: false,
         title: 'Runners up',
         lines: [
           `${team.def.school} lose the national championship series.`,
-          'One series short of everything. Second best in the whole country, and it still feels like this.',
+          'Second best in the country, and it still feels like this.',
         ],
       };
     }
     return {
+      good: false,
       title: 'Out of the showdown',
       lines: [
-        `${team.def.school} take their second loss${where}.`,
-        'Sixteen teams reach the showdown and most of the country never sees it. Seasons like this are why the banners exist.',
+        `${team.def.school} take a second loss${where}.`,
+        'Sixteen reach the showdown. Most of the country never sees it.',
       ],
     };
   })();
 
+  // A banner and a sentence. Anything longer is read at the one moment nobody
+  // is reading.
   const wonCard = bracket.stage === 'conference'
     ? {
         kicker: `${year} ${team.conference.toUpperCase()}`,
         title: 'Conference champions',
-        lines: [
-          `${team.def.school} win the ${team.conference} tournament.`,
-          'Hang the banner and gas up the bus. A regional championship series is waiting.',
-        ],
+        lines: [`${team.def.school} take the ${team.conference}. Gas up the bus.`],
       }
     : bracket.stage === 'regional'
       ? {
-          kicker: `${year} REGIONAL CHAMPIONSHIP`,
+          kicker: `${year} REGIONAL`,
           title: 'Regional champions',
-          lines: [
-            `${team.def.school} take their regional series.`,
-            'A second banner for the gym, and a guaranteed seat at the national table.',
-          ],
+          lines: [`${team.def.school} win the region, and a seat at the national table.`],
         }
       : {
           kicker: `${year} NATIONAL CHAMPIONSHIP`,
           title: 'National champions',
-          lines: [
-            `${team.def.school} win it all.`,
-            'Nobody left to beat. Somewhere on campus a trophy case is being rearranged.',
-          ],
+          lines: [`${team.def.school} win it all. Nobody left to beat.`],
         };
 
   /** What the pinned button does right now. */
@@ -284,11 +322,13 @@ export function Postseason() {
       )}
       {modal === 'out' && (
         <Modal
-          kicker="SEASON OVER"
+          kicker={howFar.good ? `${year} · STILL ALIVE` : `${year} · SEASON OVER`}
           title={howFar.title}
           lines={howFar.lines}
-          tone="clay"
-          action="SEE THE REST OF IT"
+          tone={howFar.good ? 'win' : 'clay'}
+          action={howFar.good
+            ? (knockout?.kind === 'conference' ? 'ON TO THE REGIONAL' : 'ON TO THE NATIONALS')
+            : 'SEE THE REST OF IT'}
           onClose={() => setModal(null)}
         />
       )}
@@ -373,6 +413,56 @@ export function Postseason() {
 
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <div style={{ padding: '8px 0 10px' }}>
+            {/*
+              A bracket game a phone call took away.
+
+              The same offer the dashboard makes, because June has its own
+              frame and the dashboard is not in it — and a postseason game is
+              the one you least want to lose.
+            */}
+            {pendingGame && (
+              <div style={{ padding: '0 14px', marginBottom: 8 }}>
+                <div className="rise-in" style={{
+                  border: '1px solid var(--clay)', borderLeft: '5px solid var(--clay)',
+                  background: 'var(--paper)',
+                }}>
+                  <div style={{ padding: '5px 11px', background: 'var(--clay)' }}>
+                    <span style={{
+                      font: "600 8.5px var(--mono)", letterSpacing: '.18em',
+                      color: 'var(--cream)',
+                    }}>GAME IN PROGRESS</span>
+                  </div>
+                  <div style={{ padding: '10px 12px 11px' }}>
+                    <div style={{
+                      font: "800 16px/1 var(--display)", textTransform: 'uppercase',
+                    }}>{pendingGame.line}</div>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 9 }}>
+                      <button
+                        onClick={() => void resumeGame(true)}
+                        className="tap"
+                        style={{
+                          flex: 1, padding: '11px 8px', minHeight: 42,
+                          background: 'var(--clay)', border: '1px solid var(--clay)',
+                          color: 'var(--cream)', font: "700 10px var(--mono)",
+                          letterSpacing: '.1em',
+                        }}
+                      >PICK IT UP</button>
+                      <button
+                        onClick={() => void resumeGame(false)}
+                        className="tap"
+                        style={{
+                          flex: 1, padding: '11px 8px', minHeight: 42,
+                          background: 'transparent', border: '1px solid rgba(28,36,48,.4)',
+                          color: 'var(--ink)', font: "700 10px var(--mono)",
+                          letterSpacing: '.1em',
+                        }}
+                      >LET THEM FINISH</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {myBracket && !iAmOut && <YourNext
               myBracket={myBracket} userTeam={userTeam} name={name}
               onLineup={() => setShowLineup(true)}
@@ -523,7 +613,23 @@ function YourNext(
       const other = slot.a === userTeam ? slot.b : slot.a;
       line = `${host === userTeam ? 'vs' : 'at'} ${name(other)}`;
       const losses = myBracket.state.losses.get(userTeam) ?? 0;
-      sub = `${slotName(slot)} · ${losses === 0 ? 'unbeaten' : 'one loss, elimination baseball'}`;
+      /*
+        The stake, before the game rather than after it.
+
+        Reported from testing: he came through the losers bracket, won the
+        first final, lost the second and was out — and had no way of knowing
+        beforehand that he needed both. In a double elimination the man
+        arriving unbeaten needs one win and the man arriving with a loss needs
+        two, and "Championship · the reset" is bracket jargon that teaches
+        nobody that. So the card says it in words.
+      */
+      if (slot.side === 'F') {
+        sub = losses === 0
+          ? 'Championship · win one and it is yours'
+          : 'Championship · you must win this AND the next one';
+      } else {
+        sub = `${slotName(slot)} · ${losses === 0 ? 'unbeaten' : 'one loss, elimination baseball'}`;
+      }
     }
   }
   if (!line) return null;

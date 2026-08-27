@@ -1,9 +1,12 @@
 # The v1.0 Plan
 
-**Written:** August 26, 2026 · **Revised:** August 26, 2026 (feature pass)
-**Companion docs:** `01-roadmap.md` for the order at a glance, `06-backlog.md`
+**Written:** August 26, 2026 · **Revised:** August 27, 2026 (stage 1 closed)
+**Companion docs:** `08-handoff.md` for where the last session stopped and what
+the next one picks up, `01-roadmap.md` for the order at a glance, `06-backlog.md`
 §H for the feature set and the argument behind each, `05-systems-reference.md`
 for what the game does today.
+
+**Where the work stands: stage 1 is done. Stage 2 is next.**
 
 ---
 
@@ -60,25 +63,31 @@ a *larger* field.
 
 ---
 
-## Stage 1 · Stop the game lying, and stop it losing things
+## Stage 1 · Stop the game lying, and stop it losing things — **DONE, August 2026**
 
 **Size:** small–medium · **Value:** high per hour
 
 - **A13** — the elimination card that tells a conference finalist his season is
-  over when second place sends him to a regional.
+  over when second place sends him to a regional. *Done, and it was wider than
+  reported: a protected team losing its regional got the same funeral.*
 - **Tournament win/lose cards** — they carry the biggest moments in the game
-  and are a title and two lines in a box.
+  and are a title and two lines in a box. *Tidied to a headline and one line;
+  the full big-moment treatment is stage 11 and was deliberately not done twice.*
 - **A thirty-season soak** — the new postseason machinery has never run more
-  than a few years.
+  than a few years. *`npm run soak`. Thirty Junes, no structural faults; it
+  found a balance question instead, in `06-backlog.md` §F.*
 - **Resume an interrupted game (R1).** Phones interrupt. A backgrounded live
   game is lost today, because `LiveGame` is a running coroutine with closures
   on it. The fix is not to serialise the coroutine: persist the **day-start
   snapshot and the list of decisions made**, and replay them on load. The
   engine is deterministic and every decision is a small enum, so a replay lands
   on exactly the same sixth inning. This is the most player-hostile behaviour
-  the game currently has on the platform it is shipping to.
+  the game currently has on the platform it is shipping to. *Done, in the
+  regular season and the postseason both.*
 
 **Exit:** nothing the game says is false, and nothing a phone call can destroy.
+**Met.** The detail is in `05-systems-reference.md` §21; what to pick up next is
+in `08-handoff.md`.
 
 ## Stage 2 · How you want to play
 

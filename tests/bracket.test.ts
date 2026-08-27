@@ -447,6 +447,83 @@ describe('the end of your run', () => {
     expect(cup.placings).toHaveLength(4);
     expect(cup.placings![0]).toBe(cup.champion);
   });
+
+  it('knows a tournament ending from a season ending', async () => {
+    /*
+      A13. Reported from testing: *"we won the first and lost the second and
+      got knocked out."* True of that tournament and false of his season —
+      the top four of a conference tournament go to a regional. The store has
+      to know the difference at the moment it records the elimination,
+      because that is the only moment the structure still says where the team
+      fell.
+    */
+    const { useDynasty } = await import('../src/state/store.js');
+    const s = world(2103);
+    freezeRegularSeason(s);
+
+    const me = 0;
+    const { field } = conferenceField(s, s.teams[me]!.conference);
+    const seeds = field.includes(me) ? field : [me, ...field.filter((t) => t !== me)];
+    const state = startDoubleElim(s, seeds.slice(0, 8));
+
+    useDynasty.setState({
+      season: s, userTeam: me, year: 2099,
+      bracket: { stage: 'conference', cups: [], regionals: [], national: null },
+      myBracket: { kind: 'conference', format: 'double', state, preplayed: new Map() },
+      knockout: null, postseasonSeen: [], sideShow: null,
+    });
+    useDynasty.getState().simBracket('rest');
+
+    const k = useDynasty.getState().knockout;
+    const cup = useDynasty.getState().bracket!.cups[0]!;
+    const placings = cup.placings ?? [];
+
+    if (cup.champion === me) {
+      expect(k).toBeNull();                       // nothing ended
+      return;
+    }
+    expect(k).not.toBeNull();
+    // The one property that matters: the card's verdict agrees with the
+    // bracket's own finish order, whichever way this particular June went.
+    expect(k!.advanced).toBe(placings.includes(me));
+    if (k!.advanced) {
+      expect(k!.placing).toBeGreaterThanOrEqual(2);
+      expect(k!.placing).toBeLessThanOrEqual(CONF_ADVANCE);
+      expect(placings.indexOf(me) + 1).toBe(k!.placing);
+    }
+  });
+
+  it('keeps a protected team alive when its regional goes wrong', async () => {
+    // The other half of A13: the top four of the final regular-season table
+    // reach the national field whatever a regional does to them.
+    const { useDynasty } = await import('../src/state/store.js');
+    const s = world(2104);
+    freezeRegularSeason(s);
+
+    const me = protectedTopFour(s)[0]!;
+    const foe = s.teams.find(
+      (t) => t.index !== me && t.conference !== s.teams[me]!.conference,
+    )!.index;
+    const state = startSeriesBracket(s, [me, foe], REGIONAL_LENGTHS);
+
+    useDynasty.setState({
+      season: s, userTeam: me, year: 2099,
+      bracket: { stage: 'regional', cups: [], regionals: [], national: null },
+      myBracket: {
+        kind: 'regional', format: 'series', state,
+        meta: { region: 'SOUTH', name: 'South', aLabel: '', bLabel: '' },
+        preplayed: new Map(),
+      },
+      knockout: null, postseasonSeen: [], sideShow: null,
+    });
+    useDynasty.getState().simBracket('rest');
+
+    const k = useDynasty.getState().knockout;
+    const won = useDynasty.getState().bracket!.regionals[0]!.champion === me;
+    if (won) { expect(k).toBeNull(); return; }
+    expect(k!.kind).toBe('regional');
+    expect(k!.advanced).toBe(true);      // protection outlives the series
+  });
 });
 
 describe('the conference tournament', () => {

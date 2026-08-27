@@ -275,7 +275,7 @@ exists.
   `05-systems-reference.md` §2.5a.
 
 - **A13 · The elimination card says the season is over when it is not** —
-  `DECIDED`, not yet built. Reported: *"sadly our team went to losers and when
+  **SHIPPED**, and wider than reported. Reported: *"sadly our team went to losers and when
   we got to the finals we won the first and lost the second and got knocked
   out."* The bracket behaved correctly — a losers-bracket survivor has to beat
   an unbeaten winners-bracket champion twice, which is what the reset final is
@@ -297,6 +297,12 @@ exists.
   that needs two and "win one" to the team that needs one. "Championship ·
   the reset" is bracket jargon and should not be the first time a player
   learns the rule.
+
+  **What shipped, August 2026.** Both parts, plus a third case the report did
+  not reach: a *protected* top-four program losing its regional was told the
+  same lie and is also still alive. `Knockout` carries `advanced` and `placing`,
+  written at the moment of elimination because that is the only moment the
+  bracket still knows where a team fell. See `05-systems-reference.md` §21.2.
 
 ## B. Agreed and designed, not yet built
 
@@ -1137,6 +1143,19 @@ Still missing:
   turned out to be — something that changes who is on the mound rather than what
   the mound does. It wants the same treatment that found pace: isolate a channel,
   measure it against the sweep, dial it. See `05-systems-reference.md` §18.8.
+- **How often the same program should win it all.** Thirty seasons under the new
+  postseason (`npm run soak`) produced **ten different champions, one program
+  taking eight of them**. Thirty years of the real tournament produce closer to
+  sixteen. Nothing is broken — the format is doing exactly what it was designed
+  to do, and double elimination, top-four protection and best-of-threes all cut
+  the upsets a single-elimination bracket used to hand out. The open question is
+  whether a dynasty game *wants* that much order at the top, and the answer has
+  to be deliberate: the same knob interacts with the carousel's turnover targets
+  and the board's clear rate, both of which are tuned and pinned. The soak fails
+  below `years / 3` distinct champions, so the number is watched from here on.
+  Adjacent measurement from the same sweep: the save grows about **12 KB a year**
+  (15 KB at year one, 371 KB at year thirty), which is comfortable now and is the
+  number to re-check when H2 and H9 start writing per-player history.
 
 ## H. The v1.0 feature set — agreed August 2026
 
@@ -1270,7 +1289,7 @@ Full-depth mode only. Eleven pitch types with per-pitcher repertoires and usage
 shares already exist in the engine (§18.1); nothing in the UI spends them. The
 expensive half is presentation, not simulation.
 
-### H14 · Resume an interrupted game — R1
+### H14 · Resume an interrupted game — R1 — **SHIPPED**
 
 Phones interrupt, and a backgrounded live game is lost today because
 `LiveGame` is a running coroutine carrying closures. The fix is not to
@@ -1280,6 +1299,12 @@ decision is a small enum, so the replay lands on exactly the same sixth inning.
 
 Marked *essential* by the mobile report and it is right: this is the most
 player-hostile behaviour the game has on the platform it is shipping to.
+
+**Built exactly that way, August 2026**, in the regular season and the
+postseason both — the latter only after a save restriction that had gone stale
+was deleted. `05-systems-reference.md` §21.1 has the three details that carry
+it, the argument for `localStorage`, and the reason a call is journalled before
+the engine is stepped.
 
 ### H15 · Let the bench coach take it — R6
 

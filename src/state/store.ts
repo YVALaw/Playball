@@ -51,10 +51,14 @@ import {
   markAllRead, newItem, push, restoreInbox, unreadCount, type InboxItem,
 } from '../engine/inbox.js';
 import {
+  readJournal, writeJournal, noteAction, clearJournal, journalMatches,
+} from './liveJournal.js';
+import {
   runPostseason, freezeRegularSeason, stageConferenceTournaments,
   stageRegionals, regionalPairing, summarize,
   startSeriesBracket, stepBracket, nextGameFor, resultOf, pairKey, hostOfGame,
   REGIONAL_LENGTHS, SERIES, regionOf, deAsResult, roundName,
+  protectedTopFour, CONF_ADVANCE,
   seasonAwards, allConference, coachOfTheYear,
   conferenceField, conferenceIds, conferenceTournament, singleElimination, REGIONS,
   recordSchoolAnnals,
@@ -375,6 +379,21 @@ export interface Knockout {
   kind: MyBracketKind;
   /** The round that ended it, already in words: "the losers final". */
   label: string;
+  /**
+   * Whether June carries on without this tournament.
+   *
+   * Being knocked out of a tournament and being knocked out of the postseason
+   * stopped being the same thing when the format expanded, and the screen went
+   * on saying they were. The top four of a conference tournament advance to a
+   * regional; a protected top-four seed reaches the national field whatever its
+   * regional does. Both were told their season was over.
+   *
+   * Computed at the moment of elimination, because that is the moment the
+   * structure still knows where the team fell.
+   */
+  advanced: boolean;
+  /** Where the conference tournament left you, 1 to 8. Zero when not one. */
+  placing?: number;
 }
 
 /** One completed year, kept forever. A dynasty is the list of these. */
@@ -574,7 +593,7 @@ export interface DynastyStore {
    */
   myBracket: MyBracket | null;
   /** Take your own bracket game. Opens the manage screen. */
-  manageBracketGame: () => void;
+  manageBracketGame: () => Promise<void>;
   /**
    * Let the computer play it: the round you are in, every round until you are
    * next on the field, or the whole rest of the tournament.
@@ -617,7 +636,15 @@ export interface DynastyStore {
     /** A bracket game. There is no day to advance and no standings day to hold. */
     postseason?: boolean;
   } | null;
-  startManagedGame: () => void;
+  startManagedGame: () => Promise<void>;
+  /**
+   * A game a phone call interrupted, waiting to be picked up.
+   *
+   * Set on load when a journal matches the save. Null the rest of the time.
+   */
+  pendingGame: { home: number; away: number; line: string } | null;
+  /** Rebuild it and hand it back, or rebuild it and let the bench coach finish. */
+  resumeGame: (take: boolean) => Promise<void>;
   submitTactic: (t: Tactic) => void;
   pinchHitFor: (h: Hitter) => void;
   bringIn: (p: Pitcher) => void;
@@ -915,6 +942,33 @@ function usableSideShow(
   return { half: s.half, state: { ...(st as Omit<DoubleElim, 'season'>), season } };
 }
 
+/**
+ * The interrupted game, if this save is still waiting on one.
+ *
+ * Returns the offer rather than the game: rebuilding costs a replay of the
+ * whole thing, and there is no reason to pay it for a player who is going to
+ * say no. The line is written here because this is where both teams are in
+ * hand.
+ */
+function pendingFromJournal(
+  season: SeasonState, year: number,
+): { home: number; away: number; line: string } | null {
+  const j = readJournal();
+  if (!j) return null;
+  if (!journalMatches(j, 'auto', year, season.rng.state?.() ?? -1)) {
+    clearJournal();
+    return null;
+  }
+  const home = season.teams[j.home];
+  const away = season.teams[j.away];
+  if (!home || !away) { clearJournal(); return null; }
+  return {
+    home: j.home,
+    away: j.away,
+    line: `${away.def.school} at ${home.def.school}`,
+  };
+}
+
 /** A saved elimination, refused unless it belongs to the year being loaded. */
 function usableKnockout(saved: unknown, year: number): Knockout | null {
   if (!saved || typeof saved !== 'object') return null;
@@ -923,7 +977,13 @@ function usableKnockout(saved: unknown, year: number): Knockout | null {
   const kinds: MyBracketKind[] = ['conference', 'regional', 'opening', 'national', 'final'];
   if (!k.kind || !kinds.includes(k.kind)) return null;
   if (typeof k.label !== 'string') return null;
-  return { year, kind: k.kind, label: k.label };
+  // `advanced` and `placing` arrived with A13. A save written before them
+  // resumes as an ending, which is what it was told at the time.
+  return {
+    year, kind: k.kind, label: k.label,
+    advanced: k.advanced === true,
+    ...(typeof k.placing === 'number' ? { placing: k.placing } : {}),
+  };
 }
 
 /**
@@ -2758,7 +2818,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
    * into the tournament that team already is. Otherwise the game you manage
    * would quietly be a different game from the one simulating it produces.
    */
-  manageBracketGame: () => {
+  manageBracketGame: async () => {
     const { season, myBracket, userTeam, version } = get();
     if (!season || !myBracket || get().busy) return;
     // A game is already being managed. Building a second LiveGame would consume
@@ -2787,6 +2847,31 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (!home || !away) return;
 
     const slot = (myBracket.state.appearances.get(h) ?? 0) % 3;
+
+    /*
+      June anchors the same way April does now.
+
+      This used to refuse to save, on the grounds that "a save taken
+      mid-bracket would write a season carrying games the saved `bracket` has
+      no record of — the live sub-bracket is not serialisable". That was true
+      when it was written and stopped being true during the overhaul:
+      `portableMyBracket` and `usableMyBracket` carry the live tournament
+      through a save and back, and `sideShow` joined them with the national
+      redesign. So the restriction was protecting against a hazard that no
+      longer exists, and it was the one thing standing between a bracket game
+      and being resumable.
+    */
+    const rngState = season.rng.state?.() ?? 0;
+    await get().saveNow();
+    writeJournal({
+      slot: 'auto', year: get().year, rngState,
+      home: h, away: a, day: season.dayIndex,
+      homeStarter: slot, awayStarter: slot,
+      managing: h === userTeam ? 'home' : 'away',
+      postseason: true,
+      actions: [],
+    });
+
     set({
       live: createLiveGame(home.team, away.team, season.rng, {
         managing: h === userTeam ? 'home' : 'away',
@@ -2855,14 +2940,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   knockout: null,
 
   noteKnockout: () => {
-    const { myBracket, userTeam, year, knockout } = get();
-    if (!myBracket) return;
+    const { season, myBracket, userTeam, year, knockout } = get();
+    if (!myBracket || !season) return;
     if (knockout && knockout.year === year) return;
     if (!myBracket.state.eliminated.includes(userTeam)) return;
 
     // The game or series that did it, so the modal can say where the year
-    // stopped, already in words.
+    // stopped, already in words — and how far it left you, because a
+    // tournament ending is not a season ending any more.
     let label = '';
+    let advanced = false;
+    let placing = 0;
+
     if (myBracket.format === 'series') {
       const state = myBracket.state;
       const lost = state.rounds.flat().find(
@@ -2872,6 +2961,15 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       label = roundName(
         state.rounds.length, lost ? lost.round : state.rounds.length - 1,
       ).toLowerCase();
+      /*
+        A regional loss is not the end for a protected team. The top four of
+        the final regular-season table reach the national field whatever June
+        does to them, and `protectedTopFour` is pure arithmetic over the
+        finished season, so the answer is available the moment the series is.
+      */
+      if (myBracket.kind === 'regional') {
+        advanced = protectedTopFour(season).includes(userTeam);
+      }
     } else {
       const state = myBracket.state;
       const slots = [...state.winners.flat(), ...state.losers.flat(), ...state.final];
@@ -2880,8 +2978,28 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           && (s.a === userTeam || s.b === userTeam),
       );
       label = fell ? slotName(fell).toLowerCase() : 'the bracket';
+
+      /*
+        Where a double elimination leaves you is written in the slot you took
+        your second loss in: the championship is first or second, the losers
+        final is third, the losers semifinal is fourth. The conference sends
+        its top `CONF_ADVANCE` on, so those four are still playing.
+      */
+      if (fell) {
+        if (fell.side === 'F') placing = 2;
+        else if (fell.side === 'L' && fell.round === 3) placing = 3;
+        else if (fell.side === 'L' && fell.round === 2) placing = 4;
+      }
+      if (myBracket.kind === 'conference') {
+        advanced = placing > 0 && placing <= CONF_ADVANCE;
+      }
     }
-    set({ knockout: { year, kind: myBracket.kind, label } });
+    set({
+      knockout: {
+        year, kind: myBracket.kind, label, advanced,
+        ...(placing > 0 ? { placing } : {}),
+      },
+    });
   },
 
   postseasonSeen: [],
@@ -2990,8 +3108,90 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   live: null,
   liveMeta: null,
+  pendingGame: null,
 
-  startManagedGame: () => {
+  /**
+   * Pick the interrupted game back up, or let the bench coach finish it.
+   *
+   * Either way the game is rebuilt and replayed first: the alternative to
+   * replaying is inventing a different game, and a day that resolves
+   * differently depending on whether you were interrupted is worse than losing
+   * the day. `take` only decides who holds the clipboard afterwards.
+   */
+  resumeGame: async (take) => {
+    const { season, userTeam, version } = get();
+    const j = readJournal();
+    set({ pendingGame: null });
+    if (!season || !j) return;
+    if (!journalMatches(j, 'auto', get().year, season.rng.state?.() ?? -1)) {
+      clearJournal();
+      return;
+    }
+
+    const home = season.teams[j.home];
+    const away = season.teams[j.away];
+    if (!home || !away) { clearJournal(); return; }
+
+    const live = createLiveGame(home.team, away.team, season.rng, {
+      managing: j.managing,
+      engine: season.config.engine,
+      homeStarter: j.homeStarter,
+      awayStarter: j.awayStarter,
+      homeStrategy: home.strategy,
+      awayStrategy: away.strategy,
+      homeBullpen: restedFirst(season, home),
+      awayBullpen: restedFirst(season, away),
+      ...(home.coachMods ? { homeCoachMods: home.coachMods } : {}),
+      ...(away.coachMods ? { awayCoachMods: away.coachMods } : {}),
+    });
+
+    /*
+      The replay. Every call in the order it was made, against a generator
+      standing exactly where it stood at the first pitch — so this is not a
+      similar game, it is the same one.
+
+      A call that no longer applies is skipped rather than forced: the bench
+      is looked up by id and a man who is not on it is not sent up. In a
+      correct journal that never happens, and if it ever does, dropping one
+      call beats throwing the innings away.
+    */
+    const mine = j.managing === 'home' ? home : away;
+    for (const a of j.actions) {
+      if (live.over) break;
+      if (a.k === 'tactic') { live.submit(a.t); continue; }
+      if (a.k === 'pinch') {
+        const bat = live.benchAvailable.find((h) => String(h.id) === a.id);
+        if (bat) live.pinchHit(bat);
+        continue;
+      }
+      const arm = live.bullpenAvailable.find((p) => String(p.id) === a.id);
+      if (arm) live.changePitcher(arm);
+    }
+    void mine;
+
+    const liveMeta = {
+      home: j.home, away: j.away, day: j.day,
+      conference: false,
+      ...(j.postseason ? { postseason: true } : {}),
+    };
+
+    if (!take) {
+      // Declined. The day still happens — it simply happens without you,
+      // which is a better answer than un-playing it.
+      live.finish();
+      set({ live, liveMeta, version: version + 1 });
+      await get().endManagedGame();
+      return;
+    }
+
+    set({
+      live, liveMeta, version: version + 1,
+      tab: 'home', screen: 'box',
+    });
+    void userTeam;
+  },
+
+  startManagedGame: async () => {
     const { season, userTeam, version } = get();
     // `busy` because the worker owns the season during a sim — a game started
     // against that object would be recorded into whatever world replaces it.
@@ -3009,15 +3209,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       const d = season.schedule[season.dayIndex];
       return !!d?.games.some((g) => g.home === userTeam || g.away === userTeam);
     };
-    let simmed = 0;
-    while (!seasonComplete(season) && !hasMine() && guard++ < 60) { simNextDay(season); simmed++; }
-    if (simmed > 0) {
-      // Those days consumed the season's rng. Unsaved, a reload replayed them
-      // from the older stream and produced a *different* league — the save has
-      // to move forward with the world. The save file never carries `live`, so
-      // writing here does not half-save the game about to be played.
-      void get().saveNow();
-    }
+    while (!seasonComplete(season) && !hasMine() && guard++ < 60) simNextDay(season);
     if (seasonComplete(season)) return;
 
     const day = season.schedule[season.dayIndex];
@@ -3027,6 +3219,27 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const home = season.teams[g.home];
     const away = season.teams[g.away];
     if (!home || !away) return;
+
+    /*
+      The anchor, and why the save is awaited rather than fired off.
+
+      The journal replays this game against a season restored to the generator
+      position it had at the first pitch. That only works if the save on disk
+      holds *that* position — so the write has to complete before a single
+      draw is spent, and `createLiveGame` spends them immediately. Awaiting
+      also covers the days simmed above, which used to be saved for the same
+      reason in a separate call.
+    */
+    const rngState = season.rng.state?.() ?? 0;
+    await get().saveNow();
+    writeJournal({
+      slot: 'auto', year: get().year, rngState,
+      home: g.home, away: g.away, day: day.day,
+      homeStarter: g.slot, awayStarter: g.slot,
+      managing: g.home === userTeam ? 'home' : 'away',
+      postseason: false,
+      actions: [],
+    });
 
     set({
       live: createLiveGame(home.team, away.team, season.rng, {
@@ -3052,9 +3265,19 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     });
   },
 
+  /*
+    Every call is written down as it is made.
+
+    Three lines each, and they are the whole of the resume feature's cost at
+    play time: a synchronous `localStorage` write of a few hundred bytes. The
+    order is deliberate — the journal is appended *before* the engine is
+    stepped, so a crash inside the engine leaves a journal that replays to the
+    same crash rather than one that has silently skipped a call.
+  */
   submitTactic: (t) => {
     const { live, version } = get();
     if (!live || live.over) return;
+    noteAction({ k: 'tactic', t });
     live.submit(t);
     set({ version: version + 1 });
   },
@@ -3062,6 +3285,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   pinchHitFor: (h) => {
     const { live, version } = get();
     if (!live) return;
+    noteAction({ k: 'pinch', id: String(h.id) });
     live.pinchHit(h);
     set({ version: version + 1 });
   },
@@ -3069,6 +3293,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   bringIn: (p) => {
     const { live, version } = get();
     if (!live) return;
+    noteAction({ k: 'pen', id: String(p.id) });
     live.changePitcher(p);
     set({ version: version + 1 });
   },
@@ -3105,6 +3330,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         // And the other half of the showdown plays its night too.
         get().stepSideShow();
       }
+      clearJournal();
       set({ live: null, liveMeta: null, version: version + 1 });
       // The postseason screen is not mounted right now — it is behind this
       // game — so a loss it could have noticed has to be recorded for it.
@@ -3126,6 +3352,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // orphaned game is dropped rather than written.
     const today = season.schedule[season.dayIndex];
     if (seasonComplete(season) || !today || today.day !== liveMeta.day) {
+      clearJournal();
       set({ live: null, liveMeta: null, version: version + 1, screen: 'today' });
       return;
     }
@@ -3138,6 +3365,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       day: liveMeta.day,
     });
 
+    clearJournal();
     set({ live: null, liveMeta: null, version: version + 1, screen: 'today' });
     get().noteSeasonNews();
     await get().saveNow();
@@ -3457,6 +3685,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       */
       live: null,
       liveMeta: null,
+      /*
+        A game a phone call interrupted, offered rather than restored.
+
+        The journal is checked against the save it claims to belong to — same
+        dynasty, same year, same generator position — and anything that fails
+        that is thrown away rather than replayed into a world that has moved
+        on. What survives is not the game; it is the offer of the game, which
+        `Today` puts to the player.
+      */
+      pendingGame: pendingFromJournal(loaded.season, loaded.year),
       // A sim that was running belonged to the old world too; the generation
       // bump above makes its result unwelcome, and the flags come home.
       busy: false,
@@ -3532,6 +3770,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     lastPostseason: null,
     live: null,
     liveMeta: null,
+    pendingGame: null,
     jobSearch: false,
     offers: [],
     lastReview: null,
