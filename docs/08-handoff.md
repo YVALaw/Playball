@@ -194,13 +194,23 @@ Both are flagged in the code that carries them and both are listed in
 ```bash
 npm run check      # typecheck + the whole suite (768 tests)
 npm run soak       # thirty seasons of structural audit
-npm run build      # also serves the frozen build on :5173 for phone testing
+npm run dev        # dev server, hot-reloading, on :5174
+npm run build      # typecheck + build into dist/ — builds only, serves nothing
+npm run preview    # serves the frozen dist/ build on :5173
 npm run balance    # calibration probe
 npm run carousel   # coach turnover probe
 ```
 
-Dev server runs on **:5199**; a frozen build for phone testing is served from
-`dist/` on **:5173**. Verify UI work by driving the DOM — under Vite dev, a
+**The two ports are not interchangeable, and swapping them loses careers.**
+Dev is **:5174**, the frozen build is **:5173**, both bound to every interface
+so a phone on the same wifi can reach them. Saves live in IndexedDB, which is
+scoped to an origin — and the origin includes the port — so a dynasty played at
+`:5173` is simply not present at any other port. The app there works perfectly
+and shows an empty new-dynasty screen, which reads exactly like a broken build.
+There is no save export/import to carry one across. `vite.config.ts` carries
+the full argument.
+
+Verify UI work by driving the DOM — under Vite dev, a
 dynamic `import()` of the store often returns a *different* module instance
 than the app's, so store handles read stale.
 
