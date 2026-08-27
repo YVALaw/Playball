@@ -2989,21 +2989,56 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         your second loss in: the championship is first or second, the losers
         final is third, the losers semifinal is fourth. The conference sends
         its top `CONF_ADVANCE` on, so those four are still playing.
+
+        Counted back from the end rather than at fixed indices, which is what
+        the ten-team national bracket broke: its losers final is round four and
+        its semifinal round three, where an eight-team bracket has three and
+        two. The rule is positional — the last losers round is always the
+        final — so it is read that way, exactly as `placings` reads it.
       */
       if (fell) {
+        const last = state.losers.length - 1;
         if (fell.side === 'F') placing = 2;
-        else if (fell.side === 'L' && fell.round === 3) placing = 3;
-        else if (fell.side === 'L' && fell.round === 2) placing = 4;
+        else if (fell.side === 'L' && fell.round === last) placing = 3;
+        else if (fell.side === 'L' && fell.round === last - 1) placing = 4;
       }
       if (myBracket.kind === 'conference') {
         advanced = placing > 0 && placing <= CONF_ADVANCE;
       }
     }
+    /*
+      And a letter, beside the card.
+
+      The card is the moment and it fires once; this is the record, and it is
+      what makes the moment re-readable in September. Asked for as both, and the
+      two really are different jobs — a card you tapped past at 1am is gone, and
+      "how did that year actually end" is a question the inbox is already the
+      place for.
+
+      Keyed on the year and the tournament, so the same ending can never be
+      filed twice however many times a reload walks back through this.
+    */
+    const me = season.teams[userTeam];
+    const where = myBracket.kind === 'conference' ? 'the conference tournament'
+      : myBracket.kind === 'regional' ? 'the regional'
+      : 'the national tournament';
+    const body = advanced
+      ? `Out of ${where} in the ${label}, but the season goes on — ${
+        myBracket.kind === 'conference' ? 'a regional championship series is next'
+          : 'the national field still has a place for you'}.`
+      : `Out of ${where} in the ${label}. ${
+        me?.w ?? 0}-${me?.l ?? 0} on the year.`;
     set({
       knockout: {
         year, kind: myBracket.kind, label, advanced,
         ...(placing > 0 ? { placing } : {}),
       },
+      inbox: push(get().inbox, newItem({
+        year, kind: 'season',
+        key: `knockout-${myBracket.kind}`,
+        title: advanced ? 'Still alive' : 'The season is over',
+        body,
+      })),
     });
   },
 

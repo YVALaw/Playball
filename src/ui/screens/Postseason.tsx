@@ -5,8 +5,8 @@
 // advance, the champion hangs a banner. REGIONALS: sixteen best-of-three
 // championship series crossing neighbouring conferences, sixteen banners.
 // NATIONAL: those sixteen champions plus four protected or at-large bids,
-// twenty in all — seeds 13 to 20 play an opening round, the sixteen split
-// into two double-elimination brackets, and the two bracket champions play a
+// twenty in all — split into two ten-team double eliminations whose bottom
+// four apiece play their way in, and the two bracket champions play a
 // best-of-three for the country.
 //
 // The screen's rules, all reported from testing: the explanatory card is
@@ -21,6 +21,7 @@ import { FloatingAction } from '../Sticky.js';
 import { Modal } from '../Modal.js';
 import { Lineup } from './Lineup.js';
 import { DoubleElimMap, type DECols } from '../DoubleElimMap.js';
+import { BoxScoreSheet } from './Schedule.js';
 import { teamColour } from '../Avatar.js';
 import {
   conferenceField, liveSeries, nextGameFor, hostOfGame, roundName, clincher,
@@ -29,11 +30,11 @@ import {
 import type {
   Series, SeriesBracket, RegionalSeries, ConferenceTournament, TournamentResult,
 } from '../../engine/postseason.js';
-import { liveSlotFor, slotName, type DoubleElim } from '../../engine/doubleElim.js';
+import { liveSlotFor, slotName, type DoubleElim, type DESlot } from '../../engine/doubleElim.js';
 import { FirstVisit } from '../Tutorial.js';
 
 type ConfView = 'winners' | 'losers';
-type NatView = 'opening' | 'winners' | 'losers';
+type NatView = 'field' | 'winners' | 'losers';
 
 /*
   The toggles remember themselves across an unmount — managing a game covers
@@ -42,11 +43,21 @@ type NatView = 'opening' | 'winners' | 'losers';
   exactly the lifetime a view preference deserves.
 */
 let confViewMemo: ConfView = 'winners';
-let natViewMemo: NatView = 'opening';
+let natViewMemo: NatView = 'field';
 
 export function Postseason() {
-  const [modal, setModal] = useState<'in' | 'out' | 'won' | null>(null);
+  const [modal, setModal] = useState<'in' | 'out' | 'won' | 'title' | null>(null);
   const [showLineup, setShowLineup] = useState(false);
+  /*
+    A bracket game, opened.
+
+    Box scores are stored only for the user's own program, so this is honest
+    about what it can offer: a slot whose day has a box shows the whole game,
+    and everything else stays a score. Storing every line for ninety-six
+    programs would put tens of thousands of rows in a save to serve a screen
+    almost nobody opens for a game they were not in.
+  */
+  const [openDay, setOpenDay] = useState<number | null>(null);
   const [confView, setConfView0] = useState<ConfView>(confViewMemo);
   const [natView, setNatView0] = useState<NatView>(natViewMemo);
   const setConfView = (v: ConfView): void => { confViewMemo = v; setConfView0(v); };
@@ -105,6 +116,56 @@ export function Postseason() {
   );
   const winKey = iWonStage ? `${year}:win:${stageKey}` : '';
 
+  /*
+    A title game, announced before it is played.
+
+    Reported as wanting a modal when a competition's championship is on, rather
+    than the game being one more card inside a bracket. It is the same surface
+    as the trophy card by design — the request was for one thing that changes
+    state, not two things to dismiss — so this says who, what is at stake and
+    what winning takes, and the crown card above takes over once it is decided.
+
+    Fires once per title game and never again, keyed like every other card June
+    raises. A modal that reappeared every time you came back to the bracket
+    would be a modal you learn to tap through without reading.
+  */
+  const titleGame = (() => {
+    if (!myBracket || iAmOut || !season || !team || !bracket) return null;
+    const stake = (extra: string): string[] => [extra];
+    if (myBracket.format === 'double') {
+      const slot = liveSlotFor(myBracket.state, userTeam);
+      if (!slot || slot.side !== 'F' || slot.a === null || slot.b === null) return null;
+      const other = slot.a === userTeam ? slot.b : slot.a;
+      const losses = myBracket.state.losses.get(userTeam) ?? 0;
+      const where = bracket.stage === 'conference' ? `${team.conference} championship`
+        : 'Bracket championship';
+      return {
+        key: `${year}:title:${stageKey}:${slot.round}`,
+        kicker: `${year} · ${where.toUpperCase()}`,
+        title: `${team.def.school} v ${(season.teams[other]?.def.school ?? '?')}`,
+        lines: stake(losses === 0
+          ? 'You arrived unbeaten. Win one and it is yours.'
+          : 'You came through the losers bracket. You must win this one AND the next.'),
+      };
+    }
+    if (myBracket.kind !== 'regional' && myBracket.kind !== 'final') return null;
+    const s = liveSeries(myBracket.state, userTeam);
+    const next = nextGameFor(myBracket.state, userTeam);
+    if (!s || !next) return null;
+    const other = next.a === userTeam ? next.b : next.a;
+    const len = myBracket.state.lengths[s.round] ?? 3;
+    const wins = (t: number): number => s.games.filter((g) => g.winner === t).length;
+    const isFinal = myBracket.kind === 'final';
+    return {
+      key: `${year}:title:${myBracket.kind}`,
+      kicker: isFinal ? `${year} · NATIONAL CHAMPIONSHIP` : `${year} · REGIONAL CHAMPIONSHIP`,
+      title: `${team.def.school} v ${(season.teams[other]?.def.school ?? '?')}`,
+      lines: stake(
+        `Best of ${len}, first to ${clincher(len)}. You lead it ${wins(userTeam)}-${wins(other)}.`,
+      ),
+    };
+  })();
+
   useEffect(() => {
     if (!bracket) return;
     if (outKey && !seen.includes(outKey)) {
@@ -121,13 +182,78 @@ export function Postseason() {
       && !seen.includes(introKey)) {
       markSeen(introKey);
       setModal('in');
+      return;
     }
-  }, [bracket, stageKey, outKey, winKey, introKey, seen, markSeen, stillIn, inTheField]);
+    // Last, because a trophy and an exit both outrank the game in front of you.
+    if (titleGame && !seen.includes(titleGame.key)) {
+      markSeen(titleGame.key);
+      setModal('title');
+    }
+  }, [bracket, stageKey, outKey, winKey, introKey, seen, markSeen, stillIn, inTheField,
+    titleGame]);
 
   if (!season || !team || !bracket) return null;
 
+  /*
+    Opening a bracket game.
+
+    A slot carries the day its game was played, and box scores are filed by
+    day — so the lookup is exact rather than a search, and it simply finds
+    nothing for a game between two programs that are not yours. Nothing is a
+    perfectly good answer here: the score is already on the card.
+  */
+  const openSlot = (slot: DESlot): void => {
+    const day = slot.game?.day;
+    if (day === undefined) return;
+    if (!season.boxScores?.[day]) return;
+    setOpenDay(day);
+  };
+
   const name = (i: number): string => season.teams[i]?.def.school ?? '?';
   const abbr = (i: number): string => season.teams[i]?.def.abbr ?? '?';
+
+  /*
+    The trophy this stage has already handed out, if it has.
+
+    Deliberately the *stage's* champion rather than only the user's: somebody
+    else winning the country is still the biggest thing that happened, and the
+    old screen's answer to it was a stripe at the foot of the page. A rival's
+    title is a quiet card and yours is a loud one, which is the difference
+    between reporting the news and celebrating.
+  */
+  const crown: Crown | null = (() => {
+    if (!bracket) return null;
+    if (bracket.stage === 'national') {
+      const champ = nat?.final?.champion;
+      if (champ === undefined) return null;
+      return {
+        team: champ, rung: 2,
+        kicker: `${year} NATIONAL CHAMPIONS`,
+        title: 'Champions of the country',
+        line: champ === userTeam
+          ? 'Everything this season was for.'
+          : 'Somebody else takes it home this year.',
+      };
+    }
+    if (bracket.stage === 'regional') {
+      const mineRegional = bracket.regionals.find((r) => r.champion === userTeam);
+      if (!mineRegional) return null;
+      return {
+        team: userTeam, rung: 1,
+        kicker: `${year} REGIONAL CHAMPIONS`,
+        title: 'A regional banner',
+        line: 'On to the national tournament.',
+      };
+    }
+    const mineCup = bracket.cups.find((c) => c.champion === userTeam);
+    if (!mineCup) return null;
+    return {
+      team: userTeam, rung: 0,
+      kicker: `${year} ${mineCup.conference} CHAMPIONS`,
+      title: 'Conference champions',
+      line: 'The league is yours.',
+    };
+  })();
 
   const rung = bracket.stage === 'conference' ? 0
     : bracket.stage === 'regional' ? 1 : 2;
@@ -321,6 +447,16 @@ export function Postseason() {
           onClose={() => setModal(null)}
         />
       )}
+      {modal === 'title' && titleGame && (
+        <Modal
+          kicker={titleGame.kicker}
+          title={titleGame.title}
+          lines={titleGame.lines}
+          tone="ink"
+          action="TAKE THE FIELD"
+          onClose={() => setModal(null)}
+        />
+      )}
       {modal === 'won' && (
         <Modal
           kicker={wonCard.kicker}
@@ -329,6 +465,16 @@ export function Postseason() {
           tone="win"
           action="LET'S GO"
           onClose={() => setModal(null)}
+        />
+      )}
+
+      {/* A bracket game, opened. Same sheet the schedule uses, because a
+          postseason box score is a box score. */}
+      {openDay !== null && season.boxScores?.[openDay] && (
+        <BoxScoreSheet
+          box={season.boxScores[openDay]}
+          season={season}
+          onClose={() => setOpenDay(null)}
         />
       )}
 
@@ -393,7 +539,7 @@ export function Postseason() {
           )}
           {bracket.stage === 'national' && (
             <SubToggle
-              options={[['opening', 'OPENING'], ['winners', 'WINNERS'], ['losers', 'LOSERS']]}
+              options={[['field', 'THE FIELD'], ['winners', 'WINNERS'], ['losers', 'LOSERS']]}
               at={natView}
               onGo={(v) => setNatView(v as NatView)}
             />
@@ -402,6 +548,28 @@ export function Postseason() {
 
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <div style={{ padding: '8px 0 10px' }}>
+            {/*
+              Who won, at the top, where it cannot be missed.
+
+              Reported plainly: the national champion sat at the foot of the
+              page behind two full brackets, and *"I didn't even know it was
+              down there"*. A champion is the loudest thing that happens in a
+              season and it was reading as a footnote.
+
+              It is the same card the takeover shows, kept rather than spent:
+              the moment fires once, and then this stays for the rest of June so
+              it can be read again.
+            */}
+            {crown && (
+              <div style={{ padding: '0 14px', marginBottom: 8 }}>
+                <CrownCard
+                  crown={crown}
+                  mine={crown.team === userTeam}
+                  school={name(crown.team)}
+                  abbr={abbr(crown.team)}
+                />
+              </div>
+            )}
             {/*
               A bracket game a phone call took away.
 
@@ -466,6 +634,7 @@ export function Postseason() {
                 view={confView}
                 abbr={abbr}
                 userTeam={userTeam}
+                onOpen={openSlot}
               />
             )}
 
@@ -493,6 +662,7 @@ export function Postseason() {
                 view={natView}
                 abbr={abbr}
                 userTeam={userTeam}
+                onOpen={openSlot}
               />
             )}
           </div>
@@ -658,7 +828,7 @@ function YourNext(
 // ---------------------------------------------------------------------------
 
 function ConferenceStage(
-  { cups, mine, myConference, view, abbr, userTeam }:
+  { cups, mine, myConference, view, abbr, userTeam, onOpen }:
   {
     cups: ConferenceTournament[];
     mine: DoubleElim | null;
@@ -666,6 +836,7 @@ function ConferenceStage(
     view: ConfView;
     abbr: (i: number) => string;
     userTeam: number;
+    onOpen: (s: DESlot) => void;
   },
 ) {
   // Yours first, live or finished; then the rest of the country.
@@ -699,7 +870,7 @@ function ConferenceStage(
               {r.conference}{r.you ? ' · YOU' : ''}
             </span>
           </div>
-          <DoubleElimMap de={r.de} view={view} abbr={abbr} userTeam={userTeam} />
+          <DoubleElimMap de={r.de} view={view} abbr={abbr} userTeam={userTeam} onOpen={onOpen} />
         </div>
       ))}
     </>
@@ -912,7 +1083,7 @@ function TeamLine(
 // ---------------------------------------------------------------------------
 
 function NationalStage(
-  { nat, myBracket, sideShow, view, abbr, userTeam }:
+  { nat, myBracket, sideShow, view, abbr, userTeam, onOpen }:
   {
     nat: NationalProgress | null;
     myBracket: ReturnType<typeof useDynasty.getState>['myBracket'];
@@ -920,6 +1091,7 @@ function NationalStage(
     view: NatView;
     abbr: (i: number) => string;
     userTeam: number;
+    onOpen: (s: DESlot) => void;
   },
 ) {
   if (!nat) {
@@ -932,7 +1104,7 @@ function NationalStage(
   }
   const seeds = nat.field.seeds;
 
-  if (view === 'opening') {
+  if (view === 'field') {
     return (
       <div style={{ padding: '0 14px' }}>
         <div style={{
@@ -1020,11 +1192,11 @@ function NationalStage(
           </div>
           {h
             ? <DoubleElimMap de={h.de} view={view === 'losers' ? 'losers' : 'winners'}
-                abbr={abbr} userTeam={userTeam} />
+                abbr={abbr} userTeam={userTeam} onOpen={onOpen} />
             : (
               <div style={{
                 padding: '10px 14px', font: "400 calc(11px * var(--ts)) var(--body)", color: 'var(--dim)',
-              }}>Waiting on the opening round.</div>
+              }}>Waiting on the field to be drawn.</div>
             )}
         </div>
         );
@@ -1061,3 +1233,71 @@ const ordinal = (n: number): string => {
   const suffix = n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th';
   return `${n}${suffix}`;
 };
+
+/** A decided trophy: which one, who took it, and how loudly to say so. */
+export interface Crown {
+  team: number;
+  /** 0 conference, 1 regional, 2 the country. Drives every size below. */
+  rung: 0 | 1 | 2;
+  kicker: string;
+  title: string;
+  line: string;
+}
+
+/**
+ * The trophy card, at three intensities.
+ *
+ * One component rather than three, because a conference banner and a national
+ * title are the same fact at different volumes, and the escalation is itself
+ * information: a player who has seen the conference card knows immediately,
+ * without reading a word, that the national one is bigger. Three separate
+ * components would have drifted into three different designs and lost that.
+ *
+ * The loudest it goes is still type and colour. Sound, animation and a
+ * full-screen celebration are the broadcast stage's job and are deliberately
+ * not faked here with a bigger font.
+ */
+function CrownCard(
+  { crown, mine, school, abbr }:
+  { crown: Crown; mine: boolean; school: string; abbr: string },
+) {
+  const big = crown.rung === 2;
+  const mid = crown.rung === 1;
+  const ground = mine ? 'var(--win)' : 'var(--navy)';
+  return (
+    <div
+      className="rise-in"
+      style={{
+        border: `1px solid ${ground}`,
+        borderLeft: `${big ? 7 : mid ? 5 : 4}px solid ${ground}`,
+        background: 'var(--paper)',
+      }}
+    >
+      <div style={{ padding: '5px 11px', background: ground }}>
+        <span style={{
+          font: `600 calc(${big ? 9 : 8.5}px * var(--ts)) var(--mono)`,
+          letterSpacing: '.18em', color: 'var(--cream)',
+        }}>{crown.kicker}</span>
+      </div>
+      <div style={{ padding: big ? '14px 12px 15px' : '10px 12px 11px' }}>
+        <div style={{
+          font: `800 calc(${big ? 30 : mid ? 22 : 18}px * var(--ts))/0.95 var(--display)`,
+          textTransform: 'uppercase', color: ground,
+        }}>{school}</div>
+        <div style={{
+          marginTop: big ? 5 : 3,
+          font: `700 calc(${big ? 13 : 11}px * var(--ts))/1.2 var(--display)`,
+          letterSpacing: '.04em', textTransform: 'uppercase',
+        }}>{crown.title}</div>
+        <div style={{
+          marginTop: 4, font: "400 calc(11px * var(--ts))/1.4 var(--body)",
+          color: 'var(--dim)',
+        }}>{crown.line}</div>
+        <div style={{
+          marginTop: 7, font: "500 calc(9px * var(--ts)) var(--mono)",
+          letterSpacing: '.16em', color: 'var(--faint)',
+        }}>{abbr}</div>
+      </div>
+    </div>
+  );
+}

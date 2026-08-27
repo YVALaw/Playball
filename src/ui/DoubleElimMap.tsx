@@ -20,25 +20,58 @@ export interface DECols {
   final: DESlot[];
 }
 
-const W_TITLES = ['OPENING', 'SEMIS', 'W FINAL'];
-const L_TITLES = ['ELIM 1', 'ELIM 2', 'L SEMI', 'L FINAL'];
+/**
+ * A column heading, off the round's own name.
+ *
+ * These used to be two hardcoded arrays, which was fine while every tournament
+ * in the game had exactly three winners rounds and four losers rounds. A
+ * ten-team bracket has four and five, and the extra column came out as "W4".
+ * The engine names each round when it builds it — the same string the log and
+ * the stake line use — so the map reads that and abbreviates it for a heading
+ * rather than keeping a second, shorter list that can fall out of step.
+ */
+const SHORT: Record<string, string> = {
+  'Play-in': 'PLAY-IN',
+  'Opening round': 'OPENING',
+  'Winners semifinal': 'SEMIS',
+  'Winners final': 'W FINAL',
+  'Elimination round': 'ELIM 1',
+  'Losers round 2': 'ELIM 2',
+  'Losers round 3': 'ELIM 3',
+  'Losers semifinal': 'L SEMI',
+  'Losers final': 'L FINAL',
+};
+
+const headingFor = (slots: DESlot[], fallback: string): string => {
+  const name = slots[0]?.name;
+  return (name && SHORT[name]) ?? fallback;
+};
 
 export function DoubleElimMap(
-  { de, view, abbr, userTeam }:
+  { de, view, abbr, userTeam, onOpen }:
   {
     de: DECols;
     view: 'winners' | 'losers';
     abbr: (i: number) => string;
     userTeam: number;
+    /**
+     * Open a played game.
+     *
+     * Asked for more than once: a bracket where every game is a frozen score is
+     * a table with corners on it. The map does not know what opening one means
+     * — that is the screen's business — so it hands back the slot and lets the
+     * caller decide whether there is a box score to show.
+     */
+    onOpen?: (s: DESlot) => void;
   },
 ) {
   const columns: { title: string; slots: DESlot[] }[] = view === 'winners'
     ? [
-      ...de.winners.map((r, i) => ({ title: W_TITLES[i] ?? `W${i + 1}`, slots: r })),
+      ...de.winners.map((r, i) => ({ title: headingFor(r, `W${i + 1}`), slots: r })),
       { title: 'FINAL', slots: finalsToShow(de.final) },
     ]
     : [
-      ...de.losers.map((r, i) => ({ title: L_TITLES[i] ?? `L${i + 1}`, slots: r })),
+      ...de.losers.map((r, i) => ({ title: headingFor(r, `L${i + 1}`), slots: r })),
       { title: 'FINAL', slots: finalsToShow(de.final) },
     ];
 
@@ -55,7 +88,7 @@ export function DoubleElimMap(
             <div className="label" style={{ textAlign: 'center' }}>{col.title}</div>
             {col.slots.map((s) => (
               <SlotCard key={`${s.side}${s.round}${s.slot}`}
-                s={s} abbr={abbr} userTeam={userTeam} />
+                s={s} abbr={abbr} userTeam={userTeam} onOpen={onOpen} />
             ))}
           </div>
         ))}
@@ -71,15 +104,28 @@ function finalsToShow(final: DESlot[]): DESlot[] {
 }
 
 function SlotCard(
-  { s, abbr, userTeam }:
-  { s: DESlot; abbr: (i: number) => string; userTeam: number },
+  { s, abbr, userTeam, onOpen }:
+  {
+    s: DESlot; abbr: (i: number) => string; userTeam: number;
+    onOpen?: (s: DESlot) => void;
+  },
 ) {
   const mine = s.a === userTeam || s.b === userTeam;
+  // Only a game that has actually been played is worth opening. A TBD slot
+  // that reacted to a tap would be promising something it has not got.
+  const open = s.game && onOpen ? () => onOpen(s) : undefined;
   return (
-    <div style={{
+    <div
+      onClick={open}
+      role={open ? 'button' : undefined}
+      tabIndex={open ? 0 : undefined}
+      onKeyDown={open ? (e) => { if (e.key === 'Enter' || e.key === ' ') open(); } : undefined}
+      className={open ? 'tap' : undefined}
+      style={{
       border: mine ? '1.5px solid var(--clay)' : '1px solid var(--faint)',
       background: 'var(--paper)',
       boxShadow: mine ? '0 1px 0 rgba(168,68,42,.25)' : 'none',
+      cursor: open ? 'pointer' : 'default',
     }}>
       <Row team={s.a} seed={s.aSeed} s={s} abbr={abbr} userTeam={userTeam} top />
       <Row team={s.b} seed={s.bSeed} s={s} abbr={abbr} userTeam={userTeam} />
