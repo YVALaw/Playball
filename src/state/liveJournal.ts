@@ -56,6 +56,16 @@ export interface LiveJournal {
   homeStarter: number;
   awayStarter: number;
   managing: 'home' | 'away';
+  /**
+   * Whether the pitching ran itself in the game being recorded.
+   *
+   * Part of the anchor rather than a detail, because it changes which halves
+   * the engine stops to ask about and therefore the whole sequence of draws.
+   * A player who switched out of casual between backgrounding a game and
+   * resuming it would otherwise replay into a *different* game and be handed it
+   * as though it were the one he left.
+   */
+  autoPitching?: boolean;
   /** Bracket games rebuild through a different door. */
   postseason: boolean;
   actions: JournalAction[];

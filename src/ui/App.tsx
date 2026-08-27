@@ -37,6 +37,7 @@ import { Saves } from './screens/Saves.js';
 import { OpenTeam, TeamCard } from './screens/TeamCard.js';
 import { Colleges } from './screens/Colleges.js';
 import { CoachPortrait } from './CoachPortrait.js';
+import { Settings } from './screens/Settings.js';
 import { seasonDate } from './format.js';
 import { prestigeStars } from '../engine/program.js';
 
@@ -750,6 +751,7 @@ function TableOverlay() {
             you were on, with the screen underneath still mounted when you close
             it. During the offseason it is the only way in — the nav is gone. */}
         {overlay === 'saves' && <Saves />}
+        {overlay === 'settings' && <Settings />}
         {/* And the same argument again, for the three the inbox needs. The
             inbox itself, because it is a HOME tab and HOME does not exist
             during the offseason — which is precisely when it has the most to
@@ -870,7 +872,10 @@ function CoachMenuButton() {
             }}
           >
             {item('COACH PROFILE', () => { setProgramSheet('coach'); openOverlay('program'); })}
-            {item('SAVES', () => openOverlay('saves'), true)}
+            {/* Saves used to sit here as a peer. It moved inside settings: one
+                place for everything about you and the app, which also stops the
+                menu growing a row every time a preference is added. */}
+            {item('SETTINGS', () => openOverlay('settings'), true)}
           </div>
         </>
       )}

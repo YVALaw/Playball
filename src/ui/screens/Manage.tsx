@@ -11,6 +11,8 @@ import { PlayerName } from '../PlayerName.js';
 import { FirstVisit } from '../Tutorial.js';
 import { overallOf } from '../../engine/ratings.js';
 import { useDynasty } from '../../state/store.js';
+import { handles } from '../../state/depth.js';
+import { readPrefs } from '../../state/devicePrefs.js';
 import { lazy, Suspense } from 'react';
 import { Diamond } from '../Diamond.js';
 import { LineScore } from '../LineScore.js';
@@ -37,6 +39,15 @@ export function Manage() {
   const meta = useDynasty((s) => s.liveMeta);
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
+  // Whether the pen is yours tonight. The button comes off entirely rather
+  // than being greyed: a disabled control implies you could have it, and in
+  // casual you have delegated it on purpose.
+  const depth = useDynasty((s) => s.depth);
+  const myPen = handles(depth, 'bullpen');
+  // Read once when the game opens rather than subscribed to: nobody changes
+  // their field preference in the middle of an at-bat, and re-reading storage
+  // on every pitch to find that out would be absurd.
+  const [flatField] = useState(() => readPrefs().field === '2d');
   const submitTactic = useDynasty((s) => s.submitTactic);
   const pinchHitFor = useDynasty((s) => s.pinchHitFor);
   const bringIn = useDynasty((s) => s.bringIn);
@@ -308,14 +319,22 @@ export function Manage() {
         background: 'var(--paper)',
       }}>
         <div style={{ flex: 'none', width: '100%', height: 118 }}>
-          <Suspense fallback={
+          {/* The 2D diamond was always the fallback for a device without WebGL;
+              settings simply lets somebody choose it. Picking it also means
+              three.js is never fetched at all, which is 600KB a slower phone
+              does not have to spend on a renderer its owner did not want. */}
+          {flatField ? (
             <Diamond runners={d?.runners ?? []} scoreTick={scoreTick} size={112} />
-          }>
-            <Diamond3D
-              runners={d?.runners ?? []} scoreTick={scoreTick}
-              ball={ball} scored={{ runners: scoredRunners, tick: scoreTick }} height={118}
-            />
-          </Suspense>
+          ) : (
+            <Suspense fallback={
+              <Diamond runners={d?.runners ?? []} scoreTick={scoreTick} size={112} />
+            }>
+              <Diamond3D
+                runners={d?.runners ?? []} scoreTick={scoreTick}
+                ball={ball} scored={{ runners: scoredRunners, tick: scoreTick }} height={118}
+              />
+            </Suspense>
+          )}
         </div>
         <div style={{ minWidth: 0, flex: 'none' }}>
           {d ? (
@@ -451,12 +470,14 @@ export function Manage() {
               );
             })}
             <div style={{ flex: 1 }} />
-            <Small
-              onClick={() => setModal(d.side === 'offense' ? 'pinch' : 'pen')}
-              disabled={playing || (d.side === 'offense'
-                ? live.benchAvailable.length === 0
-                : live.bullpenAvailable.length === 0)}
-            >{d.side === 'offense' ? 'PINCH HIT' : 'BULLPEN'}</Small>
+            {(d.side === 'offense' || myPen) && (
+              <Small
+                onClick={() => setModal(d.side === 'offense' ? 'pinch' : 'pen')}
+                disabled={playing || (d.side === 'offense'
+                  ? live.benchAvailable.length === 0
+                  : live.bullpenAvailable.length === 0)}
+              >{d.side === 'offense' ? 'PINCH HIT' : 'BULLPEN'}</Small>
+            )}
             <Small onClick={once(autoFinish)} disabled={playing}>SIM THE REST</Small>
             {/* The way out without ending anything, and it writes on the way.
                 Reported from testing: "going back to the desk from the

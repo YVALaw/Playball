@@ -74,6 +74,20 @@ export interface LiveGame {
 export interface LiveOptions extends SimOptions {
   /** Which dugout you are sitting in. */
   managing: 'home' | 'away';
+  /**
+   * Let the pitching staff run itself while you keep the offense.
+   *
+   * The half-inning already knows how to run either dugout automatically —
+   * that is how the computer opponent gets a bullpen — so this simply points
+   * that machinery at your own defensive halves. Nothing about the simulation
+   * changes; a different set of decisions gets made, by the same code that has
+   * always made them for the other ninety-five programs.
+   *
+   * The engine has no idea *why* it was asked. It is handed a boolean, and what
+   * that boolean means about how somebody likes to play is entirely the state
+   * layer's business.
+   */
+  autoPitching?: boolean;
 }
 
 /**
@@ -206,7 +220,7 @@ export function createLiveGame(
       bat(), fld(), inning, engine, rng, say,
       half === 'bottom' && inning >= 9, events, onScore,
       !auto && bat() === mine,
-      !auto && fld() === mine,
+      !auto && fld() === mine && !opts.autoPitching,
     );
   };
 
@@ -227,8 +241,9 @@ export function createLiveGame(
         if (half === 'bottom' && RULES.skipBottom(inning, home, away)) { over = true; return; }
         openHalf();
       }
-      // Your turn: stop and ask, unless you have handed it over.
-      if (!auto && (bat() === mine || fld() === mine)) return;
+      // Your turn: stop and ask, unless you have handed it over — either for
+      // the rest of the game, or permanently for the pitching half.
+      if (!auto && (bat() === mine || (fld() === mine && !opts.autoPitching))) return;
       if (current?.step()) closeHalf();
     }
   };
@@ -236,7 +251,8 @@ export function createLiveGame(
   const decision = (): Decision | null => {
     if (over || auto || !current) return null;
     const offense = bat() === mine;
-    if (!offense && fld() !== mine) return null;
+    // A defensive half is only yours to answer if you kept the pitching.
+    if (!offense && (fld() !== mine || opts.autoPitching)) return null;
 
     const b = bat();
     const batter = b.order[b.spot];
@@ -317,7 +333,7 @@ export function createLiveGame(
     },
 
     changePitcher(arm) {
-      if (over || fld() !== mine) return false;
+      if (over || fld() !== mine || opts.autoPitching) return false;
       if (!mine.relief.includes(arm)) return false;
       // Once out, out for good — but taking the third arm on the list spends
       // only him, not the two listed ahead of him.

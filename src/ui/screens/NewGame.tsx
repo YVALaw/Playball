@@ -19,7 +19,13 @@
 // discovering which ones would take the call. The ladder itself is still
 // visible where it matters: mid-career, the job market prices every move.
 //
-// Three steps, in that order: who you are, how your teams play, where you work.
+// Four steps, in that order: who you are, how much of the game you want to be
+// asked about, how your teams play, where you work.
+//
+// The second is the one that frames the rest, which is why it sits that early.
+// It is not a difficulty setting and the screen says so: the engine models all
+// ninety-six programs identically either way, and the only thing the answer
+// moves is how much of it lands on the desk.
 //
 // The first is pre-filled and skippable in a single press, because a form
 // standing between a player and the game is a toll, not a feature — and
@@ -49,6 +55,7 @@ import {
   type PhilosophyId,
 } from '../../engine/strategy.js';
 import { useDynasty, careerSeed } from '../../state/store.js';
+import type { DepthMode } from '../../state/depth.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import {
   CoachPortrait, COACH_SKIN, COACH_HAIR, CUT_LABEL, BEARD_LABEL,
@@ -113,7 +120,11 @@ export function NewGame() {
   const suggestion = useMemo(() => randomProfile(makeRng(seed ^ 0x5eed)), [seed]);
   const [coach, setCoach] = useState<CoachProfile>(suggestion);
   /** Which of the three we are on. See the note at the top of the file. */
-  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
+  // How deep a game this career is. Held here rather than written straight to
+  // the store because no dynasty exists yet — it is handed to `start` with the
+  // rest of the answers when a job is finally taken.
+  const [mode, setMode] = useState<DepthMode>('full');
 
   // Build the actual world, not an estimate of it. Generation is deterministic
   // from the seed and costs about 2ms, so the screen can simply read the
@@ -212,11 +223,22 @@ export function NewGame() {
 
   if (step === 1) {
     return (
+      <DepthStep
+        chosen={mode}
+        onChoose={setMode}
+        onBack={() => setStep(0)}
+        onDone={() => setStep(2)}
+      />
+    );
+  }
+
+  if (step === 2) {
+    return (
       <PlayStyle
         chosen={coach.philosophy ?? DEFAULT_PHILOSOPHY}
         onChoose={(philosophy) => setCoach({ ...coach, philosophy })}
-        onBack={() => setStep(0)}
-        onDone={() => setStep(2)}
+        onBack={() => setStep(1)}
+        onDone={() => setStep(3)}
       />
     );
   }
@@ -225,7 +247,7 @@ export function NewGame() {
     <FixedHeader
       header={
         <div style={{ padding: '12px 14px 8px' }}>
-          <StepHead n={3} title="Take a job" onBack={() => setStep(1)} />
+          <StepHead n={4} title="Take a job" onBack={() => setStep(2)} />
 
           {/*
             Who you are and what you are worth, on one line above the offers.
@@ -459,7 +481,7 @@ export function NewGame() {
                     </div>
 
                     <button
-                      onClick={() => start(seed, indexOf(picked), coach)}
+                      onClick={() => start(seed, indexOf(picked), coach, mode)}
                       style={{
                         marginTop: 14, width: '100%', padding: '13px 0',
                         background: picked.color, border: `1px solid ${picked.color}`,
@@ -526,16 +548,16 @@ function StepHead(
             }}
           >‹ BACK</button>
         ) : <span className="label">NEW DYNASTY</span>}
-        <span className="label">STEP {n} OF 3</span>
+        <span className="label">STEP {n} OF 4</span>
       </div>
       {/* The road so far, at a glance: done, here, still to come. Colour is
           not the only signal — the count above says the same thing in words. */}
       <div
         role="img"
-        aria-label={`Step ${n} of 3`}
+        aria-label={`Step ${n} of 4`}
         style={{ display: 'flex', gap: 3, marginTop: 7 }}
       >
-        {[1, 2, 3].map((i) => (
+        {[1, 2, 3, 4].map((i) => (
           <span key={i} style={{
             flex: 1, height: 4,
             background: i < n ? 'var(--win)' : i === n ? 'var(--clay)' : 'var(--faint)',
@@ -742,6 +764,101 @@ function Identity(
  * everything here is editable there from the first day of the season. This step
  * only decides where he starts.
  */
+/**
+ * Step two. How much of the game you want to be asked about.
+ *
+ * Deliberately the second thing that happens, before the bench and before the
+ * job: it changes the shape of everything after it, and a question that frames
+ * the rest of the flow has no business arriving at the end of it.
+ *
+ * It is also deliberately *not* a difficulty menu, and the copy works hard at
+ * that. Nothing here makes the game easier or the world smaller — the engine
+ * models every one of the ninety-six programs identically whichever card is
+ * picked. The only thing that changes is how much lands on your desk. Saying so
+ * plainly is what stops "casual" reading as "the lesser game", which it is not.
+ */
+function DepthStep(
+  { chosen, onChoose, onBack, onDone }: {
+    chosen: DepthMode;
+    onChoose: (m: DepthMode) => void;
+    onBack: () => void;
+    onDone: () => void;
+  },
+) {
+  const cards: { id: DepthMode; title: string; line: string; bullets: string[] }[] = [
+    {
+      id: 'full', title: 'Full career',
+      line: 'Every decision is yours.',
+      bullets: [
+        'You write the lineup card',
+        'You work the bullpen, inning by inning',
+        'Everything the game adds, you get asked about',
+      ],
+    },
+    {
+      id: 'casual', title: 'Casual',
+      line: 'Your staff handles the routine. You handle the season.',
+      bullets: [
+        'Your bench coach fills out the card',
+        'Your pitching coach runs the pen',
+        'Recruiting, the draft and the big calls stay yours',
+      ],
+    },
+  ];
+  return (
+    <FixedHeader header={<div style={{ padding: '12px 14px 8px' }}>
+      <StepHead n={2} title="How you want to play" onBack={onBack} />
+    </div>}>
+      <div style={{ padding: '12px 14px 0' }}>
+        <div style={{ font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
+          Not a difficulty. The game simulates all ninety-six programs the same
+          way either way — this only decides how much of it reaches your desk.
+        </div>
+
+        <div style={{ marginTop: 12 }}>
+          {cards.map((c) => {
+            const on = c.id === chosen;
+            return (
+              <button
+                key={c.id}
+                onClick={() => onChoose(c.id)}
+                className="tap"
+                style={{
+                  width: '100%', textAlign: 'left', marginBottom: 7,
+                  padding: '11px 12px',
+                  background: on ? 'rgba(168,68,42,.10)' : 'var(--paper)',
+                  border: `1px solid ${on ? 'var(--clay)' : 'rgba(28,36,48,.28)'}`,
+                }}
+              >
+                <div style={{
+                  font: "800 calc(17px * var(--ts))/1 var(--display)",
+                  textTransform: 'uppercase',
+                  color: on ? 'var(--clay)' : 'var(--ink)',
+                }}>{c.title}</div>
+                <div style={{
+                  marginTop: 3, font: "400 calc(11.5px * var(--ts))/1.4 var(--body)",
+                }}>{c.line}</div>
+                <ul style={{
+                  margin: '7px 0 0', paddingLeft: 15,
+                  font: "400 calc(10.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
+                }}>
+                  {c.bullets.map((b) => <li key={b}>{b}</li>)}
+                </ul>
+              </button>
+            );
+          })}
+        </div>
+
+        <FloatingAction
+          label="CONTINUE"
+          onClick={onDone}
+          note="You can change this, or take back any single part of it, in settings at any point in your career."
+        />
+      </div>
+    </FixedHeader>
+  );
+}
+
 function PlayStyle(
   { chosen, onChoose, onBack, onDone }: {
     chosen: PhilosophyId;
@@ -752,7 +869,7 @@ function PlayStyle(
 ) {
   return (
     <FixedHeader header={<div style={{ padding: '12px 14px 8px' }}>
-      <StepHead n={2} title="Set your plan" onBack={onBack} />
+      <StepHead n={3} title="Set your plan" onBack={onBack} />
     </div>}>
       <div style={{ padding: '12px 14px 0' }}>
         <div style={{ font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>

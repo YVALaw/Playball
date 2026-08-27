@@ -54,6 +54,10 @@ import {
   readJournal, writeJournal, noteAction, clearJournal, journalMatches,
 } from './liveJournal.js';
 import {
+  DEFAULT_DEPTH, normalizeDepth, setMode, setSystem, handles,
+  type DepthSettings, type DepthMode, type SystemKey,
+} from './depth.js';
+import {
   runPostseason, freezeRegularSeason, stageConferenceTournaments,
   stageRegionals, regionalPairing, summarize,
   startSeriesBracket, stepBracket, nextGameFor, resultOf, pairKey, hostOfGame,
@@ -211,7 +215,8 @@ export type Tab = 'home' | 'team' | 'season' | 'program';
 
 /** A screen laid over whatever frame the game is in. See `overlay` below. */
 export type Overlay =
-  'schedule' | 'standings' | 'rankings' | 'saves' | 'inbox' | 'program' | 'book';
+  'schedule' | 'standings' | 'rankings' | 'saves' | 'inbox' | 'program' | 'book'
+  | 'settings';
 
 /** The three tabs of the program page, which is addressable from the inbox. */
 export type ProgramSheet = 'board' | 'coach' | 'hall';
@@ -536,7 +541,7 @@ export interface DynastyStore {
    * creation step collected. Without the profile the career belongs to a man
    * called "Coach", which is the pre-v0.6.3 behaviour and what the tests use.
    */
-  start: (seed?: number, team?: number, profile?: CoachProfile) => void;
+  start: (seed?: number, team?: number, profile?: CoachProfile, mode?: DepthMode) => void;
   /** True before a job has been taken, so the app can show the setup screen. */
   needsTeam: boolean;
   go: (tab: Tab, screen?: string) => void;
@@ -748,6 +753,15 @@ export interface DynastyStore {
   markTutorialSeen: (id: string) => void;
   /** Forget every tutorial, so the next visit to each screen teaches again. */
   resetTutorials: () => void;
+
+  /**
+   * How deep a game this career is. See `depth.ts` for the three rules that
+   * keep this from becoming two games in one codebase — the first of which is
+   * that none of it ever reaches the engine.
+   */
+  depth: DepthSettings;
+  setDepthMode: (mode: DepthMode) => void;
+  setDepthSystem: (key: SystemKey, value: boolean) => void;
 
   /**
    * Write the dynasty down. `name` is what the saves list will call it; left
@@ -1031,6 +1045,29 @@ function recordFor(state: DynastyStore): SeasonRecord | null {
     nationalChampion: winner,
     awards: mine,
   };
+}
+
+/**
+ * Your bench coach fills out the card.
+ *
+ * The whole of what "casual handles lineups" means, and it is deliberately the
+ * same call the LINEUP screen's AUTO button makes — a casual coach's card is
+ * not a worse card or a different kind of card, it is the one the game would
+ * have suggested to him. Nothing here touches the simulation: the nine names
+ * are a decision, made before the first pitch, exactly as the other ninety-five
+ * programs have always had theirs made.
+ *
+ * Silent by design. The answer to "how does casual tell you what it decided?"
+ * is that it does not, unless you go and look — and the card is right there on
+ * the LINEUP screen, correct and current, whenever you do.
+ */
+function staffSetsTheCard(season: SeasonState, userTeam: number): void {
+  const team = season.teams[userTeam]?.team;
+  if (!team) return;
+  const dealt = autoBattingOrder(team.lineup);
+  // Same nine or nothing, the same guard `autoLineup` holds at its own door.
+  if (dealt.length !== team.lineup.length) return;
+  team.lineup.splice(0, team.lineup.length, ...dealt);
 }
 
 /**
@@ -1360,7 +1397,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   lastWeek: null,
   phase: null,
 
-  start: (seed = WORLD_SEED, team?: number, profile?: CoachProfile) => {
+  start: (seed = WORLD_SEED, team?: number, profile?: CoachProfile, mode: DepthMode = 'full') => {
     const season = createSeason(makeRng(seed), undefined, CONFERENCES);
     // Whose games to keep box scores for. A season is built before anybody has
     // taken a job, so the engine cannot know this on its own.
@@ -1421,7 +1458,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       lastOffseason: null,
       lastWeek: null,
       inbox: [],
+      // Set explicitly rather than left alone, because a second dynasty started
+      // on the same device would otherwise silently inherit the first one's
+      // answer. The question is asked at creation; this is where the answer
+      // lands, and every override starts empty because nothing has been
+      // disagreed with yet.
+      depth: { mode, overrides: {} },
     });
+    // Whichever card the staff would write, written before the first day rather
+    // than after it, so a casual coach's opening lineup is his coach's lineup.
+    if (!handles({ mode, overrides: {} }, 'lineups')) staffSetsTheCard(season, seat);
     void get().saveNow();
   },
 
@@ -1960,6 +2006,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // `live` because tonight's game is still being played and the day it
     // belongs to must not pass underneath it.
     if (!season || busy || get().live || seasonComplete(season)) return;
+    // A casual coach's card is filled out before the day is played, not after,
+    // or the nine names the game used would be yesterday's.
+    if (!handles(get().depth, 'lineups')) staffSetsTheCard(season, get().userTeam);
     simNextDay(season);
     set({ version: version + 1 });
     get().noteSeasonNews();
@@ -2861,6 +2910,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       longer exists, and it was the one thing standing between a bracket game
       and being resumable.
     */
+    // What this coach has said he wants to be asked. Read once, here, so
+    // the journal and the game it anchors can never disagree about it.
+    const autoPen = !handles(get().depth, 'bullpen');
+    if (!handles(get().depth, 'lineups')) staffSetsTheCard(season, userTeam);
     const rngState = season.rng.state?.() ?? 0;
     await get().saveNow();
     writeJournal({
@@ -2868,6 +2921,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       home: h, away: a, day: season.dayIndex,
       homeStarter: slot, awayStarter: slot,
       managing: h === userTeam ? 'home' : 'away',
+      autoPitching: autoPen,
       postseason: true,
       actions: [],
     });
@@ -2875,6 +2929,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     set({
       live: createLiveGame(home.team, away.team, season.rng, {
         managing: h === userTeam ? 'home' : 'away',
+        autoPitching: autoPen,
         engine: season.config.engine,
         homeStarter: slot,
         awayStarter: slot,
@@ -3134,6 +3189,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
     const live = createLiveGame(home.team, away.team, season.rng, {
       managing: j.managing,
+      // Off the journal, not off today's settings: the replay has to rebuild
+      // the game that was interrupted, not the one this coach would start now.
+      autoPitching: j.autoPitching === true,
       engine: season.config.engine,
       homeStarter: j.homeStarter,
       awayStarter: j.awayStarter,
@@ -3230,6 +3288,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       also covers the days simmed above, which used to be saved for the same
       reason in a separate call.
     */
+    // What this coach has said he wants to be asked. Read once, here, so
+    // the journal and the game it anchors can never disagree about it.
+    const autoPen = !handles(get().depth, 'bullpen');
+    if (!handles(get().depth, 'lineups')) staffSetsTheCard(season, userTeam);
     const rngState = season.rng.state?.() ?? 0;
     await get().saveNow();
     writeJournal({
@@ -3237,6 +3299,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       home: g.home, away: g.away, day: day.day,
       homeStarter: g.slot, awayStarter: g.slot,
       managing: g.home === userTeam ? 'home' : 'away',
+      autoPitching: autoPen,
       postseason: false,
       actions: [],
     });
@@ -3244,6 +3307,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     set({
       live: createLiveGame(home.team, away.team, season.rng, {
         managing: g.home === userTeam ? 'home' : 'away',
+        autoPitching: autoPen,
         engine: season.config.engine,
         homeStarter: g.slot,
         awayStarter: g.slot,
@@ -3433,9 +3497,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const start = season.schedule[season.dayIndex]?.week;
     if (start === undefined) return;
     let guard = 0;
+    const auto = !handles(get().depth, 'lineups');
     while (!seasonComplete(season)
       && season.schedule[season.dayIndex]?.week === start
       && guard++ < 10) {
+      if (auto) staffSetsTheCard(season, get().userTeam);
       simNextDay(season);
     }
     set({ version: get().version + 1 });
@@ -3456,6 +3522,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   resetTutorials: () => {
     set({ seenTutorials: [] });
+    void get().saveNow();
+  },
+
+  depth: { ...DEFAULT_DEPTH, overrides: {} },
+
+  setDepthMode: (mode) => {
+    set({ depth: setMode(get().depth, mode) });
+    void get().saveNow();
+  },
+
+  setDepthSystem: (key, value) => {
+    set({ depth: setSystem(get().depth, key, value) });
     void get().saveNow();
   },
 
@@ -3491,6 +3569,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         outcome: get().lastOutcome,
         inbox: get().inbox,
         tutorials: get().seenTutorials,
+        depth: get().depth,
       });
       if (ticket === saveTicket) set({ saveState: 'saved' });
     } catch (e) {
@@ -3636,6 +3715,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           ? (loaded.tutorials as unknown[]).filter((t): t is string => typeof t === 'string')
           : []),
       ])],
+      // Replaced rather than merged, unlike the tutorials above, and the
+      // difference is the point: what a player has *learned* belongs to the
+      // player, but how deep a game he wanted belongs to this dynasty. A save
+      // from before the mode existed carries nothing and normalises to full,
+      // which leaves a career in progress exactly as it was being played.
+      depth: normalizeDepth(loaded.depth),
       // Unread stays unread across a restart. It is the one thing the inbox
       // knows that nothing else in the save does.
       inbox: restoreInbox(loaded.inbox),

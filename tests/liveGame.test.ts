@@ -573,3 +573,67 @@ describe('a called steal', () => {
     expect(caught / attempts).toBeLessThan(0.45);
   });
 });
+
+/*
+  Handing the pitching to your staff.
+
+  This is the whole engine-side surface of casual mode, and the reason it is
+  only one option: the half-inning already knew how to run either dugout
+  automatically — that is how the computer opponent gets a bullpen — so
+  delegating your own pitching points that same machinery at your defensive
+  halves. Nothing about the simulation changes. A different set of decisions is
+  made, by the code that has always made them for the other ninety-five.
+
+  The engine is deliberately not told *why*. It takes a boolean.
+*/
+describe('when the staff has the pitching', () => {
+  const played = (autoPitching: boolean) => {
+    const { bats, field } = twoTeams(4242);
+    const live = createLiveGame(field, bats, makeRng(4242), {
+      managing: 'home',
+      engine: 'log5',
+      autoPitching,
+    });
+    const sides: string[] = [];
+    for (let i = 0; i < 400 && !live.over && live.pending; i++) {
+      sides.push(live.pending.side);
+      live.submit('swing');
+    }
+    return { live, sides };
+  };
+
+  it('never stops to ask about a defensive half', () => {
+    const { sides } = played(true);
+    expect(sides.length).toBeGreaterThan(10);
+    expect(sides.every((s) => s === 'offense')).toBe(true);
+  });
+
+  it('still asks about both halves when the pitching is yours', () => {
+    const { sides } = played(false);
+    expect(sides).toContain('offense');
+    expect(sides).toContain('defense');
+  });
+
+  it('refuses a pitching change that was delegated', () => {
+    const { bats, field } = twoTeams(77);
+    const live = createLiveGame(field, bats, makeRng(77), {
+      managing: 'home', engine: 'log5', autoPitching: true,
+    });
+    const arm = live.bullpenAvailable[0];
+    // The button is gone from the screen; the door is shut behind it too, so a
+    // stale render can never reach past a decision the coach delegated.
+    if (arm) expect(live.changePitcher(arm)).toBe(false);
+  });
+
+  it('plays a complete, legal game either way', () => {
+    for (const auto of [true, false]) {
+      const { live } = played(auto);
+      live.finish();
+      expect(live.over).toBe(true);
+      // Somebody won, nine innings at least, and no negative arithmetic.
+      expect(live.result.home.runs).toBeGreaterThanOrEqual(0);
+      expect(live.result.away.runs).toBeGreaterThanOrEqual(0);
+      expect(live.result.home.runs).not.toBe(live.result.away.runs);
+    }
+  });
+});

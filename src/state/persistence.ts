@@ -127,6 +127,18 @@ export interface SaveFile {
    * precious field in the file. Absent on older saves, which simply teach.
    */
   tutorials?: unknown;
+  /**
+   * How deep a game this career is: the preset, plus whichever systems the
+   * player has decided differently about.
+   *
+   * In the save rather than on the device because it describes a *dynasty*, not
+   * a person — a career begun as a casual one is still that career on another
+   * phone, while a text size is not. Absent on every save written before the
+   * mode existed, and those load as full: they have been played with every
+   * decision in the player's hands, and defaulting them to anything else would
+   * be taking something away from a career already in progress.
+   */
+  depth?: unknown;
 }
 
 export interface SaveSummary {
@@ -320,6 +332,8 @@ export interface SaveExtras {
   inbox?: unknown;
   /** First-visit tutorial ids already shown. */
   tutorials?: unknown;
+  /** How deep a game this career is. See `SaveFile.depth`. */
+  depth?: unknown;
 }
 
 /**
@@ -394,6 +408,13 @@ export function buildSaveFile(
     ...(Array.isArray(extras.tutorials) && extras.tutorials.length > 0
       ? { tutorials: extras.tutorials }
       : {}),
+    // Written whenever it exists rather than only when it differs from the
+    // default, because absence already means something here: it is how a save
+    // from before the mode says "played in full". A full career that stopped
+    // writing the field would be indistinguishable from one that never had it,
+    // which is fine today and would stop being fine the moment the default
+    // changed. Two keys is a cheap way to never have that conversation.
+    ...(extras.depth ? { depth: extras.depth } : {}),
   };
 }
 
@@ -438,6 +459,8 @@ export interface LoadedDynasty {
   inbox: unknown;
   /** First-visit tutorial ids. Empty for saves that predate teaching. */
   tutorials: unknown;
+  /** The depth preset and its overrides. Null on saves that predate the mode. */
+  depth: unknown;
 }
 
 /**
@@ -497,6 +520,7 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     outcome: file.outcome ?? null,
     inbox: file.inbox ?? [],
     tutorials: file.tutorials ?? [],
+    depth: file.depth ?? null,
   };
 }
 

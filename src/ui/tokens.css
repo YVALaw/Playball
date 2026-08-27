@@ -256,6 +256,38 @@ button {
   .tap:active { transform: none; }
 }
 
+/* The settings sheet can override the OS in either direction.
+ *
+ * Two rules rather than one, and deliberately not folded into the media query
+ * above: `data-motion="reduced"` has to stop motion on a device whose OS never
+ * asked for that, and `data-motion="full"` has to restore it on a device whose
+ * OS did. Absent the attribute — which is what "system" writes — neither rule
+ * matches and the media query is the only opinion, which is the right default.
+ *
+ * The `full` block repeats the animations rather than saying `animation:
+ * revert`, because revert would take these back to the UA default of none. */
+:root[data-motion="reduced"] .card-in,
+:root[data-motion="reduced"] .rise-in,
+:root[data-motion="reduced"] .fade-in,
+:root[data-motion="reduced"] .pulse,
+:root[data-motion="reduced"] .screen-in,
+:root[data-motion="reduced"] .sheet,
+:root[data-motion="reduced"] .sheet-scrim { animation: none; }
+:root[data-motion="reduced"] .grow,
+:root[data-motion="reduced"] .tap { transition: none; }
+:root[data-motion="reduced"] .tap:active { transform: none; }
+
+:root[data-motion="full"] .card-in { animation: cardIn 300ms ease-out both; }
+:root[data-motion="full"] .rise-in { animation: riseIn 400ms ease-out both; }
+:root[data-motion="full"] .fade-in { animation: fadeIn 260ms ease-out both; }
+:root[data-motion="full"] .pulse   { animation: pulseClay 1.8s ease-in-out infinite; }
+:root[data-motion="full"] .screen-in { animation: riseIn 260ms cubic-bezier(.2, .8, .3, 1) both; }
+:root[data-motion="full"] .sheet { animation: sheet-rise 220ms cubic-bezier(0.22, 0.85, 0.28, 1) both; }
+:root[data-motion="full"] .sheet-scrim { animation: scrim-in 170ms ease-out both; }
+:root[data-motion="full"] .grow { transition: width 420ms cubic-bezier(.2, .8, .3, 1); }
+:root[data-motion="full"] .tap  { transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 120ms ease; }
+:root[data-motion="full"] .tap:active { transform: scale(0.97); }
+
 /* Keyboard focus, made visible. The app is built for thumbs, but it runs in a
    browser today and every interactive element is a bare button with its
    default outline stripped by use — a keyboard user had no way to see where
