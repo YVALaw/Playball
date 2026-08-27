@@ -2643,6 +2643,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       seatProtected(field);
       national = { field, bracketA: null, bracketB: null, final: null };
       set({ bracket: { ...bracket, national }, version: version + 1 });
+      void get().saveNow();
     }
 
     /*
@@ -2694,6 +2695,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           },
           version: get().version + 1,
         });
+      void get().saveNow();
         return;
       }
 
@@ -2702,6 +2704,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       if (nat2.bracketA === null) next.bracketA = resultOfDE(runDoubleElim(season, bracketA));
       if (nat2.bracketB === null) next.bracketB = resultOfDE(runDoubleElim(season, bracketB));
       set({ bracket: { ...b2, national: next }, version: get().version + 1 });
+      void get().saveNow();
       return;
     }
 
@@ -2722,6 +2725,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           },
           version: get().version + 1,
         });
+      void get().saveNow();
         return;
       }
       if (!advance) return;                 // the matchup is on screen, waiting
@@ -2736,6 +2740,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         lastPostseason: summary,
         version: get().version + 1,
       });
+      void get().saveNow();
     }
   },
 
@@ -2940,6 +2945,20 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // your run without ending the tournament is still the end of your run.
     get().noteKnockout();
     if (state.done) get().closeMyBracket();
+    /*
+      And written down.
+
+      Reported: simmed the play-in and the opening round, left the screen, came
+      back and the tournament was at the play-in again. It was — nothing here
+      ever reached the disk. Every other thing that moves the game forward saves
+      on its way out and this did not, so an entire evening of June lived in
+      memory until some unrelated action happened to write it.
+
+      It also cost more than the bracket. The postseason statistics are folded
+      in as games are played, so an unsaved June took those with it too, and
+      the leaderboard came back empty for a tournament that had been played.
+    */
+    void get().saveNow();
   },
 
   knockout: null,
@@ -2947,7 +2966,20 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   noteKnockout: () => {
     const { season, myBracket, userTeam, year, knockout } = get();
     if (!myBracket || !season) return;
-    if (knockout && knockout.year === year) return;
+    /*
+      Once per tournament, not once per year.
+
+      This used to refuse any second knockout in a season, on the reasonable
+      assumption that a season ends once. It does not any more: a team can be
+      put out of its conference tournament and carry on to a regional, put out
+      of that and carry on to the national field. Reported from playing it —
+      knocked out of the nationals in the losers bracket with no card, no
+      letter, nothing, because May had already spoken for the year.
+
+      Keyed on the tournament as well as the year, so each of the three can
+      report its own ending exactly once.
+    */
+    if (knockout && knockout.year === year && knockout.kind === myBracket.kind) return;
     if (!myBracket.state.eliminated.includes(userTeam)) return;
 
     // The game or series that did it, so the modal can say where the year

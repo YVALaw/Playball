@@ -597,9 +597,17 @@ function Identity(
   const setLook = (part: Partial<CoachLook>): void => set('look', { ...look, ...part });
 
   return (
-    <FixedHeader header={<div style={{ padding: '12px 14px 8px' }}>
-      <StepHead n={1} title="Your coach" />
-    </div>}>
+    <FixedHeader
+      header={<div style={{ padding: '12px 14px 8px' }}>
+        <StepHead n={1} title="Your coach" />
+      </div>}
+      action={<FloatingAction
+        label="HOW YOU PLAY"
+        onClick={onDone}
+        secondary={{ label: 'SOMEBODY ELSE', onClick: onShuffle }}
+        note="None of this changes how a game is played. The next two steps do."
+      />}
+    >
       <div style={{ padding: '12px 14px 0' }}>
         <div style={{ font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
           Already filled in. Change what you like, or go straight on.
@@ -739,12 +747,6 @@ function Identity(
           on which of these buys him something. None of them do — and the next
           step, which does, says so in its own words.
         */}
-        <FloatingAction
-          label="SET YOUR PLAN"
-          onClick={onDone}
-          secondary={{ label: 'SOMEBODY ELSE', onClick: onShuffle }}
-          note="None of this changes how a game is played. The next step does."
-        />
       </div>
     </FixedHeader>
   );
@@ -806,9 +808,16 @@ function DepthStep(
     },
   ];
   return (
-    <FixedHeader header={<div style={{ padding: '12px 14px 8px' }}>
-      <StepHead n={2} title="How you want to play" onBack={onBack} />
-    </div>}>
+    <FixedHeader
+      header={<div style={{ padding: '12px 14px 8px' }}>
+        <StepHead n={2} title="How you want to play" onBack={onBack} />
+      </div>}
+      action={<FloatingAction
+        label="CONTINUE"
+        onClick={onDone}
+        note="You can change this, or take back any single part of it, in settings at any point in your career."
+      />}
+    >
       <div style={{ padding: '12px 14px 0' }}>
         <div style={{ font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
           Not a difficulty. The game simulates all ninety-six programs the same
@@ -849,11 +858,6 @@ function DepthStep(
           })}
         </div>
 
-        <FloatingAction
-          label="CONTINUE"
-          onClick={onDone}
-          note="You can change this, or take back any single part of it, in settings at any point in your career."
-        />
       </div>
     </FixedHeader>
   );
@@ -868,9 +872,16 @@ function PlayStyle(
   },
 ) {
   return (
-    <FixedHeader header={<div style={{ padding: '12px 14px 8px' }}>
-      <StepHead n={3} title="Set your plan" onBack={onBack} />
-    </div>}>
+    <FixedHeader
+      header={<div style={{ padding: '12px 14px 8px' }}>
+        <StepHead n={3} title="Set your plan" onBack={onBack} />
+      </div>}
+      action={<FloatingAction
+        label="FIND A JOB"
+        onClick={onDone}
+        note="Not a lock. Every one of these is five settings you can change on the strategy screen once the season starts."
+      />}
+    >
       <div style={{ padding: '12px 14px 0' }}>
         <div style={{ font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
           Pick the bench you want to run. Whoever hires you plays this way from
@@ -933,11 +944,6 @@ function PlayStyle(
           })}
         </div>
 
-        <FloatingAction
-          label="FIND A JOB"
-          onClick={onDone}
-          note="Not a lock. Every one of these is five settings you can change on the strategy screen once the season starts."
-        />
       </div>
     </FixedHeader>
   );

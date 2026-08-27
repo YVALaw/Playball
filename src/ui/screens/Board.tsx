@@ -338,7 +338,21 @@ export function Board() {
       you need them, because every one of them is a constraint on the decision
       you are scrolling to make.
     */
-    <FixedHeader header={
+    <FixedHeader
+      action={pinned.kind !== null && (
+        <FloatingAction
+          label={pinned.label}
+          onClick={() => {
+            if (pinned.kind === 'close-filter') setFiltersOpen(false);
+            else if (pinned.kind === 'signing-day') { advanceWeek(); void nextPhase('recruiting'); }
+            else advanceWeek();
+          }}
+          secondary={pinned.kind === 'close-filter' && activeFilters
+            ? { label: 'CLEAR EVERY FILTER', onClick: () => setFilters(NO_FILTERS) }
+            : null}
+        />
+      )}
+      header={
       <div style={{ padding: '12px 14px 10px' }}>
       <div style={{
         display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
@@ -582,19 +596,6 @@ export function Board() {
         of this ternary each writing their own, which is how the label and the
         state it described came apart.
       */}
-      {pinned.kind !== null && (
-        <FloatingAction
-          label={pinned.label}
-          onClick={() => {
-            if (pinned.kind === 'close-filter') setFiltersOpen(false);
-            else if (pinned.kind === 'signing-day') { advanceWeek(); void nextPhase('recruiting'); }
-            else advanceWeek();
-          }}
-          secondary={pinned.kind === 'close-filter' && activeFilters
-            ? { label: 'CLEAR EVERY FILTER', onClick: () => setFilters(NO_FILTERS) }
-            : null}
-        />
-      )}
     </div>
     </FixedHeader>
   );

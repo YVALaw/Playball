@@ -30,11 +30,14 @@ import {
 import type {
   Series, SeriesBracket, RegionalSeries, ConferenceTournament, TournamentResult,
 } from '../../engine/postseason.js';
-import { liveSlotFor, slotName, type DoubleElim, type DESlot } from '../../engine/doubleElim.js';
+import {
+  liveSlotFor, slotName, nextRoundName,
+  type DoubleElim, type DESlot,
+} from '../../engine/doubleElim.js';
 import { FirstVisit } from '../Tutorial.js';
 
 type ConfView = 'winners' | 'losers';
-type NatView = 'field' | 'winners' | 'losers';
+type NatView = 'winners' | 'losers';
 
 /*
   The toggles remember themselves across an unmount — managing a game covers
@@ -43,7 +46,7 @@ type NatView = 'field' | 'winners' | 'losers';
   exactly the lifetime a view preference deserves.
 */
 let confViewMemo: ConfView = 'winners';
-let natViewMemo: NatView = 'field';
+let natViewMemo: NatView = 'winners';
 
 export function Postseason() {
   const [modal, setModal] = useState<'in' | 'out' | 'won' | 'title' | null>(null);
@@ -85,7 +88,18 @@ export function Postseason() {
   // Opening a stage is not a decision, so it is not a press.
   useEffect(() => { openStage(); }, [openStage, bracket?.stage, version]);
 
-  const knockedOut = knockout !== null && knockout.year === year;
+  /*
+    Two different questions, and conflating them was half the bug.
+
+    `reported` is "there is an elimination this year that has not been shown" —
+    true whether or not it ended the season, because losing a conference final
+    and going on to a regional is still news. `knockedOut` is "your June is
+    over", which an advancing exit is not. The screen used to ask the first and
+    act on the second, so a team that advanced spent the rest of the postseason
+    being treated as finished.
+  */
+  const reported = knockout !== null && knockout.year === year;
+  const knockedOut = reported && !knockout!.advanced;
   const iAmOut = myBracket
     ? myBracket.state.eliminated.includes(userTeam)
     : knockedOut;
@@ -97,7 +111,7 @@ export function Postseason() {
     : 0;
   const inTheField = mySeed > 0;
   const introKey = `${year}:in:${stageKey}`;
-  const outKey = knockedOut && knockout ? `${year}:out:${knockout.kind}` : '';
+  const outKey = reported && knockout ? `${year}:out:${knockout.kind}` : '';
 
   /** Whether the tier on screen is finished, and whether you won something. */
   const nat = bracket?.national ?? null;
@@ -397,7 +411,21 @@ export function Postseason() {
       }
     : myBracket
       ? {
-          label: iAmOut ? 'SEE THE NEXT GAMES' : 'PLAY THE NEXT GAMES',
+          /*
+            The button says which round it is about to play.
+
+            Reported: it said PLAY THE NEXT GAMES and then played the play-in
+            and the opening round together, so it was vague about a thing it
+            was also wrong about. The engine steps one round now, and the
+            button reads that round's own name — the same string the bracket
+            column and the log use, so the three cannot drift.
+          */
+          label: (() => {
+            const round = myBracket.format === 'double'
+              ? nextRoundName(myBracket.state) : null;
+            if (!round) return iAmOut ? 'SEE THE NEXT GAMES' : 'PLAY THE NEXT GAMES';
+            return `${iAmOut ? 'SEE' : 'SIM'} THE ${round.toUpperCase()}`;
+          })(),
           run: () => sim('round'),
           secondary: iAmOut
             ? { label: 'SIM TO THE END OF THE TOURNAMENT', onClick: () => sim('rest') }
@@ -539,7 +567,7 @@ export function Postseason() {
           )}
           {bracket.stage === 'national' && (
             <SubToggle
-              options={[['field', 'THE FIELD'], ['winners', 'WINNERS'], ['losers', 'LOSERS']]}
+              options={[['winners', 'WINNERS'], ['losers', 'LOSERS']]}
               at={natView}
               onGo={(v) => setNatView(v as NatView)}
             />
@@ -1104,41 +1132,6 @@ function NationalStage(
   }
   const seeds = nat.field.seeds;
 
-  if (view === 'field') {
-    return (
-      <div style={{ padding: '0 14px' }}>
-        <div style={{
-          paddingBottom: 3, marginBottom: 6, borderBottom: '2px solid var(--ink)',
-        }}>
-          <span className="label">SEEDS 1–12 · BYE TO THE SHOWDOWN</span>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
-          {seeds.slice(0, 12).map((t, i) => (
-            <span key={t} style={{
-              padding: '4px 8px',
-              border: t === userTeam ? '1.5px solid var(--clay)' : '1px solid var(--faint)',
-              borderLeft: `3px solid ${teamColour(abbr(t))}`,
-              background: 'var(--paper)',
-              font: "600 calc(9.5px * var(--ts)) var(--mono)", color: teamColour(abbr(t)),
-            }}>
-              <span style={{ color: 'var(--dim)' }}>{i + 1} </span>
-              {abbr(t)}{t === userTeam ? ' ★' : ''}
-              {nat.field.protectedTeams.includes(t) && (
-                <span style={{ color: 'var(--dim)' }}> · P</span>
-              )}
-            </span>
-          ))}
-        </div>
-
-        <div style={{
-          marginTop: 4, font: "400 calc(10px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-        }}>
-          P marks a protected top four seed from the regular season. Protection
-          buys the field and a bye past the play-in, never a banner.
-        </div>
-      </div>
-    );
-  }
 
   /*
     The showdown: two eight-team double eliminations, then the championship.

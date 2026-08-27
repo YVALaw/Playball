@@ -362,6 +362,45 @@ function AppBody(
           </header>
         )}
         <SaveAlert topmost />
+        {/*
+          The sub-nav, which restoring the bottom nav forgot.
+
+          Bringing the four tabs back to June without this put you on a tab's
+          first screen with no way to reach its others — TEAM landed on the
+          roster and STATS could not be opened at all, which is exactly where
+          the postseason leaderboard lives. Reported as the stats not being
+          there; they were, behind a control that had not been rendered.
+
+          Only away from the bracket: JUNE is the postseason screen and has its
+          own stage rail, so a second row of tabs above it would be two
+          navigations arguing about the same space.
+        */}
+        {!live && tab !== 'home' && (
+          <nav style={{
+            flex: 'none', height: 38, display: 'flex',
+            background: '#e7dfd0', borderBottom: '1px solid rgba(28,36,48,.16)',
+          }}>
+            {(TABS.find((t) => t.id === tab) ?? TABS[0]!).screens.map((sc) => {
+              const on = screen === sc.id;
+              const count = (TABS.find((t) => t.id === tab) ?? TABS[0]!).screens.length;
+              return (
+                <button
+                  key={sc.id}
+                  onClick={() => setScreen(sc.id)}
+                  style={{
+                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: on ? 'var(--field)' : 'transparent',
+                    borderRight: '1px solid rgba(28,36,48,.1)',
+                    boxShadow: on ? 'inset 0 -3px 0 var(--clay)' : 'none',
+                    font: `600 calc(${count >= 5 ? 8.5 : 10}px * var(--ts)) var(--mono)`,
+                    letterSpacing: count >= 5 ? '.08em' : '.14em',
+                    color: on ? 'var(--clay)' : 'var(--dim)',
+                  }}
+                >{sc.label}</button>
+              );
+            })}
+          </nav>
+        )}
         <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
           flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
         }}>

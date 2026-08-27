@@ -1,14 +1,13 @@
 // Settings.tsx
 // Two kinds of preference, kept visibly apart.
 //
-// The top of this screen is about a *career* — how deep a game you want this
-// dynasty to be — and it rides the save. The bottom is about a *device* — text
-// size, the field, sound — and it rides the phone. The separation is not
-// pedantry: loading a five-year-old dynasty must not shrink your text, and
-// starting a new one must not undo your depth choice. Putting them on one screen
-// under two headers is how a player learns which is which without being told.
+// An index and four pages. HOW YOU PLAY is about a *career* — how deep a game
+// you want this dynasty to be — and rides the save. DISPLAY and SOUND are about
+// a *device* and ride the phone: loading a five-year-old dynasty must not shrink
+// your text, and starting a new one must not turn the sound back on. The index
+// says which is which in a line, so nobody has to be told twice.
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Card } from '../components/Kit.js';
 import { useDynasty } from '../../state/store.js';
 import {
@@ -105,12 +104,37 @@ function Choice<T extends string | number>(
   );
 }
 
+/** The four pages, and the index that lists them. */
+type Page = 'index' | 'display' | 'sound' | 'play';
+
+const PAGES: { id: Page | 'saves'; title: string; blurb: string }[] = [
+  { id: 'display', title: 'Display', blurb: 'Text size, the field, motion.' },
+  { id: 'sound', title: 'Sound', blurb: 'Bat, glove, crowd, haptics.' },
+  { id: 'play', title: 'How you play', blurb: 'Full or casual, and what you handle.' },
+  { id: 'saves', title: 'Saved dynasties', blurb: 'Name a save, load a career, start again.' },
+];
+
 export function Settings() {
   const depth = useDynasty((s) => s.depth);
   const setDepthMode = useDynasty((s) => s.setDepthMode);
   const setDepthSystem = useDynasty((s) => s.setDepthSystem);
   const resetTutorials = useDynasty((s) => s.resetTutorials);
   const openOverlay = useDynasty((s) => s.openOverlay);
+
+  /*
+    One page at a time.
+
+    It shipped as a single column of five cards and was reported as
+    unscrollable with the saves row nowhere to be found — which is one fault,
+    not two. The overlay this sits inside is `overflow: hidden` on purpose,
+    because every other screen in there pins its own header and scrolls its own
+    body. This one did neither, so it rendered at whatever height it liked and
+    everything past the fold was simply unreachable.
+
+    An index and four pages fixes the reachability twice over: each page brings
+    its own scroller, and no page is long enough to need one.
+  */
+  const [page, setPage] = useState<Page>('index');
 
   // Device preferences are not in the store: nothing else in the app reads
   // them, they must not ride a save, and they have to survive with no dynasty
@@ -125,20 +149,150 @@ export function Settings() {
 
   const [taught, setTaught] = useState(false);
 
-  return (
-    <div style={{ padding: '0 14px 30px' }}>
-
-      <Card tag="HOW YOU PLAY" note={depth.mode === 'full' ? 'FULL' : 'CASUAL'}>
-        <div style={{ padding: '10px 10px 2px' }}>
-          <div style={{
-            font: "400 calc(11px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
-          }}>
-            The game always models everything — injuries, development, all
-            ninety-six programs. This decides how much of it you are asked about.
-          </div>
+  if (page === 'index') {
+    return (
+      <Frame title="Settings" kicker="THIS DEVICE AND THIS CAREER">
+        <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+          {PAGES.map((p, i) => (
+            <button
+              key={p.id}
+              className="tap"
+              onClick={() => {
+                // Saves is a screen of its own and already reachable from the
+                // overlay system; the index sends you there rather than keeping
+                // a second copy of it in here.
+                if (p.id === 'saves') openOverlay('saves');
+                else setPage(p.id as Page);
+              }}
+              style={{
+                width: '100%', textAlign: 'left', padding: '13px 12px',
+                display: 'flex', alignItems: 'center', gap: 10,
+                borderTop: i === 0 ? 'none' : '1px solid var(--hairline)',
+              }}
+            >
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{
+                  display: 'block',
+                  font: "600 calc(13px * var(--ts))/1.2 var(--body)", color: 'var(--ink)',
+                }}>{p.title}</span>
+                <span style={{
+                  display: 'block', marginTop: 2,
+                  font: "400 calc(10.5px * var(--ts))/1.35 var(--body)", color: 'var(--dim)',
+                }}>{p.blurb}</span>
+              </span>
+              <span style={{
+                font: "400 calc(15px * var(--ts)) var(--body)", color: 'var(--dim)',
+              }}>&rsaquo;</span>
+            </button>
+          ))}
         </div>
+        <div style={{
+          marginTop: 12, font: "400 calc(10.5px * var(--ts))/1.5 var(--body)",
+          color: 'var(--dim)',
+        }}>
+          Display and sound belong to this device and follow you between
+          dynasties. How you play belongs to this career and rides the save.
+        </div>
+      </Frame>
+    );
+  }
+
+  if (page === 'display') {
+    return (
+      <Frame title="Display" kicker="THIS DEVICE" onBack={() => setPage('index')}>
+        <Card tag="TYPE AND MOTION">
+          <Choice<number>
+            label="Text size"
+            value={prefs.textScale}
+            options={TEXT_SCALES.map((t) => ({ value: t.value, label: t.label.toUpperCase() }))}
+            onPick={(v) => put({ textScale: v })}
+          />
+          <Choice<FieldMode>
+            label="The field"
+            value={prefs.field}
+            options={[
+              { value: '3d', label: '3D' },
+              { value: '2d', label: 'DIAMOND' },
+            ]}
+            onPick={(v) => put({ field: v })}
+          />
+          <Choice<MotionPref>
+            label="Motion"
+            value={prefs.motion}
+            options={[
+              { value: 'system', label: 'SYSTEM' },
+              { value: 'full', label: 'FULL' },
+              { value: 'reduced', label: 'REDUCED' },
+            ]}
+            onPick={(v) => put({ motion: v })}
+          />
+        </Card>
+        <Card tag="TEACHING">
+          <button
+            className="tap"
+            onClick={() => { resetTutorials(); setTaught(true); }}
+            style={{
+              width: '100%', textAlign: 'left', padding: '10px',
+              borderTop: '1px solid var(--hairline)',
+            }}
+          >
+            <div style={{ font: "600 calc(11.5px * var(--ts))/1.2 var(--body)" }}>
+              {taught ? 'The screens will teach again' : 'Show the tutorials again'}
+            </div>
+            <div style={{
+              marginTop: 2, font: "400 calc(10px * var(--ts))/1.35 var(--body)",
+              color: 'var(--dim)',
+            }}>Every screen explains itself once more on your next visit.</div>
+          </button>
+        </Card>
+      </Frame>
+    );
+  }
+
+  if (page === 'sound') {
+    return (
+      <Frame title="Sound" kicker="THIS DEVICE" onBack={() => setPage('index')}>
+        <Card tag="NOT YET BUILT">
+          <Row
+            label="Sound" blurb="Bat, glove, crowd."
+            note="Arrives with broadcast."
+            on={false} disabled
+          />
+          <Row
+            label="Haptics" blurb="A tap on contact, and on the third out."
+            note="Arrives with broadcast."
+            on={false} disabled
+          />
+        </Card>
+        <div style={{
+          marginTop: 12, font: "400 calc(10.5px * var(--ts))/1.5 var(--body)",
+          color: 'var(--dim)',
+        }}>
+          The game is completely silent and always has been. Both are stored and
+          defaulted off, so turning them on when the broadcast stage builds them
+          is a switch rather than a migration.
+        </div>
+      </Frame>
+    );
+  }
+
+  return (
+    <Frame
+      title="How you play"
+      kicker="THIS CAREER"
+      onBack={() => setPage('index')}
+    >
+      <div style={{
+        marginBottom: 4,
+        font: "400 calc(11px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
+      }}>
+        The game always models everything — injuries, development, all
+        ninety-six programs. This decides how much of it you are asked about.
+      </div>
+
+      <Card tag="YOUR CAREER" note={depth.mode === 'full' ? 'FULL' : 'CASUAL'}>
         <Choice<DepthMode>
-          label="Your career"
+          label="Depth"
           value={depth.mode}
           options={[
             { value: 'full', label: 'FULL' },
@@ -149,104 +303,69 @@ export function Settings() {
       </Card>
 
       <Card tag="WHAT YOU HANDLE">
-        {SYSTEMS.map((s) => {
-          const on = handles(depth, s.key);
-          const overridden = !s.comingIn
-            && presetSays(depth.mode, s.key) !== on;
+        {SYSTEMS.map((sys) => {
+          const on = handles(depth, sys.key);
+          const overridden = !sys.comingIn && presetSays(depth.mode, sys.key) !== on;
           return (
             <Row
-              key={s.key}
-              label={s.label}
-              blurb={s.blurb}
-              on={s.comingIn ? false : on}
-              disabled={!!s.comingIn}
-              note={s.comingIn
-                ? `Arrives with ${s.comingIn}.`
+              key={sys.key}
+              label={sys.label}
+              blurb={sys.blurb}
+              on={sys.comingIn ? false : on}
+              disabled={!!sys.comingIn}
+              note={sys.comingIn
+                ? `Arrives with ${sys.comingIn}.`
                 : on
-                  ? (overridden ? `${s.blurb} · your choice, not the preset` : s.blurb)
-                  : (overridden ? `${s.whenOff} · your choice, not the preset` : s.whenOff)}
-              onToggle={() => setDepthSystem(s.key as SystemKey, !on)}
+                  ? (overridden ? `${sys.blurb} · your choice, not the preset` : sys.blurb)
+                  : (overridden ? `${sys.whenOff} · your choice, not the preset` : sys.whenOff)}
+              onToggle={() => setDepthSystem(sys.key as SystemKey, !on)}
             />
           );
         })}
       </Card>
+    </Frame>
+  );
+}
 
-      <Card tag="DISPLAY">
-        <Choice<number>
-          label="Text size"
-          value={prefs.textScale}
-          options={TEXT_SCALES.map((t) => ({ value: t.value, label: t.label.toUpperCase() }))}
-          onPick={(v) => put({ textScale: v })}
-        />
-        <Choice<FieldMode>
-          label="The field"
-          value={prefs.field}
-          options={[
-            { value: '3d', label: '3D' },
-            { value: '2d', label: 'DIAMOND' },
-          ]}
-          onPick={(v) => put({ field: v })}
-        />
-        <Choice<MotionPref>
-          label="Motion"
-          value={prefs.motion}
-          options={[
-            { value: 'system', label: 'SYSTEM' },
-            { value: 'full', label: 'FULL' },
-            { value: 'reduced', label: 'REDUCED' },
-          ]}
-          onPick={(v) => put({ motion: v })}
-        />
-      </Card>
-
-      <Card tag="SOUND">
-        <Row
-          label="Sound" blurb="Bat, glove, crowd."
-          note="Arrives with broadcast."
-          on={false} disabled
-        />
-        <Row
-          label="Haptics" blurb="A tap on contact, and on the third out."
-          note="Arrives with broadcast."
-          on={false} disabled
-        />
-      </Card>
-
-      <Card tag="THIS DEVICE">
-        <button
-          className="tap"
-          onClick={() => { resetTutorials(); setTaught(true); }}
-          style={{
-            width: '100%', textAlign: 'left', padding: '10px',
-            borderTop: '1px solid var(--hairline)',
-          }}
-        >
-          <div style={{ font: "600 calc(11.5px * var(--ts))/1.2 var(--body)" }}>
-            {taught ? 'The screens will teach again' : 'Show the tutorials again'}
-          </div>
+/**
+ * A settings page: a pinned title, and a body that scrolls.
+ *
+ * The scroller is the entire point — see the note in `Settings`. Anything that
+ * lives in the overlay has to bring its own, because the overlay deliberately
+ * does not scroll on its own behalf.
+ */
+function Frame(
+  { title, kicker, onBack, children }:
+  { title: string; kicker: string; onBack?: () => void; children: ReactNode },
+) {
+  return (
+    <div style={{
+      position: 'absolute', inset: 0,
+      display: 'flex', flexDirection: 'column', minHeight: 0,
+    }}>
+      <div style={{
+        flex: 'none', padding: '12px 14px 8px', background: 'var(--field)',
+      }}>
+        <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
+          {onBack ? (
+            <button
+              onClick={onBack}
+              className="tap"
+              style={{
+                font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em',
+                color: 'var(--clay)', padding: '0 10px 4px 0',
+              }}
+            >&lsaquo; SETTINGS</button>
+          ) : <div className="label">{kicker}</div>}
           <div style={{
-            marginTop: 2, font: "400 calc(10px * var(--ts))/1.35 var(--body)",
-            color: 'var(--dim)',
-          }}>Every screen explains itself once more on your next visit.</div>
-        </button>
-        <button
-          className="tap"
-          onClick={() => openOverlay('saves')}
-          style={{
-            width: '100%', textAlign: 'left', padding: '10px',
-            borderTop: '1px solid var(--hairline)',
-          }}
-        >
-          <div style={{ font: "600 calc(11.5px * var(--ts))/1.2 var(--body)" }}>
-            Saved dynasties
-          </div>
-          <div style={{
-            marginTop: 2, font: "400 calc(10px * var(--ts))/1.35 var(--body)",
-            color: 'var(--dim)',
-          }}>Name a save, load an old career, or start again.</div>
-        </button>
-      </Card>
-
+            font: "800 calc(21px * var(--ts))/0.95 var(--display)",
+            marginTop: 4, textTransform: 'uppercase',
+          }}>{title}</div>
+        </div>
+      </div>
+      <div style={{
+        flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 14px 24px',
+      }}>{children}</div>
     </div>
   );
 }

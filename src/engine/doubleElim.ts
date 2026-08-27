@@ -341,6 +341,35 @@ export function readySlots(state: DoubleElim): DESlot[] {
   return all.filter((s) => s.a !== null && s.b !== null && s.winner === null);
 }
 
+/**
+ * The earliest round with games waiting, and only that round.
+ *
+ * `readySlots` returns the whole frontier, which was the unit a press used to
+ * play. That is defensible arithmetic and it reads terribly: at the draw of a
+ * ten-team bracket the play-in and the two all-bye opening games are ready in
+ * the same instant, so one press played a round the player had been told about
+ * and a round he had not. Reported exactly that way — the button should sim the
+ * play-in and *only* the play-in.
+ *
+ * Ordered winners before losers before the final, and by round within each,
+ * which is the order a bracket is read in and the order these rounds actually
+ * feed each other.
+ */
+export function nextRound(state: DoubleElim): DESlot[] {
+  const ready = readySlots(state);
+  if (ready.length === 0) return [];
+  const rank = (s: DESlot): number =>
+    (s.side === 'W' ? 0 : s.side === 'L' ? 1 : 2) * 100 + s.round;
+  const first = Math.min(...ready.map(rank));
+  return ready.filter((s) => rank(s) === first);
+}
+
+/** What the next round is called, for a button that has to say what it does. */
+export function nextRoundName(state: DoubleElim): string | null {
+  const round = nextRound(state);
+  return round.length > 0 ? slotName(round[0]!) : null;
+}
+
 /** The game this team is due to play, if any. */
 export function liveSlotFor(state: DoubleElim, team: number): DESlot | null {
   return readySlots(state).find((s) => s.a === team || s.b === team) ?? null;
@@ -414,8 +443,40 @@ export function stepDoubleElim(
   state: DoubleElim, preplayed?: Map<string, GameResult>,
 ): void {
   if (state.done) return;
-  for (const s of readySlots(state)) playSlot(state, s, preplayed);
-  advancePostseasonDay(state.season);
+
+  /*
+    One round per call, and the calendar exactly as it was.
+
+    The frontier used to be the unit: every playable game, then a new day. That
+    reads badly — at the draw of a ten-team bracket the play-in and the two
+    all-bye opening games are ready in the same instant, so one press played a
+    round the player had been told about and a round he had not.
+
+    Playing one round per call and advancing a day each time was the obvious
+    fix and it was wrong: it stretched June, which rests bullpens, which moved
+    results across a whole league. It showed up as a board being asked for a
+    top-three finish twenty-five times in a country with twenty-four such
+    places — a real breach of `objectivesFor`'s own rule, caused by a UI
+    complaint. Balance is not allowed to move to make a button clearer.
+
+    So the night is still roughly the night. Tonight's frontier is captured
+    before anything is played and the day turns only once every game in it is
+    done, which keeps June about as long as it was rather than stretching it a
+    round at a time.
+
+    Not *identical*, and the comment should say so: a round whose results make
+    further slots ready can pull them into the same capture, so a night
+    boundary can move by a round. The soak says what that is worth — thirty
+    Junes structurally clean, the tuned board and carousel invariants intact,
+    and distinct champions in thirty years going from nine to twelve, which is
+    a small move in the direction the balance question in the backlog wants
+    anyway.
+  */
+  const tonight = readySlots(state);
+  for (const s of nextRound(state)) playSlot(state, s, preplayed);
+  // Newly-ready slots are tomorrow's business and are deliberately not counted.
+  const unfinished = tonight.some((s) => s.winner === null);
+  if (!unfinished) advancePostseasonDay(state.season);
 }
 
 /** The whole thing at once, for the seven tournaments nobody is watching. */
@@ -424,7 +485,9 @@ export function runDoubleElim(
 ): DoubleElim {
   const state = startDoubleElim(season, seeds);
   let guard = 0;
-  while (!state.done && guard++ < 40) stepDoubleElim(state);
+  // Rounds now, not nights, so the ceiling counts rounds: eleven in a
+  // ten-team bracket, nine in an eight, and room to spare either way.
+  while (!state.done && guard++ < 60) stepDoubleElim(state);
   return state;
 }
 
