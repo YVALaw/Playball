@@ -1,14 +1,14 @@
 # The v1.0 Plan
 
-**Written:** August 26, 2026 · **Revised:** August 27, 2026 (stage 1 closed;
-stages 3 and 4 added from playing the rebuilt postseason, and everything after
-them renumbered)
+**Written:** August 26, 2026 · **Revised:** August 27, 2026 (stages 1–4 closed;
+3 and 4 were added the same day, out of playing what stage 1 shipped, and
+everything after them renumbered)
 **Companion docs:** `08-handoff.md` for where the last session stopped and what
 the next one picks up, `01-roadmap.md` for the order at a glance, `06-backlog.md`
 §H for the feature set and §I for the August 27 pass, `05-systems-reference.md`
 for what the game does today.
 
-**Where the work stands: stage 1 is done. Stage 2 is next.**
+**Where the work stands: stages 1 through 4 are done. Stage 5, the dugout, is next.**
 
 ---
 
@@ -91,7 +91,7 @@ a *larger* field.
 **Met.** The detail is in `05-systems-reference.md` §21; what to pick up next is
 in `08-handoff.md`.
 
-## Stage 2 · How you want to play
+## Stage 2 · How you want to play — **DONE, August 2026**
 
 **Size:** medium · **Foundational — everything after it reads this**
 
@@ -105,12 +105,16 @@ in `08-handoff.md`.
   phone, not the dynasty.
 
 **Exit:** every system built after this has a documented answer for what it
-does in casual mode.
+does in casual mode. **Met** — the catalogue in `state/depth.ts` carries one
+per system, including the unbuilt ones.
 
-**Decisions:** whether there are two modes or three; what the casual preset
-actually turns off; whether the mode is visible anywhere after creation.
+**Decided:** two modes. Casual auto-answers rather than hiding, and does it
+silently. It handles lineups and the bullpen today. The question is coach
+creation's second screen. The full toggle list ships with unbuilt rows greyed.
+Settings lives in the portrait menu with saves folded in. Text size is real.
+Switching is free, any time. Detail in `05-systems-reference.md` §22.
 
-## Stage 3 · June, made legible
+## Stage 3 · June, made legible — **DONE, August 2026**
 
 **Size:** medium–large · **New stage, August 27 2026** · **Value:** high
 
@@ -150,14 +154,14 @@ does not tell you what happened.
   achieved, in simple wording — they do not explain.*
 
 **Exit:** a player can read his own June at a glance, and knows the moment it
-ends.
+ends. **Met.** Detail in `05-systems-reference.md` §23.
 
 **Decisions:** what replaces the opening round exactly — a bye structure, a
 larger winners bracket, or a smaller field; whether the modal is the same
 component as the win card or a different one; how far back postseason stats go
 on an old save.
 
-## Stage 4 · Give the screen back
+## Stage 4 · Give the screen back — **DONE, August 2026**
 
 **Size:** small · **Value:** high per hour
 
@@ -179,7 +183,9 @@ between a screen that breathes and one that does not.
   better, and this is the preferred answer, moved up next to the date in the
   header where the eye already goes.
 
-**Exit:** nothing on screen is bigger than its importance.
+**Exit:** nothing on screen is bigger than its importance. **Met.** Detail in
+`05-systems-reference.md` §24 — including why the action button needed two
+attempts.
 
 ## Stage 5 · The dugout
 

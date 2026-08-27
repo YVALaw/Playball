@@ -6,8 +6,7 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** August 27, 2026 · **Branch:** `blocks-batch`
-**Nothing is pushed.** `origin` holds the pre-overhaul backup deliberately.
+**Last session:** August 27, 2026 · **Branch:** `blocks-batch` · **Pushed.**
 
 ---
 
@@ -15,8 +14,8 @@ the top of it is always current. Everything older lives in git.
 
 | File | What it is |
 |---|---|
-| `07-v1-plan.md` | **The route.** Seventeen staged steps to v1.0. This is the north star. |
-| `06-backlog.md` | The decisions and the argument behind each. §H is the agreed feature set, §I is the August 27 pass from playing the rebuilt postseason; *Decisions locked* holds the depth-mode rules that bind every feature. |
+| `07-v1-plan.md` | **The route.** Seventeen staged steps to v1.0. Stages 1–4 are done; stage 5 is next. |
+| `06-backlog.md` | The decisions and the argument behind each. §H is the agreed feature set, §I the pass that produced stages 3 and 4; *Decisions locked* holds the rules that bind every feature. |
 | `05-systems-reference.md` | What the game does **today**, including the hidden-mechanics index. A feature that shipped moves in here on the same commit. |
 | `01-roadmap.md` | Two-minute view. Its ordered list is now a pointer at `07`. |
 
@@ -28,204 +27,129 @@ the top of it is always current. Everything older lives in git.
   the landing coordinates all take zero random draws. Tests pin it.
 - **Determinism is the product.** The seed and the generator position ride the
   save. Adding or removing an `rng()` call moves every number downstream.
-- **The depth mode never reaches into the engine** (see below).
+- **The depth mode never reaches into the engine.** See below — this one is now
+  load-bearing for everything still to be built.
+- **A card is a visual telling of where you are and what you achieved, in
+  simple wording. A card does not explain.**
 
 ---
 
-## What was just done — stage 1, complete
+## What was just done — stages 1 to 4
 
-Stage 1 was *"stop the game lying, and stop it losing things."* All four items
-shipped, all verified in a browser, 768 tests green.
+**799 tests, thirty Junes with nothing broken, all four exit conditions met.**
+Full detail is in the systems reference: §21 (stage 1), §22 (stage 2), §23
+(stage 3), §24 (stage 4). The short version and the parts worth carrying:
 
-### 1. A thirty-season soak — `npm run soak`
+### Stage 1 — the game stopped lying and stopped losing things
 
-New probe, `tests/season-soak.ts`, following the existing probe convention
-(`block-probe`, `carousel-probe`). Runs N seasons — default 30 — and audits
-every June: conference fields and placings, one-loss survival, sixteen regional
-series with distinct champions, a twenty-team national field with no
-duplicates, protection never drawn into the opening round, the sixteen split
-cleanly into two brackets, exactly one champion and one runner-up, twelve
-programs per conference, nine men in every lineup, and one annals row per
-program per year.
+A thirty-season soak (`npm run soak`), the A13 elimination card, tidied
+tournament cards, and **resume-by-replay** for an interrupted game in both the
+regular season and the postseason. A `LiveGame` is a coroutine and cannot be
+serialised, so it is journalled and replayed: the generator's position at the
+first pitch plus every call since. The journal lives in `localStorage` because
+the event it survives is an OS kill, where a pending async write is a lost
+write.
 
-**Result: thirty Junes, nothing broken.** Two findings worth carrying forward:
+### Stage 2 — two ways to play
 
-- **Save payload grows ~12 KB a year** (15 KB → 371 KB at year 30). Fine, but
-  it is the number to watch when H2 (alumni in the pros) and H9 (signature
-  moments) add per-player history.
-- **Title concentration is high.** Ten different champions in thirty years,
-  and one program (Bayou State) won eight of them. Real college baseball
-  produces roughly sixteen in thirty. The cause is almost certainly the new
-  format: double elimination, top-four protection and best-of-threes all
-  reduce upsets relative to the knockout it replaced. **This is a balance
-  item, not a bug** — logged in the "open questions" section below. The soak
-  fails if distinct champions drop below `years / 3`, so it is a live canary.
+Coach creation asks, second, how much of the game you want to be asked about.
+**The rule the whole feature rests on: the engine always models everything; the
+mode changes what the player is asked, never what the simulation does.** Casual
+does not turn the bullpen off — it hands it to a pitching coach, which is what
+the other ninety-five programs have always had. A casual save and a full save
+are the same world.
 
-### 2. A13 — the elimination card that buried living teams
+Two rules follow and both bind future work: anything touching the whole league
+is not a preference, and only *disagreements* with a preset are stored so a
+career picks up the preset's answer for systems added later.
 
-The reported bug: losing a conference final told the coach his season was over
-when second place sends him to a regional. **The fix turned out to be bigger
-than reported** — a *protected* top-four team losing its regional was told the
-same lie, and is also still alive.
+Casual handles lineups and the pen today, silently. The engine side is one
+boolean — the half-inning already knew how to run either dugout automatically.
 
-- `Knockout` gained `advanced: boolean` and `placing?: number`, computed in
-  `noteKnockout` **at the moment of elimination**, because that is the only
-  moment the structure still knows where the team fell. A double elimination
-  writes the finish in the slot you take your second loss in: championship is
-  2nd, losers final 3rd, losers semifinal 4th.
-- Regional eliminations read `protectedTopFour(season)` — pure arithmetic over
-  the finished season, so available immediately.
-- `howFar` in `Postseason.tsx` branches on it: "Runners up / Third in the
-  league / Fourth in the league" with a *win* tone and an ON TO THE REGIONAL
-  button, versus a real ending for fifth and below. Same for "Protected".
-- **The stake now appears before the final, not after it.** `YourNext` says
-  "win one and it is yours" or "you must win this AND the next one". The
-  original confusion was a player having no way to know he needed two.
-- Pinned by two new tests in `tests/bracket.test.ts` that assert the card's
-  verdict agrees with the bracket's own `placings`, whichever way June went.
+Settings live behind the portrait with saves folded in, split between what
+rides the save (how you play) and what rides the device (text size, field,
+motion, sound). **Text size is real**: all 582 font sizes now go through
+`calc(<n>px * var(--ts))`.
 
-### 3. Tournament cards, tidied
+### Stage 3 — June, made legible
 
-Per direction — *simple but appealing, explanatory text removed*. Win cards are
-a kicker, a headline and one line. The qualification card lost its two-sentence
-format lecture. The full big-moment treatment (leverage styling, sound,
-full-screen celebration) is **stage 13**, deliberately not done twice.
+**The opening round is gone.** It cut twenty teams to sixteen with
+best-of-threes, and its real sin was being a single-elimination gate in front of
+a double elimination tournament — win your conference, win your regional, lose
+one series, done. Those eight teams now play their way in *inside* the winners
+bracket, where losing drops you to the losers side. Two ten-team halves,
+eighteen games each and nineteen with the reset, which is arithmetic rather than
+a chosen number.
 
-### 4. Resume an interrupted game — the big one
+`doubleElim.ts` now expresses both shapes as **routing tables**; the eight-team
+table is a transcription and the existing tests are the proof of it.
 
-**Both regular season and postseason.** A `LiveGame` is a coroutine carrying
-closures and cannot be serialised, so it is **replayed, not restored**.
+The screen: a champion card at the top at three intensities, tappable bracket
+games, a title-game announcement that says what winning takes, an elimination
+letter beside the card, the bottom nav back in June, and **postseason statistics
+for all ninety-six programs** with career totals that survive the year roll.
 
-- **`src/state/liveJournal.ts`** (new). An anchor and a list: the season
-  generator's position at the first pitch, the two teams, the starters, and
-  every call since as a small enum.
-- **It lives in `localStorage`, and that is the design.** An IndexedDB write is
-  async, and the moment this exists to survive is an OS kill — where a pending
-  async write is a lost write. `setItem` returns when the bytes are down.
-- **`startManagedGame` and `manageBracketGame` are now `async`** and `await`
-  the save before creating the game, so the save on disk holds the pre-game
-  generator position. This is load-bearing: the replay is only exact if the
-  restored season stands where it stood at the first pitch.
-- Every call is journalled **before** the engine is stepped, so a crash inside
-  the engine replays to the same crash rather than skipping a call.
-- On load, `pendingFromJournal` validates slot + year + rng state and offers
-  the game. **Accept** replays and hands back the clipboard; **decline**
-  replays and calls `finish()` — the day still happens, it just happens without
-  you (your call, and the right one).
-- **A stale restriction was deleted, not worked around.** `endManagedGame`
-  refused to save mid-bracket because "the live sub-bracket is not
-  serialisable". That stopped being true when `portableMyBracket` landed in the
-  overhaul; `sideShow` joined it in the national redesign. The comment was
-  guarding a hazard that no longer existed, and it was the only thing blocking
-  postseason resume.
-- `tests/resume.test.ts` pins the property everything rests on: a replayed game
-  is log-line-for-log-line the same game. The journal tests supply a real
-  `localStorage` shim rather than weakening the module with a memory fallback —
-  a journal held in memory dies with the tab, which is the event it exists to
-  survive.
+### Stage 4 — giving the screen back
 
-**Verified in the browser, not just in tests:** played a game, made calls,
-hard-reloaded the page, took the offer, and confirmed the log lines, inning and
-count were identical. Then the decline path. Then the same for a postseason
-bracket game, which initially had no prompt because June renders its own frame
-— the offer now appears on the bracket screen too.
+Roster filters behind an icon, the pipeline paragraph reduced to a mark, a
+bigger prospect sheet, the record out of the small print, and the offseason
+action button pinned. That last one took two attempts and the second is the
+honest fix — see §24.1 before touching `Sticky.tsx`.
 
 ---
 
-## What is next — stage 2, "How you want to play"
+## What is next — stage 5, the dugout
 
-`07-v1-plan.md` has the full brief. In short:
+`07-v1-plan.md` has the brief. It is the largest single stage left and the
+plan calls it the highest-value thing remaining:
 
-1. **The depth choice at coach creation** — full roleplay career or casual —
-   framed as how you like to play, not a difficulty menu.
-2. **Per-system toggles** behind the preset, changeable mid-career.
-3. **The settings sheet** (H18): sound, haptics, field 2D/3D, text size,
-   reduced motion, tutorial reset, and saves migrating in from the portrait
-   menu. **Stored per device, not in the save** — preferences follow the phone,
-   not the dynasty.
+- The presentation rebuild — a much larger field, fielders labelled by position,
+  a base-state banner, batter and pitcher as cards, calls as wide buttons with
+  their reason underneath, plus **LINE SCORE** and **REPLAY**.
+- Mound visits and pitcher confidence.
+- Let the bench coach take it — *watch*, and *to the next moment*.
+- Opponent scouting reports.
+- Pitch-by-pitch calling, full-depth only.
 
-**Three rules bind everything built from here.** They are in `06-backlog.md`
-under *Decisions locked* and the first is load-bearing:
+**Four of those five already have rows waiting in `state/depth.ts`** —
+`moundVisits`, `pitchCalling`, `scouting` — greyed out on the settings sheet
+with "arrives with the dugout". Building them means filling in the row, not
+inventing the plumbing. Each needs a documented answer for what casual does,
+which is stage 2's exit condition and now the standing rule.
 
-1. **The engine always models everything.** The mode changes what the player is
-   *asked about*, never what the simulation does. Casual does not turn injuries
-   off; it answers the injury question for you. A mode that reached into the
-   engine would put the ninety-five rival programs in a different world from
-   yours and make every ranking, record and award a lie.
-2. **Anything touching the league is on for everybody or off for everybody.**
-3. **The preset is a preset, not a cage.**
-
-**Exit condition:** every system built after stage 2 has a documented answer for
-what it does in casual mode.
-
-**Open decisions at stage 2's door:** two modes or three; what casual actually
-turns off; whether the mode is visible anywhere after creation.
-
-### And then stages 3 and 4, which are new
-
-Both were added on **August 27, 2026**, out of playing the rebuilt postseason.
-Neither is large, both are high value per hour, and the argument for every item
-is in `06-backlog.md` §I.
-
-**Stage 3, "June, made legible."** The verdict from playing the new postseason
-was that the *format* works and the *screen* does not. Six items, one of them
-structural: **cut the opening round** and let the winners bracket decide where
-teams go — it exists only to trim twenty to sixteen and is the one stage of
-June a player meets with no idea why he is in it. That one is engine work
-touching `openingPairs`, the protection swap, `stageOpening`, the save guards
-and the soak, so it gets designed before anything is deleted — and whatever
-replaces it must be re-run against the soak, because protection and the
-best-of-threes are already the prime suspects in the champion-concentration
-finding below. The other five: a modal for every title game, a real card for a
-champion instead of the stripe at the foot of the page (the national title is
-currently missed entirely), tappable bracket games, postseason statistics
-(there is no way to see them at all), and telling a team when it genuinely is
-eliminated — the other half of A13.
-
-**Stage 4, "Give the screen back."** Five small reports, one complaint: the
-roster filters are far too big, "he is in your pipeline" is a sentence where a
-mark would do, the prospect sheet opens too small (bigger, but deliberately not
-full screen), the offseason action button rides up on tabs with less content,
-and the season record beside the inbox badge is too easy to lose — preferably
-moved beside the date in the header.
-
-**One rule came out of this pass and is now standing policy**, because it
-generated more than half of stage 3: *a card is a visual telling of where you
-are and what you achieved, in simple wording. A card does not explain.*
-Whatever needs explaining belongs in a tutorial, a tooltip, or nowhere.
+**Before starting it, take the throttled browser profile** the plan has been
+carrying as an errand. Stage 5 rebuilds the dugout around a *larger* 3D field,
+and a frame-rate disaster there changes the design rather than the code. There
+is still no Android device, so stage 16 stays deferred; the emulator pass can be
+pulled forward at any time.
 
 ---
 
 ## Open questions carried forward
 
-- **Title concentration** (found by the soak, above). Ten champions in thirty
-  years against a real-world sixteen. Worth a deliberate decision: accept it as
-  the price of a format that rewards the best team, or add variance. Do not
-  touch it casually — it interacts with the carousel's turnover targets and the
-  board's clear rate, both of which are tuned and pinned.
-- **Is there an Android device yet?** Stage 16 (the phone) is deferred for want
-  of one. Everything in it except the frame-rate measurement can be done on an
-  emulator, so the emulator pass can be pulled forward at any time.
-- **Two errands that need no phone and should happen whenever convenient:** the
-  Play Console record and merchant account (merchant verification takes days
-  and it is the only unpredictable wait in the plan), and a throttled browser
-  performance profile as a cheap hedge on the frame-rate question — stage 5
-  rebuilds the dugout around a *larger* 3D field.
+- **Title concentration.** Nine or ten distinct champions in thirty years,
+  against a real-world sixteen. Measured across five worlds (9, 10, 9, 10, 9),
+  so it is the format rather than noise, and cutting the opening round did not
+  move it. It is a deliberate decision waiting to be made, not a bug —
+  `06-backlog.md` §F. **The soak's canary was mis-set at exactly the observed
+  value and fired on noise; it is `years / 5` now**, which catches a collapse
+  instead of the weather. `npm run soak -- 30 <seed>` runs another world.
+- **Save growth: 12.3 KB a year**, unchanged by the postseason stat split.
+- **The Play Console record and merchant account.** Still the only unpredictable
+  wait in the plan and it needs no phone.
 
 ## Test aids currently in the build — remove before v1.0
 
-Both are flagged in the code that carries them and both are listed in
-`06-backlog.md` §G5:
+Both flagged in the code and listed in `06-backlog.md` §G5:
 
 - **SIM SEASON** on the dashboard (`Today.tsx`).
 - **The loaded Pascagoula Tech roster** — five men at 99 plus a guaranteed
-  rookie offer (`store.start` and `NewGame.tsx`). Gated out of vitest so the
-  suite tests the game rather than the hack.
+  rookie offer (`store.start` and `NewGame.tsx`). Gated out of vitest.
 
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (768 tests)
+npm run check      # typecheck + the whole suite (799 tests)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing
@@ -240,13 +164,15 @@ so a phone on the same wifi can reach them. Saves live in IndexedDB, which is
 scoped to an origin — and the origin includes the port — so a dynasty played at
 `:5173` is simply not present at any other port. The app there works perfectly
 and shows an empty new-dynasty screen, which reads exactly like a broken build.
-There is no save export/import to carry one across. `vite.config.ts` carries
-the full argument.
+`vite.config.ts` carries the full argument.
 
-Verify UI work by driving the DOM — under Vite dev, a
-dynamic `import()` of the store often returns a *different* module instance
-than the app's, so store handles read stale.
+Verify UI work by driving the DOM — under Vite dev, a dynamic `import()` of the
+store often returns a *different* module instance than the app's, so store
+handles read stale. Measuring beats eyeballing: stage 4's button bug was found
+and confirmed fixed by reading `getBoundingClientRect()` against the frame, not
+by looking at it.
 
 **Commit style:** narrative first line, prose body explaining the *why*, ending
-with the `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>` trailer. Do
-not push without being asked.
+with the `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>` trailer.
+PowerShell here-strings break on apostrophes — use `git commit -F <file>` or a
+bash heredoc.

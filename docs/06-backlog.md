@@ -30,11 +30,20 @@ the sketch this entry used to carry:
 | Conference tournaments | top **8** of each twelve, **double elimination**, single games; the top **4 finishers** advance, read off the bracket |
 | Regionals | 32 teams, **16 best-of-three championship series** crossing neighbouring conferences (A1vB4, A2vB3, B1vA4, B2vA3) → 16 regional banners |
 | National field | 16 regional champions + **4 protected/at-large** = **20**, protection locked to the regular season's final top four |
-| Opening round | seeds 13–20, best of three; the top 12 (protected always among them) bye through |
-| National showdown | the 16 in two **8-team double eliminations**, top two seeds on opposite sides |
+| National showdown | all **20**, in two **10-team double eliminations**, top two seeds on opposite sides |
+| The play-in | the bottom four of each half play into the winners bracket; **losing drops you to the losers side, not out** |
 | Championship | best-of-three between the two bracket champions |
 
-Protection buys the field and the bye, never a banner and never a seed lock:
+**Revised again, August 27:** the opening round is gone. It was a best-of-three
+that cut twenty to sixteen, and the problem was never the extra games — it was a
+single-elimination gate standing in front of a double elimination tournament, so
+a team could win its conference, win its regional, lose one series and be
+finished. The same eight teams now play their way in *inside* the winners
+bracket, where a loss costs a drop rather than a season. §I1 and
+`05-systems-reference.md` §23.1.
+
+Protection buys the field and the bye past the play-in, never a banner and never
+a seed lock:
 a protected team that flames out of its conference and its regional still
 travels, humbler. The bid question this entry flagged was taken deliberately —
 `NATIONAL_BIDS` is 20, a bid stays a **bonus** at every mandate (a required
@@ -48,9 +57,10 @@ engine half, pinned by the double-elimination and national-field suites in
 `tests/bracket.test.ts` and the whole-postseason suite in
 `tests/postseason.test.ts`.
 
-### Two ways to play, and three rules that keep it one game
+### Two ways to play, and three rules that keep it one game — **SHIPPED**
 
-**`DECIDED`, August 2026.** Coach creation asks whether this is a full roleplay
+**SHIPPED, August 2026** as stage 2; `05-systems-reference.md` §22 is the
+behaviour. Coach creation asks whether this is a full roleplay
 career or a casual one, and that answer presets everything the feature set adds
 — press conferences, academic eligibility, captains, pitch calling, mound
 visits, scouting reports. A player chooses how deep a game he wants.
@@ -75,9 +85,11 @@ league.
 it, so "casual, but I want to call pitches" is available, and the mode can
 change mid-career without starting over.
 
-Staged as stage 2 of `07-v1-plan.md`, deliberately early: every feature after
-it needs a documented answer for what it does in casual mode, and retrofitting
-that answer is far more expensive than writing it as you go.
+Built as stage 2, deliberately early: every feature after it needs a documented
+answer for what it does in casual mode, and retrofitting that answer is far more
+expensive than writing it as you go. The catalogue in `state/depth.ts` carries
+one per system, unbuilt ones included, so the answer is written before the
+system is.
 
 ### Records are scaled, not literal — **revisited, and the method changed**
 
@@ -1363,15 +1375,16 @@ report: **exhibition games**, **classic-finish scenarios** and **share cards**.
 
 ---
 
-## I. From playing the rebuilt postseason — August 27, 2026
+## I. From playing the rebuilt postseason — August 27, 2026 — **ALL SHIPPED**
 
 The expanded postseason shipped, and then it got played. What came back is
 worth separating carefully: **the format is not the complaint.** Double
 elimination, the regionals and the showdown brackets all did what they were
 designed to do. The complaint is that the screen does not tell you what the
 format is doing, and that several recent additions have quietly eaten the
-screen. All of it is `DECIDED`, staged as **stages 3 and 4** of
-`07-v1-plan.md`.
+screen. All of it is **SHIPPED**, as stages 3 and 4 of `07-v1-plan.md`, the
+same day it was reported. What each one turned into is in
+`05-systems-reference.md` §23 and §24.
 
 One rule generated more than half of this list and is now standing policy:
 
@@ -1379,7 +1392,7 @@ One rule generated more than half of this list and is now standing policy:
 > simple wording. A card does not explain.** Whatever needs explaining belongs
 > in a tutorial, a tooltip or nowhere.
 
-### I1 · The opening round comes out
+### I1 · The opening round comes out — **SHIPPED**
 
 Reported: it *"is confusing as heck and I think it is not really needed."*
 
@@ -1390,12 +1403,16 @@ reason is invisible from the screen. A player arrives in a round he did not
 know existed, against an opponent he cannot place, for a prize that is only "be
 in the next round". It is the one stage of June with no story.
 
-**The direction: fold those teams into the winners bracket and let the bracket
-decide where everyone goes.** That is a real design question rather than a
-deletion, and the shape has to be chosen before anything is cut — a bye
-structure for the protected four, a larger winners bracket, or a smaller field
-are all live options with different consequences for how many games a champion
-plays.
+**What it became: a play-in inside the winners bracket.** The bottom four of
+each half play one game; the winners join the main bracket and *the losers drop
+to the losers side*, still alive. Six per half are byed. That was chosen over a
+sixteen-team field and over byes-only because it is the shape that fixes the
+actual sin — the old round was single elimination standing in front of a double
+elimination tournament — rather than merely removing a round.
+
+Two halves of ten, eighteen games each and nineteen with the reset, which is
+arithmetic rather than a number anybody picked: every game is one loss, nine
+teams go out at two apiece, the champion leaves with none or one.
 
 **What it touches**, and this is why it is designed and not improvised:
 `openingPairs`, the protection swap, `stageOpening` and `splitShowdown` in
@@ -1407,14 +1424,14 @@ choosing: **protection and the best-of-threes are already suspected of damping
 upsets** (§F, the champion-concentration finding), so whatever replaces the
 opening round should be checked against the soak rather than assumed neutral.
 
-### I2 · A title game deserves a modal
+### I2 · A title game deserves a modal — **SHIPPED**
 
 Every competition's championship — conference, regional, national — should open
 a modal with the information in it, rather than living only as a slot in the
 bracket that the player has to know to look at. The biggest game of a stage
 should come to you.
 
-### I3 · A champion is not a stripe
+### I3 · A champion is not a stripe — **SHIPPED**
 
 Today the winner appears as a thin stripe at the foot of the page, and the
 national champion sits so far down that it was missed completely: *"I didn't
@@ -1426,21 +1443,21 @@ Related and deliberately staged later: the full big-moment treatment (H16,
 stage 13) is the *presentation* layer — leverage styling, sound, a full-screen
 celebration. I3 is the *information* fix and should not wait for it.
 
-### I4 · A bracket game you can tap
+### I4 · A bracket game you can tap — **SHIPPED**
 
 Asked for more than once and still not built. A bracket where every game is a
 frozen score is a table with corners on it. Tapping one should open what
 happened: the line score, the pitchers, the swing of it. The box scores already
 exist and are already reopenable in September — this is routing, not new data.
 
-### I5 · Postseason statistics
+### I5 · Postseason statistics — **SHIPPED**
 
 There is no way to see them at all. June is the half of a season people
 remember, and who hit in it is currently unknowable once the bracket is gone.
 Open question worth settling early: how far back this reaches on a save that
 predates it.
 
-### I6 · Say so when a season is actually over
+### I6 · Say so when a season is actually over — **SHIPPED**
 
 The other half of A13. Stage 1 stopped the game announcing funerals for teams
 that were still alive; the reverse case is a team that missed the conference
@@ -1448,13 +1465,13 @@ final and whose record will not reach the national field, left with no
 statement at all and a bracket it can still open. If a team is out, the game
 should say it is out, plainly and once.
 
-### I7 · The out-of-the-showdown card, and every card after it
+### I7 · The out-of-the-showdown card, and every card after it — **SHIPPED**
 
 The card itself is liked. It is simply still over-written. See the rule at the
 top of this section — it applies to this card, to the cards tidied in stage 1,
 and to every card added from here.
 
-### I8 · The screen is being eaten
+### I8 · The screen is being eaten — **SHIPPED**
 
 Five separate reports, one complaint. A phone screen is the scarcest resource
 in the game, and each of these spends it on something worth less than the space

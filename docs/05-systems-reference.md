@@ -202,6 +202,12 @@ Everything the player experiences and cannot directly see. Sorted by system.
 | 104 | **An interrupted game is replayed, not restored.** A `LiveGame` cannot be serialised, so what is kept is the season generator's position at the first pitch plus every call since; taking the offer rebuilds the identical game off them. The save is written *before* the game is created so the anchor is real. | An offer to pick up the game you were in when the phone rang, on the same pitch. | `state/liveJournal.ts`; `pendingFromJournal`, `resumeGame` — `state/store.ts`; §21.1 | SHIPPED |
 | 105 | **The journal is the one thing not kept in IndexedDB.** `localStorage`, because an IndexedDB write is async and the event it exists to survive is the OS killing a backgrounded tab, where a pending write is a lost write. No memory fallback — the tests supply a real `Storage` instead. | Nothing, until a tab dies mid-game and the game is still there. | `readJournal`, `writeJournal` — `state/liveJournal.ts`; §21.1 | SHIPPED |
 | 106 | **Where you fell is recorded when you fall, not afterwards.** A double elimination only knows a team's finish at the moment of its second loss, so `noteKnockout` writes `placing` and `advanced` there — and a regional exit asks `protectedTopFour` instead, which is arithmetic over a finished season. Second, third and fourth in a conference are still alive, and so is a protected team that lost a regional. | "Runners up · ON TO THE REGIONAL" where it used to say the season was over. | `noteKnockout` — `state/store.ts`; `howFar` — `ui/screens/Postseason.tsx`; §21.2 | SHIPPED |
+| 107 | **The depth mode never reaches the engine, and that is the whole design.** Casual does not turn the bullpen off — it hands it to a pitching coach, which is what the other ninety-five programs have always had. Same league, same records, same hall of fame either way. Anything touching the whole world (injuries, eligibility, realignment) is therefore not a preference and cannot appear in the catalogue; a test asserts it never does. | Nothing. That is the point — a casual save and a full save are the same world. | `depth.ts`; `autoPitching` — `engine/liveGame.ts`; §22.1 | SHIPPED |
+| 108 | **Only disagreements with the preset are stored, never the whole set.** A casual career from an older build picks up the casual answer for systems added since instead of silently opting out of them — and changing preset forgets overrides the new preset agrees with, which is a deliberate trade against hidden state that makes CASUAL quietly not casual. | A preference that survives until a preset grants it, then stops being an opinion. | `setSystem`, `setMode` — `state/depth.ts`; §22.1 | SHIPPED |
+| 109 | **Every font size in the app is `calc(<n>px * var(--ts))`** — all 582 of them — so the text-size setting moves one number. Applied before the first paint, so the small version never flashes past. Verified in a browser before the sweep was written, because the first attempt to test it ran against a page that was dropping the stylesheet and reported failure. | Text that actually changes size, and identical rendering at 1. | `--ts` — `ui/tokens.css`; `applyPrefs` — `state/devicePrefs.ts`; §22.3 | SHIPPED |
+| 110 | **The play-in lives inside the winners bracket, so losing it costs a drop rather than a season.** The opening round it replaced was a single-elimination gate standing in front of a double elimination tournament. Ten teams a half, eighteen games, nineteen with the reset — which is arithmetic, since nine teams must go out at two losses each. | A first-round loss that puts you in the losers bracket, still playing. | `TEN` — `engine/doubleElim.ts`; `splitShowdown`, `seatProtected` — `engine/postseason.ts`; §23.1 | SHIPPED |
+| 111 | **June is counted twice, not moved.** Season totals include tournament play, so the postseason split is a second set of books rather than a subtraction — and it is kept for all ninety-six programs, because box scores exist for one and a rival's June is otherwise gone the moment it ends. | A POSTSEASON board, and a career line that says what a man did when it mattered. | `postBatting`, `CareerTotals.post` — `engine/season.ts`; §23.3 | SHIPPED |
+| 112 | **The action button is a row of the frame, not a sticky element inside the scroller.** Sticky pins only while its containing block reaches the edge being stuck to, so a short offseason step left the button 305px up the screen. Filling the body was tried first and fails on screens that pass several children. | One control that is in the same place on every tab, content or no content. | `FixedHeader`'s `action` — `ui/Sticky.tsx`; §24 | SHIPPED |
 
 ---
 
@@ -4665,6 +4671,186 @@ KB at year thirty), and the format produces **ten distinct champions in thirty
 years against a real-world sixteen**. The second is a balance question, not a
 bug, and it is open — `06-backlog.md` §F carries the argument. The soak fails
 below `years / 3` champions, so the number is watched from here.
+
+---
+
+## 22. Two ways to play — **SHIPPED**
+
+`src/state/depth.ts`, `src/state/devicePrefs.ts`, `src/ui/screens/Settings.tsx`,
+the depth step in `NewGame.tsx`, `autoPitching` in `engine/liveGame.ts`,
+`tests/depth.test.ts`.
+
+Stage 2 of the v1.0 route, August 2026. Coach creation asks, second and before
+the bench and the job, how much of the game you want to be asked about.
+
+### 22.1 The rule the whole thing rests on
+
+**The engine always models everything. The mode changes what the player is
+asked, never what the simulation does.** Casual does not turn the bullpen off;
+it has a pitching coach run it — which is what has always happened for the other
+ninety-five programs. A casual career and a full career in the same world
+therefore produce the same league, the same rankings, the same records and the
+same hall of fame. The moment a mode reached into the engine, your .312 would
+stop meaning what a rival's .312 meant and there would be no honest way to rank
+ninety-six programs against each other.
+
+Two rules follow, and both are load-bearing:
+
+- **Anything that touches the whole league is not a preference.** Injuries,
+  academic eligibility, conference realignment are properties of the world, on
+  for everybody or off for everybody, and are deliberately absent from the
+  catalogue however natural they look on a settings screen. A test asserts they
+  never appear.
+- **A preset is a preset, not a cage.** Every system has an override, and
+  *only disagreements are stored* — never the full set. That is what lets a
+  casual career from an older build pick up the casual answer for systems added
+  since, rather than silently opting out of them. Changing preset drops
+  overrides the new preset agrees with, which is a real trade documented in the
+  test: losing a preference you can see and re-set in two taps beats hidden
+  state that makes CASUAL quietly not casual months later.
+
+### 22.2 What casual actually does, today
+
+Lineups and the pen. The engine side is one boolean: `createLiveGame` already
+knew how to run either dugout automatically — that is how the computer opponent
+gets a bullpen — so `autoPitching` points that machinery at your own defensive
+halves. The engine is never told *why*; it takes a flag, and what the flag means
+about how somebody likes to play is entirely the state layer's business.
+
+**The journal records it too** (§21.1). A player who switched modes between
+backgrounding a game and resuming it would otherwise replay into a different
+game and be handed it as the one he left.
+
+Casual is **silent**: it handles the routine and says nothing. The card is right
+there on the LINEUP screen whenever you go and look.
+
+### 22.3 Two kinds of preference, kept apart
+
+**How you play is a property of a career** and rides the save. **Text size, the
+field, sound and motion describe a person and a screen** and ride the device, in
+`localStorage`. Loading a five-year-old dynasty must not shrink your text, and
+starting a new one must not turn the sound back on.
+
+Every font size in the app is written `calc(<n>px * var(--ts))` — 582 of them,
+swept in one pass — so the text-size setting is real rather than promised. It is
+applied before the first paint, so the small version never flashes past. Motion
+can override the OS in **both** directions, which needs its own rules rather
+than a wider media query.
+
+Unbuilt rows (sound, haptics, mound visits, press conferences, the portal) are
+present and disabled. The shape of the game is visible from the first day and no
+row is ever a surprise later.
+
+---
+
+## 23. June, made legible — **SHIPPED**
+
+Stage 3, August 2026. The postseason was rebuilt in §20–21 and then *played*,
+and the verdict was that the format works and the screen does not.
+
+### 23.1 The opening round is gone
+
+A twenty-team field was cut to sixteen by four best-of-three series. Reported as
+confusing and unnecessary, and the second half is the important one: **the
+round's real sin was that it was a single-elimination gate in front of a double
+elimination tournament.** A team could win its conference, win its regional,
+lose one series and be finished, in an event whose whole promise is that one bad
+night does not end you.
+
+Those eight teams now play their way in **inside the winners bracket**, where
+losing costs a drop to the losers side and nothing else. Six per half are byed.
+`seatProtected` keeps the top four above the line, which is the half of the old
+round's promise worth keeping.
+
+`doubleElim.ts` expresses both shapes as **routing tables** rather than a chain
+of ifs. The eight-team table is a transcription of the code it replaced, and the
+existing tests are the proof of the transcription — game count, finish order,
+step-equals-run, and every conference tournament in the soak read the table and
+did not move. Round names are baked into slots at construction, because the same
+`(side, round)` means different things at different sizes.
+
+**Ten teams: eighteen games, nineteen with the reset.** That is arithmetic, not
+a magic number — every game is one loss, nine teams leave with two apiece, the
+champion leaves with none or one. A test asserts the identity.
+
+`Finish` value `'national'` is history: it meant "made the field but went out in
+the opening round" and there is no such state. It stays in the union because old
+saves carry it.
+
+### 23.2 What the screen says now
+
+- **A champion is a card at the top**, at three intensities from a conference
+  banner to the country. One component, because the escalation is itself
+  information. A rival's title gets the same card in navy and no takeover.
+- **Bracket games open** into the schedule's own box-score sheet. Honest about
+  its limit: boxes are kept only for the user's program.
+- **A title game announces itself before it is played**, with what winning
+  actually takes — one win unbeaten, two from the losers side.
+- **An elimination leaves a letter as well as a card.** The card is the moment;
+  the letter is the record, and a card tapped past at 1am is gone.
+- **The bottom nav is back in June**, with JUNE in the home slot, away only
+  while a game is being managed.
+- **Postseason statistics exist** (§23.3) on a POSTSEASON board whose qualifiers
+  come down hard: the national bar is built for fifty games and a tournament is
+  a fortnight.
+
+### 23.3 June's own book
+
+Season totals include tournament play — the NCAA convention, and two
+accumulation paths would drift — so June cannot be recovered by subtraction. It
+is counted **a second time** in `postBatting` / `postPitching` rather than moved,
+and folded into `CareerTotals.post` by the pass that already runs once a year
+over every roster, where the idempotence problem was already solved.
+
+Kept for **all ninety-six programs**, because this is the half that cannot be
+recovered later: box scores exist for one program, so a rival's June is gone the
+moment it ends.
+
+The bug worth remembering: the three bracket paths that record an
+already-played game were not passing the `postseason` flag. Those are exactly
+the games the user managed himself, so the only postseason statistics missing
+from the entire league would have been his own.
+
+---
+
+## 24. Giving the screen back — **SHIPPED**
+
+Stage 4, August 2026. Five reports, one complaint: a phone screen is the
+scarcest resource the game has, and several recent additions were spending it
+on things worth less than the room they took.
+
+- **The roster's filters went behind an icon.** They were the *second* attempt —
+  nineteen wrapping chips came first — and the lesson both times is that
+  filtering is occasional and reading the list is constant. The button carries a
+  dot when a filter is on, because a filtered roster and a short roster look
+  identical.
+- **"He is in your pipeline" became a mark.** Three sentences explaining the
+  home-state rule sat on every in-state recruit's card for ever, long after the
+  player had learned it. The advantage is already visible where it acts.
+- **The prospect sheet went 72% → 86%**, deliberately not full height: the strip
+  of board behind it is what says *sheet over a list* rather than *screen you
+  navigated to*, and it is the thing you tap to get out.
+- **The record came out of the small print.** It rode the identity line at 9px
+  beside two things that never change. Overall only; the header is meant to be
+  getting lighter.
+- **The action button stopped moving**, and this one took two attempts.
+
+### 24.1 Why sticky could not hold the action button
+
+It was `position: sticky; bottom: 0` inside the scrolling body. Sticky pins an
+element only while **its containing block reaches the edge being stuck to** — so
+on an offseason step with less content the body stopped halfway down the screen
+and took the button with it. Measured on the draft step: 305px above the frame.
+
+**Filling the body was tried first and is not enough.** A screen that passes
+several children puts the button inside a later one, and a column flex container
+with `overflow` under-reports its own `scrollHeight`, so the fix worked on some
+steps and not others — which is worse than not working at all.
+
+`FixedHeader` takes an `action` now and renders it as a **row of the frame**,
+outside the scroller. That is the arrangement the postseason screen already used
+and the reason it used it. Measured across all six offseason tabs, content
+fitting or not: two pixels from the bottom, every time.
 
 ---
 

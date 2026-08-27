@@ -1,6 +1,6 @@
 # Roadmap
 
-**Last updated:** August 27, 2026
+**Last updated:** August 27, 2026 · stages 1–4 shipped
 **Supersedes:** v3, which by the end was wrong about most of what it claimed
 **Companion docs:** `05-systems-reference.md` for what the game does today,
 `06-backlog.md` for what it is going to do and why, `02-sim-engine-spec.md` for
@@ -264,16 +264,16 @@ everything; the mode decides what he is *asked* about, and anything that
 touches the league is on for everybody or off for everybody. See *Decisions
 locked* in `06-backlog.md`.
 
-1. **Stop the game lying, and stop it losing things** — A13's elimination card,
+1. ✅ **Stop the game lying, and stop it losing things** — A13's elimination card,
    the tournament cards, a thirty-season soak, and resuming a game a phone call
    interrupted (H14).
-2. **How you want to play** — the depth preset, per-system toggles, and the
+2. ✅ **How you want to play** — the depth preset, per-system toggles, and the
    settings sheet that has never existed (H18).
-3. **June, made legible** — cut the opening round, a modal for every title
+3. ✅ **June, made legible** — cut the opening round, a modal for every title
    game, a real card for a champion instead of a stripe, tappable bracket
    games, postseason statistics, and telling a team when it is actually out
    (§I).
-4. **Give the screen back** — the oversized roster filters, the recruit
+4. ✅ **Give the screen back** — the oversized roster filters, the recruit
    pipeline line, the prospect sheet, the offseason action button that moves,
    and the season record nobody can find (§I).
 5. **The dugout** — the presentation rebuild, plus mound visits, the bench
