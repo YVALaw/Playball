@@ -962,8 +962,89 @@ function ThisSeason({ p }: { p: AnyPlayer }) {
           ) : <Empty>Has not appeared yet this season.</Empty>
         )}
       </Panel>
+      <InJune p={p} />
       <Platoon p={p} />
       <Fielding p={p} />
+    </>
+  );
+}
+
+/**
+ * What he has done when it mattered.
+ *
+ * Season totals in this game include tournament play, so June cannot be got by
+ * subtracting one book from another — it is counted a second time in its own,
+ * and carried down a career on `CareerTotals.post`. This is the only place a
+ * *player's* postseason shows up: the leaderboard on the stats screen answers
+ * "who hit best in the tournament", and this answers "what did he do in his".
+ *
+ * Absent entirely for a man who has never played a postseason game, which is
+ * most of a roster in February. A panel of dashes is not information.
+ */
+function InJune({ p }: { p: AnyPlayer }) {
+  const season = useDynasty((s) => s.season);
+  const version = useDynasty((s) => s.version);
+  void version;
+  const isPitcher = p.type === 'pitcher';
+
+  // This June, and the whole career including it. The career row is written at
+  // the board meeting, so during a postseason it is still last year's total —
+  // the two are shown separately rather than added, which would double-count.
+  const bat = season?.postBatting?.get(p.id);
+  const pit = season?.postPitching?.get(p.id);
+  const career = season?.careerTotals?.get(p.id)?.post;
+
+  const playedNow = isPitcher ? (pit?.g ?? 0) > 0 : (bat?.g ?? 0) > 0;
+  const playedEver = (career?.y ?? 0) > 0;
+  if (!playedNow && !playedEver) return null;
+
+  const tournaments = (career?.y ?? 0) + (playedNow ? 1 : 0);
+
+  return (
+    <>
+      <Head>IN JUNE</Head>
+      <Panel>
+        {playedNow && (isPitcher
+          ? pit && pit.outs > 0 && (
+            <>
+              <Stat k="THIS JUNE" v={`${pit.w}-${pit.l}`} />
+              <Stat k="ERA" v={era(pit).toFixed(2)} />
+              <Stat k="INNINGS" v={inningsPitched(pit).toFixed(1)} />
+              <Stat k="STRIKEOUTS" v={String(pit.k)} last />
+            </>
+          )
+          : bat && bat.ab > 0 && (
+            <>
+              <Stat k="THIS JUNE" v={pct(battingAverage(bat))} />
+              <Stat k="HITS" v={`${bat.h}-for-${bat.ab}`} />
+              <Stat k="HOME RUNS" v={String(bat.hr)} />
+              <Stat k="RUNS BATTED IN" v={String(bat.rbi)} last />
+            </>
+          ))}
+        {career && career.y > 0 && (isPitcher
+          ? career.outs > 0 && (
+            <>
+              <Stat k="CAREER" v={`${career.w}-${career.l}`} />
+              <Stat k="CAREER ERA" v={((career.er * 27) / career.outs).toFixed(2)} />
+              <Stat k="CAREER K" v={String(career.k)} last />
+            </>
+          )
+          : career.ab > 0 && (
+            <>
+              <Stat k="CAREER" v={pct(career.h / career.ab)} />
+              <Stat k="CAREER HITS" v={`${career.h}-for-${career.ab}`} />
+              <Stat k="CAREER HR" v={String(career.hr)} last />
+            </>
+          ))}
+        <div style={{
+          padding: '7px 10px', borderTop: '1px solid var(--hairline)',
+          font: "400 calc(10.5px * var(--ts))/1.4 var(--body)", color: 'var(--dim)',
+        }}>
+          {tournaments === 1
+            ? 'One postseason.'
+            : `${tournaments} postseasons.`}
+        </div>
+      </Panel>
     </>
   );
 }
