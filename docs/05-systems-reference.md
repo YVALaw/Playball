@@ -1707,9 +1707,39 @@ Award subtitles, from `ui/screens/Awards.tsx`:
 
 ---
 
-## 8. The postseason — **SHIPPED**
+## 8. The postseason — **SHIPPED, and expanded August 26, 2026**
 
-`engine/postseason.ts`, `ui/screens/Postseason.tsx`, `ui/PostseasonMap.tsx`
+`engine/postseason.ts`, `engine/doubleElim.ts`, `ui/screens/Postseason.tsx`,
+`ui/DoubleElimMap.tsx`
+
+> **The format below this box is the superseded one.** The prose of this
+> section describes the three-tier knockout that shipped first — six-team
+> conference knockouts of series, one regional series per region, a last
+> four — and is kept for the reasoning that still applies (the calendar, the
+> rotations, the box scores, the freeze). The format that plays today:
+>
+> - **Conference:** top **8** of each twelve into a **double elimination**
+>   (`engine/doubleElim.ts`), single games, 14 or 15 with the reset. The top
+>   **four finishers** advance, read off the bracket (`placings`).
+> - **Regionals:** 32 teams, **sixteen best-of-three championship series**
+>   crossing each region's two conferences (A1vB4, A2vB3, B1vA4, B2vA3), the
+>   two champions kept apart. Sixteen regional banners a June.
+> - **National field:** 16 regional champions + 4 protected/at-large = **20**
+>   (`selectNationalField`). Protection is the regular season's final top
+>   four, locked before a bracket game is played: it guarantees the field and
+>   an opening-round bye, never a banner, never a seed. A protected regional
+>   champion frees its slot to the best unqualified team on the table.
+> - **Opening round:** seeds 13–20, best of three, outside in. The sixteen
+>   split into two 8-team double eliminations (`splitShowdown`, top two seeds
+>   apart), whose champions play a best-of-three for the country.
+> - **Finish ladder:** missed · regional (32) · national (20) · omaha (the
+>   16 of the showdown) · runner-up · champion. `OMAHA_BERTHS` is 16 and
+>   `NATIONAL_BIDS` is 20; the championship mandate requires the *regional*
+>   banner (§6.3a's capacity rule, 16 seats against at most ~9 askers).
+>
+> The screen: WINNERS | LOSERS toggles per stage (OPENING | WINNERS | LOSERS
+> for the national), each view an ordinary column map with every card in the
+> school's own colour, and the action button pinned to the frame.
 
 ### 8.1 The shape of the world
 

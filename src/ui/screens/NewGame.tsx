@@ -166,7 +166,20 @@ export function NewGame() {
    * hiring ladder every later job change uses, with at least one guaranteed.
    */
   const offers = useMemo(
-    () => startingOffers(world.teams).map((i) => world.teams[i]!.def),
+    () => {
+      const picks = startingOffers(world.teams);
+      /*
+        TESTING ONLY — remove before v1.0, together with the loaded roster in
+        `store.start`. Pascagoula Tech is always on the desk so the loaded
+        team is one tap away every run; it takes the last slot rather than a
+        seventh so the market keeps its shape.
+      */
+      const psc = world.teams.findIndex((t) => t.def.abbr === 'PSC');
+      if (psc >= 0 && !picks.includes(psc)) {
+        picks.splice(Math.max(0, picks.length - 1), 1, psc);
+      }
+      return picks.map((i) => world.teams[i]!.def);
+    },
     [world],
   );
 

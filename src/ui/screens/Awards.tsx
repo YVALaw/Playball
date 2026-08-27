@@ -117,10 +117,11 @@ export function Awards() {
       )}
 
       {awards.map((a) => {
-        const ours = a.team === team.def.abbr;
+        const tint = teamColour(a.team);
         return (
           <div key={a.title} style={{
             marginTop: 12, border: '1px solid var(--faint)', background: 'var(--paper)',
+            borderLeft: `3px solid ${tint}`,
           }}>
             <div style={{ padding: '6px 10px', background: 'var(--clay)' }}>
               <span style={{
@@ -136,16 +137,22 @@ export function Awards() {
                 <>
                   <div style={{
                     font: "800 20px/1 var(--display)", textTransform: 'uppercase',
-                    color: ours ? 'var(--clay)' : 'var(--ink)',
+                    color: 'var(--ink)',
                   }}>{a.name}</div>
                   <div style={{
                     marginTop: 5, font: "400 11px var(--mono)", color: 'var(--dim)',
-                  }}>{a.team} · {a.line}</div>
+                  }}>
+                    <span style={{ color: tint, fontWeight: 700 }}>{a.team}</span>
+                    {' · '}{a.line}
+                  </div>
                 </>
               );
+              // The winner's box washed in his school's colour, the same rule
+              // the first team below follows: the box carries the school, the
+              // letters stay ink.
               const box = {
                 width: '100%', textAlign: 'left' as const,
-                padding: '10px 12px 12px', background: 'transparent',
+                padding: '10px 12px 12px', background: `${tint}24`,
               };
               return a.id
                 ? <button onClick={() => openPlayer(a.id!)} style={box}>{body}</button>
@@ -165,9 +172,11 @@ export function Awards() {
         marginTop: 8, border: '1px solid var(--faint)', background: 'var(--paper)',
       }}>
         {/*
-          Each row wears its school. The stripe down the left edge and the name
-          are both the program's own colour, so a first team reads as the
-          country it came from rather than a list of strangers.
+          Each row wears its school — the BOX, not the letters. A wash of the
+          program's own colour behind the row and a solid stripe down its edge,
+          with the name kept in ink so it stays legible over every shade of
+          ninety-six school palettes. Reported from testing: "it's not the name
+          letters that should be colored, it's the box they are in."
         */}
         {first.map((p, i) => {
           const ours = p.team === team.def.abbr;
@@ -182,14 +191,15 @@ export function Awards() {
                 gap: 8, alignItems: 'center',
                 padding: '8px 10px', borderBottom: '1px solid var(--hairline)',
                 borderLeft: `3px solid ${tint}`,
-                background: ours ? 'rgba(168,68,42,.06)' : 'transparent',
+                // The hex wash: a school colour at 14% over the paper.
+                background: `${tint}24`,
               }}>
               <span style={{
                 font: "600 10px var(--mono)", letterSpacing: '.1em', color: 'var(--dim)',
               }}>{p.position}</span>
               <div style={{ minWidth: 0 }}>
                 <div style={{
-                  font: `${ours ? 700 : 600} 13px var(--body)`, color: tint,
+                  font: `${ours ? 700 : 600} 13px var(--body)`, color: 'var(--ink)',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>{p.name}</div>
                 <div style={{
@@ -197,7 +207,7 @@ export function Awards() {
                 }}>{p.line}</div>
               </div>
               <span style={{
-                font: "600 10px var(--mono)", color: tint, textAlign: 'right',
+                font: "700 10px var(--mono)", color: tint, textAlign: 'right',
               }}>{p.team}</span>
             </button>
           );

@@ -336,7 +336,41 @@ export function Today() {
       ) : (
         <div style={{ marginTop: 12 }}>
           {!lastPostseason ? (
+            /*
+              The season is over and the screen says so like it matters.
+
+              The opponent card vanishes with the schedule, and a bare button
+              floating where it used to be read as something missing rather
+              than something arriving. Reported from testing: "when the play
+              the post season button came up it took out the whole card which
+              makes it look weird." This is the card that takes its place — a
+              gate, not a gap.
+            */
             <>
+              <div className="rise-in" style={{
+                border: '1px solid var(--faint)', background: 'var(--ink)',
+                marginBottom: 10,
+              }}>
+                <div style={{ padding: '6px 12px', background: 'var(--clay)' }}>
+                  <span style={{
+                    font: "600 9px var(--mono)", letterSpacing: '.2em', color: 'var(--cream)',
+                  }}>{year} · THE REGULAR SEASON IS IN THE BOOKS</span>
+                </div>
+                <div style={{ padding: '14px 12px 15px', textAlign: 'center' }}>
+                  <div style={{
+                    font: "800 26px/0.95 var(--display)", textTransform: 'uppercase',
+                    color: 'var(--cream)',
+                  }}>June is here</div>
+                  <div style={{
+                    marginTop: 7, font: "400 12px/1.55 var(--body)",
+                    color: 'rgba(246,241,230,.72)', maxWidth: 300,
+                    marginLeft: 'auto', marginRight: 'auto',
+                  }}>
+                    {team.w}-{team.l}, and now the games that get remembered.
+                    Every jersey in the country is washed for this.
+                  </div>
+                </div>
+              </div>
               <Action
                 label={busy ? 'PLAYING…' : 'PLAY THE POSTSEASON'}
                 onClick={() => void playPostseason()}
@@ -344,13 +378,6 @@ export function Today() {
                 primary
                 full
               />
-              <div style={{
-                marginTop: 8, font: "400 11px/1.5 var(--body)", color: 'var(--dim)',
-              }}>
-                Win your conference, then your region, then the country. Eight
-                conference champions, four regional champions, and one team left
-                standing.
-              </div>
             </>
           ) : (
             <>

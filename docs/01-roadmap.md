@@ -268,11 +268,14 @@ is what is genuinely left.
    the settings sheet the portrait menu is waiting for. All parked in backlog
    section C by agreement; none may be built before it is specified.
 
-3. **The postseason, expanded.** Top four in the country straight into an
-   eight-team national tournament, sixteen more into four regionals of four —
-   the format in the backlog's locked decisions, still unbuilt. It stays behind
-   the player-facing work on purpose: today's three-tier format works, and now
-   has its win cards and its lineup door.
+3. ~~**The postseason, expanded.**~~ **Shipped, August 26** — and bigger than
+   the locked sketch: eight-team double-elimination conference tournaments
+   with the top four advancing, sixteen best-of-three regional championship
+   series, a twenty-team national field with top-four protection and at-large
+   bids, an opening round for seeds 13–20, two eight-team double-elimination
+   national brackets under a winners/losers toggle, and a best-of-three
+   championship series. The backlog's locked-decisions entry records the
+   final shape; `engine/doubleElim.ts` is the new machinery.
 
 4. **The depth systems, one design pass each.** Backlog section C — the
    transfer portal, injuries, morale, opponent scouting, a progression rework
@@ -287,8 +290,9 @@ is what is genuinely left.
    keystore generated and backed up somewhere permanent, a signed AAB, a store
    listing, onboarding for the first ten minutes, and the accessibility work —
    minus what the tutorial system already covers, which since the overhaul is
-   most of the first ten minutes. Removing SIM SEASON belongs to this stage
-   too. Last, and blocking nothing.
+   most of the first ten minutes. Removing SIM SEASON **and the loaded
+   Pascagoula Tech test roster** belongs to this stage too. Last, and
+   blocking nothing.
 
 ## Missing and unscheduled
 

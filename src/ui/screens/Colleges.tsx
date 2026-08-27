@@ -24,11 +24,16 @@ export function Colleges() {
   if (!season || !team) return null;
 
   // The season's team order is the data; the conference list is the shelving.
+  //
+  // Matched on `id`, not `name`. A team record carries `conf.id` — 'GULF' —
+  // and the first version of this screen filtered on 'Gulf Coast Conference',
+  // which matched nothing and rendered a directory of no schools at all.
   const byConference = CONFERENCES.map((c) => ({
+    id: c.id,
     name: c.name,
     teams: season.teams
       .map((t, i) => ({ t, i }))
-      .filter(({ t }) => t.conference === c.name)
+      .filter(({ t }) => t.conference === c.id)
       .sort((a, b) => b.t.prestige - a.t.prestige),
   })).filter((c) => c.teams.length > 0);
 
@@ -47,7 +52,7 @@ export function Colleges() {
     >
       <div style={{ padding: '8px 14px 16px' }}>
         {byConference.map((c) => (
-          <div key={c.name} style={{ marginBottom: 14 }}>
+          <div key={c.id} style={{ marginBottom: 14 }}>
             {/* Sticky inside the scroller, so the shelf you are reading stays
                 named however far down its twelve rows you are. */}
             <div style={{

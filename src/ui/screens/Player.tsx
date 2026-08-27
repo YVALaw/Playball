@@ -32,7 +32,7 @@ import {
   tendencyLabel, watchProgress, type TendencyId,
 } from '../../engine/tendencies.js';
 import { draftEligible } from '../../engine/draft.js';
-import { overallOf, platoonSplit } from '../../engine/ratings.js';
+import { overallOf, platoonSplit, naturalPos } from '../../engine/ratings.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { FixedHeader } from '../Sticky.js';
 import {
@@ -274,7 +274,10 @@ export function Player() {
   const isOurs = owner.index === team.index;
   const isPitcher = p.type === 'pitcher';
   const ovr = overallOf(p);
-  const slot = isPitcher ? (p as Pitcher).role : p.pos;
+  // A DH's card names the position he actually plays — the DH is where the
+  // coach bats him, not what he is. See `naturalPos`.
+  const slot = isPitcher ? (p as Pitcher).role : naturalPos(p as Hitter);
+  const dhToday = !isPitcher && p.pos === 'DH';
 
   // A tab that is not on offer must never be the one on screen. Cheap insurance
   // against a card that reopens on a tab the next man does not have.
@@ -298,6 +301,7 @@ export function Player() {
             <>
               AGE {p.age} · BATS {p.bats} · THROWS {p.throws}
               {isPitcher && (p as Pitcher).sidearm ? ' · SIDEARM' : ''}
+              {dhToday ? ' · BATS AS DH' : ''}
             </>
           }
           school={isOurs ? null : { name: owner.def.school, conference: owner.conference }}
@@ -404,10 +408,7 @@ function Alumnus(
           </>
         )}
         {active === 'history' && (
-          <>
-            <CareerTable years={career} isPitcher={wasPitcher} />
-            <CareerGlove years={career} />
-          </>
+          <CareerTable years={career} isPitcher={wasPitcher} />
         )}
       </div>
     </FixedHeader>
@@ -679,7 +680,7 @@ function Ratings({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
 
       {isPitcher && <Repertoire p={p as Pitcher} />}
 
-      <BarGroup title={isPitcher ? 'FIELDING' : `FIELDING · ${p.pos}`}>
+      <BarGroup title={isPitcher ? 'FIELDING' : `FIELDING · ${naturalPos(p as Hitter)}`}>
         {glove.map(([key, label, value]) => (
           <Bar key={key} label={label} value={Math.round(value)} />
         ))}
@@ -1180,7 +1181,6 @@ function Career(
     <>
       <Head>COLLEGE CAREER</Head>
       <CareerTable years={years} isPitcher={isPitcher} live={live?.year} />
-      <CareerGlove years={years} live={live?.year} />
       {live && (
         <Note>
           The bottom row is the season in progress. It goes into the book in
@@ -1191,65 +1191,21 @@ function Career(
   );
 }
 
-/**
- * The years he spent in the field, in their own table.
- *
- * A second table rather than three more columns, because six columns is already
- * what a 360 pixel phone holds and the two lines answer different questions
- * anyway. Chances, plays and errors are what the record book keeps; plays above
- * average is deliberately not among them and is not reconstructed here — it is
- * measured against whichever team he happened to play for that year, so it does
- * not mean the same thing in two rows and a career column of it would be adding
- * up numbers that are not on the same scale.
- */
-function CareerGlove({ years, live }: { years: CareerYear[]; live?: number }) {
-  const played = years.filter((y) => (y.chances ?? 0) > 0);
-  if (played.length === 0) return null;
+/*
+  One table, glove included.
 
-  const cols = '42px 28px 1fr 40px 34px 44px';
-  return (
-    <>
-      <div className="label" style={{ marginTop: 16, marginBottom: 4 }}>IN THE FIELD</div>
-      <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-        <div style={{
-          display: 'grid', gridTemplateColumns: cols,
-          gap: 6, padding: '6px 10px', borderBottom: '1px solid var(--hairline)',
-        }}>
-          {['YEAR', 'CL', 'CH', 'PLAYS', 'E', 'PCT'].map((h) => (
-            <span key={h} className="label">{h}</span>
-          ))}
-        </div>
-        {played.map((y) => {
-          const ch = y.chances ?? 0;
-          return (
-            <div key={y.year} style={{
-              display: 'grid', gridTemplateColumns: cols,
-              gap: 6, alignItems: 'baseline',
-              padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
-            }}>
-              <span style={{
-                font: "700 12px var(--display)",
-                color: y.year === live ? 'var(--clay)' : 'var(--ink)',
-              }}>{y.year}</span>
-              <span style={{ font: "400 10px var(--mono)", color: 'var(--dim)' }}>{y.classYear}</span>
-              <span style={{ font: "500 11px var(--mono)" }}>{ch}</span>
-              <span style={{ font: "500 11px var(--mono)" }}>{y.plays ?? 0}</span>
-              <span style={{ font: "500 11px var(--mono)" }}>{y.errors ?? 0}</span>
-              <span style={{ font: "500 11px var(--mono)" }}>
-                {pct((ch - (y.errors ?? 0)) / ch)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </>
-  );
-}
-
+  The fielding years used to sit in a second "IN THE FIELD" table below this
+  one, and it was answering a question nobody had split: fielding is part of
+  the season, not a separate career. Reported from testing in exactly those
+  words. Errors are the column that survives the merge — chances and plays are
+  bookkeeping, and a seventh column is all a 360 pixel phone will give.
+*/
 function CareerTable(
   { years, isPitcher, live }: { years: CareerYear[]; isPitcher: boolean; live?: number },
 ) {
-  const cols = isPitcher ? '42px 32px 1fr 46px 42px 38px' : '42px 32px 1fr 46px 34px 38px';
+  const cols = isPitcher
+    ? '38px 26px 1fr 42px 38px 32px 24px'
+    : '38px 26px 1fr 42px 30px 34px 24px';
 
   if (years.length === 0) {
     return <Panel><Empty>Nothing yet. He has not been in a game.</Empty></Panel>;
@@ -1261,20 +1217,23 @@ function CareerTable(
     }}>
       <div style={{
         display: 'grid', gridTemplateColumns: cols,
-        gap: 6, padding: '6px 10px', borderBottom: '1px solid var(--hairline)',
+        gap: 5, padding: '6px 10px', borderBottom: '1px solid var(--hairline)',
       }}>
         {(isPitcher
-          ? ['YEAR', 'CL', 'TEAM', 'W-L', 'ERA', 'K']
-          : ['YEAR', 'CL', 'TEAM', 'AVG', 'HR', 'RBI']
+          ? ['YEAR', 'CL', 'TEAM', 'W-L', 'ERA', 'K', 'E']
+          : ['YEAR', 'CL', 'TEAM', 'AVG', 'HR', 'RBI', 'E']
         ).map((h) => <span key={h} className="label">{h}</span>)}
       </div>
       {years.map((y) => (
         <div key={y.year} style={{
           display: 'grid', gridTemplateColumns: cols,
-          gap: 6, alignItems: 'baseline',
+          gap: 5, alignItems: 'baseline',
           padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
         }}>
-          <span style={{ font: "700 12px var(--display)" }}>{y.year}</span>
+          <span style={{
+            font: "700 12px var(--display)",
+            color: y.year === live ? 'var(--clay)' : 'var(--ink)',
+          }}>{y.year}</span>
           <span style={{ font: "400 10px var(--mono)", color: 'var(--dim)' }}>{y.classYear}</span>
           <span style={{ font: "400 10px var(--mono)", color: 'var(--dim)' }}>{y.team}</span>
           {isPitcher ? (
@@ -1294,6 +1253,9 @@ function CareerTable(
               <span style={{ font: "500 11px var(--mono)" }}>{y.rbi ?? 0}</span>
             </>
           )}
+          <span style={{ font: "500 11px var(--mono)", color: 'var(--dim)' }}>
+            {(y.chances ?? 0) > 0 ? (y.errors ?? 0) : '—'}
+          </span>
         </div>
       ))}
     </div>

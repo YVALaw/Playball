@@ -12,7 +12,7 @@ import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { FixedHeader } from '../Sticky.js';
 import { FirstVisit } from '../Tutorial.js';
-import { overallOf } from '../../engine/ratings.js';
+import { overallOf, naturalPos } from '../../engine/ratings.js';
 import { potentialGrade } from '../../engine/scouting.js';
 import { battingAverage, era, inningsPitched } from '../../engine/season.js';
 import { pct } from '../format.js';
@@ -21,10 +21,13 @@ import type { Hitter, Pitcher, Player } from '../../engine/types.js';
 type Mode = 'all' | 'bat' | 'arm';
 
 /** The order a lineup card thinks in; pitcher roles ride at the end. */
-const SLOT_ORDER = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH'];
+const SLOT_ORDER = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'];
 
+// A DH reads as the position he actually plays — the DH is a lineup slot, not
+// a man. The lineup screen still shows DH where he bats; this list shows who
+// he is. See `naturalPos`.
 const slotOf = (p: Player): string =>
-  p.type === 'pitcher' ? (p as Pitcher).role : p.pos;
+  p.type === 'pitcher' ? (p as Pitcher).role : naturalPos(p as Hitter);
 
 export function Roster() {
   const season = useDynasty((s) => s.season);
@@ -88,18 +91,28 @@ export function Roster() {
             <Chip on={mode === 'arm'} onClick={() => setMode('arm')}>PITCHERS</Chip>
           </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
-            {(['FR', 'SO', 'JR', 'SR'] as const).map((y) => (
-              <Facet key={y} on={yearF === y} onClick={() => setYearF(yearF === y ? null : y)}>
-                {y}
-              </Facet>
-            ))}
-            <span style={{ width: 6 }} />
-            {slots.map((s) => (
-              <Facet key={s} on={posF === s} onClick={() => setPosF(posF === s ? null : s)}>
-                {s}
-              </Facet>
-            ))}
+          {/*
+            Two selects, not two rows of chips.
+
+            The chips were the first attempt and they were the wrong shape:
+            nineteen of them wrapped to three lines and ate the top of a screen
+            whose whole problem is vertical room. Reported as exactly that.
+            A native select is one line, opens the platform's own picker, and
+            is the control a phone user already knows.
+          */}
+          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+            <Select
+              label="YEAR"
+              value={yearF}
+              options={['FR', 'SO', 'JR', 'SR']}
+              onChange={setYearF}
+            />
+            <Select
+              label="POS"
+              value={posF}
+              options={slots}
+              onChange={setPosF}
+            />
           </div>
         </div>
       }
@@ -131,7 +144,7 @@ export function Roster() {
                 teamAbbr={team.def.abbr}
                 values={[
                   p.name,
-                  p.type === 'pitcher' ? (p as Pitcher).role : p.pos,
+                  slotOf(p),
                   p.classYear,
                   String(overallOf(p)),
                   potentialGrade(p.potential),
@@ -192,23 +205,46 @@ function Chip(
   );
 }
 
-/** The small toggles: a class year or a spot on the field. */
-function Facet(
-  { on, onClick, children }: { on: boolean; onClick: () => void; children: string },
+/**
+ * One filter, one line.
+ *
+ * A native `<select>` on purpose: the platform picker is a better list than
+ * anything drawn here, it costs one row of the screen whatever the option
+ * count, and it is already the control a phone user reaches for. ALL is the
+ * empty value rather than a separate clear button.
+ */
+function Select(
+  { label, value, options, onChange }:
+  {
+    label: string;
+    value: string | null;
+    options: readonly string[];
+    onChange: (v: string | null) => void;
+  },
 ) {
+  const on = value !== null;
   return (
-    <button
-      onClick={onClick}
-      className="tap"
-      aria-pressed={on}
-      style={{
-        padding: '6px 9px', minHeight: 30,
-        background: on ? 'var(--ink)' : 'transparent',
-        border: `1px solid ${on ? 'var(--ink)' : 'rgba(28,36,48,.22)'}`,
-        color: on ? 'var(--cream)' : 'rgba(28,36,48,.55)',
-        font: "600 9px var(--mono)", letterSpacing: '.08em',
-      }}
-    >{children}</button>
+    <label style={{ flex: 1, minWidth: 0, display: 'block' }}>
+      <span className="label" style={{ display: 'block', marginBottom: 3 }}>{label}</span>
+      <select
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value === '' ? null : e.target.value)}
+        style={{
+          width: '100%', minHeight: 34, padding: '6px 8px',
+          background: on ? 'var(--ink)' : 'var(--paper)',
+          border: `1px solid ${on ? 'var(--ink)' : 'rgba(28,36,48,.25)'}`,
+          borderRadius: 0,
+          color: on ? 'var(--cream)' : 'var(--ink)',
+          // 16px is the floor on anything a phone can focus, or the browser
+          // zooms the page in and stays there. Same rule as the text inputs.
+          font: "600 16px var(--mono)",
+          appearance: 'none', WebkitAppearance: 'none',
+        }}
+      >
+        <option value="">ALL</option>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </label>
   );
 }
 
@@ -302,7 +338,7 @@ function HitterRow(
       teamAbbr={abbr}
       values={[
         p.name,
-        p.pos,
+        naturalPos(p),
         p.classYear,
         String(overallOf(p)),
         potentialGrade(p.potential),

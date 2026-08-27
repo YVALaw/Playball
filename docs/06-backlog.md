@@ -18,38 +18,35 @@ been agreed.
 
 ## Decisions locked
 
-### The postseason, expanded
+### The postseason, expanded — **SHIPPED, in a revised shape (August 2026)**
 
-The format changes shape. Today only conference champions advance, so a
-forty-win team that loses one series in May is finished — harsher than the real
-sport, and it makes the regular season worth less than it should be.
+The principle held — a forty-win team must not be finished by one bad series
+in May, and the national table has to mean something on its own — but the
+shape that shipped is the one the August feedback pass specified, richer than
+the sketch this entry used to carry:
 
 | Stage | Field |
 |---|---|
-| Direct to nationals | the **top four in the country**, who skip two rounds |
-| Conference tournaments | 8 champions |
-| Runners-up tournament | 8 at-large |
-| Regionals | those 16, as four regions of four → 4 champions |
-| Nationals | 4 auto-qualifiers + 4 regional champions = **8**: quarterfinal, semifinal, final |
+| Conference tournaments | top **8** of each twelve, **double elimination**, single games; the top **4 finishers** advance, read off the bracket |
+| Regionals | 32 teams, **16 best-of-three championship series** crossing neighbouring conferences (A1vB4, A2vB3, B1vA4, B2vA3) → 16 regional banners |
+| National field | 16 regional champions + **4 protected/at-large** = **20**, protection locked to the regular season's final top four |
+| Opening round | seeds 13–20, best of three; the top 12 (protected always among them) bye through |
+| National showdown | the 16 in two **8-team double eliminations**, top two seeds on opposite sides |
+| Championship | best-of-three between the two bracket champions |
 
-Twenty of ninety-six programs reach the postseason, about a fifth, which is the
-share the real tournament takes. Finishing top four nationally is worth two
-rounds and a rested staff, so the national table means something on its own
-rather than only deciding seeding.
-
-The arithmetic is the reason nationals had to grow. Four automatic bids into a
-four-team national field would *be* the whole field, and every conference
-tournament and regional beneath it would be decoration.
-
-**One thing to revisit on the same commit.** `NATIONAL_BIDS` in
-`engine/postseason.ts` is derived from `REGIONS` and is the ceiling on how many
-boards may *require* a bid (§6.3a). It goes from 8 to 20 here, which makes
-"reach the national tournament" a requirement a `contend` board can honestly
-make again — it is a bonus today only because eight bids could not cover twenty
-askers. That is a judgement to take deliberately rather than a constant to wire
-into `objectivesFor`, so nothing happens automatically; the two capacity tests
-will simply stop objecting. Note also that a bid and a conference title stop
-being the same event, which is why `championship` requires the title by name.
+Protection buys the field and the bye, never a banner and never a seed lock:
+a protected team that flames out of its conference and its regional still
+travels, humbler. The bid question this entry flagged was taken deliberately —
+`NATIONAL_BIDS` is 20, a bid stays a **bonus** at every mandate (a required
+bid would grade the selection committee rather than the team), and the
+`championship` mandate's required trophy moved from the conference title
+(8 seats, breached at 9 askers in a settled league) to the **regional
+banner** (16 seats). The winners/losers toggle, the per-school-coloured
+bracket cards, and the frame-pinned action button are the UI half;
+`engine/doubleElim.ts` and the staging in `engine/postseason.ts` are the
+engine half, pinned by the double-elimination and national-field suites in
+`tests/bracket.test.ts` and the whole-postseason suite in
+`tests/postseason.test.ts`.
 
 ### Records are scaled, not literal — **revisited, and the method changed**
 

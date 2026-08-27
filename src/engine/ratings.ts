@@ -618,3 +618,27 @@ export function overallOf(p: Hitter | Pitcher): number {
     : Math.round(p.stuff * 0.33 + p.movement * 0.27 + p.control * 0.27 + p.stamina * 0.09
                + gloveScore(p) * PITCHER_GLOVE);
 }
+
+/**
+ * The position a man actually plays, which for a DH is not "DH".
+ *
+ * There is no such thing as a designated-hitter-shaped human: every DH in the
+ * real sport is a first baseman or a corner outfielder whose bat is worth more
+ * than his glove, and the DH is a lineup slot the coach spends on him, not a
+ * limb he was born without. Reported from testing in exactly those words. The
+ * generator has always drawn "DH" players — changing that would move every
+ * random draw after it and break determinism — so the identity is derived
+ * instead: read his own glove and give him the bat-first spot it fits.
+ *
+ * Pure arithmetic on ratings, no draws, so the same man answers the same way
+ * for ever. Everyone else simply is what the roster says he is.
+ */
+export function naturalPos(p: Hitter): Position {
+  if (p.pos !== 'DH') return p.pos;
+  // The three places a bat-first player hides. An arm is the one tool that
+  // picks right field; enough range picks left; the rest is a first baseman,
+  // which is where the profile the generator draws for a DH mostly lands.
+  if (p.arm >= 55 && p.arm >= p.range + 6) return 'RF';
+  if (p.range >= 48) return 'LF';
+  return '1B';
+}
