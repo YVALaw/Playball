@@ -290,10 +290,10 @@ table is in backlog §K. Three things the stage still owes:
 - **Piece 8, the press-conference pool**, deliberately held until the interview
   had been played with. Two seasons went by with none, which is correct and is
   now the most visible gap in the stage.
-- **The five creation questions are too long.** Reported as wanting them
-  "simpler and very short" — a content pass over `data/interview.ts`, not a
-  code change, and the one piece of this stage where length is working against
-  the voice rather than for it.
+- ~~**The five creation questions are too long.**~~ Done. The questions were
+  never the long part: the asks median 19 characters, the setups median 107 and
+  ran to 163. All eighty setups are one line now, median 63, held there by a
+  test — this is the kind of thing that grows back a clause at a time.
 - **The cold letter now bites often enough to be a gamble** (12% → 18%, so a
   season's three letters reply 45% of the time rather than 32%), but nothing
   else in the game acknowledges having written one. It reads as a control with

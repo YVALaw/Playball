@@ -1681,10 +1681,16 @@ approach system through two full careers. Eleven shipped, five open.
 
 ### Open
 
-- **The five creation questions are too long.** Wants them "simpler and very
-  short". A content pass over `data/interview.ts`, not a code change.
-- **The winners→losers transition is "quite wild".** The view already follows
-  the side you are playing on and fades, but the change still reads as a jump.
+- ~~**The five creation questions are too long.**~~ Shipped. Measuring found the
+  questions were never the long part — the asks have a median of 19 characters.
+  The *setups* had a median of 107 and a maximum of 163: three lines of scene
+  before a one-line question, five screens running. All eighty rewritten to a
+  single line, median 63, and pinned at 90 in `interview.test.ts`.
+- ~~**The winners→losers transition is "quite wild".**~~ Shipped, and the cause
+  was better than "needs polish": the comment above `mySide` had claimed *"the
+  map fades in under it"* since it was written, and the only transition in the
+  file was a button background. There was no fade. There is now, keyed on stage
+  and side so it does not replay every time a score arrives underneath it.
 - **Press conferences.** Two seasons, none seen — correct: stage 7 piece 8 was
   deliberately deferred until the interview had been played with. Now expected.
 - **A man talked out of the draft "is no longer in my roster".** Not reproduced.
