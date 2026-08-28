@@ -10,6 +10,7 @@
 import {
   largestDeficit, noFeats, noteGame, type SeasonFeats,
 } from './achievements.js';
+import { coverFor } from './depthChart.js';
 import { makeTeam, reserveNames, resetNames } from './players.js';
 import { overallOf } from './ratings.js';
 import { initialPrestige } from './program.js';
@@ -1491,8 +1492,20 @@ export function playGame(
   const conference = opts.conference ?? true;
   const slot = opts.slot ?? 0;
 
-  const homeLineup = restedLineup(home.team, season.rng);
-  const awayLineup = restedLineup(away.team, season.rng);
+  /*
+    The card, and then who is actually available to be on it.
+
+    `coverFor` hands back the very same array when every man in it can play,
+    which is every game in the country except the ones where the program being
+    coached has somebody in the classroom or sitting out the year -- so this
+    line costs one pass over nine men and changes nothing else. Ordering
+    matters: `restedLineup` takes the random draws, and covering afterwards
+    keeps that stream untouched.
+  */
+  const homeRested = restedLineup(home.team, season.rng);
+  const awayRested = restedLineup(away.team, season.rng);
+  const homeLineup = coverFor(home.team, homeRested ?? home.team.lineup, season.dayIndex);
+  const awayLineup = coverFor(away.team, awayRested ?? away.team.lineup, season.dayIndex);
 
   const result = simGame(home.team, away.team, season.rng, {
     engine: season.config.engine,

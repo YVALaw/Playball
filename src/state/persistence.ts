@@ -36,6 +36,9 @@ export interface SaveFile {
   /** The season's press conferences so far, and the one still open. */
   press?: unknown;
   pendingPress?: unknown;
+  /** Stage 8: conversations spent this season, and the DH. */
+  wordsUsed?: unknown;
+  useDH?: unknown;
   schemaVersion: number;
   slot: string;
   name: string;
@@ -313,6 +316,9 @@ export interface SaveExtras {
   /** The season's press conferences so far, and the one still open. */
   press?: unknown;
   pendingPress?: unknown;
+  /** Stage 8: conversations spent this season, and the DH. */
+  wordsUsed?: unknown;
+  useDH?: unknown;
   phase?: unknown;
   /** The furthest step this career has reached. See `SaveFile`. */
   furthestPhase?: unknown;
@@ -400,6 +406,10 @@ export function buildSaveFile(
     // idiom would drop it and let a resumed season start its eight again.
     ...(extras.press !== undefined ? { press: extras.press } : {}),
     ...(extras.pendingPress ? { pendingPress: extras.pendingPress } : {}),
+    // Nought is a real value for both -- no conversations spent, and a program
+    // that has turned the DH off -- so both are tested for presence.
+    ...(extras.wordsUsed !== undefined ? { wordsUsed: extras.wordsUsed } : {}),
+    ...(extras.useDH !== undefined ? { useDH: extras.useDH } : {}),
     ...(extras.phase ? { phase: extras.phase } : {}),
     // Tested for presence rather than for truth, unlike every line around it.
     // Nought is a real value here — it means the offseason has only ever been
@@ -445,6 +455,9 @@ export interface LoadedDynasty {
   /** The season's press conferences so far, and the one still open. */
   press?: unknown;
   pendingPress?: unknown;
+  /** Stage 8: conversations spent this season, and the DH. */
+  wordsUsed?: unknown;
+  useDH?: unknown;
   season: SeasonState;
   year: number;
   userTeam: number;
@@ -531,6 +544,8 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     offers: file.offers ?? null,
     press: file.press ?? {},
     pendingPress: file.pendingPress ?? null,
+    wordsUsed: file.wordsUsed ?? 0,
+    useDH: file.useDH ?? true,
     phase: file.phase ?? null,
     furthestPhase: file.furthestPhase ?? null,
     review: file.review ?? null,

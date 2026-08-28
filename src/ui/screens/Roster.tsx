@@ -33,6 +33,7 @@ export function Roster() {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
+  const openOverlay = useDynasty((st) => st.openOverlay);
   const openPlayer = useDynasty((s) => s.openPlayer);
   const [mode, setMode] = useState<Mode>('all');
   /*
@@ -98,6 +99,8 @@ export function Roster() {
           </div>
 
           <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
+            {/* The chart, one tap from the list it is about. Stage 8. */}
+            <Chip on={false} onClick={() => openOverlay('depth')}>CHART</Chip>
             <Chip on={mode === 'all'} onClick={() => setMode('all')}>ALL</Chip>
             <Chip on={mode === 'bat'} onClick={() => setMode('bat')}>HITTERS</Chip>
             <Chip on={mode === 'arm'} onClick={() => setMode('arm')}>PITCHERS</Chip>

@@ -19,6 +19,7 @@ import { History } from './screens/History.js';
 import { Player } from './screens/Player.js';
 import { Program } from './screens/Program.js';
 import { PressRoom } from './screens/PressRoom.js';
+import { DepthChart } from './screens/DepthChart.js';
 import { NewGame } from './screens/NewGame.js';
 import { StrategyScreen } from './screens/StrategyScreen.js';
 import { Placeholder } from './screens/Placeholder.js';
@@ -919,6 +920,7 @@ function TableOverlay() {
             three frames is not tappable. */}
         {overlay === 'inbox' && <Inbox />}
         {overlay === 'program' && <Program />}
+        {overlay === 'depth' && <DepthChart />}
         {/* The one of these that does not pin its own header — it is normally
             the second sheet of HISTORY, which does the pinning for it — so it
             gets the scroller the container above deliberately does not have. */}

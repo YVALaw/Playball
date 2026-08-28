@@ -209,3 +209,52 @@ export function reorder(team: Team, spot: Position, id: PlayerId, delta: number)
   order[to] = a;
   t.depth = { ...(t.depth ?? {}), [spot]: order };
 }
+
+/**
+ * The nine that actually take the field, given who cannot.
+ *
+ * Deliberately a *post-process* over a lineup somebody else already chose,
+ * rather than a lineup builder of its own. `playGame` picks its card through
+ * `restedLineup`, which takes random draws; rebuilding the card here would
+ * either duplicate those draws or replace them, and both move every number in
+ * the game.
+ *
+ * So this returns the **same array** when everybody in it can play, which is
+ * every game in the league except the ones where a program the player is
+ * running has somebody in the classroom or sitting out the year. It costs one
+ * pass over nine men to find that out, and it is the difference between a
+ * feature that is inert until used and one that re-picks the country.
+ *
+ * Batting order is preserved: a man who comes in bats where the man he came in
+ * for was batting, because a substitution is not a reason to rewrite the card.
+ */
+export function coverFor(
+  team: Team, base: readonly Hitter[], day: number,
+): readonly Hitter[] {
+  if (base.every((p) => available(p, day))) return base;
+
+  const chart = chartFor(team);
+  const men = squad(team);
+  const used = new Set<PlayerId>(base.filter((p) => available(p, day)).map((p) => p.id));
+  const out: Hitter[] = [];
+
+  for (const man of base) {
+    if (available(man, day)) { out.push(man); continue; }
+    // His own spot's order first, then anybody at all -- a program with four
+    // men out still has to field nine, and a worse fit is better than a hole.
+    const ranked = [...(chart[man.pos] ?? []), ...men.map((m) => m.id)];
+    let cover: Hitter | undefined;
+    for (const id of ranked) {
+      if (used.has(id)) continue;
+      const candidate = men.find((m) => m.id === id);
+      if (!candidate || !available(candidate, day)) continue;
+      cover = candidate;
+      break;
+    }
+    if (cover) { used.add(cover.id); out.push(cover); }
+  }
+  // Only hand back a card that is actually a card. A roster too thin to field
+  // nine is a state the rest of the engine has never had to consider, and the
+  // honest answer is to play the men who are fit rather than to invent one.
+  return out.length === base.length ? out : base.filter((p) => available(p, day));
+}

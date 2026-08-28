@@ -25,7 +25,7 @@ import {
 import { overallOf } from '../engine/ratings.js';
 import type { GameResult } from '../engine/game.js';
 import { playerId } from '../engine/types.js';
-import type { Hitter, Pitcher, PlayerId, Tactic } from '../engine/types.js';
+import type { Hitter, Pitcher, Player, PlayerId, Position, Tactic } from '../engine/types.js';
 import { createLiveGame, type LiveGame } from '../engine/liveGame.js';
 import {
   departAndDevelop, fillRosters, holesFor as rosterHoles, reinstate,
@@ -197,6 +197,17 @@ import {
   type PressState,
 } from '../engine/press.js';
 import { PRESSERS, type Presser, type PressTrigger, type PressAnswer } from '../data/pressers.js';
+import {
+  chartFor, depthAt, reorder, squad, available, promotions, SPOTS,
+} from '../engine/depthChart.js';
+import {
+  gradesOf, standing, failsThisWeek, suspend, haveAWord, driftGrades,
+  WORDS_A_SEASON, atRisk,
+} from '../engine/eligibility.js';
+import {
+  canRedshirt, redshirt, unRedshirt, redshirtCount, MAX_REDSHIRTS,
+} from '../engine/redshirt.js';
+import { movePosition, settleIn, secondaryPositions } from '../engine/positions.js';
 import { MAX_BADGES, badgeOf } from '../data/badges.js';
 import { makeRng } from '../engine/rng.js';
 import {
@@ -228,7 +239,7 @@ export type SettingsPage = 'index' | 'display' | 'sound' | 'play';
 
 export type Overlay =
   'schedule' | 'standings' | 'rankings' | 'saves' | 'inbox' | 'program' | 'book'
-  | 'settings';
+  | 'settings' | 'depth';
 
 /** The three tabs of the program page, which is addressable from the inbox. */
 export type ProgramSheet = 'board' | 'coach' | 'hall';
@@ -561,6 +572,28 @@ export interface DynastyStore {
   */
   press: PressState;
   pendingPress: { presser: Presser; trigger: PressTrigger } | null;
+
+  /*
+    Stage 8. The roster, as something you manage rather than read.
+
+    All four of these act on the user's program and nobody else's -- grades are
+    kept for the men you coach, redshirts are declared by a coach, and a
+    position is moved by one. Ninety-five programs quietly doing the same thing
+    would be a slower roll and a bigger save to model what nobody can see.
+  */
+  /** Conversations spent this season. Four a year, and they do not carry. */
+  wordsUsed: number;
+  /** Have a word with him about the classroom. */
+  wordWith: (id: PlayerId) => boolean;
+  /** Move a man up or down one rung at a position on the chart. */
+  moveDepth: (spot: Position, id: PlayerId, delta: number) => void;
+  /** Sit him out the year, or change your mind. */
+  setRedshirt: (id: PlayerId, on: boolean) => boolean;
+  /** Move him to a new position for good. */
+  changePosition: (id: PlayerId, to: Position) => boolean;
+  /** Whether the program uses the designated hitter at all. */
+  useDH: boolean;
+  setUseDH: (on: boolean) => void;
   /** Say it, take what it costs, and close the room. */
   answerPress: (answer: PressAnswer) => void;
   /** Walk out without answering. Costs nothing; the question is spent. */
@@ -1416,6 +1449,42 @@ function pressToRaise(store: DynastyStore): { presser: Presser; trigger: PressTr
   const presser = pickPresser(trigger, store.press, careerish, store.year);
   if (!presser) return null;
   return { presser, trigger };
+}
+
+/*
+  The classroom, checked once a week.
+
+  Keyed on the *week* rather than the day so a man is asked about seven times a
+  season rather than fifty, and so simulating a week in one press produces one
+  answer instead of seven. `failsThisWeek` is derived from the man, the year
+  and the week, so this is idempotent: running it twice on the same week reaches
+  the same verdict and suspends nobody twice.
+
+  The user's program only. See `engine/eligibility.ts` for why ninety-five
+  other programs do not have grades at all.
+*/
+function checkGrades(store: DynastyStore): void {
+  const { season, userTeam, year } = store;
+  const rec = season?.teams[userTeam];
+  if (!season || !rec) return;
+  const day = season.dayIndex;
+  const week = Math.floor(day / 7);
+  const men = [...squad(rec.team), ...rec.team.rotation, ...rec.team.bullpen];
+  for (const p of men) {
+    // Already sitting, or sitting for something else. One suspension at a time.
+    if (!available(p, day)) continue;
+    if (!atRisk(p)) continue;
+    if (!failsThisWeek(p, year, week)) continue;
+    suspend(p, day);
+    store.post({
+      kind: 'season', year,
+      key: `grades-${p.id}-${year}-${week}`,
+      title: `${p.name} is ineligible`,
+      body: 'He is short of where he needs to be in the classroom and misses '
+        + 'the week. Whoever is next on the depth chart plays.',
+      link: { to: 'player', id: p.id },
+    });
+  }
 }
 
 function seasonNews(store: DynastyStore): void {
@@ -2574,6 +2643,31 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
     const done = (next: SeasonState, report: OffseasonReport): void => {
       const rolled = nextSeason(next);
+
+      /*
+        A year passing for the men, in the two ways stage 8 added.
+
+        Grades drift home, so a man talked back up to eighty is not still at
+        eighty in three years and the conversations stay worth having; and a
+        man who was moved to a new position sheds a season of settling, so a
+        move is a cost that ends rather than a mark he carries for good.
+
+        The user's program only, for the same reason the classroom is: nobody
+        can see, act on, or be affected by ninety-five other rosters doing it.
+        Anybody suspended is let out here too -- a week in April is not a week
+        that should still be running in February.
+      */
+      const mineNow = rolled.teams[get().userTeam];
+      if (mineNow) {
+        const men = [
+          ...squad(mineNow.team), ...mineNow.team.rotation, ...mineNow.team.bullpen,
+        ];
+        for (const p of men) {
+          driftGrades(p, get().year + 1);
+          delete (p as Player & { outUntil?: number }).outUntil;
+          if (p.type === 'hitter') settleIn(p as Hitter);
+        }
+      }
       // A year passes for him too. Purely what the screen prints — nothing in
       // the simulation asks how old the coach is, and no year of a career plays
       // differently because of the number.
@@ -2654,6 +2748,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         // next year may ask a question this one already used.
         press: clearPress(),
         pendingPress: null,
+        // Four conversations a season means four *this* season.
+        wordsUsed: 0,
         // Last winter's announcements, cleared with everything else. The action
         // that does this by hand lives with the other actions; it was pasted in
         // here as well, which re-declared it to itself on every year roll.
@@ -2748,6 +2844,79 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   press: {},
   pendingPress: null,
 
+  wordsUsed: 0,
+  useDH: true,
+  setUseDH: (on) => { set({ useDH: on, version: get().version + 1 }); void get().saveNow(); },
+
+  wordWith: (id) => {
+    const { season, userTeam, coach, wordsUsed, version } = get();
+    const rec = season?.teams[userTeam];
+    if (!rec || wordsUsed >= WORDS_A_SEASON) return false;
+    const man = [...squad(rec.team), ...rec.team.rotation, ...rec.team.bullpen]
+      .find((p) => p.id === id);
+    if (!man) return false;
+    const lift = haveAWord(man, coach.skills.training);
+    set({ wordsUsed: wordsUsed + 1, version: version + 1 });
+    get().post({
+      kind: 'season', year: get().year,
+      title: `A word with ${man.name}`,
+      body: `He is on top of it again — ${lift} to the good. `
+        + `${WORDS_A_SEASON - wordsUsed - 1} left this season.`,
+      link: { to: 'player', id: man.id },
+    });
+    void get().saveNow();
+    return true;
+  },
+
+  moveDepth: (spot, id, delta) => {
+    const { season, userTeam, version } = get();
+    const rec = season?.teams[userTeam];
+    if (!rec) return;
+    reorder(rec.team, spot, id, delta);
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  setRedshirt: (id, on) => {
+    const { season, userTeam, version } = get();
+    const rec = season?.teams[userTeam];
+    if (!rec) return false;
+    const man = [...squad(rec.team), ...rec.team.rotation, ...rec.team.bullpen]
+      .find((p) => p.id === id);
+    if (!man) return false;
+    /*
+      Only before he has played, which is the actual rule.
+
+      Baseball has no four-game grace: one appearance burns the season, so a
+      man cannot be redshirted in April having already played in February. The
+      season's own day index is the clock -- day zero is the only moment this
+      is a decision rather than a rewrite of history.
+    */
+    if (on && season.dayIndex > 0) return false;
+    const ok = on ? redshirt(rec.team, man) : (unRedshirt(man), true);
+    if (ok) { set({ version: version + 1 }); void get().saveNow(); }
+    return ok;
+  },
+
+  changePosition: (id, to) => {
+    const { season, userTeam, version } = get();
+    const rec = season?.teams[userTeam];
+    if (!rec) return false;
+    const man = squad(rec.team).find((p) => p.id === id);
+    if (!man) return false;
+    if (!movePosition(man, to)) return false;
+    set({ version: version + 1 });
+    get().post({
+      kind: 'season', year: get().year,
+      title: `${man.name} moves to ${to}`,
+      body: 'He will be a step behind there for a season or two, and then he '
+        + 'will not.',
+      link: { to: 'player', id: man.id },
+    });
+    void get().saveNow();
+    return true;
+  },
+
   /*
     What he said, and what it cost.
 
@@ -2794,6 +2963,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   noteSeasonNews: () => {
     const before = get().inbox;
+    checkGrades(get());
     seasonNews(get());
     // On the same beat the wire is written, because both answer the same
     // question -- what just happened that is worth telling you about.
@@ -4097,6 +4267,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           id rather than the question itself, so the pool can be rewritten
           without stranding a save on a version of a sentence.
         */
+        wordsUsed: get().wordsUsed,
+        useDH: get().useDH,
         press: get().press,
         pendingPress: get().pendingPress
           ? { id: get().pendingPress!.presser.id, trigger: get().pendingPress!.trigger }
@@ -4239,6 +4411,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // anything yet -- the correct starting state rather than a crash.
       press: (loaded.press ?? {}) as PressState,
       pendingPress: restorePending(loaded.pendingPress),
+      wordsUsed: typeof loaded.wordsUsed === 'number' ? loaded.wordsUsed : 0,
+      useDH: loaded.useDH !== false,
       jobSearch,
       offers,
       // Merged rather than replaced: what the player has learned is a fact

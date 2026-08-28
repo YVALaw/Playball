@@ -20,6 +20,7 @@
 // at a glance.
 
 import { useState, type ReactNode } from 'react';
+import { RosterMoves } from './RosterMoves.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import {
   BADGES, FAMILY_LABEL, TIER_NAME, badgeCap, badgesOf,
@@ -313,7 +314,14 @@ export function Player() {
       </>
     }>
       <div style={{ padding: '12px 14px 20px' }}>
-        {active === 'overview' && <Overview p={p} owner={owner} isOurs={isOurs} />}
+        {active === 'overview' && (
+          <>
+            <Overview p={p} owner={owner} isOurs={isOurs} />
+            {/* Stage 8: the classroom, where else he plays, and the redshirt.
+                Only ever for your own men, and only when they are possible. */}
+            <RosterMoves p={p} isOurs={isOurs} />
+          </>
+        )}
         {active === 'ratings' && <Ratings p={p} isOurs={isOurs} />}
         {active === 'stats' && <ThisSeason p={p} />}
         {active === 'games' && <Games id={p.id} owner={owner} isOurs={isOurs} />}

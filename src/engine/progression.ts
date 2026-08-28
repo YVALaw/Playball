@@ -21,6 +21,7 @@ import { windowBudget } from './recruiting.js';
 import type { Prospect } from './recruiting.js';
 import { gauss, makeRng } from './rng.js';
 import { cultureFor } from '../data/cultures.js';
+import { bankRedshirt } from './redshirt.js';
 import type { SeasonState } from './season.js';
 import type {
   ClassYear, Hitter, Pitcher, Player, PlayerId, Position, Rng, Team,
@@ -735,10 +736,26 @@ export function departAndDevelop(
         continue;
       }
 
+      /*
+        The year that does not count, which is the whole of a redshirt.
+
+        He is a year older and a year better and he is still a freshman, which
+        is exactly the trade: a body off a twenty-three man roster for a season
+        in exchange for having him a fifth year. `bankRedshirt` also spends
+        his one, so nobody sits twice.
+
+        Deliberately inside this loop rather than beside it, so a redshirt goes
+        through the same development, the same badge pass and the same report
+        as everybody else. A man who sat out is not a man the offseason forgot.
+      */
+      const sat = (p as Player & { redshirt?: boolean }).redshirt === true;
       const next = NEXT_CLASS[p.classYear];
       if (next === null) continue;        // unreachable: seniors always depart
-      p.classYear = next;
-      const gained = develop(p, rng, growthMult + growthFromCulture(p));
+      if (!sat) p.classYear = next;
+      const growth = sat
+        ? growthMult * bankRedshirt(p)
+        : growthMult + growthFromCulture(p);
+      const gained = develop(p, rng, growth);
       report.developmentNet += gained;
       if (gained > 0) report.improved += 1; else report.declined += 1;
       // A winter's worth of badges: what the season he just played earned him,
