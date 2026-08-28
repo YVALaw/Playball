@@ -116,15 +116,17 @@
 
 <header class="top">
   <div class="top-in">
-    <div class="kicker">Playball · implementation plan · stages 1–4 shipped</div>
+    <div class="kicker">Playball · implementation plan · stages 1–5 shipped</div>
     <h1>The road to v1.0</h1>
     <p class="sub">Eighteen stages, ordered by what unblocks what. The game is
     already deep; this is the work that turns it into a product with a
-    personality, on a phone. <strong style="color:var(--cream)">The first four
+    personality, on a phone. <strong style="color:var(--cream)">The first five
     are done.</strong> Three and four did not exist when this plan was written —
     they came out of playing what stage 1 shipped, and were built the same day
-    they were reported. The old stage 5 has since been split, so the dugout can
-    land without a calibrated engine riding on the same pass.</p>
+    they were reported. The old stage 5 was split so the dugout could land
+    without a calibrated engine riding on the same pass, and it has: the screen
+    is rebuilt and the bench coach will take the game off you two different
+    ways. Everything that reaches into the simulation is stage 6.</p>
   </div>
 </header>
 
@@ -182,7 +184,7 @@
       <div class="num">01</div>
       <div>
         <h3>Stop the game lying, and stop it losing things</h3>
-        <div class="chips"><span class="chip done">Done · August 2026</span><span class="chip dep">768 tests green</span></div>
+        <div class="chips"><span class="chip done">Done · August 2026</span><span class="chip dep">799 tests green</span></div>
         <ul>
           <li><strong>A13</strong> — the elimination card that says your season is over when second place sends you to a regional. <span class="did">Wider than reported: a protected team losing its regional got the same funeral. Where you fell is now written at the moment you fall, because that's the only moment the bracket still knows.</span></li>
           <li><strong>Tournament win/lose cards</strong> — they carry the biggest moments in the game and are a title and two lines in a box. <span class="did">Cut to a headline and one line. The full big-moment treatment is stage 13 and wasn't worth doing twice.</span></li>
@@ -253,21 +255,21 @@
         <div class="exit"><b>Exit — met</b>Nothing on screen is bigger than its importance.</div>
       </div>
     </li>
-    <li class="stage">
+    <li class="stage done">
       <div class="num">05</div>
       <div>
         <h3>The dugout</h3>
         <div class="chips"><span class="chip sz-l">Large</span><span class="chip dep">Highest value of anything left</span><span class="chip sz-s">No engine risk</span></div>
-        <p>Split out of the old stage 5 deliberately. Everything here is
+        <p>Split out of the old stage 5 deliberately: everything here is
         presentation over a stream the engine already emits, so the best screen
-        in the game can land without putting a calibrated simulation at risk in
-        the same pass. What reaches <em>into</em> the engine is stage 6.</p>
+        in the game could land without putting a calibrated simulation at risk
+        in the same pass. What reaches <em>into</em> the engine is stage 6.</p>
         <ul>
-          <li><strong>The presentation rebuild</strong> — a much larger field, fielders labelled by position, a base-state banner, batter and pitcher as cards with their season lines, count and outs as indicators, calls as wide buttons with their reason underneath, plus <strong>LINE SCORE</strong> and <strong>REPLAY</strong></li>
-          <li><strong>Let the bench coach take it</strong> — <em>watch</em> (the game plays itself with the field animating) and <em>to the next moment</em> (default calls until something worth managing arrives). Today it is forty taps or total surrender.</li>
+          <li><strong>The presentation rebuild.</strong> A field about twice the size, a base-state banner in words, batter and pitcher as cards carrying the three numbers you would actually want, an arm gauge drawing the pitch budget fatigue has always used, outs as pips and the inning with a direction caret. <span class="did">Tested on a phone and corrected twice: the banner was drawn over both cards, because an earlier edit had nested them inside the field block — and the linescore, briefly folded behind a LINE SCORE button, came straight back out onto the bar with R/H/E. It is the one thing on this screen that answers &ldquo;where are we&rdquo; without being asked, and a scoreboard you have to press is not a scoreboard.</span></li>
+          <li><strong>The bench coach takes it, two ways.</strong> <em>Watch</em> hands him the calls and keeps a beat between them, so the field animates and you just see the game. <em>To the next moment</em> drops the beat and stops the instant something worth managing arrives — a man in scoring position, a close game gone late, or an arm past its budget. Neither changes an outcome: he submits the same default call the screen already highlights. <span class="did">One bug the types allowed: scoring position was written as a null check over three <em>booleans</em>, and <code>false !== null</code> is true, so every empty diamond counted as a man on second and the handover fired on the first pitch. Caught by playing it.</span></li>
         </ul>
-        <div class="exit"><b>Exit</b>The dugout is the best screen in the game.</div>
-        <div class="decide"><b>Do this first</b>The throttled browser performance profile, which needs no phone. This stage rebuilds the dugout around a <em>larger</em> 3D field, and a frame-rate disaster there changes the design rather than the code.</div>
+        <div class="exit"><b>Exit — met</b>The dugout is the best screen in the game.</div>
+        <div class="decide"><b>Deferred, by request</b>The ballpark&rsquo;s <em>look</em> — crowd, stands, lighting, the texture of the place — as opposed to its geometry, which is done. It waits for broadcast, where sound and celebration land, so the park gets treated once and properly rather than twice by halves. <strong>REPLAY</strong> is also unbuilt; the events that would drive it are already stored and take zero random draws, so it can land any time.</div>
       </div>
     </li>
 

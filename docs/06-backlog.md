@@ -1582,3 +1582,21 @@ The eleven pitch types and per-pitcher repertoires stay exactly what they are:
 what colours the play-by-play, and what tendencies and scouting reports are
 made of. Its row comes off the settings sheet — a greyed row promising
 something that is not coming is worse than no row.
+
+## §K · Raised while playing stage 5
+
+**K1 · The ballpark's look, as opposed to its geometry.** Asked for directly
+after the dugout rebuild landed: *"maybe later we will work a bit more in the
+park visual and do some tweaks to the design."* The field is now the right
+size and the play reads correctly on it — this is the other half, the one with
+no simulation in it: crowd, stands, lighting, the texture of the place.
+
+Deliberately **not** its own stage. It belongs with broadcast, where sound,
+haptics and the full-screen celebration land, because those are the same job —
+making the game *feel* like the sport — and a park redrawn before them would be
+redrawn again after them. One pass, once, with the rest of the atmosphere.
+
+**K2 · REPLAY.** Named in the stage 5 brief and not built. The play events and
+landing coordinates that would drive it are already stored and already take
+zero random draws, so this is a player over an existing stream rather than new
+state. Small, and it can land any time.

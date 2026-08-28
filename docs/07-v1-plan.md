@@ -211,6 +211,19 @@ without putting a calibrated simulation at risk in the same pass. What reaches
   on fumes). SIM THE REST is all-or-nothing today, so a player up nine runs
   faces forty taps or total surrender.
 
+**Delivered, and what changed on contact with a phone.** The linescore was
+briefly folded behind a LINE SCORE button and came straight back out: it is the
+one thing on the screen that answers "where are we" without being asked, and a
+scoreboard you have to press is not a scoreboard. It sits on the bar with
+R/H/E. REPLAY is not built.
+
+**Deferred out of this stage, by request: the park itself.** The field is
+bigger and reads correctly, and the ballpark's *visual* — crowd, stands,
+lighting, the look of the place rather than the geometry of the play — is its
+own piece of work with no simulation in it. It waits for the broadcast stage,
+where sound and celebration land, so the park gets treated once and properly
+rather than twice by halves. Logged in `06-backlog.md` §K1.
+
 **Exit:** the dugout is the best screen in the game.
 
 **Do first, and it needs no phone:** the throttled browser performance profile.
