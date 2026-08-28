@@ -40,7 +40,7 @@
 // asking a question he has no information to answer. Here he picks a coach; the
 // policies follow from that and stay editable for ever after.
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   CONFERENCES, STATES_BY_REGION, type SchoolDef,
 } from '../../data/schools.js';
@@ -62,6 +62,9 @@ import {
 } from '../CoachPortrait.js';
 import { createSeason, seasonLength } from '../../engine/season.js';
 import { makeRng } from '../../engine/rng.js';
+import { drawQuestions, ASKED, ASKED_CASUAL } from '../../engine/interviewResult.js';
+import { SKILL_LABEL, type CoachSkills } from '../../engine/program.js';
+import type { InterviewAnswer, InterviewQuestion } from '../../data/interview.js';
 
 const MANDATE_LABEL: Record<Mandate, string> = {
   develop: 'DEVELOP',
@@ -120,11 +123,30 @@ export function NewGame() {
   const suggestion = useMemo(() => randomProfile(makeRng(seed ^ 0x5eed)), [seed]);
   const [coach, setCoach] = useState<CoachProfile>(suggestion);
   /** Which of the three we are on. See the note at the top of the file. */
-  const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
+  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4>(0);
   // How deep a game this career is. Held here rather than written straight to
   // the store because no dynasty exists yet — it is handed to `start` with the
   // rest of the answers when a job is finally taken.
   const [mode, setMode] = useState<DepthMode>('full');
+  /*
+    The interview, and what it made of him.
+
+    The draw is seeded off the dynasty rather than off `Math.random`, so a
+    career is genuinely one career: reloading creation does not reroll the
+    questions, and the same seed with the same coach is the same five. Casual
+    gets two of them rather than none -- five is a slow start for somebody who
+    chose the shorter game, but zero would put the best-written thing in the
+    game out of reach of the players most likely to bounce off.
+  */
+  const asked = useMemo(
+    () => drawQuestions(
+      makeRng(seed ^ 0x1a7e), mode === 'casual' ? ASKED_CASUAL : ASKED,
+      { age: coach.age, warm: WARM_STATES.has(coach.homeState) },
+    ),
+    [seed, mode, coach.age, coach.homeState],
+  );
+  const [answers, setAnswers] = useState<InterviewAnswer[]>([]);
+
 
   // Build the actual world, not an estimate of it. Generation is deterministic
   // from the seed and costs about 2ms, so the screen can simply read the
@@ -234,11 +256,23 @@ export function NewGame() {
 
   if (step === 2) {
     return (
+      <InterviewStep
+        questions={asked}
+        answers={answers}
+        onAnswer={(a) => setAnswers((prev) => [...prev, a])}
+        onBack={() => { setAnswers([]); setStep(1); }}
+        onDone={() => setStep(3)}
+      />
+    );
+  }
+
+  if (step === 3) {
+    return (
       <PlayStyle
         chosen={coach.philosophy ?? DEFAULT_PHILOSOPHY}
         onChoose={(philosophy) => setCoach({ ...coach, philosophy })}
-        onBack={() => setStep(1)}
-        onDone={() => setStep(3)}
+        onBack={() => { setAnswers([]); setStep(2); }}
+        onDone={() => setStep(4)}
       />
     );
   }
@@ -247,7 +281,7 @@ export function NewGame() {
     <FixedHeader
       header={
         <div style={{ padding: '12px 14px 8px' }}>
-          <StepHead n={4} title="Take a job" onBack={() => setStep(2)} />
+          <StepHead n={5} title="Take a job" onBack={() => setStep(3)} />
 
           {/*
             Who you are and what you are worth, on one line above the offers.
@@ -532,6 +566,15 @@ export function NewGame() {
  * at the end of the content for the reason Sticky.tsx exists: a way out you have
  * to scroll to find is a way out the player has to think about.
  */
+/**
+ * How many steps creation has.
+ *
+ * Written once rather than three times, because it was three times and the
+ * interview arriving in the middle made two of them wrong -- the count said
+ * four while the dots drew four and the flow ran to five.
+ */
+const STEPS = 5;
+
 function StepHead(
   { n, title, onBack }: { n: number; title: string; onBack?: () => void },
 ) {
@@ -548,16 +591,16 @@ function StepHead(
             }}
           >‹ BACK</button>
         ) : <span className="label">NEW DYNASTY</span>}
-        <span className="label">STEP {n} OF 4</span>
+        <span className="label">STEP {n} OF {STEPS}</span>
       </div>
       {/* The road so far, at a glance: done, here, still to come. Colour is
           not the only signal — the count above says the same thing in words. */}
       <div
         role="img"
-        aria-label={`Step ${n} of 4`}
+        aria-label={`Step ${n} of ${STEPS}`}
         style={{ display: 'flex', gap: 3, marginTop: 7 }}
       >
-        {[1, 2, 3, 4].map((i) => (
+        {Array.from({ length: STEPS }, (_, k) => k + 1).map((i) => (
           <span key={i} style={{
             flex: 1, height: 4,
             background: i < n ? 'var(--win)' : i === n ? 'var(--clay)' : 'var(--faint)',
@@ -605,7 +648,7 @@ function Identity(
         label="HOW YOU PLAY"
         onClick={onDone}
         secondary={{ label: 'SOMEBODY ELSE', onClick: onShuffle }}
-        note="None of this changes how a game is played. The next two steps do."
+        note="None of this changes how a game is played. What comes next does."
       />}
     >
       <div style={{ padding: '12px 14px 0' }}>
@@ -874,7 +917,7 @@ function PlayStyle(
   return (
     <FixedHeader
       header={<div style={{ padding: '12px 14px 8px' }}>
-        <StepHead n={3} title="Set your plan" onBack={onBack} />
+        <StepHead n={4} title="Set your plan" onBack={onBack} />
       </div>}
       action={<FloatingAction
         label="FIND A JOB"
@@ -1059,5 +1102,126 @@ function Stat({ k, v, last }: { k: string; v: string; last?: boolean }) {
       <div className="label">{k}</div>
       <div style={{ font: "700 calc(18px * var(--ts))/1 var(--display)", marginTop: 3 }}>{v}</div>
     </div>
+  );
+}
+
+/** The warm half of the country, for the two questions that ask about heat. */
+const WARM_STATES = new Set([
+  'LA', 'MS', 'AL', 'TX', 'NC', 'SC', 'GA', 'FL', 'VA',
+  'CA', 'AZ', 'NM', 'NV',
+]);
+
+/**
+ * Step three: five questions, one at a time.
+ *
+ * The whole stage rests on this screen not feeling like a form, so it shows one
+ * question at a time and nothing else — no progress bar counting down, no
+ * summary of what you have picked, and no way back. An interview is a thing you
+ * are in, not a thing you are filling out.
+ *
+ * The effect of an answer *is* shown, which was a deliberate call. A character
+ * question whose consequence you cannot read is a guess rather than a choice,
+ * and the four skills are the part of a coach a player watches most closely.
+ * What is not shown is the badge each answer votes for: that is who he turns out
+ * to be, and finding out is better than picking.
+ */
+function InterviewStep(
+  { questions, answers, onAnswer, onBack, onDone }: {
+    questions: readonly InterviewQuestion[];
+    answers: readonly InterviewAnswer[];
+    onAnswer: (a: InterviewAnswer) => void;
+    onBack: () => void;
+    onDone: () => void;
+  },
+) {
+  const i = answers.length;
+  const q = questions[i];
+
+  // Answered them all. The step hands over on the next paint rather than
+  // rendering an empty frame.
+  useEffect(() => { if (!q) onDone(); }, [q, onDone]);
+  if (!q) return null;
+
+  return (
+    <FixedHeader
+      header={<div style={{ padding: '12px 14px 8px' }}>
+        <StepHead
+          n={3}
+          title="A few questions"
+          onBack={i === 0 ? onBack : undefined}
+        />
+        <div style={{
+          marginTop: 2, font: "500 calc(9px * var(--ts)) var(--mono)",
+          letterSpacing: '.16em', color: 'var(--dim)',
+        }}>{i + 1} OF {questions.length}</div>
+      </div>}
+    >
+      <div style={{ padding: '4px 14px 18px' }}>
+        {/*
+          The situation, in the straight man's voice. Pre-wrapped rather than
+          left to the browser: these are written with their line breaks as part
+          of the rhythm, and a paragraph that reflows on a narrow phone reads as
+          prose instead of as somebody talking.
+        */}
+        <div style={{
+          padding: '12px 13px 13px',
+          background: 'var(--navy)',
+          borderLeft: '4px solid var(--clay)',
+        }}>
+          <div style={{
+            whiteSpace: 'pre-line',
+            font: "400 calc(12.5px * var(--ts))/1.55 var(--body)",
+            color: 'var(--cream)',
+          }}>{q.setup}</div>
+          <div style={{
+            marginTop: 9,
+            font: "800 calc(16px * var(--ts))/1.15 var(--display)",
+            textTransform: 'uppercase', color: 'var(--cream)',
+          }}>{q.ask}</div>
+        </div>
+
+        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {q.answers.map((a) => (
+            <button
+              key={a.text}
+              className="tap"
+              onClick={() => onAnswer(a)}
+              style={{
+                textAlign: 'left', padding: '11px 12px', minHeight: 48,
+                background: 'var(--paper)',
+                border: '1px solid rgba(28,36,48,.3)',
+                boxShadow: '0 1px 0 rgba(28,36,48,.14)',
+              }}
+            >
+              <div style={{
+                font: "400 calc(12.5px * var(--ts))/1.45 var(--body)", color: 'var(--ink)',
+              }}>{a.text}</div>
+              <div style={{
+                marginTop: 5, display: 'flex', flexWrap: 'wrap', gap: 5,
+              }}>
+                {(Object.entries(a.skills) as [keyof CoachSkills & string, number][])
+                  .filter(([, n]) => n !== 0)
+                  .map(([k, n]) => (
+                    <span key={k} style={{
+                      padding: '2px 5px',
+                      border: `1px solid ${n > 0 ? 'var(--win)' : 'var(--clay)'}`,
+                      color: n > 0 ? 'var(--win)' : 'var(--clay)',
+                      font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em',
+                    }}>{n > 0 ? '+' : ''}{n} {SKILL_LABEL[k]}</span>
+                  ))}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <div style={{
+          marginTop: 12,
+          font: "400 calc(10.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
+        }}>
+          There is no wrong answer here. What you say changes which programmes
+          want you, not whether any of them do.
+        </div>
+      </div>
+    </FixedHeader>
   );
 }
