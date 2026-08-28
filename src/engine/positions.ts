@@ -90,7 +90,8 @@ const isFieldable = (pos: Position): boolean => pos !== 'P';
  * the sport does not pay him extra for it.
  */
 export function positionPenalty(p: Hitter | Pitcher, at: Position): number {
-  if (p.pos === at) return 0;
+  const settling = (p as { settling?: number }).settling ?? 0;
+  if (p.pos === at) return settling;
   if (!isFieldable(at)) return 0;
   // The DH is a lineup slot rather than a place on the grass. Nobody is out of
   // position there, which is the whole reason a bat-first man ends up in it.
@@ -98,7 +99,7 @@ export function positionPenalty(p: Hitter | Pitcher, at: Position): number {
 
   const climb = Math.max(0, LADDER[at] - LADDER[p.pos]);
   const tax = at === 'C' && p.pos !== 'C' ? CATCHER_TAX : 0;
-  return climb * PER_RUNG + tax;
+  return climb * PER_RUNG + tax + settling;
 }
 
 /**
@@ -156,4 +157,74 @@ export function penaltyLabel(p: Hitter | Pitcher, at: Position): string | null {
   if (cost >= CATCHER_TAX) return 'out of his depth';
   if (cost >= PER_RUNG * 2) return 'a stretch';
   return 'passable';
+}
+
+// ---------------------------------------------------------------------------
+// Moving a man, which is not the same as playing him out of position
+// ---------------------------------------------------------------------------
+//
+// Playing a shortstop at third for one night costs him the rung and nothing
+// else. *Moving* him there is a different act: he is a third baseman now, his
+// card says so, and the rung is gone -- but he is not a natural one yet, and
+// for a while he is worse there than his ratings claim.
+//
+// So a move is instant on the card and carries a settling penalty that decays,
+// which is what was asked for. It is deliberately not position *training*: a
+// man is here two to four years, and a system that spends one of them teaching
+// him second base spends most of what you have.
+
+/** What a man carries while he is learning a new spot. */
+export interface Settling {
+  /** Extra penalty points, on top of any rung. Decays each season. */
+  settling?: number;
+  /** Where he used to play, so a card can say what happened to him. */
+  movedFrom?: Position;
+}
+
+/** What a move costs on the day it happens, before any of it decays. */
+export const SETTLING_COST = 9;
+
+/** How much of it he sheds per season. Two years to be a natural. */
+export const SETTLING_DECAY = 4.5;
+
+/**
+ * Move him, and make him pay for it for a while.
+ *
+ * Returns false when there is nothing to do -- moving a man to the position he
+ * already plays is not a move, and the screen should not report one.
+ */
+export function movePosition(p: Hitter, to: Position): boolean {
+  if (p.pos === to) return false;
+  const s = p as Hitter & Settling;
+  const climb = positionPenalty(p, to);
+  s.movedFrom = p.pos;
+  p.pos = to;
+  /*
+    Uphill moves settle harder.
+
+    A shortstop moving to third has done this his whole life and is nearly
+    there already; a left fielder moving to short has a great deal to learn.
+    Charging the same for both would make the easy move feel punished and the
+    hard one free.
+  */
+  s.settling = SETTLING_COST + climb;
+  return true;
+}
+
+/** A season of getting used to it. */
+export function settleIn(p: Hitter): void {
+  const s = p as Hitter & Settling;
+  if (s.settling === undefined) return;
+  const left = s.settling - SETTLING_DECAY;
+  if (left <= 0) { delete s.settling; delete s.movedFrom; return; }
+  s.settling = left;
+}
+
+/** Whether the game should suggest moving him, and where. */
+export function suggestedMove(p: Hitter, crowdedAt: (pos: Position) => number): Position | null {
+  // Only a man who is blocked is worth moving, and only somewhere he can go
+  // without it being a story.
+  if (crowdedAt(p.pos) <= 1) return null;
+  const options = secondaryPositions(p).filter((pos) => crowdedAt(pos) === 0);
+  return options[0] ?? null;
 }
