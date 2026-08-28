@@ -36,6 +36,7 @@ import {
 } from '../engine/draft.js';
 import {
   newCoach, restoreCoach, reviewSeason, jobOffers, rosterStrength, contractFor, playerBoard,
+  approachSchool, APPROACHES_PER_SEASON, CAUGHT_SECURITY_COST, type ApproachOutcome,
   prestigeStars, skillPoints, takeChair,
   type CoachState, type CoachSkills, type CoachProfile, type JobOffer, type Review,
   type SeasonOutcome,
@@ -695,6 +696,18 @@ export interface DynastyStore {
    * notification that is tappable on Tuesdays.
    */
   overlay: Overlay | null;
+  /**
+   * Programmes approached this season, and the ones that bit.
+   *
+   * `tried` is cleared at the year roll and holds team indices, so the three-a-
+   * season limit and the never-the-same-school rule are one list rather than
+   * two counters. `interest` is *not* cleared: a school that would take your
+   * call keeps that opinion until the carousel, which is the only place it can
+   * become an offer.
+   */
+  approaches: { tried: number[]; interest: number[] };
+  /** Put a feeler out. Returns what happened, for the screen to say. */
+  approach: (team: number) => ApproachOutcome | 'spent' | 'already' | 'no';
   openOverlay: (o: Overlay) => void;
   closeOverlay: () => void;
   /**
@@ -2341,17 +2354,58 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         That is also exactly what `acceptOffer` already does when you say yes —
         the incumbent is moved on, and the inbox says so.
       */
-      const offers = review?.fired
+      /*
+        Who is calling, and who you called.
+
+        Offers used to arrive only when you were sacked, which made a career
+        something that happened *to* a coach. A school you approached and that
+        was interested belongs on the desk whether or not the board has moved
+        you on -- that is the entire point of being allowed to go looking, and
+        it is what turns the years left on a contract into a decision.
+
+        Interested schools come first and are not filtered by the hiring ladder:
+        they have already said they would take the call, and re-asking whether
+        they would have you would throw away the only thing the approach bought.
+      */
+      const wanted = get().approaches.interest
+        .map((i) => rolled.teams[i])
+        .filter((t): t is NonNullable<typeof t> => !!t && t.index !== get().userTeam)
+        .map((t) => ({
+          team: t.index,
+          school: t.def.school,
+          conference: t.conference,
+          prestige: t.prestige,
+          pitch: 'You wrote to them. They would like to talk.',
+        }));
+
+      const market = review?.fired
         ? jobOffers(coach, rolled.teams, (t) => t.prestige, get().userTeam, 4,
           (t) => !t.coach || coach.prestige > t.coach.prestige)
         : [];
+
+      const offers = [
+        ...wanted,
+        ...market.filter((o) => !wanted.some((w) => w.team === o.team)),
+      ];
 
       set({
         season: rolled,
         year: year + 1,
         version: get().version + 1,
         lastOffseason: report,
-        phase: null,
+        /*
+          A new season, and the slate is clean twice over.
+
+          `tried` resets because three feelers is a per-season allowance.
+          `interest` resets because a school that would have taken your call
+          last winter has hired somebody by now -- carrying it forward would
+          build a permanent list of schools that always want you, which is the
+          opposite of a market.
+
+          And `caughtLooking` goes with them: the board has had its say at the
+          review, and a man should not be tried twice for the same letter.
+        */
+        approaches: { tried: [], interest: [] },
         lastPostseason: null,
         lastOutcome: null,
         // Cleared with the rest of last year, and for a sharper reason than the
@@ -2365,7 +2419,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         lastReview: null,
         lastWeek: null,
         furthestPhase: 0,
-        coach,
+        // The board has had its say at the review, so a man is not tried twice
+        // for the same letter.
+        coach: { ...coach, caughtLooking: false },
         // Being let go puts you on the market immediately. Nobody waits.
         offers,
         // Dismissed means dismissed. The world carries on without you until you
@@ -2512,6 +2568,53 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   // Settings always opens on its index. Coming back to a screen you left three
   // sessions ago on the Sound page is a screen remembering something nobody
   // asked it to.
+  approaches: { tried: [], interest: [] },
+
+  approach: (team) => {
+    const { season, coach, userTeam, approaches, year, version } = get();
+    if (!season || team === userTeam) return 'no';
+    if (approaches.tried.includes(team)) return 'already';
+    if (approaches.tried.length >= APPROACHES_PER_SEASON) return 'spent';
+    const target = season.teams[team];
+    if (!target) return 'no';
+
+    /*
+      Seeded off the world, the year and the chair -- never off Math.random.
+
+      An approach that can be re-rolled by reloading the save is not a gamble,
+      it is a slot machine with a free respin, and the risk is the whole point
+      of the feature. The season generator position is the world clock, so the
+      same feeler to the same school in the same season always comes back the
+      same way.
+
+      Deliberately does not *consume* a draw from that generator. Reading the
+      state is free; spending one here would move every number in the rest of
+      the season depending on which schools a player happened to write to.
+    */
+    const rng = makeRng(
+      ((season.rng.state?.() ?? 1) ^ (year * 7919) ^ (team * 104729)) >>> 0,
+    );
+    const outcome = approachSchool(coach, target, rng);
+
+    const tried = [...approaches.tried, team];
+    const interest = outcome === 'interested'
+      ? [...new Set([...approaches.interest, team])] : approaches.interest;
+
+    set({
+      approaches: { tried, interest },
+      coach: outcome === 'caught'
+        ? {
+            ...coach,
+            security: Math.max(0, coach.security - CAUGHT_SECURITY_COST),
+            caughtLooking: true,
+          }
+        : coach,
+      version: version + 1,
+    });
+    void get().saveNow();
+    return outcome;
+  },
+
   openOverlay: (o) => set(o === 'settings' ? { overlay: o, settingsPage: 'index' } : { overlay: o }),
   closeOverlay: () => set({ overlay: null }),
   settingsPage: 'index',

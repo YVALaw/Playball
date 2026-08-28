@@ -252,6 +252,7 @@ function Overview(
             </div>
             <Meter k="PATIENCE" v={culture.patience} lo="they count fast" hi="they will wait" />
             <Meter k="AMBITION" v={culture.ambition} lo="a winning season" hi="Omaha or nothing" />
+            {!mine && <Approach team={t.index} />}
           </Panel>
         </>
       )}
@@ -664,6 +665,82 @@ function Meter(
           background: 'var(--ink)',
         }} />
       </div>
+    </div>
+  );
+}
+
+/**
+ * Shooting your shot, on the page you were already looking at.
+ *
+ * Reported by going to Colleges, opening a school, and finding nowhere to do
+ * it. That is the right instinct and the right place: browsing the country and
+ * acting on it should be the same gesture rather than two screens.
+ *
+ * No odds are shown, deliberately. A percentage turns a nerve question into an
+ * arithmetic one, and the interesting part of writing to a programme under
+ * contract somewhere else is not knowing.
+ */
+function Approach({ team }: { team: number }) {
+  const approaches = useDynasty((s) => s.approaches);
+  const approach = useDynasty((s) => s.approach);
+  const [said, setSaid] = useState<string | null>(null);
+
+  const already = approaches.tried.includes(team);
+  const spent = approaches.tried.length >= 3;
+  const bit = approaches.interest.includes(team);
+
+  const line = (): string | null => {
+    if (bit) return 'They would take the call. Expect them at the carousel.';
+    if (already) return 'You have written to them this season.';
+    if (spent) return 'Three letters a season. You have sent yours.';
+    return null;
+  };
+
+  const standing = line();
+
+  return (
+    <div style={{ padding: '9px 10px 10px', borderTop: '1px solid var(--hairline)' }}>
+      {standing ? (
+        <div style={{
+          font: "400 calc(11px * var(--ts))/1.45 var(--body)",
+          color: bit ? 'var(--win)' : 'var(--dim)',
+        }}>{standing}</div>
+      ) : (
+        <button
+          className="tap"
+          onClick={() => {
+            const out = approach(team);
+            setSaid(
+              out === 'interested' ? 'They would take the call.'
+              : out === 'caught' ? 'Somebody talked. Your own board has heard about it.'
+              : out === 'ignored' ? 'Nothing came back.'
+              : 'Not this season.',
+            );
+          }}
+          style={{
+            width: '100%', padding: '9px 10px', minHeight: 40,
+            background: 'var(--paper)',
+            border: '1px solid rgba(28,36,48,.32)',
+            font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
+            color: 'var(--ink)',
+          }}
+        >WRITE TO THEM</button>
+      )}
+      {said && (
+        <div style={{
+          marginTop: 7,
+          font: "400 calc(11px * var(--ts))/1.45 var(--body)",
+          color: /talked/.test(said) ? 'var(--clay)' : 'var(--dim)',
+        }}>{said}</div>
+      )}
+      {!standing && !said && (
+        <div style={{
+          marginTop: 5,
+          font: "400 calc(10px * var(--ts))/1.4 var(--body)", color: 'var(--dim)',
+        }}>
+          Three a season, and never the same school twice. Word can get back.
+        </div>
+      )}
     </div>
   );
 }

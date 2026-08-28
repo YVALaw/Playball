@@ -1015,6 +1015,13 @@ export interface CoachState extends CoachProfile {
   /** The most prestige a programme gained while he sat in it. */
   bestBuild?: number;
   /**
+   * Whether he was caught approaching somebody else this season.
+   *
+   * Cleared at the year roll. The board reads it at the review, where it is
+   * the difference between a bad year and a last one.
+   */
+  caughtLooking?: boolean;
+  /**
    * One-time and permanent, and his rather than the program's. See
    * `engine/achievements.ts` — a sparse map, so an absent key means unearned.
    */
@@ -1477,6 +1484,8 @@ export interface Reviewable {
   contractYears: number;
   contractLength: number;
   badRun: number;
+  /** Whether he was caught looking elsewhere this season. */
+  caughtLooking?: boolean;
 }
 
 export interface Review {
@@ -1541,7 +1550,21 @@ export function reviewSeason(
   const delta = coach.tenure === 0 && raw < 0 ? raw / 2 : raw;
   const securityAfter = Math.max(0, Math.min(100, securityBefore + delta));
 
-  const sacked = securityAfter < SACK_BAR && coach.tenure >= 1;
+  /*
+    Caught looking, and what it is actually worth.
+
+    Being found out costs security the moment it happens, which on its own would
+    make it a bad year rather than a last one -- and a risk that only ever
+    produces a bad year is not a risk. So the board also raises its own bar: a
+    man they already had doubts about does not get the benefit of them.
+
+    Deliberately not an automatic sacking. A coach who has just won the country
+    and put a feeler out has done something the board dislikes and nothing they
+    are prepared to lose him over, which is both true to the sport and the
+    reason the gamble is worth taking at all.
+  */
+  const bar = coach.caughtLooking ? SACK_BAR + 14 : SACK_BAR;
+  const sacked = securityAfter < bar && coach.tenure >= 1;
 
   // A good year buys years. Boards extend the people they want to keep rather
   // than letting a deal run down and inviting somebody else to make an offer.
@@ -1841,3 +1864,78 @@ export function offerPitch(
   if (t.prestige < 35) return 'Nobody established will take this, which is your opening.';
   return 'They have a chair and they think you might do.';
 }
+
+// ---------------------------------------------------------------------------
+// Shooting your shot
+// ---------------------------------------------------------------------------
+
+/** How many feelers a coach may put out in one season. */
+export const APPROACHES_PER_SEASON = 3;
+
+export type ApproachOutcome =
+  /** Nothing came of it. The common case, and it costs you nothing. */
+  | 'ignored'
+  /** They would take the call. The chair appears on your desk at the carousel. */
+  | 'interested'
+  /** Word got back. This is the one that can end a career. */
+  | 'caught';
+
+/**
+ * Putting a feeler out to a programme that has not asked for you.
+ *
+ * Offers used to arrive only when you were sacked, which made a career
+ * something that happened *to* a coach: you took what was offered or you took
+ * nothing. This is the other half — going and asking — and the reason it is
+ * worth having is that it is genuinely dangerous.
+ *
+ * Three things decide it, and culture is one of them by design. A programme
+ * that prizes tradition takes a dim view of being approached at all and is the
+ * likeliest to mention it to somebody; a programme that wants exactly what you
+ * are is the likeliest to listen. So the schools most worth approaching are
+ * often the ones most likely to talk, which is the decision.
+ *
+ * Pure and seeded. The caller owns the generator, so an approach cannot be
+ * re-rolled by reloading.
+ */
+export function approachSchool(
+  coach: Pick<CoachState, 'prestige' | 'security' | 'leans'>,
+  target: TeamRecord,
+  rng: Rng,
+): ApproachOutcome {
+  const culture = cultureOf(target.def.abbr);
+  const roster = rosterStrength(target.team);
+
+  // Whether they could plausibly hire you at all. Approaching a blueblood as a
+  // one-star coach is not a gamble, it is a letter nobody opens -- but it can
+  // still be overheard, which is the point.
+  const plausible = canBeHired(coach.prestige, target.prestige, roster);
+
+  const shared = culture ? (coach.leans?.[culture.edge] ?? 0) : 0;
+  // Tradition is the resented-approach axis. A place that has done things one
+  // way for a century does not enjoy being written to by a man under contract
+  // somewhere else.
+  const proud = culture?.edge === 'tradition' ? 1 : 0;
+  const patience = culture ? culture.patience / 100 : 0.5;
+
+  /*
+    Interest, and then the risk, in that order.
+
+    Deliberately not a single roll with three outcomes: being heard and being
+    listened to are different events, and a school can be both interested *and*
+    indiscreet. Rolling them separately is what allows the worst case -- they
+    want you, and they told somebody.
+  */
+  const interest = plausible
+    ? Math.min(0.55, 0.12 + shared * 0.05 + (target.coach ? 0 : 0.15))
+    : 0.02;
+
+  // A proud programme is roughly twice as likely to mention it. A patient one
+  // is a little less likely -- boards that do not panic do not gossip either.
+  const risk = Math.min(0.5, 0.14 + proud * 0.14 - patience * 0.08);
+
+  if (rng() < interest) return 'interested';
+  return rng() < risk ? 'caught' : 'ignored';
+}
+
+/** What being found out costs, before the board has said anything. */
+export const CAUGHT_SECURITY_COST = 22;
