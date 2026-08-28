@@ -351,14 +351,43 @@ export function Postseason() {
         so the rects are correct without waiting for a frame -- rAF is now only
         used to *animate*, which is the one job it is allowed to fail at.
       */
-      const you = scroller.querySelector('[data-you]');
+      /*
+        Which of your boxes, which is the whole question.
+
+        Reported after the first version landed: "it didn't take me to where my
+        team was in the bracket, which is the main thing." Correct -- and the
+        centring was working. You appear in a slot for *every round you play*,
+        so `querySelector` was faithfully finding the first one and centring on
+        the game you played on Tuesday.
+
+        Where you *are* is the game that has not been decided yet. Failing that
+        -- your run is over, or the half on screen is one you have finished --
+        the last box you appear in is the furthest you got, which is the thing
+        worth looking at.
+      */
+      const live = scroller.querySelector('[data-you-live]');
+      const all = scroller.querySelectorAll('[data-you]');
+      const you = live ?? all[all.length - 1] ?? null;
       if (!you) return undefined;
       const sr = scroller.getBoundingClientRect();
       const yr = you.getBoundingClientRect();
+      /*
+        Leave it alone if you can already see it.
+
+        This started as "move if the box is more than a nudge off centre", which
+        is the wrong question twice over. It fights a reader who has deliberately
+        scrolled somewhere -- the box is off centre, so it drags the page back --
+        and it also means the only time the view follows you is when the toggle
+        moves, so simulating a round and watching your live game shift down the
+        map left you looking at the wrong part of the bracket.
+
+        Asking whether the box is *visible* fixes both. Off screen, you get
+        taken to it; on screen, nothing happens however far off centre it sits.
+        That makes it safe to run on every bracket change rather than only on a
+        view swap.
+      */
+      if (yr.top >= sr.top && yr.bottom <= sr.bottom) return undefined;
       const delta = (yr.top + yr.height / 2) - (sr.top + sr.height / 2);
-      // A nudge worth making. Anything smaller is already centred and would
-      // only produce a twitch under the reader.
-      if (Math.abs(delta) < 24) return undefined;
 
       const reduce = typeof window.matchMedia === 'function'
         && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -393,7 +422,7 @@ export function Postseason() {
       frame = requestAnimationFrame(step);
     }
     return () => cancelAnimationFrame(frame);
-  }, [lookingAt, shown]);
+  }, [lookingAt, shown, version]);
 
   const stageTitle = rung === 0 ? `${team.conference} tournament`
     : rung === 1 ? 'The regionals' : 'The national tournament';
@@ -1199,13 +1228,15 @@ function SeriesResultCard(
   const winsOf = (t: number): number => r.games.filter(
     (g) => (g.homeRuns > g.awayRuns ? g.home : g.away) === t,
   ).length;
+  const mine = a === userTeam || b === userTeam;
   return (
-    <div style={{
-      marginBottom: 6,
-      border: (a === userTeam || b === userTeam)
-        ? '1.5px solid var(--clay)' : '1px solid var(--faint)',
-      background: 'var(--paper)',
-    }}>
+    <div
+      {...(mine ? { 'data-you': '' } : {})}
+      style={{
+        marginBottom: 6,
+        border: mine ? '1.5px solid var(--you)' : '1px solid var(--faint)',
+        background: 'var(--paper)',
+      }}>
       {tag && (
         <div style={{
           padding: '3px 9px', background: 'var(--ink)',
@@ -1234,11 +1265,13 @@ function PendingSeriesCard(
 ) {
   const mine = a === userTeam || b === userTeam;
   return (
-    <div style={{
-      marginBottom: 6,
-      border: mine ? '1.5px solid var(--you)' : '1px solid var(--faint)',
-      background: 'var(--paper)',
-    }}>
+    <div
+      {...(mine ? { 'data-you': '', 'data-you-live': '' } : {})}
+      style={{
+        marginBottom: 6,
+        border: mine ? '1.5px solid var(--you)' : '1px solid var(--faint)',
+        background: 'var(--paper)',
+      }}>
       <div style={{
         padding: '3px 9px', background: 'var(--field)',
         borderBottom: '1px solid var(--hairline)',

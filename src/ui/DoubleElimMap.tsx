@@ -133,7 +133,9 @@ function SlotCard(
     for a moment -- after the winners/losers toggle swaps the map out from under
     the reader. See `Postseason.tsx`, `keepYouCentred`.
   */
-  const youAnchor = mine ? { 'data-you': '' } : {};
+  const youAnchor = mine
+    ? (s.winner === null ? { 'data-you': '', 'data-you-live': '' } : { 'data-you': '' })
+    : {};
   // Only a game that has actually been played is worth opening. A TBD slot
   // that reacted to a tap would be promising something it has not got.
   const open = s.game && onOpen ? () => onOpen(s) : undefined;
