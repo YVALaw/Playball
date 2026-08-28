@@ -156,10 +156,10 @@ export function Manage() {
     between forty more taps and giving up the rest of the game unseen. Two
     softer doors, which is what the plan asked for:
 
-      WATCH            he calls it, you watch it, the field animates and the
-                       log fills. Stoppable at any pitch.
-      TO THE NEXT      he calls it until something worth managing arrives, and
-      MOMENT           then hands it straight back.
+      WATCH   he calls it, you watch it, the field animates and the log
+              fills. Stoppable at any pitch.
+      AUTO    he calls it as fast as it will go, and hands it straight back
+              the moment something worth managing arrives.
 
     Neither changes a single outcome. The bench coach submits the same default
     call the screen already highlights, which is exactly what SIM THE REST has
@@ -203,7 +203,7 @@ export function Manage() {
     One call per tick, never two: the guard is `playing`, the same flag that
     greys the buttons while a ball is in the air, so the coach waits out an
     animation exactly like a person would. WATCH keeps a beat between calls so
-    there is something to watch; TO THE NEXT MOMENT does not, because nobody
+    there is something to watch; AUTO does not, because nobody
     wants to sit through the eleven plate appearances before the one they asked
     for.
   */
@@ -448,20 +448,6 @@ export function Manage() {
               />
             </Suspense>
           )}
-        {/* The situation, over the foot of the field. */}
-        {d && (
-          <div style={{
-            position: 'absolute', left: 0, bottom: 0,
-            padding: '5px 12px 6px',
-            background: 'rgba(28,36,48,.86)',
-            maxWidth: '86%',
-          }}>
-            <span style={{
-              font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-              color: 'var(--cream)', textTransform: 'uppercase',
-            }}>{baseState(d.bases, d.outs)}</span>
-          </div>
-        )}
         </div>
       </div>
 
@@ -517,6 +503,28 @@ export function Manage() {
       <div ref={logRef} style={{
         flex: 1, minWidth: 0, overflowY: 'auto', padding: '9px 12px 12px 14px',
       }}>
+        {/*
+          Where everybody is, in the place the game is already being narrated.
+
+          This was a dark banner laid over the foot of the field, and it was
+          reported twice -- first for covering the two cards, then for existing
+          at all. The second is the better note: the diamond already shows the
+          runners, so a caption over it is the same fact twice, and the one
+          place a reader is looking for words about the situation is the log.
+
+          Pinned at the top rather than pushed into the stream, because it is
+          the state *now* rather than a thing that happened, and it must not
+          scroll away with the play that produced it.
+        */}
+        {d && (
+          <div style={{
+            position: 'sticky', top: -9, zIndex: 1,
+            margin: '-9px -12px 7px -14px', padding: '6px 12px 6px 14px',
+            background: 'var(--field)', borderBottom: '1px solid var(--faint)',
+            font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.1em',
+            color: 'var(--dim)', textTransform: 'uppercase',
+          }}>{baseState(d.bases, d.outs)}</div>
+        )}
         {recent.map((line, i) => {
           // The calls, and the two ways a call goes wrong. A runner thrown out
           // is the most consequential thing on this screen and it was reading as
@@ -605,12 +613,12 @@ export function Manage() {
             {auto === null ? (
               <>
                 <Small onClick={() => setAuto('watch')} disabled={playing}>WATCH</Small>
-                <Small onClick={() => setAuto('moment')} disabled={playing}>NEXT MOMENT</Small>
+                <Small onClick={() => setAuto('moment')} disabled={playing}>AUTO</Small>
                 <Small onClick={once(autoFinish)} disabled={playing}>SIM THE REST</Small>
               </>
             ) : (
               <Small onClick={() => setAuto(null)}>
-                {auto === 'watch' ? 'TAKE IT BACK' : 'STOP'}
+                TAKE IT BACK
               </Small>
             )}
             {/* The way out without ending anything, and it writes on the way.

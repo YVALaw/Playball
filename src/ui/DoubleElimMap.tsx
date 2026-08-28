@@ -75,8 +75,22 @@ export function DoubleElimMap(
       { title: 'FINAL', slots: finalsToShow(de.final) },
     ];
 
+  /*
+    The half you are looking at, keyed so a change is a change.
+
+    The screen moves you to the losers side on its own now, the moment you take
+    a loss, and a silent swap of one column layout for another reads as a
+    glitch rather than a move. Keying the map on the view makes React tear the
+    old one down and mount the new, which is all `card-in` needs to run --
+    about a third of a second, and it is off entirely for anybody who has asked
+    the system to stop moving things.
+  */
   return (
-    <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+    <div
+      key={view}
+      className="card-in"
+      style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}
+    >
       <div style={{
         display: 'flex', gap: 10, padding: '4px 14px 8px', minWidth: 'min-content',
       }}>

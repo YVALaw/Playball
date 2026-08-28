@@ -617,7 +617,7 @@ export interface DynastyStore {
    * the unit when none of them are: a knocked-out coach should not have to
    * press twenty times to watch a best of seven he is not in.
    */
-  simBracket: (mode: 'game' | 'round' | 'rest') => void;
+  simBracket: (mode: 'game' | 'round' | 'mine' | 'rest') => void;
   /** Fold a finished run into the stage results and move on. Internal. */
   closeMyBracket: () => void;
   /** How your June ended, once it has. Null while you are still alive in it. */
@@ -2955,6 +2955,27 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         // honest unit, every playable game played.
         both();
       }
+    } else if (mode === 'mine') {
+      /*
+        Straight to the next game you are actually in.
+
+        Round by round is the honest unit and it is kept -- but it is not what
+        somebody wants when four of the next five rounds have nothing of theirs
+        in them. Asked for directly, and asked for as the *primary* button,
+        which is the right call: the reason to be on this screen is your own
+        team.
+
+        Stops on the first round that contains one of your games, before
+        playing it, so the game is still yours to play or sim. Also stops if
+        you go out or the tournament ends, because there is no next game then.
+      */
+      const userTeam = get().userTeam;
+      const mineIsUp = (): boolean => {
+        if (myBracket.format === 'series') return !myBracket.state.done;
+        return liveSlotFor(myBracket.state, userTeam) !== null;
+      };
+      let guard = 0;
+      while (!state.done && !mineIsUp() && guard++ < 200) both();
     } else {
       let guard = 0;
       while (!state.done && guard++ < 200) both();

@@ -102,6 +102,29 @@ export function Postseason() {
   useEffect(() => { openStage(); }, [openStage, bracket?.stage, version]);
 
   /*
+    The screen goes where you are.
+
+    Losing in the winners bracket moves you to the losers side, and the screen
+    used to stay looking at the half you had just left -- so the most important
+    thing that had happened to you all week was somewhere you had to go and
+    find. Reported as wanting the view to move, smoothly, so you can see where
+    you now are.
+
+    It follows rather than jumps: the toggle is a real control and somebody who
+    has deliberately gone to look at the other half should be left there. So
+    this only fires when the side you are *playing on* changes, which is once a
+    tournament at most, and the map fades in under it.
+  */
+  const mySide: 'winners' | 'losers' | null = myBracket && myBracket.format === 'double'
+    ? ((myBracket.state.losses.get(userTeam) ?? 0) > 0 ? 'losers' : 'winners')
+    : null;
+  useEffect(() => {
+    if (mySide === null || reviewing !== null) return;
+    if (bracket?.stage === 'conference') setConfView(mySide);
+    else if (bracket?.stage === 'national') setNatView(mySide);
+  }, [mySide, bracket?.stage, reviewing]);
+
+  /*
     Two different questions, and conflating them was half the bug.
 
     `reported` is "there is an elimination this year that has not been shown" —
@@ -444,16 +467,35 @@ export function Postseason() {
             button reads that round's own name — the same string the bracket
             column and the log use, so the three cannot drift.
           */
-          label: (() => {
-            const round = myBracket.format === 'double'
-              ? nextRoundName(myBracket.state) : null;
-            if (!round) return iAmOut ? 'SEE THE NEXT GAMES' : 'PLAY THE NEXT GAMES';
-            return `${iAmOut ? 'SEE' : 'SIM'} THE ${round.toUpperCase()}`;
-          })(),
-          run: () => sim('round'),
+          /*
+            Your next game is the primary; the round is the secondary.
+
+            Round by round is honest and is kept, but it is not what anybody
+            wants when four of the next five rounds have nothing of theirs in
+            them. Asked for directly and asked for as the primary, which is the
+            right way round: the reason to be on this screen is your own team.
+
+            Once you are out there is no next game of yours, so the pair
+            becomes the round and the whole tournament instead.
+          */
+          label: iAmOut
+            ? (() => {
+                const round = myBracket.format === 'double'
+                  ? nextRoundName(myBracket.state) : null;
+                return round ? `SEE THE ${round.toUpperCase()}` : 'SEE THE NEXT GAMES';
+              })()
+            : 'SIM TO MY NEXT GAME',
+          run: () => sim(iAmOut ? 'round' : 'mine'),
           secondary: iAmOut
             ? { label: 'SIM TO THE END OF THE TOURNAMENT', onClick: () => sim('rest') }
-            : null,
+            : {
+                label: (() => {
+                  const round = myBracket.format === 'double'
+                    ? nextRoundName(myBracket.state) : null;
+                  return round ? `SIM THE ${round.toUpperCase()}` : 'SIM THE NEXT ROUND';
+                })(),
+                onClick: () => sim('round'),
+              },
         }
       : stagePlayed
         ? {
@@ -492,7 +534,17 @@ export function Postseason() {
           kicker={howFar.good ? `${year} · STILL ALIVE` : `${year} · SEASON OVER`}
           title={howFar.title}
           lines={howFar.lines}
-          tone={howFar.good ? 'win' : 'clay'}
+          /*
+            Advancing is not winning, and the card must not say it is.
+
+            Reported: finishing runners up in the conference showed a green
+            card, and green is what this app uses for a win -- so the screen
+            congratulated a team on losing its final. Three states, three
+            colours: green only for a trophy, clay for a season that is over,
+            and the neutral one for the middle case this card actually
+            describes, which is "you lost, and you are still alive".
+          */
+          tone={howFar.good ? 'ink' : 'clay'}
           action={howFar.good
             ? (knockout?.kind === 'conference' ? 'ON TO THE REGIONAL' : 'ON TO THE NATIONALS')
             : 'SEE THE REST OF IT'}
