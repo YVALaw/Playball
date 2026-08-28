@@ -25,6 +25,7 @@ import { FIRST, LAST } from '../data/names.js';
 import { ALL_STATES } from '../data/schools.js';
 import { DEFAULT_PHILOSOPHY, isPhilosophyId, type PhilosophyId } from './strategy.js';
 import { cultureOf, type CultureEdge } from '../data/cultures.js';
+import type { CoachHabits } from './habits.js';
 import type { TeamRecord } from './season.js';
 import type { Rng, Team } from './types.js';
 
@@ -1021,6 +1022,14 @@ export interface CoachState extends CoachProfile {
    * the difference between a bad year and a last one.
    */
   caughtLooking?: boolean;
+  /**
+   * What he has actually done, across the whole career.
+   *
+   * Hidden from every screen and read only by the badge check -- see
+   * `engine/habits.ts` for why the thresholds are seeded and why nobody is
+   * told how far along they are.
+   */
+  habits?: CoachHabits;
   /**
    * One-time and permanent, and his rather than the program's. See
    * `engine/achievements.ts` — a sparse map, so an absent key means unearned.

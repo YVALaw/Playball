@@ -11,7 +11,7 @@
 // Everything printed is derived from the live season by `engine/wire.ts`.
 // Nothing here invents a fact, and reading the page consumes no dice.
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
 import { FirstVisit } from '../Tutorial.js';
@@ -73,6 +73,22 @@ export function Wire() {
   const team = useUserTeam();
 
   const items = useMemo(() => (season ? wire(season) : []), [season, version]);
+
+  /*
+    That he came and read it.
+
+    One of the two habits that reward *engaging* with the game rather than
+    optimising it -- a coach who keeps up with the country is a recognisable
+    kind of coach, and the badge for it should not be earnable by anybody who
+    never opens this screen.
+
+    Counted once per visit rather than per story, and only when there is
+    something to read: opening an empty wire in February is not keeping up.
+  */
+  const noteHabit = useDynasty((s) => s.noteHabit);
+  useEffect(() => {
+    if (items.length > 0) noteHabit('wire');
+  }, [items.length > 0, season?.dayIndex, noteHabit]);
 
   if (!season || !team) return null;
 

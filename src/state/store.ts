@@ -191,6 +191,8 @@ const holesFor = (record: { team: { lineup: unknown[]; bench: unknown[]; rotatio
 };
 import type { Region } from '../data/schools.js';
 import type { CultureEdge } from '../data/cultures.js';
+import { note, earnedBadges, type HabitKey } from '../engine/habits.js';
+import { MAX_BADGES, badgeOf } from '../data/badges.js';
 import { makeRng } from '../engine/rng.js';
 import {
   autoBattingOrder, strategyFor, strategyForPhilosophy, type Strategy,
@@ -706,8 +708,19 @@ export interface DynastyStore {
    * become an offer.
    */
   approaches: { tried: number[]; interest: number[] };
+  /**
+   * Badges earned at the last board meeting, waiting to be announced.
+   *
+   * Cleared once the card has been shown. Held in the store rather than derived
+   * because "what is new" is a fact about a moment, and by the time a screen
+   * renders, the badge is simply on the card like all the others.
+   */
+  newBadges: string[];
+  clearNewBadges: () => void;
   /** Put a feeler out. Returns what happened, for the screen to say. */
   approach: (team: number) => ApproachOutcome | 'spent' | 'already' | 'no';
+  /** Record something the coach did. See `engine/habits.ts`. */
+  noteHabit: (key: HabitKey, n?: number) => void;
   openOverlay: (o: Overlay) => void;
   closeOverlay: () => void;
   /**
@@ -1686,6 +1699,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     board.spent += spent;
 
     if (kept) {
+      // A man who was leaving and did not. The persuader badge is watching for
+      // exactly this, and it is the one habit that rewards engaging with a
+      // screen rather than optimising a number.
+      get().noteHabit('talkedDown');
       const record = season.teams[userTeam];
       const report = get().lastOffseason;
       if (record) {
@@ -2165,6 +2182,58 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // Prestige belongs to the school and survives a coaching change.
     me.prestige = review.prestigeAfter;
 
+    /*
+      The four habits a season answers rather than a moment.
+
+      Everything else is counted where it happens -- a mound visit at the mound,
+      a steal at the steal. These four are properties of a whole year and there
+      is no earlier point at which the question can be asked.
+
+      Read off state that already exists rather than tracked as they occur:
+      the results are all in `season.results`, the roster is standing right
+      here, and a counter incremented in six places is a counter that will
+      eventually be forgotten in a seventh.
+    */
+    {
+      const games = season.results.filter(
+        (g) => g.home === userTeam || g.away === userTeam,
+      );
+      // rpiOrder hands back rows, not indices, so the ladder is read off the
+      // team each row carries.
+      const rank = rpiOrder(season).map((r) => r.team.index);
+      const myRank = rank.indexOf(userTeam);
+
+      let comebacks = 0;
+      let roadUpsets = 0;
+      for (const g of games) {
+        const mine = g.home === userTeam;
+        const them = mine ? g.away : g.home;
+        const my = mine ? g.homeRuns : g.awayRuns;
+        const their = mine ? g.awayRuns : g.homeRuns;
+        if (my <= their) continue;
+        // Won on the road against somebody the country rates above you.
+        if (!mine && myRank >= 0 && rank.indexOf(them) >= 0
+          && rank.indexOf(them) < myRank) roadUpsets += 1;
+        // A one-run win is the closest thing to a comeback the stored result
+        // can testify to: the box score keeps the line, not the lead changes.
+        if (my - their === 1) comebacks += 1;
+      }
+
+      const roster = [
+        ...me.team.lineup, ...me.team.bench, ...me.team.rotation, ...me.team.bullpen,
+      ];
+      const freshmen = roster.filter((p) => p.classYear === 'FR').length;
+      const walkOns = roster.filter((p) => p.walkOn).length;
+
+      let habits = coach.habits ?? {};
+      habits = note(habits, 'comebacks', comebacks);
+      habits = note(habits, 'roadUpsets', roadUpsets);
+      habits = note(habits, 'freshmen', freshmen);
+      habits = note(habits, 'walkOns', walkOns);
+      if (review.verdict === 'exceeded') habits = note(habits, 'overachieved');
+      coach.habits = habits;
+    }
+
     const year = get().year;
     const tenure = review.fired ? 0 : coach.tenure + 1;
 
@@ -2238,12 +2307,30 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     */
     const record = recordFor(get());
 
+    /*
+      What the year made him, checked at the one moment a career pauses.
+
+      Not checked as the counters move: a badge arriving in the fourth inning of
+      a Tuesday would interrupt a game to tell somebody about a habit, and the
+      board meeting is where a career is already being summed up.
+
+      The cap is applied here rather than in `earnedBadges`, because a man whose
+      card is full has still earned the sixth and the wire should still say so --
+      the badge simply does not go on.
+    */
+    const fresh = earnedBadges(coach.habits ?? {}, coach.badges ?? [], WORLD_SEED);
+    const badges = fresh.length > 0
+      ? [...(coach.badges ?? []), ...fresh].slice(0, MAX_BADGES)
+      : coach.badges;
+
     set({
       lastReview: review,
       lastOutcome: outcome,
+      newBadges: fresh,
       history: record ? [...get().history, record] : get().history,
       coach: {
         ...coach,
+        ...(badges ? { badges } : {}),
         prestige: review.coachPrestigeAfter,
         security: review.securityAfter,
         tenure,
@@ -2406,6 +2493,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           review, and a man should not be tried twice for the same letter.
         */
         approaches: { tried: [], interest: [] },
+  newBadges: [],
+  clearNewBadges: () => set({ newBadges: [] }),
         lastPostseason: null,
         lastOutcome: null,
         // Cleared with the rest of last year, and for a sharper reason than the
@@ -2569,6 +2658,25 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   // sessions ago on the Sound page is a screen remembering something nobody
   // asked it to.
   approaches: { tried: [], interest: [] },
+  newBadges: [],
+  clearNewBadges: () => set({ newBadges: [] }),
+
+  /*
+    One place to record a habit.
+
+    Every hook below is a single call, which matters more than it looks: a
+    counter incremented in six places is a counter that will eventually be
+    forgotten in a seventh, and these are hidden numbers -- nobody would notice
+    for months.
+
+    Deliberately does not save. These fire during a game, several times an
+    inning, and a write per steal would be a write per steal. The save that
+    already happens at the end of a game carries them.
+  */
+  noteHabit: (key, n = 1) => {
+    const { coach } = get();
+    set({ coach: { ...coach, habits: note(coach.habits ?? {}, key, n) } });
+  },
 
   approach: (team) => {
     const { season, coach, userTeam, approaches, year, version } = get();
@@ -2969,6 +3077,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
    * would quietly be a different game from the one simulating it produces.
    */
   manageBracketGame: async () => {
+    // A game taken rather than handed over. Counted here rather than at the
+    // final out, so a game abandoned halfway still counts as one he sat in.
+    get().noteHabit('managed');
     const { season, myBracket, userTeam, version } = get();
     if (!season || !myBracket || get().busy) return;
     // A game is already being managed. Building a second LiveGame would consume
@@ -3417,6 +3528,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   startManagedGame: async () => {
+    // A game taken rather than handed over. Counted here rather than at the
+    // final out, so a game abandoned halfway still counts as one he sat in.
+    get().noteHabit('managed');
     const { season, userTeam, version } = get();
     // `busy` because the worker owns the season during a sim — a game started
     // against that object would be recorded into whatever world replaces it.
@@ -3508,6 +3622,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   submitTactic: (t) => {
     const { live, version } = get();
     if (!live || live.over) return;
+    // The calls that mark a man out as a small-ball coach. Not every tactic --
+    // "swing" and "pitch" are the absence of a decision rather than one.
+    if (t === 'steal' || t === 'bunt' || t === 'hitrun') get().noteHabit('aggressive');
     noteAction({ k: 'tactic', t });
     live.submit(t);
     set({ version: version + 1 });
@@ -3524,6 +3641,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   bringIn: (p) => {
     const { live, version } = get();
     if (!live) return;
+    get().noteHabit('pen');
     noteAction({ k: 'pen', id: String(p.id) });
     live.changePitcher(p);
     set({ version: version + 1 });
@@ -3532,6 +3650,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   visitMound: () => {
     const { live, version } = get();
     if (!live) return;
+    get().noteHabit('pen');
     // Journalled before the engine is stepped, like every other call, so a
     // crash replays to the same crash rather than skipping the visit.
     noteAction({ k: 'visit' });

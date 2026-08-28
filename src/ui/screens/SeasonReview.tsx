@@ -10,7 +10,10 @@
 // dynasty is priced in. Recruiting gates on it, jobs gate on it, and a player
 // who only ever sees the final figure never learns what moves it.
 
+import { useEffect, useMemo } from 'react';
+
 import { useDynasty, useUserTeam } from '../../state/store.js';
+import { badgeOf } from '../../data/badges.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { FirstVisit } from '../Tutorial.js';
 import { Avatar } from '../Avatar.js';
@@ -28,6 +31,23 @@ export function SeasonReview() {
   const openPlayer = useDynasty((s) => s.openPlayer);
   const openOverlay = useDynasty((s) => s.openOverlay);
   const team = useUserTeam();
+  /*
+    Read once and cleared, so the card fires on the season it belongs to.
+
+    Cleared on mount rather than on the button, because a player who leaves this
+    screen without pressing anything has still been told -- and being told twice
+    would make the rarest thing in the stage feel like a notification.
+  */
+  const newBadges = useDynasty((s) => s.newBadges);
+  const clearNewBadges = useDynasty((s) => s.clearNewBadges);
+  const earned = useMemo(
+    () => newBadges.map((id) => badgeOf(id)).filter((b): b is NonNullable<typeof b> => !!b),
+    [newBadges],
+  );
+  useEffect(() => {
+    if (newBadges.length > 0) return () => clearNewBadges();
+    return undefined;
+  }, [newBadges.length, clearNewBadges]);
 
   if (!season || !team) return null;
 
@@ -114,6 +134,42 @@ export function SeasonReview() {
     >
     <FirstVisit id="review" />
     <div style={{ padding: '3px 14px 24px' }}>
+      {/*
+        What the year made you, said once.
+
+        Above the banner on purpose. A badge is the rarer thing -- most seasons
+        do not produce one -- and it is about the man rather than the record, so
+        it should not be read as a footnote to a win total.
+
+        The counters behind it are never shown and never will be. Somebody who
+        can see he is four mound visits away stops going to the mound because he
+        wants to and starts going because he is four away, which is the
+        difference between a coach and a checklist.
+      */}
+      {earned.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          {earned.map((b) => (
+            <div key={b.id} className="rise-in" style={{
+              padding: '11px 12px 12px', marginBottom: 6,
+              background: 'var(--paper)',
+              border: '1px solid var(--clay)', borderLeft: '5px solid var(--clay)',
+            }}>
+              <div className="label" style={{ color: 'var(--clay)' }}>
+                THEY HAVE STARTED SAYING
+              </div>
+              <div style={{
+                marginTop: 4,
+                font: "800 calc(19px * var(--ts))/1.05 var(--display)",
+                textTransform: 'uppercase',
+              }}>{b.name}</div>
+              <div style={{
+                marginTop: 4,
+                font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
+              }}>{b.line}</div>
+            </div>
+          ))}
+        </div>
+      )}
       {/*
         The banner, and only when the season earned one.
 
