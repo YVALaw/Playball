@@ -451,9 +451,70 @@ planning this — logged in `06-backlog.md` §K6.
 
 **Exit:** you manage a roster rather than reading a list.
 
-**Decisions:** how position competence is modelled; whether a redshirt is a
-coach's call or a rule; how academic risk is surfaced during recruiting;
-whether a two-way player is a generated type or something a coach makes.
+### Decisions — settled August 28 2026
+
+**Position competence is a penalty, not a matrix.** One primary position and a
+cost for playing away from it, rather than nine ratings a man. Nine ratings is
+2,200 numbers a season that mostly say "he cannot play there", and a penalty can
+be made zero-sum by construction where a matrix cannot.
+
+**The defensive spectrum is the model.** `DH - 1B - LF - RF - 3B - CF - 2B - SS
+- C`. Downhill is free, uphill costs per rung, and catcher carries a surcharge
+on top because it is a separate trade rather than a harder version of the same
+one — asked for in those terms: in The Show, an outfielder behind the plate
+watches his overall drop.
+
+**Secondary positions are derived, never stored.** Generating a field onto a
+player would move every random draw after it and break every golden. Derived
+from his primary and the ladder, the way `playedPosition` already derives a
+DH's real position. The consequence is that the whole model is *inert* until a
+depth chart lets a coach move somebody: rosters are built to fit positions, so
+every penalty in the league is currently zero and no calibration figure moved.
+
+**No position training.** A man is here two to four years; a system that spends
+one of them teaching him second base spends most of what you have.
+
+**The depth chart is both** a lineup card and a per-position ranking. And there
+is no BENCH as a category: a man not starting is simply *benched*, which is what
+the word means. Enforced rather than advisory. Casual promotes automatically;
+full career asks.
+
+**The DH is the modern two-way rule** — a pitcher may hit for himself and stay
+in as DH after being pulled — and the coach may decline the DH entirely.
+
+**Redshirts** (decided here rather than asked): declared before the season, for
+freshmen and sophomores, and he plays *no* games that year, which is the real
+baseball rule and a real cost on a 23-man roster. His class year does not
+advance, he develops slightly slower without live pitching, and he is yours a
+fifth year. Three a season, or a whole class gets redshirted. Casual does it for
+you.
+
+**Academic eligibility is your program's alone** — grades are not simulated for
+the other ninety-five, which makes it a fraction of the feature it looked like.
+A visible, manageable rating rather than a hidden roll. One week out. It should
+sometimes land on your ace in June, but not often.
+
+**Managing it is "a word with him"** — three or four conversations a season, on
+the player's card, scarce and non-cumulative, the same shape as the three
+letters and the draft's keep budget. Deliberately *not* money: the economy is
+stage 11, and building against a system that does not exist is how `Builder`
+shipped as a title nobody could wear. It reads the coach's badges and his
+training skill. When morale arrives in stage 9 it is the same mechanism with
+more uses, and when the economy lands it can buy more of them — an upgrade
+rather than a rewrite.
+
+**Position changes are proposed, not ordered**, with a penalty that decays, and
+the game suggests them.
+
+**Two-way players split out of this stage.** One man in two rating systems with
+fatigue crossing both, a lineup card and a rotation both claiming him, and every
+leaderboard deciding which half it ranks — that is not a small feature in a big
+hat, and stage 8 is already large. They arrive two-way rather than being made,
+they are rare the way they are in life, and pitching does not suppress the bat.
+
+**Order within the stage:** depth chart, competence and the DH first, because
+eligibility and redshirts both need somewhere to send a man. Academic
+eligibility ships last and stays in the stage.
 
 ## Stage 9 · Players as people
 
