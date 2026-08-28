@@ -18,6 +18,7 @@
 // so rather than showing an empty table and letting it read as "never played".
 
 import { createContext, useContext, useState, type ReactNode } from 'react';
+import { cultureOf, CULTURE_LABEL } from '../../data/cultures.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { FixedHeader } from '../Sticky.js';
@@ -214,8 +215,47 @@ function Overview(
   const mine = me && me.index === t.index;
   const h2h = me && !mine ? headToHead(season, me.index, t.index) : null;
 
+  const culture = cultureOf(t.def.abbr);
+
   return (
     <>
+      {/*
+        What the place believes, before anything about this year.
+
+        A programme used to be a name, a colour and two numbers, and the two
+        numbers were both about strength — so every school read as the same
+        school at a different volume. This is the half that says what they
+        actually want, which is what makes taking a job a decision rather than
+        picking the highest number that will have you.
+      */}
+      {culture && (
+        <>
+          <Head>WHAT THEY BELIEVE</Head>
+          <Panel>
+            <div style={{ padding: '10px 12px 11px' }}>
+              <div style={{
+                display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
+              }}>
+                <span style={{
+                  font: "800 calc(15px * var(--ts))/1.05 var(--display)",
+                  textTransform: 'uppercase', color: 'var(--ink)',
+                }}>{culture.name}</span>
+                <span style={{
+                  font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.14em',
+                  color: 'var(--clay)',
+                }}>{CULTURE_LABEL[culture.edge]}</span>
+              </div>
+              <div style={{
+                marginTop: 5,
+                font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
+              }}>{culture.creed}</div>
+            </div>
+            <Meter k="PATIENCE" v={culture.patience} lo="they count fast" hi="they will wait" />
+            <Meter k="AMBITION" v={culture.ambition} lo="a winning season" hi="Omaha or nothing" />
+          </Panel>
+        </>
+      )}
+
       <Head>HEAD TO HEAD</Head>
       {mine ? (
         <Note>This is your program. Everything here is your own season.</Note>
@@ -591,6 +631,39 @@ function Stat({ k, v, last }: { k: string; v: string; last?: boolean }) {
       <span style={{
         font: "600 calc(13px * var(--ts)) var(--mono)", textAlign: 'right',
       }}>{v}</span>
+    </div>
+  );
+}
+
+/**
+ * One of a programme's two dials.
+ *
+ * Deliberately unnumbered. Patience and ambition are opinions, not quantities,
+ * and printing "62" invites somebody to compare it with "64" as though the
+ * difference meant something. The ends are named instead, which is how a person
+ * would describe the place out loud.
+ */
+function Meter(
+  { k, v, lo, hi }: { k: string; v: number; lo: string; hi: string },
+) {
+  return (
+    <div style={{ padding: '8px 12px 9px', borderTop: '1px solid var(--hairline)' }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+      }}>
+        <span className="label">{k}</span>
+        <span style={{
+          font: "400 calc(9.5px * var(--ts)) var(--body)", color: 'var(--dim)',
+        }}>{v >= 60 ? hi : v <= 40 ? lo : 'somewhere in between'}</span>
+      </div>
+      <div style={{
+        marginTop: 4, height: 3, background: 'var(--faint)', overflow: 'hidden',
+      }}>
+        <div className="grow" style={{
+          width: `${Math.max(4, Math.min(100, v))}%`, height: '100%',
+          background: 'var(--ink)',
+        }} />
+      </div>
     </div>
   );
 }
