@@ -109,14 +109,17 @@ let wonTotal = 0;
  * spread across the ninety six chairs, which is the other half of the question:
  * a ladder nobody climbs and a ladder everybody finishes are both broken.
  */
-const TITLE_LADDER: readonly CoachTitle[] =
-  ['Unproven', 'Journeyman', 'Respected', 'Established', 'Renowned', 'Legendary'];
+const TITLE_LADDER: readonly CoachTitle[] = [
+  'Unproven', 'Rookie', 'Career man', 'Journeyman', 'Firefighter',
+  'Lifer', 'Builder', 'Respected', 'Nearly man', 'Contender',
+  'Champion', 'Dynasty', 'Legend',
+];
 const drift = { quiet: 0, moved: 0, debut: 0 };
 const titleSnapshots: { year: number; spread: Record<CoachTitle, number> }[] = [];
 const spreadNow = (): Record<CoachTitle, number> => {
-  const out = {
-    Unproven: 0, Journeyman: 0, Respected: 0, Established: 0, Renowned: 0, Legendary: 0,
-  } as Record<CoachTitle, number>;
+  const out = Object.fromEntries(
+    TITLE_LADDER.map((t) => [t, 0]),
+  ) as Record<CoachTitle, number>;
   for (const t of season.teams) if (t.coach) out[coachStanding(t.coach).title] += 1;
   return out;
 };
@@ -279,11 +282,43 @@ console.log('title drift   %s%% of quiet coach-seasons changed the man\'s title 
 console.log('  of which    %d were a first season ending UNPROVEN; %s%% is the rest',
   drift.debut,
   (100 * (drift.moved - drift.debut) / Math.max(1, drift.quiet)).toFixed(1));
-console.log('coach titles  unpr/jour/resp/estb/renw/lgnd, of %d chairs:', N);
+console.log('coach titles  %s, of %d chairs:', TITLE_LADDER.map((t) => t.slice(0, 4).toLowerCase()).join('/'), N);
 for (const snap of titleSnapshots) {
   console.log('  %s  %s', String(snap.year).padStart(4),
     TITLE_LADDER.map((t) => String(snap.spread[t]).padStart(3)).join('/'));
 }
+/*
+  What a career actually accumulates.
+
+  The title thresholds were first written as though a regional banner were rare.
+  June hands out sixteen of them and twenty bids every single year across
+  ninety-six programmes, so "two regional titles" turned out to be a median
+  career rather than a contender -- sixty of ninety-six chairs ended up sharing
+  one word, which is the exact fault the rewrite existed to fix.
+
+  This prints the distribution so a threshold can be set against what a career
+  really looks like instead of against an intuition about scarcity.
+*/
+const careers = season.teams.map((t) => t.coach).filter(Boolean) as NonNullable<typeof season.teams[0]['coach']>[];
+const at = (xs: number[], p: number): number =>
+  [...xs].sort((a, b) => a - b)[Math.min(xs.length - 1, Math.floor(xs.length * p))] ?? 0;
+console.log('career counters, %d coaches at year %d:', careers.length, YEARS);
+for (const [label, get] of [
+  ['games', (c: typeof careers[0]) => c.careerWins + c.careerLosses],
+  ['tournaments', (c: typeof careers[0]) => c.tournaments],
+  ['regional titles', (c: typeof careers[0]) => c.regionalTitles],
+  ['conference titles', (c: typeof careers[0]) => c.conferenceTitles],
+  ['national titles', (c: typeof careers[0]) => c.titles],
+  ['stints', (c: typeof careers[0]) => c.stints ?? 1],
+  ['rebuilds', (c: typeof careers[0]) => c.rebuilds ?? 0],
+  ['tenure', (c: typeof careers[0]) => c.tenure],
+] as [string, (c: typeof careers[0]) => number][]) {
+  const xs = careers.map(get);
+  console.log('  %s med %s  p75 %s  p90 %s  max %s',
+    label.padEnd(18), String(at(xs, 0.5)).padStart(4), String(at(xs, 0.75)).padStart(4),
+    String(at(xs, 0.9)).padStart(4), String(Math.max(...xs)).padStart(4));
+}
+
 console.log('clear rate by mandate:');
 for (const m of Object.keys(byMandate) as Mandate[]) {
   const { n, cleared } = byMandate[m];

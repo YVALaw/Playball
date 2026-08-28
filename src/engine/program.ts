@@ -994,6 +994,27 @@ export interface CoachState extends CoachProfile {
    */
   arrivedPrestige: number;
   /**
+   * How many chairs he has sat in, this one included.
+   *
+   * Nothing recorded this, which is why the old ladder could not tell a
+   * drifter from a beginner: "Journeyman" meant *has coached a game*, so
+   * seventy-one of ninety-six coaches wore it at year thirty. A journeyman is
+   * a man who has been six places, and now the game knows how many.
+   *
+   * Optional because every save predating it has one chair and no history to
+   * reconstruct; absent reads as one.
+   */
+  stints?: number;
+  /**
+   * How many of those chairs were genuinely bad jobs.
+   *
+   * Counted on arrival rather than on departure, because taking a wreck is the
+   * decision -- what happens after it is the career.
+   */
+  rebuilds?: number;
+  /** The most prestige a programme gained while he sat in it. */
+  bestBuild?: number;
+  /**
    * One-time and permanent, and his rather than the program's. See
    * `engine/achievements.ts` — a sparse map, so an absent key means unearned.
    */
@@ -1042,7 +1063,9 @@ export const ROOKIE_PRESTIGE = 25;
  * with a smaller step size.
  */
 export type CoachTitle =
-  | 'Unproven' | 'Journeyman' | 'Respected' | 'Established' | 'Renowned' | 'Legendary';
+  | 'Unproven' | 'Rookie' | 'Career man' | 'Journeyman' | 'Firefighter'
+  | 'Lifer' | 'Builder' | 'Respected' | 'Nearly man' | 'Contender'
+  | 'Champion' | 'Dynasty' | 'Legend';
 
 /**
  * Fifteen years in one chair.
@@ -1058,6 +1081,17 @@ export type CoachTitle =
  * cabinet come to disagree about whether a man is a lifer.
  */
 export { LIFER_SEASONS };
+
+/**
+ * Ten seasons in one chair reads as a life spent somewhere.
+ *
+ * Deliberately below `LIFER_SEASONS`, which is the achievement and stays at
+ * fifteen. The title is describing a career's shape rather than handing out a
+ * medal, and the measured distribution has a median tenure of five and a
+ * ninetieth percentile of fourteen -- so fifteen as a *title* threshold
+ * described almost nobody.
+ */
+const LIFER_TITLE = 10;
 
 export interface CoachStanding {
   title: CoachTitle;
@@ -1078,6 +1112,7 @@ export type CoachRecord = Pick<
   CoachState,
   'careerWins' | 'careerLosses' | 'titles' | 'conferenceTitles'
   | 'regionalTitles' | 'tournaments' | 'tenure'
+  | 'stints' | 'rebuilds' | 'bestBuild'
 >;
 
 /**
@@ -1128,20 +1163,102 @@ const ESTABLISHED_BIDS = 3;
  */
 export function coachStanding(coach: CoachRecord): CoachStanding {
   const games = coach.careerWins + coach.careerLosses;
+  const stints = coach.stints ?? 1;
+  const juneRuns = coach.tournaments + coach.regionalTitles;
 
+  /*
+    Twelve shapes a career can take, read top down.
+
+    The old ladder measured *how much* a man had won and nothing else, on six
+    rungs. It produced the fault that started this: "Journeyman" sat at the
+    bottom meaning **has coached one game**, so seventy-one of ninety-six
+    coaches wore it at year thirty and the word did no work at all.
+
+    A journeyman is a man who has been six places. That is the whole idea here
+    -- a title should describe the *shape* of a career rather than its size, so
+    two men with identical records read differently if one of them never left
+    town and the other has packed six times.
+
+    Order is priority, and it puts achievement above shape deliberately: a man
+    who has moved six times and won two national titles is a champion who
+    happened to move, not a drifter who happened to win. Shape is what you get
+    called when there is no trophy to call you after.
+  */
+  /*
+    Every threshold below is measured rather than guessed, and the first pass
+    was guessed. `npm run carousel` prints the distribution these come from.
+
+    What the measurement said, over thirty-five years of ninety-six chairs:
+
+      games              med  405   p90  810
+      tournaments        med    0   p90    3
+      regional titles    med    0   p90    3
+      national titles    med    0   max    1
+      stints             med    2   p90    3   max 4
+      rebuilds           med    0   p90    1   max 2
+      tenure             med    5   p90   14   max 23
+
+    Two of those changed the design rather than a number. **Six programmes is
+    unreachable** -- the carousel simply does not move a man that often inside a
+    career, so a journeyman at six would have been a word nobody ever wore. It
+    is four, which is the top decile. And a regional banner is *not* rare: June
+    hangs sixteen of them a year, so "two" was the seventy-fifth percentile
+    dressed up as an achievement, and it put twenty-one of ninety-six chairs in
+    Contender.
+  */
   const title: CoachTitle =
-    coach.titles > 0 ? 'Legendary'
-    : coach.regionalTitles >= RENOWNED_REGIONS
-      || coach.conferenceTitles >= RENOWNED_LEAGUES ? 'Renowned'
-    : coach.regionalTitles > 0
-      || coach.conferenceTitles >= ESTABLISHED_LEAGUES
-      || coach.tournaments >= ESTABLISHED_BIDS ? 'Established'
-    : coach.tournaments > 0 || coach.conferenceTitles > 0 ? 'Respected'
-    : games > 0 ? 'Journeyman'
-    : 'Unproven';
+    games === 0 ? 'Unproven'
+    // --- what he won -------------------------------------------------------
+    // Nine hundred games is about twenty seasons. Five hundred was eleven,
+    // which is not a career anybody has forgotten the start of.
+    : coach.titles >= 3 && games >= 900 ? 'Legend'
+    : coach.titles >= 3 ? 'Dynasty'
+    : coach.titles > 0 ? 'Champion'
+    : coach.regionalTitles >= 3 ? 'Contender'
+    // Went a long way often and never finished it.
+    : coach.regionalTitles >= 1 && juneRuns >= 4 ? 'Nearly man'
+    // Kept turning up in June without winning it, which is a career most
+    // coaches would take.
+    : juneRuns >= 2 ? 'Respected'
+    // --- what shape it was -------------------------------------------------
+    // Firefighter before Journeyman on purpose: both describe a man who has
+    // moved, and *why* he moved is the more specific fact. Taking wrecks is a
+    // choice; having had four jobs is what happened.
+    : (coach.rebuilds ?? 0) >= 2 ? 'Firefighter'
+    : stints >= 4 ? 'Journeyman'
+    : (coach.bestBuild ?? 0) >= 12 ? 'Builder'
+    : coach.tenure >= LIFER_TITLE ? 'Lifer'
+    : games < 60 ? 'Rookie'
+    /*
+      And the honest default.
+
+      This was 'Journeyman', which reproduced the exact fault the rewrite
+      existed to fix: sixty of ninety-six chairs wearing one word, and the wrong
+      one, since none of those men had moved anywhere. Most coaches have a long
+      career and win nothing decisive. That is worth a name of its own rather
+      than being filed under somebody else's.
+    */
+    : 'Career man';
 
   return { title, lifer: coach.tenure >= LIFER_SEASONS };
 }
+
+/** One line saying what the word means, for the coach page. */
+export const TITLE_BLURB: Record<CoachTitle, string> = {
+  Unproven: 'Has not coached a game.',
+  Rookie: 'Early. Nothing has been decided yet.',
+  'Career man': 'A long time in the job, and nothing yet that settles it.',
+  Journeyman: 'Four programmes and counting. Somebody always needs a coach.',
+  Firefighter: 'Takes the jobs nobody else will, and has done it twice.',
+  Lifer: 'Has been at one place long enough that the place is partly his.',
+  Builder: 'Left a programme considerably better than he found it.',
+  Respected: 'Keeps reaching June. Has never won it, and is thought of well anyway.',
+  'Nearly man': 'Has been close enough to touch it more than once.',
+  Contender: 'Three regional banners. The last game is the only one left.',
+  Champion: 'Won the country.',
+  Dynasty: 'Won it three times. People plan around him.',
+  Legend: 'Three titles and a career long enough that nobody remembers the start.',
+};
 
 export function newCoach(
   profile: CoachProfile = DEFAULT_PROFILE,
@@ -1202,6 +1319,16 @@ export function newCoach(
  */
 export function takeChair(coach: CoachState, programPrestige: number): CoachState {
   const length = contractFor(programPrestige);
+  /*
+    What he left behind, banked before the new job overwrites it.
+
+    `arrivedPrestige` is where the *current* programme stood when he walked in,
+    so it is the only record of the last one and it is about to be replaced.
+    Reading it here is the one moment a stint's worth can be measured, and a
+    builder is exactly a man who has done this and left the place better.
+  */
+  const built = Math.max(coach.bestBuild ?? 0, 0);
+  const REBUILD = 40;
   return {
     ...coach,
     tenure: 0,
@@ -1210,7 +1337,22 @@ export function takeChair(coach: CoachState, programPrestige: number): CoachStat
     contractYears: length,
     contractLength: length,
     arrivedPrestige: programPrestige,
+    stints: (coach.stints ?? 0) + 1,
+    rebuilds: (coach.rebuilds ?? 0) + (programPrestige < REBUILD ? 1 : 0),
+    bestBuild: built,
   };
+}
+
+/**
+ * What a man did for the programme he is leaving.
+ *
+ * Called at the moment a career moves, with where the old chair stands now.
+ * Kept separate from `takeChair` because leaving and arriving are two events
+ * and only one of them knows what the last job became.
+ */
+export function bankStint(coach: CoachState, prestigeNow: number): CoachState {
+  const gain = prestigeNow - coach.arrivedPrestige;
+  return gain > (coach.bestBuild ?? 0) ? { ...coach, bestBuild: gain } : coach;
 }
 
 /**

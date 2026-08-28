@@ -95,6 +95,18 @@ export interface RivalCoach {
   /** The skill he puts half of every season's points into. Fixed for life. */
   lean: keyof CoachSkills;
   badRun: number;
+  /**
+   * Chairs sat in, wrecks taken, and the best a programme ever grew under him.
+   *
+   * The same three the player's coach keeps, for the same reason: a title now
+   * describes the *shape* of a career, and ninety-five careers with no shape
+   * would leave the country full of men the game cannot introduce.
+   */
+  stints?: number;
+  rebuilds?: number;
+  bestBuild?: number;
+  /** Where the programme he is in now stood on the day he walked in. */
+  arrivedPrestige?: number;
   careerWins: number;
   careerLosses: number;
   titles: number;
@@ -493,6 +505,19 @@ export function runCarousel(
       }
 
       const length = contractFor(chair.prestige);
+      /*
+        A new chair, counted.
+
+        Banked before the move rather than after, because `arrivedPrestige` is
+        not kept for rivals -- what a man built is measured against where the
+        programme he is leaving stands now, and after the assignment that
+        programme is somebody else's.
+      */
+      pick.coach.stints = (pick.coach.stints ?? 1) + 1;
+      // A new chair is a new baseline; what he built at the last one is already
+      // banked already.
+      pick.coach.arrivedPrestige = chair.prestige;
+      if (chair.prestige < 40) pick.coach.rebuilds = (pick.coach.rebuilds ?? 0) + 1;
       pick.coach.tenure = 0;
       pick.coach.security = 62;
       pick.coach.contractYears = length;
@@ -579,6 +604,21 @@ export function runRivalYear(
     // so ninety five schools were frozen at the standing the world was generated
     // with and no amount of winning or losing could touch them.
     record.prestige = review.prestigeAfter;
+
+    /*
+      What he has built here, kept up to date rather than measured on the way
+      out.
+
+      A rival who is sacked is put in a pool and separated from his chair in the
+      same breath, so there is no later moment at which the question "what did
+      he do with that programme" can still be asked. Recording it every season
+      costs one comparison and means Builder is a rung anybody can wear --
+      without it, it was reachable only by the player and ninety-five careers
+      had one fewer shape available to them.
+    */
+    if (coach.arrivedPrestige === undefined) coach.arrivedPrestige = record.prestige;
+    const grew = record.prestige - coach.arrivedPrestige;
+    if (grew > (coach.bestBuild ?? 0)) coach.bestBuild = grew;
 
     coach.prestige = review.coachPrestigeAfter;
     coach.security = review.securityAfter;

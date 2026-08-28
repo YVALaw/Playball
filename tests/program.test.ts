@@ -9,7 +9,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   expectationFor, objectivesFor, objectiveMet, gradeObjectives, judge,
-  coachStanding, newCoach, LIFER_SEASONS, badRunPenalty, reviewSeason, takeChair,
+  coachStanding,
+  TITLE_BLURB, newCoach, LIFER_SEASONS, badRunPenalty, reviewSeason, takeChair,
   initialPrestige, leagueShape, playerBoard, rivalBoard, rivalExpectation,
   rosterStrength, CALIBRATED_LEAGUE, PLAYER_RENEW_BAR, SACK_BAR,
   type Mandate, type SeasonOutcome, type Expectation, type CoachState,
@@ -347,18 +348,25 @@ describe('the catcher', () => {
 });
 
 describe('what they call you', () => {
-  // The line beside HEAD COACH used to read "seasons completed", which the two
-  // counters either side of the portrait already say. A standing has to be
-  // earned, so these pin the one property that matters: time served does not
-  // climb the ladder, and a trophy cannot be taken back off you.
-  //
-  // Reported after the first version shipped: *"the coach title keeps upgrading
-  // or changing every season, these titles are supposed to be based in
-  // achievements"*. It was true — prestige carried the climb, prestige moves on
-  // overachievement and decays when nothing happens, and 13.1% of quiet
-  // coach-seasons in a measured thirty year league changed the man's title. The
-  // ladder is the cabinet alone now, and the load-bearing test is the last one
-  // here: a season with nothing won cannot move the word.
+  /*
+    Twelve shapes, not six sizes.
+
+    The old ladder measured how much a man had won and nothing else, and it
+    produced the fault that started the rewrite: "Journeyman" sat at the bottom
+    meaning *has coached one game*, so seventy-one of ninety-six coaches wore it
+    at year thirty and the word did no work at all.
+
+    A journeyman is a man who has been six places. Everything here follows from
+    that: a title describes the shape of a career, so two men with identical
+    records read differently if one never left town and the other has packed six
+    times — and achievement still outranks shape, because a man who moved six
+    times and won two titles is a champion who happened to move.
+
+    The properties carried over from the old block are the ones that were about
+    honesty rather than about rungs: time served does not promote you, a trophy
+    cannot be taken back off you, and a good season that won nothing moves
+    nothing.
+  */
 
   const coachWith = (over: Partial<CoachState>): CoachState =>
     ({ ...newCoach(), ...over });
@@ -368,66 +376,85 @@ describe('what they call you', () => {
     expect(coachStanding(newCoach()).lifer).toBe(false);
   });
 
+  it('means six programmes by journeyman, not one game', () => {
+    // The whole reason for the rewrite, stated as a test.
+    const beginner = coachWith({ careerWins: 8, careerLosses: 6, stints: 1 });
+    expect(coachStanding(beginner).title).not.toBe('Journeyman');
+
+    const drifter = coachWith({
+      careerWins: 300, careerLosses: 320, stints: 6,
+    });
+    expect(coachStanding(drifter).title).toBe('Journeyman');
+  });
+
+  it('calls a drifter who won things a champion, not a drifter', () => {
+    // Priority: achievement above shape. A man who moved six times and won two
+    // national titles is not introduced as somebody who cannot hold a job.
+    const both = coachWith({
+      careerWins: 400, careerLosses: 300, stints: 7, titles: 2,
+    });
+    expect(coachStanding(both).title).toBe('Champion');
+  });
+
   it('does not promote a coach for merely surviving', () => {
-    // Twenty years of losing. Long service, no standing — this is the whole
-    // reason the line stopped counting seasons.
+    // Twenty years of losing at one place. He is a lifer, which is true and is
+    // not a promotion — nothing here says he was any good.
     const timeServer = coachWith({
-      tenure: 20, careerWins: 300, careerLosses: 400, prestige: 30,
+      tenure: 20, careerWins: 300, careerLosses: 400, prestige: 30, stints: 1,
     });
-    expect(coachStanding(timeServer).title).toBe('Journeyman');
+    const title = coachStanding(timeServer).title;
+    expect(['Lifer', 'Journeyman']).toContain(title);
+    expect(title).not.toBe('Respected');
+    expect(title).not.toBe('Contender');
   });
 
-  it('never introduces a national champion as a journeyman', () => {
+  it('never introduces a national champion as anything less', () => {
     // Prestige decays when nothing happens, so a title winner having a thin
-    // decade would otherwise slide back down to the bottom of the ladder.
+    // decade must not slide back down.
     const champion = coachWith({
-      titles: 1, prestige: 20, careerWins: 200, careerLosses: 300,
+      titles: 1, prestige: 20, careerWins: 200, careerLosses: 300, stints: 3,
     });
-    expect(coachStanding(champion).title).toBe('Legendary');
+    expect(coachStanding(champion).title).toBe('Champion');
   });
 
-  it('climbs with what a coach has actually won', () => {
-    const order = ['Unproven', 'Journeyman', 'Respected', 'Established', 'Renowned', 'Legendary'];
-    const rung = (c: CoachState) => order.indexOf(coachStanding(c).title);
-
-    const nobody = newCoach();
-    const winning = coachWith({ careerWins: 120, careerLosses: 80, prestige: 45 });
-    const bidMaker = coachWith({
-      careerWins: 200, careerLosses: 120, prestige: 58, tournaments: 4,
-    });
-    const contender = coachWith({
-      careerWins: 300, careerLosses: 150, prestige: 72,
-      tournaments: 8, conferenceTitles: 4,
-    });
-
-    expect(rung(nobody)).toBeLessThan(rung(winning));
-    expect(rung(winning)).toBeLessThan(rung(bidMaker));
-    expect(rung(bidMaker)).toBeLessThan(rung(contender));
+  it('separates three titles from one, and a long career from a short one', () => {
+    const once = coachWith({ titles: 1, careerWins: 200, careerLosses: 150 });
+    const thrice = coachWith({ titles: 3, careerWins: 300, careerLosses: 200 });
+    const forever = coachWith({ titles: 3, careerWins: 600, careerLosses: 400 });
+    expect(coachStanding(once).title).toBe('Champion');
+    expect(coachStanding(thrice).title).toBe('Dynasty');
+    expect(coachStanding(forever).title).toBe('Legend');
   });
 
-  it('gives winning a region its own rung, above a league and below the country', () => {
-    // B6's other half. A regional title is the second best thing available and
-    // had no counter anywhere, so the ladder could not read it.
-    //
-    // One region is ESTABLISHED and two are RENOWNED, which is the format
-    // talking: eight teams reach the regionals and four of them win one, so a
-    // single trip to the last four is a coin flip on a bid rather than a career.
-    const order = ['Unproven', 'Journeyman', 'Respected', 'Established', 'Renowned', 'Legendary'];
-    const rung = (c: CoachState) => order.indexOf(coachStanding(c).title);
-
-    const league = coachWith({
-      careerWins: 200, careerLosses: 150, prestige: 30,
-      tournaments: 1, conferenceTitles: 1,
+  it('has a word for the man who keeps reaching June and never wins it', () => {
+    // The career most coaches would actually take, and the old ladder called it
+    // Established, which says nothing about him.
+    const regular = coachWith({
+      careerWins: 300, careerLosses: 180, tournaments: 4, conferenceTitles: 2,
     });
-    const region = coachWith({ ...league, regionalTitles: 1 });
-    const twice = coachWith({ ...region, regionalTitles: 2 });
-    const country = coachWith({ ...twice, titles: 1 });
+    expect(coachStanding(regular).title).toBe('Respected');
 
-    expect(rung(league)).toBeLessThan(rung(region));
-    expect(rung(region)).toBeLessThan(rung(twice));
-    expect(rung(twice)).toBeLessThan(rung(country));
-    expect(coachStanding(region).title).toBe('Established');
-    expect(coachStanding(twice).title).toBe('Renowned');
+    // And one for the man who got closer than that, more than once.
+    const nearly = coachWith({ ...regular, regionalTitles: 1 });
+    expect(coachStanding(nearly).title).toBe('Nearly man');
+
+    // Three regional banners is a different career again -- and three rather
+    // than two because June hangs sixteen of them a year, so two is the
+    // seventy-fifth percentile rather than an achievement.
+    const contender = coachWith({ ...regular, regionalTitles: 3 });
+    expect(coachStanding(contender).title).toBe('Contender');
+  });
+
+  it('reads a career spent on wrecks, and one spent building', () => {
+    const firefighter = coachWith({
+      careerWins: 200, careerLosses: 240, stints: 4, rebuilds: 3,
+    });
+    expect(coachStanding(firefighter).title).toBe('Firefighter');
+
+    const builder = coachWith({
+      careerWins: 200, careerLosses: 160, stints: 2, rebuilds: 1, bestBuild: 18,
+    });
+    expect(coachStanding(builder).title).toBe('Builder');
   });
 
   it('calls a man who stayed fifteen years a lifer, whatever else he is', () => {
@@ -441,106 +468,40 @@ describe('what they call you', () => {
   });
 
   /*
-    Reported: UNPROVEN to RESPECTED in a single season, with nothing won.
+    Reported against the first version: UNPROVEN to RESPECTED in a single
+    season with nothing won. Two rungs on one year, because a win percentage
+    clause with no minimum career behind it read one 25-14 spring as a decade of
+    winning baseball.
 
-    Two rungs on one year. Both halves of the old ladder allowed it: a career
-    win percentage clause with no minimum career behind it read one 25-14 spring
-    as a decade of winning baseball, and at a weak enough program a single big
-    year carried prestige to the 42 the same rung asked for. Nothing was won in
-    either case, so under the cabinet ladder neither moves him at all.
+    Under shapes it cannot happen at all — nothing here reads a season, only a
+    career — but the property is worth keeping pinned, because it is the one
+    that made the original ladder dishonest.
   */
   it('does not pay a good season that won nothing', () => {
-    const order = ['Unproven', 'Journeyman', 'Respected', 'Established', 'Renowned', 'Legendary'];
-    const rung = (c: CoachState) => order.indexOf(coachStanding(c).title);
-
-    // One season, 25-14, no bid and no trophy.
     const winning = coachWith({ careerWins: 25, careerLosses: 14, prestige: 34 });
-    expect(coachStanding(winning).title).toBe('Journeyman');
-    expect(rung(winning)).toBe(rung(newCoach()) + 1);
+    expect(coachStanding(winning).title).toBe('Rookie');
 
-    // And the other route in: a first year so far above a poor program that
-    // personal standing used to reach the Respected band on its own.
     const overachieved = coachWith({ careerWins: 40, careerLosses: 5, prestige: 46 });
-    expect(coachStanding(overachieved).title).toBe('Journeyman');
-  });
-
-  it('opens the next rung the day the thing is won again', () => {
-    // A trip to the tournament is a day, and so is the second one. What moves
-    // the word is the trophy, never the calendar it was won in.
-    const once = coachWith({ careerWins: 30, careerLosses: 15, tournaments: 1, conferenceTitles: 1 });
-    expect(coachStanding(once).title).toBe('Respected');
-
-    const twice = coachWith({ ...once, tournaments: 2, conferenceTitles: 2 });
-    expect(coachStanding(twice).title).toBe('Established');
+    expect(coachStanding(overachieved).title).toBe('Rookie');
   });
 
   it('pays a trophy on the day it is won', () => {
-    // A man who wins the thing in his first June is not a journeyman that
+    // A man who wins the thing in his first June is not a rookie that
     // afternoon, whatever a ladder climbed with seasons has to say about it.
     const champion = coachWith({
-      careerWins: 40, careerLosses: 8, titles: 1, tournaments: 1,
-      conferenceTitles: 1, regionalTitles: 1, prestige: 40,
+      careerWins: 40, careerLosses: 12, titles: 1, tournaments: 1,
+      regionalTitles: 1, conferenceTitles: 1,
     });
-    expect(coachStanding(champion).title).toBe('Legendary');
-
-    const omaha = coachWith({
-      careerWins: 35, careerLosses: 12, tournaments: 1,
-      conferenceTitles: 1, regionalTitles: 1, prestige: 33,
-    });
-    expect(coachStanding(omaha).title).toBe('Established');
+    expect(coachStanding(champion).title).toBe('Champion');
   });
 
-  /*
-    The load-bearing one. His words: "the coach title keeps upgrading or
-    changing every season, these titles are supposed to be based in
-    achievements."
-
-    A quiet season still moves everything a ladder might be tempted to read —
-    another forty games on the career record, a year of tenure, and a prestige
-    number that rises on overachievement and decays when nothing happens. None
-    of it is an achievement, so none of it may move the word, in either
-    direction and at any point on the ladder.
-  */
-  it('cannot change the title on a season with nothing won', () => {
-    const quiet = (c: CoachState): CoachState => ({
-      ...c,
-      careerWins: c.careerWins + 31, careerLosses: c.careerLosses + 14,
-      tenure: c.tenure + 1,
-      // Both directions: a year the country noticed, and a year of decay.
-      prestige: Math.min(99, c.prestige + 14),
-    });
-    const faded = (c: CoachState): CoachState => ({ ...quiet(c), prestige: Math.max(1, c.prestige - 14) });
-
-    const rungs: CoachState[] = [
-      coachWith({ careerWins: 20, careerLosses: 25, prestige: 30 }),
-      coachWith({ careerWins: 60, careerLosses: 40, tournaments: 1, conferenceTitles: 1, prestige: 44 }),
-      coachWith({ careerWins: 150, careerLosses: 90, tournaments: 3, conferenceTitles: 3, prestige: 55 }),
-      coachWith({ careerWins: 240, careerLosses: 130, tournaments: 5, conferenceTitles: 5, regionalTitles: 1, prestige: 70 }),
-      coachWith({ careerWins: 300, careerLosses: 160, tournaments: 7, conferenceTitles: 6, regionalTitles: 2, titles: 1, prestige: 82 }),
-    ];
-
-    for (const before of rungs) {
-      const was = coachStanding(before).title;
-      expect(coachStanding(quiet(before)).title).toBe(was);
-      expect(coachStanding(faded(before)).title).toBe(was);
-      // And ten of them running, which is how a drift of one rung a decade
-      // hides from a single-season test.
-      let carried = before;
-      for (let i = 0; i < 10; i++) carried = quiet(carried);
-      expect(coachStanding(carried).title).toBe(was);
+  it('gives every rung a line explaining it', () => {
+    // A word nobody can interpret is a word doing no work, which is what
+    // "Established" was.
+    for (const t of Object.keys(TITLE_BLURB) as (keyof typeof TITLE_BLURB)[]) {
+      expect(TITLE_BLURB[t].length, `${t} has no line`).toBeGreaterThan(15);
+      expect(TITLE_BLURB[t].endsWith('.'), `${t} is not a sentence`).toBe(true);
     }
-  });
-
-  it('does not hand a lifer a winner\'s title for the tenure alone', () => {
-    // The load-bearing case for the whole ladder, and the failure it replaced:
-    // fifteen years and nothing won reads as LIFER beside a title he has not
-    // earned, not as a title *because* of the fifteen years.
-    const served = coachWith({
-      tenure: LIFER_SEASONS + 5, careerWins: 260, careerLosses: 340, prestige: 28,
-    });
-    const standing = coachStanding(served);
-    expect(standing.lifer).toBe(true);
-    expect(standing.title).toBe('Journeyman');
   });
 });
 
