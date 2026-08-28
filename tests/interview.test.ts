@@ -17,6 +17,28 @@ const BASE: CoachSkills = { offense: 40, defense: 40, training: 40, recruiting: 
 const SKILLS = ['offense', 'defense', 'training', 'recruiting'] as const;
 
 describe('the pool', () => {
+  it('is big enough that two careers rarely overlap', () => {
+    /*
+      The number that decides whether a fifth dynasty feels fresh.
+
+      Five drawn from eighty means two careers share about one question. Drop
+      the pool to forty and they share two of five, which is noticeable by a
+      third dynasty — so this is not a stylistic preference, it is the reason
+      the writing was worth doing, and it is worth failing a build over.
+    */
+    expect(INTERVIEW.length).toBeGreaterThanOrEqual(80);
+  });
+
+  it('never repeats a setup or an answer across the whole pool', () => {
+    // Eighty questions written in batches is exactly the condition under which
+    // the same good line gets used twice without anybody noticing.
+    const setups = INTERVIEW.map((q) => q.setup);
+    expect(new Set(setups).size, 'two questions share a setup').toBe(setups.length);
+    const asks = INTERVIEW.flatMap((q) => q.answers.map((a) => a.text));
+    const dupes = asks.filter((t, i) => asks.indexOf(t) !== i);
+    expect([...new Set(dupes)], 'an answer is used twice').toEqual([]);
+  });
+
   it('gives every question four answers and a question mark', () => {
     for (const q of INTERVIEW) {
       expect(q.answers.length, `${q.id} answer count`).toBe(4);
@@ -76,6 +98,17 @@ describe('the pool', () => {
 });
 
 describe('the draw', () => {
+  it('draws widely across the pool rather than favouring the front', () => {
+    // A shuffle bug that only ever reached the first dozen would pass every
+    // other test in this file and quietly halve the variety.
+    const seen = new Set<string>();
+    for (let s = 0; s < 200; s++) {
+      for (const q of drawQuestions(makeRng(s))) seen.add(q.id);
+    }
+    expect(seen.size, 'the draw never reaches part of the pool')
+      .toBeGreaterThan(INTERVIEW.length * 0.8);
+  });
+
   it('asks five, without asking one twice', () => {
     const q = drawQuestions(makeRng(11), ASKED);
     expect(q.length).toBe(Math.min(ASKED, INTERVIEW.length));
