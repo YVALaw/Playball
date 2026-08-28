@@ -1384,6 +1384,17 @@ function pressTriggerFor(store: DynastyStore): PressTrigger | null {
  */
 function pressToRaise(store: DynastyStore): { presser: Presser; trigger: PressTrigger } | null {
   if (store.pendingPress) return null;
+  /*
+    What this coach has said he wants to be asked.
+
+    `depth.ts` has carried a `pressers` key since the mode was designed --
+    "your sports information director speaks for you" -- and piece 8 shipped
+    without consulting it, which is the one rule the depth mode is not allowed
+    to break in either direction. The engine still models everything: the
+    season raises exactly the same triggers, and a casual career simply is not
+    stopped to answer for them.
+  */
+  if (!handles(store.depth, 'pressers')) return null;
   const { season, userTeam } = store;
   const me = season?.teams[userTeam];
   if (!season || !me) return null;
