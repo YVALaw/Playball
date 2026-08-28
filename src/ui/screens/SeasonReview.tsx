@@ -110,7 +110,17 @@ export function SeasonReview() {
                 note: 'Won the conference tournament and the automatic bid that comes with it.',
               }
             : finish === 'regional'
-              ? { title: 'National tournament', note: 'Sixteen teams got in. You were one of them.' }
+              /*
+                Reported: "it told me I reached the nationals but I actually
+                didn't, I lost in the regionals and was 22nd."
+
+                He was right and the banner was wrong. A finish of 'regional' is
+                written for every team that *played* a regional, and it is
+                overwritten with 'omaha' the moment one is won -- so the string
+                means the opposite of what this line claimed. Thirty two get to
+                the regionals; twenty come out of them into the national field.
+              */
+              ? { title: 'Regionals', note: 'Thirty two programs got that far. Your run ended in yours.' }
               : confRank === 1
                 ? {
                     title: `${team.conference} regular season`,

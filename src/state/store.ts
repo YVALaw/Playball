@@ -2526,10 +2526,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           kind: 'offer', year: year + 1,
           title: `${o.school} want to talk to you`,
           body: `${o.conference}, ${prestigeStars(o.prestige)} star. ${o.pitch}`,
-          // The program itself. Taking the job is the job search screen's, which
-          // is the whole frame while you are out of work; this is the page that
-          // says what you would be taking on.
-          link: { to: 'team', index: o.team },
+          /*
+            Where the decision is, not where the description is.
+
+            Reported: "an inbox offer, when I tap it, it just opens the school
+            overview and nothing happens." It was doing exactly what it was
+            written to do -- show what you would be taking on -- but a card
+            headed WANT TO TALK TO YOU that lands on a read-only page reads as
+            broken, because the one thing it invited you to do is not there.
+            WHO IS CALLING is on the program page and every offer in it is a
+            button, so that is where the arrow goes.
+          */
+          link: { to: 'program', sheet: 'board' },
         });
       }
       void get().saveNow();

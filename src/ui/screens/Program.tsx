@@ -88,10 +88,31 @@ export function Program() {
     and nothing else; the program's own frame comes back the moment the sheet
     does not say 'coach'.
   */
+  /*
+    The way out, which this sheet did not have.
+
+    Reported from play: "the program stopped showing the college overview but
+    instead started showing the coach information", and only wiping the save
+    fixed it. `programSheet` is store state, so an inbox card that deep-links
+    here -- an achievement post does exactly that -- leaves it on 'coach' after
+    the overlay is dismissed. The overlay had the navy back bar above it and the
+    PROGRAM *tab* has nothing, so the next visit to the tab landed on a page
+    with no tabs, no bar and no exit. It was not a rendering fault; it was a
+    one-way door.
+  */
   if (sheet === 'coach') {
     return (
       <FixedHeader header={
         <div style={{ padding: '12px 14px 8px' }}>
+          <button
+            className="tap"
+            onClick={() => setSheet('board')}
+            style={{
+              display: 'block', width: '100%', textAlign: 'left', marginBottom: 8,
+              padding: 0, background: 'none', border: 'none', color: 'var(--dim)',
+              font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.12em',
+            }}
+          >‹ THE PROGRAM</button>
           <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
             <div className="label">HEAD COACH · {year}</div>
           </div>

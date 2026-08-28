@@ -169,6 +169,20 @@ export function Manage() {
     always done -- this only decides how much of it you see and when it stops.
   */
   const [auto, setAuto] = useState<null | 'watch'>(null);
+  /*
+    One flight per ball, not one per store change.
+
+    This depended on `version`, which is bumped by *everything* -- so a mound
+    visit or a trip to the bullpen replayed the last ball. Reported exactly that
+    way: "it simulates one at bat even though it does not record it, but the
+    animation of the ball flying runs". Nothing was simulated; the screen was
+    showing the previous play again.
+
+    A play is identified by how much has been written down. The log only grows
+    when something happens, so it is the one counter that cannot be moved by a
+    decision that is not a pitch.
+  */
+  const played = live?.log.length ?? 0;
   useEffect(() => {
     if (!landing || !battedBall) return undefined;
     setPlaying(true);
@@ -176,7 +190,7 @@ export function Manage() {
     const ms = battedBall === 'ground' ? 1500 : 1900;
     const timer = setTimeout(() => setPlaying(false), ms);
     return () => clearTimeout(timer);
-  }, [landing?.x, landing?.y, battedBall, version]);
+  }, [played]);
 
   /*
     What counts as a moment worth handing back for.
