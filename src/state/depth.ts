@@ -123,19 +123,23 @@ export const SYSTEMS: readonly SystemDef[] = [
     key: 'moundVisits', label: 'Mound visits',
     blurb: 'You decide when an arm needs settling.',
     whenOff: 'Your pitching coach decides when to go out.',
-    casual: false, comingIn: 'the dugout',
+    casual: false,
   },
   {
     key: 'pitchCalling', label: 'Calling pitches',
     blurb: 'You call the game pitch by pitch.',
     whenOff: 'Your catcher calls the game.',
-    casual: false, comingIn: 'the dugout',
+    // Cut from v1.0 rather than deferred, and the row says so instead of
+    // promising a stage that will never build it: the engine settles a plate
+    // appearance and *then* sequences pitches to land on it, so a pitch you
+    // called could not change anything already decided.
+    casual: false, comingIn: 'a later game',
   },
   {
     key: 'scouting', label: 'Scouting reports',
     blurb: 'You spend prep to learn the other side before a series.',
     whenOff: 'Your staff brings you the report.',
-    casual: false, comingIn: 'the dugout',
+    casual: false, comingIn: 'the economy',
   },
   {
     key: 'pressers', label: 'Press conferences',

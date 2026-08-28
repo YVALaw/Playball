@@ -659,6 +659,8 @@ export interface DynastyStore {
   submitTactic: (t: Tactic) => void;
   pinchHitFor: (h: Hitter) => void;
   bringIn: (p: Pitcher) => void;
+  /** Go and talk to him. Once per pitcher per outing, confidence only. */
+  visitMound: () => void;
   autoFinish: () => void;
   endManagedGame: () => Promise<void>;
 
@@ -3262,6 +3264,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         if (bat) live.pinchHit(bat);
         continue;
       }
+      if (a.k === 'visit') { live.visitMound(); continue; }
       const arm = live.bullpenAvailable.find((p) => String(p.id) === a.id);
       if (arm) live.changePitcher(arm);
     }
@@ -3399,6 +3402,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (!live) return;
     noteAction({ k: 'pen', id: String(p.id) });
     live.changePitcher(p);
+    set({ version: version + 1 });
+  },
+
+  visitMound: () => {
+    const { live, version } = get();
+    if (!live) return;
+    // Journalled before the engine is stepped, like every other call, so a
+    // crash replays to the same crash rather than skipping the visit.
+    noteAction({ k: 'visit' });
+    live.visitMound();
     set({ version: version + 1 });
   },
 

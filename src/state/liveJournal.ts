@@ -36,7 +36,14 @@ const KEY = 'playball.liveGame.v1';
 export type JournalAction =
   | { k: 'tactic'; t: Tactic }
   | { k: 'pinch'; id: string }
-  | { k: 'pen'; id: string };
+  | { k: 'pen'; id: string }
+  /*
+    A mound visit. It carries nothing because there is nothing to carry -- there
+    is one per pitcher and it always does the same thing -- but it has to be in
+    the journal all the same, because it changes confidence and confidence
+    changes the game. A replay that skipped it would land somewhere else.
+  */
+  | { k: 'visit' };
 
 export interface LiveJournal {
   /** The save slot this belongs to. A journal never crosses dynasties. */

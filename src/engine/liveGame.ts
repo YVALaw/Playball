@@ -11,8 +11,8 @@
 // implementation of what a plate appearance does, and both this and the fast
 // simulation drive it. The only thing that differs is who decides when to step.
 
-import { createHalfInning, TeamState, RULES, type SimOptions } from './game.js';
-import { pitchBudget } from './ratings.js';
+import { createHalfInning, TeamState, RULES, type SimOptions, moundVisit } from './game.js';
+import { pitchBudget, CONFIDENCE } from './ratings.js';
 import type { GameResult } from './game.js';
 import { ENGINES } from './engines.js';
 import type {
@@ -51,6 +51,16 @@ export interface Decision {
     strikeouts: number;
     /** Whether he came out of the pen rather than starting. */
     relief: boolean;
+    /**
+     * How he is carrying himself, 0 to 1, half being level.
+     *
+     * The twin of `budget`, and drawn beside it: one is what he has spent and
+     * cannot get back, the other is how he is holding up and can. A mound visit
+     * moves this and nothing else.
+     */
+    confidence: number;
+    /** Whether the one visit this man is allowed has been spent. */
+    visitUsed: boolean;
   };
   /**
    * Who is standing where, with identity. The booleans above say a base is
@@ -89,6 +99,14 @@ export interface LiveGame {
   pinchHit: (hitter: Hitter) => boolean;
   /** Go to the bullpen. */
   changePitcher: (arm: Pitcher) => boolean;
+  /**
+   * Go and talk to him. Confidence only, once per pitcher per outing.
+   *
+   * False when there is nothing to spend -- the visit is gone, you are batting,
+   * or the staff is running itself -- so the screen can grey the control rather
+   * than offer something that will not happen.
+   */
+  visitMound: () => boolean;
   /** Who is available off the bench and in the pen. */
   readonly benchAvailable: readonly Hitter[];
   readonly bullpenAvailable: readonly Pitcher[];
@@ -301,6 +319,8 @@ export function createLiveGame(
         outs: fld().pitchLine(pitcher).outs,
         strikeouts: fld().pitchLine(pitcher).k,
         relief: pitcher !== fld().starter,
+        confidence: fld().pitcherConfidence,
+        visitUsed: fld().visitUsed,
       },
       options: offense ? OFFENSE(bases, current.outs) : DEFENSE(bases, current.outs),
     };
@@ -362,6 +382,11 @@ export function createLiveGame(
       return true;
     },
 
+    visitMound() {
+      if (over || fld() !== mine || opts.autoPitching) return false;
+      return moundVisit(mine, say);
+    },
+
     changePitcher(arm) {
       if (over || fld() !== mine || opts.autoPitching) return false;
       if (!mine.relief.includes(arm)) return false;
@@ -371,6 +396,9 @@ export function createLiveGame(
       mine.usedPen.push(arm);
       mine.pitcher = arm;
       mine.pitcherPitches = 0;
+      // A new man, a new outing: his own confidence and his own visit.
+      mine.pitcherConfidence = CONFIDENCE.relief;
+      mine.visitUsed = false;
       say(`   Pitching change: ${arm.name} (${arm.throws}HP) enters.`);
       return true;
     },

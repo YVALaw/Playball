@@ -151,6 +151,22 @@ export const CONTEXT = {
   runnersOnOffenseBoost: 1.035,  // pitching from the stretch
   timesThroughOrder: [1.0, 1.0, 1.035, 1.075, 1.11] as readonly number[],
   fatigueSlopePerPitch: 0.0022,  // effectiveness lost per pitch past stamina
+  /*
+    Confidence, which is the other half of what a pitcher is carrying.
+
+    Fatigue is a budget that only ever spends: past his stamina an arm gets
+    worse and no conversation changes that. Confidence is a *state* -- it moves
+    both ways within an outing, on what has just happened to him rather than on
+    how much he has thrown -- and it is the thing a mound visit exists to
+    steady.
+
+    Deliberately a fraction of fatigue's authority. At the floor it costs about
+    six percent of effectiveness, where a spent arm costs forty-five. A man who
+    has lost the plate should be worse, not a different pitcher, and the
+    calibration sweep is what says whether this number is honest: it moves the
+    whole league at once, since all ninety-six programs pitch through it.
+  */
+  confidenceSwing: 0.06,
 };
 
 const clamp = (v: number, lo: number, hi: number): number =>
@@ -524,6 +540,59 @@ export function fatigueMultiplier(
   const budget = pitchBudget(pitcher);
   if (pitchCount <= budget) return 1;
   return Math.max(0.55, 1 - (pitchCount - budget) * CONTEXT.fatigueSlopePerPitch * slope);
+}
+
+/**
+ * Where confidence starts, and the bounds it lives between.
+ *
+ * Zero to one, half is level. A starter takes the mound at level; a reliever
+ * comes in slightly above it, which is the closest thing this model has to
+ * saying that a man warmed up for one inning is a man with a job he
+ * understands.
+ */
+export const CONFIDENCE = {
+  start: 0.5,
+  relief: 0.58,
+  floor: 0,
+  ceiling: 1,
+  /** What a mound visit puts back. Never a full reset -- talk is not rest. */
+  visit: 0.22,
+} as const;
+
+/**
+ * What just happened, as a nudge to confidence.
+ *
+ * Every number here is small on purpose: one home run does not break a pitcher,
+ * and a single strikeout does not fix one. It is the accumulation across an
+ * inning that shows, which is why a visit is worth spending after a bad one
+ * rather than after a bad pitch.
+ */
+export function confidenceShift(event: {
+  homeRun?: boolean; walk?: boolean; strikeout?: boolean;
+  hit?: boolean; out?: boolean; runsAllowed?: number;
+}): number {
+  let d = 0;
+  if (event.homeRun) d -= 0.10;
+  else if (event.hit) d -= 0.03;
+  if (event.walk) d -= 0.05;
+  if (event.strikeout) d += 0.045;
+  else if (event.out) d += 0.02;
+  d -= (event.runsAllowed ?? 0) * 0.02;
+  return d;
+}
+
+/**
+ * Confidence as a multiplier on the arm, in the same currency as fatigue.
+ *
+ * Centred so that level confidence is exactly 1 and changes nothing -- which
+ * matters more than it looks. It means a save written before this existed, and
+ * every calibration figure taken before it, still describes the same game at
+ * the midpoint; only a pitcher who has actually wobbled or actually settled
+ * moves off it.
+ */
+export function confidenceMultiplier(confidence: number): number {
+  const from = clamp(confidence, CONFIDENCE.floor, CONFIDENCE.ceiling) - CONFIDENCE.start;
+  return 1 + from * CONTEXT.confidenceSwing * 2;
 }
 
 export { clamp };

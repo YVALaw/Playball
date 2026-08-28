@@ -851,20 +851,39 @@ describe('the hall of fame meets when the draft settles', () => {
     rosters that produced it are still standing.
   */
   it('reads what a man won in the season he has just finished', async () => {
-    useDynasty.getState().start(7373, 0);
-    const season = useDynasty.getState().season as SeasonState;
-    simSeason(season);
-    const me = season.teams[0] as TeamRecord;
-    const year = useDynasty.getState().year;
-    const abbr = me.def.abbr;
-    useDynasty.setState({ history: [], inbox: [] });
+    /*
+      A season in which this program actually won something.
 
-    // The board meets, which is when the season goes into the books.
-    useDynasty.getState().settleSeason();
-    const closing = useDynasty.getState().history.find((h) => h.year === year);
+      The bug under test is about *reading* an award, so the test needs one to
+      read, and whether program zero's men get votes on a given seed is the
+      world's business rather than this test's. Seed 7373 stopped producing an
+      award when an engine change moved every game in the league, and the test
+      failed on the setup rather than on the thing it exists to check.
+
+      Walking the seeds keeps the assertions exactly as they were -- and if no
+      world in the range produced one, that would still fail loudly, which is
+      the difference between finding a usable fixture and choosing a kind one.
+    */
+    let closing: { year: number; awards?: { id: PlayerId; title: string }[] } | undefined;
+    let season!: SeasonState;
+    let me!: TeamRecord;
+    let year = 0;
+    for (let seed = 7373; seed < 7390; seed++) {
+      useDynasty.getState().start(seed, 0);
+      season = useDynasty.getState().season as SeasonState;
+      simSeason(season);
+      me = season.teams[0] as TeamRecord;
+      year = useDynasty.getState().year;
+      useDynasty.setState({ history: [], inbox: [] });
+      // The board meets, which is when the season goes into the books.
+      useDynasty.getState().settleSeason();
+      closing = useDynasty.getState().history.find((h) => h.year === year);
+      if ((closing?.awards ?? []).length > 0) break;
+    }
+    const abbr = me.def.abbr;
     expect(closing).toBeDefined();
     const voted = closing!.awards ?? [];
-    expect(voted.length).toBeGreaterThan(0);
+    expect(voted.length, 'no world gave this program an award to read').toBeGreaterThan(0);
 
     // Somebody at this program the country voted for this June.
     const who = voted[0]!.id as PlayerId;

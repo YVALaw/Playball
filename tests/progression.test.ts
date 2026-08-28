@@ -477,21 +477,44 @@ describe('walk-ons', () => {
   });
 
   it('is gone after one season, where a signed freshman is not', () => {
-    const s = withClass(4242, 8);
-    advanceOffseason(s, s.rng, { userTeam: 0 });
+    /*
+      A world where the comparison is possible, rather than one fixed seed.
 
-    const arrived = rosterOf(s, 0);
+      The rule under test is about how a man arrived, so proving it needs team
+      0 to carry a walk-on *and* a signed freshman at the same time. Only team
+      0 ever signs anybody here — the helper hands its class to program zero —
+      so the comparison cannot be moved to another roster.
+
+      Pinning it to a single seed pinned it to the weather: an engine change
+      moved the world, seed 4242 produced no walk-on at team 0, and the test
+      failed on something it was never about. Walking the seeds is not
+      cherry-picking a kind result — the assertions below are identical
+      whichever world answers, and a world with no walk-on anywhere would still
+      fail loudly.
+    */
+    let s = withClass(4242, 8);
+    const team = 0;
+    const usable = (x: SeasonState): boolean => {
+      const r = rosterOf(x, team);
+      return r.some((p) => p.walkOn) && r.some((p) => !p.walkOn && p.classYear === 'FR');
+    };
+    advanceOffseason(s, s.rng, { userTeam: 0 });
+    for (let seed = 4243; !usable(s) && seed < 4260; seed++) {
+      s = withClass(seed, 8);
+      advanceOffseason(s, s.rng, { userTeam: 0 });
+    }
+    expect(usable(s), 'no world gave team 0 a walk-on and a freshman').toBe(true);
+
+    const arrived = rosterOf(s, team);
     const walkOnIds = arrived.filter((p) => p.walkOn).map((p) => p.id);
     const freshmen = arrived
       .filter((p) => !p.walkOn && p.classYear === 'FR').map((p) => p.id);
-    expect(walkOnIds.length).toBeGreaterThan(0);
-    expect(freshmen.length).toBeGreaterThan(0);
 
     // One season later, and only one.
     const next = nextSeason(s);
     simSeason(next);
-    const report = departAndDevelop(next, next.rng, { userTeam: 0 });
-    const onRoster = new Map(rosterOf(next, 0).map((p) => [p.id, p]));
+    const report = departAndDevelop(next, next.rng, { userTeam: team });
+    const onRoster = new Map(rosterOf(next, team).map((p) => [p.id, p]));
     const reasons = new Map(
       [...report.graduated, ...report.drafted].map((d) => [d.id, d.reason]),
     );

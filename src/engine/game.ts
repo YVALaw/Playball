@@ -6,7 +6,10 @@ import {
   badgeSize, extraBaseBonus, fatigueBonus, gloveBonus, holdBonus, stealBonus, throwBonus,
 } from './badges.js';
 import { ENGINES } from './engines.js';
-import { fatigueMultiplier, mult, clamp, platoonMultiplier, BASERUNNING } from './ratings.js';
+import {
+  fatigueMultiplier, confidenceMultiplier, confidenceShift, CONFIDENCE,
+  mult, clamp, platoonMultiplier, BASERUNNING,
+} from './ratings.js';
 import {
   RUNNING, STEALS, BUNT, HOOK, alignmentAgainst,
   DEFAULT_STRATEGY, type Strategy,
@@ -177,6 +180,16 @@ export class TeamState {
   pitcher: Pitcher;
   penIndex = 0;
   pitcherPitches = 0;
+  /**
+   * How the man on the mound is carrying himself, 0 to 1, half being level.
+   *
+   * Beside `pitcherPitches` because they are the pair: one is what he has
+   * spent and cannot get back, the other is how he is holding up and can. Reset
+   * together on a pitching change, for the same reason.
+   */
+  pitcherConfidence: number = CONFIDENCE.start;
+  /** Whether the one mound visit this man is allowed has been used. */
+  visitUsed = false;
   readonly batting = new Map<string, BattingLine>();
   readonly pitching = new Map<string, PitchingLine>();
   readonly fielding = new Map<string, FieldingLine>();
@@ -626,6 +639,9 @@ export function createHalfInning(
     // call, and having the engine quietly make it too would steal with his
     // runners and burn his bench and bullpen out from under him.
     if (!manualDefense) maybeChangePitcher(fld, say);
+    // The visit goes before the hook on purpose: a bench that has a settled man
+    // available should try talking to him before it burns a reliever.
+    if (!manualDefense) maybeMoundVisit(fld, bases.some(Boolean), say);
     if (!manualOffense) maybePinchHit(bat, fld, inning, rng, say);
     if (!manualOffense && resolveSteal(false)) { finished = true; return true; }
 
@@ -728,7 +744,16 @@ export function createHalfInning(
       return false;
     }
 
-    const fatigueMult = fatigueMultiplier(pitcher, fld.pitcherPitches, fatigueBonus(pitcher));
+    /*
+      What the arm is carrying, as one number.
+
+      Fatigue and confidence are separate states and are shown separately, but
+      they arrive at the plate appearance the same way -- as a multiplier on the
+      pitcher. Multiplied rather than added so neither can cancel the other out:
+      a settled man who is out of pitches is still out of pitches.
+    */
+    const fatigueMult = fatigueMultiplier(pitcher, fld.pitcherPitches, fatigueBonus(pitcher))
+      * confidenceMultiplier(fld.pitcherConfidence);
     const tto = (fld.timesThrough.get(batter.name) ?? 0) + 1;
     fld.timesThrough.set(batter.name, tto);
 
@@ -932,6 +957,30 @@ export function createHalfInning(
       if (outs > outsBefore) events.push({ kind: 'out', outs: outs - outsBefore });
       if (counted > 0) events.push({ kind: 'score', runs: counted });
     }
+
+    /*
+      And what that did to him.
+
+      Applied here rather than at any of the dozen places an event is decided,
+      because this is the one point where the whole plate appearance is settled
+      -- the event, the errors, and how many actually crossed. Deciding it
+      earlier would have meant deciding it several times.
+
+      Takes no random draws: it is arithmetic over what already happened, which
+      is the rule every reporting and state-keeping layer in here keeps.
+    */
+    fld.pitcherConfidence = clamp(
+      fld.pitcherConfidence + confidenceShift({
+        homeRun: event === 'homer',
+        walk: event === 'walk' || event === 'hbp',
+        strikeout: pa.kind === 'strikeout',
+        hit: event === 'single' || event === 'double' || event === 'triple',
+        out: event === 'out',
+        runsAllowed: counted,
+      }),
+      CONFIDENCE.floor,
+      CONFIDENCE.ceiling,
+    );
 
     if (canWalkOff && bat.runs > fld.runs) {
       say(`   ${bat.team.name} win it.`);
@@ -1964,6 +2013,42 @@ function maybePinchHit(
   if (out) say(`   ${best.name} bats for ${out.name}.`);
 }
 
+/**
+ * A mound visit, wherever it comes from.
+ *
+ * The manager's version and the bench coach's both land here, which is the
+ * point: every one of the ninety-six programs settles a wobbling arm the same
+ * way, so nothing about this is an advantage a human has and the league does
+ * not. One per pitcher per outing; a pitching change resets it because a new
+ * man has his own.
+ *
+ * Confidence only, never fatigue. A conversation does not put pitches back in
+ * an arm, and letting it would collapse the two channels into one.
+ */
+export function moundVisit(fld: TeamState, say?: Say): boolean {
+  if (fld.visitUsed) return false;
+  fld.visitUsed = true;
+  fld.pitcherConfidence = clamp(
+    fld.pitcherConfidence + CONFIDENCE.visit, CONFIDENCE.floor, CONFIDENCE.ceiling,
+  );
+  say?.(`   The catcher goes out to talk to ${fld.pitcher.name}.`);
+  return true;
+}
+
+/**
+ * When the other ninety-five dugouts go out there.
+ *
+ * Deliberately late and deliberately cheap: only when he has actually come
+ * apart, and only with somebody on, which is when a real bench sends the
+ * catcher out. A staff that spent its visit on the first walk of the second
+ * inning would be spending the thing that is supposed to be scarce.
+ */
+function maybeMoundVisit(fld: TeamState, runnersOn: boolean, say: Say): void {
+  if (fld.visitUsed || !runnersOn) return;
+  if (fld.pitcherConfidence > 0.3) return;
+  moundVisit(fld, say);
+}
+
 function maybeChangePitcher(fld: TeamState, say: Say): void {
   const p = fld.pitcher;
   const budget = 30 + p.stamina * 0.85;
@@ -1983,6 +2068,10 @@ function maybeChangePitcher(fld: TeamState, say: Say): void {
   fld.usedPen.push(next);
   fld.pitcher = next;
   fld.pitcherPitches = 0;
+  // A new man is a new outing in every sense: his own budget, his own
+  // confidence, and his own visit still to spend.
+  fld.pitcherConfidence = CONFIDENCE.relief;
+  fld.visitUsed = false;
   say(`   Pitching change: ${next.name} (${next.throws}HP) enters.`);
 }
 

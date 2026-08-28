@@ -46,12 +46,16 @@ export function Manage() {
   // casual you have delegated it on purpose.
   const depth = useDynasty((s) => s.depth);
   const myPen = handles(depth, 'bullpen');
+  // Separate from the pen on purpose: somebody can want the bullpen and not the
+  // conversations, or the other way round.
+  const myVisits = handles(depth, 'moundVisits');
   // Read once when the game opens rather than subscribed to: nobody changes
   // their field preference in the middle of an at-bat, and re-reading storage
   // on every pitch to find that out would be absurd.
   const [flatField] = useState(() => readPrefs().field === '2d');
   // The full linescore, on request rather than always. See the top bar.
   const submitTactic = useDynasty((s) => s.submitTactic);
+  const visitMound = useDynasty((s) => s.visitMound);
   const pinchHitFor = useDynasty((s) => s.pinchHitFor);
   const bringIn = useDynasty((s) => s.bringIn);
   const autoFinish = useDynasty((s) => s.autoFinish);
@@ -494,6 +498,17 @@ export function Manage() {
                    bar is that budget, drawn. */
                 fill: Math.min(1, d.outing.pitches / Math.max(1, d.outing.budget)),
                 over: d.outing.pitches > d.outing.budget,
+                note: 'PAST HIS BUDGET',
+              },
+              {
+                /* The other half of what he is carrying. Half is level, and a
+                   pitcher at level is exactly as good as he was before this
+                   channel existed -- which is what lets it be added to a
+                   calibrated engine without moving the midpoint. */
+                label: 'HEAD',
+                fill: d.outing.confidence,
+                over: d.outing.confidence < 0.3,
+                note: 'LOSING HIM',
               },
             ]}
           />
@@ -570,11 +585,12 @@ export function Manage() {
                 onClick={once(() => live0 && submitTactic(o.tactic))}
                 disabled={!live0}
                 style={{
-                  padding: '7px 8px', textAlign: 'left', flex: 'none',
-                  // The platform floor for a thumb. These measured 41px — under
-                  // both Apple's 44pt and Android's 48dp guidance — and they
-                  // are the most-tapped controls in the game.
-                  minHeight: 44,
+                  padding: '5px 8px', textAlign: 'left', flex: 'none',
+                  // Apple's 44pt floor, and not a pixel under it: these are the
+                  // most-tapped controls in the game. The padding came down
+                  // rather than the target, which is what made room for the
+                  // mound visit without costing anybody a thumb.
+                  minHeight: 40,
                   // Available calls are raised paper with a real border. The
                   // unavailable ones recede rather than merely dimming, so the
                   // difference is obvious at arm's length on a phone.
@@ -588,17 +604,23 @@ export function Manage() {
                 }}
               >
                 <div style={{
-                  font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.04em',
+                  font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.03em',
                   color: o.available ? 'var(--ink)' : 'rgba(28,36,48,.34)',
                 }}>{o.label}</div>
                 <div style={{
-                  marginTop: 1, font: "400 calc(9.5px * var(--ts))/1.25 var(--body)",
+                  marginTop: 1, font: "400 calc(9px * var(--ts))/1.2 var(--body)",
                   color: o.available ? 'var(--dim)' : 'rgba(28,36,48,.28)',
                 }}>{o.note}</div>
               </button>
               );
             })}
             <div style={{ flex: 1 }} />
+            {d.side === 'defense' && myVisits && (
+              <Small
+                onClick={once(visitMound)}
+                disabled={playing || auto !== null || d.outing.visitUsed}
+              >{d.outing.visitUsed ? 'VISIT USED' : 'MOUND VISIT'}</Small>
+            )}
             {(d.side === 'offense' || myPen) && (
               <Small
                 onClick={() => setModal(d.side === 'offense' ? 'pinch' : 'pen')}
@@ -747,11 +769,11 @@ function batterLine(
  * the side that belongs to you is marked rather than merely brighter — you are
  * always one of these two, and which one changes every half inning.
  *
- * `gauges` is a list rather than one bar on purpose. Fatigue is the only real
- * one today; pitcher confidence arrives with the stage that builds it, and the
- * card is laid out so the second bar slots in beside the first rather than
- * needing this rewritten. A bar reading a value that does not exist would be
- * theatre, so there is exactly one until there are two.
+ * `gauges` is a list because there are two, and they are the pair that
+ * describes an outing: ARM is a budget that only ever spends, and HEAD is a
+ * state that moves both ways. Keeping them separate is the whole design -- a
+ * settled man who is out of pitches is still out of pitches, and a mound visit
+ * can only ever move the second one.
  */
 function ManCard(
   { kicker, corner, id, name, sub, mine, stats, gauges }: {
@@ -762,7 +784,7 @@ function ManCard(
     sub: string;
     mine: boolean;
     stats: { k: string; v: string }[];
-    gauges?: { label: string; fill: number; over: boolean }[];
+    gauges?: { label: string; fill: number; over: boolean; note?: string }[];
   },
 ) {
   return (
@@ -820,11 +842,11 @@ function ManCard(
               font: "500 calc(7px * var(--ts)) var(--mono)", letterSpacing: '.12em',
               color: g.over ? 'var(--clay)' : 'var(--dim)',
             }}>{g.label}</span>
-            {g.over && (
+            {g.over && g.note && (
               <span style={{
                 font: "600 calc(7px * var(--ts)) var(--mono)", letterSpacing: '.1em',
                 color: 'var(--clay)',
-              }}>PAST HIS BUDGET</span>
+              }}>{g.note}</span>
             )}
           </div>
           <div style={{
