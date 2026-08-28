@@ -118,7 +118,7 @@
   <div class="top-in">
     <div class="kicker">Playball · implementation plan · stages 1–6 shipped</div>
     <h1>The road to v1.0</h1>
-    <p class="sub">Eighteen stages, ordered by what unblocks what. The game is
+    <p class="sub">Nineteen stages, ordered by what unblocks what. The game is
     already deep; this is the work that turns it into a product with a
     personality, on a phone. <strong style="color:var(--cream)">The first six
     are done.</strong> Three and four did not exist when this plan was written —
@@ -290,6 +290,7 @@
           <li><strong>Three tests that were asking the wrong question.</strong> <span class="did">All three failed because the world moved under a pinned seed. The batting champion was a ceiling against one season, which is the one thing a tail statistic cannot be judged on — the pinned seed threw .544 while nine others averaged .464 — so it judges the distribution across six worlds now. Widening the bound would have hidden a real regression later; picking a kinder seed is that with extra steps.</span></li>
         </ul>
         <div class="exit"><b>Exit — met</b>A pitcher&rsquo;s outing has a shape, and you can do something about it.</div>
+        <div class="decide"><b>Revised on contact, and the tuning nearly went out wrong</b>The bars now start <em>full</em> and drain — a bar that fills as a man tires reads as something being earned, and both of these are things a pitcher arrives with and spends. But centring the multiplier on full, which is the obvious reading, taxed every arm in the country for the crime of having pitched: 1.2% on average, which run scoring being the nonlinear thing it is arrived as <strong>4.9% more runs</strong> and put the league above target for the first time in this project. Neutral belongs where pitchers actually live, not where they start — walked down against the sweep to 0.76, which puts runs on target exactly and lets a cruising pitcher be genuinely worth about a percent. Confidence also feels <em>traffic</em> now, charged per runner left on.</div>
         <div class="decide"><b>Deferred to stage 7: the conversation</b>The visit ships as a single confirm. The designed version — <em>settle him</em>, <em>challenge him</em>, <em>take it off him</em>, read against a pitcher's temperament, with repetition that costs — waits for the coach, because the half that makes it a decision is <em>which register works</em>, and that should read your personality badges as much as his temperament. Building it first means building the interesting half twice; the upgrade costs one sheet.</div>
         <div class="decide"><b>Cut from v1.0: pitch-by-pitch calling</b>Not deferred — dropped, and the reason is worth keeping. The engine resolves a plate appearance with log5 and <em>then</em> sequences pitches backwards to land on that outcome, so a pitch you called could not change anything already decided. Making the call a real input means a new calibrated channel for a full-depth-only feature; running a different engine for managed games breaks the rule that managing must not change the odds, and would make every record slightly dishonest; leaving it as theatre is the one thing this game does not do. The eleven pitch types stay what they are — what colours the play-by-play, and what tendencies and scouting are made of.</div>
       </div>
@@ -423,17 +424,40 @@
     <li class="stage">
       <div class="num">15</div>
       <div>
-        <h3>The simulation's last mile</h3>
-        <div class="chips"><span class="chip sz-m">Medium</span></div>
-        <p>Run-expectancy AI · recruits drafted out of high school · park effects
-        as geometry · camera easing, instanced markers, a real 2D/3D toggle ·
-        the measurement debt (the walk deficit, <code>sim.ts parity</code>,
-        single-sample calibration figures).</p>
+        <h3>The ballpark</h3>
+        <div class="chips"><span class="chip new">New</span><span class="chip sz-l">Large</span><span class="chip dep">All the 3D work, in one place</span></div>
+        <p>The dugout <em>screen</em> is finished; the park it draws is not.
+        This is the stage that stops treating the field as a diagram of where
+        the ball went and makes it somewhere games are played. Everything
+        already queued that touches the 3D park was collected here rather than
+        left scattered across three stages — they are one piece of work, and
+        doing them apart means redrawing the same park three times.</p>
+        <ul>
+          <li><strong>The place itself</strong> — stands, crowd and the shape of a ground, instead of ninety-six programs sharing one anonymous bowl. Lighting and time of day, because a midweek afternoon and a June night are not the same game. School colours in the park rather than only on the cards around it. And depth: the field got bigger in stage 5, it has not yet got <em>deeper</em>.</li>
+          <li><strong>The play, drawn better</strong> — camera easing and a camera that follows the play rather than watching from one fixed seat; instanced markers and the render cost a busier park brings; a real 2D/3D toggle, since the setting exists but the two are not yet equal ways to watch. All carried over from the old stage 15.</li>
+          <li><strong>REPLAY</strong>, named in the stage 5 brief and never built. The events and landing coordinates are already stored and already take zero random draws, so it is a player over an existing stream. It belongs <em>here</em>, with the camera that would make it worth watching — a replay of a fixed-seat view is a replay of a diagram.</li>
+          <li><strong>Fielder animation</strong> beyond running to a point: the throw, the tag, the turn. What is there now is a summary, and the chase had to be capped at 1.15 seconds to stop it outstaying the play.</li>
+          <li><strong>Park effects as geometry</strong> — the one item here with a simulation in it. A short porch should be a short porch in the model as well as in the picture, so calibration applies and it lands last.</li>
+        </ul>
+        <div class="exit"><b>Exit</b>The ballpark is somewhere you would look at even when nothing is happening.</div>
+        <div class="decide"><b>Do this first, and it is now genuinely blocking</b>The throttled performance profile, outstanding since stage 5. This stage adds geometry, lights and a crowd to a scene whose frame rate on mid-range hardware has never once been measured. Open questions: whether parks differ by program or by conference, whether the crowd is modelled or painted, and how much of it survives on a four-year-old Android — which is the question the profile exists to answer.</div>
       </div>
     </li>
 
     <li class="stage">
       <div class="num">16</div>
+      <div>
+        <h3>The simulation's last mile</h3>
+        <div class="chips"><span class="chip sz-m">Medium</span></div>
+        <p>Run-expectancy AI · recruits drafted out of high school · the
+        measurement debt (the walk deficit, <code>sim.ts parity</code>,
+        single-sample calibration figures).</p>
+        <div class="decide"><b>Lighter than it was</b>Park effects, camera easing, instanced markers and the 2D/3D toggle moved out of here into stage 15, where the rest of the park work now lives.</div>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">17</div>
       <div>
         <h3>The store</h3>
         <div class="chips"><span class="chip sz-l">Medium–large</span><span class="chip dep">Needs the Console record</span></div>
@@ -444,7 +468,7 @@
     </li>
 
     <li class="stage">
-      <div class="num">17</div>
+      <div class="num">18</div>
       <div>
         <h3>The phone</h3>
         <div class="chips"><span class="chip sz-m">Small–medium</span><span class="chip dep">Deferred — no device yet</span></div>
@@ -456,7 +480,7 @@
     </li>
 
     <li class="stage">
-      <div class="num">18</div>
+      <div class="num">19</div>
       <div>
         <h3>Ship</h3>
         <div class="chips"><span class="chip sz-m">Medium</span></div>

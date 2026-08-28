@@ -1591,15 +1591,19 @@ park visual and do some tweaks to the design."* The field is now the right
 size and the play reads correctly on it — this is the other half, the one with
 no simulation in it: crowd, stands, lighting, the texture of the place.
 
-Deliberately **not** its own stage. It belongs with broadcast, where sound,
-haptics and the full-screen celebration land, because those are the same job —
-making the game *feel* like the sport — and a park redrawn before them would be
-redrawn again after them. One pass, once, with the rest of the atmosphere.
+**Superseded: it is its own stage now — stage 15, The ballpark.** The original
+reasoning put it with broadcast, on the grounds that a park redrawn before the
+sound and the celebration would be redrawn again after. That was right about
+*not doing it twice* and wrong about where it belongs: once the camera work,
+the 2D/3D toggle, REPLAY, park effects and fielder animation are counted, the
+park is far too much work to ride along inside a stage about audio. Collected
+into one stage instead, which is the same argument reaching a different answer.
 
 **K2 · REPLAY.** Named in the stage 5 brief and not built. The play events and
 landing coordinates that would drive it are already stored and already take
 zero random draws, so this is a player over an existing stream rather than new
-state. Small, and it can land any time.
+state. **Moved into stage 15**, with the camera work that would make it worth
+watching — a replay of the current fixed-seat view is a replay of a diagram.
 
 
 **K3 · The mound visit conversation.** Stage 6 shipped the visit as a single

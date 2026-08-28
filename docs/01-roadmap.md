@@ -255,7 +255,7 @@ get sacked and get poached). What genuinely remains part-done:
 
 **This list is now a pointer.** The scope, the platform, the money and the
 depth question were all settled in August 2026, and the route from here is
-eighteen staged steps in **`07-v1-plan.md`** — which supersedes the ordering
+nineteen staged steps in **`07-v1-plan.md`** — which supersedes the ordering
 that used to live in this section. What follows is the two-minute version.
 
 The one decision that shapes all of it: **a player chooses how deep a game he
@@ -306,13 +306,21 @@ locked* in `06-backlog.md`.
     moments (H2, H9).
 14. **Broadcast** — big-moment presentation, sound and haptics, the wire
     upgraded, emblems, awards night (H16, H17, H20).
-15. **The simulation's last mile** — run-expectancy AI, park geometry, the rest
-    of the 3D track, the measurement debt.
-16. **The store** — the S+ player and Play Billing.
-17. **The phone** — Capacitor and an APK on real hardware. Deferred to here
+15. **The ballpark** — the 3D park made somewhere games are played rather
+    than a diagram of where the ball went: stands, crowd, lighting, school
+    colours, depth. Plus everything already queued that touches it — camera
+    work, instanced markers, a real 2D/3D toggle, REPLAY, fielder animation,
+    and park effects as geometry (§K1, §K2). Collected into one stage because
+    they are one piece of work, and doing them apart means redrawing the same
+    park three times. *Take the throttled profile first.*
+16. **The simulation's last mile** — run-expectancy AI, recruits drafted out of
+    high school, the measurement debt. The 3D and park-geometry items moved
+    into stage 15.
+17. **The store** — the S+ player and Play Billing.
+18. **The phone** — Capacitor and an APK on real hardware. Deferred to here
     because there is no Android device yet; the two errands at the top of the
     plan are what keeps that safe.
-18. **Ship.**
+19. **Ship.**
 
 Stages 8 → 9 → 10 are a chain and cannot be reordered. Stage 2 is foundational.
 Stages 12, 13 and 14 are independent and are the ones to move earlier when the

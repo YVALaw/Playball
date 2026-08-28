@@ -10,7 +10,7 @@ for what the game does today.
 
 **Where the work stands: stages 1 through 4 are done. Stage 5, the dugout, is next.**
 
-**Eighteen stages now.** The old stage 5 was split: the dugout is presentation
+**Nineteen stages now.** The old stage 5 was split: the dugout is presentation
 over a stream the engine already emits, and the systems that reach *into* the
 simulation are their own stage behind it.
 
@@ -451,16 +451,70 @@ be moved against his will.
 
 **Exit:** the game sounds and looks like the sport it is about.
 
-## Stage 15 · The simulation's last mile
+## Stage 15 · The ballpark
+
+**Size:** large · **New — everything about the 3D park, in one place**
+
+The dugout screen is finished; the *park* it draws is not. This is the stage
+that stops treating the field as a diagram of where the ball went and makes it
+somewhere games are played. Everything already queued that touches the 3D park
+was collected here rather than left scattered across three stages, because they
+are one piece of work and doing them separately means redrawing the same park
+three times.
+
+**The place itself.**
+
+- **Stands, crowd and the shape of a ground.** Ninety-six programs currently
+  play in one anonymous bowl. A park should say whose it is.
+- **Lighting and time of day** — a midweek afternoon and a June night are not
+  the same game.
+- **School colours in the park**, not only on the cards around it.
+- **Depth and scale.** The field got bigger in stage 5; it has not yet got
+  *deeper*.
+
+**The play, drawn better.**
+
+- **Camera work** — easing, and a camera that follows the play rather than
+  watching from one fixed seat. Carried over from the old stage 15.
+- **Instanced markers** and the render cost that comes with a busier park.
+  Carried over.
+- **A real 2D/3D toggle.** The setting exists and the diamond is the fallback;
+  they are not yet two equal ways to watch. Carried over.
+- **REPLAY** — named in the stage 5 brief and never built. The play events and
+  landing coordinates are already stored and already take zero random draws, so
+  it is a player over an existing stream. It belongs here, with the camera that
+  would make it worth watching. (§K2)
+- **Fielder animation** beyond running to a point: the throw, the tag, the
+  turn. What is there now is a summary, and the chase had to be capped at 1.15
+  seconds to stop it outstaying the play.
+
+**Park effects as geometry.** Carried over from the old stage 15, and the one
+item here with a simulation in it: a short porch should be a short porch in the
+model as well as in the picture. Calibration applies, so it lands last.
+
+**Exit:** the ballpark is somewhere you would look at even when nothing is
+happening.
+
+**Do first:** the throttled performance profile, which has been an outstanding
+errand since stage 5 and is now genuinely blocking — this stage adds geometry,
+lights and crowd to a scene whose frame rate on mid-range hardware has never
+been measured.
+
+**Decisions at the door:** whether parks differ by program or by conference;
+whether the crowd is modelled or painted; and how much of this survives on a
+four-year-old Android, which is the question the profile exists to answer.
+
+## Stage 16 · The simulation's last mile
 
 **Size:** medium
 
-Run-expectancy AI · recruits drafted out of high school · park effects as
-geometry · camera easing, instanced markers, a real 2D/3D toggle · the
-measurement debt (the walk deficit, `sim.ts parity`, single-sample calibration
-figures).
+Run-expectancy AI · recruits drafted out of high school · the measurement debt
+(the walk deficit, `sim.ts parity`, single-sample calibration figures).
 
-## Stage 16 · The store
+*Park effects, camera easing, instanced markers and the 2D/3D toggle moved out
+of here into stage 15, where the rest of the park work lives.*
+
+## Stage 17 · The store
 
 **Size:** medium–large · **Needs:** the Console record
 
@@ -472,7 +526,7 @@ player per dynasty, one per save, a recruit who appears in your class, or a
 create-a-player; consumable or permanent; and what happens to a dynasty already
 in progress. Its own design pass before any billing code.
 
-## Stage 17 · The phone
+## Stage 18 · The phone
 
 **Size:** small–medium · **Deferred — no device yet**
 
@@ -481,7 +535,7 @@ across a force-quit, safe-area insets, the hardware back button. Everything
 except the frame rate can be answered on an emulator, so the emulator pass can
 be pulled forward alone if the wait runs long.
 
-## Stage 18 · Ship
+## Stage 19 · Ship
 
 **Size:** medium
 

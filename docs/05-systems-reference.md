@@ -5038,6 +5038,89 @@ ask what they were actually about.
   Upgrading costs one sheet: the button, the count and the confidence plumbing
   are identical either way. Backlog §K3.
 
+---
+
+## 27. Stage six, revised on contact — **SHIPPED**
+
+Everything in §26 stands except the shape of the confidence curve, which was
+wrong on the screen before it was wrong in the model and was reported as both.
+
+### 27.1 The bars start full
+
+A bar that begins empty and fills as a man tires reads as something being
+**earned**. Both of these are things a pitcher arrives with and spends, so both
+now draw what is *left*:
+
+- `ARM` is `1 - pitches / budget` rather than its inverse.
+- `CONF` starts at `CONFIDENCE.start` = **1** and only comes down, with small
+  credit back for getting people out.
+
+A starter deep into a game having given up nothing has simply never lost any —
+the behaviour asked for, falling out of the shape rather than needing a rule of
+its own. `HEAD` was renamed `CONF`, which is what it means.
+
+Confidence gained a weight it did not have: **traffic**, charged per runner left
+on at the end of a plate appearance. One baserunner is barely anything; a loaded
+bag is a real cost, which is also the moment a mound visit starts to look worth
+spending.
+
+### 27.2 The tuning that nearly went out wrong
+
+Centring the multiplier on **full** — the obvious reading of "starts full" —
+taxed every arm in the country for the crime of having pitched. At league rates
+a plate appearance costs about 0.012, so a starter who faces twenty-five men
+ends near 0.70 and averages roughly 0.85. That is a **1.2% average penalty**,
+which run scoring being the nonlinear thing it is arrived as **+4.9% runs** and
+put the league above its target for the first time in this project.
+
+Neutral belongs where pitchers actually live, not where they start. Walked down
+against the sweep: `0.85 → +1.8%`, `0.80 → +1.0%`, **`0.76 → runs exactly on
+target**. It sits a shade below the average outing on purpose, which is what
+pays for a cruising pitcher being genuinely worth about a percent — something
+the old centred-on-full shape could never say.
+
+**`CONFIDENCE.neutral` is downstream of `confidenceShift` and cannot be reasoned
+about separately. Retune one, re-measure the other with `npm run goldens`.**
+
+### 27.3 The ball that blinked red in the outfield
+
+The outcome colour ran from the moment the ball landed until the throw. Fine for
+a routine grounder; wrong for anything into a gap, because the chase is timed
+from contact at `FIELDER_SPEED` 3.9 units a second — so a ball twenty units from
+its nearest fielder left a red light flashing in the grass for **four seconds**.
+Longer than the 1.5–1.9s window the dugout greys its buttons for, so the next
+call became available while the last play was still being drawn.
+
+Two bounds, because there were two faults:
+
+- `BLINK_DUR` 0.75s — the outcome is a *signal*, not a state. It lasts about as
+  long as it takes to read, then the ball is a ball again.
+- `MAX_CHASE` 1.15s — this is a summary of a play, not a simulation of one.
+
+### 27.4 A chronic mandate fault, finally fixed
+
+`topThree` has **24 seats** a year — three in each of eight conferences — and
+both the `contend` and `championship` tiers were required to fill one. That put
+askers at roughly the number of seats, which is a box that fails somebody every
+time the distribution breathes: **two unrelated engine changes** pushed the worst
+year to 25 and then 26, each by moving the world rather than touching mandates.
+
+The championship tier's placement box moved to `topHalf`, which is the same fix
+its *trophy* already got and for the reason stated there: **a required box needs
+more seats than askers.** Its hard ask is the regional banner, sixteen of which
+hang every June; asking it *also* to finish top three was asking twice for one
+thing while starving the tier below of seats. Four grid rows move from missed to
+failed and nothing else does.
+
+### 27.5 Smaller things
+
+- **AUTO removed.** Two buttons were doing one thing — watching already hands
+  the dugout back when something worth managing arrives, which was the intent.
+- **Tutorials have an off switch**, in Display beside the reset. A *device*
+  preference: somebody who has played before should not be taught the recruiting
+  board again because they started a second dynasty. Absent means on, so no
+  existing career quietly stops explaining itself.
+
 
 ---
 
