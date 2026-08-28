@@ -9,6 +9,7 @@
 
 import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
+import { handles } from '../../state/depth.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { FixedHeader } from '../Sticky.js';
 import { FirstVisit } from '../Tutorial.js';
@@ -34,6 +35,7 @@ export function Roster() {
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
   const openOverlay = useDynasty((st) => st.openOverlay);
+  const setsOwnChart = useDynasty((st) => handles(st.depth, 'depthChart'));
   const openPlayer = useDynasty((s) => s.openPlayer);
   const [mode, setMode] = useState<Mode>('all');
   /*
@@ -99,8 +101,13 @@ export function Roster() {
           </div>
 
           <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
-            {/* The chart, one tap from the list it is about. Stage 8. */}
-            <Chip on={false} onClick={() => openOverlay('depth')}>CHART</Chip>
+            {/* The chart, one tap from the list it is about. Stage 8.
+                Hidden for a career that asked its staff to set it -- the chart
+                is still what the game plays, it is simply not this coach's to
+                write, which is the whole shape of the depth mode. */}
+            {setsOwnChart && (
+              <Chip on={false} onClick={() => openOverlay('depth')}>CHART</Chip>
+            )}
             <Chip on={mode === 'all'} onClick={() => setMode('all')}>ALL</Chip>
             <Chip on={mode === 'bat'} onClick={() => setMode('bat')}>HITTERS</Chip>
             <Chip on={mode === 'arm'} onClick={() => setMode('arm')}>PITCHERS</Chip>

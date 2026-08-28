@@ -9,6 +9,7 @@
 
 import { useState } from 'react';
 import { useDynasty } from '../../state/store.js';
+import { handles } from '../../state/depth.js';
 import { standing, gradesOf, WORDS_A_SEASON, AT_RISK } from '../../engine/eligibility.js';
 import { canRedshirt, MAX_REDSHIRTS, redshirtCount } from '../../engine/redshirt.js';
 import { secondaryPositions } from '../../engine/positions.js';
@@ -37,6 +38,8 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   const setRedshirt = useDynasty((s) => s.setRedshirt);
   const changePosition = useDynasty((s) => s.changePosition);
   const version = useDynasty((s) => s.version);
+  // A career that asked its staff to decide who sits does not get the button.
+  const mine = useDynasty((s) => handles(s.depth, 'redshirts'));
   const [moving, setMoving] = useState(false);
   void version;
 
@@ -54,9 +57,18 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   // The real rule: one appearance burns the season, so this is only a decision
   // before the first pitch of the year.
   const preseason = season.dayIndex === 0;
-  const canSit = preseason && canRedshirt(p) && redshirtCount(team) < MAX_REDSHIRTS;
+  const canSit = preseason && mine && canRedshirt(p) && redshirtCount(team) < MAX_REDSHIRTS;
 
-  const alsoPlays = p.type === 'hitter' ? secondaryPositions(p as Hitter) : [];
+  /*
+    The hardest three, not all of them.
+
+    A shortstop can genuinely stand anywhere except behind the plate, so the
+    honest list for him is six positions -- which on a card is a wall, and the
+    three easiest of them tell you nothing you had not guessed. `secondaryPositions`
+    already sorts hardest first, so the top of that list is the half worth
+    printing: what he can do that is *not* obvious.
+  */
+  const alsoPlays = (p.type === 'hitter' ? secondaryPositions(p as Hitter) : []).slice(0, 3);
 
   return (
     <>

@@ -53,12 +53,26 @@ describe('the spectrum', () => {
     expect(penaltyLabel(lf, 'C')).toBe('out of his depth');
   });
 
-  it('lets a catcher go anywhere else', () => {
-    // He is at the top of the ladder, so every other spot is downhill.
+  it('sends a catcher to the corners and not to short', () => {
+    /*
+      Caught on screen rather than by this file: the chart offered a catcher as
+      free cover at shortstop, because a single ladder that puts catching at
+      the hard end says every other spot is downhill from it.
+
+      The arithmetic was right and the model was wrong. Catching is at that end
+      because it is the hardest position to *fill*, not because catchers are
+      the best athletes on the field -- they are usually the slowest men in the
+      building, and where they actually go when their knees give up is first
+      base and left field.
+    */
     const c = at('C');
-    for (const pos of ['1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'] as Position[]) {
-      expect(positionPenalty(c, pos), `a catcher was charged to play ${pos}`).toBe(0);
-    }
+    expect(positionPenalty(c, '1B'), 'a catcher could not play first').toBe(0);
+    expect(positionPenalty(c, 'LF')).toBeLessThan(4.5);
+    expect(positionPenalty(c, 'SS'), 'a catcher was free cover at short')
+      .toBeGreaterThan(20);
+    expect(positionPenalty(c, '2B')).toBeGreaterThan(15);
+    expect(secondaryPositions(c), 'a catcher was offered the middle infield')
+      .not.toContain('SS');
   });
 
   it('never pays a man for standing somewhere easier', () => {

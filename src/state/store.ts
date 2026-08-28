@@ -1452,37 +1452,29 @@ function pressToRaise(store: DynastyStore): { presser: Presser; trigger: PressTr
 }
 
 /*
-  The classroom, checked once a week.
+  The classroom's news, read off what the season already did.
 
-  Keyed on the *week* rather than the day so a man is asked about seven times a
-  season rather than fifty, and so simulating a week in one press produces one
-  answer instead of seven. `failsThisWeek` is derived from the man, the year
-  and the week, so this is idempotent: running it twice on the same week reaches
-  the same verdict and suspends nobody twice.
+  The check itself moved into the engine's day loop -- see `simNextDay`. It had
+  to: this ran from the store's news hook, which fires once after a whole season
+  has been simulated, so SIM SEASON checked a single week after every game had
+  been played and the feature did nothing on the path most players use. The
+  worker path could not have called back here at all.
 
-  The user's program only. See `engine/eligibility.ts` for why ninety-five
-  other programs do not have grades at all.
+  So the engine suspends and writes down who and when; this reads the list and
+  posts one card each. Keyed on the man and the day, so a season simmed in one
+  press and a season played out a day at a time produce the same cards, and
+  neither posts the same one twice.
 */
-function checkGrades(store: DynastyStore): void {
-  const { season, userTeam, year } = store;
-  const rec = season?.teams[userTeam];
-  if (!season || !rec) return;
-  const day = season.dayIndex;
-  const week = Math.floor(day / 7);
-  const men = [...squad(rec.team), ...rec.team.rotation, ...rec.team.bullpen];
-  for (const p of men) {
-    // Already sitting, or sitting for something else. One suspension at a time.
-    if (!available(p, day)) continue;
-    if (!atRisk(p)) continue;
-    if (!failsThisWeek(p, year, week)) continue;
-    suspend(p, day);
+function classroomNews(store: DynastyStore): void {
+  const { season, year } = store;
+  for (const row of season?.classroom ?? []) {
     store.post({
       kind: 'season', year,
-      key: `grades-${p.id}-${year}-${week}`,
-      title: `${p.name} is ineligible`,
+      key: `grades-${row.id}-${row.day}`,
+      title: `${row.name} is ineligible`,
       body: 'He is short of where he needs to be in the classroom and misses '
         + 'the week. Whoever is next on the depth chart plays.',
-      link: { to: 'player', id: p.id },
+      link: { to: 'player', id: row.id },
     });
   }
 }
@@ -2657,6 +2649,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         Anybody suspended is let out here too -- a week in April is not a week
         that should still be running in February.
       */
+      // Last season's absences, cleared with the season that produced them.
+      delete rolled.classroom;
       const mineNow = rolled.teams[get().userTeam];
       if (mineNow) {
         const men = [
@@ -2963,7 +2957,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   noteSeasonNews: () => {
     const before = get().inbox;
-    checkGrades(get());
+    classroomNews(get());
     seasonNews(get());
     // On the same beat the wire is written, because both answer the same
     // question -- what just happened that is worth telling you about.

@@ -11,6 +11,7 @@ import {
   largestDeficit, noFeats, noteGame, type SeasonFeats,
 } from './achievements.js';
 import { coverFor } from './depthChart.js';
+import { atRisk, failsThisWeek, suspend } from './eligibility.js';
 import { makeTeam, reserveNames, resetNames } from './players.js';
 import { overallOf } from './ratings.js';
 import { initialPrestige } from './program.js';
@@ -651,6 +652,15 @@ export interface SeasonState {
    */
   boxScores: Record<number, BoxScore>;
   captureBoxFor: number | null;
+  /**
+   * Who missed a week for the classroom, and when.
+   *
+   * Written by the day loop so the store can post a card for each without
+   * having to have been watching -- a season simulated in one press still owes
+   * the coach the news. Sparse: a program with nobody in trouble never grows
+   * the field at all.
+   */
+  classroom?: { id: PlayerId; name: string; day: number }[];
   /**
    * What your players did, year by year, kept after the season is gone.
    *
@@ -1795,6 +1805,44 @@ export interface DayOptions {
 export function simNextDay(season: SeasonState, opts: DayOptions = {}): GameSummary[] {
   const day = season.schedule[season.dayIndex];
   if (!day) return [];
+
+  /*
+    The classroom, once a week, before anybody takes the field.
+
+    It lives here rather than in the store because a season simulated in one
+    press has to produce the same year a season played a day at a time
+    produces. The first version ran off the store's news hook, which fires once
+    after `simSeason` returns -- so SIM SEASON checked a single week, the last
+    one, after every game had already been played, and the feature did nothing
+    on the path most players use. The worker path could not have called back
+    into the store at all.
+
+    Only `captureBoxFor` is asked about: that is the program being coached, and
+    it is already on the season because the box scores need it. Ninety-five
+    other rosters have no grades and never will -- see `engine/eligibility.ts`.
+
+    Takes no random draws. `failsThisWeek` is derived from the man, the year
+    and the week, which is what lets it sit inside the day loop without moving
+    a single number downstream of it.
+  */
+  const mine = season.captureBoxFor;
+  if (mine !== null && mine !== undefined && season.dayIndex % 7 === 0) {
+    const rec = season.teams[mine];
+    const week = season.dayIndex / 7;
+    if (rec) {
+      const men = [
+        ...rec.team.lineup, ...rec.team.bench, ...rec.team.rotation, ...rec.team.bullpen,
+      ];
+      for (const p of men) {
+        const a = p as typeof p & { outUntil?: number; why?: string };
+        if (typeof a.outUntil === 'number' && season.dayIndex < a.outUntil) continue;
+        if (!atRisk(p) || !failsThisWeek(p, season.year ?? 0, week)) continue;
+        suspend(p, season.dayIndex);
+        (season.classroom ??= []).push({ id: p.id, name: p.name, day: season.dayIndex });
+      }
+    }
+  }
+
   season.dayIndex += 1;
 
   const summaries: GameSummary[] = [];

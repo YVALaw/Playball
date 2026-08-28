@@ -80,6 +80,23 @@ const PER_RUNG = 4.5;
  */
 const CATCHER_TAX = 22;
 
+/**
+ * Where a man ranks when he is the one *leaving*, which for a catcher is not
+ * where he ranks when somebody is arriving.
+ *
+ * Caught on screen: the chart offered a catcher as free cover at shortstop.
+ * The arithmetic was right and the model was wrong. The spectrum puts catching
+ * at the hard end because it is the hardest position to *fill*, not because
+ * catchers are the best athletes on the field -- they are usually the slowest
+ * men in the building. Read as a single ladder it says a catcher can play
+ * anywhere, which is the opposite of true.
+ *
+ * So catching is off the ladder in both directions: dear to arrive at, and no
+ * help at all on the way out. He moves to the corners, which is where catchers
+ * actually go when their knees give up, and not to short.
+ */
+const OUT_RANK: Record<Position, number> = { ...LADDER, C: 1.5 };
+
 /** Whether this is a spot somebody actually stands in. */
 const isFieldable = (pos: Position): boolean => pos !== 'P';
 
@@ -97,7 +114,7 @@ export function positionPenalty(p: Hitter | Pitcher, at: Position): number {
   // position there, which is the whole reason a bat-first man ends up in it.
   if (at === 'DH') return 0;
 
-  const climb = Math.max(0, LADDER[at] - LADDER[p.pos]);
+  const climb = Math.max(0, LADDER[at] - OUT_RANK[p.pos]);
   const tax = at === 'C' && p.pos !== 'C' ? CATCHER_TAX : 0;
   return climb * PER_RUNG + tax + settling;
 }
