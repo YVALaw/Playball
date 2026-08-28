@@ -359,6 +359,18 @@ function AppBody(
               }}>POSTSEASON</div>
             </div>
             <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
+            {/*
+              The way to your own settings, in the month you are most likely to
+              want them.
+
+              June is a frame of its own and it was built without this, so for
+              the whole postseason there was no route to the coach profile, the
+              saves screen, or any setting -- text size and the tutorials switch
+              included. Found while trying to reach the tutorials toggle from
+              the bracket, which is exactly the moment somebody would go looking
+              for it.
+            */}
+            <CoachMenuButton />
           </header>
         )}
         <SaveAlert topmost />

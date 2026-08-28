@@ -238,6 +238,21 @@ export function Settings() {
             on={prefs.tutorials}
             onToggle={() => put({ tutorials: !prefs.tutorials })}
           />
+          {/*
+            The reset only exists while there is teaching to reset.
+
+            These two sat one on top of the other, and they do opposite things:
+            the switch turns explaining off, the button makes every screen
+            explain itself again. Reported as the off switch "reactivating the
+            tutorials I had already seen", which is precisely what the control
+            underneath it does -- so the likeliest reading is that the wrong one
+            got pressed, and the layout invited it.
+
+            With the switch off the reset has nothing to do anyway, so it goes
+            away rather than sitting there as a live-looking control that either
+            does nothing or quietly undoes the setting above it.
+          */}
+          {prefs.tutorials && (
           <button
             className="tap"
             onClick={() => { resetTutorials(); setTaught(true); }}
@@ -254,6 +269,7 @@ export function Settings() {
               color: 'var(--dim)',
             }}>Every screen explains itself once more on your next visit.</div>
           </button>
+          )}
         </Card>
       </Frame>
     );
