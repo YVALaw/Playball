@@ -2005,8 +2005,20 @@ export function approachSchool(
     indiscreet. Rolling them separately is what allows the worst case -- they
     want you, and they told somebody.
   */
+  /*
+    Reported: "I went to all the colleges to shoot my shot, wrote to one school
+    and nothing happened."
+
+    Nothing was owed -- the letter was ignored, and the card said so -- but the
+    floor was too low for the feature to read as one. Almost every chair in the
+    country is occupied, so the vacancy bonus below almost never applied, and a
+    plain letter to an occupied chair was a twelve percent shot: three a season
+    meant most careers never saw a single reply. Eighteen keeps it a gamble
+    while making a season's three letters likelier to produce something than
+    not, which is the difference between a risk and a dead control.
+  */
   const interest = plausible
-    ? Math.min(0.55, 0.12 + shared * 0.05 + (target.coach ? 0 : 0.15))
+    ? Math.min(0.55, 0.18 + shared * 0.05 + (target.coach ? 0 : 0.15))
     : 0.02;
 
   // A proud programme is roughly twice as likely to mention it. A patient one

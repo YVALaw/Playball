@@ -319,3 +319,20 @@ button {
   --silver: #4a5866;
   --gold:   #8a6b16;
 }
+
+/* ---------------------------------------------------------------------------
+   Which one of these is you.
+
+   --clay is documented two ways in this file: "the accent: active states,
+   rules, alerts" and, twelve lines up, the colour the trophy cards had to be
+   kept away from because it reads as a loss. Both are true, and the collision
+   landed on the brackets, where your own team's row was painted in it -- so
+   every stage of a tournament marked you in the colour that means eliminated.
+   Reported twice, and the trophy colours only fixed the cards.
+
+   Identity is its own job and gets its own ink. Dark enough for cream on it,
+   nowhere near clay, and nothing to do with whether the news is good.
+   --------------------------------------------------------------------------- */
+:root {
+  --you: #2f4f7a;
+}

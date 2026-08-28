@@ -2516,8 +2516,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           review, and a man should not be tried twice for the same letter.
         */
         approaches: { tried: [], interest: [] },
-  newBadges: [],
-  clearNewBadges: () => set({ newBadges: [] }),
+        // Last winter's announcements, cleared with everything else. The action
+        // that does this by hand lives with the other actions; it was pasted in
+        // here as well, which re-declared it to itself on every year roll.
+        newBadges: [],
         lastPostseason: null,
         lastOutcome: null,
         // Cleared with the rest of last year, and for a sharper reason than the

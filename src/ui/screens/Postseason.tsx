@@ -558,7 +558,29 @@ export function Postseason() {
           lines={titleGame.lines}
           tone="ink"
           action="TAKE THE FIELD"
-          onClose={() => setModal(null)}
+          /*
+            The button does what it says.
+
+            Reported: "I reached the national final through the winners bracket
+            and the screen didn't navigate to where the game was happening --
+            the championship bracket is at the very bottom." TAKE THE FIELD only
+            closed the card, so it dropped you wherever you happened to be
+            standing, which after a week of tapping through brackets is usually
+            a stage you were reading rather than the one you are playing.
+
+            Closing it now also puts the page back on the live stage and on the
+            half you are actually in. YOUR NEXT GAME sits at the top of that
+            view, so the thing the card just announced is the first thing under
+            it rather than a scroll away.
+          */
+          onClose={() => {
+            setReviewing(null);
+            if (mySide !== null) {
+              if (bracket.stage === 'conference') setConfView(mySide);
+              else if (bracket.stage === 'national') setNatView(mySide);
+            }
+            setModal(null);
+          }}
         />
       )}
       {modal === 'won' && (
@@ -988,7 +1010,7 @@ function ConferenceStage(
             borderBottom: '2px solid var(--ink)',
             display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
           }}>
-            <span className="label" style={{ color: r.you ? 'var(--clay)' : 'var(--ink)' }}>
+            <span className="label" style={{ color: r.you ? 'var(--you)' : 'var(--ink)' }}>
               {r.conference}{r.you ? ' · YOU' : ''}
             </span>
           </div>
@@ -1034,7 +1056,7 @@ function RegionalStage(
               paddingBottom: 3, marginBottom: 6, borderBottom: '2px solid var(--ink)',
             }}>
               <span className="label" style={{
-                color: region.id === myRegion ? 'var(--clay)' : 'var(--ink)',
+                color: region.id === myRegion ? 'var(--you)' : 'var(--ink)',
               }}>
                 {region.name.toUpperCase()} REGIONAL
                 {region.id === myRegion ? ' · YOU' : ''}
@@ -1107,7 +1129,7 @@ function PendingSeriesCard(
   return (
     <div style={{
       marginBottom: 6,
-      border: mine ? '1.5px solid var(--clay)' : '1px solid var(--faint)',
+      border: mine ? '1.5px solid var(--you)' : '1px solid var(--faint)',
       background: 'var(--paper)',
     }}>
       <div style={{
