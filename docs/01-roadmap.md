@@ -288,10 +288,16 @@ locked* in `06-backlog.md`.
    held. *Scouting moved to the economy, where the money for it lives. Pitch
    calling stays dropped — see §J. The visit conversation is deferred to the
    coach, where it can read personality — §K3.*
-7. **The coach** — creation as an interview, offers that depend on your
-   answers, personality badges, press conferences, a jobs board that opens only
-   when the world says so, looking for work under contract, a proven winner's
-   recruiting edge, the title ladder (H6, H7, §J1–J4).
+7. **The coach** — planned in depth on August 28 and the largest stage left,
+   almost all of it writing. Creation as an interview: eighty questions, six
+   asked, filtered by who is asking; an athletic director per school who stays
+   and remembers what you promised. Badges named and visible with their effects
+   unstated — two from the interview, the rest earned by how you actually play,
+   on hidden counters whose thresholds are seeded. Twelve titles describing a
+   career's *shape*, so Journeyman means six schools rather than a beginner.
+   Openings arriving as wire stories, your own approaches, and being caught at
+   one able to end you. Rivals carry titles and badges too, which is most of the
+   payoff (H6, H7, §J1–J4, §K5).
 8. **The roster becomes a roster** — depth chart, real DH, redshirts, position
    changes, academic eligibility, two-way players (H5, H10).
 9. **Players as people** — injuries, season fatigue, playing time, morale,

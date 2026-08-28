@@ -1606,6 +1606,25 @@ state. **Moved into stage 15**, with the camera work that would make it worth
 watching — a replay of the current fixed-seat view is a replay of a diagram.
 
 
+**K4 · Cards in three dimensions.** Raised while planning stage 7: the cards
+should have depth, motion and effects rather than being flat panels. Filed into
+**stage 14, broadcast**, which already owns big-moment presentation, sound and
+the full-screen celebration — the same job, which is making the game feel like
+the sport. Building it for one card first and spreading it later is the mistake
+this project has already made twice.
+
+**K5 · Habit tracking, and what it costs.** Stage 7's badges are earned by how a
+coach actually plays, which needs counters the save does not yet carry: games
+managed, mound visits, steals and bunts called, freshmen played, walk-ons kept,
+wire stories opened, men talked out of the draft. Roughly a dozen integers per
+coach — trivial per season, and worth watching against the 12.3 KB a year the
+save already grows, because it is the first thing to be recorded for all
+ninety-six coaches rather than only for you.
+
+**Thresholds are seeded and hidden.** Nobody is told how many of anything earns
+a badge, and the number differs per save. It solves farming and adds replay
+variety with one decision.
+
 **K3 · The mound visit conversation.** Stage 6 shipped the visit as a single
 confirm. The design asked for, and agreed as deferred:
 
@@ -1619,7 +1638,12 @@ Three things make it a game rather than a menu. Each pitcher has a
 senior you have coached three years. **Repetition costs**: a second visit to the
 same man does less, a third may irritate him. And the **count is real**.
 
-**Deferred to stage 7 deliberately.** The half that makes it a decision is
+**Moved again, to stage 15 — the ballpark.** It is a sheet in the dugout rather
+than a coach system, and stage 15 now owns the dugout's presentation entirely.
+The badges it wants will exist by then either way. Original reasoning below,
+which still holds for *why it waited*:
+
+The half that makes it a decision is
 *which register works*, and that should read the coach's personality badges as
 much as the pitcher's temperament — a players' coach lands "that's on me", a
 hard-nosed one lands "you're better than this". Badges arrive in stage 7.
