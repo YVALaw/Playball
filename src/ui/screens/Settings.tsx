@@ -229,6 +229,15 @@ export function Settings() {
           />
         </Card>
         <Card tag="TEACHING">
+          <Row
+            label="Explain the screens"
+            blurb="Each screen says what it is for, once."
+            note={prefs.tutorials
+              ? 'Each screen says what it is for, once.'
+              : 'Nothing explains itself. Turn this back on and the reset below still works.'}
+            on={prefs.tutorials}
+            onToggle={() => put({ tutorials: !prefs.tutorials })}
+          />
           <button
             className="tap"
             onClick={() => { resetTutorials(); setTaught(true); }}

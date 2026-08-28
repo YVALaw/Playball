@@ -323,7 +323,24 @@ export function objectivesFor(mandate: Mandate, targetWins: number): Objective[]
     case 'championship':
       return [
         wins,
-        { key: 'topThree', label: 'Finish top three in the conference', required: true },
+        /*
+          The placement box moves down a rung, and the regional title carries
+          the difficulty.
+
+          `topThree` has twenty-four seats a year -- three in each of eight
+          conferences -- and both this tier and `contend` were required to fill
+          one. That put the askers at roughly the number of seats, which is a
+          box that fails somebody every time the distribution breathes: two
+          unrelated engine changes have now pushed the worst year to 25 and then
+          26, each time by moving the world rather than by touching mandates.
+
+          This is the same fix the trophy on this tier already got, for the same
+          stated reason -- a required box needs more seats than askers. A
+          championship program's hard ask is the regional banner below, sixteen
+          of which hang every June; asking it *also* to finish top three was
+          asking twice for one thing and starving the tier below of seats.
+        */
+        { key: 'topHalf', label: 'Finish in the top half of the conference', required: true },
         // The asymmetry the mandates exist for: the trophy a contender is
         // praised for is the job here. The *regional* banner rather than the
         // conference one, because sixteen of those hang a June against eight

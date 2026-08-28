@@ -728,14 +728,22 @@ describe('your board, pinned', () => {
     // 225 programs × 5 seasons × 4 seats. Move any of these four and the board
     // the player is standing in front of is not the board that was tuned.
     //
-    // Re-pinned once, deliberately, when the postseason expanded: the
-    // championship mandate's required trophy moved from the conference title
-    // to the regional banner, and the synthetic grid's conference-winning
-    // fixtures do not carry one — so its championship rows grade harder here.
-    // The live-league tuning tests in `rivals.test.ts` (clear rate, turnover,
-    // capacity) are the real gauge and did not move.
+    // Re-pinned twice, deliberately, and both times for the same reason: a
+    // required box moved because it had more askers than the format has seats.
+    //
+    // First when the postseason expanded and the championship mandate's trophy
+    // went from the conference title to the regional banner. Then again when
+    // its *placement* box went from top three to top half — `topThree` has
+    // twenty-four seats a year, three in each of eight conferences, and both
+    // top tiers were being sent at them, so the worst year in a played league
+    // asked twenty-six programs to fill twenty-four chairs.
+    //
+    // Four rows move from missed to failed and nothing else does, which is the
+    // shape to expect: the same programs, graded against a box that has room
+    // behind it. The live-league tuning tests in `rivals.test.ts` (clear rate,
+    // turnover, capacity) are the real gauge.
     expect(sweep().verdicts)
-      .toEqual({ exceeded: 1636, met: 360, missed: 608, failed: 1896 });
+      .toEqual({ exceeded: 1636, met: 360, missed: 612, failed: 1892 });
   });
 
   it('asks for the same wins and moves security by the same amount', () => {
@@ -744,14 +752,14 @@ describe('your board, pinned', () => {
     // taking a box the format could not supply off the list, not by lowering the
     // number beside it, which would have hidden the incoherence behind a digit.
     expect(wins).toBe(107620);
-    expect(security).toBe(-17940);
+    expect(security).toBe(-17891);
   });
 
   it('keeps and lets go of exactly the same men, by the same two routes', () => {
     const { fired, sacked, notRenewed, extended } = sweep();
-    expect(fired).toBe(1816);
+    expect(fired).toBe(1815);
     expect(sacked).toBe(1252);
-    expect(notRenewed).toBe(564);
+    expect(notRenewed).toBe(563);
     expect(extended).toBe(1227);
   });
 

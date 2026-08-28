@@ -161,15 +161,14 @@ export function Manage() {
     softer doors, which is what the plan asked for:
 
       WATCH   he calls it, you watch it, the field animates and the log
-              fills. Stoppable at any pitch.
-      AUTO    he calls it as fast as it will go, and hands it straight back
-              the moment something worth managing arrives.
+              fills. Stoppable at any pitch, and it hands the dugout back on
+              its own the moment something worth managing arrives.
 
     Neither changes a single outcome. The bench coach submits the same default
     call the screen already highlights, which is exactly what SIM THE REST has
     always done -- this only decides how much of it you see and when it stops.
   */
-  const [auto, setAuto] = useState<null | 'watch' | 'moment'>(null);
+  const [auto, setAuto] = useState<null | 'watch'>(null);
   useEffect(() => {
     if (!landing || !battedBall) return undefined;
     setPlaying(true);
@@ -213,8 +212,11 @@ export function Manage() {
   */
   useEffect(() => {
     if (auto === null || !live || live.over || playing) return undefined;
-    if (auto === 'moment' && worthManaging()) { setAuto(null); return undefined; }
-    const beat = auto === 'watch' ? 900 : 60;
+    // Watching stops when there is something to manage. That was a second
+    // button for a while and did not need to be: somebody who asked to watch
+    // still wants the dugout back when it matters.
+    if (worthManaging()) { setAuto(null); return undefined; }
+    const beat = 900;
     const t = setTimeout(() => {
       const cur = useDynasty.getState().live;
       if (!cur || cur.over) { setAuto(null); return; }
@@ -493,21 +495,24 @@ export function Manage() {
             gauges={[
               {
                 label: 'ARM',
-                /* Fatigue is real and always has been: past his budget an arm
+                /* What he has left, not what he has spent.
+                   Fatigue is real and always has been: past his budget an arm
                    loses effectiveness on a slope down to a floor of 0.55. The
-                   bar is that budget, drawn. */
-                fill: Math.min(1, d.outing.pitches / Math.max(1, d.outing.budget)),
+                   bar is that budget drawn as *remaining*, because a bar that
+                   fills as a man tires reads as something being earned. */
+                fill: Math.max(0, 1 - d.outing.pitches / Math.max(1, d.outing.budget)),
                 over: d.outing.pitches > d.outing.budget,
                 note: 'PAST HIS BUDGET',
               },
               {
-                /* The other half of what he is carrying. Half is level, and a
-                   pitcher at level is exactly as good as he was before this
-                   channel existed -- which is what lets it be added to a
-                   calibrated engine without moving the midpoint. */
-                label: 'HEAD',
+                /* The other half of what he is carrying, and the same
+                   direction of travel: full when he takes the mound, spent by
+                   what gets done to him. A man at full is exactly as good as he
+                   was before this channel existed, which is what lets it sit
+                   inside a calibrated engine. */
+                label: 'CONF',
                 fill: d.outing.confidence,
-                over: d.outing.confidence < 0.3,
+                over: d.outing.confidence < 0.45,
                 note: 'LOSING HIM',
               },
             ]}
@@ -635,7 +640,6 @@ export function Manage() {
             {auto === null ? (
               <>
                 <Small onClick={() => setAuto('watch')} disabled={playing}>WATCH</Small>
-                <Small onClick={() => setAuto('moment')} disabled={playing}>AUTO</Small>
                 <Small onClick={once(autoFinish)} disabled={playing}>SIM THE REST</Small>
               </>
             ) : (

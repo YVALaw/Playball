@@ -26,6 +26,14 @@ export type MotionPref = 'system' | 'reduced' | 'full';
 
 export interface DevicePrefs {
   /**
+   * Whether the screens explain themselves the first time you reach them.
+   *
+   * A device preference rather than a save one: somebody who has played this
+   * game before has played it before, and should not be taught the recruiting
+   * board again because they started a second dynasty.
+   */
+  tutorials: boolean;
+  /**
    * The text scale, multiplied into every font size in the app through the
    * `--ts` custom property. 1 is the design exactly as drawn.
    */
@@ -57,6 +65,9 @@ export const DEFAULT_PREFS: DevicePrefs = {
   motion: 'system',
   sound: false,
   haptics: false,
+  // On, because a first-time player is the one who needs it and the one least
+  // likely to go looking for a switch.
+  tutorials: true,
 };
 
 const KEY = 'playball.prefs.v1';
@@ -100,6 +111,10 @@ export function readPrefs(): DevicePrefs {
     motion: o.motion === 'reduced' || o.motion === 'full' ? o.motion : 'system',
     sound: o.sound === true,
     haptics: o.haptics === true,
+    // Absent means on, unlike the two above: a save written before this switch
+    // existed belongs to somebody who was being taught, and silently turning
+    // their tutorials off would be a change they never asked for.
+    tutorials: o.tutorials !== false,
   };
 }
 

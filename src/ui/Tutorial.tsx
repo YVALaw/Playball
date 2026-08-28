@@ -11,6 +11,7 @@
 // new tutorial is a new entry, not a new modal system.
 
 import { useEffect, useRef, useState } from 'react';
+import { readPrefs } from '../state/devicePrefs.js';
 import { useDynasty } from '../state/store.js';
 import { TUTORIALS } from './tutorials.js';
 
@@ -27,7 +28,15 @@ export function FirstVisit({ id }: { id: string }) {
   const pages = TUTORIALS[id];
   const [page, setPage] = useState(0);
 
-  const show = !!pages && pages.length > 0 && !seen.includes(id);
+  /*
+    Turned off entirely, for somebody who does not want teaching.
+
+    Read straight from the device preference rather than held in React state,
+    because the switch is on another screen and this component may already be
+    mounted when it is flipped. Cheap enough to read on every render -- it is a
+    JSON parse of five keys from localStorage, done once per screen visit.
+  */
+  const show = !!pages && pages.length > 0 && !seen.includes(id) && readPrefs().tutorials;
 
   // A dialog a keyboard can leave. Same contract as Modal: Escape dismisses,
   // focus starts on the safe control and goes home afterwards.

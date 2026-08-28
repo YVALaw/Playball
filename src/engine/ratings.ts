@@ -160,13 +160,13 @@ export const CONTEXT = {
     how much he has thrown -- and it is the thing a mound visit exists to
     steady.
 
-    Deliberately a fraction of fatigue's authority. At the floor it costs about
-    six percent of effectiveness, where a spent arm costs forty-five. A man who
-    has lost the plate should be worse, not a different pitcher, and the
-    calibration sweep is what says whether this number is honest: it moves the
-    whole league at once, since all ninety-six programs pitch through it.
+    Deliberately a fraction of fatigue's authority. Fully gone it costs eight
+    percent of effectiveness, where a spent arm costs forty-five. A man who has
+    lost the plate should be worse, not a different pitcher, and the calibration
+    sweep is what says whether this number is honest: it moves the whole league
+    at once, since all ninety-six programs pitch through it.
   */
-  confidenceSwing: 0.06,
+  confidenceSwing: 0.08,
 };
 
 const clamp = (v: number, lo: number, hi: number): number =>
@@ -551,12 +551,49 @@ export function fatigueMultiplier(
  * understands.
  */
 export const CONFIDENCE = {
-  start: 0.5,
-  relief: 0.58,
+  /*
+    Full, and spent from there.
+
+    This started centred at a half and drifting either way, and it was wrong on
+    the screen before it was wrong in the model: a bar that begins empty and
+    fills up reads as something being *earned*, when both of these are things a
+    pitcher arrives with and loses. Reported exactly that way -- the bars should
+    start full and come down.
+
+    So a man takes the mound with his confidence intact and everything from here
+    is subtraction, with small credit back for getting people out. A starter
+    who is deep into a game having given up nothing has simply never lost any,
+    which is the behaviour asked for and falls out of the shape rather than
+    needing a rule of its own.
+  */
+  start: 1,
+  /** A reliever has been warming and knows his job, but he is walking into
+      somebody else's mess. Just below full. */
+  relief: 0.92,
   floor: 0,
   ceiling: 1,
   /** What a mound visit puts back. Never a full reset -- talk is not rest. */
   visit: 0.22,
+  /*
+    Where the multiplier is neutral, and it is not "full".
+
+    Measured, then tuned against the sweep. At league rates a plate appearance
+    costs about 0.012, so a starter who faces twenty-five men ends near 0.70.
+    Centring on *full* therefore taxed every pitcher in the country for the
+    crime of having pitched -- about 1.2% on average, which run scoring being
+    the nonlinear thing it is arrived as **4.9% more runs**, putting the league
+    above its target for the first time in this project.
+
+    Walking it down: 0.85 gave +1.8%, 0.80 gave +1.0%, and 0.76 puts runs on
+    the target exactly. It sits a little below the average outing on purpose --
+    a pitcher who is cruising should be genuinely worth something, and this is
+    what pays for that without the league inflating to cover it.
+
+    Re-measure with `npm run goldens` if `confidenceShift` is ever retuned.
+    This number is downstream of that one and cannot be reasoned about
+    separately.
+  */
+  neutral: 0.76,
 } as const;
 
 /**
@@ -570,14 +607,29 @@ export const CONFIDENCE = {
 export function confidenceShift(event: {
   homeRun?: boolean; walk?: boolean; strikeout?: boolean;
   hit?: boolean; out?: boolean; runsAllowed?: number;
+  /** How many he left on when the plate appearance ended. */
+  runnersOn?: number;
 }): number {
   let d = 0;
-  if (event.homeRun) d -= 0.10;
-  else if (event.hit) d -= 0.03;
-  if (event.walk) d -= 0.05;
-  if (event.strikeout) d += 0.045;
-  else if (event.out) d += 0.02;
-  d -= (event.runsAllowed ?? 0) * 0.02;
+  if (event.homeRun) d -= 0.11;
+  else if (event.hit) d -= 0.04;
+  if (event.walk) d -= 0.055;
+  d -= (event.runsAllowed ?? 0) * 0.03;
+  /*
+    Traffic, which is its own weight.
+
+    Asked for directly: a pitcher with men all over the bases should feel it,
+    not only the man who hit them there. Charged per runner and small, so a
+    single baserunner is barely anything and a loaded bag is a real cost --
+    which is also when a mound visit starts to look worth spending.
+  */
+  d -= (event.runnersOn ?? 0) * 0.012;
+
+  // And what he gets back. Deliberately less than the damage: a strikeout does
+  // not undo a home run, and a man who has been hit around does not talk
+  // himself all the way back inside one inning.
+  if (event.strikeout) d += 0.035;
+  else if (event.out) d += 0.018;
   return d;
 }
 
@@ -591,8 +643,19 @@ export function confidenceShift(event: {
  * moves off it.
  */
 export function confidenceMultiplier(confidence: number): number {
-  const from = clamp(confidence, CONFIDENCE.floor, CONFIDENCE.ceiling) - CONFIDENCE.start;
-  return 1 + from * CONTEXT.confidenceSwing * 2;
+  /*
+    Centred on where a pitcher typically sits, not on where he starts.
+
+    See `CONFIDENCE.neutral` for why, and for the number. The short version:
+    the bar starts full because that is how a thing you *lose* should read, but
+    the multiplier cannot also be centred there or every arm in the country
+    pitches at a permanent deficit and the whole league inflates.
+
+    Cruising is worth about a percent. Coming apart costs about seven. The
+    league average is unchanged, which is the point.
+  */
+  const c = clamp(confidence, CONFIDENCE.floor, CONFIDENCE.ceiling);
+  return 1 + (c - CONFIDENCE.neutral) * CONTEXT.confidenceSwing;
 }
 
 export { clamp };

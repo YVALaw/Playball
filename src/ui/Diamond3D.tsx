@@ -415,6 +415,10 @@ const GLOVE_Y = 1.05;
 const ROLL_DUR = 0.55;
 /** The beat between the play resolving and the throw leaving his hand. */
 const HOLD_DUR = 0.42;
+/** How long the outcome colour shows. Long enough to read, short enough to end. */
+const BLINK_DUR = 0.75;
+/** The longest a fielder may spend running one down. See `arrive`. */
+const MAX_CHASE = 1.15;
 /** How long any throw takes, whatever it is throwing at. */
 const THROW_DUR = 0.5;
 /** Where a fielded ball goes home to when there is no play to make. */
@@ -490,9 +494,16 @@ export function playPlan(hit: BallHit, stations: THREE.Vector3[]): PlayPlan {
   // be there; a ball on the ground is run down after it stops rolling.
   const arrive = hit.caught
     ? flight
-    : Math.max(
-      flight + ROLL_DUR,
-      (stations[chaser]?.distanceTo(spot) ?? 0) / FIELDER_SPEED,
+    : Math.min(
+      // Capped, because this is a summary of a play rather than a simulation
+      // of one. An uncapped chase across the gap took four seconds, which is
+      // longer than the window the dugout greys its buttons for -- so the next
+      // call became available while the last play was still being drawn.
+      flight + MAX_CHASE,
+      Math.max(
+        flight + ROLL_DUR,
+        (stations[chaser]?.distanceTo(spot) ?? 0) / FIELDER_SPEED,
+      ),
     );
   const pickup = arrive + HOLD_DUR;
 
@@ -565,9 +576,21 @@ function BallInFlight({ hit, plan }: { hit: BallHit; plan: PlayPlan }) {
           : Math.min(1, (now - plan.flight) / ROLL_DUR);
         b.position.lerpVectors(plan.target, plan.rest, roll);
         b.position.y = plan.caught ? GLOVE_Y : BALL_REST;
-        // The outcome, blinked, so a play reads off the field before the log
-        // line is scanned.
-        const blink = Math.sin((now - plan.flight) * 22) > 0;
+        /*
+          The outcome, blinked once and then done.
+
+          This used to blink for the whole time between the ball landing and
+          the throw, which is fine for a routine grounder and wrong for
+          anything into a gap: the chase is timed from contact at 3.9 units a
+          second, so a ball an outfielder has to run twenty units for left a
+          red light flashing in the grass for four seconds. Reported as the
+          ball being out but sitting in the field blinking red.
+
+          It is a signal that says what just happened, so it lasts about as
+          long as it takes to read and then the ball is a ball again.
+        */
+        const since = now - plan.flight;
+        const blink = since < BLINK_DUR && Math.sin(since * 22) > 0;
         mat.color.set(blink ? (hit.hit ? HIT_BLUE : OUT_RED) : CREAM);
         b.visible = true;
       } else {

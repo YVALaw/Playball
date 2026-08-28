@@ -977,6 +977,7 @@ export function createHalfInning(
         hit: event === 'single' || event === 'double' || event === 'triple',
         out: event === 'out',
         runsAllowed: counted,
+        runnersOn: bases.filter(Boolean).length,
       }),
       CONFIDENCE.floor,
       CONFIDENCE.ceiling,
@@ -2045,7 +2046,9 @@ export function moundVisit(fld: TeamState, say?: Say): boolean {
  */
 function maybeMoundVisit(fld: TeamState, runnersOn: boolean, say: Say): void {
   if (fld.visitUsed || !runnersOn) return;
-  if (fld.pitcherConfidence > 0.3) return;
+  // Half gone. On the old centred scale this read 0.3; confidence starts full
+  // now, so the same "he has come apart" moment sits here instead.
+  if (fld.pitcherConfidence > 0.5) return;
   moundVisit(fld, say);
 }
 
