@@ -1650,3 +1650,10 @@ hard-nosed one lands "you're better than this". Badges arrive in stage 7.
 Building it before them means building the interesting half twice. The upgrade
 costs exactly one sheet: the button, the count and the confidence plumbing are
 identical either way.
+
+**K6 · An aura per postseason tournament.** Raised while planning stage 7's
+school cultures: if a programme can believe something, so can a tournament. The
+conference tournament, the regionals and the national showdown would each carry
+their own character — how they are described, how the wire covers them, what
+winning one is worth to a reputation. Unscheduled; it belongs wherever the
+postseason is next opened up, and it is small enough to ride along.

@@ -288,7 +288,9 @@ locked* in `06-backlog.md`.
    held. *Scouting moved to the economy, where the money for it lives. Pitch
    calling stays dropped — see §J. The visit conversation is deferred to the
    coach, where it can read personality — §K3.*
-7. **The coach** — planned in depth on August 28 and the largest stage left,
+7. **The coach** — planned in depth on August 28, and now building in pieces.
+   *Piece 1, school culture, has shipped: all ninety-six programmes hand-written
+   with a creed, an edge and two dials (§28).* Originally planned and the largest stage left,
    almost all of it writing. Creation as an interview: eighty questions, six
    asked, filtered by who is asking; an athletic director per school who stays
    and remembers what you promised. Badges named and visible with their effects

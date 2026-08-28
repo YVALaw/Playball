@@ -278,136 +278,137 @@ colours the play-by-play, and what tendencies and scouting are made of.
 
 ## Stage 7 · The coach
 
-**Size:** very large · **Mostly writing, and the writing is the point**
+**Size:** very large · **Built in pieces** · **Mostly writing, and the writing is the point**
 
 The last part of the game that is still a form, and the stage where a coaching
-career stops being something that merely happens to you. Planned in depth on
+career stops being something that merely happens to you. Planned in depth
 August 28, 2026; every decision below is settled.
 
 **The rule this stage is built on:** it has to feel different every time. A
 system that is identical on a fifth dynasty is a system people stop opening, so
-the pools are large, the thresholds are seeded, and the people in it remember
-you.
+the pools are large, the thresholds are seeded, and the places in it want
+different things.
 
 ### The voice
 
 **Deadpan, with a straight man.** The humour is in the situation and in the one
 answer that is too clever by half — never in a joke being told, because a joke
-you have read four times is worse than a line that was never trying. The
-register the codebase already writes in, pointed at people instead of systems.
+read four times is worse than a line that was never trying.
 
-### Creation as an interview
+### Piece 1 · School culture — **SHIPPED**
 
-- **Eighty questions with four answers each; six asked.** Two careers share
-  roughly one question, so repetition stops being noticeable well past the
-  fourth dynasty.
-- **The pool is filtered by who is asking and what state their programme is
-  in.** A broke school asks different things than a blueblood; the deep south
-  asks about heat, a northern school about February road trips. Large pool *and*
-  context — chosen deliberately as the expensive option, because this is where
-  the effort belongs.
-- **It cannot be failed.** Answers change *which programmes want you*, never
-  whether somebody does. Tell a poor school you intend to outspend everybody and
-  the bluebloods warm to you while it cools. No dead ends, real consequences.
-- **Two badges come out of it.** The rest are earned by playing.
+Every one of the ninety-six believes something: a name, a creed in its own
+voice, the one thing it is known for, and two dials — **patience** (how long
+before the board starts counting) and **ambition** (what clearing the bar means
+here). Ambition is deliberately *not* prestige.
 
-### The man across the desk
+**Hand-written, all ninety-six.** Deriving it from prestige and region would
+have produced prestige wearing a hat, and the test in `tests/cultures.test.ts`
+exists to catch exactly that — it failed on the first pass, which is how the
+hand-written version came to have twenty-two programmes that disagree with their
+own standing.
 
-**Each school has its own athletic director**, generated with a name and two or
-three traits that colour how he asks — and he is still there when you interview
-again in nine years. Ninety-six of them, which is what turns a table of
-programmes into a country with people in it.
+Visible on every school page under WHAT THEY BELIEVE. Nothing here touches the
+simulation.
 
-**He remembers what you promised, and what you did.** The claims you make in the
-interview become the yardstick he judges you by: tell him four years to Omaha
-and he is counting. It is the cheapest possible link between the writing and the
-simulation, and it makes one answer matter for a decade.
+### Piece 2 · The creation questions
 
-### Badges
+Creation becomes **five steps**: your coach → how you want to play → **the
+questions** → set your plan → take a job.
 
-**Named and visible, effect unstated.** You know you are a players' coach and
-what that means in words; the number behind it is not printed.
+- **Eighty in the pool, five asked.**
+- **Filtered by context** — who might want you, and what kind of place it is.
+- **The effect of an answer is shown**, because a character question you cannot
+  read the consequence of is a guess rather than a choice.
+- **No going back**, and no topic filtering — the same subject may come up twice.
+- Each answer grants **+2 across the four skills**, and **may cost something**:
+  `+3 recruiting, −1 training` is a real answer.
+- An answer may also grant **something other than skills** — starting prestige, a
+  contract year, a state pipeline.
+- **Two badges** come out of the five.
+- **It cannot be failed.** Answers change which programmes want you, never
+  whether somebody does.
 
-Two arrive from the interview. **The rest are earned by how you actually play**,
-which means the game watches:
+**Casual gets a two-question version** rather than skipping it. Five questions is
+a slow start; zero means the best-written thing in the game is invisible to the
+people most likely to bounce off.
 
-| Family | What it notices |
-|---|---|
-| How you manage a game | games taken yourself, mound visits, quick hooks, steals and bunts, pinch hits |
-| How you build a roster | freshmen given innings, walk-ons kept, developed versus recruited, regional versus national, how early you spend |
-| How you handle people | press answers over a career, blame taken or spread, how you speak about men who left |
-| What your teams do | close games, comebacks, results against the mandate, road form against ranked sides |
-| How you engage | **reading the wire**, and **talking men out of the draft** |
+### Piece 3 · Offers that read culture
 
-The last row is the one worth defending: it rewards engaging with the game
-rather than optimising it, and both are already recorded.
+- **Five offers.** Culture can **remove** a school that prestige alone would have
+  offered, and can make one reach below its usual standing for you.
+- **The pitch line says why they called** — "they think you will develop what
+  they have" rather than "a step up".
+- **A seeded wobble**, so the same seed and the same answers still produce a
+  slightly different desk on a replay.
 
-**The counters are hidden and the thresholds are seeded.** Nobody is told how
-many mound visits earn anything, and the number differs per save — high enough
-that it cannot be farmed in an afternoon. That kills the farming problem and
-adds variety in the same stroke.
+### Piece 4 · Titles
 
-**A badge arrives as a congratulation card.** The 3D-and-effects treatment for
-cards is stage 14's, applied to every card at once rather than to this one
-first.
+**Twelve rungs describing a career's shape**, not a points total. *Journeyman*
+means **six schools**, not a beginner — which is the actual fix for 71 of 96
+coaches wearing it at year thirty. *Respected* is a man who never won it all but
+kept reaching June, or kept **overachieving against the mandate**, which is
+already modelled and tuned.
 
-### Titles
+You wear one, chosen by priority. **Rivals wear them too**, on their own pages.
 
-**About twelve, and you wear one** — chosen by priority when several qualify, so
-a man who has moved six times and won two titles reads as the champion rather
-than the drifter.
+*This replaces the existing `coachStanding` ladder rather than sitting beside
+it.* New state required: nothing currently records which schools a coach has
+worked at.
 
-**A title describes a career's shape, not a points total.** That is the fix for
-71 of 96 coaches reading "Journeyman" at year thirty: *Journeyman* should mean
-six schools, not a beginner. *Respected* is a man who has never won a national
-title but keeps reaching June, or keeps overachieving with a bad hand. The rungs
-are recognisable careers, and a player can see which one he is becoming.
+### Piece 5 · The cold approach
 
-### The job market
+- **On the school's own page in Colleges**, under the overview, beside what they
+  believe — which is where somebody actually goes looking.
+- **No odds shown.**
+- **Three attempts a season**, never the same school twice.
+- **Culture decides whether the approach is welcome.** A tradition-heavy
+  programme resents being approached at all.
+- **Being caught can end you** — sometimes, and worst at a school already unhappy
+  with you.
 
-- **Openings arrive as news.** A chair appears when the wire runs a story — a
-  school has sacked its man, a coach three bad years in is under pressure. The
-  carousel already runs ninety-five rival careers; this finally makes it visible.
-- **You can also put feelers out** to a school with no opening.
-- **And it can end you.** A caught approach can get you sacked outright at a
-  programme already unhappy with you. Ambition is genuinely dangerous, which is
-  what makes it worth something.
-- **A proven winner recruits better.** Banners behind you are worth something on
-  the board, where it is felt every week.
+### Piece 6 · Badges earned by playing
 
-### The other ninety-five
+Two from the questions; the rest from how you actually play. **Five carried at
+most**, and they are permanent. The game watches how you manage a game, how you
+build a roster, how you handle people, what your teams do — and, deliberately,
+**whether you read the wire** and **whether you talk men out of the draft**,
+which rewards engaging with the game rather than optimising it.
 
-**Rival coaches carry titles and badges, on their own pages.** Nearly free — the
-same tracking run over data the carousel already produces — and it is most of
-the payoff: you can see who the drifters are, who never leaves, and who is about
-to be sacked.
+**Counters hidden, thresholds seeded.** Nobody is told how many of anything is
+enough, and the number differs per save: one decision that kills farming and adds
+replay variety at the same time. A badge arrives as a congratulation card.
 
-### Press conferences
+**Badges interact with culture** — a developer is worth more at a school that
+develops.
 
-**Rare and consequential.** Six or eight a season, only after something real —
-a rivalry loss, a title, four straight defeats, a man drafted. Sixty situations
-in the pool. Each moves prestige, morale and how recruits read you, and each
-reads your badges.
+### Piece 7 · Culture reaches the simulation
 
-### Casual mode
+Held until last on purpose, and measured alone. The slight effects: a
+development school gets a little more out of its returning players, a pitching
+school a little more from its arms. **Slight** is the word that was used and the
+word that governs — this is ninety-six new modifiers going into a calibrated
+engine, so it gets the treatment confidence got: isolate, measure against the
+sweep, dial.
 
-Badges and titles are not things a player *does*, so they simply accrue.
-**Going looking for another job stays** — ambition is the part a casual player
-most wants left in. **The interview is skipped**, with a neutral set of answers
-applied underneath so both modes stay in the same world.
+**Culture also drifts.** A school that keeps failing grows impatient; a new
+athletic director arrives with different ideas.
 
-> **Flagged, not settled by this:** skipping the interview means the best-written
-> thing in the game is invisible to exactly the players most likely to bounce off
-> a slow start. A two-question version for casual would cost almost nothing and
-> is worth deciding before the pool is written.
+### Piece 8 · Press conferences — **deferred within the stage**
+
+Five to eight a season, only after something real, each reading your badges and
+moving prestige, morale and how recruits see you. **The pool waits** until the
+creation questions have been played with, because writing sixty situations
+before knowing whether the voice lands is the risk.
 
 **Exit:** two coaches with the same record are visibly different men, the job
 market is somewhere you can act rather than only be acted upon, and a second
 dynasty does not ask you the same questions as the first.
 
-**Moved out of this stage:** the mound visit conversation goes to stage 15 with
-the rest of the dugout's presentation; 3D cards go to stage 14 with the rest of
-the broadcast treatment.
+**Moved out:** the mound visit conversation to stage 15; 3D cards to stage 14.
+
+**Open:** whether each postseason tournament gets its own aura, raised while
+planning this — logged in `06-backlog.md` §K6.
 
 
 ## Stage 8 · The roster becomes a roster

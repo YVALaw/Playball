@@ -5121,6 +5121,77 @@ failed and nothing else does.
   board again because they started a second dynasty. Absent means on, so no
   existing career quietly stops explaining itself.
 
+---
+
+## 28. School culture — **SHIPPED**
+
+Stage 7, piece 1. The first half of making a coaching career feel like one.
+
+### 28.1 What was missing
+
+A `SchoolDef` was `abbr`, `school`, `nickname`, `quality`, `prestige`, `color`,
+`rival`, `state`. Two of those are numbers and **both are about strength**, so
+ninety-six programmes read as one programme at ninety-six volumes. Taking a job
+was picking the highest number that would have you, and `startingOffers` — pure,
+deterministic, sorted on prestige and roster — made that literally true.
+
+### 28.2 What a culture is
+
+`src/data/cultures.ts`, keyed by abbreviation:
+
+- **`name`** — two or three words. What a player reads first.
+- **`creed`** — one line, in the school's own voice.
+- **`edge`** — the one thing they are known for. Eight of them: development,
+  pitching, defence, power, loyalty, recruiting, tradition, ambition.
+- **`patience`** — 0 to 100. How long before the board starts counting.
+- **`ambition`** — 0 to 100. What clearing the bar means here.
+
+Two dials rather than five. Everything a third and fourth dial would have said is
+already said better by `edge`, and a school page with five unnumbered bars on it
+is a school page nobody reads.
+
+### 28.3 Hand-written, and why that mattered
+
+Deriving culture from prestige, region and tier was the cheap option. It would
+also have been **prestige wearing a hat**: every blueblood impatient and
+demanding, every doormat patient and modest, one axis pretending to be two.
+
+`tests/cultures.test.ts` asks directly whether ambition is just prestige
+restated — and **the first hand-written pass failed it.** Mean gap 1.5, four
+outliers, every one in the same direction. The derived version had been written
+by hand without noticing.
+
+Twenty-two programmes now disagree with their own standing by fifteen or more,
+in both directions, and the test holds it there:
+
+- **Mobile Bay**, prestige 71, ambition 52 — a proud old school that would rather
+  tell you about 1974 than reach Omaha.
+- **Newport Bay**, prestige 53, ambition 34 — *"They have waited forty years and
+  are prepared to wait longer."*
+- **Savannah River**, prestige 45, ambition 68 — a modest name with a loaded
+  roster that expects to win now.
+- **Pascagoula Tech**, prestige 47, ambition 66 — the forge, and it believes.
+
+Every culture is tied to the name the school already had: the Anvils forge, the
+Sodbusters broke the ground, the Silkmen are the bottom rung and cheerful about
+it.
+
+### 28.4 What the tests hold
+
+- Exactly ninety-six, no orphans either way.
+- No creed or culture name used twice.
+- All eight edges present, none over a third of the country.
+- Ambition genuinely independent of prestige, both directions.
+- Strong patient schools and weak impatient ones both exist — the cliché is
+  allowed to be true without being a rule.
+
+### 28.5 What it does not do yet
+
+**Nothing touches the simulation.** The slight effects — a development school
+getting a little more out of its returning players — are held to the last piece
+of the stage and measured alone, because stage 6 taught that a new selection
+system and ninety-six new engine modifiers must not land in the same pass.
+
 
 ---
 
