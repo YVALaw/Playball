@@ -1,6 +1,6 @@
 # Roadmap
 
-**Last updated:** August 27, 2026 · stages 1–5 shipped
+**Last updated:** August 27, 2026 · stages 1–6 shipped
 **Supersedes:** v3, which by the end was wrong about most of what it claimed
 **Companion docs:** `05-systems-reference.md` for what the game does today,
 `06-backlog.md` for what it is going to do and why, `02-sim-engine-spec.md` for
@@ -281,9 +281,13 @@ locked* in `06-backlog.md`.
    arrives (H15). Presentation only; no engine risk, and none taken. The
    ballpark's *look* — crowd, stands, lighting, as opposed to its geometry —
    was deferred to broadcast by request, and REPLAY is unbuilt (§K).
-6. **The dugout's depth** — pitcher confidence beside the fatigue that already
-   exists, mound visits, opponent scouting (H11, H12, §J6). Touches the
-   simulation, so calibration applies. *Pitch calling is dropped — see §J.*
+6. ✅ **The dugout's depth** — pitcher confidence beside the fatigue that
+   already exists, and mound visits to steady it (H11, §J6). Confidence is
+   centred so level changes nothing, which is what let it into a calibrated
+   engine; every component moved under one percent and title concentration
+   held. *Scouting moved to the economy, where the money for it lives. Pitch
+   calling stays dropped — see §J. The visit conversation is deferred to the
+   coach, where it can read personality — §K3.*
 7. **The coach** — creation as an interview, offers that depend on your
    answers, personality badges, press conferences, a jobs board that opens only
    when the world says so, looking for work under contract, a proven winner's

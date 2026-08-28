@@ -116,17 +116,16 @@
 
 <header class="top">
   <div class="top-in">
-    <div class="kicker">Playball · implementation plan · stages 1–5 shipped</div>
+    <div class="kicker">Playball · implementation plan · stages 1–6 shipped</div>
     <h1>The road to v1.0</h1>
     <p class="sub">Eighteen stages, ordered by what unblocks what. The game is
     already deep; this is the work that turns it into a product with a
-    personality, on a phone. <strong style="color:var(--cream)">The first five
+    personality, on a phone. <strong style="color:var(--cream)">The first six
     are done.</strong> Three and four did not exist when this plan was written —
     they came out of playing what stage 1 shipped, and were built the same day
     they were reported. The old stage 5 was split so the dugout could land
-    without a calibrated engine riding on the same pass, and it has: the screen
-    is rebuilt and the bench coach will take the game off you two different
-    ways. Everything that reaches into the simulation is stage 6.</p>
+    without a calibrated engine riding on the same pass — and both halves have
+    now shipped, the second with the measurements to show what it cost.</p>
   </div>
 </header>
 
@@ -275,20 +274,23 @@
       </div>
     </li>
 
-    <li class="stage">
+    <li class="stage done">
       <div class="num">06</div>
       <div>
         <h3>The dugout&rsquo;s depth</h3>
-        <div class="chips"><span class="chip new">New</span><span class="chip sz-l">Medium–large</span><span class="chip dep">Touches the simulation</span></div>
-        <p>The half of the old stage 5 that reaches into the engine. Both items
-        are depth-mode gated and both need the measured treatment fatigue got:
-        isolate the channel, measure it against the calibration sweep, dial it.</p>
+        <div class="chips"><span class="chip done">Done · August 2026</span><span class="chip dep">First stage to touch the calibrated engine</span></div>
+        <p>The half of the old stage 5 that reaches into the engine — split off
+        so a tuning problem here could never hold up a screen that was already
+        finished. It got the measured treatment fatigue got: isolate the
+        channel, measure it against the calibration sweep, dial it.</p>
         <ul>
-          <li><strong>Pitcher confidence, beside fatigue.</strong> Fatigue is already real and always has been — a stamina-derived pitch budget (stamina 80 is roughly 98 pitches), a multiplier degrading to a floor of 0.55, fed into every plate appearance, with times-through-the-order beside it. Confidence is the genuinely new channel: a hidden per-outing state that drifts on what just happened. Both taken into account, which is the arrangement asked for.</li>
-          <li><strong>Mound visits</strong> — a limited resource that steadies a wobbling arm, and what gives confidence something to be for.</li>
-          <li><strong>Opponent scouting reports</strong> — the tendencies already exist and already hide until watched; this is the second route to them, and the one that costs something.</li>
+          <li><strong>Confidence, beside fatigue.</strong> They are a pair and the design keeps them apart: fatigue is a <em>budget</em> that only ever spends, confidence a <em>state</em> that moves both ways on what has just happened to him. <code>ARM</code> and <code>HEAD</code>, drawn together. <span class="did">The property that let a new channel into a calibrated engine: level confidence multiplies by exactly 1, so nothing moves at the midpoint and every figure measured before this still describes the same game. Its authority is a fraction of fatigue's — six percent at the extreme against forty-five. A man who has lost the plate should be worse, not a different pitcher.</span></li>
+          <li><strong>Mound visits.</strong> One per pitcher per outing, resetting on a change because a new man has his own. Confidence only, never fatigue — talk is not rest, and letting it be would collapse two channels into one. <span class="did">All ninety-six programs use theirs, late and with somebody on. That symmetry is not a nicety: a settling mechanic available only to the human would put the rest of the country in a measurably different world.</span></li>
+          <li><strong>What it cost, measured twice.</strong> <span class="did">The first sweep was taken before the AI visits existed and was therefore a measurement of half the change. Final: every component moved under one percent, every D1 target still passes. And the number most at risk — title concentration, since steadying good pitchers could plausibly cut upsets — came back at a mean of 9.4 champions across five worlds, against 9.4 before confidence existed. Unchanged.</span></li>
+          <li><strong>Three tests that were asking the wrong question.</strong> <span class="did">All three failed because the world moved under a pinned seed. The batting champion was a ceiling against one season, which is the one thing a tail statistic cannot be judged on — the pinned seed threw .544 while nine others averaged .464 — so it judges the distribution across six worlds now. Widening the bound would have hidden a real regression later; picking a kinder seed is that with extra steps.</span></li>
         </ul>
-        <div class="exit"><b>Exit</b>A pitcher&rsquo;s outing has a shape, and you can do something about it.</div>
+        <div class="exit"><b>Exit — met</b>A pitcher&rsquo;s outing has a shape, and you can do something about it.</div>
+        <div class="decide"><b>Deferred to stage 7: the conversation</b>The visit ships as a single confirm. The designed version — <em>settle him</em>, <em>challenge him</em>, <em>take it off him</em>, read against a pitcher's temperament, with repetition that costs — waits for the coach, because the half that makes it a decision is <em>which register works</em>, and that should read your personality badges as much as his temperament. Building it first means building the interesting half twice; the upgrade costs one sheet.</div>
         <div class="decide"><b>Cut from v1.0: pitch-by-pitch calling</b>Not deferred — dropped, and the reason is worth keeping. The engine resolves a plate appearance with log5 and <em>then</em> sequences pitches backwards to land on that outcome, so a pitch you called could not change anything already decided. Making the call a real input means a new calibrated channel for a full-depth-only feature; running a different engine for managed games breaks the rule that managing must not change the odds, and would make every record slightly dishonest; leaving it as theatre is the one thing this game does not do. The eleven pitch types stay what they are — what colours the play-by-play, and what tendencies and scouting are made of.</div>
       </div>
     </li>
@@ -368,6 +370,7 @@
         facilities and budget upgrades. Every dollar should have at least two
         things it could have been.</p>
         <ul>
+          <li><strong>Opponent scouting reports</strong> — moved here from the dugout's depth, for the same reason the assistants moved: it has to cost something, and the money that should pay for it lives in this stage. The tendencies already exist and already hide until watched; this is the second route to them.</li>
           <li><strong>Assistant coaches</strong> — a pitching coach, a hitting coach, a recruiting coordinator, each stacking on you. Poachable, and a good one leaves to become a head coach, which plugs into the carousel already running 95 rival careers. The biggest personality gain available.</li>
         </ul>
         <div class="decide"><b>Why they moved here</b>Because of what they cost. Paying for staff out of the program&rsquo;s money — decided over prestige, and over the recruiting pool — is what makes hiring a hitting coach a real argument with the facilities and the board. That argument is the whole point of an economy, and it is why staff should not ship first on a budget invented for them alone.</div>

@@ -4939,6 +4939,105 @@ air, so he waits out an animation like a person would.
   same job as sound and celebration and a park redrawn before them would be
   redrawn again after. Backlog §K1.
 
+---
+
+## 26. The dugout's depth — **SHIPPED**
+
+Stage 6, and the first stage since the overhaul to touch a calibrated engine.
+Two channels where there was one, and a limited thing you can do about the new
+one.
+
+### 26.1 Confidence, beside fatigue
+
+They are a pair and the design keeps them apart on purpose:
+
+| | Fatigue (`ARM`) | Confidence (`HEAD`) |
+|---|---|---|
+| What it is | a budget | a state |
+| Moves | one way, down | both ways |
+| Driven by | pitches thrown | what just happened to him |
+| Restored by | nothing | a mound visit |
+| Authority at the extreme | ×0.55 | ×0.94 |
+
+`CONFIDENCE.start` is 0.5 and `confidenceMultiplier(0.5)` is exactly **1**.
+That is the property that let a new channel go into a calibrated engine: at the
+midpoint nothing changes, so every figure measured before this still describes
+the same game, and only a pitcher who has genuinely wobbled or genuinely
+settled moves off it. A reliever enters at 0.58 — the closest this model comes
+to saying a man who warmed up for an inning knows what his job is.
+
+`confidenceShift` is deliberately small per event: a home run costs 0.10, a walk
+0.05, a strikeout returns 0.045, an ordinary out 0.02, and each run allowed
+0.02. It is the accumulation across a bad inning that shows, which is what makes
+a visit worth spending *after* one rather than after a single pitch. It takes no
+random draws — arithmetic over what already happened — and is applied at the one
+point where the whole plate appearance is settled, not at the dozen places an
+event is decided.
+
+Both arrive at the plate appearance multiplied together, so neither cancels the
+other: **a settled man who is out of pitches is still out of pitches.**
+
+### 26.2 The mound visit
+
+One per pitcher per outing, resetting on a pitching change because a new man has
+his own. It restores `CONFIDENCE.visit` (0.22) and touches fatigue not at all —
+talk is not rest, and letting it be would collapse two channels into one.
+
+`moundVisit()` is exported and both dugouts call it. The AI goes late and only
+with somebody on, at confidence below 0.3: a staff that spent its visit on the
+first walk of the second inning would be spending the thing that is supposed to
+be scarce. **This symmetry is not a nicety** — a settling mechanic available
+only to the human would put the other ninety-five programs in a measurably
+different world, which is the rule the depth mode already lives under.
+
+Journalled as `{ k: 'visit' }` and replayed like every other call. It carries no
+payload because there is nothing to carry, but it must be in the journal: it
+changes confidence, and confidence changes the game.
+
+### 26.3 What it cost, measured
+
+Two sweeps, because the first was taken before the AI visits existed and was
+therefore a measurement of half the change.
+
+Final: every component moved **under one percent**, every D1 target still
+passes, worst deviation 6.2% on walks — which is the pre-existing walk deficit
+already logged as measurement debt, not something this added.
+
+**Title concentration was the number to watch**, since a system that steadies
+good pitchers could plausibly reduce upsets. Measured across five worlds:
+**8, 11, 10, 8, 10 — mean 9.4**, against **9.4** before confidence existed.
+Unchanged. Worth recording that the single-seed reading swung 8 to 12 across
+these changes, which is why the open question in §F is only ever answered with
+a sweep.
+
+### 26.4 Three tests that were asking the wrong question
+
+All three failed because the world moved under a pinned seed, and all three now
+ask what they were actually about.
+
+- **The batting champion** was a ceiling against one season. A tail statistic is
+  the one thing a single sample cannot settle: the pinned seed threw .544 while
+  nine others averaged .464. It judges the distribution across six worlds now.
+  Widening the bound would have hidden a real regression later; picking a kinder
+  seed is the same thing with extra steps.
+- **Walk-ons** and **awards** need a world in which the comparison is *possible*
+  — a roster carrying both a walk-on and a signed freshman, a program whose men
+  won something. Both walk seeds until they find one, and both still fail loudly
+  if no world in range can answer.
+
+### 26.5 Moved and cut
+
+- **Scouting reports** moved to the economy stage, where the money that should
+  pay for them lives. Its settings row says so.
+- **Pitch calling** was cut from v1.0 rather than deferred, and its row now
+  reads *a later game* rather than naming a stage that will never build it.
+- **The mound visit conversation** — three registers, a pitcher's temperament,
+  and repetition that costs — is designed and deferred to stage 7, where it can
+  read the coach's personality badges as well as the pitcher's. The half that
+  makes it a decision is *which register works*, and that half needs both men.
+  Upgrading costs one sheet: the button, the count and the confidence plumbing
+  are identical either way. Backlog §K3.
+
 
 ---
 

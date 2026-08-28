@@ -230,9 +230,19 @@ rather than twice by halves. Logged in `06-backlog.md` §K1.
 This stage rebuilds the dugout around a *larger* 3D field, and a frame-rate
 disaster there changes the design rather than the code.
 
-## Stage 6 · The dugout's depth
+## Stage 6 · The dugout's depth — **DONE, August 2026**
 
-**Size:** medium–large · **Touches the simulation — calibration applies**
+**Size:** medium–large · **Touches the simulation — calibration applied**
+
+**Shipped.** Confidence sits beside fatigue as `HEAD` beside `ARM`, centred so
+level confidence changes nothing and a calibrated engine could take it. The
+mound visit restores confidence only, once per pitcher per outing, and all
+ninety-six programs use theirs. Measured twice: components moved under one
+percent, and title concentration held at a mean of 9.4 across five worlds
+against 9.4 before. Scouting moved to the economy. The visit *conversation* —
+three registers read against a pitcher's temperament — is designed and deferred
+to stage 7, where it can read the coach's badges too. Full write-up in
+`05-systems-reference.md` §26.
 
 The half of the old stage 5 that reaches into the engine. Both items are
 depth-mode gated and both need the measured treatment fatigue got: isolate the

@@ -1600,3 +1600,25 @@ redrawn again after them. One pass, once, with the rest of the atmosphere.
 landing coordinates that would drive it are already stored and already take
 zero random draws, so this is a player over an existing stream rather than new
 state. Small, and it can land any time.
+
+
+**K3 · The mound visit conversation.** Stage 6 shipped the visit as a single
+confirm. The design asked for, and agreed as deferred:
+
+A sheet showing the pitcher, his confidence and what the last three batters did,
+then three things you can *say* — **settle him** (low risk, small gain),
+**challenge him** (bigger gain if he is the type, a real loss if he is fragile),
+**take it off him** (protects a young arm; a veteran may find it patronising).
+
+Three things make it a game rather than a menu. Each pitcher has a
+**temperament** you learn across his career — hidden in a freshman, known in a
+senior you have coached three years. **Repetition costs**: a second visit to the
+same man does less, a third may irritate him. And the **count is real**.
+
+**Deferred to stage 7 deliberately.** The half that makes it a decision is
+*which register works*, and that should read the coach's personality badges as
+much as the pitcher's temperament — a players' coach lands "that's on me", a
+hard-nosed one lands "you're better than this". Badges arrive in stage 7.
+Building it before them means building the interesting half twice. The upgrade
+costs exactly one sheet: the button, the count and the confidence plumbing are
+identical either way.
