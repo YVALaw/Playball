@@ -1,6 +1,6 @@
 # Roadmap
 
-**Last updated:** August 27, 2026 · stages 1–4 shipped
+**Last updated:** August 27, 2026 · stages 1–5 shipped
 **Supersedes:** v3, which by the end was wrong about most of what it claimed
 **Companion docs:** `05-systems-reference.md` for what the game does today,
 `06-backlog.md` for what it is going to do and why, `02-sim-engine-spec.md` for
@@ -276,8 +276,11 @@ locked* in `06-backlog.md`.
 4. ✅ **Give the screen back** — the oversized roster filters, the recruit
    pipeline line, the prospect sheet, the offseason action button that moves,
    and the season record nobody can find (§I).
-5. **The dugout** — the presentation rebuild and the bench coach taking over
-   (H15). Presentation only; no engine risk.
+5. ✅ **The dugout** — the presentation rebuild and the bench coach taking
+   over, in two modes: *watch*, and *auto* until something worth managing
+   arrives (H15). Presentation only; no engine risk, and none taken. The
+   ballpark's *look* — crowd, stands, lighting, as opposed to its geometry —
+   was deferred to broadcast by request, and REPLAY is unbuilt (§K).
 6. **The dugout's depth** — pitcher confidence beside the fatigue that already
    exists, mound visits, opponent scouting (H11, H12, §J6). Touches the
    simulation, so calibration applies. *Pitch calling is dropped — see §J.*

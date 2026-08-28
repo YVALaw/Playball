@@ -4854,6 +4854,94 @@ fitting or not: two pixels from the bottom, every time.
 
 ---
 
+## 25. The dugout — **SHIPPED**
+
+Stage 5. The half of the old stage 5 with no engine in it: everything here is
+presentation over a stream the engine already emits, and nothing in this
+section can change a result.
+
+### 25.1 The screen
+
+A top bar carrying the inning with a direction caret, outs as diamond pips, and
+**the linescore, permanently**, with R/H/E. It was briefly folded behind a LINE
+SCORE button and came straight back out on report — it is the one thing on this
+screen that answers *where are we* without being asked, and a scoreboard you
+have to press is not a scoreboard.
+
+The field is about twice its old size. Below it, the matchup as **two cards**:
+the batter with `AVG / HR / RBI`, the pitcher with `IP / K / PC` and an **ARM
+gauge** drawing the pitch budget fatigue has always used — stamina 80 is roughly
+98 pitches, and past it the multiplier degrades to a floor of 0.55. The gauge is
+the first time that budget has ever been visible. The card whose side you are on
+wears a clay top edge, so it swaps every half-inning.
+
+**Where everybody is now reads as the first line of the play log**, sticky at
+its top. It was a dark banner over the foot of the field for one session and was
+reported twice — once for covering both cards (an earlier edit had nested them
+*inside* the field block, so `bottom: 0` resolved below them), and once for
+existing at all. The second note is the better one: the diamond already shows
+the runners, so a caption over it is the same fact twice, and the place a reader
+looks for words about the situation is the log.
+
+### 25.2 The bench coach
+
+Two doors beside SIM THE REST, which was all or nothing — a manager up nine in
+the sixth chose between forty more taps and giving up the rest of the game
+unseen.
+
+- **WATCH** — he calls it with a beat between calls, so the field animates and
+  the log fills and you simply watch.
+- **AUTO** — the same without the beat, stopping the instant something worth
+  managing arrives.
+
+"Worth managing" is deliberately three things and no more: a man in scoring
+position, seventh inning or later within two runs, or an arm past its budget. A
+handover that fires every half-inning is a handover nobody uses.
+
+**Neither changes an outcome.** He submits the same default call the screen
+already highlights, which is exactly what SIM THE REST has always done. One call
+per tick, guarded by the same flag that greys the buttons while a ball is in the
+air, so he waits out an animation like a person would.
+
+> **A bug the types allowed, worth keeping.** Scoring position was first written
+> as a null check over `bases`, which is `[boolean, boolean, boolean]` — and
+> `false !== null` is true, so every empty diamond counted as a man on second
+> and the handover fired on the first pitch and handed straight back. TypeScript
+> does not flag a comparison that is always true. Caught only by playing it.
+
+### 25.3 What June gained in the same pass
+
+- **The stage rail is navigation.** A finished tournament can be reopened; the
+  action button then says BACK TO THE REGIONALS rather than advancing a stage
+  you are not looking at.
+- **The view follows the side you are playing on**, fading between halves. Only
+  on a real change of side, so somebody who deliberately went to look at the
+  other half is left there.
+- **SIM TO MY NEXT GAME is the primary action**, with the named round beside it.
+  Round by round is the honest unit and is kept, but it is not what anybody
+  wants when four of the next five rounds contain none of their games. It stops
+  *before* your game, so the game is still yours to take.
+- **Trophy colours per tournament** — bronze, silver, gold. Every championship
+  card was one muted green, which read as a loss and could not tell three
+  tournaments apart.
+- **Advancing is not winning.** Finishing runners up showed the green a
+  championship wears, congratulating a team on losing its final. Three states,
+  three colours: green for a trophy, clay for a season that is over, neutral for
+  *you lost and you are still alive*.
+
+### 25.4 Deliberately not built
+
+- **REPLAY.** Named in the brief. The play events and landing coordinates that
+  would drive it are already stored and already take zero random draws, so it is
+  a player over an existing stream rather than new state. It can land any time.
+- **The ballpark's look** — crowd, stands, lighting — as opposed to its
+  geometry, which is done. Deferred to broadcast by request, because it is the
+  same job as sound and celebration and a park redrawn before them would be
+  redrawn again after. Backlog §K1.
+
+
+---
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code
