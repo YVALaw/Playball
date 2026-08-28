@@ -1657,3 +1657,48 @@ conference tournament, the regionals and the national showdown would each carry
 their own character — how they are described, how the wire covers them, what
 winning one is worth to a reputation. Unscheduled; it belongs wherever the
 postseason is next opened up, and it is small enough to ride along.
+
+## K. From two seasons of stage 7 — August 28, 2026
+
+Sixteen items reported after playing the interview, the cultures and the
+approach system through two full careers. Eleven shipped, five open.
+
+### Shipped
+
+| # | Reported | Cause | Where |
+|---|---|---|---|
+| 1 | A mound visit or bullpen change "simulates one at bat — the animation of the ball flying runs" | The flight effect depended on `version`, bumped by every store write, so any decision that was not a pitch replayed the last ball | `Manage.tsx` |
+| 2 | The opposing bench changed pitchers once all game with its reliever "depleted and being hit around" | Both hook tests were written for a starter: `budget` is 30 + stamina, so a 35-stamina reliever was allowed ~60 pitches, +12 flat and +18 for a patient hook put the change near 90. Six earned runs is not "hit around" | `game.ts` |
+| 3 | "It told me I reached the nationals — I lost in the regionals and was 22nd" | A `finish` of `'regional'` is written for everyone who *plays* a regional and overwritten on winning one, so the banner read it as the opposite of what it means. 32 play regionals; 20 reach the national field | `SeasonReview.tsx` |
+| 4 | A home run "looks like it is still falling inside the park" | `sin(travel · π)` returns to zero exactly at the wall, so the last quarter of the flight slid the ball along the grass. Now peaks at ⁴⁄₅ and crosses at 92% height | `Diamond3D.tsx` |
+| 5 | Confidence "regained far too rapidly — restored after an inning when he had lost it all" | Not a balance fault. The card follows the ball, so the arm on the mound while you bat is *theirs*; a fresh opponent under a kicker reading only PITCHING looks like your man healing. A clean inning returns ~0.07 | `Manage.tsx` |
+| 6 | The program page "stopped showing the college overview and showed coach information instead"; only a wipe fixed it | `programSheet` is store state. An inbox card deep-links to the coach sheet and the overlay's back bar closes the *overlay*, leaving the sheet set — and the PROGRAM tab has no bar and that branch renders no tabs. A one-way door | `Program.tsx` |
+| 7 | A man brought back from the draft was inducted to the hall | `activeIds` reads rosters, which is one `reinstate` away from true on the very step the ballot runs. An outcome of `'stayed'` is read from the board directly now | `store.ts` |
+| 8 | An inbox offer "just opens the school overview and nothing happens" | It linked to a read-only page while every offer is a live button under WHO IS CALLING | `store.ts` |
+| 9 | "Made the regionals without winning it and got no prestige"; −3 after a title year | `madeTournament` is a seat in the 20-team field, so the 32 who lose a regional scored what a program that stayed home scored. Priced at 2, with the slow fall confined to programs already at 70 | `program.ts` |
+| 10 | "Red cards still read as a loss" | `--clay` is documented both as the accent for active states *and* as the colour trophy cards must avoid because it reads as a loss. The collision painted your own bracket row in it | `tokens.css`, `Postseason.tsx` |
+| 11 | "Wrote to one school and nothing happened" | Nothing was owed — it was ignored and said so — but nearly every chair is occupied, so the vacancy bonus rarely applied and a plain letter was a 12% shot. Now 18%, taking a season's three from 32% to 45% | `program.ts` |
+
+### Open
+
+- **The five creation questions are too long.** Wants them "simpler and very
+  short". A content pass over `data/interview.ts`, not a code change.
+- **The winners→losers transition is "quite wild".** The view already follows
+  the side you are playing on and fades, but the change still reads as a jump.
+- **Press conferences.** Two seasons, none seen — correct: stage 7 piece 8 was
+  deliberately deferred until the interview had been played with. Now expected.
+- **A man talked out of the draft "is no longer in my roster".** Not reproduced.
+  `reinstate` and the roster cap both hold across twelve worlds
+  (`tests/keepplayer.test.ts`); the hall half of the same report is fixed
+  regardless of cause. Likely a save written before some of this existed.
+- **`mine`-is-clay elsewhere.** The wire, the board, signing day and the dugout
+  share the pairing fixed in the postseason. Repainting the app's accent should
+  be a deliberate decision, not the tail of a bug fix.
+
+### Calibration after this batch
+
+Measured, not assumed. Prestige mean 54.1 → 56.5, sd 17.7 → 16.7, bottom star
+bucket preserved (an earlier attempt at +5 with a league-wide slow fall gave
+61.1/14.6 and emptied it). Goldens re-recorded after the hook change: 5.325 runs
+a game against a 5.300 target, worst deviation 4%, all ten NCAA tolerance tests
+passing. Suite 849 green.

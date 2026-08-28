@@ -278,10 +278,26 @@ colours the play-by-play, and what tendencies and scouting are made of.
 
 ## Stage 7 · The coach
 
-**Size:** very large · **Seven of eight pieces shipped** · **Mostly writing, and the writing is the point**
+**Size:** very large · **Seven of eight pieces shipped, and played** · **Mostly writing, and the writing is the point**
 
 Full write-up in `05-systems-reference.md` §29, including the five faults that
-only a measured distribution could have found.
+only a measured distribution could have found, and §29.8 for what two seasons
+of actually playing it turned up.
+
+**Played August 28, 2026.** Sixteen reports, eleven fixed the same day; the
+table is in backlog §K. Three things the stage still owes:
+
+- **Piece 8, the press-conference pool**, deliberately held until the interview
+  had been played with. Two seasons went by with none, which is correct and is
+  now the most visible gap in the stage.
+- **The five creation questions are too long.** Reported as wanting them
+  "simpler and very short" — a content pass over `data/interview.ts`, not a
+  code change, and the one piece of this stage where length is working against
+  the voice rather than for it.
+- **The cold letter now bites often enough to be a gamble** (12% → 18%, so a
+  season's three letters reply 45% of the time rather than 32%), but nothing
+  else in the game acknowledges having written one. It reads as a control with
+  no consequences until the carousel.
 
 The last part of the game that is still a form, and the stage where a coaching
 career stops being something that merely happens to you. Planned in depth

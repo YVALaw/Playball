@@ -5328,6 +5328,47 @@ Every fault above typechecked, passed the suite, and would have shipped. Five of
 them were found by measuring a distribution rather than reading the code — and
 three were cases of the majority outcome being treated as an exception.
 
+### 29.8 What two seasons of play found, August 28 2026
+
+Sixteen reports; eleven fixed. The full table is in backlog §K. Four are worth
+recording here because they are about the *shape* of a mistake rather than one
+line of it.
+
+**A state flag with no way back is a wiped save.** `programSheet` moved into the
+store so an inbox card could address the program page (§29 passim). The coach
+sheet renders its own frame with no tabs, and the overlay's back bar belongs to
+the overlay — so closing the overlay left the flag set and the PROGRAM *tab*
+then had no exit at all. The lesson is not "add a back button": it is that any
+state which survives the screen that set it needs an exit on every screen that
+reads it.
+
+**Two definitions of the same word, twelve lines apart.** `--clay` is commented
+as "the accent: active states, rules, alerts" and, in the block added for the
+trophy colours, as the colour those cards had to be kept away from *because it
+reads as a loss*. Both were written deliberately and neither is wrong; the
+collision was invisible until it painted a bracket. Identity now has `--you`.
+
+**A flag read one step before it becomes true.** The hall ballot excludes
+`activeIds(season.teams)`, which is the right definition read at the one moment
+it is stale: `reinstate` puts a man back during the draft step and the ballot
+runs on leaving it. Fixed by reading the statement rather than its consequence —
+a draft outcome of `'stayed'` *is* "still in the league".
+
+**A number calibrated for one role, applied to another.** The bullpen hook's
+`budget` is `30 + stamina`, fitted to a Friday starter. Applied to a reliever it
+allowed sixty pitches before the flat twelve and the hook policy were added on
+top, so a patient bench left a 35-stamina arm out for ninety. The hook change
+moved the whole draw sequence, so the goldens were re-recorded: 5.325 runs a
+game against a 5.300 target, worst deviation 4%, all ten NCAA tolerance tests
+still passing.
+
+Prestige was the one balance change here and it was measured rather than
+argued. The first attempt — regionals worth 5, the slow fall applied to every
+program — took the league mean from 54.1 to 61.1, dropped the spread from 17.7
+to 14.6 and emptied the bottom star bucket entirely. Regionals at 2 with the
+slow fall confined to programs already above 70 lands at 56.5/16.7 with the
+bottom tier intact.
+
 
 ---
 
