@@ -5516,6 +5516,17 @@ small feature in a big hat.
 **Morale**, which stage 9 brings. The press room wants it and does not have it,
 and wiring an answer to a number that does not exist is how `Builder` shipped.
 
+**Declining the DH.** Assigning the slot ships — the chart's DH row is a ranking
+like any other and the coach decides who fills it. Letting the *pitcher* hit
+instead does not, and the reason is the same one that split two-way out: the
+batting order is `Hitter[]` and a pitcher has no hitting ratings at all, so it
+needs one man modelled in two rating systems at once.
+
+A toggle was built, wired to the store and put on the screen before that was
+noticed. It was then removed rather than left in, because a control that changes
+nothing is the exact fault this project spent the previous stage deleting —
+"a control that is visible and refuses is worse than one that is not there."
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

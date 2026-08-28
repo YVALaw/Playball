@@ -33,8 +33,6 @@ export function DepthChart() {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   const moveDepth = useDynasty((s) => s.moveDepth);
-  const useDH = useDynasty((s) => s.useDH);
-  const setUseDH = useDynasty((s) => s.setUseDH);
   const openPlayer = useDynasty((s) => s.openPlayer);
   const [open, setOpen] = useState<Position | null>(null);
   void version;
@@ -45,7 +43,7 @@ export function DepthChart() {
   const men = squad(team.team);
   const out = men.filter((p) => !available(p, day));
 
-  const spots = SPOTS.filter((s) => s !== 'DH' || useDH);
+  const spots = SPOTS;
 
   return (
     <FixedHeader
@@ -76,27 +74,19 @@ export function DepthChart() {
           </div>
         )}
 
-        {/* The DH, which is a decision rather than a rule. */}
-        <button
-          className="tap"
-          onClick={() => setUseDH(!useDH)}
-          style={{
-            width: '100%', textAlign: 'left', marginBottom: 10,
-            padding: '9px 11px', minHeight: 40,
-            background: 'var(--paper)',
-            border: '1px solid rgba(28,36,48,.28)',
-          }}
-        >
-          <div className="label">THE DESIGNATED HITTER</div>
-          <div style={{
-            marginTop: 3, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)",
-          }}>
-            {useDH
-              ? 'You use it. Tap to let the pitcher hit instead.'
-              : 'Your pitcher hits. Tap to use a designated hitter.'}
-          </div>
-        </button>
+        {/*
+          Declining the DH is not here, and it is not an oversight.
 
+          Assigning the slot works -- the DH row below is a ranking like any
+          other, and the coach decides who fills it. Letting the *pitcher* hit
+          instead is a different feature: the batting order is `Hitter[]` and a
+          pitcher has no hitting ratings at all, so it needs a man modelled in
+          two rating systems at once. Which is the exact thing that got two-way
+          players split out of this stage.
+
+          So it ships with them. A toggle here today would be a control that
+          changes nothing, and this codebase has spent a week deleting those.
+        */}
         {spots.map((spot) => {
           const order = depthAt(team.team, spot);
           const starter = nine[spot];

@@ -443,7 +443,10 @@ have, and a catcher offered as free cover at shortstop.
 
 - **Depth chart with position eligibility** — a competence per position, not a
   boolean
-- **Real DH handling** — the coach assigns the slot
+- ~~**Real DH handling**~~ — the coach assigns the slot, which ships. Declining
+  the DH so the pitcher hits does **not**: the batting order is `Hitter[]` and a
+  pitcher has no hitting ratings, so it needs the same two-systems-one-man model
+  that split two-way out. It ships with them.
 - **Redshirts**
 - **Position changes and position-change training**
 - **Academic eligibility** — a man fails a class and sits. Uniquely college,

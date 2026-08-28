@@ -591,9 +591,6 @@ export interface DynastyStore {
   setRedshirt: (id: PlayerId, on: boolean) => boolean;
   /** Move him to a new position for good. */
   changePosition: (id: PlayerId, to: Position) => boolean;
-  /** Whether the program uses the designated hitter at all. */
-  useDH: boolean;
-  setUseDH: (on: boolean) => void;
   /** Say it, take what it costs, and close the room. */
   answerPress: (answer: PressAnswer) => void;
   /** Walk out without answering. Costs nothing; the question is spent. */
@@ -2839,8 +2836,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   pendingPress: null,
 
   wordsUsed: 0,
-  useDH: true,
-  setUseDH: (on) => { set({ useDH: on, version: get().version + 1 }); void get().saveNow(); },
 
   wordWith: (id) => {
     const { season, userTeam, coach, wordsUsed, version } = get();
@@ -4262,7 +4257,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           without stranding a save on a version of a sentence.
         */
         wordsUsed: get().wordsUsed,
-        useDH: get().useDH,
         press: get().press,
         pendingPress: get().pendingPress
           ? { id: get().pendingPress!.presser.id, trigger: get().pendingPress!.trigger }
@@ -4406,7 +4400,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       press: (loaded.press ?? {}) as PressState,
       pendingPress: restorePending(loaded.pendingPress),
       wordsUsed: typeof loaded.wordsUsed === 'number' ? loaded.wordsUsed : 0,
-      useDH: loaded.useDH !== false,
       jobSearch,
       offers,
       // Merged rather than replaced: what the player has learned is a fact
