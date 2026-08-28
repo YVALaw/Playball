@@ -850,13 +850,28 @@ function TeamOverlay({ index, onBack }: { index: number; onBack: () => void }) {
 function TableOverlay() {
   const overlay = useDynasty((s) => s.overlay);
   const close = useDynasty((s) => s.closeOverlay);
+  /*
+    Back means one step, not all the way out.
+
+    Settings is the only screen in here with pages of its own, and it has two
+    back controls: its own, and the overlay's, which is the bigger and more
+    obvious of the two. Reported as pressing back on a settings page and being
+    returned to whatever screen preceded settings entirely. So the outer one
+    defers to the inner one while there is an inner one to defer to.
+  */
+  const settingsPage = useDynasty((s) => s.settingsPage);
+  const setSettingsPage = useDynasty((s) => s.setSettingsPage);
+  const back = (): void => {
+    if (overlay === 'settings' && settingsPage !== 'index') setSettingsPage('index');
+    else close();
+  };
   return (
     <div style={{
       position: 'absolute', inset: 0, zIndex: 25,
       background: 'var(--field)',
       display: 'flex', flexDirection: 'column',
     }}>
-      <BackBar onBack={close} />
+      <BackBar onBack={back} />
       {/* Hidden, not auto. All three of these pin their own header and scroll
           their own body, so a scroller here would be a scroller around a
           scroller — and the outer one is the one that drags the header. */}

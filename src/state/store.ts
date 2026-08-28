@@ -214,6 +214,9 @@ import type { SimProgress } from './simWorker.js';
 export type Tab = 'home' | 'team' | 'season' | 'program';
 
 /** A screen laid over whatever frame the game is in. See `overlay` below. */
+/** The settings screen's four pages, plus the list that leads to them. */
+export type SettingsPage = 'index' | 'display' | 'sound' | 'play';
+
 export type Overlay =
   'schedule' | 'standings' | 'rankings' | 'saves' | 'inbox' | 'program' | 'book'
   | 'settings';
@@ -687,6 +690,18 @@ export interface DynastyStore {
   overlay: Overlay | null;
   openOverlay: (o: Overlay) => void;
   closeOverlay: () => void;
+  /**
+   * Which page of settings is open.
+   *
+   * Up here rather than inside the component because the *overlay's* back bar
+   * has to know about it. Reported plainly: opening a settings page and
+   * pressing back left the whole screen rather than returning to the list,
+   * because the prominent back control belongs to the overlay and the overlay
+   * had no idea its child had pages. A component cannot own state that the
+   * frame around it needs to read.
+   */
+  settingsPage: SettingsPage;
+  setSettingsPage: (p: SettingsPage) => void;
   /**
    * Which sheet the program page opens on.
    *
@@ -2471,8 +2486,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
    * on the pitchers tab and a list forget where it had been scrolled.
    */
   overlay: null,
-  openOverlay: (o) => set({ overlay: o }),
+  // Settings always opens on its index. Coming back to a screen you left three
+  // sessions ago on the Sound page is a screen remembering something nobody
+  // asked it to.
+  openOverlay: (o) => set(o === 'settings' ? { overlay: o, settingsPage: 'index' } : { overlay: o }),
   closeOverlay: () => set({ overlay: null }),
+  settingsPage: 'index',
+  setSettingsPage: (p) => set({ settingsPage: p }),
   programSheet: 'board',
   setProgramSheet: (s) => set({ programSheet: s, version: get().version + 1 }),
 

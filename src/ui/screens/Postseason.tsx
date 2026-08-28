@@ -61,6 +61,19 @@ export function Postseason() {
     almost nobody opens for a game they were not in.
   */
   const [openDay, setOpenDay] = useState<number | null>(null);
+  /*
+    Which stage is on screen, which is not always the stage being played.
+
+    Reported: won the conference, went on to the regionals, and wanted to look
+    back at the conference bracket. There was no way to. June had exactly one
+    view -- whatever was live -- and the two tournaments already decided simply
+    stopped existing, which is a strange thing for a screen whose whole subject
+    is what happened in June.
+
+    Null means "follow the tournament", so the common case needs no state and a
+    stage advancing under you still moves the screen with it.
+  */
+  const [reviewing, setReviewing] = useState<number | null>(null);
   const [confView, setConfView0] = useState<ConfView>(confViewMemo);
   const [natView, setNatView0] = useState<NatView>(natViewMemo);
   const setConfView = (v: ConfView): void => { confViewMemo = v; setConfView0(v); };
@@ -271,6 +284,7 @@ export function Postseason() {
 
   const rung = bracket.stage === 'conference' ? 0
     : bracket.stage === 'regional' ? 1 : 2;
+  const shown = reviewing ?? rung;
   const stageTitle = rung === 0 ? `${team.conference} tournament`
     : rung === 1 ? 'The regionals' : 'The national tournament';
 
@@ -399,11 +413,21 @@ export function Postseason() {
       ? nextGameFor(myBracket.state, userTeam) !== null
       : liveSlotFor(myBracket.state, userTeam) !== null)
     : false;
+  const LIVE_NAME = ['THE CONFERENCE', 'THE REGIONALS', 'THE NATIONAL'];
   const action: {
     label: string;
     run: () => void;
     secondary?: { label: string; onClick: () => void } | null;
-  } = due
+  } = reviewing !== null
+    // Looking back at a finished tournament. The one thing the button can
+    // usefully do is put you back where the season actually is -- advancing
+    // the live stage from a screen showing a different one is how somebody
+    // plays a round they never saw.
+    ? {
+        label: `BACK TO ${LIVE_NAME[rung] ?? 'THE TOURNAMENT'}`,
+        run: () => setReviewing(null),
+      }
+    : due
     ? {
         label: 'PLAY THIS GAME',
         run: manage,
@@ -556,7 +580,7 @@ export function Postseason() {
             </div>
           </div>
 
-          <StageRail at={rung} />
+          <StageRail at={rung} shown={shown} onGo={(i) => setReviewing(i === rung ? null : i)} />
 
           {bracket.stage === 'conference' && (
             <SubToggle
@@ -648,12 +672,12 @@ export function Postseason() {
               </div>
             )}
 
-            {myBracket && !iAmOut && <YourNext
+            {myBracket && !iAmOut && reviewing === null && <YourNext
               myBracket={myBracket} userTeam={userTeam} name={name}
               onLineup={() => setShowLineup(true)}
             />}
 
-            {bracket.stage === 'conference' && (
+            {shown === 0 && (
               <ConferenceStage
                 cups={bracket.cups}
                 mine={myBracket?.kind === 'conference' && myBracket.format === 'double'
@@ -666,7 +690,7 @@ export function Postseason() {
               />
             )}
 
-            {bracket.stage === 'regional' && (
+            {shown === 1 && (
               <RegionalStage
                 regionals={bracket.regionals}
                 mine={myBracket?.kind === 'regional' && myBracket.format === 'series'
@@ -682,7 +706,7 @@ export function Postseason() {
               />
             )}
 
-            {bracket.stage === 'national' && (
+            {shown === 2 && (
               <NationalStage
                 nat={nat}
                 myBracket={myBracket}
@@ -717,24 +741,42 @@ export function Postseason() {
 // ---------------------------------------------------------------------------
 
 /** Where you are in June. The blurbs are gone; the tutorial teaches instead. */
-function StageRail({ at }: { at: number }) {
+function StageRail(
+  { at, shown, onGo }: { at: number; shown: number; onGo: (i: number) => void },
+) {
   const NAMES = ['CONFERENCE', 'REGIONALS', 'NATIONAL'];
   return (
     <div style={{ margin: '8px 14px 0', display: 'flex', gap: 3 }}>
-      {NAMES.map((n, i) => (
-        <div key={n} style={{ flex: 1 }}>
-          <div style={{
-            height: 4,
-            background: i < at ? 'rgba(168,68,42,.42)'
-              : i === at ? 'var(--clay)' : 'var(--faint)',
-            transition: 'background 220ms ease',
-          }} />
-          <div style={{
-            marginTop: 4, font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-            color: i === at ? 'var(--clay)' : 'var(--dim)', textAlign: 'center',
-          }}>{n}</div>
-        </div>
-      ))}
+      {NAMES.map((n, i) => {
+        // A tournament already played can be gone back to; one that has not
+        // happened yet cannot, because there is nothing behind it.
+        const reachable = i <= at;
+        const here = i === shown;
+        return (
+          <button
+            key={n}
+            disabled={!reachable}
+            onClick={() => onGo(i)}
+            className={reachable ? 'tap' : undefined}
+            style={{
+              flex: 1, padding: 0, textAlign: 'center',
+              cursor: reachable ? 'pointer' : 'default',
+            }}
+          >
+            <div style={{
+              height: 4,
+              background: here ? 'var(--clay)'
+                : i < at ? 'rgba(168,68,42,.42)' : 'var(--faint)',
+              transition: 'background 220ms ease',
+            }} />
+            <div style={{
+              marginTop: 4, font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.08em',
+              color: here ? 'var(--clay)' : reachable ? 'var(--ink)' : 'var(--dim)',
+              textAlign: 'center',
+            }}>{n}</div>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -1256,7 +1298,24 @@ function CrownCard(
 ) {
   const big = crown.rung === 2;
   const mid = crown.rung === 1;
-  const ground = mine ? 'var(--win)' : 'var(--navy)';
+  /*
+    A trophy per trophy.
+
+    Every championship card used to be the same muted green, and it was
+    reported reading as a *loss* -- which is fair, because the green is the
+    quiet one in this palette and nothing about it says "you won the thing".
+    Worse, all three tournaments looked identical, so the card could not tell
+    you what you had won without being read.
+
+    Bronze, silver, gold. It is the one colour language nobody has to be
+    taught, it escalates in exactly the direction the tournaments do, and all
+    three are far enough from clay that none of them can be mistaken for the
+    colour this app uses for a loss. Rivals stay navy: somebody else's trophy
+    is news, not a trophy.
+  */
+  const ground = mine
+    ? (big ? 'var(--gold)' : mid ? 'var(--silver)' : 'var(--bronze)')
+    : 'var(--navy)';
   return (
     <div
       className="rise-in"

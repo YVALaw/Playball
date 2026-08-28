@@ -97,7 +97,7 @@ export function Roster() {
             }}>{team.def.school}</div>
           </div>
 
-          <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+          <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
             <Chip on={mode === 'all'} onClick={() => setMode('all')}>ALL</Chip>
             <Chip on={mode === 'bat'} onClick={() => setMode('bat')}>HITTERS</Chip>
             <Chip on={mode === 'arm'} onClick={() => setMode('arm')}>PITCHERS</Chip>
@@ -111,11 +111,11 @@ export function Roster() {
               aria-label="Filter the roster"
               className="tap"
               style={{
-                minHeight: 36, padding: '8px 12px',
+                minHeight: 30, padding: '6px 10px',
                 background: filtered ? 'var(--ink)' : 'transparent',
                 border: `1px solid ${filtered ? 'var(--ink)' : 'rgba(28,36,48,.25)'}`,
                 color: filtered ? 'var(--cream)' : 'rgba(28,36,48,.6)',
-                font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.14em',
+                font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.11em',
                 display: 'flex', alignItems: 'center', gap: 5,
               }}
             >
@@ -267,11 +267,14 @@ function Chip(
     <button
       onClick={onClick}
       style={{
-        padding: '8px 14px', minHeight: 36,
+        // Sized down from 36px and 10px type: reported as eating screen on the
+        // one tab whose whole job is fitting more men on it. Still a 30px
+        // target, which clears the 28px the platform asks for.
+        padding: '6px 10px', minHeight: 30,
         background: on ? 'var(--clay)' : 'transparent',
         border: `1px solid ${on ? 'var(--clay)' : 'rgba(28,36,48,.25)'}`,
         color: on ? 'var(--cream)' : 'rgba(28,36,48,.6)',
-        font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.14em',
+        font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.11em',
       }}
     >{children}</button>
   );

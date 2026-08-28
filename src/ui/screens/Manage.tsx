@@ -51,7 +51,6 @@ export function Manage() {
   // on every pitch to find that out would be absurd.
   const [flatField] = useState(() => readPrefs().field === '2d');
   // The full linescore, on request rather than always. See the top bar.
-  const [showLine, setShowLine] = useState(false);
   const submitTactic = useDynasty((s) => s.submitTactic);
   const pinchHitFor = useDynasty((s) => s.pinchHitFor);
   const bringIn = useDynasty((s) => s.bringIn);
@@ -300,52 +299,37 @@ export function Manage() {
           >EXIT</button>
         </div>
 
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8, marginTop: 6,
-        }}>
-          <Side abbr={away?.def.abbr ?? 'AWY'} runs={awayRuns} batting={d?.half === 'top'} />
-          <span style={{
-            width: 7, height: 7, transform: 'rotate(45deg)',
-            background: 'rgba(246,241,230,.35)', flex: 'none',
-          }} />
-          <Side abbr={home?.def.abbr ?? 'HOM'} runs={homeRuns} batting={d?.half === 'bottom'} home />
-          <span style={{ flex: 1 }} />
-          <button
-            onClick={() => setShowLine((v) => !v)}
-            className="tap"
-            style={{
-              flex: 'none', padding: '5px 10px',
-              border: '1px solid rgba(246,241,230,.35)',
-              background: showLine ? 'rgba(246,241,230,.16)' : 'transparent',
-              color: 'var(--cream)',
-              font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-            }}
-          >LINE SCORE</button>
-        </div>
+        {/*
+          The linescore, always there.
 
-        {/* The full strip, on request. Kept out of the permanent furniture
-            because it answers a question you ask a few times a game, not on
-            every plate appearance. */}
-        {showLine && (
-          <div style={{ marginTop: 7 }} className="card-in">
-            <LineScore
-              tone="navy"
-              innings={innCols}
-              rows={[
-                {
-                  abbr: away?.def.abbr ?? 'AWY', cells: cellsFor('away'),
-                  r: awayRuns, h: r.away.hits, e: r.away.errors,
-                  batting: d?.half === 'top',
-                },
-                {
-                  abbr: home?.def.abbr ?? 'HOM', cells: cellsFor('home'),
-                  r: homeRuns, h: r.home.hits, e: r.home.errors,
-                  batting: d?.half === 'bottom',
-                },
-              ]}
-            />
-          </div>
-        )}
+          It was folded behind a LINE SCORE button, which was the wrong trade:
+          reported straight back that it should sit on the bar with R/H/E rather
+          than drop down on demand. It is the one thing on this screen that
+          answers "where are we" without being asked, and a scoreboard you have
+          to press is not a scoreboard.
+
+          The innings scroll inside their own container while the abbreviations
+          and the R/H/E totals hold still at the edges, which is what makes a
+          fourteen-inning game fit a phone.
+        */}
+        <div style={{ marginTop: 5 }}>
+          <LineScore
+            tone="navy"
+            innings={innCols}
+            rows={[
+              {
+                abbr: away?.def.abbr ?? 'AWY', cells: cellsFor('away'),
+                r: awayRuns, h: r.away.hits, e: r.away.errors,
+                batting: d?.half === 'top',
+              },
+              {
+                abbr: home?.def.abbr ?? 'HOM', cells: cellsFor('home'),
+                r: homeRuns, h: r.home.hits, e: r.home.errors,
+                batting: d?.half === 'bottom',
+              },
+            ]}
+          />
+        </div>
       </div>
 
 
@@ -411,6 +395,7 @@ export function Manage() {
             }}>{baseState(d.bases, d.outs)}</span>
           </div>
         )}
+        </div>
       </div>
 
       {/*
@@ -461,7 +446,6 @@ export function Manage() {
           />
         </div>
       )}
-      </div>
 
       <div ref={logRef} style={{
         flex: 1, minWidth: 0, overflowY: 'auto', padding: '9px 12px 12px 14px',

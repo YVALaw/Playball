@@ -9,7 +9,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { Card } from '../components/Kit.js';
-import { useDynasty } from '../../state/store.js';
+import { useDynasty, type SettingsPage } from '../../state/store.js';
 import {
   SYSTEMS, handles, presetSays, type DepthMode, type SystemKey,
 } from '../../state/depth.js';
@@ -105,7 +105,7 @@ function Choice<T extends string | number>(
 }
 
 /** The four pages, and the index that lists them. */
-type Page = 'index' | 'display' | 'sound' | 'play';
+type Page = SettingsPage;
 
 const PAGES: { id: Page | 'saves'; title: string; blurb: string }[] = [
   { id: 'display', title: 'Display', blurb: 'Text size, the field, motion.' },
@@ -134,7 +134,8 @@ export function Settings() {
     An index and four pages fixes the reachability twice over: each page brings
     its own scroller, and no page is long enough to need one.
   */
-  const [page, setPage] = useState<Page>('index');
+  const page = useDynasty((s) => s.settingsPage);
+  const setPage = useDynasty((s) => s.setSettingsPage);
 
   // Device preferences are not in the store: nothing else in the app reads
   // them, they must not ride a save, and they have to survive with no dynasty

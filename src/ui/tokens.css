@@ -304,3 +304,18 @@ button {
   outline: 2px solid var(--clay);
   outline-offset: 2px;
 }
+
+/* ---------------------------------------------------------------------------
+   The trophy colours.
+
+   Championship cards were all one green, which was reported as looking like a
+   loss and could not tell three tournaments apart. Bronze, silver, gold is the
+   one colour language that needs no explaining and escalates in the direction
+   the tournaments already do. All three are dark enough to carry cream text and
+   far enough from --clay that none can be read as the loss colour.
+   --------------------------------------------------------------------------- */
+:root {
+  --bronze: #6f4a2a;
+  --silver: #4a5866;
+  --gold:   #8a6b16;
+}
