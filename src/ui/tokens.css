@@ -237,6 +237,23 @@ button {
 .fade-in { animation: fadeIn 260ms ease-out both; }
 .pulse   { animation: pulseClay 1.8s ease-in-out infinite; }
 
+/* The bracket changing sides.
+ *
+ * Reported twice. A plain fade was the first answer and was still wrong: "it
+ * just disappears and appears somewhere else." Two things were missing, and
+ * only one of them was the animation -- the other is that the map you get
+ * back is a different height, so your own team lands wherever the old scroll
+ * offset happens to point. Postseason.tsx handles that half by centring you.
+ *
+ * This half is direction. Winners to losers travels one way and back travels
+ * the other, so the movement says which way you went rather than only that
+ * something changed. Small distances on purpose: a bracket sliding a whole
+ * screen width is a card trick, not a transition. */
+@keyframes swapFwd  { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+@keyframes swapBack { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+.swap-fwd  { animation: swapFwd  260ms cubic-bezier(.2, .8, .3, 1) both; }
+.swap-back { animation: swapBack 260ms cubic-bezier(.2, .8, .3, 1) both; }
+
 /* The little ring a button wears while it pretends to think. Functional
    feedback rather than decoration, so reduced motion keeps it. */
 @keyframes spinRound { to { transform: rotate(360deg); } }
@@ -260,6 +277,7 @@ button {
 
 @media (prefers-reduced-motion: reduce) {
   .card-in, .rise-in, .fade-in, .pulse, .screen-in { animation: none; }
+  .swap-fwd, .swap-back { animation: none; }
   .grow, .tap { transition: none; }
   .tap:active { transform: none; }
 }

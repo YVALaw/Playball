@@ -15,7 +15,7 @@
 // its school's colour; and the action button is pinned to the frame so it
 // sits in the same place whatever tab is up.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useDynasty, useUserTeam, type NationalProgress } from '../../state/store.js';
 import { FloatingAction } from '../Sticky.js';
 import { Modal } from '../Modal.js';
@@ -135,6 +135,7 @@ export function Postseason() {
     act on the second, so a team that advanced spent the rest of the postseason
     being treated as finished.
   */
+
   const reported = knockout !== null && knockout.year === year;
   const knockedOut = reported && !knockout!.advanced;
   const iAmOut = myBracket
@@ -309,6 +310,91 @@ export function Postseason() {
   const rung = bracket.stage === 'conference' ? 0
     : bracket.stage === 'regional' ? 1 : 2;
   const shown = reviewing ?? rung;
+
+  /*
+    keepYouCentred: after the map is swapped, put your own team back under the
+    reader's eyes.
+
+    Reported twice. The first answer was a fade, and it was still wrong -- "it
+    just disappears and appears somewhere else" -- because the animation was
+    never the whole problem. The winners map and the losers map are different
+    heights and your team sits at a different depth in each, so a swap that
+    keeps the scroll offset lands you at whatever happens to be at that pixel.
+    Fading it in only made the wrong place arrive politely.
+
+    So the box carrying your team is marked in the DOM (see DoubleElimMap's
+    `youAnchor`) and the scroller is nudged until it is in the middle. Measured
+    with rects rather than `offsetTop`, which is relative to whichever ancestor
+    happens to be positioned, and scrolled with `scrollBy` on the scroller
+    itself so no ancestor is dragged along with it.
+
+    Runs on the side you are *looking at* rather than the side you are playing
+    on, because a reader who taps the toggle deliberately wants centring just as
+    much as one the bracket moved by itself.
+  */
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  // The stage on the screen, not the stage the tournament is on -- the rail
+  // lets you walk back to a finished one and its toggle is just as real there.
+  const lookingAt = shown === 2 ? natView : confView;
+  useLayoutEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return undefined;
+    let frame = 0;
+    {
+      /*
+        Measured in a layout effect, which is the whole reason this is not a
+        `useEffect` with a `requestAnimationFrame` inside it.
+
+        That is what it was, and it could not run: rAF does not fire in a tab
+        that is not compositing, so the measurement never happened and the map
+        stayed where it was. Layout is already committed by the time this runs,
+        so the rects are correct without waiting for a frame -- rAF is now only
+        used to *animate*, which is the one job it is allowed to fail at.
+      */
+      const you = scroller.querySelector('[data-you]');
+      if (!you) return undefined;
+      const sr = scroller.getBoundingClientRect();
+      const yr = you.getBoundingClientRect();
+      const delta = (yr.top + yr.height / 2) - (sr.top + sr.height / 2);
+      // A nudge worth making. Anything smaller is already centred and would
+      // only produce a twitch under the reader.
+      if (Math.abs(delta) < 24) return undefined;
+
+      const reduce = typeof window.matchMedia === 'function'
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const from = scroller.scrollTop;
+      const to = Math.max(0, Math.min(scroller.scrollHeight - scroller.clientHeight, from + delta));
+      // Nobody is watching a hidden tab, and its rAF will not fire anyway.
+      if (reduce || document.hidden) { scroller.scrollTop = to; return undefined; }
+
+      /*
+        Tweened here rather than handed to `behavior: 'smooth'`.
+
+        Measured in the preview browser: `scrollBy({ top, behavior: 'smooth' })`
+        moved nothing at all, while the same call without `behavior` moved
+        exactly as asked -- so the smooth path fails *silently*, which is the
+        worst way for a scroll to fail. Any device that does not implement it
+        would land back on the original report, a map that "just disappears and
+        appears somewhere else", with nothing in the code looking wrong.
+
+        Two hundred and sixty milliseconds, to match the swap animation running
+        over the top of it, on the same curve.
+      */
+      const START = performance.now();
+      const DUR = 260;
+      const ease = (t: number): number => (t < 0.5
+        ? 4 * t * t * t
+        : 1 - ((-2 * t + 2) ** 3) / 2);
+      const step = (now: number): void => {
+        const t = Math.min(1, (now - START) / DUR);
+        scroller.scrollTop = from + (to - from) * ease(t);
+        if (t < 1) frame = requestAnimationFrame(step);
+      };
+      frame = requestAnimationFrame(step);
+    }
+    return () => cancelAnimationFrame(frame);
+  }, [lookingAt, shown]);
+
   const stageTitle = rung === 0 ? `${team.conference} tournament`
     : rung === 1 ? 'The regionals' : 'The national tournament';
 
@@ -673,7 +759,7 @@ export function Postseason() {
           )}
         </div>
 
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+        <div ref={scrollerRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <div style={{ padding: '8px 0 10px' }}>
             {/*
               Who won, at the top, where it cannot be missed.
@@ -767,7 +853,10 @@ export function Postseason() {
               `.fade-in` is off under `prefers-reduced-motion` with everything
               else, which is why it is a class and not an inline animation.
             */}
-            <div className="fade-in" key={`${shown}:${shown === 0 ? confView : shown === 2 ? natView : 'r'}`}>
+            <div
+              className={lookingAt === 'losers' ? 'swap-fwd' : 'swap-back'}
+              key={`${shown}:${lookingAt}`}
+            >
             {shown === 0 && (
               <ConferenceStage
                 cups={bracket.cups}

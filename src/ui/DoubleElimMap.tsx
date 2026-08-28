@@ -125,20 +125,30 @@ function SlotCard(
   },
 ) {
   const mine = s.a === userTeam || s.b === userTeam;
+  /*
+    The one box worth keeping on screen.
+
+    Marked in the DOM rather than reported upward through a ref, because the
+    screen that needs it is three components above this one and only wants it
+    for a moment -- after the winners/losers toggle swaps the map out from under
+    the reader. See `Postseason.tsx`, `keepYouCentred`.
+  */
+  const youAnchor = mine ? { 'data-you': '' } : {};
   // Only a game that has actually been played is worth opening. A TBD slot
   // that reacted to a tap would be promising something it has not got.
   const open = s.game && onOpen ? () => onOpen(s) : undefined;
   return (
     <div
+      {...youAnchor}
       onClick={open}
       role={open ? 'button' : undefined}
       tabIndex={open ? 0 : undefined}
       onKeyDown={open ? (e) => { if (e.key === 'Enter' || e.key === ' ') open(); } : undefined}
       className={open ? 'tap' : undefined}
       style={{
-      border: mine ? '1.5px solid var(--clay)' : '1px solid var(--faint)',
+      border: mine ? '1.5px solid var(--you)' : '1px solid var(--faint)',
       background: 'var(--paper)',
-      boxShadow: mine ? '0 1px 0 rgba(168,68,42,.25)' : 'none',
+      boxShadow: mine ? '0 1px 0 rgba(47,79,122,.25)' : 'none',
       cursor: open ? 'pointer' : 'default',
     }}>
       <Row team={s.a} seed={s.aSeed} s={s} abbr={abbr} userTeam={userTeam} top />
