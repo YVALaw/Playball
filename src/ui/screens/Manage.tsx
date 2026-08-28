@@ -485,8 +485,20 @@ export function Manage() {
           flex: 'none', display: 'flex', gap: 1,
           background: 'var(--faint)', borderBottom: '1px solid var(--faint)',
         }}>
+          {/*
+            Whose man each card is, said out loud.
+
+            Reported as a balance fault -- "confidence is regained far too
+            rapidly, it was restored after an inning passed when he had lost it
+            all" -- and it is not one. The card follows the ball: the arm on the
+            mound while you are batting is *theirs*, and a fresh opponent's full
+            CONF bar sitting under a kicker that only ever said PITCHING reads
+            as your own man healing between innings. He does not; a clean inning
+            returns about seven hundredths. The gauges were honest and the
+            heading was not.
+          */}
           <ManCard
-            kicker="AT BAT"
+            kicker={d.side === 'offense' ? 'AT BAT · YOURS' : 'AT BAT · THEIRS'}
             corner=""
             id={d.batter.id}
             name={d.batter.name}
@@ -495,7 +507,7 @@ export function Manage() {
             stats={batterLine(season, d.batter.id)}
           />
           <ManCard
-            kicker="PITCHING"
+            kicker={d.side === 'defense' ? 'PITCHING · YOURS' : 'PITCHING · THEIRS'}
             corner={d.outing.relief ? 'RELIEF' : 'START'}
             id={d.pitcher.id}
             name={d.pitcher.name}

@@ -1822,9 +1822,27 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         last, so the case that went to the vote was systematically missing the
         honours that argue for him.
       */
+      /*
+        A man you talked out of the draft is not a man whose career is over.
+
+        Reported: "the player that got inducted was brought back from the draft,
+        so he shouldn't be in the hall -- only players that are no longer in the
+        league." `activeIds` reads the rosters, which is the right definition
+        and the wrong moment to rely on alone: it is one `reinstate` away from
+        being true, and this ballot runs on the very step where that happens.
+
+        The board itself knows the answer without inferring it. An outcome of
+        'stayed' *is* the statement that he is still playing here, so it is read
+        directly rather than trusted to have already been reflected on a roster.
+      */
+      const staying = new Set(
+        (season.draft?.men ?? [])
+          .filter((m) => m.outcome === 'stayed')
+          .map((m) => String(m.player.id)),
+      );
       const going = inductees({
         careers: season.careers ?? {},
-        active: activeIds(season.teams),
+        active: new Set([...activeIds(season.teams), ...staying]),
         inducted: new Set((season.hall ?? []).map((m) => String(m.id))),
         honours: honoursByPlayer(get().history),
         year: hallYear,
@@ -2171,6 +2189,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // Off the regional round itself rather than off the finish string. The
       // two used to say the same thing and were never the same fact.
       wonRegional: post?.regionChampions.includes(me.index) ?? false,
+      // Played one, whatever came of it. Everything from the regional round
+      // onward writes a finish string, and only a program that stayed home has
+      // none — so this is "was in the field" rather than a list of outcomes to
+      // keep in step with the bracket.
+      madeRegionals: post ? post.finish[me.index] !== undefined : false,
       reachedOmaha: ['omaha', 'runner-up', 'champion'].includes(post?.finish[me.index] ?? ''),
       wonTitle: post?.champion === me.index,
     };

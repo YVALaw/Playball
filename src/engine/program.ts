@@ -127,6 +127,14 @@ export interface SeasonOutcome {
   wonRegional: boolean;
   reachedOmaha: boolean;
   wonTitle: boolean;
+  /**
+   * Played a regional at all, won or lost.
+   *
+   * Optional because every save and every caller written before this predates
+   * it, and an absent flag has to mean "not counted" rather than "false, and
+   * priced as a failure".
+   */
+  madeRegionals?: boolean;
 }
 
 export const winPct = (o: SeasonOutcome): number =>
@@ -139,6 +147,16 @@ export const winPct = (o: SeasonOutcome): number =>
  */
 export function seasonScore(o: SeasonOutcome): number {
   let score = winPct(o) * 100;
+  /*
+    Reaching the regionals, which used to be worth nothing at all.
+
+    Reported: "I made the regionals without winning it and got no prestige."
+    Correct, and it was a gap rather than a judgement -- `madeTournament` is a
+    seat in the twenty team national field, so the thirty two programs who play
+    a regional and lose it scored exactly what a program that stayed home in
+    May scored. Deliberately smaller than the bid it can turn into.
+  */
+  if (o.madeRegionals) score += 2;
   if (o.madeTournament) score += 6;
   if (o.wonConference) score += 8;
   // The regional is deliberately not priced here. Winning it is what puts a
@@ -156,7 +174,33 @@ export function seasonScore(o: SeasonOutcome): number {
  * turn a cellar program into a contender.
  */
 export function nextPrestige(current: number, o: SeasonOutcome): number {
-  const drift = (seasonScore(o) - current) * 0.18;
+  /*
+    Up quickly, down slowly.
+
+    Reported after a national title: "year four I made the postseason, lost in
+    the conference, minus three -- it should take into account the recent
+    success." It should, and prestige is precisely where recent success is
+    kept, so the fault was that a symmetric drift spent that memory as fast as
+    it built it. A program does not stop being a blue blood the first spring it
+    fails to win a trophy, and this is the whole of that in one number.
+
+    The asymmetry is modest on purpose. Make the fall too slow and nothing ever
+    comes back down, which inflates the league a rung at a time and makes the
+    number mean nothing after twenty years -- so the soak watches the mean.
+  */
+  const gap = seasonScore(o) - current;
+  /*
+    The slow fall is the top of the table's alone.
+
+    Applied to everybody it raised the league mean seven points and emptied the
+    bottom star bucket entirely -- ninety six programs all drifting up is not a
+    league with a top of it. Confined to programs that have actually built
+    something, it says the true thing and only about the handful of schools the
+    complaint was ever about: a blue blood does not stop being one the first
+    spring it fails to win a trophy.
+  */
+  const sticky = current >= 70 && gap < 0;
+  const drift = gap * (sticky ? 0.12 : 0.18);
   return Math.max(5, Math.min(95, Math.round(current + drift)));
 }
 

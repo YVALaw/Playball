@@ -329,6 +329,10 @@ export function rivalOutcome(
     madeTournament: post?.nationalField?.includes(record.index)
       ?? (finish !== undefined && finish !== 'regional'),
     wonRegional: post?.regionChampions.includes(record.index) ?? false,
+    // The same round the user's own outcome now prices. Ninety five programs
+    // graded on a different sheet from the one the player is graded on is how
+    // a league quietly stops being one country.
+    madeRegionals: finish !== 'missed',
     reachedOmaha: finish === 'omaha' || finish === 'runner-up' || finish === 'champion',
     wonTitle: post?.champion === record.index,
   };

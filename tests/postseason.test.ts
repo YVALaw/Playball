@@ -394,7 +394,12 @@ describe('coach of the year', () => {
       what "does not tell the same story" actually means.
     */
     const YEARS = 8;
-    const WORLDS = [4242, 77, 1301, 9090];
+    // Eight worlds rather than four. At thirty two samples a hard 70% bound is
+    // two occurrences wide, so an engine change worth making -- the bullpen
+    // hook, here -- moved it without the property being any less true. Sixty
+    // four is still small, and it is enough that the number stops reporting
+    // noise as a finding.
+    const WORLDS = [4242, 77, 1301, 9090, 31, 606, 12345, 808];
     const seen: Record<string, number> = {};
 
     for (const seed of WORLDS) {

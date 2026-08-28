@@ -2056,9 +2056,28 @@ function maybeChangePitcher(fld: TeamState, say: Say): void {
   const p = fld.pitcher;
   const budget = 30 + p.stamina * 0.85;
   const line = fld.pitchLine(p);
-  const gassed = fld.pitcherPitches > budget + 12 + HOOK[fld.strategy.hook];
-  const shelled = line.er >= 6 && fld.pitcherPitches > 35;
-  if (!gassed && !shelled) return;
+  /*
+    Three ways a bench goes and gets him, where there used to be two slow ones.
+
+    Reported: "the opposing team only switched its pitcher once, even with the
+    second pitcher's arm depleted and being hit around." Both old tests were
+    written with a Friday starter in mind and neither fits the man who follows
+    him. `budget` is 30 + stamina, so a thirty five stamina reliever was
+    already given sixty pitches, and the flat twelve plus a patient hook pushed
+    that near ninety -- a number a college reliever does not reach in a season,
+    let alone an outing. Six earned runs, likewise, is not "hit around", it is a
+    disaster already complete.
+
+    So: the flat allowance drops to four, which puts the hook just past where the
+    ARM gauge empties rather than a fifth of an outing later; damage is read at
+    four runs; and a man who has plainly come apart can be pulled on that alone,
+    which is the case the report was actually describing and the one the
+    confidence channel exists to see.
+  */
+  const gassed = fld.pitcherPitches > budget + 4 + HOOK[fld.strategy.hook];
+  const shelled = line.er >= 4 && fld.pitcherPitches > 30;
+  const broken = fld.pitcherConfidence <= 0.28 && fld.pitcherPitches > 20;
+  if (!gassed && !shelled && !broken) return;
   // Walk past anyone the manager already spent. In a fully automatic game the
   // pen is used strictly in order and this never skips; in a game handed to the
   // computer late, an arm the manager burned must not come back out.

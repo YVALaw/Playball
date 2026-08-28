@@ -185,7 +185,23 @@ export function flightHeight(
   kind: BattedBall, travel: number, distance: number, homer: boolean,
 ): number {
   if (homer) {
-    return BALL_REST + Math.sin(Math.min(1, travel) * Math.PI) * Math.min(3.6, distance * 0.42);
+    /*
+      It leaves; it does not land.
+
+      Reported: "on a home run the ball looks like it is still falling inside
+      the park." It was. A full `sin(travel * PI)` returns to zero exactly at
+      travel 1 -- the wall -- and the last quarter of the flight then slid the
+      ball along the grass, which is the one shape a home run never has.
+
+      Widening the half-cycle puts the apex around three quarters of the way out
+      and leaves the ball high as it crosses, still well up when it is last
+      seen. `PEAK` is where in the flight it tops out; anything under 1 means
+      it is still climbing at the fence, which looks wrong in the other
+      direction.
+    */
+    const PEAK = 0.8;
+    const rise = Math.sin(Math.min(1.25, travel) * (Math.PI / 2) / PEAK);
+    return BALL_REST + Math.max(0, rise) * Math.min(4.2, distance * 0.48);
   }
 
   const profile = FLIGHT[kind];
