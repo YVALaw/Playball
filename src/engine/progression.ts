@@ -20,6 +20,7 @@ import { overallOf, clamp } from './ratings.js';
 import { windowBudget } from './recruiting.js';
 import type { Prospect } from './recruiting.js';
 import { gauss, makeRng } from './rng.js';
+import { cultureOf } from '../data/cultures.js';
 import type { SeasonState } from './season.js';
 import type {
   ClassYear, Hitter, Pitcher, Player, PlayerId, Position, Rng, Team,
@@ -642,6 +643,32 @@ export function departAndDevelop(
     const trainer = record.index === opts.userTeam
       ? (opts.training ?? 20)
       : (record.coach?.skills.training ?? 20);
+    /*
+      And what the programme itself is for.
+
+      Culture reaches the simulation here and almost nowhere else, deliberately.
+      Development is the one channel where a school's identity plausibly changes
+      an outcome without changing a *game* -- a place built on turning modest
+      talent into contributors should do that measurably better, and it should
+      not also make its hitters swing harder on a Tuesday.
+
+      "Slight" is the word that was asked for and the word that governs. Six
+      percent on the systematic pull, against the ten a fully trained coach
+      buys: enough that a development school is a real reason to take a job,
+      too little to be a strategy on its own.
+
+      Only two edges act here. A pitching school gets more from its arms and
+      nothing from its bats, which is the whole point of it being a pitching
+      school. The other six are identities the *job market* reads rather than
+      the simulation -- and a culture that quietly moved every number would be a
+      culture nobody could reason about.
+    */
+    const edge = cultureOf(record.def.abbr)?.edge;
+    const cultureFor = (p: Player): number =>
+      edge === 'development' ? 0.03
+      : edge === 'pitching' && p.type === 'pitcher' ? 0.04
+      : 0;
+
     const growthMult = 1 + (trainer - 20) / 500;
     const roster: Player[] = [
       ...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen,
@@ -711,7 +738,7 @@ export function departAndDevelop(
       const next = NEXT_CLASS[p.classYear];
       if (next === null) continue;        // unreachable: seniors always depart
       p.classYear = next;
-      const gained = develop(p, rng, growthMult);
+      const gained = develop(p, rng, growthMult + cultureFor(p));
       report.developmentNet += gained;
       if (gained > 0) report.improved += 1; else report.declined += 1;
       // A winter's worth of badges: what the season he just played earned him,

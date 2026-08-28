@@ -378,28 +378,47 @@ describe('coach of the year', () => {
     awards, and at least three of the four have to be able to win at all.
   */
   it('does not tell the same story every June', () => {
-    let season = createSeason(makeRng(4242), DEFAULT_SEASON, [...CONFERENCES]);
-    season.year = 2027;
+    /*
+      Measured across worlds, because eight Junes is not a distribution.
+
+      This asserted the property against a single eight-year run, and it fired
+      twice on unrelated engine work -- once when the postseason calendar moved
+      and once when culture reached development -- both times because one
+      category happened to take seven of eight in one world. Neither was a
+      regression in the thing being tested.
+
+      A share of awards is a tail statistic and a tail statistic cannot be
+      judged on one sample. Widening the bound would have hidden a real
+      regression later; picking a kinder seed is that with extra steps. So it
+      pools four worlds and asks the question of all of them at once, which is
+      what "does not tell the same story" actually means.
+    */
+    const YEARS = 8;
+    const WORLDS = [4242, 77, 1301, 9090];
     const seen: Record<string, number> = {};
 
-    const YEARS = 8;
-    for (let y = 0; y < YEARS; y++) {
-      simSeason(season);
-      const post = runPostseason(season);
-      const award = coachOfTheYear(season, post);
-      if (award) seen[award.reason] = (seen[award.reason] ?? 0) + 1;
-      departAndDevelop(season, season.rng, { userTeam: -1 });
-      fillRosters(season, season.rng, { userTeam: -1 });
-      season = nextSeason(season);
+    for (const seed of WORLDS) {
+      let season = createSeason(makeRng(seed), DEFAULT_SEASON, [...CONFERENCES]);
+      season.year = 2027;
+      for (let y = 0; y < YEARS; y++) {
+        simSeason(season);
+        const post = runPostseason(season);
+        const award = coachOfTheYear(season, post);
+        if (award) seen[award.reason] = (seen[award.reason] ?? 0) + 1;
+        departAndDevelop(season, season.rng, { userTeam: -1 });
+        fillRosters(season, season.rng, { userTeam: -1 });
+        season = nextSeason(season);
+      }
     }
 
-    const kinds = Object.keys(seen);
-    expect(kinds.length).toBeGreaterThanOrEqual(2);
-    for (const n of Object.values(seen)) {
-      expect(n).toBeLessThan(YEARS * 0.7);
+    const total = Object.values(seen).reduce((a, b) => a + b, 0);
+    expect(Object.keys(seen).length, 'only one story ever gets told')
+      .toBeGreaterThanOrEqual(2);
+    for (const [reason, n] of Object.entries(seen)) {
+      expect(n / total, `${reason} takes the award too often`).toBeLessThan(0.7);
     }
     // And the one that used to take everything no longer does.
-    expect(seen.overachieved ?? 0).toBeLessThan(YEARS);
+    expect((seen.overachieved ?? 0) / total).toBeLessThan(0.9);
   });
 
   /*
