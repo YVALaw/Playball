@@ -5192,6 +5192,142 @@ getting a little more out of its returning players — are held to the last piec
 of the stage and measured alone, because stage 6 taught that a new selection
 system and ninety-six new engine modifiers must not land in the same pass.
 
+---
+
+## 29. The coach — **PIECES 1–7 SHIPPED**
+
+Stage 7. Eight pieces; seven are in. Piece 8, the press conference pool, waits
+until the interview has been played with — writing sixty situations before
+knowing whether the voice lands is sixty situations of risk.
+
+### 29.1 What shipped
+
+| Piece | What it does |
+|---|---|
+| 1 · School culture | Ninety-six hand-written identities: a name, a creed, an edge, and two dials |
+| 2 · The interview | Eighty questions, five asked, at creation |
+| 3 · Offers | The desk reads what you said |
+| 4 · Titles | Thirteen shapes a career can take |
+| 5 · The cold approach | Writing to a programme that has not asked for you |
+| 6 · Earned badges | Ten hidden counters with seeded thresholds |
+| 7 · Culture in the engine | Development, and cultures that drift |
+
+### 29.2 The interview
+
+Creation is five steps now, the questions third. **Eighty in the pool and five
+asked**, so two careers share about one question — that ratio *is* the reason
+the writing was worth doing, and it is a test rather than an intention.
+
+An answer moves the four skills by **net +2, negatives allowed**. That single
+rule is what keeps it a character question: if one answer were worth +3 there
+would be a correct answer, and the whole thing would collapse into picking it. A
+trade-off is fine and is what makes an answer feel like it cost something.
+
+**Badges are a vote, not an award.** Each answer nominates one; the two most
+nominated are worn. Five answers leaning the same way produce a coach who is
+obviously one thing, and five that scatter produce one who is harder to
+summarise — which is also true of people.
+
+The effect of an answer is shown; the badge it votes for is not. The skills are
+what a player watches most closely, so an unreadable consequence is a guess
+rather than a choice — but who he turns out to be is better found than picked.
+
+**Casual gets two questions rather than none.** Zero would put the best-written
+thing in the game out of reach of the players most likely to bounce off a slow
+start.
+
+### 29.3 The desk, and why it is built in two halves
+
+Weighting culture into one sort *hard* made every offer match, which reads as a
+search result rather than a country. Weighting it *lightly* rang the same five
+best jobs for everybody. The band a rookie can reach is only about eight points
+of prestige across twenty schools, so one dial can favour standing or fit and
+never both.
+
+**Three seats go to programmes that specifically want him; two to the best jobs
+he could get regardless.** Measured: eleven of twenty offers match the coach's
+strongest leaning, two opposite coaches share at most two of five, and a
+recruiting school at prestige 32 will outbid better programmes for a man who
+said he was a closer.
+
+Two data faults surfaced only under measurement. Development had reached
+twenty-nine of ninety-six schools — "they develop players" is the easiest thing
+to write about a small programme, and writing ninety-six of anything in batches
+is how a default creeps in. And the ambition match was written as
+`2 - |difference|`, which is a bias rather than a match: every school scored
+positively, the *least* ambitious scored highest, and one of them appeared on
+every desk.
+
+### 29.4 Titles: thirteen shapes, twice measured
+
+The old ladder measured how much a man had won on six rungs, and "Journeyman"
+meant **has coached one game** — so seventy-one of ninety-six wore it at year
+thirty.
+
+Both measured passes are worth keeping:
+
+- **Six programmes is unreachable.** The carousel does not move a man that often
+  inside a career; the observed maximum over thirty-five years is *four*. A
+  journeyman at six would have been a word nobody ever wore.
+- **A regional banner is not rare.** June hangs sixteen a year, so "two" was the
+  seventy-fifth percentile wearing a contender's name.
+- **The first pass reproduced the fault it was fixing.** The fallback was still
+  `'Journeyman'`, so sixty of ninety-six wore it — and now none of those men had
+  moved anywhere. Most coaches have a long career and win nothing decisive, and
+  that deserves a name: *Career man*.
+
+`npm run carousel` prints the career distribution the thresholds were set
+against. Eleven of thirteen rungs are occupied in any year; the largest is
+Career man at thirty-seven percent.
+
+### 29.5 Earned badges
+
+Ten counters, hidden, with **thresholds seeded per save**. One decision, two
+jobs: nobody farms a target they cannot see, and the same style earns its badges
+at different moments in two careers.
+
+Two habits reward *engaging* with the game rather than optimising it — reading
+the wire, and talking a man out of the draft — and neither can be reached by
+somebody who never opens the screen.
+
+`tests/habits.test.ts` **greps the source for a write to each habit**, which is
+crude on purpose. It exists because `Builder` shipped one piece earlier as a
+title nobody could wear: the number behind it was recorded for the player and
+for none of the ninety-five rivals. It typechecked, had a sensible threshold,
+and was decoration.
+
+### 29.6 Culture in the engine, and two things that were too strong
+
+**Development only, and two edges.** It is the one place a school's identity
+plausibly changes an outcome without changing a *game*.
+
+The calibration sweep did not move at all — the effect lives between seasons
+rather than inside one, which is structural rather than lucky. The multi-year
+measurement is where both faults were:
+
+- **Six percent compounds.** Paired on the same seeds, champion diversity fell
+  from a mean of 9.5 to 8.25, three of four down. Better players, better
+  results, more prestige, better recruits, for thirty years. Halved, the same
+  seeds give 9.75 against 9.5 — indistinguishable.
+- **Drift was a ratchet.** Missing the postseason dropped patience by two
+  against a homing pull of one, and four in five schools miss every year, so
+  the whole country slid toward twitchiness and turnover rose 9.0 → 9.5. A
+  board becomes less patient when it has just *sacked* somebody — about nine
+  schools a year. Turnover is back to 8.9.
+
+Patience reaches the board's sacking bar, **centred on the country's mean of 63
+rather than fifty**, so an average school gets the bar it always had. Drift pulls
+one point a year toward the hand-written baseline and is bounded at eighteen:
+enough for a patient school to become a twitchy one, not enough for any school
+to become a different school. Over thirty years, seventy-five of ninety-six have
+moved, in both directions, with a country-wide mean shift of **+0.42**.
+
+### 29.7 The rule this stage kept proving
+
+Every fault above typechecked, passed the suite, and would have shipped. Five of
+them were found by measuring a distribution rather than reading the code — and
+three were cases of the majority outcome being treated as an exception.
+
 
 ---
 

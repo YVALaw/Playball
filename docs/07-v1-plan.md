@@ -278,7 +278,10 @@ colours the play-by-play, and what tendencies and scouting are made of.
 
 ## Stage 7 · The coach
 
-**Size:** very large · **Built in pieces** · **Mostly writing, and the writing is the point**
+**Size:** very large · **Seven of eight pieces shipped** · **Mostly writing, and the writing is the point**
+
+Full write-up in `05-systems-reference.md` §29, including the five faults that
+only a measured distribution could have found.
 
 The last part of the game that is still a form, and the stage where a coaching
 career stops being something that merely happens to you. Planned in depth
@@ -311,7 +314,7 @@ own standing.
 Visible on every school page under WHAT THEY BELIEVE. Nothing here touches the
 simulation.
 
-### Piece 2 · The creation questions
+### Piece 2 · The creation questions — **SHIPPED**
 
 Creation becomes **five steps**: your coach → how you want to play → **the
 questions** → set your plan → take a job.
@@ -333,7 +336,7 @@ questions** → set your plan → take a job.
 a slow start; zero means the best-written thing in the game is invisible to the
 people most likely to bounce off.
 
-### Piece 3 · Offers that read culture
+### Piece 3 · Offers that read culture — **SHIPPED**
 
 - **Five offers.** Culture can **remove** a school that prestige alone would have
   offered, and can make one reach below its usual standing for you.
@@ -342,7 +345,7 @@ people most likely to bounce off.
 - **A seeded wobble**, so the same seed and the same answers still produce a
   slightly different desk on a replay.
 
-### Piece 4 · Titles
+### Piece 4 · Titles — **SHIPPED**
 
 **Twelve rungs describing a career's shape**, not a points total. *Journeyman*
 means **six schools**, not a beginner — which is the actual fix for 71 of 96
@@ -356,7 +359,7 @@ You wear one, chosen by priority. **Rivals wear them too**, on their own pages.
 it.* New state required: nothing currently records which schools a coach has
 worked at.
 
-### Piece 5 · The cold approach
+### Piece 5 · The cold approach — **SHIPPED**
 
 - **On the school's own page in Colleges**, under the overview, beside what they
   believe — which is where somebody actually goes looking.
@@ -367,7 +370,7 @@ worked at.
 - **Being caught can end you** — sometimes, and worst at a school already unhappy
   with you.
 
-### Piece 6 · Badges earned by playing
+### Piece 6 · Badges earned by playing — **SHIPPED**
 
 Two from the questions; the rest from how you actually play. **Five carried at
 most**, and they are permanent. The game watches how you manage a game, how you
@@ -382,7 +385,7 @@ replay variety at the same time. A badge arrives as a congratulation card.
 **Badges interact with culture** — a developer is worth more at a school that
 develops.
 
-### Piece 7 · Culture reaches the simulation
+### Piece 7 · Culture reaches the simulation — **SHIPPED**
 
 Held until last on purpose, and measured alone. The slight effects: a
 development school gets a little more out of its returning players, a pitching

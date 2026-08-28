@@ -116,7 +116,7 @@
 
 <header class="top">
   <div class="top-in">
-    <div class="kicker">Playball · implementation plan · stages 1–6 shipped</div>
+    <div class="kicker">Playball · implementation plan · six stages shipped, the seventh nearly</div>
     <h1>The road to v1.0</h1>
     <p class="sub">Nineteen stages, ordered by what unblocks what. The game is
     already deep; this is the work that turns it into a product with a
@@ -125,7 +125,8 @@
     they came out of playing what stage 1 shipped, and were built the same day
     they were reported. The old stage 5 was split so the dugout could land
     without a calibrated engine riding on the same pass — and both halves have
-    now shipped, the second with the measurements to show what it cost.</p>
+    now shipped, the second with the measurements to show what it cost. Stage seven,
+    the coach, is seven pieces of eight in.</p>
   </div>
 </header>
 
@@ -301,26 +302,24 @@
       <div class="num">07</div>
       <div>
         <h3>The coach</h3>
-        <div class="chips"><span class="chip sz-l">Very large</span><span class="chip new">Building in pieces</span><span class="chip done">Piece 1 shipped</span></div>
-        <p>The last part of the game that is still a form, and the stage where a
-        coaching career stops being something that merely happens to you.</p>
-        <p><strong>The rule it is built on: it has to feel different every
-        time.</strong> A system identical on a fifth dynasty is a system people
-        stop opening — so the pools are large, the thresholds are seeded, and the
-        places in it want different things. The voice is <strong>deadpan, with a
-        straight man</strong>: the humour is in the situation and in the one
-        answer that is too clever by half, never in a joke being told.</p>
+        <div class="chips"><span class="chip done">Seven of eight pieces shipped</span><span class="chip sz-l">Very large</span><span class="chip dep">848 tests green</span></div>
+        <p>The last part of the game that was still a form, and the stage where
+        a coaching career stops being something that merely happens to you.</p>
+        <p><strong>Every fault below typechecked, passed the suite, and would
+        have shipped.</strong> Five were found by measuring a distribution rather
+        than reading the code — and three of those were the same mistake: the
+        majority outcome being treated as an exception.</p>
         <ul>
-          <li><strong>1 · School culture &mdash; shipped.</strong> All ninety-six programmes now believe something: a name, a creed in their own voice, the one thing they are known for, and two dials — <em>patience</em> and <em>ambition</em>. Ambition is deliberately not prestige. <span class="did">Hand-written, all ninety-six, because deriving it from prestige and region would have produced prestige wearing a hat. The test asks exactly that — and the first hand-written pass <em>failed it</em>: mean gap 1.5, every outlier in one direction. I had written the derived version by hand without noticing. Twenty-two programmes now disagree with their own standing in both directions: Mobile Bay would rather tell you about 1974 than reach Omaha; Newport Bay have waited forty years and are prepared to wait longer.</span></li>
-          <li><strong>2 · The creation questions.</strong> Creation becomes five steps, with the questions after &ldquo;how you want to play&rdquo;. Eighty in the pool, <strong>five asked</strong>, filtered by context. Each answer grants +2 across the four skills and <em>may cost something</em> — <code>+3 recruiting, &minus;1 training</code> is a real answer — and may grant more than skills: starting prestige, a contract year, a state pipeline. Two badges come out of the five. It cannot be failed. <span class="did">Casual gets a two-question version rather than skipping it: five is a slow start, but zero means the best-written thing in the game is invisible to the people most likely to bounce off.</span></li>
-          <li><strong>3 · Offers that read culture.</strong> Five offers. Culture can <em>remove</em> a school prestige alone would have offered, and can make one reach below its usual standing for you. The pitch line says why they called. A seeded wobble, so the same answers still give a slightly different desk on a replay.</li>
-          <li><strong>4 · Titles.</strong> Twelve rungs describing a career's <em>shape</em>. <em>Journeyman</em> means six schools, not a beginner — the actual fix for 71 of 96 wearing it at year thirty. <em>Respected</em> is a man who never won it all but kept reaching June, or kept overachieving against the mandate. Rivals wear them too.</li>
-          <li><strong>5 · The cold approach.</strong> On the school's own page, beside what they believe, because that is where somebody actually goes looking. No odds shown. Three attempts a season, never the same school twice. Culture decides whether the approach is welcome — a tradition-heavy programme resents being approached at all — and <strong>being caught can end you</strong>.</li>
-          <li><strong>6 · Badges earned by playing.</strong> Five carried at most, permanent. The game watches how you manage a game, build a roster, handle people, and what your teams do — and deliberately, <em>whether you read the wire</em> and <em>whether you talk men out of the draft</em>, which rewards engaging with the game rather than optimising it. <span class="did">Counters hidden, thresholds seeded per save: one decision that kills farming and adds replay variety at once.</span></li>
-          <li><strong>7 · Culture reaches the simulation.</strong> Held to last and measured alone — a development school getting a little more from its returning players, a pitching school from its arms. <em>Slight</em> is the governing word: this is ninety-six new modifiers entering a calibrated engine, so it gets the treatment confidence got. Culture also drifts, as boards lose patience and athletic directors change.</li>
-          <li><strong>8 · Press conferences.</strong> Five to eight a season, only after something real. <span class="did">The pool waits until the creation questions have been played with — writing sixty situations before knowing whether the voice lands is the risk.</span></li>
+          <li><strong>1 · Ninety-six programmes that believe something.</strong> A name, a creed in their own voice, the one thing they are known for, and two dials. Hand-written, because deriving culture from prestige would have produced prestige wearing a hat. <span class="did">The test asks exactly that — and the first hand-written pass <em>failed it</em>. I had written the derived version by hand without noticing. Mobile Bay would rather tell you about 1974 than reach Omaha; Newport Bay have waited forty years and are prepared to wait longer.</span></li>
+          <li><strong>2 · Five questions at creation, drawn from eighty.</strong> An answer moves the four skills by net +2, negatives allowed — the single rule that keeps it a character question, because if one answer were worth +3 there would be a correct answer. <span class="did">Badges are a <em>vote</em>, not an award: each answer nominates one and the two most nominated are worn, so five answers leaning the same way make a coach who is obviously one thing and five that scatter make one who is harder to summarise. Which is also true of people.</span></li>
+          <li><strong>3 · A desk built in two halves.</strong> Three seats for programmes that specifically want you, two for the best jobs you could get regardless. <span class="did">One weighted sort could never work: weighted hard, every offer matched and the market read as a search result; weighted lightly, the same five best jobs rang for everybody. The band a rookie can reach is eight points of prestige across twenty schools, so a single dial can favour standing or fit and never both. Now eleven of twenty offers match your strongest leaning, and a recruiting school at prestige 32 will outbid better programmes for a man who said he was a closer.</span></li>
+          <li><strong>4 · Thirteen shapes a career can take.</strong> <em>Journeyman</em> used to mean <em>has coached one game</em>, which is why seventy-one of ninety-six wore it at year thirty. <span class="did">Measured twice. Six programmes is <em>unreachable</em> — the carousel's observed maximum over thirty-five years is four. A regional banner is not rare — June hangs sixteen a year, so "two" was the seventy-fifth percentile wearing a contender's name. And the first pass reproduced the exact fault it was fixing: the fallback was still Journeyman, so sixty of ninety-six wore it and none of them had moved anywhere. Most coaches have a long career and win nothing decisive, and that deserves its own name.</span></li>
+          <li><strong>5 · Writing to a school that has not asked for you.</strong> On its own page in Colleges, where you would actually go looking. Three a season, never the same school twice, no odds shown. <span class="did">Culture decides how it goes in both directions, which is what makes it a decision: a programme that prizes tradition is roughly twice as likely to mention it to somebody, so the schools most worth approaching are often the ones most likely to talk. Interest and risk roll separately, which is what allows the worst case — they want you, and they told somebody.</span></li>
+          <li><strong>6 · Ten hidden counters with seeded thresholds.</strong> Nobody farms a target they cannot see, and the same style earns its badges at different moments in two careers — one decision doing two jobs. Two of them reward <em>engaging</em> with the game rather than optimising it: reading the wire, and talking a man out of the draft. <span class="did">Its test greps the source for a write to each counter, crudely and on purpose. It exists because <code>Builder</code> shipped one piece earlier as a title nobody could wear — the number behind it was recorded for the player and for none of the ninety-five rivals.</span></li>
+          <li><strong>7 · Culture reaches the simulation, twice too strongly.</strong> Development only, and two edges — the one place a school's identity changes an outcome without changing a <em>game</em>. <span class="did">The calibration sweep did not move at all, structurally: the effect lives between seasons rather than inside one. But six percent <em>compounds</em> — paired on the same seeds, champion diversity fell from 9.5 to 8.25. Halved, it is indistinguishable from nothing. And drift was a ratchet: missing the postseason cost patience, but four in five schools miss <em>every year</em>, so the whole country slid toward twitchiness and turnover rose five percent. A board becomes less patient when it has just sacked somebody — nine schools a year, not seventy-six.</span></li>
+          <li><strong>8 · Press conferences — waiting on purpose.</strong> Five to eight a season, only after something real. The pool waits until the interview has been played with, because writing sixty situations before knowing whether the voice lands is sixty situations of risk.</li>
         </ul>
-        <div class="exit"><b>Exit</b>Two coaches with the same record are visibly different men, the job market is somewhere you can act rather than only be acted upon, and a second dynasty does not ask you the same questions as the first.</div>
+        <div class="exit"><b>Exit — all but the press</b>Two coaches with the same record are visibly different men, the job market is somewhere you can act rather than only be acted upon, and a second dynasty does not ask you the same questions as the first.</div>
       </div>
     </li>
 
