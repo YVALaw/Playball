@@ -62,7 +62,11 @@ describe('the country is not flat', () => {
     // eight.
     expect(counts.size, 'an edge nobody has').toBe(8);
     for (const [edge, n] of counts) {
-      expect(n, `${edge} is over-used`).toBeLessThan(SCHOOLS.length / 3);
+      // A fifth, not a third. Development had reached twenty-nine of
+      // ninety-six under the old bound -- inside it, and still nearly a third
+      // of the country sharing one identity. The looser rule was not catching
+      // the thing it was written to catch.
+      expect(n, `${edge} is over-used`).toBeLessThanOrEqual(SCHOOLS.length / 5);
     }
   });
 

@@ -24,6 +24,7 @@ import { overallOf } from './ratings.js';
 import { FIRST, LAST } from '../data/names.js';
 import { ALL_STATES } from '../data/schools.js';
 import { DEFAULT_PHILOSOPHY, isPhilosophyId, type PhilosophyId } from './strategy.js';
+import { cultureOf, type CultureEdge } from '../data/cultures.js';
 import type { TeamRecord } from './season.js';
 import type { Rng, Team } from './types.js';
 
@@ -925,6 +926,22 @@ export interface CoachState extends CoachProfile {
   philosophy: PhilosophyId;
   /** What he is good at. See CoachSkills. */
   skills: CoachSkills;
+  /**
+   * What he is known for. Ids from `data/badges.ts`.
+   *
+   * Two arrive from the interview; the rest are earned by how a career is
+   * actually played. Permanent once earned, five at most. Optional because a
+   * save written before badges existed has none, and a coach with none is a
+   * coach nobody has worked out yet rather than a broken record.
+   */
+  badges?: string[];
+  /**
+   * What kind of programme he suits, from what he said at creation.
+   *
+   * Kept for the life of the career rather than spent at creation: the job
+   * market reads it every time a chair opens, not only the first time.
+   */
+  leans?: Partial<Record<CultureEdge, number>>;
   /** Unspent skill points, waiting on the offseason screen. */
   skillPoints: number;
   /** Your reputation. Travels with you and decides which jobs will have you. */
@@ -1522,29 +1539,119 @@ export function jobOffers(
  * cheapest seat still calls, because a game that cannot be started is a bug and
  * not a difficulty setting.
  */
+export interface OfferTaste {
+  /** What kind of programme this man said he was. */
+  leans?: Partial<Record<CultureEdge, number>>;
+  /** Positive wants a demanding board, negative wants a patient one. */
+  ambition?: number;
+  /**
+   * The wobble.
+   *
+   * Without it the desk is a pure function of the world, so the same seed hands
+   * every coach who answered the same way an identical five — which makes a
+   * replay feel like a repeat. Seeded rather than random, so a *given* career is
+   * still fixed: reloading creation does not reshuffle the offers.
+   */
+  rng?: Rng;
+}
+
 export function startingOffers(
   teams: readonly TeamRecord[],
-  limit = 6,
+  limit = 5,
+  taste: OfferTaste = {},
 ): number[] {
-  const hireable = teams
-    .map((t) => ({ t, roster: rosterStrength(t.team) }))
-    .filter(({ t, roster }) => canBeHired(ROOKIE_PRESTIGE, t.prestige, roster))
-    // Best first: the strongest program that would have you, then the better
-    // roster, then the alphabet so ties cannot wander between renders.
-    .sort((a, b) =>
-      b.t.prestige - a.t.prestige
-      || b.roster - a.roster
-      || a.t.def.abbr.localeCompare(b.t.def.abbr));
+  /*
+    What a programme makes of him, on top of what the ladder says.
 
-  const out: number[] = [];
+    The ladder is still the gate — a rookie is not handed a blueblood because he
+    said the right thing about the bunt. What culture does is decide which of
+    the jobs he *could* get actually ring, and it is allowed to work in both
+    directions: a school whose edge he shares will reach a little below its
+    usual standing for him, and one he plainly does not fit will pass and give
+    the seat to somebody else.
+  */
+  const fit = (t: TeamRecord): number => {
+    const c = cultureOf(t.def.abbr);
+    if (!c) return 0;
+    const shared = taste.leans?.[c.edge] ?? 0;
+    /*
+      Whether they want the same thing, centred on zero.
+
+      Written first as `2 - |difference|`, which was a bias rather than a
+      match: every school scored positively and the *least* ambitious scored
+      highest, so a neutral coach was quietly steered toward the quietest
+      programmes in the country and one of them turned up on every desk.
+      Centred at one, a genuine agreement is worth a point and a real mismatch
+      costs one.
+    */
+    const theirs = (c.ambition - 50) / 25;
+    const his = Math.max(-1.5, Math.min(1.5, (taste.ambition ?? 0) / 4));
+    const appetite = 1 - Math.abs(theirs - his);
+    return shared * 0.8 + appetite;
+  };
+
+  const eligible = teams
+    .map((t) => ({ t, roster: rosterStrength(t.team), fit: fit(t) }))
+    // The gate, softened by fit rather than opened by it. A strong match is
+    // worth about three points of coach prestige, which moves a seat or two at
+    // the margin and never lifts a rookie into a job the ladder refuses.
+    .filter(({ t, roster, fit: f }) =>
+      canBeHired(ROOKIE_PRESTIGE + Math.max(0, Math.min(3, f)), t.prestige, roster))
+    .map((row) => ({
+      ...row,
+      // A little noise, deterministic per seed. Small enough that the good jobs
+      // stay good and large enough that two careers differ.
+      wobble: taste.rng ? taste.rng() * 8 - 4 : 0,
+    }));
+
+  /*
+    Two kinds of offer, because a market has two kinds.
+
+    One weighted sort could only ever favour prestige *or* culture, and the
+    band a rookie can reach is narrow and clustered -- around eight points of
+    prestige separating twenty schools. Turn the dial up and every offer
+    matched, so the desk read as a filter; turn it down and the same five best
+    jobs rang for everybody, so five answers changed nothing.
+
+    So the desk is built in two halves. Some programmes ring because you are
+    the best they can get. The others ring because you are specifically what
+    they want -- and those are the seats that make the interview visible.
+  */
+  const byStanding = [...eligible].sort((a, b) =>
+    (b.t.prestige + b.wobble) - (a.t.prestige + a.wobble)
+    || b.roster - a.roster
+    || a.t.def.abbr.localeCompare(b.t.def.abbr));
+
+  const byWanting = [...eligible].sort((a, b) =>
+    (b.fit * 6 + b.t.prestige * 0.4 + b.wobble) - (a.fit * 6 + a.t.prestige * 0.4 + a.wobble)
+    || b.t.prestige - a.t.prestige
+    || a.t.def.abbr.localeCompare(b.t.def.abbr));
+
+  // Rather more than half want you specifically. A desk that was mostly "the
+  // best job available" is the desk this replaced.
+  const wantedSlots = Math.max(1, Math.round(limit * 0.6));
+  const hireable: typeof eligible = [];
+  const seen = new Set<number>();
   const perConference = new Map<string, number>();
-  for (const { t } of hireable) {
-    const used = perConference.get(t.conference) ?? 0;
-    if (used >= 2) continue;
-    perConference.set(t.conference, used + 1);
-    out.push(t.index);
-    if (out.length >= limit) break;
+  const take = (row: typeof eligible[number]): boolean => {
+    if (seen.has(row.t.index)) return false;
+    const used = perConference.get(row.t.conference) ?? 0;
+    if (used >= 2) return false;
+    perConference.set(row.t.conference, used + 1);
+    seen.add(row.t.index);
+    hireable.push(row);
+    return true;
+  };
+  for (const row of byWanting) {
+    if (hireable.length >= wantedSlots) break;
+    take(row);
   }
+  for (const row of byStanding) {
+    if (hireable.length >= limit) break;
+    take(row);
+  }
+
+  const out: number[] = hireable.map(({ t }) => t.index);
 
   if (out.length === 0) {
     // Should be unreachable — one-star bars sit at zero — but a new coach must
@@ -1556,4 +1663,39 @@ export function startingOffers(
     if (cheapest) out.push(cheapest.index);
   }
   return out;
+}
+
+
+/**
+ * Why this programme is on the desk.
+ *
+ * The old line described the *rung* — a step up, a job at your level, a
+ * rebuild — which is true and says nothing about the place. This says what they
+ * think they are getting, which is the only reason culture is worth having.
+ */
+export function offerPitch(
+  t: TeamRecord,
+  taste: OfferTaste = {},
+): string {
+  const c = cultureOf(t.def.abbr);
+  if (!c) return 'They have a chair and they would like it filled.';
+
+  const shared = (taste.leans?.[c.edge] ?? 0) > 0;
+  if (shared) {
+    const why: Record<CultureEdge, string> = {
+      development: 'They think you will build what they have rather than replace it.',
+      pitching: 'They heard what you said about arms and liked it.',
+      defense: 'They want somebody who counts outs, and you sounded like one.',
+      power: 'They are not interested in a two-one win and neither, they think, are you.',
+      loyalty: 'They are looking for somebody who intends to stay.',
+      recruiting: 'They want a closer, and they think that is what you are.',
+      tradition: 'They want somebody who will treat the place the way it expects.',
+      ambition: 'They are in a hurry, and so, apparently, are you.',
+    };
+    return why[c.edge];
+  }
+  if (c.patience >= 70) return 'They are not in a rush, and they will tell you so twice.';
+  if (c.ambition >= 80) return 'They expect a great deal and are not embarrassed about it.';
+  if (t.prestige < 35) return 'Nobody established will take this, which is your opening.';
+  return 'They have a chair and they think you might do.';
 }

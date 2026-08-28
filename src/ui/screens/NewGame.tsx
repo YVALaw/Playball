@@ -46,7 +46,7 @@ import {
 } from '../../data/schools.js';
 import {
   prestigeStars, expectationFor, contractFor, requiredCoachPrestige,
-  canBeHired, hireGateNote, ROOKIE_PRESTIGE, rosterStrength, startingOffers,
+  canBeHired, hireGateNote, ROOKIE_PRESTIGE, rosterStrength, startingOffers, offerPitch,
   randomProfile, clampAge, MIN_COACH_AGE, MAX_COACH_AGE, DEFAULT_LOOK,
   type CoachProfile, type CoachLook, type Mandate, type Objective,
 } from '../../engine/program.js';
@@ -62,9 +62,10 @@ import {
 } from '../CoachPortrait.js';
 import { createSeason, seasonLength } from '../../engine/season.js';
 import { makeRng } from '../../engine/rng.js';
-import { drawQuestions, ASKED, ASKED_CASUAL } from '../../engine/interviewResult.js';
+import { drawQuestions, settle, ASKED, ASKED_CASUAL } from '../../engine/interviewResult.js';
 import { SKILL_LABEL, type CoachSkills } from '../../engine/program.js';
 import type { InterviewAnswer, InterviewQuestion } from '../../data/interview.js';
+import { cultureOf, CULTURE_LABEL } from '../../data/cultures.js';
 
 const MANDATE_LABEL: Record<Mandate, string> = {
   develop: 'DEVELOP',
@@ -198,9 +199,37 @@ export function NewGame() {
    * rookie really meets it — the handful of genuine offers, chosen by the same
    * hiring ladder every later job change uses, with at least one guaranteed.
    */
+  /*
+    What the five answers made of him, and therefore who rings.
+
+    Settled here rather than at the moment a job is taken, because the offers
+    themselves depend on it: the leanings decide which programmes reach for him
+    and which pass, so they have to exist before the desk is drawn.
+  */
+  /*
+    Where a coach starts before he has said anything.
+
+    The same twenty `newCoach` uses. The interview adds to it rather than
+    replacing it, so a man who has answered nothing is exactly the coach this
+    game has always made -- which is what keeps the questions an addition to
+    creation instead of a rewrite of it.
+  */
+  const BASE_SKILLS = { offense: 20, defense: 20, training: 20, recruiting: 20 };
+
+  const outcome = useMemo(
+    () => settle(answers, BASE_SKILLS),
+    [answers],
+  );
+
   const offers = useMemo(
     () => {
-      const picks = startingOffers(world.teams);
+      const picks = startingOffers(world.teams, 5, {
+        leans: outcome.leans,
+        ambition: outcome.ambition,
+        // Seeded off the career and the answers together, so the wobble is
+        // fixed for a given man rather than reshuffling every render.
+        rng: makeRng(seed ^ 0x0ffe4 ^ answers.length),
+      });
       /*
         TESTING ONLY — remove before v1.0, together with the loaded roster in
         `store.start`. Pascagoula Tech is always on the desk so the loaded
@@ -213,7 +242,7 @@ export function NewGame() {
       }
       return picks.map((i) => world.teams[i]!.def);
     },
-    [world],
+    [world, outcome, seed, answers.length],
   );
 
   if (step === 0) {
@@ -469,6 +498,55 @@ export function NewGame() {
                   </div>
                 )}
 
+                {/*
+                  What they believe, and why they rang.
+
+                  The block above says what the *job* is — a big name with a
+                  thin roster, a window closing. This says what the *place* is,
+                  which is the thing the interview was for: five answers decided
+                  which of these programmes reached, and a desk that never
+                  explained itself would have made those five answers invisible.
+                */}
+                {(() => {
+                  const culture = cultureOf(picked.abbr);
+                  if (!culture) return null;
+                  const record = world.teams.find((t) => t.def.abbr === picked.abbr);
+                  return (
+                    <div style={{
+                      marginTop: 9, padding: '9px 10px',
+                      background: 'var(--paper)',
+                      border: '1px solid var(--faint)', borderLeft: '3px solid var(--ink)',
+                    }}>
+                      <div style={{
+                        display: 'flex', alignItems: 'baseline', gap: 7, flexWrap: 'wrap',
+                      }}>
+                        <span style={{
+                          font: "800 calc(13px * var(--ts))/1.05 var(--display)",
+                          textTransform: 'uppercase',
+                        }}>{culture.name}</span>
+                        <span style={{
+                          font: "600 calc(7.5px * var(--ts)) var(--mono)", letterSpacing: '.14em',
+                          color: 'var(--clay)',
+                        }}>{CULTURE_LABEL[culture.edge]}</span>
+                      </div>
+                      <div style={{
+                        marginTop: 4,
+                        font: "400 calc(11px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
+                      }}>{culture.creed}</div>
+                      {record && (
+                        <div style={{
+                          marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--hairline)',
+                          font: "400 calc(11px * var(--ts))/1.45 var(--body)", color: 'var(--ink)',
+                        }}>
+                          {offerPitch(record, {
+                            leans: outcome.leans, ambition: outcome.ambition,
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {rival && (
                   <div style={{
                     marginTop: 9, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
@@ -515,7 +593,11 @@ export function NewGame() {
                     </div>
 
                     <button
-                      onClick={() => start(seed, indexOf(picked), coach, mode)}
+                      onClick={() => start(seed, indexOf(picked), coach, mode, {
+                        skills: outcome.skills,
+                        badges: outcome.badges,
+                        leans: outcome.leans,
+                      })}
                       style={{
                         marginTop: 14, width: '100%', padding: '13px 0',
                         background: picked.color, border: `1px solid ${picked.color}`,

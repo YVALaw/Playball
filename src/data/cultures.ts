@@ -94,10 +94,10 @@ export const CULTURES: Record<string, SchoolCulture> = {
   BAY: { name: 'Omaha or nothing', creed: 'Two men have been sacked here with winning records.', edge: 'ambition', patience: 18, ambition: 95 },
   MOB: { name: 'The old navy', creed: 'They will tell you about 1974 before they tell you where your office is.', edge: 'tradition', patience: 55, ambition: 52 },
   DLT: { name: 'Arms first', creed: 'Sign a bat and the pitching coach will want a word.', edge: 'pitching', patience: 48, ambition: 74 },
-  THB: { name: 'The long game', creed: 'Nobody here has ever been in a hurry, including the board.', edge: 'development', patience: 78, ambition: 52 },
+  THB: { name: 'The long game', creed: 'Nobody here has ever been in a hurry, including the board.', edge: 'tradition', patience: 78, ambition: 52 },
   GLP: { name: 'Storm baseball', creed: 'Swing hard. The wind off the water does the rest.', edge: 'power', patience: 44, ambition: 55 },
   PSC: { name: 'The forge', creed: 'Nobody arrives finished. Everybody leaves better or leaves early.', edge: 'development', patience: 62, ambition: 66 },
-  LKC: { name: 'Drill deep', creed: 'They sign men nobody scouted and are quietly smug about it.', edge: 'development', patience: 58, ambition: 45 },
+  LKC: { name: 'Drill deep', creed: 'They sign men nobody scouted and are quietly smug about it.', edge: 'recruiting', patience: 58, ambition: 45 },
   BIL: { name: 'The short porch', creed: 'The fence is close and the philosophy is closer.', edge: 'power', patience: 50, ambition: 40 },
   ATF: { name: 'Basin time', creed: 'The water takes its time. So does the board.', edge: 'loyalty', patience: 82, ambition: 32 },
   PTA: { name: 'Dock work', creed: 'Nobody here is above carrying something.', edge: 'defense', patience: 60, ambition: 34 },
@@ -112,18 +112,18 @@ export const CULTURES: Record<string, SchoolCulture> = {
   ASH: { name: 'The high road', creed: 'Thin air, long practices, and a genuine belief that it matters.', edge: 'development', patience: 66, ambition: 48 },
   SAV: { name: 'River arms', creed: 'They would rather have three arms than one bat.', edge: 'pitching', patience: 55, ambition: 68 },
   JAX: { name: 'Hold fast', creed: 'Men who leave early are spoken about carefully and not warmly.', edge: 'loyalty', patience: 68, ambition: 44 },
-  OKE: { name: 'Swamp rules', creed: 'They find them where nobody else is looking.', edge: 'development', patience: 64, ambition: 34 },
+  OKE: { name: 'Swamp rules', creed: 'They find them where nobody else is looking.', edge: 'recruiting', patience: 64, ambition: 34 },
   CPF: { name: 'Take what you can', creed: 'Steal a base, steal a game, steal somebody else’s recruit.', edge: 'recruiting', patience: 46, ambition: 40 },
   ALT: { name: 'Strike first', creed: 'A quiet place that plays aggressive baseball.', edge: 'power', patience: 52, ambition: 32 },
   SNB: { name: 'Run it out', creed: 'Legs, wind, and a groundskeeper who cuts the grass short.', edge: 'defense', patience: 62, ambition: 27 },
-  OCL: { name: 'The nursery', creed: 'Half the coaches in the country took their first job here.', edge: 'development', patience: 76, ambition: 26 },
+  OCL: { name: 'The nursery', creed: 'Half the coaches in the country took their first job here.', edge: 'tradition', patience: 76, ambition: 26 },
 
   // --- Pacific --------------------------------------------------------------
   RID: { name: 'West coast standard', creed: 'A trophy case, and a list of everyone who failed to add to it.', edge: 'ambition', patience: 26, ambition: 92 },
   BRK: { name: 'The archive', creed: 'Every banner has a man who hung it, and they know all their names.', edge: 'tradition', patience: 58, ambition: 48 },
   MBT: { name: 'By the numbers', creed: 'They will ask about your defensive alignment before your record.', edge: 'defense', patience: 50, ambition: 70 },
   PIN: { name: 'First in', creed: 'They would rather try something and be wrong than be late.', edge: 'ambition', patience: 44, ambition: 62 },
-  CAL: { name: 'Dig for it', creed: 'Nothing here has ever come up easy and they prefer it that way.', edge: 'development', patience: 68, ambition: 48 },
+  CAL: { name: 'Dig for it', creed: 'Nothing here has ever come up easy and they prefer it that way.', edge: 'power', patience: 68, ambition: 48 },
   OAK: { name: 'The quiet school', creed: 'Good grades, good gloves, and no fuss about either.', edge: 'defense', patience: 70, ambition: 42 },
   VER: { name: 'Let it fly', creed: 'The ball carries here, and so does the philosophy.', edge: 'power', patience: 42, ambition: 64 },
   SUT: { name: 'Ride for the brand', creed: 'Four years, or do not bother knocking.', edge: 'loyalty', patience: 74, ambition: 36 },
@@ -161,7 +161,7 @@ export const CULTURES: Record<string, SchoolCulture> = {
   CSG: { name: 'Stand still and grow', creed: 'Nothing happens fast here. That is the entire pitch.', edge: 'development', patience: 84, ambition: 22 },
 
   // --- Great Lakes ----------------------------------------------------------
-  ERI: { name: 'Carry the load', creed: 'Big rosters, long seasons, and no interest in shortcuts.', edge: 'development', patience: 62, ambition: 60 },
+  ERI: { name: 'Carry the load', creed: 'Big rosters, long seasons, and no interest in shortcuts.', edge: 'power', patience: 62, ambition: 60 },
   SAG: { name: 'Ironside defence', creed: 'They will lose two-one and call it a good night out.', edge: 'defense', patience: 60, ambition: 40 },
   FVL: { name: 'Pour and set', creed: 'Take the raw thing, heat it, and see what it becomes.', edge: 'development', patience: 70, ambition: 48 },
   TOL: { name: 'Clear sight', creed: 'They keep more numbers than anybody, and read all of them.', edge: 'recruiting', patience: 56, ambition: 44 },
@@ -172,11 +172,11 @@ export const CULTURES: Record<string, SchoolCulture> = {
   MSK: { name: 'Shifting ground', creed: 'Nobody plays one position here for four years.', edge: 'development', patience: 68, ambition: 26 },
   KNK: { name: 'Work the current', creed: 'Small ball, small budget, small complaints.', edge: 'development', patience: 70, ambition: 24 },
   SDY: { name: 'The long winter', creed: 'They judge a coach on his fourth year, not his first.', edge: 'loyalty', patience: 86, ambition: 22 },
-  WBS: { name: 'Hammer and heat', creed: 'Nobody is recruited here. Everybody is made here.', edge: 'development', patience: 74, ambition: 22 },
+  WBS: { name: 'Hammer and heat', creed: 'Nobody is recruited here. Everybody is made here.', edge: 'power', patience: 74, ambition: 22 },
 
   // --- Mountain -------------------------------------------------------------
   TET: { name: 'The high ground', creed: 'Altitude, attitude, and a fence nobody clears cheaply.', edge: 'power', patience: 52, ambition: 58 },
-  SIL: { name: 'Hardrock', creed: 'They mine. They do not shop.', edge: 'development', patience: 68, ambition: 36 },
+  SIL: { name: 'Hardrock', creed: 'They mine. They do not shop.', edge: 'tradition', patience: 68, ambition: 36 },
   WAS: { name: 'Clean mechanics', creed: 'The pitching lab keeps better hours than the library.', edge: 'pitching', patience: 58, ambition: 48 },
   LAR: { name: 'Run the plain', creed: 'Nobody outruns them and nobody outlasts them.', edge: 'defense', patience: 64, ambition: 40 },
   DUR: { name: 'The rim', creed: 'Quiet, remote, and deeply suspicious of anybody in a hurry.', edge: 'loyalty', patience: 76, ambition: 36 },
@@ -185,7 +185,7 @@ export const CULTURES: Record<string, SchoolCulture> = {
   GRJ: { name: 'One-run games', creed: 'They have lost more of them than anybody, and learned from it.', edge: 'defense', patience: 66, ambition: 28 },
   BUT: { name: 'Dig and hold', creed: 'A century of hard work, and no apologies for the record.', edge: 'tradition', patience: 74, ambition: 26 },
   CDA: { name: 'Slow water', creed: 'They will give a coach six years. They will also notice all six.', edge: 'loyalty', patience: 82, ambition: 24 },
-  RWL: { name: 'Wind and dust', creed: 'The hardest place in the country to win, and they know it.', edge: 'development', patience: 80, ambition: 20 },
+  RWL: { name: 'Wind and dust', creed: 'The hardest place in the country to win, and they know it.', edge: 'tradition', patience: 80, ambition: 20 },
   SLD: { name: 'Climb something', creed: 'Nobody has ever expected anything, so anything is a triumph.', edge: 'ambition', patience: 70, ambition: 24 },
 
   // --- Northeast ------------------------------------------------------------
@@ -194,12 +194,12 @@ export const CULTURES: Record<string, SchoolCulture> = {
   BRS: { name: 'Rivet and beam', creed: 'Defence first, and they will say it twice.', edge: 'defense', patience: 62, ambition: 46 },
   ALG: { name: 'Down the seam', creed: 'Hard hours, no shortcuts, and a suspicion of anybody polished.', edge: 'development', patience: 68, ambition: 40 },
   PRT: { name: 'Keep the light', creed: 'Somebody has done this job for a century without any fuss.', edge: 'loyalty', patience: 78, ambition: 36 },
-  NSH: { name: 'The second shift', creed: 'They take the men who were passed over, and work them.', edge: 'development', patience: 70, ambition: 50 },
+  NSH: { name: 'The second shift', creed: 'They take the men who were passed over, and work them.', edge: 'recruiting', patience: 70, ambition: 50 },
   SCR: { name: 'Break it down', creed: 'They rebuild swings from nothing. Some of them survive it.', edge: 'development', patience: 64, ambition: 32 },
   BGR: { name: 'North of everything', creed: 'The bus rides are the recruiting pitch. They are honest about it.', edge: 'loyalty', patience: 76, ambition: 24 },
   UTC: { name: 'Steady fall', creed: 'Nothing dramatic has happened here, and nothing is expected to.', edge: 'defense', patience: 74, ambition: 24 },
-  PTS: { name: 'Burn long', creed: 'Hard, slow and hot. Ask anybody who played here.', edge: 'development', patience: 72, ambition: 22 },
-  CHC: { name: 'Thread by thread', creed: 'They build a roster the way they built the town. Slowly.', edge: 'development', patience: 78, ambition: 20 },
+  PTS: { name: 'Burn long', creed: 'Hard, slow and hot. Ask anybody who played here.', edge: 'power', patience: 72, ambition: 22 },
+  CHC: { name: 'Thread by thread', creed: 'They build a roster the way they built the town. Slowly.', edge: 'tradition', patience: 78, ambition: 20 },
   PSA: { name: 'The bottom rung', creed: 'Every coach here is on the way up or on the way out. Both are welcome.', edge: 'development', patience: 66, ambition: 20 },
 };
 

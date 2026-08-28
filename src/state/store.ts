@@ -189,6 +189,7 @@ const holesFor = (record: { team: { lineup: unknown[]; bench: unknown[]; rotatio
   return Math.max(3, roster.filter((p) => p.classYear === 'SR' || p.classYear === 'JR').length);
 };
 import type { Region } from '../data/schools.js';
+import type { CultureEdge } from '../data/cultures.js';
 import { makeRng } from '../engine/rng.js';
 import {
   autoBattingOrder, strategyFor, strategyForPhilosophy, type Strategy,
@@ -547,7 +548,11 @@ export interface DynastyStore {
    * creation step collected. Without the profile the career belongs to a man
    * called "Coach", which is the pre-v0.6.3 behaviour and what the tests use.
    */
-  start: (seed?: number, team?: number, profile?: CoachProfile, mode?: DepthMode) => void;
+  start: (
+    seed?: number, team?: number, profile?: CoachProfile, mode?: DepthMode,
+    /** What five answers made of him. See `engine/interviewResult.ts`. */
+    made?: { skills: CoachSkills; badges: string[]; leans: Partial<Record<CultureEdge, number>> },
+  ) => void;
   /** True before a job has been taken, so the app can show the setup screen. */
   needsTeam: boolean;
   go: (tab: Tab, screen?: string) => void;
@@ -1417,7 +1422,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   lastWeek: null,
   phase: null,
 
-  start: (seed = WORLD_SEED, team?: number, profile?: CoachProfile, mode: DepthMode = 'full') => {
+  start: (seed = WORLD_SEED, team?: number, profile?: CoachProfile, mode: DepthMode = 'full', made?: { skills: CoachSkills; badges: string[]; leans: Partial<Record<CultureEdge, number>> }) => {
     const season = createSeason(makeRng(seed), undefined, CONFERENCES);
     // Whose games to keep box scores for. A season is built before anybody has
     // taken a job, so the engine cannot know this on its own.
@@ -1427,7 +1432,23 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     season.year = START_YEAR;
     const seat = team ?? defaultUserTeam(season);
     const here = season.teams[seat]?.prestige ?? 50;
-    const coach = takeChair(newCoach(profile, contractFor(here)), here);
+    /*
+      The man who walks in, rather than the default one.
+
+      `newCoach` builds the coach this game has always built -- twenty in every
+      skill, no badges, no leanings -- and the interview is applied on top. That
+      ordering matters: a career started without answering anything is exactly
+      the career it used to be, so the questions are an addition to creation
+      rather than a rewrite of it, and every save that predates them still
+      loads as the coach it was written with.
+    */
+    const fresh = newCoach(profile, contractFor(here));
+    const coach = takeChair(
+      made
+        ? { ...fresh, skills: made.skills, badges: made.badges, leans: made.leans }
+        : fresh,
+      here,
+    );
     // The other ninety five get their men before the first pitch, seeded at what
     // their programs are worth. Without it the entire hiring ladder would be
     // open to whoever won a game first — you included.
