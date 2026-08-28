@@ -236,12 +236,3 @@ export function settleIn(p: Hitter): void {
   if (left <= 0) { delete s.settling; delete s.movedFrom; return; }
   s.settling = left;
 }
-
-/** Whether the game should suggest moving him, and where. */
-export function suggestedMove(p: Hitter, crowdedAt: (pos: Position) => number): Position | null {
-  // Only a man who is blocked is worth moving, and only somewhere he can go
-  // without it being a story.
-  if (crowdedAt(p.pos) <= 1) return null;
-  const options = secondaryPositions(p).filter((pos) => crowdedAt(pos) === 0);
-  return options[0] ?? null;
-}

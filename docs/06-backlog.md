@@ -1711,3 +1711,49 @@ bucket preserved (an earlier attempt at +5 with a league-wide slow fall gave
 61.1/14.6 and emptied it). Goldens re-recorded after the hook change: 5.325 runs
 a game against a 5.300 target, worst deviation 4%, all ten NCAA tolerance tests
 passing. Suite 849 green.
+
+## L. Stage 8, the roster — shipped August 28, 2026
+
+Position competence, the depth chart, real DH handling, redshirts, position
+changes and academic eligibility. Two-way players split out by decision. Full
+write-up in `05-systems-reference.md` §30.
+
+### Decisions taken
+
+| Question the plan left open | Answer |
+|---|---|
+| How position competence is modelled | A penalty on the defensive spectrum, not a rating per position. Secondary spots **derived** from the ladder, so generation is untouched and no golden moved. |
+| Whether a redshirt is a coach's call or a rule | A call, and by the real baseball rule — no four-game grace, one appearance burns the season. FR/SO, once a career, three a season, 0.85 growth. |
+| How academic risk is surfaced | A visible, manageable rating on the player's card, for **your program only**. Managed with "a word with him", four a season. |
+| Whether two-way is generated or made | Generated, rare — but **not in this stage**. |
+
+### The three faults, and the shapes they are
+
+- **A state nobody can be in.** The grade distribution floored at 34 while
+  `FAILING` is 28, so 'trouble' was unreachable. Third occurrence of this shape
+  after `Builder` and the unpriced regional. Caught the same way each time: a
+  test that asks for a man in the state.
+- **Correct and ruinous.** Ranking the chart on merit re-picked 94 of 96 lineups
+  on day one — right in baseball terms, and it would have moved every number in
+  the game. The incumbent now leads his own spot.
+- **Right arithmetically, wrong about the sport.** The spectrum said a catcher
+  could cover shortstop for free. Found by *looking at the screen*; no test
+  would have caught it, because the arithmetic was correct.
+
+### Also worth recording
+
+The classroom shipped running in the wrong place — off the store's news hook,
+which fires once after a whole season is simulated. SIM SEASON checked a single
+week after every game had been played, and the worker path could never have
+called back into the store. It lives in `simNextDay` now, gated on
+`captureBoxFor`.
+
+### Open
+
+- **Two-way players.** Their own stage. They arrive two-way, they are rare, and
+  pitching does not suppress the bat.
+- **Morale.** Stage 9. The press room wants it and stage 8's "a word with him"
+  is the mechanism it should extend rather than duplicate.
+- **The 260ms bracket tween** from the stage-7 batch is still unverified — the
+  preview browser never composites frames, so `requestAnimationFrame` does not
+  run there.

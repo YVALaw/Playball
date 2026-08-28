@@ -5194,7 +5194,7 @@ system and ninety-six new engine modifiers must not land in the same pass.
 
 ---
 
-## 29. The coach — **PIECES 1–7 SHIPPED**
+## 29. The coach — **SHIPPED, all eight pieces**
 
 Stage 7. Eight pieces; seven are in. Piece 8, the press conference pool, waits
 until the interview has been played with — writing sixty situations before
@@ -5409,6 +5409,112 @@ bottom tier intact.
 
 
 ---
+
+## 30. The roster — **STAGE 8, SHIPPED**
+
+Five things, four engine modules and two screens. The whole stage rests on one
+decision repeated four times: **everything new is derived or sparse**, so a save
+written before it has nobody failing, nobody sitting, nobody settling and no
+depth chart — rather than everybody.
+
+### 30.1 Position competence is a penalty on a ladder
+
+`positions.ts`. The defensive spectrum, which baseball has had for fifty years:
+
+    DH — 1B — LF — RF — 3B — CF — 2B — SS — C
+
+Downhill is free, uphill costs `PER_RUNG`, and catcher carries `CATCHER_TAX` on
+top. Secondary positions are **derived** from the ladder rather than generated
+onto a player, for the reason every derived thing in this codebase exists: a new
+field at generation moves every random draw after it and breaks every golden.
+
+**Catching is off the ladder in both directions**, and that was a fix rather
+than a design. Read as a single ladder, a spectrum that puts catching at the
+hard end says every other spot is downhill from it — so the chart offered a
+catcher as free cover at shortstop. Catching is at that end because it is the
+hardest position to *fill*, not because catchers are the best athletes; they are
+usually the slowest men in the building. `OUT_RANK` gives catching a low rank on
+the way out, so a catcher goes to first and to left — where catchers actually go
+— and is out of his depth at short.
+
+Found on the screen, not by a test. The arithmetic was right and the model was
+wrong, which is the failure mode a test suite is worst at catching.
+
+### 30.2 The chart, and why the incumbent leads
+
+`depthChart.ts`. A ranking per position and a lineup card are different facts;
+the chart owns *who plays where* and `team.lineup` keeps owning *what order they
+hit in*.
+
+Three bugs, all caught by its own tests. A man taken must be a man **spent**, or
+the naive pass puts the shortstop at short, second and third at once. Spots fill
+**hardest first**, because filling first base first takes your shortstop and then
+nobody can play short. And the third was the one that mattered:
+
+> Ranked purely on merit the chart re-picked **94 of 96** lineups on day one.
+
+Correct in baseball terms — a good bench middle infielder really is a better left
+fielder than a weak corner outfielder — and catastrophic in practice, because the
+lineup is what the simulation plays. The incumbent now leads his own spot, so the
+chart's day-one answer *is* the card the generator wrote, and it differs only
+when somebody cannot play. Which is the entire job.
+
+### 30.3 How availability reaches the field
+
+`coverFor` is a **post-process** over the card `restedLineup` already chose, not
+a lineup builder. Rebuilding the card would duplicate or replace random draws.
+It returns the *same array* when everybody in it can play — every game in the
+country except the ones where the coached program has somebody out. The goldens
+reproducing exactly is the proof.
+
+### 30.4 The classroom
+
+`eligibility.ts`. The user's program only: ninety-five other rosters losing
+shortstops to a classroom is a slower roll and a bigger save to model something
+nobody can see or act on.
+
+Visible and manageable rather than a hidden roll, because a number you could
+have seen and did not act on is a decision you got wrong, while a hidden roll
+that takes your shortstop out of a regional is a punishment.
+
+**It shipped with 'trouble' unreachable.** The distribution floored at 34 while
+`FAILING` is 28, so no man in the country could be in the state the feature
+exists for — the same mistake as a title nobody could wear, caught the same way,
+by a test that asks for a man in it. Reshaped to span the scale with the skew
+doing the work: **15.7% at risk, 5.3% failing.**
+
+**And it ran in the wrong place.** The check lived in the store's news hook,
+which fires *once* after `simSeason` returns — so SIM SEASON checked a single
+week, the last one, after every game had been played, and the worker path could
+not have called back into the store at all. It now runs inside `simNextDay`,
+gated on `captureBoxFor`, and writes a log the store reads for its cards.
+
+Managed by **"a word with him"** — four a season, on the player's card, the same
+shape as the three letters and the draft's keep budget. Deliberately not money:
+the economy is stage 11.
+
+### 30.5 Redshirts and moves
+
+`redshirt.ts`. The real baseball rule, which is stricter than football's: no
+four-game grace, one appearance burns the season, so it is all or nothing.
+Freshmen and sophomores, once in a career, three a season, `REDSHIRT_GROWTH` of
+0.85 — a redshirt who came back better than the man who played would make
+sitting everybody correct.
+
+Moves are instant on the card with a settling penalty that decays over two
+seasons, and uphill moves settle harder. Not position *training*: a man is here
+two to four years, and spending one teaching him second base spends most of what
+you have.
+
+### 30.6 What is deliberately not here
+
+**Two-way players**, split out on the same reasoning stage 5 was split: one man
+in two rating systems with fatigue crossing both, a lineup card and a rotation
+both claiming him, and every leaderboard deciding which half it ranks. Not a
+small feature in a big hat.
+
+**Morale**, which stage 9 brings. The press room wants it and does not have it,
+and wiring an answer to a number that does not exist is how `Builder` shipped.
 
 ## Appendix A: stale comments and vestigial code found while writing this
 

@@ -116,18 +116,19 @@
 
 <header class="top">
   <div class="top-in">
-    <div class="kicker">Playball · implementation plan · seven stages shipped</div>
+    <div class="kicker">Playball · implementation plan · eight stages shipped</div>
     <h1>The road to v1.0</h1>
     <p class="sub">Nineteen stages, ordered by what unblocks what. The game is
     already deep; this is the work that turns it into a product with a
-    personality, on a phone. <strong style="color:var(--cream)">The first seven
+    personality, on a phone. <strong style="color:var(--cream)">The first eight
     are done.</strong> Three and four did not exist when this plan was written —
     they came out of playing what stage 1 shipped, and were built the same day
     they were reported. The old stage 5 was split so the dugout could land
     without a calibrated engine riding on the same pass — and both halves have
     now shipped, the second with the measurements to show what it cost. Stage seven, the coach, is
     <strong style="color:var(--cream)">complete</strong> — all eight pieces,
-    ending with the press room.</p>
+    ending with the press room — and stage eight, the roster, landed the same
+    day with two-way players split out of it.</p>
   </div>
 </header>
 
@@ -337,10 +338,25 @@
     </li>
 
 
-    <li class="stage">
+    <li class="stage done">
       <div class="num">08</div>
       <div>
         <h3>The roster becomes a roster</h3>
+        <div class="chips"><span class="chip done">Shipped — two-way split out</span><span class="chip sz-l">Large</span><span class="chip dep">942 tests green</span></div>
+        <p>Five things, four engine modules and two screens, resting on one
+        decision repeated four times: <strong>everything new is derived or
+        sparse</strong>, so a save from before it has nobody failing, nobody
+        sitting, nobody settling and no chart — rather than everybody. Save
+        growth is unchanged at 12.3&nbsp;KB a year over thirty seasons.</p>
+        <ul>
+          <li><strong>The spectrum is the model.</strong> DH — 1B — LF — RF — 3B — CF — 2B — SS — C, free downhill and dear uphill, with catching carrying a surcharge on top. Secondary positions are derived from the ladder rather than generated, because a new field at generation moves every draw after it. <span class="did">And catching had to come <em>off</em> the ladder in both directions. Read as one ladder, a spectrum that puts catching at the hard end says every other spot is downhill from it — so the chart offered a catcher as free cover at shortstop. It is at that end because it is the hardest position to <em>fill</em>, not because catchers are the best athletes; they are usually the slowest men in the building. Found by looking at the screen, which no test would have done.</span></li>
+          <li><strong>The chart, and the incumbent who leads it.</strong> A ranking per position and a lineup card are different facts, so the chart owns who plays where and the lineup keeps owning who bats when. <span class="did">Three bugs, and the third is the one worth keeping: ranked purely on merit it re-picked <strong>94 of 96</strong> lineups on day one. Correct in baseball terms — a good bench middle infielder really is a better left fielder than a weak corner outfielder — and ruinous, because the lineup is what the simulation plays. The incumbent leads his own spot now, so the chart's day-one answer is the card the generator already wrote and it differs only when somebody cannot play. Which is the entire job.</span></li>
+          <li><strong>The classroom, which is the most college thing here.</strong> Your program only; ninety-five other rosters losing shortstops to a lecture is a slower roll and a bigger save to model what nobody can see. Visible and manageable rather than a hidden roll — a number you could have seen and ignored is a decision you got wrong, a hidden roll is a punishment. <span class="did">It shipped with <em>failing</em> unreachable: the distribution floored at 34 while the threshold was 28, so nobody in the country could be in the state the feature exists for. Third time for that shape. And it ran in the wrong place — off a hook that fires once after a whole season, so SIM SEASON checked one week after every game had been played. It lives in the day loop now.</span></li>
+          <li><strong>Redshirts, by the real rule.</strong> Stricter than football's: no four-game grace, one appearance burns the season, so it is all or nothing. Freshmen and sophomores, once in a career, three a season. <span class="did">He develops at 0.85 — a redshirt who came back <em>better</em> than the man who played would make sitting everybody correct — and the decision it creates is the good one: your promising freshman is behind a senior, so play him now or have him when the senior is gone.</span></li>
+          <li><strong>Moving a man</strong> is instant on the card with a settling penalty that decays over two seasons, and uphill moves settle harder. Not position <em>training</em>: a man is here two to four years, and spending one teaching him second base spends most of what you have.</li>
+        </ul>
+        <div class="decide"><b>Split out, on the reasoning that split stage 5</b><strong>Two-way players.</strong> One man in two rating systems with fatigue crossing both, a lineup card and a rotation both claiming him, and every leaderboard deciding which half of him it is ranking. Not a small feature in a big hat, and this stage was already large. They will arrive two-way rather than be made, and they will be as rare as they are in life.</div>
+        <div class="exit"><b>Exit — reached</b>You manage a roster rather than reading a list. What it still wants is <strong>morale</strong>, which stage 9 brings — the press room is waiting for it too.</div>
         <div class="chips"><span class="chip sz-l">Large</span><span class="chip dep">Unblocks 09, 10 and part of 11</span></div>
         <ul>
           <li><strong>Depth chart with position eligibility</strong> — a competence per position, not a boolean</li>

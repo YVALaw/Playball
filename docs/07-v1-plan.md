@@ -435,7 +435,11 @@ planning this — logged in `06-backlog.md` §K6.
 
 ## Stage 8 · The roster becomes a roster
 
-**Size:** large · **Unblocks:** 6, 7 and part of 8
+**Size:** large · **SHIPPED August 28 2026** (two-way split out) · **Unblocks:** 9 and the portal
+
+Full write-up in `05-systems-reference.md` §30, including the three faults it
+produced: a chart that re-picked 94 of 96 lineups, a failing grade nobody could
+have, and a catcher offered as free cover at shortstop.
 
 - **Depth chart with position eligibility** — a competence per position, not a
   boolean
@@ -515,6 +519,27 @@ they are rare the way they are in life, and pitching does not suppress the bat.
 **Order within the stage:** depth chart, competence and the DH first, because
 eligibility and redshirts both need somewhere to send a man. Academic
 eligibility ships last and stays in the stage.
+
+### What shipped
+
+All of it except two-way players, which were split out by decision. The stage
+rests on one choice repeated four times — **everything new is derived or
+sparse** — so a save from before it has nobody failing, nobody sitting, nobody
+settling and no chart, rather than everybody. Save growth is unchanged at
+12.3 KB a year over a thirty-season soak.
+
+The three faults are worth carrying forward, because two of them are shapes
+this project keeps producing:
+
+- **A state nobody can be in.** The grade distribution floored above the failing
+  threshold, so the state the whole feature exists for was unreachable. Third
+  time: `Builder`, then the regional that paid nothing, now this.
+- **A feature that is correct and ruinous.** Ranking the chart on merit re-picked
+  94 of 96 lineups — right in baseball terms, and it would have moved every
+  number in the game.
+- **A model that is right arithmetically and wrong about the sport.** The
+  spectrum said a catcher could cover short. Found by looking at the screen,
+  which no test would have done.
 
 ## Stage 9 · Players as people
 

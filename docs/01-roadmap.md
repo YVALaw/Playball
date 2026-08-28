@@ -405,8 +405,13 @@ drafted players at all.
 ## Where the stages stand
 
 Stage 7, the coach, is **complete** as of August 28 2026 — all eight pieces,
-ending with the press room. Six stages shipped before it; the next is stage 8,
-the roster.
+ending with the press room. Stage 8, the roster, is **complete** the same day:
+position competence, the depth chart, real DH handling, redshirts, position
+changes and academic eligibility. Two-way players were split out by decision,
+on the same reasoning that split stage 5.
+
+Eight stages shipped. The next is stage 9, players as people — which is also
+where morale arrives, and the press room is waiting for it.
 
 ## The budgets
 

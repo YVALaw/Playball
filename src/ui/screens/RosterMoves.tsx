@@ -13,6 +13,8 @@ import { handles } from '../../state/depth.js';
 import { standing, gradesOf, WORDS_A_SEASON, AT_RISK } from '../../engine/eligibility.js';
 import { canRedshirt, MAX_REDSHIRTS, redshirtCount } from '../../engine/redshirt.js';
 import { secondaryPositions } from '../../engine/positions.js';
+import { chartFor, squad } from '../../engine/depthChart.js';
+import { overallOf } from '../../engine/ratings.js';
 import type { Hitter, Player as AnyPlayer, Position } from '../../engine/types.js';
 
 const WORDS: Record<'fine' | 'watch' | 'trouble', { label: string; tone: string; line: string }> = {
@@ -70,6 +72,30 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   */
   const alsoPlays = (p.type === 'hitter' ? secondaryPositions(p as Hitter) : []).slice(0, 3);
 
+  /*
+    The game says so, rather than waiting to be asked.
+
+    A man behind somebody at his own position who could walk into a spot nobody
+    owns is the one case worth raising unprompted -- it is the whole "your best
+    athlete cannot stay at short" conversation, and a player who never opens
+    this sheet would otherwise never find it. Read off the chart, so it is the
+    same fact the chart is already showing rather than a second opinion.
+  */
+  const suggestion = (() => {
+    if (p.type !== 'hitter') return null;
+    const chart = chartFor(team);
+    const rankAt = (spot: Position): number =>
+      (chart[spot] ?? []).indexOf(p.id);
+    if (rankAt(p.pos) <= 0) return null;              // he is the man there
+    for (const spot of alsoPlays) {
+      const holder = (chart[spot] ?? [])[0];
+      const held = holder ? squad(team).find((m) => m.id === holder) : undefined;
+      // Somewhere he would walk in ahead of whoever is there now.
+      if (held && overallOf(held) < overallOf(p as Hitter)) return spot;
+    }
+    return null;
+  })();
+
   return (
     <>
       <div className="label" style={{ margin: '14px 0 6px' }}>THE CLASSROOM</div>
@@ -118,6 +144,15 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
                 ? `${p.pos} — and he can cover ${alsoPlays.join(', ')}.`
                 : `${p.pos}, and nowhere else without it showing.`}
             </div>
+            {suggestion && !moving && (
+              <div style={{
+                marginTop: 6, padding: '6px 9px',
+                background: 'var(--field)', borderLeft: '3px solid var(--you)',
+                font: "400 calc(11px * var(--ts))/1.45 var(--body)",
+              }}>
+                He is behind somebody here and would walk into {suggestion}.
+              </div>
+            )}
             {alsoPlays.length > 0 && (
               <button
                 className="tap"
