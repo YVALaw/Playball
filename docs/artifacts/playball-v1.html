@@ -116,17 +116,18 @@
 
 <header class="top">
   <div class="top-in">
-    <div class="kicker">Playball · implementation plan · six stages shipped, the seventh nearly</div>
+    <div class="kicker">Playball · implementation plan · seven stages shipped</div>
     <h1>The road to v1.0</h1>
     <p class="sub">Nineteen stages, ordered by what unblocks what. The game is
     already deep; this is the work that turns it into a product with a
-    personality, on a phone. <strong style="color:var(--cream)">The first six
+    personality, on a phone. <strong style="color:var(--cream)">The first seven
     are done.</strong> Three and four did not exist when this plan was written —
     they came out of playing what stage 1 shipped, and were built the same day
     they were reported. The old stage 5 was split so the dugout could land
     without a calibrated engine riding on the same pass — and both halves have
-    now shipped, the second with the measurements to show what it cost. Stage seven,
-    the coach, is seven pieces of eight in.</p>
+    now shipped, the second with the measurements to show what it cost. Stage seven, the coach, is
+    <strong style="color:var(--cream)">complete</strong> — all eight pieces,
+    ending with the press room.</p>
   </div>
 </header>
 
@@ -298,11 +299,11 @@
     </li>
 
 
-    <li class="stage">
+    <li class="stage done">
       <div class="num">07</div>
       <div>
         <h3>The coach</h3>
-        <div class="chips"><span class="chip done">Seven of eight pieces shipped, and played</span><span class="chip sz-l">Very large</span><span class="chip dep">849 tests green</span></div>
+        <div class="chips"><span class="chip done">Shipped — all eight pieces</span><span class="chip sz-l">Very large</span><span class="chip dep">875 tests green</span></div>
         <p>The last part of the game that was still a form, and the stage where
         a coaching career stops being something that merely happens to you.</p>
         <p><strong>Every fault below typechecked, passed the suite, and would
@@ -317,7 +318,7 @@
           <li><strong>5 · Writing to a school that has not asked for you.</strong> On its own page in Colleges, where you would actually go looking. Three a season, never the same school twice, no odds shown. <span class="did">Culture decides how it goes in both directions, which is what makes it a decision: a programme that prizes tradition is roughly twice as likely to mention it to somebody, so the schools most worth approaching are often the ones most likely to talk. Interest and risk roll separately, which is what allows the worst case — they want you, and they told somebody.</span></li>
           <li><strong>6 · Ten hidden counters with seeded thresholds.</strong> Nobody farms a target they cannot see, and the same style earns its badges at different moments in two careers — one decision doing two jobs. Two of them reward <em>engaging</em> with the game rather than optimising it: reading the wire, and talking a man out of the draft. <span class="did">Its test greps the source for a write to each counter, crudely and on purpose. It exists because <code>Builder</code> shipped one piece earlier as a title nobody could wear — the number behind it was recorded for the player and for none of the ninety-five rivals.</span></li>
           <li><strong>7 · Culture reaches the simulation, twice too strongly.</strong> Development only, and two edges — the one place a school's identity changes an outcome without changing a <em>game</em>. <span class="did">The calibration sweep did not move at all, structurally: the effect lives between seasons rather than inside one. But six percent <em>compounds</em> — paired on the same seeds, champion diversity fell from 9.5 to 8.25. Halved, it is indistinguishable from nothing. And drift was a ratchet: missing the postseason cost patience, but four in five schools miss <em>every year</em>, so the whole country slid toward twitchiness and turnover rose five percent. A board becomes less patient when it has just sacked somebody — nine schools a year, not seventy-six.</span></li>
-          <li><strong>8 · Press conferences — waiting on purpose.</strong> Five to eight a season, only after something real. The pool waits until the interview has been played with, because writing sixty situations before knowing whether the voice lands is sixty situations of risk.</li>
+          <li><strong>8 · Twenty questions the season earns.</strong> Nine triggers, eight a season behind a four-game cooldown — and every trigger is a fact the season already produced: a streak it counts, a result it recorded, a bracket it settled. Nothing is measured specially to feed this, which is what keeps a press conference a consequence rather than a scheduled event. <span class="did">This is what the personality badges were built for. An answer belongs to a badge; wearing it makes the answer land, because the room has heard you say this sort of thing before, and not wearing it costs a little, because the same words out of a stranger's mouth are a pose. The screen says SOUNDS LIKE YOU rather than printing a number — a press conference with "+1 PRESTIGE" beside each line stops being something you read and becomes a column you optimise. The lean applied to both channels first, and that was a gate rather than a lean: half a point rounds a neutral channel to a whole one in <em>each</em> direction, so an answer worth one and nothing swung by three on a badge. It lands on his name alone now, which is also truer — whether a man sounded like himself is a question about his reputation; the board is judging what he said.</span></li>
         </ul>
         <p style="margin-top:14px"><strong>Then it got played — two full
         seasons, sixteen reports, eleven fixed the same day.</strong> The four
@@ -330,7 +331,7 @@
           <li><strong>A number calibrated for one role, applied to another.</strong> The opposing bench changed pitchers once a game while its reliever was "depleted and being hit around". <span class="did">The hook's budget is <code>30 + stamina</code>, fitted to a Friday starter. Applied to a 35-stamina reliever it allowed sixty pitches <em>before</em> the flat twelve and a patient hook policy were added on top — ninety, a number a college reliever never reaches. Six earned runs is not "hit around" either; that is a disaster already finished.</span></li>
         </ul>
         <div class="decide"><b>The one balance change, measured rather than argued</b>Reaching the regionals paid <em>nothing</em> — <code>madeTournament</code> is a seat in the twenty-team field, so the thirty-two who lose a regional scored what a program that stayed home scored. The first fix — worth 5, with reputation falling slower than it rises for everybody — took the league mean from 54.1 to 61.1, dropped the spread from 17.7 to 14.6 and <em>emptied the bottom star bucket entirely</em>. Ninety-six programmes all drifting upward is not a league with a top to it. Worth 2, with the slow fall confined to programmes already above 70, lands at 56.5 and keeps the bottom tier.</div>
-        <div class="exit"><b>Exit — all but the press, and three notes</b>Two coaches with the same record are visibly different men, the job market is somewhere you can act rather than only be acted upon, and a second dynasty does not ask you the same questions as the first. Still owed: <strong>the press conferences</strong> — piece 8, deferred on purpose, and the reason has now expired: two seasons went by with none, which is the stage's most visible gap. <strong>The cold letter</strong> is a real gamble at 18% rather than 12%, but nothing acknowledges having written one until the carousel.</div>
+        <div class="exit"><b>Exit — reached</b>Two coaches with the same record are visibly different men, the job market is somewhere you can act rather than only be acted upon, and a second dynasty does not ask you the same questions as the first. One thing is still owed rather than missing: <strong>the cold letter</strong> is a real gamble at 18% rather than 12%, but nothing in the game acknowledges having written one until the carousel. <strong>Morale</strong> was the third channel the press was meant to move and it is deliberately absent — there is no morale system until stage 8, and wiring an answer to a number that does not exist is how <code>Builder</code> shipped as a title nobody could wear.</div>
         <div class="decide"><b>Two the play report asked for, both smaller than they sounded</b><strong>"The five questions are too long."</strong> Measuring found the questions were never the long part — the asks have a median of nineteen characters ("Who hears about it?"). The <em>setups</em> had a median of 107 and ran to 163: three lines of scene before a one-line question, five screens running. All eighty are one line now, median 63, and pinned at 90 by a test, because this is the kind of thing that grows back a clause at a time. <strong>"The winners→losers transition is quite wild."</strong> The comment above the code that moves the view had claimed <em>"the map fades in under it"</em> since the day it was written, and the only transition in the file was a button background. There was no fade. There is one now.</div>
       </div>
     </li>

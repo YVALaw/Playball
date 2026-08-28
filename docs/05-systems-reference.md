@@ -5328,7 +5328,45 @@ Every fault above typechecked, passed the suite, and would have shipped. Five of
 them were found by measuring a distribution rather than reading the code — and
 three were cases of the majority outcome being treated as an exception.
 
-### 29.8 What two seasons of play found, August 28 2026
+### 29.8 Piece 8: the press room
+
+Twenty questions across nine triggers (`data/pressers.ts`), selected and priced
+in `engine/press.ts`, raised on the same beat the wire is written.
+
+**Every trigger is a fact the season already produced** — a streak it counts, a
+result it recorded, a bracket it settled. Nothing is measured specially to feed
+this, which is what keeps a press conference a consequence rather than a
+scheduled event. `SEASON_CAP` is 8 and `COOLDOWN_GAMES` is 4: the triggers are
+lumpy, and a bad fortnight without a cooldown is a fortnight of talking instead
+of a fortnight of baseball. An elimination passes the cooldown and nothing
+passes the cap.
+
+**The badge lean is the whole reason H7 was built.** An answer names a badge;
+wearing it makes the answer land, not wearing it costs a little. Without the
+badges these answers are flavour — with them the same sentence is worth
+different amounts to two coaches. `tests/press.test.ts` holds it from both
+sides, because the offers desk shipped each failure once: weighted hard the
+badges decide the answer, weighted lightly they are decoration.
+
+**The lean lands on prestige only, and that was a bug first.** Applied to both
+channels it stopped being a lean: half a point rounds a neutral channel to a
+whole one in *each* direction, so an answer worth one and nothing swung by three
+depending on a badge. Two channels turned a nudge into a verdict. It is also the
+truer reading — whether a man sounded like himself is a question about his
+reputation, while the board is judging what he actually said.
+
+**Morale is deliberately absent.** The plan named prestige, morale and how
+recruits see you. There is no morale system until stage 8, and wiring an answer
+to a number that does not exist is how `Builder` shipped as a title nobody could
+wear. Prestige is read directly by `recruiting.ts`, so "how recruits see you" is
+not a decorative second number.
+
+Seeded off the world, the year, how many have been faced and the coach's own
+name — so a reload cannot re-roll a question, two dynasties are not asked the
+same things in the same order, and reading which question is pending takes no
+draw from the season generator.
+
+### 29.9 What two seasons of play found, August 28 2026
 
 Sixteen reports; eleven fixed. The full table is in backlog §K. Four are worth
 recording here because they are about the *shape* of a mistake rather than one

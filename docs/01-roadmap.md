@@ -402,6 +402,12 @@ drafted players at all.
 - ~~`package.json` says v0.6.2 and the README still describes a thirty-three game
   season and a single autosave.~~ Both fixed
 
+## Where the stages stand
+
+Stage 7, the coach, is **complete** as of August 28 2026 — all eight pieces,
+ending with the press room. Six stages shipped before it; the next is stage 8,
+the roster.
+
 ## The budgets
 
 Held so far, and worth guarding — a performance regression found six months later

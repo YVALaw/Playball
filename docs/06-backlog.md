@@ -1235,7 +1235,7 @@ decision rather than a rating comparison. Reads naturally against the scouting
 bands already in the game: academic risk is another thing a report can be vague
 about.
 
-### H6 · Press conferences
+### H6 · Press conferences — **SHIPPED, stage 7 piece 8**
 
 Two or three questions after a big win or a bad loss, answered in the coach's
 own voice. Moves prestige, morale and how recruits see you. It is the payoff
@@ -1691,8 +1691,11 @@ approach system through two full careers. Eleven shipped, five open.
   map fades in under it"* since it was written, and the only transition in the
   file was a button background. There was no fade. There is now, keyed on stage
   and side so it does not replay every time a score arrives underneath it.
-- **Press conferences.** Two seasons, none seen — correct: stage 7 piece 8 was
-  deliberately deferred until the interview had been played with. Now expected.
+- ~~**Press conferences.**~~ Shipped August 28, closing stage 7. Twenty
+  questions, nine triggers, eight a season behind a four-game cooldown. See
+  `05-systems-reference.md` §29.8, including the bug the first version had —
+  the badge lean applied to both channels, which rounds a neutral one to a whole
+  one in each direction and turns a nudge into a verdict.
 - **A man talked out of the draft "is no longer in my roster".** Not reproduced.
   `reinstate` and the roster cap both hold across twelve worlds
   (`tests/keepplayer.test.ts`); the hall half of the same report is fixed

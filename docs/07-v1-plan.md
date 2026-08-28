@@ -278,7 +278,7 @@ colours the play-by-play, and what tendencies and scouting are made of.
 
 ## Stage 7 · The coach
 
-**Size:** very large · **Seven of eight pieces shipped, and played** · **Mostly writing, and the writing is the point**
+**Size:** very large · **SHIPPED — all eight pieces** · **Mostly writing, and the writing is the point**
 
 Full write-up in `05-systems-reference.md` §29, including the five faults that
 only a measured distribution could have found, and §29.8 for what two seasons
@@ -287,9 +287,12 @@ of actually playing it turned up.
 **Played August 28, 2026.** Sixteen reports, eleven fixed the same day; the
 table is in backlog §K. Three things the stage still owes:
 
-- **Piece 8, the press-conference pool**, deliberately held until the interview
-  had been played with. Two seasons went by with none, which is correct and is
-  now the most visible gap in the stage.
+- ~~**Piece 8, the press-conference pool.**~~ Shipped August 28. Twenty
+  questions over nine triggers, eight a season with a four-game cooldown, and
+  every trigger a fact the season already produced rather than a counter
+  invented to feed it. The badge payoff is the point: an answer belongs to a
+  badge, wearing it makes the answer land, and the screen says SOUNDS LIKE YOU
+  rather than printing a number.
 - ~~**The five creation questions are too long.**~~ Done. The questions were
   never the long part: the asks median 19 characters, the setups median 107 and
   ran to 163. All eighty setups are one line now, median 63, held there by a
@@ -413,7 +416,7 @@ sweep, dial.
 **Culture also drifts.** A school that keeps failing grows impatient; a new
 athletic director arrives with different ideas.
 
-### Piece 8 · Press conferences — **deferred within the stage**
+### Piece 8 · Press conferences — **SHIPPED**
 
 Five to eight a season, only after something real, each reading your badges and
 moving prestige, morale and how recruits see you. **The pool waits** until the
