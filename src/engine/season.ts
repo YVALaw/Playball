@@ -28,6 +28,7 @@ import {
   type RecordBook,
 } from './records.js';
 import { CONFERENCES, type ConferenceDef, type SchoolDef } from '../data/schools.js';
+import type { SchoolCulture } from '../data/cultures.js';
 import { teamId } from './types.js';
 // Type only, and it has to stay that way: `hall.ts` reads `careerName` out of
 // this module, so a value import back the other way would be a runtime cycle.
@@ -408,6 +409,14 @@ export interface TeamRecord {
   def: SchoolDef;
   /** Conference id, e.g. 'PAC'. */
   conference: string;
+  /**
+   * What this programme believes *now*, when that has moved.
+   *
+   * Absent means it still believes what it was written to believe, which is
+   * most schools most of the time -- so this costs the save nothing until a
+   * decade actually changes somebody. See `driftCulture`.
+   */
+  culture?: SchoolCulture;
   /**
    * How this coach plays. Every program gets one — an aggressive coach steals and
    * pulls starters early, a conservative one bunts and plays for a run. Without

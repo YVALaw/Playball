@@ -205,3 +205,98 @@ export const CULTURES: Record<string, SchoolCulture> = {
 
 /** The culture of a programme, by abbreviation. */
 export const cultureOf = (abbr: string): SchoolCulture | undefined => CULTURES[abbr];
+
+/**
+ * A programme's culture as it stands *now*, drift included.
+ *
+ * Structurally typed rather than importing `TeamRecord`, which would make this
+ * file depend on the engine it is data for. Anything with an abbreviation and
+ * an optional override can be asked.
+ */
+export const cultureFor = (
+  t: { def: { abbr: string }; culture?: SchoolCulture },
+): SchoolCulture | undefined => t.culture ?? CULTURES[t.def.abbr];
+
+/** How far a culture may wander from what it was written as. */
+const DRIFT_BOUND = 18;
+
+/**
+ * A year of results, applied to what a programme believes.
+ *
+ * Cultures were written by hand and they are still the baseline; this moves a
+ * school around that baseline rather than replacing it, and everything pulls
+ * back toward the authored value when nothing is happening. A place that has
+ * been quietly mediocre for a decade should read as the place it was written
+ * as, not as wherever a random walk left it.
+ *
+ * The bound matters more than the steps. Eighteen points is enough for a patient
+ * school to become a twitchy one over a bad decade and not enough for any school
+ * to become a different school — the Anvils are never going to start buying
+ * players, however the last ten years went.
+ *
+ * Returns `undefined` when nothing moved, so the caller can leave the sparse
+ * override unset and the save unchanged.
+ */
+export function driftCulture(
+  base: SchoolCulture,
+  now: SchoolCulture,
+  year: { wonTitle: boolean; wonRegional: boolean; sacked: boolean },
+  newDirector: boolean,
+): SchoolCulture | undefined {
+  let patience = now.patience;
+  let ambition = now.ambition;
+
+  /*
+    Events, not weather.
+
+    Missing the postseason was the first driver of impatience and it was a
+    ratchet rather than a wobble: twenty bids across ninety-six programmes means
+    roughly *four in five* schools miss every single year, so a two-point
+    penalty against a one-point pull home dragged the entire country toward
+    twitchiness over a decade. Measured as league turnover rising from 9.0
+    chairs a year to 9.5 -- a five percent shift in a tuned number, produced
+    entirely by the majority case being treated as a failure.
+
+    A board becomes less patient when it has just sacked somebody, which happens
+    to about nine schools a year and is the thing impatience actually looks
+    like. Ordinary disappointment is what most seasons are, and it should move
+    nothing.
+  */
+  if (year.wonTitle) { ambition += 4; patience += 2; }
+  else if (year.wonRegional) ambition += 1;
+  if (year.sacked) { patience -= 3; ambition += 1; }
+
+  /*
+    And the pull home.
+
+    Without it, drift is a random walk and every school ends a thirty-year save
+    somewhere arbitrary -- which would quietly undo the hand-writing that made
+    the country worth having. One point a year toward what the place was written
+    as is slow enough to lose an argument with a bad decade and strong enough to
+    win one with a quiet one.
+  */
+  const home = (v: number, to: number): number =>
+    v > to ? v - 1 : v < to ? v + 1 : v;
+  patience = home(patience, base.patience);
+  ambition = home(ambition, base.ambition);
+
+  /*
+    A new athletic director, and the one thing here that is not gradual.
+
+    Rare on purpose. It is the only way a programme's posture can change faster
+    than a decade, and it is what makes a school you knew ten years ago worth
+    looking at again.
+  */
+  if (newDirector) {
+    patience = base.patience + (patience > base.patience ? -10 : 10);
+    ambition = base.ambition + (ambition > base.ambition ? -8 : 8);
+  }
+
+  const clamp = (v: number, to: number): number =>
+    Math.max(5, Math.min(97, Math.max(to - DRIFT_BOUND, Math.min(to + DRIFT_BOUND, v))));
+  patience = clamp(patience, base.patience);
+  ambition = clamp(ambition, base.ambition);
+
+  if (patience === now.patience && ambition === now.ambition) return undefined;
+  return { ...now, patience, ambition };
+}

@@ -24,7 +24,7 @@ import { overallOf } from './ratings.js';
 import { FIRST, LAST } from '../data/names.js';
 import { ALL_STATES } from '../data/schools.js';
 import { DEFAULT_PHILOSOPHY, isPhilosophyId, type PhilosophyId } from './strategy.js';
-import { cultureOf, type CultureEdge } from '../data/cultures.js';
+import { cultureFor, type CultureEdge } from '../data/cultures.js';
 import type { CoachHabits } from './habits.js';
 import type { TeamRecord } from './season.js';
 import type { Rng, Team } from './types.js';
@@ -666,22 +666,49 @@ export interface Board {
   expectation: Expectation;
   /** Security below which a deal that has run out is not offered again. */
   renewAt: number;
+  /**
+   * Security below which they stop the car. `SACK_BAR` unless the programme's
+   * culture says otherwise — see `sackBarFor`.
+   */
+  sackAt: number;
+}
+
+/**
+ * How long this particular board waits, from what the place believes.
+ *
+ * **Centred on the country's actual mean patience of 63, not on fifty.** That
+ * is the whole reason this can exist inside a tuned carousel: a school of
+ * average patience gets exactly the bar it has always had, so the league-wide
+ * turnover the probe pins does not move, and only the ends of the distribution
+ * behave differently. Newport Bay waits; Bayou State does not.
+ *
+ * Deliberately a narrow band. Seven points either side of twenty is the
+ * difference between a fourth year and a third, which is a real difference to
+ * one career and no difference at all to the rate the country changes coaches.
+ */
+export function sackBarFor(patience: number | undefined): number {
+  if (patience === undefined) return SACK_BAR;
+  const MEAN = 63;
+  return SACK_BAR - Math.max(-7, Math.min(7, Math.round((patience - MEAN) / 4)));
 }
 
 /** Yours. Every number in it is the one it has always been. */
 export const playerBoard = (
-  prestige: number, roster: number, games: number,
+  prestige: number, roster: number, games: number, patience?: number,
 ): Board => ({
   expectation: expectationFor(prestige, roster, games),
   renewAt: PLAYER_RENEW_BAR,
+  sackAt: sackBarFor(patience),
 });
 
 /** One of the other ninety five. Two differences, both argued at the seam. */
 export const rivalBoard = (
   prestige: number, roster: number, league: LeagueShape, games: number,
+  patience?: number,
 ): Board => ({
   expectation: rivalExpectation(prestige, roster, league, games),
   renewAt: SACK_BAR,
+  sackAt: sackBarFor(patience),
 });
 
 export type Verdict = 'exceeded' | 'met' | 'missed' | 'failed';
@@ -1572,7 +1599,7 @@ export function reviewSeason(
     are prepared to lose him over, which is both true to the sport and the
     reason the gamble is worth taking at all.
   */
-  const bar = coach.caughtLooking ? SACK_BAR + 14 : SACK_BAR;
+  const bar = (board.sackAt ?? SACK_BAR) + (coach.caughtLooking ? 14 : 0);
   const sacked = securityAfter < bar && coach.tenure >= 1;
 
   // A good year buys years. Boards extend the people they want to keep rather
@@ -1745,7 +1772,7 @@ export function startingOffers(
     the seat to somebody else.
   */
   const fit = (t: TeamRecord): number => {
-    const c = cultureOf(t.def.abbr);
+    const c = cultureFor(t);
     if (!c) return 0;
     const shared = taste.leans?.[c.edge] ?? 0;
     /*
@@ -1851,7 +1878,7 @@ export function offerPitch(
   t: TeamRecord,
   taste: OfferTaste = {},
 ): string {
-  const c = cultureOf(t.def.abbr);
+  const c = cultureFor(t);
   if (!c) return 'They have a chair and they would like it filled.';
 
   const shared = (taste.leans?.[c.edge] ?? 0) > 0;
@@ -1911,7 +1938,7 @@ export function approachSchool(
   target: TeamRecord,
   rng: Rng,
 ): ApproachOutcome {
-  const culture = cultureOf(target.def.abbr);
+  const culture = cultureFor(target);
   const roster = rosterStrength(target.team);
 
   // Whether they could plausibly hire you at all. Approaching a blueblood as a

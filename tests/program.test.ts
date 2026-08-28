@@ -804,7 +804,7 @@ describe('a rival\'s board', () => {
     const middling = outcome({ wins: 25, losses: 20, conferenceRank: 8, conferenceSize: 8 });
     const mine = reviewSeason(cooled, 45, 45, middling, 45);
     const theirs = reviewSeason(cooled, 45, 45, middling, 45, {
-      expectation: mine.expectation, renewAt: SACK_BAR,
+      expectation: mine.expectation, renewAt: SACK_BAR, sackAt: SACK_BAR,
     });
     expect(mine.securityAfter).toBeGreaterThanOrEqual(SACK_BAR);
     expect(mine.securityAfter).toBeLessThan(PLAYER_RENEW_BAR);

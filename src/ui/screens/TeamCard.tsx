@@ -18,7 +18,7 @@
 // so rather than showing an empty table and letting it read as "never played".
 
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import { cultureOf, CULTURE_LABEL } from '../../data/cultures.js';
+import { cultureFor, CULTURE_LABEL } from '../../data/cultures.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { FixedHeader } from '../Sticky.js';
@@ -215,7 +215,7 @@ function Overview(
   const mine = me && me.index === t.index;
   const h2h = me && !mine ? headToHead(season, me.index, t.index) : null;
 
-  const culture = cultureOf(t.def.abbr);
+  const culture = cultureFor(t);
 
   return (
     <>

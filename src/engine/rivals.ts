@@ -54,6 +54,7 @@ import {
 } from './program.js';
 import type { PostseasonSummary } from './postseason.js';
 import type { SeasonState, TeamRecord } from './season.js';
+import { CULTURES, cultureFor, driftCulture } from '../data/cultures.js';
 
 /**
  * What one of them carries, and nothing else.
@@ -595,7 +596,11 @@ export function runRivalYear(
     const roster = rosterStrength(record.team);
     const review = reviewSeason(
       coach, record.prestige, roster, outcome, games,
-      rivalBoard(record.prestige, roster, league, games),
+      // What this particular board is prepared to sit through. Centred on the
+      // country mean, so the league-wide turnover rate does not move -- only
+      // the ends of the distribution behave differently.
+      rivalBoard(record.prestige, roster, league, games,
+        cultureFor(record)?.patience),
     );
     verdicts[review.verdict] += 1;
 
@@ -604,6 +609,43 @@ export function runRivalYear(
     // so ninety five schools were frozen at the standing the world was generated
     // with and no amount of winning or losing could touch them.
     record.prestige = review.prestigeAfter;
+
+    /*
+      And what the year did to what the place believes.
+
+      Applied here rather than in a pass of its own because this is the one
+      point at which a programme's season is fully settled and its board has
+      spoken -- and a school's patience is largely a story about how the last
+      few of these went.
+
+      Sparse: `driftCulture` returns undefined when nothing moved, so a school
+      having an ordinary year costs the save nothing. That matters at ninety-six
+      schools times thirty years against a payload already growing 12 KB a year.
+    */
+    {
+      const base = CULTURES[record.def.abbr];
+      const now = cultureFor(record);
+      if (base && now) {
+        /*
+          One in thirty-five school-years, so a coach meets two or three new
+          athletic directors in a long career.
+
+          Derived from the year and the chair rather than drawn from the
+          season generator. Spending a draw here would move every number after
+          it, and this runs ninety-six times a year -- the world would be a
+          different world purely because cultures drift, which is the same rule
+          the wire and the play-by-play already keep.
+        */
+        const roll = ((opts.year + 1) * 2654435761 ^ (record.index + 1) * 40503) >>> 0;
+        const newDirector = roll % 35 === 0;
+        const moved = driftCulture(base, now, {
+          wonTitle: outcome.wonTitle,
+          wonRegional: outcome.wonRegional,
+          sacked: review.fired,
+        }, newDirector);
+        if (moved) record.culture = moved;
+      }
+    }
 
     /*
       What he has built here, kept up to date rather than measured on the way

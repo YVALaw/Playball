@@ -20,7 +20,7 @@ import { overallOf, clamp } from './ratings.js';
 import { windowBudget } from './recruiting.js';
 import type { Prospect } from './recruiting.js';
 import { gauss, makeRng } from './rng.js';
-import { cultureOf } from '../data/cultures.js';
+import { cultureFor } from '../data/cultures.js';
 import type { SeasonState } from './season.js';
 import type {
   ClassYear, Hitter, Pitcher, Player, PlayerId, Position, Rng, Team,
@@ -663,8 +663,8 @@ export function departAndDevelop(
       the simulation -- and a culture that quietly moved every number would be a
       culture nobody could reason about.
     */
-    const edge = cultureOf(record.def.abbr)?.edge;
-    const cultureFor = (p: Player): number =>
+    const edge = cultureFor(record)?.edge;
+    const growthFromCulture = (p: Player): number =>
       edge === 'development' ? 0.03
       : edge === 'pitching' && p.type === 'pitcher' ? 0.04
       : 0;
@@ -738,7 +738,7 @@ export function departAndDevelop(
       const next = NEXT_CLASS[p.classYear];
       if (next === null) continue;        // unreachable: seniors always depart
       p.classYear = next;
-      const gained = develop(p, rng, growthMult + cultureFor(p));
+      const gained = develop(p, rng, growthMult + growthFromCulture(p));
       report.developmentNet += gained;
       if (gained > 0) report.improved += 1; else report.declined += 1;
       // A winter's worth of badges: what the season he just played earned him,
