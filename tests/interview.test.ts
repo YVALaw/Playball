@@ -44,6 +44,21 @@ describe('the pool', () => {
       expect(q.answers.length, `${q.id} answer count`).toBe(4);
       expect(q.ask.trim().endsWith('?'), `${q.id} does not ask anything`).toBe(true);
       expect(q.setup.length, `${q.id} setup`).toBeGreaterThan(30);
+      /*
+        And short enough to read before the question arrives.
+
+        Reported after playing creation: the five questions felt long. Measuring
+        them said the *questions* were not -- the asks have a median of nineteen
+        characters -- but the setups had a median of 107 and ran to 163, three
+        lines of scene before a one-line question, five screens in a row.
+
+        Ninety is a ceiling rather than a target: it leaves room for a scenario
+        that genuinely needs two clauses while making a third one impossible,
+        which is where the wordiness actually came from.
+      */
+      expect(q.setup.length, `${q.id} setup is long again`).toBeLessThanOrEqual(90);
+      expect(q.setup.includes(String.fromCharCode(10)),
+        `${q.id} setup is more than one line`).toBe(false);
     }
   });
 

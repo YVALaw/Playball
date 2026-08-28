@@ -113,7 +113,8 @@ export function Postseason() {
     It follows rather than jumps: the toggle is a real control and somebody who
     has deliberately gone to look at the other half should be left there. So
     this only fires when the side you are *playing on* changes, which is once a
-    tournament at most, and the map fades in under it.
+    tournament at most, and the map fades in under it -- which it now actually
+    does. This comment described the fade for weeks before one existed.
   */
   const mySide: 'winners' | 'losers' | null = myBracket && myBracket.format === 'double'
     ? ((myBracket.state.losses.get(userTeam) ?? 0) > 0 ? 'losers' : 'winners')
@@ -751,6 +752,22 @@ export function Postseason() {
               onLineup={() => setShowLineup(true)}
             />}
 
+            {/*
+              The half you are looking at, arriving rather than appearing.
+
+              Reported as "quite wild": losing in the winners bracket moves you
+              to the losers side and the whole map was replaced between two
+              frames. The comment above `mySide` has claimed since it was
+              written that "the map fades in under it" -- it never did, and the
+              only transition in this file was a button background.
+
+              Keyed on the stage *and* the side, so it plays when the view
+              changes and not on every re-render underneath it: a bracket that
+              re-faded every time a score arrived would be worse than the jump.
+              `.fade-in` is off under `prefers-reduced-motion` with everything
+              else, which is why it is a class and not an inline animation.
+            */}
+            <div className="fade-in" key={`${shown}:${shown === 0 ? confView : shown === 2 ? natView : 'r'}`}>
             {shown === 0 && (
               <ConferenceStage
                 cups={bracket.cups}
@@ -791,6 +808,7 @@ export function Postseason() {
                 onOpen={openSlot}
               />
             )}
+            </div>
           </div>
         </div>
 

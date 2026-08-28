@@ -92,7 +92,7 @@ export interface InterviewQuestion {
 export const INTERVIEW: readonly InterviewQuestion[] = [
   {
     id: 'bunt-down-one',
-    setup: 'Down one in the ninth. Man on first, nobody out.\nYour best hitter is up. Your fastest man is on the bench.',
+    setup: 'Ninth, down one. Man on first. Best hitter up, fastest man on the bench.',
     ask: 'What happens?',
     answers: [
       {
@@ -123,7 +123,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'build-or-buy',
-    setup: 'Two men are available in the same week.\nOne is ready now and will be gone in two years.\nThe other is nineteen months from being anything at all.',
+    setup: 'Two recruits, one week. One is ready now. One is two years away.',
     ask: 'Which one do you sign?',
     answers: [
       {
@@ -154,7 +154,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-veteran',
-    setup: 'A senior who has started three years is now the fourth best\noption at his position. He knows it. He has not said anything.',
+    setup: 'A senior who started three years is now fourth choice. He knows.',
     ask: 'What do you do?',
     answers: [
       {
@@ -185,7 +185,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-arm',
-    setup: 'Eighty-nine pitches, one-run lead, seventh inning.\nHe has retired six in a row and his velocity is down two.',
+    setup: 'Eighty-nine pitches, one-run lead, seventh. Velocity down two.',
     ask: 'Is he out?',
     answers: [
       {
@@ -216,7 +216,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-budget',
-    setup: 'You have enough for one thing this year.\nThe hitting facility is twenty years old. The bullpen has\nno indoor mound. The scouting budget has not moved since 2019.',
+    setup: 'Money for one thing: the cage, an indoor mound, or scouting.',
     ask: 'Where does it go?',
     answers: [
       {
@@ -247,7 +247,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-loss',
-    setup: 'You have lost four in a row. The dugout is quiet in a way\nyou do not like. Somebody has to say something.',
+    setup: 'Four straight losses. The dugout is quiet. Somebody has to speak.',
     ask: 'What is it?',
     answers: [
       {
@@ -278,7 +278,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-transfer',
-    setup: 'Your best returning bat has been called by a bigger school.\nHe has not asked to leave. He has also not said no.',
+    setup: 'A bigger school has called your best bat. He has not said no.',
     ask: 'How does that conversation go?',
     answers: [
       {
@@ -309,7 +309,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-record',
-    setup: 'Your predecessor went 31-24 and was sacked.\nThe man before him went 22-33 and was given a fourth year.',
+    setup: '31-24 got your predecessor sacked. 22-33 got the man before a fourth year.',
     ask: 'What does that tell you about this job?',
     answers: [
       {
@@ -340,7 +340,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'steal-down-three',
-    setup: 'Down three in the eighth. Your fastest man is on first\nwith nobody out and the top of the order coming.',
+    setup: 'Down three in the eighth. Fastest man on first, nobody out.',
     ask: 'Is he going?',
     answers: [
       { text: 'No. You do not make the first out at second down three.', skills: { defense: 2 }, leans: { defense: 2, tradition: 1 }, ambition: -1, badge: 'grinder' },
@@ -351,7 +351,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-walk-on',
-    setup: 'A walk-on nobody has heard of has outplayed a signed\nfreshman for six weeks of fall ball. It is not close.',
+    setup: 'A walk-on has outplayed a signed freshman all fall. Not close.',
     ask: 'Who opens the season at that position?',
     answers: [
       { text: 'The walk-on. The fall is what the fall is for.', skills: { training: 2 }, leans: { development: 3 }, badge: 'developer' },
@@ -362,7 +362,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-curfew',
-    setup: 'Two men broke curfew the night before a regional.\nOne of them is your closer.',
+    setup: 'Two men broke curfew before a regional. One is your closer.',
     ask: 'What happens to them?',
     answers: [
       { text: 'Both sit. It is not a rule if it bends for the closer.', skills: { defense: 2 }, leans: { tradition: 3 }, badge: 'hardnosed' },
@@ -373,7 +373,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-grades',
-    setup: 'Your best arm is one exam away from being ineligible.\nHe has known this for six weeks and told nobody.',
+    setup: 'Your best arm is one exam from ineligible. He told nobody.',
     ask: 'Where does the problem sit?',
     answers: [
       { text: 'With me. I should have known six weeks ago.', skills: { training: 2 }, leans: { development: 2, loyalty: 1 }, badge: 'players' },
@@ -384,7 +384,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-rival',
-    setup: 'The rivalry is Friday. A regional seed is on the line Sunday.\nYour ace can start one of them properly.',
+    setup: 'The rivalry is Friday, a seed on the line Sunday. One ace.',
     ask: 'Which one?',
     answers: [
       { text: 'Friday. Ask anybody in this town which game matters.', skills: { recruiting: 2 }, leans: { tradition: 3 }, badge: 'traditionalist' },
@@ -395,7 +395,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-crowd',
-    setup: 'Your own crowd has started booing a freshman shortstop.\nHe has made two errors and it is April.',
+    setup: 'Your own crowd is booing a freshman shortstop. It is April.',
     ask: 'What do you do about it?',
     answers: [
       { text: 'He stays out there. He comes off when I say, not when they do.', skills: { training: 2 }, leans: { development: 2, loyalty: 2 }, badge: 'players' },
@@ -406,7 +406,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-donor',
-    setup: 'A man who paid for the outfield wall would like his nephew\nto be on the roster. The nephew is not a college player.',
+    setup: 'The man who paid for the outfield wall has a nephew. Not a player.',
     ask: 'How does that go?',
     answers: [
       { text: 'He can have a jacket and a seat on the bus. Not a spot.', skills: { defense: 2 }, leans: { tradition: 2, development: 1 }, badge: 'hardnosed' },
@@ -417,7 +417,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'why-this-job',
-    setup: 'The interview is nearly over. He closes the folder\nand asks the only question he actually wrote down.',
+    setup: 'He closes the folder. The one question he actually wrote down.',
     ask: 'Why do you want this job?',
     answers: [
       { text: 'Because I can win here, and I do not think you know that yet.', skills: { offense: 1, recruiting: 1 }, leans: { ambition: 3 }, ambition: 2, badge: 'gambler' },
@@ -428,7 +428,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-pitchout',
-    setup: 'You are almost sure the steal is on. A pitchout costs you\na ball, and your man is already behind two and one.',
+    setup: 'You think the steal is on. A pitchout makes it three and one.',
     ask: 'Do you call it?',
     answers: [
       { text: 'Yes. I would rather be wrong at three and one than beaten.', skills: { defense: 2 }, leans: { defense: 3 }, badge: 'methodical' },
@@ -439,7 +439,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-errors',
-    setup: 'A shortstop has made three errors in two games.\nHe is the best defender you have when he is right.',
+    setup: 'Three errors in two games. He is still your best defender.',
     ask: 'What is the fix?',
     answers: [
       { text: 'More ground balls. Two hundred a day until his hands remember.', skills: { training: 2 }, leans: { development: 3 }, badge: 'developer' },
@@ -450,7 +450,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-slump',
-    setup: 'Your cleanup hitter is three for forty. He is still your\nbest hitter and everybody in the park knows both facts.',
+    setup: 'Your cleanup hitter is three for forty. Still your best hitter.',
     ask: 'Does he move in the order?',
     answers: [
       { text: 'No. He is the best hitter and the order is not a mood ring.', skills: { offense: 2 }, leans: { power: 2, tradition: 1 }, badge: 'slugger' },
@@ -461,7 +461,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-doubleheader',
-    setup: 'A doubleheader tomorrow and one arm properly rested.\nThe second game is against the better team.',
+    setup: 'Doubleheader tomorrow, one rested arm. Game two is the better team.',
     ask: 'Where does he pitch?',
     answers: [
       { text: 'Game one. Win the one you can and see what happens.', skills: { defense: 2 }, leans: { defense: 2, tradition: 1 }, badge: 'methodical' },
@@ -472,7 +472,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-shift',
-    setup: 'The spray chart says shift. Your shortstop has played\nthe position for eleven years and hates standing there.',
+    setup: 'The chart says shift. Your shortstop has hated it for eleven years.',
     ask: 'Who wins?',
     answers: [
       { text: 'The chart. He can hate it from the correct side of the bag.', skills: { defense: 2 }, leans: { defense: 3 }, badge: 'methodical' },
@@ -483,7 +483,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-scholarship',
-    setup: 'One scholarship left. A catcher who will start for four years,\nor a shortstop who might be a first-round pick in two.',
+    setup: 'One scholarship. A catcher for four years, or a shortstop for two.',
     ask: 'Who gets it?',
     answers: [
       { text: 'The catcher. Four years of a starter is four years.', skills: { training: 1, defense: 1 }, leans: { loyalty: 3, defense: 1 }, ambition: -1, badge: 'keeper' },
@@ -494,7 +494,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-injury',
-    setup: 'A man wants to play through something. The trainer says\nhe can, and that it will cost him three weeks later.',
+    setup: 'He wants to play through it. The trainer says it costs three weeks.',
     ask: 'Does he play?',
     answers: [
       { text: 'No. Three weeks in May is worth more than tonight.', skills: { training: 2 }, leans: { development: 2, loyalty: 1 }, badge: 'developer' },
@@ -505,7 +505,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-reporter',
-    setup: 'Four losses in a row. A reporter you have known for two years\nasks, on the record, whether you are worried about your job.',
+    setup: 'Four straight losses. A reporter asks, on the record, about your job.',
     ask: 'What do you say?',
     answers: [
       { text: 'That anybody in this job who is not worried is not paying attention.', skills: { recruiting: 2 }, leans: { tradition: 2, loyalty: 1 }, badge: 'traditionalist' },
@@ -516,7 +516,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-assistant',
-    setup: 'Your best assistant has been offered a head job somewhere\nsmall. He has not decided and he has asked what you think.',
+    setup: 'Your best assistant has a head job offer. He asks what you think.',
     ask: 'What do you tell him?',
     answers: [
       { text: 'Take it. Nobody gets a second one of these.', skills: { training: 2 }, leans: { development: 2, loyalty: 1 }, badge: 'players' },
@@ -527,7 +527,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-freshman',
-    setup: 'Your best player in October is a freshman.\nThe room has noticed and is waiting to see what you do.',
+    setup: 'Your best player in October is a freshman. The room is watching.',
     ask: 'Where does he hit?',
     answers: [
       { text: 'Third, from the first game. The room can watch him earn it.', skills: { offense: 2 }, leans: { ambition: 2, development: 1 }, ambition: 1, badge: 'gambler' },
@@ -538,7 +538,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-blowout',
-    setup: 'Up eleven in the seventh. Their pitcher is a freshman\nhaving the worst afternoon of his life.',
+    setup: 'Up eleven in the seventh. Their freshman is having an awful day.',
     ask: 'What are you doing?',
     answers: [
       { text: 'Nothing different. We play until it is over.', skills: { offense: 2 }, leans: { ambition: 2, tradition: 1 }, badge: 'hardnosed' },
@@ -549,7 +549,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-rain',
-    setup: 'Rain is twenty minutes out. You are ahead in the fifth,\nwhich means it is official if it never resumes.',
+    setup: 'Rain in twenty minutes. You are ahead in the fifth, so it counts.',
     ask: 'How do you play the next ten minutes?',
     answers: [
       { text: 'Quickly. Everybody hacks and nobody steps out.', skills: { offense: 1, defense: 1 }, leans: { ambition: 2 }, ambition: 1, badge: 'gambler' },
@@ -560,7 +560,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-portal',
-    setup: 'Two men enter the portal in the same week. One never played.\nThe other started forty games and did not tell you first.',
+    setup: 'Two men enter the portal. One never played. One started forty games.',
     ask: 'Which one bothers you?',
     answers: [
       { text: 'The one who never played. That one is mine.', skills: { training: 2 }, leans: { development: 3 }, badge: 'developer' },
@@ -571,7 +571,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-predecessor',
-    setup: 'The man you replaced still lives in town.\nHe is at every home game, in the same seat, and people notice.',
+    setup: 'The man you replaced is at every home game, in the same seat.',
     ask: 'What do you do with that?',
     answers: [
       { text: 'I ask him to lunch in the first week.', skills: { recruiting: 1, training: 1 }, leans: { tradition: 3 }, badge: 'traditionalist' },
@@ -582,7 +582,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-leadoff',
-    setup: 'Two men can hit leadoff. One is on base more.\nThe other is the fastest man in the conference.',
+    setup: 'Two men can lead off. One gets on base. One is the fastest here.',
     ask: 'Who bats first?',
     answers: [
       { text: 'The one who gets on. You cannot steal first.', skills: { offense: 2 }, leans: { defense: 1, development: 1 }, badge: 'methodical' },
@@ -593,7 +593,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-bus',
-    setup: 'Eleven hours on a bus, and you arrive at four in the morning\nfor a noon game you are expected to win.',
+    setup: 'Eleven hours on a bus, in at four, noon game you should win.',
     ask: 'What happens on that bus?',
     answers: [
       { text: 'Nothing. They sleep and I let them.', skills: { training: 2 }, leans: { loyalty: 2, development: 1 }, badge: 'players' },
@@ -604,7 +604,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-catcher',
-    setup: 'Your catcher cannot hit. He also runs the staff so well\nthat two of your arms are visibly worse without him.',
+    setup: 'Your catcher cannot hit. Two of your arms are worse without him.',
     ask: 'Does he play every day?',
     answers: [
       { text: 'Every day. What he does is not in the box score.', skills: { defense: 1, training: 1 }, leans: { pitching: 3 }, badge: 'armsman' },
@@ -615,7 +615,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-two-way',
-    setup: 'A freshman is your third-best arm and your second-best bat.\nHe wants to do both. Everybody who has tried has broken.',
+    setup: 'A freshman is your third arm and your second bat. He wants both.',
     ask: 'What does he do?',
     answers: [
       { text: 'Both, carefully, with a number on it that I do not move off.', skills: { training: 1, defense: 1 }, leans: { pitching: 2, development: 1 }, badge: 'methodical' },
@@ -626,7 +626,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-captain',
-    setup: 'The room wants a captain. The obvious man is your worst\nplayer and the best one has never spoken in three years.',
+    setup: 'They want a captain. The obvious man is your worst player.',
     ask: 'Who wears it?',
     answers: [
       { text: 'The one they picked. That is what the vote was for.', skills: { training: 2 }, leans: { loyalty: 3 }, badge: 'players' },
@@ -637,7 +637,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-elbow',
-    setup: 'Your best arm has been told he needs surgery.\nHe would rather rest it, throw in May, and pitch a regional.',
+    setup: 'He needs surgery. He would rather rest it and pitch a regional.',
     ask: 'What does he do?',
     answers: [
       { text: 'Surgery, this week. He has fifteen years of throwing left.', skills: { training: 2 }, leans: { development: 2, pitching: 1 }, badge: 'developer' },
@@ -648,7 +648,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-visit',
-    setup: 'A recruit is on campus with his mother. He has three other\nvisits booked and she has already asked about graduation rates.',
+    setup: 'A recruit is on campus with his mother. She asks about graduation.',
     ask: 'What does the day look like?',
     answers: [
       { text: 'She meets four seniors without me in the room.', skills: { recruiting: 2 }, leans: { loyalty: 2, recruiting: 1 }, badge: 'keeper' },
@@ -659,7 +659,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-parent',
-    setup: 'A father has emailed you four times about his son’s innings.\nThe son has said nothing and looks embarrassed in the dugout.',
+    setup: 'A father has emailed four times about innings. The son says nothing.',
     ask: 'Who do you talk to?',
     answers: [
       { text: 'The son, once, and never about the emails.', skills: { training: 2 }, leans: { development: 2, loyalty: 1 }, badge: 'players' },
@@ -670,7 +670,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-hot-start',
-    setup: 'You are 14-2 and clearly not a 14-2 team.\nThe crowd has started using the word Omaha out loud.',
+    setup: 'You are 14-2 and not a 14-2 team. They are saying Omaha out loud.',
     ask: 'What do you say about that?',
     answers: [
       { text: 'Nothing. Let them enjoy April.', skills: { training: 1, recruiting: 1 }, leans: { loyalty: 2, tradition: 1 }, badge: 'players' },
@@ -681,7 +681,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-field',
-    setup: 'The infield is the worst in the conference and everybody\nknows it. There is money for the field or money for an assistant.',
+    setup: 'Money for the infield, or money for an assistant. Not both.',
     ask: 'Which one?',
     answers: [
       { text: 'The field. Bad hops cost games and confidence, in that order.', skills: { defense: 2 }, leans: { defense: 3 }, badge: 'methodical' },
@@ -692,7 +692,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-uniform',
-    setup: 'Somebody has designed new uniforms. They are not what\nthe programme has worn since 1961, and the alumni have opinions.',
+    setup: 'New uniforms, and not what the programme has worn since 1961.',
     ask: 'What do the team wear?',
     answers: [
       { text: 'The old ones. There is a reason people recognise them.', skills: { recruiting: 1, defense: 1 }, leans: { tradition: 3 }, badge: 'traditionalist' },
@@ -703,7 +703,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-juco',
-    setup: 'A junior-college transfer is available. Two years,\nready now, and a scout you trust says the swing will not hold up.',
+    setup: 'A juco bat, ready now. A scout you trust says the swing will not hold.',
     ask: 'Do you take him?',
     answers: [
       { text: 'Yes. Two years of ready is worth more than four of maybe.', skills: { recruiting: 2 }, leans: { recruiting: 2, ambition: 1 }, ambition: 1, badge: 'closer' },
@@ -714,7 +714,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-nine-run-inning',
-    setup: 'You have just given up nine in an inning.\nThere are two innings left and the bus leaves at ten.',
+    setup: 'You have just given up nine in an inning. Two left.',
     ask: 'Who pitches the eighth?',
     answers: [
       { text: 'A freshman who needs to stand out there once.', skills: { training: 2 }, leans: { development: 3 }, badge: 'developer' },
@@ -725,7 +725,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-signing-rank',
-    setup: 'Your class is ranked fortieth in the country.\nYou think it is the best class you have signed here.',
+    setup: 'Your class is ranked fortieth. You think it is your best here.',
     ask: 'Does the ranking matter?',
     answers: [
       { text: 'Not to me. It matters to the seventeen-year-olds, so it matters.', skills: { recruiting: 2 }, leans: { recruiting: 3 }, badge: 'closer' },
@@ -736,7 +736,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-quiet-room',
-    setup: 'You have won six in a row and the room has gone quiet\nin a way that usually comes before losing four.',
+    setup: 'Six straight wins and the room has gone quiet. You know that quiet.',
     ask: 'Do you do anything?',
     answers: [
       { text: 'Yes. Something changes today while we are still winning.', skills: { training: 2 }, leans: { development: 2, ambition: 1 }, badge: 'hardnosed' },
@@ -747,7 +747,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-ejection',
-    setup: 'A call was wrong and everybody in the park knows it.\nYou have not been thrown out of a game in two years.',
+    setup: 'The call was wrong and every man in the park knows it.',
     ask: 'What happens next?',
     answers: [
       { text: 'I go, and I make sure it is worth going for.', skills: { offense: 1, recruiting: 1 }, leans: { ambition: 2, loyalty: 1 }, ambition: 1, badge: 'gambler' },
@@ -758,7 +758,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-drafted-junior',
-    setup: 'A junior has been drafted in a round that is real money.\nHe is asking what you think, and he means it.',
+    setup: 'A junior is drafted for real money. He asks what you think.',
     ask: 'What do you tell him?',
     answers: [
       { text: 'Go. That money does not come round again.', skills: { training: 1, recruiting: 1 }, leans: { development: 2, loyalty: -1 }, badge: 'players' },
@@ -769,7 +769,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-scoreboard-watch',
-    setup: 'Your seeding depends on a game three states away that\nfinishes an hour after yours. Somebody has it on a phone.',
+    setup: 'Your seed depends on a game three states away, finishing later.',
     ask: 'Does the dugout know the score?',
     answers: [
       { text: 'No. Phones away. We are playing a game.', skills: { defense: 2 }, leans: { tradition: 2, defense: 1 }, badge: 'hardnosed' },
@@ -780,7 +780,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-old-assistant',
-    setup: 'You have inherited an assistant who has been here nineteen years.\nHe was passed over for your job and has been nothing but helpful.',
+    setup: 'An assistant of nineteen years was passed over for your job.',
     ask: 'What do you do with him?',
     answers: [
       { text: 'He keeps everything he had, and I ask him things in front of people.', skills: { recruiting: 1, training: 1 }, leans: { tradition: 3 }, badge: 'traditionalist' },
@@ -791,7 +791,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-fall-scrimmage',
-    setup: 'Fall ball, last scrimmage. A senior and a freshman\nare tied for a job and neither has separated in six weeks.',
+    setup: 'Last fall scrimmage. A senior and a freshman, still tied.',
     ask: 'How do you settle it?',
     answers: [
       { text: 'The senior opens. Ties go to the man who has been here.', skills: { defense: 1, training: 1 }, leans: { loyalty: 2, tradition: 1 }, badge: 'keeper' },
@@ -802,7 +802,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-bad-contract',
-    setup: 'You are three years into five. You are 62-73 here.\nThe board has not said anything, which is its own kind of message.',
+    setup: 'Three years into five, 62-73 here. The board has said nothing.',
     ask: 'What do you change?',
     answers: [
       { text: 'Nothing. Three years is not long enough to know.', skills: { training: 2 }, leans: { development: 2, loyalty: 1 }, ambition: -1, badge: 'developer' },
@@ -813,7 +813,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-first-practice',
-    setup: 'First practice of your first season here.\nTwenty-three men, none of whom you recruited, all watching.',
+    setup: 'First practice. Twenty-three men, none of them yours, watching.',
     ask: 'What is the first thing you do?',
     answers: [
       { text: 'Ground balls. We find out where everybody actually is.', skills: { defense: 2 }, leans: { defense: 3 }, badge: 'methodical' },
@@ -824,7 +824,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-tired-pen',
-    setup: 'Your pen has thrown four days running.\nIt is a one-run game in the eighth and everybody down there is lying to you.',
+    setup: 'Four days running for the pen. One-run game, eighth, all lying.',
     ask: 'Who goes?',
     answers: [
       { text: 'Nobody. The starter finishes what he started.', skills: { defense: 1, training: 1 }, leans: { pitching: 2, tradition: 1 }, badge: 'armsman' },
@@ -835,7 +835,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-empty-stands',
-    setup: 'Four hundred people in a park that holds four thousand.\nIt is a Tuesday and you are winning.',
+    setup: 'Four hundred people in a four thousand seat park. You are winning.',
     ask: 'Whose problem is that?',
     answers: [
       { text: 'Mine. Win enough and they come.', skills: { offense: 1, recruiting: 1 }, leans: { ambition: 3 }, ambition: 2, badge: 'gambler' },
@@ -846,7 +846,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-loyal-senior',
-    setup: 'A senior has been here four years, played in eleven games,\nand has not missed a practice or complained once.',
+    setup: 'Four years, eleven games, not one missed practice or complaint.',
     ask: 'What does he get?',
     answers: [
       { text: 'A start on senior day, and I do not make a speech about it.', skills: { training: 1, recruiting: 1 }, leans: { loyalty: 3, tradition: 1 }, badge: 'keeper' },
@@ -857,7 +857,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-analytics-man',
-    setup: 'A graduate student has been sending you spray charts\nnobody asked for. Two of them have been right.',
+    setup: 'A grad student sends spray charts nobody asked for. Two were right.',
     ask: 'What do you do with him?',
     answers: [
       { text: 'He gets a desk and a job title.', skills: { defense: 1, recruiting: 1 }, leans: { defense: 2, recruiting: 1 }, badge: 'methodical' },
@@ -868,7 +868,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-young-coach',
-    setup: 'You are the youngest man ever to sit in this chair.\nThree of the men you would be coaching are within four years of you.',
+    setup: 'Youngest man ever in this chair. Three players are nearly your age.',
     ask: 'Does that come up?',
     when: 'young',
     answers: [
@@ -880,7 +880,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-old-coach',
-    setup: 'You have done this a long time. The last two men hired\nin this conference are half your age and have laptops.',
+    setup: 'The last two men hired in this conference are half your age.',
     ask: 'What have you got that they have not?',
     when: 'old',
     answers: [
@@ -892,7 +892,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-heat',
-    setup: 'It is ninety-six degrees at first pitch and it will be\nninety-one at the last one. This is most of your season.',
+    setup: 'Ninety-six at first pitch, ninety-one at the last. Most of your season.',
     ask: 'How does that change anything?',
     when: 'warm',
     answers: [
@@ -904,7 +904,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-cold',
-    setup: 'You will practise indoors until the second week of March\nand play your first eleven games somewhere else.',
+    setup: 'Indoors until March. Your first eleven games are somewhere else.',
     ask: 'How do you build a season out of that?',
     when: 'cold',
     answers: [
@@ -916,7 +916,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-intentional-walk',
-    setup: 'First base open, two out, and their best hitter up\nwith a man on second in a one-run game.',
+    setup: 'First base open, two out. Their best hitter, man on second.',
     ask: 'Do you put him on?',
     answers: [
       { text: 'Yes. I would rather face anybody else on earth.', skills: { defense: 2 }, leans: { defense: 2, pitching: 1 }, badge: 'methodical' },
@@ -927,7 +927,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-hit-and-run',
-    setup: 'Man on first, one out, and a hitter who has struck out\ntwice already against a pitcher who is throwing strikes.',
+    setup: 'Man on first, one out. Your hitter has struck out twice already.',
     ask: 'Is anything on?',
     answers: [
       { text: 'Hit and run. Get him moving and take the double play away.', skills: { offense: 1, defense: 1 }, leans: { ambition: 2, defense: 1 }, badge: 'gambler' },
@@ -938,7 +938,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-redshirt',
-    setup: 'A freshman is your fifth-best arm. He would throw thirty\ninnings this year, or none, and be your best arm as a senior.',
+    setup: 'Thirty innings now as your fifth arm, or your best arm as a senior.',
     ask: 'Which one?',
     answers: [
       { text: 'None. Four years of him is worth more than thirty innings.', skills: { training: 2 }, leans: { development: 3 }, ambition: -1, badge: 'developer' },
@@ -949,7 +949,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-position-change',
-    setup: 'A shortstop who cannot stay at shortstop is the best\nathlete on your team. He does not think there is a problem.',
+    setup: 'Your best athlete cannot stay at short. He sees no problem.',
     ask: 'How does he end up in centre field?',
     answers: [
       { text: 'I show him the numbers and let him argue with them.', skills: { defense: 1, training: 1 }, leans: { defense: 2, development: 1 }, badge: 'methodical' },
@@ -960,7 +960,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-slow-start',
-    setup: 'You are 4-11. Nothing is obviously broken\nand you have looked at all of it twice.',
+    setup: 'You are 4-11. Nothing is broken. You have looked twice.',
     ask: 'What do you do this week?',
     answers: [
       { text: 'Change the lineup entirely. Something has to move.', skills: { offense: 2 }, leans: { ambition: 2, power: 1 }, ambition: 1, badge: 'gambler' },
@@ -971,7 +971,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-star-attitude',
-    setup: 'Your best player is your worst teammate.\nHe is not cruel, he is just not there for anybody.',
+    setup: 'Your best player is your worst teammate. Not cruel, just absent.',
     ask: 'Does anything change?',
     answers: [
       { text: 'He sits a game. Once. Everybody understands the rest of the year.', skills: { defense: 1, training: 1 }, leans: { tradition: 2, loyalty: 1 }, badge: 'hardnosed' },
@@ -982,7 +982,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-conference-vote',
-    setup: 'The league is voting on a rule you think is wrong.\nYours is the deciding vote and everybody will know how you used it.',
+    setup: 'Yours is the deciding vote, and everybody will know how you used it.',
     ask: 'How do you vote?',
     answers: [
       { text: 'The way I think is right, and I will say why out loud.', skills: { recruiting: 1, defense: 1 }, leans: { tradition: 3 }, badge: 'traditionalist' },
@@ -993,7 +993,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-first-round-arm',
-    setup: 'A high school arm nobody in the country can get\nhas asked you, specifically, for a plan on paper.',
+    setup: 'The arm nobody can get has asked you for a plan on paper.',
     ask: 'What is on the paper?',
     answers: [
       { text: 'Innings. Exactly how many, from week one, in writing.', skills: { defense: 1, training: 1 }, leans: { pitching: 2, development: 1 }, badge: 'methodical' },
@@ -1004,7 +1004,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-bench-clearing',
-    setup: 'Their pitcher has hit two of your men. The second one\nlooked deliberate and your dugout is on its feet.',
+    setup: 'Their pitcher has hit two of yours. The second looked deliberate.',
     ask: 'What happens?',
     answers: [
       { text: 'I get in front of them. Nobody on my team gets suspended for this.', skills: { defense: 1, training: 1 }, leans: { tradition: 2, defense: 1 }, badge: 'methodical' },
@@ -1015,7 +1015,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-quiet-freshman',
-    setup: 'A freshman has not spoken to anybody in six weeks.\nHe is a thousand miles from home and playing badly.',
+    setup: 'A freshman has not spoken in six weeks. A thousand miles from home.',
     ask: 'What do you do?',
     answers: [
       { text: 'I put him with a senior from his part of the country.', skills: { training: 1, recruiting: 1 }, leans: { loyalty: 3 }, badge: 'players' },
@@ -1026,7 +1026,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-money-question',
-    setup: 'A rival programme has offered your best assistant\nnearly what you make. You cannot match it.',
+    setup: 'A rival has offered your best assistant nearly what you make.',
     ask: 'What do you do?',
     answers: [
       { text: 'I tell the board to find it, and I mean it as an ultimatum.', skills: { recruiting: 1, offense: 1 }, leans: { ambition: 3 }, ambition: 2, badge: 'gambler' },
@@ -1037,7 +1037,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-eleven-inning',
-    setup: 'Eleventh inning, everybody has pitched, and the man\non the mound is a first baseman who threw in high school.',
+    setup: 'Eleventh, everybody has pitched, and a first baseman is warming.',
     ask: 'How do you play the twelfth?',
     answers: [
       { text: 'We are trying to win it this inning, by any means available.', skills: { offense: 2 }, leans: { ambition: 3 }, ambition: 2, badge: 'gambler' },
@@ -1048,7 +1048,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-summer-league',
-    setup: 'Your best hitter wants to play summer ball three states away\nfor a coach you do not know.',
+    setup: 'Your best hitter wants summer ball for a coach you do not know.',
     ask: 'What do you say?',
     answers: [
       { text: 'Go. Four hundred at-bats is four hundred at-bats.', skills: { training: 1, offense: 1 }, leans: { development: 2, power: 1 }, badge: 'developer' },
@@ -1059,7 +1059,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-nine-hole',
-    setup: 'Somebody has to hit ninth. You have a light-hitting\nshortstop and a freshman who might be your best hitter by May.',
+    setup: 'Somebody hits ninth: a light-hitting shortstop, or a freshman.',
     ask: 'Who is it?',
     answers: [
       { text: 'The freshman. Ninth is the best place to learn to hit here.', skills: { training: 2 }, leans: { development: 3 }, badge: 'developer' },
@@ -1070,7 +1070,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-alumni',
-    setup: 'The alumni association would like an hour of your week,\nevery week, for the rest of your time here.',
+    setup: 'The alumni want an hour of your week. Every week. For good.',
     ask: 'Do they get it?',
     answers: [
       { text: 'Yes. They were here before me and will be here after.', skills: { recruiting: 1, training: 1 }, leans: { tradition: 3 }, badge: 'traditionalist' },
@@ -1081,7 +1081,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-sign-stealing',
-    setup: 'You are fairly sure the team in the other dugout\nhas your signs. You have been fairly sure for two innings.',
+    setup: 'You are fairly sure they have your signs. Two innings sure.',
     ask: 'What do you do about it?',
     answers: [
       { text: 'Change them, say nothing, and give them one wrong one first.', skills: { defense: 1, offense: 1 }, leans: { ambition: 2, defense: 1 }, badge: 'gambler' },
@@ -1092,7 +1092,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-third-catcher',
-    setup: 'You are carrying three catchers because one is hurt,\nand it is costing you a bat on the bench every night.',
+    setup: 'Three catchers because one is hurt. It costs a bat every night.',
     ask: 'How long does that last?',
     answers: [
       { text: 'Until he is healthy. You never want to need a third catcher.', skills: { defense: 2 }, leans: { defense: 2, pitching: 1 }, badge: 'methodical' },
@@ -1103,7 +1103,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-last-out',
-    setup: 'Season over. Twenty-three men in a room that has\ngone very quiet, and you have one thing to say.',
+    setup: 'Season over. Twenty-three men, a very quiet room, one thing to say.',
     ask: 'What is it?',
     answers: [
       { text: 'Something about the four seniors, by name.', skills: { training: 1, recruiting: 1 }, leans: { loyalty: 3, tradition: 1 }, badge: 'keeper' },
@@ -1114,7 +1114,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-fifth-year',
-    setup: 'A senior can come back for a fifth year. He would start,\nand a freshman you signed to start would not.',
+    setup: 'A senior can come back and start. The freshman you signed would not.',
     ask: 'Do you take him back?',
     answers: [
       { text: 'Yes. He earned a fifth year and the freshman has four.', skills: { training: 1, defense: 1 }, leans: { loyalty: 3 }, ambition: -1, badge: 'keeper' },
@@ -1125,7 +1125,7 @@ export const INTERVIEW: readonly InterviewQuestion[] = [
   },
   {
     id: 'the-worst-loss',
-    setup: 'You have just lost in a way you will think about\nin the car, in the shower, and at three in the morning.',
+    setup: 'You have just lost in a way you will think about at three in the morning.',
     ask: 'Who hears about it?',
     answers: [
       { text: 'Nobody. It goes in the car with me and stays there.', skills: { defense: 2 }, leans: { tradition: 2, ambition: 1 }, badge: 'hardnosed' },
