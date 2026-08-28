@@ -18,6 +18,7 @@ import { Manage } from './screens/Manage.js';
 import { History } from './screens/History.js';
 import { Player } from './screens/Player.js';
 import { Program } from './screens/Program.js';
+import { PressRoom } from './screens/PressRoom.js';
 import { NewGame } from './screens/NewGame.js';
 import { StrategyScreen } from './screens/StrategyScreen.js';
 import { Placeholder } from './screens/Placeholder.js';
@@ -82,6 +83,7 @@ function AppBody(
   const unread = useDynasty((s) => unreadCount(s.inbox));
 
   const needsTeam = useDynasty((s) => s.needsTeam);
+  const pendingPress = useDynasty((s) => s.pendingPress);
   const phase = useDynasty((s) => s.phase);
   const bracket = useDynasty((s) => s.bracket);
   const live = useDynasty((s) => s.live);
@@ -483,6 +485,19 @@ function AppBody(
       </div>
     );
   }
+
+  /*
+    The room, before anything else on the screen.
+
+    Ahead of the offseason rail and the season frame both, because a press
+    conference is raised by something that has just happened and the screen
+    behind it has already moved on -- put it inside a tab and it becomes a
+    thing you can walk away from, which is the one shape it must not have.
+
+    It is still not a trap: SAY NOTHING is a real answer, costs nothing, and
+    spends the question.
+  */
+  if (pendingPress) return <PressRoom />;
 
   if (phase !== null) {
     return (

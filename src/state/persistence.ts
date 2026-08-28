@@ -33,6 +33,9 @@ const DB_NAME = 'playball';
 const STORE = 'dynasties';
 
 export interface SaveFile {
+  /** The season's press conferences so far, and the one still open. */
+  press?: unknown;
+  pendingPress?: unknown;
   schemaVersion: number;
   slot: string;
   name: string;
@@ -307,6 +310,9 @@ function db(): Promise<IDBPDatabase<PlayballDB>> {
 }
 
 export interface SaveExtras {
+  /** The season's press conferences so far, and the one still open. */
+  press?: unknown;
+  pendingPress?: unknown;
   phase?: unknown;
   /** The furthest step this career has reached. See `SaveFile`. */
   furthestPhase?: unknown;
@@ -388,6 +394,12 @@ export function buildSaveFile(
     // Where the offseason had got to. Widening `SaveExtras` alone was not
     // enough — this record is built field by field, so anything not named here
     // is silently dropped no matter what the type says it accepts.
+    // Stage 7 piece 8. Named here for the reason the comment above gives, and
+    // the press state is tested for presence rather than truth: an empty
+    // object is a real value meaning "asked nothing yet", and the truthiness
+    // idiom would drop it and let a resumed season start its eight again.
+    ...(extras.press !== undefined ? { press: extras.press } : {}),
+    ...(extras.pendingPress ? { pendingPress: extras.pendingPress } : {}),
     ...(extras.phase ? { phase: extras.phase } : {}),
     // Tested for presence rather than for truth, unlike every line around it.
     // Nought is a real value here — it means the offseason has only ever been
@@ -430,6 +442,9 @@ export async function saveDynasty(
 }
 
 export interface LoadedDynasty {
+  /** The season's press conferences so far, and the one still open. */
+  press?: unknown;
+  pendingPress?: unknown;
   season: SeasonState;
   year: number;
   userTeam: number;
@@ -514,6 +529,8 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     postseasonSeen: file.postseasonSeen ?? [],
     jobSearch: file.jobSearch ?? false,
     offers: file.offers ?? null,
+    press: file.press ?? {},
+    pendingPress: file.pendingPress ?? null,
     phase: file.phase ?? null,
     furthestPhase: file.furthestPhase ?? null,
     review: file.review ?? null,

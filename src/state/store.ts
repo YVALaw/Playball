@@ -192,6 +192,11 @@ const holesFor = (record: { team: { lineup: unknown[]; bench: unknown[]; rotatio
 import type { Region } from '../data/schools.js';
 import type { CultureEdge } from '../data/cultures.js';
 import { note, earnedBadges, type HabitKey } from '../engine/habits.js';
+import {
+  shouldAsk, pickPresser, settlePress, notePress, clearPress,
+  type PressState,
+} from '../engine/press.js';
+import { PRESSERS, type Presser, type PressTrigger, type PressAnswer } from '../data/pressers.js';
 import { MAX_BADGES, badgeOf } from '../data/badges.js';
 import { makeRng } from '../engine/rng.js';
 import {
@@ -545,6 +550,21 @@ export interface DynastyStore {
    * whole year in the worker. See the writers in `seasonNews`.
    */
   noteSeasonNews: () => void;
+
+  /*
+    The press conference, waiting to happen.
+
+    Stage 7 piece 8. Held as "which question, and why" rather than as a boolean,
+    because the card has to print the room's reason and because a save reloaded
+    mid-question must come back to the same one -- which it does, since the
+    question is derived rather than drawn. See `engine/press.ts`.
+  */
+  press: PressState;
+  pendingPress: { presser: Presser; trigger: PressTrigger } | null;
+  /** Say it, take what it costs, and close the room. */
+  answerPress: (answer: PressAnswer) => void;
+  /** Walk out without answering. Costs nothing; the question is spent. */
+  duckPress: () => void;
 
   /**
    * Begin a dynasty. Pass a team index to choose the job, and the profile the
@@ -1299,6 +1319,94 @@ const RUN_MARKS: readonly { at: number; won: boolean; title: string }[] = [
   { at: 9, won: false, title: 'Nine straight defeats' },
 ];
 
+/*
+  What the season just did that is worth being asked about.
+
+  Every trigger here is a fact the season already produced -- a streak it
+  already counts, a result it already recorded, a bracket it already settled.
+  Nothing is measured specially to feed the press, which is the rule that keeps
+  a press conference a consequence rather than a scheduled event.
+
+  Returns the first thing worth asking about, most important first: a season
+  ending outranks a trophy outranks a run outranks one night's result.
+*/
+function pressTriggerFor(store: DynastyStore): PressTrigger | null {
+  const { season, userTeam, coach } = store;
+  const me = season?.teams[userTeam];
+  if (!season || !me) return null;
+
+  // The letter got out. Once, and only while it is still news.
+  if (coach.caughtLooking) return 'caughtLooking';
+
+  const post = store.lastPostseason;
+  if (post) {
+    if (post.champion === userTeam
+      || post.regionChampions.includes(userTeam)
+      || post.conferenceChampions.includes(userTeam)) return 'trophy';
+    return 'knockedOut';
+  }
+
+  // A run, which the board and the room both notice at different lengths.
+  if (me.streak <= -4) return 'losingStreak';
+  if (me.streak >= 6) return 'winningStreak';
+
+  /*
+    One night against the odds, in either direction.
+
+    Read off prestige rather than off the RPI table, because the table moves all
+    year and the question is about who those two programs *are*. Twenty points
+    is roughly two stars, which is the gap where a result stops being a result
+    and starts being a story.
+  */
+  const last = season.results[season.results.length - 1];
+  if (last && (last.home === userTeam || last.away === userTeam)) {
+    const iAmHome = last.home === userTeam;
+    const themIndex = iAmHome ? last.away : last.home;
+    const them = season.teams[themIndex];
+    if (them) {
+      const iWon = iAmHome ? last.homeRuns > last.awayRuns : last.awayRuns > last.homeRuns;
+      const gap = them.prestige - me.prestige;
+      if (iWon && gap >= 20) return 'bigWin';
+      if (!iWon && gap <= -20) return 'badLoss';
+    }
+  }
+  return null;
+}
+
+/**
+ * The one worth raising, if the season has earned it and the coach is not sick
+ * of them yet.
+ *
+ * Returns it rather than writing it. The first version assigned straight onto
+ * the store the way `seasonNews` appends to the inbox, which reads naturally
+ * and does nothing: a plain field assignment is not a `set`, so the question
+ * existed in state and no screen ever heard about it.
+ */
+function pressToRaise(store: DynastyStore): { presser: Presser; trigger: PressTrigger } | null {
+  if (store.pendingPress) return null;
+  const { season, userTeam } = store;
+  const me = season?.teams[userTeam];
+  if (!season || !me) return null;
+  const trigger = pressTriggerFor(store);
+  if (!trigger) return null;
+  if (!shouldAsk(store.press, { trigger, gamesPlayed: me.gp })) return null;
+  /*
+    Mixed with the man's own name, so a second dynasty is not asked the same
+    questions in the same order as the first.
+
+    `WORLD_SEED` alone is what `earnedBadges` uses and it is the same number in
+    every career, which is fine for a threshold nobody sees and wrong for a
+    question the player reads. Cheap, derived, and it takes no draw.
+  */
+  let careerish = WORLD_SEED >>> 0;
+  for (let i = 0; i < store.coach.name.length; i++) {
+    careerish = Math.imul(careerish ^ store.coach.name.charCodeAt(i), 16777619) >>> 0;
+  }
+  const presser = pickPresser(trigger, store.press, careerish, store.year);
+  if (!presser) return null;
+  return { presser, trigger };
+}
+
 function seasonNews(store: DynastyStore): void {
   const { season, userTeam, year } = store;
   const me = season?.teams[userTeam];
@@ -1432,6 +1540,21 @@ let simGeneration = 0;
  * report.
  */
 let saveTicket = 0;
+
+/**
+ * The open question, back from a save.
+ *
+ * By id, so a rewritten pool does not strand a career on a sentence that no
+ * longer exists -- an unknown id simply comes back as no question pending,
+ * which costs the player one presser and nothing else.
+ */
+function restorePending(raw: unknown): { presser: Presser; trigger: PressTrigger } | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const { id, trigger } = raw as { id?: unknown; trigger?: unknown };
+  if (typeof id !== 'string' || typeof trigger !== 'string') return null;
+  const presser = PRESSERS.find((p) => p.id === id);
+  return presser ? { presser, trigger: trigger as PressTrigger } : null;
+}
 
 export const useDynasty = create<DynastyStore>((set, get) => ({
   season: null,
@@ -2516,6 +2639,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           review, and a man should not be tried twice for the same letter.
         */
         approaches: { tried: [], interest: [] },
+        // Eight a season means eight *this* season. The ids reset with it, so
+        // next year may ask a question this one already used.
+        press: clearPress(),
+        pendingPress: null,
         // Last winter's announcements, cleared with everything else. The action
         // that does this by hand lives with the other actions; it was pasted in
         // here as well, which re-declared it to itself on every year roll.
@@ -2607,9 +2734,60 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   clearReview: () => set({ lastReview: null }),
   inbox: [],
   post: (item) => set({ inbox: push(get().inbox, newItem(item)) }),
+  press: {},
+  pendingPress: null,
+
+  /*
+    What he said, and what it cost.
+
+    The prestige move goes through the same clamp the board's own verdict uses,
+    because a coach cannot talk his way past the ceiling any more than he can
+    win his way past it -- and a season of pressers is a personality, not a
+    second career ladder.
+  */
+  answerPress: (answer) => {
+    const { pendingPress, coach, season, userTeam, version } = get();
+    if (!pendingPress) return;
+    const me = season?.teams[userTeam];
+    const out = settlePress(answer, coach.badges ?? []);
+    set({
+      coach: {
+        ...coach,
+        prestige: Math.max(0, Math.min(100, coach.prestige + out.prestige)),
+        security: Math.max(0, Math.min(100, coach.security + out.security)),
+        // Answering it is the end of it. A man tried twice for the same letter
+        // is the fault the board review already refuses to commit.
+        caughtLooking: false,
+      },
+      press: notePress(get().press, pendingPress.presser.id, me?.gp ?? 0),
+      pendingPress: null,
+      version: version + 1,
+    });
+    void get().saveNow();
+  },
+
+  duckPress: () => {
+    const { pendingPress, coach, season, userTeam, version } = get();
+    if (!pendingPress) return;
+    // Saying nothing costs nothing and spends the question. It is a real
+    // option: a coach who does not want to answer tonight should be able not
+    // to, and the room moves on to somebody who will.
+    set({
+      coach: { ...coach, caughtLooking: false },
+      press: notePress(get().press, pendingPress.presser.id, season?.teams[userTeam]?.gp ?? 0),
+      pendingPress: null,
+      version: version + 1,
+    });
+    void get().saveNow();
+  },
+
   noteSeasonNews: () => {
     const before = get().inbox;
     seasonNews(get());
+    // On the same beat the wire is written, because both answer the same
+    // question -- what just happened that is worth telling you about.
+    const raised = pressToRaise(get());
+    if (raised) set({ pendingPress: raised });
     // One version bump for the whole scan rather than one per card, and none at
     // all when there was nothing to say — every caller is already re-rendering
     // for its own reasons and a scan that finds nothing must not add a frame.
@@ -3899,6 +4077,19 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         inbox: get().inbox,
         tutorials: get().seenTutorials,
         depth: get().depth,
+        /*
+          How many the room has had this season, and the one still open.
+
+          Both matter across a reload for the same reason: without `press` a
+          resumed season starts its eight again, and without the open question
+          a coach who closed the app mid-answer never gets asked. Stored as an
+          id rather than the question itself, so the pool can be rewritten
+          without stranding a save on a version of a sentence.
+        */
+        press: get().press,
+        pendingPress: get().pendingPress
+          ? { id: get().pendingPress!.presser.id, trigger: get().pendingPress!.trigger }
+          : null,
       });
       if (ticket === saveTicket) set({ saveState: 'saved' });
     } catch (e) {
@@ -4032,6 +4223,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       postseasonSeen: Array.isArray(loaded.postseasonSeen)
         ? (loaded.postseasonSeen as string[]).filter((k) => typeof k === 'string')
         : [],
+      // The season's press so far, and the question that was open. A save from
+      // before any of this has neither, which is a coach nobody has asked
+      // anything yet -- the correct starting state rather than a crash.
+      press: (loaded.press ?? {}) as PressState,
+      pendingPress: restorePending(loaded.pendingPress),
       jobSearch,
       offers,
       // Merged rather than replaced: what the player has learned is a fact
