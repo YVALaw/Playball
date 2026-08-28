@@ -148,6 +148,24 @@ export function Manage() {
     thing you are here for.
   */
   const [playing, setPlaying] = useState(false);
+
+  /*
+    Handing the dugout to your bench coach.
+
+    SIM THE REST was all or nothing, so a manager up nine in the sixth chose
+    between forty more taps and giving up the rest of the game unseen. Two
+    softer doors, which is what the plan asked for:
+
+      WATCH            he calls it, you watch it, the field animates and the
+                       log fills. Stoppable at any pitch.
+      TO THE NEXT      he calls it until something worth managing arrives, and
+      MOMENT           then hands it straight back.
+
+    Neither changes a single outcome. The bench coach submits the same default
+    call the screen already highlights, which is exactly what SIM THE REST has
+    always done -- this only decides how much of it you see and when it stops.
+  */
+  const [auto, setAuto] = useState<null | 'watch' | 'moment'>(null);
   useEffect(() => {
     if (!landing || !battedBall) return undefined;
     setPlaying(true);
@@ -156,6 +174,55 @@ export function Manage() {
     const timer = setTimeout(() => setPlaying(false), ms);
     return () => clearTimeout(timer);
   }, [landing?.x, landing?.y, battedBall, version]);
+
+  /*
+    What counts as a moment worth handing back for.
+
+    Deliberately conservative -- a handover that fires every half inning is a
+    handover nobody uses. Three things, and each is a real decision rather than
+    a change of scenery: a man in scoring position, a close game gone late, or
+    an arm past the budget the bar has been drawing all night.
+  */
+  const worthManaging = (): boolean => {
+    const p = live?.pending;
+    if (!p) return false;
+    // Second or third. `bases` is three booleans, not three nullable slots --
+    // written as a null check first, which is always true of a boolean, so
+    // every empty diamond counted as scoring position and the handover fired
+    // on the first pitch.
+    const inScoring = p.bases[1] || p.bases[2];
+    const margin = Math.abs((p.homeRuns ?? 0) - (p.awayRuns ?? 0));
+    const lateAndClose = p.inning >= 7 && margin <= 2;
+    const armGone = !!p.outing && p.outing.pitches > p.outing.budget;
+    return inScoring || lateAndClose || armGone;
+  };
+
+  /*
+    The bench coach, calling.
+
+    One call per tick, never two: the guard is `playing`, the same flag that
+    greys the buttons while a ball is in the air, so the coach waits out an
+    animation exactly like a person would. WATCH keeps a beat between calls so
+    there is something to watch; TO THE NEXT MOMENT does not, because nobody
+    wants to sit through the eleven plate appearances before the one they asked
+    for.
+  */
+  useEffect(() => {
+    if (auto === null || !live || live.over || playing) return undefined;
+    if (auto === 'moment' && worthManaging()) { setAuto(null); return undefined; }
+    const beat = auto === 'watch' ? 900 : 60;
+    const t = setTimeout(() => {
+      const cur = useDynasty.getState().live;
+      if (!cur || cur.over) { setAuto(null); return; }
+      const pick = cur.pending?.options.find((o) => o.available);
+      if (pick) submitTactic(pick.tactic);
+      else setAuto(null);
+    }, beat);
+    return () => clearTimeout(t);
+  }, [auto, playing, version, live?.over]);
+
+  // A finished game hands the dugout back on its own.
+  useEffect(() => { if (live?.over) setAuto(null); }, [live?.over]);
 
   // Who crossed the plate on the last play. The engine reports it as an advance
   // to base 4, which is the only record of a man scoring — he is off the bases
@@ -488,7 +555,7 @@ export function Manage() {
               // Off while the play is on the field, and off because the
               // situation forbids it, are two different greys: one comes back
               // in a second, the other is telling you why it cannot be done.
-              const live0 = o.available && !playing;
+              const live0 = o.available && !playing && auto === null;
               return (
               <button
                 key={o.tactic}
@@ -532,7 +599,20 @@ export function Manage() {
                   : live.bullpenAvailable.length === 0)}
               >{d.side === 'offense' ? 'PINCH HIT' : 'BULLPEN'}</Small>
             )}
-            <Small onClick={once(autoFinish)} disabled={playing}>SIM THE REST</Small>
+            {/* The bench coach's two doors, and the way to take the dugout
+                back. While he is calling, the only useful button is the one
+                that stops him -- so that is the only one shown. */}
+            {auto === null ? (
+              <>
+                <Small onClick={() => setAuto('watch')} disabled={playing}>WATCH</Small>
+                <Small onClick={() => setAuto('moment')} disabled={playing}>NEXT MOMENT</Small>
+                <Small onClick={once(autoFinish)} disabled={playing}>SIM THE REST</Small>
+              </>
+            ) : (
+              <Small onClick={() => setAuto(null)}>
+                {auto === 'watch' ? 'TAKE IT BACK' : 'STOP'}
+              </Small>
+            )}
             {/* The way out without ending anything, and it writes on the way.
                 Reported from testing: "going back to the desk from the
                 minigame should save the progress as it is at the moment we
