@@ -29,12 +29,24 @@ import { resetWorkload } from '../src/engine/workload.js';
 import type { Player } from '../src/engine/types.js';
 
 const YEARS = 30;
-const WORLDS = 12;
+const WORLDS = 10;
+/*
+  Which rung to start on.
 
-/** The weakest program in the world, which is the one worth asking about. */
+  One star is the floor of the country and answers "can the very worst program
+  ever win it", which turned out to be no -- nought of twelve reached Omaha in
+  thirty years. Two is the useful number, because two is what the job board
+  actually offers a new coach: the five openings a rookie sees are two and three
+  star programmes, so this is the climb a player really faces.
+*/
+const START_STARS = Number(process.env.STARS ?? 2);
+
+/** The weakest program at the rung being asked about. */
 function lowStarTeam(season: SeasonState): number {
-  let worst = 0;
-  for (const t of season.teams) {
+  const at = season.teams.filter((t) => prestigeStars(t.prestige) === START_STARS);
+  const pool = at.length > 0 ? at : season.teams;
+  let worst = pool[0]!.index;
+  for (const t of pool) {
     if (t.prestige < season.teams[worst]!.prestige) worst = t.index;
   }
   return worst;

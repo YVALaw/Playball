@@ -1837,3 +1837,42 @@ those two halves.** A probe written against `advanceOffseason` (both halves at
 once) refilled before emptying and the next season opened short — the engine
 threw `has an empty lineup slot`. The game's own order is correct; the hazard is
 for anything new that touches rosters.
+
+## O. How long the climb takes — measured August 28, 2026
+
+`tests/climb-probe.ts`. Asked directly: take a low-star school and report how
+long it takes to win the nationals. Answered headless over many worlds rather
+than by playing one career, because one career that won in year three says
+almost nothing and one that never won says less.
+
+**What it measures:** the weakest program at a given star level, run by the same
+automatic staff every other program gets, with stages 8, 9 and 10 live. It is
+the **floor**, not the ceiling — a real coach recruits deliberately, works the
+portal, keeps his players happy and grows his own skills, none of which this has.
+
+| Start | Reached Omaha | Won it | Never made a regional |
+|---|---|---|---|
+| 1 star, 12 careers × 30 seasons | **0/12** | 0/12 | 2/12 |
+| 2 star, 10 careers × 30 seasons | **5/10**, median year 13 | **0/10** | 0/10 |
+
+### The finding, and it is a balance question rather than a bug
+
+**Nobody won.** Twenty-two simulated careers, six hundred and sixty seasons, no
+national title. Half of the two-star careers reached Omaha and none of them won
+it; the one-star careers never got there at all.
+
+Some of that gap is real and wanted — the floor *should* be hard, and the
+coaching layers are supposed to be worth something. But a floor this hard is
+worth a decision rather than an assumption, because three things now push the
+same way:
+
+- **Prestige was deliberately made stickier** in stage 7 (§29), so a program
+  that climbs holds its gains — and so does everybody above it.
+- **The recruiting budget scales with prestige**, so the rich recruit better.
+- **Stage 10's portal cost scales with quality**, and a two-star budget buys
+  less of it.
+
+Worth checking before v1: whether a *played* career clears the bar the automatic
+one cannot, and by how much. If the coaching layers are worth ten years of
+climb, the design is right and the floor is just honest. If they are worth two,
+the ladder needs a rung.
