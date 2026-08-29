@@ -1898,3 +1898,61 @@ Worth checking before v1: whether a *played* career clears the bar the automatic
 one cannot, and by how much. If the coaching layers are worth ten years of
 climb, the design is right and the floor is just honest. If they are worth two,
 the ladder needs a rung.
+
+
+## P. The low-star climb — measured properly, August 29, 2026
+
+`tests/climb-store-probe.ts`. Drives the **store**, so the recruiting weeks
+actually run, and prints how many men the coached programme signs each year so
+the measurement voids itself if they ever stop. That guard exists because the
+previous harness (§O) silently signed nobody and produced three false findings.
+
+### The baseline
+
+A one-star programme, recruited each week by the same `aiTargets` the other
+ninety-five use — so "run competently", not "run by a player who never opens
+the screen". Six careers, twenty-four seasons, 676 recruits signed.
+
+| | |
+|---|---|
+| Prestige | 19 → ~26 by year ten → **~22 by year twenty-four** |
+| Wins | 10–12 of 45, flat, for a quarter of a century |
+| Reached Omaha | **0 of 6** |
+
+**It is a stable low equilibrium**, and the arithmetic is exact: 11 wins in 45
+is a .244 percentage, `seasonScore` returns ~24, prestige converges to 24 and
+stays. Two stars begins at 38. The bottom rung of the ladder is fourteen points
+above where a one-star programme can reach.
+
+### Two fixes tried and measured, both rejected
+
+**An overachievement ratchet** — prestige moving on wins above the board's ask
+rather than on raw record. Made it *worse* (prestige y24 fell to 15–22), and the
+reason is the useful part: a one-star programme is not overachieving. Its board
+asks for about fifteen and it wins eleven, so it is **missing** its target. You
+cannot reward a climb that is not happening.
+
+**Doubling the in-state pipeline** (`PIPELINE_EDGE` 0.25 → 0.55). Moved wins
+10→11 and prestige y24 to 19–29; one world of six climbed to 33 and 14 wins.
+Directionally right, far too weak to matter, and not worth shipping on its own.
+
+Both reverted.
+
+### Why they failed, and what would not
+
+The loop is roster → wins → prestige → recruits → roster, and both levers acted
+on the *last* link only. Five slightly better freshmen a year cannot move a
+45-game record when the other eighteen men are replacement level and the class
+graduates away. Anything that fixes this has to act on the size of the gap
+rather than on the margin:
+
+- **Reach, not fit.** `PIPELINE_REACH_BONUS` is one star. Two would let a
+  one-star programme chase four-star men *in its own state only* — still no
+  leapfrogging out of state, which is the stated constraint.
+- **Class weight.** A signed class is a handful of freshmen against a roster of
+  23. Fewer, better recruits per class would let one good year matter.
+- **Talent compression.** Narrow the spread between the best and worst rosters
+  so that eleven wins becomes fifteen.
+
+Each is league-wide and wants its own measured pass. Logged rather than guessed
+at, because three levers have now been tried and two of them were noise.
