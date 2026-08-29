@@ -1796,3 +1796,44 @@ reading a one-sample distribution shift should discount it the way I did not.
 - **Durability ratings**, deferred with "for now" attached — the honest upgrade
   path if pure chance reads as arbitrary in play.
 - **Two-way players** and **declining the DH**, both still stage-8 spillover.
+
+## N. Stage 10, the transfer portal — shipped August 28, 2026
+
+Both directions. Full write-up in `05-systems-reference.md` §32.
+
+### Decisions taken
+
+| Question | Answer |
+|---|---|
+| Where it sits | Between the draft and recruiting. Both steps before it are men leaving; recruiting comes after because you cannot shop for holes you have not found yet. |
+| Windows | One. |
+| Who enters | `flightRisk` off morale, plus being buried — so a departure is a promise somebody broke. |
+| Talking him round | Yes, out of the same budget, and dearer the unhappier he is. |
+| Currency | The recruiting budget, **widened 40 → 56** because it now pays for three things where it was fitted for two. |
+| How good | Better than average, not better than the top of the board. |
+| Rivals | Both directions, all ninety-five. |
+| Eligibility | Immediate. One move a career. |
+
+### What it cost, measured
+
+Clear rate 65.6% → 64.8%, prestige 56.2 → 56.3, turnover 8.2 → 8.4 chairs a
+year over thirty-five seasons. Noise — recruiting is close to zero-sum, so a
+league-wide budget rise mostly moves everybody together.
+
+### Two bugs
+
+- **Men evaporated.** The first version had rivals losing players and signing
+  none, so everybody who entered went off one roster and onto nobody's. Fixed by
+  having the other ninety-five shop it, which is what "both directions" meant.
+- **The portal could not be left.** No pinned action on the screen, so the
+  offseason stopped there. No test caught it — every test drives `nextPhase`
+  directly and never has to find a button. Two minutes of actually playing did.
+
+### An ordering constraint worth knowing
+
+Departures run on the way into the draft, the portal one step later, and
+`fillRosters` at the year roll. **Anything that removes players must sit between
+those two halves.** A probe written against `advanceOffseason` (both halves at
+once) refilled before emptying and the next season opened short — the engine
+threw `has an empty lineup slot`. The game's own order is correct; the hazard is
+for anything new that touches rosters.

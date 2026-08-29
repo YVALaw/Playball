@@ -410,13 +410,13 @@ position competence, the depth chart, real DH handling, redshirts, position
 changes and academic eligibility. Two-way players were split out by decision,
 on the same reasoning that split stage 5.
 
-Nine stages shipped. Stage 9 landed August 28 2026 — injuries, workload,
-morale, playing-time expectations and the captain — which also closes the
-channel the press room was waiting on.
+Ten stages shipped, the last three on August 28 2026: the roster (8), players
+as people (9) and the transfer portal (10). `flightRisk` was written in stage 9
+and read by nothing until stage 10 needed it, which was the cheaper order.
 
-The next is stage 10, the transfer portal. It has a head start: morale already
-computes a flight risk that nothing reads yet, written now rather than bolted
-on later against a system already shipped.
+The next is stage 11, the economy and the staff it pays for. Two things are
+already waiting on it by name: "a word with him" is deliberately not money, and
+the recruiting budget has now been widened twice by hand.
 
 ## The budgets
 

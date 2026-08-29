@@ -567,11 +567,20 @@ free buff on your best player.
 
 **Exit:** a season has attrition, and a clubhouse that notices.
 
-## Stage 10 · The transfer portal
+## Stage 10 · The transfer portal — **SHIPPED August 28 2026**
 
 **Size:** medium · **Needs:** stages 7 and 8
 
-Both directions or it is not a portal.
+Both directions or it is not a portal. That one sentence was the whole
+specification and it held: a portal you can only sign from is a shop, a portal
+you can only lose to is a tax.
+
+Full write-up in `05-systems-reference.md` §32. Decisions: one window, between
+the draft and recruiting; men enter off `flightRisk` and being buried, so a
+departure is a promise somebody broke; you can talk a man round out of the same
+budget; one move a career and immediately eligible; rivals shop it too; the
+recruiting budget goes 40 to 56 because it now pays for three things where it
+was fitted for two.
 
 ## Stage 11 · The economy, and the staff it pays for
 

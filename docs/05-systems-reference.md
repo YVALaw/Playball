@@ -5614,6 +5614,76 @@ He **damps swings in both directions and makes nobody happy**. That distinction
 is the whole design: a captain is not a morale bonus, he is the reason a bad
 April does not become a bad year.
 
+## 32. The transfer portal — **STAGE 10, SHIPPED**
+
+The plan was one sentence — *both directions or it is not a portal* — and it was
+the whole specification.
+
+### 32.1 It is the bill for stage 9
+
+Nothing here invents a reason to leave. `flightRisk` has been computed off
+morale since stage 9 and read by nobody, waiting for this, and morale is driven
+by playing time against what a man was *told*. So a man in the portal is a
+promise somebody broke.
+
+The corollary is the part worth defending: **a coach who keeps his word mostly
+does not lose people**. There is a test for exactly that — a roster of men who
+are settled and playing loses nobody at all. If the portal ever reads as a
+lottery, the fault is in morale rather than here.
+
+The second door is being buried: a man well below what he was told goes
+sometimes whatever his mood says, which is the case college coaches actually
+lose people to.
+
+### 32.2 Rivals shop it, and leaving that out was a real bug
+
+The first version had the other ninety-five losing men and signing none, so
+everybody who entered simply evaporated — off the roster he left, onto nobody's,
+out of the league. Wrong twice: the pool you sign from should be other programs'
+broken promises, and a man still playing college baseball somewhere must not
+turn up eligible for a hall of fame two steps later.
+
+Cheapest-first, at most two apiece, so one rich program cannot hoover the board.
+Whoever is left after ninety-five staffs have shopped has genuinely left college
+baseball, which is a real thing that happens to transfers.
+
+### 32.3 Where it sits, and what moved to make room
+
+Between the draft and recruiting. Both of the steps before it are men *leaving* —
+the draft takes the ones a club wanted, the portal the ones you gave a reason to
+go — and recruiting comes after because a coach who has not found out who walked
+out cannot know what he is shopping for.
+
+Inserting a phase moved two things that had been riding on the draft→recruiting
+boundary: the draft board's own settling, and the hall of fame ballot. Both were
+moved back to the draft's boundary rather than left where they landed. A man
+sitting 'pending' on the board while the coach works the portal is a decision
+the game is pretending is still open, and the hall's own comment says "when the
+draft settles".
+
+### 32.4 The budget, widened as asked
+
+`RECRUITING_BUDGET` goes 40 → 56. This pool has always paid for the class and
+for keeping a man the draft took; the portal makes a third claim on it in both
+directions, and a third claim on money fitted for two is not a harder decision,
+it is a thinner one. Reported in those terms: too little for too much.
+
+Measured league-wide over thirty-five years: clear rate 65.6% → 64.8%, prestige
+56.2 → 56.3, turnover 8.2 → 8.4 chairs a year. Noise, because recruiting is
+close to zero-sum — everybody got more and the prospect pool did not grow.
+
+### 32.5 The bug only playing it could find
+
+**The portal screen had no way out.** Every other offseason step supplies its own
+pinned action; this one shipped without one, so the rail reached the portal and
+stopped — the offseason could not be finished at all.
+
+No test caught it and no test would have: every test in this repo drives
+`nextPhase` directly and never has to find a button. It surfaced within two
+minutes of actually playing a season. That is the argument for playing a stage
+before calling it done, and it is the third time this project has been paid for
+doing so.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code
