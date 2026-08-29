@@ -16,6 +16,8 @@ import { FixedHeader } from '../Sticky.js';
 import { depthAt, startersFrom, SPOTS, available, squad } from '../../engine/depthChart.js';
 import { positionPenalty, secondaryPositions } from '../../engine/positions.js';
 import { standing, gradesOf } from '../../engine/eligibility.js';
+import { captainOf, candidates, roomsChoice } from '../../engine/captains.js';
+import { handles } from '../../state/depth.js';
 import { overallOf } from '../../engine/ratings.js';
 import type { Hitter, Position } from '../../engine/types.js';
 
@@ -34,6 +36,9 @@ export function DepthChart() {
   const version = useDynasty((s) => s.version);
   const moveDepth = useDynasty((s) => s.moveDepth);
   const openPlayer = useDynasty((s) => s.openPlayer);
+  const nameCaptain = useDynasty((s) => s.nameCaptain);
+  const clearCaptain = useDynasty((s) => s.clearCaptain);
+  const namesCaptain = useDynasty((s) => handles(s.depth, 'captains'));
   const [open, setOpen] = useState<Position | null>(null);
   void version;
 
@@ -43,6 +48,9 @@ export function DepthChart() {
   const men = squad(team.team);
   const out = men.filter((p) => !available(p, day));
 
+  const leader = captainOf(team.team);
+  const able = candidates(team.team);
+  const pick = roomsChoice(team.team);
   const spots = SPOTS;
 
   return (
@@ -87,6 +95,77 @@ export function DepthChart() {
           So it ships with them. A toggle here today would be a control that
           changes nothing, and this codebase has spent a week deleting those.
         */}
+        {/*
+          The captain, above the chart because he is about the room rather than
+          about a position.
+
+          The room's own choice is printed beside the decision rather than
+          applied, so ignoring it is a visible thing a coach did. And only men
+          with the makeup for it appear at all -- without that gate, naming a
+          captain is a free buff on your best player and the answer is the same
+          man every year.
+        */}
+        {namesCaptain && (
+          <div style={{ marginBottom: 10, padding: '9px 11px', background: 'var(--paper)' }}>
+            <div className="label">THE CAPTAIN</div>
+            {leader ? (
+              <>
+                <div style={{
+                  marginTop: 3, font: "700 calc(13px * var(--ts)) var(--display)",
+                  textTransform: 'uppercase',
+                }}>{leader.name}</div>
+                <div style={{
+                  marginTop: 2, font: "400 calc(11px * var(--ts))/1.45 var(--body)",
+                  color: 'var(--dim)',
+                }}>
+                  He steadies the room. He will not make anybody happy — he stops
+                  a bad month becoming a bad year.
+                </div>
+                <button
+                  className="tap"
+                  onClick={clearCaptain}
+                  style={{
+                    marginTop: 8, width: '100%', padding: '8px 11px', minHeight: 38,
+                    background: 'transparent', border: '1px solid rgba(28,36,48,.28)',
+                    font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.11em',
+                    color: 'var(--dim)',
+                  }}
+                >STAND HIM DOWN</button>
+              </>
+            ) : (
+              <>
+                <div style={{
+                  marginTop: 3, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)",
+                }}>
+                  {able.length > 0
+                    ? 'Nobody wears it. These are the men the room would follow.'
+                    : 'Nobody in this room has the makeup for it yet.'}
+                </div>
+                <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {able.slice(0, 4).map((c) => (
+                    <button
+                      key={c.id}
+                      className="tap"
+                      onClick={() => nameCaptain(c.id)}
+                      style={{
+                        textAlign: 'left', padding: '8px 10px', minHeight: 38,
+                        background: 'var(--field)',
+                        border: `1px solid ${c.id === pick?.id ? 'var(--you)' : 'rgba(28,36,48,.24)'}`,
+                        font: "400 calc(11.5px * var(--ts)) var(--body)",
+                      }}
+                    >
+                      {c.name} · {c.classYear}
+                      {c.id === pick?.id && (
+                        <span style={{ color: 'var(--you)' }}> · THE ROOM WOULD PICK HIM</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {spots.map((spot) => {
           const order = depthAt(team.team, spot);
           const starter = nine[spot];

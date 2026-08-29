@@ -13,7 +13,10 @@ import { handles } from '../../state/depth.js';
 import { standing, gradesOf, WORDS_A_SEASON, AT_RISK } from '../../engine/eligibility.js';
 import { canRedshirt, MAX_REDSHIRTS, redshirtCount } from '../../engine/redshirt.js';
 import { secondaryPositions } from '../../engine/positions.js';
-import { chartFor, squad } from '../../engine/depthChart.js';
+import { chartFor, squad, available } from '../../engine/depthChart.js';
+import { isHurt, prognosis } from '../../engine/injury.js';
+import { legWeariness } from '../../engine/workload.js';
+import { mood, promiseOf, squadRanks } from '../../engine/morale.js';
 import { overallOf } from '../../engine/ratings.js';
 import type { Hitter, Player as AnyPlayer, Position } from '../../engine/types.js';
 
@@ -38,6 +41,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   const wordsUsed = useDynasty((s) => s.wordsUsed);
   const wordWith = useDynasty((s) => s.wordWith);
   const setRedshirt = useDynasty((s) => s.setRedshirt);
+  const restMan = useDynasty((s) => s.restMan);
   const changePosition = useDynasty((s) => s.changePosition);
   const version = useDynasty((s) => s.version);
   // A career that asked its staff to decide who sits does not get the button.
@@ -96,8 +100,64 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
     return null;
   })();
 
+  const hurtNow = isHurt(p, season.dayIndex);
+  const feeling = mood(p);
+  const rank = squadRanks(team).get(p.id) ?? 20;
+  const resting = !hurtNow && !available(p, season.dayIndex);
+  const tired = legWeariness(p);
+
   return (
     <>
+      {/* The trainer, first, because it is the thing that decides whether he
+          is playing at all. */}
+      {(hurtNow || resting) && (
+        <>
+          <div className="label" style={{ margin: '14px 0 6px' }}>THE TRAINER</div>
+          <div style={{
+            padding: '9px 11px', background: 'var(--paper)',
+            borderLeft: '3px solid var(--clay)',
+          }}>
+            <div style={{
+              font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.12em',
+              color: 'var(--clay)',
+            }}>{hurtNow ? String((p as { hurt?: string }).hurt ?? 'hurt').toUpperCase() : 'RESTED'}</div>
+            <div style={{
+              marginTop: 3, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)",
+            }}>
+              {hurtNow
+                ? `He is ${prognosis(p, season.dayIndex)}.`
+                : 'You are keeping him off his feet. He is available again shortly.'}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* How he is, and what he was told he would be. */}
+      <div className="label" style={{ margin: '14px 0 6px' }}>THE ROOM</div>
+      <div style={{ padding: '9px 11px', background: 'var(--paper)' }}>
+        <div style={{
+          font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.12em',
+          color: feeling === 'unhappy' || feeling === 'restless' ? 'var(--clay)' : 'var(--win)',
+        }}>{feeling.toUpperCase()}</div>
+        <div style={{
+          marginTop: 3, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)",
+        }}>
+          He {promiseOf(p, rank)}.
+          {tired > 0.5 && ' He has played a great many days in a row.'}
+        </div>
+        {!hurtNow && !resting && tired > 0.35 && mine && (
+          <button
+            className="tap"
+            onClick={() => restMan(p.id, 3)}
+            style={{
+              marginTop: 8, width: '100%', padding: '9px 11px', minHeight: 40,
+              background: 'var(--field)', border: '1px solid rgba(28,36,48,.32)',
+              font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.11em',
+            }}
+          >GIVE HIM THREE DAYS</button>
+        )}
+      </div>
+
       <div className="label" style={{ margin: '14px 0 6px' }}>THE CLASSROOM</div>
       <div style={{
         padding: '9px 11px', background: 'var(--paper)',
