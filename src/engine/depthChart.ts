@@ -251,10 +251,21 @@ export function coverFor(
       cover = candidate;
       break;
     }
+    /*
+      He plays hurt, because there is nobody left.
+
+      The first version dropped him and handed back a short card, which the
+      engine has never had to consider and which surfaced the moment injuries
+      went league-wide: "Dubuque River Riverboats has an empty lineup slot."
+
+      Fielding eight is not a thing that happens in baseball. A program with
+      five men down runs somebody out there who should not be out there, and
+      that is both the truthful answer and the one the rest of the engine can
+      actually play. The cost lands where it should -- on the coach who has run
+      out of players.
+    */
     if (cover) { used.add(cover.id); out.push(cover); }
+    else { used.add(man.id); out.push(man); }
   }
-  // Only hand back a card that is actually a card. A roster too thin to field
-  // nine is a state the rest of the engine has never had to consider, and the
-  // honest answer is to play the men who are fit rather than to invent one.
-  return out.length === base.length ? out : base.filter((p) => available(p, day));
+  return out;
 }

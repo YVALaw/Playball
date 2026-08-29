@@ -12,6 +12,10 @@ import {
 } from './achievements.js';
 import { coverFor } from './depthChart.js';
 import { atRisk, failsThisWeek, suspend } from './eligibility.js';
+import { hurtsToday, hurt } from './injury.js';
+import { started } from './morale.js';
+import { strainMultiplier, played, rested, threw } from './workload.js';
+import { available } from './depthChart.js';
 import { makeTeam, reserveNames, resetNames } from './players.js';
 import { overallOf } from './ratings.js';
 import { initialPrestige } from './program.js';
@@ -662,6 +666,17 @@ export interface SeasonState {
    */
   classroom?: { id: PlayerId; name: string; day: number }[];
   /**
+   * Who got hurt, for the coached program, so the store can post a card
+   * without having been watching. Same shape and same reason as `classroom`.
+   */
+  trainer?: { id: PlayerId; name: string; what: string; days: number; day: number }[];
+  /**
+   * The world's own seed, kept so anything derived rather than drawn has
+   * something stable to derive *from*. Optional: a save written before stage 9
+   * has none, and everything reading it falls back to nought.
+   */
+  seed?: number;
+  /**
    * What your players did, year by year, kept after the season is gone.
    *
    * The statistics live in maps that are wiped every June, so a junior's
@@ -1070,6 +1085,17 @@ export function createSeason(
   // out makes a second season in the same process generate different players.
   resetNames();
 
+  /*
+    The world's own number, taken before a single draw.
+
+    Anything derived rather than drawn needs something stable to derive *from*,
+    and until stage 9 every such thing reached for a module constant. That was
+    fine for a threshold nobody sees and wrong for an injury: two dynasties in
+    the same build would break the same men in the same weeks. Read here rather
+    than passed in, because the generator already knows and nobody else does.
+  */
+  const worldSeed = rng.state?.() ?? 0;
+
   const teams: TeamRecord[] = [];
   for (const conf of conferences) {
     for (const def of conf.schools) {
@@ -1103,6 +1129,7 @@ export function createSeason(
     results: [],
     boxScores: {},
     captureBoxFor: null,
+    seed: worldSeed,
     careers: {},
     careerTotals: new Map(),
     // A brand new dynasty opens with the real marks already standing, so the
@@ -1166,6 +1193,11 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
     postBatting: new Map(),
     postPitching: new Map(),
     fielding: new Map(),
+    // The world's own number carries forward for as long as the world does. It
+    // is what the derived-not-drawn systems -- injuries, the classroom, the
+    // press pool -- hang off, and a dynasty that lost it in year two would
+    // start breaking different men for no reason a player could see.
+    ...(prev.seed === undefined ? {} : { seed: prev.seed }),
     // The book is the one thing here that is not about a season. It carries
     // forward for as long as the dynasty does, seeded if this save predates it.
     records: prev.records ?? seededBook(),
@@ -1517,6 +1549,25 @@ export function playGame(
   const homeLineup = coverFor(home.team, homeRested ?? home.team.lineup, season.dayIndex);
   const awayLineup = coverFor(away.team, awayRested ?? away.team.lineup, season.dayIndex);
 
+  /*
+    A day in the legs, for the men who played and the men who did not.
+
+    Here rather than inside the game because it is a fact about the season
+    rather than about the nine innings: a man who started is a day further into
+    his spring whatever he did in it. Costs one pass over two rosters, takes no
+    draw, and is what makes the injury roll above respond to a coach running
+    somebody into the ground.
+  */
+  for (const [rec, card] of [[home, homeLineup], [away, awayLineup]] as const) {
+    const playing = new Set(card.map((p) => p.id));
+    for (const p of [...rec.team.lineup, ...rec.team.bench]) {
+      // Two different counts, both needed: `played` is the run of consecutive
+      // days that tires him, `started` is the season total the promise is
+      // measured against in June.
+      if (playing.has(p.id)) { played(p); started(p); } else rested(p);
+    }
+  }
+
   const result = simGame(home.team, away.team, season.rng, {
     engine: season.config.engine,
     homeStarter: opts.homeSlot ?? slot,
@@ -1536,6 +1587,19 @@ export function playGame(
     verbose: opts.capture ?? false,
     playEvents: opts.capture ?? false,
   });
+  /*
+    And a season in the arm, off what the game just recorded rather than off an
+    estimate. `fatigueMultiplier` is what a man spends inside one outing;
+    this is what he carries into the next one.
+  */
+  for (const side of [result.home, result.away]) {
+    // Keyed by name, which is how `TeamState` keeps them; the line carries the
+    // player itself, so the name is only the key and never the identity.
+    for (const line of side.pitching.values()) {
+      threw(line.player, line.outs);
+    }
+  }
+
   if (opts.capture) opts.onCapture?.(result);
 
   return recordResult(season, homeIndex, awayIndex, result, opts);
@@ -1839,6 +1903,45 @@ export function simNextDay(season: SeasonState, opts: DayOptions = {}): GameSumm
         if (!atRisk(p) || !failsThisWeek(p, season.year ?? 0, week)) continue;
         suspend(p, season.dayIndex);
         (season.classroom ??= []).push({ id: p.id, name: p.name, day: season.dayIndex });
+      }
+    }
+  }
+
+  /*
+    The trainer's room, every day, for everybody in the country.
+
+    League-wide, which is the opposite of the call the classroom got and the
+    right one: nobody can see another program's grades, but a rival losing his
+    ace is visible, it changes the team you are about to play, and a league
+    where only the coached program breaks down is lying to you.
+
+    It runs over the men who are actually about to play rather than over whole
+    rosters, because that is what an injury is -- something that happens on the
+    field, not something that happens to a name in a list. Tired men are
+    likelier to go, which is what makes resting somebody a decision rather than
+    a courtesy.
+
+    Takes no draw. `hurtsToday` is derived from the man, the day and the world,
+    so the numbers below move because men miss games and not because the stream
+    shifted underneath everything.
+  */
+  for (const g of day.games) {
+    for (const side of [g.home, g.away]) {
+      const rec = season.teams[side];
+      if (!rec) continue;
+      for (const p of rec.team.lineup) {
+        if (!available(p, season.dayIndex)) continue;
+        const going = hurtsToday(
+          p, season.dayIndex, season.seed ?? 0, strainMultiplier(p), season.year ?? 0,
+        );
+        if (!going) continue;
+        hurt(p, season.dayIndex, going.what, going.days);
+        if (side === season.captureBoxFor) {
+          (season.trainer ??= []).push({
+            id: p.id, name: p.name, what: going.what,
+            days: going.days, day: season.dayIndex,
+          });
+        }
       }
     }
   }

@@ -208,6 +208,12 @@ import {
   canRedshirt, redshirt, unRedshirt, redshirtCount, MAX_REDSHIRTS,
 } from '../engine/redshirt.js';
 import { movePosition, settleIn, secondaryPositions } from '../engine/positions.js';
+import { healUp, isHurt, prognosis } from '../engine/injury.js';
+import { resetWorkload, legWeariness } from '../engine/workload.js';
+import {
+  settleMood, setMood, squadRanks, mood, moodOf, promiseOf, flightRisk,
+} from '../engine/morale.js';
+import { captainOf, candidates, roomsChoice, appoint, standDown, canLead } from '../engine/captains.js';
 import { MAX_BADGES, badgeOf } from '../data/badges.js';
 import { makeRng } from '../engine/rng.js';
 import {
@@ -591,6 +597,18 @@ export interface DynastyStore {
   setRedshirt: (id: PlayerId, on: boolean) => boolean;
   /** Move him to a new position for good. */
   changePosition: (id: PlayerId, to: Position) => boolean;
+
+  /*
+    Stage 9. One captain, and a man you can sit down.
+
+    Both act on the coached program only, like everything the coach does. The
+    injuries themselves are league-wide -- see `engine/injury.ts` -- because a
+    rival losing his ace is a fact about the game you are about to play.
+  */
+  nameCaptain: (id: PlayerId) => boolean;
+  clearCaptain: () => void;
+  /** Sit him for a stretch, to take the miles out of his legs. */
+  restMan: (id: PlayerId, days: number) => boolean;
   /** Say it, take what it costs, and close the room. */
   answerPress: (answer: PressAnswer) => void;
   /** Walk out without answering. Costs nothing; the question is spent. */
@@ -1471,6 +1489,28 @@ function classroomNews(store: DynastyStore): void {
       title: `${row.name} is ineligible`,
       body: 'He is short of where he needs to be in the classroom and misses '
         + 'the week. Whoever is next on the depth chart plays.',
+      link: { to: 'player', id: row.id },
+    });
+  }
+}
+
+/*
+  The trainer's room, read off what the season already did.
+
+  Same shape and same reason as `classroomNews`: the engine writes down who
+  went and when, so a season simulated in one press still owes the coach the
+  news. Keyed on the man and the day, so it cannot post twice.
+*/
+function trainerNews(store: DynastyStore): void {
+  const { season, year } = store;
+  for (const row of season?.trainer ?? []) {
+    store.post({
+      kind: 'season', year,
+      key: `hurt-${row.id}-${row.day}`,
+      title: `${row.name} is hurt`,
+      body: `${row.what.charAt(0).toUpperCase()}${row.what.slice(1)}. `
+        + `${row.days >= 150 ? 'He is done for the season.' : `About ${row.days} days.`} `
+        + 'The next man on the depth chart plays.',
       link: { to: 'player', id: row.id },
     });
   }
@@ -2648,13 +2688,41 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       */
       // Last season's absences, cleared with the season that produced them.
       delete rolled.classroom;
+      delete rolled.trainer;
       const mineNow = rolled.teams[get().userTeam];
       if (mineNow) {
         const men = [
           ...squad(mineNow.team), ...mineNow.team.rotation, ...mineNow.team.bullpen,
         ];
+        /*
+          What a season did to the men, settled once, in June.
+
+          The mood goes first because it reads the season that just finished --
+          how often he actually started against what he was told he would be --
+          and everything under it wipes the counters that answer.
+        */
+        const record = get().season?.teams[get().userTeam];
+        const played = (record?.w ?? 0) + (record?.l ?? 0);
+        const winPct = played > 0 ? (record?.w ?? 0) / played : 0.5;
+        const ranks = squadRanks(mineNow.team);
+        const leader = captainOf(mineNow.team);
+
         for (const p of men) {
+          setMood(p, settleMood(p, {
+            starts: (p as Player & { starts?: number }).starts ?? 0,
+            games: played,
+            squadRank: ranks.get(p.id) ?? 20,
+            winPct,
+            movedUnwillingly: (p as Player & { movedFrom?: string }).movedFrom !== undefined,
+            damped: leader !== null,
+          }));
+          delete (p as Player & { starts?: number }).starts;
+
           driftGrades(p, get().year + 1);
+          // A winter heals everything, which is why a torn ligament is a
+          // season rather than a career -- these are nineteen year olds.
+          healUp(p);
+          resetWorkload(p);
           delete (p as Player & { outUntil?: number }).outUntil;
           if (p.type === 'hitter') settleIn(p as Hitter);
         }
@@ -2857,6 +2925,57 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     return true;
   },
 
+  nameCaptain: (id) => {
+    const { season, userTeam, version } = get();
+    const rec = season?.teams[userTeam];
+    if (!rec) return false;
+    const man = [...squad(rec.team), ...rec.team.rotation, ...rec.team.bullpen]
+      .find((p) => p.id === id);
+    if (!man || !appoint(rec.team, man)) return false;
+    set({ version: version + 1 });
+    get().post({
+      kind: 'season', year: get().year,
+      title: `${man.name} is your captain`,
+      body: 'The room has somebody to look at when it goes badly. He will not '
+        + 'make anybody happy; he will stop a bad month becoming a bad year.',
+      link: { to: 'player', id: man.id },
+    });
+    void get().saveNow();
+    return true;
+  },
+
+  clearCaptain: () => {
+    const { season, userTeam, version } = get();
+    const rec = season?.teams[userTeam];
+    if (!rec) return;
+    standDown(rec.team);
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  restMan: (id, days) => {
+    const { season, userTeam, version } = get();
+    const rec = season?.teams[userTeam];
+    if (!season || !rec) return false;
+    const man = squad(rec.team).find((p) => p.id === id);
+    if (!man) return false;
+    // Never over a man who is already out; resting the injured is not a
+    // decision, it is a no-op wearing one's clothes.
+    if (!available(man, season.dayIndex)) return false;
+    /*
+      A day off is not an injury, so it is written the same way and read the
+      same way and says something else. The depth chart promotes behind him
+      exactly as it would for a hamstring -- which is the point of having built
+      the chart first.
+    */
+    const m = man as Player & { outUntil?: number; why?: 'academic' | 'injury' };
+    m.outUntil = season.dayIndex + days;
+    delete m.why;
+    set({ version: version + 1 });
+    void get().saveNow();
+    return true;
+  },
+
   moveDepth: (spot, id, delta) => {
     const { season, userTeam, version } = get();
     const rec = season?.teams[userTeam];
@@ -2953,6 +3072,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   noteSeasonNews: () => {
     const before = get().inbox;
     classroomNews(get());
+    trainerNews(get());
     seasonNews(get());
     // On the same beat the wire is written, because both answer the same
     // question -- what just happened that is worth telling you about.

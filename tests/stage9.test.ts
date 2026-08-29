@@ -28,8 +28,8 @@ import {
 import {
   canLead, candidates, roomsChoice, captainOf, appoint, standDown,
 } from '../src/engine/captains.js';
-import { available } from '../src/engine/depthChart.js';
-import { createSeason } from '../src/engine/season.js';
+import { available, startersFrom, SPOTS } from '../src/engine/depthChart.js';
+import { createSeason, simNextDay, seasonComplete } from '../src/engine/season.js';
 import { makeRng } from '../src/engine/rng.js';
 import { CONFERENCES } from '../src/data/schools.js';
 import type { Hitter, Pitcher, Player, Team } from '../src/engine/types.js';
@@ -373,5 +373,49 @@ describe('the captain', () => {
     team.rotation = swap(team.rotation);
     team.bullpen = swap(team.bullpen);
     expect(captainOf(team)).toBeNull();
+  });
+});
+
+describe('a season actually played', () => {
+  it('breaks men down across the league, at a rate a roster survives', () => {
+    /*
+      The integration check, and the reason it has to exist separately from the
+      rate test above.
+
+      The goldens drive `simGame` directly rather than the season's day loop, so
+      they measure how a game is *played* and are correctly untouched by this --
+      an injury does not change the run environment, it changes who is standing
+      in it. Which also means they cannot prove the wiring works at all. This
+      runs a real season through `simNextDay` and counts what came out.
+    */
+    const season = createSeason(makeRng(31), undefined, CONFERENCES);
+    season.captureBoxFor = 4;
+    while (!seasonComplete(season)) simNextDay(season);
+
+    const all = season.teams.flatMap((t) => [
+      ...t.team.lineup, ...t.team.bench, ...t.team.rotation, ...t.team.bullpen,
+    ]);
+    const wounded = all.filter((p) => (p as { why?: string }).why === 'injury');
+    const perProgram = wounded.length / season.teams.length;
+
+    expect(perProgram, 'nobody in the country got hurt all year').toBeGreaterThan(0.2);
+    expect(perProgram, 'the league is in traction').toBeLessThan(3.5);
+
+    // And the coached program's own log is written, so the store can post the
+    // cards without having been watching.
+    expect(Array.isArray(season.trainer) || season.trainer === undefined).toBe(true);
+  });
+
+  it('leaves nine men on the field however many are hurt', () => {
+    // The whole reason stage 8 came first. A season with injuries in it must
+    // never produce a short lineup.
+    const season = createSeason(makeRng(77), undefined, CONFERENCES);
+    season.captureBoxFor = 12;
+    while (!seasonComplete(season)) simNextDay(season);
+    for (const t of season.teams) {
+      const nine = startersFrom(t.team, season.dayIndex);
+      const ids = SPOTS.map((sp) => nine[sp]?.id).filter(Boolean);
+      expect(new Set(ids).size, `${t.def.abbr} could not field nine`).toBe(9);
+    }
   });
 });

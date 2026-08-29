@@ -103,20 +103,34 @@ function hash(id: PlayerId, day: number, worldSeed: number, salt: number): numbe
  * is a multiplier and it is deliberately gentle -- see `workload.ts`.
  */
 export function hurtsToday(
-  p: Player, day: number, worldSeed: number, strain = 1,
+  p: Player, day: number, worldSeed: number, strain = 1, year = 0,
 ): { what: string; days: number } | null {
-  const roll = hash(p.id, day, worldSeed, 1) % 100000 / 100000;
+  /*
+    The year is in the hash, and leaving it out was a real bug.
+
+    `day` is the season's own day index, which runs from nought every spring,
+    and the world seed never changes -- so without the year a man hurt on day
+    twelve in 2027 was hurt on day twelve in 2028, and 2029, and every season of
+    his career. Chronically injured players, the same ones, for ever.
+
+    It showed up as champion diversity: sixteen distinct winners in thirty five
+    years fell to thirteen, because the same programs kept losing the same men
+    on the same weekends. Nothing about the injury *rate* was wrong, which is
+    why only a multi-season measurement could have found it.
+  */
+  const when = day + year * 1000;
+  const roll = hash(p.id, when, worldSeed, 1) % 100000 / 100000;
   if (roll >= PER_APPEARANCE * strain) return null;
 
   // Which one, off a second, independent hash -- the same draw deciding both
   // whether and how badly would correlate the tail with the near-misses.
-  const pick = (hash(p.id, day, worldSeed, 2) % TOTAL_WEIGHT);
+  const pick = (hash(p.id, when, worldSeed, 2) % TOTAL_WEIGHT);
   let seen = 0;
   for (const k of KINDS) {
     seen += k.weight;
     if (pick < seen) {
       const [lo, hi] = k.days;
-      const spread = hash(p.id, day, worldSeed, 3) % Math.max(1, hi - lo + 1);
+      const spread = hash(p.id, when, worldSeed, 3) % Math.max(1, hi - lo + 1);
       return { what: k.what, days: lo + spread };
     }
   }

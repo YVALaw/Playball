@@ -6,6 +6,8 @@ import {
   badgeSize, extraBaseBonus, fatigueBonus, gloveBonus, holdBonus, stealBonus, throwBonus,
 } from './badges.js';
 import { ENGINES } from './engines.js';
+import { armMultiplier, legMultiplier } from './workload.js';
+import { moodMultiplier } from './morale.js';
 import {
   fatigueMultiplier, confidenceMultiplier, confidenceShift, CONFIDENCE,
   mult, clamp, platoonMultiplier, BASERUNNING,
@@ -753,7 +755,14 @@ export function createHalfInning(
       a settled man who is out of pitches is still out of pitches.
     */
     const fatigueMult = fatigueMultiplier(pitcher, fld.pitcherPitches, fatigueBonus(pitcher))
-      * confidenceMultiplier(fld.pitcherConfidence);
+      * confidenceMultiplier(fld.pitcherConfidence)
+      /*
+        And the season in his arm, which is a different tiredness from the one
+        he is spending inside this outing. A hundred and ten innings into a
+        college spring is a real thing and the two multiply: a tired arm having
+        a long night is both.
+      */
+      * armMultiplier(pitcher);
     const tto = (fld.timesThrough.get(batter.name) ?? 0) + 1;
     fld.timesThrough.set(batter.name, tto);
 
@@ -778,8 +787,18 @@ export function createHalfInning(
       fatigueMult,
       // The fielding coach's skill rides on the same lever team defence uses.
       defenseMult: mult(fld.defense, -0.12) * fld.coachDefMult,
-      // And the hitting coach's on the batting side's whole event distribution.
-      offenseMult: bat.coachOffMult,
+      /*
+        The hitting coach's, on the batting side's whole event distribution --
+        and with it the two things stage 9 added to the man himself: what a
+        season in the legs has done to him, and what he thinks of the place.
+
+        Both are deliberately tiny, three percent each at the very floor. A
+        mood is not a rating and a tired man has not forgotten how to hit; the
+        weight of both systems sits in the injury roll and the portal, not
+        here. Multiplied so a tired *and* unhappy man is both, which is worse
+        than either and still under six percent.
+      */
+      offenseMult: bat.coachOffMult * legMultiplier(batter) * moodMultiplier(batter),
       // A shift is a bet on this hitter, not a flat upgrade — and a hitter who
       // pulls everything is a better bet than his power rating alone says.
       alignment: alignmentAgainst(fld.strategy.alignment, batter, shiftBias(batter)),
