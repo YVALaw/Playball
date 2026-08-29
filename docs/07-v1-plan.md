@@ -546,7 +546,16 @@ this project keeps producing:
 
 ## Stage 9 · Players as people
 
-**Size:** large · **Needs:** stage 7
+**Size:** large · **SHIPPED August 28 2026** · **Needs:** stage 7
+
+Full write-up in `05-systems-reference.md` §31. Decisions taken: injuries are
+**league-wide** (the opposite of the classroom, and for the opposite reason —
+a rival losing his ace is visible); **pure chance**, with no durability rating,
+which makes the roll derived-not-drawn so a reload cannot re-roll it; morale
+moves **performance and transfer risk, not development**; the promise is
+**stated**, so breaking it is a thing you did; and there is **one** captain,
+gated on the `makeup` badge family, because without the gate naming one is a
+free buff on your best player.
 
 - **Injuries** — the system that needs a depth chart most
 - **Season-long fatigue and workload**

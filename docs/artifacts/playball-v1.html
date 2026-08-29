@@ -116,11 +116,11 @@
 
 <header class="top">
   <div class="top-in">
-    <div class="kicker">Playball · implementation plan · eight stages shipped</div>
+    <div class="kicker">Playball · implementation plan · nine stages shipped</div>
     <h1>The road to v1.0</h1>
     <p class="sub">Nineteen stages, ordered by what unblocks what. The game is
     already deep; this is the work that turns it into a product with a
-    personality, on a phone. <strong style="color:var(--cream)">The first eight
+    personality, on a phone. <strong style="color:var(--cream)">The first nine
     are done.</strong> Three and four did not exist when this plan was written —
     they came out of playing what stage 1 shipped, and were built the same day
     they were reported. The old stage 5 was split so the dugout could land
@@ -128,7 +128,8 @@
     now shipped, the second with the measurements to show what it cost. Stage seven, the coach, is
     <strong style="color:var(--cream)">complete</strong> — all eight pieces,
     ending with the press room — and stage eight, the roster, landed the same
-    day with two-way players split out of it.</p>
+    day with two-way players split out of it — with stage nine, players as
+    people, behind it.</p>
   </div>
 </header>
 
@@ -369,10 +370,24 @@
       </div>
     </li>
 
-    <li class="stage">
+    <li class="stage done">
       <div class="num">09</div>
       <div>
         <h3>Players as people</h3>
+        <div class="chips"><span class="chip done">Shipped</span><span class="chip sz-l">Large</span><span class="chip dep">984 tests green</span></div>
+        <p>Injuries, workload, morale, the promise and the captain — the stage
+        that gives a season attrition and a clubhouse that notices. Same
+        discipline as the two before it: everything derived or sparse, so a save
+        from before it has nobody hurt, tired, unhappy or leading.</p>
+        <ul>
+          <li><strong>Injuries are league-wide, which grades are not.</strong> The opposite call to the classroom and for the opposite reason: nobody can see another program's grades, but a rival losing his ace is visible, it changes the team you are about to play, and a league where only <em>your</em> program breaks down is lying to you. <span class="did">Asked for as pure chance with no durability rating — which makes where the roll comes from matter more rather than less, because a hidden roll a reload could re-roll is a slot machine. Derived from the man, the day, the year and the world, so it takes no draw and cannot be re-rolled. About one man a program a year, mostly a weekend, season-enders about once every three springs.</span></li>
+          <li><strong>Two bugs one game could not have shown.</strong> <span class="did">A roster that ran thin handed back a card with <em>eight</em> men on it — unreachable until injuries went league-wide, then reported as "Dubuque River Riverboats has an empty lineup slot". A program with five men down runs somebody out there who should not be out there; he plays hurt, and the cost lands on the coach who ran out of players. And a man was hurt on the same day every year of his career: the roll hashed the day index, which restarts every spring, against a seed that never changes. Chronic injuries, the same men, for ever.</span></li>
+          <li><strong>Workload is slight on the bat and not slight on the odds.</strong> Three percent off the bat at the very floor; two and a half times the injury risk. <span class="did">That asymmetry is the design, and it came straight from the brief — "very slight, we don't want the roster dead after a few games". The cost of running a man into the ground is that he gets hurt, not that he forgets how to hit.</span></li>
+          <li><strong>Morale moves performance and transfer risk, not development.</strong> A man who is unhappy does not get worse at baseball; he plays a little below himself and starts looking around. <span class="did">The expectation is <em>stated</em> rather than inferred, which is what makes it a promise you can break — recruiting a man on the offer of a job and then sitting him is a thing you did. A broken promise costs about twice what a kept one pays: a man given more than promised is pleased, a man given far less is aggrieved, and it is the second that walks out of the door.</span></li>
+          <li><strong>One captain, gated on makeup.</strong> <span class="did">The gate is the whole feature. Without it, naming a captain is a free buff on your best player and the answer is the same man every year; with it the question is who in this room is actually <em>like</em> that — on the roster this was verified against, one man of twenty-three qualified. He damps swings in both directions and makes nobody happy, which is the distinction: a captain is not a morale bonus, he is the reason a bad April does not become a bad year.</span></li>
+        </ul>
+        <div class="decide"><b>A method note, against myself</b>The year-in-the-hash bug was found while chasing a drop in champion diversity — a figure that across the same session read 14, then 16, then 13 distinct winners in thirty-five years. It is noise, and it diagnosed nothing. The bug was real on its own terms and would have been just as real if every measurement had come back clean. Worth recording because the finding was right and the reasoning was not.</div>
+        <div class="exit"><b>Exit — reached</b>A season has attrition and a clubhouse that notices. Stage 10 has a head start: morale already computes a flight risk that nothing reads yet, written now because the mood driving it is modelled now — a number bolted on later against a shipped system is the more expensive order.</div>
         <div class="chips"><span class="chip sz-l">Large</span><span class="chip dep">Needs 08</span></div>
         <ul>
           <li><strong>Injuries</strong> — the system that needs a depth chart most</li>

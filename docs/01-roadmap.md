@@ -410,8 +410,13 @@ position competence, the depth chart, real DH handling, redshirts, position
 changes and academic eligibility. Two-way players were split out by decision,
 on the same reasoning that split stage 5.
 
-Eight stages shipped. The next is stage 9, players as people — which is also
-where morale arrives, and the press room is waiting for it.
+Nine stages shipped. Stage 9 landed August 28 2026 — injuries, workload,
+morale, playing-time expectations and the captain — which also closes the
+channel the press room was waiting on.
+
+The next is stage 10, the transfer portal. It has a head start: morale already
+computes a flight risk that nothing reads yet, written now rather than bolted
+on later against a system already shipped.
 
 ## The budgets
 

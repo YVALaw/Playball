@@ -1757,3 +1757,42 @@ called back into the store. It lives in `simNextDay` now, gated on
 - **The 260ms bracket tween** from the stage-7 batch is still unverified — the
   preview browser never composites frames, so `requestAnimationFrame` does not
   run there.
+
+## M. Stage 9, players as people — shipped August 28, 2026
+
+Injuries, workload, morale, playing-time expectations and the captain. Full
+write-up in `05-systems-reference.md` §31.
+
+### Decisions taken
+
+| Question | Answer |
+|---|---|
+| Who gets injuries | **League-wide** — the opposite call to grades, and for the opposite reason: a rival losing his ace is visible and changes the team you play. |
+| Visible risk or pure chance | **Pure chance, for now.** No durability rating — which makes the roll derived-not-drawn, so a reload cannot re-roll it. |
+| Season-ending injuries | Exist, rare — about one per program per three seasons. The case the depth chart exists for. |
+| What morale does | **Performance and transfer risk.** Not development: compounding it would be a death spiral rather than a mood. |
+| Stated or inferred expectation | **Stated**, so breaking a promise is a thing you did. |
+| Captains | **One, appointed**, gated on the `makeup` badge family. |
+
+### Two bugs a single game could not have shown
+
+- **Fielding eight.** `coverFor` returned a short card when a roster ran thin.
+  Unreachable until injuries went league-wide. He plays hurt now.
+- **A man hurt on the same day every year.** The roll hashed the day index —
+  which restarts each spring — against a seed that never changes.
+
+### A method note, against myself
+
+The second was found while chasing a drop in champion diversity, a figure that
+read 14, 16 and 13 distinct winners in thirty-five years across one session. It
+is noise and diagnosed nothing. The bug was real on its own terms. Recorded
+because the finding was right and the reasoning was not — and the next person
+reading a one-sample distribution shift should discount it the way I did not.
+
+### Open
+
+- **`flightRisk` is written and read by nothing.** It is stage 10's. Written now
+  because the mood driving it is modelled now.
+- **Durability ratings**, deferred with "for now" attached — the honest upgrade
+  path if pure chance reads as arbitrary in play.
+- **Two-way players** and **declining the DH**, both still stage-8 spillover.

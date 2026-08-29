@@ -5527,6 +5527,93 @@ noticed. It was then removed rather than left in, because a control that changes
 nothing is the exact fault this project spent the previous stage deleting —
 "a control that is visible and refuses is worse than one that is not there."
 
+## 31. Players as people — **STAGE 9, SHIPPED**
+
+Injuries, workload, morale, the promise and the captain. Same discipline as the
+two stages before it: everything derived or sparse, so a save from before it has
+nobody hurt, tired, unhappy or leading.
+
+### 31.1 Injuries are league-wide, which grades are not
+
+The opposite call to the classroom, and for the opposite reason. Nobody can see
+another program's grades; a rival losing his ace is visible, it changes the team
+you are about to play, and a league where only the coached program breaks down
+is lying to you.
+
+Asked for as **pure chance** with no durability rating. That makes *where the
+roll comes from* matter more rather than less — a hidden roll a reload could
+re-roll is a slot machine — so it is derived from the man, the day, the year and
+the world, and takes no draw.
+
+Rates are pinned as a measured season rather than as a constant: about one man
+per program per year, mostly a weekend, season-enders roughly once every three
+springs.
+
+### 31.2 The two bugs a single game could not have shown
+
+**Fielding eight.** `coverFor` returned a short card when a roster ran thin —
+unreachable until injuries went league-wide, then reported as "Dubuque River
+Riverboats has an empty lineup slot". A program with five men down runs somebody
+out there who should not be out there. He plays hurt, and the cost lands on the
+coach who ran out of players.
+
+**A man hurt on the same day every year.** `hurtsToday` hashed the player, the
+day index and the world seed. The day index restarts every spring and the seed
+never changes, so a man hurt on day twelve in 2027 was hurt on day twelve in
+2028 and every season after. Chronic injuries, the same men, for ever.
+
+Worth recording how that one was found, because the method was wrong even though
+the finding was right: it was noticed while chasing a drop in champion
+diversity, which across the session read 14, then 16, then 13 distinct winners
+in thirty five years. That figure is noise and diagnosed nothing. The bug is
+real on its own terms and would have been just as real if every measurement had
+come back clean.
+
+### 31.3 Why the goldens did not move
+
+They drive `simGame` rather than the season's day loop, so they measure how a
+game is *played* — which an injury does not change. What it changes is who is
+standing in it. The multipliers are identity at baseline too: a player with no
+accumulated workload and no moved mood multiplies by one, so the systems are
+inert until used.
+
+### 31.4 Workload: slight on the bat, not slight on the odds
+
+Asked for in those words — "very slight, we don't want the roster dead after a
+few games". Three percent off the bat at the floor; two and a half times the
+injury risk. That asymmetry is the design: the cost of running a man into the
+ground is that he gets hurt, not that he forgets how to hit. The arm carries a
+separate season-long mileage that multiplies with in-game fatigue.
+
+### 31.5 Morale, and a promise you can break
+
+Performance and transfer risk. **Not development** — a man who is unhappy does
+not get worse at baseball, and compounding it into development would be a death
+spiral rather than a mood.
+
+The expectation is **stated** rather than inferred, which is what makes it a
+promise: recruiting a man on the offer of a job and then sitting him is a thing
+you did. A broken promise costs about twice what a kept one pays, deliberately —
+a man given more than promised is pleased, a man given far less is aggrieved,
+and it is the second that eventually walks out of the door.
+
+`flightRisk` is written and read by nothing. It is stage 10's, and it exists now
+because the mood that drives it is being modelled now; a number added in a hurry
+against a shipped system is the more expensive order.
+
+### 31.6 The captain is the trait gate
+
+One, appointed, and he must hold a `makeup` badge — `gymRat`, `noPanic` or
+`bigStage`. Without that gate naming a captain is a free buff applied to your
+best player and the answer is the same man every year; with it the question is
+who in this room is actually like that, and sometimes the answer is nowhere near
+your best. On the roster this was verified against, one man of twenty-three
+qualified.
+
+He **damps swings in both directions and makes nobody happy**. That distinction
+is the whole design: a captain is not a morale bonus, he is the reason a bad
+April does not become a bad year.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code
