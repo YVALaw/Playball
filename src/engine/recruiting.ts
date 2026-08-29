@@ -151,7 +151,21 @@ export const SCHOLARSHIPS = 8;
  * `budgetFor(stars)`, and every one of the ninety six reads it — see
  * `weeklyBudget`, which both the board header and `aiTargets` go through.
  */
-export const RECRUITING_BUDGET = 40;
+/*
+  Forty became fifty-six when the portal arrived.
+
+  This pool has always paid for two things -- the class, and keeping a man the
+  draft took -- and stage 10 gave it a third: the portal, in both directions,
+  since talking a man out of leaving costs from here too. Three claims on a
+  budget fitted for two is not a harder decision, it is a thinner one, and it
+  was reported in exactly those terms: too little for too much.
+
+  Forty percent, which is roughly what the third claim is worth. It is a
+  league-wide change so it moves what everybody signs, and the carousel watches
+  the two numbers that would show it: how often a board's ask is cleared, and
+  where prestige settles.
+*/
+export const RECRUITING_BUDGET = 56;
 
 /**
  * A week's budget, which a good program has more of.

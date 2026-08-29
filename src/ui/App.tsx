@@ -20,6 +20,7 @@ import { Player } from './screens/Player.js';
 import { Program } from './screens/Program.js';
 import { PressRoom } from './screens/PressRoom.js';
 import { DepthChart } from './screens/DepthChart.js';
+import { Portal } from './screens/Portal.js';
 import { NewGame } from './screens/NewGame.js';
 import { StrategyScreen } from './screens/StrategyScreen.js';
 import { Placeholder } from './screens/Placeholder.js';
@@ -550,6 +551,7 @@ function AppBody(
           {phase === 'recruiting' && <Board />}
           {phase === 'signing' && <SigningDay />}
           {phase === 'draft' && <Draft />}
+          {phase === 'portal' && <Portal />}
         </main>
         <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
       </div>

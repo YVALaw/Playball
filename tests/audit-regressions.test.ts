@@ -109,6 +109,9 @@ describe('walking back to the draft step cannot restart recruiting', () => {
     );
     const before = contested ? { ...contested.points } : null;
 
+    // Stage 10 put the portal between the draft and recruiting, so reaching
+    // recruiting is two steps from the draft rather than one.
+    await useDynasty.getState().nextPhase();
     await useDynasty.getState().nextPhase();
 
     expect(useDynasty.getState().phase).toBe('recruiting');

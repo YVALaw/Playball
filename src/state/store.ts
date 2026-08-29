@@ -198,6 +198,10 @@ import {
 } from '../engine/press.js';
 import { PRESSERS, type Presser, type PressTrigger, type PressAnswer } from '../data/pressers.js';
 import {
+  openPortal, makeTheCase as portalCase, releaseFrom, signFromPortal, staffWorksPortal,
+  type PortalMan,
+} from '../engine/portal.js';
+import {
   chartFor, depthAt, reorder, squad, available, promotions, SPOTS,
 } from '../engine/depthChart.js';
 import {
@@ -266,9 +270,9 @@ export type Phase =
   | 'coach'
   | 'recruiting'
   | 'signing'       // where the class landed
-  | 'draft';        // who leaves for professional ball
+  | 'draft'         // who leaves for professional ball
+  | 'portal';       // who leaves for somewhere else
 
-/** The order the offseason runs in. */
 /**
  * The order the offseason runs in.
  *
@@ -277,8 +281,16 @@ export type Phase =
  * shopping for. With recruiting first you were signing a class against a roster
  * that had not lost anybody yet, and the draft was a receipt.
  */
+/*
+  The portal sits between the draft and recruiting, and the order is the point.
+
+  Both of the two before it are men *leaving*: the draft takes the ones a club
+  wanted, the portal takes the ones you gave a reason to go. Recruiting comes
+  after both because it is where the holes get filled, and a coach who has not
+  yet found out who walked out cannot know what he is shopping for.
+*/
 export const PHASES: readonly Exclude<Phase, null>[] =
-  ['awards', 'review', 'coach', 'draft', 'recruiting', 'signing'];
+  ['awards', 'review', 'coach', 'draft', 'portal', 'recruiting', 'signing'];
 
 /** What each step is called on the rail across the top. */
 export const PHASE_LABEL: Record<Exclude<Phase, null>, string> = {
@@ -286,6 +298,7 @@ export const PHASE_LABEL: Record<Exclude<Phase, null>, string> = {
   review: 'SEASON',
   coach: 'COACH',
   draft: 'DRAFT',
+  portal: 'PORTAL',
   recruiting: 'RECRUIT',
   signing: 'CLASS',
 };
@@ -609,6 +622,20 @@ export interface DynastyStore {
   clearCaptain: () => void;
   /** Sit him for a stretch, to take the miles out of his legs. */
   restMan: (id: PlayerId, days: number) => boolean;
+
+  /*
+    Stage 10. Both directions, which is the whole specification.
+
+    `leaving` is your own men; `available` is everybody else's. They are held
+    apart because they are two different decisions with two different verbs --
+    you talk one lot round and you sign the other -- and folding them into one
+    list was the first thing that made the screen unreadable.
+  */
+  portal: { leaving: PortalMan[]; available: PortalMan[]; spent: number } | null;
+  /** Talk a man out of it, out of the same pool everything else spends. */
+  keepFromPortal: (id: PlayerId, offer: number) => boolean;
+  /** Sign somebody else's. */
+  takeFromPortal: (id: PlayerId) => boolean;
   /** Say it, take what it costs, and close the room. */
   answerPress: (answer: PressAnswer) => void;
   /** Walk out without answering. Costs nothing; the question is spent. */
@@ -2012,7 +2039,104 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // was a free run at the entire country: every recruit read NOBODY ON HIM and
     // a single point of effort led the field. Recruiting is a competition and it
     // has to look like one on the day it starts.
+    /*
+      The portal opens once, when the step is first reached.
+
+      Guarded on `furthestPhase` for the reason the recruiting seeding is: the
+      rail lets a coach walk back to the draft and come forward again, and
+      opening it twice would put every man in the country in it twice and let
+      the same signing be made from two pools.
+
+      In casual the staff works it and the screen never appears -- the men still
+      leave, the pool still exists, and somebody competent still shops it, which
+      is the depth mode's rule exactly.
+    */
+    if (next === 'portal' && get().furthestPhase < PHASES.indexOf('portal')) {
+      const rec = season.teams[get().userTeam];
+      const games = (rec?.w ?? 0) + (rec?.l ?? 0);
+      const pool = openPortal(season.teams, {
+        year: get().year, seed: season.seed ?? 0, games,
+      });
+      const mine = pool.filter((m) => m.from === get().userTeam);
+      const theirs = pool
+        .filter((m) => m.from !== get().userTeam)
+        .sort((a, b) => overallOf(b.player) - overallOf(a.player));
+
+      if (rec && !handles(get().depth, 'portal')) {
+        // Your staff, out of sight. It still costs the same budget, so a
+        // casual career is not quietly richer than a full one.
+        const budget = windowBudget(prestigeStars(rec.prestige));
+        const took = staffWorksPortal(rec.team, theirs, budget);
+        for (const m of took) {
+          const from = season.teams[m.from];
+          if (from) releaseFrom(from.team, m.player.id);
+        }
+        set({ portal: { leaving: mine, available: [], spent: 0 } });
+      } else {
+        set({ portal: { leaving: mine, available: theirs, spent: 0 } });
+      }
+    }
+
     if (next === 'recruiting') {
+      /*
+        Everybody still in the portal has gone.
+
+        The same rule the draft board keeps one step earlier: doing nothing has
+        to *mean* something, or a coach could leave a man hanging in a list
+        nobody comes back to and keep him by accident.
+      */
+      const rec = season.teams[get().userTeam];
+      for (const m of get().portal?.leaving ?? []) {
+        if (rec) releaseFrom(rec.team, m.player.id);
+      }
+
+      /*
+        And the other ninety-five shop it, which is the half that makes this a
+        portal rather than a tax.
+
+        Without this every man who entered simply evaporated: off the roster he
+        left, onto nobody's, out of the league. That is wrong twice over -- the
+        pool a coach signs from should be other programs' broken promises, and a
+        man still playing college baseball somewhere must not turn up eligible
+        for a hall of fame two steps later.
+
+        Cheapest-first and at most two apiece, so one rich program cannot hoover
+        the whole board. Whoever is left over has genuinely left college
+        baseball, which is a real thing that happens to transfers.
+      */
+      const stillOut = [
+        ...(get().portal?.available ?? []),
+        ...(get().portal?.leaving ?? []),
+      ];
+      if (stillOut.length > 0) {
+        const taken = new Set<PlayerId>();
+        for (const other of season.teams) {
+          if (other.index === get().userTeam) continue;
+          const going = stillOut.filter((m) => !taken.has(m.player.id) && m.from !== other.index);
+          if (going.length === 0) break;
+          const budget = windowBudget(prestigeStars(other.prestige));
+          for (const m of staffWorksPortal(other.team, going, budget)) {
+            taken.add(m.player.id);
+            const from = season.teams[m.from];
+            if (from) releaseFrom(from.team, m.player.id);
+          }
+        }
+      }
+
+      set({ portal: null });
+    }
+
+    /*
+      The draft settles when the draft step ends, which since stage 10 is one
+      boundary earlier than recruiting.
+
+      Moved rather than left where it was. A man sitting 'pending' on the board
+      while the coach works the portal is a decision the game is pretending is
+      still open, and the hall of fame two lines down is explicitly "when the
+      draft settles" -- both belong to leaving the draft, not to leaving the
+      step after it.
+    */
+    if (next === 'portal') {
       // Anybody still sitting on the draft board has run out of time to be
       // talked to. Signing with the club that took him is what happens when a
       // coach does nothing, so doing nothing has to mean that here too rather
@@ -2902,6 +3026,69 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   post: (item) => set({ inbox: push(get().inbox, newItem(item)) }),
   press: {},
   pendingPress: null,
+  portal: null,
+
+  keepFromPortal: (id, offer) => {
+    const { season, userTeam, portal, version } = get();
+    const rec = season?.teams[userTeam];
+    if (!season || !rec || !portal) return false;
+    const man = portal.leaving.find((m) => m.player.id === id);
+    if (!man) return false;
+    const stars = prestigeStars(rec.prestige);
+    const left = windowBudget(stars) - portal.spent;
+    const { spent, stayed } = portalCase(man, offer, left);
+    set({
+      portal: {
+        ...portal,
+        spent: portal.spent + spent,
+        leaving: stayed ? portal.leaving.filter((m) => m.player.id !== id) : portal.leaving,
+      },
+      version: version + 1,
+    });
+    if (stayed) {
+      get().post({
+        kind: 'season', year: get().year,
+        title: `${man.player.name} is staying`,
+        body: 'He was in the portal and he is not any more.',
+        link: { to: 'player', id: man.player.id },
+      });
+    }
+    void get().saveNow();
+    return stayed;
+  },
+
+  takeFromPortal: (id) => {
+    const { season, userTeam, portal, version } = get();
+    const rec = season?.teams[userTeam];
+    if (!season || !rec || !portal) return false;
+    const man = portal.available.find((m) => m.player.id === id);
+    if (!man) return false;
+    const stars = prestigeStars(rec.prestige);
+    if (portal.spent + man.cost > windowBudget(stars)) return false;
+
+    // Off his old roster and onto yours, in that order -- a man on two rosters
+    // is the kind of thing that only shows up as a duplicated name in June.
+    const from = season.teams[man.from];
+    if (from) releaseFrom(from.team, man.player.id);
+    signFromPortal(rec.team, man);
+
+    set({
+      portal: {
+        ...portal,
+        spent: portal.spent + man.cost,
+        available: portal.available.filter((m) => m.player.id !== id),
+      },
+      version: version + 1,
+    });
+    get().post({
+      kind: 'season', year: get().year,
+      title: `${man.player.name} is coming`,
+      body: `From ${man.fromName}. He is eligible immediately.`,
+      link: { to: 'player', id: man.player.id },
+    });
+    void get().saveNow();
+    return true;
+  },
 
   wordsUsed: 0,
 

@@ -60,6 +60,9 @@ describe('the week recap does not outlive its window', () => {
       lastWeek: STALE_WEEK,
     });
 
+    // Stage 10 put the portal between the draft and recruiting, so reaching
+    // recruiting is two steps from the draft rather than one.
+    await useDynasty.getState().nextPhase();
     await useDynasty.getState().nextPhase();
 
     const s = useDynasty.getState();
@@ -802,6 +805,9 @@ describe('the hall of fame meets when the draft settles', () => {
     // talked into coming back, so his career is not over until the step ends.
     expect(useDynasty.getState().season?.hall ?? []).toEqual([]);
 
+    // Stage 10 put the portal in between, so the hall now meets one step
+    // further along -- leaving the portal rather than leaving the draft.
+    await useDynasty.getState().nextPhase();      // into the portal
     await useDynasty.getState().nextPhase();      // into recruiting, and the hall meets
 
     const after = useDynasty.getState().season as SeasonState;
