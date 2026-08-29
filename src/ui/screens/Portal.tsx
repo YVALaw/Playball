@@ -11,7 +11,7 @@
 // 9: every man on it is a promise somebody broke, and the card says which.
 
 import { useDynasty } from '../../state/store.js';
-import { FixedHeader } from '../Sticky.js';
+import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { overallOf } from '../../engine/ratings.js';
 import { prestigeStars } from '../../engine/program.js';
 import { windowBudget } from '../../engine/recruiting.js';
@@ -25,6 +25,7 @@ export function Portal() {
   const keepFromPortal = useDynasty((s) => s.keepFromPortal);
   const takeFromPortal = useDynasty((s) => s.takeFromPortal);
   const openPlayer = useDynasty((s) => s.openPlayer);
+  const nextPhase = useDynasty((s) => s.nextPhase);
   const version = useDynasty((s) => s.version);
   void version;
 
@@ -49,6 +50,28 @@ export function Portal() {
           </div>
         </div>
       }
+      /*
+        The way out, which this screen shipped without.
+
+        Every other offseason step supplies its own pinned action and this one
+        did not, so the rail reached the portal and stopped -- the offseason
+        could not be finished at all. Found by playing a season rather than by
+        any test, because every test drives `nextPhase` directly and never has
+        to find a button.
+
+        The note is load-bearing too: leaving is what releases anybody still in
+        the portal, and that has to be said before it happens rather than
+        reported afterwards.
+      */
+      action={(
+        <FloatingAction
+          label="TO RECRUITING"
+          note={portal.leaving.length > 0
+            ? `${portal.leaving.length} ${portal.leaving.length === 1 ? 'man is' : 'men are'} still in it. Leaving now lets ${portal.leaving.length === 1 ? 'him' : 'them'} go.`
+            : undefined}
+          onClick={() => void nextPhase('portal')}
+        />
+      )}
     >
       <div style={{ padding: '10px 14px 20px' }}>
         <div style={{

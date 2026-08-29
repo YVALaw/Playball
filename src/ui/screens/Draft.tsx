@@ -134,7 +134,7 @@ export function Draft() {
     }
       action={phase !== null && (
     <FloatingAction
-      label="TO RECRUITING"
+      label="TO THE PORTAL"
       note={pending > 0
         ? `${pending} ${pending === 1 ? 'man is' : 'men are'} still waiting on an answer. Leaving now signs ${pending === 1 ? 'him' : 'them'}.`
         : undefined}
