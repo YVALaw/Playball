@@ -1838,7 +1838,29 @@ once) refilled before emptying and the next season opened short — the engine
 threw `has an empty lineup slot`. The game's own order is correct; the hazard is
 for anything new that touches rosters.
 
-## O. How long the climb takes — measured August 28, 2026
+## O. How long the climb takes — **RETRACTED, then re-opened** August 28, 2026
+
+> **The numbers below are wrong and the conclusion drawn from them was wrong.**
+> `aiTargets` and `closeWeek` are called only from `state/store.ts`; there is no
+> engine-level recruiting driver. So a headless harness that walks the engine's
+> own offseason **never signs anybody** — every roster in the country is refilled
+> with walk-ons every year. That is what produced "nobody won in six hundred and
+> sixty seasons", a prestige line frozen at 19, and a plateau at 34 that looked
+> exactly like an unreachable bottom rung.
+>
+> Three separate readings were taken off that harness and all three were
+> artefacts. The tell was there and I missed it twice: raising `PIPELINE_EDGE`
+> from 0.25 to 0.45 changed **not one digit** of the output, which is only
+> possible if recruiting is not running at all.
+>
+> The balance question is genuine and unanswered — a low-star school should be
+> able to climb progressively, not shoot for five-star recruits. Answering it
+> needs the harness to drive the **store**, which `tests/store.test.ts` already
+> proves is possible. Until then there is no measurement here, only a lesson:
+> a probe that reproduces part of a pipeline measures that part, and the way to
+> catch it is to change an input and check the output moves.
+
+### The original entry, kept for the record
 
 `tests/climb-probe.ts`. Asked directly: take a low-star school and report how
 long it takes to win the nationals. Answered headless over many worlds rather

@@ -22,6 +22,9 @@ import { makeRng } from '../src/engine/rng.js';
 import { CONFERENCES } from '../src/data/schools.js';
 import { prestigeStars } from '../src/engine/program.js';
 import { openPortal, staffWorksPortal, releaseFrom } from '../src/engine/portal.js';
+import { runRivalYear } from '../src/engine/rivals.js';
+import { seasonLength } from '../src/engine/season.js';
+import type { PostseasonSummary } from '../src/engine/postseason.js';
 import { windowBudget } from '../src/engine/recruiting.js';
 import { setMood, settleMood, squadRanks } from '../src/engine/morale.js';
 import { healUp } from '../src/engine/injury.js';
@@ -53,7 +56,25 @@ function lowStarTeam(season: SeasonState): number {
 }
 
 /** One offseason, the way the store runs it, minus the screens. */
-function rollYear(season: SeasonState, me: number): SeasonState {
+function rollYear(season: SeasonState, me: number, post: PostseasonSummary | null): SeasonState {
+  /*
+    Prestige moves here, and leaving it out invalidated the first two runs.
+
+    `nextPrestige` is only ever called from `reviewSeason`, which the store runs
+    for the coached programme, and from `runRivalYear`, which it runs for the
+    other ninety-five. This probe called neither -- so every programme in the
+    country sat on its opening prestige for thirty seasons and *no* climb was
+    possible for anybody, which is not a finding about the game at all.
+
+    It read as one: a one-star programme showed prestige 19 in year one and 19
+    in year thirty, ten worlds out of ten. That is exactly what a broken ladder
+    would look like, which is why it needed checking rather than believing.
+  */
+  runRivalYear(season, post, {
+    year: season.year ?? 0,
+    userTeam: -1,                 // -1 so the coached programme is graded too
+    games: seasonLength(season.config),
+  });
   const rec = season.teams[me]!;
   const games = rec.w + rec.l;
   const ranks = squadRanks(rec.team);
@@ -137,24 +158,40 @@ for (let w = 0; w < WORLDS; w++) {
   let omaha: number | null = null;
   let best = 'missed';
   const RANK = ['missed', 'regional', 'omaha', 'runner-up', 'champion'];
+  /*
+    The ladder itself, which is the thing actually being asked about.
+
+    A one-star programme is not supposed to sign five-star recruits -- it is
+    supposed to *climb*: sign at its level, develop, win more, rise a rung, then
+    sign at the new level. So the question is not whether it lands elite men, it
+    is whether its prestige moves at all. If this line is flat the ladder is
+    broken; if it rises slowly the rate is wrong; and those are different fixes.
+  */
+  const ladder: number[] = [];
+  const wins: number[] = [];
 
   for (let y = 1; y <= YEARS; y++) {
     while (!seasonComplete(season)) simSeason(season);
+    ladder.push(Math.round(season.teams[me]!.prestige));
+    wins.push(season.teams[me]!.w);
     const post = runPostseason(season);
     const finish = post.finish[me] ?? 'missed';
     if (RANK.indexOf(finish) > RANK.indexOf(best)) best = finish;
     if (omaha === null && (finish === 'omaha' || finish === 'runner-up' || finish === 'champion')) omaha = y;
     if (post.champion === me) { title = y; break; }
-    season = rollYear(season, me);
+    season = rollYear(season, me, post);
   }
 
   firstTitle.push(title);
   firstOmaha.push(omaha);
   bestFinish.push(best);
+  const at = (y: number): string => String(ladder[y - 1] ?? ladder[ladder.length - 1] ?? 0).padStart(2);
+  const avgWins = wins.length ? Math.round(wins.reduce((a, b) => a + b, 0) / wins.length) : 0;
   console.log(
-    `world ${String(seed).padStart(4)}  ${stars}-star  `
-    + `first Omaha ${omaha === null ? ' -' : String(omaha).padStart(2)}  `
-    + `title ${title === null ? ' -' : String(title).padStart(2)}  best ${best}`,
+    `world ${String(seed).padStart(4)}  ${stars}*  `
+    + `prestige y1 ${at(1)} y5 ${at(5)} y10 ${at(10)} y20 ${at(20)} y30 ${at(30)}  `
+    + `avg wins ${String(avgWins).padStart(2)}  `
+    + `Omaha ${omaha === null ? ' -' : String(omaha).padStart(2)}  best ${best}`,
   );
 }
 
@@ -172,3 +209,28 @@ console.log(`  won it all      ${won.length}/${WORLDS}, median year ${median(won
 if (won.length) console.log(`  fastest ${Math.min(...won)}, slowest ${Math.max(...won)}`);
 const never = bestFinish.filter((b) => b === 'missed').length;
 console.log(`  never made a regional in thirty years: ${never}/${WORLDS}`);
+
+/*
+  ---------------------------------------------------------------------------
+  KNOWN WRONG — do not read numbers off this file yet
+  ---------------------------------------------------------------------------
+
+  This harness walks the engine's offseason directly, and the engine has no
+  recruiting driver: `aiTargets` and `closeWeek` live in `state/store.ts` and
+  nothing else calls them. So no prospect is ever signed here, `fillRosters`
+  refills every roster in the country with walk-ons, and every programme plays
+  out thirty seasons with the same replacement-level squad.
+
+  Everything that produced: fourteen wins a year for ever, a prestige line that
+  converges to 34 and stops, nobody reaching Omaha. All of it is this bug and
+  none of it is a fact about the game.
+
+  The proof, and the check worth stealing: raising `PIPELINE_EDGE` from 0.25 to
+  0.45 changed not one digit of the output. An input that cannot move the output
+  is not a lever -- it means the thing you think you are measuring is not
+  running.
+
+  To make this file honest it has to drive the store the way `store.test.ts`
+  does -- `useDynasty.getState().start(...)` and then walk the phases -- rather
+  than reassembling the offseason out of engine parts.
+*/
