@@ -117,7 +117,7 @@ export function standing(p: Player): 'fine' | 'watch' | 'trouble' {
  * cannot re-roll a suspension and reading the screen cannot change the season.
  * Only men already under `AT_RISK` are ever asked about.
  */
-export function failsThisWeek(p: Player, year: number, week: number): boolean {
+function failsAt(p: Player, year: number, week: number): boolean {
   const g = gradesOf(p);
   if (g >= AT_RISK) return false;
   let h = ((year * 2654435761) ^ (week * 40503)) >>> 0;
@@ -130,15 +130,47 @@ export function failsThisWeek(p: Player, year: number, week: number): boolean {
 
     A man under the line every week would be a man you simply cannot play,
     which is a roster spot removed rather than a risk taken. Steeper the worse
-    he is doing: at `FAILING` it is about one week in five, at the top of the
-    at-risk band about one in fourteen.
+    he is doing, so that the man in real trouble is the one it keeps taking.
 
-    Asked for exactly this way -- it should be able to take your best arm the
-    week of a regional, and it should not do that often.
+    ---------------------------------------------------------------------------
+    Why these numbers are a third of what they were
+    ---------------------------------------------------------------------------
+
+    Reported as happening "way too often", and it was: `tests/elig-rate.ts` put
+    it at 3.27 suspensions a season. The reason is a number nobody set and
+    everybody assumed. This runs on `dayIndex % 7`, and a college regular season
+    here is about forty five days -- so it is asked SIX times a year, not the
+    fifteen-odd a real spring would have. The old 7%-to-23% band was a sane
+    per-week rate for a long season, and against six checks it meant somebody
+    was in the classroom better than every other week, which is not a program
+    with a couple of academic problems on it. It is a program where nobody goes
+    to class.
+
+    So the band is set against the six checks that actually happen, for a little
+    over one suspension a season: rare enough to be an event, common enough that
+    a roster with two men in trouble on it is a roster you have to think about.
   */
   const depth = Math.max(0, AT_RISK - g) / AT_RISK;
-  const chance = 0.07 + depth * 0.16;
+  const chance = 0.008 + depth * 0.09;
   return (h % 1000) / 1000 < chance;
+}
+
+/**
+ * Whether this week is the week it catches up with him.
+ *
+ * Derived from the man, the year and the week rather than drawn, so a reload
+ * cannot re-roll a suspension and reading the screen cannot change the season.
+ * Only men already under `AT_RISK` are ever asked about.
+ *
+ * Never twice running. A man who sat out last week has had the conversation,
+ * the study table and the fright; taking him again immediately is the game
+ * repeating itself rather than saying something new. Done by asking the same
+ * pure function about last week instead of by remembering anything, so it still
+ * costs no field on the save and no draw from any generator.
+ */
+export function failsThisWeek(p: Player, year: number, week: number): boolean {
+  if (!failsAt(p, year, week)) return false;
+  return !(week > 0 && failsAt(p, year, week - 1));
 }
 
 /** Sit him down. Mutates, because being ineligible is a fact about the man. */

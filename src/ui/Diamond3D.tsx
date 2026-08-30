@@ -409,7 +409,7 @@ function Plate({ tick }: { tick: number }) {
  * `toWorld` by hand — except the catcher, who belongs behind the plate where
  * the camera can see him, not on top of it.
  */
-const STATIONS: readonly [number, number, number][] = [
+export const STATIONS: readonly [number, number, number][] = [
   [0, 0, 0.55],                      // C
   [0, 0, -1.71],                     // P
   [2.32, 0, -2.88],                  // 1B
@@ -471,6 +471,22 @@ export interface PlayPlan {
   throwAt: number;
   /** When the ball is done and the fielder may walk back. */
   done: number;
+  /**
+   * When the play is *decided*, which is not when the ball lands.
+   *
+   * The colour flash hangs off this rather than off the landing, and the
+   * difference is the whole reported bug: a ground out used to flash red the
+   * instant the ball touched grass, several yards past the nearest dot and a
+   * second before anybody reached it. Which is precisely the picture a base hit
+   * makes — ball down in the green, nobody near it — so the field was
+   * announcing an out with the image of a single.
+   *
+   * A catch is decided on arrival. A hit is decided on arrival, because the
+   * arrival *is* the event: it landed and nobody was there. A ball fielded on
+   * the ground is decided when a man actually has it, so the red goes off in
+   * his hands and then rides the throw to first.
+   */
+  outcomeAt: number;
   caught: boolean;
   homer: boolean;
 }
@@ -491,6 +507,8 @@ export function playPlan(hit: BallHit, stations: THREE.Vector3[]): PlayPlan {
     return {
       target, rest, flight, chaser: -1,
       pickup: flight, throwTo: MOUND_SPOT, throwAt: flight + 9, done: flight + 0.5,
+      // A ball leaving the yard needs no colour to explain it.
+      outcomeAt: Infinity,
       caught: false, homer: true,
     };
   }
@@ -540,6 +558,8 @@ export function playPlan(hit: BallHit, stations: THREE.Vector3[]): PlayPlan {
     target, rest, flight, chaser,
     pickup, throwTo, throwAt: pickup,
     done: pickup + THROW_DUR,
+    // See `outcomeAt`. Only a ball fielded on the ground waits for the man.
+    outcomeAt: hit.caught || hit.hit ? flight : arrive,
     caught: hit.caught, homer: false,
   };
 }
@@ -577,7 +597,6 @@ function BallInFlight({ hit, plan }: { hit: BallHit; plan: PlayPlan }) {
         const travel = plan.homer ? p * 1.25 : p;
         b.position.set(plan.target.x * travel, 0, plan.target.z * travel);
         b.position.y = flightHeight(hit.kind, travel, distance, plan.homer);
-        mat.color.set(CREAM);
         b.visible = true;
       } else if (plan.homer) {
         const travel = Math.min(1.25, (now / plan.flight) * 1.25);
@@ -592,40 +611,52 @@ function BallInFlight({ hit, plan }: { hit: BallHit; plan: PlayPlan }) {
           : Math.min(1, (now - plan.flight) / ROLL_DUR);
         b.position.lerpVectors(plan.target, plan.rest, roll);
         b.position.y = plan.caught ? GLOVE_Y : BALL_REST;
-        /*
-          The outcome, blinked once and then done.
-
-          This used to blink for the whole time between the ball landing and
-          the throw, which is fine for a routine grounder and wrong for
-          anything into a gap: the chase is timed from contact at 3.9 units a
-          second, so a ball an outfielder has to run twenty units for left a
-          red light flashing in the grass for four seconds. Reported as the
-          ball being out but sitting in the field blinking red.
-
-          It is a signal that says what just happened, so it lasts about as
-          long as it takes to read and then the ball is a ball again.
-        */
-        const since = now - plan.flight;
-        const blink = since < BLINK_DUR && Math.sin(since * 22) > 0;
-        mat.color.set(blink ? (hit.hit ? HIT_BLUE : OUT_RED) : CREAM);
         b.visible = true;
       } else {
         // The throw. Where it goes is the play being made — see `playPlan`.
         const k = Math.min(1, (now - plan.throwAt) / THROW_DUR);
         b.position.lerpVectors(plan.rest, plan.throwTo, k);
         b.position.y = BALL_REST + Math.sin(k * Math.PI) * 1.15;
-        mat.color.set(CREAM);
         b.visible = k < 1;
       }
+
+      /*
+        The outcome, blinked once and then done.
+
+        Timed off `outcomeAt` rather than off the landing, and set here rather
+        than inside the movement branches, because the moment a play is decided
+        and the moment the ball stops moving are the same event only for a catch
+        and a base hit. On a grounder the red now goes off in the fielder's hand
+        and carries a little way into the throw, which is a picture of an out
+        being made; before, it went off in empty grass, which is a picture of a
+        single.
+
+        It stays a signal rather than a state -- long enough to read, then the
+        ball is a ball again. An earlier build blinked for the entire chase and
+        left a red light flashing in the gap for four seconds.
+      */
+      const since = now - plan.outcomeAt;
+      const blink = since >= 0 && since < BLINK_DUR && Math.sin(since * 22) > 0;
+      mat.color.set(blink ? (hit.hit ? HIT_BLUE : OUT_RED) : CREAM);
     }
 
     const m = mark.current;
     if (m) {
-      // The spot where it finished, pulsed once. Never for a homer — nobody
-      // fielded it, so there is no spot to look at — and never for a catch,
-      // where the glove is the event rather than the grass.
+      /*
+        The spot where it finished, pulsed once. Hits only.
+
+        Never for a homer — nobody fielded it, so there is no spot to look at —
+        and never for a catch, where the glove is the event rather than the
+        grass. And, since the same report that moved the blink, never for a ball
+        fielded on the ground either: a red ring expanding in the outfield is
+        the single most hit-looking thing the field can draw, and drawing it
+        under an out was half of why an out read as one.
+
+        A grounder is now told by the fielder having it and the throw going in.
+        Which is how it is told on a television.
+      */
       const after = now - plan.flight;
-      const show = !plan.homer && !plan.caught && after > 0 && after < 0.9;
+      const show = !plan.homer && !plan.caught && hit.hit && after > 0 && after < 0.9;
       m.visible = show;
       if (show) {
         const k = after / 0.9;

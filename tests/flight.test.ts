@@ -10,7 +10,10 @@
 // to photograph a moving object at the right millisecond.
 
 import { describe, it, expect } from 'vitest';
-import { flightHeight, flightSeconds, basePath } from '../src/ui/Diamond3D.js';
+import * as THREE from 'three';
+import {
+  flightHeight, flightSeconds, basePath, playPlan, STATIONS, type BallHit,
+} from '../src/ui/Diamond3D.js';
 
 /** The bags, matching Diamond3D's world layout. */
 const BAGS: Record<number, [number, number, number]> = {
@@ -138,5 +141,61 @@ describe('a batter reaching base', () => {
 
   it('sends a man who clears the bases all the way round', () => {
     expect(basePath(0, 4)).toEqual([BAGS[1], BAGS[2], BAGS[3], BAGS[0]]);
+  });
+});
+
+/*
+  When the field says the play is over.
+
+  Reported after watching it: *"when a hit is out, it still goes out of the
+  player's dot into the green area and then blinks red, it makes it look like it
+  was actually a hit."* The colour was timed off the ball landing, and the
+  landing is the decisive moment for only two of the three cases -- so a ground
+  out flashed red in empty grass, which is the picture a single makes.
+
+  Pinned here rather than in a screenshot for the same reason as everything else
+  in this file: it is arithmetic on a plan object, and the alternative is trying
+  to photograph a moving object at the right millisecond.
+*/
+describe('when the outcome shows', () => {
+  const stations = STATIONS.map((s) => new THREE.Vector3(s[0], 0.26, s[2]));
+
+  const plan = (over: Partial<BallHit>) => playPlan({
+    x: 0, y: 0.45, kind: 'ground', hit: false, caught: false, tick: 1,
+    ...over,
+  } as BallHit, stations);
+
+  it('calls a catch the moment it is caught', () => {
+    const p = plan({ kind: 'fly', caught: true, y: 0.8 });
+    expect(p.outcomeAt).toBe(p.flight);
+  });
+
+  it('calls a base hit the moment it lands, because that is the event', () => {
+    // Nobody was there. The ball reaching the grass is the whole story.
+    const p = plan({ hit: true });
+    expect(p.outcomeAt).toBe(p.flight);
+  });
+
+  it('waits for a man to actually have it before calling a ground out', () => {
+    const p = plan({ hit: false, caught: false });
+    expect(p.outcomeAt).toBeGreaterThan(p.flight);
+    // And not later than the throw, or the out is announced after it is made.
+    expect(p.outcomeAt).toBeLessThanOrEqual(p.throwAt);
+  });
+
+  it('never lets a ground out flash before the ball has stopped rolling', () => {
+    // The specific failure: red in the grass, yards from the nearest dot, a
+    // second before anybody reached it.
+    for (const kind of ['ground', 'line', 'fly'] as BattedBall[]) {
+      const p = plan({ kind, hit: false, caught: false, x: -0.6, y: 0.7 });
+      expect(p.outcomeAt, `${kind} announced its out early`)
+        .toBeGreaterThanOrEqual(p.flight);
+    }
+  });
+
+  it('says nothing at all about a ball that left the yard', () => {
+    const p = plan({ kind: 'fly', hit: true, y: 1.3 });
+    expect(p.homer).toBe(true);
+    expect(Number.isFinite(p.outcomeAt)).toBe(false);
   });
 });

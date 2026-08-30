@@ -265,3 +265,83 @@ describe('what a save from before this reads as', () => {
     }
   });
 });
+
+/*
+  How often the classroom actually takes somebody.
+
+  Reported after two seasons: the grades come up "way too often". They did --
+  3.27 suspensions a season, measured by `tests/elig-rate.ts`.
+
+  The cause is the sort of number that no single-value test catches, because
+  every input was individually reasonable. The rate is the product of three
+  things nobody had multiplied together: the share of a roster under the line
+  (17%), the number of times the check runs (`dayIndex % 7` over a forty-five
+  day season, so SIX), and the per-week chance. The old band was tuned as a
+  per-week rate for a fifteen-week spring.
+
+  So what is pinned here is the *product*, in the units the player experiences
+  it: suspensions per roster per season. A test on the constant would have
+  passed happily through the entire bug.
+*/
+describe('how often the classroom takes somebody', () => {
+  /** The six checks a real season actually runs. */
+  const WEEKS = 6;
+
+  it('takes about one man a season off a whole roster, not one a fortnight', () => {
+    const season = world();
+    let hits = 0;
+    const rosters = 40;
+    for (let t = 0; t < rosters; t++) {
+      const rec = season.teams[t];
+      if (!rec) continue;
+      const men = [
+        ...rec.team.lineup, ...rec.team.bench, ...rec.team.rotation, ...rec.team.bullpen,
+      ];
+      for (let w = 0; w <= WEEKS; w++) {
+        for (const p of men) if (atRisk(p) && failsThisWeek(p, 2027, w)) hits++;
+      }
+    }
+    const perSeason = hits / rosters;
+    expect(perSeason, 'the classroom has gone quiet entirely').toBeGreaterThan(0.4);
+    expect(perSeason, 'somebody is in the classroom every other week again')
+      .toBeLessThan(2);
+  });
+
+  it('never takes the same man two weeks running', () => {
+    /*
+      A man who sat out last week has had the conversation, the study table and
+      the fright. Taking him again immediately is the game repeating itself
+      rather than saying something new -- and against six checks a year it was
+      most of what "too often" felt like.
+
+      Done by re-asking the same pure function about last week rather than by
+      remembering anything, so it still costs no field on the save.
+    */
+    const men = everyone().filter((p) => gradesOf(p) < FAILING).slice(0, 60);
+    expect(men.length, 'nobody in the country is failing').toBeGreaterThan(0);
+    for (const p of men) {
+      for (let w = 1; w <= 200; w++) {
+        if (!failsThisWeek(p, 2027, w)) continue;
+        expect(failsThisWeek(p, 2027, w + 1), `${p.name} sat two weeks running`)
+          .toBe(false);
+      }
+    }
+  });
+
+  it('still takes the worst student more often than the borderline one', () => {
+    // The retune lowered the whole band; it must not have flattened it. A man
+    // in real trouble is still the one it keeps taking.
+    const men = everyone();
+    const worst = men.filter((p) => gradesOf(p) < FAILING);
+    const edge = men.filter((p) => {
+      const g = gradesOf(p);
+      return g >= FAILING && g < AT_RISK;
+    });
+    const rate = (group: Player[]): number => {
+      let hits = 0;
+      for (const p of group) for (let w = 1; w <= 200; w++) if (failsThisWeek(p, 2027, w)) hits++;
+      return hits / Math.max(1, group.length);
+    };
+    expect(rate(worst)).toBeGreaterThan(rate(edge));
+  });
+});

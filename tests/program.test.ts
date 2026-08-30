@@ -13,6 +13,8 @@ import {
   TITLE_BLURB, newCoach, LIFER_SEASONS, badRunPenalty, reviewSeason, takeChair,
   initialPrestige, leagueShape, playerBoard, rivalBoard, rivalExpectation,
   rosterStrength, CALIBRATED_LEAGUE, PLAYER_RENEW_BAR, SACK_BAR,
+  nextPrestige, programTarget, seasonScore, climbLift, climbBonus,
+  CLIMBING_UNDER, DROUGHT_GRACE,
   type Mandate, type SeasonOutcome, type Expectation, type CoachState,
   type ObjectiveKey, type Verdict,
 } from '../src/engine/program.js';
@@ -863,5 +865,110 @@ describe('a rival\'s board', () => {
     // A world with no chairs in it is the calibrated one, which is what makes a
     // test that never seats anybody behave like the game did before the split.
     expect(leagueShape([])).toEqual(CALIBRATED_LEAGUE);
+  });
+});
+
+/*
+  The low-star climb. Backlog §P, and the user's own design.
+
+  Measured before it was written: a one-star programme run competently won ten
+  to twelve of forty five for twenty four straight years and settled at a
+  standing of about twenty two. It was not being beaten down; it was being held
+  level, which is worse, because a league whose bottom cannot move is a league
+  whose bottom is scenery.
+
+  The constraint these pin is the one that came with the request -- *"1 star
+  schools should not be able to shoot for 5 star but at least be able to
+  progressively climb"* -- so every test here has a matching test that the door
+  stays shut for a programme that has not won anything.
+*/
+describe('a small programme climbing', () => {
+  const small = 22;
+  const blue = 78;
+
+  it('pays a small school more for the same June than a blue blood', () => {
+    const june = outcome({ wins: 30, losses: 15, madeRegionals: true, madeTournament: true });
+    const smallGain = nextPrestige(small, june) - small;
+    const blueGain = nextPrestige(blue, june) - blue;
+    expect(smallGain).toBeGreaterThan(0);
+    // The blue blood is above `CLIMBING_UNDER`, so none of this touches it and
+    // its number moves on the season's own merit alone.
+    expect(climbLift(blue)).toBe(1);
+    expect(climbBonus(blue, june)).toBe(0);
+    expect(smallGain).toBeGreaterThan(blueGain);
+  });
+
+  it('gives a school with nothing to show for it exactly nothing', () => {
+    /*
+      The whole shape of the request, and the reason the first version of this
+      was measured and rejected. A lift that pays for merely existing is a
+      league where ninety six programmes all drift upward, and the bottom
+      empties. Eleven wins of forty five is what the measured baseline actually
+      does, and it must stay where it is.
+    */
+    const nothing = outcome({ wins: 11, losses: 34, madeRegionals: false, drought: 6 });
+    expect(climbBonus(small, nothing)).toBe(0);
+    expect(nextPrestige(small, nothing)).toBe(small);
+  });
+
+  it('cannot be ridden from one star to five', () => {
+    // A one-star programme that plays a regional every year for a decade and
+    // never wins one. It should become a real programme; it should not become
+    // a blue blood, and `CLIMBING_UNDER` is where the help stops.
+    let p = 19;
+    const decent = outcome({ wins: 27, losses: 18, madeRegionals: true, madeTournament: true });
+    for (let y = 0; y < 12; y++) p = nextPrestige(p, decent);
+    expect(p).toBeGreaterThan(40);
+    expect(p, 'the bottom rung reached the top of the table').toBeLessThan(75);
+  });
+
+  it('lets it slide back down if the good years stop', () => {
+    // The other half of the sentence: "and descend if they do a bad job."
+    // The bank is not a ratchet — the drift is still pulling toward what the
+    // programme has actually been doing lately.
+    let p = 42;
+    const bad = outcome({ wins: 11, losses: 34, madeRegionals: false, drought: 6 });
+    for (let y = 0; y < 10; y++) p = nextPrestige(p, bad);
+    expect(p).toBeLessThan(32);
+  });
+
+  it('shelters a short drought and not a long one', () => {
+    /*
+      The season has to be one that actually argues for a *lower* standing than
+      the programme currently holds, or the shelter never engages and the test
+      proves nothing. Eighteen and twenty seven is a .400 year, which targets 40
+      — a programme sitting at 34 is *rising* on that, and the first version of
+      this test asserted a difference between two numbers that were both a climb.
+    */
+    const missed = outcome({ wins: 9, losses: 36, madeRegionals: false });
+    const short = nextPrestige(small + 12, { ...missed, drought: 1 });
+    const long = nextPrestige(small + 12, { ...missed, drought: DROUGHT_GRACE });
+    // Both fall — a bad year is still a bad year — but one bad year does not
+    // unwind five good ones.
+    expect(short).toBeGreaterThan(long);
+    expect(long).toBeLessThan(small + 12);
+  });
+
+  it('does not shelter a programme that has already arrived', () => {
+    const missed = outcome({ wins: 18, losses: 27, madeRegionals: false, drought: 0 });
+    const at = CLIMBING_UNDER + 20;
+    // No grace above `CLIMBING_UNDER`: a real programme having a bad year is
+    // exactly the case the ordinary drift is for.
+    expect(nextPrestige(at, missed)).toBe(nextPrestige(at, { ...missed, drought: 9 }));
+  });
+
+  it('keeps the coach graded on the absolute season, not the school size', () => {
+    /*
+      The reason `programTarget` exists as a second function rather than as an
+      argument to `seasonScore`. `nextCoachPrestige` reads
+      `seasonScore(o) - programPrestige`, i.e. overachievement. Fold the
+      school's standing into the score and a coach at a small school is paid
+      twice for the same regional, which would make the smallest jobs the most
+      rewarding in the country.
+    */
+    const june = outcome({ wins: 30, losses: 15, madeRegionals: true, madeTournament: true });
+    expect(seasonScore(june)).toBe(seasonScore(june));
+    expect(programTarget(small, june)).toBeGreaterThan(seasonScore(june));
+    expect(programTarget(blue, june)).toBe(seasonScore(june));
   });
 });

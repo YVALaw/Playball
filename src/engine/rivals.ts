@@ -329,10 +329,24 @@ export function rivalOutcome(
     madeTournament: post?.nationalField?.includes(record.index)
       ?? (finish !== undefined && finish !== 'regional'),
     wonRegional: post?.regionChampions.includes(record.index) ?? false,
-    // The same round the user's own outcome now prices. Ninety five programs
-    // graded on a different sheet from the one the player is graded on is how
-    // a league quietly stops being one country.
-    madeRegionals: finish !== 'missed',
+    /*
+      The same round the user's own outcome now prices. Ninety five programs
+      graded on a different sheet from the one the player is graded on is how a
+      league quietly stops being one country.
+
+      Which is what this line was doing, having been written against a `Finish`
+      that reads as though it has a 'missed' case. It does: the *type* has one,
+      and `runPostseason` never writes it -- a program that stayed home is
+      absent from `finish` rather than recorded as missing, and only the table
+      at line 1485 fills the gap with 'missed' after the fact. So this asked
+      `undefined !== 'missed'`, got true, and credited every school in the
+      country with a regional it did not play. Ninety five free points of
+      season score, once a year, forever.
+
+      Compare the user's own outcome, which has always asked whether the finish
+      exists. That is the question. A type's spare case is not a fact.
+    */
+    madeRegionals: finish !== undefined,
     reachedOmaha: finish === 'omaha' || finish === 'runner-up' || finish === 'champion',
     wonTitle: post?.champion === record.index,
   };
@@ -597,6 +611,11 @@ export function runRivalYear(
     if (record.index === userTeam || !coach) continue;
 
     const outcome = rivalOutcome(season, post, record);
+    // The drought, kept on the program and read only by `nextPrestige`. Counted
+    // for all ninety six so a rival climbing out of the cellar climbs by the
+    // same rule the player does.
+    record.drought = outcome.madeRegionals ? 0 : (record.drought ?? 0) + 1;
+    outcome.drought = record.drought;
     const roster = rosterStrength(record.team);
     const review = reviewSeason(
       coach, record.prestige, roster, outcome, games,

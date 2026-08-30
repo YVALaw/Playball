@@ -105,63 +105,92 @@ export function DepthChart() {
           captain is a free buff on your best player and the answer is the same
           man every year.
         */}
+        {/*
+          Every eligible man, every time, with the one wearing it marked.
+
+          Shipped the other way and reported straight back: *"it doesn't allow
+          me to pick whoever I chose, it simply gives me a name and when I click
+          on it I don't have any options to change the player."* Exactly right.
+          The list only rendered while the job was vacant, so naming a captain
+          removed the means of naming a different one, and the only way back was
+          to work out that STAND HIM DOWN was a prerequisite rather than a
+          resignation. A two-step where the first step looks like a dead end.
+
+          It is a choice among men, so it is drawn as a choice among men whether
+          or not one is currently selected — the same shape as every other picker
+          in the game. Tapping the man who already wears it does nothing rather
+          than something surprising.
+
+          The cap of four is gone with it. A shortlist that hides the man the
+          coach had in mind is the same bug wearing a different hat.
+        */}
         {namesCaptain && (
           <div style={{ marginBottom: 10, padding: '9px 11px', background: 'var(--paper)' }}>
             <div className="label">THE CAPTAIN</div>
-            {leader ? (
-              <>
-                <div style={{
-                  marginTop: 3, font: "700 calc(13px * var(--ts)) var(--display)",
-                  textTransform: 'uppercase',
-                }}>{leader.name}</div>
-                <div style={{
-                  marginTop: 2, font: "400 calc(11px * var(--ts))/1.45 var(--body)",
-                  color: 'var(--dim)',
-                }}>
-                  He steadies the room. He will not make anybody happy — he stops
-                  a bad month becoming a bad year.
-                </div>
-                <button
-                  className="tap"
-                  onClick={clearCaptain}
-                  style={{
-                    marginTop: 8, width: '100%', padding: '8px 11px', minHeight: 38,
-                    background: 'transparent', border: '1px solid rgba(28,36,48,.28)',
-                    font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.11em',
-                    color: 'var(--dim)',
-                  }}
-                >STAND HIM DOWN</button>
-              </>
-            ) : (
-              <>
-                <div style={{
-                  marginTop: 3, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)",
-                }}>
-                  {able.length > 0
-                    ? 'Nobody wears it. These are the men the room would follow.'
-                    : 'Nobody in this room has the makeup for it yet.'}
-                </div>
-                <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {able.slice(0, 4).map((c) => (
+            <div style={{
+              marginTop: 3, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)",
+              color: leader ? 'var(--dim)' : 'inherit',
+            }}>
+              {able.length === 0
+                ? 'Nobody in this room has the makeup for it yet.'
+                : leader
+                  ? 'He steadies the room. He will not make anybody happy — he stops a bad month becoming a bad year.'
+                  : 'Nobody wears it. These are the men the room would follow.'}
+            </div>
+
+            {able.length > 0 && (
+              <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {able.map((c) => {
+                  const wearing = c.id === leader?.id;
+                  return (
                     <button
                       key={c.id}
                       className="tap"
-                      onClick={() => nameCaptain(c.id)}
+                      onClick={() => { if (!wearing) nameCaptain(c.id); }}
                       style={{
                         textAlign: 'left', padding: '8px 10px', minHeight: 38,
-                        background: 'var(--field)',
-                        border: `1px solid ${c.id === pick?.id ? 'var(--you)' : 'rgba(28,36,48,.24)'}`,
-                        font: "400 calc(11.5px * var(--ts)) var(--body)",
+                        background: wearing ? 'var(--you)' : 'var(--field)',
+                        color: wearing ? 'var(--field)' : 'inherit',
+                        border: `1px solid ${
+                          wearing ? 'var(--you)'
+                            : c.id === pick?.id ? 'var(--you)' : 'rgba(28,36,48,.24)'
+                        }`,
+                        font: `${wearing ? 700 : 400} calc(11.5px * var(--ts)) var(--body)`,
+                        display: 'flex', alignItems: 'center', gap: 8,
                       }}
                     >
-                      {c.name} · {c.classYear}
-                      {c.id === pick?.id && (
-                        <span style={{ color: 'var(--you)' }}> · THE ROOM WOULD PICK HIM</span>
+                      <span style={{ flex: 1 }}>{c.name} · {c.classYear}</span>
+                      {wearing && (
+                        <span style={{
+                          flex: 'none',
+                          font: "700 calc(8.5px * var(--ts)) var(--mono)",
+                          letterSpacing: '.11em',
+                        }}>CAPTAIN</span>
+                      )}
+                      {!wearing && c.id === pick?.id && (
+                        <span style={{
+                          flex: 'none', color: 'var(--you)',
+                          font: "700 calc(8.5px * var(--ts)) var(--mono)",
+                          letterSpacing: '.11em',
+                        }}>THE ROOM'S PICK</span>
                       )}
                     </button>
-                  ))}
-                </div>
-              </>
+                  );
+                })}
+              </div>
+            )}
+
+            {leader && (
+              <button
+                className="tap"
+                onClick={clearCaptain}
+                style={{
+                  marginTop: 8, width: '100%', padding: '8px 11px', minHeight: 38,
+                  background: 'transparent', border: '1px solid rgba(28,36,48,.28)',
+                  font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.11em',
+                  color: 'var(--dim)',
+                }}
+              >NOBODY WEARS IT</button>
             )}
           </div>
         )}

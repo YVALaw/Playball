@@ -582,6 +582,60 @@ budget; one move a career and immediately eligible; rivals shop it too; the
 recruiting budget goes 40 to 56 because it now pays for three things where it
 was fitted for two.
 
+## Stage 10.5 · The screen
+
+**Size:** large · **Inserted August 29 2026, and it builds next**
+
+Not a new system. A pass over what is already built, because a play report that
+was two thirds interface is the game telling you where it actually is.
+
+> *"we need to completely change the ui tho, things are waay too mashed together
+> or not very clear, confusing etc."*
+
+Ten stages of systems have shipped in a month and each one added controls to
+screens that were laid out before those controls existed. Nothing here is
+broken; the whole of it is too dense, and density is the failure mode you cannot
+see from inside the change that caused it — every individual addition was small.
+
+**Why it is a stage and not a tidy-up.** The instinct with an interface
+complaint is to fix the three worst screens, and that is what produced the
+problem: the roster filters were fixed twice, the offer desk's badge weighting
+twice, the ball's outcome colour twice. A screen fixed alone gets fixed against
+its own history rather than against the rest of the game. This is one pass with
+one set of rules, applied everywhere, and the rules get written down first.
+
+**The named worst, in the order they were named.**
+
+1. **The player card.** *"the players card is one that needs the most work."*
+   Named specifically: the PEP TALK button and the rest of the controls are
+   "just a basic button" — five actions of quite different weight (a
+   conversation, a rest, a redshirt, a relisting, a captaincy) all rendered as
+   the same grey rectangle, stacked. A card that is a wall of identical buttons
+   is a card that has no idea what it is for.
+   - Injury has to read at a glance, on the card and in every list that mentions
+     him. *Partly done August 29 — the roster rows now carry HURT / ACAD / R-S /
+     REST — but the card itself is untouched.*
+   - The actions need weight, grouping and a shape that says what kind of thing
+     each one is.
+2. **The portal.** *"liked the portal, but it needs some work, looks super plain
+   and hard to read."* Two lists of names in one typeface. It is the newest
+   screen in the game and the least designed.
+3. **Everything else, against one rule set.** Spacing, hierarchy, what a label
+   is for, when a thing is a button and when it is a row.
+
+**Already done, out of the same report** — kept here because they are the
+evidence for the stage rather than a substitute for it: the press room's frame
+bug and its promotion out of an ambush into NEEDS YOU on the home screen; the
+captain picker; MOVE HIM FOR GOOD; the roster's injury tags.
+
+**Exit:** a screen the reporter stops describing as mashed together. Which is
+not a measurable exit, and that is honest — this is the one stage whose test is
+somebody using it.
+
+**Decisions:** whether NEEDS YOU grows to own more of the home screen; whether
+the card's actions become a sheet rather than a stack; whether the type scale
+gets a proper ramp or stays `calc(px * var(--ts))` everywhere.
+
 ## Stage 11 · The economy, and the staff it pays for
 
 **Size:** large
@@ -689,6 +743,25 @@ three times.
 - **School colours in the park**, not only on the cards around it.
 - **Depth and scale.** The field got bigger in stage 5; it has not yet got
   *deeper*.
+
+**Where the nine actually stand.** *Reported August 29 2026, and deferred here
+by the reporter: "fielding players are out of positions, first and second are
+one next to the other, same thing with SS and 3B. One other thing, there are
+times when the second baseman goes all the way to the pitcher to catch a ball,
+this one should be caught by the pitcher itself."*
+
+Both are the same root. `STATIONS` in `Diamond3D.tsx` is nine hand-placed
+coordinates that were fitted to look right in a diagram, and the middle infield
+sits far too narrow — 1B at x 2.32 and 2B at x 1.68 are two thirds of a unit
+apart when they should be most of the right side of the infield between them.
+And `playPlan` picks whoever is nearest to where the ball stops, with a flat
+penalty of 6 on the pitcher to keep him home; a ball dying in front of the mound
+is still closest to a second baseman who is standing too close to it.
+
+The fix is not to nudge the numbers. It is that the defense should stand where a
+defense stands and each man should own a *region*, which is the same geometry
+work the rest of this stage is doing anyway — which is exactly why it was
+deferred to here rather than patched twice.
 
 **The play, drawn better.**
 

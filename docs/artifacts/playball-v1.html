@@ -405,7 +405,35 @@
         <h3>The transfer portal</h3>
         <div class="chips"><span class="chip sz-m">Medium</span><span class="chip dep">Needs 08 + 09</span></div>
         <p>Both directions or it isn't a portal: men leave because they sit, and
-        men arrive because they sat somewhere else.</p>
+        men arrive because they sat somewhere else.</p>        <div class="decide"><b>The August 29 play batch &mdash; fourteen items off two seasons</b>Shipped the same day: the <strong>captain picker</strong>, whose list only rendered while the job was vacant, so naming a captain removed the means of naming a different one. The <strong>outcome flash</strong>, timed off the ball <em>landing</em> rather than off the play being decided &mdash; on a grounder that is a red blink in empty grass, several yards past the nearest fielder and a second before anybody reaches it, which is exactly the picture a single makes. The <strong>classroom</strong>, at 3.27 suspensions a season because a per-week chance tuned for a fifteen-week spring was being asked six times a year; now 1.07, and never twice running. The <strong>press room</strong>, which was both breaking the phone frame (the one screen returned without an <code>.app-frame</code> wrapper, so its <code>absolute; inset: 0</code> resolved against the window) and ambushing the player. And the <strong>low-star climb</strong>, to the reporter&rsquo;s own design.</div>
+        <div class="decide"><b>NEEDS YOU, and the argument the press room lost</b>The room was returned ahead of every other screen, with a comment defending it: <em>put it in a tab and it becomes a thing you can walk away from, which is the one shape it must not have.</em> That was wrong, and the note is worth keeping. It bought attention by taking the screen away from somebody in the middle of something else, and it was the only thing in the game that did &mdash; everything else here happens, gets written down, and waits to be looked at. It is an overlay now, opened from a <strong>NEEDS YOU</strong> panel that replaced the conference scoreboard on the home screen: eight results you could do nothing about, sitting under the one button that moves your season, while the things you <em>could</em> act on had nowhere to be. Red means the game cannot do it for you. A man&rsquo;s grades are not red &mdash; the registrar decided, not you.</div>
+        <div class="decide"><b>The climb, and an honest account of what moved</b>The measured problem was never that the climb was slow: a one-star program run competently won 10&ndash;12 of 45 for twenty-four years and settled at 22, while the next rung starts at 38. There was nothing to climb <em>to</em>. The fix is the reporter&rsquo;s: achievements pay a small school more (<code>climbLift</code>, 1.7&times; at the bottom, gone by two stars), and a short drought does not unwind five good years (<code>DROUGHT_GRACE</code>). Sizing it took two passes &mdash; scaling the <em>target</em> bought 0.43 of a prestige point, because <code>nextPrestige</code> only drifts eighteen percent of the way, so the achievements now pay directly. A regional year at one star is worth eleven points instead of eight. <strong>It is not a ratchet:</strong> the drift still pulls toward what you have actually been doing, so a school that banks its way to 40 and goes back to eleven wins slides. Found while wiring it, and not reported: <code>rivalOutcome</code> asked <code>finish !== 'missed'</code> where a program that stayed home is <em>absent</em> from <code>finish</code> rather than marked &mdash; so all ninety-five rivals had been credited with a regional they never played, every year, since the flag was added.</div>
+
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">10&frac12;</div>
+      <div>
+        <h3>The screen</h3>
+        <div class="chips"><span class="chip sz-l">Large</span><span class="chip dep">Builds next</span></div>
+        <p>Not a new system. A pass over what is already built, because a play
+        report that was two thirds interface is the game telling you where it
+        actually is: <em>&ldquo;we need to completely change the UI though,
+        things are way too mashed together or not very clear, confusing
+        etc.&rdquo;</em></p>
+        <p>Ten stages of systems shipped in a month, and every one of them added
+        controls to screens laid out before those controls existed. Nothing here
+        is broken. The whole of it is too dense &mdash; which is the failure mode
+        you cannot see from inside the change that caused it, because each
+        individual addition was small.</p>
+        <ul>
+          <li><strong>The player card</strong>, named as the worst of it. Five actions of quite different weight &mdash; a conversation, a rest, a redshirt, a relisting, a captaincy &mdash; all rendered as the same grey rectangle, stacked. A card that is a wall of identical buttons has no idea what it is for.</li>
+          <li><strong>The portal</strong>, named as the next worst: <em>&ldquo;looks super plain and hard to read.&rdquo;</em> Two lists of names in one typeface. The newest screen in the game and the least designed.</li>
+          <li><strong>Everything else, against one written-down rule set</strong> &mdash; spacing, hierarchy, what a label is for, when a thing is a button and when it is a row.</li>
+        </ul>
+        <div class="decide"><b>Why a stage and not a tidy-up</b>The instinct with an interface complaint is to fix the three worst screens, and that instinct is what produced the problem: the roster filters were fixed twice, the offer desk&rsquo;s badge weighting twice, the ball&rsquo;s outcome colour twice. A screen fixed alone gets fixed against its own history rather than against the rest of the game. One pass, one rule set, applied everywhere &mdash; and the rules written first.</div>
+        <div class="exit"><b>Exit</b>A screen the reporter stops describing as mashed together. Which is not a measurable exit, and that is honest: this is the one stage whose test is somebody using it.</div>
       </div>
     </li>
 

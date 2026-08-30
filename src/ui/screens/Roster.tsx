@@ -17,6 +17,8 @@ import { overallOf, naturalPos } from '../../engine/ratings.js';
 import { potentialGrade } from '../../engine/scouting.js';
 import { battingAverage, era, inningsPitched } from '../../engine/season.js';
 import { pct } from '../format.js';
+import { isHurt } from '../../engine/injury.js';
+import { available } from '../../engine/depthChart.js';
 import type { Hitter, Pitcher, Player } from '../../engine/types.js';
 
 type Mode = 'all' | 'bat' | 'arm';
@@ -167,6 +169,7 @@ export function Roster() {
                 onClick={() => openPlayer(p.id)}
                 playerId={p.id}
                 teamAbbr={team.def.abbr}
+                out={outTag(p, season.dayIndex) ?? undefined}
                 values={[
                   p.name,
                   slotOf(p),
@@ -189,6 +192,7 @@ export function Roster() {
                   hr={line?.hr ?? 0}
                   played={(line?.ab ?? 0) > 0}
                   starter={team.team.lineup.includes(p)}
+                  out={outTag(p, season.dayIndex)}
                   onClick={() => openPlayer(p.id)}
                 />
               ))
@@ -203,6 +207,7 @@ export function Roster() {
                   earned={line && line.outs > 0 ? era(line) : null}
                   ip={line ? inningsPitched(line) : 0}
                   rotation={team.team.rotation.includes(p)}
+                  out={outTag(p, season.dayIndex)}
                   onClick={() => openPlayer(p.id)}
                 />
               ))}
@@ -363,11 +368,33 @@ function Head({ mode }: { mode: Mode }) {
 /** Seniors are on their way out. Worth seeing at a glance, so they get the accent. */
 const classColor = (cl: string): string => (cl === 'SR' ? 'var(--clay)' : 'var(--ink)');
 
+/**
+ * Why a man is not playing, in the fewest letters that still say which.
+ *
+ * Four reasons and they are not interchangeable: HURT is the trainer's, ACAD is
+ * the registrar's, R-S is a season you chose to spend, and REST is one you chose
+ * to spend a few days of. A single "unavailable" mark would collapse a decision
+ * you made into a thing that happened to you.
+ *
+ * Returns null for a man who is fit, which is nearly everybody nearly always —
+ * the mark has to stay rare or it stops being a mark.
+ */
+function outTag(p: Player, day: number): string | null {
+  if ((p as Player & { redshirt?: boolean }).redshirt) return 'R-S';
+  if (available(p, day)) return null;
+  if (isHurt(p, day)) return 'HURT';
+  // `available` is false and the trainer has nothing to do with it, so it is
+  // either the classroom or a rest the coach ordered. `why` says which.
+  return (p as Player & { why?: string }).why === 'academic' ? 'ACAD' : 'REST';
+}
+
 function Cells(
-  { values, highlight, onClick, playerId, teamAbbr, grid = GRID }:
+  { values, highlight, onClick, playerId, teamAbbr, grid = GRID, out }:
   {
     values: string[]; highlight?: boolean; onClick?: () => void;
     playerId?: string; teamAbbr?: string; grid?: string;
+    /** Why he is not playing, in two or three letters. See `outTag`. */
+    out?: string;
   },
 ) {
   return (
@@ -402,17 +429,32 @@ function Cells(
           textAlign: i > 1 ? 'right' : 'left',
           color: i === 3 ? classColor(v) : 'var(--ink)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>{v}</span>
+          // A man who cannot play is greyed, and his name carries the reason.
+          // Reported as needing "a way to better show that one player is
+          // injured" -- it was only visible by opening him, which means the one
+          // fact you scan a roster for was the one fact the roster did not say.
+          opacity: out && i === 1 ? 0.55 : 1,
+        }}>
+          {v}
+          {out && i === 1 && (
+            <span style={{
+              marginLeft: 6, padding: '1px 4px',
+              background: 'var(--clay)', color: 'var(--cream)',
+              font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.06em',
+              verticalAlign: '2px',
+            }}>{out}</span>
+          )}
+        </span>
       ); })}
     </button>
   );
 }
 
 function HitterRow(
-  { p, avg, hr, played, starter, onClick, abbr }:
+  { p, avg, hr, played, starter, onClick, abbr, out }:
   {
     p: Hitter; avg: number; hr: number; played: boolean; starter: boolean;
-    onClick: () => void; abbr?: string;
+    onClick: () => void; abbr?: string; out?: string | null;
   },
 ) {
   return (
@@ -421,6 +463,7 @@ function HitterRow(
       onClick={onClick}
       playerId={p.id}
       teamAbbr={abbr}
+      out={out ?? undefined}
       values={[
         p.name,
         naturalPos(p),
@@ -435,10 +478,10 @@ function HitterRow(
 }
 
 function PitcherRow(
-  { p, earned, ip, rotation, onClick, abbr }:
+  { p, earned, ip, rotation, onClick, abbr, out }:
   {
     p: Pitcher; earned: number | null; ip: number; rotation: boolean;
-    onClick: () => void; abbr?: string;
+    onClick: () => void; abbr?: string; out?: string | null;
   },
 ) {
   return (
@@ -447,6 +490,7 @@ function PitcherRow(
       onClick={onClick}
       playerId={p.id}
       teamAbbr={abbr}
+      out={out ?? undefined}
       values={[
         p.name,
         p.role,

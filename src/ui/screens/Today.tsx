@@ -15,6 +15,7 @@ import { FirstVisit } from '../Tutorial.js';
 import { useOpenTeam } from './TeamCard.js';
 import { BoxScoreSheet } from './Schedule.js';
 import { seasonDate } from '../format.js';
+import { NeedsYou } from '../Needs.js';
 import type { Pitcher } from '../../engine/types.js';
 
 /**
@@ -146,19 +147,6 @@ export function Today() {
   const ourEra = teamEra(season, team);
   const oppAvg = opponent ? teamAverage(season, opponent) : null;
   const oppEra = opponent ? teamEra(season, opponent) : null;
-
-  // Last night around the conference: every game a conference program played
-  // on the most recent day that saw one. Real results only — a quiet Monday
-  // shows the weekend rather than inventing scores.
-  const confGames = season.results.filter((r) =>
-    season.teams[r.home]?.conference === team.conference
-    || season.teams[r.away]?.conference === team.conference);
-  const lastNightDay = confGames.length > 0
-    ? Math.max(...confGames.map((r) => r.day))
-    : null;
-  const lastNight = lastNightDay === null
-    ? []
-    : confGames.filter((r) => r.day === lastNightDay).slice(0, 8);
 
   return (
     <FixedHeader
@@ -442,74 +430,20 @@ export function Today() {
         </div>
       )}
 
-      {/* Around the conference last night. Real scores off the season's own
-          results; a day with no conference games shows the most recent one that
-          had any rather than inventing a slate. */}
-      {lastNight.length > 0 && lastNightDay !== null && (
-        <>
-          <div style={{
-            marginTop: 20, borderBottom: '2px solid var(--ink)', paddingBottom: 6,
-            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-          }}>
-            <div className="label">
-              {lastNightDay === (day?.day ?? 0) - 1 || done ? 'LAST NIGHT' : 'LATEST'} IN THE {team.conference}
-            </div>
-            <div style={{ font: "500 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
-              {seasonDate(year, lastNightDay).toUpperCase()}
-            </div>
-          </div>
-          <div style={{
-            marginTop: 8, border: '1px solid var(--faint)', background: 'var(--paper)',
-          }}>
-            {lastNight.map((g, i) => {
-              const home = season.teams[g.home];
-              const away = season.teams[g.away];
-              if (!home || !away) return null;
-              const homeWon = g.homeRuns > g.awayRuns;
-              const winner = homeWon ? g.home : g.away;
-              const gap = (season.teams[homeWon ? g.away : g.home]?.prestige ?? 50)
-                - (season.teams[winner]?.prestige ?? 50);
-              const mine = g.home === team.index || g.away === team.index;
-              return (
-                <button
-                  key={i}
-                  onClick={() => setOpenGame(g)}
-                  className="tap"
-                  style={{
-                    width: '100%', textAlign: 'left',
-                    display: 'flex', alignItems: 'baseline', gap: 8,
-                    padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
-                    background: mine ? 'rgba(168,68,42,.06)' : 'transparent',
-                  }}>
-                  <span style={{
-                    flex: 1, font: "400 calc(11px * var(--ts)) var(--mono)",
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
-                    <b style={{ fontWeight: homeWon ? 400 : 700 }}>{away.def.abbr}</b>
-                    {' at '}
-                    <b style={{ fontWeight: homeWon ? 700 : 400 }}>{home.def.abbr}</b>
-                    {gap >= 12 && (
-                      <span style={{
-                        marginLeft: 6, font: "600 calc(8px * var(--ts)) var(--mono)", color: 'var(--clay)',
-                        letterSpacing: '.1em',
-                      }}>UPSET</span>
-                    )}
-                    {g.innings > 9 && (
-                      <span style={{
-                        marginLeft: 6, font: "600 calc(8px * var(--ts)) var(--mono)", color: 'var(--dim)',
-                        letterSpacing: '.1em',
-                      }}>F/{g.innings}</span>
-                    )}
-                  </span>
-                  <span style={{ font: "700 calc(12px * var(--ts)) var(--mono)" }}>
-                    {g.awayRuns}-{g.homeRuns}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </>
-      )}
+      {/*
+        What is waiting on you, where the conference scoreboard used to be.
+
+        Asked for in those terms, and it is the better use of the space. The
+        scoreboard was eight results you could do nothing about, sitting under
+        the one button that moves your season -- and the things you *could* do
+        something about had nowhere to be, so the press room got itself a
+        screen by interrupting and an injury got itself nothing at all.
+
+        Last night around the conference has not gone anywhere: SCHEDULE has
+        every result and CONFERENCE has the table they add up to. It has stopped
+        being the thing the home screen is for.
+      */}
+      <NeedsYou />
     </div>
 
     {/*

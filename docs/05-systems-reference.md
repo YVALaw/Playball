@@ -5684,6 +5684,135 @@ minutes of actually playing a season. That is the argument for playing a stage
 before calling it done, and it is the third time this project has been paid for
 doing so.
 
+## 33. NEEDS YOU, and the end of the interruption — **SHIPPED, August 29 2026**
+
+`src/ui/Needs.tsx`. A panel at the foot of the home screen listing what is
+waiting on the coach, in place of the conference scoreboard that used to sit
+there.
+
+**Why it replaced what it replaced.** Asked for directly — *"I'm thinking on
+removing the last games thingy in the home screen and change it for something
+like NEEDS YOU"* — and it is the better use of the space. The scoreboard was
+eight results the coach could do nothing about, sitting directly under the one
+button that moves his season. Meanwhile the things he *could* act on had nowhere
+to be, with the consequence that the press room got itself a screen by
+interrupting and an injury got itself nothing at all. Conference results have not
+been deleted; SCHEDULE has every one and CONFERENCE has the table.
+
+**The press room stops being an ambush.** It was returned from `App` ahead of
+every other branch, with a comment defending the choice: *put it in a tab and it
+becomes a thing you can walk away from, which is the one shape it must not have.*
+That argument was wrong, and it is worth keeping the note. It bought attention by
+taking the screen away from somebody in the middle of doing something else, and
+it was the only thing in the game that did — everything else here happens, gets
+written down, and waits to be looked at. It is an overlay now, opened from the
+panel, and what keeps it from being ignored is that it sits at the top of the
+home screen in red.
+
+*It also, being the one screen returned without an `.app-frame` wrapper, escaped
+the 430-pixel phone frame entirely: `FixedHeader` is `position: absolute; inset:
+0`, and with no frame around it the nearest positioned ancestor was the window.
+Reported as the press room "expanding the screen out of its regular mobile size".*
+
+**Two severities, and the line between them is not importance.** `must` — drawn
+in `--clay`, with a count in the header — is a thing the game *cannot do for
+you*: a question only you can answer, a job only you can fill. Everything else
+resolves itself if ignored.
+
+| Need | `must` | Why |
+|---|---|---|
+| A press conference waiting | yes | Only you can answer it, and it goes stale. |
+| A man in your nine who cannot play | yes, in a full career | The card is not finished. |
+| Nobody wearing the C | no | A vacancy, not a problem. |
+| A man failing his classes | no | He is already sitting out; the registrar decided, not you. |
+
+The hurt-starter row appears **only in a full career**, and that is the depth
+mode rule stated exactly: in a casual career the bench coach writes the card, so
+the same fact is not a decision and is not raised. Either way the man is hurt and
+either way somebody covers him — the mode changes what the player is asked, never
+what the simulation does.
+
+**It renders nothing when there is nothing waiting.** An empty NEEDS YOU reading
+"nothing needs you" is a piece of furniture that teaches the eye to skip the
+place where urgent things appear.
+
+## 34. The low-star climb — **SHIPPED, August 29 2026**
+
+Backlog §P carries the measurement and the three rejected levers. What is in the
+engine:
+
+| Symbol | Where | What |
+|---|---|---|
+| `CLIMBING_UNDER` | `program.ts` | 45. Above it none of this does anything. |
+| `climbLift(current)` | `program.ts` | 1.7× at 5, 1.0 at 45. Scales achievement terms only. |
+| `programTarget(current, o)` | `program.ts` | `seasonScore` seen from where the programme stands. |
+| `DROUGHT_GRACE` | `program.ts` | 3. Under it a climbing programme falls at a quarter rate. |
+| `TeamRecord.drought` | `season.ts` | Sparse; counted for all ninety-six. |
+
+**The one thing to understand before touching it:** `programTarget` is
+deliberately *not* a prestige argument added to `seasonScore`. `seasonScore`
+answers "how good was this season" in the absolute, and three other systems read
+it that way — most importantly `nextCoachPrestige`, which measures a coach as
+`seasonScore(o) - programPrestige`, i.e. overachievement. Fold the school's size
+into the score and a coach at a one-star programme is paid twice for the same
+regional, which would make the smallest jobs the most rewarding in the country.
+Two questions, two functions.
+
+## 35. What the classroom actually costs — **RETUNED, August 29 2026**
+
+`failsThisWeek` ran at 3.27 suspensions a season and was reported as happening
+"way too often". It was.
+
+The cause is a number nobody set and everybody assumed. The check runs on
+`season.dayIndex % 7`, and a regular season here is about forty-five days — so it
+is asked **six times a year**, not the fifteen-odd a real spring would have. The
+old 7%-to-23% band was a sane per-week rate for a long season; against six checks
+it meant somebody was in the classroom better than every other week.
+
+Now `0.008 + depth * 0.09`, measured at **1.07 a season** by
+`tests/elig-rate.ts` — which is a new probe and exists precisely because this
+number is the product of three others (the at-risk share, the number of weeks,
+the per-week chance) that were each set independently and never multiplied
+together.
+
+`failsThisWeek` also never fires twice running: it asks the same pure function
+about last week and refuses if it said yes. A man who sat out has had the
+conversation and the fright, and taking him again immediately is the game
+repeating itself. Done by re-asking rather than by remembering, so it still costs
+no field on the save and no draw from any generator.
+
+## 36. When the field says a play is over — **FIXED, August 29 2026**
+
+`Diamond3D.playPlan` grew `outcomeAt`, and the colour flash hangs off it rather
+than off the ball landing.
+
+Reported: *"when a hit is out, it still goes out of the player's dot into the
+green area and then blinks red, it makes it look like it was actually a hit."*
+Exactly right, and the reason is that the landing and the decision are the same
+event for only two of the three cases:
+
+| | Decided at |
+|---|---|
+| Caught | arrival — the catch *is* the out |
+| A base hit | arrival — it landed and nobody was there |
+| Fielded on the ground | when a man actually has it |
+
+The third was being drawn as the second. A grounder flashed red the instant it
+touched grass, several yards past the nearest dot and a second before anybody
+reached it — which is precisely the picture a single makes, so the field was
+announcing an out using the image of a base hit. The red now goes off in the
+fielder's hand and rides a little way into the throw.
+
+The expanding ground ring went with it, and for the same reason: a red ring
+opening in the outfield is the single most hit-looking thing this scene can draw.
+It is hits only now. A grounder is told by the fielder having it and the throw
+going across, which is how it is told on a television.
+
+*This is the second fix to this animation and the first one was also correct.
+The earlier bug was the blink lasting the entire chase — up to four seconds of
+red light in the gap. Shortening it was right and did not touch the timing,
+because the timing did not look wrong until the duration stopped hiding it.*
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

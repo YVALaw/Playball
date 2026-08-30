@@ -213,6 +213,18 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
                 He is behind somebody here and would walk into {suggestion}.
               </div>
             )}
+            {/*
+              Was MOVE HIM FOR GOOD, and reported as not making sense. Fairly:
+              "for good" was doing two jobs and neither of them clearly. It
+              meant permanently — as against covering there for a night, which
+              is what the depth chart already does — but it reads first as "for
+              his benefit", so the control appeared to be offering to do the man
+              a favour rather than to relist him.
+
+              The distinction it was reaching for is a real one and worth
+              keeping, so the line under the button now says it in words instead
+              of asking one idiom to carry it.
+            */}
             {alsoPlays.length > 0 && (
               <button
                 className="tap"
@@ -222,7 +234,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
                   background: 'var(--field)', border: '1px solid rgba(28,36,48,.32)',
                   font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.11em',
                 }}
-              >{moving ? 'NEVER MIND' : 'MOVE HIM FOR GOOD'}</button>
+              >{moving ? 'NEVER MIND' : 'CHANGE HIS POSITION'}</button>
             )}
             {moving && (
               <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 5 }}>
@@ -246,6 +258,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
                 marginTop: 6, font: "400 calc(10.5px * var(--ts))/1.45 var(--body)",
                 color: 'var(--dim)',
               }}>
+                This is where he is listed from now on, not cover for a night.
                 He will be a step behind there for a season or two, and then he
                 will not.
               </div>

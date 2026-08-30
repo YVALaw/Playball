@@ -135,6 +135,15 @@ export interface SeasonOutcome {
    * priced as a failure".
    */
   madeRegionals?: boolean;
+  /**
+   * Springs in a row, this one included, without a postseason of any kind.
+   *
+   * Read only by `nextPrestige`, and only for a program still climbing. Optional
+   * because every save written before it has no such counter, and an absent one
+   * has to mean "no drought on record" rather than "nought, so the grace applies
+   * forever".
+   */
+  drought?: number;
 }
 
 export const winPct = (o: SeasonOutcome): number =>
@@ -173,6 +182,97 @@ export function seasonScore(o: SeasonOutcome): number {
  * the point — a blue blood survives one bad year, and one good year does not
  * turn a cellar program into a contender.
  */
+/**
+ * Where a program stops climbing and starts defending.
+ *
+ * The top of the two-star band. Above it a school has something to lose and the
+ * numbers below do nothing at all.
+ */
+export const CLIMBING_UNDER = 45;
+
+/** How long a small program may miss the postseason before it starts to cost. */
+export const DROUGHT_GRACE = 3;
+
+/**
+ * What a season is worth to a program that has not got there yet.
+ *
+ * Seventy percent more at the very bottom, sliding to nothing at
+ * `CLIMBING_UNDER`. Asked for in those terms: *"if 4 star gets 3 points of
+ * prestige for making it to the post season, 1 and 2 star schools get 5."*
+ *
+ * It is also the true thing, which is why it is worth doing rather than merely
+ * kind. A regional at a blue blood is a Tuesday and the school's standing does
+ * not move for it; a regional at a school that has never played one is the best
+ * thing that has happened to the place in twenty years, and it is on the local
+ * news for a week. The same event is not the same size at the two ends of the
+ * table, and modelling it as though it were is what made the bottom of the
+ * league a floor rather than a rung.
+ */
+export function climbLift(current: number): number {
+  if (current >= CLIMBING_UNDER) return 1;
+  return 1 + 0.7 * (CLIMBING_UNDER - current) / (CLIMBING_UNDER - 5);
+}
+
+/**
+ * The standing a program's season argues for, which is `seasonScore` seen from
+ * where the program already stands.
+ *
+ * Deliberately separate from `seasonScore`, rather than a prestige argument
+ * added to it. `seasonScore` answers "how good was this season" in the
+ * absolute, and three other systems depend on that meaning: the coach's own
+ * reputation is `seasonScore` measured *against* the program, so folding the
+ * school's size into the score would pay a coach twice for the same regional
+ * and quietly make the small jobs the best jobs in the country.
+ *
+ * This answers a different question -- "what does this season say about the
+ * place" -- and only the school's own standing reads it.
+ */
+export function programTarget(current: number, o: SeasonOutcome): number {
+  const lift = climbLift(current);
+  let score = winPct(o) * 100;
+  if (o.madeRegionals) score += 2 * lift;
+  if (o.madeTournament) score += 6 * lift;
+  if (o.wonConference) score += 8 * lift;
+  if (o.reachedOmaha) score += 12 * lift;
+  if (o.wonTitle) score += 15 * lift;
+  return Math.max(0, Math.min(100, score));
+}
+
+/**
+ * And what a climbing programme *banks* for it, on top of the drift.
+ *
+ * This is the part of the request that the lift alone could not deliver, and
+ * the arithmetic is worth writing down because it is why a second mechanism
+ * exists at all. The ask was in **points of prestige**: *"if 4 star gets 3
+ * points of prestige for making it to the post season, 1 and 2 star schools get
+ * 5."* `programTarget` is a *target*, and `nextPrestige` moves eighteen percent
+ * of the way toward it — so lifting the postseason term from 6 to 8.4 buys
+ * 0.43 of an actual prestige point. Measured, not guessed: the lift moved a
+ * one-star programme's regional year by exactly one point.
+ *
+ * So the achievements pay directly, scaled the same way — full weight at the
+ * bottom of the table, nothing at all by `CLIMBING_UNDER`.
+ *
+ * **It does not run away, and that is the design rather than an accident.** The
+ * drift is still pulling toward what the programme has actually been doing, so
+ * a school that banks its way up to 40 on one good June and then goes back to
+ * winning eleven games has a target of 24 and slides. You climb by achieving
+ * and you hold it by continuing to. Which is the rest of the same sentence:
+ * *"that ramps them up to the point where they can get better and descend if
+ * they do a bad job."*
+ */
+export function climbBonus(current: number, o: SeasonOutcome): number {
+  if (current >= CLIMBING_UNDER) return 0;
+  const scale = (CLIMBING_UNDER - current) / (CLIMBING_UNDER - 5);
+  let pts = 0;
+  if (o.madeRegionals) pts += 2;
+  if (o.madeTournament) pts += 2;
+  if (o.wonConference) pts += 2;
+  if (o.reachedOmaha) pts += 3;
+  if (o.wonTitle) pts += 3;
+  return pts * scale;
+}
+
 export function nextPrestige(current: number, o: SeasonOutcome): number {
   /*
     Up quickly, down slowly.
@@ -188,7 +288,7 @@ export function nextPrestige(current: number, o: SeasonOutcome): number {
     comes back down, which inflates the league a rung at a time and makes the
     number mean nothing after twenty years -- so the soak watches the mean.
   */
-  const gap = seasonScore(o) - current;
+  const gap = programTarget(current, o) - current;
   /*
     The slow fall is the top of the table's alone.
 
@@ -200,8 +300,36 @@ export function nextPrestige(current: number, o: SeasonOutcome): number {
     spring it fails to win a trophy.
   */
   const sticky = current >= 70 && gap < 0;
-  const drift = gap * (sticky ? 0.12 : 0.18);
-  return Math.max(5, Math.min(95, Math.round(current + drift)));
+
+  /*
+    And the small school's grace, which is the other half of the same report.
+
+    Measured before it was written: a one-star program run competently won ten
+    to twelve of forty five for twenty four straight years, settled at a
+    standing of about twenty two, and reached Omaha none of six times. It was
+    not being beaten down -- it was being held level, which is worse, because a
+    league where the bottom cannot move is a league where the bottom is
+    scenery.
+
+    Asked for directly: *"1 star schools should not be able to shoot for 5 star
+    but at least be able to progressively climb to the point where they can have
+    a shot"*, and then the mechanism: *"what if we make it that they only lose a
+    bit of prestige if they don't make the post season 3 years in a row."*
+
+    So a climbing program that misses May takes a quarter of the fall while the
+    drought is short, and the whole of it once the drought is three. That is the
+    difference between a bad year and a bad era, and only the second one should
+    cost a school what it spent five years building. Note it does not stop the
+    descent the report also asked for -- a program that is genuinely poor for
+    three years running falls at the ordinary rate, from wherever its good years
+    got it to.
+  */
+  const climbing = current < CLIMBING_UNDER;
+  const sheltered = climbing && gap < 0 && (o.drought ?? DROUGHT_GRACE) < DROUGHT_GRACE;
+
+  const rate = sheltered ? 0.045 : sticky ? 0.12 : 0.18;
+  const drift = gap * rate;
+  return Math.max(5, Math.min(95, Math.round(current + drift + climbBonus(current, o))));
 }
 
 // ---------------------------------------------------------------------------

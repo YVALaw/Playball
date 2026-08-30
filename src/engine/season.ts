@@ -466,6 +466,16 @@ export interface TeamRecord {
   /** Team indices faced, once per game. Feeds strength of schedule. */
   opponents: number[];
   /**
+   * Springs in a row without a postseason of any kind.
+   *
+   * Kept on the program rather than on the coach, because it is a fact about
+   * the place and it survives a firing. Read by `nextPrestige`, where a short
+   * drought at a small school is sheltered from the fall and a long one is not.
+   * Sparse: a save from before it has no droughts on record, which reads as no
+   * shelter rather than as permanent shelter. See `DROUGHT_GRACE`.
+   */
+  drought?: number;
+  /**
    * The user coach's offense and defense skills, set only on the program he
    * runs. `playGame` forwards them into every game this team plays — managed or
    * simmed, the same tiny edge — and the store keeps them current when a skill

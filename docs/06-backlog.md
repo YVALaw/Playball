@@ -1956,3 +1956,86 @@ rather than on the margin:
 
 Each is league-wide and wants its own measured pass. Logged rather than guessed
 at, because three levers have now been tried and two of them were noise.
+
+### The fix that shipped — August 29, 2026
+
+None of the three levers above. The user supplied a fourth, and it is better
+than all of them because it acts on the *first* link in the loop rather than the
+last:
+
+> *"the prestige thing should be more considerate with low star colleges. What
+> if we make it that they only lose a bit of prestige if they don't make the
+> post season 3 years in a row? Also make them earn a bit more prestige than
+> 3–5 star colleges — for example, if 4 star gets 3 points of prestige for
+> making it to the post season, 1 and 2 star schools get 5. That ramps them up
+> to the point where they can get better and descend if they do a bad job."*
+
+Two mechanisms, both in `nextPrestige`:
+
+- **`climbLift(current)`** — 1.7× at prestige 5, sliding to 1.0 at
+  `CLIMBING_UNDER` (45). It scales the *achievement* terms only, never the
+  win percentage, so a small programme is paid more for a regional and not for
+  merely existing. Applied through a new `programTarget`, kept deliberately
+  separate from `seasonScore`: `seasonScore` answers "how good was this season"
+  in the absolute, and the coach's own reputation is measured *against* the
+  programme with it. Folding the school's size into that number would pay a
+  coach twice for the same regional and quietly make the small jobs the best
+  jobs in the country.
+- **`DROUGHT_GRACE`** — a climbing programme that misses May takes a quarter of
+  the fall while its drought is under three years, and the whole of it after.
+  `TeamRecord.drought` is sparse and counted for all ninety-six, so a rival
+  climbing out of the cellar climbs by the same rule the player does.
+
+**Why this works where the other three did not.** The measured problem was never
+that the climb was slow — it was that the fixed point was 24 and the next rung
+was 38, so there was *nothing to climb to*. Reach, class weight and compression
+all try to win more games at a fixed reward. This changes what a season is worth,
+which moves the fixed point itself: a one-star programme that plays a regional
+now targets ~35 rather than ~26. It still cannot leapfrog — the lift pays only
+for things you actually won, and it is gone entirely by two stars, which is the
+stated constraint (*"1 star schools should not be able to shoot for 5 star but at
+least be able to progressively climb"*) expressed as a curve.
+
+**Found while wiring it, and not reported:** `rivalOutcome` set
+`madeRegionals: finish !== 'missed'`. `Finish` has a `'missed'` case in the type
+and `runPostseason` never writes it — a programme that stayed home is simply
+absent from `finish`. So the test was `undefined !== 'missed'`, which is `true`,
+and every one of the ninety-five rival programmes has been credited with a
+regional it did not play since the flag was added. Ninety-five free points of
+season score a year. The user's own outcome has always asked
+`post.finish[me.index] !== undefined`, which is the right question; the two were
+written on different days.
+
+**League effect, measured** (`carousel-probe 35 4242`, before → after):
+
+| | main | after |
+|---|---|---|
+| prestige mean | 56.3 | 55.2 |
+| prestige sd | 17.0 | 17.9 |
+| turnover / year | 8.4 | 8.7 |
+| clear rate | 64.8% | 65.5% |
+| distinct champions in 35 | 13 | 17 |
+| top five / bottom five | 93.8 / 33.6 | 95.0 / 33.6 |
+
+The league did not inflate — it deflated slightly, which is the `madeRegionals`
+fix removing a free +2 from ninety-five programmes and paying it back only to
+schools that earned it. Distinct champions is one seed and should not be read as
+more than directional; the numbers that matter are the mean and the turnover,
+and both held.
+
+## Q. Deferred from the August 29 play batch
+
+Four items the reporter explicitly held rather than asked for.
+
+- **The pool of recruits.** *"we also need to do something with the pool of
+  recruits, we have to work on that later."* No detail given yet and none
+  invented here. Likely relates to §P — class weight is one of the three
+  unexplored levers, and it is the same pool.
+- **The bracket.** *"about the bracket, we will rework that later."* The 260 ms
+  transition to the user's own game shipped and has never been seen by anybody:
+  the preview browser does not composite frames, so `requestAnimationFrame`
+  never runs there and it cannot be verified from this side.
+- **The park's geometry** — fielder positions and the second baseman taking
+  balls that belong to the pitcher. Deferred by the reporter to stage 15, which
+  is where the write-up now lives.
+- **The player card and the portal's readability** — stage 10.5.

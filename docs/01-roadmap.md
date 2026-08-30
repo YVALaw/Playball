@@ -307,6 +307,20 @@ locked* in `06-backlog.md`.
 9. **Players as people** — injuries, season fatigue, playing time, morale,
    captains (H8).
 10. **The transfer portal.**
+
+    **→ 10.5. The screen** — *inserted August 29 2026 and building next, ahead
+    of the economy.* Asked for in one line after two seasons of play: *"we need
+    to completely change the UI though, things are way too mashed together or
+    not very clear, confusing etc."* The player card is named as the worst of
+    it, and the portal as the next worst. A numbered pass over what is already
+    built rather than a new system — see `07-v1-plan.md`.
+
+    *A decimal rather than a renumber on purpose. Nine stages and twenty-seven
+    references downstream would have had to move, three of them code comments
+    and several of them historical notes reading "the old stage 15" which must
+    NOT move. A number that has to be right in twenty-seven places to insert one
+    stage is a number worth not touching.*
+
 11. **The economy, and the staff it pays for** — budget rebalance, swaying,
     facilities, and assistant coaches, who live with the money that buys them
     (H1).
@@ -414,9 +428,34 @@ Ten stages shipped, the last three on August 28 2026: the roster (8), players
 as people (9) and the transfer portal (10). `flightRisk` was written in stage 9
 and read by nothing until stage 10 needed it, which was the cheaper order.
 
-The next is stage 11, the economy and the staff it pays for. Two things are
-already waiting on it by name: "a word with him" is deliberately not money, and
-the recruiting budget has now been widened twice by hand.
+The next is **stage 10.5, the screen** — inserted August 29 2026 after a play
+report that was two thirds interface. Stage 11, the economy, follows it. Two
+things are already waiting on 11 by name: "a word with him" is deliberately not
+money, and the recruiting budget has now been widened twice by hand.
+
+### The August 29 play batch
+
+Fourteen items off two seasons of play. What shipped the same day:
+
+| Reported | What it was |
+|---|---|
+| Captain could not be changed | The picker only rendered while the job was vacant, so naming one removed the means of naming another. Now always a list. |
+| An out flashed red out in the grass | The colour was timed off the ball *landing*, not off the play being decided. On a grounder that is a red flash in empty green — the exact picture a single makes. Now timed off `outcomeAt`. |
+| Grades came up far too often | 3.27 suspensions a season. The per-week chance was tuned for a fifteen-week spring; the check runs on `dayIndex % 7` and a season is six weeks. Now 1.07. |
+| The press room broke the phone frame | It was the one screen returned without an `.app-frame` wrapper, so `FixedHeader`'s `absolute; inset: 0` resolved against the window. |
+| The press room ambushed you | It is an overlay opened from NEEDS YOU now. See `src/ui/Needs.tsx`. |
+| Low-star schools cannot climb | `climbLift` and `DROUGHT_GRACE`, to the user's own design. Measured — see the table in `05-systems-reference.md`. |
+| "MOVE HIM FOR GOOD" made no sense | It read as a favour rather than a relisting. Now CHANGE HIS POSITION, with the distinction said in words underneath. |
+| No way to see an injured man | The roster only said so if you opened him. Now a HURT/ACAD/R-S/REST tag on the row. |
+
+Found while doing the above, and not reported: `rivalOutcome` asked
+`finish !== 'missed'` where `runPostseason` leaves a program that stayed home
+*absent* from `finish` rather than marked. Ninety-five programs were credited
+with a regional they did not play, every year, since the flag was added.
+
+Deferred by request: fielder geometry and the second baseman fielding balls that
+belong to the pitcher (stage 15); the recruit pool; the bracket rework; the
+player card and the portal's readability (stage 10.5).
 
 ## The budgets
 

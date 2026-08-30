@@ -85,7 +85,6 @@ function AppBody(
   const unread = useDynasty((s) => unreadCount(s.inbox));
 
   const needsTeam = useDynasty((s) => s.needsTeam);
-  const pendingPress = useDynasty((s) => s.pendingPress);
   const phase = useDynasty((s) => s.phase);
   const bracket = useDynasty((s) => s.bracket);
   const live = useDynasty((s) => s.live);
@@ -489,17 +488,29 @@ function AppBody(
   }
 
   /*
-    The room, before anything else on the screen.
+    The room used to be here, ahead of everything else on the screen, and it is
+    now an overlay you open from NEEDS YOU instead. Two separate reports, and
+    they landed on the same line of code.
 
-    Ahead of the offseason rail and the season frame both, because a press
-    conference is raised by something that has just happened and the screen
-    behind it has already moved on -- put it inside a tab and it becomes a
-    thing you can walk away from, which is the one shape it must not have.
+    The first was a layout bug: it "expanded the screen out of its regular
+    mobile size", which is exactly what it did. `.app-frame` is the phone — it
+    caps the width at 430, clips its overflow, and, the part that bit, carries
+    `position: relative`. `FixedHeader` lays itself out `absolute; inset: 0`, so
+    with no frame around it the nearest positioned ancestor was the window and
+    the room stretched across a desktop. Every other return in this function
+    wraps; this one was written as a guard clause, and guard clauses do not look
+    like they are missing a wrapper.
 
-    It is still not a trap: SAY NOTHING is a real answer, costs nothing, and
-    spends the question.
+    The second was the design: it "shouldn't simply appear all of a sudden".
+    The original comment here argued the opposite — put it in a tab and it
+    becomes a thing you can walk away from, which is the one shape it must not
+    have — and that argument was wrong in a way worth keeping a note of. It
+    bought attention by taking the screen away from a player in the middle of
+    doing something else, and it is the only thing in the game that does. What
+    replaces it is how the rest of this game already works: the question is
+    written down, it sits at the top of the home screen in red, and you go to
+    it. See `Needs.tsx`.
   */
-  if (pendingPress) return <PressRoom />;
 
   if (phase !== null) {
     return (
@@ -923,6 +934,12 @@ function TableOverlay() {
         {overlay === 'inbox' && <Inbox />}
         {overlay === 'program' && <Program />}
         {overlay === 'depth' && <DepthChart />}
+        {/* The press room, which stopped being an interruption and became an
+            errand. Here rather than in the screen switch because the overlays
+            are the one layer present in every frame the offseason included, and
+            a question raised by the last game of a regional must still be
+            answerable once the regular season's nav has gone. */}
+        {overlay === 'press' && <PressRoom />}
         {/* The one of these that does not pin its own header — it is normally
             the second sheet of HISTORY, which does the pinning for it — so it
             gets the scroller the container above deliberately does not have. */}

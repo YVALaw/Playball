@@ -249,7 +249,7 @@ export type SettingsPage = 'index' | 'display' | 'sound' | 'play';
 
 export type Overlay =
   'schedule' | 'standings' | 'rankings' | 'saves' | 'inbox' | 'program' | 'book'
-  | 'settings' | 'depth';
+  | 'settings' | 'depth' | 'press';
 
 /** The three tabs of the program page, which is addressable from the inbox. */
 export type ProgramSheet = 'board' | 'coach' | 'hall';
@@ -2554,6 +2554,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       wonTitle: post?.champion === me.index,
     };
 
+    // The drought. Same rule as the other ninety five — see `runRivalYear`.
+    me.drought = outcome.madeRegionals ? 0 : (me.drought ?? 0) + 1;
+    outcome.drought = me.drought;
+
     const review = reviewSeason(
       coach, me.prestige, rosterStrength(me.team), outcome, seasonLength(season.config),
     );
@@ -3236,6 +3240,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       },
       press: notePress(get().press, pendingPress.presser.id, me?.gp ?? 0),
       pendingPress: null,
+      // The room is an overlay now, so answering it has to close it. Without
+      // this the question is spent and the player is left looking at the
+      // screen that asked it, with nothing on it.
+      overlay: null,
       version: version + 1,
     });
     void get().saveNow();
@@ -3251,6 +3259,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       coach: { ...coach, caughtLooking: false },
       press: notePress(get().press, pendingPress.presser.id, season?.teams[userTeam]?.gp ?? 0),
       pendingPress: null,
+      overlay: null,
       version: version + 1,
     });
     void get().saveNow();
