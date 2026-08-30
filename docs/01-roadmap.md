@@ -444,7 +444,7 @@ Fourteen items off two seasons of play. What shipped the same day:
 | Grades came up far too often | 3.27 suspensions a season. The per-week chance was tuned for a fifteen-week spring; the check runs on `dayIndex % 7` and a season is six weeks. Now 1.07. |
 | The press room broke the phone frame | It was the one screen returned without an `.app-frame` wrapper, so `FixedHeader`'s `absolute; inset: 0` resolved against the window. |
 | The press room ambushed you | It is an overlay opened from NEEDS YOU now. See `src/ui/Needs.tsx`. |
-| Low-star schools cannot climb | `climbLift` and `DROUGHT_GRACE`, to the user's own design. Measured — see the table in `05-systems-reference.md`. |
+| Low-star schools cannot climb | `climbLift`, `climbBonus` and `DROUGHT_GRACE`, to the user's own design. **Measured afterwards and it did not close the problem** — backlog §P. Both pay for achievements, and the measured baseline has none. |
 | "MOVE HIM FOR GOOD" made no sense | It read as a favour rather than a relisting. Now CHANGE HIS POSITION, with the distinction said in words underneath. |
 | No way to see an injured man | The roster only said so if you opened him. Now a HURT/ACAD/R-S/REST tag on the row. |
 

@@ -1957,7 +1957,7 @@ rather than on the margin:
 Each is league-wide and wants its own measured pass. Logged rather than guessed
 at, because three levers have now been tried and two of them were noise.
 
-### The fix that shipped — August 29, 2026
+### The change that shipped — August 29, 2026, and it did NOT close this
 
 None of the three levers above. The user supplied a fourth, and it is better
 than all of them because it acts on the *first* link in the loop rather than the
@@ -2022,6 +2022,69 @@ fix removing a free +2 from ninety-five programmes and paying it back only to
 schools that earned it. Distinct champions is one seed and should not be read as
 more than directional; the numbers that matter are the mean and the turnover,
 and both held.
+
+
+### Measured after shipping it, and it did not move — August 29, 2026
+
+`climb-store-probe`, six careers, twenty-four seasons, same seeds as the
+baseline:
+
+| | baseline | after `climbLift` | after the bank as well |
+|---|---|---|---|
+| prestige y24 | 22 22 19 27 26 22 | 22 19 19 27 26 22 | 20 20 22 23 20 22 |
+| avg wins | 10–13 | 10–13 | 8–11 |
+| Omaha | 0 of 6 | 0 of 6 | 0 of 6 |
+
+**Unchanged. The mechanism is correct and it never fires.**
+
+The reason is exactly the sentence already in this entry, three paragraphs
+above, and it should have been read before writing the fix rather than after
+measuring it: *"you cannot reward a climb that is not happening."* Both new
+mechanisms pay for **achievements**. A programme winning ten of forty five has
+none. `programTarget` therefore returns `winPct * 100` — the lift multiplies
+nothing and `climbBonus` adds nothing — and the drought shelter never engages
+either, because the programme is not falling. It is held level, at 24, which is
+precisely what it was before.
+
+Arithmetic, checked directly rather than inferred:
+
+| | target | next |
+|---|---|---|
+| 11–34, nothing to show for it, at 22 | 24.4 | **22** |
+| 27–18 with a regional and a bid, at 22 | 71.2 | **33** (was 30) |
+
+So the change is worth keeping and is not the fix. It makes the ladder climbable
+*once a programme is on it* — a first regional is now worth eleven points of
+standing instead of eight, which is the difference between a good June being
+noticed and a good June being noise — and it corrected the `rivalOutcome` bug on
+the way. It does nothing about the first rung.
+
+**What actually blocks it, stated plainly.** A regional berth needs roughly
+twenty-seven wins of forty-five; the thirty-second best programme in the country
+is around there. The measured baseline wins ten. That gap is roster quality, and
+no prestige rule can close it, because prestige is downstream of wins. The loop
+is roster → wins → prestige → recruits → roster, and every lever tried so far —
+the overachievement ratchet, `PIPELINE_EDGE`, and now the prestige reward — has
+acted on a link **after** wins.
+
+The three unexplored levers all act before it, and they are the same three this
+entry already listed. Two of them are one lever wearing two hats:
+
+- **Reach** (`PIPELINE_REACH_BONUS` 1 → 2, in-state only) and **class weight**
+  (fewer, better signings) both change *who a small programme can sign*.
+- **Talent compression** changes *how much the roster gap is worth in wins*, and
+  it is the only one that acts on the 45-game record directly. It is also the
+  only one that touches every programme in the country, so it is the one that
+  needs the soak and the goldens, not just the carousel.
+
+**A method note, and it is the second time in two days.** The rule this project
+already wrote down after §O is *change an input and confirm the output moves*. I
+shipped `climbLift`, then measured, then found it moved nothing, then added the
+bank, then measured again, then found *that* moved nothing either. The order was
+wrong both times. The five-minute version of this check exists — compute
+`programTarget` for the measured baseline outcome and see whether it differs from
+`seasonScore` — and it would have said "these are identical, the programme
+achieves nothing" before either mechanism was written.
 
 ## Q. Deferred from the August 29 play batch
 
