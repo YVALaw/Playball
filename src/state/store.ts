@@ -249,10 +249,10 @@ export type SettingsPage = 'index' | 'display' | 'sound' | 'play';
 
 export type Overlay =
   'schedule' | 'standings' | 'rankings' | 'saves' | 'inbox' | 'program' | 'book'
-  | 'settings' | 'depth' | 'press' | 'captain';
+  | 'settings' | 'depth' | 'press' | 'captain' | 'jobs';
 
 /** The three tabs of the program page, which is addressable from the inbox. */
-export type ProgramSheet = 'board' | 'coach' | 'hall';
+export type ProgramSheet = 'board' | 'watchlist' | 'coach' | 'hall';
 
 /**
  * The offseason, as a sequence you are walked through rather than a set of tabs
@@ -896,6 +896,17 @@ export interface DynastyStore {
    * start-again controls.
    */
   seenTutorials: string[];
+  /**
+   * The programs and career paths you follow, by school abbreviation.
+   *
+   * The mockup's Program Actions, wired: TRACK PROGRAM files a school under
+   * the program tab's watchlist; TRACK JOB PATH marks its chair as one your
+   * career is pointed at, and the job market stars it when it calls. Career
+   * state, not season state — it rides the save and survives the year roll.
+   */
+  watch: { programs: string[]; jobs: string[] };
+  toggleProgramWatch: (abbr: string) => void;
+  toggleJobWatch: (abbr: string) => void;
   markTutorialSeen: (id: string) => void;
   /** Forget every tutorial, so the next visit to each screen teaches again. */
   resetTutorials: () => void;
@@ -1127,6 +1138,14 @@ function pendingFromJournal(
     away: j.away,
     line: `${away.def.school} at ${home.def.school}`,
   };
+}
+
+/** The watchlists, from whatever an older save carries. */
+function usableWatch(saved: unknown): { programs: string[]; jobs: string[] } {
+  const w = (saved ?? {}) as Partial<{ programs: unknown; jobs: unknown }>;
+  const list = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  return { programs: list(w.programs), jobs: list(w.jobs) };
 }
 
 /** A saved elimination, refused unless it belongs to the year being loaded. */
@@ -4518,6 +4537,31 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   seenTutorials: [],
+  watch: { programs: [], jobs: [] },
+  toggleProgramWatch: (abbr) => {
+    const w = get().watch;
+    set({
+      watch: {
+        ...w,
+        programs: w.programs.includes(abbr)
+          ? w.programs.filter((a) => a !== abbr)
+          : [...w.programs, abbr],
+      },
+    });
+    void get().saveNow();
+  },
+  toggleJobWatch: (abbr) => {
+    const w = get().watch;
+    set({
+      watch: {
+        ...w,
+        jobs: w.jobs.includes(abbr)
+          ? w.jobs.filter((a) => a !== abbr)
+          : [...w.jobs, abbr],
+      },
+    });
+    void get().saveNow();
+  },
 
   markTutorialSeen: (id) => {
     const seen = get().seenTutorials;
@@ -4577,6 +4621,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         outcome: get().lastOutcome,
         inbox: get().inbox,
         tutorials: get().seenTutorials,
+        watch: get().watch,
         depth: get().depth,
         /*
           How many the room has had this season, and the one still open.
@@ -4737,6 +4782,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // about the player, not the save. Loading an old dynasty from before the
       // tutorials existed must not re-teach nine screens to a veteran who has
       // been playing all evening.
+      watch: usableWatch(loaded.watch),
       seenTutorials: [...new Set([
         ...get().seenTutorials,
         ...(Array.isArray(loaded.tutorials)

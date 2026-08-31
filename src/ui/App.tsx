@@ -39,6 +39,7 @@ import { Program } from './screens/Program.js';
 import { PressRoom } from './screens/PressRoom.js';
 import { DepthChart } from './screens/DepthChart.js';
 import { Captain } from './screens/Captain.js';
+import { JobMarket } from './screens/JobMarket.js';
 import { Portal } from './screens/Portal.js';
 import { NewGame } from './screens/NewGame.js';
 import { StrategyScreen } from './screens/StrategyScreen.js';
@@ -821,6 +822,12 @@ function TableOverlay() {
         {/* No pinned header of its own, so it gets the scroller the container
             above deliberately does not have -- without it the list of eligible
             men was simply cut off at the fold. */}
+        {/* The job market — a university calling about a job gets a screen,
+            not a list buried on the program board. Same scroller story as the
+            captain below. */}
+        {overlay === 'jobs' && (
+          <div className="screen-scroll" style={{ height: '100%' }}><JobMarket /></div>
+        )}
         {overlay === 'captain' && (
           <div className="screen-scroll" style={{ height: '100%' }}><Captain /></div>
         )}

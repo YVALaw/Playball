@@ -18,6 +18,10 @@
 // so rather than showing an empty table and letting it read as "never played".
 
 import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  BarChartIcon, CheckIcon, Cross1Icon, IdCardIcon, MixerHorizontalIcon, StarIcon,
+} from '@radix-ui/react-icons';
 import {
   FieldNote, Metric, MetricStrip, SectionHeading, Segmented,
 } from '../components/Kit.js';
@@ -71,6 +75,8 @@ export function TeamCard({ index }: { index: number }) {
   const version = useDynasty((s) => s.version);
   const me = useUserTeam();
   const [sheet, setSheet] = useState<Sheet>('overview');
+  /** The mockup's compare panel, open or not. Local — it is a reading aid. */
+  const [comparing, setComparing] = useState(false);
   void version;
 
   const t = season?.teams[index];
@@ -133,9 +139,131 @@ export function TeamCard({ index }: { index: number }) {
             "the rival school scouting ... if not add it to the list of things
             we need to add." Everything on it was already in the save and had
             nowhere to be read. */}
+        {/* The mockup's compare panel, toggled from Program Actions. */}
+        {sheet === 'overview' && comparing && me && me.index !== t.index && (
+          <section className="college-compare">
+            <small>{me.def.school.toUpperCase()} VS {t.def.school.toUpperCase()}</small>
+            <div>
+              <span><b>{me.prestige}</b> Prestige</span>
+              <strong>vs</strong>
+              <span><b>{t.prestige}</b> Prestige</span>
+            </div>
+            <div>
+              <span><b>{regularRecord(me).w}-{regularRecord(me).l}</b> Record</span>
+              <strong>vs</strong>
+              <span><b>{reg.w}-{reg.l}</b> Record</span>
+            </div>
+            <p>
+              {t.prestige > me.prestige
+                ? `${t.def.school} has the stronger profile today.`
+                : t.prestige < me.prestige
+                  ? `${me.def.school} has the stronger profile today.`
+                  : 'Dead level on profile today.'}
+              {' '}Prestige decides whose calls get answered.
+            </p>
+          </section>
+        )}
         {sheet === 'dossier' && <Dossier t={t} stars={stars} />}
       </div>
+      {me && me.index !== t.index && (
+        <CollegeActions
+          abbr={t.def.abbr}
+          school={t.def.school}
+          comparing={comparing}
+          onCompare={() => { setComparing((v) => !v); setSheet('overview'); }}
+        />
+      )}
     </FixedHeader>
+  );
+}
+
+/**
+ * The mockup's Program Actions button, wired.
+ *
+ * Reported missing by name: "the university profiles and action button, you
+ * didn't add that from the mock up." Three actions, all real: TRACK PROGRAM
+ * files the school under the program tab's watchlist, COMPARE opens the
+ * side-by-side on the overview, TRACK JOB PATH marks the chair so the job
+ * market stars it when it calls. Same portal as the player FAB, same reason.
+ */
+function CollegeActions(
+  { abbr, school, comparing, onCompare }:
+  { abbr: string; school: string; comparing: boolean; onCompare: () => void },
+) {
+  const watch = useDynasty((s) => s.watch);
+  const toggleProgramWatch = useDynasty((s) => s.toggleProgramWatch);
+  const toggleJobWatch = useDynasty((s) => s.toggleJobWatch);
+  const [open, setOpen] = useState(false);
+
+  const tracked = watch.programs.includes(abbr);
+  const jobPath = watch.jobs.includes(abbr);
+
+  const host = document.querySelector('.full-overlay') ?? document.querySelector('.app-frame');
+  if (!host) return null;
+
+  return createPortal(
+    <aside className={`college-actions-fab${open ? ' open' : ''}`}>
+      <div className="college-actions-popover" aria-hidden={!open}>
+        <div className="player-actions-popover-heading">
+          <small>PROGRAM ACTIONS</small>
+          <strong>{school}</strong>
+          <span>Keep a useful read on the wider college game.</span>
+        </div>
+        <div className="action-list">
+          <ActionCard
+            icon={<StarIcon />}
+            title={tracked ? 'Program tracked' : 'Track program'}
+            detail={tracked
+              ? 'Saved to the watchlist on your program tab.'
+              : 'Keep it in view as the season changes.'}
+            selected={tracked}
+            onClick={() => toggleProgramWatch(abbr)}
+          />
+          <ActionCard
+            icon={<BarChartIcon />}
+            title={comparing ? 'Comparison open' : 'Compare with your club'}
+            detail="This program's profile beside your own."
+            selected={comparing}
+            onClick={() => { onCompare(); setOpen(false); }}
+          />
+          <ActionCard
+            icon={<IdCardIcon />}
+            title={jobPath ? 'Job path tracked' : 'Track job path'}
+            detail={jobPath
+              ? 'When this chair calls you, the market stars it.'
+              : 'Note interest without applying for a job that is not open.'}
+            selected={jobPath}
+            onClick={() => toggleJobWatch(abbr)}
+          />
+        </div>
+      </div>
+      <button
+        className="college-actions-trigger"
+        type="button"
+        aria-label={open ? 'Close program actions' : 'Program actions'}
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >{open ? <Cross1Icon /> : <MixerHorizontalIcon />}</button>
+    </aside>,
+    host,
+  );
+}
+
+/** One thing you can do about this program, in the player FAB's clothes. */
+function ActionCard(
+  { icon, title, detail, onClick, selected = false }:
+  { icon: ReactNode; title: string; detail: string; onClick: () => void; selected?: boolean },
+) {
+  return (
+    <button
+      className={`action-card${selected ? ' selected' : ''}`}
+      type="button"
+      onClick={onClick}
+    >
+      <span className="action-card-icon">{icon}</span>
+      <span><strong>{title}</strong><small>{detail}</small></span>
+      {selected ? <CheckIcon /> : <span />}
+    </button>
   );
 }
 

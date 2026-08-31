@@ -132,6 +132,8 @@ export interface SaveFile {
    * precious field in the file. Absent on older saves, which simply teach.
    */
   tutorials?: unknown;
+  /** The watchlists — programs followed and chairs the career points at. */
+  watch?: unknown;
   /**
    * How deep a game this career is: the preset, plus whichever systems the
    * player has decided differently about.
@@ -342,6 +344,8 @@ export interface SaveExtras {
   inbox?: unknown;
   /** First-visit tutorial ids already shown. */
   tutorials?: unknown;
+  /** The program and job-path watchlists, by school abbreviation. */
+  watch?: unknown;
   /** How deep a game this career is. See `SaveFile.depth`. */
   depth?: unknown;
 }
@@ -427,6 +431,7 @@ export function buildSaveFile(
     ...(Array.isArray(extras.tutorials) && extras.tutorials.length > 0
       ? { tutorials: extras.tutorials }
       : {}),
+    ...(extras.watch ? { watch: extras.watch } : {}),
     // Written whenever it exists rather than only when it differs from the
     // default, because absence already means something here: it is how a save
     // from before the mode says "played in full". A full career that stopped
@@ -483,6 +488,8 @@ export interface LoadedDynasty {
   inbox: unknown;
   /** First-visit tutorial ids. Empty for saves that predate teaching. */
   tutorials: unknown;
+  /** The watchlists, or undefined on saves that predate them. */
+  watch: unknown;
   /** The depth preset and its overrides. Null on saves that predate the mode. */
   depth: unknown;
 }
@@ -547,6 +554,7 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     outcome: file.outcome ?? null,
     inbox: file.inbox ?? [],
     tutorials: file.tutorials ?? [],
+    watch: file.watch,
     depth: file.depth ?? null,
   };
 }

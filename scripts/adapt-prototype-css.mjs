@@ -72,7 +72,7 @@ const SURFACES = [
   [/background:\s*#fff(?![0-9a-f])/g, 'background:var(--paper)'],
   // The recessed washes: filters, toolbars, selected rows, the step rail's
   // chip. One token, because they were never meaningfully different colours.
-  [/#fffaf5|#f7f8f4|#f4f6f1|#f5f6f1|#f5f7f3|#f5f7f2|#f8faf6|#f8f8f5|#f8f8f4/g, 'var(--wash)'],
+  [/#fffaf5|#f0f4ec|#f7f8f4|#f4f6f1|#f5f6f1|#f5f7f3|#f5f7f2|#f8faf6|#f8f8f5|#f8f8f4/g, 'var(--wash)'],
   // The dark bands: table heads, question cards, the FAB. They are black in
   // the light theme and must STAY dark in the dark one, where --ink flips
   // light -- so they get a surface token of their own.

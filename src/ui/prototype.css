@@ -958,7 +958,7 @@ button { font:inherit; cursor:pointer; }
 .college-actions-trigger { position:absolute; right:0; bottom:0; display:grid; width:60px; height:60px; place-items:center; border:0; border-radius:0 100% 100% 100%; background:var(--band); color:#fff; box-shadow:0 9px 21px rgba(13,19,15,.24); }
 .college-actions-trigger svg { width:22px; height:22px; }
 .college-actions-trigger:focus-visible { outline:2px solid var(--yellow); outline-offset:3px; }
-.college-compare { margin:0 0 15px; padding:13px; border:1px solid var(--ink); background:#f0f4ec; }
+.college-compare { margin:0 0 15px; padding:13px; border:1px solid var(--ink); background:var(--wash); }
 .college-compare small { display:block; color:var(--navy); font-size:calc(7px * var(--ts)); font-weight:800; letter-spacing:.07em; }
 .college-compare > div { display:grid; grid-template-columns:1fr 24px 1fr; align-items:center; gap:6px; margin-top:10px; text-align:center; }
 .college-compare span { display:grid; gap:2px; font-size:calc(7px * var(--ts)); font-weight:800; text-transform:uppercase; }

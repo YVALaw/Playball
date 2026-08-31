@@ -1901,3 +1901,18 @@
    states its colour instead of trusting whatever panel it lands in. */
 .field-note { color: var(--ink); }
 .field-note strong { color: var(--ink); }
+
+/* The job market's trimmings: the star a watched chair wears, and the armed
+   accept button saying it means it. */
+.job-star {
+  width: 12px;
+  height: 12px;
+  margin-right: 5px;
+  vertical-align: -1px;
+  color: var(--yellow);
+}
+.job-list > div > button:last-child { color: var(--clay); font-weight: 800; }
+.job-list > div > button.arming {
+  background: var(--alert);
+  color: var(--cream);
+}

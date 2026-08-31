@@ -40,8 +40,9 @@ import { philosophyOf } from '../../engine/strategy.js';
 import { REGION_OF_STATE, CONFERENCES } from '../../data/schools.js';
 import { playerId, type PlayerId } from '../../engine/types.js';
 import { CoachPortrait } from '../CoachPortrait.js';
+import { useOpenTeam } from './TeamCard.js';
 import { teamColour } from '../Avatar.js';
-import { ArrowLeftIcon } from '@radix-ui/react-icons';
+import { ArrowLeftIcon, ChevronRightIcon, StarIcon } from '@radix-ui/react-icons';
 import { FieldNote, ModuleIntro, SectionHeading, Segmented } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
 import { pct } from '../format.js';
@@ -49,7 +50,7 @@ import { pct } from '../format.js';
 /** The record for one program, as the season carries it. */
 type Owner = SeasonState['teams'][number];
 
-type Sheet = 'board' | 'coach' | 'hall';
+type Sheet = 'board' | 'watchlist' | 'coach' | 'hall';
 
 /**
  * COACH is not on the strip. The portrait in the top bar is the door to the
@@ -60,6 +61,7 @@ const SHEETS: Sheet[] = ['board', 'hall'];
 
 const SHEET_LABEL: Record<Sheet, string> = {
   board: 'BOARD',
+  watchlist: 'WATCHLIST',
   coach: 'COACH',
   hall: 'HALL OF FAME',
 };
@@ -76,6 +78,7 @@ export function Program() {
   // about an achievement opens the cabinet. A component that owns its own tab
   // cannot be told which tab to be on.
   const sheet = useDynasty((s) => s.programSheet);
+  const watch = useDynasty((s) => s.watch);
   const setSheet = useDynasty((s) => s.setProgramSheet);
   void version;
 
@@ -146,6 +149,7 @@ export function Program() {
         onChange={setSheet}
         options={[
           { value: 'board', label: waiting ? 'Board ·' : 'Board' },
+          { value: 'watchlist', label: watch.programs.length > 0 ? `Watch ${watch.programs.length}` : 'Watch' },
           { value: 'hall', label: 'Hall' },
         ]}
       />
@@ -165,6 +169,7 @@ export function Program() {
       </section>
 
       {sheet === 'board' && <BoardSheet team={team} />}
+      {sheet === 'watchlist' && <WatchlistSheet />}
       {sheet === 'hall' && <HallSheet />}
     </main>
   );
@@ -190,15 +195,77 @@ function TabStrip(
 }
 
 // ---------------------------------------------------------------------------
+// The watchlist
+// ---------------------------------------------------------------------------
+
+/**
+ * The programs you follow, put somewhere. TRACK PROGRAM on a college profile
+ * files the school here — the mockup's watchlist view, wired to the saved
+ * list rather than a session's memory.
+ */
+function WatchlistSheet() {
+  const season = useDynasty((s) => s.season);
+  const watch = useDynasty((s) => s.watch);
+  const openTeam = useOpenTeam();
+  if (!season) return null;
+
+  const rows = watch.programs
+    .map((abbr) => season.teams.find((t) => t.def.abbr === abbr))
+    .filter((t): t is NonNullable<typeof t> => !!t)
+    .sort((a, b) => b.prestige - a.prestige);
+
+  return (
+    <>
+      <section className="watchlist-summary">
+        <small>CAREER WATCHLIST</small>
+        <strong>
+          {rows.length === 0 ? 'No programs saved yet'
+            : rows.length === 1 ? '1 program worth tracking'
+              : `${rows.length} programs worth tracking`}
+        </strong>
+        <p>
+          {rows.length > 0
+            ? 'Open a program to compare it, read its roster, or follow a possible career path.'
+            : 'Use PROGRAM ACTIONS on any college profile to save it here.'}
+        </p>
+      </section>
+      {rows.length === 0 ? (
+        <section className="watchlist-empty">
+          <StarIcon />
+          <strong>The board is clean</strong>
+          <p>Watched colleges live here instead of disappearing when a profile closes.</p>
+        </section>
+      ) : (
+        <section className="retention-list">
+          {rows.map((t) => (
+            <button className="tap" type="button" key={t.def.abbr} onClick={() => openTeam(t.index)}>
+              <span className="team-mark small" style={{ background: teamColour(t.def.abbr) }}>
+                {t.def.abbr}
+              </span>
+              <span>
+                <strong>{t.def.school}</strong>
+                <small>{t.conference} · {t.w}-{t.l} · {'★'.repeat(prestigeStars(t.prestige))}</small>
+              </span>
+              <b>{t.prestige}</b>
+              <ChevronRightIcon />
+            </button>
+          ))}
+        </section>
+      )}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // The board
 // ---------------------------------------------------------------------------
 
 function BoardSheet({ team }: { team: Owner }) {
   const season = useDynasty((s) => s.season);
+  const openOverlay = useDynasty((s) => s.openOverlay);
   const coach = useDynasty((s) => s.coach);
   const review = useDynasty((s) => s.lastReview);
   const offers = useDynasty((s) => s.offers);
-  const acceptOffer = useDynasty((s) => s.acceptOffer);
   const clearReview = useDynasty((s) => s.clearReview);
   const post = useDynasty((s) => s.lastPostseason);
   const table = useConferenceTable();
@@ -309,27 +376,24 @@ function BoardSheet({ team }: { team: Owner }) {
         </div>
       )}
 
-      {/* The proposal's job market list, because that is what this is. */}
+      {/* One card, not the list. The offers live on the job market screen
+          now, where signing is a two-press act — a row here whose tap WAS the
+          acceptance cost somebody a job once. */}
       {offers.length > 0 && (
-        <>
-          <SectionHeading kicker="THE MARKET" title="Who is calling" />
-          <section className="job-list">
-            {offers.map((o) => (
-              <div key={o.team}>
-                <button type="button" onClick={() => void acceptOffer(o.team)}>
-                  <span>
-                    <strong>{o.school}</strong>
-                    <small>{o.conference} · {o.pitch}</small>
-                  </span>
-                  <b>{'★'.repeat(prestigeStars(o.prestige))}</b>
-                </button>
-                <button type="button" onClick={() => void acceptOffer(o.team)}>
-                  Accept offer
-                </button>
-              </div>
-            ))}
-          </section>
-        </>
+        <section className="decision-stack" style={{ marginBottom: 14 }}>
+          <button type="button" onClick={() => openOverlay('jobs')}>
+            <span className="decision-mark">{String(offers.length).padStart(2, '0')}</span>
+            <span>
+              <strong>
+                {offers.length === 1
+                  ? 'A program wants to talk'
+                  : `${offers.length} programs want to talk`}
+              </strong>
+              <small>Open the job market to read the offers before anything is signed.</small>
+            </span>
+            <ChevronRightIcon />
+          </button>
+        </section>
       )}
 
       <div className="program-tiles">
