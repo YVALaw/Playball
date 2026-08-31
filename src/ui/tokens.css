@@ -53,6 +53,21 @@
   --yellow: #ecb83d;  /* the live game's active call, and nothing else */
   --cream: #f4f8f4;
   --cream-dim: rgba(var(--cream-rgb), 0.66);
+  /* Two the dark theme forced into existence. --wash is the family of
+     near-white recesses the prototype painted as nine different literals;
+     --mute is its greyed-out ink (the unreached rail number). --backdrop is
+     the desktop letterbox behind the phone frame, which used to borrow --ink
+     and cannot once --ink turns light. */
+  --wash: #f5f7f2;
+  --mute: #afb4af;
+  --backdrop: #1d201d;
+  /* The black bands -- table heads, question cards, the FABs. Black in the
+     light theme, and still dark in the dark one, where --ink flips light. */
+  --band: #1d201d;
+  /* What a sheet dims the screen with. Always a darkening, whichever theme --
+     a scrim built from --ink-rgb turned into a milk wash the moment the ink
+     went light. */
+  --scrim-rgb: 29, 32, 29;
 
   --display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
@@ -71,6 +86,63 @@
    * all. The device settings write it here; it is never stored in the save,
    * because a preference belongs to the phone rather than the dynasty. */
   --ts: 1;
+}
+
+
+/* ---------------------------------------------------------------------------
+   The dark theme.
+
+   Asked for by name: 'this white is too bright and I am sure some players
+   would appreciate dark mode.' The whole design runs through the tokens above,
+   so the theme is this block and nothing else: same accent family, the paper
+   swapped for a green-black, the ink swapped for a warm off-white, and the
+   navy surfaces left exactly where they were -- they were already dark, and
+   they are the one part of the app that should look the same in both worlds.
+
+   Stated twice below with the same numbers: an explicit data-theme choice from
+   settings, and the OS preference when settings say 'system'. A media query
+   cannot read the attribute and the attribute cannot read the media query.
+   --------------------------------------------------------------------------- */
+:root[data-theme='dark'] {
+  --field: #141814;
+  --paper: #1c211d;
+  --ink: #e4eae4;
+  --ink-rgb: 228, 234, 228;
+  --clay: #4da97a;
+  --clay-rgb: 77, 169, 122;
+  --alert: #e0655e;
+  --win: #4da97a;
+  --loss: #e0655e;
+  --line: #2b322c;
+  --sunk: #101410;
+  --soft: #1f3428;
+  --wash: #171c18;
+  --mute: #566057;
+  --backdrop: #0b0e0c;
+  --band: #242b25;
+  --scrim-rgb: 0, 0, 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --field: #141814;
+    --paper: #1c211d;
+    --ink: #e4eae4;
+    --ink-rgb: 228, 234, 228;
+    --clay: #4da97a;
+    --clay-rgb: 77, 169, 122;
+    --alert: #e0655e;
+    --win: #4da97a;
+    --loss: #e0655e;
+    --line: #2b322c;
+    --sunk: #101410;
+    --soft: #1f3428;
+    --wash: #171c18;
+    --mute: #566057;
+    --backdrop: #0b0e0c;
+    --band: #242b25;
+    --scrim-rgb: 0, 0, 0;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -116,7 +188,7 @@ html, body, #root {
 #root {
   display: grid;
   place-items: center;
-  background: var(--ink);
+  background: var(--backdrop);
 }
 
 .app-frame {
@@ -189,7 +261,7 @@ select,
 }
 
 body {
-  background: var(--ink);
+  background: var(--backdrop);
   color: var(--ink);
   font-family: var(--body);
   /* The phone is the target. The pull-to-refresh rubber band is dealt with

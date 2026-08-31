@@ -658,7 +658,7 @@ function Meter(
       }}>
         <div className="grow" style={{
           width: `${Math.max(4, Math.min(100, v))}%`, height: '100%',
-          background: 'var(--ink)',
+          background: 'var(--band)',
         }} />
       </div>
     </div>

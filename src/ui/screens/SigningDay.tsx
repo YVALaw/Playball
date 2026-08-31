@@ -486,7 +486,7 @@ function RecruitSheet({
     <div
       onClick={onClose}
       style={{
-        position: 'absolute', inset: 0, background: 'rgba(var(--ink-rgb), .55)',
+        position: 'absolute', inset: 0, background: 'rgba(var(--scrim-rgb), .6)',
         display: 'flex', alignItems: 'flex-end', zIndex: 20,
       }}
     >
@@ -651,7 +651,7 @@ function WalkOnSheet(
     <div
       onClick={onClose}
       style={{
-        position: 'absolute', inset: 0, background: 'rgba(var(--ink-rgb), .55)',
+        position: 'absolute', inset: 0, background: 'rgba(var(--scrim-rgb), .6)',
         display: 'flex', alignItems: 'flex-end', zIndex: 20,
       }}
     >
@@ -664,7 +664,7 @@ function WalkOnSheet(
         }}
       >
         <div style={{
-          flex: 'none', padding: '7px 12px', background: 'var(--ink)',
+          flex: 'none', padding: '7px 12px', background: 'var(--band)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <span style={{

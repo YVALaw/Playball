@@ -786,7 +786,7 @@ function Picker(
       onClick={onClose}
       className="sheet-scrim"
             style={{
-        position: 'absolute', inset: 0, background: 'rgba(var(--ink-rgb), .55)',
+        position: 'absolute', inset: 0, background: 'rgba(var(--scrim-rgb), .6)',
         display: 'flex', alignItems: 'flex-end', zIndex: 20,
       }}
     >

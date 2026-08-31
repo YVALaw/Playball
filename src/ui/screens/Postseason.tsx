@@ -738,7 +738,7 @@ export function Postseason() {
               className="tap"
               style={{
                 padding: '8px 14px', minHeight: 36,
-                background: 'var(--ink)', border: '1px solid var(--ink)',
+                background: 'var(--band)', border: '1px solid var(--ink)',
                 color: 'var(--cream)', font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
               }}
             >DONE</button>
@@ -1213,7 +1213,7 @@ function SeriesResultCard(
       }}>
       {tag && (
         <div style={{
-          padding: '3px 9px', background: 'var(--ink)',
+          padding: '3px 9px', background: 'var(--band)',
           font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'var(--cream)',
         }}>{tag}</div>
       )}

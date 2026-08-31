@@ -447,7 +447,7 @@ function KeepSheet(
                 className="tap"
                 style={{
                   width: '100%', marginTop: 10, padding: '12px 10px',
-                  background: 'var(--ink)', border: '1px solid var(--ink)',
+                  background: 'var(--band)', border: '1px solid var(--ink)',
                   color: 'var(--cream)', font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.1em',
                 }}
               >BACK TO THE LIST</button>

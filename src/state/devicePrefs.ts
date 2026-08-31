@@ -24,6 +24,9 @@ export type FieldMode = '3d' | '2d';
 /** Following the OS, or overriding it in either direction. */
 export type MotionPref = 'system' | 'reduced' | 'full';
 
+/** The palette. `system` follows prefers-color-scheme; the other two override. */
+export type ThemePref = 'system' | 'light' | 'dark';
+
 export interface DevicePrefs {
   /**
    * Whether the screens explain themselves the first time you reach them.
@@ -42,6 +45,14 @@ export interface DevicePrefs {
   field: FieldMode;
   /** Motion. `system` honours `prefers-reduced-motion`, the other two override. */
   motion: MotionPref;
+  /**
+   * Light or dark, or whatever the phone says.
+   *
+   * Asked for by name: 'this white is too bright and I am sure some players
+   * would appreciate dark mode.' A device preference like the text size --
+   * the same save on two phones should be allowed to look right on both.
+   */
+  theme: ThemePref;
   /**
    * Sound and haptics. Neither exists yet — the game is completely silent and
    * always has been — so these are stored, defaulted off, and shown disabled
@@ -63,6 +74,7 @@ export const DEFAULT_PREFS: DevicePrefs = {
   textScale: 1,
   field: '3d',
   motion: 'system',
+  theme: 'system',
   sound: false,
   haptics: false,
   // On, because a first-time player is the one who needs it and the one least
@@ -109,6 +121,7 @@ export function readPrefs(): DevicePrefs {
     textScale: scale,
     field: o.field === '2d' ? '2d' : '3d',
     motion: o.motion === 'reduced' || o.motion === 'full' ? o.motion : 'system',
+    theme: o.theme === 'light' || o.theme === 'dark' ? o.theme : 'system',
     sound: o.sound === true,
     haptics: o.haptics === true,
     // Absent means on, unlike the two above: a save written before this switch
@@ -149,4 +162,8 @@ export function applyPrefs(prefs: DevicePrefs): void {
   // media query to interpret it.
   if (prefs.motion === 'system') root.removeAttribute('data-motion');
   else root.setAttribute('data-motion', prefs.motion);
+  // Same contract as motion: absent means 'ask the OS', and the media query in
+  // tokens.css is what interprets the OS's answer.
+  if (prefs.theme === 'system') root.removeAttribute('data-theme');
+  else root.setAttribute('data-theme', prefs.theme);
 }

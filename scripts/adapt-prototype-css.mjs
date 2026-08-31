@@ -58,6 +58,39 @@ const RENAME = [
 ];
 for (const [re, to] of RENAME) css = css.replace(re, to);
 
+/*
+  5. Literals onto tokens, for the dark theme.
+
+  The prototype paints its cards #fff and its recessed washes in a family of
+  near-whites, which is correct for a mockup with one palette and fatal for an
+  app with two: dark mode repaints the tokens, and a literal is a colour the
+  repaint cannot reach. Only *surfaces* are mapped -- color:#fff is text on
+  the navy panels and stays white in both themes, so it is left alone.
+*/
+const SURFACES = [
+  // Cards and table surfaces.
+  [/background:\s*#fff(?![0-9a-f])/g, 'background:var(--paper)'],
+  // The recessed washes: filters, toolbars, selected rows, the step rail's
+  // chip. One token, because they were never meaningfully different colours.
+  [/#fffaf5|#f7f8f4|#f4f6f1|#f5f6f1|#f5f7f3|#f5f7f2|#f8faf6|#f8f8f5|#f8f8f4/g, 'var(--wash)'],
+  // The dark bands: table heads, question cards, the FAB. They are black in
+  // the light theme and must STAY dark in the dark one, where --ink flips
+  // light -- so they get a surface token of their own.
+  [/background:var\(--ink\)/g, 'background:var(--band)'],
+  // The two translucent chrome bars. A .98 white is a theme decision the
+  // tokens have to own; both bars are fixed rows of the frame, so opacity
+  // was buying nothing.
+  [/background:rgba\(255,255,255,\.98\)/g, 'background:var(--field)'],
+  [/background:rgba\(255,254,250,\.98\)/g, 'background:var(--field)'],
+  // Selected rows: the accent at rest, which is what --soft has always meant.
+  [/#f3f7f2|#f2f7f2/g, 'var(--soft)'],
+  // Light strokes that read as the hairline.
+  [/#d9dcd7|#e1e6e1|#e1e5df|#bdc7bb/g, 'var(--line)'],
+  // The inactive rail number and its greyed kin.
+  [/#afb4af|#cfd3ce|#b9c4ba/g, 'var(--mute)'],
+];
+for (const [re, to] of SURFACES) css = css.replace(re, to);
+
 // Sizes onto the text scale. Two shapes appear: the `font-size` longhand, and a
 // `font:` shorthand whose size sits after the weight and may carry a line
 // height. Anything already wearing a calc() is left alone so the script is safe
@@ -70,7 +103,7 @@ css = css.replace(/font:(\s*\d+\s+)(\d+(?:\.\d+)?)px/g, (_, weight, px) => {
   sized++; return `font:${weight}calc(${px}px * var(--ts))`;
 });
 
-const leftovers = css.match(/var\(--(green|red|muted|paper|mobile-safe-area-height|device-safe-area-bottom)[^)]*\)/g);
+const leftovers = css.match(/var\(--(green|red|muted|mobile-safe-area-height|device-safe-area-bottom)[^)]*\)/g);
 if (leftovers) throw new Error(`prototype.css: un-renamed tokens: ${[...new Set(leftovers)].join(', ')}`);
 
 const header = `/* prototype.css — GENERATED. Do not edit.

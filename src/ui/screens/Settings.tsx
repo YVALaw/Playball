@@ -16,7 +16,7 @@ import {
 } from '../../state/depth.js';
 import {
   readPrefs, writePrefs, applyPrefs, TEXT_SCALES,
-  type DevicePrefs, type FieldMode, type MotionPref,
+  type DevicePrefs, type FieldMode, type MotionPref, type ThemePref,
 } from '../../state/devicePrefs.js';
 
 /** A row that reads as a sentence and toggles on the right. */
@@ -72,7 +72,7 @@ function Choice<T extends string | number>(
 type Page = SettingsPage;
 
 const PAGES: { id: Page | 'saves'; title: string; blurb: string }[] = [
-  { id: 'display', title: 'Display', blurb: 'Text size, the field, motion.' },
+  { id: 'display', title: 'Display', blurb: 'Text size, theme, the field, motion.' },
   { id: 'sound', title: 'Sound', blurb: 'Bat, glove, crowd, haptics.' },
   { id: 'play', title: 'How you play', blurb: 'Full or casual, and what you handle.' },
   { id: 'saves', title: 'Saved dynasties', blurb: 'Name a save, load a career, start again.' },
@@ -181,6 +181,16 @@ export function Settings() {
               { value: '2d', label: 'DIAMOND' },
             ]}
             onPick={(v) => put({ field: v })}
+          />
+          <Choice<ThemePref>
+            label="Theme"
+            value={prefs.theme}
+            options={[
+              { value: 'system', label: 'SYSTEM' },
+              { value: 'light', label: 'LIGHT' },
+              { value: 'dark', label: 'DARK' },
+            ]}
+            onPick={(v) => put({ theme: v })}
           />
           <Choice<MotionPref>
             label="Motion"
