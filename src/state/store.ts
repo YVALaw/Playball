@@ -53,6 +53,9 @@ import {
   markAllRead, newItem, push, restoreInbox, unreadCount, type InboxItem,
 } from '../engine/inbox.js';
 import {
+  applyRealignment, headToHead, realignmentFor,
+} from '../engine/world.js';
+import {
   annualBudget, freshEconomy, marketFor, poached, remaining, wageBill,
   withStaff, FACILITIES, MAX_FACILITY, SCOUT_COST, SCOUT_DAYS, SEATS,
   SEAT_LABEL, type Assistant, type Economy, type StaffSeat,
@@ -923,6 +926,12 @@ export interface DynastyStore {
    * a clean ledger. See engine/economy.ts for every number.
    */
   economy: Economy;
+  /**
+   * The rivalry, counted for the whole career — stage 12. Your record against
+   * the school the data has always named your rival, across every season on
+   * this save. The Today card prints it the week the fixture comes round.
+   */
+  rivalry: { w: number; l: number };
   /** Hire from this offseason's derived market. Seat must be empty. */
   hireAssistant: (seat: StaffSeat, slot: number) => void;
   /** Let him go. No severance — the wage simply stops next roll. */
@@ -1189,6 +1198,15 @@ function usableEconomy(saved: unknown): Economy {
       ? Object.fromEntries(Object.entries(e.scouted)
           .filter(([, v]) => typeof v === 'number')) as Record<number, number>
       : {},
+  };
+}
+
+/** The rivalry ledger, from whatever an older save carries. */
+function usableRivalry(saved: unknown): { w: number; l: number } {
+  const r = (saved ?? {}) as Partial<{ w: unknown; l: unknown }>;
+  return {
+    w: typeof r.w === 'number' && r.w >= 0 ? r.w : 0,
+    l: typeof r.l === 'number' && r.l >= 0 ? r.l : 0,
   };
 }
 
@@ -1865,6 +1883,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // facilities, a clean ledger. Explicit for the same reason as the inbox
       // below — a second dynasty must not inherit the first one's staff.
       economy: freshEconomy(),
+      rivalry: { w: 0, l: 0 },
       watch: { programs: [], jobs: [] },
       inbox: [],
       // Set explicitly rather than left alone, because a second dynasty started
@@ -2949,6 +2968,53 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // roster this would have read.
 
     const done = (next: SeasonState, report: OffseasonReport): void => {
+      /*
+        The rivalry's year goes into the career ledger before the results are
+        wiped — stage 12. Counted here, once, rather than live, so a replayed
+        day cannot double-count a game.
+      */
+      const myDef = next.teams[get().userTeam]?.def;
+      const rivalRec = next.teams.find((t) => t.def.abbr === myDef?.rival);
+      if (myDef && rivalRec) {
+        const hh = headToHead(next, get().userTeam, rivalRec.index);
+        if (hh.w + hh.l > 0) {
+          const led = get().rivalry;
+          set({ rivalry: { w: led.w + hh.w, l: led.l + hh.l } });
+        }
+      }
+
+      /*
+        The country moves — stage 12. Derived from the world and the year, so
+        a reload cannot re-roll who defected; applied to the records the next
+        schedule is built from, so the leagues simply ARE different next
+        spring. A one-for-one trade, which is what keeps every league the size
+        the scheduler needs. The user's chair is never the one relegated; it
+        can absolutely be the one invited up.
+      */
+      const move = realignmentFor(
+        String(next.seed ?? 0), year, next.teams, get().userTeam,
+      );
+      if (move) {
+        const riser = next.teams[move.up]?.def;
+        const faller = next.teams[move.down]?.def;
+        applyRealignment(next.teams, move);
+        const mine = move.up === get().userTeam;
+        const touchesMe = mine
+          || next.teams[get().userTeam]?.conference === move.upTo
+          || next.teams[get().userTeam]?.conference === move.downTo;
+        get().post({
+          kind: 'season', year: year + 1,
+          title: mine
+            ? `You are moving up: ${move.upTo} baseball`
+            : `Realignment: ${riser?.school ?? '?'} join the ${move.upTo}`,
+          body: mine
+            ? `The ${move.upTo} called and the board said yes before the phone was
+              down. ${faller?.school ?? 'Somebody'} goes the other way.`
+            : `${riser?.school ?? '?'} outgrew the ${move.downTo} and traded places
+              with ${faller?.school ?? '?'}.${touchesMe ? ' Your league looks different in the spring.' : ''}`,
+        });
+      }
+
       const rolled = nextSeason(next);
 
       /*
@@ -3484,6 +3550,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   acceptOffer: async (team) => {
     const { season, coach, userTeam, year } = get();
+    // A rivalry belongs to a chair, not a man — the new school has its own,
+    // and its ledger opens at nought the day you arrive. The staff stays
+    // yours: assistants follow the coach who hired them.
+    set({ rivalry: { w: 0, l: 0 } });
     if (!season) return;
     // Only an offer that is actually on the table. Accepting clears the list in
     // the same breath, so a double-tap's second click — or a tap on a second
@@ -4726,6 +4796,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   economy: freshEconomy(),
+  rivalry: { w: 0, l: 0 },
 
   hireAssistant: (seat, slot) => {
     const { season, userTeam, year, economy } = get();
@@ -4851,6 +4922,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         tutorials: get().seenTutorials,
         watch: get().watch,
         economy: get().economy,
+        rivalry: get().rivalry,
         depth: get().depth,
         /*
           How many the room has had this season, and the one still open.
@@ -5013,6 +5085,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // been playing all evening.
       watch: usableWatch(loaded.watch),
       economy: usableEconomy(loaded.economy),
+      rivalry: usableRivalry(loaded.rivalry),
       seenTutorials: [...new Set([
         ...get().seenTutorials,
         ...(Array.isArray(loaded.tutorials)

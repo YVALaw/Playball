@@ -19,7 +19,7 @@ import type { Hitter, Pitcher } from './types.js';
 
 export type WireKind =
   | 'upset' | 'streak' | 'rout' | 'ranking' | 'milestone' | 'race'
-  | 'close' | 'sweep' | 'gem' | 'power';
+  | 'close' | 'sweep' | 'gem' | 'power' | 'rivalry';
 
 export interface WireItem {
   kind: WireKind;
@@ -105,6 +105,31 @@ export function wire(season: SeasonState, limit = 24): WireItem[] {
     const hi = Math.max(g.homeRuns, g.awayRuns);
     const lo = Math.min(g.homeRuns, g.awayRuns);
     const v = vary(g.day * 97 + winner * 13 + loser, 3);
+
+    /*
+      The rivalry always makes the paper — stage 12. `rival` sat in the school
+      data doing almost nothing; a rivalry game that ran as an ordinary result
+      was the wire not knowing the one thing every reader in both towns knows.
+      Weighted above everything but a ranked upset, whoever won.
+    */
+    const wDef = season.teams[winner]?.def;
+    const lDef = season.teams[loser]?.def;
+    if (wDef && lDef && wDef.rival === lDef.abbr) {
+      items.push({
+        kind: 'rivalry',
+        team: winner,
+        against: loser,
+        weight: 78 + margin,
+        text: [
+          `The rivalry goes to ${name(winner)}, ${hi}-${lo}`,
+          `${name(winner)} own the argument for a year: ${hi}-${lo} over ${abbr(loser)}`,
+          `Bragging rights: ${name(winner)} take down ${name(loser)}, ${hi}-${lo}`,
+        ][v]!,
+        detail: `${wDef.school} and ${lDef.school} have played this game for `
+          + `longer than anybody can defend, and tonight it belonged to `
+          + `${wDef.nickname}.`,
+      });
+    }
 
     // An upset is measured on reputation, which is what makes it read as one.
     const gap = (season.teams[loser]?.prestige ?? 50) - (season.teams[winner]?.prestige ?? 50);

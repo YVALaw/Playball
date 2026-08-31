@@ -724,9 +724,42 @@ and budget upgrades.
 whether you can be outbid for one mid-career; what a poached coordinator does
 to next year's class.
 
-## Stage 12 · The world
+## Stage 12 · The world — **SHIPPED August 31 2026**
 
-**Size:** medium · **New stage**
+**Size:** medium · **1045 tests green**
+
+**How it shipped** (`engine/world.ts`, derived throughout — a reload cannot
+re-roll who defected, and no golden moved):
+
+- **Realignment is a trade, not a migration.** Roughly one winter in three,
+  the program that most outgrew its league (+15 over its conference's average
+  prestige) changes places with the weakest man in the strongest league above
+  it, provided he has genuinely slid (−12). One-for-one, because equal-sized
+  leagues are the scheduler's structural invariant. Applied to the team
+  records the next schedule is built from, so the leagues simply ARE different
+  in the spring; the inbox announces it, and says so specifically when it is
+  your league that changes shape. **Decisions taken:** the user's chair is
+  never the one relegated — that is the "most likely to feel arbitrary" case,
+  and the answer is it does not happen to you — but it can absolutely be the
+  one invited up, and the inbox frames that as the good news a board never
+  refuses.
+- **The rivalry does something.** A career ledger of your record against the
+  school the data has always named your rival, banked at each year roll,
+  printed on the Today card in alarm ink the week the fixture comes round
+  ("The rivalry. You lead the series 2-1."), reset when you take a new chair —
+  a rivalry belongs to the job, not the man. Every rivalry game in the country
+  makes the wire under its own THE RIVALRY chip, weighted above everything but
+  a ranked upset. The planned "line in both schools' annals" was absorbed by
+  the ledger + wire + card treatment rather than a save-shape change to the
+  annals.
+- **Series stakes, the missing half of R8:** the Today card now says what
+  tonight settles — "A win takes the series." / "The decider." / "The sweep is
+  on the table." / "The salvage game." — and says nothing when tonight settles
+  nothing.
+
+**Exit — met:** ninety-six programs behave like a country rather than a table.
+
+### The original brief (kept for the record)
 
 - **Conference realignment** — every few years programs move leagues on
   prestige and market. A twenty-year dynasty where the conferences never change

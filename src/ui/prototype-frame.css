@@ -1957,3 +1957,19 @@
   border-color: var(--line);
   color: var(--mute);
 }
+
+/* The rivalry and the stake, on the match card. Alarm ink for the fixture the
+   whole town circles; the stake stays quiet. */
+.rivalry-line,
+.stake-line {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  margin: 0;
+  padding: 7px 10px 0;
+  font-size: calc(10.5px * var(--ts));
+  line-height: 1.4;
+}
+.rivalry-line { color: var(--alert); font-weight: 600; }
+.rivalry-line svg { align-self: center; }
+.stake-line { color: var(--dim); }

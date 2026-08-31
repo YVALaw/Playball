@@ -29,6 +29,7 @@ const KIND_LABEL: Record<WireKind, string> = {
   sweep: 'SWEEP',
   gem: 'ON THE MOUND',
   power: 'POWER',
+  rivalry: 'THE RIVALRY',
 };
 
 const KIND_TONE: Record<WireKind, string> = {
@@ -42,6 +43,7 @@ const KIND_TONE: Record<WireKind, string> = {
   sweep: 'var(--win)',
   gem: 'var(--navy)',
   power: 'var(--clay)',
+  rivalry: 'var(--alert)',
 };
 
 /** The category chip + YOU marker row every story opens with. */

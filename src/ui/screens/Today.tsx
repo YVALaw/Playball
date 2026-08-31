@@ -15,7 +15,8 @@
 // coach actually looks up at that moment.
 
 import { useRef, useState } from 'react';
-import { PlayIcon, SewingPinIcon, StopwatchIcon } from '@radix-ui/react-icons';
+import { PlayIcon, SewingPinIcon, StopwatchIcon, StarFilledIcon,
+} from '@radix-ui/react-icons';
 import { FINISH_LABEL } from '../../engine/postseason.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import {
@@ -27,6 +28,7 @@ import { useOpenTeam } from './TeamCard.js';
 import { BoxScoreSheet } from './Schedule.js';
 import { seasonDate } from '../format.js';
 import { NeedsYou, useNeeds } from '../Needs.js';
+import { seriesStake } from '../../engine/world.js';
 import { SectionHeading } from '../components/Kit.js';
 import type { Pitcher } from '../../engine/types.js';
 
@@ -76,6 +78,7 @@ export function Today() {
   const live = useDynasty((s) => s.live);
   const pendingGame = useDynasty((s) => s.pendingGame);
   const resumeGame = useDynasty((s) => s.resumeGame);
+  const rivalry = useDynasty((s) => s.rivalry);
   /*
     The desk does not advance past a decision only you can make.
 
@@ -161,6 +164,11 @@ export function Today() {
   const seriesWins = seriesSoFar.filter((r) =>
     (r.home === team.index) === (r.homeRuns > r.awayRuns)).length;
 
+  /*
+    What tonight settles — stage 12, the other half of R8. The game number and
+    the lead shipped with stage 4; the stake did not.
+  */
+  const stake = day?.kind === 'series' ? seriesStake(seriesSoFar.length, seriesWins) : null;
   const seriesTag = seriesSoFar.length === 0
     ? `${atHome ? 'HOME' : 'ROAD'} SERIES · GAME 1 OF 3`
     : seriesWins * 2 > seriesSoFar.length
@@ -248,6 +256,21 @@ export function Today() {
             <p>
               <SewingPinIcon /> {armLine(ourArm)} vs {armLine(theirArm)}
             </p>
+            {/* The rivalry, named the week it comes round — with the career
+                ledger, because a rivalry IS its record. */}
+            {opponent.def.abbr === team.def.rival && (
+              <p className="rivalry-line">
+                <StarFilledIcon /> The rivalry.{' '}
+                {rivalry.w + rivalry.l > 0
+                  ? rivalry.w >= rivalry.l
+                    ? `You lead the series ${rivalry.w}-${rivalry.l}.`
+                    : `They lead the series ${rivalry.l}-${rivalry.w}.`
+                  : 'The first chapter under your watch.'}
+              </p>
+            )}
+            {stake && (
+              <p className="stake-line"><SewingPinIcon /> {stake}</p>
+            )}
             {held && (
               <p className="held-note">
                 <SewingPinIcon /> {musts === 1 ? 'A decision is' : `${musts} decisions are`} waiting
