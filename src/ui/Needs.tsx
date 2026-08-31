@@ -169,18 +169,20 @@ export function useNeeds(): Need[] {
     it is the one piece of news with a thing you can do about it attached, and
     the conversations are limited so it is worth knowing they are there.
   */
-  const trouble = squad(team.team).filter((p) => standing(p) === 'trouble');
-  if (trouble.length > 0) {
+  /*
+    One card per man, not a headcount. Reported: "players failing should be
+    shown one by one in needs, not like 3 players failing, cause that way it
+    will only target one player directly." Each card opens its own man.
+  */
+  for (const man of squad(team.team).filter((p) => standing(p) === 'trouble')) {
     needs.push({
-      id: 'grades',
-      title: trouble.length === 1
-        ? `${trouble[0]!.name} is failing`
-        : `${trouble.length} men are failing`,
+      id: `grades-${man.id}`,
+      title: `${man.name} is failing`,
       note: 'Short of where he needs to be, and one bad week from missing a series. '
         + 'A word with him helps.',
       must: false,
-      cta: trouble.length === 1 ? 'HIS CARD' : 'START WITH ONE',
-      go: () => openPlayer(trouble[0]!.id),
+      cta: 'HIS CARD',
+      go: () => openPlayer(man.id),
     });
   }
 

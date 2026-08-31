@@ -86,6 +86,11 @@ const SURFACES = [
   [/#f3f7f2|#f2f7f2/g, 'var(--soft)'],
   // Light strokes that read as the hairline.
   [/#d9dcd7|#e1e6e1|#e1e5df|#bdc7bb/g, 'var(--line)'],
+  // Grey ink on theme surfaces. Literals chosen against white, unreadable the
+  // moment the surface goes dark: the log's body, the phase rail's unreached
+  // steps, hairline borders in the log and stage rail.
+  [/#647067|#7a807b|#8d958e|#a3a8a3/g, 'var(--dim)'],
+  [/#dbe2d9|#cfd6cf/g, 'var(--line)'],
   // The inactive rail number and its greyed kin.
   [/#afb4af|#cfd3ce|#b9c4ba/g, 'var(--mute)'],
 ];

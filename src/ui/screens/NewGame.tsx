@@ -59,7 +59,7 @@ import {
   type PhilosophyId,
 } from '../../engine/strategy.js';
 import { useDynasty, careerSeed } from '../../state/store.js';
-import type { DepthMode } from '../../state/depth.js';
+import { SYSTEMS, type DepthMode } from '../../state/depth.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { InFrame } from '../Overlay.js';
 import {
@@ -700,6 +700,15 @@ function Identity(
  * picked. The only thing that changes is how much lands on your desk. Saying so
  * plainly is what stops "casual" reading as "the lesser game", which it is not.
  */
+/**
+ * The systems the desk cards preview. The built ones — a chip for a system
+ * that ships later would be promising a control the settings screen greys.
+ */
+const DESK_KEYS: readonly string[] = [
+  'lineups', 'bullpen', 'moundVisits', 'depthChart', 'redshirts',
+  'captains', 'recruiting', 'draftTalk', 'skillPoints',
+];
+
 function DepthStep(
   { chosen, onChoose, onBack, onDone }: {
     chosen: DepthMode;
@@ -756,15 +765,35 @@ function DepthStep(
           ))}
         </section>
 
-        {/* What the answer actually moves, named in the words the rest of the
-            game uses for them. */}
-        <section className="career-system-chips">
-          <span>LINEUP</span>
-          <span>BULLPEN</span>
-          <span>REDSHIRTS</span>
-          <span>CAPTAINS</span>
-          <span>RECRUITING</span>
-        </section>
+        {/*
+          What the chosen card actually moves, split the way the answer splits
+          it. Reported: "it doesn't really show what the difference is — those
+          small lineup, bullpen, redshirt, captains chips should change
+          depending if we are selecting casual or full." The lists are read off
+          the same SYSTEMS table the settings screen enforces, so this preview
+          and the career it starts cannot disagree.
+        */}
+        {(() => {
+          const shown = SYSTEMS.filter((sys) => DESK_KEYS.includes(sys.key));
+          const desk = chosen === 'full' ? shown : shown.filter((sys) => sys.casual);
+          const staff = chosen === 'full' ? [] : shown.filter((sys) => !sys.casual);
+          return (
+            <>
+              <div className="career-chip-head label">ON YOUR DESK</div>
+              <section className="career-system-chips">
+                {desk.map((sys) => <span key={sys.key}>{sys.label.toUpperCase()}</span>)}
+              </section>
+              {staff.length > 0 && (
+                <>
+                  <div className="career-chip-head label">YOUR STAFF HANDLES</div>
+                  <section className="career-system-chips staff">
+                    {staff.map((sys) => <span key={sys.key}>{sys.label.toUpperCase()}</span>)}
+                  </section>
+                </>
+              )}
+            </>
+          );
+        })()}
       </main>
     </FixedHeader>
   );

@@ -15,7 +15,7 @@
 import { useState } from 'react';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { Avatar } from '../Avatar.js';
+import { teamColour } from '../Avatar.js';
 import { prestigeStars } from '../../engine/program.js';
 import { useOpenTeam } from './TeamCard.js';
 import { CONFERENCES } from '../../data/schools.js';
@@ -50,10 +50,15 @@ export function Colleges() {
       key: String(i),
       title: t.def.school,
       detail: `${t.def.nickname} · ${t.conference} · ${t.w}-${t.l} · ${'★'.repeat(prestigeStars(t.prestige))}`,
-      value: t.def.abbr,
-      // The program's own colour, worn by a shirt rather than printed as a
-      // hex — ninety six names in one typeface are ninety six strings.
-      face: <Avatar id={`school-${t.def.abbr}`} team={t.def.abbr} size={34} />,
+      // The school's letters in its own colour — a school is a mark, not a
+      // man. Reported: "the colleges have avatar pictures in the list instead
+      // of their school letters." The generated face implied a person nobody
+      // in this game is.
+      face: (
+        <span className="team-mark small" style={{ background: teamColour(t.def.abbr) }}>
+          {t.def.abbr}
+        </span>
+      ),
     }));
 
   return (

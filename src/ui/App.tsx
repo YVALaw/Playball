@@ -11,6 +11,8 @@
 // design/Roster Tabletop/ is the design of record.
 
 import { useEffect, useRef, useState } from 'react';
+import { applyTeamAccent } from './accent.js';
+import { teamColour } from './Avatar.js';
 import {
   ArchiveIcon, ArrowLeftIcon, CalendarIcon, ChevronRightIcon, EnvelopeClosedIcon, GearIcon,
   HomeIcon, IdCardIcon, StarIcon,
@@ -106,6 +108,24 @@ function titleCase(label: string): string {
  */
 export function App() {
   const [teamCard, setTeamCard] = useState<number | null>(null);
+
+  /*
+    Your school's colours, worn by the whole app.
+
+    Proposed from play: 'instead of white and green, the green accent is
+    changed to the team's colors they select.' The accent hooks are filled
+    from the team the save says you coach and cleared when there is none --
+    creation and the menu keep the house green. See accent.ts for why the
+    lightness is clamped per theme rather than the hex applied raw.
+  */
+  const accentAbbr = useDynasty((s) => {
+    const i = s.userTeam;
+    return s.season?.teams[i]?.def.abbr ?? null;
+  });
+  useEffect(() => {
+    applyTeamAccent(accentAbbr ? teamColour(accentAbbr) : null);
+  }, [accentAbbr]);
+
   return (
     <OpenTeam.Provider value={setTeamCard}>
       <AppBody teamCard={teamCard} setTeamCard={setTeamCard} />

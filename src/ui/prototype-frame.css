@@ -1751,3 +1751,106 @@
    the tokens.
    --------------------------------------------------------------------------- */
 .global-header { background: var(--field); }
+
+/* ---------------------------------------------------------------------------
+   The choice strips inside the settings list.
+
+   `.settings-list button` styles every descendant button as a full-width
+   59px row — which is right for the rows and catastrophic for a Segmented
+   mounted inside one: each of its options became a row-sized block, the strip
+   overflowed sideways, and only the first option was visible. Reported as
+   "the settings buttons, there is not options, once i click on them there is
+   no way to change anything." The strip's own anatomy wins back its buttons.
+   --------------------------------------------------------------------------- */
+.settings-list .segmented button {
+  display: block;
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 6px;
+  border-bottom: 0;
+  text-align: center;
+}
+.setting-choice .segmented { margin-bottom: 12px; }
+
+/* The mark at list size, for the college directory's rows. */
+.team-mark.small {
+  width: 34px;
+  height: 34px;
+  font-size: calc(12px * var(--ts));
+}
+
+/* The desk preview's two chip groups. Staff chips go quiet: they are things
+   happening without you, and the palette should say so. */
+.career-chip-head { margin: 12px 0 0; }
+.career-system-chips.staff span {
+  border-style: dashed;
+  background: transparent;
+  color: var(--dim);
+}
+
+/* ---------------------------------------------------------------------------
+   The interview holds its shape.
+
+   Reported: "whenever we complete one and the others come in, the screen size
+   changes — we have to keep these the same size, and globally the app should
+   not be moving whenever something changes." The question card and the answer
+   list reserve the height of the tallest case, so a two-line ask following a
+   four-line one changes the words and nothing else.
+   --------------------------------------------------------------------------- */
+.career-workspace .career-question { min-height: 128px; }
+.career-workspace .answer-list { min-height: 280px; }
+
+
+/* ---------------------------------------------------------------------------
+   The call board, made of buttons.
+
+   Reported: "the way you have them right now they do not really look like
+   buttons." The board is the dark dugout panel in both themes, so the tiles
+   are theme-independent: cream, raised a step off the board, pressed flat
+   while disabled — an available call and a dead one stop being two greys.
+   --------------------------------------------------------------------------- */
+.ballpark-call button {
+  background: var(--cream);
+  color: #12271c;
+  border: 1px solid rgba(0, 0, 0, .35);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .22);
+}
+.ballpark-call button:disabled:not(.unavailable) {
+  opacity: 1;
+  background: rgba(255, 255, 255, .07);
+  color: rgba(255, 255, 255, .38);
+  border-color: rgba(255, 255, 255, .1);
+  box-shadow: none;
+}
+.ballpark-call button.selected {
+  background: var(--yellow);
+  color: #182b21;
+}
+
+/* The log keeps its ink readable on the wash in both themes — it shipped as a
+   literal grey mixed against white: "the log letters are hard to see due to
+   them basically having the same color as the background." */
+.ballpark-log p { color: var(--ink); }
+.ballpark-log p { opacity: .82; }
+
+/* The floating triggers ride --raised: black on the light theme exactly as
+   the proposal draws them, and lifted to the accent in the dark one, where a
+   band-dark disc on a field-dark ground was reported as "hard to see it". */
+.player-actions-trigger,
+.game-manager-trigger,
+.college-actions-trigger {
+  background: var(--raised);
+}
+
+/* The action popover's dead cards, tuned for the dark panel they always sit
+   on rather than for the white page they never do. */
+.action-popover-group .action-card:disabled {
+  background: rgba(255, 255, 255, .06);
+  color: rgba(255, 255, 255, .45);
+}
+.action-popover-group .action-card:disabled .action-card-icon,
+.action-popover-group .action-card:disabled > svg {
+  color: rgba(255, 255, 255, .35);
+}

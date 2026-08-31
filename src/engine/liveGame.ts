@@ -164,9 +164,20 @@ export const OFFENSE = (bases: [boolean, boolean, boolean], outs: number): Tacti
     opt('swing', 'SWING AWAY', 'let him hit', true, ''),
     opt('hitrun', 'HIT AND RUN', 'runner goes with the pitch',
       first && outs < 2, !first ? 'nobody on first' : 'two outs already'),
-    opt('bunt', 'SAC BUNT', 'trade an out to move him up',
-      (first || second) && outs < 2,
-      !(first || second) ? 'nobody to move up' : 'two outs already'),
+    /*
+      Always on the table. It shipped gated to a man on and less than two out,
+      and the report was right to object: 'lets say I have a super fast batter,
+      I can try a bunt to see if he gets to base at any point regardless of the
+      base play or outs.' The engine has always modelled exactly that -- the
+      bunt single rolls off speed and bunt craft, an empty-bases bunt that does
+      not beat the throw is just an out -- so the gate was the UI refusing a
+      play the game could already score. The label says which play it is.
+    */
+    opt('bunt',
+      (first || second || third) && outs < 2 ? 'SAC BUNT' : 'BUNT FOR A HIT',
+      (first || second) && outs < 2 ? 'trade an out to move him up'
+        : 'drop one down and beat it out',
+      true, ''),
     // Any runner benefits from a ball in play, so the only true reason to
     // withhold this is an empty basepath.
     opt('contact', 'PLAY FOR CONTACT', contactNote, anyOn, 'nobody on to move'),

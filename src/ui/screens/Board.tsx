@@ -40,7 +40,7 @@ import { Avatar, teamColour } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { MixerHorizontalIcon } from '@radix-ui/react-icons';
-import { Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
+import { FieldNote, Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
 import type { Hitter, Pitcher, Player, Position } from '../../engine/types.js';
 
 type View = 'recruits' | 'targets' | 'commits' | 'needs' | 'roster';
@@ -986,7 +986,7 @@ function ProspectSheet({
   const spent = prospect.spent[userTeam] ?? 0;
   const points = Object.values(prospect.points);
   const best = points.length ? Math.max(...points) : 0;
-  const s = standing(prospect.points[userTeam] ?? 0, best, points.length > 0);
+  const s2 = standing(prospect.points[userTeam] ?? 0, best, points.length > 0);
 
   /*
     Into the frame, not into the scroller.
@@ -1045,21 +1045,41 @@ function ProspectSheet({
           }}>CLOSE</button>
         </div>
 
-        <div style={{
-          flex: 'none', padding: '13px 12px 6px',
-          display: 'flex', alignItems: 'center', gap: 12,
-        }}>
-          <Avatar id={p.id} size={54} />
-          <div style={{ minWidth: 0 }}>
-          <div style={{ font: "800 calc(22px * var(--ts))/1 var(--display)", textTransform: 'uppercase' }}>
-            {p.name}
+        <section className="prospect-hero" style={{ flex: 'none', margin: '10px 12px 0' }}>
+          <div className="prospect-hero-top">
+            <span>{'★'.repeat(prospect.stars)}</span>
+            <b>{prospect.state} · {slotOf(prospect)}</b>
           </div>
-          <div style={{ marginTop: 3, font: "400 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
-            {slotOf(prospect)} &middot; bats {p.bats} &middot; throws {p.throws}
-            {' '}&middot; <span style={{ color: s.tone }}>{s.label}</span>
+          <div className="prospect-hero-body">
+            <div style={{ display: 'grid', placeItems: 'center', alignSelf: 'stretch' }}>
+              <Avatar id={p.id} size={64} />
+            </div>
+            <div>
+              {pipeline && <small>YOUR PIPELINE</small>}
+              <h2>{p.name}</h2>
+              <p>bats {p.bats} · throws {p.throws} · <span style={{ color: s2.tone }}>{s2.label}</span></p>
+            </div>
+            <aside>
+              <small>RANK</small>
+              <strong>#{prospect.rank}</strong>
+              <span>NATIONAL</span>
+            </aside>
           </div>
+          <div className="prospect-status-strip">
+            <span>
+              <small>STATUS</small>
+              <strong>{prospect.signedBy !== null ? 'SIGNED' : spent > 0 ? 'IN PURSUIT' : 'ON THE BOARD'}</strong>
+            </span>
+            <span>
+              <small>YOUR OFFER</small>
+              <strong>{spent > 0 ? `${spent} PTS A WEEK` : '—'}</strong>
+            </span>
+            <span>
+              <small>PIPELINE</small>
+              <strong>{pipeline ? 'YES' : 'NO'}</strong>
+            </span>
           </div>
-        </div>
+        </section>
 
         <div className="card-tabs">
           <Segmented
@@ -1123,45 +1143,39 @@ function Overview({
         the report a tab you had to find would hide the only number on the
         screen that the decision turns on.
       */}
-      <div style={{
-        marginBottom: 12, padding: '9px 11px 10px',
-        background: 'var(--field)', borderLeft: '3px solid var(--ink)',
-      }}>
-        <div style={{ display: 'flex', gap: 14, alignItems: 'baseline' }}>
-          <div>
-            <div className="label">OVERALL</div>
-            <div style={{ font: "700 calc(18px * var(--ts))/1 var(--display)", marginTop: 3 }}>
-              {overall.low}&ndash;{overall.high}
-            </div>
-          </div>
-          <div>
-            <div className="label">CEILING</div>
-            <div style={{ font: "700 calc(18px * var(--ts))/1 var(--display)", marginTop: 3 }}>
-              {ceiling.low} &ndash; {ceiling.high}
-            </div>
-          </div>
+      <section className="prospect-estimate">
+        <div>
+          <small>ESTIMATED OVERALL</small>
+          <strong>{overall.low}&ndash;{overall.high}</strong>
+          <span>not a final rating</span>
         </div>
-        <div style={{
-          marginTop: 8, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--ink)',
-        }}>&ldquo;{hints.ceiling.text}&rdquo;</div>
-      </div>
+        <div>
+          <small>ESTIMATED CEILING</small>
+          <strong>{ceiling.low}&ndash;{ceiling.high}</strong>
+          <span>report range</span>
+        </div>
+      </section>
 
-      <div className="label">WHAT HE WANTS</div>
-      <div style={{ marginTop: 5 }}>
-        {wants.map((k) => (
-          <div key={k} style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-            padding: '6px 0', borderBottom: '1px solid var(--hairline)',
-          }}>
-            <span style={{ font: "600 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.06em' }}>
-              {PRIORITY_LABEL[k]}
-            </span>
-            <span style={{ font: "400 calc(11px * var(--ts)) var(--body)", color: 'var(--dim)' }}>
-              {PRIORITY_BLURB[k]}
-            </span>
+      <section className="scout-note">
+        <small>WHAT THEY SAY</small>
+        <p>&ldquo;{hints.ceiling.text}&rdquo;</p>
+      </section>
+
+            <section className="prospect-wants">
+        <div className="flow-section-title">
+          <span className="label">WHAT HE WANTS</span>
+          <b>{wants.length} PRIORITIES</b>
+        </div>
+        {wants.map((k, i) => (
+          <div key={k}>
+            <span>{i + 1}</span>
+            <p>
+              <strong>{PRIORITY_LABEL[k]}</strong>
+              <small>{PRIORITY_BLURB[k]}</small>
+            </p>
           </div>
         ))}
-      </div>
+      </section>
 
       {!reachable && (
         <div style={{
@@ -1212,126 +1226,50 @@ function Overview({
       )}
 
       {reachable && live && !full && (
-        <div style={{ marginTop: 14 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span className="label">YOUR OFFER</span>
-            <span style={{ font: "700 calc(11px * var(--ts)) var(--mono)", color: 'var(--clay)' }}>
-              +{Math.round(gain)} pts a week
-            </span>
-          </div>
-
-          {/*
-            A slider rather than a row of steps. The budget is a continuous
-            quantity and reads as one — dragging shows the cost against the
-            remaining pool as it moves, where discrete buttons make you compute
-            the difference yourself.
-          */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12, marginTop: 8,
-          }}>
-            <span style={{
-              font: "800 calc(26px * var(--ts))/1 var(--display)", color: spent > 0 ? 'var(--clay)' : 'var(--dim)',
-              minWidth: 34, textAlign: 'right',
-            }}>{spent}</span>
-            {/*
-              A step down and a step up either side of it.
-
-              Reported from testing: "the bar works fine to add points but to
-              remove points it's a hassle, doesn't work most of the times". On a
-              phone a drag that starts on a thin track is ambiguous — the
-              scroller can claim it — and dragging *left* to a smaller number is
-              the fiddliest version of that. `touchAction: none` gives the
-              gesture to the slider, and the buttons mean you never have to make
-              it at all.
-            */}
-            <Step label="−" onClick={() => onSet(Math.max(0, spent - 1))} disabled={spent === 0} />
-            {/*
-              Pips, not a track.
-
-              A range input on a phone is a drag that has to beat the scroller
-              for the gesture, and dragging *down* to a smaller number is the
-              worst case of it — "the bar works fine to add points but to remove
-              them it doesn't work most of the times". Twelve tap targets in a
-              row have no gesture to lose: tap the sixth pip and the offer is
-              six. The steppers either side stay for one-at-a-time nudging.
-            */}
-            <div style={{ flex: 1, display: 'flex', gap: 3 }}>
-              {Array.from({ length: MAX_PER_RECRUIT }, (_, i) => {
-                const n = i + 1;
-                const reachable = n <= Math.min(MAX_PER_RECRUIT, spent + left);
-                const on = n <= spent;
-                return (
-                  <button
-                    key={n}
-                    onClick={() => onSet(reachable ? (spent === n ? n - 1 : n) : spent)}
-                    disabled={!reachable}
-                    className="tap"
-                    style={{
-                      flex: 1, height: 26, padding: 0,
-                      background: on ? 'var(--clay)'
-                        : reachable ? 'rgba(var(--ink-rgb), .10)' : 'rgba(var(--ink-rgb), .04)',
-                      border: 'none',
-                    }}
-                    aria-label={`Offer ${n}`}
-                  />
-                );
-              })}
-            </div>
-            <Step
-              label="+"
-              onClick={() => onSet(Math.min(Math.min(MAX_PER_RECRUIT, spent + left), spent + 1))}
-              disabled={spent >= Math.min(MAX_PER_RECRUIT, spent + left)}
-            />
-            <button
-              onClick={() => onSet(0)}
-              disabled={spent === 0}
-              style={{
-                flex: 'none', padding: '6px 9px', background: 'transparent',
-                border: '1px solid rgba(var(--ink-rgb), .22)',
-                color: spent > 0 ? 'var(--dim)' : 'rgba(var(--ink-rgb), .2)',
-                font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-              }}
-            >OFF</button>
-          </div>
-
-          <div style={{
-            display: 'flex', justifyContent: 'space-between',
-            marginTop: 8, font: "400 calc(10.5px * var(--ts)) var(--mono)", color: 'var(--dim)',
-          }}>
-            <span>Budget: <strong style={{ color: 'var(--ink)' }}>{left}</strong> left</span>
-            {/* Off his star rating, not off the floor stored on him: a save
-                made under the old per-recruit ladder carries a number the gate
-                no longer reads. See `canPursue`. */}
+        <section className="prospect-offer">
+          <div className="prospect-offer-head">
             <span>
-              Min. prestige: {'★'.repeat(reachFloor(prospect.stars))}
+              <small>YOUR WEEKLY OFFER</small>
+              <strong>{spent} {spent === 1 ? 'POINT' : 'POINTS'}</strong>
+            </span>
+            <b>+{Math.round(gain)} interest</b>
+          </div>
+          {/*
+            Pips, not a track. A range input on a phone is a drag that has to
+            beat the scroller for the gesture — "the bar works fine to add
+            points but to remove them it doesn't work most of the times."
+            Twelve tap targets have no gesture to lose: tap the sixth pip and
+            the offer is six; tap it again and it is five.
+          */}
+          <div className="prospect-offer-pips">
+            {Array.from({ length: MAX_PER_RECRUIT }, (_, i) => {
+              const n = i + 1;
+              const can = n <= Math.min(MAX_PER_RECRUIT, spent + left);
+              return (
+                <button
+                  className={n <= spent ? 'on' : ''}
+                  type="button"
+                  key={n}
+                  disabled={!can}
+                  onClick={() => onSet(can ? (spent === n ? n - 1 : n) : spent)}
+                  aria-label={`Offer ${n} points`}
+                />
+              );
+            })}
+          </div>
+          <div className="prospect-offer-foot">
+            <span>
+              {left} left this week · min. prestige {'★'.repeat(reachFloor(prospect.stars))}
               {pipeline ? ' − 1 here' : ''}
             </span>
+            <button type="button" disabled={spent === 0} onClick={() => onSet(0)}>Clear</button>
           </div>
-        </div>
+        </section>
       )}
     </>
   );
 }
 
-/** One notch on the offer, with a target big enough to hit with a thumb. */
-function Step(
-  { label, onClick, disabled }:
-  { label: string; onClick: () => void; disabled: boolean },
-) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        flex: 'none', width: 38, height: 38,
-        background: disabled ? 'transparent' : 'var(--field)',
-        border: `1px solid ${disabled ? 'rgba(var(--ink-rgb), .14)' : 'rgba(var(--ink-rgb), .34)'}`,
-        color: disabled ? 'rgba(var(--ink-rgb), .22)' : 'var(--ink)',
-        font: "700 calc(18px * var(--ts)) var(--mono)", lineHeight: 1,
-      }}
-    >{label}</button>
-  );
-}
 
 /**
  * The scouting report: two bands, two impressions, and the tools underneath.
@@ -1358,55 +1296,47 @@ function Report({
 
   return (
     <>
-      <div style={{ display: 'flex', marginBottom: 12 }}>
-        <Stat k="OVERALL" v={`${overall.low}–${overall.high}`} />
-        <Stat k="CEILING" v={`${ceiling.low} – ${ceiling.high}`} last />
-      </div>
+      <section className="prospect-estimate">
+        <div>
+          <small>ESTIMATED OVERALL</small>
+          <strong>{overall.low}&ndash;{overall.high}</strong>
+          <span>not a final rating</span>
+        </div>
+        <div>
+          <small>ESTIMATED CEILING</small>
+          <strong>{ceiling.low}&ndash;{ceiling.high}</strong>
+          <span>report range</span>
+        </div>
+      </section>
 
       {/* Two impressions, not one summary. See the note on `hintsFor`. */}
-      <div style={{
-        marginBottom: 12, padding: '10px 11px',
-        background: 'var(--field)', borderLeft: '3px solid var(--clay)',
-      }}>
-        <div className="label" style={{ marginBottom: 5 }}>WHAT THEY SAY</div>
-        <div style={{ font: "400 calc(11.5px * var(--ts))/1.5 var(--body)" }}>
-          &ldquo;{hints.ceiling.text}&rdquo;
-        </div>
-        <div style={{ marginTop: 6, font: "400 calc(11.5px * var(--ts))/1.5 var(--body)" }}>
-          &ldquo;{hints.development.text}&rdquo;
-        </div>
-      </div>
+      <section className="scout-note">
+        <small>WHAT THEY SAY</small>
+        <p>&ldquo;{hints.ceiling.text}&rdquo;</p>
+        <p>&ldquo;{hints.development.text}&rdquo;</p>
+      </section>
 
-      {rows.map(([label, value]) => {
-        const { low, high } = reportedTool(prospect, value, recruitingSkill);
-        return (
-          <div key={label} style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '7px 0', borderBottom: '1px solid var(--hairline)',
-          }}>
-            <span style={{ font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.08em' }}>{label}</span>
-            <span style={{ font: "600 calc(12px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
-              {low}&ndash;{high}
-            </span>
-          </div>
-        );
-      })}
+      {/* The bands drawn as bands — where inside the scale each window sits,
+          not just its two numbers. The proposal's own tool report. */}
+      <section className="prospect-tool-report">
+        {rows.map(([label, value]) => {
+          const { low, high } = reportedTool(prospect, value, recruitingSkill);
+          return (
+            <div key={label}>
+              <span>{label}</span>
+              <b>{low}&ndash;{high}</b>
+              <i><em style={{ left: `${low}%`, width: `${Math.max(2, high - low)}%` }} /></i>
+            </div>
+          );
+        })}
+      </section>
 
-      {/*
-        The one place the screen says out loud what the recruiting skill buys.
-        Without it the width is a mystery the player has to infer across two
-        careers, and the coach point that bought it goes uncredited.
-      */}
-      <div style={{
-        marginTop: 12, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-      }}>
-        Estimates, not measurements. Your reports run{' '}
-        <strong style={{ color: 'var(--ink)' }}>
-          {Math.round(reportWidth(recruitingSkill))} points wide
-        </strong>{' '}
-        at recruiting {recruitingSkill}, and he is somewhere inside them,
-        not in the middle. Nothing narrows these but the skill itself.
-      </div>
+      <FieldNote
+        title="Estimates, not measurements"
+        text={`Your reports run ${Math.round(reportWidth(recruitingSkill))} points wide
+          at recruiting ${recruitingSkill}, and he is somewhere inside each band —
+          not in the middle. Nothing narrows them but the skill itself.`}
+      />
     </>
   );
 }
@@ -1415,24 +1345,23 @@ function Stats({ prospect }: { prospect: Prospect }) {
   const line = highSchoolLine(prospect.player);
   return (
     <>
-      <div className="label" style={{ marginBottom: 6 }}>LAST SPRING</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+      <div className="flow-section-title">
+        <span className="label">LAST SPRING</span>
+        <b>HIGH SCHOOL</b>
+      </div>
+      <section className="prospect-stats">
         {line.map((row) => (
-          <div key={row.label} style={{
-            width: '33.33%', padding: '8px 0',
-            borderBottom: '1px solid var(--hairline)',
-          }}>
-            <div className="label">{row.label}</div>
-            <div style={{ font: "700 calc(16px * var(--ts))/1 var(--display)", marginTop: 3 }}>{row.value}</div>
+          <div key={row.label}>
+            <small>{row.label}</small>
+            <strong>{row.value}</strong>
           </div>
         ))}
-      </div>
-      <div style={{
-        marginTop: 10, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-      }}>
-        High school numbers, against high school pitching. Everybody's look
-        absurd; what matters is whose look absurd for the right reasons.
-      </div>
+      </section>
+      <FieldNote
+        title="Read the competition"
+        text="High school numbers, against high school pitching. Everybody's look
+          absurd; what matters is whose look absurd for the right reasons."
+      />
     </>
   );
 }
@@ -1449,38 +1378,33 @@ function Schools({ prospect, userTeam }: { prospect: Prospect; userTeam: number 
 
   return (
     <>
-      <div className="label" style={{ marginBottom: 6 }}>WHO ELSE IS IN</div>
+      <div className="flow-section-title">
+        <span className="label">WHO ELSE IS IN</span>
+        <b>{rivals.length} {rivals.length === 1 ? 'SCHOOL' : 'SCHOOLS'}</b>
+      </div>
       {rivals.length === 0 && (
-        <div style={{ font: "400 calc(12px * var(--ts))/1.55 var(--body)", color: 'var(--dim)' }}>
-          Nobody has been to see him. That is an opportunity or a warning, and the
-          only way to find out is to spend on him.
-        </div>
+        <FieldNote
+          title="Nobody has been to see him"
+          text="That is an opportunity or a warning, and the only way to find out
+            is to spend on him."
+        />
       )}
-      {rivals.map((r) => {
-        const t = season.teams[r.team];
-        const mine = r.team === userTeam;
-        return (
-          <div key={r.team} style={{ padding: '7px 0' }}>
-            <div style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-            }}>
-              <span style={{
-                font: `${mine ? 700 : 400} calc(12.5px * var(--ts)) var(--body)`,
-                color: mine ? 'var(--clay)' : 'var(--ink)',
-              }}>{t?.def.school ?? '?'}{mine ? ' (you)' : ''}</span>
-              <span style={{ font: "600 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
-                {Math.round(r.pts)}
+      <section className="school-chase">
+        {rivals.map((r, i) => {
+          const t = season.teams[r.team];
+          const mine = r.team === userTeam;
+          return (
+            <div key={r.team}>
+              <span>
+                <b>{i + 1}</b>
+                <strong>{t?.def.school ?? '?'}</strong>
+                <small>{mine ? 'YOU · ' : ''}{Math.round(r.pts)} PTS</small>
               </span>
+              <i><em style={{ width: `${(r.pts / best) * 100}%` }} /></i>
             </div>
-            <div style={{ height: 5, background: 'rgba(var(--ink-rgb), .09)', marginTop: 3 }}>
-              <div style={{
-                width: `${(r.pts / best) * 100}%`, height: '100%',
-                background: mine ? 'var(--clay)' : 'rgba(var(--ink-rgb), .35)',
-              }} />
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </section>
     </>
   );
 }

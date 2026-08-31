@@ -86,11 +86,17 @@ function derive(id: PlayerId): number {
     ever be in. That is the same mistake as a title nobody could wear, caught
     by the test that asks for a man in it.
 
-    So the range spans the whole scale and the shape does the work instead:
-    one man in six under `AT_RISK`, one in eighteen genuinely failing.
+    So the range spans the whole scale and the shape does the work instead.
+
+    Retuned after a play report — "the man are failing thing is happening at
+    a crazy pace, I just started a new career and I already had 3 people
+    failing." The old floor of 20 put one man in eighteen under FAILING, which
+    is one and a quarter per roster and three often enough to be somebody's
+    first morning. A floor of 24 makes it one in thirty-five: still reachable,
+    still worth a conversation, no longer a queue.
   */
   const u = (h % 1000) / 1000;
-  return Math.round(20 + 75 * (1 - (1 - u) ** 2));
+  return Math.round(24 + 71 * (1 - (1 - u) ** 2));
 }
 
 /** His standing, written or derived. */

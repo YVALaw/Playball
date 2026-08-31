@@ -15,8 +15,10 @@
   --field: #fffefa;   /* screen background, the paper */
   --paper: #ffffff;   /* cards, panels, table surfaces */
   --ink: #1d201d;     /* primary text */
-  --navy: #153a2b;    /* the dark surface: app bar, hero cards, the live frame */
-  --clay: #236b42;    /* the accent: active states, rules, primary commands */
+  /* Both read through a hook so a career can wear its school's colour — see
+     accent.ts. With no hook set, these are exactly the values they always were. */
+  --navy: var(--accent-deep, #153a2b); /* the dark surface: app bar, hero cards, the live frame */
+  --clay: var(--accent, #236b42);      /* the accent: active states, rules, primary commands */
 
   /* The alarm, which used to be the accent as well.
    *
@@ -42,14 +44,14 @@
    * .28)`. Repainting the app is now three lines rather than a hunt. */
   --ink-rgb: 29, 32, 29;
   --cream-rgb: 244, 248, 244;
-  --clay-rgb: 35, 107, 66;
+  --clay-rgb: var(--accent-rgb, 35, 107, 66);
 
   --dim: rgba(var(--ink-rgb), 0.58);
   --faint: rgba(var(--ink-rgb), 0.2);
   --hairline: rgba(var(--ink-rgb), 0.12);
   --line: #e2e5df;    /* the hairline as a solid, for rules that sit on --field */
   --sunk: #edefe8;    /* one step under --field: the sub-nav, the step rail */
-  --soft: #e8f1e9;    /* the accent at rest: selected rows, filled meters */
+  --soft: var(--accent-soft, #e8f1e9); /* the accent at rest: selected rows, filled meters */
   --yellow: #ecb83d;  /* the live game's active call, and nothing else */
   --cream: #f4f8f4;
   --cream-dim: rgba(var(--cream-rgb), 0.66);
@@ -64,6 +66,10 @@
   /* The black bands -- table heads, question cards, the FABs. Black in the
      light theme, and still dark in the dark one, where --ink flips light. */
   --band: #1d201d;
+  /* A control floating over any ground: the FAB triggers. Ink-dark in the
+     light theme (the proposal's own drawing); in the dark theme it takes the
+     accent, because a dark disc on a dark field was invisible. */
+  --raised: #1d201d;
   /* What a sheet dims the screen with. Always a darkening, whichever theme --
      a scrim built from --ink-rgb turned into a milk wash the moment the ink
      went light. */
@@ -108,19 +114,20 @@
   --paper: #1c211d;
   --ink: #e4eae4;
   --ink-rgb: 228, 234, 228;
-  --clay: #4da97a;
-  --clay-rgb: 77, 169, 122;
+  --clay: var(--accent-dk, #4da97a);
+  --clay-rgb: var(--accent-dk-rgb, 77, 169, 122);
   --alert: #e0655e;
   --win: #4da97a;
   --loss: #e0655e;
   --line: #2b322c;
   --sunk: #101410;
-  --soft: #1f3428;
+  --soft: var(--accent-soft-dk, #1f3428);
   --wash: #171c18;
   --mute: #566057;
   --backdrop: #0b0e0c;
   --band: #242b25;
   --scrim-rgb: 0, 0, 0;
+  --raised: var(--accent-raised-dk, #2f7a52);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -129,19 +136,20 @@
     --paper: #1c211d;
     --ink: #e4eae4;
     --ink-rgb: 228, 234, 228;
-    --clay: #4da97a;
-    --clay-rgb: 77, 169, 122;
+    --clay: var(--accent-dk, #4da97a);
+    --clay-rgb: var(--accent-dk-rgb, 77, 169, 122);
     --alert: #e0655e;
     --win: #4da97a;
     --loss: #e0655e;
     --line: #2b322c;
     --sunk: #101410;
-    --soft: #1f3428;
+    --soft: var(--accent-soft-dk, #1f3428);
     --wash: #171c18;
     --mute: #566057;
     --backdrop: #0b0e0c;
     --band: #242b25;
     --scrim-rgb: 0, 0, 0;
+    --raised: var(--accent-raised-dk, #2f7a52);
   }
 }
 
