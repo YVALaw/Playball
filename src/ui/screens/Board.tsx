@@ -38,7 +38,7 @@ import { prestigeStars } from '../../engine/program.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
-import { ModuleIntro } from '../components/Kit.js';
+import { ModuleIntro, Segmented } from '../components/Kit.js';
 import type { Hitter, Pitcher, Player, Position } from '../../engine/types.js';
 
 type View = 'recruits' | 'targets' | 'commits' | 'needs' | 'roster';
@@ -406,35 +406,30 @@ export function Board() {
         <Tile k="PRESTIGE" v={'★'.repeat(myStars) + '☆'.repeat(5 - myStars)} last />
       </div>
 
-      <div style={{ display: 'flex', gap: 5, marginTop: 12 }}>
-        {(['recruits', 'targets', 'commits', 'needs', 'roster'] as View[]).map((v) => (
-          <button
-            key={v}
-            onClick={() => {
-              setView(v);
-              // Leaving filter mode is the whole point of this line. The tabs
-              // are in the pinned header and stay live while the panel is up,
-              // so without it a tap moved the tab underneath a panel that was
-              // still covering the body and still owned the pinned button —
-              // which is how END WEEK ended up reading "SHOW THE TOP 50 OF
-              // 518" on a screen that looked like the roster tab.
-              setFiltersOpen(false);
-            }}
-            style={{
-              flex: 1, padding: '8px 0',
-              background: v === view ? 'var(--clay)' : 'var(--paper)',
-              border: v === view ? '1px solid var(--clay)' : '1px solid rgba(var(--ink-rgb), .28)',
-              color: v === view ? 'var(--cream)' : 'var(--ink)',
-              font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-            }}
-          >
-            {VIEW_LABEL[v]}
-            {v === 'targets' && targets.length > 0 ? ` ${targets.length}` : ''}
-            {v === 'commits' && commits.length > 0 ? ` ${commits.length}` : ''}
-            {v === 'needs' && stillShort > 0 ? ` ${stillShort}` : ''}
-          </button>
-        ))}
-      </div>
+      <Segmented
+        label="Recruiting section"
+        value={view}
+        onChange={(v) => {
+          setView(v);
+          // Leaving filter mode is the whole point of this line. The tabs are
+          // in the pinned header and stay live while the panel is up, so
+          // without it a tap moved the tab underneath a panel that was still
+          // covering the body and still owned the pinned button — which is how
+          // END WEEK ended up reading "SHOW THE TOP 50 OF 518" on a screen that
+          // looked like the roster tab.
+          setFiltersOpen(false);
+        }}
+        options={(['recruits', 'targets', 'commits', 'needs', 'roster'] as View[]).map((v) => {
+          const count = v === 'targets' ? targets.length
+            : v === 'commits' ? commits.length
+              : v === 'needs' ? stillShort : 0;
+          const word = VIEW_LABEL[v];
+          return {
+            value: v,
+            label: `${word.charAt(0)}${word.slice(1).toLowerCase()}${count > 0 ? ` ${count}` : ''}`,
+          };
+        })}
+      />
       </div>
     }>
     {live && <FirstVisit id="recruiting" />}
@@ -1078,20 +1073,16 @@ function ProspectSheet({
           </div>
         </div>
 
-        <div style={{ flex: 'none', display: 'flex', gap: 4, padding: '0 12px' }}>
-          {(['overview', 'report', 'stats', 'schools'] as Sheet[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              style={{
-                flex: 1, padding: '8px 0',
-                background: t === tab ? 'var(--ink)' : 'var(--field)',
-                border: 'none',
-                color: t === tab ? 'var(--cream)' : 'var(--dim)',
-                font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-              }}
-            >{SHEET_LABEL[t]}</button>
-          ))}
+        <div className="card-tabs">
+          <Segmented
+            label="Prospect card section"
+            value={tab}
+            onChange={setTab}
+            options={(['overview', 'report', 'stats', 'schools'] as Sheet[]).map((t) => ({
+              value: t,
+              label: SHEET_LABEL[t].charAt(0) + SHEET_LABEL[t].slice(1).toLowerCase(),
+            }))}
+          />
         </div>
 
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px' }}>

@@ -465,105 +465,14 @@ function Alumnus(
 // Header
 // ---------------------------------------------------------------------------
 
-/**
- * Who he is, pinned above the tabs.
- *
- * The face sits between the two facts you sort a roster by — what year he is in
- * and where he plays — because those three together are the whole identification,
- * and putting them on one line means the name below it can be as large as a name
- * should be. Overall and potential stay outside the tabs: they are the numbers
- * every other panel is read against, and hiding them behind RATINGS would make
- * comparing a stat line to the man producing it a two tap job.
- */
-function CardHead(
-  { id, name, abbr, left, right, sub, school, ovr, potential, rising }:
-  {
-    id: PlayerId;
-    name: string;
-    abbr: string;
-    left: { k: string; v: string };
-    right: { k: string; v: string };
-    sub: ReactNode;
-    school: { name: string; conference: string } | null;
-    ovr: number | string;
-    potential: string;
-    rising: boolean;
-  },
-) {
-  // No back control here. The overlay that mounts this card carries the navy
-  // ← BACK bar every full-screen overlay in the game carries, and that bar sits
-  // above this header and outside the scroller — so the card can start at the
-  // face, and the safe area is the bar's problem rather than this one's.
-  return (
-    <div style={{ padding: '8px 12px 0' }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
-      }}>
-        <Flank k={left.k} v={left.v} align="right" />
-        <Avatar id={id} team={abbr} size={72} />
-        <Flank k={right.k} v={right.v} align="left" />
-      </div>
+// CardHead went with the header it drew: a face between two facts, a centred
+// name, and two tiles. The proposal puts all of that in the hero, where the
+// face is the background rather than a 72 pixel circle between two labels.
 
-      <div style={{
-        marginTop: 6, textAlign: 'center',
-        font: "800 calc(21px * var(--ts))/0.95 var(--display)", textTransform: 'uppercase',
-      }}>{name}</div>
 
-      <div className="label" style={{ marginTop: 4, textAlign: 'center' }}>{sub}</div>
-
-      {school && (
-        <div style={{
-          marginTop: 3, textAlign: 'center',
-          font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-          color: teamColour(abbr),
-        }}>{school.name.toUpperCase()} · {school.conference}</div>
-      )}
-
-      <div style={{
-        display: 'flex', margin: '10px 0 10px',
-        border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
-        <Tile k="OVERALL" v={String(ovr)} />
-        <Tile k="POTENTIAL" v={potential} accent={rising} last />
-      </div>
-    </div>
-  );
-}
-
-/** One of the two facts either side of the face. */
-function Flank({ k, v, align }: { k: string; v: string; align: 'left' | 'right' }) {
-  return (
-    <div style={{ minWidth: 52, textAlign: align }}>
-      <div className="label">{k}</div>
-      <div style={{
-        marginTop: 1, font: "800 calc(20px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
-      }}>{v}</div>
-    </div>
-  );
-}
-
-/** The tabs, in the same clothes the recruiting sheet's tabs wear. */
-function TabStrip(
-  { sheets, at, onGo }: { sheets: Sheet[]; at: Sheet; onGo: (s: Sheet) => void },
-) {
-  return (
-    <div style={{ display: 'flex', gap: 4, padding: '0 12px 10px' }}>
-      {sheets.map((s) => (
-        <button
-          key={s}
-          onClick={() => onGo(s)}
-          style={{
-            flex: 1, padding: '8px 0',
-            background: s === at ? 'var(--ink)' : 'var(--field)',
-            border: s === at ? '1px solid var(--ink)' : '1px solid var(--faint)',
-            color: s === at ? 'var(--cream)' : 'var(--dim)',
-            font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-          }}
-        >{SHEET_LABEL[s]}</button>
-      ))}
-    </div>
-  );
-}
+// TabStrip went with the shell it belonged to: the card's five tabs and the
+// ratings' three are both `Segmented` now, which is the proposal's one control
+// for this and the same one every other screen uses.
 
 // ---------------------------------------------------------------------------
 // Tabs
