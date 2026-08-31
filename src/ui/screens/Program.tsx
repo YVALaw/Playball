@@ -43,14 +43,21 @@ import { CoachPortrait } from '../CoachPortrait.js';
 import { useOpenTeam } from './TeamCard.js';
 import { teamColour } from '../Avatar.js';
 import { ArrowLeftIcon, ChevronRightIcon, StarIcon } from '@radix-ui/react-icons';
-import { FieldNote, ModuleIntro, SectionHeading, Segmented } from '../components/Kit.js';
+import {
+  BudgetBar, FieldNote, Metric, MetricStrip, ModuleIntro, SectionHeading, Segmented,
+} from '../components/Kit.js';
+import {
+  annualBudget, dollars, marketFor, remaining, wageBill,
+  FACILITIES, MAX_FACILITY, SCOUT_COST, SEATS, SEAT_LABEL, SEAT_NOTE,
+} from '../../engine/economy.js';
+import { handles } from '../../state/depth.js';
 import { FirstVisit } from '../Tutorial.js';
 import { pct } from '../format.js';
 
 /** The record for one program, as the season carries it. */
 type Owner = SeasonState['teams'][number];
 
-type Sheet = 'board' | 'watchlist' | 'coach' | 'hall';
+type Sheet = 'board' | 'money' | 'watchlist' | 'coach' | 'hall';
 
 /**
  * COACH is not on the strip. The portrait in the top bar is the door to the
@@ -61,6 +68,7 @@ const SHEETS: Sheet[] = ['board', 'hall'];
 
 const SHEET_LABEL: Record<Sheet, string> = {
   board: 'BOARD',
+  money: 'BUDGET',
   watchlist: 'WATCHLIST',
   coach: 'COACH',
   hall: 'HALL OF FAME',
@@ -149,6 +157,7 @@ export function Program() {
         onChange={setSheet}
         options={[
           { value: 'board', label: waiting ? 'Board ·' : 'Board' },
+          { value: 'money', label: 'Budget' },
           { value: 'watchlist', label: watch.programs.length > 0 ? `Watch ${watch.programs.length}` : 'Watch' },
           { value: 'hall', label: 'Hall' },
         ]}
@@ -169,6 +178,7 @@ export function Program() {
       </section>
 
       {sheet === 'board' && <BoardSheet team={team} />}
+      {sheet === 'money' && <MoneySheet team={team} />}
       {sheet === 'watchlist' && <WatchlistSheet />}
       {sheet === 'hall' && <HallSheet />}
     </main>
@@ -191,6 +201,146 @@ function TabStrip(
         label: `${SHEET_LABEL[s].charAt(0)}${SHEET_LABEL[s].slice(1).toLowerCase()}${s === 'board' && waiting ? ' ·' : ''}`,
       }))}
     />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// The money — stage 11
+// ---------------------------------------------------------------------------
+
+/**
+ * One annual budget and three claims on it: wages, facilities, the scouting
+ * desk. The design sentence the whole stage answers to — every dollar should
+ * have at least two things it could have been — is why all three live on one
+ * sheet: the argument between them IS the feature.
+ */
+function MoneySheet({ team }: { team: Owner }) {
+  const economy = useDynasty((s) => s.economy);
+  const year = useDynasty((s) => s.year);
+  const season = useDynasty((s) => s.season);
+  const hireAssistant = useDynasty((s) => s.hireAssistant);
+  const fireAssistant = useDynasty((s) => s.fireAssistant);
+  const upgradeFacilities = useDynasty((s) => s.upgradeFacilities);
+  const runsStaff = useDynasty((s) => handles(s.depth, 'assistants'));
+  const runsFacilities = useDynasty((s) => handles(s.depth, 'facilities'));
+
+  const budget = annualBudget(team.prestige);
+  const wages = wageBill(economy.staff);
+  const left = remaining(economy, team.prestige);
+  const level = FACILITIES[economy.facilities];
+  const next = FACILITIES[economy.facilities + 1];
+  const books = Object.values(economy.scouted).length;
+  const worldKey = String(season?.seed ?? 0);
+
+  return (
+    <>
+      <MetricStrip>
+        <Metric label="THIS YEAR" value={dollars(budget)} note={`AT ${team.prestige} PRESTIGE`} />
+        <Metric label="WAGES" value={dollars(wages)} note="THE STAFF" />
+        <Metric label="LEFT" value={dollars(Math.max(0, left))} note="TO SPEND" />
+      </MetricStrip>
+
+      <BudgetBar
+        label={`THE ${year} LEDGER`}
+        value={`${dollars(Math.max(0, left))} left`}
+        fraction={Math.min(1, (wages + economy.spent) / Math.max(1, budget))}
+      />
+
+      <SectionHeading kicker="THE STAFF" title="Three seats" />
+      {!runsStaff && (
+        <FieldNote
+          title="Your athletic director runs the staff"
+          text="Seats are kept filled with the best man the budget carries. Take
+            the job back from settings whenever you like."
+        />
+      )}
+      {SEATS.map((seat) => {
+        const man = economy.staff[seat];
+        return (
+          <div key={seat}>
+            <div className="flow-section-title" style={{ marginTop: 12 }}>
+              <span className="label">{SEAT_LABEL[seat].toUpperCase()}</span>
+              <b>{man ? `${dollars(man.wage)} A YEAR` : 'VACANT'}</b>
+            </div>
+            {man ? (
+              <section className="staff-card">
+                <div>
+                  <strong>{man.name}</strong>
+                  <small>age {man.age} · rated {man.rating}</small>
+                  <p>{SEAT_NOTE[seat]}</p>
+                </div>
+                {runsStaff && (
+                  <button
+                    className="tap"
+                    type="button"
+                    onClick={() => fireAssistant(seat)}
+                  >LET HIM GO</button>
+                )}
+              </section>
+            ) : (
+              <section className="job-list">
+                {marketFor(worldKey, year, seat).map((m, slot) => (
+                  <div key={m.id}>
+                    <button type="button" disabled>
+                      <span>
+                        <strong>{m.name}</strong>
+                        <small>age {m.age} · rated {m.rating} · {SEAT_NOTE[seat]}</small>
+                      </span>
+                      <b>{dollars(m.wage)}</b>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!runsStaff || left < m.wage}
+                      onClick={() => hireAssistant(seat, slot)}
+                    >{left < m.wage ? 'Too dear' : 'Hire'}</button>
+                  </div>
+                ))}
+              </section>
+            )}
+          </div>
+        );
+      })}
+
+      <SectionHeading kicker="FACILITIES" title={level?.label ?? 'Bare ground'} />
+      {!runsFacilities && (
+        <FieldNote
+          title="Your athletic director spends the budget"
+          text="The next rung is bought when the money is there."
+        />
+      )}
+      <section className="staff-card">
+        <div>
+          <strong>Level {economy.facilities} of {MAX_FACILITY}</strong>
+          <small>
+            {economy.facilities > 0 && level
+              ? `Worth ${level.trainBump} points of training, and a better tour.`
+              : 'What the school gave you. The recruits notice.'}
+          </small>
+          <p>
+            {next
+              ? `Next: ${next.label.toLowerCase()} — ${dollars(next.cost)}, once.
+                Development and the recruiting pitch both read it.`
+              : 'Nothing left to build. This is the lab everybody tours.'}
+          </p>
+        </div>
+        {next && runsFacilities && (
+          <button
+            className="tap"
+            type="button"
+            disabled={left < next.cost}
+            onClick={() => upgradeFacilities()}
+          >{left < next.cost ? 'Too dear' : `Build · ${dollars(next.cost)}`}</button>
+        )}
+      </section>
+
+      <SectionHeading kicker="THE SCOUTING DESK" title={books === 0 ? 'No books bought' : `${books} ${books === 1 ? 'book' : 'books'} this year`} />
+      <FieldNote
+        title={`A report is ${dollars(SCOUT_COST)}`}
+        text="Bought from PROGRAM ACTIONS on any college page. One report reads
+          the whole roster's tendencies for a stretch of games — a habit no
+          budget survives, which is the decision."
+      />
+    </>
   );
 }
 

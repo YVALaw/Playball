@@ -40,6 +40,7 @@ import { Avatar, teamColour } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { MixerHorizontalIcon } from '@radix-ui/react-icons';
+import { withStaff } from '../../engine/economy.js';
 import { FieldNote, Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
 import type { Hitter, Pitcher, Player, Position } from '../../engine/types.js';
 
@@ -219,6 +220,7 @@ export function Board() {
   const coach = useDynasty((s) => s.coach);
   const recruitFor = useDynasty((s) => s.recruit);
   const advanceWeek = useDynasty((s) => s.advanceRecruitingWeek);
+  const economy = useDynasty((s) => s.economy);
   const nextPhase = useDynasty((s) => s.nextPhase);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
@@ -551,7 +553,9 @@ export function Board() {
           prospect={open}
           userTeam={userTeam}
           coachPrestige={coach.prestige}
-          recruitingSkill={coach.skills.recruiting}
+          // With the coordinator on top — the same effective skill the week's
+          // close will spend, or the preview undersells the staff you pay for.
+          recruitingSkill={withStaff(coach.skills, economy.staff).recruiting}
           pitch={pitch}
           reachable={canPursue(open, myStars, inPipeline(open, homeState))}
           pipeline={inPipeline(open, homeState)}

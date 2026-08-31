@@ -20,8 +20,11 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  BarChartIcon, CheckIcon, Cross1Icon, IdCardIcon, MixerHorizontalIcon, StarIcon,
+  BarChartIcon, CheckIcon, Cross1Icon, EyeOpenIcon, IdCardIcon,
+  MixerHorizontalIcon, StarIcon,
 } from '@radix-ui/react-icons';
+import { dollars, remaining, SCOUT_COST, SCOUT_DAYS } from '../../engine/economy.js';
+import { handles } from '../../state/depth.js';
 import {
   FieldNote, Metric, MetricStrip, SectionHeading, Segmented,
 } from '../components/Kit.js';
@@ -169,6 +172,7 @@ export function TeamCard({ index }: { index: number }) {
         <CollegeActions
           abbr={t.def.abbr}
           school={t.def.school}
+          index={t.index}
           comparing={comparing}
           onCompare={() => { setComparing((v) => !v); setSheet('overview'); }}
         />
@@ -187,16 +191,28 @@ export function TeamCard({ index }: { index: number }) {
  * market stars it when it calls. Same portal as the player FAB, same reason.
  */
 function CollegeActions(
-  { abbr, school, comparing, onCompare }:
-  { abbr: string; school: string; comparing: boolean; onCompare: () => void },
+  { abbr, school, index, comparing, onCompare }:
+  {
+    abbr: string; school: string; index: number;
+    comparing: boolean; onCompare: () => void;
+  },
 ) {
   const watch = useDynasty((s) => s.watch);
   const toggleProgramWatch = useDynasty((s) => s.toggleProgramWatch);
   const toggleJobWatch = useDynasty((s) => s.toggleJobWatch);
+  const scoutTeam = useDynasty((s) => s.scoutTeam);
+  const economy = useDynasty((s) => s.economy);
+  const season = useDynasty((s) => s.season);
+  const userTeam = useDynasty((s) => s.userTeam);
+  const scoutsHimself = useDynasty((s) => handles(s.depth, 'scouting'));
   const [open, setOpen] = useState(false);
 
   const tracked = watch.programs.includes(abbr);
   const jobPath = watch.jobs.includes(abbr);
+  const day = season?.dayIndex ?? 0;
+  const scouted = (economy.scouted[index] ?? -1) >= day;
+  const prestige = season?.teams[userTeam]?.prestige ?? 40;
+  const canAfford = remaining(economy, prestige) >= SCOUT_COST;
 
   const host = document.querySelector('.full-overlay') ?? document.querySelector('.app-frame');
   if (!host) return null;
@@ -225,6 +241,25 @@ function CollegeActions(
             detail="This program's profile beside your own."
             selected={comparing}
             onClick={() => { onCompare(); setOpen(false); }}
+          />
+          {/*
+            The scouting desk — stage 11. One report covers the whole roster's
+            tendencies for the next stretch of games. Casual careers get the
+            book brought by staff, so the card says that instead of a price.
+          */}
+          <ActionCard
+            icon={<EyeOpenIcon />}
+            title={!scoutsHimself ? 'Your staff scouts them'
+              : scouted ? 'Book bought' : `Scout them · ${dollars(SCOUT_COST)}`}
+            detail={!scoutsHimself
+              ? 'Every report arrives as part of the wage bill.'
+              : scouted
+                ? `Their tendencies read for the next ${SCOUT_DAYS} days.`
+                : canAfford
+                  ? 'Buy the book: every tendency on their roster, readable on each card.'
+                  : 'The ledger cannot carry it this year.'}
+            selected={scouted || !scoutsHimself}
+            onClick={() => { if (scoutsHimself && !scouted && canAfford) scoutTeam(index); }}
           />
           <ActionCard
             icon={<IdCardIcon />}

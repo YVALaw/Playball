@@ -53,6 +53,11 @@ import {
   markAllRead, newItem, push, restoreInbox, unreadCount, type InboxItem,
 } from '../engine/inbox.js';
 import {
+  annualBudget, freshEconomy, marketFor, poached, remaining, wageBill,
+  withStaff, FACILITIES, MAX_FACILITY, SCOUT_COST, SCOUT_DAYS, SEATS,
+  SEAT_LABEL, type Assistant, type Economy, type StaffSeat,
+} from '../engine/economy.js';
+import {
   readJournal, writeJournal, noteAction, clearJournal, journalMatches,
 } from './liveJournal.js';
 import {
@@ -253,7 +258,7 @@ export type Overlay =
   | 'settings' | 'depth' | 'press' | 'captain' | 'jobs';
 
 /** The three tabs of the program page, which is addressable from the inbox. */
-export type ProgramSheet = 'board' | 'watchlist' | 'coach' | 'hall';
+export type ProgramSheet = 'board' | 'money' | 'watchlist' | 'coach' | 'hall';
 
 /**
  * The offseason, as a sequence you are walked through rather than a set of tabs
@@ -908,6 +913,24 @@ export interface DynastyStore {
   watch: { programs: string[]; jobs: string[] };
   toggleProgramWatch: (abbr: string) => void;
   toggleJobWatch: (abbr: string) => void;
+
+  /**
+   * The program's money and what it pays for — stage 11.
+   *
+   * One annual budget in $k derived from prestige, and three claims on it:
+   * the staff's wages, the facilities, the scouting desk. Sparse by the house
+   * rule: a save from before the stage has empty seats, level-0 facilities and
+   * a clean ledger. See engine/economy.ts for every number.
+   */
+  economy: Economy;
+  /** Hire from this offseason's derived market. Seat must be empty. */
+  hireAssistant: (seat: StaffSeat, slot: number) => void;
+  /** Let him go. No severance — the wage simply stops next roll. */
+  fireAssistant: (seat: StaffSeat) => void;
+  /** One rung up, paid once, forever. */
+  upgradeFacilities: () => void;
+  /** Buy the book on one opponent, good for the next stretch of days. */
+  scoutTeam: (team: number) => void;
   markTutorialSeen: (id: string) => void;
   /** Forget every tutorial, so the next visit to each screen teaches again. */
   resetTutorials: () => void;
@@ -1141,6 +1164,34 @@ function pendingFromJournal(
   };
 }
 
+/** The economy, from whatever an older save carries. Sparse: absent is fresh. */
+function usableEconomy(saved: unknown): Economy {
+  const fresh = freshEconomy();
+  if (!saved || typeof saved !== 'object') return fresh;
+  const e = saved as Partial<Economy>;
+  const seatOk = (a: unknown): a is Assistant => {
+    if (!a || typeof a !== 'object') return false;
+    const m = a as Partial<Assistant>;
+    return typeof m.id === 'string' && typeof m.name === 'string'
+      && typeof m.rating === 'number' && typeof m.wage === 'number';
+  };
+  const staff: Economy['staff'] = {};
+  for (const seat of SEATS) {
+    const man = (e.staff as Record<string, unknown> | undefined)?.[seat];
+    if (seatOk(man)) staff[seat] = man;
+  }
+  return {
+    facilities: Number.isInteger(e.facilities)
+      ? Math.max(0, Math.min(MAX_FACILITY, e.facilities as number)) : 0,
+    staff,
+    spent: typeof e.spent === 'number' && e.spent >= 0 ? e.spent : 0,
+    scouted: e.scouted && typeof e.scouted === 'object'
+      ? Object.fromEntries(Object.entries(e.scouted)
+          .filter(([, v]) => typeof v === 'number')) as Record<number, number>
+      : {},
+  };
+}
+
 /** The watchlists, from whatever an older save carries. */
 function usableWatch(saved: unknown): { programs: string[]; jobs: string[] } {
   const w = (saved ?? {}) as Partial<{ programs: unknown; jobs: unknown }>;
@@ -1242,13 +1293,20 @@ function staffSetsTheCard(season: SeasonState, userTeam: number): void {
  * leave the edge behind on a team he no longer runs. `playGame` and the managed
  * game read it from there, which is how those two skills reach the field.
  */
-function applyCoachMods(season: SeasonState, userTeam: number, coach: CoachState): void {
+function applyCoachMods(
+  season: SeasonState, userTeam: number, coach: CoachState,
+  staff: Economy['staff'] = {},
+): void {
   // Every chair, not just yours. It used to clear the field and write one row,
   // which was right when the other ninety five benches were nobody's — now each
   // of them has a man with an OFFENSE and a DEFENSE of his own, and the pass
   // that forgets to write them is the pass that hands the user the only bench
   // edge in the country.
-  syncCoachMods(season, userTeam, coach.skills);
+  //
+  // The user's row carries his staff as well — stage 11. An assistant is a
+  // bonus on the calibrated skills, applied here so every path that dresses
+  // the mods prices him the same way.
+  syncCoachMods(season, userTeam, withStaff(coach.skills, staff));
 }
 
 /**
@@ -1758,7 +1816,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // their programs are worth. Without it the entire hiring ladder would be
     // open to whoever won a game first — you included.
     seatCoaches(season, seat, START_YEAR);
-    applyCoachMods(season, seat, coach);
+    applyCoachMods(season, seat, coach, get().economy.staff);
     applyPhilosophy(season, seat, coach);
 
     /*
@@ -1803,6 +1861,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       screen: 'today',
       lastOffseason: null,
       lastWeek: null,
+      // A new career starts with the school's bare gift: empty seats, level-0
+      // facilities, a clean ledger. Explicit for the same reason as the inbox
+      // below — a second dynasty must not inherit the first one's staff.
+      economy: freshEconomy(),
+      watch: { programs: [], jobs: [] },
       inbox: [],
       // Set explicitly rather than left alone, because a second dynasty started
       // on the same device would otherwise silently inherit the first one's
@@ -1894,9 +1957,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // in aiTargets compares against nothing and never fires.
     const atWeekStart = leadersAtWeekStart(recruits);
 
+    const effSkills = withStaff(coach.skills, get().economy.staff);
+    const myDevPitch = FACILITIES[get().economy.facilities]?.devPitch ?? 0;
     for (const record of season.teams) {
-      const pitch = pitchFor(season, record, regionOf(record.index), developmentScore(record));
       const mine = record.index === userTeam;
+      // Your facilities are part of your pitch: a development lab is the one
+      // thing on the tour a recruit's father asks about.
+      const pitch = pitchFor(
+        season, record, regionOf(record.index),
+        Math.min(1, developmentScore(record) + (mine ? myDevPitch : 0)),
+      );
 
       const staff = record.coach;
       const spends: { prospect: typeof recruits.prospects[number]; actions: number }[] = mine
@@ -1921,7 +1991,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         const gained = weeklyPoints(
           prospect, pitch, actions,
           mine ? coach.prestige : (staff?.prestige ?? 45),
-          mine ? coach.skills.recruiting : (staff?.skills.recruiting ?? 20),
+          // The coordinator's whole job: every hour on a recruit counts for
+          // more. Stacked through the same skill the points already price.
+          mine ? effSkills.recruiting : (staff?.skills.recruiting ?? 20),
         );
         prospect.points[record.index] = (prospect.points[record.index] ?? 0) + gained;
       }
@@ -2326,7 +2398,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       if (get().furthestPhase < PHASES.indexOf('draft')) {
         const report = departAndDevelop(season, season.rng, {
           userTeam: get().userTeam,
-          training: get().coach.skills.training,
+          // The facilities are the training staff's tools. A level-3 lab is
+          // worth nine points of the skill — see engine/economy.ts.
+          training: get().coach.skills.training
+            + (FACILITIES[get().economy.facilities]?.trainBump ?? 0),
         });
         set({ lastOffseason: report });
 
@@ -2431,7 +2506,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     };
     // The in-game skills live on the team record too; keep the copy current the
     // moment a point lands, or the next game plays at last year's numbers.
-    if (season) applyCoachMods(season, userTeam, next);
+    if (season) applyCoachMods(season, userTeam, next, get().economy.staff);
     set({
       coach: next,
       spentThisStep: { ...spentThisStep, [skill]: (spentThisStep[skill] ?? 0) + 1 },
@@ -2455,7 +2530,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       skillPoints: coach.skillPoints + 1,
       skills: { ...coach.skills, [skill]: coach.skills[skill] - 1 },
     };
-    if (season) applyCoachMods(season, userTeam, next);
+    if (season) applyCoachMods(season, userTeam, next, get().economy.staff);
     set({
       coach: next,
       spentThisStep: { ...spentThisStep, [skill]: on - 1 },
@@ -2689,7 +2764,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     });
     // Their benches changed hands, so the edge every one of their games is
     // played with has to be restamped before the next season starts.
-    syncCoachMods(season, userTeam, coach.skills);
+    syncCoachMods(season, userTeam, withStaff(coach.skills, get().economy.staff));
 
     /*
       The season, into the record books, here rather than at the year roll.
@@ -2795,6 +2870,58 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // See pendingGame in the reset below: last year's interrupted game cannot
     // be resumed against next year's season, so the journal dies with the year.
     clearJournal();
+
+    /*
+      The staff's winter — stage 11.
+
+      Poaching is derived from the man and the year (a reload cannot keep
+      him), and it is what being good costs: your 75-rated coordinator is
+      somebody's next head coach. The inbox says so by name. Then, for a
+      career that asked its athletic director to run the staff, the AD fills
+      whatever is empty with the best man the new market prices under what is
+      left — the same market a full coach reads himself.
+    */
+    const eco0 = get().economy;
+    const keptStaff: typeof eco0.staff = {};
+    for (const seat of SEATS) {
+      const man = eco0.staff[seat];
+      if (!man) continue;
+      if (poached(man, year)) {
+        get().post({
+          kind: 'season', year: year + 1,
+          title: `${man.name} is leaving`,
+          body: `Your ${SEAT_LABEL[seat].toLowerCase()} has been hired to run `
+            + 'his own program. The seat is open, and the market has names.',
+        });
+      } else keptStaff[seat] = man;
+    }
+    const rolledEconomy: Economy = {
+      ...eco0, staff: keptStaff, spent: 0, scouted: {},
+    };
+    if (!handles(get().depth, 'facilities')) {
+      // The AD builds when the money is truly there: next rung plus a season
+      // of headroom, so an automated career is never wage-poor in February.
+      const me0 = get().season?.teams[get().userTeam];
+      const nextRung = FACILITIES[rolledEconomy.facilities + 1];
+      if (nextRung
+        && remaining(rolledEconomy, me0?.prestige ?? 40) >= nextRung.cost + 300) {
+        rolledEconomy.facilities += 1;
+        rolledEconomy.spent += nextRung.cost;
+      }
+    }
+    if (!handles(get().depth, 'assistants')) {
+      const me = get().season?.teams[get().userTeam];
+      const prestige = me?.prestige ?? 40;
+      for (const seat of SEATS) {
+        if (rolledEconomy.staff[seat]) continue;
+        const affordable = marketFor(String(season.seed ?? 0), year + 1, seat)
+          .filter((m) => remaining(rolledEconomy, prestige) >= m.wage)
+          .sort((a, b) => b.rating - a.rating)[0];
+        if (affordable) {
+          rolledEconomy.staff = { ...rolledEconomy.staff, [seat]: affordable };
+        }
+      }
+    }
 
     // Every program's finished season goes into its own book before anything
     // resets — ninety six rows, the user's chair included, idempotent by year.
@@ -3015,6 +3142,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           back up.
         */
         pendingGame: null,
+        /*
+          The economy's year turns over. The ledger and the scouting books are
+          annual; the staff and the facilities persist — a building does not
+          un-build. Poaching resolved above, where the inbox can still name
+          the man.
+        */
+        economy: rolledEconomy,
         furthestPhase: 0,
         // The board has had its say at the review, so a man is not tried twice
         // for the same letter.
@@ -3368,7 +3502,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const displaced = seatCoaches(season, team, year);
     const leaving = season.teams[userTeam];
     // The old program loses the in-game edge, the new one gains it.
-    applyCoachMods(season, team, next);
+    applyCoachMods(season, team, next, get().economy.staff);
     if (displaced) {
       get().post({
         kind: 'carousel', year,
@@ -4591,6 +4725,72 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     void get().saveNow();
   },
 
+  economy: freshEconomy(),
+
+  hireAssistant: (seat, slot) => {
+    const { season, userTeam, year, economy } = get();
+    const me = season?.teams[userTeam];
+    if (!season || !me) return;
+    if (economy.staff[seat]) return;
+    const man = marketFor(String(season.seed ?? 0), year, seat)[slot];
+    if (!man) return;
+    // The wage has to fit what is left this year — a hire the ledger cannot
+    // carry would be a negative number the screen has to explain.
+    if (remaining(economy, me.prestige) < man.wage) return;
+    const staff = { ...economy.staff, [seat]: man };
+    // Re-dress the mods the games read; the staff stacks on the coach's own.
+    syncCoachMods(season, userTeam, withStaff(get().coach.skills, staff));
+    set({ economy: { ...economy, staff }, version: get().version + 1 });
+    void get().saveNow();
+  },
+
+  fireAssistant: (seat) => {
+    const { season, userTeam, economy } = get();
+    if (!season) return;
+    if (!economy.staff[seat]) return;
+    const staff = { ...economy.staff };
+    delete staff[seat];
+    syncCoachMods(season, userTeam, withStaff(get().coach.skills, staff));
+    set({ economy: { ...economy, staff }, version: get().version + 1 });
+    void get().saveNow();
+  },
+
+  upgradeFacilities: () => {
+    const { season, userTeam, economy } = get();
+    const me = season?.teams[userTeam];
+    if (!season || !me) return;
+    if (economy.facilities >= MAX_FACILITY) return;
+    const next = FACILITIES[economy.facilities + 1];
+    if (!next || remaining(economy, me.prestige) < next.cost) return;
+    set({
+      economy: {
+        ...economy,
+        facilities: economy.facilities + 1,
+        spent: economy.spent + next.cost,
+      },
+      version: get().version + 1,
+    });
+    void get().saveNow();
+  },
+
+  scoutTeam: (team) => {
+    const { season, userTeam, economy } = get();
+    const me = season?.teams[userTeam];
+    if (!season || !me || team === userTeam) return;
+    const until = economy.scouted[team] ?? -1;
+    if (until >= season.dayIndex + SCOUT_DAYS) return;
+    if (remaining(economy, me.prestige) < SCOUT_COST) return;
+    set({
+      economy: {
+        ...economy,
+        spent: economy.spent + SCOUT_COST,
+        scouted: { ...economy.scouted, [team]: season.dayIndex + SCOUT_DAYS },
+      },
+      version: get().version + 1,
+    });
+    void get().saveNow();
+  },
+
   markTutorialSeen: (id) => {
     const seen = get().seenTutorials;
     if (seen.includes(id)) return;
@@ -4650,6 +4850,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         inbox: get().inbox,
         tutorials: get().seenTutorials,
         watch: get().watch,
+        economy: get().economy,
         depth: get().depth,
         /*
           How many the room has had this season, and the one still open.
@@ -4722,7 +4923,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // Restamped on every load rather than trusted from the save, so a save from
     // before the in-game skills were wired — or one that predates a job change —
     // comes up with the edge on the right program.
-    applyCoachMods(loaded.season, loaded.userTeam, coach);
+    applyCoachMods(loaded.season, loaded.userTeam, coach, usableEconomy(loaded.economy).staff);
     /*
       Older saves carry no school annals. The one program whose past such a
       save *does* know is the user's own — his career rows name their school —
@@ -4811,6 +5012,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // tutorials existed must not re-teach nine screens to a veteran who has
       // been playing all evening.
       watch: usableWatch(loaded.watch),
+      economy: usableEconomy(loaded.economy),
       seenTutorials: [...new Set([
         ...get().seenTutorials,
         ...(Array.isArray(loaded.tutorials)

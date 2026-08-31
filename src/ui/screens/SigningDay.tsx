@@ -18,6 +18,7 @@ import { useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { ChevronRightIcon } from '@radix-ui/react-icons';
+import { withStaff } from '../../engine/economy.js';
 import { FieldNote, Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
 import {
   PRIORITY_LABEL, PRIORITIES, byRank, reportedOverall, reportedPotential,
@@ -85,7 +86,10 @@ export function SigningDay() {
   const team = useUserTeam();
   // The coach phase runs before recruiting, so this is the same skill the board
   // drew its bands with — the report shown here is the one you were reading.
-  const recruitingSkill = coach.skills.recruiting;
+  const economy = useDynasty((s) => s.economy);
+  // The verdict re-reads the band the winter's reports were cut at, so it has
+  // to include the coordinator who cut them.
+  const recruitingSkill = withStaff(coach.skills, economy.staff).recruiting;
 
   const [view, setView] = useState<View>('mine');
   const [openId, setOpenId] = useState<Open>(null);

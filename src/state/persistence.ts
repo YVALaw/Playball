@@ -134,6 +134,8 @@ export interface SaveFile {
   tutorials?: unknown;
   /** The watchlists — programs followed and chairs the career points at. */
   watch?: unknown;
+  /** The staff, the facilities and the year's spending. */
+  economy?: unknown;
   /**
    * How deep a game this career is: the preset, plus whichever systems the
    * player has decided differently about.
@@ -346,6 +348,8 @@ export interface SaveExtras {
   tutorials?: unknown;
   /** The program and job-path watchlists, by school abbreviation. */
   watch?: unknown;
+  /** The program's money: staff, facilities, the year's ledger. Stage 11. */
+  economy?: unknown;
   /** How deep a game this career is. See `SaveFile.depth`. */
   depth?: unknown;
 }
@@ -432,6 +436,7 @@ export function buildSaveFile(
       ? { tutorials: extras.tutorials }
       : {}),
     ...(extras.watch ? { watch: extras.watch } : {}),
+    ...(extras.economy ? { economy: extras.economy } : {}),
     // Written whenever it exists rather than only when it differs from the
     // default, because absence already means something here: it is how a save
     // from before the mode says "played in full". A full career that stopped
@@ -490,6 +495,8 @@ export interface LoadedDynasty {
   tutorials: unknown;
   /** The watchlists, or undefined on saves that predate them. */
   watch: unknown;
+  /** The economy, or undefined on saves that predate stage 11. */
+  economy: unknown;
   /** The depth preset and its overrides. Null on saves that predate the mode. */
   depth: unknown;
 }
@@ -555,6 +562,7 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     inbox: file.inbox ?? [],
     tutorials: file.tutorials ?? [],
     watch: file.watch,
+    economy: file.economy,
     depth: file.depth ?? null,
   };
 }

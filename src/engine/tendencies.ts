@@ -250,14 +250,19 @@ const seen = (w: Watch | undefined, unit: WatchUnit): number =>
 /**
  * Is this tendency known yet?
  *
- * **Opponents are an exception, and it is the user's decision rather than a
- * shortcut.** A tendency on another program's player is visible immediately,
- * because a scouting report saying their leadoff man runs is precisely what a
- * defensive setting is for and a game that hid it would be hiding the reason
- * the setting exists. Your own men you learn by watching, which is the mechanic.
+ * Your own men you learn by watching, which is the mechanic. An opponent's
+ * book is **bought**: a scouting report saying their leadoff man runs is
+ * precisely what a defensive setting is for, and through stage 10 it was
+ * simply free — every rival card opened fully read. Stage 11 makes it the
+ * scouting desk's product. `opponentScouted` is whether the money was spent
+ * (or the staff spent it for you, in a casual career); it defaults open so
+ * the engine's own callers and the tests keep their meaning.
  */
-export function isKnown(slot: TendencyId, watch: Watch | undefined, isOurs: boolean): boolean {
-  if (!isOurs) return true;
+export function isKnown(
+  slot: TendencyId, watch: Watch | undefined, isOurs: boolean,
+  opponentScouted = true,
+): boolean {
+  if (!isOurs) return opponentScouted;
   return seen(watch, TENDENCIES[slot].unit) >= TENDENCIES[slot].need;
 }
 

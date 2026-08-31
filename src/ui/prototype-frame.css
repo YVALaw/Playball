@@ -1916,3 +1916,44 @@
   background: var(--alert);
   color: var(--cream);
 }
+
+/* ---------------------------------------------------------------------------
+   The budget sheet — stage 11. The staff card is the one new shape: a man,
+   what he is worth, and the one thing you can do about him.
+   --------------------------------------------------------------------------- */
+.staff-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+.staff-card strong { display: block; font-size: calc(12px * var(--ts)); }
+.staff-card small {
+  display: block;
+  margin-top: 2px;
+  color: var(--dim);
+  font-size: calc(9px * var(--ts));
+  font-weight: 800;
+}
+.staff-card p {
+  margin: 5px 0 0;
+  color: var(--dim);
+  font-size: calc(10px * var(--ts));
+  line-height: 1.4;
+}
+.staff-card > button {
+  padding: 9px 12px;
+  border: 1px solid var(--clay);
+  background: transparent;
+  color: var(--clay);
+  font: 800 calc(8.5px * var(--ts)) var(--mono);
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+.staff-card > button:disabled {
+  border-color: var(--line);
+  color: var(--mute);
+}

@@ -139,7 +139,7 @@ export const SYSTEMS: readonly SystemDef[] = [
     key: 'scouting', label: 'Scouting reports',
     blurb: 'You spend prep to learn the other side before a series.',
     whenOff: 'Your staff brings you the report.',
-    casual: false, comingIn: 'the economy',
+    casual: false,
   },
   {
     key: 'pressers', label: 'Press conferences',
@@ -151,7 +151,7 @@ export const SYSTEMS: readonly SystemDef[] = [
     key: 'assistants', label: 'Assistant coaches',
     blurb: 'You hire your staff and keep them from being poached.',
     whenOff: 'The athletic director fills the vacancies.',
-    casual: false, comingIn: 'the coach',
+    casual: false,
   },
   {
     key: 'captains', label: 'Captains',
@@ -181,7 +181,7 @@ export const SYSTEMS: readonly SystemDef[] = [
     key: 'facilities', label: 'Facilities and budget',
     blurb: 'You spend the program’s money.',
     whenOff: 'The athletic director spends the budget.',
-    casual: true, comingIn: 'the economy',
+    casual: true,
   },
 ];
 

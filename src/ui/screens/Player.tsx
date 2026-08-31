@@ -37,6 +37,7 @@ import { overallOf, platoonSplit, naturalPos } from '../../engine/ratings.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { SewingPinIcon } from '@radix-ui/react-icons';
 import { captainOf } from '../../engine/captains.js';
+import { handles } from '../../state/depth.js';
 import {
   CaptainC, DataTable, FieldNote, Metric, ModuleIntro, SectionHeading, Segmented,
 } from '../components/Kit.js';
@@ -305,7 +306,7 @@ export function Player() {
         options={LIVE_SHEETS.map((k) => ({ value: k, label: SHEET_LABEL[k] }))}
       />
       {active === 'overview' && <Overview p={p} owner={owner} isOurs={isOurs} />}
-      {active === 'ratings' && <Ratings p={p} isOurs={isOurs} />}
+      {active === 'ratings' && <Ratings p={p} isOurs={isOurs} ownerIndex={owner.index} />}
       {active === 'stats' && <ThisSeason p={p} />}
       {active === 'games' && <Games id={p.id} owner={owner} isOurs={isOurs} />}
       {active === 'history' && (
@@ -618,7 +619,9 @@ type RatingsView = 'tools' | 'splits' | 'tendencies';
  * season — a freshman who has never batted still has one — and the reader
  * looking for it is the one already asking what he is.
  */
-function Ratings({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
+function Ratings(
+  { p, isOurs, ownerIndex }: { p: AnyPlayer; isOurs: boolean; ownerIndex: number },
+) {
   const isPitcher = p.type === 'pitcher';
   const [view, setView] = useState<RatingsView>('tools');
 
@@ -677,7 +680,7 @@ function Ratings({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
       )}
 
       {view === 'splits' && <Platoon p={p} />}
-      {view === 'tendencies' && <Tendencies p={p} isOurs={isOurs} />}
+      {view === 'tendencies' && <Tendencies p={p} isOurs={isOurs} ownerIndex={ownerIndex} />}
     </>
   );
 }
@@ -826,11 +829,22 @@ function Platoon({ p }: { p: AnyPlayer }) {
  * against him, and until it does the row says so rather than inventing a
  * reading.
  */
-function Tendencies({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
+function Tendencies(
+  { p, isOurs, ownerIndex }: { p: AnyPlayer; isOurs: boolean; ownerIndex: number },
+) {
   const season = useDynasty((s) => s.season);
+  const economy = useDynasty((s) => s.economy);
+  const scoutsHimself = useDynasty((s) => handles(s.depth, 'scouting'));
   const watch = isOurs ? season?.watch?.get(p.id) : undefined;
   const slots = p.type === 'hitter' ? HITTER_TENDENCIES : PITCHER_TENDENCIES;
-  const seen = slots.filter((slot) => isKnown(slot, watch, isOurs)).length;
+  /*
+    The book on a rival is bought now — stage 11. A casual career's staff
+    brings every report as part of the wage bill; a full career pays the desk
+    per opponent, and the rows say NO BOOK until it does.
+  */
+  const scouted = !scoutsHimself
+    || (economy.scouted[ownerIndex] ?? -1) >= (season?.dayIndex ?? 0);
+  const seen = slots.filter((slot) => isKnown(slot, watch, isOurs, scouted)).length;
 
   return (
     <>
@@ -841,20 +855,22 @@ function Tendencies({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
       <section className="tendency-list">
         {slots.map((slot) => {
           const spec = TENDENCIES[slot];
-          const known = isKnown(slot, watch, isOurs);
+          const known = isKnown(slot, watch, isOurs, scouted);
           const label = known ? tendencyLabel(p, slot) : null;
           const progress = watchProgress(slot, watch);
           return (
             <div key={slot}>
               <span>{SLOT_WORD[slot]}</span>
               <strong className={known && label ? 'read' : 'unread'}>
-                {known ? (label ?? 'Nothing unusual') : 'Still watching'}
+                {known ? (label ?? 'Nothing unusual') : isOurs ? 'Still watching' : 'No book'}
                 <em>
                   {known && label
                     ? ((tendenciesOf(p)[slot] ?? 0) > 0 ? spec.plusNote : spec.minusNote)
                     : known
                       ? 'He does the ordinary thing.'
-                      : `${Math.round(progress * 100)}% of the way to a reading.`}
+                      : isOurs
+                        ? `${Math.round(progress * 100)}% of the way to a reading.`
+                        : 'The desk has not been paid for one.'}
                 </em>
               </strong>
             </div>
@@ -863,8 +879,10 @@ function Tendencies({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
       </section>
       {!isOurs && (
         <FieldNote
-          title="You are reading a rival"
-          text="Tendencies are the one thing a card shows about somebody else's player, because they are what the other dugout can actually see. They fill in as you play him."
+          title={scouted ? 'You are reading a rival' : 'Nobody has scouted them'}
+          text={scouted
+            ? 'The book on him, bought and paid for. It reads for the next stretch of games.'
+            : 'Buy the book from PROGRAM ACTIONS on their college page. One report covers the whole roster.'}
         />
       )}
     </>

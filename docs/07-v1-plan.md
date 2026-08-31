@@ -648,9 +648,50 @@ somebody using it.
 the card's actions become a sheet rather than a stack; whether the type scale
 gets a proper ramp or stays `calc(px * var(--ts))` everywhere.
 
-## Stage 11 · The economy, and the staff it pays for
+## Stage 11 · The economy, and the staff it pays for — **SHIPPED August 31 2026**
 
-**Size:** large
+**Size:** large · **1034 tests green**
+
+**How it shipped.** One annual budget in $k, derived from prestige
+(`engine/economy.ts`), and three claims on it: the staff's wages, the
+facilities, the scouting desk. Everything derived, never drawn — the market's
+candidates, a poaching, a wage are all hashes of stable facts, so a reload
+cannot reroll a better class of applicant and no golden moved.
+
+- **Assistants** — pitching coach, hitting coach, recruiting coordinator,
+  hired from a derived three-man market per seat per offseason. They stack on
+  the coach's own skills through the exact channels the skills already use
+  (coachMods, weeklyPoints, report width), so an assistant is a bonus on a
+  calibrated number rather than a new number. Poaching is derived per man per
+  winter and follows quality: a 70+ man is somebody's next head coach one
+  winter in four, and the inbox names him when he goes. **A rival's staff is
+  priced in, not modelled** — the same fiction casual mode has always used
+  ("a pitching coach is what the other ninety-five have always had"), and it
+  is what kept the goldens still.
+- **Facilities** — four rungs, one-time costs at about a season of wages
+  apiece, so a program cannot staff up and build in the same year. A rung is
+  worth training points at development and a better read on the recruiting
+  tour (`pitchFor`'s development).
+- **The scouting desk** — the free window closed. An opponent's tendencies
+  were readable the day the card opened; they are the desk's product now,
+  $35k a book, ten days, bought from PROGRAM ACTIONS on the college page.
+  Cheap per book and ruinous as a habit, which is the decision.
+- **Depth answers, wired not promised:** casual careers get every report as
+  part of the wage bill; an AD asked to run the staff fills seats with the
+  best man the budget carries and builds when the money is truly there. The
+  three coming-in flags came down.
+- **Absorbed from the old bullet list:** the recruiting budget rebalance
+  shipped with stage 10 (40 → 56 when the portal arrived), and player swaying
+  as a negotiation is the draft KEEP flow plus the portal talk-round — both
+  already live before this stage opened.
+
+**Exit — met:** money is a decision with more than one sensible answer.
+
+**Decisions taken at the door:** salary is annual, not a signing cost;
+poaching happens at the year roll, never mid-season; a poached coordinator is
+gone before the next recruiting window opens, which is exactly what it costs.
+
+### The original brief (kept for the record)
 
 Recruiting budget rebalance · player swaying as real negotiation · facilities
 and budget upgrades.
