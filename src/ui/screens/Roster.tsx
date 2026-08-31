@@ -6,19 +6,34 @@
 // Three views of one list: everybody, the bats, the arms. The glove work that
 // used to be a third tab here lives with the rest of the numbers on the STATS
 // screen now — fielding is a statistic, not a separate species of player.
+//
+// The proposal's roster, class for class: a title row with the depth chart as a
+// square command beside it, the group switch and the filter sharing a row, the
+// list as `.data-table`, the two staff errands as `.inline-actions`, and the
+// room's capacity under all of it.
+//
+// One thing genuinely changed shape. The old list was an eight column grid —
+// POS, YR, OVR, POT and then two stat columns that swapped with the tab — and
+// the proposal's row has three slots: a name, a line of detail, and one number.
+// Nothing was dropped to fit: the four identity columns read as a sentence in
+// the detail line, which is where a phone reads them faster anyway, and the
+// number on the right is the one the tab is *about*. The eight column version
+// was a spreadsheet on a 390 pixel screen and the columns were 26 pixels wide.
 
 import { useState } from 'react';
+import { MixerHorizontalIcon, BarChartIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { handles } from '../../state/depth.js';
-import { Avatar, teamColour } from '../Avatar.js';
-import { FixedHeader } from '../Sticky.js';
+import { Avatar } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
 import { overallOf, naturalPos } from '../../engine/ratings.js';
 import { potentialGrade } from '../../engine/scouting.js';
 import { battingAverage, era, inningsPitched } from '../../engine/season.js';
-import { pct } from '../format.js';
 import { isHurt } from '../../engine/injury.js';
 import { available } from '../../engine/depthChart.js';
+import {
+  Capacity, DataTable, InlineActions, ModuleIntro, Segmented, type Row,
+} from '../components/Kit.js';
 import type { Hitter, Pitcher, Player } from '../../engine/types.js';
 
 type Mode = 'all' | 'bat' | 'arm';
@@ -31,6 +46,26 @@ const SLOT_ORDER = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'];
 // he is. See `naturalPos`.
 const slotOf = (p: Player): string =>
   p.type === 'pitcher' ? (p as Pitcher).role : naturalPos(p as Hitter);
+
+/**
+ * Why a man is not playing, in the fewest letters that still say which.
+ *
+ * Four reasons and they are not interchangeable: HURT is the trainer's, ACAD is
+ * the registrar's, R-S is a season you chose to spend, and REST is one you chose
+ * to spend a few days of. A single "unavailable" mark would collapse a decision
+ * you made into a thing that happened to you.
+ *
+ * Returns null for a man who is fit, which is nearly everybody nearly always —
+ * the mark has to stay rare or it stops being a mark.
+ */
+function outTag(p: Player, day: number): string | null {
+  if ((p as Player & { redshirt?: boolean }).redshirt) return 'R-S';
+  if (available(p, day)) return null;
+  if (isHurt(p, day)) return 'HURT';
+  // `available` is false and the trainer has nothing to do with it, so it is
+  // either the classroom or a rest the coach ordered. `why` says which.
+  return (p as Player & { why?: string }).why === 'academic' ? 'ACAD' : 'REST';
+}
 
 export function Roster() {
   const season = useDynasty((s) => s.season);
@@ -45,21 +80,16 @@ export function Roster() {
     teams in the roster we need a filter so we can filter players like if i
     want to see players in a position or year." One class, one spot, or both
     at once; tapping the active chip clears it.
+
+    Behind a button, because two labelled selects is a whole row of screen
+    standing above the list they filter. Reported: the filters were far too big
+    and eating the space the roster pass was trying to win back. The list keeps
+    the room and the controls come to it, with the button carrying a mark when a
+    filter is on so a filtered roster can never look like a short one.
   */
   const [yearF, setYearF] = useState<string | null>(null);
   const [posF, setPosF] = useState<string | null>(null);
-  /*
-    And behind an icon, because two labelled selects is a whole row of screen
-    standing above the list they filter.
-
-    Reported: the filters were far too big and eating the space the roster pass
-    was trying to win back. They were also the *second* attempt — nineteen
-    wrapping chips came first — and the lesson both times is that filtering is
-    something you do occasionally to a list you read constantly. So the list
-    keeps the room and the controls come to it, with the button carrying a mark
-    when a filter is on so a filtered roster can never look like a short one.
-  */
-  const [filterSheet, setFilterSheet] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   void version;
 
   if (!season || !team) return null;
@@ -84,422 +114,146 @@ export function Roster() {
     });
 
   const filtered = yearF !== null || posF !== null;
-  const shown = mode === 'all' ? everybody.length : mode === 'bat' ? hitters.length : arms.length;
+  const squad = hittersAll.length + armsAll.length;
+
+  /**
+   * A player as a row.
+   *
+   * The detail line is the four identity columns the old grid carried, read as
+   * a sentence. The mark for a man who is not playing rides at the front of it,
+   * where it is the first thing read rather than the last column reached.
+   */
+  const rowFor = (p: Player): Row => {
+    const out = outTag(p, season.dayIndex);
+    const pot = potentialGrade(p.potential);
+    return {
+      key: p.id,
+      title: p.name,
+      detail: `${out ? `${out} · ` : ''}${slotOf(p)} · ${p.classYear} · ${overallOf(p)} OVR · ${pot} POT`,
+      face: <Avatar id={p.id} team={team.def.abbr} size={34} />,
+    };
+  };
+
+  const rows: Row[] = mode === 'all'
+    ? everybody.map(rowFor)
+    : mode === 'bat'
+      ? hitters
+        .map((p) => ({ p, line: season.batting.get(p.id) }))
+        .sort((a, b) => overallOf(b.p) - overallOf(a.p))
+        .map(({ p, line }) => ({
+          ...rowFor(p),
+          // The number the tab is about: what he is hitting, and the power
+          // behind it once there is enough of a season to mean anything.
+          value: line && line.ab > 0
+            ? `${battingAverage(line).toFixed(3).replace(/^0/, '')}${line.hr > 0 ? ` · ${line.hr} HR` : ''}`
+            : '—',
+        }))
+      : arms
+        .map((p) => ({ p, line: season.pitching.get(p.id) }))
+        .sort((a, b) => overallOf(b.p) - overallOf(a.p))
+        .map(({ p, line }) => ({
+          ...rowFor(p),
+          value: line && line.outs > 0
+            ? `${era(line).toFixed(2)} · ${inningsPitched(line).toFixed(1)} IP`
+            : '—',
+        }));
 
   return (
-    <FixedHeader
-      header={
-        <div style={{ padding: '12px 14px 10px' }}>
-          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-            <div className="label">
-              ROSTER · {filtered
-                ? `${shown} OF ${hittersAll.length + armsAll.length}`
-                : `${hittersAll.length + armsAll.length} PLAYERS`}
-            </div>
-            <div style={{
-              font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-              color: teamColour(team.def.abbr),
-            }}>{team.def.school}</div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
-            {/* The chart, one tap from the list it is about. Stage 8.
-                Hidden for a career that asked its staff to set it -- the chart
-                is still what the game plays, it is simply not this coach's to
-                write, which is the whole shape of the depth mode. */}
-            {setsOwnChart && (
-              <Chip on={false} onClick={() => openOverlay('depth')}>CHART</Chip>
-            )}
-            <Chip on={mode === 'all'} onClick={() => setMode('all')}>ALL</Chip>
-            <Chip on={mode === 'bat'} onClick={() => setMode('bat')}>HITTERS</Chip>
-            <Chip on={mode === 'arm'} onClick={() => setMode('arm')}>PITCHERS</Chip>
-            <div style={{ flex: 1 }} />
-            {/* The filters, one tap away instead of a row of screen away. The
-                dot is not decoration: a filtered roster and a short roster
-                look identical, and the count in the header only says so if you
-                read it. */}
-            <button
-              onClick={() => setFilterSheet(true)}
-              aria-label="Filter the roster"
-              className="tap"
-              style={{
-                minHeight: 30, padding: '6px 10px',
-                background: filtered ? 'var(--ink)' : 'transparent',
-                border: `1px solid ${filtered ? 'var(--ink)' : 'rgba(var(--ink-rgb), .25)'}`,
-                color: filtered ? 'var(--cream)' : 'rgba(var(--ink-rgb), .6)',
-                font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.11em',
-                display: 'flex', alignItems: 'center', gap: 5,
-              }}
-            >
-              FILTER
-              {filtered && (
-                <span style={{
-                  width: 5, height: 5, borderRadius: '50%', background: 'var(--clay)',
-                }} />
-              )}
-            </button>
-          </div>
-
-
-        </div>
-      }
-    >
-    <div style={{ padding: '10px 14px 16px' }}>
+    <main className="module-workspace">
       <FirstVisit id="roster" />
-      <div style={{
-        border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
-        <Head mode={mode} />
-        {shown === 0 && (
-          <div style={{
-            padding: '16px 12px', textAlign: 'center',
-            font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-          }}>
-            Nobody fits that filter. Whole roster, no such man.
-          </div>
+
+      <div className="screen-title-row">
+        <ModuleIntro
+          kicker={filtered ? `${rows.length} OF ${squad}` : 'ACTIVE ROSTER'}
+          title={`${rows.length} ${rows.length === 1 ? 'player' : 'players'}`}
+          text="The current group, organized for quick staff decisions."
+        />
+        {/* The chart, one tap from the list it is about. Hidden for a career
+            that asked its staff to set it — the chart is still what the game
+            plays, it is simply not this coach's to write. */}
+        {setsOwnChart && (
+          <button
+            className="square-command tap"
+            type="button"
+            onClick={() => openOverlay('depth')}
+          ><BarChartIcon /><span>Chart</span></button>
         )}
-        {mode === 'all'
-          ? everybody.map((p) => (
-              <Cells
-                key={p.id}
-                grid={ALL_GRID}
-                highlight={p.type === 'hitter'
-                  ? team.team.lineup.includes(p as Hitter)
-                  : team.team.rotation.includes(p as Pitcher)}
-                onClick={() => openPlayer(p.id)}
-                playerId={p.id}
-                teamAbbr={team.def.abbr}
-                out={outTag(p, season.dayIndex) ?? undefined}
-                values={[
-                  p.name,
-                  slotOf(p),
-                  p.classYear,
-                  String(overallOf(p)),
-                  potentialGrade(p.potential),
-                ]}
-              />
-            ))
-          : mode === 'bat'
-          ? hitters
-              .map((p) => ({ p, line: season.batting.get(p.id) }))
-              .sort((a, b) => overallOf(b.p) - overallOf(a.p))
-              .map(({ p, line }) => (
-                <HitterRow
-                  key={p.id}
-                  abbr={team.def.abbr}
-                  p={p}
-                  avg={line ? battingAverage(line) : 0}
-                  hr={line?.hr ?? 0}
-                  played={(line?.ab ?? 0) > 0}
-                  starter={team.team.lineup.includes(p)}
-                  out={outTag(p, season.dayIndex)}
-                  onClick={() => openPlayer(p.id)}
-                />
-              ))
-          : arms
-              .map((p) => ({ p, line: season.pitching.get(p.id) }))
-              .sort((a, b) => overallOf(b.p) - overallOf(a.p))
-              .map(({ p, line }) => (
-                <PitcherRow
-                  key={p.id}
-                  abbr={team.def.abbr}
-                  p={p}
-                  earned={line && line.outs > 0 ? era(line) : null}
-                  ip={line ? inningsPitched(line) : 0}
-                  rotation={team.team.rotation.includes(p)}
-                  out={outTag(p, season.dayIndex)}
-                  onClick={() => openPlayer(p.id)}
-                />
-              ))}
       </div>
 
-    </div>
-    {filterSheet && (
-      <>
-        <div
-          className="sheet-scrim"
-          onClick={() => setFilterSheet(false)}
-          style={{
-            position: 'absolute', inset: 0, zIndex: 40,
-            background: 'rgba(var(--ink-rgb), .45)',
-          }}
+      <div className="screen-tools">
+        <Segmented
+          label="Roster group"
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: 'all', label: 'All' },
+            { value: 'bat', label: 'Hitters' },
+            { value: 'arm', label: 'Pitchers' },
+          ]}
         />
-        <div className="sheet" style={{
-          position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 41,
-          background: 'var(--field)', borderTop: '3px solid var(--clay)',
-          padding: '14px 14px calc(16px + env(safe-area-inset-bottom))',
-        }}>
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-            borderBottom: '2px solid var(--ink)', paddingBottom: 6, marginBottom: 12,
-          }}>
+        <button
+          className="filter-button tap"
+          type="button"
+          aria-label={filtered ? 'Filter roster, filters on' : 'Filter roster'}
+          aria-expanded={filterOpen}
+          onClick={() => setFilterOpen((v) => !v)}
+          style={filtered ? { borderColor: 'var(--clay)', color: 'var(--clay)' } : undefined}
+        ><MixerHorizontalIcon /><span>Filter</span></button>
+      </div>
+
+      {filterOpen && (
+        <section className="recruiting-filter">
+          <div className="flow-section-title">
             <span className="label">FILTER THE ROSTER</span>
             {filtered && (
-              <button
-                onClick={() => { setYearF(null); setPosF(null); }}
-                className="tap"
-                style={{
-                  font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em',
-                  color: 'var(--clay)',
-                }}
-              >CLEAR</button>
+              <button type="button" onClick={() => { setYearF(null); setPosF(null); }}>
+                CLEAR
+              </button>
             )}
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Select
-              label="YEAR"
-              value={yearF}
-              options={['FR', 'SO', 'JR', 'SR']}
-              onChange={setYearF}
-            />
-            <Select
-              label="POS"
-              value={posF}
-              options={slots}
-              onChange={setPosF}
-            />
-          </div>
-          <button
-            onClick={() => setFilterSheet(false)}
-            className="tap"
-            style={{
-              width: '100%', marginTop: 14, padding: '12px 0', minHeight: 44,
-              background: 'var(--ink)', color: 'var(--cream)',
-              font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.14em',
-            }}
-          >SHOW {shown} {shown === 1 ? 'PLAYER' : 'PLAYERS'}</button>
-        </div>
-      </>
-    )}
-    </FixedHeader>
-  );
-}
+          <Segmented
+            label="Class year"
+            value={yearF ?? 'all'}
+            onChange={(v) => setYearF(v === 'all' ? null : v)}
+            options={[
+              { value: 'all', label: 'Any year' },
+              ...(['FR', 'SO', 'JR', 'SR'] as const).map((y) => ({ value: y, label: y })),
+            ]}
+          />
+          <Segmented
+            label="Position"
+            value={posF ?? 'all'}
+            onChange={(v) => setPosF(v === 'all' ? null : v)}
+            options={[
+              { value: 'all', label: 'Any spot' },
+              ...slots.map((s) => ({ value: s, label: s })),
+            ]}
+          />
+        </section>
+      )}
 
-function Chip(
-  { on, onClick, children }: { on: boolean; onClick: () => void; children: string },
-) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        // Sized down from 36px and 10px type: reported as eating screen on the
-        // one tab whose whole job is fitting more men on it. Still a 30px
-        // target, which clears the 28px the platform asks for.
-        padding: '6px 10px', minHeight: 30,
-        background: on ? 'var(--clay)' : 'transparent',
-        border: `1px solid ${on ? 'var(--clay)' : 'rgba(var(--ink-rgb), .25)'}`,
-        color: on ? 'var(--cream)' : 'rgba(var(--ink-rgb), .6)',
-        font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.11em',
-      }}
-    >{children}</button>
-  );
-}
+      <DataTable
+        rows={rows}
+        onOpen={(id) => openPlayer(id as Parameters<typeof openPlayer>[0])}
+        empty="Nobody fits that filter. Whole roster, no such man."
+      />
 
-/**
- * One filter, one line.
- *
- * A native `<select>` on purpose: the platform picker is a better list than
- * anything drawn here, it costs one row of the screen whatever the option
- * count, and it is already the control a phone user reaches for. ALL is the
- * empty value rather than a separate clear button.
- */
-function Select(
-  { label, value, options, onChange }:
-  {
-    label: string;
-    value: string | null;
-    options: readonly string[];
-    onChange: (v: string | null) => void;
-  },
-) {
-  const on = value !== null;
-  return (
-    <label style={{ flex: 1, minWidth: 0, display: 'block' }}>
-      <span className="label" style={{ display: 'block', marginBottom: 3 }}>{label}</span>
-      <select
-        value={value ?? ''}
-        onChange={(e) => onChange(e.target.value === '' ? null : e.target.value)}
-        style={{
-          width: '100%', minHeight: 34, padding: '6px 8px',
-          background: on ? 'var(--ink)' : 'var(--paper)',
-          border: `1px solid ${on ? 'var(--ink)' : 'rgba(var(--ink-rgb), .25)'}`,
-          borderRadius: 0,
-          color: on ? 'var(--cream)' : 'var(--ink)',
-          // 16px is the floor on anything a phone can focus, or the browser
-          // zooms the page in and stays there. Same rule as the text inputs.
-          font: "600 calc(16px * var(--ts)) var(--mono)",
-          appearance: 'none', WebkitAppearance: 'none',
-        }}
-      >
-        <option value="">ALL</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
-    </label>
-  );
-}
+      <InlineActions
+        actions={[
+          { label: 'Roster moves', onClick: () => openOverlay('depth') },
+          ...(setsOwnChart
+            ? [{ label: 'Set captain and depth', onClick: () => openOverlay('depth') }]
+            : []),
+        ]}
+      />
 
-const GRID = '30px 1fr 30px 26px 30px 30px 44px 30px';
-/** The everybody view: the five columns that describe any player. */
-const ALL_GRID = '30px 1fr 34px 26px 34px 34px';
-
-function Head({ mode }: { mode: Mode }) {
-  const cols = mode === 'bat'
-    ? ['', 'PLAYER', 'POS', 'YR', 'OVR', 'POT', 'AVG', 'HR']
-    : mode === 'arm'
-      ? ['', 'PLAYER', 'ROL', 'YR', 'OVR', 'POT', 'ERA', 'IP']
-      : ['', 'PLAYER', 'POS', 'YR', 'OVR', 'POT'];
-  return (
-    <div style={{
-      // Pinned to the top of the scroller. The title and the hitters/pitchers
-      // switch already stay put; the row that says which column is AVG and which
-      // is HR belongs with them, and it is the only part of the table you cannot
-      // work out from the numbers themselves.
-      position: 'sticky', top: 0, zIndex: 1, background: 'var(--paper)',
-      display: 'grid', gridTemplateColumns: mode === 'all' ? ALL_GRID : GRID, gap: 4,
-      padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
-    }}>
-      {cols.map((c, i) => (
-        <span key={i} className="label" style={{ textAlign: i > 1 ? 'right' : 'left' }}>{c}</span>
-      ))}
-    </div>
-  );
-}
-
-/** Seniors are on their way out. Worth seeing at a glance, so they get the accent. */
-const classColor = (cl: string): string => (cl === 'SR' ? 'var(--clay)' : 'var(--ink)');
-
-/**
- * Why a man is not playing, in the fewest letters that still say which.
- *
- * Four reasons and they are not interchangeable: HURT is the trainer's, ACAD is
- * the registrar's, R-S is a season you chose to spend, and REST is one you chose
- * to spend a few days of. A single "unavailable" mark would collapse a decision
- * you made into a thing that happened to you.
- *
- * Returns null for a man who is fit, which is nearly everybody nearly always —
- * the mark has to stay rare or it stops being a mark.
- */
-function outTag(p: Player, day: number): string | null {
-  if ((p as Player & { redshirt?: boolean }).redshirt) return 'R-S';
-  if (available(p, day)) return null;
-  if (isHurt(p, day)) return 'HURT';
-  // `available` is false and the trainer has nothing to do with it, so it is
-  // either the classroom or a rest the coach ordered. `why` says which.
-  return (p as Player & { why?: string }).why === 'academic' ? 'ACAD' : 'REST';
-}
-
-function Cells(
-  { values, highlight, onClick, playerId, teamAbbr, grid = GRID, out }:
-  {
-    values: string[]; highlight?: boolean; onClick?: () => void;
-    playerId?: string; teamAbbr?: string; grid?: string;
-    /** Why he is not playing, in two or three letters. See `outTag`. */
-    out?: string;
-  },
-) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        width: '100%',
-        textAlign: 'left',
-        display: 'grid',
-        gridTemplateColumns: grid,
-        gap: 4,
-        alignItems: 'center',
-        padding: '7px 10px',
-        borderBottom: '1px solid var(--hairline)',
-        background: highlight ? 'rgba(var(--clay-rgb), .05)' : 'transparent',
-      }}
-    >
-      {/*
-        The first column was a bullet marking a starter. It is a face now, with
-        the starter's marker folded into the row highlight — a roster of names
-        reads as a spreadsheet, and the point of a portrait is that a player
-        becomes somebody you recognise across four years.
-      */}
-      {playerId
-        ? <Avatar id={playerId} team={teamAbbr} size={26} />
-        : <span />}
-      {/* `i` starts at 1 because the avatar above occupies the grid's first
-          column; the style rules below are written against grid position. */}
-      {values.map((v0, i0) => { const i = i0 + 1; const v = v0; return (
-        <span key={i} style={{
-          font: `400 calc(${i === 1 ? 12 : 11}px * var(--ts)) ${i === 1 ? 'var(--body)' : 'var(--mono)'}`,
-          textAlign: i > 1 ? 'right' : 'left',
-          color: i === 3 ? classColor(v) : 'var(--ink)',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          // A man who cannot play is greyed, and his name carries the reason.
-          // Reported as needing "a way to better show that one player is
-          // injured" -- it was only visible by opening him, which means the one
-          // fact you scan a roster for was the one fact the roster did not say.
-          opacity: out && i === 1 ? 0.55 : 1,
-        }}>
-          {v}
-          {out && i === 1 && (
-            <span style={{
-              marginLeft: 6, padding: '1px 4px',
-              background: 'var(--clay)', color: 'var(--cream)',
-              font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.06em',
-              verticalAlign: '2px',
-            }}>{out}</span>
-          )}
-        </span>
-      ); })}
-    </button>
-  );
-}
-
-function HitterRow(
-  { p, avg, hr, played, starter, onClick, abbr, out }:
-  {
-    p: Hitter; avg: number; hr: number; played: boolean; starter: boolean;
-    onClick: () => void; abbr?: string; out?: string | null;
-  },
-) {
-  return (
-    <Cells
-      highlight={starter}
-      onClick={onClick}
-      playerId={p.id}
-      teamAbbr={abbr}
-      out={out ?? undefined}
-      values={[
-        p.name,
-        naturalPos(p),
-        p.classYear,
-        String(overallOf(p)),
-        potentialGrade(p.potential),
-        played ? pct(avg) : '—',
-        String(hr),
-      ]}
-    />
-  );
-}
-
-function PitcherRow(
-  { p, earned, ip, rotation, onClick, abbr, out }:
-  {
-    p: Pitcher; earned: number | null; ip: number; rotation: boolean;
-    onClick: () => void; abbr?: string; out?: string | null;
-  },
-) {
-  return (
-    <Cells
-      highlight={rotation}
-      onClick={onClick}
-      playerId={p.id}
-      teamAbbr={abbr}
-      out={out ?? undefined}
-      values={[
-        p.name,
-        p.role,
-        p.classYear,
-        String(overallOf(p)),
-        potentialGrade(p.potential),
-        earned === null ? '—' : earned.toFixed(2),
-        ip.toFixed(1),
-      ]}
-    />
+      <Capacity
+        groups={[
+          { label: 'HITTERS', used: hittersAll.length, cap: hittersAll.length },
+          { label: 'ARMS', used: armsAll.length, cap: armsAll.length },
+          { label: 'ROSTER', used: squad, cap: squad },
+        ]}
+      />
+    </main>
   );
 }

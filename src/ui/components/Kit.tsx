@@ -1,46 +1,246 @@
 // Kit.tsx
-// The handful of shapes every screen is built from. Kept small on purpose: the
-// mockup's visual language is a rule, a card with a clay header, and a row of
-// tiles, repeated. Anything more elaborate belongs on a screen, not in here.
+// The proposal's shared vocabulary, as components.
+//
+// Eleven shapes account for most of the two hundred and thirty classes in
+// prototype.css, and the screens that use them are compositions rather than
+// walls of markup. Every one of them is the proposal's own DOM — same elements,
+// same class names, same order — so the stylesheet is the only opinion about
+// how any of it looks. There are no style objects in this file, deliberately;
+// one here would be a second opinion about a rule that already exists.
+//
+// The three that used to live here — Rule, Tile, Card — belonged to the design
+// this port replaced and went with it.
 
 import type { ReactNode } from 'react';
+import {
+  ChevronRightIcon, DotFilledIcon, PersonIcon, SewingPinIcon,
+} from '@radix-ui/react-icons';
 
-export function Rule() {
-  return <div style={{ height: 1, background: 'var(--faint)', margin: '14px 0 0' }} />;
+/**
+ * The head of a screen: a green kicker, a condensed title, a line of prose.
+ *
+ * The prose is not decoration. Every screen in the proposal opens by saying
+ * what it is for, which is the one thing a dense table of numbers cannot say
+ * about itself.
+ */
+export function ModuleIntro(
+  { kicker, title, text }: { kicker: string; title: string; text?: string },
+) {
+  return (
+    <section className="module-intro">
+      <small>{kicker}</small>
+      <h1>{title}</h1>
+      {text && <p>{text}</p>}
+    </section>
+  );
 }
 
-export function Tile({ k, v, last }: { k: string; v: string; last?: boolean }) {
+/** The rule between sections, with an optional way out on the right. */
+export function SectionHeading(
+  { kicker, title, action, onAction }:
+  { kicker: string; title: string; action?: string; onAction?: () => void },
+) {
   return (
-    <div style={{
-      flex: 1, padding: '9px 8px',
-      borderRight: last ? undefined : '1px solid var(--hairline)',
-    }}>
-      <div className="label">{k}</div>
-      <div style={{ font: "700 calc(24px * var(--ts))/1 var(--display)", marginTop: 2 }}>{v}</div>
+    <section className="dashboard-heading">
+      <div><small>{kicker}</small><h2>{title}</h2></div>
+      {action && (
+        <button type="button" onClick={onAction}>{action} <ChevronRightIcon /></button>
+      )}
+    </section>
+  );
+}
+
+/** One number with a label over it and a note under it. */
+export function Metric(
+  { label, value, note }: { label: string; value: string; note?: string },
+) {
+  return (
+    <div className="metric">
+      <small>{label}</small>
+      <strong>{value}</strong>
+      {note && <span>{note}</span>}
     </div>
   );
 }
 
+/** Three of them in a row, hairline-ruled. */
+export function MetricStrip({ children }: { children: ReactNode }) {
+  return <section className="metric-strip">{children}</section>;
+}
+
+/**
+ * A rating as five pips.
+ *
+ * Twenty points a pip, and never fewer than one lit — a row of five empty boxes
+ * reads as missing data rather than as a 20 contact hitter, and this game has
+ * plenty of genuinely missing data to distinguish it from.
+ */
+export function Rating({ label, value }: { label: string; value: number }) {
+  const filled = Math.max(1, Math.round(value / 20));
+  return (
+    <span className="rating">
+      <small>{label}</small>
+      <span>{[0, 1, 2, 3, 4].map((i) => <i key={i} className={i < filled ? 'on' : ''} />)}</span>
+    </span>
+  );
+}
+
+/** The tab strip. Scrolls when there are more options than there is room. */
+export function Segmented<T extends string>(
+  { value, options, onChange, label }:
+  {
+    value: T;
+    options: ReadonlyArray<{ value: T; label: string }>;
+    onChange: (value: T) => void;
+    label: string;
+  },
+) {
+  return (
+    <div className="segmented" role="tablist" aria-label={label}>
+      {options.map((option) => (
+        <button
+          className={value === option.value ? 'active' : ''}
+          key={option.value}
+          type="button"
+          role="tab"
+          aria-selected={value === option.value}
+          onClick={() => onChange(option.value)}
+        >{option.label}</button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The workhorse: a portrait, a name, a line of detail, a number, a chevron.
+ *
+ * Rows carry an explicit `key` rather than deriving one from their text, which
+ * the proposal does — two men can genuinely share a name and a line in a game
+ * with four thousand of them, and React would quietly keep the wrong row.
+ *
+ * `face` takes whatever draws the portrait. The proposal reuses one photograph;
+ * this app has a face per player id, and passing it in keeps this component
+ * from having to know that.
+ */
+export interface Row {
+  key: string;
+  title: string;
+  detail: string;
+  value?: string;
+  face?: ReactNode;
+}
+
+export function DataTable(
+  { rows, onOpen, empty }:
+  { rows: readonly Row[]; onOpen?: (key: string) => void; empty?: string },
+) {
+  if (rows.length === 0 && empty) {
+    return (
+      <section className="empty-state">
+        <PersonIcon />
+        <h2>Nothing here</h2>
+        <p>{empty}</p>
+      </section>
+    );
+  }
+  return (
+    <section className="data-table">
+      {rows.map((r) => (
+        <button
+          key={r.key}
+          type="button"
+          onClick={onOpen ? () => onOpen(r.key) : undefined}
+        >
+          <span className="portrait">{r.face ?? <PersonIcon />}</span>
+          <span><strong>{r.title}</strong><small>{r.detail}</small></span>
+          {r.value !== undefined && <b>{r.value}</b>}
+          {onOpen && <ChevronRightIcon />}
+        </button>
+      ))}
+    </section>
+  );
+}
+
+/** A stack of full-width links, hairline-ruled, chevron on the right. */
+export function InlineActions(
+  { actions }: { actions: ReadonlyArray<{ label: string; onClick: () => void }> },
+) {
+  return (
+    <section className="inline-actions">
+      {actions.map((a) => (
+        <button key={a.label} type="button" onClick={a.onClick}>
+          {a.label} <ChevronRightIcon />
+        </button>
+      ))}
+    </section>
+  );
+}
+
+/**
+ * How full the room is, in three counts and a row of pips.
+ *
+ * The pips are capped: a 26 man roster drawn as 26 dots is a texture rather
+ * than a count, and the number beside them is already exact.
+ */
+export function Capacity(
+  { groups }:
+  { groups: ReadonlyArray<{ label: string; used: number; cap: number }> },
+) {
+  return (
+    <section className="club-capacity">
+      {groups.map((g) => (
+        <div key={g.label}>
+          <small>{g.label}</small>
+          <strong>{g.used} <em>/{g.cap}</em></strong>
+          <p>
+            {Array.from({ length: Math.min(g.used, 8) }, (_, i) => (
+              <DotFilledIcon key={i} />
+            ))}
+          </p>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+/** The pinned aside: a red rule, a heading, a sentence of why. */
+export function FieldNote({ title, text }: { title: string; text: string }) {
+  return (
+    <section className="field-note">
+      <SewingPinIcon />
+      <div><strong>{title}</strong><p>{text}</p></div>
+    </section>
+  );
+}
+
+/** A meter with its own numbers over it. */
+export function BudgetBar(
+  { label, value, fraction }: { label: string; value: string; fraction: number },
+) {
+  return (
+    <section className="budget-bar">
+      <span><small>{label}</small><strong>{value}</strong></span>
+      <i><b style={{ width: `${Math.round(Math.min(1, Math.max(0, fraction)) * 100)}%` }} /></i>
+    </section>
+  );
+}
+
+/**
+ * A titled panel — the old design's `Card`, kept alive for exactly one caller.
+ *
+ * Settings has not been rebuilt yet and is the last screen still drawing this
+ * shape. It goes when that screen does; nothing new should reach for it.
+ */
 export function Card(
   { tag, note, children }: { tag: string; note?: string; children: ReactNode },
 ) {
   return (
-    <div style={{
-      marginTop: 12, border: '1px solid var(--faint)', background: 'var(--paper)',
-    }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '6px 10px', background: 'var(--clay)',
-      }}>
-        <span style={{
-          font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
-        }}>{tag}</span>
-        {note && <span style={{
-          font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em',
-          color: 'rgba(var(--cream-rgb), .75)',
-        }}>{note}</span>}
+    <section className="legacy-card">
+      <div className="legacy-card-tag">
+        <span>{tag}</span>
+        {note && <b>{note}</b>}
       </div>
       {children}
-    </div>
+    </section>
   );
 }

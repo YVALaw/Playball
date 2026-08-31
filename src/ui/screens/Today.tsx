@@ -15,9 +15,7 @@
 // coach actually looks up at that moment.
 
 import { useRef, useState } from 'react';
-import {
-  ChevronRightIcon, PlayIcon, SewingPinIcon, StopwatchIcon,
-} from '@radix-ui/react-icons';
+import { PlayIcon, SewingPinIcon, StopwatchIcon } from '@radix-ui/react-icons';
 import { FINISH_LABEL } from '../../engine/postseason.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import {
@@ -29,6 +27,7 @@ import { useOpenTeam } from './TeamCard.js';
 import { BoxScoreSheet } from './Schedule.js';
 import { seasonDate } from '../format.js';
 import { NeedsYou } from '../Needs.js';
+import { SectionHeading } from '../components/Kit.js';
 import type { Pitcher } from '../../engine/types.js';
 
 /**
@@ -57,21 +56,6 @@ function teamEra(season: SeasonState, t: TeamRecord): number | null {
     er += line.er; outs += line.outs;
   }
   return outs >= 27 ? (er * 27) / outs : null;
-}
-
-/** The proposal's section rule: a green kicker, a condensed title, a way out. */
-function SectionHeading(
-  { kicker, title, action, onAction }:
-  { kicker: string; title: string; action?: string; onAction?: () => void },
-) {
-  return (
-    <section className="dashboard-heading">
-      <div><small>{kicker}</small><h2>{title}</h2></div>
-      {action && (
-        <button type="button" onClick={onAction}>{action} <ChevronRightIcon /></button>
-      )}
-    </section>
-  );
 }
 
 export function Today() {

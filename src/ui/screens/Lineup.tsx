@@ -5,26 +5,42 @@
 // and `team.rotation` for who takes the ball, so a change here changes what
 // happens on the field. Positions print as baseball abbreviations — C, SS, CF —
 // the same vocabulary every other screen speaks.
+//
+// The proposal's lineup, and the best idea in the whole of it: the diamond rail
+// down the right edge. Nine positions as rotated squares, and tapping one is
+// how you ask "who is my centre fielder" without leaving the batting order.
+//
+// Two of the proposal's details are deliberately not here, and both were
+// settled by playtesting before the port started.
+//
+// The drag handle is gone. The row's tap is how you move the batting order —
+// pick one, pick another, they swap — and a second meaning on the same target
+// makes both unreliable. Reported from testing: "in lineup the players should
+// not open their profile since we have to tap one and tap another to actually
+// move the lineup around." The chevron into the player card went with it, for
+// the same reason.
+//
+// So the row keeps the proposal's anatomy — order number, portrait, name, three
+// rating meters — and loses the two controls that would fight the gesture. The
+// `.drag` cell stays in the grid as the selection mark, which is the one thing
+// a two-tap swap genuinely needs and the proposal had nowhere to put.
 
 import { useState } from 'react';
+import { CheckIcon, ChevronDownIcon, ReloadIcon, SewingPinIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { FixedHeader } from '../Sticky.js';
+import { Avatar } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
 import { overallOf } from '../../engine/ratings.js';
 import { battingAverage, era, inningsPitched } from '../../engine/season.js';
-import { pct } from '../format.js';
+import { ModuleIntro, Rating, SectionHeading } from '../components/Kit.js';
+import type { Hitter } from '../../engine/types.js';
 
 /** Friday, Saturday, Sunday, then the midweek arm. */
 const SLOTS = ['FRI', 'SAT', 'SUN', 'MID'];
 
-/*
-  No tap-through to the player card here, deliberately.
+/** The rail, in the order the proposal draws it: outfield down to the plate. */
+const POSITIONS = ['CF', 'RF', 'LF', '2B', 'SS', '3B', '1B', 'C', 'DH'] as const;
 
-  The row's tap is how you move the batting order — pick one, pick another, they
-  swap — and a second meaning on the same target makes both unreliable. Reported
-  from testing: "in lineup the players should not open their profile since we
-  have to tap one and tap another to actually move the lineup around."
-*/
 export function Lineup() {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
@@ -34,6 +50,8 @@ export function Lineup() {
   const team = useUserTeam();
   const [picked, setPicked] = useState<number | null>(null);
   const [dealt, setDealt] = useState(false);
+  /** Which spot on the field the rail is asking about. */
+  const [spot, setSpot] = useState<string | null>(null);
   void version;
 
   if (!season || !team) return null;
@@ -53,204 +71,169 @@ export function Lineup() {
     setPicked(null);
   };
 
-  return (
-    <FixedHeader
-      header={
-        <div style={{ padding: '12px 14px 10px' }}>
-          <div style={{
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-            gap: 8, borderBottom: '2px solid var(--ink)', paddingBottom: 6,
-          }}>
-            <div>
-              <div className="label">BATTING ORDER</div>
-              <div style={{
-                font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-              }}>Lineup card</div>
-            </div>
-            {/* One tap deals a sound order — best hitter third, power fourth,
-                the table-setters ahead of them. Same nine men, and every swap
-                below still works afterwards: AUTO is a starting point. */}
-            <button
-              onClick={() => { autoLineup(); setPicked(null); setDealt(true); }}
-              className="tap"
-              style={{
-                flex: 'none', padding: '9px 13px', minHeight: 40, marginBottom: 2,
-                background: 'transparent', border: '1px solid var(--clay)',
-                color: 'var(--clay)', font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-              }}
-            >AUTO</button>
-          </div>
+  /*
+    What the rail is pointing at.
 
+    Tapping CF does not filter the list — the batting order is nine men in an
+    order and hiding eight of them would break the thing this screen is for. It
+    marks the row instead, and says who it is underneath, which is the question
+    the rail is actually asking.
+  */
+  const atSpot = spot === null ? -1 : order.findIndex((p) => p.pos === spot);
+  const manAtSpot = atSpot >= 0 ? order[atSpot] : null;
+
+  const note = picked !== null
+    ? `Now tap the spot to swap with ${order[picked]?.name ?? ''}.`
+    : spot !== null
+      ? manAtSpot
+        ? `${manAtSpot.name} is batting ${atSpot + 1} at ${spot}.`
+        : `Nobody in tonight's nine is at ${spot}.`
+      : dealt
+        ? 'Order dealt. Tap two spots to fine-tune it.'
+        : 'Tap two spots to swap them.';
+
+  return (
+    <>
+      <main className="lineup-workspace">
+        <ModuleIntro
+          kicker="TEAM · LINEUP"
+          title="Starting nine"
+          text="Set the batting order, the field, and the rotation for tonight."
+        />
+
+        <section className="editor-toolbar">
+          {/* One tap deals a sound order — best hitter third, power fourth, the
+              table-setters ahead of them. Same nine men, and every swap below
+              still works afterwards: AUTO is a starting point. */}
+          <button
+            type="button"
+            onClick={() => { autoLineup(); setPicked(null); setDealt(true); }}
+          ><ReloadIcon />{dealt ? 'Best lineup set' : 'Auto lineup'}</button>
           {/*
-            The instruction rides with the title rather than the list. It is the
-            other half of a two-tap gesture — "now tap the spot to swap with
-            Reyes" — and a prompt you can scroll off the screen halfway through
-            the thing it is prompting is a prompt that has stopped working. It
-            is also where AUTO reports, because a button that reorders a list
-            you may not have memorised needs to say it did something.
+            No save button, and that is not an omission.
+
+            The proposal has one because a prototype has nowhere to put a
+            change. Here `swapLineup` writes straight to the team the engine
+            reads, and the save is debounced behind it — a SAVE that confirmed
+            something already true would be theatre, and worse, it would imply
+            an unsaved state that can be lost.
           */}
-          <div style={{
-            marginTop: 8, font: "400 calc(11px * var(--ts))/1.5 var(--body)",
-            color: picked === null ? (dealt ? 'var(--win)' : 'var(--dim)') : 'var(--clay)',
-          }}>
-            {picked !== null
-              ? `Now tap the spot to swap with ${order[picked]?.name ?? ''}.`
-              : dealt
-                ? 'Order dealt. Tap two spots to fine-tune it.'
-                : 'Tap two spots to swap them.'}
-          </div>
-        </div>
-      }
-    >
-    <div style={{ padding: '10px 14px 16px' }}>
-      <div style={{
-        border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
-        {order.map((p, i) => {
-          const line = season.batting.get(p.id);
-          const on = picked === i;
-          return (
-            <button
-              key={p.id}
-              onClick={() => tap(i)}
-              style={{
-                width: '100%', display: 'grid',
-                gridTemplateColumns: '18px 26px 1fr 30px 44px',
-                gap: 8, alignItems: 'center', textAlign: 'left',
-                padding: '9px 10px', borderBottom: '1px solid var(--hairline)',
-                background: on ? 'rgba(var(--clay-rgb), .12)' : 'transparent',
-              }}
-            >
-              <span style={{ font: "700 calc(13px * var(--ts)) var(--display)", color: 'var(--dim)' }}>{i + 1}</span>
-              {/* The position as baseball says it — C, SS, CF — rather than
-                  the scorer's 2-6-8. The abbreviations are what every other
-                  screen prints, and a lineup card is not a scorebook. */}
-              <span style={{ font: "500 calc(10px * var(--ts)) var(--mono)", color: 'var(--clay)' }}>
-                {p.pos}
-              </span>
-              <span style={{
-                font: `${on ? 600 : 400} calc(13px * var(--ts)) var(--body)`,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{p.name}</span>
-              <span style={{
-                font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)', textAlign: 'right',
-              }}>{overallOf(p)}</span>
-              <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>
-                {line && line.ab > 0 ? pct(battingAverage(line)) : '—'}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+          <span className="saved-mark"><CheckIcon /> Saved as you go</span>
+        </section>
 
-      <div style={{
-        marginTop: 20, borderBottom: '2px solid var(--ink)', paddingBottom: 6,
-      }}>
-        <div className="label">WEEKEND ROTATION</div>
-      </div>
+        <p className="selection-note"><SewingPinIcon /> {note}</p>
 
-      <div style={{
-        marginTop: 8, border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
-        {team.team.rotation.map((p, i) => {
-          const line = season.pitching.get(p.id);
-          return (
-            <div key={p.id} style={{
-              display: 'grid', gridTemplateColumns: '34px 1fr 30px 46px 44px',
-              gap: 6, alignItems: 'center',
-              padding: '9px 10px', borderBottom: '1px solid var(--hairline)',
-            }}>
-              <span style={{
-                font: "700 calc(11px * var(--ts)) var(--display)", letterSpacing: '.1em', color: 'var(--clay)',
-              }}>{SLOTS[i]}</span>
-              <span style={{
-                font: "400 calc(13px * var(--ts)) var(--body)",
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{p.name}</span>
-              <span style={{
-                font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)', textAlign: 'right',
-              }}>{overallOf(p)}</span>
-              <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>
-                {line && line.outs > 0 ? era(line).toFixed(2) : '—'}
-              </span>
-              <span style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                <Nudge onClick={() => moveRotation(i, -1)} disabled={i === 0}>↑</Nudge>
-                <Nudge
-                  onClick={() => moveRotation(i, 1)}
+        <section className="lineup-table">
+          {order.map((p, i) => {
+            const line = season.batting.get(p.id);
+            const on = picked === i;
+            const marked = i === atSpot;
+            return (
+              <button
+                className={`player-row${on || marked ? ' is-selected' : ''}`}
+                key={p.id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => tap(i)}
+              >
+                {/* Where the proposal's drag handle sat. It is the swap mark
+                    now: the first tap lights it, the second completes. */}
+                <span className="drag">{on ? <SewingPinIcon /> : null}</span>
+                <span className="order">{i + 1}</span>
+                <span className="portrait">
+                  <Avatar id={p.id} team={team.def.abbr} size={30} />
+                </span>
+                <span className="player-name">
+                  <strong>{p.name}</strong>
+                  <small>
+                    {p.pos} · Bats {p.bats} · {overallOf(p)} OVR
+                    {line && line.ab > 0
+                      ? ` · ${battingAverage(line).toFixed(3).replace(/^0/, '')}`
+                      : ''}
+                  </small>
+                </span>
+                <Rating label="CON" value={(p as Hitter).contact} />
+                <Rating label="POW" value={(p as Hitter).power} />
+                <Rating label="DEF" value={(p as Hitter).range} />
+                <span className="row-chevron" />
+              </button>
+            );
+          })}
+        </section>
+
+        <SectionHeading kicker="ROTATION" title="Who takes the ball" />
+        <section className="rotation-list">
+          {team.team.rotation.map((p, i) => {
+            const line = season.pitching.get(p.id);
+            return (
+              <div key={p.id}>
+                <span>{SLOTS[i]}</span>
+                <strong>{p.name}</strong>
+                <small>
+                  {overallOf(p)} OVR
+                  {line && line.outs > 0 ? ` · ${era(line).toFixed(2)}` : ''}
+                </small>
+                <button
+                  type="button"
+                  aria-label={`Move ${p.name} later in the rotation`}
                   disabled={i === team.team.rotation.length - 1}
-                >↓</Nudge>
-              </span>
-            </div>
-          );
-        })}
-      </div>
+                  onClick={() => moveRotation(i, 1)}
+                ><ChevronDownIcon /></button>
+              </div>
+            );
+          })}
+        </section>
+        <p className="selection-note">
+          <SewingPinIcon /> Your Friday arm starts the opener of every conference
+          series. The midweek starter takes all twelve non-conference
+          games — {midweekInnings.toFixed(0)} innings so far.
+        </p>
 
-      <div style={{ marginTop: 10, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
-        Your Friday arm starts the opener of every conference series. The midweek starter
-        takes all twelve non-conference games — {midweekInnings.toFixed(0)} innings so far.
-      </div>
+        {/* The pen, most rested arms doing most of the work. Read-only here —
+            who comes in is a game-night decision, made from the BULLPEN button
+            on the manage screen — but the rotation's other half belongs on the
+            same screen as the rotation. */}
+        <SectionHeading kicker="THE BULLPEN" title="The rest of the staff" />
+        <section className="rotation-list">
+          {team.team.bullpen.map((p) => {
+            const line = season.pitching.get(p.id);
+            const ip = line ? inningsPitched(line) : 0;
+            return (
+              <div key={p.id}>
+                <span>{p.role}</span>
+                <strong>{p.name}</strong>
+                <small>
+                  {overallOf(p)} OVR
+                  {line && line.outs > 0
+                    ? ` · ${era(line).toFixed(2)} · ${ip.toFixed(0)} IP`
+                    : ''}
+                </small>
+                <span />
+              </div>
+            );
+          })}
+        </section>
 
-      {/* The pen, most rested arms doing most of the work. Read-only here —
-          who comes in is a game-night decision, made from the BULLPEN button
-          on the manage screen — but the rotation's other half belongs on the
-          same card as the rotation. */}
-      <div style={{
-        marginTop: 20, borderBottom: '2px solid var(--ink)', paddingBottom: 6,
-      }}>
-        <div className="label">THE BULLPEN</div>
-      </div>
-      <div style={{
-        marginTop: 8, border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
-        {team.team.bullpen.map((p) => {
-          const line = season.pitching.get(p.id);
-          const ip = line ? inningsPitched(line) : 0;
-          return (
-            <div key={p.id} style={{
-              display: 'grid', gridTemplateColumns: '34px 1fr 30px 46px 44px',
-              gap: 6, alignItems: 'center',
-              padding: '8px 10px', borderBottom: '1px solid var(--hairline)',
-            }}>
-              <span style={{
-                font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.08em', color: 'var(--dim)',
-              }}>{p.role}</span>
-              <span style={{
-                font: "400 calc(13px * var(--ts)) var(--body)",
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{p.name}</span>
-              <span style={{
-                font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)', textAlign: 'right',
-              }}>{overallOf(p)}</span>
-              <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>
-                {line && line.outs > 0 ? era(line).toFixed(2) : '—'}
-              </span>
-              <span style={{
-                font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)', textAlign: 'right',
-              }}>{ip > 0 ? `${ip.toFixed(0)} IP` : '—'}</span>
-            </div>
-          );
-        })}
-      </div>
-      <FirstVisit id="lineup" />
-    </div>
-    </FixedHeader>
-  );
-}
+        <FirstVisit id="lineup" />
+      </main>
 
-function Nudge(
-  { onClick, disabled, children }:
-  { onClick: () => void; disabled: boolean; children: string },
-) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        width: 20, height: 20, lineHeight: '18px', textAlign: 'center',
-        border: '1px solid var(--faint)',
-        color: disabled ? 'rgba(var(--ink-rgb), .2)' : 'var(--ink)',
-        font: 'calc(11px * var(--ts)) var(--mono)',
-      }}
-    >{children}</button>
+      {/*
+        The diamond rail. Nine spots down the right edge, each a square turned
+        forty-five degrees, which is the shape of a base and reads as the field
+        rather than as a list of two-letter codes.
+      */}
+      <aside className="position-rail" aria-label="Field positions">
+        {POSITIONS.map((item) => (
+          <button
+            className={spot === item ? 'active' : ''}
+            key={item}
+            type="button"
+            aria-pressed={spot === item}
+            aria-label={`Show who is at ${item}`}
+            onClick={() => setSpot(spot === item ? null : item)}
+          ><span>{item}</span></button>
+        ))}
+      </aside>
+    </>
   );
 }

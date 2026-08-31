@@ -146,3 +146,65 @@
   border-radius: 50%;
   background: var(--alert);
 }
+
+/* The last of the old design, alive for one screen.
+ *
+ * Settings still draws panels the way the pre-port app did. Rather than leave
+ * it rendering against rules that no longer exist, it gets the proposal's card
+ * anatomy — a hairline box under a dark label bar — until it is rebuilt
+ * properly. Delete this block and `Card` in Kit.tsx together. */
+.legacy-card {
+  margin-bottom: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.legacy-card-tag {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 10px;
+  background: var(--ink);
+  color: #fff;
+}
+
+.legacy-card-tag span,
+.legacy-card-tag b {
+  font-size: calc(7px * var(--ts));
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.legacy-card-tag b { color: #cfe1d1; text-align: right; }
+
+/* Portraits are drawn, not photographed.
+ *
+ * The proposal fills `.portrait` with a background image of one stock player
+ * and hides whatever is inside it — fine for a mockup with one face in it, and
+ * wrong here: this app draws a different face for every one of four thousand
+ * player ids, from the id itself, so the same man is recognisable on the
+ * recruiting board, on his card, and in the draft results four years later.
+ * See Avatar.tsx. The circle and its tint stay; the photograph goes. */
+.portrait {
+  background-image: none;
+  background-color: var(--soft);
+}
+
+.portrait svg { display: block; }
+
+/* The lineup saves as you go, so the proposal's SAVE button is a label. */
+.editor-toolbar .saved-mark {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--dim);
+  font-size: calc(9px * var(--ts));
+  font-weight: 800;
+}
+
+.editor-toolbar .saved-mark svg { color: var(--clay); }
+
+/* The batting order keeps the proposal's grid, minus the chevron it no longer
+   needs — the row's tap is the swap, not a way into the card. */
+.lineup-workspace .player-row .drag svg { width: 9px; color: var(--clay); }
