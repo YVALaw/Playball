@@ -184,24 +184,41 @@ export function SigningDay() {
     <FirstVisit id="signing" />
     <div style={{ padding: '10px 14px 22px' }}>
       {view === 'mine' && (
-        <div style={{
-          marginTop: 10, border: '1px solid var(--faint)', background: 'var(--paper)',
-        }}>
-          {mine.length === 0 && (
-            <div style={{
-              padding: '18px 12px', font: "400 calc(12px * var(--ts))/1.55 var(--body)", color: 'var(--dim)',
-            }}>
-              Nobody signed. Every hole on the roster gets filled by a walk-on, and
-              a walk-on is a long way below the players you were bidding on.
+        <>
+          {/* The class as one number and one sentence, which is what a signing
+              day is actually about. */}
+          <section className="signing-class">
+            <strong>{mine.length}</strong>
+            <div>
+              <small>THE CLASS · {classPoints(mine)} POINTS</small>
+              <h2>{myRank > 0 ? `#${myRank} in the country` : 'Signed and sealed'}</h2>
+              <p>
+                {mine.length === 0
+                  ? 'Nobody signed. Every hole gets a walk-on, and a walk-on is a long way below the men you were bidding on.'
+                  : `${mine.filter((m) => m.stars >= 4).length} of them at four stars or better.`}
+              </p>
             </div>
+          </section>
+
+          {mine.length === 0 ? (
+            <section className="empty-state">
+              <h2>An empty class</h2>
+              <p>
+                Every hole on the roster gets filled by a walk-on, and a walk-on
+                is a long way below the players you were bidding on.
+              </p>
+            </section>
+          ) : (
+            <section className="prospect-list">
+              {mine.map((p) => (
+                <RecruitRow
+                  key={p.id} p={p} onOpen={() => setOpenId({ kind: 'recruit', id: p.id })}
+                  recruitingSkill={recruitingSkill}
+                />
+              ))}
+            </section>
           )}
-          {mine.map((p) => (
-            <RecruitRow
-              key={p.id} p={p} onOpen={() => setOpenId({ kind: 'recruit', id: p.id })}
-              recruitingSkill={recruitingSkill}
-            />
-          ))}
-        </div>
+        </>
       )}
 
       {/*

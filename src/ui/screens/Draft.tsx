@@ -19,6 +19,7 @@
 import { useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
+import { Cross1Icon } from '@radix-ui/react-icons';
 import { ModuleIntro, Segmented } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
 import { draftChance } from '../../engine/progression.js';
@@ -327,62 +328,37 @@ function KeepSheet(
 
   return (
     <div
+      className="sheet-scrim retention-scrim fade-in"
       onClick={onClose}
-      className="fade-in"
       role="dialog"
       aria-modal="true"
       aria-label={`Talking to ${p.name}`}
-      style={{
-        position: 'absolute', inset: 0, zIndex: 40,
-        background: 'rgba(var(--ink-rgb), .62)',
-        display: 'grid', placeItems: 'end center', padding: 0,
-      }}
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="rise-in"
-        style={{
-          width: '100%', maxHeight: '86%', overflowY: 'auto',
-          background: 'var(--field)', borderTop: '2px solid var(--ink)',
-        }}
-      >
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '10px 14px 0',
-        }}>
-          <button
-            onClick={() => openPlayer(p.id)}
-            style={{
-              display: 'flex', gap: 10, alignItems: 'center', textAlign: 'left',
-              background: 'transparent', padding: 0, minWidth: 0,
-            }}
-          >
-            <Avatar id={p.id} team={abbr} size={38} />
-            <span style={{ minWidth: 0 }}>
-              <span style={{
-                display: 'block', font: "800 calc(17px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{p.name}</span>
-              <span style={{
-                display: 'block', marginTop: 3, font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
-              }}>
-                {slotOf(p)} · {p.classYear} · OVR {overallOf(p)} · ROUND {man.round} PICK
-              </span>
+      {/*
+        The retention call, on the proposal's own sheet anatomy: the man at the
+        top of it as a row you can open, the reason under him, and the pitches as
+        cards. It was the last sheet in the app still drawing its own header.
+      */}
+      <section className="retention-sheet sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="retention-head">
+          <button className="portal-player tap" type="button" onClick={() => openPlayer(p.id)}>
+            <span className="portal-avatar"><Avatar id={p.id} team={abbr} size={38} /></span>
+            <span>
+              <strong>{p.name}</strong>
+              <small>
+                {slotOf(p)} · {p.classYear} · {overallOf(p)} OVR · round {man.round} pick
+              </small>
             </span>
           </button>
           <button
-            onClick={onClose}
-            className="tap"
+            className="header-icon tap"
+            type="button"
             aria-label="Close"
-            style={{
-              flex: 'none', padding: '8px 12px', minHeight: 36,
-              background: 'transparent', border: '1px solid rgba(var(--ink-rgb), .3)',
-              color: 'var(--dim)', font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-            }}
-          >CLOSE</button>
+            onClick={onClose}
+          ><Cross1Icon /></button>
         </div>
 
-        <div style={{ padding: '10px 14px 14px' }}>
+        <div className="retention-body">
           <div style={{
             padding: '9px 11px', background: 'var(--paper)',
             borderLeft: '3px solid var(--faint)',
@@ -512,7 +488,7 @@ function KeepSheet(
             </div>
           )}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

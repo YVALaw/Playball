@@ -631,48 +631,35 @@ function Row({
   const colour = abbr ? teamColour(abbr) : 'transparent';
 
   return (
-    <button
-      onClick={onOpen}
-      style={{
-        width: '100%', textAlign: 'left',
-        display: 'grid', gridTemplateColumns: 'auto 1fr auto auto',
-        gap: 9, alignItems: 'center',
-        padding: '10px 11px 10px 8px', borderBottom: '1px solid var(--hairline)',
-        borderLeft: `3px solid ${colour}`,
-        background: spent > 0 && !signed ? 'rgba(var(--clay-rgb), .10)' : 'transparent',
-      }}
-    >
-      {/* The jersey is only ever a school he has actually signed for. A face
-          wearing the colours of a program still recruiting him would be the
-          row telling a story the board has not finished. */}
-      <Avatar id={p.id} team={p.signedBy !== null ? abbr : undefined} size={34} />
-      <span style={{ minWidth: 0 }}>
-        <span style={{
-          display: 'block', font: `${spent > 0 ? 700 : 400} calc(13px * var(--ts)) var(--body)`,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>{p.player.name}</span>
-        <span style={{
-          display: 'block', marginTop: 1, font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
-        }}>
-          #{p.rank} · {slotOf(p)} · {p.state} · {PRIORITY_LABEL[topPriority(p)]}
+    <div className="recruit-row" style={{ borderLeft: `3px solid ${colour}` }}>
+      <button
+        className="tap"
+        type="button"
+        onClick={onOpen}
+        style={{ background: spent > 0 && !signed ? 'var(--soft)' : undefined }}
+      >
+        {/* The jersey is only ever a school he has actually signed for. A face
+            wearing the colours of a programme still recruiting him would be the
+            row telling a story the board has not finished. */}
+        <span className="recruit-face">
+          <Avatar id={p.id} team={p.signedBy !== null ? abbr : undefined} size={34} />
+          <span>
+            <strong>{p.player.name}</strong>
+            <small>
+              #{p.rank} · {slotOf(p)} · {p.state} · {PRIORITY_LABEL[topPriority(p)]}
+            </small>
+          </span>
         </span>
-      </span>
-      <span style={{
-        font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em', color: s.tone,
-        whiteSpace: 'nowrap', textAlign: 'right',
-      }}>
-        {s.label}
-        {spent > 0 && !signed && (
-          <span style={{ display: 'block', color: 'var(--clay)' }}>{spent} spent</span>
-        )}
-        {abbr && leader !== userTeam && (
-          <span style={{ display: 'block', color: colour }}>{abbr}</span>
-        )}
-      </span>
-      <span style={{
-        font: "600 calc(11px * var(--ts)) var(--mono)", color: 'var(--clay)', whiteSpace: 'nowrap',
-      }}>{'★'.repeat(p.stars)}</span>
-    </button>
+        <span className="recruit-state" style={{ color: s.tone }}>
+          {s.label}
+          <em>
+            {spent > 0 && !signed ? `${spent} spent` : ''}
+            {abbr && leader !== userTeam ? ` ${abbr}` : ''}
+          </em>
+        </span>
+        <b>{'★'.repeat(p.stars)}</b>
+      </button>
+    </div>
   );
 }
 
