@@ -26,7 +26,7 @@ import { FirstVisit } from '../Tutorial.js';
 import { useOpenTeam } from './TeamCard.js';
 import { BoxScoreSheet } from './Schedule.js';
 import { seasonDate } from '../format.js';
-import { NeedsYou } from '../Needs.js';
+import { NeedsYou, useNeeds } from '../Needs.js';
 import { SectionHeading } from '../components/Kit.js';
 import type { Pitcher } from '../../engine/types.js';
 
@@ -76,6 +76,18 @@ export function Today() {
   const live = useDynasty((s) => s.live);
   const pendingGame = useDynasty((s) => s.pendingGame);
   const resumeGame = useDynasty((s) => s.resumeGame);
+  /*
+    The desk does not advance past a decision only you can make.
+
+    Asked for directly: "when someone gets injured or needs to be talked to
+    about their grades, we should not be able to continue playing until
+    resolved." The red needs — a starter who cannot play, the press waiting, a
+    failing man you still have a word for — freeze the four ways time moves.
+    Everything else on the screen stays live, because reading the wire is not
+    playing on.
+  */
+  const musts = useNeeds().filter((n) => n.must).length;
+  const held = musts > 0;
   const openTeam = useOpenTeam();
   const team = useUserTeam();
   void version;                         // in-place mutation: see store.ts
@@ -236,25 +248,31 @@ export function Today() {
             <p>
               <SewingPinIcon /> {armLine(ourArm)} vs {armLine(theirArm)}
             </p>
+            {held && (
+              <p className="held-note">
+                <SewingPinIcon /> {musts === 1 ? 'A decision is' : `${musts} decisions are`} waiting
+                on you below. Nothing moves until {musts === 1 ? 'it is' : 'they are'} dealt with.
+              </p>
+            )}
             <div className="match-actions">
               <button type="button" onClick={() => { go('team'); setScreen('lineup'); }}>
                 Set lineup
               </button>
               <button
                 type="button"
-                disabled={busy || thinking !== null}
+                disabled={busy || thinking !== null || (held && !live)}
                 onClick={() => void startManagedGame()}
               ><PlayIcon /> {live ? 'Back to the game' : 'Play ball'}</button>
             </div>
             <div className="simulation-row">
               <button
                 type="button"
-                disabled={busy || !!live || thinking === 'week'}
+                disabled={busy || !!live || held || thinking === 'week'}
                 onClick={() => think('game', advanceDay)}
               >{thinking === 'game' ? <span className="spinner" /> : 'Sim game'}</button>
               <button
                 type="button"
-                disabled={busy || !!live || thinking === 'game'}
+                disabled={busy || !!live || held || thinking === 'game'}
                 onClick={() => think('week', simWeek)}
               >{thinking === 'week' ? <span className="spinner" /> : 'Sim week'}</button>
             </div>
@@ -270,12 +288,12 @@ export function Today() {
             <div className="simulation-row">
               <button
                 type="button"
-                disabled={busy || !!live || thinking === 'week'}
+                disabled={busy || !!live || held || thinking === 'week'}
                 onClick={() => think('game', advanceDay)}
               >{thinking === 'game' ? <span className="spinner" /> : 'Advance'}</button>
               <button
                 type="button"
-                disabled={busy || !!live || thinking === 'game'}
+                disabled={busy || !!live || held || thinking === 'game'}
                 onClick={() => think('week', simWeek)}
               >{thinking === 'week' ? <span className="spinner" /> : 'Sim week'}</button>
             </div>
@@ -303,7 +321,7 @@ export function Today() {
           <button
             className="secondary-command"
             type="button"
-            disabled={busy || !!live || thinking !== null}
+            disabled={busy || !!live || held || thinking !== null}
             onClick={() => void playSeason()}
           >SIM THE SEASON</button>
         )}

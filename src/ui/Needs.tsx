@@ -51,7 +51,8 @@ import { ChevronRightIcon, SewingPinIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../state/store.js';
 import { handles } from '../state/depth.js';
 import { startersFrom, available, squad, SPOTS } from '../engine/depthChart.js';
-import { standing } from '../engine/eligibility.js';
+import { standing, WORDS_A_SEASON } from '../engine/eligibility.js';
+import { isHurt, prognosis } from '../engine/injury.js';
 import { captainOf, candidates } from '../engine/captains.js';
 import type { Player } from '../engine/types.js';
 
@@ -83,6 +84,7 @@ export function useNeeds(): Need[] {
   const pendingPress = useDynasty((s) => s.pendingPress);
   const openOverlay = useDynasty((s) => s.openOverlay);
   const openPlayer = useDynasty((s) => s.openPlayer);
+  const wordsUsed = useDynasty((s) => s.wordsUsed);
   const depth = useDynasty((s) => s.depth);
   // Subscribed to deliberately: every one of these is read off mutable engine
   // objects, which do not change identity when they change. Without it the list
@@ -117,8 +119,9 @@ export function useNeeds(): Need[] {
     Full careers only — see the header. Counted off the same `startersFrom` the
     game itself uses, so this cannot disagree with who actually runs out.
   */
+  const nine = startersFrom(team.team, day);
+  const nineIds = new Set(SPOTS.map((spot) => nine[spot]?.id).filter(Boolean));
   if (handles(depth, 'lineups') || handles(depth, 'depthChart')) {
-    const nine = startersFrom(team.team, day);
     const hurt: Player[] = [];
     for (const spot of SPOTS) {
       const man = nine[spot];
@@ -137,6 +140,25 @@ export function useNeeds(): Need[] {
         go: () => openOverlay('depth'),
       });
     }
+  }
+
+  /*
+    Every other hurt man, one card each. Reported: "injuries should be in
+    needs as well — basically everything that affects the team gameplan has to
+    be in needs you." Not red — the trainer owns the clock and the chart has
+    covered him — but it is a fact about tonight's team you should not have to
+    tour the roster to learn.
+  */
+  for (const man of squad(team.team)) {
+    if (!isHurt(man, day) || nineIds.has(man.id)) continue;
+    needs.push({
+      id: `hurt-${man.id}`,
+      title: `${man.name} is hurt`,
+      note: `${prognosis(man, day)} The chart covers him while he heals.`,
+      must: false,
+      cta: 'HIS CARD',
+      go: () => openPlayer(man.id),
+    });
   }
 
   /*
@@ -174,13 +196,17 @@ export function useNeeds(): Need[] {
     shown one by one in needs, not like 3 players failing, cause that way it
     will only target one player directly." Each card opens its own man.
   */
+  const wordsLeft = WORDS_A_SEASON - wordsUsed;
   for (const man of squad(team.team).filter((p) => standing(p) === 'trouble')) {
     needs.push({
       id: `grades-${man.id}`,
       title: `${man.name} is failing`,
-      note: 'Short of where he needs to be, and one bad week from missing a series. '
-        + 'A word with him helps.',
-      must: false,
+      note: wordsLeft > 0
+        ? 'Short of where he needs to be, and one bad week from missing a series. '
+          + 'Have a word with him before tonight.'
+        : 'Short of where he needs to be, and you are out of conversations this '
+          + 'season. He works it out or he sits.',
+      must: wordsLeft > 0,
       cta: 'HIS CARD',
       go: () => openPlayer(man.id),
     });

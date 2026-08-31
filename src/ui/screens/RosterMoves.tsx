@@ -183,7 +183,21 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
                 onClick={() => restMan(p.id, 3)}
               />
             </div>
-            {!mine && (
+            {/*
+              Why there is nothing to press. Reported: 'opened the action
+              button in the room, but it didn't give me an option to rest the
+              player' -- he was hurt, and a hurt man cannot be rested into
+              health. The card above was also unreadable at the time, so the
+              reason was invisible; now it is readable AND said outright.
+            */}
+            {hurtNow && (
+              <FieldNote
+                title="The trainer owns this one"
+                text={`${prognosis(p, season.dayIndex)} Rest will not speed it up —
+                  the depth chart decides who covers him while he heals.`}
+              />
+            )}
+            {!mine && !hurtNow && (
               <FieldNote
                 title="Your staff handles this"
                 text="You asked for a desk that does not decide who sits. Rest and redshirts are theirs; the lineup is still yours."

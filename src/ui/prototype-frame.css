@@ -1862,13 +1862,35 @@
   background: var(--raised);
 }
 
-/* The action popover's dead cards, tuned for the dark panel they always sit
-   on rather than for the white page they never do. */
+/* The action popover's dead cards. First tuned for the dark panel around
+   them, which was wrong twice over -- the cards sit on the paper-coloured
+   action list, so 6%-white on light grey with white text was 'I don't see
+   anything, neither the icon.' The tokens know what surface they are on. */
 .action-popover-group .action-card:disabled {
-  background: rgba(255, 255, 255, .06);
-  color: rgba(255, 255, 255, .45);
+  background: var(--wash);
+  color: var(--dim);
 }
 .action-popover-group .action-card:disabled .action-card-icon,
 .action-popover-group .action-card:disabled > svg {
-  color: rgba(255, 255, 255, .35);
+  color: var(--dim);
+}
+
+/* The one-line reason the play buttons are grey, on the match card. */
+.held-note {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  margin: 0;
+  padding: 8px 10px 0;
+  color: var(--alert);
+  font-size: calc(10px * var(--ts));
+  line-height: 1.4;
+}
+.held-note svg { flex: none; align-self: center; }
+
+/* A held button looks held. Play ball kept its full accent while disabled,
+   which is a button lying about itself. */
+.match-actions button:disabled,
+.simulation-row button:disabled {
+  opacity: .42;
 }
