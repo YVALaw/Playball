@@ -18,8 +18,10 @@
 // so rather than showing an empty table and letting it read as "never played".
 
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import { Segmented } from '../components/Kit.js';
-import { cultureFor, CULTURE_LABEL } from '../../data/cultures.js';
+import {
+  FieldNote, Metric, MetricStrip, SectionHeading, Segmented,
+} from '../components/Kit.js';
+import { cultureFor, cultureOf, CULTURE_LABEL } from '../../data/cultures.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { FixedHeader } from '../Sticky.js';
@@ -33,6 +35,10 @@ import type { Hitter, Pitcher } from '../../engine/types.js';
 import type { SeasonState } from '../../engine/season.js';
 
 type Record_ = SeasonState['teams'][number];
+
+/** One programme, as the season carries it. Same thing as Record_, named for
+    the dossier, which reads better as an owner than as an underscore. */
+type Owner = Record_;
 
 /**
  * How a table row asks for a program's page.
@@ -49,15 +55,16 @@ export const OpenTeam = createContext<(index: number) => void>(() => {});
 /** Tap a team row to open its page. */
 export const useOpenTeam = (): ((index: number) => void) => useContext(OpenTeam);
 
-type Sheet = 'overview' | 'roster' | 'results';
+type Sheet = 'overview' | 'roster' | 'results' | 'dossier';
 
 const SHEET_LABEL: Record<Sheet, string> = {
   overview: 'OVERVIEW',
   roster: 'ROSTER',
   results: 'RESULTS',
+  dossier: 'DOSSIER',
 };
 
-const SHEETS: Sheet[] = ['overview', 'roster', 'results'];
+const SHEETS: Sheet[] = ['overview', 'roster', 'results', 'dossier'];
 
 export function TeamCard({ index }: { index: number }) {
   const season = useDynasty((s) => s.season);
@@ -89,44 +96,31 @@ export function TeamCard({ index }: { index: number }) {
   return (
     <FixedHeader header={
       <>
-        <div style={{ padding: '10px 12px 0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div className="team-card-head">
+          <section className="team-banner">
             {/* A crest rather than a face. The avatars elsewhere are portraits
                 of a man, and one at the top of a program's page would read as
-                somebody in particular — a coach the game does not have. The
-                abbreviation in the school's own colour is what the tables
-                already teach you to recognise. */}
-            <div style={{
-              flex: 'none', width: 46, height: 46,
-              display: 'grid', placeItems: 'center',
-              background: teamColour(t.def.abbr),
-            }}>
-              <span style={{
-                font: "800 calc(15px * var(--ts)) var(--display)", letterSpacing: '.04em',
-                color: 'var(--cream)',
-              }}>{t.def.abbr}</span>
+                somebody in particular. The abbreviation in the school's own
+                colour is what the tables already teach you to recognise. */}
+            <div className="team-mark" style={{ background: teamColour(t.def.abbr) }}>
+              {t.def.abbr}
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="label">{t.conference} · {'★'.repeat(stars)}</div>
-              <div style={{
-                font: "800 calc(26px * var(--ts))/0.9 var(--display)", marginTop: 3,
-                textTransform: 'uppercase', color: teamColour(t.def.abbr),
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{t.def.school}</div>
-              <div style={{
-                marginTop: 2, font: "400 calc(11px * var(--ts))/1.35 var(--body)", color: 'var(--dim)',
-              }}>{t.def.nickname}</div>
+            <div>
+              <small>{t.conference} · {'★'.repeat(stars)}</small>
+              <h2 style={{ color: teamColour(t.def.abbr) }}>{t.def.school}</h2>
+              <p>{t.def.nickname}</p>
             </div>
-          </div>
+          </section>
 
-          <div style={{
-            display: 'flex', margin: '10px 0',
-            border: '1px solid var(--faint)', background: 'var(--paper)',
-          }}>
-            <Tile k="OVERALL" v={`${reg.w}-${reg.l}`} />
-            <Tile k={t.conference} v={`${t.cw}-${t.cl}`} />
-            <Tile k="RPI" v={rank > 0 ? `#${rank}` : '—'} last />
-          </div>
+          <MetricStrip>
+            <Metric label="OVERALL" value={`${reg.w}-${reg.l}`} note={`RPI ${rank > 0 ? `#${rank}` : '—'}`} />
+            <Metric label={t.conference} value={`${t.cw}-${t.cl}`} note="IN CONFERENCE" />
+            <Metric
+              label="RUN DIFF"
+              value={`${t.rs - t.ra > 0 ? '+' : ''}${t.rs - t.ra}`}
+              note={`${t.rs} FOR`}
+            />
+          </MetricStrip>
         </div>
         <TabStrip at={sheet} onGo={setSheet} />
       </>
@@ -135,6 +129,11 @@ export function TeamCard({ index }: { index: number }) {
         {sheet === 'overview' && <Overview t={t} me={me} season={season} rank={rank} stars={stars} />}
         {sheet === 'roster' && <Roster t={t} season={season} />}
         {sheet === 'results' && <Results t={t} me={me} season={season} />}
+        {/* Scouting the school rather than its players — asked for by name:
+            "the rival school scouting ... if not add it to the list of things
+            we need to add." Everything on it was already in the save and had
+            nowhere to be read. */}
+        {sheet === 'dossier' && <Dossier t={t} stars={stars} />}
       </div>
     </FixedHeader>
   );
@@ -739,5 +738,123 @@ function Approach({ team }: { team: number }) {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * The scouting dossier: the school rather than its players.
+ *
+ * Asked for by name after the first play session — *"the rival school scouting
+ * btw I'm not sure if we have added this but if not add it to the list of things
+ * we need to add."* We had not, and every fact on this page was already in the
+ * save with nowhere to be read: the programme's culture and what it believes,
+ * the man in the chair and how long he has been in it, what he is good at, and
+ * how safe his seat is.
+ *
+ * It is scouting rather than a leak. What a rival coach can see from across the
+ * conference is a programme's reputation and its record; his opponent's ratings
+ * are on the player cards, gated the way they have always been. This page adds
+ * no information the world did not already publish — it stops making you infer
+ * it from a table.
+ */
+function Dossier({ t, stars }: { t: Owner; stars: number }) {
+  const culture = cultureOf(t.def.abbr);
+  const coach = t.coach;
+
+  /** What his points have gone into, loudest first. */
+  const strengths = coach
+    ? (Object.entries(coach.skills) as Array<[string, number]>)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+    : [];
+
+  const seat = coach
+    ? coach.security >= 70 ? 'Safe. The board is not counting.'
+      : coach.security >= 45 ? 'Settled, but a bad year would be noticed.'
+        : coach.security >= 25 ? 'Under pressure. Another one like this and they will look.'
+          : 'On the way out. His name is already on somebody\u2019s list.'
+    : null;
+
+  return (
+    <>
+      <SectionHeading kicker="THE PROGRAMME" title={culture?.name ?? 'A place with a history'} />
+      {culture && (
+        <FieldNote title={CULTURE_LABEL[culture.edge]} text={culture.creed} />
+      )}
+
+      <section className="split-grid">
+        <div>
+          <small>PRESTIGE</small>
+          <strong>{t.prestige}</strong>
+          <span>{'\u2605'.repeat(stars)}</span>
+        </div>
+        <div>
+          <small>PATIENCE</small>
+          <strong>{culture?.patience ?? '—'}</strong>
+          <span>BEFORE THEY COUNT</span>
+        </div>
+        <div>
+          <small>AMBITION</small>
+          <strong>{culture?.ambition ?? '—'}</strong>
+          <span>WHAT CLEARS THE BAR</span>
+        </div>
+      </section>
+
+      {coach ? (
+        <>
+          <SectionHeading kicker="IN THE CHAIR" title={coach.name} />
+          <section className="tendency-list">
+            <div>
+              <span>TENURE</span>
+              <strong>
+                {coach.tenure === 0 ? 'First season' : `${coach.tenure} seasons here`}
+                <em>{coach.age} years old · {coach.contractYears} left on the deal</em>
+              </strong>
+            </div>
+            <div>
+              <span>RECORD</span>
+              <strong>
+                {coach.careerWins}-{coach.careerLosses}
+                <em>
+                  {coach.titles > 0 ? `${coach.titles} national · ` : ''}
+                  {coach.conferenceTitles} conference · {coach.tournaments} tournaments
+                </em>
+              </strong>
+            </div>
+            <div>
+              <span>THE SEAT</span>
+              <strong>
+                {coach.security >= 45 ? 'Secure' : 'Warm'}
+                <em>{seat}</em>
+              </strong>
+            </div>
+          </section>
+
+          <SectionHeading kicker="WHAT HE IS GOOD AT" title="Where his points went" />
+          <section className="tool-table">
+            {strengths.map(([k, v]) => (
+              <div key={k}>
+                <span>{k.replace(/([A-Z])/g, ' $1').toUpperCase()}</span>
+                <b>{v}</b>
+                <i><em style={{ width: `${Math.min(100, v)}%` }} /></i>
+                <small>{v >= 70 ? 'PLUS' : v >= 50 ? 'SOLID' : 'FAIR'}</small>
+              </div>
+            ))}
+          </section>
+        </>
+      ) : (
+        <FieldNote
+          title="Nobody has been named"
+          text="The chair is empty, or this programme predates the coaching carousel in your save."
+        />
+      )}
+
+      <FieldNote
+        title="This is scouting, not a leak"
+        text="Everything here is what the country already publishes about a programme — its
+          reputation, its record, and the man in the chair. What his players can
+          actually do stays on their own cards, gated the way it always was."
+      />
+    </>
   );
 }

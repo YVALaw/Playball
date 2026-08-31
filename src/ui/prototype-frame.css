@@ -1088,3 +1088,20 @@
 .portal-budget-meter i { display: block; height: 100%; background: var(--yellow); }
 
 .portal-candidate-actions button:disabled { background: #eef0eb; color: var(--dim); }
+
+/* The rival's banner: a crest rather than a face. The avatars elsewhere are
+   portraits of a man, and one at the top of a programme's page would read as
+   somebody in particular. */
+.team-card-head { padding: 14px 16px 0; }
+
+.team-mark {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  color: #fff;
+  font: 800 calc(24px * var(--ts))/1 var(--display);
+  letter-spacing: .04em;
+}
+
+.team-card-head .metric-strip { margin: 12px 0 12px; }
