@@ -224,23 +224,3 @@ export function BudgetBar(
     </section>
   );
 }
-
-/**
- * A titled panel — the old design's `Card`, kept alive for exactly one caller.
- *
- * Settings has not been rebuilt yet and is the last screen still drawing this
- * shape. It goes when that screen does; nothing new should reach for it.
- */
-export function Card(
-  { tag, note, children }: { tag: string; note?: string; children: ReactNode },
-) {
-  return (
-    <section className="legacy-card">
-      <div className="legacy-card-tag">
-        <span>{tag}</span>
-        {note && <b>{note}</b>}
-      </div>
-      {children}
-    </section>
-  );
-}

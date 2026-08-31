@@ -146,36 +146,6 @@
   background: var(--alert);
 }
 
-/* The last of the old design, alive for one screen.
- *
- * Settings still draws panels the way the pre-port app did. Rather than leave
- * it rendering against rules that no longer exist, it gets the proposal's card
- * anatomy — a hairline box under a dark label bar — until it is rebuilt
- * properly. Delete this block and `Card` in Kit.tsx together. */
-.legacy-card {
-  margin-bottom: 14px;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  background: #fff;
-}
-
-.legacy-card-tag {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 9px 10px;
-  background: var(--ink);
-  color: #fff;
-}
-
-.legacy-card-tag span,
-.legacy-card-tag b {
-  font-size: calc(7px * var(--ts));
-  font-weight: 800;
-  letter-spacing: .04em;
-}
-
-.legacy-card-tag b { color: #cfe1d1; text-align: right; }
 
 /* Portraits are drawn, not photographed.
  *
@@ -332,8 +302,12 @@
   background: #2d7548;
 }
 
+/* The renderer fills the scene. Stated on the canvas and on the wrapper the
+   3D field mounts into — and NOT on every div, because the situation banner is
+   one too and stretching it to the scene is how it ended up nine pixels off the
+   left edge instead of nine off the right. */
 .ballpark-scene > canvas,
-.ballpark-scene > div {
+.ballpark-scene > div:not(.ballpark-situation) {
   width: 100%;
   height: 100%;
 }
@@ -432,3 +406,154 @@
 .fixed-header-bar > * > .module-intro {
   padding: 16px 16px 12px;
 }
+
+/* ---------------------------------------------------------------------------
+   The first-time card.
+
+   Not in the proposal — a prototype has nothing to explain, because nothing in
+   it does anything. Built out of the proposal's own parts: a hairline card on
+   paper, a section rule with a green label, a condensed title, and the primary
+   command. It rises from the bottom edge because that is where a thumb is.
+   --------------------------------------------------------------------------- */
+.tutorial-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 38;
+  display: grid;
+  place-items: end center;
+  padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
+  background: rgba(var(--ink-rgb), .55);
+}
+
+.tutorial-card {
+  width: 100%;
+  max-width: 360px;
+  padding: 13px 14px 14px;
+  border: 1px solid var(--ink);
+  background: #fff;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .35);
+}
+
+.tutorial-card .flow-section-title button {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  color: var(--dim);
+}
+
+.tutorial-card h2 {
+  margin: 4px 0 0;
+  font: 800 calc(26px * var(--ts))/.92 var(--display);
+}
+
+.tutorial-card p {
+  margin: 8px 0 0;
+  color: var(--dim);
+  font-size: calc(11px * var(--ts));
+  line-height: 1.5;
+}
+
+.tutorial-card footer {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 14px;
+}
+
+/* The page marks are the proposal's diamonds, which is the shape a base is. */
+.tutorial-card footer > span {
+  width: 7px;
+  height: 7px;
+  transform: rotate(45deg);
+  background: var(--line);
+}
+
+.tutorial-card footer > span.on { background: var(--clay); }
+
+.tutorial-card footer .primary-command {
+  width: auto;
+  min-width: 108px;
+  margin: 0 0 0 auto;
+  padding: 0 18px;
+}
+
+/* ---------------------------------------------------------------------------
+   The announcement dialog.
+
+   Built on `.season-verdict`, the proposal's one dark announcement panel — a
+   green kicker, a huge condensed line, a paragraph. Three tones, and they are
+   not interchangeable: gold is a trophy, red is a season that is over, and
+   cream is the middle case the postseason card actually describes most often,
+   which is "you lost, and you are still alive". Advancing is not winning and
+   the card must not say it is.
+   --------------------------------------------------------------------------- */
+.modal-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(var(--ink-rgb), .62);
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 330px;
+  margin: 0;
+  padding: 20px 18px 0;
+  text-align: center;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .45);
+}
+
+.modal-card strong { margin-top: 8px; font-size: calc(34px * var(--ts)); }
+.modal-card p { margin-top: 9px; }
+.modal-card.tone-win strong { color: var(--yellow); }
+.modal-card.tone-clay strong { color: #f0a49c; }
+.modal-card.tone-ink strong { color: #fff; }
+
+.modal-card footer {
+  display: grid;
+  margin: 18px -18px 0;
+}
+
+.modal-action,
+.modal-cancel {
+  width: 100%;
+  min-height: 47px;
+  border: 0;
+  font-size: calc(10px * var(--ts));
+  font-weight: 800;
+}
+
+.modal-cancel {
+  border-top: 1px solid rgba(255, 255, 255, .2);
+  background: transparent;
+  color: #c8d7cb;
+}
+
+.modal-action { background: var(--clay); color: #fff; }
+.modal-card.tone-win .modal-action { background: var(--yellow); color: #182b21; }
+.modal-card.tone-clay .modal-action { background: var(--alert); color: #fff; }
+
+/* The settings list is the proposal's, and its rows are toggles rather than
+   links, so the whole row is the switch. */
+.settings-list .toggle-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 10px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  text-align: left;
+}
+
+.settings-list .toggle-row:last-child { border-bottom: 0; }
+.settings-list .toggle-row:disabled { opacity: .44; cursor: default; }
+.settings-list .setting-choice { border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+.settings-list .setting-choice:last-child { border-bottom: 0; }
+.settings-list .setting-choice .segmented { margin-bottom: 0; }

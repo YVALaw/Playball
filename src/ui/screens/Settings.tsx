@@ -8,7 +8,9 @@
 // says which is which in a line, so nobody has to be told twice.
 
 import { useState, type ReactNode } from 'react';
-import { Card } from '../components/Kit.js';
+import { FixedHeader } from '../Sticky.js';
+import { ArrowLeftIcon } from '@radix-ui/react-icons';
+import { ModuleIntro, SectionHeading, Segmented } from '../components/Kit.js';
 import { useDynasty, type SettingsPage } from '../../state/store.js';
 import {
   SYSTEMS, handles, presetSays, type DepthMode, type SystemKey,
@@ -26,41 +28,20 @@ function Row(
   },
 ) {
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      padding: '9px 10px', borderTop: '1px solid var(--hairline)',
-      opacity: disabled ? 0.44 : 1,
-    }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          font: "600 calc(11.5px * var(--ts))/1.2 var(--body)", color: 'var(--ink)',
-        }}>{label}</div>
-        <div style={{
-          marginTop: 2, font: "400 calc(10px * var(--ts))/1.35 var(--body)",
-          color: 'var(--dim)',
-        }}>{note ?? blurb}</div>
-      </div>
-      <button
-        className="tap"
-        disabled={disabled}
-        onClick={onToggle}
-        role="switch"
-        aria-checked={on}
-        aria-label={label}
-        style={{
-          width: 44, height: 24, borderRadius: 12, flexShrink: 0,
-          background: on && !disabled ? 'var(--clay)' : 'var(--faint)',
-          padding: 2, display: 'flex',
-          justifyContent: on ? 'flex-end' : 'flex-start',
-          cursor: disabled ? 'default' : 'pointer',
-        }}
-      >
-        <span style={{
-          width: 20, height: 20, borderRadius: '50%', background: 'var(--paper)',
-          boxShadow: '0 1px 3px rgba(0,0,0,.25)',
-        }} />
-      </button>
-    </div>
+    <button
+      className="toggle-row tap"
+      type="button"
+      disabled={disabled}
+      onClick={onToggle}
+      role="switch"
+      aria-checked={on}
+    >
+      <span>
+        <strong>{label}</strong>
+        <small>{note ?? blurb}</small>
+      </span>
+      <i className={on && !disabled ? 'on' : ''}><b /></i>
+    </button>
   );
 }
 
@@ -73,33 +54,17 @@ function Choice<T extends string | number>(
   },
 ) {
   return (
-    <div style={{
-      padding: '9px 10px', borderTop: '1px solid var(--hairline)',
-      opacity: disabled ? 0.44 : 1,
-    }}>
-      <div style={{
-        font: "600 calc(11.5px * var(--ts))/1.2 var(--body)", marginBottom: 7,
-      }}>{label}</div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {options.map((o) => {
-          const on = o.value === value;
-          return (
-            <button
-              key={String(o.value)}
-              className="tap"
-              disabled={disabled}
-              onClick={() => onPick(o.value)}
-              style={{
-                padding: '5px 11px',
-                border: `1px solid ${on ? 'var(--clay)' : 'var(--faint)'}`,
-                background: on ? 'var(--clay)' : 'transparent',
-                color: on ? 'var(--cream)' : 'var(--dim)',
-                font: "600 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-              }}
-            >{o.label}</button>
-          );
-        })}
-      </div>
+    <div className="setting-choice" aria-disabled={disabled}>
+      <strong>{label}</strong>
+      <Segmented
+        label={label}
+        value={String(value)}
+        onChange={(v) => {
+          const hit = options.find((o) => String(o.value) === v);
+          if (hit && !disabled) onPick(hit.value);
+        }}
+        options={options.map((o) => ({ value: String(o.value), label: o.label }))}
+      />
     </div>
   );
 }
@@ -201,7 +166,8 @@ export function Settings() {
   if (page === 'display') {
     return (
       <Frame title="Display" kicker="THIS DEVICE" onBack={() => setPage('index')}>
-        <Card tag="TYPE AND MOTION">
+        <SectionHeading kicker="SETTINGS" title="Type and motion" />
+        <section className="settings-list">
           <Choice<number>
             label="Text size"
             value={prefs.textScale}
@@ -227,8 +193,9 @@ export function Settings() {
             ]}
             onPick={(v) => put({ motion: v })}
           />
-        </Card>
-        <Card tag="TEACHING">
+        </section>
+        <SectionHeading kicker="SETTINGS" title="Teaching" />
+        <section className="settings-list">
           <Row
             label="Explain the screens"
             blurb="Each screen says what it is for, once."
@@ -270,7 +237,7 @@ export function Settings() {
             }}>Every screen explains itself once more on your next visit.</div>
           </button>
           )}
-        </Card>
+        </section>
       </Frame>
     );
   }
@@ -278,7 +245,8 @@ export function Settings() {
   if (page === 'sound') {
     return (
       <Frame title="Sound" kicker="THIS DEVICE" onBack={() => setPage('index')}>
-        <Card tag="NOT YET BUILT">
+        <SectionHeading kicker="SETTINGS" title="Not yet built" />
+        <section className="settings-list">
           <Row
             label="Sound" blurb="Bat, glove, crowd."
             note="Arrives with broadcast."
@@ -289,7 +257,7 @@ export function Settings() {
             note="Arrives with broadcast."
             on={false} disabled
           />
-        </Card>
+        </section>
         <div style={{
           marginTop: 12, font: "400 calc(10.5px * var(--ts))/1.5 var(--body)",
           color: 'var(--dim)',
@@ -316,7 +284,8 @@ export function Settings() {
         ninety-six programs. This decides how much of it you are asked about.
       </div>
 
-      <Card tag="YOUR CAREER" note={depth.mode === 'full' ? 'FULL' : 'CASUAL'}>
+      <SectionHeading kicker="YOUR CAREER" title={depth.mode === 'full' ? 'Full control' : 'Casual'} />
+      <section className="settings-list">
         <Choice<DepthMode>
           label="Depth"
           value={depth.mode}
@@ -326,9 +295,10 @@ export function Settings() {
           ]}
           onPick={(m) => setDepthMode(m)}
         />
-      </Card>
+      </section>
 
-      <Card tag="WHAT YOU HANDLE">
+      <SectionHeading kicker="SETTINGS" title="What you handle" />
+        <section className="settings-list">
         {SYSTEMS.map((sys) => {
           const on = handles(depth, sys.key);
           const overridden = !sys.comingIn && presetSays(depth.mode, sys.key) !== on;
@@ -348,7 +318,7 @@ export function Settings() {
             />
           );
         })}
-      </Card>
+      </section>
     </Frame>
   );
 }
@@ -365,33 +335,19 @@ function Frame(
   { title: string; kicker: string; onBack?: () => void; children: ReactNode },
 ) {
   return (
-    <div style={{
-      position: 'absolute', inset: 0,
-      display: 'flex', flexDirection: 'column', minHeight: 0,
-    }}>
-      <div style={{
-        flex: 'none', padding: '12px 14px 8px', background: 'var(--field)',
-      }}>
-        <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-          {onBack ? (
-            <button
-              onClick={onBack}
-              className="tap"
-              style={{
-                font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em',
-                color: 'var(--clay)', padding: '0 10px 4px 0',
-              }}
-            >&lsaquo; SETTINGS</button>
-          ) : <div className="label">{kicker}</div>}
-          <div style={{
-            font: "800 calc(21px * var(--ts))/0.95 var(--display)",
-            marginTop: 4, textTransform: 'uppercase',
-          }}>{title}</div>
-        </div>
-      </div>
-      <div style={{
-        flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 14px 24px',
-      }}>{children}</div>
-    </div>
+    <FixedHeader
+      header={
+        <>
+          {onBack && (
+            <button className="back-link tap" type="button" onClick={onBack}>
+              <ArrowLeftIcon /> Settings
+            </button>
+          )}
+          <ModuleIntro kicker={kicker} title={title} />
+        </>
+      }
+    >
+      <main className="module-workspace">{children}</main>
+    </FixedHeader>
   );
 }

@@ -63,77 +63,34 @@ export function FirstVisit({ id }: { id: string }) {
 
   return (
     <div
-      className="fade-in"
+      className="tutorial-scrim fade-in"
       role="dialog"
       aria-modal="true"
       aria-label={`About this screen: ${current.title}`}
       // Backdrop tap dismisses for good — a tutorial must never trap anybody.
       onClick={() => done.current()}
-      style={{
-        position: 'absolute', inset: 0, zIndex: 38,
-        background: 'rgba(var(--ink-rgb), .55)',
-        display: 'grid', placeItems: 'end center', padding: 16,
-        paddingBottom: 'calc(24px + env(safe-area-inset-bottom))',
-      }}
     >
-      <div
-        className="rise-in"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: '100%', maxWidth: 360,
-          background: 'var(--paper)', border: '1px solid var(--faint)',
-          borderTop: '3px solid var(--clay)',
-          boxShadow: '0 14px 40px rgba(0,0,0,.35)',
-        }}
-      >
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px 0',
-        }}>
-          <span className="label" style={{ color: 'var(--clay)', flex: 1 }}>
+      <section className="tutorial-card rise-in" onClick={(e) => e.stopPropagation()}>
+        <div className="flow-section-title">
+          <span className="label">
             FIRST TIME HERE{pages.length > 1 ? ` · ${page + 1} OF ${pages.length}` : ''}
           </span>
-          <button
-            onClick={() => done.current()}
-            className="tap"
-            style={{
-              padding: '6px 9px', background: 'transparent',
-              border: '1px solid var(--faint)', color: 'var(--dim)',
-              font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.14em',
-            }}
-          >SKIP</button>
+          <button className="tap" type="button" onClick={() => done.current()}>SKIP</button>
         </div>
-        <div style={{ padding: '8px 12px 12px' }}>
-          <div style={{
-            font: "800 calc(22px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
-          }}>{current.title}</div>
-          <div style={{
-            marginTop: 7, font: "400 calc(12.5px * var(--ts))/1.55 var(--body)", color: 'var(--ink)',
-          }}>{current.body}</div>
-        </div>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 5,
-          padding: '0 12px 12px',
-        }}>
+        <h2>{current.title}</h2>
+        <p>{current.body}</p>
+        <footer>
           {pages.length > 1 && pages.map((_, i) => (
-            <span key={i} aria-hidden style={{
-              width: 7, height: 7, transform: 'rotate(45deg)',
-              background: i <= page ? 'var(--clay)' : 'var(--faint)',
-            }} />
+            <span key={i} aria-hidden className={i <= page ? 'on' : ''} />
           ))}
-          <div style={{ flex: 1 }} />
           <button
+            className="primary-command tap"
             ref={primary}
+            type="button"
             onClick={() => (last ? done.current() : setPage(page + 1))}
-            className="tap"
-            style={{
-              padding: '11px 22px', minHeight: 44,
-              background: 'var(--clay)', border: '1px solid var(--clay)',
-              color: 'var(--cream)',
-              font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.14em',
-            }}
           >{last ? 'GOT IT' : 'NEXT'}</button>
-        </div>
-      </div>
+        </footer>
+      </section>
     </div>
   );
 }

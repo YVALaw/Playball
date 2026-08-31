@@ -36,7 +36,6 @@ export function Modal(
     cancel?: { label: string; onClick: () => void };
   },
 ) {
-  const accent = tone === 'win' ? 'var(--win)' : tone === 'clay' ? 'var(--clay)' : 'var(--cream)';
 
   /*
     A dialog a keyboard can leave and a screen reader can name. The app is
@@ -65,75 +64,50 @@ export function Modal(
 
   return (
     <div
+      className="modal-scrim fade-in"
       onClick={dismiss}
-      className="fade-in"
       role="dialog"
       aria-modal="true"
       aria-label={`${kicker} ${title}`}
-      style={{
-        position: 'absolute', inset: 0, zIndex: 40,
-        background: 'rgba(var(--ink-rgb), .62)',
-        display: 'grid', placeItems: 'center', padding: 20,
-      }}
     >
-      <div
+      {/*
+        The proposal's season verdict, doing a second job. It is the one dark
+        panel in the whole stylesheet built to carry an announcement — a green
+        kicker, a huge condensed line, a paragraph under it — which is exactly
+        what this dialog is for. The tone rides on the title's colour: gold for
+        a trophy, red for a season that is over, and cream for the middle case
+        that is neither.
+      */}
+      <section
+        className={`modal-card season-verdict rise-in tone-${tone}`}
         onClick={(e) => e.stopPropagation()}
-        className="rise-in"
-        style={{
-          width: '100%', maxWidth: 330,
-          background: 'var(--ink)',
-          border: `2px solid ${accent}`,
-          boxShadow: '0 18px 50px rgba(0,0,0,.45)',
-        }}
       >
-        <div style={{ padding: '18px 18px 16px', textAlign: 'center' }}>
-          <div style={{
-            font: "600 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.2em',
-            color: 'rgba(var(--cream-rgb), .6)',
-          }}>{kicker}</div>
-          <div style={{
-            font: "800 calc(30px * var(--ts))/1 var(--display)", marginTop: 8,
-            color: accent === 'var(--cream)' ? 'var(--cream)' : accent,
-            textTransform: 'uppercase',
-          }}>{title}</div>
-          {lines.map((l, i) => (
-            <div key={i} style={{
-              marginTop: i === 0 ? 10 : 6,
-              font: "400 calc(12.5px * var(--ts))/1.5 var(--body)", color: 'rgba(var(--cream-rgb), .72)',
-            }}>{l}</div>
-          ))}
-        </div>
+        <small>{kicker}</small>
+        <strong>{title}</strong>
+        {lines.map((l, i) => <p key={i}>{l}</p>)}
         {/* The way out sits above the action rather than beside it. Side by
-            side, the two are the same size and a thumb aimed at one is a
-            thumb that can land on the other; stacked, the destructive one is
-            the one you have to reach past the safe one to get to. It is also
-            where focus starts, so Enter on a fresh dialog acknowledges or
-            cancels — it never destroys. */}
-        {cancel && (
+            side, the two are the same size and a thumb aimed at one is a thumb
+            that can land on the other; stacked, the destructive one is the one
+            you have to reach past the safe one to get to. It is also where
+            focus starts, so Enter on a fresh dialog acknowledges or cancels —
+            it never destroys. */}
+        <footer>
+          {cancel && (
+            <button
+              className="modal-cancel tap"
+              ref={firstButton}
+              type="button"
+              onClick={cancel.onClick}
+            >{cancel.label}</button>
+          )}
           <button
-            ref={firstButton}
-            onClick={cancel.onClick}
-            className="tap"
-            style={{
-              width: '100%', padding: '13px 0',
-              background: 'transparent', borderTop: '1px solid rgba(var(--cream-rgb), .2)',
-              color: 'rgba(var(--cream-rgb), .72)',
-              font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.16em',
-            }}
-          >{cancel.label}</button>
-        )}
-        <button
-          ref={cancel ? undefined : firstButton}
-          onClick={onClose}
-          className="tap"
-          style={{
-            width: '100%', padding: '14px 0',
-            background: accent === 'var(--cream)' ? 'var(--clay)' : accent,
-            border: 'none', color: 'var(--cream)',
-            font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.16em',
-          }}
-        >{action}</button>
-      </div>
+            className="modal-action tap"
+            ref={cancel ? undefined : firstButton}
+            type="button"
+            onClick={onClose}
+          >{action}</button>
+        </footer>
+      </section>
     </div>
   );
 }
