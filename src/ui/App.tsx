@@ -1,12 +1,26 @@
 // App.tsx
-// The chrome: top bar, sub-nav, screen, bottom nav. Ported from
-// design/Dynasty Mobile.dc.html, which is the design of record.
+// The four frames the game can be in — the regular season, the offseason, the
+// postseason and the job search — and the furniture each of them wears.
+//
+// The furniture itself moved to Chrome.tsx during the Roster Tabletop port. It
+// was written inline here four times over, once per frame, out of the same
+// handful of ideas, and two of the four had already drifted. What is left in
+// this file is which frame you are in and what goes in each of its slots, which
+// is the only part that was ever different between them.
+//
+// design/Roster Tabletop/ is the design of record.
 
 import { useEffect, useRef, useState } from 'react';
+import {
+  ArrowLeftIcon, CalendarIcon, EnvelopeClosedIcon, HomeIcon, IdCardIcon, StarIcon,
+} from '@radix-ui/react-icons';
 import {
   PHASES, PHASE_LABEL, TABS, useDynasty, useUserTeam, type Tab,
 } from '../state/store.js';
 import { StepRail } from './StepRail.js';
+import {
+  ClubIdentity, ClubMark, ContextNav, HeaderIcon, HeaderShell, PrimaryNav, RecordChip,
+} from './Chrome.js';
 import { Today } from './screens/Today.js';
 import { Standings } from './screens/Standings.js';
 import { Roster } from './screens/Roster.js';
@@ -43,6 +57,39 @@ import { CoachPortrait } from './CoachPortrait.js';
 import { Settings } from './screens/Settings.js';
 import { seasonDate } from './format.js';
 import { prestigeStars } from '../engine/program.js';
+
+/**
+ * A face for each of the four areas.
+ *
+ * The bottom bar was four words in a condensed face and nothing else, which is
+ * legible but slow: you read the bar rather than recognising it. A house, a
+ * card, a calendar and a star are the shapes the proposal picked and they are
+ * the obvious four — the only one worth arguing about is TEAM, where a roster
+ * really is a stack of cards.
+ *
+ * Sized here rather than in Chrome.tsx so the nav stays honest about taking
+ * whatever node it is handed; nothing stops a future tab carrying a portrait.
+ */
+const TAB_ICON: Record<string, React.ReactNode> = {
+  home: <HomeIcon width={19} height={19} />,
+  team: <IdCardIcon width={19} height={19} />,
+  season: <CalendarIcon width={19} height={19} />,
+  program: <StarIcon width={19} height={19} />,
+};
+
+/**
+ * HOME to Home.
+ *
+ * `TABS` stores its labels shouted, because the old bar set them in a condensed
+ * face at twelve point where upper case is the only thing that holds a line
+ * together. The new bar sets them at eleven in the body face, where shouting
+ * reads as shouting. The store is not the place to fix that — those strings are
+ * also what the sub-nav and a couple of screens print — so the bar quietens them
+ * on the way out.
+ */
+function titleCase(label: string): string {
+  return label.charAt(0) + label.slice(1).toLowerCase();
+}
 
 /**
  * The app, and the one piece of navigation state that is not in the store.
@@ -191,33 +238,21 @@ function AppBody(
           principle: a terminal frame always offers the saves menu, the same
           escape the unreadable-save and stalled-storage screens give.
         */}
-        <header style={{
-          flex: 'none', height: 44, padding: '0 14px',
-          paddingTop: 'env(safe-area-inset-top)',
-          boxSizing: 'content-box',
-          display: 'flex', alignItems: 'center', gap: 10,
-          background: 'var(--navy)',
-          backgroundImage:
-            'repeating-linear-gradient(90deg, rgba(255,255,255,.09) 0 1px, transparent 1px 7px)',
-          borderBottom: '3px solid var(--clay)',
-        }}>
-          <div style={{
-            flex: 1, minWidth: 0,
-            font: "800 calc(18px * var(--ts))/0.95 var(--display)", letterSpacing: '.02em',
-            color: 'var(--cream)', textTransform: 'uppercase',
-          }}>THE MARKET</div>
+        {/* No club mark and no record: there is no club yet, which is the whole
+            situation this frame describes. */}
+        <HeaderShell cols="minmax(0, 1fr) auto">
+          <ClubIdentity kicker="Between jobs" name="The Market" />
           <button
             onClick={() => openOverlay('saves')}
             className="tap"
             style={{
-              flex: 'none', padding: '8px 9px',
-              background: 'rgba(var(--cream-rgb), .12)',
-              border: '1px solid rgba(var(--cream-rgb), .28)',
-              color: 'var(--cream)',
-              font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
+              flex: 'none', padding: '11px 12px',
+              border: '1px solid var(--line)', background: 'var(--paper)',
+              color: 'var(--clay)',
+              font: "700 calc(10px * var(--ts)) var(--body)", letterSpacing: '.08em',
             }}
           >SAVES</button>
-        </header>
+        </HeaderShell>
         <SaveAlert topmost />
         <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
           flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
@@ -340,27 +375,9 @@ function AppBody(
         {/* The bar steps aside while a game is being managed — the dugout owns
             the whole screen, the same rule the regular season follows. */}
         {!live && (
-          <header style={{
-            flex: 'none', height: 44, padding: '0 14px',
-            paddingTop: 'env(safe-area-inset-top)',
-            boxSizing: 'content-box',
-            display: 'flex', alignItems: 'center', gap: 10,
-            background: 'var(--navy)',
-            backgroundImage:
-              'repeating-linear-gradient(90deg, rgba(255,255,255,.09) 0 1px, transparent 1px 7px)',
-            borderBottom: '3px solid var(--clay)',
-          }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                font: "800 calc(18px * var(--ts))/0.95 var(--display)", letterSpacing: '.02em',
-                color: 'var(--cream)', textTransform: 'uppercase',
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              }}>{team.def.school}</div>
-              <div style={{
-                font: "500 calc(9px * var(--ts))/1.4 var(--mono)", letterSpacing: '.18em',
-                color: 'var(--cream-dim)', textTransform: 'uppercase',
-              }}>POSTSEASON</div>
-            </div>
+          <HeaderShell cols="40px minmax(0, 1fr) 40px 40px">
+            <ClubMark abbr={team.def.abbr} />
+            <ClubIdentity kicker="Postseason" name={team.def.school} />
             <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
             {/*
               The way to your own settings, in the month you are most likely to
@@ -374,7 +391,7 @@ function AppBody(
               for it.
             */}
             <CoachMenuButton />
-          </header>
+          </HeaderShell>
         )}
         <SaveAlert topmost />
         {/*
@@ -391,30 +408,11 @@ function AppBody(
           navigations arguing about the same space.
         */}
         {!live && tab !== 'home' && (
-          <nav style={{
-            flex: 'none', height: 38, display: 'flex',
-            background: 'var(--sunk)', borderBottom: '1px solid rgba(var(--ink-rgb), .16)',
-          }}>
-            {(TABS.find((t) => t.id === tab) ?? TABS[0]!).screens.map((sc) => {
-              const on = screen === sc.id;
-              const count = (TABS.find((t) => t.id === tab) ?? TABS[0]!).screens.length;
-              return (
-                <button
-                  key={sc.id}
-                  onClick={() => setScreen(sc.id)}
-                  style={{
-                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: on ? 'var(--field)' : 'transparent',
-                    borderRight: '1px solid rgba(var(--ink-rgb), .1)',
-                    boxShadow: on ? 'inset 0 -3px 0 var(--clay)' : 'none',
-                    font: `600 calc(${count >= 5 ? 8.5 : 10}px * var(--ts)) var(--mono)`,
-                    letterSpacing: count >= 5 ? '.08em' : '.14em',
-                    color: on ? 'var(--clay)' : 'var(--dim)',
-                  }}
-                >{sc.label}</button>
-              );
-            })}
-          </nav>
+          <ContextNav
+            items={(TABS.find((t) => t.id === tab) ?? TABS[0]!).screens}
+            active={screen}
+            onSelect={setScreen}
+          />
         )}
         <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
           flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
@@ -441,46 +439,17 @@ function AppBody(
           original argument holds completely.
         */}
         {!live && (
-          <nav style={{
-            flex: 'none', display: 'flex',
-            background: 'var(--ink)', borderTop: '3px solid var(--clay)',
-            paddingBottom: 'env(safe-area-inset-bottom)',
-          }}>
-            {TABS.map((t) => {
-              const on = tab === t.id;
-              const label = t.id === 'home' ? 'JUNE' : t.label;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => go(t.id as Tab)}
-                  style={{
-                    flex: 1, padding: '8px 0 9px', textAlign: 'center',
-                    background: on ? 'rgba(var(--clay-rgb), .85)' : 'transparent',
-                  }}
-                >
-                  <div style={{
-                    font: "700 calc(12px * var(--ts))/1 var(--display)", letterSpacing: '.12em',
-                    color: on ? 'var(--cream)' : 'rgba(var(--cream-rgb), .5)',
-                    position: 'relative', display: 'inline-block',
-                  }}>
-                    {label}
-                    {t.id === 'home' && unread > 0 && (
-                      <span style={{
-                        position: 'absolute', top: -3, right: -8,
-                        width: 6, height: 6, borderRadius: '50%',
-                        background: 'var(--alert)',
-                      }} />
-                    )}
-                  </div>
-                  <div style={{
-                    marginTop: 3,
-                    font: "400 calc(8px * var(--ts))/1 var(--mono)", letterSpacing: '.1em',
-                    color: on ? 'rgba(var(--cream-rgb), .75)' : 'rgba(var(--cream-rgb), .38)',
-                  }}>{t.id === 'home' ? 'THE BRACKET' : ''}</div>
-                </button>
-              );
-            })}
-          </nav>
+          <PrimaryNav
+            tabs={TABS.map((t) => ({
+              id: t.id,
+              label: t.id === 'home' ? 'June' : titleCase(t.label),
+              meta: t.id === 'home' ? 'THE BRACKET' : '',
+              icon: TAB_ICON[t.id],
+              alert: t.id === 'home' && unread > 0,
+            }))}
+            active={tab}
+            onSelect={(id) => go(id as Tab)}
+          />
         )}
         <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
       </div>
@@ -517,35 +486,18 @@ function AppBody(
       <div className="app-frame" style={{
         display: 'flex', flexDirection: 'column', minHeight: 0,
       }}>
-        <header style={{
-          flex: 'none', height: 56, padding: '0 14px',
-          paddingTop: 'env(safe-area-inset-top)',
-          boxSizing: 'content-box',
-          display: 'flex', alignItems: 'center', gap: 10,
-          background: 'var(--navy)',
-          backgroundImage:
-            'repeating-linear-gradient(90deg, rgba(255,255,255,.09) 0 1px, transparent 1px 7px)',
-          borderBottom: '3px solid var(--clay)',
-        }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              font: "800 calc(21px * var(--ts))/0.95 var(--display)", letterSpacing: '.02em',
-              color: 'var(--cream)', textTransform: 'uppercase',
-            }}>{team.def.school}</div>
-            <div style={{
-              font: "500 calc(9px * var(--ts))/1.4 var(--mono)", letterSpacing: '.18em',
-              color: 'var(--cream-dim)', textTransform: 'uppercase',
-            }}>OFFSEASON</div>
-          </div>
+        <HeaderShell cols="40px minmax(0, 1fr) 40px 40px">
+          <ClubMark abbr={team.def.abbr} />
+          <ClubIdentity kicker={`${year} Offseason`} name={team.def.school} />
           {/* The bottom nav is gone from here by design, and it took HOME ·
-              INBOX with it — during the six steps that have most to report.
+              INBOX with it — during the seven steps that have most to report.
               The portrait menu carries PROFILE and SAVES, exactly the pair the
               missing nav owes this frame; the season badge that used to fill
               the corner is gone, because the review screen already says what
               the year came to and a header is not a trophy shelf. */}
           <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
           <CoachMenuButton />
-        </header>
+        </HeaderShell>
         <SaveAlert />
         <StepRail
           steps={PHASES.map((p) => ({ key: p, label: PHASE_LABEL[p] }))}
@@ -612,89 +564,36 @@ function AppBody(
 
   return (
     <div className="app-frame" style={{ color: 'var(--ink)' }}>
-      {/* Top bar. The pinstripe is a uniform, and the clay rule under it is the
-          same one that separates every section in the app. */}
-      <header style={{
-        flex: 'none', height: 58, padding: '0 14px',
-        paddingTop: 'env(safe-area-inset-top)',
-        boxSizing: 'content-box',
-        display: 'flex', alignItems: 'center', gap: 10,
-        background: 'var(--navy)',
-        backgroundImage:
-          'repeating-linear-gradient(90deg, rgba(255,255,255,.09) 0 1px, transparent 1px 7px)',
-        borderBottom: '3px solid var(--clay)',
-      }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            font: "800 calc(21px * var(--ts))/0.95 var(--display)", letterSpacing: '.02em',
-            color: 'var(--cream)', textTransform: 'uppercase',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>{team.def.school}</div>
-          <div style={{
-            font: "500 calc(9px * var(--ts))/1.4 var(--mono)", letterSpacing: '.14em',
-            color: 'var(--cream-dim)', textTransform: 'uppercase',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>
-            {team.def.nickname} &middot; {team.conference}
-          </div>
-        </div>
-        {/*
-          The record, out of the small print.
+      {/*
+        The top bar, on paper.
 
-          It rode the identity line at nine point beside the nickname and the
-          conference, and it was reported as hard to see and easy to lose —
-          which it was: the one number that changes every day was set in the
-          same weight as two that never change. It gets its own block, at the
-          top of the screen where the eye already goes, and nothing else moved
-          to make room. Overall only; the conference record is a tap away on
-          the standings and the header is meant to be getting lighter, not
-          heavier.
-        */}
-        <div style={{ flex: 'none', textAlign: 'right', lineHeight: 1 }}>
-          <div style={{
-            font: "500 calc(7.5px * var(--ts)) var(--mono)", letterSpacing: '.16em',
-            color: 'rgba(var(--cream-rgb), .5)', textTransform: 'uppercase',
-          }}>RECORD</div>
-          <div style={{
-            marginTop: 2,
-            font: "800 calc(17px * var(--ts))/1 var(--display)",
-            color: 'var(--cream)', fontVariantNumeric: 'tabular-nums',
-          }}>{team.w}-{team.l}</div>
-        </div>
+        It was navy with a pinstripe through it and a clay rule underneath, and
+        it read as a masthead — the app announcing itself above the thing you
+        came to look at. The same five pieces of information are here; they are
+        simply on the same ground as the screen, separated by a hairline. What
+        the change buys is the club mark, which is the only fixed shape in a
+        header whose every other slot changes daily.
+
+        The record keeps its own block. It rode the identity line at nine point
+        beside the nickname and the conference, and it was reported as hard to
+        see and easy to lose — which it was: the one number that changes every
+        day was set in the same weight as two that never change. Overall only;
+        the conference record is a tap away on the standings.
+      */}
+      <HeaderShell cols="40px minmax(0, 1fr) auto 40px 40px">
+        <ClubMark abbr={team.def.abbr} />
+        <ClubIdentity
+          kicker={`${team.def.nickname} · ${team.conference}`}
+          name={team.def.school}
+        />
+        <RecordChip label="Record" value={`${team.w}-${team.l}`} />
         <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
         <CoachMenuButton />
-      </header>
+      </HeaderShell>
 
       <SaveAlert />
 
-      {/* Sub-nav */}
-      <nav style={{
-        flex: 'none', height: 38, display: 'flex',
-        background: 'var(--sunk)', borderBottom: '1px solid rgba(var(--ink-rgb), .16)',
-      }}>
-        {tabDef.screens.map((s) => {
-          const on = screen === s.id;
-          return (
-            <button
-              key={s.id}
-              onClick={() => setScreen(s.id)}
-              style={{
-                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                gap: 4,
-                background: on ? 'var(--field)' : 'transparent',
-                borderRight: '1px solid rgba(var(--ink-rgb), .1)',
-                boxShadow: on ? 'inset 0 -3px 0 var(--clay)' : 'none',
-                // Five labels have to share the same 360 pixels four used to.
-                font: `600 calc(${tabDef.screens.length >= 5 ? 8.5 : 10}px * var(--ts)) var(--mono)`,
-                letterSpacing: tabDef.screens.length >= 5 ? '.08em' : '.14em',
-                color: on ? 'var(--clay)' : 'var(--dim)',
-              }}
-            >
-              {s.label}
-            </button>
-          );
-        })}
-      </nav>
+      <ContextNav items={tabDef.screens} active={screen} onSelect={setScreen} />
 
       <main ref={mainRef} style={{
         flex: 1, minHeight: 0, overflow: 'auto', position: 'relative',
@@ -704,51 +603,20 @@ function AppBody(
         <div style={{ height: 10 }} />
       </main>
 
-      {/* Bottom nav */}
-      <nav style={{
-        flex: 'none', display: 'flex',
-        background: 'var(--ink)', borderTop: '3px solid var(--clay)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
-      }}>
-        {TABS.map((t) => {
-          const on = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => go(t.id as Tab)}
-              style={{
-                flex: 1, padding: '8px 0 9px', textAlign: 'center',
-                background: on ? 'rgba(var(--clay-rgb), .85)' : 'transparent',
-              }}
-            >
-              <div style={{
-                font: "700 calc(12px * var(--ts))/1 var(--display)", letterSpacing: '.12em',
-                color: on ? 'var(--cream)' : 'rgba(var(--cream-rgb), .5)',
-                position: 'relative', display: 'inline-block',
-              }}>
-                {t.label}
-                {/* Unread has to be visible from wherever the player normally
-                    is, and where he normally is is not the home tab. A dot on
-                    the bottom bar is the only mark that survives being three
-                    screens away — the count itself is on the top-bar bell, one
-                    tap away, where there is room to print it. */}
-                {t.id === 'home' && unread > 0 && (
-                  <span style={{
-                    position: 'absolute', top: -3, right: -8,
-                    width: 6, height: 6, borderRadius: '50%',
-                    background: 'var(--alert)',
-                  }} />
-                )}
-              </div>
-              <div style={{
-                marginTop: 3,
-                font: "400 calc(8px * var(--ts))/1 var(--mono)", letterSpacing: '.1em',
-                color: on ? 'rgba(var(--cream-rgb), .75)' : 'rgba(var(--cream-rgb), .38)',
-              }}>{navMeta[t.id] ?? ''}</div>
-            </button>
-          );
-        })}
-      </nav>
+      {/* The dot on HOME is how unread survives being three screens away; the
+          count itself is on the top-bar envelope, one tap from here, where
+          there is room to print it. */}
+      <PrimaryNav
+        tabs={TABS.map((t) => ({
+          id: t.id,
+          label: titleCase(t.label),
+          meta: navMeta[t.id] ?? '',
+          icon: TAB_ICON[t.id],
+          alert: t.id === 'home' && unread > 0,
+        }))}
+        active={tab}
+        onSelect={(id) => go(id as Tab)}
+      />
       <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
     </div>
   );
@@ -768,23 +636,17 @@ function AppBody(
  * three. The sub-nav count and the dot on HOME stay as they were: they are how
  * you notice it while the season is on, and this is how you get to it when it
  * is not.
+ *
+ * An envelope with the count on its shoulder rather than the word INBOX and the
+ * count inside it. The button used to change colour entirely when something was
+ * unread, which worked on a navy bar and does not on paper — a filled red
+ * rectangle in the top right of a white header is an error, not a notification.
  */
 function InboxButton({ unread, onOpen }: { unread: number; onOpen: () => void }) {
   return (
-    <button
-      onClick={onOpen}
-      className="tap"
-      aria-label={`Inbox${unread > 0 ? `, ${unread} unread` : ''}`}
-      style={{
-        flex: 'none', position: 'relative', padding: '8px 9px',
-        background: unread > 0 ? 'var(--alert)' : 'rgba(var(--cream-rgb), .12)',
-        border: `1px solid ${unread > 0 ? 'var(--alert)' : 'rgba(var(--cream-rgb), .28)'}`,
-        color: 'var(--cream)',
-        font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-      }}
-    >
-      INBOX{unread > 0 ? ` ${unread > 9 ? '9+' : unread}` : ''}
-    </button>
+    <HeaderIcon label="Inbox" onClick={onOpen} badge={unread}>
+      <EnvelopeClosedIcon width={17} height={17} />
+    </HeaderIcon>
   );
 }
 
@@ -956,13 +818,23 @@ function TableOverlay() {
  *
  * One definition, because the two overlays are the same object to the player
  * and looked like two different apps when each drew its own: the tables came
- * back on a navy bar with a bordered ← BACK, the player card on a bare chevron
- * tucked into its own header. The navy bar is the one the rest of the game
- * uses, and it earns its height by being outside the scroller — a control you
- * can lose by reading too far is the complaint the whole of Sticky.tsx exists
- * to answer.
+ * back on a bar with a bordered ← BACK, the player card on a bare chevron
+ * tucked into its own header. Whichever it is, it earns its height by being
+ * outside the scroller — a control you can lose by reading too far is the
+ * complaint the whole of Sticky.tsx exists to answer.
  *
- * Bottom sheets dismiss with CLOSE on their clay bar instead, and that is a
+ * An arrow in a square rather than the word, which is the proposal's overlay
+ * header and is safe here for a reason worth stating: the bar carries exactly
+ * one control, so there is nothing for a bare glyph to be confused with. It
+ * carries an `aria-label` because a screen reader has no such luxury.
+ *
+ * No title on it yet. The proposal's version prints an eyebrow and the name of
+ * whatever you opened, and every screen behind this bar already prints its own
+ * through `FixedHeader` — so adding one here today buys a duplicate. It belongs
+ * with the overlay rework in phase five, where the screen's own header is the
+ * thing that goes.
+ *
+ * Bottom sheets dismiss with CLOSE on their own bar instead, and that is a
  * different pattern for a different thing: a sheet sits on top of a screen you
  * can still see, while these replace it.
  */
@@ -970,18 +842,19 @@ function BackBar({ onBack }: { onBack: () => void }) {
   return (
     <div style={{
       flex: 'none', padding: '10px 14px',
-      paddingTop: 'calc(env(safe-area-inset-top) + 10px)',
-      background: 'var(--navy)', borderBottom: '3px solid var(--clay)',
+      paddingTop: 'calc(env(safe-area-inset-top) + 12px)',
+      background: 'var(--paper)', borderBottom: '1px solid var(--line)',
     }}>
       <button
         onClick={onBack}
+        aria-label="Back"
         className="tap"
         style={{
-          padding: '11px 18px', background: 'rgba(var(--cream-rgb), .14)',
-          border: '1px solid rgba(var(--cream-rgb), .32)',
-          color: 'var(--cream)', font: "700 calc(12px * var(--ts)) var(--mono)", letterSpacing: '.14em',
+          width: 42, height: 42, display: 'grid', placeItems: 'center',
+          border: '1px solid var(--line)', background: 'var(--paper)',
+          color: 'var(--clay)',
         }}
-      >← BACK</button>
+      ><ArrowLeftIcon width={17} height={17} /></button>
     </div>
   );
 }
@@ -1010,8 +883,8 @@ function CoachMenuButton() {
         display: 'block', width: '100%', textAlign: 'left',
         padding: '12px 16px', minHeight: 40,
         background: 'transparent',
-        borderBottom: last ? 'none' : '1px solid rgba(var(--cream-rgb), .14)',
-        color: 'var(--cream)', font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.14em',
+        borderBottom: last ? 'none' : '1px solid var(--line)',
+        color: 'var(--ink)', font: "700 calc(11px * var(--ts)) var(--body)", letterSpacing: '.04em',
       }}
     >{label}</button>
   );
@@ -1027,8 +900,8 @@ function CoachMenuButton() {
         style={{
           width: 40, height: 40, minWidth: 40, padding: 0,
           borderRadius: '50%', overflow: 'hidden',
-          border: `2px solid ${open ? 'var(--cream)' : 'rgba(var(--cream-rgb), .4)'}`,
-          background: 'var(--paper)',
+          border: `2px solid ${open ? 'var(--clay)' : 'var(--line)'}`,
+          background: 'var(--field)',
           display: 'grid', placeItems: 'center',
         }}
       >
@@ -1046,16 +919,16 @@ function CoachMenuButton() {
             style={{
               position: 'absolute', top: 46, right: 0, zIndex: 45,
               minWidth: 168,
-              background: 'var(--navy)',
-              border: '1px solid rgba(var(--cream-rgb), .28)',
-              boxShadow: '0 12px 34px rgba(0,0,0,.4)',
+              background: 'var(--paper)',
+              border: '1px solid var(--line)',
+              boxShadow: '0 12px 34px rgba(var(--ink-rgb), .18)',
             }}
           >
-            {item('COACH PROFILE', () => { setProgramSheet('coach'); openOverlay('program'); })}
+            {item('Coach profile', () => { setProgramSheet('coach'); openOverlay('program'); })}
             {/* Saves used to sit here as a peer. It moved inside settings: one
                 place for everything about you and the app, which also stops the
                 menu growing a row every time a preference is added. */}
-            {item('SETTINGS', () => openOverlay('settings'), true)}
+            {item('Settings', () => openOverlay('settings'), true)}
           </div>
         </>
       )}
