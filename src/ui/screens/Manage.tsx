@@ -340,42 +340,18 @@ export function Manage() {
       <FirstVisit id="manage" />
 
       {/*
-        The proposal's game header: a way back to the desk, the state of the
-        game, and the book.
+        No header bar.
 
-        There is deliberately no ball-strike count. This game is managed a plate
-        appearance at a time rather than a pitch at a time, so at the moment you
-        are asked for a call the count is always nothing-and-nothing; a count
-        only exists *inside* a resolved at bat, which is why the log prints one.
-        Drawing "B 0 S 0" on every decision would be furniture that never
-        changes.
+        Reported with the screen marked up: the bar across the top, the way back
+        to the desk and the box toggle all crossed out, with "you can barely see
+        the park, you can remove the upper bar". It was ninety pixels spent on a
+        score the linescore already prints and two controls that both have homes
+        elsewhere — the desk is a manager tool, and the box is the strip
+        underneath, which is always open now.
+
+        What the bar carried that nothing else did is the inning and the count
+        of outs, and those ride on the linescore instead.
       */}
-      <header>
-        {/*
-          The way out without ending anything, and it writes on the way.
-          Reported from testing: "going back to the desk from the minigame
-          should save the progress as it is at the moment we exit." What it can
-          honestly save is the dynasty — the season, the roster, the calendar —
-          because a half-played game is a running coroutine and there is nothing
-          serialisable to write. So the game keeps in memory and PLAY BALL
-          resumes it. June does not get this door: its frame is the bracket, and
-          mid-bracket saving is restricted to stage boundaries on purpose.
-        */}
-        {bracket === null ? (
-          <button type="button" onClick={() => { void saveNow(); go('home'); }}>
-            <ArrowLeftIcon />Desk
-          </button>
-        ) : <span />}
-        <div>
-          <small>{inning}{d ? ` · ${outs} OUT` : ''}</small>
-          <strong>
-            {away?.def.abbr ?? 'AWY'} <b>{awayRuns}</b>
-            <span>{home?.def.abbr ?? 'HOM'} <b>{homeRuns}</b></span>
-          </strong>
-        </div>
-        <button type="button" onClick={() => setBook((v) => !v)}>Box</button>
-      </header>
-
       {/*
         The linescore. The proposal folds it away, having no extra innings to
         worry about; it was reported here that it should sit on the bar with
@@ -386,9 +362,12 @@ export function Manage() {
         scroll inside their own container while the abbreviations and the totals
         hold still, which is what makes a fourteen-inning game fit a phone.
       */}
-      {book && (
-        <div className="live-linescore">
-          <LineScore
+      <div className="live-linescore">
+        <div className="live-state">
+          <span>{inning}</span>
+          {d && <span>{outs} OUT</span>}
+        </div>
+        <LineScore
             tone="navy"
             innings={innCols}
             rows={[
@@ -402,10 +381,9 @@ export function Manage() {
                 r: homeRuns, h: r.home.hits, e: r.home.errors,
                 batting: d?.half === 'bottom',
               },
-            ]}
-          />
-        </div>
-      )}
+          ]}
+        />
+      </div>
 
       <main className="ballpark-game">
         {/*
@@ -508,11 +486,17 @@ export function Manage() {
 
         {d ? (
           <section className="ballpark-call">
-            <div>
-              <small>YOUR CALL</small>
-              <strong>{d.side === 'offense' ? 'Batting' : 'In the field'}</strong>
-              <span>{baseState(d.bases, d.outs)}. {d.batter.name} is up.</span>
-            </div>
+            {/*
+              One line, not four.
+
+              Reported: "instead of all that text in the stripe in the field,
+              simply have your call and that's it. That way everything can fit."
+              Which is right — the situation was already written across the
+              corner of the field, the batter's name was already the biggest
+              thing on the matchup card, and repeating both above the buttons
+              cost the buttons the room to be on screen.
+            */}
+            <div><small>YOUR CALL</small></div>
             <div>
               {d.options.map((o) => {
                 // Off while the play is on the field, and off because the
@@ -548,28 +532,14 @@ export function Manage() {
         )}
 
         {/*
-          The two things that are about the match rather than the roster.
+          No pace row.
 
-          Everything managerial — the bench, the pen, the mound, and handing the
-          dugout to the bench coach — is behind the round button now. What is
-          left on the screen is the pitch you are about to see and the way out of
-          the game entirely.
+          Reported: "you can also remove the manager tools and next pitch
+          buttons, these are already in the action button or the controls." They
+          were — the tools are the round button, and the next pitch is whichever
+          call you tap. Two buttons that only duplicated things one thumb-width
+          away, holding the bottom of a screen that had none to spare.
         */}
-        {d && (
-          <div className="ballpark-pace">
-            <button type="button" disabled={playing} onClick={() => setTools(true)}>
-              <MixerHorizontalIcon />Manager tools
-            </button>
-            <button
-              type="button"
-              disabled={playing || auto !== null}
-              onClick={once(() => {
-                const first = d.options.find((o) => o.available);
-                if (first) submitTactic(first.tactic);
-              })}
-            ><PlayIcon />Next pitch</button>
-          </div>
-        )}
       </main>
 
       {/*
@@ -622,6 +592,25 @@ export function Manage() {
                 <small>Hand him the clipboard for good. Keep it for the blowouts.</small>
                 <ChevronRightIcon />
               </button>
+              {/*
+                The way out without ending anything, and it writes on the way.
+                Reported from testing: "going back to the desk from the minigame
+                should save the progress as it is at the moment we exit." What it
+                can honestly save is the dynasty — the season, the roster, the
+                calendar — because a half-played game is a running coroutine and
+                there is nothing serialisable to write. The game keeps in memory
+                and PLAY BALL resumes it.
+
+                June does not get this door: its frame is the bracket, and
+                mid-bracket saving is restricted to stage boundaries on purpose.
+              */}
+              {bracket === null && (
+                <button type="button" onClick={() => { void saveNow(); go('home'); }}>
+                  <strong>Back to the desk</strong>
+                  <small>The game keeps. PLAY BALL picks it up where you left it.</small>
+                  <ChevronRightIcon />
+                </button>
+              )}
               {d.side === 'offense' && (
                 <button
                   type="button"

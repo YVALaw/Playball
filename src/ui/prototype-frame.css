@@ -35,6 +35,10 @@
   position: static;
   inset: auto;
   flex: 1;
+  /* The live game renders inside the frame's <main>, which is not a flex
+     container — so `flex` alone left it as tall as its content and the cream
+     under it showed through the bottom third of the screen. */
+  height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -791,22 +795,49 @@
    point of a control.
    --------------------------------------------------------------------------- */
 
-/* The score, at a glance rather than as a title. */
-.live-game > header {
-  padding-top: calc(env(safe-area-inset-top) + 8px);
-  padding-bottom: 7px;
+/* ---------------------------------------------------------------------------
+   No header bar. The inning and the outs ride on the linescore instead, which
+   was already printing the score the bar was repeating.
+   --------------------------------------------------------------------------- */
+.live-linescore {
+  padding: calc(env(safe-area-inset-top) + 7px) 12px 7px;
+  border-bottom: 1px solid rgba(255, 255, 255, .15);
 }
 
-.live-game > header strong { margin-top: 2px; font-size: calc(13px * var(--ts)); }
-.live-game > header strong b { font-size: calc(17px * var(--ts)); }
-.live-game > header > button { min-height: 32px; }
+.live-state {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  color: #b9d2bf;
+  font-size: calc(8px * var(--ts));
+  font-weight: 800;
+  letter-spacing: .1em;
+}
 
-/* The linescore is the detail; it does not need the header's weight as well. */
-.live-linescore { padding: 5px 12px 7px; }
+/* ---------------------------------------------------------------------------
+   The park, cropped.
 
-/* The field keeps most of what it had — it is the thing being watched — but it
-   stops being the only thing on the screen. */
-.ballpark-scene { min-height: 168px; height: 168px; }
+   Reported: "you can cut a bit from the top of the park as well to gain more
+   space." The renderer draws sky and a stand above the outfield wall, which is
+   the half of the picture that never changes and never matters. It is still
+   drawn — the camera needs the room — and the box it sits in simply starts
+   lower down.
+   --------------------------------------------------------------------------- */
+.ballpark-scene {
+  position: relative;
+  height: 168px;
+  min-height: 0;
+  overflow: hidden;
+  display: block;
+}
+
+/* Forty pixels off the top, which is the sky and the back of the stand. Any
+   more takes home plate with it, and home plate is where the game happens. */
+.ballpark-scene > canvas,
+.ballpark-scene > div:not(.ballpark-situation) {
+  width: 100%;
+  margin-top: -40px;
+}
 
 /* Two men, two lines each. The three stat chips move onto the same row as the
    name rather than under it. */
@@ -816,24 +847,46 @@
 .ballpark-matchup article > div { margin-top: 5px; gap: 4px; flex-wrap: wrap; }
 .ballpark-matchup i { bottom: 5px; }
 
-/* The log is a box, not a growing list. It scrolls inside itself and the calls
-   underneath never move. */
+/* ---------------------------------------------------------------------------
+   The log takes whatever is left, and the calls do not move.
+
+   Reported: "set the log to a fixed size, as things started to be logged it
+   grew and pushed the buttons even further." The fix is not a fixed pixel
+   height — that leaves a third of the screen empty on a tall phone, which is
+   what the first attempt did. It is a column: the field and the two men are
+   fixed rows, the calls are a fixed row at the bottom, and the log is the one
+   flexible row between them. It fills the screen and scrolls inside itself, and
+   the buttons are in the same place on every pitch of every game.
+   --------------------------------------------------------------------------- */
+.ballpark-game {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  /* Nothing in the dugout scrolls except the log. */
+  overflow: hidden;
+}
+
+.ballpark-scene,
+.ballpark-matchup,
+.ballpark-call { flex: none; }
+
 .ballpark-log {
-  height: 104px;
+  flex: 1;
+  height: auto;
+  min-height: 74px;
   max-height: none;
+  overflow-y: auto;
   padding: 9px 12px 8px;
 }
 
 .ballpark-log p { padding: 4px 0; font-size: calc(9px * var(--ts)); }
 
 /* The call is what the screen is for, so it is what is left when everything
-   else has been trimmed. */
-.ballpark-call { padding: 11px 12px 12px; }
-.ballpark-call > div:first-child strong { font-size: calc(22px * var(--ts)); }
-.ballpark-call > div:first-child span { margin-top: 3px; }
-.ballpark-call > div:last-child { margin-top: 8px; }
-.ballpark-call button { min-height: 42px; }
-.ballpark-pace button { min-height: 44px; }
+   else has been trimmed — a label and the buttons under it. */
+.ballpark-call { padding: 9px 12px 12px; }
+.ballpark-call > div:first-child { padding-bottom: 2px; }
+.ballpark-call > div:last-child { margin-top: 7px; }
+.ballpark-call button { min-height: 46px; }
 
 /* ---------------------------------------------------------------------------
    The diamond rail, levelled with the men.
