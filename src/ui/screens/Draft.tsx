@@ -22,6 +22,7 @@ import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { Cross1Icon } from '@radix-ui/react-icons';
 import { ModuleIntro, Segmented } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
+import { InFrame } from '../Overlay.js';
 import { draftChance } from '../../engine/progression.js';
 import type { Departure } from '../../engine/progression.js';
 import {
@@ -327,6 +328,7 @@ function KeepSheet(
   const set = (n: number) => setOffer(Math.max(0, Math.min(left, Math.round(n))));
 
   return (
+    <InFrame>
     <div
       className="sheet-scrim retention-scrim fade-in"
       onClick={onClose}
@@ -490,6 +492,7 @@ function KeepSheet(
         </div>
       </section>
     </div>
+    </InFrame>
   );
 }
 

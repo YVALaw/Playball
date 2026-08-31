@@ -14,6 +14,7 @@
 // in the offseason is still the step you were on when the card closes.
 
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowLeftIcon } from '@radix-ui/react-icons';
 
 export function Overlay(
@@ -46,5 +47,28 @@ export function Overlay(
       <div className="overlay-scroll screen-in">{children}</div>
       {floating}
     </section>
+  );
+}
+
+/**
+ * A scrim rendered into the app frame rather than in place.
+ *
+ * Every sheet and dialog in the game used to mount inside whatever scroller
+ * its screen happened to be — and an absolutely-positioned layer inside an iOS
+ * momentum scroller is a bug factory: the tutorial card rendered below the
+ * fold, the recruiting sheet went on swallowing taps after a long scroll, the
+ * player-actions button trailed a stale white ghost. One door for all of them:
+ * the frame is the phone, and anything that covers the screen covers the frame.
+ *
+ * z-index 60 on the portal wrapper, above every layer the app stacks — the
+ * overlays at 25–30, tutorials at 38, dialogs at 40, the FABs at 45 — because
+ * a sheet is only ever mounted while it is the thing being interacted with.
+ */
+export function InFrame({ children }: { children: ReactNode }) {
+  const host = document.querySelector('.app-frame');
+  if (!host) return null;
+  return createPortal(
+    <div style={{ position: 'absolute', inset: 0, zIndex: 60 }}>{children}</div>,
+    host,
   );
 }

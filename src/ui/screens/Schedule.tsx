@@ -12,6 +12,7 @@ import {
   FieldNote, Metric, MetricStrip, ModuleIntro, SectionHeading,
 } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
+import { InFrame } from '../Overlay.js';
 import { LineScore } from '../LineScore.js';
 import { regularRecord } from '../../engine/season.js';
 import type { BoxScore, BoxLine, SeasonState } from '../../engine/season.js';
@@ -228,6 +229,7 @@ export function BoxScoreSheet(
   );
 
   return (
+    <InFrame>
     <div
       onClick={onClose}
       style={{
@@ -297,5 +299,6 @@ export function BoxScoreSheet(
         </div>
       </div>
     </div>
+    </InFrame>
   );
 }

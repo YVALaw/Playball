@@ -28,6 +28,7 @@ import { overallOf } from '../../engine/ratings.js';
 import type { Pitcher, Player } from '../../engine/types.js';
 import { Avatar } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
+import { InFrame } from '../Overlay.js';
 
 type View = 'rankings' | 'mine' | 'all';
 
@@ -481,6 +482,7 @@ function RecruitSheet({
   const call = verdict(prospect, recruitingSkill);
 
   return (
+    <InFrame>
     <div
       onClick={onClose}
       style={{
@@ -625,6 +627,7 @@ function RecruitSheet({
         </div>
       </div>
     </div>
+    </InFrame>
   );
 }
 
@@ -644,6 +647,7 @@ function WalkOnSheet(
   { man: Player; school: string; abbr: string; onClose: () => void },
 ) {
   return (
+    <InFrame>
     <div
       onClick={onClose}
       style={{
@@ -723,6 +727,7 @@ function WalkOnSheet(
         </div>
       </div>
     </div>
+    </InFrame>
   );
 }
 

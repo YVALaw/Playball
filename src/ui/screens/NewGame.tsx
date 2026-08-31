@@ -61,6 +61,7 @@ import {
 import { useDynasty, careerSeed } from '../../state/store.js';
 import type { DepthMode } from '../../state/depth.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
+import { InFrame } from '../Overlay.js';
 import {
   CoachPortrait, COACH_SKIN, COACH_HAIR, CUT_LABEL, BEARD_LABEL,
 } from '../CoachPortrait.js';
@@ -364,6 +365,7 @@ export function NewGame() {
         </section>
 
         {picked && detail && (
+          <InFrame>
           <div className="modal-scrim" onClick={() => setPicked(null)}>
             <section
               className="career-offer-detail offer-modal"
@@ -443,6 +445,7 @@ export function NewGame() {
               >Look at other jobs</button>
             </section>
           </div>
+          </InFrame>
         )}
       </main>
     </FixedHeader>

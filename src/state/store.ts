@@ -2772,6 +2772,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, year, busy } = get();
     if (!season || busy) return;
     set({ busy: true });
+    // See pendingGame in the reset below: last year's interrupted game cannot
+    // be resumed against next year's season, so the journal dies with the year.
+    clearJournal();
 
     // Every program's finished season goes into its own book before anything
     // resets — ninety six rows, the user's chair included, idempotent by year.
@@ -2953,6 +2956,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         // to whether the player had tapped a card.
         lastReview: null,
         lastWeek: null,
+        /*
+          The resume offer, which does not survive a year.
+
+          Reported: a brand-new season opened with 'GAME IN PROGRESS · YOU LEFT
+          THIS ONE ON THE FIELD'. The offer is written at load from the live
+          journal, and a save reloaded mid-offseason could still be carrying
+          one when the year rolled — nothing on this path cleared it, so it
+          walked into opening day of a season it predates. The journal on disk
+          goes with it: a game from last year is not a game anybody can pick
+          back up.
+        */
+        pendingGame: null,
         furthestPhase: 0,
         // The board has had its say at the review, so a man is not tried twice
         // for the same letter.

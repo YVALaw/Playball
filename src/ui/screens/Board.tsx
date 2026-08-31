@@ -21,6 +21,7 @@
 // a bug.
 
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { boardBudget, useDynasty, useUserTeam } from '../../state/store.js';
 import {
   fit, weeklyPoints, canPursue, inPipeline, reachFloor, byRank,
@@ -999,7 +1000,19 @@ function ProspectSheet({
   const best = points.length ? Math.max(...points) : 0;
   const s = standing(prospect.points[userTeam] ?? 0, best, points.length > 0);
 
-  return (
+  /*
+    Into the frame, not into the scroller.
+
+    The sheet rendered inside the board's momentum scroller, and iOS treats
+    absolutely-positioned layers inside one badly: after a long scroll the
+    scrim could land off-screen or keep swallowing taps it no longer appeared
+    to own — reported as 'the end week button doesn't work after we try to
+    scout one player.' The frame is the phone; a sheet covers the phone.
+  */
+  const host = document.querySelector('.app-frame');
+  if (!host) return null;
+
+  return createPortal(
     <div
       onClick={onClose}
       style={{
@@ -1089,7 +1102,8 @@ function ProspectSheet({
           {tab === 'schools' && <Schools prospect={prospect} userTeam={userTeam} />}
         </div>
       </div>
-    </div>
+    </div>,
+    host,
   );
 }
 

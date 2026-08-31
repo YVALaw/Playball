@@ -13,6 +13,7 @@ import {
 } from '@radix-ui/react-icons';
 import { PlayerName } from '../PlayerName.js';
 import { FirstVisit } from '../Tutorial.js';
+import { InFrame } from '../Overlay.js';
 import { overallOf } from '../../engine/ratings.js';
 import { battingAverage } from '../../engine/season.js';
 import { pct } from '../format.js';
@@ -780,6 +781,7 @@ function Picker(
   },
 ) {
   return (
+    <InFrame>
     <div
       onClick={onClose}
       className="sheet-scrim"
@@ -823,5 +825,6 @@ function Picker(
         ))}
       </div>
     </div>
+    </InFrame>
   );
 }

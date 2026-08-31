@@ -19,6 +19,15 @@ import './ui/prototype-frame.css';
 */
 applyPrefs(readPrefs());
 
+// The store on the console, dev server only. Costs nothing in a build and
+// makes 'drive the season to recruiting and poke the board' a one-liner
+// instead of an afternoon of tapping.
+if ((import.meta as unknown as { env: { DEV: boolean } }).env.DEV) {
+  void import('./state/store.js').then((m) => {
+    (window as unknown as { store: unknown }).store = m.useDynasty;
+  });
+}
+
 createRoot(document.getElementById('root') as HTMLElement).render(
   <StrictMode><App /></StrictMode>,
 );
