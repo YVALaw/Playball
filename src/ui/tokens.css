@@ -155,6 +155,39 @@ html, body, #root {
   }
 }
 
+/* Nothing here is a document, so nothing here is selectable.
+ *
+ * Reported from the phone: holding the age stepper's + to run the number up
+ * selected the plus sign and raised the copy menu over it. That is the browser
+ * being correct about a web page and wrong about this — every repeat-press
+ * control in the app has the same problem waiting in it, and a lineup row you
+ * drag is one slow finger away from highlighting itself instead of moving.
+ *
+ * Global rather than per-control, because the failure is per-control: the only
+ * way to be sure the next stepper, chip or draggable row does not do this is to
+ * turn it off once, at the top, and hand it back where it is genuinely wanted.
+ *
+ * The callout is the second half of the same bug. Suppressing selection alone
+ * still leaves iOS raising Copy/Look Up on a long press over a button, and a
+ * menu the app did not ask for covering the thing being pressed. */
+:root {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Except where typing is the point. The coach's name is the one field in the
+   game you write into, and a name you cannot put the caret back into to fix a
+   letter is a worse field than the one that highlighted its own plus sign. */
+input,
+textarea,
+select,
+[contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
 body {
   background: var(--ink);
   color: var(--ink);
