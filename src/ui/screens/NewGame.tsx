@@ -40,11 +40,11 @@
 // asking a question he has no information to answer. Here he picks a coach; the
 // policies follow from that and stay editable for ever after.
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ArrowLeftIcon, CheckIcon, ChevronRightIcon, Pencil1Icon,
 } from '@radix-ui/react-icons';
-import { FieldNote, ModuleIntro, SectionHeading } from '../components/Kit.js';
+import { ModuleIntro, SectionHeading } from '../components/Kit.js';
 import {
   CONFERENCES, STATES_BY_REGION, type SchoolDef,
 } from '../../data/schools.js';
@@ -77,18 +77,6 @@ const MANDATE_LABEL: Record<Mandate, string> = {
   compete: 'COMPETE',
   contend: 'CONTEND',
   championship: 'WIN IT ALL',
-};
-
-/** How hard the job is, said plainly rather than implied by a star count. */
-const MANDATE_NOTE: Record<Mandate, string> = {
-  develop: 'The most forgiving job on the board. Nobody expects wins yet.',
-  build: 'A proud school with a thin roster. Patience, but not unlimited patience.',
-  compete: 'Middle of the pack. Win more than you lose and you keep the job.',
-  // These sit directly above the checklist, so they say what the checklist says.
-  // "June is the target" survived a change that made reaching June a bonus, and
-  // a note that contradicts the boxes under it is worse than no note.
-  contend: 'Real talent and real expectations. The top of the league, not the middle.',
-  championship: 'The hardest seat here. Win the conference or it is a wasted year.',
 };
 
 /**
@@ -249,17 +237,6 @@ export function NewGame() {
     [world, outcome, seed, answers.length],
   );
 
-  /*
-    Tapping an offer opens its card underneath the list, which on a 360px screen
-    is a card you cannot see. The list has to stay put -- the row you chose
-    keeps its clay rule so the card is plainly *about* it -- so the card comes
-    to you instead.
-  */
-  const detailRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    if (picked) detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [picked]);
-
   if (step === 0) {
     return (
       <Identity
@@ -334,22 +311,15 @@ export function NewGame() {
         </div>
       }
     >
-      <main className="module-workspace">
-        <ModuleIntro
-          kicker="THE OFFERS"
-          title="Programs that called"
-          text="A rookie does not choose from the whole country. These are the doors
-            your profile opened — tap one to read the board's mandate before you sign."
-        />
+      <main className="module-workspace career-workspace">
+        <ModuleIntro kicker="THE OFFERS" title="Programs that called" />
 
         {/*
-          Who you are and what you are worth, above the offers.
-
-          The face and the plan ride along because the four steps behind this
-          one are otherwise invisible from here, and a choice you cannot see
-          from the screen after it is a choice you are entitled to think was
-          not saved. Coach prestige sits at the bottom of the card: it is the
-          number that decided which of these doors opened at all.
+          Who you are and what you are worth, above the offers. The four steps
+          behind this one are otherwise invisible from here, and a choice you
+          cannot see from the screen after it is a choice you are entitled to
+          think was not saved. Coach prestige is the number that decided which
+          of these doors opened at all.
         */}
         <button
           className="career-summary tap"
@@ -394,82 +364,61 @@ export function NewGame() {
         </section>
 
         {picked && detail && (
-          <section className="career-offer-detail" ref={detailRef}>
-            <small>{MANDATE_LABEL[detail.expectation.mandate]} · {confNameOf(picked)}</small>
-            <strong>{picked.school}</strong>
-            <p>{picked.nickname} · {'★'.repeat(detail.stars)}{'☆'.repeat(5 - detail.stars)}
-              {' · roster '}{detail.roster}</p>
+          <div className="modal-scrim" onClick={() => setPicked(null)}>
+            <section
+              className="career-offer-detail offer-modal"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <small>{MANDATE_LABEL[detail.expectation.mandate]} · {confNameOf(picked)}</small>
+              <strong>{picked.school}</strong>
+              <p>
+                {picked.nickname} · {'★'.repeat(detail.stars)}{'☆'.repeat(5 - detail.stars)}
+                {' · roster '}{detail.roster} · {detail.contract} year deal
+              </p>
 
-            {/* Name against roster is the whole story of a job, so it is spelled
-                out rather than left to two numbers side by side. */}
-            {detail.tag && (
-              <>
-                <span>{detail.tag}</span>
-                <p>
-                  {picked.prestige - picked.quality >= 12
-                    ? 'The name is bigger than the team. Expectations will not wait for the roster to catch up.'
-                    : picked.quality - picked.prestige >= 12
-                      ? 'Better than its reputation right now. This roster is a window, and windows close.'
-                      : picked.prestige >= 60
-                        ? 'They have been good for a long time and they intend to stay that way.'
-                        : 'Nothing here yet. Whatever gets built, you build it.'}
-                </p>
-              </>
-            )}
+              {/* Name against roster is the whole story of a job, so it is
+                  spelled out rather than left to two numbers side by side. */}
+              {detail.tag && (
+                <>
+                  <span>{detail.tag}</span>
+                  <p>
+                    {picked.prestige - picked.quality >= 12
+                      ? 'The name is bigger than the team. Expectations will not wait for the roster to catch up.'
+                      : picked.quality - picked.prestige >= 12
+                        ? 'Better than its reputation right now. This roster is a window, and windows close.'
+                        : picked.prestige >= 60
+                          ? 'They have been good for a long time and they intend to stay that way.'
+                          : 'Nothing here yet. Whatever gets built, you build it.'}
+                  </p>
+                </>
+              )}
 
-            {/*
-              What they believe, and why they rang. The block above says what
-              the *job* is; this says what the *place* is — which is the thing
-              the interview was for. Five answers decided which programmes
-              reached, and a desk that never explained itself would have made
-              those five answers invisible.
-            */}
-            {culture && (
-              <>
-                <hr />
-                <small>{culture.name} · {CULTURE_LABEL[culture.edge]}</small>
-                <p>{culture.creed}</p>
-                {record && (
-                  <p>{offerPitch(record, {
-                    leans: outcome.leans, ambition: outcome.ambition,
-                  })}</p>
-                )}
-              </>
-            )}
+              {/*
+                What they believe, and why they rang. The line above says what
+                the *job* is; this says what the *place* is — which is the thing
+                the interview was for. Five answers decided which programmes
+                reached, and a desk that never explained itself would have made
+                those five answers invisible.
+              */}
+              {culture && (
+                <>
+                  <hr />
+                  <small>{culture.name} · {CULTURE_LABEL[culture.edge]}</small>
+                  <p>{culture.creed}</p>
+                  {record && (
+                    <p>{offerPitch(record, {
+                      leans: outcome.leans, ambition: outcome.ambition,
+                    })}</p>
+                  )}
+                </>
+              )}
 
-            <hr />
-            <small>THE MANDATE</small>
-            <p>{detail.expectation.summary}</p>
+              <hr />
+              <small>THE MANDATE</small>
+              <p>{detail.expectation.summary}</p>
+              {rival && <p>Rivalry: {rival.school}, three times a year.</p>}
 
-            {/*
-              What they will actually grade you on, before you sign. The
-              required boxes are the job; the bonuses are what a good year looks
-              like on top of it. Two jobs with the same star rating can be
-              asking for completely different things, and this list is the only
-              place that difference is visible.
-            */}
-            <ul>
-              {detail.expectation.objectives.map((o) => (
-                <li key={o.key}>
-                  <i>{o.required ? '●' : '○'}</i>
-                  <span>{o.label}{!o.required && <em>BONUS</em>}</span>
-                </li>
-              ))}
-            </ul>
-            <p>{MANDATE_NOTE[detail.expectation.mandate]}</p>
-
-            {rival && (
-              <p>Rivalry: {rival.school}. Three games a year, every year.</p>
-            )}
-
-            {detail.open ? (
-              <>
-                <hr />
-                <p>
-                  They are giving you {detail.contract} seasons. Meet the mandate
-                  and they will extend it; run the deal out without convincing
-                  them and they simply will not renew.
-                </p>
+              {detail.open ? (
                 <button
                   className="career-offer-sign tap"
                   type="button"
@@ -480,21 +429,21 @@ export function NewGame() {
                     leans: outcome.leans,
                   })}
                 >SIGN WITH {picked.abbr}</button>
-              </>
-            ) : (
-              <div className="career-offer-gate">
-                <strong>THEY WANT {detail.needs} · YOU ARE {ROOKIE_PRESTIGE}</strong>
-                {detail.gate}
-              </div>
-            )}
-          </section>
-        )}
+              ) : (
+                <div className="career-offer-gate">
+                  <strong>THEY WANT {detail.needs} · YOU ARE {ROOKIE_PRESTIGE}</strong>
+                  {detail.gate}
+                </div>
+              )}
 
-        <FieldNote
-          title="Prestige opens doors"
-          text="Better programs answer once your record gives them a reason to. Nothing
-            signed here is the last job you will be offered."
-        />
+              <button
+                className="career-offer-close tap"
+                type="button"
+                onClick={() => setPicked(null)}
+              >Look at other jobs</button>
+            </section>
+          </div>
+        )}
       </main>
     </FixedHeader>
   );
@@ -542,9 +491,12 @@ function StepHead(
         role="img"
         aria-label={`Step ${n} of ${STEPS}: ${title}`}
       >
+        {/* A number for the step you are on and the ones ahead, a check for
+            every one behind you. Reported from the phone: the rail filled in
+            green but never actually said a step was finished. */}
         {STEP_NAMES.map((name, i) => (
           <span className={i + 1 <= n ? 'active' : ''} key={name}>
-            {i + 1}
+            {i + 1 < n ? <CheckIcon /> : i + 1}
             <b>{name}</b>
           </span>
         ))}
@@ -590,16 +542,10 @@ function Identity(
         label="HOW YOU PLAY"
         onClick={onDone}
         secondary={{ label: 'SOMEBODY ELSE', onClick: onShuffle }}
-        note="None of this changes how a game is played. What comes next does."
       />}
     >
-      <main className="module-workspace">
-        <ModuleIntro
-          kicker="WHO YOU ARE"
-          title="Meet the coach"
-          text="Already filled in. Change what you like, or go straight on. This is
-            the coach card: it sets the story, not the difficulty."
-        />
+      <main className="module-workspace career-workspace">
+        <ModuleIntro kicker="WHO YOU ARE" title="Meet the coach" />
 
         {/*
           The proposal's coach card: the face, the name, the age, in one panel.
@@ -719,13 +665,6 @@ function Identity(
             ))}
           </select>
         </div>
-
-        <FieldNote
-          title={`Coach prestige ${ROOKIE_PRESTIGE}`}
-          text={`${profile.name || 'He'} starts with a regional network in
-            ${profile.homeState}. What you say in the interview shapes which
-            programmes ring first.`}
-        />
       </main>
     </FixedHeader>
   );
@@ -794,17 +733,10 @@ function DepthStep(
       action={<FloatingAction
         label="CONTINUE"
         onClick={onDone}
-        note="You can change this, or take back any single part of it, in settings at any point in your career."
       />}
     >
-      <main className="module-workspace">
-        <ModuleIntro
-          kicker="HOW MUCH REACHES YOU"
-          title="Set your desk"
-          text="Not a difficulty setting. The game simulates all ninety-six programs
-            the same way either way — this only decides how much of it lands on
-            your desk."
-        />
+      <main className="module-workspace career-workspace">
+        <ModuleIntro kicker="HOW MUCH REACHES YOU" title="Set your desk" />
 
         <section className="career-depth-options">
           {cards.map((c) => (
@@ -815,7 +747,7 @@ function DepthStep(
               onClick={() => onChoose(c.id)}
             >
               <strong>{c.title}</strong>
-              <p>{c.line} {c.bullets.join('. ')}.</p>
+              <p>{c.line}</p>
               {c.id === chosen && <CheckIcon />}
             </button>
           ))}
@@ -830,13 +762,6 @@ function DepthStep(
           <span>CAPTAINS</span>
           <span>RECRUITING</span>
         </section>
-
-        <FieldNote
-          title="Neither one is the lesser game"
-          text="Casual hands the routine to your staff; it does not simplify the
-            world, shorten the season, or soften a single opponent. Take any part
-            of it back from the settings screen whenever you like."
-        />
       </main>
     </FixedHeader>
   );
@@ -858,16 +783,10 @@ function PlayStyle(
       action={<FloatingAction
         label="FIND A JOB"
         onClick={onDone}
-        note="Not a lock. Every one of these is five settings you can change on the strategy screen once the season starts."
       />}
     >
-      <main className="module-workspace">
-        <ModuleIntro
-          kicker="THE BENCH YOU RUN"
-          title="Set your plan"
-          text="Pick the bench you want to run. Whoever hires you plays this way from
-            the first pitch, and every setting stays editable after you take the job."
-        />
+      <main className="module-workspace career-workspace">
+        <ModuleIntro kicker="THE BENCH YOU RUN" title="Set your plan" />
 
         <section className="career-plan-list">
           {PHILOSOPHIES.map((p) => (
@@ -999,12 +918,10 @@ function InterviewStep(
         />
       </div>}
     >
-      <main className="module-workspace">
+      <main className="module-workspace career-workspace">
         <ModuleIntro
           kicker={`${questions.length} QUESTIONS · ${i + 1}`}
           title="The interview"
-          text="There is no wrong answer here. What you say changes which programmes
-            want you, not whether any of them do."
         />
 
         {/*
@@ -1046,12 +963,6 @@ function InterviewStep(
             </button>
           ))}
         </section>
-
-        <FieldNote
-          title="Nobody is scoring this"
-          text="The answers decide which desks reach for you and which pass. They do
-            not decide whether anybody calls."
-        />
       </main>
     </FixedHeader>
   );
