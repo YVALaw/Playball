@@ -10,9 +10,13 @@
 // and the one you can still do something about. It is also the bill for stage
 // 9: every man on it is a promise somebody broke, and the card says which.
 
+import { useState } from 'react';
+
 import { useDynasty } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
-import { ModuleIntro } from '../components/Kit.js';
+import { IdCardIcon, ReloadIcon, StarIcon } from '@radix-ui/react-icons';
+import { Avatar } from '../Avatar.js';
+import { FieldNote, ModuleIntro, Segmented } from '../components/Kit.js';
 import { overallOf } from '../../engine/ratings.js';
 import { prestigeStars } from '../../engine/program.js';
 import { windowBudget } from '../../engine/recruiting.js';
@@ -20,6 +24,8 @@ import { mood } from '../../engine/morale.js';
 import type { PortalMan } from '../../engine/portal.js';
 
 export function Portal() {
+  /** Which half of the window you are looking at. */
+  const [view, setView] = useState<'leaving' | 'available'>('leaving');
   const portal = useDynasty((s) => s.portal);
   const season = useDynasty((s) => s.season);
   const userTeam = useDynasty((s) => s.userTeam);
@@ -64,126 +70,150 @@ export function Portal() {
         />
       )}
     >
-      <div style={{ padding: '10px 14px 20px' }}>
-        <div style={{
-          marginBottom: 12,
-          font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-        }}>
-          The same points that sign a class. Keeping a man and taking one both
-          come out of it, and whatever is left goes into recruiting.
+      <main className="module-workspace">
+        {/*
+          The command centre: what the window is, what it costs, and what is
+          left. The proposal opens the portal with it and it is the right
+          opening — the pool is shared with recruiting, and a coach who does not
+          know that spends it all here and wonders why the class is thin.
+        */}
+        <section className="portal-command-center">
+          <div className="portal-command-top">
+            <div>
+              <small>TRANSFER PORTAL · {portal.leaving.length + portal.available.length} NAMES</small>
+              <h1>Transfer room</h1>
+              <p>
+                Keep the promises that matter. The same points sign a class, so
+                whatever is left here goes into recruiting with you.
+              </p>
+            </div>
+            <div className="portal-command-mark">
+              <ReloadIcon />
+              <strong>{portal.leaving.length}</strong>
+              <span>LEAVING YOU</span>
+            </div>
+          </div>
+          <div className="portal-budget-card">
+            <div>
+              <small>POINTS LEFT</small>
+              <strong>{left}</strong>
+              <span>of {budget} for the whole window</span>
+            </div>
+            <div className="portal-budget-meter">
+              <i style={{ width: `${Math.round((left / Math.max(1, budget)) * 100)}%` }} />
+            </div>
+            <small>
+              Keeping a man costs half again what taking one does. That is the
+              price of a promise you did not keep.
+            </small>
+          </div>
+        </section>
+
+        <Segmented
+          label="Portal mode"
+          value={view}
+          onChange={setView}
+          options={[
+            { value: 'leaving', label: `Leaving you ${portal.leaving.length || ''}`.trim() },
+            { value: 'available', label: `Available ${portal.available.length || ''}`.trim() },
+          ]}
+        />
+
+        <div className="portal-mode-heading">
+          <div>
+            <small>{view === 'leaving' ? 'RETENTION BOARD' : 'INCOMING BOARD'}</small>
+            <h2>{view === 'leaving' ? 'Men with a foot out' : 'Men you could have'}</h2>
+          </div>
+          <span>{left} PTS</span>
         </div>
 
-        {/* Yours, first: it is the half with a deadline you can act on. */}
-        <div className="label" style={{ marginBottom: 6 }}>
-          LEAVING YOU · {portal.leaving.length}
-        </div>
-        {portal.leaving.length === 0 ? (
-          <Empty>Nobody has put his name in. That is what keeping your word
-            looks like.</Empty>
+        {(view === 'leaving' ? portal.leaving : portal.available.slice(0, 25)).length === 0 ? (
+          <section className="portal-empty">
+            <StarIcon />
+            <strong>{view === 'leaving' ? 'Nobody has put his name in' : 'Nobody worth having'}</strong>
+            <p>
+              {view === 'leaving'
+                ? 'That is what keeping your word looks like.'
+                : 'The pool is thin this winter. Your points go to the class instead.'}
+            </p>
+          </section>
         ) : (
-          portal.leaving.map((m) => (
-            <Row
-              key={m.player.id}
-              man={m}
-              onOpen={() => openPlayer(m.player.id)}
-              action={{
-                label: `TALK HIM ROUND · ${Math.round(m.cost * 1.5)}`,
-                can: left >= Math.round(m.cost * 1.5),
-                run: () => keepFromPortal(m.player.id, Math.round(m.cost * 1.5)),
-              }}
-              note={m.reason}
-            />
-          ))
+          <section className="portal-board">
+            {(view === 'leaving' ? portal.leaving : portal.available.slice(0, 25)).map((m) => {
+              const p = m.player;
+              const cost = view === 'leaving' ? Math.round(m.cost * 1.5) : m.cost;
+              const can = left >= cost;
+              return (
+                <article className={`portal-candidate ${view === 'leaving' ? 'leaving' : 'incoming'}`} key={p.id}>
+                  <div className="portal-candidate-head">
+                    <button className="portal-player tap" type="button" onClick={() => openPlayer(p.id)}>
+                      <span className="portal-avatar">
+                        <Avatar id={p.id} team={view === 'leaving' ? rec.def.abbr : undefined} size={34} />
+                      </span>
+                      <span>
+                        <strong>{p.name}</strong>
+                        <small>
+                          {p.type === 'pitcher' ? (p as { role: string }).role : p.pos}
+                          {' · '}{p.classYear}
+                          {view === 'leaving' ? ` · ${mood(p)}` : ` · from ${m.fromName}`}
+                        </small>
+                      </span>
+                    </button>
+                    <div className="portal-candidate-grade">
+                      <strong>{overallOf(p)}</strong>
+                      <small>OVERALL</small>
+                    </div>
+                  </div>
+
+                  <div className="portal-candidate-story">
+                    <small>{view === 'leaving' ? 'WHY HE IS GOING' : 'WHY HE IS HERE'}</small>
+                    <p>
+                      {view === 'leaving'
+                        ? m.reason
+                        : `${m.reason} Eligible immediately.`}
+                    </p>
+                  </div>
+
+                  <div className="portal-candidate-meta">
+                    <span>
+                      <small>COST</small>
+                      <b>{cost} pts</b>
+                    </span>
+                    <span>
+                      <small>LEAVES YOU</small>
+                      <b>{Math.max(0, left - cost)}</b>
+                    </span>
+                    <span />
+                  </div>
+
+                  <div className="portal-candidate-actions">
+                    <button type="button" onClick={() => openPlayer(p.id)}>
+                      <IdCardIcon />Card
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!can}
+                      onClick={() => (view === 'leaving'
+                        ? keepFromPortal(p.id, cost)
+                        : takeFromPortal(p.id))}
+                    >
+                      {can
+                        ? (view === 'leaving' ? `Talk him round · ${cost}` : `Sign him · ${cost}`)
+                        : 'Not enough left'}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </section>
         )}
 
-        <div className="label" style={{ margin: '16px 0 6px' }}>
-          AVAILABLE · {portal.available.length}
-        </div>
-        {portal.available.length === 0 ? (
-          <Empty>Nobody worth having is in it this winter.</Empty>
-        ) : (
-          portal.available.slice(0, 25).map((m) => (
-            <Row
-              key={m.player.id}
-              man={m}
-              onOpen={() => openPlayer(m.player.id)}
-              action={{
-                label: `SIGN HIM · ${m.cost}`,
-                can: left >= m.cost,
-                run: () => takeFromPortal(m.player.id),
-              }}
-              note={`From ${m.fromName}. Eligible immediately.`}
-            />
-          ))
-        )}
-      </div>
+        <FieldNote
+          title="The pool is shared"
+          text="Every point spent here is a point the class does not get. Whatever
+            survives the window goes into recruiting with you."
+        />
+      </main>
     </FixedHeader>
-  );
-}
-
-function Empty({ children }: { children: string }) {
-  return (
-    <div style={{
-      padding: '10px 12px', background: 'var(--paper)',
-      font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
-    }}>{children}</div>
-  );
-}
-
-function Row(
-  { man, onOpen, action, note }:
-  {
-    man: PortalMan;
-    onOpen: () => void;
-    action: { label: string; can: boolean; run: () => void };
-    note: string;
-  },
-) {
-  const p = man.player;
-  return (
-    <div style={{
-      marginBottom: 6, background: 'var(--paper)',
-      border: '1px solid rgba(var(--ink-rgb), .26)',
-    }}>
-      <button
-        className="tap"
-        onClick={onOpen}
-        style={{
-          width: '100%', textAlign: 'left', padding: '9px 11px',
-          background: 'none', border: 'none',
-        }}
-      >
-        <div style={{
-          display: 'flex', alignItems: 'baseline', gap: 8,
-        }}>
-          <span style={{
-            flex: 1, font: "700 calc(13px * var(--ts)) var(--display)",
-            textTransform: 'uppercase',
-          }}>{p.name}</span>
-          <span style={{
-            flex: 'none', font: "700 calc(11px * var(--ts)) var(--mono)",
-          }}>{overallOf(p)}</span>
-        </div>
-        <div style={{
-          marginTop: 2,
-          font: "400 calc(10.5px * var(--ts))/1.4 var(--body)", color: 'var(--dim)',
-        }}>
-          {p.type === 'pitcher' ? (p as { role: string }).role : p.pos} · {p.classYear}
-          {' · '}{mood(p)} · {note}
-        </div>
-      </button>
-      <button
-        className="tap"
-        disabled={!action.can}
-        onClick={action.run}
-        style={{
-          width: '100%', padding: '8px 11px', minHeight: 38,
-          background: action.can ? 'var(--field)' : 'transparent',
-          border: 'none', borderTop: '1px solid var(--faint)',
-          color: action.can ? 'var(--ink)' : 'var(--dim)',
-          font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.11em',
-        }}
-      >{action.can ? action.label : 'NOT ENOUGH LEFT'}</button>
-    </div>
   );
 }

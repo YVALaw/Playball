@@ -188,13 +188,31 @@
    does. The wash stays: it is what keeps a light jersey from swallowing the
    name written across it.
    --------------------------------------------------------------------------- */
+/*
+   Reported: "the avatar picture could be a bit smaller also it is barely
+   visible because it is blending too much with the green square."
+
+   Both halves were true and they had one cause. The portrait was two hundred
+   pixels tall on a dark green ground, and Avatar draws its jersey in the
+   program's own colour — which for a green-and-white school is very nearly the
+   hero. So it is smaller, it sits to the right of the name rather than behind
+   it, and it stands on a lighter panel of its own so the man is a figure on a
+   ground rather than a shape in a fog.
+*/
 .player-hero-face {
   position: absolute;
-  left: 50%;
-  bottom: -18px;
-  transform: translateX(-50%);
+  right: 8px;
+  bottom: -10px;
   display: grid;
   place-items: end center;
+  padding: 0 10px;
+  border-radius: 50% 50% 0 0;
+  background: radial-gradient(
+    120% 90% at 50% 100%,
+    rgba(255, 255, 255, .17) 0%,
+    rgba(255, 255, 255, .06) 55%,
+    rgba(255, 255, 255, 0) 100%
+  );
 }
 
 /* No circle in the hero. Avatar draws itself on a tinted disc, which is right
@@ -211,16 +229,19 @@
   background: transparent;
 }
 
-/* The wash is a gradient rather than a flat film: flat, it dulled the whole
-   portrait to get contrast under the name it only needed at the bottom. */
+/* The wash is a gradient and it runs sideways as well as down: the name sits
+   bottom left and the portrait bottom right, so what the name needs behind it is
+   a darker left half rather than a duller everything. */
+.player-hero { height: 218px; }
+
 .player-hero .hero-wash {
-  background: linear-gradient(
-    to bottom,
-    rgba(7, 31, 21, 0) 34%,
-    rgba(7, 31, 21, .58) 70%,
-    rgba(7, 31, 21, .82) 100%
-  );
+  background:
+    linear-gradient(to right, rgba(7, 31, 21, .72) 0%, rgba(7, 31, 21, 0) 62%),
+    linear-gradient(to bottom, rgba(7, 31, 21, 0) 46%, rgba(7, 31, 21, .55) 100%);
 }
+
+.player-hero .player-identity h2 { font-size: calc(36px * var(--ts)); }
+.player-hero .player-identity { max-width: 62%; }
 
 /* Potential, under the overall, for your own men only. */
 .player-hero .player-pot { top: 68px; }
@@ -967,3 +988,103 @@
 }
 
 .captain-pick:disabled { background: var(--soft); color: var(--dim); }
+
+/* ---------------------------------------------------------------------------
+   The award list.
+
+   The wash of the winner's own school stays — reported twice, once as "it's not
+   the name letters that should be colored, it's the box they are in", and again
+   on the port as "I like the coloring in each winner so keep that part". What
+   changed is only the anatomy around it: a mark on the left, the honour over the
+   name, the line under it.
+   --------------------------------------------------------------------------- */
+.award-list {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.award-list > button,
+.award-list > div {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 14px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 60px;
+  padding: 9px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-left: 6px solid transparent;
+  color: var(--ink);
+  text-align: left;
+}
+
+.award-list > *:last-child { border-bottom: 0; }
+
+/* The strongest the colour can be said, on the one element carrying no long
+   text. */
+.award-mark {
+  display: grid;
+  place-items: center;
+  min-height: 26px;
+  padding: 4px 5px;
+  color: #fff;
+  font: 800 calc(9px * var(--ts))/1 var(--body);
+  letter-spacing: .04em;
+}
+
+.award-list small {
+  display: block;
+  color: rgba(var(--ink-rgb), .62);
+  font-size: calc(7.5px * var(--ts));
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.award-list strong {
+  display: block;
+  margin-top: 3px;
+  font: 800 calc(17px * var(--ts))/1 var(--display);
+}
+
+.award-list p {
+  margin: 3px 0 0;
+  color: rgba(var(--ink-rgb), .68);
+  font-size: calc(8.5px * var(--ts));
+}
+
+.award-list svg { color: rgba(var(--ink-rgb), .5); }
+
+/* The feature card carries two paragraphs: the headline stat and the story. */
+.award-feature p + p { margin-top: 7px; }
+
+/* The portal's own player row, which the proposal has and did not name. */
+.portal-player {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+
+.portal-player strong { display: block; font-size: calc(11px * var(--ts)); }
+.portal-player small { display: block; margin-top: 3px; color: var(--dim); font-size: calc(8px * var(--ts)); }
+.portal-avatar { display: block; }
+.portal-avatar .avatar { border-radius: 50%; }
+
+/* The budget meter under the points. */
+.portal-budget-meter {
+  height: 6px;
+  margin-top: 9px;
+  background: rgba(255, 255, 255, .2);
+}
+
+.portal-budget-meter i { display: block; height: 100%; background: var(--yellow); }
+
+.portal-candidate-actions button:disabled { background: #eef0eb; color: var(--dim); }

@@ -9,7 +9,6 @@
 
 import { useState, type ReactNode } from 'react';
 import { FixedHeader } from '../Sticky.js';
-import { ArrowLeftIcon } from '@radix-ui/react-icons';
 import { ModuleIntro, SectionHeading, Segmented } from '../components/Kit.js';
 import { useDynasty, type SettingsPage } from '../../state/store.js';
 import {
@@ -338,11 +337,10 @@ function Frame(
     <FixedHeader
       header={
         <>
-          {onBack && (
-            <button className="back-link tap" type="button" onClick={onBack}>
-              <ArrowLeftIcon /> Settings
-            </button>
-          )}
+          {/* No back control of its own. This screen only ever renders inside
+              the overlay, and that bar already steps a settings page back to the
+              index before it closes anything — reported as two back buttons,
+              which is what they were. */}
           <ModuleIntro kicker={kicker} title={title} />
         </>
       }

@@ -19,7 +19,7 @@
 // leadership badges is not on the list — those are the room's rules, not the
 // screen's, and `appoint` enforces them whatever this page renders.
 
-import { ArrowLeftIcon, StarIcon } from '@radix-ui/react-icons';
+import { StarIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Avatar } from '../Avatar.js';
 import { BADGES, badgesOf } from '../../engine/badges.js';
@@ -59,7 +59,6 @@ export function Captain() {
   const nameCaptain = useDynasty((s) => s.nameCaptain);
   const clearCaptain = useDynasty((s) => s.clearCaptain);
   const openPlayer = useDynasty((s) => s.openPlayer);
-  const closeOverlay = useDynasty((s) => s.closeOverlay);
   void version;
 
   if (!team) return null;
@@ -70,10 +69,6 @@ export function Captain() {
 
   return (
     <main className="module-workspace">
-      <button className="back-link tap" type="button" onClick={closeOverlay}>
-        <ArrowLeftIcon /> The roster
-      </button>
-
       <ModuleIntro
         kicker="THE ROOM"
         title={current ? `${current.name} wears the C` : 'Nobody wears the C'}

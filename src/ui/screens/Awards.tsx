@@ -6,7 +6,10 @@
 
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
-import { ModuleIntro } from '../components/Kit.js';
+import { ChevronRightIcon, StarIcon } from '@radix-ui/react-icons';
+import {
+  FieldNote, Metric, MetricStrip, ModuleIntro, SectionHeading,
+} from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
 import { teamColour } from '../Avatar.js';
 import { seasonComplete } from '../../engine/season.js';
@@ -62,15 +65,27 @@ export function Awards() {
 
   return (
     <FixedHeader
-      header={
-        <ModuleIntro kicker={`${year} HONOURS`} title="Awards" />
-      }
+      header={<ModuleIntro kicker={`${year} HONOURS`} title="Awards night" />}
       action={phase !== null && (
         <FloatingAction label="SEASON REVIEW" onClick={() => void nextPhase('awards')} />
       )}
     >
     <FirstVisit id="awards" />
-    <div style={{ padding: '10px 14px 16px' }}>
+    <main className="module-workspace">
+      <MetricStrip>
+        <Metric
+          label="YOUR PROGRAM"
+          value={String(awards.filter((a) => a.team === team.def.abbr).length
+            + (coach?.team === team.index ? 1 : 0))}
+          note="HONOURS"
+        />
+        <Metric
+          label="FIRST TEAM"
+          value={String(first.filter((p) => p.team === team.def.abbr).length)}
+          note={`OF ${first.length}`}
+        />
+        <Metric label="AWARDS" value={String(awards.length)} note="HANDED OUT" />
+      </MetricStrip>
 
       {/*
         Coach of the Year, which is not the most wins — that award always goes
@@ -84,144 +99,83 @@ export function Awards() {
         itself; the card just renders it.
       */}
       {coach && (
-        <div style={{
-          marginTop: 12,
-          border: `1px solid ${coach.team === team.index ? 'var(--clay)' : 'var(--faint)'}`,
-          background: 'var(--paper)',
-        }}>
-          <div style={{ padding: '6px 10px', background: 'var(--clay)' }}>
-            <span style={{
-              font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
-            }}>COACH OF THE YEAR</span>
-          </div>
-          <div style={{ padding: '10px 12px 12px' }}>
-            <div style={{
-              font: "800 calc(20px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
-              color: coach.team === team.index ? 'var(--clay)' : 'var(--ink)',
-            }}>{coach.team === team.index ? `${coachName} · ${coach.school}` : coach.school}</div>
-            <div style={{
-              marginTop: 5, font: "400 calc(11.5px * var(--ts)) var(--mono)", color: 'var(--dim)',
-            }}>
-              {coach.wins}-{coach.losses} · {coach.line}
-            </div>
-            <div style={{
-              marginTop: 7, font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-            }}>
-              {COACH_BODY[coach.reason]}
-            </div>
-          </div>
-        </div>
+        <section className="award-feature">
+          <StarIcon />
+          <small>COACH OF THE YEAR</small>
+          <h2>{coach.team === team.index ? coachName : coach.school}</h2>
+          <p>
+            {coach.team === team.index ? `${coach.school} · ` : ''}
+            {coach.wins}-{coach.losses} · {coach.line}
+          </p>
+          <p>{COACH_BODY[coach.reason]}</p>
+        </section>
       )}
 
-      {awards.map((a) => {
-        const tint = teamColour(a.team);
-        return (
-          <div key={a.title} style={{
-            marginTop: 12, border: '1px solid var(--faint)', background: 'var(--paper)',
-            borderLeft: `6px solid ${tint}`,
-          }}>
-            <div style={{ padding: '6px 10px', background: 'var(--clay)' }}>
-              <span style={{
-                font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
-              }}>{a.title.toUpperCase()}</span>
-            </div>
-            {/* A button only when there is a man to open. The record book
-                settled this exact case with a div — "a tap that opens nothing
-                is worse than no tap at all" — and a winner with no id was a
-                button that silently swallowed the press. */}
-            {(() => {
-              const body = (
-                <>
-                  <div style={{
-                    font: "800 calc(20px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
-                    color: 'var(--ink)',
-                  }}>{a.name}</div>
-                  <div style={{
-                    marginTop: 6, font: "400 calc(11px * var(--ts)) var(--mono)",
-                    color: 'rgba(var(--ink-rgb), .68)',
-                    display: 'flex', alignItems: 'center', gap: 7,
-                  }}>
-                    <span style={{
-                      padding: '3px 7px', background: tint, color: 'var(--cream)',
-                      font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.06em',
-                    }}>{a.team}</span>
-                    {a.line}
-                  </div>
-                </>
-              );
-              // The winner's box washed in his school's colour, the same rule
-              // the first team below follows: the box carries the school, the
-              // letters stay ink.
-              const box = {
-                width: '100%', textAlign: 'left' as const,
-                padding: '10px 12px 12px', background: `${tint}4d`,
-              };
-              return a.id
-                ? <button onClick={() => openPlayer(a.id!)} style={box}>{body}</button>
-                : <div style={box}>{body}</div>;
-            })()}
-          </div>
-        );
-      })}
+      {/*
+        Each winner wears his school — the BOX, not the letters. Reported from
+        testing: "it's not the name letters that should be colored, it's the box
+        they are in", and confirmed again on the port: "I like the coloring in
+        each winner so keep that part." So the colour stays exactly where it was
+        and only the anatomy around it changed.
+      */}
+      <SectionHeading kicker="THE WINNERS" title="Who took what" />
+      <section className="award-list">
+        {awards.map((a) => {
+          const tint = teamColour(a.team);
+          const body = (
+            <>
+              <span className="award-mark" style={{ background: tint }}>{a.team}</span>
+              <span>
+                <small>{a.title.toUpperCase()}</small>
+                <strong>{a.name}</strong>
+                <p>{a.line}</p>
+              </span>
+              {a.id && <ChevronRightIcon />}
+            </>
+          );
+          const tone = { background: `${tint}33`, borderLeftColor: tint };
+          // A button only when there is a man to open. The record book settled
+          // this exact case with a div — "a tap that opens nothing is worse than
+          // no tap at all" — and a winner with no id was a button that silently
+          // swallowed the press.
+          return a.id
+            ? (
+              <button key={a.title} type="button" style={tone} onClick={() => openPlayer(a.id!)}>
+                {body}
+              </button>
+            )
+            : <div key={a.title} style={tone}>{body}</div>;
+        })}
+      </section>
 
-      <div style={{
-        marginTop: 22, borderBottom: '2px solid var(--ink)', paddingBottom: 6,
-      }}>
-        <div className="label">ALL-CONFERENCE FIRST TEAM</div>
-      </div>
-
-      <div style={{
-        marginTop: 8, border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
-        {/*
-          Each row wears its school — the BOX, not the letters. A wash of the
-          program's own colour behind the row and a solid stripe down its edge,
-          with the name kept in ink so it stays legible over every shade of
-          ninety-six school palettes. Reported from testing: "it's not the name
-          letters that should be colored, it's the box they are in."
-        */}
+      <SectionHeading kicker="ALL-CONFERENCE" title="The first team" />
+      <section className="award-list">
         {first.map((p, i) => {
-          const ours = p.team === team.def.abbr;
           const tint = teamColour(p.team);
           return (
             <button
               key={`${p.position}-${p.id}-${i}`}
+              type="button"
+              style={{ background: `${tint}33`, borderLeftColor: tint }}
               onClick={() => openPlayer(p.id)}
-              style={{
-                width: '100%', textAlign: 'left',
-                display: 'grid', gridTemplateColumns: '26px 1fr auto',
-                gap: 8, alignItems: 'center',
-                padding: '8px 10px', borderBottom: '1px solid var(--hairline)',
-                // A wide solid edge and a real wash. The first version ran the
-                // colour at 14% and it was invisible at arm's length; this is
-                // 30%, which is as far as it can go with ink on top of it.
-                borderLeft: `6px solid ${tint}`,
-                background: `${tint}4d`,
-              }}>
-              <span style={{
-                font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-                color: 'rgba(var(--ink-rgb), .62)',
-              }}>{p.position}</span>
-              <div style={{ minWidth: 0 }}>
-                <div style={{
-                  font: `${ours ? 800 : 700} calc(13px * var(--ts)) var(--body)`, color: 'var(--ink)',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>{p.name}</div>
-                <div style={{
-                  font: "400 calc(10px * var(--ts)) var(--mono)", color: 'rgba(var(--ink-rgb), .68)',
-                }}>{p.line}</div>
-              </div>
-              {/* The school as a solid chip: the strongest the colour can be
-                  said, on the one element that carries no long text. */}
-              <span style={{
-                padding: '3px 7px', background: tint, color: 'var(--cream)',
-                font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.06em',
-              }}>{p.team}</span>
+            >
+              <span className="award-mark" style={{ background: tint }}>{p.position}</span>
+              <span>
+                <small>{p.team}</small>
+                <strong>{p.name}</strong>
+                <p>{p.line}</p>
+              </span>
+              <ChevronRightIcon />
             </button>
           );
         })}
-      </div>
-    </div>
+      </section>
+
+      <FieldNote
+        title="The room is not over"
+        text="Season review is next. Tap any winner or first-team man to read his card before you move on."
+      />
+    </main>
     </FixedHeader>
   );
 }

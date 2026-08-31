@@ -15,6 +15,7 @@ import { useEffect, useMemo } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { badgeOf } from '../../data/badges.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
+import { StarIcon } from '@radix-ui/react-icons';
 import { ModuleIntro } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
 import { Avatar } from '../Avatar.js';
@@ -137,7 +138,7 @@ export function SeasonReview() {
       action={<FloatingAction label="CONTINUE" onClick={() => void next('review')} />}
     >
     <FirstVisit id="review" />
-    <div style={{ padding: '3px 14px 24px' }}>
+    <main className="module-workspace">
       {/*
         What the year made you, said once.
 
@@ -151,28 +152,16 @@ export function SeasonReview() {
         difference between a coach and a checklist.
       */}
       {earned.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
+        <>
           {earned.map((b) => (
-            <div key={b.id} className="rise-in" style={{
-              padding: '11px 12px 12px', marginBottom: 6,
-              background: 'var(--paper)',
-              border: '1px solid var(--clay)', borderLeft: '5px solid var(--clay)',
-            }}>
-              <div className="label" style={{ color: 'var(--clay)' }}>
-                THEY HAVE STARTED SAYING
-              </div>
-              <div style={{
-                marginTop: 4,
-                font: "800 calc(19px * var(--ts))/1.05 var(--display)",
-                textTransform: 'uppercase',
-              }}>{b.name}</div>
-              <div style={{
-                marginTop: 4,
-                font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-              }}>{b.line}</div>
-            </div>
+            <section className="award-feature rise-in" key={b.id}>
+              <StarIcon />
+              <small>THEY HAVE STARTED SAYING</small>
+              <h2>{b.name}</h2>
+              <p>{b.line}</p>
+            </section>
           ))}
-        </div>
+        </>
       )}
       {/*
         The banner, and only when the season earned one.
@@ -183,23 +172,11 @@ export function SeasonReview() {
         it is the answer to the only question the screen exists to answer.
       */}
       {banner && (
-        <div className="rise-in" style={{
-          marginTop: 13, padding: '16px 14px', background: 'var(--ink)',
-          textAlign: 'center',
-        }}>
-          <div style={{
-            font: "600 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.2em',
-            color: 'rgba(var(--cream-rgb), .6)',
-          }}>FINISHED</div>
-          <div style={{
-            font: "800 calc(34px * var(--ts))/1 var(--display)", marginTop: 6,
-            color: 'var(--cream)', textTransform: 'uppercase',
-          }}>{banner.title}</div>
-          <div style={{
-            marginTop: 7, font: "400 calc(12px * var(--ts))/1.5 var(--body)",
-            color: 'rgba(var(--cream-rgb), .68)',
-          }}>{banner.note}</div>
-        </div>
+        <section className="season-verdict rise-in">
+          <small>FINISHED</small>
+          <strong>{banner.title}</strong>
+          <p>{banner.note}</p>
+        </section>
       )}
 
       <div style={{
@@ -293,7 +270,7 @@ export function SeasonReview() {
           </div>
         </>
       )}
-    </div>
+    </main>
     </FixedHeader>
   );
 }
