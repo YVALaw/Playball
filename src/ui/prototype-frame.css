@@ -1894,3 +1894,10 @@
 .simulation-row button:disabled {
   opacity: .42;
 }
+
+/* The field note owns its ink. Its title had no colour of its own, so a note
+   mounted inside the dark action popover inherited the panel's white onto its
+   own light wash — "you still did white on white." Every part of the note now
+   states its colour instead of trusting whatever panel it lands in. */
+.field-note { color: var(--ink); }
+.field-note strong { color: var(--ink); }
