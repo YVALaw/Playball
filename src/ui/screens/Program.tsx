@@ -176,26 +176,16 @@ function TabStrip(
   { at: Sheet; onGo: (s: Sheet) => void; waiting: boolean },
 ) {
   return (
-    <div style={{ display: 'flex', gap: 4, padding: '10px 14px' }}>
-      {SHEETS.map((s) => (
-        <button
-          key={s}
-          onClick={() => onGo(s)}
-          style={{
-            flex: 1, padding: '8px 0',
-            background: s === at ? 'var(--ink)' : 'var(--field)',
-            border: s === at ? '1px solid var(--ink)' : '1px solid var(--faint)',
-            color: s === at ? 'var(--cream)' : 'var(--dim)',
-            font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-          }}
-        >
-          {SHEET_LABEL[s]}
-          {s === 'board' && waiting && s !== at && (
-            <span style={{ color: 'var(--clay)' }}> ●</span>
-          )}
-        </button>
-      ))}
-    </div>
+    <Segmented
+      label="Program view"
+      value={at}
+      onChange={onGo}
+      options={SHEETS.map((s) => ({
+        value: s,
+        // The board is talking to you and you are one tab away from hearing it.
+        label: `${SHEET_LABEL[s].charAt(0)}${SHEET_LABEL[s].slice(1).toLowerCase()}${s === 'board' && waiting ? ' ·' : ''}`,
+      }))}
+    />
   );
 }
 

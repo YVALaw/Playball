@@ -19,7 +19,7 @@
 import { useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
-import { ModuleIntro } from '../components/Kit.js';
+import { ModuleIntro, Segmented } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
 import { draftChance } from '../../engine/progression.js';
 import type { Departure } from '../../engine/progression.js';
@@ -111,21 +111,15 @@ export function Draft() {
         <Tile k="BUDGET LEFT" v={String(left)} last />
       </div>
 
-      <div style={{ display: 'flex', gap: 4, marginTop: 12 }}>
-        {(['keep', 'departing', 'board', 'undrafted'] as View[]).map((v) => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            style={{
-              flex: 1, padding: '8px 0',
-              background: v === view ? 'var(--clay)' : 'var(--paper)',
-              border: v === view ? '1px solid var(--clay)' : '1px solid rgba(var(--ink-rgb), .28)',
-              color: v === view ? 'var(--cream)' : 'var(--ink)',
-              font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.06em',
-            }}
-          >{VIEW_LABEL[v]}{v === 'keep' && pending > 0 ? ` ${pending}` : ''}</button>
-        ))}
-      </div>
+      <Segmented
+        label="Draft section"
+        value={view}
+        onChange={setView}
+        options={(['keep', 'departing', 'board', 'undrafted'] as View[]).map((v) => ({
+          value: v,
+          label: `${VIEW_LABEL[v].charAt(0)}${VIEW_LABEL[v].slice(1).toLowerCase()}${v === 'keep' && pending > 0 ? ` ${pending}` : ''}`,
+        }))}
+      />
       </div>
     }
       action={phase !== null && (

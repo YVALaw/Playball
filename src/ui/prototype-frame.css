@@ -614,3 +614,39 @@
 
 /* Three career marks across the top of the history tab. */
 .player-records strong { font-size: calc(22px * var(--ts)); }
+
+/* A tab strip that sits in a pinned header carries the gutter itself. */
+.card-tabs { padding: 0 16px 10px; }
+.card-tabs .segmented { margin-bottom: 0; }
+.fixed-header-bar > .segmented { margin: 0 16px 12px; }
+
+/* The next-game card sits in the postseason's scroller, so it takes the gutter
+   the workspace would otherwise have given it. */
+.postseason-next-card { margin: 0 16px 10px; }
+
+/* Its matchup is one line of prose — "at Allegheny Ridge" — rather than the
+   proposal's two abbreviations and a score, because the game has not been
+   played yet and there is nothing to put in the score. */
+.postseason-next-match strong {
+  font: 800 calc(24px * var(--ts))/.95 var(--display);
+  text-align: left;
+}
+
+/* An inbox card that leads nowhere is a div rather than a button, so the list's
+   row rules have to reach both. */
+.message-list > div {
+  display: grid;
+  grid-template-columns: 8px 1fr auto;
+  gap: 8px;
+  min-height: 92px;
+  padding: 11px 10px;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+
+.message-list > div.read,
+.message-list > button.read { background: #f8f8f5; }
+.message-list > *:last-child { border-bottom: 0; }
+.message-list .read .unread-dot { background: #c9cec9; }
+.message-list svg { color: var(--clay); align-self: center; }
+.message-list time { font-weight: 800; color: var(--alert); }

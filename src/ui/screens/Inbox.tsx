@@ -20,6 +20,7 @@
 // than after.
 
 import { useEffect, useMemo } from 'react';
+import { ChevronRightIcon } from '@radix-ui/react-icons';
 import { useDynasty } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
 import { ModuleIntro } from '../components/Kit.js';
@@ -124,14 +125,16 @@ export function Inbox() {
         )}
 
         {years.map(({ year, items }) => (
-          <div key={year} style={{ marginTop: 12 }}>
-            <div className="label" style={{
-              marginBottom: 6, paddingBottom: 4,
-              borderBottom: '1px solid var(--hairline)',
-            }}>{year}</div>
+          <div key={year}>
+            <div className="flow-section-title">
+              <span className="label">{year}</span>
+              <b>{items.length} {items.length === 1 ? "CARD" : "CARDS"}</b>
+            </div>
+            <section className="message-list">
             {items.map((item) => (
               <Card key={item.id} item={item} onOpen={open} />
             ))}
+            </section>
           </div>
         ))}
       </div>
@@ -148,56 +151,36 @@ export function Inbox() {
  * anybody who is skimming.
  */
 function Card({ item, onOpen }: { item: InboxItem; onOpen: (l: InboxLink) => void }) {
-  const tone = KIND_TONE[item.kind];
-  const body = (
+  /*
+    The proposal's message list. A dot on the left that says whether it is new,
+    the kind it is in green over the headline, the body under it, and the time
+    on the right.
+
+    The dot survives the visit that clears it, because the read state was read
+    before this rendered — it is the only thing distinguishing what arrived this
+    morning from what has been sitting here since March.
+  */
+  const inner = (
     <>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-        marginBottom: 3, gap: 8,
-      }}>
-        <span style={{
-          font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: tone,
-        }}>{INBOX_LABEL[item.kind]}</span>
-        {/* The dot survives the visit that clears it, because the state was
-            read before this rendered. It is the only thing distinguishing what
-            is new from what has been sitting here since March. */}
-        {!item.read && (
-          <span style={{
-            font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.12em', color: 'var(--clay)',
-          }}>NEW</span>
-        )}
-      </div>
-      <div style={{
-        display: 'flex', alignItems: 'baseline', gap: 8,
-      }}>
-        <div style={{
-          flex: 1, font: "700 calc(14px * var(--ts))/1.25 var(--display)", textTransform: 'uppercase',
-        }}>{item.title}</div>
-        {item.link && (
-          <span style={{
-            flex: 'none', font: "700 calc(13px * var(--ts)) var(--mono)", color: tone,
-          }}>›</span>
-        )}
-      </div>
-      {item.body !== '' && (
-        <div style={{
-          marginTop: 4, font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-        }}>{item.body}</div>
-      )}
+      <i className="unread-dot" />
+      <span>
+        <small>{INBOX_LABEL[item.kind]}</small>
+        <strong>{item.title}</strong>
+        {item.body !== '' && <p>{item.body}</p>}
+      </span>
+      {item.link ? <ChevronRightIcon /> : <time>{item.read ? '' : 'NEW'}</time>}
     </>
   );
 
-  const skin = {
-    width: '100%', textAlign: 'left' as const, display: 'block',
-    padding: '10px 12px', marginBottom: 6,
-    background: 'var(--paper)',
-    border: '1px solid var(--faint)',
-    borderLeft: `3px solid ${tone}`,
-  };
-
-  if (!item.link) return <div style={skin}>{body}</div>;
+  if (!item.link) {
+    return <div className={item.read ? 'read' : ''}>{inner}</div>;
+  }
   const link = item.link;
   return (
-    <button className="tap" style={skin} onClick={() => onOpen(link)}>{body}</button>
+    <button
+      className={`tap${item.read ? ' read' : ''}`}
+      type="button"
+      onClick={() => onOpen(link)}
+    >{inner}</button>
   );
 }

@@ -18,6 +18,7 @@
 // so rather than showing an empty table and letting it read as "never played".
 
 import { createContext, useContext, useState, type ReactNode } from 'react';
+import { Segmented } from '../components/Kit.js';
 import { cultureFor, CULTURE_LABEL } from '../../data/cultures.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Avatar, teamColour } from '../Avatar.js';
@@ -141,20 +142,16 @@ export function TeamCard({ index }: { index: number }) {
 
 function TabStrip({ at, onGo }: { at: Sheet; onGo: (s: Sheet) => void }) {
   return (
-    <div style={{ display: 'flex', gap: 4, padding: '0 12px 10px' }}>
-      {SHEETS.map((s) => (
-        <button
-          key={s}
-          onClick={() => onGo(s)}
-          style={{
-            flex: 1, padding: '8px 0',
-            background: s === at ? 'var(--ink)' : 'var(--field)',
-            border: s === at ? '1px solid var(--ink)' : '1px solid var(--faint)',
-            color: s === at ? 'var(--cream)' : 'var(--dim)',
-            font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-          }}
-        >{SHEET_LABEL[s]}</button>
-      ))}
+    <div className="card-tabs">
+      <Segmented
+        label="Program card section"
+        value={at}
+        onChange={onGo}
+        options={SHEETS.map((s) => ({
+          value: s,
+          label: SHEET_LABEL[s].charAt(0) + SHEET_LABEL[s].slice(1).toLowerCase(),
+        }))}
+      />
     </div>
   );
 }

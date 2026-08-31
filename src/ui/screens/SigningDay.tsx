@@ -17,7 +17,7 @@
 import { useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
-import { ModuleIntro } from '../components/Kit.js';
+import { ModuleIntro, Segmented } from '../components/Kit.js';
 import {
   PRIORITY_LABEL, PRIORITIES, byRank, reportedOverall, reportedPotential,
   type Prospect, type Priority,
@@ -167,22 +167,16 @@ export function SigningDay() {
         <Tile k="NATIONALLY" v={myRank > 0 ? `#${myRank}` : '—'} accent last />
       </div>
 
-      <div style={{ display: 'flex', gap: 5, marginTop: 12 }}>
-        {([['mine', 'YOUR CLASS'], ['rankings', 'RANKINGS'], ['all', 'EVERY RECRUIT']] as const)
-          .map(([v, label]) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              style={{
-                flex: 1, padding: '8px 0',
-                background: v === view ? 'var(--clay)' : 'var(--paper)',
-                border: v === view ? '1px solid var(--clay)' : '1px solid rgba(var(--ink-rgb), .28)',
-                color: v === view ? 'var(--cream)' : 'var(--ink)',
-                font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-              }}
-            >{label}</button>
-          ))}
-      </div>
+      <Segmented
+        label="Signing day section"
+        value={view}
+        onChange={setView}
+        options={[
+          { value: 'mine' as const, label: 'Your class' },
+          { value: 'rankings' as const, label: 'Rankings' },
+          { value: 'all' as const, label: 'Every recruit' },
+        ]}
+      />
       </div>
     }
       action={<FloatingAction label="START NEXT SEASON" onClick={() => void next('signing')} />}

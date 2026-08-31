@@ -19,6 +19,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useDynasty, useUserTeam, type NationalProgress } from '../../state/store.js';
 import { FloatingAction } from '../Sticky.js';
 import { Modal } from '../Modal.js';
+import { IdCardIcon } from '@radix-ui/react-icons';
 import { ModuleIntro, Segmented } from '../components/Kit.js';
 import { Lineup } from './Lineup.js';
 import { DoubleElimMap, type DECols } from '../DoubleElimMap.js';
@@ -1056,33 +1057,23 @@ function YourNext(
   }
   if (!line) return null;
 
+  /*
+    The proposal's next-game card, which is the shape this always wanted: a
+    kicker saying what the game is, the matchup set big, the stake underneath,
+    and the one thing you can still do about it.
+  */
   return (
-    <div style={{ padding: '0 14px', marginBottom: 8 }}>
-      <div style={{
-        border: '1px solid var(--faint)', borderLeft: '3px solid var(--clay)',
-        background: 'var(--paper)', padding: '9px 11px',
-        display: 'flex', alignItems: 'center', gap: 10,
-      }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            font: "700 calc(15px * var(--ts))/1.1 var(--display)", textTransform: 'uppercase',
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>{line}</div>
-          {sub && <div style={{
-            marginTop: 2, font: "400 calc(9.5px * var(--ts)) var(--mono)", color: 'var(--dim)',
-          }}>{sub}</div>}
-        </div>
-        <button
-          onClick={onLineup}
-          className="tap"
-          style={{
-            flex: 'none', padding: '8px 10px', minHeight: 36,
-            background: 'var(--field)', border: '1px solid rgba(var(--ink-rgb), .4)',
-            color: 'var(--ink)', font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-          }}
-        >LINEUP</button>
+    <section className="postseason-next-card">
+      <div className="postseason-next-kicker">
+        <small>YOUR NEXT GAME</small>
+        <span>{myBracket.format === 'series' ? 'BEST OF THREE' : 'DOUBLE ELIMINATION'}</span>
       </div>
-    </div>
+      <div className="postseason-next-match"><strong>{line}</strong></div>
+      {sub && <p>{sub}</p>}
+      <div className="postseason-action-grid">
+        <button type="button" onClick={onLineup}><IdCardIcon />Set the lineup</button>
+      </div>
+    </section>
   );
 }
 
