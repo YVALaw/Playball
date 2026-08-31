@@ -12,6 +12,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { applyTeamAccent } from './accent.js';
+import { preloadSfx, unlockAudio } from './sound.js';
 import { teamColour } from './Avatar.js';
 import {
   ArchiveIcon, ArrowLeftIcon, CalendarIcon, ChevronRightIcon, EnvelopeClosedIcon, GearIcon,
@@ -126,6 +127,21 @@ export function App() {
   useEffect(() => {
     applyTeamAccent(accentAbbr ? teamColour(accentAbbr) : null);
   }, [accentAbbr]);
+
+  /*
+    The broadcast's ears — stage 14. Mobile browsers refuse audio until a user
+    gesture, so the first touch anywhere unlocks the context and warms the
+    sample cache. Once is enough; the listener removes itself.
+  */
+  useEffect(() => {
+    const wake = (): void => {
+      unlockAudio();
+      preloadSfx();
+      window.removeEventListener('pointerdown', wake);
+    };
+    window.addEventListener('pointerdown', wake);
+    return () => window.removeEventListener('pointerdown', wake);
+  }, []);
 
   return (
     <OpenTeam.Provider value={setTeamCard}>

@@ -61,6 +61,13 @@ export interface DevicePrefs {
    */
   sound: boolean;
   haptics: boolean;
+  /**
+   * Stamped once broadcast exists. Prefs written before it carried
+   * sound/haptics values from an era when the toggles were disabled
+   * placeholders — a stored false from then was never anybody's choice, so
+   * the absence of this marker means "take the new defaults".
+   */
+  bcast?: boolean;
 }
 
 export const TEXT_SCALES: readonly { value: number; label: string }[] = [
@@ -75,8 +82,11 @@ export const DEFAULT_PREFS: DevicePrefs = {
   field: '3d',
   motion: 'system',
   theme: 'system',
-  sound: false,
-  haptics: false,
+  // ON since stage 14 — a silent game that ships its sound behind a toggle
+  // stays a silent game. The mute is one tap away in settings.
+  sound: true,
+  haptics: true,
+  bcast: true,
   // On, because a first-time player is the one who needs it and the one least
   // likely to go looking for a switch.
   tutorials: true,
@@ -122,8 +132,9 @@ export function readPrefs(): DevicePrefs {
     field: o.field === '2d' ? '2d' : '3d',
     motion: o.motion === 'reduced' || o.motion === 'full' ? o.motion : 'system',
     theme: o.theme === 'light' || o.theme === 'dark' ? o.theme : 'system',
-    sound: o.sound === true,
-    haptics: o.haptics === true,
+    sound: o.bcast === true ? o.sound === true : true,
+    haptics: o.bcast === true ? o.haptics === true : true,
+    bcast: true,
     // Absent means on, unlike the two above: a save written before this switch
     // existed belongs to somebody who was being taught, and silently turning
     // their tutorials off would be a change they never asked for.

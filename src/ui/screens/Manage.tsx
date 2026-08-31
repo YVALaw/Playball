@@ -20,6 +20,9 @@ import { pct } from '../format.js';
 import { useDynasty } from '../../state/store.js';
 import { handles } from '../../state/depth.js';
 import { readPrefs } from '../../state/devicePrefs.js';
+import {
+  buzz, crowdLeverage, crowdStart, crowdStop, crowdSwell, sfx,
+} from '../sound.js';
 import { lazy, Suspense } from 'react';
 import { Diamond } from '../Diamond.js';
 import { LineScore } from '../LineScore.js';
@@ -200,6 +203,77 @@ export function Manage() {
     const timer = setTimeout(() => setPlaying(false), ms);
     return () => clearTimeout(timer);
   }, [played]);
+
+  /*
+    The broadcast — stage 14. The log is the one honest account of what just
+    happened, so the sound reads it rather than duplicating the engine's
+    classification: a contact word is a crack, a strikeout is the ball hitting
+    leather, a hit swells the crowd by how big it was, and the walk-off gets
+    the night's only roar. Haptics ride the same reads. Every call checks the
+    device preference inside sound.ts, so the mute is instant.
+  */
+  const lastLine = live?.log[live.log.length - 1] ?? '';
+  useEffect(() => {
+    if (!live || !lastLine) return;
+    const l = lastLine;
+    const vary = () => 0.94 + ((played * 37) % 13) / 100;
+    if (/win it\./.test(l)) {
+      sfx('crack', { rate: vary() });
+      sfx('clap', { gain: 0.9 });
+      crowdSwell(1);
+      buzz([40, 60, 120]);
+      return;
+    }
+    if (/homers|home run/.test(l)) {
+      sfx(played % 2 ? 'crack' : 'crack2', { rate: vary(), gain: 1 });
+      crowdSwell(0.8);
+      buzz([25, 40, 60]);
+      return;
+    }
+    if (/triples|doubles/.test(l)) {
+      sfx(played % 2 ? 'crack' : 'crack2', { rate: vary() });
+      crowdSwell(0.45);
+      buzz(20);
+      return;
+    }
+    if (/singles|beats out/.test(l)) {
+      sfx(played % 2 ? 'crack' : 'crack2', { rate: vary(), gain: 0.9 });
+      crowdSwell(0.25);
+      buzz(15);
+      return;
+    }
+    if (/strikes out/.test(l)) {
+      sfx('glove', { rate: vary(), gain: 0.9 });
+      crowdSwell(0.2);
+      buzz(12);
+      return;
+    }
+    if (/grounds|flies|lines out|pops|double play|forced at|sacrifice/.test(l)) {
+      sfx(played % 2 ? 'crack' : 'crack2', { rate: vary(), gain: 0.7 });
+      // The ball comes back down in a glove a beat later.
+      setTimeout(() => sfx('glove2', { gain: 0.55 }), 700);
+      buzz(10);
+    }
+  }, [played]);
+
+  /*
+    The bed under it all: first pitch starts the crowd, the final out sends it
+    home, and how loud it idles follows the leverage — late and close is a
+    different building from a Tuesday blowout.
+  */
+  const liveOn = !!live && !live.over;
+  useEffect(() => {
+    if (!liveOn) { crowdStop(); return undefined; }
+    sfx('playball', { gain: 0.7 });
+    crowdStart();
+    return () => crowdStop();
+  }, [liveOn]);
+  const levInning = live?.pending?.inning ?? 0;
+  const levMargin = Math.abs((live?.pending?.homeRuns ?? 0) - (live?.pending?.awayRuns ?? 0));
+  useEffect(() => {
+    if (!liveOn) return;
+    crowdLeverage(levInning >= 8 && levMargin <= 2 ? 1 : levInning >= 7 ? 0.5 : 0.15);
+  }, [liveOn, levInning, levMargin]);
 
   /*
     What counts as a moment worth handing back for.

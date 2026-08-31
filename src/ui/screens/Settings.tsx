@@ -254,27 +254,25 @@ export function Settings() {
   if (page === 'sound') {
     return (
       <Frame title="Sound" kicker="THIS DEVICE" onBack={() => setPage('index')}>
-        <SectionHeading kicker="SETTINGS" title="Not yet built" />
+        <SectionHeading kicker="SETTINGS" title="The broadcast" />
         <section className="settings-list">
           <Row
-            label="Sound" blurb="Bat, glove, crowd."
-            note="Arrives with broadcast."
-            on={false} disabled
+            label="Sound" blurb="Bat, glove, the crowd under a live game."
+            note={prefs.sound
+              ? 'The crack, the glove, and a crowd that knows the score.'
+              : 'Silent. The game plays exactly the same way.'}
+            on={prefs.sound}
+            onToggle={() => put({ sound: !prefs.sound })}
           />
           <Row
             label="Haptics" blurb="A tap on contact, and on the third out."
-            note="Arrives with broadcast."
-            on={false} disabled
+            note={prefs.haptics
+              ? 'A light touch. The walk-off gets the only real buzz.'
+              : 'Off. Nothing hums.'}
+            on={prefs.haptics}
+            onToggle={() => put({ haptics: !prefs.haptics })}
           />
         </section>
-        <div style={{
-          marginTop: 12, font: "400 calc(10.5px * var(--ts))/1.5 var(--body)",
-          color: 'var(--dim)',
-        }}>
-          The game is completely silent and always has been. Both are stored and
-          defaulted off, so turning them on when the broadcast stage builds them
-          is a switch rather than a migration.
-        </div>
       </Frame>
     );
   }
