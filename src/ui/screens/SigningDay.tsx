@@ -17,6 +17,7 @@
 import { useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
+import { ModuleIntro } from '../components/Kit.js';
 import {
   PRIORITY_LABEL, PRIORITIES, byRank, reportedOverall, reportedPotential,
   type Prospect, type Priority,
@@ -155,12 +156,7 @@ export function SigningDay() {
     // The class totals and the three views hold still; the names scroll.
     <FixedHeader header={
       <div style={{ padding: '14px 14px 10px' }}>
-      <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
-        <div className="label">SIGNING DAY</div>
-        <div style={{
-          font: "800 calc(22px * var(--ts))/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
-        }}>The class</div>
-      </div>
+      <ModuleIntro kicker="SIGNING DAY" title="The class" />
 
       <div style={{
         display: 'flex', marginTop: 12,

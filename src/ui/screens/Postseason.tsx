@@ -19,6 +19,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useDynasty, useUserTeam, type NationalProgress } from '../../state/store.js';
 import { FloatingAction } from '../Sticky.js';
 import { Modal } from '../Modal.js';
+import { ModuleIntro, Segmented } from '../components/Kit.js';
 import { Lineup } from './Lineup.js';
 import { DoubleElimMap, type DECols } from '../DoubleElimMap.js';
 import { BoxScoreSheet } from './Schedule.js';
@@ -757,17 +758,12 @@ export function Postseason() {
         display: 'flex', flexDirection: 'column', minHeight: 0,
       }}>
         <FirstVisit id="postseason" />
-        <div style={{
-          flex: 'none', background: 'var(--field)',
-          borderBottom: '1px solid var(--faint)',
-        }}>
-          <div style={{ padding: '10px 14px 0' }}>
-            <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-              <div className="label">{year} POSTSEASON · STAGE {rung + 1} OF 3</div>
-              <div style={{
-                font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 3, textTransform: 'uppercase',
-              }}>{stageTitle}</div>
-            </div>
+        <div style={{ flex: 'none', background: 'var(--field)' }}>
+          <div className="postseason-head">
+            <ModuleIntro
+              kicker={`${year} POSTSEASON · STAGE ${rung + 1} OF 3`}
+              title={stageTitle}
+            />
           </div>
 
           <StageRail at={rung} shown={shown} onGo={(i) => setReviewing(i === rung ? null : i)} />
@@ -954,40 +950,32 @@ export function Postseason() {
 function StageRail(
   { at, shown, onGo }: { at: number; shown: number; onGo: (i: number) => void },
 ) {
-  const NAMES = ['CONFERENCE', 'REGIONALS', 'NATIONAL'];
+  const STAGES: Array<[string, string]> = [
+    ['Conference', 'Double elimination · top four advance'],
+    ['Regionals', 'Best of three · sixteen sites'],
+    ['National', 'Two brackets · a championship series'],
+  ];
   return (
-    <div style={{ margin: '8px 14px 0', display: 'flex', gap: 3 }}>
-      {NAMES.map((n, i) => {
+    <section className="postseason-stage-rail" aria-label="Postseason stages">
+      {STAGES.map(([name, note], i) => {
         // A tournament already played can be gone back to; one that has not
         // happened yet cannot, because there is nothing behind it.
         const reachable = i <= at;
-        const here = i === shown;
         return (
           <button
-            key={n}
+            className={`${i === shown ? 'active' : ''} ${i < at ? 'done' : ''}`}
+            key={name}
+            type="button"
             disabled={!reachable}
             onClick={() => onGo(i)}
-            className={reachable ? 'tap' : undefined}
-            style={{
-              flex: 1, padding: 0, textAlign: 'center',
-              cursor: reachable ? 'pointer' : 'default',
-            }}
           >
-            <div style={{
-              height: 4,
-              background: here ? 'var(--clay)'
-                : i < at ? 'rgba(var(--clay-rgb), .42)' : 'var(--faint)',
-              transition: 'background 220ms ease',
-            }} />
-            <div style={{
-              marginTop: 4, font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-              color: here ? 'var(--clay)' : reachable ? 'var(--ink)' : 'var(--dim)',
-              textAlign: 'center',
-            }}>{n}</div>
+            <span>{i + 1}</span>
+            <strong>{name}</strong>
+            <small>{note}</small>
           </button>
         );
       })}
-    </div>
+    </section>
   );
 }
 
@@ -997,21 +985,16 @@ function SubToggle(
   { options: [string, string][]; at: string; onGo: (v: string) => void },
 ) {
   return (
-    <div style={{ display: 'flex', gap: 4, padding: '8px 14px 8px' }}>
-      {options.map(([v, label]) => (
-        <button
-          key={v}
-          onClick={() => onGo(v)}
-          className="tap"
-          style={{
-            flex: 1, padding: '7px 0', minHeight: 32,
-            background: v === at ? 'var(--clay)' : 'var(--paper)',
-            border: v === at ? '1px solid var(--clay)' : '1px solid rgba(var(--ink-rgb), .28)',
-            color: v === at ? 'var(--cream)' : 'var(--ink)',
-            font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-          }}
-        >{label}</button>
-      ))}
+    <div className="postseason-view-toggle">
+      <Segmented
+        label="Bracket half"
+        value={at}
+        onChange={onGo}
+        options={options.map(([v, label]) => ({
+          value: v,
+          label: label.charAt(0) + label.slice(1).toLowerCase(),
+        }))}
+      />
     </div>
   );
 }

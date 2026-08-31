@@ -22,6 +22,7 @@
 import { useEffect, useMemo } from 'react';
 import { useDynasty } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
+import { ModuleIntro } from '../components/Kit.js';
 import { useOpenTeam } from './TeamCard.js';
 import {
   INBOX_LABEL, type InboxItem, type InboxKind, type InboxLink,
@@ -105,14 +106,7 @@ export function Inbox() {
   return (
     <FixedHeader
       header={
-        <div style={{ padding: '12px 14px 10px' }}>
-          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-            <div className="label">WHAT HAPPENED TO YOU</div>
-            <div style={{
-              font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-            }}>The inbox</div>
-          </div>
-        </div>
+        <ModuleIntro kicker="WHAT HAPPENED TO YOU" title="The inbox" />
       }
     >
       <div style={{ padding: '2px 14px 20px' }}>

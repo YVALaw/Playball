@@ -6,6 +6,7 @@
 
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
+import { ModuleIntro } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
 import { teamColour } from '../Avatar.js';
 import { seasonComplete } from '../../engine/season.js';
@@ -62,14 +63,7 @@ export function Awards() {
   return (
     <FixedHeader
       header={
-        <div style={{ padding: '12px 14px 10px' }}>
-          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-            <div className="label">{year} HONOURS</div>
-            <div style={{
-              font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-            }}>Awards</div>
-          </div>
-        </div>
+        <ModuleIntro kicker={`${year} HONOURS`} title="Awards" />
       }
       action={phase !== null && (
         <FloatingAction label="SEASON REVIEW" onClick={() => void nextPhase('awards')} />

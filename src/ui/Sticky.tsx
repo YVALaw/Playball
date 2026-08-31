@@ -10,6 +10,11 @@
 // Both are solved the same way: keep the control pinned to the frame rather
 // than letting it ride the content. A control you have to go looking for is a
 // control the player has to think about, and neither of these deserves a thought.
+//
+// The proposal has no equivalent, because a prototype's screens are all short
+// enough to end on the screen they started on. What it does have is
+// `.primary-command` and `.secondary-command`, which is what the button below
+// wears now.
 
 import { useRef, type ReactNode } from 'react';
 
@@ -26,17 +31,9 @@ export function FixedHeader(
   { header: ReactNode; children: ReactNode; action?: ReactNode },
 ) {
   return (
-    <div style={{
-      position: 'absolute', inset: 0,
-      display: 'flex', flexDirection: 'column', minHeight: 0,
-    }}>
-      <div style={{
-        flex: 'none', background: 'var(--field)',
-        borderBottom: '1px solid var(--faint)',
-      }}>{header}</div>
-      <div className="screen-scroll" style={{
-        flex: 1, minHeight: 0, overflowY: 'auto',
-      }}>{children}</div>
+    <div className="fixed-header-screen">
+      <div className="fixed-header-bar">{header}</div>
+      <div className="screen-scroll fixed-header-body">{children}</div>
       {/*
         The action, outside the scroller.
 
@@ -48,18 +45,9 @@ export function FixedHeader(
         that can only ever be half a solution — sticky pins an element while
         its containing block reaches the edge being stuck to, and on a short
         step the body stops halfway down the screen and takes the button with
-        it. Making the body fill the scroller was tried and is not enough
-        either: a screen that passes several children puts the button inside a
-        later one, and a column flex container with `overflow` under-reports
-        its own scroll height, so the fix worked on some steps and not others.
-
-        A row of the frame cannot move, whatever any step's content does. This
-        is the same arrangement the postseason screen already uses and the same
-        reason it uses it.
+        it. A row of the frame cannot move, whatever any step's content does.
       */}
-      {action !== undefined && (
-        <div style={{ flex: 'none' }}>{action}</div>
-      )}
+      {action !== undefined && <div className="fixed-header-action">{action}</div>}
     </div>
   );
 }
@@ -109,55 +97,27 @@ export function FloatingAction(
     fn();
   };
   return (
-    <div style={{
-      /*
-        A row of the frame, not a sticky element inside the scroller. See
-        `FixedHeader` for the whole argument; the short version is that sticky
-        cannot hold a position the content is allowed to end above.
+    /*
+      A row of the frame, not a sticky element inside the scroller. See
+      `FixedHeader` for the whole argument; the short version is that sticky
+      cannot hold a position the content is allowed to end above.
 
-        The gradient stays: rendered as the last row of the frame it sits over
-        nothing, but the postseason screen still places one of these directly
-        over its bracket, and a hard edge there reads as a seam.
-      */
-      zIndex: 10,
-      padding: '12px 14px',
-      paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
-      background: 'linear-gradient(to top, var(--field) 68%, rgba(242,236,224,0))',
-    }}>
+      The gradient stays: rendered as the last row of the frame it sits over
+      nothing, but the postseason screen still places one of these directly
+      over its bracket, and a hard edge there reads as a seam.
+    */
+    <div className="command-bar">
       {secondary && (
-        <button
-          onClick={once(secondary.onClick)}
-          className="tap"
-          style={{
-            width: '100%', padding: '11px 10px', marginBottom: 8,
-            background: 'transparent', border: '1px solid rgba(var(--ink-rgb), .4)',
-            color: 'var(--ink)', font: "700 calc(10px * var(--ts))/1.25 var(--mono)", letterSpacing: '.1em',
-            whiteSpace: 'normal', overflowWrap: 'break-word',
-          }}
-        >{secondary.label}</button>
+        <button className="secondary-command tap" type="button" onClick={once(secondary.onClick)}>
+          {secondary.label}
+        </button>
       )}
-      {note && (
-        <div style={{
-          marginBottom: 8, font: "400 calc(11px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
-          textAlign: 'center',
-        }}>{note}</div>
-      )}
+      {note && <p className="command-note">{note}</p>}
       <button
+        className="primary-command tap"
+        type="button"
         onClick={once(onClick)}
         disabled={disabled}
-        style={{
-          width: '100%', padding: '15px 10px',
-          background: 'var(--clay)', border: '1px solid var(--clay)',
-          opacity: disabled ? 0.45 : 1,
-          color: 'var(--cream)', font: "700 calc(12px * var(--ts))/1.25 var(--mono)", letterSpacing: '.1em',
-          // Long labels wrap rather than running off the end of the button —
-          // between words only. `anywhere` is for unbroken strings like a URL:
-          // on a label it licenses a break in the middle of a word, which is
-          // what a label with a space in it never needs and what a photograph
-          // of a button split mid-word is evidence of.
-          whiteSpace: 'normal', overflowWrap: 'break-word',
-          boxShadow: '0 2px 10px rgba(var(--ink-rgb), .22)',
-        }}
       >{label}</button>
     </div>
   );

@@ -93,9 +93,10 @@ export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
   manage: [
     {
       title: 'You make the calls',
-      body: 'Your calls sit on the right, and the grey ones tell you why '
-        + 'they’re off the table. SWING AWAY never hurt anybody. BULLPEN and '
-        + 'PINCH HIT spend a man for the night, so spend him like you mean it.',
+      body: 'Your calls are under the log, and the greyed ones are telling you '
+        + 'why they are off the table. SWING AWAY never hurt anybody. The round '
+        + 'button in the corner is the bench, the bullpen and the mound — each of '
+        + 'those spends a man for the night, so spend him like you mean it.',
     },
     {
       title: 'Watch the field',

@@ -12,6 +12,7 @@
 
 import { useDynasty } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
+import { ModuleIntro } from '../components/Kit.js';
 import { overallOf } from '../../engine/ratings.js';
 import { prestigeStars } from '../../engine/program.js';
 import { windowBudget } from '../../engine/recruiting.js';
@@ -38,17 +39,7 @@ export function Portal() {
   return (
     <FixedHeader
       header={
-        <div style={{ padding: '12px 14px 10px' }}>
-          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-            <div className="label">
-              THE PORTAL · {left} OF {budget} LEFT
-            </div>
-            <div style={{
-              font: "800 calc(21px * var(--ts))/0.95 var(--display)",
-              marginTop: 3, textTransform: 'uppercase',
-            }}>Both directions</div>
-          </div>
-        </div>
+        <ModuleIntro kicker={`THE PORTAL · ${left} OF ${budget} LEFT`} title="Both directions" />
       }
       /*
         The way out, which this screen shipped without.

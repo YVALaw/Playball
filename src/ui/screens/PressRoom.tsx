@@ -16,6 +16,7 @@
 
 import { useDynasty } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
+import { ModuleIntro } from '../components/Kit.js';
 import type { PressAnswer, PressTrigger } from '../../data/pressers.js';
 
 /** Why the room is here, in the room's words rather than the engine's. */
@@ -46,15 +47,7 @@ export function PressRoom() {
   return (
     <FixedHeader
       header={
-        <div style={{ padding: '12px 14px 10px' }}>
-          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-            <div className="label">{WHY[trigger]} · {year}</div>
-            <div style={{
-              font: "800 calc(21px * var(--ts))/0.95 var(--display)",
-              marginTop: 3, textTransform: 'uppercase',
-            }}>The press room</div>
-          </div>
-        </div>
+        <ModuleIntro kicker={`${WHY[trigger]} · ${year}`} title="The press room" />
       }
     >
       <div style={{ padding: '10px 14px 20px' }}>

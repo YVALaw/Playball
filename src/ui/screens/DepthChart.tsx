@@ -13,6 +13,7 @@
 import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
+import { ModuleIntro } from '../components/Kit.js';
 import { depthAt, startersFrom, SPOTS, available, squad } from '../../engine/depthChart.js';
 import { positionPenalty, secondaryPositions } from '../../engine/positions.js';
 import { standing, gradesOf } from '../../engine/eligibility.js';
@@ -56,15 +57,7 @@ export function DepthChart() {
   return (
     <FixedHeader
       header={
-        <div style={{ padding: '12px 14px 10px' }}>
-          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-            <div className="label">THE DEPTH CHART · {men.length} MEN</div>
-            <div style={{
-              font: "800 calc(21px * var(--ts))/0.95 var(--display)",
-              marginTop: 3, textTransform: 'uppercase',
-            }}>Who plays where</div>
-          </div>
-        </div>
+        <ModuleIntro kicker={`THE DEPTH CHART · ${men.length} MEN`} title="Who plays where" />
       }
     >
       <div style={{ padding: '10px 14px 20px' }}>

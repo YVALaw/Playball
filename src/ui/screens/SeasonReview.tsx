@@ -15,6 +15,7 @@ import { useEffect, useMemo } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { badgeOf } from '../../data/badges.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
+import { ModuleIntro } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
 import { Avatar } from '../Avatar.js';
 import { rpiOrder, standings, regularRecord } from '../../engine/season.js';
@@ -131,14 +132,7 @@ export function SeasonReview() {
   return (
     <FixedHeader
       header={
-        <div style={{ padding: '16px 14px 10px' }}>
-          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
-            <div className="label">{team.def.school} · {year}</div>
-            <div style={{
-              font: "800 calc(22px * var(--ts))/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
-            }}>The season</div>
-          </div>
-        </div>
+        <ModuleIntro kicker={`${team.def.school} · ${year}`} title="The season" />
       }
       action={<FloatingAction label="CONTINUE" onClick={() => void next('review')} />}
     >

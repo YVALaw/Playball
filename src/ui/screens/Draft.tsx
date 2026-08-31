@@ -19,6 +19,7 @@
 import { useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
+import { ModuleIntro } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
 import { draftChance } from '../../engine/progression.js';
 import type { Departure } from '../../engine/progression.js';
@@ -689,14 +690,7 @@ function DraftOdds(
 
   return (
     <FixedHeader header={
-      <div style={{ padding: '12px 14px 10px' }}>
-        <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-          <div className="label">{team.def.abbr} · {year}</div>
-          <div style={{
-            font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-          }}>The draft</div>
-        </div>
-      </div>
+      <ModuleIntro kicker={`${team.def.abbr} · ${year}`} title="The draft" />
     }
       action={phase !== null && (
     <FloatingAction label="TO RECRUITING" onClick={() => void nextPhase('draft')} />

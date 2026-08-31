@@ -7,6 +7,10 @@
 // with the bases empty, and you cannot put a man on when first is occupied.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ArrowLeftIcon, ChevronRightIcon, Cross1Icon, MixerHorizontalIcon, PlayIcon,
+  StopwatchIcon,
+} from '@radix-ui/react-icons';
 import { PlayerName } from '../PlayerName.js';
 import { FirstVisit } from '../Tutorial.js';
 import { overallOf } from '../../engine/ratings.js';
@@ -65,6 +69,10 @@ export function Manage() {
   const go = useDynasty((s) => s.go);
   const saveNow = useDynasty((s) => s.saveNow);
   const [modal, setModal] = useState<Modal>(null);
+  /** The dugout tools, behind the round button in the corner. */
+  const [tools, setTools] = useState(false);
+  /** The linescore, open by default and closed by BOX. */
+  const [book, setBook] = useState(true);
   const [scoreTick, setScoreTick] = useState(0);
   const [ball, setBall] = useState<BallHit | null>(null);
   const ballTick = useRef(0);
@@ -328,78 +336,58 @@ export function Manage() {
   };
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <div className="live-game">
       <FirstVisit id="manage" />
+
       {/*
-        The top bar, rebuilt to the mock.
+        The proposal's game header: a way back to the desk, the state of the
+        game, and the book.
 
-        It used to carry a full linescore, which printed the score twice and
-        spent 82px of a screen whose whole job is the field. The strip now says
-        the four things you glance at — which half of which inning, how many
-        out, and the score — and the linescore itself is a tap behind LINE
-        SCORE, where a fourteen-inning game can have all the room it needs.
-
-        There is deliberately no ball-strike count. This game is managed a
-        plate appearance at a time rather than a pitch at a time, so at the
-        moment you are asked for a call the count is always nothing-and-nothing;
-        a count only exists *inside* a resolved at bat, which is why the log
-        prints one. Drawing "B 0 S 0" on every decision would be furniture that
-        never changes.
+        There is deliberately no ball-strike count. This game is managed a plate
+        appearance at a time rather than a pitch at a time, so at the moment you
+        are asked for a call the count is always nothing-and-nothing; a count
+        only exists *inside* a resolved at bat, which is why the log prints one.
+        Drawing "B 0 S 0" on every decision would be furniture that never
+        changes.
       */}
-      <div style={{
-        flex: 'none', background: 'var(--navy)', padding: '7px 12px 8px',
-        paddingTop: 'calc(env(safe-area-inset-top) + 7px)',
-      }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10, minHeight: 18,
-        }}>
-          <span style={{
-            font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-            color: 'var(--cream)', whiteSpace: 'nowrap',
-          }}>
-            {inning}
-          </span>
-          <span style={{ flex: 1 }} />
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{
-              font: "500 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em',
-              color: 'rgba(var(--cream-rgb), .5)',
-            }}>OUT</span>
-            {[0, 1, 2].map((i) => (
-              <span key={i} style={{
-                width: 8, height: 8, transform: 'rotate(45deg)',
-                border: '1px solid rgba(var(--cream-rgb), .45)',
-                background: i < outs ? 'var(--clay)' : 'transparent',
-                transition: 'background 180ms ease',
-              }} />
-            ))}
-          </span>
-          <button
-            onClick={() => { void saveNow(); go('home'); }}
-            className="tap"
-            style={{
-              flex: 'none', padding: '5px 10px',
-              border: '1px solid rgba(var(--cream-rgb), .35)',
-              color: 'var(--cream)',
-              font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-            }}
-          >EXIT</button>
-        </div>
-
+      <header>
         {/*
-          The linescore, always there.
-
-          It was folded behind a LINE SCORE button, which was the wrong trade:
-          reported straight back that it should sit on the bar with R/H/E rather
-          than drop down on demand. It is the one thing on this screen that
-          answers "where are we" without being asked, and a scoreboard you have
-          to press is not a scoreboard.
-
-          The innings scroll inside their own container while the abbreviations
-          and the R/H/E totals hold still at the edges, which is what makes a
-          fourteen-inning game fit a phone.
+          The way out without ending anything, and it writes on the way.
+          Reported from testing: "going back to the desk from the minigame
+          should save the progress as it is at the moment we exit." What it can
+          honestly save is the dynasty — the season, the roster, the calendar —
+          because a half-played game is a running coroutine and there is nothing
+          serialisable to write. So the game keeps in memory and PLAY BALL
+          resumes it. June does not get this door: its frame is the bracket, and
+          mid-bracket saving is restricted to stage boundaries on purpose.
         */}
-        <div style={{ marginTop: 5 }}>
+        {bracket === null ? (
+          <button type="button" onClick={() => { void saveNow(); go('home'); }}>
+            <ArrowLeftIcon />Desk
+          </button>
+        ) : <span />}
+        <div>
+          <small>{inning}{d ? ` · ${outs} OUT` : ''}</small>
+          <strong>
+            {away?.def.abbr ?? 'AWY'} <b>{awayRuns}</b>
+            <span>{home?.def.abbr ?? 'HOM'} <b>{homeRuns}</b></span>
+          </strong>
+        </div>
+        <button type="button" onClick={() => setBook((v) => !v)}>Box</button>
+      </header>
+
+      {/*
+        The linescore. The proposal folds it away, having no extra innings to
+        worry about; it was reported here that it should sit on the bar with
+        R/H/E rather than drop on demand, because it is the one thing on this
+        screen that answers "where are we" without being asked.
+
+        So it is open by default and the BOX button closes it. The innings
+        scroll inside their own container while the abbreviations and the totals
+        hold still, which is what makes a fourteen-inning game fit a phone.
+      */}
+      {book && (
+        <div className="live-linescore">
           <LineScore
             tone="navy"
             innings={innCols}
@@ -417,45 +405,24 @@ export function Manage() {
             ]}
           />
         </div>
-      </div>
+      )}
 
+      <main className="ballpark-game">
+        {/*
+          The field, with the situation written across the bottom of it. The
+          diamond says *where* the runners are; the banner says what that
+          means — "runners on first and second" is the sentence a manager says
+          to himself, and it sits on the field because it belongs to the
+          picture.
 
-      {/*
-        Everything below the scoreboard is one row: the field and the log on the
-        left, the calls down the right. The calls therefore run the full height
-        under the score rather than only beside the log — on a phone the column
-        was overflowing, and scrolling to reach the last button pushed the
-        scoreboard off the top of the screen.
-      */}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-
-      {/*
-        Taller than it was, because the field is now three dimensional and 96 by
-        76 could not hold one — the diamond rendered as a wedge of dirt with home
-        plate cropped off the bottom. The play log below still gets the remaining
-        height, which on a phone is the larger share.
-      */}
-      {/*
-        The field, roughly doubled, with the situation written across the
-        bottom of it.
-
-        It was 118px inside a 178px block that also held the matchup, which is
-        the complaint the rebuild exists to answer. The diamond says *where* the
-        runners are; the banner says what that means — "runners on first and
-        second" is the sentence a manager says to himself, and it sits on the
-        field rather than above the calls because it belongs to the picture.
-      */}
-      <div style={{
-        flex: 'none', position: 'relative',
-        borderBottom: '1px solid var(--faint)',
-        background: 'var(--paper)',
-      }}>
-        <div style={{ flex: 'none', width: '100%', height: 210 }}>
-          {/* The 2D diamond was always the fallback for a device without WebGL;
-              settings simply lets somebody choose it. Picking it also means
-              three.js is never fetched at all, which is 600KB a slower phone
-              does not have to spend on a renderer its owner did not want. */}
+          The proposal draws a flat canvas ballpark. This one keeps its three
+          dimensional diamond, which was the call made before the port started;
+          the 2D one is still here as the fallback for a device without WebGL,
+          and settings lets somebody choose it. Picking it also means three.js
+          is never fetched at all, which is 600KB a slower phone does not have
+          to spend on a renderer its owner did not want.
+        */}
+        <div className="ballpark-scene">
           {flatField ? (
             <Diamond runners={d?.runners ?? []} scoreTick={scoreTick} size={200} />
           ) : (
@@ -464,249 +431,213 @@ export function Manage() {
             }>
               <Diamond3D
                 runners={d?.runners ?? []} scoreTick={scoreTick}
-                ball={ball} scored={{ runners: scoredRunners, tick: scoreTick }} height={210}
+                ball={ball} scored={{ runners: scoredRunners, tick: scoreTick }} height={250}
               />
             </Suspense>
           )}
+          {d && (
+            <div className="ballpark-situation">
+              <span>{baseState(d.bases, d.outs)}</span>
+              <b>{d.outs} OUT</b>
+            </div>
+          )}
         </div>
-      </div>
 
-      {/*
-        The matchup, as two cards.
-
-        The strip it replaces was two lines of names, which is the least a
-        screen can say about the only two men who matter. Each card now carries
-        the three numbers you would actually want — what he is hitting, what the
-        arm has done today — and the pitcher's card carries the thing the dugout
-        never showed at all: how far into his outing he is.
-      */}
-      {d && (
-        <div style={{
-          flex: 'none', display: 'flex', gap: 1,
-          background: 'var(--faint)', borderBottom: '1px solid var(--faint)',
-        }}>
-          {/*
-            Whose man each card is, said out loud.
-
-            Reported as a balance fault -- "confidence is regained far too
-            rapidly, it was restored after an inning passed when he had lost it
-            all" -- and it is not one. The card follows the ball: the arm on the
-            mound while you are batting is *theirs*, and a fresh opponent's full
-            CONF bar sitting under a kicker that only ever said PITCHING reads
-            as your own man healing between innings. He does not; a clean inning
-            returns about seven hundredths. The gauges were honest and the
-            heading was not.
-          */}
-          <ManCard
-            kicker={d.side === 'offense' ? 'AT BAT · YOURS' : 'AT BAT · THEIRS'}
-            corner=""
-            id={d.batter.id}
-            name={d.batter.name}
-            sub={`${d.batter.pos} · ${d.batter.bats} vs ${d.pitcher.throws}HP`}
-            mine={d.side === 'offense'}
-            stats={batterLine(season, d.batter.id)}
-          />
-          <ManCard
-            kicker={d.side === 'defense' ? 'PITCHING · YOURS' : 'PITCHING · THEIRS'}
-            corner={d.outing.relief ? 'RELIEF' : 'START'}
-            id={d.pitcher.id}
-            name={d.pitcher.name}
-            sub={`${d.pitcher.throws}HP · ${d.outing.relief ? 'relief' : 'starter'}`}
-            mine={d.side === 'defense'}
-            stats={[
-              { k: 'IP', v: inningsFrom(d.outing.outs) },
-              { k: 'K', v: String(d.outing.strikeouts) },
-              { k: 'PC', v: String(d.outing.pitches) },
-            ]}
-            gauges={[
-              {
-                label: 'ARM',
-                /* What he has left, not what he has spent.
-                   Fatigue is real and always has been: past his budget an arm
-                   loses effectiveness on a slope down to a floor of 0.55. The
-                   bar is that budget drawn as *remaining*, because a bar that
-                   fills as a man tires reads as something being earned. */
-                fill: Math.max(0, 1 - d.outing.pitches / Math.max(1, d.outing.budget)),
-                over: d.outing.pitches > d.outing.budget,
-                note: 'PAST HIS BUDGET',
-              },
-              {
-                /* The other half of what he is carrying, and the same
-                   direction of travel: full when he takes the mound, spent by
-                   what gets done to him. A man at full is exactly as good as he
-                   was before this channel existed, which is what lets it sit
-                   inside a calibrated engine. */
-                label: 'CONF',
-                fill: d.outing.confidence,
-                over: d.outing.confidence < 0.45,
-                note: 'LOSING HIM',
-              },
-            ]}
-          />
-        </div>
-      )}
-
-      <div ref={logRef} style={{
-        flex: 1, minWidth: 0, overflowY: 'auto', padding: '9px 12px 12px 14px',
-      }}>
-        {/*
-          Where everybody is, in the place the game is already being narrated.
-
-          This was a dark banner laid over the foot of the field, and it was
-          reported twice -- first for covering the two cards, then for existing
-          at all. The second is the better note: the diamond already shows the
-          runners, so a caption over it is the same fact twice, and the one
-          place a reader is looking for words about the situation is the log.
-
-          Pinned at the top rather than pushed into the stream, because it is
-          the state *now* rather than a thing that happened, and it must not
-          scroll away with the play that produced it.
-        */}
         {d && (
-          <div style={{
-            position: 'sticky', top: -9, zIndex: 1,
-            margin: '-9px -12px 7px -14px', padding: '6px 12px 6px 14px',
-            background: 'var(--field)', borderBottom: '1px solid var(--faint)',
-            font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-            color: 'var(--dim)', textTransform: 'uppercase',
-          }}>{baseState(d.bases, d.outs)}</div>
+          <section className="ballpark-matchup">
+            <article>
+              <small>{d.side === 'offense' ? 'AT BAT · YOURS' : 'AT BAT · THEIRS'}</small>
+              <strong>{d.batter.name}</strong>
+              <span>{d.batter.pos} · {d.batter.bats} vs {d.pitcher.throws}HP</span>
+              <div>
+                {batterLine(season, d.batter.id).map((s) => (
+                  <b key={s.k}>{s.k} {s.v}</b>
+                ))}
+              </div>
+            </article>
+            <article>
+              <small>{d.side === 'defense' ? 'PITCHING · YOURS' : 'PITCHING · THEIRS'}</small>
+              <strong>{d.pitcher.name}</strong>
+              <span>
+                {d.pitcher.throws}HP · {d.outing.relief ? 'relief' : 'starter'}
+                {' · '}{d.outing.pitches} pitches
+              </span>
+              <div>
+                <b>IP {inningsFrom(d.outing.outs)}</b>
+                <b>K {d.outing.strikeouts}</b>
+                <b>CONF {Math.round(d.outing.confidence * 100)}%</b>
+              </div>
+              {/*
+                What he has left, not what he has spent. Fatigue is real and
+                always has been: past his budget an arm loses effectiveness on a
+                slope down to a floor of 0.55. The bar is that budget drawn as
+                *remaining*, because a bar that fills as a man tires reads as
+                something being earned. It goes red past the budget, which is the
+                moment the dugout is supposed to notice.
+              */}
+              <i>
+                <em style={{
+                  width: `${Math.round(Math.max(0, 1 - d.outing.pitches / Math.max(1, d.outing.budget)) * 100)}%`,
+                  background: d.outing.pitches > d.outing.budget ? 'var(--alert)' : 'var(--yellow)',
+                }} />
+              </i>
+            </article>
+          </section>
         )}
-        {recent.map((line, i) => {
-          // The calls, and the two ways a call goes wrong. A runner thrown out
-          // is the most consequential thing on this screen and it was reading as
-          // dim grey filler, which is a large part of why a manager can call for
-          // a steal all afternoon and never notice the ones that failed.
-          const call = line.startsWith('[bunt]') || line.startsWith('[intentional]')
-            || /caught stealing|thrown out|forced at/.test(line);
-          const sub = line.startsWith('   ');
-          return (
-            <div key={i} style={{
-              padding: '3px 0',
-              font: `${i === recent.length - 1 ? 600 : 400} calc(12px * var(--ts))/1.45 var(--body)`,
-              color: call ? 'var(--clay)' : sub ? 'var(--dim)' : 'var(--ink)',
-              opacity: i === recent.length - 1 ? 1 : 0.75,
-            }}>{line.replace(/^\[[a-z]+\]\s*/, '').trim()}</div>
-          );
-        })}
-      </div>
 
-      </div>
+        <section className="ballpark-log" ref={logRef}>
+          <div>
+            <small>PLAY-BY-PLAY</small>
+            <b>{d ? 'LIVE' : 'FINAL'}</b>
+          </div>
+          {recent.map((line, i) => {
+            // The calls, and the two ways a call goes wrong. A runner thrown
+            // out is the most consequential thing on this screen and it was
+            // reading as dim grey filler, which is a large part of why a manager
+            // can call for a steal all afternoon and never notice the failures.
+            const called = line.startsWith('[bunt]') || line.startsWith('[intentional]')
+              || /caught stealing|thrown out|forced at/.test(line);
+            return (
+              <p
+                className={`${i === recent.length - 1 ? 'latest' : ''}${called ? ' called' : ''}`}
+                key={i}
+              >{line.replace(/^\[[a-z]+\]\s*/, '').trim()}</p>
+            );
+          })}
+        </section>
 
-      {/*
-        The calls run down the right rather than across the bottom. Stacked, the
-        fixed height this panel needs came straight out of the play log — and the
-        log is the thing you are actually reading.
-      */}
-      <div style={{
-        flex: 'none', width: 146, borderLeft: '1px solid var(--faint)',
-        background: 'var(--field)', padding: '8px 8px 9px',
-        display: 'flex', flexDirection: 'column', gap: 5,
-      }}>
         {d ? (
-          <>
-            <div className="label">{d.side === 'offense' ? 'BATTING' : 'IN THE FIELD'}</div>
-            {d.options.map((o) => {
-              // Off while the play is on the field, and off because the
-              // situation forbids it, are two different greys: one comes back
-              // in a second, the other is telling you why it cannot be done.
-              const live0 = o.available && !playing && auto === null;
-              return (
-              <button
-                key={o.tactic}
-                onClick={once(() => live0 && submitTactic(o.tactic))}
-                disabled={!live0}
-                style={{
-                  padding: '5px 8px', textAlign: 'left', flex: 'none',
-                  // Apple's 44pt floor, and not a pixel under it: these are the
-                  // most-tapped controls in the game. The padding came down
-                  // rather than the target, which is what made room for the
-                  // mound visit without costing anybody a thumb.
-                  minHeight: 40,
-                  // Available calls are raised paper with a real border. The
-                  // unavailable ones recede rather than merely dimming, so the
-                  // difference is obvious at arm's length on a phone.
-                  background: live0 ? 'var(--paper)' : 'transparent',
-                  border: o.available
-                    ? '1px solid rgba(var(--ink-rgb), .42)'
-                    : '1px dashed rgba(var(--ink-rgb), .16)',
-                  opacity: o.available && playing ? 0.45 : 1,
-                  transition: 'opacity 160ms ease, background 160ms ease',
-                  boxShadow: live0 ? '0 1px 0 rgba(var(--ink-rgb), .16)' : 'none',
-                }}
-              >
-                <div style={{
-                  font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.03em',
-                  color: o.available ? 'var(--ink)' : 'rgba(var(--ink-rgb), .34)',
-                }}>{o.label}</div>
-                <div style={{
-                  marginTop: 1, font: "400 calc(9px * var(--ts))/1.2 var(--body)",
-                  color: o.available ? 'var(--dim)' : 'rgba(var(--ink-rgb), .28)',
-                }}>{o.note}</div>
+          <section className="ballpark-call">
+            <div>
+              <small>YOUR CALL</small>
+              <strong>{d.side === 'offense' ? 'Batting' : 'In the field'}</strong>
+              <span>{baseState(d.bases, d.outs)}. {d.batter.name} is up.</span>
+            </div>
+            <div>
+              {d.options.map((o) => {
+                // Off while the play is on the field, and off because the
+                // situation forbids it, are two different greys: one comes back
+                // in a second, the other is telling you why it cannot be done.
+                const ready = o.available && !playing && auto === null;
+                return (
+                  <button
+                    className={o.available ? '' : 'unavailable'}
+                    key={o.tactic}
+                    type="button"
+                    disabled={!ready}
+                    title={o.note}
+                    onClick={once(() => ready && submitTactic(o.tactic))}
+                  >{o.label}</button>
+                );
+              })}
+            </div>
+          </section>
+        ) : (
+          <section className="ballpark-call">
+            <div>
+              <small>FINAL</small>
+              <strong>{awayRuns > homeRuns ? away?.def.school : home?.def.school}</strong>
+              <span>Record it and the day moves on.</span>
+            </div>
+            <div>
+              <button className="selected" type="button" onClick={() => void endManagedGame()}>
+                Record the game
               </button>
-              );
-            })}
-            <div style={{ flex: 1 }} />
-            {d.side === 'defense' && myVisits && (
-              <Small
-                onClick={once(visitMound)}
-                disabled={playing || auto !== null || d.outing.visitUsed}
-              >{d.outing.visitUsed ? 'VISIT USED' : 'MOUND VISIT'}</Small>
-            )}
-            {(d.side === 'offense' || myPen) && (
-              <Small
-                onClick={() => setModal(d.side === 'offense' ? 'pinch' : 'pen')}
-                disabled={playing || (d.side === 'offense'
-                  ? live.benchAvailable.length === 0
-                  : live.bullpenAvailable.length === 0)}
-              >{d.side === 'offense' ? 'PINCH HIT' : 'BULLPEN'}</Small>
-            )}
+            </div>
+          </section>
+        )}
+
+        {d && (
+          <div className="ballpark-pace">
             {/* The bench coach's two doors, and the way to take the dugout
                 back. While he is calling, the only useful button is the one
-                that stops him -- so that is the only one shown. */}
+                that stops him. */}
             {auto === null ? (
-              <>
-                <Small onClick={() => setAuto('watch')} disabled={playing}>WATCH</Small>
-                <Small onClick={once(autoFinish)} disabled={playing}>SIM THE REST</Small>
-              </>
+              <button type="button" disabled={playing} onClick={() => setAuto('watch')}>
+                <PlayIcon />Watch it play
+              </button>
             ) : (
-              <Small onClick={() => setAuto(null)}>
-                TAKE IT BACK
-              </Small>
+              <button type="button" onClick={() => setAuto(null)}>
+                <StopwatchIcon />Take it back
+              </button>
             )}
-            {/* The way out without ending anything, and it writes on the way.
-                Reported from testing: "going back to the desk from the
-                minigame should save the progress as it is at the moment we
-                exit." What it can honestly save is the dynasty — the season,
-                the roster, the calendar — because a half-played game is a
-                running coroutine (`LiveGame` carries `submit` and `finish` as
-                closures) and there is nothing serialisable to write. So the
-                game keeps in memory and BACK TO THE GAME resumes it, while
-                the save makes sure that stepping away cannot cost anything
-                that already happened. June does not get this door: its frame
-                is the bracket, and mid-bracket saving is restricted to stage
-                boundaries on purpose. */}
-            {bracket === null && (
-              <Small onClick={() => { void saveNow(); go('home'); }}>
-                BACK TO THE DESK
-              </Small>
-            )}
-          </>
-        ) : (
-          <>
-            <div className="label">GAME OVER</div>
-            <div style={{ flex: 1 }} />
-            <button
-              onClick={() => void endManagedGame()}
-              style={{
-                padding: '11px 0', minHeight: 44, background: 'var(--clay)',
-                border: '1px solid var(--clay)', color: 'var(--cream)',
-                font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-              }}
-            >RECORD</button>
-          </>
+            <button type="button" disabled={playing} onClick={once(autoFinish)}>
+              Sim the rest
+            </button>
+          </div>
         )}
-      </div>
-      </div>
+      </main>
+
+      {/*
+        The dugout's own tools, behind the proposal's round button: the bench,
+        the pen, and the mound. They were four stacked buttons in a 146 pixel
+        column down the right of the screen — a column the field and the log
+        both wanted back.
+      */}
+      {d && (
+        <aside className={`game-manager-fab${tools ? ' open' : ''}`}>
+          <section className="game-manager-popover">
+            <div>
+              <small>MANAGER TOOLS</small>
+              <strong>Make the next move</strong>
+            </div>
+            <div className="game-tool-options">
+              {d.side === 'offense' && (
+                <button
+                  type="button"
+                  disabled={playing || live.benchAvailable.length === 0}
+                  onClick={() => { setModal('pinch'); setTools(false); }}
+                >
+                  <strong>Pinch hit for {d.batter.name}</strong>
+                  <small>
+                    {live.benchAvailable.length === 0
+                      ? 'The bench is empty.'
+                      : `${live.benchAvailable.length} on the bench.`}
+                  </small>
+                  <ChevronRightIcon />
+                </button>
+              )}
+              {d.side === 'defense' && myPen && (
+                <button
+                  type="button"
+                  disabled={playing || live.bullpenAvailable.length === 0}
+                  onClick={() => { setModal('pen'); setTools(false); }}
+                >
+                  <strong>Go to the bullpen</strong>
+                  <small>
+                    {live.bullpenAvailable.length === 0
+                      ? 'Nobody is available.'
+                      : `${live.bullpenAvailable.length} arms available.`}
+                  </small>
+                  <ChevronRightIcon />
+                </button>
+              )}
+              {d.side === 'defense' && myVisits && (
+                <button
+                  type="button"
+                  disabled={playing || auto !== null || d.outing.visitUsed}
+                  onClick={() => { void visitMound(); setTools(false); }}
+                >
+                  <strong>{d.outing.visitUsed ? 'Visit already used' : 'Visit the mound'}</strong>
+                  <small>
+                    {d.outing.visitUsed
+                      ? 'One a game, and it has gone.'
+                      : 'Settle him down. It buys back a little of what he has lost.'}
+                  </small>
+                  <ChevronRightIcon />
+                </button>
+              )}
+            </div>
+          </section>
+          <button
+            className="game-manager-trigger"
+            type="button"
+            aria-label={tools ? 'Close manager tools' : 'Open manager tools'}
+            aria-expanded={tools}
+            onClick={() => setTools(!tools)}
+          >{tools ? <Cross1Icon /> : <MixerHorizontalIcon />}</button>
+        </aside>
+      )}
 
       {modal && (
         <Picker
@@ -805,137 +736,10 @@ function batterLine(
  * settled man who is out of pitches is still out of pitches, and a mound visit
  * can only ever move the second one.
  */
-function ManCard(
-  { kicker, corner, id, name, sub, mine, stats, gauges }: {
-    kicker: string;
-    corner: string;
-    id: PlayerId;
-    name: string;
-    sub: string;
-    mine: boolean;
-    stats: { k: string; v: string }[];
-    gauges?: { label: string; fill: number; over: boolean; note?: string }[];
-  },
-) {
-  return (
-    <div style={{
-      flex: 1, minWidth: 0, background: 'var(--paper)', padding: '6px 9px 7px',
-      borderTop: `2px solid ${mine ? 'var(--clay)' : 'transparent'}`,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-        <span className="label" style={{ color: mine ? 'var(--clay)' : undefined }}>{kicker}</span>
-        <span style={{ flex: 1 }} />
-        <span style={{
-          font: "500 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-          color: 'var(--dim)',
-        }}>{corner}</span>
-      </div>
-      <PlayerName
-        id={id}
-        style={{
-          display: 'block', marginTop: 2,
-          font: "800 calc(14px * var(--ts))/1.05 var(--display)",
-          textTransform: 'uppercase',
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          color: mine ? 'var(--ink)' : 'var(--dim)',
-        }}
-      >{name}</PlayerName>
-      <div style={{
-        marginTop: 1,
-        font: "400 calc(8.5px * var(--ts))/1.3 var(--mono)", color: 'var(--dim)',
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-      }}>{sub}</div>
-
-      <div style={{ display: 'flex', gap: 10, marginTop: 5 }}>
-        {stats.map((s) => (
-          <span key={s.k} style={{ minWidth: 0 }}>
-            <span style={{
-              display: 'block',
-              font: "500 calc(7.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-              color: 'var(--dim)',
-            }}>{s.k}</span>
-            <span style={{
-              display: 'block',
-              font: "700 calc(11.5px * var(--ts))/1.1 var(--body)",
-              fontVariantNumeric: 'tabular-nums',
-            }}>{s.v}</span>
-          </span>
-        ))}
-      </div>
-
-      {gauges && gauges.map((g) => (
-        <div key={g.label} style={{ marginTop: 5 }}>
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-          }}>
-            <span style={{
-              font: "500 calc(7px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-              color: g.over ? 'var(--clay)' : 'var(--dim)',
-            }}>{g.label}</span>
-            {g.over && g.note && (
-              <span style={{
-                font: "600 calc(7px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-                color: 'var(--clay)',
-              }}>{g.note}</span>
-            )}
-          </div>
-          <div style={{
-            marginTop: 2, height: 3, background: 'var(--faint)', overflow: 'hidden',
-          }}>
-            <div className="grow" style={{
-              width: `${Math.round(g.fill * 100)}%`, height: '100%',
-              background: g.over ? 'var(--clay)' : 'var(--win)',
-            }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Side(
-  { abbr, runs, batting, home }:
-  { abbr: string; runs: number; batting?: boolean; home?: boolean },
-) {
-  const name = (
-    <span style={{
-      font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-      color: batting ? 'var(--cream)' : 'rgba(var(--cream-rgb), .55)',
-    }}>{abbr}</span>
-  );
-  const score = (
-    <span style={{
-      font: `800 calc(20px * var(--ts))/1 var(--display)`,
-      color: batting ? 'var(--cream)' : 'rgba(var(--cream-rgb), .75)',
-      fontVariantNumeric: 'tabular-nums',
-    }}>{runs}</span>
-  );
-  return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-      {home ? <>{score}{name}</> : <>{name}{score}</>}
-    </span>
-  );
-}
-
-function Small(
-  { onClick, disabled, children }:
-  { onClick: () => void; disabled?: boolean; children: string },
-) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        flex: 'none', padding: '8px 0', minHeight: 44,
-        background: disabled ? 'transparent' : 'var(--paper)',
-        border: disabled ? '1px dashed rgba(var(--ink-rgb), .16)' : '1px solid rgba(var(--ink-rgb), .42)',
-        boxShadow: disabled ? 'none' : '0 1px 0 rgba(var(--ink-rgb), .16)',
-        color: disabled ? 'rgba(var(--ink-rgb), .3)' : 'var(--ink)',
-        font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-      }}
-    >{children}</button>
-  );
-}
+// ManCard, Side and Small went with the layout they belonged to: two paper
+// cards and a column of stacked buttons down the right of the screen. The
+// proposal draws the matchup as two dark articles and puts the dugout tools
+// behind a round button, and both of those are markup rather than components.
 
 function Picker(
   { title, rows, onPick, onClose }:

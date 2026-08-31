@@ -14,6 +14,7 @@
 
 import { useDynasty } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
+import { ModuleIntro } from '../components/Kit.js';
 import { prestigeStars } from '../../engine/program.js';
 
 export function JobSearch() {
@@ -34,11 +35,8 @@ export function JobSearch() {
   return (
     <FixedHeader header={
       <div style={{ padding: '16px 14px 10px' }}>
-        <div style={{ borderBottom: '2px solid var(--clay)', paddingBottom: 8 }}>
-          <div className="label" style={{ color: 'var(--clay)' }}>OUT OF A JOB</div>
-          <div style={{
-            font: "800 calc(22px * var(--ts))/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
-          }}>{coach.name}</div>
+        <div>
+          <ModuleIntro kicker="OUT OF A JOB" title={coach.name} />
           {/*
             Where the profile made at the start of the career shows up: this is
             the one screen that is about the man rather than the program.

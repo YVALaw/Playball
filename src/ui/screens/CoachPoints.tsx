@@ -13,6 +13,7 @@
 
 import { useDynasty } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
+import { ModuleIntro } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
 import { SKILLS, SKILL_LABEL, SKILL_BLURB } from '../../engine/program.js';
 
@@ -31,14 +32,7 @@ export function CoachPoints() {
   return (
     <FixedHeader
       header={
-        <div style={{ padding: '16px 14px 10px' }}>
-          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
-            <div className="label">{coach.name} · YEAR {coach.tenure}</div>
-            <div style={{
-              font: "800 calc(22px * var(--ts))/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
-            }}>Coach</div>
-          </div>
-        </div>
+        <ModuleIntro kicker={`${coach.name} · YEAR ${coach.tenure}`} title="Coach" />
       }
       action={<FloatingAction
     label={left > 0 ? `CONTINUE · ${left} UNSPENT` : 'TO THE DRAFT'}

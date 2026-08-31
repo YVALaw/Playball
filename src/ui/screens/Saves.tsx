@@ -17,6 +17,7 @@ import { useEffect, useState } from 'react';
 import { AUTOSAVE_SLOT, useDynasty, useUserTeam } from '../../state/store.js';
 import type { SaveSummary } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
+import { ModuleIntro } from '../components/Kit.js';
 import { Modal } from '../Modal.js';
 
 const MONTHS = [
@@ -133,18 +134,9 @@ export function Saves() {
 
   return (
     <FixedHeader header={
-      <div style={{ padding: '12px 14px 10px' }}>
-        <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-          <div className="label">
-            {blocked
+      <ModuleIntro kicker={blocked
               ? 'STORAGE UNAVAILABLE'
-              : `${saves.length} DYNAST${saves.length === 1 ? 'Y' : 'IES'} ON THIS DEVICE`}
-          </div>
-          <div style={{
-            font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-          }}>Saves</div>
-        </div>
-      </div>
+              : `${saves.length} DYNAST${saves.length === 1 ? 'Y' : 'IES'} ON THIS DEVICE`} title="Saves" />
     }>
       <div style={{ padding: '12px 14px 24px' }}>
 
