@@ -98,7 +98,7 @@ export function CoachPoints() {
                 <span style={{ font: "700 calc(20px * var(--ts))/1 var(--display)" }}>{value}</span>
               </div>
 
-              <div style={{ height: 6, background: 'rgba(28,36,48,.09)', marginTop: 6 }}>
+              <div style={{ height: 6, background: 'rgba(var(--ink-rgb), .09)', marginTop: 6 }}>
                 <div style={{
                   width: `${value}%`, height: '100%', background: 'var(--clay)',
                   transition: 'width 240ms ease',
@@ -123,8 +123,8 @@ export function CoachPoints() {
                   style={{
                     flex: 'none', padding: '10px 14px',
                     background: 'transparent',
-                    border: `1px solid ${(spentThisStep[k] ?? 0) > 0 ? 'rgba(28,36,48,.42)' : 'rgba(28,36,48,.12)'}`,
-                    color: (spentThisStep[k] ?? 0) > 0 ? 'var(--ink)' : 'rgba(28,36,48,.22)',
+                    border: `1px solid ${(spentThisStep[k] ?? 0) > 0 ? 'rgba(var(--ink-rgb), .42)' : 'rgba(var(--ink-rgb), .12)'}`,
+                    color: (spentThisStep[k] ?? 0) > 0 ? 'var(--ink)' : 'rgba(var(--ink-rgb), .22)',
                     font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.12em',
                   }}
                 >−1</button>
@@ -134,8 +134,8 @@ export function CoachPoints() {
                   style={{
                     flex: 1, padding: '10px 0',
                     background: left > 0 && !maxed ? 'var(--field)' : 'transparent',
-                    border: `1px solid ${left > 0 && !maxed ? 'rgba(28,36,48,.42)' : 'rgba(28,36,48,.15)'}`,
-                    color: left > 0 && !maxed ? 'var(--ink)' : 'rgba(28,36,48,.25)',
+                    border: `1px solid ${left > 0 && !maxed ? 'rgba(var(--ink-rgb), .42)' : 'rgba(var(--ink-rgb), .15)'}`,
+                    color: left > 0 && !maxed ? 'var(--ink)' : 'rgba(var(--ink-rgb), .25)',
                     font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.12em',
                   }}
                 >{maxed ? 'MAXED' : '+1 POINT'}</button>

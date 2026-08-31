@@ -195,7 +195,7 @@ export function SeasonReview() {
         }}>
           <div style={{
             font: "600 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.2em',
-            color: 'rgba(246,241,230,.6)',
+            color: 'rgba(var(--cream-rgb), .6)',
           }}>FINISHED</div>
           <div style={{
             font: "800 calc(34px * var(--ts))/1 var(--display)", marginTop: 6,
@@ -203,7 +203,7 @@ export function SeasonReview() {
           }}>{banner.title}</div>
           <div style={{
             marginTop: 7, font: "400 calc(12px * var(--ts))/1.5 var(--body)",
-            color: 'rgba(246,241,230,.68)',
+            color: 'rgba(var(--cream-rgb), .68)',
           }}>{banner.note}</div>
         </div>
       )}

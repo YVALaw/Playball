@@ -205,13 +205,13 @@ export function NeedsYou() {
         marginTop: 20, borderBottom: '2px solid var(--ink)', paddingBottom: 6,
         display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
       }}>
-        <div className="label" style={{ color: musts > 0 ? 'var(--clay)' : undefined }}>
+        <div className="label" style={{ color: musts > 0 ? 'var(--alert)' : undefined }}>
           NEEDS YOU
         </div>
         {musts > 0 && (
           <div style={{
             font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-            color: 'var(--clay)',
+            color: 'var(--alert)',
           }}>{musts} WAITING</div>
         )}
       </div>
@@ -228,10 +228,10 @@ export function NeedsYou() {
               // The red is a left rule rather than a fill. A block of red on a
               // phone reads as an error the app has had; a rule beside a line of
               // text reads as the line being marked, which is what it is.
-              borderLeft: `3px solid ${n.must ? 'var(--clay)' : 'var(--faint)'}`,
-              border: '1px solid rgba(28,36,48,.22)',
+              borderLeft: `3px solid ${n.must ? 'var(--alert)' : 'var(--faint)'}`,
+              border: '1px solid rgba(var(--ink-rgb), .22)',
               borderLeftWidth: 3,
-              borderLeftColor: n.must ? 'var(--clay)' : 'rgba(28,36,48,.22)',
+              borderLeftColor: n.must ? 'var(--alert)' : 'rgba(var(--ink-rgb), .22)',
               display: 'flex', alignItems: 'center', gap: 10,
               whiteSpace: 'normal', overflowWrap: 'break-word',
             }}
@@ -241,7 +241,7 @@ export function NeedsYou() {
                 display: 'block',
                 font: "700 calc(12.5px * var(--ts))/1.2 var(--display)",
                 textTransform: 'uppercase',
-                color: n.must ? 'var(--clay)' : 'var(--ink)',
+                color: n.must ? 'var(--alert)' : 'var(--ink)',
               }}>{n.title}</span>
               <span style={{
                 display: 'block', marginTop: 3,
@@ -251,7 +251,7 @@ export function NeedsYou() {
             <span style={{
               flex: 'none',
               font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.11em',
-              color: n.must ? 'var(--clay)' : 'var(--dim)',
+              color: n.must ? 'var(--alert)' : 'var(--dim)',
             }}>{n.cta}</span>
           </button>
         ))}

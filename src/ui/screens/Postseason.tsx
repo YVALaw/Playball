@@ -851,7 +851,7 @@ export function Postseason() {
                         className="tap"
                         style={{
                           flex: 1, padding: '11px 8px', minHeight: 42,
-                          background: 'transparent', border: '1px solid rgba(28,36,48,.4)',
+                          background: 'transparent', border: '1px solid rgba(var(--ink-rgb), .4)',
                           color: 'var(--ink)', font: "700 calc(10px * var(--ts)) var(--mono)",
                           letterSpacing: '.1em',
                         }}
@@ -976,7 +976,7 @@ function StageRail(
             <div style={{
               height: 4,
               background: here ? 'var(--clay)'
-                : i < at ? 'rgba(168,68,42,.42)' : 'var(--faint)',
+                : i < at ? 'rgba(var(--clay-rgb), .42)' : 'var(--faint)',
               transition: 'background 220ms ease',
             }} />
             <div style={{
@@ -1006,7 +1006,7 @@ function SubToggle(
           style={{
             flex: 1, padding: '7px 0', minHeight: 32,
             background: v === at ? 'var(--clay)' : 'var(--paper)',
-            border: v === at ? '1px solid var(--clay)' : '1px solid rgba(28,36,48,.28)',
+            border: v === at ? '1px solid var(--clay)' : '1px solid rgba(var(--ink-rgb), .28)',
             color: v === at ? 'var(--cream)' : 'var(--ink)',
             font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.1em',
           }}
@@ -1094,7 +1094,7 @@ function YourNext(
           className="tap"
           style={{
             flex: 'none', padding: '8px 10px', minHeight: 36,
-            background: 'var(--field)', border: '1px solid rgba(28,36,48,.4)',
+            background: 'var(--field)', border: '1px solid rgba(var(--ink-rgb), .4)',
             color: 'var(--ink)', font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
           }}
         >LINEUP</button>

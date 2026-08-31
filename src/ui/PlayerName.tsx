@@ -35,7 +35,7 @@ export function PlayerName(
         cursor: 'pointer',
         // A dotted rule under the name is the whole affordance: it reads as a
         // link without turning every roster into a page of blue text.
-        borderBottom: '1px dotted rgba(28,36,48,.35)',
+        borderBottom: '1px dotted rgba(var(--ink-rgb), .35)',
         ...style,
       }}
     >{children}</span>

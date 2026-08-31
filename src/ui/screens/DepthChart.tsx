@@ -153,7 +153,7 @@ export function DepthChart() {
                         color: wearing ? 'var(--field)' : 'inherit',
                         border: `1px solid ${
                           wearing ? 'var(--you)'
-                            : c.id === pick?.id ? 'var(--you)' : 'rgba(28,36,48,.24)'
+                            : c.id === pick?.id ? 'var(--you)' : 'rgba(var(--ink-rgb), .24)'
                         }`,
                         font: `${wearing ? 700 : 400} calc(11.5px * var(--ts)) var(--body)`,
                         display: 'flex', alignItems: 'center', gap: 8,
@@ -186,7 +186,7 @@ export function DepthChart() {
                 onClick={clearCaptain}
                 style={{
                   marginTop: 8, width: '100%', padding: '8px 11px', minHeight: 38,
-                  background: 'transparent', border: '1px solid rgba(28,36,48,.28)',
+                  background: 'transparent', border: '1px solid rgba(var(--ink-rgb), .28)',
                   font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.11em',
                   color: 'var(--dim)',
                 }}
@@ -207,7 +207,7 @@ export function DepthChart() {
                 style={{
                   width: '100%', textAlign: 'left', padding: '9px 11px', minHeight: 44,
                   background: 'var(--paper)',
-                  border: '1px solid rgba(28,36,48,.28)',
+                  border: '1px solid rgba(var(--ink-rgb), .28)',
                   display: 'flex', alignItems: 'center', gap: 10,
                 }}
               >
@@ -284,7 +284,7 @@ export function DepthChart() {
                           style={{
                             flex: 'none', width: 26, minHeight: 26,
                             background: 'transparent',
-                            border: '1px solid rgba(28,36,48,.25)',
+                            border: '1px solid rgba(var(--ink-rgb), .25)',
                             color: i === 0 ? 'var(--faint)' : 'var(--ink)',
                             font: "700 calc(10px * var(--ts)) var(--mono)",
                           }}

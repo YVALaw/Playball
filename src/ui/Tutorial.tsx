@@ -71,7 +71,7 @@ export function FirstVisit({ id }: { id: string }) {
       onClick={() => done.current()}
       style={{
         position: 'absolute', inset: 0, zIndex: 38,
-        background: 'rgba(28,36,48,.55)',
+        background: 'rgba(var(--ink-rgb), .55)',
         display: 'grid', placeItems: 'end center', padding: 16,
         paddingBottom: 'calc(24px + env(safe-area-inset-bottom))',
       }}

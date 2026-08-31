@@ -1,30 +1,62 @@
 /* tokens.css
- * The design, lifted from design/Dynasty Mobile.dc.html.
+ * The design, lifted from the Roster Tabletop proposal (Option 2).
  *
- * That mockup is the source of truth for how Playball looks — palette,
- * typography, spacing. The "Design direction" section of 01-roadmap.md describes
- * a different, scorekeeper's-page scheme that was never adopted and is marked
- * stale there. Where the two disagree, this file follows the mockup.
+ * That prototype is the source of truth for how Playball looks — palette,
+ * typography, spacing. It replaces design/Dynasty Mobile.dc.html, which was the
+ * source of record through v0.7.4 and is where every comment in this file
+ * referring to cream, navy and clay came from. The names below are deliberately
+ * unchanged: `--clay` is still the accent, it is simply green now, and keeping
+ * the name is what let the whole app change colour in one commit instead of
+ * fifteen hundred. The "Design direction" section of 01-roadmap.md describes a
+ * third scheme that was never adopted and is marked stale there.
  */
 
 :root {
-  --field: #f2ece0;   /* screen background, the ruled page */
-  --paper: #fbf7ee;   /* cards, panels, table surfaces */
-  --ink: #1c2430;     /* primary text, bottom nav */
-  --navy: #223247;    /* top app bar */
-  --clay: #a8442a;    /* the accent: active states, rules, alerts */
-  --win: #3f6b46;
-  --loss: #a8442a;
+  --field: #f7f8f4;   /* screen background, the ruled page */
+  --paper: #ffffff;   /* cards, panels, table surfaces */
+  --ink: #1d201d;     /* primary text */
+  --navy: #153a2b;    /* the dark surface: app bar, hero cards, the live frame */
+  --clay: #236b42;    /* the accent: active states, rules, primary commands */
 
-  --dim: rgba(28, 36, 48, 0.55);
-  --faint: rgba(28, 36, 48, 0.2);
-  --hairline: rgba(28, 36, 48, 0.12);
-  --cream: #f6f1e6;
-  --cream-dim: rgba(246, 241, 230, 0.62);
+  /* The alarm, which used to be the accent as well.
+   *
+   * `--clay` carried both jobs in the old palette and the file said so on this
+   * line — "active states, rules, alerts". It was survivable while the accent
+   * was a rust red, because a rust red already reads as a warning. It is not
+   * survivable now that the accent is green: an unread badge, an unsaved save
+   * and a decision going stale cannot be the same colour as the SET LINEUP
+   * button. So the two meanings finally get two inks, and every site that meant
+   * "look at this now" was moved off `--clay` in the same commit. */
+  --alert: #c9362f;
 
-  --display: 'Big Shoulders Display', sans-serif;
+  --win: #236b42;
+  --loss: #c9362f;
+
+  /* The three palette colours as bare channel triplets.
+   *
+   * A hundred and ninety-five places in the UI needed one of these at some
+   * alpha — twenty-seven distinct alphas of the ink alone — and each of them
+   * was written as a literal `rgba(28, 36, 48, .28)`. Fifty-nine named tokens
+   * would have been absurd and fifty-nine hand edits per repaint worse, so the
+   * colour is a token and the alpha stays at the call site: `rgba(var(--ink-rgb),
+   * .28)`. Repainting the app is now three lines rather than a hunt. */
+  --ink-rgb: 29, 32, 29;
+  --cream-rgb: 244, 248, 244;
+  --clay-rgb: 35, 107, 66;
+
+  --dim: rgba(var(--ink-rgb), 0.58);
+  --faint: rgba(var(--ink-rgb), 0.2);
+  --hairline: rgba(var(--ink-rgb), 0.12);
+  --line: #e2e5df;    /* the hairline as a solid, for rules that sit on --field */
+  --sunk: #edefe8;    /* one step under --field: the sub-nav, the step rail */
+  --soft: #e8f1e9;    /* the accent at rest: selected rows, filled meters */
+  --yellow: #ecb83d;  /* the live game's active call, and nothing else */
+  --cream: #f4f8f4;
+  --cream-dim: rgba(var(--cream-rgb), 0.66);
+
+  --display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
-  --body: 'Source Sans 3', system-ui, sans-serif;
+  --body: 'DM Sans', system-ui, sans-serif;
 
   /* The text scale.
    *
@@ -139,12 +171,25 @@ body {
 .mono { font-family: var(--mono); }
 .display { font-family: var(--display); }
 
-/* Labels: small, wide-tracked, upper. Used for every column head and tag. */
+/* Labels: small, wide-tracked, upper. Used for every column head and tag.
+ *
+ * Nine pixels rather than eight and a half, which is a floor rather than a
+ * taste. The Roster Tabletop prototype sets its own labels at seven and eight,
+ * and taken literally that would have shipped a smaller default than the app
+ * has today on the same handsets. Its density does not actually come from the
+ * type size — it comes from tight leading and hairline rules, both of which
+ * survive the extra half pixel intact.
+ *
+ * Still monospace, for now. The prototype has no mono at all and sets labels in
+ * its body face; that is the right end state and it is a phase-4 job, because
+ * three hundred and fifty-eight inline sites also say `var(--mono)` and half of
+ * them are column heads rather than columns. Moving this one class ahead of
+ * them would leave the app in two label voices instead of one. */
 .label {
-  font: 500 calc(8.5px * var(--ts)) var(--mono);
+  font: 500 calc(9px * var(--ts)) var(--mono);
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(28, 36, 48, 0.5);
+  color: rgba(var(--ink-rgb), 0.5);
 }
 
 button {
@@ -228,8 +273,8 @@ button {
 @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pulseClay {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(168, 68, 42, .34); }
-  50%      { box-shadow: 0 0 0 6px rgba(168, 68, 42, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--clay-rgb), .34); }
+  50%      { box-shadow: 0 0 0 6px rgba(var(--clay-rgb), 0); }
 }
 
 .card-in { animation: cardIn 300ms ease-out both; }

@@ -215,7 +215,7 @@ function Row(
     padding: '8px 10px',
     borderBottom: '1px solid var(--hairline)',
     borderLeft: ours ? '3px solid var(--clay)' : '3px solid transparent',
-    background: ours ? 'rgba(168,68,42,.12)' : 'transparent',
+    background: ours ? 'rgba(var(--clay-rgb), .12)' : 'transparent',
   };
 
   // A tap that opens nothing is worse than no tap at all, so the row is only a

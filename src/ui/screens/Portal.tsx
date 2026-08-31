@@ -152,7 +152,7 @@ function Row(
   return (
     <div style={{
       marginBottom: 6, background: 'var(--paper)',
-      border: '1px solid rgba(28,36,48,.26)',
+      border: '1px solid rgba(var(--ink-rgb), .26)',
     }}>
       <button
         className="tap"

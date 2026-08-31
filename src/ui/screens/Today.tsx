@@ -388,7 +388,7 @@ export function Today() {
                   }}>June is here</div>
                   <div style={{
                     marginTop: 7, font: "400 calc(12px * var(--ts))/1.55 var(--body)",
-                    color: 'rgba(246,241,230,.72)', maxWidth: 300,
+                    color: 'rgba(var(--cream-rgb), .72)', maxWidth: 300,
                     marginLeft: 'auto', marginRight: 'auto',
                   }}>
                     {team.w}-{team.l}, and now the games that get remembered.
@@ -525,7 +525,7 @@ function GameSheet(
       aria-modal="true"
       aria-label={`${away.def.school} at ${home.def.school}`}
       style={{
-        position: 'absolute', inset: 0, background: 'rgba(28,36,48,.55)',
+        position: 'absolute', inset: 0, background: 'rgba(var(--ink-rgb), .55)',
         display: 'flex', alignItems: 'flex-end', zIndex: 20,
       }}
     >
@@ -547,7 +547,7 @@ function GameSheet(
             {' · '}{seasonDate(year, g.day).toUpperCase()}
           </span>
           <button onClick={onClose} style={{
-            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(246,241,230,.8)',
+            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(var(--cream-rgb), .8)',
           }}>CLOSE</button>
         </div>
         <Row i={g.away} school={away.def.school} runs={g.awayRuns} won={!homeWon} />

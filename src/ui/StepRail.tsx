@@ -35,7 +35,7 @@ export function StepRail(
     <div style={{
       flex: 'none', display: 'flex', gap: 2,
       padding: '8px 10px 9px',
-      background: '#e7dfd0', borderBottom: '1px solid rgba(28,36,48,.16)',
+      background: 'var(--sunk)', borderBottom: '1px solid rgba(var(--ink-rgb), .16)',
       ...style,
     }}>
       {steps.map((s, i) => {
@@ -54,8 +54,8 @@ export function StepRail(
           >
             <div style={{
               height: 4, borderRadius: 2,
-              background: done ? 'rgba(168,68,42,.45)'
-                : here ? 'var(--clay)' : 'rgba(28,36,48,.16)',
+              background: done ? 'rgba(var(--clay-rgb), .45)'
+                : here ? 'var(--clay)' : 'rgba(var(--ink-rgb), .16)',
               transition: 'background 220ms ease',
             }} />
             <div style={{
@@ -63,7 +63,7 @@ export function StepRail(
               font: "600 calc(8px * var(--ts))/1.3 var(--mono)", letterSpacing: '.06em',
               textAlign: 'center',
               color: here ? 'var(--clay)'
-                : i <= furthest ? 'rgba(28,36,48,.62)' : 'rgba(28,36,48,.34)',
+                : i <= furthest ? 'rgba(var(--ink-rgb), .62)' : 'rgba(var(--ink-rgb), .34)',
               transition: 'color 220ms ease',
             }}>{s.label}</div>
           </button>

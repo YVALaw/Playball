@@ -151,7 +151,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
             onClick={() => restMan(p.id, 3)}
             style={{
               marginTop: 8, width: '100%', padding: '9px 11px', minHeight: 40,
-              background: 'var(--field)', border: '1px solid rgba(28,36,48,.32)',
+              background: 'var(--field)', border: '1px solid rgba(var(--ink-rgb), .32)',
               font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.11em',
             }}
           >GIVE HIM THREE DAYS</button>
@@ -184,7 +184,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
             style={{
               marginTop: 8, width: '100%', padding: '9px 11px', minHeight: 40,
               background: wordsLeft > 0 ? 'var(--field)' : 'transparent',
-              border: '1px solid rgba(28,36,48,.32)',
+              border: '1px solid rgba(var(--ink-rgb), .32)',
               color: wordsLeft > 0 ? 'var(--ink)' : 'var(--dim)',
               font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.11em',
             }}
@@ -231,7 +231,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
                 onClick={() => setMoving(!moving)}
                 style={{
                   marginTop: 8, width: '100%', padding: '9px 11px', minHeight: 40,
-                  background: 'var(--field)', border: '1px solid rgba(28,36,48,.32)',
+                  background: 'var(--field)', border: '1px solid rgba(var(--ink-rgb), .32)',
                   font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.11em',
                 }}
               >{moving ? 'NEVER MIND' : 'CHANGE HIS POSITION'}</button>
@@ -285,7 +285,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
               style={{
                 marginTop: 8, width: '100%', padding: '9px 11px', minHeight: 40,
                 background: sitting ? 'var(--field)' : 'var(--paper)',
-                border: `1px solid ${sitting ? 'rgba(28,36,48,.32)' : 'var(--you)'}`,
+                border: `1px solid ${sitting ? 'rgba(var(--ink-rgb), .32)' : 'var(--you)'}`,
                 color: sitting ? 'var(--ink)' : 'var(--you)',
                 font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.11em',
               }}

@@ -108,15 +108,15 @@ export function Avatar({ id, team, number, size = 40 }: Props) {
 
       {/* Eyes and brows. Two dots read as a face at 28 pixels; anything more
           becomes noise at the sizes this is actually used. */}
-      <circle cx="27" cy="26" r="1.7" fill="#1c2430" />
-      <circle cx="37" cy="26" r="1.7" fill="#1c2430" />
-      <path d="M24 22 L30 21" stroke="#1c2430" strokeWidth="1.4" strokeLinecap="round" opacity="0.75" />
-      <path d="M34 21 L40 22" stroke="#1c2430" strokeWidth="1.4" strokeLinecap="round" opacity="0.75" />
+      <circle cx="27" cy="26" r="1.7" fill="#1d201d" />
+      <circle cx="37" cy="26" r="1.7" fill="#1d201d" />
+      <path d="M24 22 L30 21" stroke="#1d201d" strokeWidth="1.4" strokeLinecap="round" opacity="0.75" />
+      <path d="M34 21 L40 22" stroke="#1d201d" strokeWidth="1.4" strokeLinecap="round" opacity="0.75" />
 
       {beard && (
         <path d="M21 29 C21 39 26 43 32 43 C38 43 43 39 43 29 C40 36 36 38 32 38 C28 38 24 36 21 29 Z" fill={hair} opacity="0.85" />
       )}
-      <path d="M29 33 Q32 35.5 35 33" stroke="#1c2430" strokeWidth="1.3" fill="none" strokeLinecap="round" opacity="0.7" />
+      <path d="M29 33 Q32 35.5 35 33" stroke="#1d201d" strokeWidth="1.3" fill="none" strokeLinecap="round" opacity="0.7" />
     </svg>
   );
 }
@@ -129,11 +129,11 @@ export function Avatar({ id, team, number, size = 40 }: Props) {
  * start to recognise, which is most of what makes a league feel inhabited.
  */
 export function teamColour(abbr?: string): string {
-  if (!abbr) return '#a8442a';
+  if (!abbr) return '#236b42';
   for (const conf of CONFERENCES) {
     for (const school of conf.schools) {
       if (school.abbr === abbr) return school.color;
     }
   }
-  return '#a8442a';
+  return '#236b42';
 }

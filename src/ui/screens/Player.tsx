@@ -733,7 +733,7 @@ function Repertoire({ p }: { p: Pitcher }) {
                 {speedOf(p, o.id)} · {Math.round(o.usage * 100)}%
               </span>
             </div>
-            <div style={{ height: 5, background: 'rgba(28,36,48,.09)' }}>
+            <div style={{ height: 5, background: 'rgba(var(--ink-rgb), .09)' }}>
               <div style={{
                 width: `${Math.round(o.usage * 100)}%`, height: '100%',
                 background: PITCHES[o.id].family === 'fastball' ? 'var(--clay)' : 'var(--ink)',
@@ -877,7 +877,7 @@ function Tendencies({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
                 </div>
               )}
               {!known && (
-                <div style={{ height: 4, background: 'rgba(28,36,48,.09)', marginTop: 6 }}>
+                <div style={{ height: 4, background: 'rgba(var(--ink-rgb), .09)', marginTop: 6 }}>
                   <div style={{
                     width: `${Math.round(progress * 100)}%`, height: '100%',
                     background: 'var(--ink)', opacity: 0.35,
@@ -1445,7 +1445,7 @@ function Bar({ label, value }: { label: string; value: number }) {
         <span className="label">{label}</span>
         <span style={{ font: "600 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>{value}</span>
       </div>
-      <div style={{ height: 6, background: 'rgba(28,36,48,.09)' }}>
+      <div style={{ height: 6, background: 'rgba(var(--ink-rgb), .09)' }}>
         <div style={{
           width: `${width}%`, height: '100%',
           background: value >= 60 ? 'var(--clay)' : 'var(--ink)',

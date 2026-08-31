@@ -21,9 +21,9 @@
 export type Tone = 'paper' | 'navy';
 
 const INK = (tone: Tone): string => (tone === 'navy' ? 'var(--cream)' : 'var(--ink)');
-const DIM = (tone: Tone): string => (tone === 'navy' ? 'rgba(246,241,230,.52)' : 'var(--dim)');
+const DIM = (tone: Tone): string => (tone === 'navy' ? 'rgba(var(--cream-rgb), .52)' : 'var(--dim)');
 const RULE = (tone: Tone): string =>
-  (tone === 'navy' ? 'rgba(246,241,230,.22)' : 'var(--hairline)');
+  (tone === 'navy' ? 'rgba(var(--cream-rgb), .22)' : 'var(--hairline)');
 
 /** Row heights differ per tone only because navy has to fit a scoreboard. */
 const geom = (tone: Tone) => (tone === 'navy'

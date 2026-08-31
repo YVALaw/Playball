@@ -72,7 +72,7 @@ export function Diamond({ runners, scoreTick = 0, size = 96 }: Props) {
             `${px(SPOT[3].x)},${px(SPOT[3].y)}`,
           ].join(' ')}
           fill="none"
-          stroke="rgba(28,36,48,.18)"
+          stroke="rgba(var(--ink-rgb), .18)"
           strokeWidth="1"
         />
       </svg>
@@ -88,8 +88,8 @@ export function Diamond({ runners, scoreTick = 0, size = 96 }: Props) {
             width: 12,
             height: 12,
             transform: 'rotate(45deg)',
-            border: `1px solid ${occupied.has(b) ? 'var(--clay)' : 'rgba(28,36,48,.3)'}`,
-            background: occupied.has(b) ? 'rgba(168,68,42,.18)' : 'transparent',
+            border: `1px solid ${occupied.has(b) ? 'var(--clay)' : 'rgba(var(--ink-rgb), .3)'}`,
+            background: occupied.has(b) ? 'rgba(var(--clay-rgb), .18)' : 'transparent',
             transition: 'background 220ms ease, border-color 220ms ease',
           }}
         />

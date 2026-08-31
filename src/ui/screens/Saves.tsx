@@ -214,7 +214,7 @@ export function Saves() {
               style={{
                 width: '100%', marginTop: 9, padding: '11px 10px',
                 background: 'var(--field)',
-                border: '1px solid rgba(28,36,48,.28)', borderRadius: 0,
+                border: '1px solid rgba(var(--ink-rgb), .28)', borderRadius: 0,
                 // 16px floor: anything smaller makes a phone browser zoom in on
                 // focus and stay zoomed. Same fix as the coach name input.
                 color: 'var(--ink)', font: "400 calc(16px * var(--ts)) var(--body)",
@@ -311,7 +311,7 @@ export function Saves() {
             className="tap"
             style={{
               width: '100%', marginTop: 10, padding: '12px 10px', minHeight: 44,
-              background: 'transparent', border: '1px solid rgba(28,36,48,.4)',
+              background: 'transparent', border: '1px solid rgba(var(--ink-rgb), .4)',
               color: 'var(--ink)', font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.12em',
             }}
           >{tutorialsReset ? 'THEY WILL SHOW AGAIN' : 'SHOW THE TUTORIALS AGAIN'}</button>

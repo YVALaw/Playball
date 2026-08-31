@@ -144,7 +144,7 @@ export function Awards() {
                   }}>{a.name}</div>
                   <div style={{
                     marginTop: 6, font: "400 calc(11px * var(--ts)) var(--mono)",
-                    color: 'rgba(28,36,48,.68)',
+                    color: 'rgba(var(--ink-rgb), .68)',
                     display: 'flex', alignItems: 'center', gap: 7,
                   }}>
                     <span style={{
@@ -206,7 +206,7 @@ export function Awards() {
               }}>
               <span style={{
                 font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-                color: 'rgba(28,36,48,.62)',
+                color: 'rgba(var(--ink-rgb), .62)',
               }}>{p.position}</span>
               <div style={{ minWidth: 0 }}>
                 <div style={{
@@ -214,7 +214,7 @@ export function Awards() {
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>{p.name}</div>
                 <div style={{
-                  font: "400 calc(10px * var(--ts)) var(--mono)", color: 'rgba(28,36,48,.68)',
+                  font: "400 calc(10px * var(--ts)) var(--mono)", color: 'rgba(var(--ink-rgb), .68)',
                 }}>{p.line}</div>
               </div>
               {/* The school as a solid chip: the strongest the colour can be

@@ -118,7 +118,7 @@ export function Lineup() {
                 gridTemplateColumns: '18px 26px 1fr 30px 44px',
                 gap: 8, alignItems: 'center', textAlign: 'left',
                 padding: '9px 10px', borderBottom: '1px solid var(--hairline)',
-                background: on ? 'rgba(168,68,42,.12)' : 'transparent',
+                background: on ? 'rgba(var(--clay-rgb), .12)' : 'transparent',
               }}
             >
               <span style={{ font: "700 calc(13px * var(--ts)) var(--display)", color: 'var(--dim)' }}>{i + 1}</span>
@@ -248,7 +248,7 @@ function Nudge(
       style={{
         width: 20, height: 20, lineHeight: '18px', textAlign: 'center',
         border: '1px solid var(--faint)',
-        color: disabled ? 'rgba(28,36,48,.2)' : 'var(--ink)',
+        color: disabled ? 'rgba(var(--ink-rgb), .2)' : 'var(--ink)',
         font: 'calc(11px * var(--ts)) var(--mono)',
       }}
     >{children}</button>

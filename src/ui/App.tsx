@@ -158,7 +158,7 @@ function AppBody(
           {loadError && (
             <div style={{
               margin: '12px 14px 0', padding: '11px 12px',
-              background: 'var(--paper)', borderLeft: '3px solid var(--clay)',
+              background: 'var(--paper)', borderLeft: '3px solid var(--alert)',
               font: "400 calc(12px * var(--ts))/1.55 var(--body)",
             }}>
               <strong>Your saved dynasty could not be opened.</strong> It was
@@ -211,8 +211,8 @@ function AppBody(
             className="tap"
             style={{
               flex: 'none', padding: '8px 9px',
-              background: 'rgba(246,241,230,.12)',
-              border: '1px solid rgba(246,241,230,.28)',
+              background: 'rgba(var(--cream-rgb), .12)',
+              border: '1px solid rgba(var(--cream-rgb), .28)',
               color: 'var(--cream)',
               font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
             }}
@@ -393,7 +393,7 @@ function AppBody(
         {!live && tab !== 'home' && (
           <nav style={{
             flex: 'none', height: 38, display: 'flex',
-            background: '#e7dfd0', borderBottom: '1px solid rgba(28,36,48,.16)',
+            background: 'var(--sunk)', borderBottom: '1px solid rgba(var(--ink-rgb), .16)',
           }}>
             {(TABS.find((t) => t.id === tab) ?? TABS[0]!).screens.map((sc) => {
               const on = screen === sc.id;
@@ -405,7 +405,7 @@ function AppBody(
                   style={{
                     flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: on ? 'var(--field)' : 'transparent',
-                    borderRight: '1px solid rgba(28,36,48,.1)',
+                    borderRight: '1px solid rgba(var(--ink-rgb), .1)',
                     boxShadow: on ? 'inset 0 -3px 0 var(--clay)' : 'none',
                     font: `600 calc(${count >= 5 ? 8.5 : 10}px * var(--ts)) var(--mono)`,
                     letterSpacing: count >= 5 ? '.08em' : '.14em',
@@ -455,12 +455,12 @@ function AppBody(
                   onClick={() => go(t.id as Tab)}
                   style={{
                     flex: 1, padding: '8px 0 9px', textAlign: 'center',
-                    background: on ? 'rgba(168,68,42,.85)' : 'transparent',
+                    background: on ? 'rgba(var(--clay-rgb), .85)' : 'transparent',
                   }}
                 >
                   <div style={{
                     font: "700 calc(12px * var(--ts))/1 var(--display)", letterSpacing: '.12em',
-                    color: on ? 'var(--cream)' : 'rgba(246,241,230,.5)',
+                    color: on ? 'var(--cream)' : 'rgba(var(--cream-rgb), .5)',
                     position: 'relative', display: 'inline-block',
                   }}>
                     {label}
@@ -468,14 +468,14 @@ function AppBody(
                       <span style={{
                         position: 'absolute', top: -3, right: -8,
                         width: 6, height: 6, borderRadius: '50%',
-                        background: 'var(--clay)',
+                        background: 'var(--alert)',
                       }} />
                     )}
                   </div>
                   <div style={{
                     marginTop: 3,
                     font: "400 calc(8px * var(--ts))/1 var(--mono)", letterSpacing: '.1em',
-                    color: on ? 'rgba(246,241,230,.75)' : 'rgba(246,241,230,.38)',
+                    color: on ? 'rgba(var(--cream-rgb), .75)' : 'rgba(var(--cream-rgb), .38)',
                   }}>{t.id === 'home' ? 'THE BRACKET' : ''}</div>
                 </button>
               );
@@ -653,7 +653,7 @@ function AppBody(
         <div style={{ flex: 'none', textAlign: 'right', lineHeight: 1 }}>
           <div style={{
             font: "500 calc(7.5px * var(--ts)) var(--mono)", letterSpacing: '.16em',
-            color: 'rgba(246,241,230,.5)', textTransform: 'uppercase',
+            color: 'rgba(var(--cream-rgb), .5)', textTransform: 'uppercase',
           }}>RECORD</div>
           <div style={{
             marginTop: 2,
@@ -670,7 +670,7 @@ function AppBody(
       {/* Sub-nav */}
       <nav style={{
         flex: 'none', height: 38, display: 'flex',
-        background: '#e7dfd0', borderBottom: '1px solid rgba(28,36,48,.16)',
+        background: 'var(--sunk)', borderBottom: '1px solid rgba(var(--ink-rgb), .16)',
       }}>
         {tabDef.screens.map((s) => {
           const on = screen === s.id;
@@ -682,7 +682,7 @@ function AppBody(
                 flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 gap: 4,
                 background: on ? 'var(--field)' : 'transparent',
-                borderRight: '1px solid rgba(28,36,48,.1)',
+                borderRight: '1px solid rgba(var(--ink-rgb), .1)',
                 boxShadow: on ? 'inset 0 -3px 0 var(--clay)' : 'none',
                 // Five labels have to share the same 360 pixels four used to.
                 font: `600 calc(${tabDef.screens.length >= 5 ? 8.5 : 10}px * var(--ts)) var(--mono)`,
@@ -718,12 +718,12 @@ function AppBody(
               onClick={() => go(t.id as Tab)}
               style={{
                 flex: 1, padding: '8px 0 9px', textAlign: 'center',
-                background: on ? 'rgba(168,68,42,.85)' : 'transparent',
+                background: on ? 'rgba(var(--clay-rgb), .85)' : 'transparent',
               }}
             >
               <div style={{
                 font: "700 calc(12px * var(--ts))/1 var(--display)", letterSpacing: '.12em',
-                color: on ? 'var(--cream)' : 'rgba(246,241,230,.5)',
+                color: on ? 'var(--cream)' : 'rgba(var(--cream-rgb), .5)',
                 position: 'relative', display: 'inline-block',
               }}>
                 {t.label}
@@ -736,14 +736,14 @@ function AppBody(
                   <span style={{
                     position: 'absolute', top: -3, right: -8,
                     width: 6, height: 6, borderRadius: '50%',
-                    background: 'var(--clay)',
+                    background: 'var(--alert)',
                   }} />
                 )}
               </div>
               <div style={{
                 marginTop: 3,
                 font: "400 calc(8px * var(--ts))/1 var(--mono)", letterSpacing: '.1em',
-                color: on ? 'rgba(246,241,230,.75)' : 'rgba(246,241,230,.38)',
+                color: on ? 'rgba(var(--cream-rgb), .75)' : 'rgba(var(--cream-rgb), .38)',
               }}>{navMeta[t.id] ?? ''}</div>
             </button>
           );
@@ -777,8 +777,8 @@ function InboxButton({ unread, onOpen }: { unread: number; onOpen: () => void })
       aria-label={`Inbox${unread > 0 ? `, ${unread} unread` : ''}`}
       style={{
         flex: 'none', position: 'relative', padding: '8px 9px',
-        background: unread > 0 ? 'var(--clay)' : 'rgba(246,241,230,.12)',
-        border: `1px solid ${unread > 0 ? 'var(--clay)' : 'rgba(246,241,230,.28)'}`,
+        background: unread > 0 ? 'var(--alert)' : 'rgba(var(--cream-rgb), .12)',
+        border: `1px solid ${unread > 0 ? 'var(--alert)' : 'rgba(var(--cream-rgb), .28)'}`,
         color: 'var(--cream)',
         font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
       }}
@@ -817,7 +817,7 @@ function SaveAlert({ topmost }: { topmost?: boolean }) {
         flex: 'none', width: '100%', textAlign: 'left',
         padding: '7px 14px 8px',
         paddingTop: topmost ? 'calc(env(safe-area-inset-top) + 7px)' : 7,
-        background: 'var(--clay)', color: 'var(--cream)',
+        background: 'var(--alert)', color: 'var(--cream)',
       }}
     >
       <div style={{ font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em' }}>
@@ -825,7 +825,7 @@ function SaveAlert({ topmost }: { topmost?: boolean }) {
       </div>
       <div style={{
         marginTop: 2, font: "400 calc(10px * var(--ts))/1.35 var(--body)",
-        color: 'rgba(246,241,230,.82)',
+        color: 'rgba(var(--cream-rgb), .82)',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
         {lastSaveError ?? 'The last write to this device did not complete.'}
@@ -977,8 +977,8 @@ function BackBar({ onBack }: { onBack: () => void }) {
         onClick={onBack}
         className="tap"
         style={{
-          padding: '11px 18px', background: 'rgba(246,241,230,.14)',
-          border: '1px solid rgba(246,241,230,.32)',
+          padding: '11px 18px', background: 'rgba(var(--cream-rgb), .14)',
+          border: '1px solid rgba(var(--cream-rgb), .32)',
           color: 'var(--cream)', font: "700 calc(12px * var(--ts)) var(--mono)", letterSpacing: '.14em',
         }}
       >← BACK</button>
@@ -1010,7 +1010,7 @@ function CoachMenuButton() {
         display: 'block', width: '100%', textAlign: 'left',
         padding: '12px 16px', minHeight: 40,
         background: 'transparent',
-        borderBottom: last ? 'none' : '1px solid rgba(246,241,230,.14)',
+        borderBottom: last ? 'none' : '1px solid rgba(var(--cream-rgb), .14)',
         color: 'var(--cream)', font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.14em',
       }}
     >{label}</button>
@@ -1027,7 +1027,7 @@ function CoachMenuButton() {
         style={{
           width: 40, height: 40, minWidth: 40, padding: 0,
           borderRadius: '50%', overflow: 'hidden',
-          border: `2px solid ${open ? 'var(--cream)' : 'rgba(246,241,230,.4)'}`,
+          border: `2px solid ${open ? 'var(--cream)' : 'rgba(var(--cream-rgb), .4)'}`,
           background: 'var(--paper)',
           display: 'grid', placeItems: 'center',
         }}
@@ -1047,7 +1047,7 @@ function CoachMenuButton() {
               position: 'absolute', top: 46, right: 0, zIndex: 45,
               minWidth: 168,
               background: 'var(--navy)',
-              border: '1px solid rgba(246,241,230,.28)',
+              border: '1px solid rgba(var(--cream-rgb), .28)',
               boxShadow: '0 12px 34px rgba(0,0,0,.4)',
             }}
           >

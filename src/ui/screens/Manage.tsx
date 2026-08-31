@@ -363,12 +363,12 @@ export function Manage() {
           <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <span style={{
               font: "500 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em',
-              color: 'rgba(246,241,230,.5)',
+              color: 'rgba(var(--cream-rgb), .5)',
             }}>OUT</span>
             {[0, 1, 2].map((i) => (
               <span key={i} style={{
                 width: 8, height: 8, transform: 'rotate(45deg)',
-                border: '1px solid rgba(246,241,230,.45)',
+                border: '1px solid rgba(var(--cream-rgb), .45)',
                 background: i < outs ? 'var(--clay)' : 'transparent',
                 transition: 'background 180ms ease',
               }} />
@@ -379,7 +379,7 @@ export function Manage() {
             className="tap"
             style={{
               flex: 'none', padding: '5px 10px',
-              border: '1px solid rgba(246,241,230,.35)',
+              border: '1px solid rgba(var(--cream-rgb), .35)',
               color: 'var(--cream)',
               font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
             }}
@@ -627,20 +627,20 @@ export function Manage() {
                   // difference is obvious at arm's length on a phone.
                   background: live0 ? 'var(--paper)' : 'transparent',
                   border: o.available
-                    ? '1px solid rgba(28,36,48,.42)'
-                    : '1px dashed rgba(28,36,48,.16)',
+                    ? '1px solid rgba(var(--ink-rgb), .42)'
+                    : '1px dashed rgba(var(--ink-rgb), .16)',
                   opacity: o.available && playing ? 0.45 : 1,
                   transition: 'opacity 160ms ease, background 160ms ease',
-                  boxShadow: live0 ? '0 1px 0 rgba(28,36,48,.16)' : 'none',
+                  boxShadow: live0 ? '0 1px 0 rgba(var(--ink-rgb), .16)' : 'none',
                 }}
               >
                 <div style={{
                   font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.03em',
-                  color: o.available ? 'var(--ink)' : 'rgba(28,36,48,.34)',
+                  color: o.available ? 'var(--ink)' : 'rgba(var(--ink-rgb), .34)',
                 }}>{o.label}</div>
                 <div style={{
                   marginTop: 1, font: "400 calc(9px * var(--ts))/1.2 var(--body)",
-                  color: o.available ? 'var(--dim)' : 'rgba(28,36,48,.28)',
+                  color: o.available ? 'var(--dim)' : 'rgba(var(--ink-rgb), .28)',
                 }}>{o.note}</div>
               </button>
               );
@@ -900,13 +900,13 @@ function Side(
   const name = (
     <span style={{
       font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-      color: batting ? 'var(--cream)' : 'rgba(246,241,230,.55)',
+      color: batting ? 'var(--cream)' : 'rgba(var(--cream-rgb), .55)',
     }}>{abbr}</span>
   );
   const score = (
     <span style={{
       font: `800 calc(20px * var(--ts))/1 var(--display)`,
-      color: batting ? 'var(--cream)' : 'rgba(246,241,230,.75)',
+      color: batting ? 'var(--cream)' : 'rgba(var(--cream-rgb), .75)',
       fontVariantNumeric: 'tabular-nums',
     }}>{runs}</span>
   );
@@ -928,9 +928,9 @@ function Small(
       style={{
         flex: 'none', padding: '8px 0', minHeight: 44,
         background: disabled ? 'transparent' : 'var(--paper)',
-        border: disabled ? '1px dashed rgba(28,36,48,.16)' : '1px solid rgba(28,36,48,.42)',
-        boxShadow: disabled ? 'none' : '0 1px 0 rgba(28,36,48,.16)',
-        color: disabled ? 'rgba(28,36,48,.3)' : 'var(--ink)',
+        border: disabled ? '1px dashed rgba(var(--ink-rgb), .16)' : '1px solid rgba(var(--ink-rgb), .42)',
+        boxShadow: disabled ? 'none' : '0 1px 0 rgba(var(--ink-rgb), .16)',
+        color: disabled ? 'rgba(var(--ink-rgb), .3)' : 'var(--ink)',
         font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
       }}
     >{children}</button>
@@ -951,7 +951,7 @@ function Picker(
       onClick={onClose}
       className="sheet-scrim"
             style={{
-        position: 'absolute', inset: 0, background: 'rgba(28,36,48,.55)',
+        position: 'absolute', inset: 0, background: 'rgba(var(--ink-rgb), .55)',
         display: 'flex', alignItems: 'flex-end', zIndex: 20,
       }}
     >

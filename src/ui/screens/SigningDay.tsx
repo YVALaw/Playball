@@ -180,7 +180,7 @@ export function SigningDay() {
               style={{
                 flex: 1, padding: '8px 0',
                 background: v === view ? 'var(--clay)' : 'var(--paper)',
-                border: v === view ? '1px solid var(--clay)' : '1px solid rgba(28,36,48,.28)',
+                border: v === view ? '1px solid var(--clay)' : '1px solid rgba(var(--ink-rgb), .28)',
                 color: v === view ? 'var(--cream)' : 'var(--ink)',
                 font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
               }}
@@ -251,7 +251,7 @@ export function SigningDay() {
                 display: 'grid', gridTemplateColumns: 'auto 1fr auto auto',
                 gap: 10, alignItems: 'baseline',
                 padding: '9px 11px', borderBottom: '1px solid var(--hairline)',
-                background: isMine ? 'rgba(168,68,42,.10)' : 'transparent',
+                background: isMine ? 'rgba(var(--clay-rgb), .10)' : 'transparent',
               }}>
                 <span style={{
                   font: "600 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)',
@@ -271,7 +271,7 @@ export function SigningDay() {
           })}
           {myRank > 25 && (
             <div style={{
-              padding: '9px 11px', background: 'rgba(168,68,42,.10)',
+              padding: '9px 11px', background: 'rgba(var(--clay-rgb), .10)',
               font: "600 calc(12px * var(--ts)) var(--mono)", color: 'var(--clay)',
             }}>#{myRank} &nbsp; {team.def.school}</div>
           )}
@@ -412,7 +412,7 @@ function RecruitRow({
         display: 'grid', gridTemplateColumns: 'auto 1fr auto auto',
         gap: 9, alignItems: 'center',
         padding: '10px 11px', borderBottom: '1px solid var(--hairline)',
-        background: mine ? 'rgba(168,68,42,.10)' : 'transparent',
+        background: mine ? 'rgba(var(--clay-rgb), .10)' : 'transparent',
       }}
     >
       <Avatar id={p.id} team={destination} size={34} />
@@ -477,7 +477,7 @@ function RecruitSheet({
     <div
       onClick={onClose}
       style={{
-        position: 'absolute', inset: 0, background: 'rgba(28,36,48,.55)',
+        position: 'absolute', inset: 0, background: 'rgba(var(--ink-rgb), .55)',
         display: 'flex', alignItems: 'flex-end', zIndex: 20,
       }}
     >
@@ -499,7 +499,7 @@ function RecruitSheet({
             font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
           }}>{'★'.repeat(prospect.stars)} · {prospect.state}</span>
           <button onClick={onClose} style={{
-            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(246,241,230,.8)',
+            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(var(--cream-rgb), .8)',
           }}>CLOSE</button>
         </div>
 
@@ -522,7 +522,7 @@ function RecruitSheet({
 
           <div style={{
             marginTop: 12, padding: '11px 12px',
-            background: mine ? 'rgba(168,68,42,.10)' : 'var(--field)',
+            background: mine ? 'rgba(var(--clay-rgb), .10)' : 'var(--field)',
             borderLeft: `3px solid ${mine ? 'var(--clay)' : 'var(--faint)'}`,
           }}>
             <div className="label">SIGNED WITH</div>
@@ -640,7 +640,7 @@ function WalkOnSheet(
     <div
       onClick={onClose}
       style={{
-        position: 'absolute', inset: 0, background: 'rgba(28,36,48,.55)',
+        position: 'absolute', inset: 0, background: 'rgba(var(--ink-rgb), .55)',
         display: 'flex', alignItems: 'flex-end', zIndex: 20,
       }}
     >
@@ -660,7 +660,7 @@ function WalkOnSheet(
             font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
           }}>WALK-ON &middot; ONE YEAR</span>
           <button onClick={onClose} style={{
-            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(246,241,230,.8)',
+            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(var(--cream-rgb), .8)',
           }}>CLOSE</button>
         </div>
 

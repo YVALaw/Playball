@@ -118,9 +118,9 @@ export function StrategyScreen() {
                 style={{
                   width: '100%', textAlign: 'left', marginBottom: 5,
                   padding: '9px 11px',
-                  background: on ? 'rgba(168,68,42,.10)' : 'var(--paper)',
-                  border: `1px solid ${on ? 'var(--clay)' : 'rgba(28,36,48,.28)'}`,
-                  boxShadow: on ? 'none' : '0 1px 0 rgba(28,36,48,.10)',
+                  background: on ? 'rgba(var(--clay-rgb), .10)' : 'var(--paper)',
+                  border: `1px solid ${on ? 'var(--clay)' : 'rgba(var(--ink-rgb), .28)'}`,
+                  boxShadow: on ? 'none' : '0 1px 0 rgba(var(--ink-rgb), .10)',
                 }}
               >
                 <div style={{

@@ -150,7 +150,7 @@ export function Stats() {
                   background: (p.type === 'hitter'
                     ? team.team.lineup.includes(p)
                     : team.team.rotation.includes(p))
-                    ? 'rgba(168,68,42,.05)' : 'transparent',
+                    ? 'rgba(var(--clay-rgb), .05)' : 'transparent',
                 }}
               >
                 <Avatar id={p.id} team={team.def.abbr} size={26} />
@@ -234,8 +234,8 @@ function Chip(
       style={{
         padding: '6px 12px',
         background: on ? 'var(--clay)' : 'transparent',
-        border: `1px solid ${on ? 'var(--clay)' : 'rgba(28,36,48,.25)'}`,
-        color: on ? 'var(--cream)' : 'rgba(28,36,48,.6)',
+        border: `1px solid ${on ? 'var(--clay)' : 'rgba(var(--ink-rgb), .25)'}`,
+        color: on ? 'var(--cream)' : 'rgba(var(--ink-rgb), .6)',
         font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.14em',
       }}
     >{children}</button>
@@ -276,7 +276,7 @@ function Board(
               gap: 6, alignItems: 'center',
               padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
               borderLeft: ours ? '3px solid var(--clay)' : '3px solid transparent',
-              background: ours ? 'rgba(168,68,42,.15)' : 'transparent',
+              background: ours ? 'rgba(var(--clay-rgb), .15)' : 'transparent',
             }}>
               <span style={{ font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>{i + 1}</span>
               <span style={{

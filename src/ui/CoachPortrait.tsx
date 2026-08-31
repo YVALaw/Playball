@@ -112,10 +112,10 @@ export function CoachPortrait({ look, size = 96 }: Props) {
 
       {/* Eyes and brows. Two dots read as a face at 28 pixels; anything more
           becomes noise at the sizes this is actually used. */}
-      <circle cx="27" cy="26" r="1.7" fill="#1c2430" />
-      <circle cx="37" cy="26" r="1.7" fill="#1c2430" />
-      <path d="M24 22 L30 21" stroke="#1c2430" strokeWidth="1.4" strokeLinecap="round" opacity="0.75" />
-      <path d="M34 21 L40 22" stroke="#1c2430" strokeWidth="1.4" strokeLinecap="round" opacity="0.75" />
+      <circle cx="27" cy="26" r="1.7" fill="#1d201d" />
+      <circle cx="37" cy="26" r="1.7" fill="#1d201d" />
+      <path d="M24 22 L30 21" stroke="#1d201d" strokeWidth="1.4" strokeLinecap="round" opacity="0.75" />
+      <path d="M34 21 L40 22" stroke="#1d201d" strokeWidth="1.4" strokeLinecap="round" opacity="0.75" />
 
       {(beard === 'FULL' || beard === 'STUBBLE') && (
         <path
@@ -126,7 +126,7 @@ export function CoachPortrait({ look, size = 96 }: Props) {
           opacity={beard === 'FULL' ? 0.85 : 0.32}
         />
       )}
-      <path d="M29 33 Q32 35.5 35 33" stroke="#1c2430" strokeWidth="1.3" fill="none" strokeLinecap="round" opacity="0.7" />
+      <path d="M29 33 Q32 35.5 35 33" stroke="#1d201d" strokeWidth="1.3" fill="none" strokeLinecap="round" opacity="0.7" />
       {(beard === 'TASH' || beard === 'FULL') && (
         <path d="M27.5 31 C29 29.8 35 29.8 36.5 31 C35 31.9 29 31.9 27.5 31 Z" fill={hair} />
       )}

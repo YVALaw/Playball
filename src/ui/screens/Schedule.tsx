@@ -118,7 +118,7 @@ export function Schedule() {
               }}>{won === null ? '' : (won ? 'W' : 'L')}</span>
               <span style={{
                 font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right',
-                color: won === null ? 'rgba(28,36,48,.35)' : 'var(--ink)',
+                color: won === null ? 'rgba(var(--ink-rgb), .35)' : 'var(--ink)',
               }}>
                 {result ? `${us}-${them}` : day.kind === 'series' ? 'series' : 'mid'}
               </span>
@@ -205,7 +205,7 @@ export function BoxScoreSheet(
     <div
       onClick={onClose}
       style={{
-        position: 'absolute', inset: 0, background: 'rgba(28,36,48,.55)',
+        position: 'absolute', inset: 0, background: 'rgba(var(--ink-rgb), .55)',
         display: 'flex', alignItems: 'flex-end', zIndex: 20,
       }}
     >
@@ -225,7 +225,7 @@ export function BoxScoreSheet(
             font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
           }}>BOX SCORE · {box.innings} INNINGS</span>
           <button onClick={onClose} style={{
-            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(246,241,230,.8)',
+            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(var(--cream-rgb), .8)',
           }}>CLOSE</button>
         </div>
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px' }}>

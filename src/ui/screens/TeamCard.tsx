@@ -720,7 +720,7 @@ function Approach({ team }: { team: number }) {
           style={{
             width: '100%', padding: '9px 10px', minHeight: 40,
             background: 'var(--paper)',
-            border: '1px solid rgba(28,36,48,.32)',
+            border: '1px solid rgba(var(--ink-rgb), .32)',
             font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
             color: 'var(--ink)',
           }}

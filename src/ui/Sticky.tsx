@@ -130,7 +130,7 @@ export function FloatingAction(
           className="tap"
           style={{
             width: '100%', padding: '11px 10px', marginBottom: 8,
-            background: 'transparent', border: '1px solid rgba(28,36,48,.4)',
+            background: 'transparent', border: '1px solid rgba(var(--ink-rgb), .4)',
             color: 'var(--ink)', font: "700 calc(10px * var(--ts))/1.25 var(--mono)", letterSpacing: '.1em',
             whiteSpace: 'normal', overflowWrap: 'break-word',
           }}
@@ -156,7 +156,7 @@ export function FloatingAction(
           // what a label with a space in it never needs and what a photograph
           // of a button split mid-word is evidence of.
           whiteSpace: 'normal', overflowWrap: 'break-word',
-          boxShadow: '0 2px 10px rgba(28,36,48,.22)',
+          boxShadow: '0 2px 10px rgba(var(--ink-rgb), .22)',
         }}
       >{label}</button>
     </div>

@@ -123,7 +123,7 @@ export function Draft() {
             style={{
               flex: 1, padding: '8px 0',
               background: v === view ? 'var(--clay)' : 'var(--paper)',
-              border: v === view ? '1px solid var(--clay)' : '1px solid rgba(28,36,48,.28)',
+              border: v === view ? '1px solid var(--clay)' : '1px solid rgba(var(--ink-rgb), .28)',
               color: v === view ? 'var(--cream)' : 'var(--ink)',
               font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.06em',
             }}
@@ -170,7 +170,7 @@ export function Draft() {
                     style={{
                       padding: '7px 10px',
                       border: '1px solid var(--clay)',
-                      background: 'rgba(168,68,42,.08)',
+                      background: 'rgba(var(--clay-rgb), .08)',
                       animationDelay: `${i * 40}ms`,
                     }}
                   >
@@ -344,7 +344,7 @@ function KeepSheet(
       aria-label={`Talking to ${p.name}`}
       style={{
         position: 'absolute', inset: 0, zIndex: 40,
-        background: 'rgba(28,36,48,.62)',
+        background: 'rgba(var(--ink-rgb), .62)',
         display: 'grid', placeItems: 'end center', padding: 0,
       }}
     >
@@ -386,7 +386,7 @@ function KeepSheet(
             aria-label="Close"
             style={{
               flex: 'none', padding: '8px 12px', minHeight: 36,
-              background: 'transparent', border: '1px solid rgba(28,36,48,.3)',
+              background: 'transparent', border: '1px solid rgba(var(--ink-rgb), .3)',
               color: 'var(--dim)', font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.1em',
             }}
           >CLOSE</button>
@@ -423,7 +423,7 @@ function KeepSheet(
                     style={{
                       padding: '9px 4px', minHeight: 36,
                       background: k === pitch ? 'var(--ink)' : 'var(--paper)',
-                      border: k === pitch ? '1px solid var(--ink)' : '1px solid rgba(28,36,48,.28)',
+                      border: k === pitch ? '1px solid var(--ink)' : '1px solid rgba(var(--ink-rgb), .28)',
                       color: k === pitch ? 'var(--cream)' : 'var(--ink)',
                       font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.07em',
                     }}
@@ -465,7 +465,7 @@ function KeepSheet(
                     disabled={offer <= 0}
                     style={{
                       width: '100%', marginTop: 10, padding: '13px 10px',
-                      background: offer > 0 ? 'var(--clay)' : 'rgba(28,36,48,.12)',
+                      background: offer > 0 ? 'var(--clay)' : 'rgba(var(--ink-rgb), .12)',
                       border: '1px solid transparent',
                       color: offer > 0 ? 'var(--cream)' : 'var(--dim)',
                       font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.1em',
@@ -478,7 +478,7 @@ function KeepSheet(
                 onClick={() => releasePlayer(p.id)}
                 style={{
                   width: '100%', marginTop: 6, padding: '9px 10px',
-                  background: 'transparent', border: '1px solid rgba(28,36,48,.22)',
+                  background: 'transparent', border: '1px solid rgba(var(--ink-rgb), .22)',
                   color: 'var(--dim)', font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.08em',
                 }}
               >SHAKE HIS HAND AND LET HIM GO</button>
@@ -539,8 +539,8 @@ function Step(
       style={{
         flex: wide ? '0 0 40px' : 1, padding: '9px 0',
         background: 'transparent',
-        border: '1px solid rgba(28,36,48,.22)',
-        color: off ? 'rgba(28,36,48,.22)' : 'var(--ink)',
+        border: '1px solid rgba(var(--ink-rgb), .22)',
+        color: off ? 'rgba(var(--ink-rgb), .22)' : 'var(--ink)',
         font: "700 calc(10px * var(--ts)) var(--mono)",
       }}
     >{label}</button>
@@ -635,7 +635,7 @@ function DepartureRow({ d, mine }: { d: Departure; mine: boolean }) {
         display: 'grid', gridTemplateColumns: 'auto 1fr auto auto',
         gap: 9, alignItems: 'center',
         padding: '9px 11px', borderBottom: '1px solid var(--hairline)',
-        background: mine ? 'rgba(168,68,42,.10)' : 'transparent',
+        background: mine ? 'rgba(var(--clay-rgb), .10)' : 'transparent',
       }}
     >
       <Avatar id={d.id} team={d.teamAbbr} size={30} />

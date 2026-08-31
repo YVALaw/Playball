@@ -171,7 +171,7 @@ function Seasons({ annals }: { annals: SchoolSeason[] }) {
               padding: '9px 10px',
               borderBottom: awards.length > 0 || notYou
                 ? 'none' : '1px solid var(--hairline)',
-              background: s.finish === 'champion' ? 'rgba(168,68,42,.08)' : 'transparent',
+              background: s.finish === 'champion' ? 'rgba(var(--clay-rgb), .08)' : 'transparent',
             }}>
               <span style={{ font: "700 calc(13px * var(--ts)) var(--display)" }}>{s.year}</span>
               <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)" }}>{s.w}-{s.l}</span>
@@ -206,7 +206,7 @@ function Seasons({ annals }: { annals: SchoolSeason[] }) {
             {awards.length > 0 && (
               <div style={{
                 padding: '0 10px 9px 46px', borderBottom: '1px solid var(--hairline)',
-                background: s.finish === 'champion' ? 'rgba(168,68,42,.08)' : 'transparent',
+                background: s.finish === 'champion' ? 'rgba(var(--clay-rgb), .08)' : 'transparent',
               }}>
                 {awards.map((a, i) => (
                   <button
@@ -223,7 +223,7 @@ function Seasons({ annals }: { annals: SchoolSeason[] }) {
                     }}>{a.title.toUpperCase()}</span>
                     <span style={{
                       marginLeft: 6, font: "400 calc(11px * var(--ts)) var(--body)",
-                      borderBottom: '1px dotted rgba(28,36,48,.35)',
+                      borderBottom: '1px dotted rgba(var(--ink-rgb), .35)',
                     }}>{a.name}</span>
                   </button>
                 ))}

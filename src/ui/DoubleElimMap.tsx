@@ -187,7 +187,7 @@ function Row(
       <span style={{
         flex: 1, font: `${won ? 700 : 500} calc(10.5px * var(--ts)) var(--mono)`,
         letterSpacing: '.04em',
-        color: team === null ? 'rgba(28,36,48,.3)' : tint,
+        color: team === null ? 'rgba(var(--ink-rgb), .3)' : tint,
         whiteSpace: 'nowrap',
       }}>
         {team === null ? 'TBD' : abbr(team)}

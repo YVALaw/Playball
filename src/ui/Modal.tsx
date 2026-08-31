@@ -72,7 +72,7 @@ export function Modal(
       aria-label={`${kicker} ${title}`}
       style={{
         position: 'absolute', inset: 0, zIndex: 40,
-        background: 'rgba(28,36,48,.62)',
+        background: 'rgba(var(--ink-rgb), .62)',
         display: 'grid', placeItems: 'center', padding: 20,
       }}
     >
@@ -89,7 +89,7 @@ export function Modal(
         <div style={{ padding: '18px 18px 16px', textAlign: 'center' }}>
           <div style={{
             font: "600 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.2em',
-            color: 'rgba(246,241,230,.6)',
+            color: 'rgba(var(--cream-rgb), .6)',
           }}>{kicker}</div>
           <div style={{
             font: "800 calc(30px * var(--ts))/1 var(--display)", marginTop: 8,
@@ -99,7 +99,7 @@ export function Modal(
           {lines.map((l, i) => (
             <div key={i} style={{
               marginTop: i === 0 ? 10 : 6,
-              font: "400 calc(12.5px * var(--ts))/1.5 var(--body)", color: 'rgba(246,241,230,.72)',
+              font: "400 calc(12.5px * var(--ts))/1.5 var(--body)", color: 'rgba(var(--cream-rgb), .72)',
             }}>{l}</div>
           ))}
         </div>
@@ -116,8 +116,8 @@ export function Modal(
             className="tap"
             style={{
               width: '100%', padding: '13px 0',
-              background: 'transparent', borderTop: '1px solid rgba(246,241,230,.2)',
-              color: 'rgba(246,241,230,.72)',
+              background: 'transparent', borderTop: '1px solid rgba(var(--cream-rgb), .2)',
+              color: 'rgba(var(--cream-rgb), .72)',
               font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.16em',
             }}
           >{cancel.label}</button>

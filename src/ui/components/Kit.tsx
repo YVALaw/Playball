@@ -37,7 +37,7 @@ export function Card(
         }}>{tag}</span>
         {note && <span style={{
           font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em',
-          color: 'rgba(246,241,230,.75)',
+          color: 'rgba(var(--cream-rgb), .75)',
         }}>{note}</span>}
       </div>
       {children}

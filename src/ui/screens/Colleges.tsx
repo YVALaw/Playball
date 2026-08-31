@@ -82,7 +82,7 @@ export function Colleges() {
                       padding: '8px 10px', minHeight: 40,
                       borderBottom: '1px solid var(--hairline)',
                       borderLeft: `3px solid ${teamColour(t.def.abbr)}`,
-                      background: mine ? 'rgba(168,68,42,.08)' : 'transparent',
+                      background: mine ? 'rgba(var(--clay-rgb), .08)' : 'transparent',
                     }}
                   >
                     <span style={{

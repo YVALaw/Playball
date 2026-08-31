@@ -391,7 +391,7 @@ export function Board() {
           style={{
             padding: '7px 10px',
             background: filtersOpen || activeFilters ? 'var(--clay)' : 'var(--paper)',
-            border: `1px solid ${filtersOpen || activeFilters ? 'var(--clay)' : 'rgba(28,36,48,.28)'}`,
+            border: `1px solid ${filtersOpen || activeFilters ? 'var(--clay)' : 'rgba(var(--ink-rgb), .28)'}`,
             color: filtersOpen || activeFilters ? 'var(--cream)' : 'var(--ink)',
             font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.1em',
           }}
@@ -424,7 +424,7 @@ export function Board() {
             style={{
               flex: 1, padding: '8px 0',
               background: v === view ? 'var(--clay)' : 'var(--paper)',
-              border: v === view ? '1px solid var(--clay)' : '1px solid rgba(28,36,48,.28)',
+              border: v === view ? '1px solid var(--clay)' : '1px solid rgba(var(--ink-rgb), .28)',
               color: v === view ? 'var(--cream)' : 'var(--ink)',
               font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
             }}
@@ -453,7 +453,7 @@ export function Board() {
       {live && lastWeek && (
         <div style={{
           marginBottom: 10, border: '1px solid var(--clay)',
-          background: 'rgba(168,68,42,.10)',
+          background: 'rgba(var(--clay-rgb), .10)',
         }}>
           <div style={{ padding: '5px 10px', background: 'var(--clay)' }}>
             <span style={{
@@ -645,7 +645,7 @@ function Row({
         gap: 9, alignItems: 'center',
         padding: '10px 11px 10px 8px', borderBottom: '1px solid var(--hairline)',
         borderLeft: `3px solid ${colour}`,
-        background: spent > 0 && !signed ? 'rgba(168,68,42,.10)' : 'transparent',
+        background: spent > 0 && !signed ? 'rgba(var(--clay-rgb), .10)' : 'transparent',
       }}
     >
       {/* The jersey is only ever a school he has actually signed for. A face
@@ -690,7 +690,7 @@ function CapButton({ label, onClick }: { label: string; onClick: () => void }) {
       className="tap"
       style={{
         width: '100%', marginTop: 8, padding: '10px 0',
-        background: 'var(--paper)', border: '1px solid rgba(28,36,48,.28)',
+        background: 'var(--paper)', border: '1px solid rgba(var(--ink-rgb), .28)',
         color: 'var(--ink)', font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.1em',
       }}
     >{label}</button>
@@ -759,7 +759,7 @@ function FilterPanel({
             style={{
               flex: 1, padding: '7px 0',
               background: filters.stars.includes(n) ? 'var(--clay)' : 'var(--field)',
-              border: `1px solid ${filters.stars.includes(n) ? 'var(--clay)' : 'rgba(28,36,48,.2)'}`,
+              border: `1px solid ${filters.stars.includes(n) ? 'var(--clay)' : 'rgba(var(--ink-rgb), .2)'}`,
               color: filters.stars.includes(n) ? 'var(--cream)' : 'var(--ink)',
               font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.04em',
             }}
@@ -773,7 +773,7 @@ function FilterPanel({
         onChange={(e) => set('state', e.target.value === '' ? null : e.target.value)}
         style={{
           width: '100%', padding: '9px 8px',
-          background: 'var(--field)', border: '1px solid rgba(28,36,48,.28)',
+          background: 'var(--field)', border: '1px solid rgba(var(--ink-rgb), .28)',
           color: 'var(--ink)', font: "600 calc(12px * var(--ts)) var(--mono)",
           borderRadius: 0, appearance: 'none',
         }}
@@ -817,7 +817,7 @@ function Chip({ on, onClick, children }: {
       style={{
         padding: '6px 8px',
         background: on ? 'var(--clay)' : 'var(--field)',
-        border: `1px solid ${on ? 'var(--clay)' : 'rgba(28,36,48,.2)'}`,
+        border: `1px solid ${on ? 'var(--clay)' : 'rgba(var(--ink-rgb), .2)'}`,
         color: on ? 'var(--cream)' : 'var(--ink)',
         font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.06em',
       }}
@@ -836,7 +836,7 @@ function Switch({ on, onClick, label, note }: {
       style={{
         width: '100%', textAlign: 'left', padding: '8px 10px',
         background: on ? 'var(--clay)' : 'var(--field)',
-        border: `1px solid ${on ? 'var(--clay)' : 'rgba(28,36,48,.28)'}`,
+        border: `1px solid ${on ? 'var(--clay)' : 'rgba(var(--ink-rgb), .28)'}`,
       }}
     >
       <span style={{
@@ -845,7 +845,7 @@ function Switch({ on, onClick, label, note }: {
       }}>{label}</span>
       <span style={{
         display: 'block', marginTop: 3, font: "400 calc(10.5px * var(--ts))/1.35 var(--body)",
-        color: on ? 'rgba(246,241,230,.78)' : 'var(--dim)',
+        color: on ? 'rgba(var(--cream-rgb), .78)' : 'var(--dim)',
       }}>{note}</span>
     </button>
   );
@@ -1022,7 +1022,7 @@ function ProspectSheet({
     <div
       onClick={onClose}
       style={{
-        position: 'absolute', inset: 0, background: 'rgba(28,36,48,.55)',
+        position: 'absolute', inset: 0, background: 'rgba(var(--ink-rgb), .55)',
         display: 'flex', alignItems: 'flex-end', zIndex: 20,
       }}
     >
@@ -1059,7 +1059,7 @@ function ProspectSheet({
             font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
           }}>{'★'.repeat(prospect.stars)} · {prospect.state}</span>
           <button onClick={onClose} style={{
-            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(246,241,230,.8)',
+            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(var(--cream-rgb), .8)',
           }}>CLOSE</button>
         </div>
 
@@ -1290,7 +1290,7 @@ function Overview({
                     style={{
                       flex: 1, height: 26, padding: 0,
                       background: on ? 'var(--clay)'
-                        : reachable ? 'rgba(28,36,48,.10)' : 'rgba(28,36,48,.04)',
+                        : reachable ? 'rgba(var(--ink-rgb), .10)' : 'rgba(var(--ink-rgb), .04)',
                       border: 'none',
                     }}
                     aria-label={`Offer ${n}`}
@@ -1308,8 +1308,8 @@ function Overview({
               disabled={spent === 0}
               style={{
                 flex: 'none', padding: '6px 9px', background: 'transparent',
-                border: '1px solid rgba(28,36,48,.22)',
-                color: spent > 0 ? 'var(--dim)' : 'rgba(28,36,48,.2)',
+                border: '1px solid rgba(var(--ink-rgb), .22)',
+                color: spent > 0 ? 'var(--dim)' : 'rgba(var(--ink-rgb), .2)',
                 font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
               }}
             >OFF</button>
@@ -1346,8 +1346,8 @@ function Step(
       style={{
         flex: 'none', width: 38, height: 38,
         background: disabled ? 'transparent' : 'var(--field)',
-        border: `1px solid ${disabled ? 'rgba(28,36,48,.14)' : 'rgba(28,36,48,.34)'}`,
-        color: disabled ? 'rgba(28,36,48,.22)' : 'var(--ink)',
+        border: `1px solid ${disabled ? 'rgba(var(--ink-rgb), .14)' : 'rgba(var(--ink-rgb), .34)'}`,
+        color: disabled ? 'rgba(var(--ink-rgb), .22)' : 'var(--ink)',
         font: "700 calc(18px * var(--ts)) var(--mono)", lineHeight: 1,
       }}
     >{label}</button>
@@ -1493,10 +1493,10 @@ function Schools({ prospect, userTeam }: { prospect: Prospect; userTeam: number 
                 {Math.round(r.pts)}
               </span>
             </div>
-            <div style={{ height: 5, background: 'rgba(28,36,48,.09)', marginTop: 3 }}>
+            <div style={{ height: 5, background: 'rgba(var(--ink-rgb), .09)', marginTop: 3 }}>
               <div style={{
                 width: `${(r.pts / best) * 100}%`, height: '100%',
-                background: mine ? 'var(--clay)' : 'rgba(28,36,48,.35)',
+                background: mine ? 'var(--clay)' : 'rgba(var(--ink-rgb), .35)',
               }} />
             </div>
           </div>

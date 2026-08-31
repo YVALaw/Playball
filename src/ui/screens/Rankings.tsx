@@ -78,7 +78,7 @@ export function Rankings() {
                     onClick={() => openTeam(r.index)}
                     style={{
                       display: 'block', width: '100%', textAlign: 'left', padding: 0,
-                      background: mine ? 'rgba(168,68,42,.10)' : 'transparent',
+                      background: mine ? 'rgba(var(--clay-rgb), .10)' : 'transparent',
                       border: 'none',
                     }}
                   >
@@ -119,7 +119,7 @@ export function Rankings() {
                     onClick={() => openTeam(t.index)}
                     style={{
                       display: 'block', width: '100%', textAlign: 'left', padding: 0,
-                      background: mine ? 'rgba(168,68,42,.10)' : 'transparent',
+                      background: mine ? 'rgba(var(--clay-rgb), .10)' : 'transparent',
                       border: 'none',
                     }}
                   >

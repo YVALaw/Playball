@@ -101,7 +101,7 @@ function Row(
       // otherwise two rows of numbers on top of each other.
       ...(head
         ? { position: 'sticky' as const, top: 0, zIndex: 1, background: 'var(--paper)' }
-        : { background: highlight ? 'rgba(168,68,42,.08)' : 'transparent' }),
+        : { background: highlight ? 'rgba(var(--clay-rgb), .08)' : 'transparent' }),
     }}>
       {cells.map((c, i) => (
         <span
@@ -114,7 +114,7 @@ function Row(
             // The team column carries the program's own colour. Ninety six names
             // in one typeface are ninety six strings; in their own colours they
             // become places you start to recognise on sight.
-            color: head ? 'rgba(28,36,48,.5)'
+            color: head ? 'rgba(var(--ink-rgb), .5)'
               : i === 1 && tint ? tint
               : highlight ? 'var(--clay)' : 'var(--ink)',
             fontWeight: i === 1 && !head ? 700 : undefined,

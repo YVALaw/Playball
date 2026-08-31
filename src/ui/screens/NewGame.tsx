@@ -434,7 +434,7 @@ export function NewGame() {
             onClick={() => setPicked(null)}
             className="sheet-scrim"
             style={{
-              position: 'absolute', inset: 0, background: 'rgba(28,36,48,.55)',
+              position: 'absolute', inset: 0, background: 'rgba(var(--ink-rgb), .55)',
               display: 'flex', alignItems: 'flex-end', zIndex: 20,
             }}
           >
@@ -457,7 +457,7 @@ export function NewGame() {
                   onClick={() => setPicked(null)}
                   style={{
                     font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em',
-                    color: 'rgba(246,241,230,.85)',
+                    color: 'rgba(var(--cream-rgb), .85)',
                   }}
                 >BACK</button>
               </div>
@@ -609,7 +609,7 @@ export function NewGame() {
                 ) : (
                   <div style={{
                     marginTop: 12, padding: '11px 12px',
-                    border: '1px solid var(--clay)', background: 'rgba(168,68,42,.07)',
+                    border: '1px solid var(--clay)', background: 'rgba(var(--clay-rgb), .07)',
                   }}>
                     <div className="label" style={{ color: 'var(--clay)' }}>
                       THEY WANT {p.needs} · YOU ARE {ROOKIE_PRESTIGE}
@@ -624,7 +624,7 @@ export function NewGame() {
                   onClick={() => setPicked(null)}
                   style={{
                     marginTop: 8, width: '100%', padding: '10px 0',
-                    background: 'transparent', border: '1px solid rgba(28,36,48,.28)',
+                    background: 'transparent', border: '1px solid rgba(var(--ink-rgb), .28)',
                     font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.12em', color: 'var(--dim)',
                   }}
                 >LOOK AT OTHER JOBS</button>
@@ -816,7 +816,7 @@ function Identity(
           maxLength={26}
           style={{
             width: '100%', padding: '11px 10px', background: 'var(--paper)',
-            border: '1px solid rgba(28,36,48,.28)', borderRadius: 0,
+            border: '1px solid rgba(var(--ink-rgb), .28)', borderRadius: 0,
             // 16px is the floor, not a taste. A focused input under 16px makes
             // a phone browser zoom the whole page in, and it does not zoom back
             // out when the keyboard leaves — reported from creating a coach.
@@ -834,7 +834,7 @@ function Identity(
         */}
         <div style={{
           display: 'flex', alignItems: 'stretch',
-          border: '1px solid rgba(28,36,48,.28)', background: 'var(--paper)',
+          border: '1px solid rgba(var(--ink-rgb), .28)', background: 'var(--paper)',
         }}>
           <Nudge label="−" onClick={() => set('age', clampAge(profile.age - 1))} />
           <div style={{
@@ -856,7 +856,7 @@ function Identity(
           onChange={(e) => set('homeState', e.target.value)}
           style={{
             width: '100%', padding: '11px 10px', background: 'var(--paper)',
-            border: '1px solid rgba(28,36,48,.28)', borderRadius: 0,
+            border: '1px solid rgba(var(--ink-rgb), .28)', borderRadius: 0,
             color: 'var(--ink)', font: "600 calc(14px * var(--ts)) var(--mono)", letterSpacing: '.04em',
           }}
         >
@@ -960,8 +960,8 @@ function DepthStep(
                 style={{
                   width: '100%', textAlign: 'left', marginBottom: 7,
                   padding: '11px 12px',
-                  background: on ? 'rgba(168,68,42,.10)' : 'var(--paper)',
-                  border: `1px solid ${on ? 'var(--clay)' : 'rgba(28,36,48,.28)'}`,
+                  background: on ? 'rgba(var(--clay-rgb), .10)' : 'var(--paper)',
+                  border: `1px solid ${on ? 'var(--clay)' : 'rgba(var(--ink-rgb), .28)'}`,
                 }}
               >
                 <div style={{
@@ -1024,9 +1024,9 @@ function PlayStyle(
                 style={{
                   width: '100%', textAlign: 'left', marginBottom: 7,
                   padding: '11px 12px',
-                  background: on ? 'rgba(168,68,42,.10)' : 'var(--paper)',
-                  border: `1px solid ${on ? 'var(--clay)' : 'rgba(28,36,48,.28)'}`,
-                  boxShadow: on ? 'none' : '0 1px 0 rgba(28,36,48,.10)',
+                  background: on ? 'rgba(var(--clay-rgb), .10)' : 'var(--paper)',
+                  border: `1px solid ${on ? 'var(--clay)' : 'rgba(var(--ink-rgb), .28)'}`,
+                  boxShadow: on ? 'none' : '0 1px 0 rgba(var(--ink-rgb), .10)',
                 }}
               >
                 <div style={{
@@ -1058,7 +1058,7 @@ function PlayStyle(
                     <span key={chip} style={{
                       font: "600 calc(7.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
                       padding: '2px 6px 3px',
-                      background: on ? 'rgba(168,68,42,.14)' : 'var(--field)',
+                      background: on ? 'rgba(var(--clay-rgb), .14)' : 'var(--field)',
                       border: '1px solid var(--faint)',
                       color: on ? 'var(--clay)' : 'var(--dim)',
                     }}>{chip}</span>
@@ -1132,7 +1132,7 @@ function Chip(
       style={{
         padding: '7px 10px',
         background: on ? 'var(--clay)' : 'var(--paper)',
-        border: `1px solid ${on ? 'var(--clay)' : 'rgba(28,36,48,.28)'}`,
+        border: `1px solid ${on ? 'var(--clay)' : 'rgba(var(--ink-rgb), .28)'}`,
         color: on ? 'var(--cream)' : 'var(--ink)',
         font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.06em',
       }}
@@ -1159,7 +1159,7 @@ function Ask({ objective }: { objective: Objective }) {
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 0' }}>
       <span style={{
         font: "700 calc(11px * var(--ts)) var(--mono)", width: 12,
-        color: objective.required ? 'var(--clay)' : 'rgba(28,36,48,.34)',
+        color: objective.required ? 'var(--clay)' : 'rgba(var(--ink-rgb), .34)',
       }}>{objective.required ? '•' : '◦'}</span>
       <span style={{ flex: 1, font: "400 calc(12px * var(--ts))/1.4 var(--body)" }}>
         {objective.label}
@@ -1271,8 +1271,8 @@ function InterviewStep(
               style={{
                 textAlign: 'left', padding: '11px 12px', minHeight: 48,
                 background: 'var(--paper)',
-                border: '1px solid rgba(28,36,48,.3)',
-                boxShadow: '0 1px 0 rgba(28,36,48,.14)',
+                border: '1px solid rgba(var(--ink-rgb), .3)',
+                boxShadow: '0 1px 0 rgba(var(--ink-rgb), .14)',
               }}
             >
               <div style={{

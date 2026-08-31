@@ -95,8 +95,8 @@ export function PressRoom() {
                 style={{
                   textAlign: 'left', padding: '11px 12px', minHeight: 48,
                   background: 'var(--paper)',
-                  border: known ? '1px solid var(--you)' : '1px solid rgba(28,36,48,.3)',
-                  boxShadow: '0 1px 0 rgba(28,36,48,.14)',
+                  border: known ? '1px solid var(--you)' : '1px solid rgba(var(--ink-rgb), .3)',
+                  boxShadow: '0 1px 0 rgba(var(--ink-rgb), .14)',
                 }}
               >
                 <div style={{
@@ -120,7 +120,7 @@ export function PressRoom() {
           style={{
             marginTop: 12, width: '100%', padding: '10px 12px', minHeight: 40,
             background: 'transparent',
-            border: '1px solid rgba(28,36,48,.28)',
+            border: '1px solid rgba(var(--ink-rgb), .28)',
             font: "700 calc(9.5px * var(--ts)) var(--mono)",
             letterSpacing: '.12em', color: 'var(--dim)',
           }}

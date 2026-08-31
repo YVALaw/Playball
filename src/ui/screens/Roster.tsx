@@ -125,8 +125,8 @@ export function Roster() {
               style={{
                 minHeight: 30, padding: '6px 10px',
                 background: filtered ? 'var(--ink)' : 'transparent',
-                border: `1px solid ${filtered ? 'var(--ink)' : 'rgba(28,36,48,.25)'}`,
-                color: filtered ? 'var(--cream)' : 'rgba(28,36,48,.6)',
+                border: `1px solid ${filtered ? 'var(--ink)' : 'rgba(var(--ink-rgb), .25)'}`,
+                color: filtered ? 'var(--cream)' : 'rgba(var(--ink-rgb), .6)',
                 font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.11em',
                 display: 'flex', alignItems: 'center', gap: 5,
               }}
@@ -221,7 +221,7 @@ export function Roster() {
           onClick={() => setFilterSheet(false)}
           style={{
             position: 'absolute', inset: 0, zIndex: 40,
-            background: 'rgba(28,36,48,.45)',
+            background: 'rgba(var(--ink-rgb), .45)',
           }}
         />
         <div className="sheet" style={{
@@ -287,8 +287,8 @@ function Chip(
         // target, which clears the 28px the platform asks for.
         padding: '6px 10px', minHeight: 30,
         background: on ? 'var(--clay)' : 'transparent',
-        border: `1px solid ${on ? 'var(--clay)' : 'rgba(28,36,48,.25)'}`,
-        color: on ? 'var(--cream)' : 'rgba(28,36,48,.6)',
+        border: `1px solid ${on ? 'var(--clay)' : 'rgba(var(--ink-rgb), .25)'}`,
+        color: on ? 'var(--cream)' : 'rgba(var(--ink-rgb), .6)',
         font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.11em',
       }}
     >{children}</button>
@@ -322,7 +322,7 @@ function Select(
         style={{
           width: '100%', minHeight: 34, padding: '6px 8px',
           background: on ? 'var(--ink)' : 'var(--paper)',
-          border: `1px solid ${on ? 'var(--ink)' : 'rgba(28,36,48,.25)'}`,
+          border: `1px solid ${on ? 'var(--ink)' : 'rgba(var(--ink-rgb), .25)'}`,
           borderRadius: 0,
           color: on ? 'var(--cream)' : 'var(--ink)',
           // 16px is the floor on anything a phone can focus, or the browser
@@ -409,7 +409,7 @@ function Cells(
         alignItems: 'center',
         padding: '7px 10px',
         borderBottom: '1px solid var(--hairline)',
-        background: highlight ? 'rgba(168,68,42,.05)' : 'transparent',
+        background: highlight ? 'rgba(var(--clay-rgb), .05)' : 'transparent',
       }}
     >
       {/*

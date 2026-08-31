@@ -301,7 +301,7 @@ function BoardSheet({ team }: { team: Owner }) {
                 onClick={clearReview}
                 style={{
                   marginTop: 12, padding: '8px 14px', background: 'var(--field)',
-                  border: '1px solid rgba(28,36,48,.42)',
+                  border: '1px solid rgba(var(--ink-rgb), .42)',
                   font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.1em',
                 }}
               >UNDERSTOOD</button>
@@ -319,8 +319,8 @@ function BoardSheet({ team }: { team: Owner }) {
               onClick={() => void acceptOffer(o.team)}
               style={{
                 width: '100%', textAlign: 'left', marginBottom: 6, padding: '10px 12px',
-                background: 'var(--paper)', border: '1px solid rgba(28,36,48,.42)',
-                boxShadow: '0 1px 0 rgba(28,36,48,.16)',
+                background: 'var(--paper)', border: '1px solid rgba(var(--ink-rgb), .42)',
+                boxShadow: '0 1px 0 rgba(var(--ink-rgb), .16)',
               }}
             >
               <div style={{
@@ -501,8 +501,8 @@ function CoachSheet({ team }: { team: Owner }) {
             style={{
               flex: 1, padding: '8px 0', minHeight: 36,
               background: view === v ? 'var(--clay)' : 'transparent',
-              border: `1px solid ${view === v ? 'var(--clay)' : 'rgba(28,36,48,.25)'}`,
-              color: view === v ? 'var(--cream)' : 'rgba(28,36,48,.6)',
+              border: `1px solid ${view === v ? 'var(--clay)' : 'rgba(var(--ink-rgb), .25)'}`,
+              color: view === v ? 'var(--cream)' : 'rgba(var(--ink-rgb), .6)',
               font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.1em',
             }}
           >{v.toUpperCase()}</button>
@@ -1059,7 +1059,7 @@ function Plaque(
       style={{
         width: '100%', textAlign: 'left', display: 'block',
         marginTop: 8, padding: '10px 12px',
-        background: 'rgba(168,68,42,.07)',
+        background: 'rgba(var(--clay-rgb), .07)',
         border: '1px solid var(--faint)', borderLeft: '3px solid var(--clay)',
       }}
     >
@@ -1140,13 +1140,13 @@ function HallRowView(
         width: '100%', textAlign: 'left',
         display: 'grid', gridTemplateColumns: cols, gap: 6, alignItems: 'baseline',
         padding: '8px 10px', borderBottom: '1px solid var(--hairline)',
-        background: row.honours.length > 0 ? 'rgba(168,68,42,.05)' : 'transparent',
+        background: row.honours.length > 0 ? 'rgba(var(--clay-rgb), .05)' : 'transparent',
       }}
     >
       <span style={{
         font: "400 calc(12px * var(--ts)) var(--body)",
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        borderBottom: '1px dotted rgba(28,36,48,.35)',
+        borderBottom: '1px dotted rgba(var(--ink-rgb), .35)',
       }}>{row.name}</span>
       {values.map((v, i) => (
         <span key={i} style={{ font: "500 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>{v}</span>
@@ -1198,7 +1198,7 @@ function Box({
 }: { objective: Objective; met: boolean; settled: boolean; wins: number }) {
   const open = !settled && !met;
   const mark = met ? '✓' : settled ? '✕' : '○';
-  const tone = met ? 'var(--win)' : settled ? 'var(--clay)' : 'rgba(28,36,48,.34)';
+  const tone = met ? 'var(--win)' : settled ? 'var(--clay)' : 'rgba(var(--ink-rgb), .34)';
 
   // Only the counting objectives can show progress; the rest are yes or no.
   const counts = objective.key === 'wins' || objective.key === 'stretchWins';
@@ -1245,7 +1245,7 @@ function Seat({ security }: { security: number }) {
           font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: tone,
         }}>{label}</span>
       </div>
-      <div style={{ height: 6, background: 'rgba(28,36,48,.09)' }}>
+      <div style={{ height: 6, background: 'rgba(var(--ink-rgb), .09)' }}>
         <div style={{
           width: `${Math.max(2, security)}%`, height: '100%', background: tone,
           transition: 'width 400ms ease',
@@ -1358,7 +1358,7 @@ function Meter(
         <span className="label">{k}</span>
         <span style={{ font: "600 calc(14px * var(--ts)) var(--mono)" }}>{v}</span>
       </div>
-      <div style={{ height: 6, background: 'rgba(28,36,48,.09)', marginTop: 6 }}>
+      <div style={{ height: 6, background: 'rgba(var(--ink-rgb), .09)', marginTop: 6 }}>
         <div style={{
           width: `${Math.max(2, Math.min(100, value))}%`, height: '100%',
           background: 'var(--clay)', transition: 'width 400ms ease',
@@ -1384,7 +1384,7 @@ function Bar({ label, value }: { label: string; value: number }) {
         <span className="label">{label}</span>
         <span style={{ font: "600 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>{value}</span>
       </div>
-      <div style={{ height: 6, background: 'rgba(28,36,48,.09)' }}>
+      <div style={{ height: 6, background: 'rgba(var(--ink-rgb), .09)' }}>
         <div style={{
           width: `${Math.max(0, Math.min(100, value))}%`, height: '100%',
           background: value >= 60 ? 'var(--clay)' : 'var(--ink)',
