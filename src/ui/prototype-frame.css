@@ -1105,3 +1105,21 @@
 }
 
 .team-card-head .metric-strip { margin: 12px 0 12px; }
+
+/* ---------------------------------------------------------------------------
+   Coach creation.
+
+   Reported: "the whole coach creation still has the old style." It was the one
+   flow that predates the port entirely — five steps, each with its own header
+   and its own idea of a chip.
+
+   The rail is the proposal's five-step setup strip, the heads are ModuleIntro,
+   and the swatches and chips below take the segmented control's language.
+   --------------------------------------------------------------------------- */
+.setup-head { padding: 14px 16px 0; }
+.setup-head .module-intro { padding-bottom: 10px; }
+.setup-head .back-link { margin-bottom: 10px; }
+.setup-steps b { background: var(--field); }
+
+/* The step names are what the numbers mean. */
+.setup-steps span { gap: 4px; }

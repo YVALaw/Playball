@@ -41,6 +41,8 @@
 // policies follow from that and stay editable for ever after.
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { ArrowLeftIcon } from '@radix-ui/react-icons';
+import { ModuleIntro } from '../components/Kit.js';
 import {
   CONFERENCES, STATES_BY_REGION, type SchoolDef,
 } from '../../data/schools.js';
@@ -309,7 +311,7 @@ export function NewGame() {
   return (
     <FixedHeader
       header={
-        <div style={{ padding: '12px 14px 8px' }}>
+        <div className="setup-head">
           <StepHead n={5} title="Take a job" onBack={() => setStep(3)} />
 
           {/*
@@ -661,40 +663,34 @@ function StepHead(
   { n, title, onBack }: { n: number; title: string; onBack?: () => void },
 ) {
   return (
-    <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        {onBack ? (
-          <button
-            onClick={onBack}
-            className="tap"
-            style={{
-              font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em',
-              color: 'var(--clay)', padding: '2px 10px 2px 0',
-            }}
-          >‹ BACK</button>
-        ) : <span className="label">NEW DYNASTY</span>}
-        <span className="label">STEP {n} OF {STEPS}</span>
-      </div>
-      {/* The road so far, at a glance: done, here, still to come. Colour is
-          not the only signal — the count above says the same thing in words. */}
+    <>
+      {onBack && (
+        <button className="back-link tap" type="button" onClick={onBack}>
+          <ArrowLeftIcon /> Back
+        </button>
+      )}
+      {/* The road so far, in the proposal's setup rail: done, here, still to
+          come. Colour is not the only signal — every step is numbered and the
+          one you are on is named underneath. */}
       <div
+        className="setup-steps setup-steps-five"
         role="img"
         aria-label={`Step ${n} of ${STEPS}`}
-        style={{ display: 'flex', gap: 3, marginTop: 7 }}
       >
-        {Array.from({ length: STEPS }, (_, k) => k + 1).map((i) => (
-          <span key={i} style={{
-            flex: 1, height: 4,
-            background: i < n ? 'var(--win)' : i === n ? 'var(--clay)' : 'var(--faint)',
-          }} />
+        {STEP_NAMES.map((name, i) => (
+          <span className={i + 1 === n ? 'active' : ''} key={name}>
+            {i + 1}
+            <b>{name}</b>
+          </span>
         ))}
       </div>
-      <div style={{
-        font: "800 calc(22px * var(--ts))/0.95 var(--display)", marginTop: 7, textTransform: 'uppercase',
-      }}>{title}</div>
-    </div>
+      <ModuleIntro kicker={`STEP ${n} OF ${STEPS}`} title={title} />
+    </>
   );
 }
+
+/** What each step is, so the rail can name them rather than number them. */
+const STEP_NAMES = ['You', 'Desk', 'Interview', 'Plan', 'Offers'] as const;
 
 /**
  * Step one. Who the dynasty belongs to, and what he looks like.
@@ -723,7 +719,7 @@ function Identity(
 
   return (
     <FixedHeader
-      header={<div style={{ padding: '12px 14px 8px' }}>
+      header={<div className="setup-head">
         <StepHead n={1} title="Your coach" />
       </div>}
       action={<FloatingAction
@@ -934,7 +930,7 @@ function DepthStep(
   ];
   return (
     <FixedHeader
-      header={<div style={{ padding: '12px 14px 8px' }}>
+      header={<div className="setup-head">
         <StepHead n={2} title="How you want to play" onBack={onBack} />
       </div>}
       action={<FloatingAction
@@ -998,7 +994,7 @@ function PlayStyle(
 ) {
   return (
     <FixedHeader
-      header={<div style={{ padding: '12px 14px 8px' }}>
+      header={<div className="setup-head">
         <StepHead n={4} title="Set your plan" onBack={onBack} />
       </div>}
       action={<FloatingAction
@@ -1226,7 +1222,7 @@ function InterviewStep(
 
   return (
     <FixedHeader
-      header={<div style={{ padding: '12px 14px 8px' }}>
+      header={<div className="setup-head">
         <StepHead
           n={3}
           title="A few questions"

@@ -42,7 +42,7 @@ import { playerId, type PlayerId } from '../../engine/types.js';
 import { CoachPortrait } from '../CoachPortrait.js';
 import { teamColour } from '../Avatar.js';
 import { ArrowLeftIcon } from '@radix-ui/react-icons';
-import { ModuleIntro, Segmented } from '../components/Kit.js';
+import { FieldNote, ModuleIntro, SectionHeading, Segmented } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
 import { pct } from '../format.js';
 
@@ -448,65 +448,57 @@ function CoachSheet({ team }: { team: Owner }) {
 
   return (
     <>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
-      }}>
-        <Flank k="CAREER" v={String(careerSeasons)} align="right" />
-        <CoachPortrait look={coach.look} size={76} />
-        <Flank k="AT SCHOOL" v={String(coach.tenure)} align="left" />
-      </div>
-
-      <div style={{
-        marginTop: 6, textAlign: 'center',
-        font: "800 calc(21px * var(--ts))/0.95 var(--display)", textTransform: 'uppercase',
-      }}>{coach.name}</div>
-
       {/*
-        What the sport calls him, rather than how long he has been at it.
+        The coach's own hero, on the player card's anatomy.
 
-        This line used to read "seasons completed", which the two counters
-        either side of the portrait already say — so it spent the most legible
-        row on the page repeating the numbers directly above it. The standing is
-        earned from titles and deep runs, so it is the one thing here the
-        counters cannot tell you.
+        Reported: "the coach profile still has the old view." It was a portrait
+        between two flanking numbers with a centred name under it — the shape the
+        player card wore before the port, and the last place in the app still
+        wearing it. It is the same hero every man in the game gets now: the face
+        on the dark ground, the name across the bottom, and the two numbers that
+        are true on every tab boxed in the corner.
       */}
-      <div className="label" style={{ marginTop: 4, textAlign: 'center' }}>
-        HEAD COACH · {standing.title.toUpperCase()}
-        {standing.lifer ? ' · LIFER' : ''}
-      </div>
-
-      <div style={{
-        marginTop: 3, marginBottom: 12, textAlign: 'center',
-        font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-        color: teamColour(team.def.abbr),
-      }}>{team.def.school.toUpperCase()} · {team.conference}</div>
+      <section className="player-hero">
+        <div className="player-hero-face">
+          <CoachPortrait look={coach.look} size={150} />
+        </div>
+        <div className="hero-wash" />
+        <div className="player-identity">
+          <small>{team.def.school.toUpperCase()} · {team.conference}</small>
+          <h2>{coach.name.split(' ').map((part, i) => <span key={`${part}-${i}`}>{part}</span>)}</h2>
+          <p>
+            HEAD COACH · {standing.title.toUpperCase()}
+            {standing.lifer ? ' · LIFER' : ''}
+          </p>
+        </div>
+        <div className="player-ovr">
+          <small>CAREER</small>
+          <strong>{careerSeasons}</strong>
+        </div>
+        <div className="player-ovr player-pot">
+          <small>HERE</small>
+          <strong>{coach.tenure}</strong>
+        </div>
+      </section>
 
       {/* The profile's rooms. The hero above never changes; these decide what
           is under it. Four small rooms beat one long corridor on a phone.
 
           A fifth room — JOBS, where an established coach browses openings,
           applies and interviews — is deliberately absent until that system is
-          real. When it lands, it plugs in here: add 'jobs' to CoachView, a
-          chip below, and a JobsView beside CareerView reading `jobOffers`
+          real. When it lands, it plugs in here: add 'jobs' to CoachView, an
+          option below, and a JobsView beside CareerView reading `jobOffers`
           (engine/program.ts) with an application flow on top. An empty tab
-          promising interviews that do not exist would be worse than no tab;
-          the mid-career market meanwhile keeps its existing door — offers
-          arrive in the inbox and on the BOARD sheet when a coach is let go. */}
-      <div style={{ display: 'flex', gap: 5, marginBottom: 12 }}>
-        {(['overview', 'skills', 'career', 'trophies'] as const).map((v) => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            style={{
-              flex: 1, padding: '8px 0', minHeight: 36,
-              background: view === v ? 'var(--clay)' : 'transparent',
-              border: `1px solid ${view === v ? 'var(--clay)' : 'rgba(var(--ink-rgb), .25)'}`,
-              color: view === v ? 'var(--cream)' : 'rgba(var(--ink-rgb), .6)',
-              font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-            }}
-          >{v.toUpperCase()}</button>
-        ))}
-      </div>
+          promising interviews that do not exist would be worse than no tab. */}
+      <Segmented
+        label="Coach profile section"
+        value={view}
+        onChange={setView}
+        options={(['overview', 'skills', 'career', 'trophies'] as const).map((v) => ({
+          value: v,
+          label: v.charAt(0).toUpperCase() + v.slice(1),
+        }))}
+      />
 
       {view === 'overview' && (
         <>
@@ -904,25 +896,28 @@ function HallSheet() {
 
   return (
     <>
-      <Head>
-        {inducted.length === 0
-          ? 'THE HALL · NOBODY IN IT YET'
-          : `THE HALL · ${inducted.length} INDUCTED`}
-      </Head>
+      <SectionHeading
+        kicker="THE HALL"
+        title={inducted.length === 0
+          ? 'Nobody in it yet'
+          : `${inducted.length} inducted`}
+      />
+      {/*
+        Reported: "the hall in program still has a shit ton of text that eats
+        the whole screen." It did — eight lines of rules where a heading should
+        have been. The rules have not changed and they are still worth knowing,
+        so they are a field note rather than a paragraph: three lines that say
+        what the hall wants and when it meets, and the reason the tables under
+        it are not the hall.
+      */}
       {inducted.length === 0
         ? (
-          <Panel>
-            <Empty>
-              Nobody has been inducted, and the tables further down are not the
-              hall — they are who has piled up the most, which is a different
-              question. The hall meets every June, once the draft has settled,
-              and it only ever looks at men whose careers are finished, so nobody
-              can go in until he has left. It wants a career rather than an
-              afternoon: two seasons at the very least, and sustained production
-              across them weighed against the best two years of it. One enormous
-              game does not count for anything here.
-            </Empty>
-          </Panel>
+          <FieldNote
+            title="It meets in June, and only for finished careers"
+            text="Two seasons at the very least, weighed across a whole career rather
+              than one enormous afternoon. Nobody goes in until he has left, so the
+              tables below are who has piled up the most — a different question."
+          />
         )
         : inducted.map((m) => (
           <Plaque
