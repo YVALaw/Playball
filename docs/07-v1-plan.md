@@ -685,6 +685,17 @@ cannot reroll a better class of applicant and no golden moved.
   as a negotiation is the draft KEEP flow plus the portal talk-round — both
   already live before this stage opened.
 
+**What the field effect measures** (tests/staff-probe.ts, 12k games per
+config): the coach-mod channels prove out at the extremes — offense 20→99 is
++2.0% runs for, defense 20→99 is −1.7% runs against — so the best market's
+hitting + pitching pair (worth ~+15 skill each) buys roughly **two runs a
+season, about half a win**. Deliberately that small: the answer to "does it
+affect performance" is yes, at the same scale as the coach's own skills, and
+never a super-advantage. The tangible seats are the coordinator (+5% recruit
+interest a week, visibly tighter scouting bands) and the facilities (+1.8%
+development pull a year at level 3, compounding, plus a fifth of the
+development axis recruits weigh on the tour).
+
 **Exit — met:** money is a decision with more than one sensible answer.
 
 **Decisions taken at the door:** salary is annual, not a signing cost;
