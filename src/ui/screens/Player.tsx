@@ -36,7 +36,9 @@ import { draftEligible } from '../../engine/draft.js';
 import { overallOf, platoonSplit, naturalPos } from '../../engine/ratings.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { SewingPinIcon } from '@radix-ui/react-icons';
-import { ModuleIntro, Segmented } from '../components/Kit.js';
+import {
+  DataTable, FieldNote, Metric, ModuleIntro, SectionHeading, Segmented,
+} from '../components/Kit.js';
 import {
   battingAverage, onBase, slugging, era, whip, inningsPitched,
   fieldingPct, playsAboveExpected, fieldingContext, careerName, liveCareerYear,
@@ -448,8 +450,12 @@ function Alumnus(
           <Stat k="SEASONS ON RECORD" v={String(career.length)} last />
         </Panel>
       )}
+      {/* The alumnus keeps the same timeline his card had, because the years
+          are the only thing left of him. `Career` is passed his archive
+          directly: he is on nobody's roster, so there is no live row and no
+          owner to look one up against. */}
       {active === 'history' && (
-        <CareerTable years={career} isPitcher={wasPitcher} />
+        <AlumnusYears years={career} isPitcher={wasPitcher} />
       )}
     </main>
   );
@@ -683,8 +689,28 @@ function BadgeChips({ p }: { p: AnyPlayer }) {
 }
 
 
+/** A production delta, signed, so a reverse split reads as one. */
+const pctSigned = (v: number): string => `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`;
+
+type RatingsView = 'tools' | 'splits' | 'tendencies';
+
+/**
+ * What he can do, behind the proposal's three sub-tabs.
+ *
+ * Tools, splits, tendencies — one screenful each, rather than four panels
+ * stacked into a scroll nobody reaches the bottom of. A pitcher's first tab is
+ * his arsenal, because what he throws is the first question about him and his
+ * ratings are the second.
+ *
+ * The split moved here from the stats sheet. It reads as production and it was
+ * filed with production, but it is a property of the man rather than of the
+ * season — a freshman who has never batted still has one — and the reader
+ * looking for it is the one already asking what he is.
+ */
 function Ratings({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   const isPitcher = p.type === 'pitcher';
+  const [view, setView] = useState<RatingsView>('tools');
+
   const glove: Array<[string, string, number]> = isPitcher
     ? PITCHER_GLOVE_BARS.map(([k, l]) => [k, l, (p as Pitcher)[k]])
     : [
@@ -698,37 +724,49 @@ function Ratings({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
 
   return (
     <>
-      <Head>SCOUTING</Head>
-      <BarGroup title={isPitcher ? 'PITCHING' : 'HITTING'}>
-        {isPitcher
-          ? PITCHER_BARS.map(([key, label]) => (
-            <Bar key={key} label={label} value={Math.round((p as Pitcher)[key])} />
-          ))
-          : HITTER_BARS.map(([key, label]) => (
-            <Bar key={key} label={label} value={Math.round((p as Hitter)[key])} />
-          ))}
-        {isPitcher && (
-          <div style={{
-            marginTop: 2, paddingTop: 9, borderTop: '1px solid var(--hairline)',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-          }}>
-            <span className="label">FASTBALL</span>
-            <span style={{ font: "600 calc(13px * var(--ts)) var(--mono)" }}>
-              {(p as Pitcher).velocity} mph
-            </span>
-          </div>
-        )}
-      </BarGroup>
+      <Segmented
+        label="Ratings detail"
+        value={view}
+        onChange={setView}
+        options={[
+          { value: 'tools', label: isPitcher ? 'Arsenal' : 'Tools' },
+          { value: 'splits', label: 'Splits' },
+          { value: 'tendencies', label: 'Tendencies' },
+        ]}
+      />
 
-      {isPitcher && <Repertoire p={p as Pitcher} />}
+      {view === 'tools' && (
+        <>
+          {isPitcher && <Repertoire p={p as Pitcher} />}
 
-      <BarGroup title={isPitcher ? 'FIELDING' : `FIELDING · ${naturalPos(p as Hitter)}`}>
-        {glove.map(([key, label, value]) => (
-          <Bar key={key} label={label} value={Math.round(value)} />
-        ))}
-      </BarGroup>
+          <SectionHeading
+            kicker={isPitcher ? 'ON THE MOUND' : 'AT THE PLATE'}
+            title={isPitcher ? 'What he is made of' : 'The tools'}
+          />
+          <section className="tool-table">
+            {isPitcher
+              ? PITCHER_BARS.map(([key, label]) => (
+                <Bar key={key} label={label} value={Math.round((p as Pitcher)[key])} />
+              ))
+              : HITTER_BARS.map(([key, label]) => (
+                <Bar key={key} label={label} value={Math.round((p as Hitter)[key])} />
+              ))}
+          </section>
 
-      <Tendencies p={p} isOurs={isOurs} />
+          <SectionHeading
+            kicker="WITH THE GLOVE"
+            title={isPitcher ? 'Off the mound' : naturalPos(p as Hitter)}
+          />
+          <section className="tool-table">
+            {glove.map(([key, label, value]) => (
+              <Bar key={key} label={label} value={Math.round(value)} />
+            ))}
+          </section>
+        </>
+      )}
+
+      {view === 'splits' && <Platoon p={p} />}
+      {view === 'tendencies' && <Tendencies p={p} isOurs={isOurs} />}
     </>
   );
 }
@@ -751,41 +789,31 @@ function Repertoire({ p }: { p: Pitcher }) {
   const rep = repertoireOf(p);
   return (
     <>
-      <div className="label" style={{ marginTop: 14, marginBottom: 4 }}>REPERTOIRE</div>
-      <div style={{
-        padding: '10px 12px 4px',
-        border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
+      <SectionHeading kicker="REPERTOIRE" title={`${(p as Pitcher).velocity} mph fastball`} />
+      <section className="repertoire-list">
         {rep.map((o) => (
-          <div key={o.id} style={{ marginBottom: 8 }}>
-            <div style={{
-              display: 'flex', justifyContent: 'space-between',
-              alignItems: 'baseline', marginBottom: 3, gap: 8,
-            }}>
-              <span className="label">{PITCHES[o.id].name}</span>
-              <span style={{ font: "600 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
-                {speedOf(p, o.id)} · {Math.round(o.usage * 100)}%
-              </span>
-            </div>
-            <div style={{ height: 5, background: 'rgba(var(--ink-rgb), .09)' }}>
-              <div style={{
-                width: `${Math.round(o.usage * 100)}%`, height: '100%',
+          <div key={o.id}>
+            <span>{PITCHES[o.id].name.toUpperCase()}</span>
+            <b>{speedOf(p, o.id)} MPH</b>
+            <i>
+              <em style={{
+                width: `${Math.round(o.usage * 100)}%`,
                 background: PITCHES[o.id].family === 'fastball' ? 'var(--clay)' : 'var(--ink)',
-                opacity: PITCHES[o.id].family === 'fastball' ? 1 : 0.55,
               }} />
-            </div>
+            </i>
           </div>
         ))}
-      </div>
+      </section>
+      <FieldNote
+        title="The bar is how often, not how good"
+        text="A man who throws sixty per cent four-seamers and a man who throws forty are different pitchers with the same three ratings. This is the same data the POWER ARM and JUNKBALLER readings come off."
+      />
     </>
   );
 }
 
 /**
- * The split, which the engine has always had and never once shown.
- *
- * It lives on the STATS sheet, not RATINGS: vs-RHP and vs-LHP are a production
- * table, and the reader looking for it is the one already reading his line.
+ * The split, which the engine has always had and never once showed.
  *
  * The arithmetic lives in `platoonSplit` rather than here, so that what the card
  * prints and what the simulation does are the same function — a display that
@@ -799,42 +827,57 @@ function Platoon({ p }: { p: AnyPlayer }) {
   const split = platoonSplit(p);
   const switchHitter = p.type === 'hitter' && p.bats === 'S';
 
-  const rows: Array<[string, string, string]> = p.type === 'hitter'
-    ? [
-      ['CONTACT', String(split.contact?.vsRHP ?? ''), String(split.contact?.vsLHP ?? '')],
-      ['POWER', String(split.power?.vsRHP ?? ''), String(split.power?.vsLHP ?? '')],
-      ['PRODUCTION', pctSigned(split.vsRHP - 1), pctSigned(split.vsLHP - 1)],
-    ]
-    : [['ALLOWED', pctSigned(split.vsRHP - 1), pctSigned(split.vsLHP - 1)]];
-
   return (
     <>
-      <div className="label" style={{ marginTop: 14, marginBottom: 4 }}>
-        {p.type === 'hitter' ? 'THE SPLIT' : 'THE SPLIT · WHAT HE ALLOWS'}
-      </div>
-      <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 10,
-          padding: '7px 12px', borderBottom: '1px solid var(--hairline)',
-        }}>
-          <span className="label">{switchHitter ? 'SWITCH' : ''}</span>
-          <span className="label" style={{ minWidth: 46, textAlign: 'right' }}>VS RHP</span>
-          <span className="label" style={{ minWidth: 46, textAlign: 'right' }}>VS LHP</span>
+      <SectionHeading
+        kicker="THE SPLIT"
+        title={p.type === 'hitter' ? 'Against each hand' : 'What he allows'}
+      />
+      <section className="split-grid">
+        <div>
+          <small>VS RHP</small>
+          <strong>{pctSigned(split.vsRHP - 1)}</strong>
+          <span>{p.type === 'hitter' ? 'PRODUCTION' : 'ALLOWED'}</span>
         </div>
-        {rows.map(([k, r, l], i) => (
-          <div key={k} style={{
-            display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 10,
-            padding: '8px 12px', alignItems: 'baseline',
-            borderBottom: i === rows.length - 1 ? 'none' : '1px solid var(--hairline)',
-          }}>
-            <span className="label">{k}</span>
-            <span style={{ font: "600 calc(14px * var(--ts)) var(--mono)", minWidth: 46, textAlign: 'right' }}>{r}</span>
-            <span style={{ font: "600 calc(14px * var(--ts)) var(--mono)", minWidth: 46, textAlign: 'right' }}>{l}</span>
+        <div>
+          <small>VS LHP</small>
+          <strong>{pctSigned(split.vsLHP - 1)}</strong>
+          <span>{p.type === 'hitter' ? 'PRODUCTION' : 'ALLOWED'}</span>
+        </div>
+        <div>
+          <small>{switchHitter ? 'SWITCH' : 'HE IS'}</small>
+          <strong>{switchHitter ? 'BOTH' : `${p.bats}/${p.throws}`}</strong>
+          <span>BATS / THROWS</span>
+        </div>
+      </section>
+
+      {p.type === 'hitter' && split.contact && split.power && (
+        <section className="tool-table">
+          <div>
+            <span>CONTACT vs RHP</span><b>{split.contact.vsRHP}</b>
+            <i><em style={{ width: `${Math.min(100, split.contact.vsRHP)}%` }} /></i>
+            <small>RIGHT</small>
           </div>
-        ))}
-      </div>
+          <div>
+            <span>CONTACT vs LHP</span><b>{split.contact.vsLHP}</b>
+            <i><em style={{ width: `${Math.min(100, split.contact.vsLHP)}%` }} /></i>
+            <small>LEFT</small>
+          </div>
+          <div>
+            <span>POWER vs RHP</span><b>{split.power.vsRHP}</b>
+            <i><em style={{ width: `${Math.min(100, split.power.vsRHP)}%` }} /></i>
+            <small>RIGHT</small>
+          </div>
+          <div>
+            <span>POWER vs LHP</span><b>{split.power.vsLHP}</b>
+            <i><em style={{ width: `${Math.min(100, split.power.vsLHP)}%` }} /></i>
+            <small>LEFT</small>
+          </div>
+        </section>
+      )}
+
       {/*
-        Only the panels that would otherwise mislead get a sentence. A pitcher
+        Only the cases that would otherwise mislead get a sentence. A pitcher
         with no split prints "+0.0%  +0.0%", which reads as a number the card
         failed to work out unless it says so itself; a switch hitter and a
         reverse split are the two cases where the table means something
@@ -842,86 +885,77 @@ function Platoon({ p }: { p: AnyPlayer }) {
         itself.
       */}
       {p.type !== 'hitter' && p.platoonSkill === 0 && (
-        <Note>No split to speak of. Lefties and righties get the same man.</Note>
+        <FieldNote
+          title="No split to speak of"
+          text="Lefties and righties get the same man. The zeros are the reading, not a gap in it."
+        />
       )}
       {p.type === 'hitter' && switchHitter && (
-        <Note>He turns around, so the matchup is his against everybody.</Note>
+        <FieldNote
+          title="He turns around"
+          text="A switch hitter takes the platoon advantage against everybody, which is why both columns read the same."
+        />
       )}
       {p.type === 'hitter' && !switchHitter && p.platoonSkill < 0 && (
-        <Note>A reverse split. Better against his own hand, which is rare and real.</Note>
+        <FieldNote
+          title="A reverse split"
+          text="Better against his own hand, which is rare and real. Do not bench him for the matchup."
+        />
       )}
     </>
   );
 }
 
-const pctSigned = (v: number): string => `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`;
-
 /**
- * What he does, as against how well he does it — and how much of it you have
- * seen yet.
+ * What he does without being told, and what you have not seen enough of yet.
  *
- * **On your own men a tendency is not visible until you have watched enough of
- * him**, which is the mechanic rather than a display rule: the bar under an
- * unknown reading is the evidence accumulating, and it fills from ordinary
- * play, simulated games included. On somebody else's player they are all
- * visible immediately, because a scouting report saying their leadoff man runs
- * is exactly what a defensive setting is for.
- *
- * A slot he is ordinary in is printed as such rather than hidden. "Nothing
- * unusual" is a real answer about a player and leaving the row out would make
- * an ordinary man look like an unfinished one.
+ * A tendency is a thing you can see from the other dugout — their leadoff man
+ * runs, their number three pulls everything — so unlike badges it is readable on
+ * a rival. What it costs on a rival is time: the watch counter fills as you play
+ * against him, and until it does the row says so rather than inventing a
+ * reading.
  */
 function Tendencies({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   const season = useDynasty((s) => s.season);
   const watch = isOurs ? season?.watch?.get(p.id) : undefined;
   const slots = p.type === 'hitter' ? HITTER_TENDENCIES : PITCHER_TENDENCIES;
+  const seen = slots.filter((slot) => isKnown(slot, watch, isOurs)).length;
 
   return (
     <>
-      <div className="label" style={{ marginTop: 14, marginBottom: 4 }}>TENDENCIES</div>
-      <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-        {slots.map((slot, i) => {
+      <SectionHeading
+        kicker="TENDENCIES"
+        title={seen === slots.length ? 'You know him' : `${seen} of ${slots.length} read`}
+      />
+      <section className="tendency-list">
+        {slots.map((slot) => {
           const spec = TENDENCIES[slot];
           const known = isKnown(slot, watch, isOurs);
           const label = known ? tendencyLabel(p, slot) : null;
           const progress = watchProgress(slot, watch);
-          const last = i === slots.length - 1;
           return (
-            <div key={slot} style={{
-              padding: '9px 12px',
-              borderBottom: last ? 'none' : '1px solid var(--hairline)',
-            }}>
-              <div style={{
-                display: 'flex', justifyContent: 'space-between',
-                alignItems: 'baseline', gap: 10,
-              }}>
-                <span style={{
-                  font: "600 calc(12px * var(--ts)) var(--display)", letterSpacing: '.02em',
-                  color: known && label ? 'var(--clay)' : 'var(--dim)',
-                }}>
-                  {known ? (label ?? 'NOTHING UNUSUAL') : 'STILL WATCHING'}
-                </span>
-                <span className="label">{SLOT_WORD[slot]}</span>
-              </div>
-              {known && label && (
-                <div style={{
-                  font: "400 calc(10px * var(--ts))/1.4 var(--body)", color: 'var(--dim)', marginTop: 3,
-                }}>
-                  {(tendenciesOf(p)[slot] ?? 0) > 0 ? spec.plusNote : spec.minusNote}
-                </div>
-              )}
-              {!known && (
-                <div style={{ height: 4, background: 'rgba(var(--ink-rgb), .09)', marginTop: 6 }}>
-                  <div style={{
-                    width: `${Math.round(progress * 100)}%`, height: '100%',
-                    background: 'var(--ink)', opacity: 0.35,
-                  }} />
-                </div>
-              )}
+            <div key={slot}>
+              <span>{SLOT_WORD[slot]}</span>
+              <strong className={known && label ? 'read' : 'unread'}>
+                {known ? (label ?? 'Nothing unusual') : 'Still watching'}
+                <em>
+                  {known && label
+                    ? ((tendenciesOf(p)[slot] ?? 0) > 0 ? spec.plusNote : spec.minusNote)
+                    : known
+                      ? 'He does the ordinary thing.'
+                      : `${Math.round(progress * 100)}% of the way to a reading.`}
+                </em>
+              </strong>
             </div>
           );
         })}
-      </div>
+      </section>
+      {!isOurs && (
+        <FieldNote
+          title="You are reading a rival"
+          text="Tendencies are the one thing a card shows about somebody else's player, because they are what the other dugout can actually see. They fill in as you play him."
+        />
+      )}
     </>
   );
 }
@@ -952,6 +986,17 @@ function BarGroup({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
+/**
+ * This year's line, headlined.
+ *
+ * The proposal's stats sheet opens with three numbers set large and everything
+ * else under them, which is right: a card is read for the headline and kept
+ * open for the detail. The three are the ones a coach quotes — average, on base
+ * and slugging for a bat; ERA, innings and strikeouts for an arm.
+ *
+ * The split moved to RATINGS, where it belongs: it is a property of the man
+ * rather than of the season, and a freshman who has never batted still has one.
+ */
 function ThisSeason({ p }: { p: AnyPlayer }) {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
@@ -970,42 +1015,62 @@ function ThisSeason({ p }: { p: AnyPlayer }) {
     An at bat is not the same thing as having played.
   */
   const batted = bat && (bat.ab > 0 || bat.bb > 0 || bat.hbp > 0);
+  const pitched = pit && pit.outs > 0;
+
+  if (isPitcher ? !pitched : !batted) {
+    return (
+      <section className="empty-state">
+        <h2>No line yet</h2>
+        <p>He has not appeared this season. The book opens on his first pitch.</p>
+      </section>
+    );
+  }
 
   return (
     <>
-      <Head>THIS SEASON</Head>
-      <Panel>
-        {isPitcher ? (
-          pit && pit.outs > 0 ? (
-            <>
-              <Stat k="RECORD" v={`${pit.w}-${pit.l}`} />
-              <Stat k="ERA" v={era(pit).toFixed(2)} />
-              <Stat k="INNINGS" v={inningsPitched(pit).toFixed(1)} />
-              <Stat k="STRIKEOUTS" v={String(pit.k)} />
-              <Stat k="WALKS" v={String(pit.bb)} />
-              <Stat k="WHIP" v={whip(pit).toFixed(2)} />
-              <Stat k="SAVES" v={String(pit.sv)} last />
-            </>
-          ) : <Empty>Has not appeared yet this season.</Empty>
-        ) : (
-          batted && bat ? (
-            <>
-              <Stat k="AVERAGE" v={bat.ab > 0 ? pct(battingAverage(bat)) : '—'} />
-              <Stat k="ON BASE" v={pct(onBase(bat))} />
-              <Stat k="SLUGGING" v={bat.ab > 0 ? pct(slugging(bat)) : '—'} />
-              <Stat k="HITS" v={`${bat.h}-for-${bat.ab}`} />
-              <Stat k="WALKS" v={String(bat.bb)} />
-              <Stat k="HOME RUNS" v={String(bat.hr)} />
-              <Stat k="RUNS BATTED IN" v={String(bat.rbi)} />
-              {/* "5-7" reads as a win-loss record on a card that has one two
-                  rows up. Spelled out, it can only mean one thing. */}
-              <Stat k="STOLEN BASES" v={`${bat.sb} of ${bat.sb + bat.cs}`} last />
-            </>
-          ) : <Empty>Has not appeared yet this season.</Empty>
-        )}
-      </Panel>
+      <section className="season-line">
+        {isPitcher && pit ? (
+          <>
+            <Metric label="ERA" value={era(pit).toFixed(2)} note={`${pit.w}-${pit.l} RECORD`} />
+            <Metric label="INNINGS" value={inningsPitched(pit).toFixed(1)} note={`${pit.sv} SAVES`} />
+            <Metric label="STRIKEOUTS" value={String(pit.k)} note={`${pit.bb} WALKS`} />
+          </>
+        ) : bat ? (
+          <>
+            <Metric
+              label="AVERAGE"
+              value={bat.ab > 0 ? pct(battingAverage(bat)) : '—'}
+              note={`${bat.h}-FOR-${bat.ab}`}
+            />
+            <Metric label="ON BASE" value={pct(onBase(bat))} note={`${bat.bb} WALKS`} />
+            <Metric
+              label="SLUGGING"
+              value={bat.ab > 0 ? pct(slugging(bat)) : '—'}
+              note={`${bat.hr} HOME RUNS`}
+            />
+          </>
+        ) : null}
+      </section>
+
+      <section className="fielding-strip">
+        {isPitcher && pit ? (
+          <>
+            <span><small>WHIP</small><strong>{whip(pit).toFixed(2)}</strong></span>
+            <span><small>WALKS</small><strong>{pit.bb}</strong></span>
+            <span><small>SAVES</small><strong>{pit.sv}</strong></span>
+          </>
+        ) : bat ? (
+          <>
+            <span><small>RUNS BATTED IN</small><strong>{bat.rbi}</strong></span>
+            <span><small>HOME RUNS</small><strong>{bat.hr}</strong></span>
+            {/* "5-7" reads as a win-loss record on a card that has one two rows
+                up. Spelled out, it can only mean one thing. */}
+            <span><small>STOLEN</small><strong>{bat.sb} of {bat.sb + bat.cs}</strong></span>
+          </>
+        ) : null}
+      </section>
+
       <InJune p={p} />
-      <Platoon p={p} />
       <Fielding p={p} />
     </>
   );
@@ -1190,6 +1255,13 @@ function Fielding({ p }: { p: AnyPlayer }) {
  * away at the roll into next season. So a rival's card has no log at all, and
  * yours only ever covers the year in progress.
  */
+/**
+ * Every game he has appeared in this year, as rows.
+ *
+ * The proposal's game log is a `ListRows`: opponent, what he did, and the
+ * result. Same three facts the grid carried, in the shape the rest of the app
+ * already reads lists in.
+ */
 function Games({ id, owner, isOurs }: { id: PlayerId; owner: Owner; isOurs: boolean }) {
   const season = useDynasty((s) => s.season);
   const year = useDynasty((s) => s.year);
@@ -1199,50 +1271,47 @@ function Games({ id, owner, isOurs }: { id: PlayerId; owner: Owner; isOurs: bool
   if (!season) return null;
   if (!isOurs) {
     return (
-      <>
-        <Head>GAME LOG</Head>
-        <Panel><Empty>Game logs are kept only for your own program.</Empty></Panel>
-      </>
+      <section className="empty-state">
+        <h2>Not your program</h2>
+        <p>
+          Game logs are kept only for your own men. Every other school keeps its
+          season totals and nothing finer — tens of thousands of rows through
+          every autosave is the alternative.
+        </p>
+      </section>
     );
   }
 
   const rows = gameLogFor(season, id, owner.index);
 
+  if (rows.length === 0) {
+    return (
+      <section className="empty-state">
+        <h2>No appearances yet</h2>
+        <p>His first game this season writes the first line here.</p>
+      </section>
+    );
+  }
+
   return (
     <>
-      <Head>GAME LOG · {year}</Head>
-      <Panel>
-        {rows.length === 0
-          ? <Empty>No appearances yet this season.</Empty>
-          : rows.map((r) => (
-            <div
-              key={r.day}
-              style={{
-                display: 'grid', gridTemplateColumns: '1fr auto', gap: 6,
-                padding: '8px 10px', borderBottom: '1px solid var(--hairline)',
-              }}
-            >
-              <span style={{ font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
-                {seasonDate(year, r.day)} · {r.home ? 'vs' : '@'} {r.opponent}
-              </span>
-              <span style={{
-                font: "600 calc(10px * var(--ts)) var(--mono)", textAlign: 'right',
-                color: r.won ? 'var(--win)' : 'var(--loss)',
-              }}>{r.won ? 'W' : 'L'} {r.us}-{r.them}</span>
-              <span style={{
-                gridColumn: '1 / -1', marginTop: 2, font: "400 calc(12px * var(--ts)) var(--body)",
-              }}>
-                <span style={{
-                  font: "600 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)', marginRight: 7,
-                }}>{r.slot}</span>
-                {r.line}
-              </span>
-            </div>
-          ))}
-      </Panel>
-      {rows.length > 0 && (
-        <Note>Box scores cover the season in progress. They are cleared at the roll.</Note>
-      )}
+      <SectionHeading
+        kicker={`GAME LOG · ${year}`}
+        title={rows.length === 1 ? 'One appearance' : `${rows.length} appearances`}
+      />
+      <DataTable
+        rows={rows.map((r) => ({
+          key: String(r.day),
+          title: `${r.home ? 'vs ' : 'at '}${r.opponent}`,
+          detail: `${seasonDate(year, r.day)} · ${r.slot} · ${r.line}`,
+          value: `${r.won ? 'W' : 'L'} ${r.us}-${r.them}`,
+          face: <span className={r.won ? 'log-mark won' : 'log-mark lost'}>{r.won ? 'W' : 'L'}</span>,
+        }))}
+      />
+      <FieldNote
+        title="This season only"
+        text="Box scores cover the year in progress and are cleared at the roll. What survives it is the record book, on HISTORY."
+      />
     </>
   );
 }
@@ -1270,124 +1339,123 @@ function Career(
   void version;
   const archived = season?.careers?.[id] ?? [];
 
-  if (!isOurs && archived.length === 0) {
-    return (
-      <>
-        <Head>COLLEGE CAREER</Head>
-        <Panel><Empty>The record book is kept for your own program only.</Empty></Panel>
-      </>
-    );
-  }
-
   /*
     The year he is playing, stacked under the years he has played.
 
     The archive is written in June, so between February and the draft step the
     season in front of the player is in `season.batting` and nowhere else — and
     this table read the archive alone. Reported as "after two seasons only one
-    year shows, and the numbers do not update in real time", which is one
-    defect seen from two angles: a sophomore in May had his freshman row and no
-    second one, and nothing on the tab moved when he went four for four.
+    year shows, and the numbers do not update in real time", which is one defect
+    seen from two angles: a sophomore in May had his freshman row and no second
+    one, and nothing on the tab moved when he went four for four.
 
     The live row is the same row `archiveSeason` will write in June, computed by
-    the same function, and it is marked as unfinished rather than presented as
-    a result. Filtered rather than concatenated blindly, because between the
-    draft step and the year roll the archive already holds this year and the two
-    would print twice.
+    the same function, and it is marked as unfinished rather than presented as a
+    result. Filtered rather than concatenated blindly, because between the draft
+    step and the year roll the archive already holds this year and the two would
+    print twice.
   */
   const live = isOurs && season ? liveCareerYear(season, owner.index, id) : null;
   const years = live
     ? [...archived.filter((y) => y.year !== live.year), live]
     : archived;
 
+  if (years.length === 0) {
+    return (
+      <section className="empty-state">
+        <h2>{isOurs ? 'Nothing yet' : 'Not your program'}</h2>
+        <p>
+          {isOurs
+            ? 'He has not been in a game. The book starts with his first one.'
+            : 'The season-by-season book is kept for your own program only — every school in the country would put tens of thousands of rows through each autosave.'}
+        </p>
+      </section>
+    );
+  }
+
+  /*
+    The two marks a career is remembered by.
+
+    Best year first, because that is what a career is asked for, and the total
+    beside it because that is what it adds up to. Both computed over the same
+    rows the table below prints, so the headline and the detail can never
+    disagree.
+  */
+  const best = years.reduce((a, y) => {
+    const score = isPitcher
+      ? (y.outs ? -((y.er ?? 0) * 27) / y.outs : -99)
+      : (y.ab ? (y.h ?? 0) / y.ab : 0);
+    return score > a.score ? { y, score } : a;
+  }, { y: years[0]!, score: -999 }).y;
+
+  const totals = years.reduce((a, y) => ({
+    h: a.h + (y.h ?? 0), ab: a.ab + (y.ab ?? 0), hr: a.hr + (y.hr ?? 0),
+    k: a.k + (y.k ?? 0), er: a.er + (y.er ?? 0), outs: a.outs + (y.outs ?? 0),
+    w: a.w + (y.w ?? 0), l: a.l + (y.l ?? 0),
+  }), { h: 0, ab: 0, hr: 0, k: 0, er: 0, outs: 0, w: 0, l: 0 });
+
   return (
     <>
-      <Head>COLLEGE CAREER</Head>
-      <CareerTable years={years} isPitcher={isPitcher} live={live?.year} />
+      <section className="player-records">
+        <div>
+          <small>BEST YEAR</small>
+          <strong>
+            {isPitcher
+              ? (best.outs ? ((best.er ?? 0) * 27 / best.outs).toFixed(2) : '—')
+              : (best.ab ? pct((best.h ?? 0) / best.ab) : '—')}
+          </strong>
+        </div>
+        <div>
+          <small>{isPitcher ? 'CAREER ERA' : 'CAREER AVG'}</small>
+          <strong>
+            {isPitcher
+              ? (totals.outs ? (totals.er * 27 / totals.outs).toFixed(2) : '—')
+              : (totals.ab ? pct(totals.h / totals.ab) : '—')}
+          </strong>
+        </div>
+        <div>
+          <small>{isPitcher ? 'CAREER K' : 'CAREER HR'}</small>
+          <strong>{isPitcher ? totals.k : totals.hr}</strong>
+        </div>
+      </section>
+
+      <SectionHeading
+        kicker="COLLEGE CAREER"
+        title={years.length === 1 ? 'One season' : `${years.length} seasons`}
+      />
+
+      {/*
+        The proposal's timeline: a rule down the left with a node per year. It
+        is the right shape for a career, which is a sequence rather than a
+        table — and a phone was never going to hold seven columns anyway. Every
+        number the grid carried is on the line under the year.
+      */}
+      <section className="timeline">
+        {[...years].reverse().map((y) => (
+          <div key={y.year}>
+            <b>{y.year}</b>
+            <span>
+              {y.classYear} · {y.team}
+              {y.year === live?.year ? ' · in progress' : ''}
+              <em>
+                {isPitcher
+                  ? `${y.w ?? 0}-${y.l ?? 0}${y.outs ? ` · ${((y.er ?? 0) * 27 / y.outs).toFixed(2)} ERA` : ''} · ${y.k ?? 0} K${(y.errors ?? 0) > 0 ? ` · ${y.errors} E` : ''}`
+                  : `${y.ab ? pct((y.h ?? 0) / y.ab) : '—'} · ${y.hr ?? 0} HR · ${y.rbi ?? 0} RBI${(y.errors ?? 0) > 0 ? ` · ${y.errors} E` : ''}`}
+              </em>
+            </span>
+          </div>
+        ))}
+      </section>
+
       {live && (
-        <Note>
-          The bottom row is the season in progress. It goes into the book in
-          June, with whatever it says on the last day.
-        </Note>
+        <FieldNote
+          title="The top row is unfinished"
+          text="This season goes into the book in June, with whatever it says on the last day."
+        />
       )}
     </>
   );
 }
-
-/*
-  One table, glove included.
-
-  The fielding years used to sit in a second "IN THE FIELD" table below this
-  one, and it was answering a question nobody had split: fielding is part of
-  the season, not a separate career. Reported from testing in exactly those
-  words. Errors are the column that survives the merge — chances and plays are
-  bookkeeping, and a seventh column is all a 360 pixel phone will give.
-*/
-function CareerTable(
-  { years, isPitcher, live }: { years: CareerYear[]; isPitcher: boolean; live?: number },
-) {
-  const cols = isPitcher
-    ? '38px 26px 1fr 42px 38px 32px 24px'
-    : '38px 26px 1fr 42px 30px 34px 24px';
-
-  if (years.length === 0) {
-    return <Panel><Empty>Nothing yet. He has not been in a game.</Empty></Panel>;
-  }
-
-  return (
-    <div style={{
-      marginTop: 8, border: '1px solid var(--faint)', background: 'var(--paper)',
-    }}>
-      <div style={{
-        display: 'grid', gridTemplateColumns: cols,
-        gap: 5, padding: '6px 10px', borderBottom: '1px solid var(--hairline)',
-      }}>
-        {(isPitcher
-          ? ['YEAR', 'CL', 'TEAM', 'W-L', 'ERA', 'K', 'E']
-          : ['YEAR', 'CL', 'TEAM', 'AVG', 'HR', 'RBI', 'E']
-        ).map((h) => <span key={h} className="label">{h}</span>)}
-      </div>
-      {years.map((y) => (
-        <div key={y.year} style={{
-          display: 'grid', gridTemplateColumns: cols,
-          gap: 5, alignItems: 'baseline',
-          padding: '7px 10px', borderBottom: '1px solid var(--hairline)',
-        }}>
-          <span style={{
-            font: "700 calc(12px * var(--ts)) var(--display)",
-            color: y.year === live ? 'var(--clay)' : 'var(--ink)',
-          }}>{y.year}</span>
-          <span style={{ font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>{y.classYear}</span>
-          <span style={{ font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>{y.team}</span>
-          {isPitcher ? (
-            <>
-              <span style={{ font: "500 calc(11px * var(--ts)) var(--mono)" }}>{y.w ?? 0}-{y.l ?? 0}</span>
-              <span style={{ font: "500 calc(11px * var(--ts)) var(--mono)" }}>
-                {y.outs ? ((y.er ?? 0) * 27 / y.outs).toFixed(2) : '—'}
-              </span>
-              <span style={{ font: "500 calc(11px * var(--ts)) var(--mono)" }}>{y.k ?? 0}</span>
-            </>
-          ) : (
-            <>
-              <span style={{ font: "500 calc(11px * var(--ts)) var(--mono)" }}>
-                {y.ab ? pct((y.h ?? 0) / y.ab) : '—'}
-              </span>
-              <span style={{ font: "500 calc(11px * var(--ts)) var(--mono)" }}>{y.hr ?? 0}</span>
-              <span style={{ font: "500 calc(11px * var(--ts)) var(--mono)" }}>{y.rbi ?? 0}</span>
-            </>
-          )}
-          <span style={{ font: "500 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
-            {(y.chances ?? 0) > 0 ? (y.errors ?? 0) : '—'}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Pieces
-// ---------------------------------------------------------------------------
 
 function Nobody() {
   return (
@@ -1490,5 +1558,46 @@ function Bar({ label, value }: { label: string; value: number }) {
       <i><em style={{ width: `${width}%`, opacity: value >= 60 ? 1 : 0.5 }} /></i>
       <small>{value >= 75 ? 'PLUS' : value >= 60 ? 'SOLID' : value >= 45 ? 'FAIR' : 'LIGHT'}</small>
     </div>
+  );
+}
+
+/**
+ * A departed man's seasons, on the same timeline his card used.
+ *
+ * `Career` needs a roster to compute the live row against and he is on nobody's,
+ * so this is the finished half of it: the archive, newest first, and nothing
+ * that pretends to be in progress.
+ */
+function AlumnusYears({ years, isPitcher }: { years: CareerYear[]; isPitcher: boolean }) {
+  if (years.length === 0) {
+    return (
+      <section className="empty-state">
+        <h2>No seasons on record</h2>
+        <p>He left before the book was keeping years, or he never played one.</p>
+      </section>
+    );
+  }
+  return (
+    <>
+      <SectionHeading
+        kicker="COLLEGE CAREER"
+        title={years.length === 1 ? 'One season' : `${years.length} seasons`}
+      />
+      <section className="timeline">
+        {[...years].reverse().map((y) => (
+          <div key={y.year}>
+            <b>{y.year}</b>
+            <span>
+              {y.classYear} · {y.team}
+              <em>
+                {isPitcher
+                  ? `${y.w ?? 0}-${y.l ?? 0}${y.outs ? ` · ${((y.er ?? 0) * 27 / y.outs).toFixed(2)} ERA` : ''} · ${y.k ?? 0} K`
+                  : `${y.ab ? pct((y.h ?? 0) / y.ab) : '—'} · ${y.hr ?? 0} HR · ${y.rbi ?? 0} RBI`}
+              </em>
+            </span>
+          </div>
+        ))}
+      </section>
+    </>
   );
 }

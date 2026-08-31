@@ -557,3 +557,60 @@
 .settings-list .setting-choice { border-bottom: 1px solid var(--line); padding-bottom: 12px; }
 .settings-list .setting-choice:last-child { border-bottom: 0; }
 .settings-list .setting-choice .segmented { margin-bottom: 0; }
+
+/* A game-log row's portrait slot carries the result rather than a face — every
+   row on that tab is the same man. */
+.data-table .log-mark {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font: 800 calc(15px * var(--ts)) var(--display);
+}
+
+.data-table .log-mark.won { color: var(--win); }
+.data-table .log-mark.lost { color: var(--loss); }
+
+/* ---------------------------------------------------------------------------
+   The player card's sub-tabs.
+   --------------------------------------------------------------------------- */
+
+/* A tendency row carries a reading and a sentence about it, so the value side
+   needs two lines rather than the proposal's one. */
+.tendency-list strong {
+  text-align: right;
+  line-height: 1.25;
+}
+
+.tendency-list strong.read { color: var(--clay); }
+.tendency-list strong.unread { color: var(--dim); font-weight: 700; }
+
+.tendency-list strong em {
+  display: block;
+  margin-top: 3px;
+  color: var(--dim);
+  font: 400 calc(8px * var(--ts))/1.35 var(--body);
+  font-style: normal;
+}
+
+.tendency-list > div { min-height: 52px; padding: 9px; align-items: start; }
+.tendency-list span { padding-top: 2px; }
+
+/* The tool table's fourth column is a word for the number beside it, so a
+   rating reads without having to know the scale. */
+.tool-table small { text-align: right; }
+
+/* A career year carries its line under the year rather than beside it. */
+.timeline span em {
+  display: block;
+  margin-top: 3px;
+  color: var(--dim);
+  font: 700 calc(8px * var(--ts))/1.4 var(--body);
+  font-style: normal;
+}
+
+.timeline div { padding-bottom: 18px; }
+.timeline div:last-child { padding-bottom: 2px; }
+
+/* Three career marks across the top of the history tab. */
+.player-records strong { font-size: calc(22px * var(--ts)); }
