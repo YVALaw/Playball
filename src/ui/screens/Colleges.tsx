@@ -1,117 +1,103 @@
 // Colleges.tsx
-// The directory. Ninety six programs, grouped the way the country is.
+// The directory. Ninety six programs, and a search box over them.
 //
 // Every other route to a rival's page runs through a table that happens to
 // mention them — the standings, the rankings, a wire story. This screen is the
-// front door: any program, any time, one tap to its full card. Grouped by
-// conference rather than alphabetised because nobody thinks of a college
-// baseball team by its initial.
+// front door: any program, any time, one tap to its full card.
+//
+// The proposal's directory, with its search row and its region filter. This
+// world has eight conferences rather than four regions, so the filter carries
+// conferences — and the alphabetised list the proposal implies is replaced by
+// prestige order, because nobody thinks of a college baseball team by its
+// initial and the strongest programme in a conference is the one you were
+// looking for.
 
+import { useState } from 'react';
+import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { FixedHeader } from '../Sticky.js';
-import { teamColour } from '../Avatar.js';
+import { Avatar } from '../Avatar.js';
 import { prestigeStars } from '../../engine/program.js';
 import { useOpenTeam } from './TeamCard.js';
 import { CONFERENCES } from '../../data/schools.js';
+import { DataTable, ModuleIntro, Segmented, type Row } from '../components/Kit.js';
 
 export function Colleges() {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
   const openTeam = useOpenTeam();
+  const [conf, setConf] = useState<string>('all');
+  const [query, setQuery] = useState('');
   void version;
 
   if (!season || !team) return null;
 
-  // The season's team order is the data; the conference list is the shelving.
-  //
   // Matched on `id`, not `name`. A team record carries `conf.id` — 'GULF' —
   // and the first version of this screen filtered on 'Gulf Coast Conference',
   // which matched nothing and rendered a directory of no schools at all.
-  const byConference = CONFERENCES.map((c) => ({
-    id: c.id,
-    name: c.name,
-    teams: season.teams
-      .map((t, i) => ({ t, i }))
-      .filter(({ t }) => t.conference === c.id)
-      .sort((a, b) => b.t.prestige - a.t.prestige),
-  })).filter((c) => c.teams.length > 0);
+  const present = CONFERENCES.filter((c) => season.teams.some((t) => t.conference === c.id));
+
+  const needle = query.trim().toLowerCase();
+  const rows: Row[] = season.teams
+    .map((t, i) => ({ t, i }))
+    .filter(({ t }) => (conf === 'all' || t.conference === conf))
+    .filter(({ t }) => needle === ''
+      || t.def.school.toLowerCase().includes(needle)
+      || t.def.nickname.toLowerCase().includes(needle)
+      || t.def.abbr.toLowerCase().includes(needle))
+    .sort((a, b) => b.t.prestige - a.t.prestige)
+    .map(({ t, i }) => ({
+      key: String(i),
+      title: t.def.school,
+      detail: `${t.def.nickname} · ${t.conference} · ${t.w}-${t.l} · ${'★'.repeat(prestigeStars(t.prestige))}`,
+      value: t.def.abbr,
+      // The program's own colour, worn by a shirt rather than printed as a
+      // hex — ninety six names in one typeface are ninety six strings.
+      face: <Avatar id={`school-${t.def.abbr}`} team={t.def.abbr} size={34} />,
+    }));
 
   return (
-    <FixedHeader
-      header={
-        <div style={{ padding: '12px 14px 10px' }}>
-          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-            <div className="label">{season.teams.length} PROGRAMS · {byConference.length} CONFERENCES</div>
-            <div style={{
-              font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-            }}>Colleges</div>
-          </div>
-        </div>
-      }
-    >
-      <div style={{ padding: '8px 14px 16px' }}>
-        {byConference.map((c) => (
-          <div key={c.id} style={{ marginBottom: 14 }}>
-            {/* Sticky inside the scroller, so the shelf you are reading stays
-                named however far down its twelve rows you are. */}
-            <div style={{
-              position: 'sticky', top: 0, zIndex: 1,
-              padding: '7px 0 5px', background: 'var(--field)',
-              borderBottom: '2px solid var(--ink)',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-            }}>
-              <span className="label">{c.name}</span>
-              <span style={{ font: "400 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
-                {c.teams.length}
-              </span>
-            </div>
-            <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-              {c.teams.map(({ t, i }) => {
-                const mine = i === team.index;
-                const stars = prestigeStars(t.prestige);
-                return (
-                  <button
-                    key={t.def.abbr}
-                    onClick={() => openTeam(i)}
-                    className="tap"
-                    style={{
-                      width: '100%', textAlign: 'left',
-                      display: 'grid', gridTemplateColumns: '38px 1fr auto auto',
-                      gap: 8, alignItems: 'center',
-                      padding: '8px 10px', minHeight: 40,
-                      borderBottom: '1px solid var(--hairline)',
-                      borderLeft: `3px solid ${teamColour(t.def.abbr)}`,
-                      background: mine ? 'rgba(var(--clay-rgb), .08)' : 'transparent',
-                    }}
-                  >
-                    <span style={{
-                      font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.06em',
-                      color: teamColour(t.def.abbr),
-                    }}>{t.def.abbr}</span>
-                    <span style={{ minWidth: 0 }}>
-                      <span style={{
-                        display: 'block', font: `${mine ? 700 : 400} calc(12.5px * var(--ts)) var(--body)`,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>{t.def.school}</span>
-                      <span style={{
-                        display: 'block', font: "400 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)',
-                      }}>{t.def.nickname}</span>
-                    </span>
-                    <span style={{
-                      font: "600 calc(9px * var(--ts)) var(--mono)", color: 'var(--clay)', whiteSpace: 'nowrap',
-                    }}>{'★'.repeat(stars)}</span>
-                    <span style={{
-                      font: "400 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)',
-                      minWidth: 38, textAlign: 'right',
-                    }}>{t.w}-{t.l}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+    <main className="module-workspace">
+      <ModuleIntro
+        kicker="NATIONAL DIRECTORY"
+        title="College programs"
+        text="Search any program in the country and open its complete card — roster, season, and how you have done against it."
+      />
+
+      <label className="search-row">
+        <MagnifyingGlassIcon />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search programs"
+          aria-label="Search programs"
+        />
+      </label>
+
+      <Segmented
+        label="Conference"
+        value={conf}
+        onChange={setConf}
+        options={[
+          { value: 'all', label: 'All' },
+          ...present.map((c) => ({ value: c.id, label: c.id })),
+        ]}
+      />
+
+      <div className="directory-status">
+        <span>{rows.length} {rows.length === 1 ? 'program' : 'programs'}</span>
+        <b>{present.length} CONFERENCES</b>
       </div>
-    </FixedHeader>
+
+      {rows.length > 0 ? (
+        <DataTable rows={rows} onOpen={(k) => openTeam(Number(k))} />
+      ) : (
+        <section className="watchlist-empty">
+          <MagnifyingGlassIcon />
+          <strong>No program found</strong>
+          <p>Try another name, or clear the conference filter.</p>
+        </section>
+      )}
+    </main>
   );
 }

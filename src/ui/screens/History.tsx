@@ -16,7 +16,7 @@
 
 import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { FixedHeader } from '../Sticky.js';
+import { ModuleIntro, Segmented } from '../components/Kit.js';
 import { RecordBook } from './RecordBook.js';
 import { FINISH_LABEL, type Finish } from '../../engine/postseason.js';
 import type { SchoolSeason } from '../../engine/season.js';
@@ -41,7 +41,7 @@ const SHEET_LABEL: Record<Sheet, string> = {
 export function History() {
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
-  const [sheet, setSheet] = useState<Sheet>('seasons');
+  const [sheet, setSheet] = useState<Sheet>("seasons");
   void version;
 
   if (!team) return null;
@@ -51,41 +51,27 @@ export function History() {
   const losses = annals.reduce((a, s) => a + s.l, 0);
 
   return (
-    <FixedHeader
-      header={
-        <>
-          <div style={{ padding: '12px 14px 0' }}>
-            <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-              <div className="label">
-                {sheet === 'seasons'
-                  ? `${team.def.school.toUpperCase()} · ${annals.length} SEASON${annals.length === 1 ? '' : 'S'} ON RECORD`
-                  : 'ALL-TIME · NINETY-SIX PROGRAMS'}
-              </div>
-              <div style={{
-                font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-              }}>{sheet === 'seasons' ? (annals.length > 0 ? `${wins}-${losses}` : 'History') : 'The Book'}</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 4, padding: '10px 14px' }}>
-            {(['seasons', 'book'] as Sheet[]).map((s) => (
-              <button
-                key={s}
-                onClick={() => setSheet(s)}
-                style={{
-                  flex: 1, padding: '8px 0', minHeight: 36,
-                  background: s === sheet ? 'var(--ink)' : 'var(--field)',
-                  border: s === sheet ? '1px solid var(--ink)' : '1px solid var(--faint)',
-                  color: s === sheet ? 'var(--cream)' : 'var(--dim)',
-                  font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-                }}
-              >{SHEET_LABEL[s]}</button>
-            ))}
-          </div>
-        </>
-      }
-    >
-      {sheet === 'book' ? <RecordBook /> : <Seasons annals={annals} />}
-    </FixedHeader>
+    <main className="module-workspace">
+      <ModuleIntro
+        kicker="PROGRAM ARCHIVE"
+        title={sheet === "seasons"
+          ? (annals.length > 0 ? `${wins}-${losses}` : "History")
+          : "The Book"}
+        text={sheet === "seasons"
+          ? `Every season ${team.def.school} has finished, whoever was coaching it. Take another job and this page keeps showing the years the school played while you were somewhere else.`
+          : "The all-time marks across all ninety-six programs, seeded with the real NCAA ones so there is history to chase from the first game of the first season."}
+      />
+      <Segmented
+        label="History view"
+        value={sheet}
+        onChange={setSheet}
+        options={[
+          { value: "seasons", label: "Seasons" },
+          { value: "book", label: "The Book" },
+        ]}
+      />
+      {sheet === "book" ? <RecordBook /> : <Seasons annals={annals} />}
+    </main>
   );
 }
 

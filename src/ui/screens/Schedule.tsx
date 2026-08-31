@@ -6,7 +6,11 @@ import { useState } from 'react';
 
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { teamColour } from '../Avatar.js';
-import { FixedHeader } from '../Sticky.js';
+import { ChevronRightIcon } from '@radix-ui/react-icons';
+import { useOpenTeam } from './TeamCard.js';
+import {
+  FieldNote, Metric, MetricStrip, ModuleIntro, SectionHeading,
+} from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
 import { LineScore } from '../LineScore.js';
 import { regularRecord } from '../../engine/season.js';
@@ -19,6 +23,7 @@ export function Schedule() {
   const year = useDynasty((s) => s.year);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
+  const openTeam = useOpenTeam();
   void version;
 
   if (!season || !team) return null;
@@ -35,112 +40,133 @@ export function Schedule() {
     return [{ day, g, home, opponent, result }];
   });
 
+  /*
+    The next four dates, across the top.
+
+    The proposal calls this the schedule rail and fills it with a week. A week
+    is not the unit this calendar thinks in — the season plays Friday to Sunday
+    against one opponent and one midweek game — so the rail carries the next
+    four things that actually happen, played or not, which is the same idea with
+    the right grain.
+  */
+  const played = rows.filter((r) => r.result).length;
+  const rail = rows.slice(Math.max(0, played - 1), Math.max(0, played - 1) + 4);
+
+  const reg = regularRecord(team);
+  const diff = team.rs - team.ra;
+
   return (
     <>
-    <FixedHeader
-      header={
-        <div style={{ padding: '12px 14px 10px' }}>
-          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-            <div className="label">SCHEDULE · {year}</div>
-            <div style={{
-              font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-            }}>{regularRecord(team).w}-{regularRecord(team).l} overall</div>
-          </div>
-          {/* The program's vitals, moved off the dashboard. The season tab is
-              where you come to ask how the year is going, so the year's three
-              numbers live here now. */}
-          <div style={{
-            display: 'flex', marginTop: 8,
-            border: '1px solid var(--faint)', background: 'var(--paper)',
-          }}>
-            {([
-              ['OVERALL', `${team.w}-${team.l}`],
-              ['CONFERENCE', `${team.cw}-${team.cl}`],
-              ['RUN DIFF', `${team.rs - team.ra > 0 ? '+' : ''}${team.rs - team.ra}`],
-            ] as const).map(([k, v], i) => (
-              <div key={k} style={{
-                flex: 1, padding: '7px 8px',
-                borderRight: i < 2 ? '1px solid var(--hairline)' : 'none',
-              }}>
-                <div className="label">{k}</div>
-                <div style={{ font: "700 calc(16px * var(--ts))/1 var(--display)", marginTop: 2 }}>{v}</div>
-              </div>
-            ))}
-          </div>
+      <main className="module-workspace">
+        <FirstVisit id="season" />
+
+        <div className="screen-title-row">
+          <ModuleIntro
+            kicker={`${year} SEASON`}
+            title={played === rows.length ? 'The year, in full' : 'The road ahead'}
+            text="Every series, result and box score in one season view."
+          />
+          <span className="month-button">{reg.w}-{reg.l}</span>
         </div>
-      }
-    >
-    <div style={{ padding: '2px 14px 16px' }}>
-      <FirstVisit id="season" />
-      <div style={{
-        border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
-        {rows.map(({ day, home, opponent, result }, i) => {
-          const won = result
-            ? (home ? result.homeRuns > result.awayRuns : result.awayRuns > result.homeRuns)
-            : null;
-          const us = result ? (home ? result.homeRuns : result.awayRuns) : null;
-          const them = result ? (home ? result.awayRuns : result.homeRuns) : null;
 
-          // A played game opens its box score. An unplayed one has nothing to
-          // show, so it stays inert rather than offering a tap that does nothing.
-          const box = season.boxScores?.[day.day];
+        <section className="schedule-rail">
+          {rail.map(({ day, home, opponent, result }) => {
+            const box = season.boxScores?.[day.day];
+            const us = result ? (home ? result.homeRuns : result.awayRuns) : null;
+            const them = result ? (home ? result.awayRuns : result.homeRuns) : null;
+            const won = result ? us! > them! : null;
+            return (
+              <button
+                key={day.day}
+                type="button"
+                onClick={() => (box
+                  ? setOpenDay(day.day)
+                  : opponent && openTeam(opponent.index))}
+              >
+                <small>{seasonDate(year, day.day).split(' ').slice(1).join(' ')}</small>
+                <strong>{home ? '' : '@ '}{opponent?.def.abbr ?? '—'}</strong>
+                {/* A played date carries its result; one still to come carries
+                    what kind of game it is, which is the only thing known about
+                    it. Red is reserved for a loss — the proposal spends it on
+                    an off day, and a fixture you have not played yet is not an
+                    alarm. */}
+                <i className={won === null ? '' : won ? 'won' : 'lost'}>
+                  {won === null
+                    ? (day.kind === 'series' ? 'series' : 'midweek')
+                    : `${won ? 'W' : 'L'} ${us}-${them}`}
+                </i>
+              </button>
+            );
+          })}
+        </section>
 
-          return (
-            <button
-              key={`${day.day}-${i}`}
-              onClick={() => box && setOpenDay(day.day)}
-              disabled={!box}
-              style={{
-                width: '100%', textAlign: 'left',
-                display: 'grid',
-                gridTemplateColumns: '68px 14px 1fr 26px 46px',
-                gap: 6, alignItems: 'center',
-                padding: '8px 10px',
-                borderBottom: '1px solid var(--hairline)',
-                background: 'transparent',
-              }}
-            >
-              <span style={{ font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
-                {seasonDate(year, day.day)}
-              </span>
-              <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
-                {home ? 'vs' : '@'}
-              </span>
-              <span style={{
-                font: "400 calc(12px * var(--ts)) var(--body)",
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{opponent?.def.school ?? '—'}</span>
-              <span style={{
-                font: "600 calc(11px * var(--ts)) var(--mono)",
-                color: won === null ? 'var(--dim)' : (won ? 'var(--win)' : 'var(--loss)'),
-                textAlign: 'right',
-              }}>{won === null ? '' : (won ? 'W' : 'L')}</span>
-              <span style={{
-                font: "400 calc(11px * var(--ts)) var(--mono)", textAlign: 'right',
-                color: won === null ? 'rgba(var(--ink-rgb), .35)' : 'var(--ink)',
-              }}>
-                {result ? `${us}-${them}` : day.kind === 'series' ? 'series' : 'mid'}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-    </FixedHeader>
-    {/*
-      The sheet is a sibling of the screen rather than a child of its scroller.
-      It covers the frame, and a full-screen cover that lives inside the box it
-      is covering is one that scrolls with it — the header would ride out from
-      under the sheet the first time you dragged a long box score.
-    */}
-    {openDay !== null && season.boxScores?.[openDay] && (
-      <BoxScoreSheet
-        box={season.boxScores[openDay]}
-        season={season}
-        onClose={() => setOpenDay(null)}
-      />
-    )}
+        {/* The program's vitals, moved off the dashboard. The season tab is
+            where you come to ask how the year is going, so the year's three
+            numbers live here. */}
+        <MetricStrip>
+          <Metric label="OVERALL" value={`${team.w}-${team.l}`} note={`${played} PLAYED`} />
+          <Metric label="CONFERENCE" value={`${team.cw}-${team.cl}`} note={team.conference.toUpperCase()} />
+          <Metric label="RUN DIFF" value={`${diff > 0 ? '+' : ''}${diff}`} note={`${team.rs} FOR`} />
+        </MetricStrip>
+
+        <SectionHeading kicker="SERIES VIEW" title={`${year} schedule`} />
+        <section className="series-list">
+          {rows.map(({ day, home, opponent, result }, i) => {
+            const won = result
+              ? (home ? result.homeRuns > result.awayRuns : result.awayRuns > result.homeRuns)
+              : null;
+            const us = result ? (home ? result.homeRuns : result.awayRuns) : null;
+            const them = result ? (home ? result.awayRuns : result.homeRuns) : null;
+            // A played game opens its box score. An unplayed one has nothing to
+            // show, so it opens the other program instead of offering a tap
+            // that does nothing.
+            const box = season.boxScores?.[day.day];
+            const next = won === null && i === played;
+            return (
+              <button
+                className={`series-match${next ? ' is-yours' : ''}`}
+                key={`${day.day}-${i}`}
+                type="button"
+                onClick={() => (box
+                  ? setOpenDay(day.day)
+                  : opponent && openTeam(opponent.index))}
+              >
+                <span>
+                  <b>{home ? 'vs ' : 'at '}{opponent?.def.school ?? '—'}</b>
+                  <strong>{result ? `${us}-${them}` : ''}</strong>
+                  <em className={won === null ? '' : won ? 'won' : 'lost'}>
+                    {won === null ? '' : won ? 'W' : 'L'}
+                  </em>
+                  <small>
+                    {seasonDate(year, day.day)} · {day.kind === 'series' ? 'conference series' : 'midweek'}
+                    {next ? ' · next up' : ''}
+                  </small>
+                </span>
+                <ChevronRightIcon />
+              </button>
+            );
+          })}
+        </section>
+
+        <FieldNote
+          title="Every played game keeps its book"
+          text="Tap a final to open the full box score — both sides, batting and pitching, with every name in it tappable. A game still to come opens the program you are playing."
+        />
+      </main>
+
+      {/*
+        The sheet is a sibling of the screen rather than a child of its scroller.
+        It covers the frame, and a full-screen cover that lives inside the box it
+        is covering is one that scrolls with it — the header would ride out from
+        under the sheet the first time you dragged a long box score.
+      */}
+      {openDay !== null && season.boxScores?.[openDay] && (
+        <BoxScoreSheet
+          box={season.boxScores[openDay]}
+          season={season}
+          onClose={() => setOpenDay(null)}
+        />
+      )}
     </>
   );
 }

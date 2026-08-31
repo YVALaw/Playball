@@ -8,7 +8,7 @@
 // aggressive running game does take more bases and does run into more outs.
 
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { FixedHeader } from '../Sticky.js';
+import { FieldNote, ModuleIntro, Segmented } from '../components/Kit.js';
 import type { Strategy } from '../../engine/strategy.js';
 
 interface Group<K extends keyof Strategy> {
@@ -81,70 +81,54 @@ export function StrategyScreen() {
   const current = team.strategy;
 
   return (
-    <FixedHeader
-      header={
-        <div style={{ padding: '12px 14px 10px' }}>
-          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-            <div className="label">HOW YOU PLAY</div>
-            <div style={{
-              font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-            }}>Strategy</div>
-          </div>
-        </div>
-      }
-    >
-    <div style={{ padding: '10px 14px 16px' }}>
-      <div style={{
-        font: "400 calc(11.5px * var(--ts))/1.55 var(--body)", color: 'var(--dim)',
-      }}>
-        These are live from the next pitch. Every setting gives something up —
-        there is no column here that is simply better than the others.
-      </div>
+    <main className="module-workspace">
+      <ModuleIntro
+        kicker="TEAM IDENTITY"
+        title="Standing strategy"
+        text="Set the situations your club should recognise without interrupting every
+          inning. These are live from the next pitch, and every one of them gives
+          something up — there is no column here that is simply better."
+      />
 
-      {GROUPS.map((g) => (
-        <div key={g.key} style={{ marginTop: 18 }}>
-          <div className="label">{g.title}</div>
-          <div style={{
-            marginTop: 2, marginBottom: 6,
-            font: "400 calc(11px * var(--ts))/1.4 var(--body)", color: 'var(--dim)',
-          }}>{g.note}</div>
+      {/*
+        The proposal's strategy board cycles one value per row on tap, which is
+        the right shape for three settings with three values each and the wrong
+        one here: every option in this game says what it *costs*, and a control
+        that only shows the current value hides the trade that is the whole
+        point of the screen. So the board is the row — label, value, note — and
+        the options open under it as a segmented strip, which is the proposal's
+        own control for exactly this.
+      */}
+      {GROUPS.map((g) => {
+        const chosen = g.options.find((o) => o.value === current[g.key]);
+        return (
+          <section className="strategy-board" key={g.key}>
+            <button type="button" disabled>
+              <span>{g.title}</span>
+              <strong>{chosen?.label ?? '—'}</strong>
+              <small>{chosen?.cost ?? g.note}</small>
+            </button>
+            <div className="setting-choice">
+              <Segmented
+                label={g.title}
+                value={String(current[g.key])}
+                onChange={(v) => setStrategy(g.key, v as never)}
+                options={g.options.map((o) => ({
+                  value: String(o.value),
+                  label: o.label,
+                }))}
+              />
+            </div>
+          </section>
+        );
+      })}
 
-          {g.options.map((o) => {
-            const on = current[g.key] === o.value;
-            return (
-              <button
-                key={String(o.value)}
-                onClick={() => setStrategy(g.key, o.value)}
-                style={{
-                  width: '100%', textAlign: 'left', marginBottom: 5,
-                  padding: '9px 11px',
-                  background: on ? 'rgba(var(--clay-rgb), .10)' : 'var(--paper)',
-                  border: `1px solid ${on ? 'var(--clay)' : 'rgba(var(--ink-rgb), .28)'}`,
-                  boxShadow: on ? 'none' : '0 1px 0 rgba(var(--ink-rgb), .10)',
-                }}
-              >
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-                }}>
-                  <span style={{
-                    font: "700 calc(10.5px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-                    color: on ? 'var(--clay)' : 'var(--ink)',
-                  }}>{o.label}</span>
-                  {on && (
-                    <span style={{
-                      font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.12em', color: 'var(--clay)',
-                    }}>IN USE</span>
-                  )}
-                </div>
-                <div style={{
-                  marginTop: 3, font: "400 calc(11px * var(--ts))/1.4 var(--body)", color: 'var(--dim)',
-                }}>{o.cost}</div>
-              </button>
-            );
-          })}
-        </div>
-      ))}
-    </div>
-    </FixedHeader>
+      <FieldNote
+        title="Nothing here is free"
+        text="An aggressive running game does take more bases and does run into more
+          outs. A full shift is big against a pull-heavy lineup and badly punished
+          by one that runs. The notes are the trade the engine actually makes."
+      />
+    </main>
   );
 }

@@ -83,9 +83,10 @@ export function RecordBook() {
 
   if (!season || !team) return null;
   const book = season.records ?? {};
-
+  // No padding of its own: this renders inside a workspace that already has
+  // the gutter, and two of them is a column half the width of the screen.
   return (
-    <div style={{ padding: '12px 14px 20px' }}>
+    <>
       <div style={{ font: "400 calc(12px * var(--ts))/1.55 var(--body)", color: 'var(--dim)' }}>
         Every program in the country, for as long as this dynasty has run. Marks
         tagged <Tag /> are the real ones, corrected for the league you are chasing
@@ -124,7 +125,7 @@ export function RecordBook() {
         <em>on his own team</em> would have made, which does not mean the same
         thing in two different rows.
       </div>
-    </div>
+    </>
   );
 }
 

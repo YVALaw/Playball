@@ -41,7 +41,8 @@ import { REGION_OF_STATE, CONFERENCES } from '../../data/schools.js';
 import { playerId, type PlayerId } from '../../engine/types.js';
 import { CoachPortrait } from '../CoachPortrait.js';
 import { teamColour } from '../Avatar.js';
-import { FixedHeader } from '../Sticky.js';
+import { ArrowLeftIcon } from '@radix-ui/react-icons';
+import { ModuleIntro, Segmented } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
 import { pct } from '../format.js';
 
@@ -102,26 +103,20 @@ export function Program() {
   */
   if (sheet === 'coach') {
     return (
-      <FixedHeader header={
-        <div style={{ padding: '12px 14px 8px' }}>
-          <button
-            className="tap"
-            onClick={() => setSheet('board')}
-            style={{
-              display: 'block', width: '100%', textAlign: 'left', marginBottom: 8,
-              padding: 0, background: 'none', border: 'none', color: 'var(--dim)',
-              font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-            }}
-          >‹ THE PROGRAM</button>
-          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-            <div className="label">HEAD COACH · {year}</div>
-          </div>
-        </div>
-      }>
-        <div style={{ padding: '12px 14px 20px' }}>
-          <CoachSheet team={team} />
-        </div>
-      </FixedHeader>
+      <main className="module-workspace">
+        {/* The way out, which this sheet did not have.
+
+            Reported from play: "the program stopped showing the college
+            overview but instead started showing the coach information", and
+            only wiping the save fixed it. `programSheet` is store state, so an
+            inbox card that deep-links here leaves it on 'coach' after the
+            overlay is dismissed — and the tab has no back bar of its own. It
+            was not a rendering fault; it was a one-way door. */}
+        <button className="back-link tap" type="button" onClick={() => setSheet('board')}>
+          <ArrowLeftIcon /> The program
+        </button>
+        <CoachSheet team={team} />
+      </main>
     );
   }
 
@@ -132,32 +127,46 @@ export function Program() {
     which is the men who played for you at it — so the name of the school is
     the one line that is true on both.
   */
+  const waiting = review !== null || offers.length > 0;
+
   return (
-    <FixedHeader header={
-      <>
-        <div style={{ padding: '12px 14px 0' }}>
-          <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-            <div className="label">{team.conference} · {year}</div>
-            <div style={{
-              font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-            }}>{team.def.school}</div>
-          </div>
+    <main className="module-workspace">
+      <ModuleIntro
+        kicker={`${team.conference} · ${year}`}
+        title={team.def.school}
+        text="Prestige, the board's expectation, the people shaping the program, and the names that stayed."
+      />
+
+      {/* The board is talking to you and you are one tab away from hearing it.
+          A review sitting unread behind an inactive tab is the whole reason
+          this screen used to open on the meeting. */}
+      <Segmented
+        label="Program view"
+        value={sheet}
+        onChange={setSheet}
+        options={[
+          { value: 'board', label: waiting ? 'Board ·' : 'Board' },
+          { value: 'hall', label: 'Hall' },
+        ]}
+      />
+
+      {/* The two headline numbers, in the proposal's own dark score panel. */}
+      <section className="program-score">
+        <div>
+          <small>PRESTIGE</small>
+          <strong>{team.prestige}</strong>
+          <span>{'★'.repeat(prestigeStars(team.prestige))} PROGRAM</span>
         </div>
-        <TabStrip
-          at={sheet}
-          onGo={setSheet}
-          // The board is talking to you and you are one tab away from hearing
-          // it. A review sitting unread behind an inactive tab is the whole
-          // reason this screen used to open on the meeting.
-          waiting={review !== null || offers.length > 0}
-        />
-      </>
-    }>
-      <div style={{ padding: '12px 14px 20px' }}>
-        {sheet === 'board' && <BoardSheet team={team} />}
-        {sheet === 'hall' && <HallSheet />}
-      </div>
-    </FixedHeader>
+        <div>
+          <small>THIS YEAR</small>
+          <strong>{team.w}-{team.l}</strong>
+          <span>{team.cw}-{team.cl} IN CONFERENCE</span>
+        </div>
+      </section>
+
+      {sheet === 'board' && <BoardSheet team={team} />}
+      {sheet === 'hall' && <HallSheet />}
+    </main>
   );
 }
 

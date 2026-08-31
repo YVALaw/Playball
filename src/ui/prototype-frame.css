@@ -258,3 +258,50 @@
 /* The card's own tab strip sits under a full-bleed hero, so it needs the
    workspace's gutter back. */
 .profile-workspace > .segmented { margin-top: 15px; }
+
+/* A result in the series list needs a W or an L as well as a score, and the
+   proposal's match row has three slots rather than four. The mark rides in the
+   third, coloured by which it is. */
+.series-match em {
+  font-style: normal;
+  font-size: calc(11px * var(--ts));
+  font-weight: 800;
+  text-align: right;
+}
+
+.series-match em.won { color: var(--win); }
+.series-match em.lost { color: var(--loss); }
+
+/* The record chip beside the schedule title is a label, not a menu. */
+.screen-title-row > .month-button {
+  display: inline-flex;
+  font: 800 calc(15px * var(--ts))/1 var(--display);
+}
+
+/* The standings row carries a second line the proposal's four-team table had no
+   need for: ninety six programs are not all recognisable by name, and the
+   overall record and run differential are what say whether a conference record
+   is real. */
+.standings-table button strong em {
+  display: block;
+  margin-top: 3px;
+  color: var(--dim);
+  font: 700 calc(7.5px * var(--ts)) var(--body);
+  font-style: normal;
+  letter-spacing: .02em;
+}
+
+.standings-table button.is-yours { background: var(--soft); }
+.standings-table button.is-yours strong { color: var(--clay); }
+
+/* The rail's result line. Red is the loss, not the default — the proposal
+   spends its red on an off day, and a fixture you have not played is not an
+   alarm. */
+.schedule-rail i.won { color: var(--win); }
+.schedule-rail i.lost { color: var(--loss); }
+
+/* The strategy board's head row is a label, not a control: the options live in
+   the strip under it. */
+.strategy-board button:disabled { cursor: default; }
+.strategy-board .setting-choice { padding: 0 11px 11px; }
+.strategy-board .setting-choice .segmented { margin: 0; }
