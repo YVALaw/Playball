@@ -38,6 +38,7 @@ import { prestigeStars } from '../../engine/program.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
+import { ModuleIntro } from '../components/Kit.js';
 import type { Hitter, Pitcher, Player, Position } from '../../engine/types.js';
 
 type View = 'recruits' | 'targets' | 'commits' | 'needs' | 'roster';
@@ -359,12 +360,10 @@ export function Board() {
         borderBottom: '2px solid var(--ink)', paddingBottom: 6,
       }}>
         <div>
-          <div className="label">
-            RECRUITING · {live ? `WEEK ${week} OF ${RECRUITING_WEEKS}` : 'SIGNED'}
-          </div>
-          <div style={{
-            font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 4, textTransform: 'uppercase',
-          }}>The board</div>
+          <ModuleIntro
+            kicker={`RECRUITING · ${live ? `WEEK ${week} OF ${RECRUITING_WEEKS}` : 'SIGNED'}`}
+            title="The board"
+          />
         </div>
         {/*
           Filtering is a mode, not a drawer.

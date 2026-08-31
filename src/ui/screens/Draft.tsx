@@ -100,12 +100,7 @@ export function Draft() {
     // and how many there are should not scroll away from the list itself.
     <FixedHeader header={
       <div style={{ padding: '14px 14px 10px' }}>
-      <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 8 }}>
-        <div className="label">{year} · {team.def.abbr}</div>
-        <div style={{
-          font: "800 calc(22px * var(--ts))/0.95 var(--display)", marginTop: 5, textTransform: 'uppercase',
-        }}>Draft results</div>
-      </div>
+      <ModuleIntro kicker={`${year} · ${team.def.abbr}`} title="Draft results" />
 
       <div style={{
         display: 'flex', marginTop: 12,

@@ -106,9 +106,9 @@ export function TeamCard({ index }: { index: number }) {
               }}>{t.def.abbr}</span>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="label">{t.conference} · {stars} STAR PROGRAM</div>
+              <div className="label">{t.conference} · {'★'.repeat(stars)}</div>
               <div style={{
-                font: "800 calc(21px * var(--ts))/0.95 var(--display)", marginTop: 3,
+                font: "800 calc(26px * var(--ts))/0.9 var(--display)", marginTop: 3,
                 textTransform: 'uppercase', color: teamColour(t.def.abbr),
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{t.def.school}</div>
