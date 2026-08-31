@@ -1659,3 +1659,87 @@
 /* "Make the controllers a bit smaller, just a bit not by much." */
 .ballpark-call button { min-height: 41px; }
 .ballpark-call { padding: 8px 12px 10px; }
+
+/* ---------------------------------------------------------------------------
+   Headlines, brought down across the app.
+
+   Reported: "we have to make the headers smaller globally, there is no need
+   for them to be so big." The proposal's 36px display headline was designed
+   over screens whose explanatory paragraphs are mostly gone now, so it had
+   stopped paying for its height. 27px keeps the condensed voice and gives
+   every screen most of a row back; the section heads scale with it.
+   --------------------------------------------------------------------------- */
+.module-intro h1 { font-size: calc(27px * var(--ts)); }
+.module-intro { padding-bottom: 12px; }
+.dashboard-heading h2 { font-size: calc(20px * var(--ts)); }
+
+/* ---------------------------------------------------------------------------
+   The program page's leaves, one class each. The screen was the last big one
+   still dressing every panel by hand.
+   --------------------------------------------------------------------------- */
+.program-panel {
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.program-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.program-stat:last-child { border-bottom: 0; }
+.program-stat > b {
+  font: 600 calc(13px * var(--ts)) var(--mono);
+  text-align: right;
+}
+
+.program-tiles {
+  display: flex;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+.program-tile {
+  flex: 1;
+  padding: 9px 8px;
+  border-right: 1px solid var(--line);
+}
+.program-tile:last-child { border-right: 0; }
+.program-tile > strong {
+  display: block;
+  margin-top: 3px;
+  font: 800 calc(19px * var(--ts))/1 var(--display);
+}
+.program-tile.accent > strong { color: var(--clay); }
+
+.program-note {
+  margin-top: 8px;
+  color: var(--dim);
+  font-size: calc(10.5px * var(--ts));
+  line-height: 1.5;
+}
+
+.program-empty {
+  padding: 12px;
+  color: var(--dim);
+  font-size: calc(11px * var(--ts));
+  line-height: 1.5;
+}
+
+/* Draft rows on the retention-list anatomy: a decided call keeps its verdict
+   colour on the state chip, a departure of yours keeps the clay wash. */
+.retention-list button.stayed b { color: var(--win); }
+.retention-list button.gone b { color: var(--dim); }
+.retention-list button.mine { background: rgba(var(--clay-rgb), .07); }
+.retention-list button.mine strong { color: var(--clay); }
+.retention-list button > b { white-space: nowrap; }
+/* The board's filter toggle, lit while a filter shapes the list. */
+.filter-button { width: 44px; }
+.filter-button.active {
+  border-color: var(--clay);
+  background: var(--clay);
+  color: var(--cream);
+}

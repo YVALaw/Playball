@@ -19,8 +19,8 @@
 import { useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
-import { Cross1Icon } from '@radix-ui/react-icons';
-import { ModuleIntro, Segmented } from '../components/Kit.js';
+import { ChevronRightIcon, Cross1Icon } from '@radix-ui/react-icons';
+import { Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
 import { InFrame } from '../Overlay.js';
 import { draftChance } from '../../engine/progression.js';
@@ -104,14 +104,11 @@ export function Draft() {
       <div style={{ padding: '14px 14px 10px' }}>
       <ModuleIntro kicker={`${year} · ${team.def.abbr}`} title="Draft results" />
 
-      <div style={{
-        display: 'flex', marginTop: 12,
-        border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
-        <Tile k="YOU LOST" v={String(mineLost)} accent={mineLost > 0} />
-        <Tile k="TALKED ROUND" v={String(kept)} tone={kept > 0 ? 'var(--win)' : undefined} />
-        <Tile k="BUDGET LEFT" v={String(left)} last />
-      </div>
+      <MetricStrip>
+        <Metric label="YOU LOST" value={String(mineLost)} note="DRAFTED" />
+        <Metric label="TALKED ROUND" value={String(kept)} note="STAYING" />
+        <Metric label="BUDGET LEFT" value={String(left)} note={`OF ${pool}`} />
+      </MetricStrip>
 
       <Segmented
         label="Draft section"
@@ -220,28 +217,19 @@ function KeepList(
 
   if (men.length === 0) {
     return (
-      <div style={{
-        border: '1px solid var(--faint)', background: 'var(--paper)',
-        padding: '18px 12px', font: "400 calc(12px * var(--ts))/1.55 var(--body)", color: 'var(--dim)',
-        textAlign: 'center',
-      }}>
-        No club took a man of yours who still has eligibility, so there is
-        nobody here to talk to.
-      </div>
+      <section className="empty-state">
+        <h2>Nobody to call</h2>
+        <p>No club took a man of yours who still has eligibility.</p>
+      </section>
     );
   }
   return (
     <>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-        marginBottom: 7,
-      }}>
+      <div className="flow-section-title">
         <span className="label">THE PHONE CALLS</span>
-        <span style={{ font: "600 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
-          {left} OF {pool} LEFT
-        </span>
+        <b>{left} OF {pool} RETENTION LEFT</b>
       </div>
-      <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+      <section className="retention-list">
         {men.map((man) => (
           <KeepRow
             key={man.player.id}
@@ -250,7 +238,7 @@ function KeepList(
             onOpen={() => setOpen(man.player.id)}
           />
         ))}
-      </div>
+      </section>
       {talking && (
         <KeepSheet man={talking} left={left} abbr={abbr} onClose={() => setOpen(null)} />
       )}
@@ -266,38 +254,14 @@ function KeepRow(
   const done = man.outcome !== 'pending';
   const stayed = man.outcome === 'stayed';
   return (
-    <button
-      onClick={onOpen}
-      className="tap"
-      style={{
-        width: '100%', textAlign: 'left', display: 'grid',
-        gridTemplateColumns: 'auto 1fr auto auto', gap: 9, alignItems: 'center',
-        padding: '10px 11px', background: 'transparent',
-        borderBottom: '1px solid var(--hairline)',
-        borderLeft: done
-          ? `3px solid ${stayed ? 'var(--win)' : 'var(--dim)'}`
-          : '3px solid var(--clay)',
-      }}
-    >
-      <Avatar id={p.id} team={abbr} size={32} />
-      <span style={{ minWidth: 0 }}>
-        <span style={{
-          display: 'block', font: "700 calc(14px * var(--ts)) var(--body)",
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>{p.name}</span>
-        <span style={{
-          display: 'block', marginTop: 1, font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
-        }}>
-          {slotOf(p)} · {p.classYear} · RD {man.round} · OVR {overallOf(p)}
-        </span>
+    <button className={`tap${done ? (stayed ? ' stayed' : ' gone') : ''}`} type="button" onClick={onOpen}>
+      <span className="portrait"><Avatar id={p.id} team={abbr} size={34} /></span>
+      <span>
+        <strong>{p.name}</strong>
+        <small>{slotOf(p)} · {p.classYear} · RD {man.round} · OVR {overallOf(p)}</small>
       </span>
-      <span style={{
-        font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.07em', whiteSpace: 'nowrap',
-        color: done ? (stayed ? 'var(--win)' : 'var(--dim)') : 'var(--clay)',
-      }}>
-        {done ? (stayed ? 'STAYING' : 'SIGNED') : 'ON THE PHONE'}
-      </span>
-      <span aria-hidden style={{ font: "400 calc(13px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>›</span>
+      <b>{done ? (stayed ? 'STAYING' : 'SIGNED') : 'OPEN CALL'}</b>
+      <ChevronRightIcon />
     </button>
   );
 }
@@ -521,18 +485,20 @@ function Step(
 // ---------------------------------------------------------------------------
 
 function Rows({ rows, abbr, empty }: { rows: Departure[]; abbr: string; empty: string }) {
+  if (rows.length === 0) {
+    return (
+      <section className="empty-state">
+        <h2>Nobody</h2>
+        <p>{empty}</p>
+      </section>
+    );
+  }
   return (
-    <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-      {rows.length === 0 && (
-        <div style={{
-          padding: '18px 12px', font: "400 calc(12px * var(--ts))/1.55 var(--body)", color: 'var(--dim)',
-          textAlign: 'center',
-        }}>{empty}</div>
-      )}
+    <section className="retention-list">
       {rows.map((d) => (
         <DepartureRow key={d.id} d={d} mine={d.teamAbbr === abbr} />
       ))}
-    </div>
+    </section>
   );
 }
 
@@ -554,31 +520,25 @@ function NationalBoard({ rows, abbr }: { rows: Departure[]; abbr: string }) {
   }
   if (blocks.length === 0) {
     return (
-      <div style={{
-        border: '1px solid var(--faint)', background: 'var(--paper)',
-        padding: '18px 12px', font: "400 calc(12px * var(--ts))/1.55 var(--body)", color: 'var(--dim)',
-        textAlign: 'center',
-      }}>No club took anybody. That has never happened.</div>
+      <section className="empty-state">
+        <h2>Nobody taken</h2>
+        <p>No club took anybody. That has never happened.</p>
+      </section>
     );
   }
   return (
     <>
       {blocks.map((b) => (
         <div key={b.round} style={{ marginBottom: 10 }}>
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-            marginBottom: 5,
-          }}>
+          <div className="flow-section-title">
             <span className="label">ROUND {b.round}</span>
-            <span style={{ font: "400 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
-              {b.men.length}
-            </span>
+            <b>{b.men.length}</b>
           </div>
-          <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+          <section className="retention-list">
             {b.men.map((d) => (
               <DepartureRow key={d.id} d={d} mine={d.teamAbbr === abbr} />
             ))}
-          </div>
+          </section>
         </div>
       ))}
     </>
@@ -598,36 +558,21 @@ function DepartureRow({ d, mine }: { d: Departure; mine: boolean }) {
   const exit = EXIT[d.reason] ?? EXIT.graduated;
   return (
     <button
+      className={`tap${mine ? ' mine' : ''}`}
+      type="button"
       onClick={() => openPlayer(d.id)}
-      style={{
-        width: '100%', textAlign: 'left',
-        display: 'grid', gridTemplateColumns: 'auto 1fr auto auto',
-        gap: 9, alignItems: 'center',
-        padding: '9px 11px', borderBottom: '1px solid var(--hairline)',
-        background: mine ? 'rgba(var(--clay-rgb), .10)' : 'transparent',
-      }}
     >
-      <Avatar id={d.id} team={d.teamAbbr} size={30} />
-      <span style={{ minWidth: 0 }}>
-        <span style={{
-          display: 'block', font: `${mine ? 700 : 400} calc(13px * var(--ts)) var(--body)`,
-          color: mine ? 'var(--clay)' : 'var(--ink)',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>{d.name}</span>
-        <span style={{
-          display: 'block', marginTop: 1, font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
-        }}>
+      <span className="portrait"><Avatar id={d.id} team={d.teamAbbr} size={34} /></span>
+      <span>
+        <strong>{d.name}</strong>
+        <small>
           {d.teamAbbr} · {d.classYear} · {d.age} · {d.returned ? 'came back' : exit.word}
-        </span>
+        </small>
       </span>
-      <span style={{
-        font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-        color: d.returned ? 'var(--win)' : exit.tone, whiteSpace: 'nowrap',
-      }}>
-        {d.returned ? 'STAYED'
-          : d.reason === 'drafted' ? `RD ${d.round ?? '—'}` : exit.tag}
-      </span>
-      <span style={{ font: "600 calc(13px * var(--ts)) var(--mono)" }}>{d.overall}</span>
+      <b style={{ color: d.returned ? 'var(--win)' : exit.tone }}>
+        {d.returned ? 'STAYED' : d.reason === 'drafted' ? `${exit.tag} ${d.round ?? ''}` : exit.tag}
+      </b>
+      <ChevronRightIcon />
     </button>
   );
 }
@@ -665,32 +610,31 @@ function DraftOdds(
   )}
     >
     <div style={{ padding: '10px 14px 20px' }}>
-      <div style={{
-        display: 'flex', marginTop: 2,
-        border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
-        <Tile k="SENIORS" v={String(seniors.length)} />
-        <Tile k="ELIGIBLE" v={String(exposed.length)} />
-        <Tile k="LIKELY GONE" v={String(atRisk)} accent={atRisk > 0} last />
-      </div>
+      <MetricStrip>
+        <Metric label="SENIORS" value={String(seniors.length)} note="GRADUATING" />
+        <Metric label="ELIGIBLE" value={String(exposed.length)} note="EXPOSED" />
+        <Metric label="LIKELY GONE" value={String(atRisk)} note="PROJECTED" />
+      </MetricStrip>
 
       {exposed.length > 0 && (
         <>
-          <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>DRAFT ELIGIBLE</div>
-          <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-            {exposed.map((p) => <OddsRow key={p.id} player={p} odds={draftChance(overallOf(p))} />)}
+          <div className="flow-section-title" style={{ marginTop: 16 }}>
+            <span className="label">DRAFT ELIGIBLE</span>
           </div>
+          <section className="retention-list">
+            {exposed.map((p) => <OddsRow key={p.id} player={p} odds={draftChance(overallOf(p))} />)}
+          </section>
         </>
       )}
 
       {seniors.length > 0 && (
         <>
-          <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>
-            LEAVING REGARDLESS
+          <div className="flow-section-title" style={{ marginTop: 16 }}>
+            <span className="label">LEAVING REGARDLESS</span>
           </div>
-          <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+          <section className="retention-list">
             {seniors.map((p) => <OddsRow key={p.id} player={p} odds={null} />)}
-          </div>
+          </section>
         </>
       )}
 
@@ -716,48 +660,15 @@ function OddsRow({ player, odds }: { player: Player; odds: number | null }) {
     : odds >= 0.35 ? 'var(--clay)' : odds >= 0.12 ? 'var(--ink)' : 'var(--win)';
 
   return (
-    <button
-      onClick={() => openPlayer(player.id)}
-      style={{
-        width: '100%', textAlign: 'left',
-        display: 'grid', gridTemplateColumns: '1fr auto auto',
-        gap: 10, alignItems: 'center',
-        padding: '9px 11px', borderBottom: '1px solid var(--hairline)',
-      }}
-    >
-      <span style={{ minWidth: 0 }}>
-        <span style={{
-          display: 'block', font: "400 calc(13px * var(--ts)) var(--body)",
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>{player.name}</span>
-        <span style={{
-          display: 'block', marginTop: 1, font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
-        }}>
-          {slotOf(player)} · {player.classYear} · AGE {player.age}
-        </span>
+    <button className="tap" type="button" onClick={() => openPlayer(player.id)}>
+      <span className="portrait"><Avatar id={player.id} size={34} /></span>
+      <span>
+        <strong>{player.name}</strong>
+        <small>{slotOf(player)} · {player.classYear} · AGE {player.age} · {overallOf(player)} OVR</small>
       </span>
-      <span style={{
-        font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.08em', color: tone, whiteSpace: 'nowrap',
-      }}>{word}</span>
-      <span style={{ font: "600 calc(13px * var(--ts)) var(--mono)" }}>{overallOf(player)}</span>
+      <b style={{ color: tone }}>{word}</b>
+      <ChevronRightIcon />
     </button>
   );
 }
 
-function Tile(
-  { k, v, accent, tone, last }:
-  { k: string; v: string; accent?: boolean; tone?: string; last?: boolean },
-) {
-  return (
-    <div style={{
-      flex: 1, padding: '10px 8px',
-      borderRight: last ? 'none' : '1px solid var(--hairline)',
-    }}>
-      <div className="label">{k}</div>
-      <div style={{
-        font: "700 calc(20px * var(--ts))/1 var(--display)", marginTop: 3,
-        color: tone ?? (accent ? 'var(--clay)' : 'var(--ink)'),
-      }}>{v}</div>
-    </div>
-  );
-}

@@ -309,41 +309,30 @@ function BoardSheet({ team }: { team: Owner }) {
         </div>
       )}
 
+      {/* The proposal's job market list, because that is what this is. */}
       {offers.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <div className="label" style={{ marginBottom: 6 }}>WHO IS CALLING</div>
-          {offers.map((o) => (
-            <button
-              key={o.team}
-              onClick={() => void acceptOffer(o.team)}
-              style={{
-                width: '100%', textAlign: 'left', marginBottom: 6, padding: '10px 12px',
-                background: 'var(--paper)', border: '1px solid rgba(var(--ink-rgb), .42)',
-                boxShadow: '0 1px 0 rgba(var(--ink-rgb), .16)',
-              }}
-            >
-              <div style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-              }}>
-                <span style={{ font: "700 calc(15px * var(--ts)) var(--display)", textTransform: 'uppercase' }}>
-                  {o.school}
-                </span>
-                <span style={{ font: "600 calc(10px * var(--ts)) var(--mono)", color: 'var(--clay)' }}>
-                  {'★'.repeat(prestigeStars(o.prestige))}
-                </span>
+        <>
+          <SectionHeading kicker="THE MARKET" title="Who is calling" />
+          <section className="job-list">
+            {offers.map((o) => (
+              <div key={o.team}>
+                <button type="button" onClick={() => void acceptOffer(o.team)}>
+                  <span>
+                    <strong>{o.school}</strong>
+                    <small>{o.conference} · {o.pitch}</small>
+                  </span>
+                  <b>{'★'.repeat(prestigeStars(o.prestige))}</b>
+                </button>
+                <button type="button" onClick={() => void acceptOffer(o.team)}>
+                  Accept offer
+                </button>
               </div>
-              <div style={{
-                marginTop: 3, font: "400 calc(11px * var(--ts))/1.4 var(--body)", color: 'var(--dim)',
-              }}>{o.conference} · {o.pitch}</div>
-            </button>
-          ))}
-        </div>
+            ))}
+          </section>
+        </>
       )}
 
-      <div style={{
-        display: 'flex',
-        border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
+      <div className="program-tiles">
         <Tile k="PROGRAM PRESTIGE" v={'★'.repeat(stars) + '☆'.repeat(5 - stars)} accent />
         <Tile k="ROSTER OVR" v={String(roster)} />
         <Tile k="CONTRACT" v={`${coach.contractYears}y`} accent={coach.contractYears <= 1} last />
@@ -913,10 +902,8 @@ function HallSheet() {
       {inducted.length === 0
         ? (
           <FieldNote
-            title="It meets in June, and only for finished careers"
-            text="Two seasons at the very least, weighed across a whole career rather
-              than one enormous afternoon. Nobody goes in until he has left, so the
-              tables below are who has piled up the most — a different question."
+            title="It meets in June"
+            text="Finished careers only. Nobody goes in until he has left."
           />
         )
         : inducted.map((m) => (
@@ -942,23 +929,8 @@ function HallSheet() {
         not. Two different questions, one screen, and the screen has to say which
         is which loudly enough to survive being skimmed.
       */}
-      <div style={{
-        marginTop: 22, paddingTop: 14, borderTop: '2px solid var(--ink)',
-      }}>
-        <div className="label" style={{ color: 'var(--clay)' }}>
-          CAREER LEADERS · NOT INDUCTIONS
-        </div>
-        <div style={{
-          marginTop: 6, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-          marginBottom: 10,
-        }}>
-          Who accumulated the most, which is not the same question as who was
-          great — four years of turning up will out-hit two years of being the
-          best player in the country. Nobody on these tables is in the hall
-          unless he has a plaque above.
-        </div>
-        <Head>BATTING · BY CAREER HITS</Head>
-      </div>
+      <SectionHeading kicker="CAREER LEADERS · NOT INDUCTIONS" title="Your record men" />
+      <Head>BATTING · BY CAREER HITS</Head>
       <Table cols={BAT_COLS} head={['PLAYER', 'H', 'AVG', 'HR']}>
         {bats.length === 0
           ? <Empty>No hitter has finished a season for you yet.</Empty>
@@ -998,13 +970,7 @@ function HallSheet() {
         </Table>
       </div>
 
-      <Note>
-        Your own men, and only yours — at this program and any other you have
-        coached. Season by season lines are kept for your rosters alone, because
-        keeping them for all ninety six programs would put tens of thousands of
-        rows through every save. The country's <em>career</em> records are in the
-        record book, which manages it on a running total instead.
-      </Note>
+      <Note>Your own rosters only. The country's records live in the record book.</Note>
     </>
   );
 }
@@ -1265,16 +1231,11 @@ function Delta({ k, from, to }: { k: string; from: number; to: number }) {
 }
 
 function Tile({ k, v, accent, last }: { k: string; v: string; accent?: boolean; last?: boolean }) {
+  void last;
   return (
-    <div style={{
-      flex: 1, padding: '9px 8px',
-      borderRight: last ? 'none' : '1px solid var(--hairline)',
-    }}>
+    <div className={`program-tile${accent ? ' accent' : ''}`}>
       <div className="label">{k}</div>
-      <div style={{
-        font: "700 calc(20px * var(--ts))/1 var(--display)", marginTop: 3,
-        color: accent ? 'var(--clay)' : 'var(--ink)',
-      }}>{v}</div>
+      <strong>{v}</strong>
     </div>
   );
 }
@@ -1293,45 +1254,28 @@ function Flank({ k, v, align }: { k: string; v: string; align: 'left' | 'right' 
 
 function Head({ children }: { children: ReactNode }) {
   return (
-    <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-      <div className="label">{children}</div>
-    </div>
+    <div className="flow-section-title"><span className="label">{children}</span></div>
   );
 }
 
 function Panel({ children }: { children: ReactNode }) {
-  return (
-    <div style={{
-      marginTop: 8, border: '1px solid var(--faint)', background: 'var(--paper)',
-    }}>{children}</div>
-  );
+  return <div className="program-panel">{children}</div>;
 }
 
 function Note({ children }: { children: ReactNode }) {
-  return (
-    <div style={{ marginTop: 8, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
-      {children}
-    </div>
-  );
+  return <div className="program-note">{children}</div>;
 }
 
 function Empty({ children }: { children: ReactNode }) {
-  return (
-    <div style={{ padding: '12px', font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
-      {children}
-    </div>
-  );
+  return <div className="program-empty">{children}</div>;
 }
 
 function Stat({ k, v, last }: { k: string; v: string; last?: boolean }) {
+  void last;
   return (
-    <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-      padding: '8px 12px', gap: 10,
-      borderBottom: last ? 'none' : '1px solid var(--hairline)',
-    }}>
+    <div className="program-stat">
       <span className="label">{k}</span>
-      <span style={{ font: "600 calc(14px * var(--ts)) var(--mono)", textAlign: 'right' }}>{v}</span>
+      <b>{v}</b>
     </div>
   );
 }

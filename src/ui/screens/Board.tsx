@@ -39,7 +39,8 @@ import { prestigeStars } from '../../engine/program.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
-import { ModuleIntro, Segmented } from '../components/Kit.js';
+import { MixerHorizontalIcon } from '@radix-ui/react-icons';
+import { Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
 import type { Hitter, Pitcher, Player, Position } from '../../engine/types.js';
 
 type View = 'recruits' | 'targets' | 'commits' | 'needs' | 'roster';
@@ -356,16 +357,11 @@ export function Board() {
       )}
       header={
       <div style={{ padding: '12px 14px 10px' }}>
-      <div style={{
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-        borderBottom: '2px solid var(--ink)', paddingBottom: 6,
-      }}>
-        <div>
-          <ModuleIntro
-            kicker={`RECRUITING · ${live ? `WEEK ${week} OF ${RECRUITING_WEEKS}` : 'SIGNED'}`}
-            title="The board"
-          />
-        </div>
+      <div className="screen-title-row">
+        <ModuleIntro
+          kicker={`RECRUITING · ${live ? `WEEK ${week} OF ${RECRUITING_WEEKS}` : 'SIGNED'}`}
+          title="The board"
+        />
         {/*
           Filtering is a mode, not a drawer.
 
@@ -380,6 +376,8 @@ export function Board() {
           so there is nowhere for it to hide.
         */}
         <button
+          className={`filter-button tap${filtersOpen || activeFilters ? ' active' : ''}`}
+          type="button"
           onClick={() => {
             setOpenId(null);
             // Filters only shape the recruits list, so opening them from the
@@ -388,24 +386,14 @@ export function Board() {
             if (!filtersOpen) setView('recruits');
             setFiltersOpen((v) => !v);
           }}
-          style={{
-            padding: '7px 10px',
-            background: filtersOpen || activeFilters ? 'var(--clay)' : 'var(--paper)',
-            border: `1px solid ${filtersOpen || activeFilters ? 'var(--clay)' : 'rgba(var(--ink-rgb), .28)'}`,
-            color: filtersOpen || activeFilters ? 'var(--cream)' : 'var(--ink)',
-            font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-          }}
-        >FILTER{activeFilters ? ' ON' : ''}</button>
+        ><MixerHorizontalIcon /><span>{activeFilters ? 'Filter on' : 'Filter'}</span></button>
       </div>
 
-      <div style={{
-        display: 'flex', marginTop: 12,
-        border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
-        <Tile k="SCHOLARSHIPS" v={`${commits.length}/${SCHOLARSHIPS}`} accent={full} />
-        <Tile k="BUDGET" v={live ? String(left) : '—'} accent={live && left === 0} />
-        <Tile k="PRESTIGE" v={'★'.repeat(myStars) + '☆'.repeat(5 - myStars)} last />
-      </div>
+      <MetricStrip>
+        <Metric label="SCHOLARSHIPS" value={`${commits.length}/${SCHOLARSHIPS}`} note={full ? 'FULL' : 'COMMITTED'} />
+        <Metric label="BUDGET" value={live ? String(left) : '—'} note={live ? `OF ${weekly}` : 'CLOSED'} />
+        <Metric label="PRESTIGE" value={'★'.repeat(myStars) + '☆'.repeat(5 - myStars)} note="PROGRAM PULL" />
+      </MetricStrip>
 
       <Segmented
         label="Recruiting section"
@@ -1497,20 +1485,6 @@ function Schools({ prospect, userTeam }: { prospect: Prospect; userTeam: number 
   );
 }
 
-function Tile({ k, v, accent, last }: { k: string; v: string; accent?: boolean; last?: boolean }) {
-  return (
-    <div style={{
-      flex: 1, padding: '9px 8px',
-      borderRight: last ? 'none' : '1px solid var(--hairline)',
-    }}>
-      <div className="label">{k}</div>
-      <div style={{
-        font: "700 calc(17px * var(--ts))/1 var(--display)", marginTop: 3,
-        color: accent ? 'var(--clay)' : 'var(--ink)',
-      }}>{v}</div>
-    </div>
-  );
-}
 
 function Stat({ k, v, last }: { k: string; v: string; last?: boolean }) {
   return (
