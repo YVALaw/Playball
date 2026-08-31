@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client';
 import { App } from './ui/App.js';
 import { readPrefs, applyPrefs } from './state/devicePrefs.js';
 import './ui/tokens.css';
+// The design of record, then the dozen rules that hang it off a flex column
+// instead of a simulated phone. Order matters: the frame file overrides.
+import './ui/prototype.css';
+import './ui/prototype-frame.css';
 
 /*
   Preferences before the first paint.

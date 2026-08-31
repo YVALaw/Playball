@@ -12,7 +12,7 @@
  */
 
 :root {
-  --field: #f7f8f4;   /* screen background, the ruled page */
+  --field: #fffefa;   /* screen background, the paper */
   --paper: #ffffff;   /* cards, panels, table surfaces */
   --ink: #1d201d;     /* primary text */
   --navy: #153a2b;    /* the dark surface: app bar, hero cards, the live frame */

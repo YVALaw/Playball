@@ -12,14 +12,15 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
-  ArrowLeftIcon, CalendarIcon, EnvelopeClosedIcon, HomeIcon, IdCardIcon, StarIcon,
+  ArchiveIcon, ArrowLeftIcon, CalendarIcon, ChevronRightIcon, EnvelopeClosedIcon, GearIcon,
+  HomeIcon, IdCardIcon, StarIcon,
 } from '@radix-ui/react-icons';
 import {
   PHASES, PHASE_LABEL, TABS, useDynasty, useUserTeam, type Tab,
 } from '../state/store.js';
 import { StepRail } from './StepRail.js';
 import {
-  ClubIdentity, ClubMark, ContextNav, HeaderIcon, HeaderShell, PrimaryNav, RecordChip,
+  ClubSwitcher, CoachAvatar, ContextNav, HeaderIcon, PrimaryNav, RecordChip,
 } from './Chrome.js';
 import { Today } from './screens/Today.js';
 import { Standings } from './screens/Standings.js';
@@ -240,19 +241,12 @@ function AppBody(
         */}
         {/* No club mark and no record: there is no club yet, which is the whole
             situation this frame describes. */}
-        <HeaderShell cols="minmax(0, 1fr) auto">
-          <ClubIdentity kicker="Between jobs" name="The Market" />
-          <button
+        <header className="global-header" style={{ gridTemplateColumns: 'minmax(0,1fr) auto' }}>
+          <ClubSwitcher abbr="—" kicker="Between jobs" name="The Market" />
+          <button className="header-icon tap" type="button" aria-label="Saves"
             onClick={() => openOverlay('saves')}
-            className="tap"
-            style={{
-              flex: 'none', padding: '11px 12px',
-              border: '1px solid var(--line)', background: 'var(--paper)',
-              color: 'var(--clay)',
-              font: "700 calc(10px * var(--ts)) var(--body)", letterSpacing: '.08em',
-            }}
-          >SAVES</button>
-        </HeaderShell>
+          ><ArchiveIcon /></button>
+        </header>
         <SaveAlert topmost />
         <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
           flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
@@ -375,9 +369,8 @@ function AppBody(
         {/* The bar steps aside while a game is being managed — the dugout owns
             the whole screen, the same rule the regular season follows. */}
         {!live && (
-          <HeaderShell cols="40px minmax(0, 1fr) 40px 40px">
-            <ClubMark abbr={team.def.abbr} />
-            <ClubIdentity kicker="Postseason" name={team.def.school} />
+          <header className="global-header" style={{ gridTemplateColumns: 'minmax(0,1fr) 40px 40px' }}>
+            <ClubSwitcher abbr={team.def.abbr} kicker="Postseason" name={team.def.school} />
             <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
             {/*
               The way to your own settings, in the month you are most likely to
@@ -391,7 +384,7 @@ function AppBody(
               for it.
             */}
             <CoachMenuButton />
-          </HeaderShell>
+          </header>
         )}
         <SaveAlert topmost />
         {/*
@@ -409,6 +402,7 @@ function AppBody(
         */}
         {!live && tab !== 'home' && (
           <ContextNav
+            label={`${(TABS.find((t) => t.id === tab) ?? TABS[0]!).label} sections`}
             items={(TABS.find((t) => t.id === tab) ?? TABS[0]!).screens}
             active={screen}
             onSelect={setScreen}
@@ -486,9 +480,8 @@ function AppBody(
       <div className="app-frame" style={{
         display: 'flex', flexDirection: 'column', minHeight: 0,
       }}>
-        <HeaderShell cols="40px minmax(0, 1fr) 40px 40px">
-          <ClubMark abbr={team.def.abbr} />
-          <ClubIdentity kicker={`${year} Offseason`} name={team.def.school} />
+        <header className="global-header" style={{ gridTemplateColumns: 'minmax(0,1fr) 40px 40px' }}>
+          <ClubSwitcher abbr={team.def.abbr} kicker={`${year} Offseason`} name={team.def.school} />
           {/* The bottom nav is gone from here by design, and it took HOME ·
               INBOX with it — during the seven steps that have most to report.
               The portrait menu carries PROFILE and SAVES, exactly the pair the
@@ -497,7 +490,7 @@ function AppBody(
               the year came to and a header is not a trophy shelf. */}
           <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
           <CoachMenuButton />
-        </HeaderShell>
+        </header>
         <SaveAlert />
         <StepRail
           steps={PHASES.map((p) => ({ key: p, label: PHASE_LABEL[p] }))}
@@ -563,7 +556,7 @@ function AppBody(
   };
 
   return (
-    <div className="app-frame" style={{ color: 'var(--ink)' }}>
+    <div className="app-frame playball-app">
       {/*
         The top bar, on paper.
 
@@ -580,20 +573,25 @@ function AppBody(
         day was set in the same weight as two that never change. Overall only;
         the conference record is a tap away on the standings.
       */}
-      <HeaderShell cols="40px minmax(0, 1fr) auto 40px 40px">
-        <ClubMark abbr={team.def.abbr} />
-        <ClubIdentity
+      <header className="global-header">
+        <ClubSwitcher
+          abbr={team.def.abbr}
           kicker={`${team.def.nickname} · ${team.conference}`}
           name={team.def.school}
         />
-        <RecordChip label="Record" value={`${team.w}-${team.l}`} />
+        <RecordChip label={team.conference} value={`${team.w}-${team.l}`} />
         <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
         <CoachMenuButton />
-      </HeaderShell>
+      </header>
 
       <SaveAlert />
 
-      <ContextNav items={tabDef.screens} active={screen} onSelect={setScreen} />
+      <ContextNav
+        label={`${tabDef.label} sections`}
+        items={tabDef.screens}
+        active={screen}
+        onSelect={setScreen}
+      />
 
       <main ref={mainRef} style={{
         flex: 1, minHeight: 0, overflow: 'auto', position: 'relative',
@@ -870,69 +868,49 @@ function BackBar({ onBack }: { onBack: () => void }) {
  */
 function CoachMenuButton() {
   const coach = useDynasty((s) => s.coach);
+  const team = useUserTeam();
   const setProgramSheet = useDynasty((s) => s.setProgramSheet);
   const openOverlay = useDynasty((s) => s.openOverlay);
   const [open, setOpen] = useState(false);
 
-  const item = (label: string, run: () => void, last?: boolean) => (
-    <button
-      role="menuitem"
-      onClick={() => { setOpen(false); run(); }}
-      className="tap"
-      style={{
-        display: 'block', width: '100%', textAlign: 'left',
-        padding: '12px 16px', minHeight: 40,
-        background: 'transparent',
-        borderBottom: last ? 'none' : '1px solid var(--line)',
-        color: 'var(--ink)', font: "700 calc(11px * var(--ts)) var(--body)", letterSpacing: '.04em',
-      }}
-    >{label}</button>
-  );
+  const go = (run: () => void) => { setOpen(false); run(); };
 
   return (
-    <div style={{ position: 'relative', flex: 'none' }}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        aria-label="Coach menu"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        className="tap"
-        style={{
-          width: 40, height: 40, minWidth: 40, padding: 0,
-          borderRadius: '50%', overflow: 'hidden',
-          border: `2px solid ${open ? 'var(--clay)' : 'var(--line)'}`,
-          background: 'var(--field)',
-          display: 'grid', placeItems: 'center',
-        }}
-      >
-        <CoachPortrait look={coach.look} size={36} />
-      </button>
+    <>
+      <CoachAvatar look={coach.look} onClick={() => setOpen((v) => !v)} />
       {open && (
         <>
-          <div
+          <button
+            className="popover-scrim"
+            type="button"
+            aria-label="Close coach menu"
             onClick={() => setOpen(false)}
-            style={{ position: 'fixed', inset: 0, zIndex: 44 }}
           />
-          <div
-            role="menu"
-            className="card-in"
-            style={{
-              position: 'absolute', top: 46, right: 0, zIndex: 45,
-              minWidth: 168,
-              background: 'var(--paper)',
-              border: '1px solid var(--line)',
-              boxShadow: '0 12px 34px rgba(var(--ink-rgb), .18)',
-            }}
-          >
-            {item('Coach profile', () => { setProgramSheet('coach'); openOverlay('program'); })}
+          <section className="account-menu card-in" role="menu">
+            <div>
+              <span className="initial-avatar"><CoachPortrait look={coach.look} size={40} /></span>
+              <span>
+                <strong>{coach.name}</strong>
+                <small>{team ? `Head Coach · ${team.def.school}` : "Between jobs"}</small>
+              </span>
+            </div>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => go(() => { setProgramSheet("coach"); openOverlay("program"); })}
+            ><IdCardIcon />Coach profile<ChevronRightIcon /></button>
             {/* Saves used to sit here as a peer. It moved inside settings: one
                 place for everything about you and the app, which also stops the
                 menu growing a row every time a preference is added. */}
-            {item('Settings', () => openOverlay('settings'), true)}
-          </div>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => go(() => openOverlay("settings"))}
+            ><GearIcon />Settings<ChevronRightIcon /></button>
+          </section>
         </>
       )}
-    </div>
+    </>
   );
 }
 

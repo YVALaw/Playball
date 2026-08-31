@@ -1,0 +1,148 @@
+/* prototype-frame.css
+ *
+ * The one place the proposal's stylesheet and this app genuinely disagree, and
+ * the only part of the port that is hand-written rather than generated.
+ *
+ * The prototype was previewed inside a simulated phone: a fixed 393×852 box
+ * with a painted status bar across the top of it. So its chrome is positioned
+ * absolutely against that box — the header is `top: 0` with 56 pixels of
+ * padding standing in for the notch, the sub-nav is `top: 111px` because that
+ * is where the header happens to end, the bottom bar is `bottom: 0`, and the
+ * scrolling middle is a runtime component pinned between them with
+ * `top: 153px !important`.
+ *
+ * Three of those numbers are the harness rather than the design, and all three
+ * are wrong on a real handset: 56 pixels is not every notch, 111 is not the
+ * header's height once type can scale, and a `!important` offset computed from
+ * two other constants is a layout that breaks the first time somebody turns
+ * text size up.
+ *
+ * `.app-frame` already solves this and has done since long before the port —
+ * see the long comment in tokens.css. It is a flex column: the bars are rows
+ * that cannot move, exactly one box between them scrolls, and that is what
+ * makes a native app feel nailed down. So the chrome stops being absolute and
+ * becomes what it always was, three rows of a column, and the notch comes from
+ * `env(safe-area-inset-*)` where it is actually reported.
+ *
+ * Everything else in the proposal's stylesheet is untouched. This file is
+ * loaded after the generated one and overrides exactly the rules above.
+ */
+
+/* The three full-frame surfaces are the column, not a layer inside it. */
+.playball-app,
+.live-game,
+.offseason-app {
+  position: static;
+  inset: auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --------------------------------------------------------------------------
+   The chrome, as rows.
+
+   No heights: a bar is as tall as what is in it, which is the only definition
+   that survives `--ts` being turned up. `align-items: end` is kept from the
+   proposal — it is what sits the record and the club name on a shared baseline.
+   -------------------------------------------------------------------------- */
+.global-header {
+  position: static;
+  height: auto;
+  padding: calc(env(safe-area-inset-top) + 12px) 14px 11px;
+  flex: none;
+}
+
+.context-nav,
+.phase-rail {
+  position: static;
+  top: auto;
+  flex: none;
+}
+
+.primary-nav {
+  position: static;
+  bottom: auto;
+  height: auto;
+  flex: none;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.offseason-app > header,
+.live-game > header {
+  position: static;
+  height: auto;
+  flex: none;
+}
+
+.offseason-app > header { padding: calc(env(safe-area-inset-top) + 12px) 14px 10px; }
+.live-game > header { padding: calc(env(safe-area-inset-top) + 10px) 12px 9px; }
+
+/* An overlay does cover the frame — that part of the proposal is right, and it
+   is why the screen underneath survives being returned to. Inside it, the same
+   column. */
+.full-overlay {
+  display: flex;
+  flex-direction: column;
+}
+
+.full-overlay > header {
+  position: static;
+  height: auto;
+  flex: none;
+  padding: calc(env(safe-area-inset-top) + 12px) 15px 11px;
+}
+
+/* The scrolling middle.
+ *
+ * The proposal hands this to a runtime component and then tells it where to
+ * start and stop in pixels. Here it is the one flexible row of the column, so
+ * it needs no offsets at all — and `overscroll-behavior` from tokens.css keeps
+ * a list that has run out from handing the rest of the drag to whatever is
+ * behind it. */
+.screen-scroll,
+.playball-app > main,
+.offseason-app > main,
+.live-game > main,
+.full-overlay > main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* The diamond rail beside the batting order.
+ *
+ * Absolute in the proposal too, but against the phone box and offset by the
+ * same two chrome constants as everything else. It belongs to the lineup, so
+ * it is positioned against the lineup. */
+.lineup-workspace { position: relative; }
+
+.position-rail {
+  top: 4px;
+  right: 6px;
+  bottom: 12px;
+}
+
+/* The floating actions clear the gesture bar rather than a hardcoded 34px. */
+.player-actions-fab,
+.college-actions-fab,
+.game-manager-fab {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom) + 14px);
+}
+
+/* The dot that says something is unread, on the tab you would have to leave to
+   find out. Not in the proposal, which has no inbox count to carry — but the
+   count is the only unread signal that survives being three screens deep, and
+   the proposal's own header badge is the thing it points at. */
+.primary-nav .nav-alert {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-left: 3px;
+  vertical-align: 4px;
+  border-radius: 50%;
+  background: var(--alert);
+}

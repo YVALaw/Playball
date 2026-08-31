@@ -47,6 +47,7 @@
 // what the simulation does. Either way the man is hurt and either way somebody
 // covers him.
 
+import { ChevronRightIcon, SewingPinIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../state/store.js';
 import { handles } from '../state/depth.js';
 import { startersFrom, available, squad, SPOTS } from '../engine/depthChart.js';
@@ -195,67 +196,55 @@ export function useNeeds(): Need[] {
  */
 export function NeedsYou() {
   const needs = useNeeds();
+  const openOverlay = useDynasty((s) => s.openOverlay);
   if (needs.length === 0) return null;
 
   const musts = needs.filter((n) => n.must).length;
 
   return (
     <>
-      <div style={{
-        marginTop: 20, borderBottom: '2px solid var(--ink)', paddingBottom: 6,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-      }}>
-        <div className="label" style={{ color: musts > 0 ? 'var(--alert)' : undefined }}>
-          NEEDS YOU
+      <section className="dashboard-heading">
+        <div>
+          <small>AROUND THE CLUB</small>
+          <h2>Needs your eye</h2>
         </div>
-        {musts > 0 && (
-          <div style={{
-            font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-            color: 'var(--alert)',
-          }}>{musts} WAITING</div>
-        )}
-      </div>
-
-      <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {needs.map((n) => (
-          <button
-            key={n.id}
-            className="tap"
-            onClick={n.go}
-            style={{
-              width: '100%', textAlign: 'left', padding: '10px 11px', minHeight: 48,
-              background: 'var(--paper)',
-              // The red is a left rule rather than a fill. A block of red on a
-              // phone reads as an error the app has had; a rule beside a line of
-              // text reads as the line being marked, which is what it is.
-              borderLeft: `3px solid ${n.must ? 'var(--alert)' : 'var(--faint)'}`,
-              border: '1px solid rgba(var(--ink-rgb), .22)',
-              borderLeftWidth: 3,
-              borderLeftColor: n.must ? 'var(--alert)' : 'rgba(var(--ink-rgb), .22)',
-              display: 'flex', alignItems: 'center', gap: 10,
-              whiteSpace: 'normal', overflowWrap: 'break-word',
-            }}
-          >
-            <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{
-                display: 'block',
-                font: "700 calc(12.5px * var(--ts))/1.2 var(--display)",
-                textTransform: 'uppercase',
-                color: n.must ? 'var(--alert)' : 'var(--ink)',
-              }}>{n.title}</span>
-              <span style={{
-                display: 'block', marginTop: 3,
-                font: "400 calc(11px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
-              }}>{n.note}</span>
+        <button type="button" onClick={() => openOverlay("inbox")}>
+          Inbox <ChevronRightIcon />
+        </button>
+      </section>
+      <section className="decision-stack">
+        {needs.map((n, i) => (
+          <button key={n.id} type="button" onClick={n.go}>
+            {/*
+              The number is the proposal's mark, and it earns the red it is
+              already painted in: these are ordered, the ones that must be dealt
+              with sort first, and the count in the mark is how many are ahead
+              of this one. A must keeps the red; the rest of the stack is quiet.
+            */}
+            <span
+              className="decision-mark"
+              style={n.must ? undefined : { color: "var(--dim)" }}
+            >{String(i + 1).padStart(2, "0")}</span>
+            <span>
+              <strong>{n.title}</strong>
+              <small>{n.note}</small>
             </span>
-            <span style={{
-              flex: 'none',
-              font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.11em',
-              color: n.must ? 'var(--alert)' : 'var(--dim)',
-            }}>{n.cta}</span>
+            <ChevronRightIcon />
           </button>
         ))}
-      </div>
+      </section>
+      {musts > 0 && (
+        <section className="field-note">
+          <SewingPinIcon />
+          <div>
+            <strong>{musts} {musts === 1 ? "decision is" : "decisions are"} waiting on you</strong>
+            <p>
+              Marked in red above. Nothing stops until they are dealt with, but a
+              week goes past either way.
+            </p>
+          </div>
+        </section>
+      )}
     </>
   );
 }
