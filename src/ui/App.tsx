@@ -19,6 +19,7 @@ import {
   PHASES, PHASE_LABEL, TABS, useDynasty, useUserTeam, type Tab,
 } from '../state/store.js';
 import { StepRail } from './StepRail.js';
+import { Overlay } from './Overlay.js';
 import {
   ClubSwitcher, CoachAvatar, ContextNav, HeaderIcon, PrimaryNav, RecordChip,
 } from './Chrome.js';
@@ -727,17 +728,16 @@ function Overlays(
  * one with new numbers on whatever tab you left it on.
  */
 function TeamOverlay({ index, onBack }: { index: number; onBack: () => void }) {
+  const season = useDynasty((s) => s.season);
+  const rival = season?.teams[index];
   return (
-    <div style={{
-      position: 'absolute', inset: 0, zIndex: 28,
-      background: 'var(--field)',
-      display: 'flex', flexDirection: 'column',
-    }}>
-      <BackBar onBack={onBack} />
-      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-        <TeamCard key={index} index={index} />
-      </div>
-    </div>
+    <Overlay
+      eyebrow="COLLEGE PROFILE"
+      title={rival?.def.school ?? 'Program'}
+      onClose={onBack}
+    >
+      <TeamCard key={index} index={index} />
+    </Overlay>
   );
 }
 
@@ -932,26 +932,43 @@ function CoachMenuButton() {
 function PlayerOverlay() {
   const selectedPlayer = useDynasty((s) => s.selectedPlayer);
   const close = useDynasty((s) => s.closePlayer);
+  const name = usePlayerName(selectedPlayer);
   return (
-    <div style={{
-      position: 'absolute', inset: 0, zIndex: 30,
-      background: 'var(--field)',
-      display: 'flex', flexDirection: 'column',
-    }}>
-      <BackBar onBack={close} />
+    <Overlay eyebrow="PLAYER CARD" title={name} onClose={close}>
       {/*
         Keyed on the man, so opening a second card is a fresh card.
-        The scroll reset above resets the screen *underneath* the overlay, which
-        it must — but it leaves the card itself on whatever tab and scroll
-        position the last player was read at. Tapping a name in a box score and
-        landing halfway down someone else's game log is the same bug the reset
-        exists to prevent, one layer up.
+        The scroll reset in the frame resets the screen *underneath* the
+        overlay, which it must — but it leaves the card itself on whatever tab
+        and scroll position the last player was read at. Tapping a name in a box
+        score and landing halfway down someone else's game log is the same bug
+        the reset exists to prevent, one layer up.
       */}
-      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-        <Player key={selectedPlayer ?? ''} />
-      </div>
-    </div>
+      <Player key={selectedPlayer ?? ''} />
+    </Overlay>
   );
+}
+
+/**
+ * The name for the bar over the card.
+ *
+ * The card itself finds the man by searching every roster in the world, which
+ * is the right thing for a screen that opens leaderboard strangers and drafted
+ * alumni alike. The bar above it only needs the name, so it does the cheap half
+ * of the same search and falls back to a title rather than to nothing — a card
+ * for a man the world no longer contains still has a header.
+ */
+function usePlayerName(id: string | null): string {
+  const season = useDynasty((s) => s.season);
+  const report = useDynasty((s) => s.lastOffseason);
+  if (!id || !season) return 'Player card';
+  for (const t of season.teams) {
+    for (const p of [...t.team.lineup, ...t.team.bench, ...t.team.rotation, ...t.team.bullpen]) {
+      if (p.id === id) return p.name;
+    }
+  }
+  const gone = [...(report?.graduated ?? []), ...(report?.drafted ?? [])]
+    .find((d) => d.id === id);
+  return gone?.name ?? 'Player card';
 }
 
 function Screen({ id }: { id: string }) {

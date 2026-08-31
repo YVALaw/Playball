@@ -105,7 +105,7 @@
 .playball-app > main,
 .offseason-app > main,
 .live-game > main,
-.full-overlay > main {
+.full-overlay > .overlay-scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -129,7 +129,6 @@
 .player-actions-fab,
 .college-actions-fab,
 .game-manager-fab {
-  position: fixed;
   bottom: calc(env(safe-area-inset-bottom) + 14px);
 }
 
@@ -208,3 +207,54 @@
 /* The batting order keeps the proposal's grid, minus the chevron it no longer
    needs — the row's tap is the swap, not a way into the card. */
 .lineup-workspace .player-row .drag svg { width: 9px; color: var(--clay); }
+
+/* ---------------------------------------------------------------------------
+   The player hero, with a drawn face in it.
+
+   The proposal runs a photograph edge to edge and lays a wash over the bottom
+   half so the name has something to sit on. `Avatar` is an SVG on a transparent
+   ground, so the hero paints the dark green itself and the portrait sits in the
+   middle of it — big, centred, bleeding off the bottom the way the photograph
+   does. The wash stays: it is what keeps a light jersey from swallowing the
+   name written across it.
+   --------------------------------------------------------------------------- */
+.player-hero-face {
+  position: absolute;
+  left: 50%;
+  bottom: -18px;
+  transform: translateX(-50%);
+  display: grid;
+  place-items: end center;
+}
+
+/* No circle in the hero. Avatar draws itself on a tinted disc, which is right
+   in a 34 pixel row and wrong at two hundred — here the hero is already the
+   ground, and the disc would be a grey plate behind his head. */
+.avatar {
+  display: block;
+  border-radius: 50%;
+  background: var(--field);
+}
+
+.player-hero-face .avatar {
+  border-radius: 0;
+  background: transparent;
+}
+
+/* The wash is a gradient rather than a flat film: flat, it dulled the whole
+   portrait to get contrast under the name it only needed at the bottom. */
+.player-hero .hero-wash {
+  background: linear-gradient(
+    to bottom,
+    rgba(7, 31, 21, 0) 34%,
+    rgba(7, 31, 21, .58) 70%,
+    rgba(7, 31, 21, .82) 100%
+  );
+}
+
+/* Potential, under the overall, for your own men only. */
+.player-hero .player-pot { top: 68px; }
+
+/* The card's own tab strip sits under a full-bleed hero, so it needs the
+   workspace's gutter back. */
+.profile-workspace > .segmented { margin-top: 15px; }

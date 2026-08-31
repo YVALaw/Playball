@@ -35,7 +35,8 @@ import {
 import { draftEligible } from '../../engine/draft.js';
 import { overallOf, platoonSplit, naturalPos } from '../../engine/ratings.js';
 import { Avatar, teamColour } from '../Avatar.js';
-import { FixedHeader } from '../Sticky.js';
+import { SewingPinIcon } from '@radix-ui/react-icons';
+import { ModuleIntro, Segmented } from '../components/Kit.js';
 import {
   battingAverage, onBase, slugging, era, whip, inningsPitched,
   fieldingPct, playsAboveExpected, fieldingContext, careerName, liveCareerYear,
@@ -285,53 +286,93 @@ export function Player() {
   const active = LIVE_SHEETS.includes(sheet) ? sheet : 'overview';
 
   return (
-    <FixedHeader header={
-      <>
-        <CardHead
-          id={p.id}
-          name={p.name}
-          abbr={owner.def.abbr}
-          left={{ k: 'CLASS', v: p.classYear }}
-          right={{ k: isPitcher ? 'ROLE' : 'POS', v: slot }}
-          sub={
-            // The class year is already on the flank to the left of his face,
-            // so the line under his name spends the room on the thing the flank
-            // does not say. Age is not a restatement of class year: two juniors
-            // can be twenty and twenty-two, and only one of them was draft
-            // eligible last June.
-            <>
-              AGE {p.age} · BATS {p.bats} · THROWS {p.throws}
-              {isPitcher && (p as Pitcher).sidearm ? ' · SIDEARM' : ''}
-              {dhToday ? ' · BATS AS DH' : ''}
-            </>
-          }
-          school={isOurs ? null : { name: owner.def.school, conference: owner.conference }}
-          ovr={ovr}
-          potential={isOurs ? potentialGrade(p.potential) : '—'}
-          rising={isOurs && p.potential > ovr}
-        />
-        <TabStrip sheets={LIVE_SHEETS} at={active} onGo={setSheet} />
-      </>
-    }>
-      <div style={{ padding: '12px 14px 20px' }}>
-        {active === 'overview' && (
-          <>
-            <Overview p={p} owner={owner} isOurs={isOurs} />
-            {/* Stage 8: the classroom, where else he plays, and the redshirt.
-                Only ever for your own men, and only when they are possible. */}
-            <RosterMoves p={p} isOurs={isOurs} />
-          </>
-        )}
-        {active === 'ratings' && <Ratings p={p} isOurs={isOurs} />}
-        {active === 'stats' && <ThisSeason p={p} />}
-        {active === 'games' && <Games id={p.id} owner={owner} isOurs={isOurs} />}
-        {active === 'history' && (
-          <Career id={p.id} owner={owner} isPitcher={isPitcher} isOurs={isOurs} />
-        )}
-      </div>
-    </FixedHeader>
+    <main className="profile-workspace">
+      <PlayerHero
+        p={p}
+        owner={owner}
+        isOurs={isOurs}
+        ovr={ovr}
+        slot={slot}
+        dhToday={dhToday}
+      />
+      <Segmented
+        label="Player card section"
+        value={active}
+        onChange={setSheet}
+        options={LIVE_SHEETS.map((k) => ({ value: k, label: SHEET_LABEL[k] }))}
+      />
+      {active === 'overview' && <Overview p={p} owner={owner} isOurs={isOurs} />}
+      {active === 'ratings' && <Ratings p={p} isOurs={isOurs} />}
+      {active === 'stats' && <ThisSeason p={p} />}
+      {active === 'games' && <Games id={p.id} owner={owner} isOurs={isOurs} />}
+      {active === 'history' && (
+        <Career id={p.id} owner={owner} isPitcher={isPitcher} isOurs={isOurs} />
+      )}
+
+      {/* The classroom, where else he plays, the rest and the redshirt — behind
+          one button in the corner, floating over whichever tab you are on
+          rather than buried under the ratings on one of them. Only ever for
+          your own men; it renders nothing for anybody else. */}
+      <RosterMoves p={p} isOurs={isOurs} />
+    </main>
   );
 }
+
+/**
+ * The face, full bleed, with his name across the bottom of it.
+ *
+ * The proposal runs a photograph edge to edge at 264 pixels and lays the
+ * identity over a wash. There is no photograph here and there never will be —
+ * `Avatar` draws him from his own id, so the same man is recognisable on the
+ * recruiting board, on this card, and in the draft results four years later.
+ * The portrait sits on the dark green the wash was there to create, at the size
+ * the hero was designed around.
+ *
+ * The overall sits in its own box top right, exactly where the proposal puts
+ * it. Potential rides under it for your own men only: it is the one number a
+ * rival coach genuinely cannot know, and a card that printed it for everybody
+ * would be scouting the whole country for free.
+ */
+function PlayerHero(
+  { p, owner, isOurs, ovr, slot, dhToday }:
+  {
+    p: AnyPlayer; owner: Owner; isOurs: boolean;
+    ovr: number; slot: string; dhToday: boolean;
+  },
+) {
+  const isPitcher = p.type === 'pitcher';
+  return (
+    <section className="player-hero">
+      <div className="player-hero-face">
+        <Avatar id={p.id} team={owner.def.abbr} size={214} />
+      </div>
+      <div className="hero-wash" />
+      <div className="player-identity">
+        <small>{owner.def.school.toUpperCase()} · {owner.conference}</small>
+        <h2>{p.name.split(' ').map((part, i) => <span key={`${part}-${i}`}>{part}</span>)}</h2>
+        <p>
+          {slot} · {CLASS_NAME[p.classYear]} · AGE {p.age} · {p.bats}/{p.throws}
+          {isPitcher && (p as Pitcher).sidearm ? ' · SIDEARM' : ''}
+          {dhToday ? ' · BATS AS DH' : ''}
+        </p>
+      </div>
+      <div className="player-ovr">
+        <small>OVR</small>
+        <strong>{ovr}</strong>
+      </div>
+      {/* Potential, for your own program only. The gap between this and the
+          overall is the whole of a development game, and it is the one thing a
+          rival's card withholds. */}
+      {isOurs && (
+        <div className="player-ovr player-pot">
+          <small>POT</small>
+          <strong>{potentialGrade(p.potential)}</strong>
+        </div>
+      )}
+    </section>
+  );
+}
+
 
 /**
  * A player who is no longer anywhere.
@@ -373,53 +414,44 @@ function Alumnus(
   const active = ALUMNI_SHEETS.includes(sheet) ? sheet : 'overview';
 
   return (
-    <FixedHeader header={
-      <>
-        <CardHead
-          id={id}
-          name={name}
-          abbr={abbr}
-          left={{ k: 'CLASS', v: classYear }}
-          right={{ k: 'EXIT', v: gone ? (drafted ? 'DRAFT' : walkedOn ? 'W-ON' : 'GRAD') : '—' }}
-          sub={<>FORMER PLAYER{abbr ? ` · ${abbr}` : ''}</>}
-          school={null}
-          ovr={gone ? gone.overall : '—'}
-          potential="—"
-          rising={false}
-        />
-        <TabStrip sheets={ALUMNI_SHEETS} at={active} onGo={onSheet} />
-      </>
-    }>
-      <div style={{ padding: '12px 14px 20px' }}>
-        {active === 'overview' && (
-          <>
-            <Panel>
-              <Stat k="STATUS" v={gone
-                ? (drafted ? 'Drafted' : walkedOn ? 'Walk-on, year up' : 'Graduated')
-                : 'Departed'} />
-              <Stat k="LAST CLASS" v={classYear in CLASS_NAME
-                ? CLASS_NAME[classYear as ClassYear] : classYear} />
-              {/* The record book keeps no age, so this is only knowable while
-                  the departure notice survives — one offseason. */}
-              {gone?.age !== undefined && <Stat k="AGE WHEN HE LEFT" v={String(gone.age)} />}
-              {abbr && <Stat k="PROGRAM" v={abbr} />}
-              {drafted && gone?.round !== undefined && (
-                <Stat k="DRAFT ROUND" v={`Round ${gone.round}`} />
-              )}
-              <Stat k="SEASONS ON RECORD" v={String(career.length)} last />
-            </Panel>
-            <Note>
-              He has left the program. There is nothing left to scout and no
-              current line to read — what the game keeps of him now is the
-              record book.
-            </Note>
-          </>
-        )}
-        {active === 'history' && (
-          <CareerTable years={career} isPitcher={wasPitcher} />
-        )}
-      </div>
-    </FixedHeader>
+    <main className="profile-workspace">
+      {/* No hero. There is no rating left to draw a face against and no team
+          colour to draw it in — the departure notice is what is left of him,
+          so the card opens with that rather than with an empty portrait. */}
+      <ModuleIntro
+        kicker={`FORMER PLAYER${abbr ? ` · ${abbr}` : ''}`}
+        title={name}
+        text="He has left the program. There is nothing left to scout and no current
+          line to read — what the game keeps of him now is the record book."
+      />
+      <Segmented
+        label="Player card section"
+        value={active}
+        onChange={onSheet}
+        options={ALUMNI_SHEETS.map((k) => ({ value: k, label: SHEET_LABEL[k] }))}
+      />
+      {active === 'overview' && (
+        <Panel>
+          <Stat k="STATUS" v={gone
+            ? (drafted ? 'Drafted' : walkedOn ? 'Walk-on, year up' : 'Graduated')
+            : 'Departed'} />
+          <Stat k="LAST CLASS" v={classYear in CLASS_NAME
+            ? CLASS_NAME[classYear as ClassYear] : classYear} />
+          {/* The record book keeps no age, so this is only knowable while
+              the departure notice survives — one offseason. */}
+          {gone?.age !== undefined && <Stat k="AGE WHEN HE LEFT" v={String(gone.age)} />}
+          {abbr && <Stat k="PROGRAM" v={abbr} />}
+          {drafted && gone?.round !== undefined && (
+            <Stat k="DRAFT ROUND" v={`Round ${gone.round}`} />
+          )}
+          {gone && <Stat k="OVERALL WHEN HE LEFT" v={String(gone.overall)} />}
+          <Stat k="SEASONS ON RECORD" v={String(career.length)} last />
+        </Panel>
+      )}
+      {active === 'history' && (
+        <CareerTable years={career} isPitcher={wasPitcher} />
+      )}
+    </main>
   );
 }
 
@@ -532,122 +564,124 @@ function TabStrip(
 // ---------------------------------------------------------------------------
 
 /**
- * The facts, with nothing invented to fill the card out.
+ * Who he is, before any of the numbers.
  *
- * There is no hometown, no height and no jersey number in this game — the
- * generator makes a name, a class and a set of ratings — so the panel lists what
- * exists and stops. A row of plausible blanks would be the card lying about how
- * much the world knows.
+ * The proposal's overview, in three pieces: a sentence about him with three
+ * headline figures under it, his badges as chips, and the three facts a coach
+ * checks before he checks anything else. Everything the old information panel
+ * carried is still here — it has stopped being a list of nine label/value rows
+ * and become the shape a card actually reads in.
  */
 function Overview({ p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: boolean }) {
   const isPitcher = p.type === 'pitcher';
+  const eligible = p.classYear !== 'SR'
+    && draftEligible({ classYear: p.classYear, age: p.age + 1 });
+
   return (
     <>
-      <Head>INFORMATION</Head>
-      <Panel>
-        {isPitcher ? (
-          <Stat
-            k="ROLE"
-            v={`${(p as Pitcher).role === 'SP' ? 'Starter' : 'Reliever'}${
-              (p as Pitcher).sidearm ? ' · sidearm' : ''}`}
-          />
-        ) : (
-          <Stat k="POSITION" v={p.pos} />
-        )}
-        <Stat k="CLASS" v={CLASS_NAME[p.classYear]} />
-        {/*
-          Age sits directly under class year because the two together are the
-          fact and either alone is misleading. Three years completed or twenty
-          one, whichever comes first — so a nineteen-year-old sophomore is safe
-          for two more Junes and a twenty-year-old sophomore is not safe at all.
-          Read against the June ahead, which is the draft this age decides.
-        */}
-        <Stat
-          k="AGE"
-          v={`${p.age}${
-            p.classYear !== 'SR' && draftEligible({ classYear: p.classYear, age: p.age + 1 })
-              ? ' · eligible in June' : ''}`}
-        />
-        <Stat k="BATS" v={p.bats === 'S' ? 'Switch' : p.bats === 'L' ? 'Left' : 'Right'} />
-        <Stat k="THROWS" v={p.throws === 'L' ? 'Left' : 'Right'} />
-        {isPitcher && <Stat k="FASTBALL" v={`${(p as Pitcher).velocity} mph`} />}
-        <Stat k="SCHOOL" v={owner.def.school} />
-        <Stat k="CONFERENCE" v={owner.conference} last />
-      </Panel>
-      {isOurs && <Badges p={p} />}
-      {!isOurs && (
+      <section className="profile-bio">
+        <p>
+          {CLASS_NAME[p.classYear]}
+          {isPitcher
+            ? ` ${(p as Pitcher).role === 'SP' ? 'starter' : 'reliever'}`
+            : ` ${p.pos}`}
+          {isPitcher && (p as Pitcher).sidearm ? ', throwing from the side' : ''}
+          {' '}at {owner.def.school}, {p.bats === 'S' ? 'switch hitting' : p.bats === 'L' ? 'batting left' : 'batting right'}
+          {' '}and throwing {p.throws === 'L' ? 'left' : 'right'}
+          {isPitcher ? `, up to ${(p as Pitcher).velocity} on the fastball` : ''}.
+          {eligible
+            ? ' He is draft eligible in June, which is a decision that arrives whether you want it or not.'
+            : p.classYear === 'SR' ? ' This is his last year.' : ''}
+        </p>
+        <div>
+          <span><b>{p.age}</b><small>AGE</small></span>
+          <span><b>{overallOf(p)}</b><small>OVERALL</small></span>
+          <span>
+            <b>{isOurs ? potentialGrade(p.potential) : '—'}</b>
+            <small>POTENTIAL</small>
+          </span>
+        </div>
+      </section>
+
+      {isOurs ? <BadgeChips p={p} /> : (
         <Note>
           He plays for someone else. You can see what he has done and what he can
           do now — how much further he might go, and what he is good at that no
-          box score shows, is your rival's problem to know.
+          box score shows, is your rival&apos;s problem to know.
         </Note>
       )}
+
+      <section className="player-quick-facts">
+        <div>
+          <small>{isPitcher ? 'ROLE' : 'POSITION'}</small>
+          <strong>
+            {isPitcher
+              ? ((p as Pitcher).role === 'SP' ? 'Starter' : 'Reliever')
+              : naturalPos(p as Hitter)}
+          </strong>
+        </div>
+        <div>
+          <small>CONFERENCE</small>
+          <strong>{owner.conference}</strong>
+        </div>
+        <div>
+          <small>{isPitcher ? 'FASTBALL' : 'BATS'}</small>
+          <strong>
+            {isPitcher
+              ? `${(p as Pitcher).velocity} mph`
+              : p.bats === 'S' ? 'Switch' : p.bats === 'L' ? 'Left' : 'Right'}
+          </strong>
+        </div>
+      </section>
     </>
   );
 }
 
 /**
- * His badges, and the room he has left for more.
+ * His badges, as chips.
  *
  * **Your own program only**, which is the opposite of the rule for tendencies
  * and deliberately so. A tendency is a thing you can see from the other dugout —
  * their leadoff man runs, their number three pulls everything — and a badge is
  * something you only know about a man because you have had him in the building.
  *
- * The ceiling is shown beside the count because it is a recruiting fact as much
- * as a roster one: a D-grade recruit can arrive already holding both of the
- * badges he will ever have, which is the same thing his ceiling has been telling
- * you on the board all along.
+ * The proposal draws three flat chips. These carry the tier in the chip, because
+ * a bronze and a gold of the same badge are genuinely different players, and the
+ * family headings the old list grouped by are gone: four sub-headings above nine
+ * chips is a filing system for something you read in one glance.
+ *
+ * The ceiling is printed beside the count because it is a recruiting fact as
+ * much as a roster one: a D-grade recruit can arrive already holding both of the
+ * badges he will ever have, which is what his ceiling has been telling you on
+ * the board all along.
  */
-function Badges({ p }: { p: AnyPlayer }) {
+function BadgeChips({ p }: { p: AnyPlayer }) {
   const held = badgesOf(p);
   const cap = badgeCap(p.potential);
-  const byFamily = new Map<BadgeFamily, typeof held>();
-  for (const b of held) {
-    const fam = BADGES[b.id].family;
-    byFamily.set(fam, [...(byFamily.get(fam) ?? []), b]);
+  if (held.length === 0) {
+    return (
+      <Note>
+        No badges yet. They come with what he does, and he has room for {cap}.
+      </Note>
+    );
   }
-  const families: BadgeFamily[] = ['situational', 'physical', 'technical', 'makeup'];
-
   return (
     <>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between',
-        alignItems: 'baseline', marginTop: 16, gap: 10,
-      }}>
-        <div className="label">BADGES</div>
-        <div className="label">{held.length} OF {cap}</div>
+      <div className="flow-section-title">
+        <span className="label">BADGES</span>
+        <b>{held.length} OF {cap}</b>
       </div>
-      <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-        {held.length === 0 && <Empty>Nothing yet. They come with what he does.</Empty>}
-        {families.filter((f) => byFamily.has(f)).map((fam, i, shown) => (
-          <div key={fam} style={{
-            padding: '9px 12px',
-            borderBottom: i === shown.length - 1 ? 'none' : '1px solid var(--hairline)',
-          }}>
-            <div className="label">{FAMILY_LABEL[fam]}</div>
-            {(byFamily.get(fam) ?? []).map((b) => (
-              <div key={b.id} style={{ marginTop: 5 }}>
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between',
-                  alignItems: 'baseline', gap: 10,
-                }}>
-                  <span style={{
-                    font: "700 calc(12px * var(--ts)) var(--display)", letterSpacing: '.02em', color: 'var(--clay)',
-                  }}>{BADGES[b.id].label}</span>
-                  <span className="label" style={{ color: 'var(--dim)' }}>{TIER_NAME[b.tier]}</span>
-                </div>
-                <div style={{
-                  font: "400 calc(10px * var(--ts))/1.4 var(--body)", color: 'var(--dim)', marginTop: 2,
-                }}>{BADGES[b.id].note}</div>
-              </div>
-            ))}
-          </div>
+      <section className="player-badges">
+        {held.map((b) => (
+          <span key={b.id} title={BADGES[b.id].note}>
+            {BADGES[b.id].label} · {TIER_NAME[b.tier]}
+          </span>
         ))}
-      </div>
+      </section>
     </>
   );
 }
+
 
 function Ratings({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   const isPitcher = p.type === 'pitcher';
@@ -1366,62 +1400,69 @@ function Nobody() {
   );
 }
 
+/*
+  The leaves.
+
+  Six shapes that every tab of this card is built out of, and converting them
+  was how five tabs of dense, real content moved onto the proposal's anatomy
+  without rewriting nine hundred lines of the logic that produces it. Each one
+  maps to a class that already exists in prototype.css:
+
+    Head   -> .flow-section-title    a rule with a green label on it
+    Panel  -> .tendency-list         label on the left, value on the right
+    Stat   -> one of its rows
+    Tile   -> .metric                a number with a caption
+    Bar    -> .tool-table            a rating drawn against its full scale
+    Note   -> .field-note            the pinned aside
+    Empty  -> .empty-state
+
+  Nothing here carries a style object, which is the point: the stylesheet is the
+  only opinion about how any of it looks.
+*/
+
 function Head({ children }: { children: ReactNode }) {
   return (
-    <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-      <div className="label">{children}</div>
+    <div className="flow-section-title">
+      <span className="label">{children}</span>
     </div>
   );
 }
 
 function Panel({ children }: { children: ReactNode }) {
-  return (
-    <div style={{
-      marginTop: 8, border: '1px solid var(--faint)', background: 'var(--paper)',
-    }}>{children}</div>
-  );
+  return <section className="tendency-list">{children}</section>;
 }
 
 function Note({ children }: { children: ReactNode }) {
   return (
-    <div style={{ marginTop: 8, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
-      {children}
-    </div>
+    <section className="field-note">
+      <SewingPinIcon />
+      <div><p>{children}</p></div>
+    </section>
   );
 }
 
 function Empty({ children }: { children: ReactNode }) {
   return (
-    <div style={{ padding: '12px', font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
-      {children}
+    <section className="empty-state">
+      <p>{children}</p>
+    </section>
+  );
+}
+
+function Tile({ k, v, accent }: { k: string; v: string; accent?: boolean; last?: boolean }) {
+  return (
+    <div className="metric">
+      <small>{k}</small>
+      <strong style={accent ? undefined : { color: 'var(--ink)' }}>{v}</strong>
     </div>
   );
 }
 
-function Tile({ k, v, accent, last }: { k: string; v: string; accent?: boolean; last?: boolean }) {
+function Stat({ k, v }: { k: string; v: string; last?: boolean }) {
   return (
-    <div style={{
-      flex: 1, padding: '9px 8px',
-      borderRight: last ? 'none' : '1px solid var(--hairline)',
-    }}>
-      <div className="label">{k}</div>
-      <div style={{
-        font: "700 calc(24px * var(--ts))/1 var(--display)", marginTop: 2,
-        color: accent ? 'var(--clay)' : 'var(--ink)',
-      }}>{v}</div>
-    </div>
-  );
-}
-
-function Stat({ k, v, last }: { k: string; v: string; last?: boolean }) {
-  return (
-    <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-      padding: '8px 12px', gap: 10,
-      borderBottom: last ? 'none' : '1px solid var(--hairline)',
-    }}>
-      <span className="label">{k}</span>
-      <span style={{ font: "600 calc(14px * var(--ts)) var(--mono)", textAlign: 'right' }}>{v}</span>
+    <div>
+      <span>{k}</span>
+      <strong>{v}</strong>
     </div>
   );
 }
@@ -1433,25 +1474,21 @@ const ordinal = (n: number): string => {
   return n + (s[(v - 20) % 10] ?? s[v] ?? 'th');
 };
 
-/** A rating, drawn against the full scale so the shape of a player is readable. */
+/**
+ * A rating, drawn against the full scale so the shape of a player is readable.
+ *
+ * The proposal's tool table: a name, the number, the bar, and room on the right
+ * for the word that says what the number means. Sixty is the line where a
+ * rating stops being a weakness — above it the bar takes the accent.
+ */
 function Bar({ label, value }: { label: string; value: number }) {
   const width = Math.max(0, Math.min(100, value));
   return (
-    <div style={{ marginBottom: 11 }}>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between',
-        alignItems: 'baseline', marginBottom: 4,
-      }}>
-        <span className="label">{label}</span>
-        <span style={{ font: "600 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>{value}</span>
-      </div>
-      <div style={{ height: 6, background: 'rgba(var(--ink-rgb), .09)' }}>
-        <div style={{
-          width: `${width}%`, height: '100%',
-          background: value >= 60 ? 'var(--clay)' : 'var(--ink)',
-          opacity: value >= 60 ? 1 : 0.55,
-        }} />
-      </div>
+    <div>
+      <span>{label}</span>
+      <b>{value}</b>
+      <i><em style={{ width: `${width}%`, opacity: value >= 60 ? 1 : 0.5 }} /></i>
+      <small>{value >= 75 ? 'PLUS' : value >= 60 ? 'SOLID' : value >= 45 ? 'FAIR' : 'LIGHT'}</small>
     </div>
   );
 }

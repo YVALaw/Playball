@@ -63,7 +63,10 @@ export function Avatar({ id, team, number, size = 40 }: Props) {
       viewBox="0 0 64 64"
       width={size}
       height={size}
-      style={{ display: 'block', borderRadius: '50%', background: 'var(--field)' }}
+      // The disc is a class rather than an inline style so a caller can turn it
+      // off — the player card runs this face two hundred pixels tall on a dark
+      // hero, where a tinted plate behind his head is exactly wrong.
+      className="avatar"
       aria-hidden="true"
     >
       {/* Shoulders and jersey. Drawn first so the head sits over the collar. */}
