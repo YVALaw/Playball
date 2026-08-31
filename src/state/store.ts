@@ -249,7 +249,7 @@ export type SettingsPage = 'index' | 'display' | 'sound' | 'play';
 
 export type Overlay =
   'schedule' | 'standings' | 'rankings' | 'saves' | 'inbox' | 'program' | 'book'
-  | 'settings' | 'depth' | 'press';
+  | 'settings' | 'depth' | 'press' | 'captain';
 
 /** The three tabs of the program page, which is addressable from the inbox. */
 export type ProgramSheet = 'board' | 'coach' | 'hall';

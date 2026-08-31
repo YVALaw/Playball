@@ -50,6 +50,8 @@ export function Lineup() {
   const team = useUserTeam();
   const [picked, setPicked] = useState<number | null>(null);
   const [dealt, setDealt] = useState(false);
+  /** Bumped on every auto-deal, so the list re-keys and animates in. */
+  const [deal, setDeal] = useState(0);
   /** Which spot on the field the rail is asking about. */
   const [spot, setSpot] = useState<string | null>(null);
   void version;
@@ -105,10 +107,22 @@ export function Lineup() {
           {/* One tap deals a sound order — best hitter third, power fourth, the
               table-setters ahead of them. Same nine men, and every swap below
               still works afterwards: AUTO is a starting point. */}
+          {/*
+            Reported: "when clicking on set lineup automatically there is not a
+            visual confirmation that it happened." It reordered nine rows and
+            said nothing — and if you had not memorised the old order, nothing on
+            screen had visibly changed. The button reports, the note under it
+            reports, and the rows themselves arrive with the card animation so
+            the list is visibly re-dealt.
+          */}
           <button
+            className={dealt ? 'did' : ''}
             type="button"
-            onClick={() => { autoLineup(); setPicked(null); setDealt(true); }}
-          ><ReloadIcon />{dealt ? 'Best lineup set' : 'Auto lineup'}</button>
+            onClick={() => { autoLineup(); setPicked(null); setDealt(true); setDeal((n) => n + 1); }}
+          >
+            {dealt ? <CheckIcon /> : <ReloadIcon />}
+            {dealt ? 'Order dealt' : 'Auto lineup'}
+          </button>
           {/*
             No save button, and that is not an omission.
 
@@ -123,14 +137,25 @@ export function Lineup() {
 
         <p className="selection-note"><SewingPinIcon /> {note}</p>
 
-        <section className="lineup-table">
+        {/*
+          The order and the field, side by side.
+
+          The rail used to be positioned against the whole screen and spaced
+          with `space-between`, so its nine diamonds were spread down the
+          workspace rather than beside the nine men — the last one sat level with
+          the rotation list. As a column of the same grid it shares the table's
+          rows, so CF is beside whoever is batting first and DH beside whoever is
+          batting ninth, which is the entire point of putting it there.
+        */}
+        <div className="lineup-body">
+        <section className="lineup-table" key={deal}>
           {order.map((p, i) => {
             const line = season.batting.get(p.id);
             const on = picked === i;
             const marked = i === atSpot;
             return (
               <button
-                className={`player-row${on || marked ? ' is-selected' : ''}`}
+                className={`player-row card-in${on || marked ? ' is-selected' : ''}`}
                 key={p.id}
                 type="button"
                 aria-pressed={on}
@@ -160,6 +185,25 @@ export function Lineup() {
             );
           })}
         </section>
+
+        {/*
+          The diamond rail. Nine spots down the right edge, each a square turned
+          forty-five degrees, which is the shape of a base and reads as the field
+          rather than as a list of two-letter codes.
+        */}
+        <aside className="position-rail" aria-label="Field positions">
+          {POSITIONS.map((item) => (
+            <button
+              className={spot === item ? 'active' : ''}
+              key={item}
+              type="button"
+              aria-pressed={spot === item}
+              aria-label={`Show who is at ${item}`}
+              onClick={() => setSpot(spot === item ? null : item)}
+            ><span><i>{item}</i></span></button>
+          ))}
+        </aside>
+        </div>
 
         <SectionHeading kicker="ROTATION" title="Who takes the ball" />
         <section className="rotation-list">
@@ -217,23 +261,6 @@ export function Lineup() {
         <FirstVisit id="lineup" />
       </main>
 
-      {/*
-        The diamond rail. Nine spots down the right edge, each a square turned
-        forty-five degrees, which is the shape of a base and reads as the field
-        rather than as a list of two-letter codes.
-      */}
-      <aside className="position-rail" aria-label="Field positions">
-        {POSITIONS.map((item) => (
-          <button
-            className={spot === item ? 'active' : ''}
-            key={item}
-            type="button"
-            aria-pressed={spot === item}
-            aria-label={`Show who is at ${item}`}
-            onClick={() => setSpot(spot === item ? null : item)}
-          ><span>{item}</span></button>
-        ))}
-      </aside>
     </>
   );
 }

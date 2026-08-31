@@ -547,23 +547,27 @@ export function Manage() {
           </section>
         )}
 
+        {/*
+          The two things that are about the match rather than the roster.
+
+          Everything managerial — the bench, the pen, the mound, and handing the
+          dugout to the bench coach — is behind the round button now. What is
+          left on the screen is the pitch you are about to see and the way out of
+          the game entirely.
+        */}
         {d && (
           <div className="ballpark-pace">
-            {/* The bench coach's two doors, and the way to take the dugout
-                back. While he is calling, the only useful button is the one
-                that stops him. */}
-            {auto === null ? (
-              <button type="button" disabled={playing} onClick={() => setAuto('watch')}>
-                <PlayIcon />Watch it play
-              </button>
-            ) : (
-              <button type="button" onClick={() => setAuto(null)}>
-                <StopwatchIcon />Take it back
-              </button>
-            )}
-            <button type="button" disabled={playing} onClick={once(autoFinish)}>
-              Sim the rest
+            <button type="button" disabled={playing} onClick={() => setTools(true)}>
+              <MixerHorizontalIcon />Manager tools
             </button>
+            <button
+              type="button"
+              disabled={playing || auto !== null}
+              onClick={once(() => {
+                const first = d.options.find((o) => o.available);
+                if (first) submitTactic(first.tactic);
+              })}
+            ><PlayIcon />Next pitch</button>
           </div>
         )}
       </main>
@@ -582,6 +586,42 @@ export function Manage() {
               <strong>Make the next move</strong>
             </div>
             <div className="game-tool-options">
+              {/*
+                The bench coach's two doors live here now as well.
+
+                Reported: "in the action button I would add all managerial
+                actions like mound visit, bullpen, pinch hit, etc, in the main
+                screen I would just keep the match buttons." Watching and simming
+                are decisions about who is managing the game, which is the same
+                kind of decision as who is pitching it — and the row under the
+                calls was the last thing pushing them off a short screen.
+              */}
+              {auto === null ? (
+                <button
+                  type="button"
+                  disabled={playing}
+                  onClick={() => { setAuto('watch'); setTools(false); }}
+                >
+                  <strong>Watch it play</strong>
+                  <small>The bench coach calls it and you watch the field.</small>
+                  <ChevronRightIcon />
+                </button>
+              ) : (
+                <button type="button" onClick={() => { setAuto(null); setTools(false); }}>
+                  <strong>Take the dugout back</strong>
+                  <small>Stop him. The next call is yours again.</small>
+                  <ChevronRightIcon />
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={playing}
+                onClick={() => { setTools(false); once(autoFinish)(); }}
+              >
+                <strong>Sim the rest</strong>
+                <small>Hand him the clipboard for good. Keep it for the blowouts.</small>
+                <ChevronRightIcon />
+              </button>
               {d.side === 'offense' && (
                 <button
                   type="button"

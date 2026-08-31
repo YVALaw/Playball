@@ -36,6 +36,7 @@ import { Player } from './screens/Player.js';
 import { Program } from './screens/Program.js';
 import { PressRoom } from './screens/PressRoom.js';
 import { DepthChart } from './screens/DepthChart.js';
+import { Captain } from './screens/Captain.js';
 import { Portal } from './screens/Portal.js';
 import { NewGame } from './screens/NewGame.js';
 import { StrategyScreen } from './screens/StrategyScreen.js';
@@ -794,6 +795,10 @@ function TableOverlay() {
         {overlay === 'inbox' && <Inbox />}
         {overlay === 'program' && <Program />}
         {overlay === 'depth' && <DepthChart />}
+        {/* Who wears the C, with every eligible man and a reason to prefer one.
+            It used to be a line at the top of the depth chart, which made the
+            room's own pick the only name anybody ever saw. */}
+        {overlay === 'captain' && <Captain />}
         {/* The press room, which stopped being an interruption and became an
             errand. Here rather than in the screen switch because the overlays
             are the one layer present in every frame the offseason included, and

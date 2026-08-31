@@ -240,9 +240,9 @@ export function Roster() {
 
       <InlineActions
         actions={[
-          { label: 'Roster moves', onClick: () => openOverlay('depth') },
+          { label: 'Depth chart', onClick: () => openOverlay('depth') },
           ...(setsOwnChart
-            ? [{ label: 'Set captain and depth', onClick: () => openOverlay('depth') }]
+            ? [{ label: 'Name a captain', onClick: () => openOverlay('captain') }]
             : []),
         ]}
       />

@@ -660,3 +660,310 @@
 }
 
 .profile-workspace .tendency-list strong { line-height: 1.2; }
+
+/* ---------------------------------------------------------------------------
+   Nothing moves sideways.
+
+   Reported: "if I hold it and move to the right the whole content moves, this
+   has to be fixed globally." It was two things at once. Every scroller in the
+   app was `overflow-y: auto`, which leaves the *x* axis at `visible` — and a
+   box that overflows horizontally by a pixel is a box a thumb can drag. And
+   `touch-action` was `manipulation` on the body, which permits panning in both
+   directions, so the browser was happy to follow.
+
+   So: the frame and every scroller inside it are locked to one axis, and the
+   frame tells the browser as much. A screen that genuinely needs to scroll
+   sideways — the sub-nav, the segmented strips, a wide table — says so on its
+   own element, which is why those keep their own `overflow-x`.
+   --------------------------------------------------------------------------- */
+.app-frame {
+  overflow-x: hidden;
+  touch-action: pan-y;
+}
+
+/* Only the boxes that actually scroll get the lock. Naming a workspace here
+   was a bug of its own: `overflow-x: hidden` forces the other axis to `auto`,
+   so every one of them quietly became a second scroller nested inside the real
+   one — which is how a floating button ended up moving with the page. */
+.screen-scroll,
+.fixed-header-body,
+.overlay-scroll,
+.playball-app > main,
+.offseason-app > main,
+.live-game > main {
+  overflow-x: hidden;
+}
+
+/* The content inside them simply is not allowed to be wider than the frame. */
+.module-workspace,
+.dashboard-workspace,
+.profile-workspace,
+.lineup-workspace,
+.postseason-workspace {
+  max-width: 100%;
+}
+
+/* The exceptions, which are horizontal on purpose. */
+.context-nav,
+.segmented,
+.schedule-rail,
+.scroller {
+  touch-action: pan-x;
+  overflow-x: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   The floating action button.
+
+   Three reports, one cause and two consequences.
+
+   It scrolled with the page on the ratings tab, it changed size as you moved
+   between its own tabs, and it left a shadow behind when it closed.
+
+   The size and the shadow are the same fault: the panel was `max-height`, so it
+   was as tall as whatever tab was open — and the drop shadow it casts was being
+   painted into a layer that the close did not always invalidate. A fixed height
+   fixes both: the panel is the same box on every tab, and the box either exists
+   or it does not.
+
+   The scrolling is fixed where it is rendered rather than here — see Overlay's
+   `floating` slot. `position: fixed` was the other option and is wrong: on a
+   desktop it would escape the phone frame, which is exactly the bug the frame
+   exists to prevent.
+   --------------------------------------------------------------------------- */
+.player-actions-popover,
+.game-manager-popover {
+  height: min(62vh, 440px);
+  max-height: none;
+}
+
+/* Closed means gone, including the shadow it was casting. */
+.player-actions-fab:not(.open) .player-actions-popover,
+.game-manager-fab:not(.open) .game-manager-popover {
+  display: none;
+  box-shadow: none;
+}
+
+/* The trigger keeps its own size whatever the panel is doing. */
+.player-actions-trigger,
+.game-manager-trigger {
+  width: 60px;
+  height: 60px;
+  flex: none;
+}
+
+/* ---------------------------------------------------------------------------
+   The dugout, made to fit.
+
+   Four reports from the first real play session, all of them the same
+   complaint: the screen spends its height on things that do not change and has
+   none left for the controls.
+
+     "remove the big score up top eating screen size"
+     "make the batter vs pitcher also smaller, I'm not even seeing the controls"
+     "set the log to a fixed size, as things started to be logged it grew and
+      pushed the buttons even further"
+
+   So the header is a strip rather than a scoreboard, the matchup is two lines
+   instead of five, and the log is a fixed box that scrolls inside itself. The
+   calls hold their position whatever happens on the field, which is the whole
+   point of a control.
+   --------------------------------------------------------------------------- */
+
+/* The score, at a glance rather than as a title. */
+.live-game > header {
+  padding-top: calc(env(safe-area-inset-top) + 8px);
+  padding-bottom: 7px;
+}
+
+.live-game > header strong { margin-top: 2px; font-size: calc(13px * var(--ts)); }
+.live-game > header strong b { font-size: calc(17px * var(--ts)); }
+.live-game > header > button { min-height: 32px; }
+
+/* The linescore is the detail; it does not need the header's weight as well. */
+.live-linescore { padding: 5px 12px 7px; }
+
+/* The field keeps most of what it had — it is the thing being watched — but it
+   stops being the only thing on the screen. */
+.ballpark-scene { min-height: 168px; height: 168px; }
+
+/* Two men, two lines each. The three stat chips move onto the same row as the
+   name rather than under it. */
+.ballpark-matchup article { min-height: 0; padding: 8px 10px 9px; }
+.ballpark-matchup strong { margin-top: 2px; font-size: calc(17px * var(--ts)); }
+.ballpark-matchup span { margin-top: 2px; font-size: calc(7px * var(--ts)); }
+.ballpark-matchup article > div { margin-top: 5px; gap: 4px; flex-wrap: wrap; }
+.ballpark-matchup i { bottom: 5px; }
+
+/* The log is a box, not a growing list. It scrolls inside itself and the calls
+   underneath never move. */
+.ballpark-log {
+  height: 104px;
+  max-height: none;
+  padding: 9px 12px 8px;
+}
+
+.ballpark-log p { padding: 4px 0; font-size: calc(9px * var(--ts)); }
+
+/* The call is what the screen is for, so it is what is left when everything
+   else has been trimmed. */
+.ballpark-call { padding: 11px 12px 12px; }
+.ballpark-call > div:first-child strong { font-size: calc(22px * var(--ts)); }
+.ballpark-call > div:first-child span { margin-top: 3px; }
+.ballpark-call > div:last-child { margin-top: 8px; }
+.ballpark-call button { min-height: 42px; }
+.ballpark-pace button { min-height: 44px; }
+
+/* ---------------------------------------------------------------------------
+   The diamond rail, levelled with the men.
+
+   Reported: "the bases that are in the diamond on the right should be leveled
+   with the players." They were positioned against the whole screen and spread
+   with `align-content: space-between`, so the nine diamonds were spaced down
+   the workspace rather than beside the nine men — the last one sat level with
+   the rotation list.
+
+   It is a column of the same grid as the table now, sharing its rows, so CF is
+   beside whoever is batting first and DH beside whoever is batting ninth. Which
+   is the entire point of putting it there.
+   --------------------------------------------------------------------------- */
+.lineup-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 46px;
+  gap: 6px;
+  align-items: start;
+}
+
+/* The workspace no longer holds a gutter for a floating rail. */
+.lineup-workspace { padding-right: 16px; }
+
+.position-rail {
+  position: static;
+  display: grid;
+  /* Nine rows, each the height of one row of the table. */
+  grid-template-rows: repeat(9, 59px);
+  align-content: start;
+  gap: 0;
+}
+
+.position-rail button {
+  width: 44px;
+  height: 59px;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  transform: none;
+}
+
+.position-rail button span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  transform: rotate(45deg);
+  border: 1px solid #d7dbd4;
+  background: #fff;
+  color: var(--clay);
+  font: 800 calc(12px * var(--ts))/1 var(--display);
+}
+
+/* The square is turned; the two letters inside it are turned back, which is
+   how the proposal draws a base. */
+.position-rail button span i {
+  display: block;
+  transform: rotate(-45deg);
+  font-style: normal;
+}
+
+.position-rail button.active span {
+  border-color: var(--clay);
+  background: var(--clay);
+  color: #fff;
+}
+
+/* The auto-lineup button reports that it did something. */
+.editor-toolbar button.did { background: var(--soft); }
+
+
+/* ---------------------------------------------------------------------------
+   The captain list.
+
+   One row per eligible man: his face and his case on the left, the one control
+   on the right. The whole left half opens his card, because deciding who leads
+   a room is a thing you do after reading about all of them.
+   --------------------------------------------------------------------------- */
+.captain-list {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.captain-list > div { border-bottom: 1px solid var(--line); }
+.captain-list > div:last-child { border-bottom: 0; }
+.captain-list > div.is-captain { background: var(--soft); }
+
+.captain-man {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  width: 100%;
+  padding: 10px 10px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+
+.captain-man strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: calc(11px * var(--ts));
+}
+
+.captain-man strong em {
+  padding: 2px 5px;
+  border: 1px solid var(--clay);
+  background: var(--clay);
+  color: #fff;
+  font: 800 calc(7px * var(--ts))/1 var(--body);
+  font-style: normal;
+  letter-spacing: .06em;
+}
+
+.captain-man strong em.room {
+  border-color: var(--line);
+  background: #fff;
+  color: var(--dim);
+}
+
+.captain-man small {
+  display: block;
+  margin-top: 3px;
+  color: var(--dim);
+  font-size: calc(8px * var(--ts));
+  font-weight: 800;
+}
+
+.captain-man p {
+  margin: 5px 0 0;
+  color: var(--dim);
+  font-size: calc(9px * var(--ts));
+  line-height: 1.45;
+}
+
+.captain-pick {
+  width: 100%;
+  min-height: 38px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: #fff;
+  color: var(--clay);
+  font-size: calc(9px * var(--ts));
+  font-weight: 800;
+}
+
+.captain-pick:disabled { background: var(--soft); color: var(--dim); }
