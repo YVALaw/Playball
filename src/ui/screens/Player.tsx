@@ -1018,7 +1018,7 @@ function InJune({ p }: { p: AnyPlayer }) {
 
   return (
     <>
-      <Head>IN JUNE</Head>
+      <SectionHeading kicker="IN JUNE" title="When it mattered" />
       <Panel>
         {playedNow && (isPitcher
           ? pit && pit.outs > 0 && (
@@ -1097,11 +1097,9 @@ function Fielding({ p }: { p: AnyPlayer }) {
 
   return (
     <>
-      <div className="label" style={{ marginTop: 16, marginBottom: 4 }}>IN THE FIELD</div>
+      <SectionHeading kicker="IN THE FIELD" title="With the glove" />
 
-      <div style={{
-        display: 'flex', border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
+      <section className="season-line">
         {/* The rate leads, not the count: it is the figure that survives being
             compared with a man at another position, and the one the league line
             underneath is quoted in. Accented when he beats that line rather than
@@ -1114,14 +1112,13 @@ function Fielding({ p }: { p: AnyPlayer }) {
         <Tile
           k="AMONG GLOVES"
           v={ctx && ctx.ranked ? `${ordinal(ctx.rank)}/${ctx.qualified}` : '—'}
-          last
         />
-      </div>
+        <Tile k="CHANCES" v={String(fld.chances)} />
+      </section>
 
       <Panel>
         {ctx && <Stat k="LEAGUE AVERAGE" v={`${rate(ctx.leagueRate)} per 100`} />}
         <Stat k="PLAYS ABOVE AVERAGE" v={signed} />
-        <Stat k="CHANCES" v={String(fld.chances)} />
         <Stat k="PLAYS MADE" v={String(fld.plays)} />
         <Stat
           k="ERRORS"

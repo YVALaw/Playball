@@ -650,3 +650,13 @@
 .message-list .read .unread-dot { background: #c9cec9; }
 .message-list svg { color: var(--clay); align-self: center; }
 .message-list time { font-weight: 800; color: var(--alert); }
+
+/* The card's own label/value rows are tighter than a tendency row: they carry
+   one line each, not a reading and a sentence about it. */
+.profile-workspace .tendency-list > div {
+  min-height: 40px;
+  align-items: center;
+  padding: 0 9px;
+}
+
+.profile-workspace .tendency-list strong { line-height: 1.2; }
