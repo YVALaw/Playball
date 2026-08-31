@@ -82,6 +82,7 @@ export function useNeeds(): Need[] {
   const season = useDynasty((s) => s.season);
   const pendingPress = useDynasty((s) => s.pendingPress);
   const openOverlay = useDynasty((s) => s.openOverlay);
+  const openPlayer = useDynasty((s) => s.openPlayer);
   const depth = useDynasty((s) => s.depth);
   // Subscribed to deliberately: every one of these is read off mutable engine
   // objects, which do not change identity when they change. Without it the list
@@ -158,7 +159,7 @@ export function useNeeds(): Need[] {
           + ' A captain stops a bad month becoming a bad year.',
         must: false,
         cta: 'NAME ONE',
-        go: () => openOverlay('depth'),
+        go: () => openOverlay('captain'),
       });
     }
   }
@@ -178,8 +179,8 @@ export function useNeeds(): Need[] {
       note: 'Short of where he needs to be, and one bad week from missing a series. '
         + 'A word with him helps.',
       must: false,
-      cta: 'THE ROSTER',
-      go: () => openOverlay('depth'),
+      cta: trouble.length === 1 ? 'HIS CARD' : 'START WITH ONE',
+      go: () => openPlayer(trouble[0]!.id),
     });
   }
 

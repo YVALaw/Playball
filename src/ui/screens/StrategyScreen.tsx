@@ -8,7 +8,8 @@
 // aggressive running game does take more bases and does run into more outs.
 
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { FieldNote, ModuleIntro, Segmented } from '../components/Kit.js';
+import { ReloadIcon } from '@radix-ui/react-icons';
+import { FieldNote, ModuleIntro } from '../components/Kit.js';
 import type { Strategy } from '../../engine/strategy.js';
 
 interface Group<K extends keyof Strategy> {
@@ -91,34 +92,33 @@ export function StrategyScreen() {
       />
 
       {/*
-        The proposal's strategy board cycles one value per row on tap, which is
-        the right shape for three settings with three values each and the wrong
-        one here: every option in this game says what it *costs*, and a control
-        that only shows the current value hides the trade that is the whole
-        point of the screen. So the board is the row — label, value, note — and
-        the options open under it as a segmented strip, which is the proposal's
-        own control for exactly this.
+        The proposal's strategy board, behaving exactly as the proposal draws
+        it: the row is the control, and tapping it cycles to the next option.
+
+        It shipped as a disabled display row with a segmented strip underneath,
+        and the report was 'the strategy buttons are not really working and
+        hard to understand' -- a big tappable-looking row that ignores the tap
+        teaches you the screen is broken before you find the strip. One target,
+        and the cost line under the value updates the moment it changes, which
+        keeps the trade visible -- the reason the strip existed at all.
       */}
       {GROUPS.map((g) => {
-        const chosen = g.options.find((o) => o.value === current[g.key]);
+        const i = g.options.findIndex((o) => o.value === current[g.key]);
+        const chosen = g.options[i];
+        const next = g.options[(i + 1) % g.options.length]!;
         return (
           <section className="strategy-board" key={g.key}>
-            <button type="button" disabled>
+            <button
+              className="tap"
+              type="button"
+              aria-label={`${g.title}: ${chosen?.label ?? ''}. Tap for ${next.label}`}
+              onClick={() => setStrategy(g.key, next.value as never)}
+            >
               <span>{g.title}</span>
               <strong>{chosen?.label ?? '—'}</strong>
               <small>{chosen?.cost ?? g.note}</small>
+              <ReloadIcon />
             </button>
-            <div className="setting-choice">
-              <Segmented
-                label={g.title}
-                value={String(current[g.key])}
-                onChange={(v) => setStrategy(g.key, v as never)}
-                options={g.options.map((o) => ({
-                  value: String(o.value),
-                  label: o.label,
-                }))}
-              />
-            </div>
           </section>
         );
       })}

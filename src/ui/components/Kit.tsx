@@ -128,6 +128,8 @@ export interface Row {
   detail: string;
   value?: string;
   face?: ReactNode;
+  /** Rendered right after the title — the captain's C rides here. */
+  mark?: ReactNode;
 }
 
 export function DataTable(
@@ -152,13 +154,25 @@ export function DataTable(
           onClick={onOpen ? () => onOpen(r.key) : undefined}
         >
           <span className="portrait">{r.face ?? <PersonIcon />}</span>
-          <span><strong>{r.title}</strong><small>{r.detail}</small></span>
+          <span><strong>{r.title}{r.mark}</strong><small>{r.detail}</small></span>
           {r.value !== undefined && <b>{r.value}</b>}
           {onOpen && <ChevronRightIcon />}
         </button>
       ))}
     </section>
   );
+}
+
+/**
+ * The C, worn wherever the captain's name is printed.
+ *
+ * Reported from testing: naming a captain changed nothing anybody could see —
+ * 'we need to give the captain some type of symbol that appears in his name
+ * everywhere letting us know who the captain is.' The patch a hockey sweater
+ * wears, as a chip the height of the text it follows.
+ */
+export function CaptainC() {
+  return <i className="captain-c" aria-label="Captain">C</i>;
 }
 
 /** A stack of full-width links, hairline-ruled, chevron on the right. */

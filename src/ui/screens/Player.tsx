@@ -36,8 +36,9 @@ import { draftEligible } from '../../engine/draft.js';
 import { overallOf, platoonSplit, naturalPos } from '../../engine/ratings.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { SewingPinIcon } from '@radix-ui/react-icons';
+import { captainOf } from '../../engine/captains.js';
 import {
-  DataTable, FieldNote, Metric, ModuleIntro, SectionHeading, Segmented,
+  CaptainC, DataTable, FieldNote, Metric, ModuleIntro, SectionHeading, Segmented,
 } from '../components/Kit.js';
 import {
   battingAverage, onBase, slugging, era, whip, inningsPitched,
@@ -353,6 +354,7 @@ function PlayerHero(
         <small>{owner.def.school.toUpperCase()} · {owner.conference}</small>
         <h2>{p.name.split(' ').map((part, i) => <span key={`${part}-${i}`}>{part}</span>)}</h2>
         <p>
+          {captainOf(owner.team)?.id === p.id && <CaptainC />}
           {slot} · {CLASS_NAME[p.classYear]} · AGE {p.age} · {p.bats}/{p.throws}
           {isPitcher && (p as Pitcher).sidearm ? ' · SIDEARM' : ''}
           {dhToday ? ' · BATS AS DH' : ''}

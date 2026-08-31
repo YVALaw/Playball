@@ -11,6 +11,7 @@
 // new tutorial is a new entry, not a new modal system.
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { readPrefs } from '../state/devicePrefs.js';
 import { useDynasty } from '../state/store.js';
 import { TUTORIALS } from './tutorials.js';
@@ -58,10 +59,22 @@ export function FirstVisit({ id }: { id: string }) {
   }, [show]);
 
   if (!show) return null;
+
+  /*
+    Rendered into the app frame rather than in place.
+
+    In place, the scrim's absolute inset:0 resolved against the scrolling
+    content, so on any screen taller than the viewport the card — pinned to the
+    scrim's bottom — rendered below the fold. Reported from the lineup: 'it
+    gets darker like if the tutorial was showing but the card never shows.'
+    The frame is the phone, and a dialog covers the phone.
+  */
+  const frame = document.querySelector('.app-frame');
+  if (!frame) return null;
   const current = pages[Math.min(page, pages.length - 1)]!;
   const last = page >= pages.length - 1;
 
-  return (
+  return createPortal(
     <div
       className="tutorial-scrim fade-in"
       role="dialog"
@@ -91,6 +104,7 @@ export function FirstVisit({ id }: { id: string }) {
           >{last ? 'GOT IT' : 'NEXT'}</button>
         </footer>
       </section>
-    </div>
+    </div>,
+    frame,
   );
 }

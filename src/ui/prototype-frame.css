@@ -1562,3 +1562,67 @@
 
 /* The rail's check, sized to sit where the numeral was. */
 .setup-steps svg { width: 15px; height: 15px; }
+
+/* ---------------------------------------------------------------------------
+   The rotation, moved the way the batting order moves.
+
+   Two reports from the same screenshot: the day labels were "shadowing" the
+   names — FRI at 18px condensed in a 22px column ran straight under the name
+   beside it — and the chevron-per-row reorder was "not clear as to how to
+   handle it." The rows are buttons now, tap one then tap the other, and the
+   day column is wide enough to hold its own word.
+   --------------------------------------------------------------------------- */
+.rotation-list > button {
+  display: grid;
+  grid-template-columns: 44px 1fr auto 28px;
+  align-items: center;
+  gap: 0 6px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  text-align: left;
+}
+.rotation-list > button:last-child { border-bottom: 0; }
+.rotation-list > button > span {
+  color: var(--alert);
+  font: 800 calc(15px * var(--ts)) var(--display);
+}
+.rotation-list > button.is-selected {
+  background: #f2f7f2;
+  box-shadow: inset 3px 0 var(--clay);
+}
+.rotation-list > button .drag {
+  justify-self: end;
+  color: var(--clay);
+  font-style: normal;
+}
+/* The read-only bullpen keeps the old grid; its day column gets the same room. */
+.rotation-list > div { grid-template-columns: 44px 1fr auto 28px; }
+.rotation-list > div > span { font-size: calc(15px * var(--ts)); }
+
+/* The C. A chip the height of the text it follows, wherever the captain's name
+   is printed — the patch a sweater wears, not a second rating. */
+.captain-c {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 5px;
+  vertical-align: 1px;
+  background: var(--navy);
+  color: var(--cream);
+  font: 800 calc(9px * var(--ts))/1 var(--mono);
+  font-style: normal;
+}
+/* On the hero's dark banner the chip flips, or it would vanish into the navy. */
+.player-identity .captain-c {
+  width: 15px;
+  height: 15px;
+  margin: 0 6px 0 0;
+  background: var(--cream);
+  color: var(--navy);
+}

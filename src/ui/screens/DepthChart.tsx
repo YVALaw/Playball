@@ -13,12 +13,12 @@
 import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
-import { ModuleIntro } from '../components/Kit.js';
+import { CaptainC, ModuleIntro } from '../components/Kit.js';
 import { depthAt, startersFrom, SPOTS, available, squad } from '../../engine/depthChart.js';
 import { positionPenalty, secondaryPositions } from '../../engine/positions.js';
 import { standing, gradesOf } from '../../engine/eligibility.js';
-import { captainOf, candidates, roomsChoice } from '../../engine/captains.js';
 import { handles } from '../../state/depth.js';
+import { captainOf } from '../../engine/captains.js';
 import { overallOf } from '../../engine/ratings.js';
 import type { Hitter, Position } from '../../engine/types.js';
 
@@ -37,9 +37,6 @@ export function DepthChart() {
   const version = useDynasty((s) => s.version);
   const moveDepth = useDynasty((s) => s.moveDepth);
   const openPlayer = useDynasty((s) => s.openPlayer);
-  const nameCaptain = useDynasty((s) => s.nameCaptain);
-  const clearCaptain = useDynasty((s) => s.clearCaptain);
-  const namesCaptain = useDynasty((s) => handles(s.depth, 'captains'));
   const [open, setOpen] = useState<Position | null>(null);
   void version;
 
@@ -49,9 +46,6 @@ export function DepthChart() {
   const men = squad(team.team);
   const out = men.filter((p) => !available(p, day));
 
-  const leader = captainOf(team.team);
-  const able = candidates(team.team);
-  const pick = roomsChoice(team.team);
   const spots = SPOTS;
 
   return (
@@ -89,105 +83,12 @@ export function DepthChart() {
           changes nothing, and this codebase has spent a week deleting those.
         */}
         {/*
-          The captain, above the chart because he is about the room rather than
-          about a position.
-
-          The room's own choice is printed beside the decision rather than
-          applied, so ignoring it is a visible thing a coach did. And only men
-          with the makeup for it appear at all -- without that gate, naming a
-          captain is a free buff on your best player and the answer is the same
-          man every year.
+          The captain used to live here, above the chart. He has his own screen
+          now (Captain.tsx) with every eligible man and the room's pick beside
+          the decision -- and reported from testing, the leftover list here was
+          two places to do the same job: 'you still have the name a captain
+          button in the depth chart, it should no longer be there.'
         */}
-        {/*
-          Every eligible man, every time, with the one wearing it marked.
-
-          Shipped the other way and reported straight back: *"it doesn't allow
-          me to pick whoever I chose, it simply gives me a name and when I click
-          on it I don't have any options to change the player."* Exactly right.
-          The list only rendered while the job was vacant, so naming a captain
-          removed the means of naming a different one, and the only way back was
-          to work out that STAND HIM DOWN was a prerequisite rather than a
-          resignation. A two-step where the first step looks like a dead end.
-
-          It is a choice among men, so it is drawn as a choice among men whether
-          or not one is currently selected — the same shape as every other picker
-          in the game. Tapping the man who already wears it does nothing rather
-          than something surprising.
-
-          The cap of four is gone with it. A shortlist that hides the man the
-          coach had in mind is the same bug wearing a different hat.
-        */}
-        {namesCaptain && (
-          <div style={{ marginBottom: 10, padding: '9px 11px', background: 'var(--paper)' }}>
-            <div className="label">THE CAPTAIN</div>
-            <div style={{
-              marginTop: 3, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)",
-              color: leader ? 'var(--dim)' : 'inherit',
-            }}>
-              {able.length === 0
-                ? 'Nobody in this room has the makeup for it yet.'
-                : leader
-                  ? 'He steadies the room. He will not make anybody happy — he stops a bad month becoming a bad year.'
-                  : 'Nobody wears it. These are the men the room would follow.'}
-            </div>
-
-            {able.length > 0 && (
-              <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {able.map((c) => {
-                  const wearing = c.id === leader?.id;
-                  return (
-                    <button
-                      key={c.id}
-                      className="tap"
-                      onClick={() => { if (!wearing) nameCaptain(c.id); }}
-                      style={{
-                        textAlign: 'left', padding: '8px 10px', minHeight: 38,
-                        background: wearing ? 'var(--you)' : 'var(--field)',
-                        color: wearing ? 'var(--field)' : 'inherit',
-                        border: `1px solid ${
-                          wearing ? 'var(--you)'
-                            : c.id === pick?.id ? 'var(--you)' : 'rgba(var(--ink-rgb), .24)'
-                        }`,
-                        font: `${wearing ? 700 : 400} calc(11.5px * var(--ts)) var(--body)`,
-                        display: 'flex', alignItems: 'center', gap: 8,
-                      }}
-                    >
-                      <span style={{ flex: 1 }}>{c.name} · {c.classYear}</span>
-                      {wearing && (
-                        <span style={{
-                          flex: 'none',
-                          font: "700 calc(8.5px * var(--ts)) var(--mono)",
-                          letterSpacing: '.11em',
-                        }}>CAPTAIN</span>
-                      )}
-                      {!wearing && c.id === pick?.id && (
-                        <span style={{
-                          flex: 'none', color: 'var(--you)',
-                          font: "700 calc(8.5px * var(--ts)) var(--mono)",
-                          letterSpacing: '.11em',
-                        }}>THE ROOM'S PICK</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {leader && (
-              <button
-                className="tap"
-                onClick={clearCaptain}
-                style={{
-                  marginTop: 8, width: '100%', padding: '8px 11px', minHeight: 38,
-                  background: 'transparent', border: '1px solid rgba(var(--ink-rgb), .28)',
-                  font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.11em',
-                  color: 'var(--dim)',
-                }}
-              >NOBODY WEARS IT</button>
-            )}
-          </div>
-        )}
-
         {spots.map((spot) => {
           const order = depthAt(team.team, spot);
           const starter = nine[spot];
@@ -258,6 +159,7 @@ export function DepthChart() {
                           }}
                         >
                           {p.name}
+                          {captainOf(team.team)?.id === p.id && <CaptainC />}
                           <span style={{ color: 'var(--dim)' }}> · {overallOf(p)}</span>
                           {fit2 !== 'fine' && (
                             <span style={{ color: 'var(--clay)' }}>

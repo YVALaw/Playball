@@ -798,7 +798,12 @@ function TableOverlay() {
         {/* Who wears the C, with every eligible man and a reason to prefer one.
             It used to be a line at the top of the depth chart, which made the
             room's own pick the only name anybody ever saw. */}
-        {overlay === 'captain' && <Captain />}
+        {/* No pinned header of its own, so it gets the scroller the container
+            above deliberately does not have -- without it the list of eligible
+            men was simply cut off at the fold. */}
+        {overlay === 'captain' && (
+          <div className="screen-scroll" style={{ height: '100%' }}><Captain /></div>
+        )}
         {/* The press room, which stopped being an interruption and became an
             errand. Here rather than in the screen switch because the overlays
             are the one layer present in every frame the offseason included, and

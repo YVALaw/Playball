@@ -27,12 +27,13 @@ import { handles } from '../../state/depth.js';
 import { Avatar } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
 import { overallOf, naturalPos } from '../../engine/ratings.js';
+import { captainOf } from '../../engine/captains.js';
 import { potentialGrade } from '../../engine/scouting.js';
 import { battingAverage, era, inningsPitched } from '../../engine/season.js';
 import { isHurt } from '../../engine/injury.js';
 import { available } from '../../engine/depthChart.js';
 import {
-  Capacity, DataTable, InlineActions, ModuleIntro, Segmented, type Row,
+  Capacity, CaptainC, DataTable, InlineActions, ModuleIntro, Segmented, type Row,
 } from '../components/Kit.js';
 import type { Hitter, Pitcher, Player } from '../../engine/types.js';
 
@@ -129,6 +130,7 @@ export function Roster() {
     return {
       key: p.id,
       title: p.name,
+      mark: captainOf(team.team)?.id === p.id ? <CaptainC /> : undefined,
       detail: `${out ? `${out} · ` : ''}${slotOf(p)} · ${p.classYear} · ${overallOf(p)} OVR · ${pot} POT`,
       face: <Avatar id={p.id} team={team.def.abbr} size={34} />,
     };

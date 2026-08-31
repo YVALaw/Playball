@@ -19,6 +19,7 @@
 // a shortstop to second base for good, or burns a redshirt.
 
 import { useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import {
   CalendarIcon, CheckIcon, Cross1Icon, EnvelopeClosedIcon, MixerHorizontalIcon,
   ReloadIcon, StopwatchIcon,
@@ -128,7 +129,19 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
         : school !== 'fine' ? 'ACADEMIC'
           : 'ACTIVE';
 
-  return (
+  /*
+    Rendered into the overlay's frame rather than in place.
+
+    In place it sat inside .overlay-scroll, and on iOS an absolutely-positioned
+    element whose containing block is outside its momentum scroller repaints a
+    beat behind the scroll — reported as the button 'moving along when
+    scrolling' and the stale white ghost it left behind. Outside the scroller
+    there is nothing to lag.
+  */
+  const host = document.querySelector('.full-overlay') ?? document.querySelector('.app-frame');
+  if (!host) return null;
+
+  return createPortal(
     <aside className={`player-actions-fab${open ? ' open' : ''}`}>
       <div className="player-actions-popover" aria-hidden={!open}>
         <div className="player-actions-popover-heading">
@@ -272,6 +285,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
         {open ? <Cross1Icon /> : <MixerHorizontalIcon />}
       </button>
       <span className="player-actions-status" aria-hidden="true">{statusLabel}</span>
-    </aside>
+    </aside>,
+    host,
   );
 }

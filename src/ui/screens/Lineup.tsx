@@ -26,13 +26,14 @@
 // a two-tap swap genuinely needs and the proposal had nowhere to put.
 
 import { useState } from 'react';
-import { CheckIcon, ChevronDownIcon, ReloadIcon, SewingPinIcon } from '@radix-ui/react-icons';
+import { CheckIcon, ReloadIcon, SewingPinIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Avatar } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
 import { overallOf } from '../../engine/ratings.js';
+import { captainOf } from '../../engine/captains.js';
 import { battingAverage, era, inningsPitched } from '../../engine/season.js';
-import { ModuleIntro, Rating, SectionHeading } from '../components/Kit.js';
+import { CaptainC, ModuleIntro, Rating, SectionHeading } from '../components/Kit.js';
 import type { Hitter } from '../../engine/types.js';
 
 /** Friday, Saturday, Sunday, then the midweek arm. */
@@ -49,6 +50,8 @@ export function Lineup() {
   const autoLineup = useDynasty((s) => s.autoLineup);
   const team = useUserTeam();
   const [picked, setPicked] = useState<number | null>(null);
+  /** Same two-tap swap, for the rotation. */
+  const [pickedArm, setPickedArm] = useState<number | null>(null);
   const [dealt, setDealt] = useState(false);
   /** Bumped on every auto-deal, so the list re-keys and animates in. */
   const [deal, setDeal] = useState(0);
@@ -67,10 +70,29 @@ export function Lineup() {
   const midweekInnings = midweekLine ? inningsPitched(midweekLine) : 0;
 
   const tap = (i: number): void => {
+    setPickedArm(null);
     if (picked === null) { setPicked(i); return; }
     if (picked === i) { setPicked(null); return; }
     swapLineup(picked, i);
     setPicked(null);
+  };
+
+  /*
+    The rotation moves the way the batting order moves: tap one, tap the other.
+
+    It shipped as a chevron that walked a man down one slot per press, and the
+    report was blunt — "the pitchers rotation is not clear as to how to handle
+    it, simply keep it as the batters lineup." One gesture for every reorder on
+    the screen, and moveRotation(i, j - i) is already an arbitrary swap. Picking
+    a batter clears a picked arm and the other way round, so two half-finished
+    swaps cannot coexist.
+  */
+  const tapArm = (i: number): void => {
+    setPicked(null);
+    if (pickedArm === null) { setPickedArm(i); return; }
+    if (pickedArm === i) { setPickedArm(null); return; }
+    moveRotation(pickedArm, i - pickedArm);
+    setPickedArm(null);
   };
 
   /*
@@ -86,6 +108,8 @@ export function Lineup() {
 
   const note = picked !== null
     ? `Now tap the spot to swap with ${order[picked]?.name ?? ''}.`
+    : pickedArm !== null
+      ? `Now tap the day for ${team.team.rotation[pickedArm]?.name ?? ''} to take.`
     : spot !== null
       ? manAtSpot
         ? `${manAtSpot.name} is batting ${atSpot + 1} at ${spot}.`
@@ -169,7 +193,10 @@ export function Lineup() {
                   <Avatar id={p.id} team={team.def.abbr} size={30} />
                 </span>
                 <span className="player-name">
-                  <strong>{p.name}</strong>
+                  <strong>
+                    {p.name}
+                    {captainOf(team.team)?.id === p.id && <CaptainC />}
+                  </strong>
                   <small>
                     {p.pos} · Bats {p.bats} · {overallOf(p)} OVR
                     {line && line.ab > 0
@@ -209,21 +236,26 @@ export function Lineup() {
         <section className="rotation-list">
           {team.team.rotation.map((p, i) => {
             const line = season.pitching.get(p.id);
+            const on = pickedArm === i;
             return (
-              <div key={p.id}>
+              <button
+                className={on ? 'is-selected' : ''}
+                key={p.id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => tapArm(i)}
+              >
                 <span>{SLOTS[i]}</span>
-                <strong>{p.name}</strong>
+                <strong>
+                  {p.name}
+                  {captainOf(team.team)?.id === p.id && <CaptainC />}
+                </strong>
                 <small>
                   {overallOf(p)} OVR
                   {line && line.outs > 0 ? ` · ${era(line).toFixed(2)}` : ''}
                 </small>
-                <button
-                  type="button"
-                  aria-label={`Move ${p.name} later in the rotation`}
-                  disabled={i === team.team.rotation.length - 1}
-                  onClick={() => moveRotation(i, 1)}
-                ><ChevronDownIcon /></button>
-              </div>
+                <i className="drag">{on ? <SewingPinIcon /> : null}</i>
+              </button>
             );
           })}
         </section>
