@@ -55,6 +55,7 @@ import {
 import {
   applyRealignment, headToHead, realignmentFor,
 } from '../engine/world.js';
+import type { AlumnusNote } from '../engine/legacy.js';
 import {
   annualBudget, freshEconomy, marketFor, poached, remaining, wageBill,
   withStaff, FACILITIES, MAX_FACILITY, SCOUT_COST, SCOUT_DAYS, SEATS,
@@ -932,6 +933,13 @@ export interface DynastyStore {
    * this save. The Today card prints it the week the fixture comes round.
    */
   rivalry: { w: number; l: number };
+  /**
+   * The men you coached who left, one durable note each — stage 13. The pro
+   * career itself is derived from the note whenever a card asks, so ten years
+   * of a first-rounder's summers cost the save one row. Career-wide, not
+   * program-wide: they are the men YOU coached, wherever you coach now.
+   */
+  alumni: Record<string, AlumnusNote>;
   /** Hire from this offseason's derived market. Seat must be empty. */
   hireAssistant: (seat: StaffSeat, slot: number) => void;
   /** Let him go. No severance — the wage simply stops next roll. */
@@ -1199,6 +1207,22 @@ function usableEconomy(saved: unknown): Economy {
           .filter(([, v]) => typeof v === 'number')) as Record<number, number>
       : {},
   };
+}
+
+/** The alumni book, from whatever an older save carries. */
+function usableAlumni(saved: unknown): Record<string, AlumnusNote> {
+  if (!saved || typeof saved !== 'object') return {};
+  const out: Record<string, AlumnusNote> = {};
+  for (const [id, v] of Object.entries(saved as Record<string, unknown>)) {
+    if (!v || typeof v !== 'object') continue;
+    const n = v as Partial<AlumnusNote>;
+    if (typeof n.name === 'string' && typeof n.year === 'number'
+      && typeof n.overall === 'number'
+      && (n.reason === 'drafted' || n.reason === 'graduated' || n.reason === 'walk-on')) {
+      out[id] = n as AlumnusNote;
+    }
+  }
+  return out;
 }
 
 /** The rivalry ledger, from whatever an older save carries. */
@@ -1884,6 +1908,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // below — a second dynasty must not inherit the first one's staff.
       economy: freshEconomy(),
       rivalry: { w: 0, l: 0 },
+      alumni: {},
       watch: { programs: [], jobs: [] },
       inbox: [],
       // Set explicitly rather than left alone, because a second dynasty started
@@ -2422,7 +2447,25 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           training: get().coach.skills.training
             + (FACILITIES[get().economy.facilities]?.trainBump ?? 0),
         });
-        set({ lastOffseason: report });
+        /*
+          The alumni book — stage 13. One durable note per man who left YOUR
+          program, written the June he leaves, because the departure notice
+          itself survives one offseason and the pro career needs his round and
+          his rating for ever.
+        */
+        const notes = { ...get().alumni };
+        const myAbbr = season.teams[get().userTeam]?.def.abbr;
+        for (const d of [...report.drafted, ...report.graduated]) {
+          if (d.teamAbbr !== myAbbr) continue;
+          notes[d.id] = {
+            name: d.name, teamAbbr: d.teamAbbr, year: get().year,
+            reason: d.reason === 'drafted' ? 'drafted'
+              : d.reason === 'walk-on' ? 'walk-on' : 'graduated',
+            ...(d.round !== undefined ? { round: d.round } : {}),
+            overall: d.overall, classYear: d.classYear,
+          };
+        }
+        set({ lastOffseason: report, alumni: notes });
 
         /*
           First overall, which is a fact about the national board and not about
@@ -4797,6 +4840,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   economy: freshEconomy(),
   rivalry: { w: 0, l: 0 },
+  alumni: {},
 
   hireAssistant: (seat, slot) => {
     const { season, userTeam, year, economy } = get();
@@ -4923,6 +4967,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         watch: get().watch,
         economy: get().economy,
         rivalry: get().rivalry,
+        alumni: get().alumni,
         depth: get().depth,
         /*
           How many the room has had this season, and the one still open.
@@ -5086,6 +5131,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       watch: usableWatch(loaded.watch),
       economy: usableEconomy(loaded.economy),
       rivalry: usableRivalry(loaded.rivalry),
+      alumni: usableAlumni(loaded.alumni),
       seenTutorials: [...new Set([
         ...get().seenTutorials,
         ...(Array.isArray(loaded.tutorials)

@@ -38,6 +38,7 @@ import { Avatar, teamColour } from '../Avatar.js';
 import { SewingPinIcon } from '@radix-ui/react-icons';
 import { captainOf } from '../../engine/captains.js';
 import { handles } from '../../state/depth.js';
+import { proCareer } from '../../engine/legacy.js';
 import {
   CaptainC, DataTable, FieldNote, Metric, ModuleIntro, SectionHeading, Segmented,
 } from '../components/Kit.js';
@@ -453,6 +454,8 @@ function Alumnus(
           <Stat k="SEASONS ON RECORD" v={String(career.length)} last />
         </Panel>
       )}
+      {active === 'overview' && <ProYears id={id} />}
+      {active === 'overview' && <SignatureMoments id={id} />}
       {/* The alumnus keeps the same timeline his card had, because the years
           are the only thing left of him. `Career` is passed his archive
           directly: he is on nobody's roster, so there is no live row and no
@@ -461,6 +464,49 @@ function Alumnus(
         <AlumnusYears years={career} isPitcher={wasPitcher} />
       )}
     </main>
+  );
+}
+
+/**
+ * What happened next — stage 13. The professional game, derived year by year
+ * from the one note the save keeps of a departed man. Nothing here for a man
+ * who left before the book existed: the note is written the June he leaves.
+ */
+function ProYears({ id }: { id: string }) {
+  const alumni = useDynasty((s) => s.alumni);
+  const year = useDynasty((s) => s.year);
+  const note = alumni[id];
+  if (!note) return null;
+  const rows = proCareer(id, note, year);
+  if (rows.length === 0) return null;
+  const over = rows.some((r) => r.final);
+  return (
+    <>
+      <SectionHeading
+        kicker="THE PROFESSIONAL GAME"
+        title={note.reason === 'drafted'
+          ? `Round ${note.round ?? '?'}, ${note.year}`
+          : 'After the last game'}
+      />
+      <section className="timeline moment-timeline">
+        {rows.map((r) => (
+          <div key={r.year}>
+            <b>{r.year}</b>
+            <span>
+              <em className="pro-level">{r.level}</em>
+              {' '}{r.line}
+            </span>
+          </div>
+        ))}
+      </section>
+      {!over && note.reason === 'drafted' && (
+        <FieldNote
+          title="Still playing"
+          text="The book adds a line every June. Most careers end quietly in the
+            middle of the pyramid; his has not ended yet."
+        />
+      )}
+    </>
   );
 }
 
@@ -885,6 +931,36 @@ function Tendencies(
             : 'Buy the book from PROGRAM ACTIONS on their college page. One report covers the whole roster.'}
         />
       )}
+    </>
+  );
+}
+
+/**
+ * The games a man is introduced by — stage 13. Drawn on the proposal's own
+ * timeline, newest last, with June nights marked. Renders nothing for a man
+ * with none, because an empty shrine is worse than no shrine.
+ */
+function SignatureMoments({ id }: { id: string }) {
+  const season = useDynasty((s) => s.season);
+  const moments = season?.moments?.[id] ?? [];
+  if (moments.length === 0) return null;
+  return (
+    <>
+      <SectionHeading
+        kicker="SIGNATURE MOMENTS"
+        title={moments.length === 1 ? 'One night' : `${moments.length} nights`}
+      />
+      <section className="timeline moment-timeline">
+        {moments.map((m, i) => (
+          <div key={`${m.year}-${m.day}-${i}`}>
+            <b>{m.year}</b>
+            <span>
+              {m.line}
+              {m.postseason && <em className="june-mark"> JUNE</em>}
+            </span>
+          </div>
+        ))}
+      </section>
     </>
   );
 }
@@ -1322,6 +1398,7 @@ function Career(
 
   return (
     <>
+      <SignatureMoments id={id} />
       <section className="player-records">
         <div>
           <small>BEST YEAR</small>

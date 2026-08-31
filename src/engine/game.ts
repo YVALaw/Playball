@@ -20,7 +20,7 @@ import { pullMultiplier, runningMods, shiftBias } from './tendencies.js';
 import { plateTraits } from './traits.js';
 import type {
   BattedBall, EngineFn, EngineName, FieldLine, HitLine, Hitter, PAKind, Pitcher,
-  PitchLine, PitchResult, Player, PlayEvent, Position, Rng, Tactic, TacticMods, Team,
+  PitchLine, PitchResult, Player, PlayerId, PlayEvent, Position, Rng, Tactic, TacticMods, Team,
 } from './types.js';
 
 /**
@@ -239,6 +239,8 @@ export class TeamState {
    */
   readonly coachOffMult: number;
   readonly coachDefMult: number;
+  /** Stage 13: who ended a walk-off win, for the card that remembers it. */
+  walkOffBy: PlayerId | null = null;
   /**
    * How much less often a runner tests this outfield, from CANNON.
    *
@@ -693,6 +695,9 @@ export function createHalfInning(
       }
       if (forced.length > 0) onScore?.(bat, fld);
       if (canWalkOff && bat.runs > fld.runs) {
+        // Stage 13: the man who ended it, written down at the only moment
+        // anybody knows. A walk-off walk still belongs to the man who took it.
+        bat.walkOffBy = batter.id;
         say(`   ${bat.team.name} win it.`);
         finished = true; return true;
       }
@@ -739,6 +744,7 @@ export function createHalfInning(
       bLine.rbi += res.scored.length;
       if (res.scored.length > 0) onScore?.(bat, fld);
       if (canWalkOff && bat.runs > fld.runs) {
+        bat.walkOffBy = batter.id;
         say(`   ${bat.team.name} win it.`);
         finished = true; return true;
       }
@@ -1003,6 +1009,7 @@ export function createHalfInning(
     );
 
     if (canWalkOff && bat.runs > fld.runs) {
+      bat.walkOffBy = batter.id;
       say(`   ${bat.team.name} win it.`);
       finished = true;
       return true;

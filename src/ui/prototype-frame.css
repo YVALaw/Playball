@@ -1973,3 +1973,28 @@
 .rivalry-line { color: var(--alert); font-weight: 600; }
 .rivalry-line svg { align-self: center; }
 .stake-line { color: var(--dim); }
+
+/* ---------------------------------------------------------------------------
+   The dynasty remembers — stage 13. The moments and the pro years ride the
+   proposal's timeline; these are only the trimmings.
+   --------------------------------------------------------------------------- */
+.moment-timeline { margin-top: 4px; margin-bottom: 16px; }
+.moment-timeline span {
+  font-size: calc(11px * var(--ts));
+  line-height: 1.45;
+}
+.june-mark {
+  margin-left: 6px;
+  color: var(--yellow);
+  font: 800 calc(7.5px * var(--ts)) var(--mono);
+  font-style: normal;
+  letter-spacing: .1em;
+}
+.pro-level {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--clay);
+  font: 800 calc(8px * var(--ts)) var(--mono);
+  font-style: normal;
+  letter-spacing: .1em;
+}

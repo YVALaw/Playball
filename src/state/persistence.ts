@@ -138,6 +138,8 @@ export interface SaveFile {
   economy?: unknown;
   /** The rivalry ledger. */
   rivalry?: unknown;
+  /** The alumni book. */
+  alumni?: unknown;
   /**
    * How deep a game this career is: the preset, plus whichever systems the
    * player has decided differently about.
@@ -354,6 +356,8 @@ export interface SaveExtras {
   economy?: unknown;
   /** The career's record against the rival. Stage 12. */
   rivalry?: unknown;
+  /** The alumni book: one durable note per departed man. Stage 13. */
+  alumni?: unknown;
   /** How deep a game this career is. See `SaveFile.depth`. */
   depth?: unknown;
 }
@@ -442,6 +446,7 @@ export function buildSaveFile(
     ...(extras.watch ? { watch: extras.watch } : {}),
     ...(extras.economy ? { economy: extras.economy } : {}),
     ...(extras.rivalry ? { rivalry: extras.rivalry } : {}),
+    ...(extras.alumni ? { alumni: extras.alumni } : {}),
     // Written whenever it exists rather than only when it differs from the
     // default, because absence already means something here: it is how a save
     // from before the mode says "played in full". A full career that stopped
@@ -504,6 +509,8 @@ export interface LoadedDynasty {
   economy: unknown;
   /** The rivalry ledger, or undefined before stage 12. */
   rivalry: unknown;
+  /** The alumni book, or undefined before stage 13. */
+  alumni: unknown;
   /** The depth preset and its overrides. Null on saves that predate the mode. */
   depth: unknown;
 }
@@ -571,6 +578,7 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     watch: file.watch,
     economy: file.economy,
     rivalry: file.rivalry,
+    alumni: file.alumni,
     depth: file.depth ?? null,
   };
 }

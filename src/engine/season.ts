@@ -29,6 +29,7 @@ import type { DraftBoard } from './draft.js';
 import type { RivalCoach } from './rivals.js';
 import { simGame, type GameResult, type TeamState } from './game.js';
 import { blankWatch, type Watch } from './tendencies.js';
+import { noteMoments, type Moment } from './legacy.js';
 import {
   CAREER_MIN_IP, CAREER_MIN_AB, offer, recordGameMarks, seededBook,
   type RecordBook,
@@ -667,6 +668,12 @@ export interface SeasonState {
   boxScores: Record<number, BoxScore>;
   captureBoxFor: number | null;
   /**
+   * Signature moments, per man — stage 13. Written only when they happen and
+   * capped per player, so the book stays a life rather than a ledger. Carried
+   * forward for ever, like the careers beside it: it is the only copy.
+   */
+  moments?: Record<string, Moment[]>;
+  /**
    * Who missed a week for the classroom, and when.
    *
    * Written by the day loop so the store can post a card for each without
@@ -1228,6 +1235,7 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
     // does.
     boxScores: {},
     careers: prev.careers ?? {},
+    ...(prev.moments ? { moments: prev.moments } : {}),
     // And nor does the hall, or the running career totals under the book. Both
     // are permanent records of things that already happened, and both are the
     // only copy of what they hold.
@@ -1738,6 +1746,36 @@ export function recordResult(
   // Keep the full lines for the user's games, wherever the game came from —
   // simulated, or managed pitch by pitch. Both arrive here.
   const keepFor = season.captureBoxFor;
+  /*
+    Signature moments — stage 13. Detected at this funnel because every game
+    the user's program plays, simulated or managed, arrives here with its full
+    lines. Gated on `record` like the watch below, so a replayed game cannot
+    remember the same night twice.
+  */
+  if ((opts.record ?? true) && keepFor !== null
+    && (homeIndex === keepFor || awayIndex === keepFor)) {
+    const usState = homeIndex === keepFor ? result.home : result.away;
+    const themState = homeIndex === keepFor ? result.away : result.home;
+    const themRec = homeIndex === keepFor ? away : home;
+    noteMoments(
+      (season.moments ??= {}),
+      {
+        batting: [...usState.batting.values()].map((l) => ({
+          id: l.player.id as string, ab: l.ab, h: l.h, hr: l.hr, rbi: l.rbi,
+        })),
+        pitching: [...usState.pitching.values()].map((l) => ({
+          id: l.player.id as string, outs: l.outs, k: l.k, er: l.er,
+        })),
+        hits: usState.hits, runs: usState.runs, walkOffBy: usState.walkOffBy,
+      },
+      { batting: [], pitching: [],
+        hits: themState.hits, runs: themState.runs },
+      {
+        year: season.year ?? 0, day: today, vs: themRec.def.abbr,
+        ...(opts.postseason ? { postseason: true } : {}),
+      },
+    );
+  }
   if (keepFor !== null && (homeIndex === keepFor || awayIndex === keepFor)) {
     season.boxScores[today] = {
       day: today, home: homeIndex, away: awayIndex,

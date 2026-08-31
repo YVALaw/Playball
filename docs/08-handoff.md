@@ -135,7 +135,7 @@ honest fix — see §24.1 before touching `Sticky.tsx`.
 
 ## What is next — after the port
 
-**Stages 11 and 12 shipped August 31 (see 07-v1-plan). Stage 13, the dynasty remembers, is the next unbuilt stage.**
+**Stages 11, 12 and 13 shipped August 31 (see 07-v1-plan). Stage 14, broadcast, is the next unbuilt stage — and it carries the park-adjacent presentation debt (REPLAY and the tournament view live in 15).**
 Before it, two standing errands from the plan cost nothing and start clocks:
 the Play Console record and the throttled browser performance profile — the
 profile is now genuinely blocking stage 15, which inherited the tournament

@@ -778,9 +778,35 @@ re-roll who defected, and no golden moved):
 **Decisions:** how often realignment fires and whether the user's program can
 be moved against his will.
 
-## Stage 13 · The dynasty remembers
+## Stage 13 · The dynasty remembers — **SHIPPED August 31 2026**
 
-**Size:** medium · **New stage**
+**Size:** medium · **1056 tests green**
+
+**How it shipped** (`engine/legacy.ts`):
+
+- **Signature moments.** Detected at `recordResult`, the one funnel every game
+  the user's program plays already passes through — the five-hit day, the
+  four-hit day, three homers, the strikeout show, the complete-game shutout,
+  the no-hitter, and **the walk-off, attributed to the man who ended it**
+  (the engine now stamps `walkOffBy` at the three walk-off sites; a walk-off
+  walk still belongs to the man who took it). Written only when they happen,
+  capped at twelve per man with the cap dropping the least of him and never
+  the best, June nights marked. Drawn on the card's timeline, and carried
+  forward for ever like the careers beside them. One bug worth the record:
+  the engine's line maps are keyed by NAME with the player on the value, and
+  the first cut keyed the whole book by name — every card came up empty.
+- **The professional game.** One durable note per departed man (who he was
+  the June he left: round, rating, reason), written at the draft step because
+  the departure notice itself survives one offseason. Everything after it is
+  **derived, never stored** — the same man always lives the same life, year
+  by year down the real pyramid: most wash out in the middle, a first-rounder
+  starts higher and survives longer, and the man who reaches the show gets
+  the card that remembers where he came from. An All-Star summer is rare and
+  worth framing. The undrafted get one honest line.
+
+**Exit — met:** a fifteen-year save is a history rather than a number.
+
+### The original brief (kept for the record)
 
 - **Alumni in the pros** — every departure is already recorded with a reason.
   Show what happened next: a former recruit in Double-A, one who made an
