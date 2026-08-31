@@ -69,7 +69,7 @@
   /* A control floating over any ground: the FAB triggers. Ink-dark in the
      light theme (the proposal's own drawing); in the dark theme it takes the
      accent, because a dark disc on a dark field was invisible. */
-  --raised: #1d201d;
+  --raised: var(--accent-deep, #1d201d);
   /* What a sheet dims the screen with. Always a darkening, whichever theme --
      a scrim built from --ink-rgb turned into a milk wash the moment the ink
      went light. */

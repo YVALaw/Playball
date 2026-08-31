@@ -785,6 +785,14 @@
   flex: none;
   border-radius: 50%;
   box-shadow: 0 5px 16px rgba(0, 0, 0, .32);
+  /*
+    One icon colour for all three. The dugout's trigger carried the mockup's
+    navy-on-white pair, and once the disc went dark the navy icon went with it
+    -- reported as 'the color and the icon inside, the contrast of these two
+    are not good at all.' Cream on the raised disc holds in both themes and in
+    any school's colour.
+  */
+  color: var(--cream);
 }
 
 /* ---------------------------------------------------------------------------
