@@ -1626,3 +1626,36 @@
   background: var(--cream);
   color: var(--navy);
 }
+
+/* ---------------------------------------------------------------------------
+   The linescore frame, one row shorter.
+
+   Reported with the screen marked up: "you can move the outs and innings to
+   the same line as the line score." The inning and the out count stop being a
+   row of their own and become the left edge of the scoreboard, stacked, the
+   way a park's board frames its grid. The row they gave back goes to the park.
+   --------------------------------------------------------------------------- */
+.live-linescore {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.live-state {
+  flex: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  margin-bottom: 0;
+  text-align: center;
+}
+
+.live-linescore > .line-score,
+.live-linescore > div:last-child { flex: 1; min-width: 0; }
+
+/* The park takes the height the state row gave back. */
+.ballpark-scene { height: 196px; }
+
+/* "Make the controllers a bit smaller, just a bit not by much." */
+.ballpark-call button { min-height: 41px; }
+.ballpark-call { padding: 8px 12px 10px; }

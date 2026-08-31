@@ -412,10 +412,18 @@ function Plate({ tick }: { tick: number }) {
 export const STATIONS: readonly [number, number, number][] = [
   [0, 0, 0.55],                      // C
   [0, 0, -1.71],                     // P
-  [2.32, 0, -2.88],                  // 1B
-  [1.68, 0, -3.06],                  // 2B
-  [-1.68, 0, -3.06],                 // SS
-  [-2.32, 0, -2.88],                 // 3B
+  /*
+    The infield, spread the way an infield actually stands. The first cut put
+    the corner men and the middle men at nearly the same depth a step apart,
+    and the report read it right: '3rd base and SS are way too close, same
+    thing with first and second -- that's not really how the bases are
+    covered.' Corners hold their lines just behind the bag; the middle pair
+    plays halfway to second and deeper.
+  */
+  [2.45, 0, -2.45],                  // 1B
+  [1.15, 0, -3.55],                  // 2B
+  [-1.15, 0, -3.55],                 // SS
+  [-2.45, 0, -2.45],                 // 3B
   [-4.32, 0, -6.48],                 // LF
   [0, 0, -7.74],                     // CF
   [4.32, 0, -6.48],                  // RF
@@ -723,13 +731,22 @@ function Defense(
       if (gap < 0.02) return;
 
       /*
-        A man under a fly ball has to be there when it lands, so his speed is
-        whatever that takes; everything else is a run. Without this the ball
-        was caught by nobody — it stopped in mid air a second before the dot
-        supposed to have caught it arrived.
+        A man playing a ball has to be there when the play says he is.
+
+        A catch: under it when it lands. A ball on the ground: on it at the
+        pickup, because that is the moment the outcome blinks and the throw
+        leaves his hand — the chase clock is capped (see MAX_CHASE), and at a
+        flat run a long chase lost the race, so the out resolved and the throw
+        left from a spot the dot was still yards short of. Reported twice: 'the
+        ball seems to be safe but it is an actual out cause it looks like it is
+        far from the fielder.' His legs scale to the deadline; a dot sprinting
+        is a smaller lie than a throw from nobody.
       */
-      const speed = chasing && plan.caught
-        ? Math.max(FIELDER_SPEED, gap / Math.max(0.15, plan.flight - now))
+      const deadline = plan !== null && chasing
+        ? (plan.caught ? plan.flight : plan.pickup)
+        : Infinity;
+      const speed = chasing
+        ? Math.max(FIELDER_SPEED, gap / Math.max(0.15, deadline - now))
         : FIELDER_SPEED;
 
       const step = speed * delta;
