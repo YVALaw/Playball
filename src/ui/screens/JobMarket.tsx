@@ -25,6 +25,8 @@ export function JobMarket() {
   const offers = useDynasty((s) => s.offers);
   const watch = useDynasty((s) => s.watch);
   const acceptOffer = useDynasty((s) => s.acceptOffer);
+  const fired = useDynasty((s) => s.jobSearch);
+  const coach = useDynasty((s) => s.coach);
   const openTeam = useOpenTeam();
   /*
     The armed offer. Accepting is one of two irreversible acts in the game (the
@@ -59,8 +61,10 @@ export function JobMarket() {
           <StarIcon />
           <h2>Nobody is calling</h2>
           <p>
-            Offers arrive at the June board meeting, and they follow your
-            record. Win, and this page stops being empty.
+            {fired
+              ? `No program will have you at ${coach.prestige}. Prestige is what
+                opens the board, and yours is too low.`
+              : 'Offers arrive at the June board meeting, and they follow your record. Track a chair and your agent flags it the year it can be won.'}
           </p>
         </section>
       ) : (

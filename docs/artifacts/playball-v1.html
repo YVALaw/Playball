@@ -116,11 +116,11 @@
 
 <header class="top">
   <div class="top-in">
-    <div class="kicker">Playball · implementation plan · nine stages shipped</div>
+    <div class="kicker">Playball · implementation plan · eleven stages shipped</div>
     <h1>The road to v1.0</h1>
     <p class="sub">Nineteen stages, ordered by what unblocks what. The game is
     already deep; this is the work that turns it into a product with a
-    personality, on a phone. <strong style="color:var(--cream)">The first nine
+    personality, on a phone. <strong style="color:var(--cream)">The first eleven
     are done.</strong> Three and four did not exist when this plan was written —
     they came out of playing what stage 1 shipped, and were built the same day
     they were reported. The old stage 5 was split so the dugout could land
@@ -129,7 +129,10 @@
     <strong style="color:var(--cream)">complete</strong> — all eight pieces,
     ending with the press room — and stage eight, the roster, landed the same
     day with two-way players split out of it — with stage nine, players as
-    people, behind it.</p>
+    people, behind it. The portal followed, and then <strong
+    style="color:var(--cream)">the screen</strong>: a full mockup adopted as
+    the design of record, every screen rebuilt on it, dark mode, and the app
+    dressed in your school's own colours.</p>
   </div>
 </header>
 
@@ -416,7 +419,7 @@
       <div class="num">10&frac12;</div>
       <div>
         <h3>The screen</h3>
-        <div class="chips"><span class="chip sz-l">Large</span><span class="chip dep">Builds next</span></div>
+        <div class="chips"><span class="chip sz-l">Large</span><span class="chip done">Shipped · August 30–31 2026</span></div>
         <p>Not a new system. A pass over what is already built, because a play
         report that was two thirds interface is the game telling you where it
         actually is: <em>&ldquo;we need to completely change the UI though,
@@ -434,6 +437,7 @@
         </ul>
         <div class="decide"><b>Why a stage and not a tidy-up</b>The instinct with an interface complaint is to fix the three worst screens, and that instinct is what produced the problem: the roster filters were fixed twice, the offer desk&rsquo;s badge weighting twice, the ball&rsquo;s outcome colour twice. A screen fixed alone gets fixed against its own history rather than against the rest of the game. One pass, one rule set, applied everywhere &mdash; and the rules written first.</div>
         <div class="exit"><b>Exit</b>A screen the reporter stops describing as mashed together. Which is not a measurable exit, and that is honest: this is the one stage whose test is somebody using it.</div>
+        <div class="decide"><b>How it actually shipped</b>Not as a rule set written first — as a <em>design of record</em>. A full mockup (the Roster Tabletop proposal) was adopted 1:1: its stylesheet is generated into the app by script so the two stay diffable, and every screen was rebuilt on one shared kit — one header, one sheet, one list row, one floating action, one metric strip. Then five rounds of phone testing drove the rest: <strong>dark mode</strong>; <strong>the app in your school's colours</strong>, derived per theme from one hue; every sheet and dialog portalled into the frame, which killed a family of iOS bugs that had been reported as five different faults; the desk that <strong>holds until red decisions are dealt with</strong>; the captain's C; the job market; program actions on every college profile. The player card and the portal — the two named worst — were rebuilt outright. Tested screen by screen on the reporter's phone, which was the exit the stage asked for.</div>
       </div>
     </li>
 
@@ -513,6 +517,7 @@
           <li><strong>The play, drawn better</strong> — camera easing and a camera that follows the play rather than watching from one fixed seat; instanced markers and the render cost a busier park brings; a real 2D/3D toggle, since the setting exists but the two are not yet equal ways to watch. All carried over from the old stage 15.</li>
           <li><strong>REPLAY</strong>, named in the stage 5 brief and never built. The events and landing coordinates are already stored and already take zero random draws, so it is a player over an existing stream. It belongs <em>here</em>, with the camera that would make it worth watching — a replay of a fixed-seat view is a replay of a diagram.</li>
           <li><strong>Fielder animation</strong> beyond running to a point: the throw, the tag, the turn. What is there now is a summary, and the chase had to be capped at 1.15 seconds to stop it outstaying the play.</li>
+          <li><strong>The tournament view, made legible</strong> — deferred into this stage by request (<em>&ldquo;I don&rsquo;t really know where I&rsquo;m at most of the time&rdquo;</em>). The bracket answers every question except the one a player actually has — <em>where am I, and what happens next</em> — and it is the last screen still carrying its pre-port styling. It rides with the park because the bracket and the ground it is played on are one presentation pass.</li>
           <li><strong>Park effects as geometry</strong> — the one item here with a simulation in it. A short porch should be a short porch in the model as well as in the picture, so calibration applies and it lands last.</li>
         </ul>
         <div class="exit"><b>Exit</b>The ballpark is somewhere you would look at even when nothing is happening.</div>

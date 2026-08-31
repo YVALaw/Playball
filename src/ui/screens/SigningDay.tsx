@@ -17,7 +17,8 @@
 import { useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
-import { ModuleIntro, Segmented } from '../components/Kit.js';
+import { ChevronRightIcon } from '@radix-ui/react-icons';
+import { FieldNote, Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
 import {
   PRIORITY_LABEL, PRIORITIES, byRank, reportedOverall, reportedPotential,
   type Prospect, type Priority,
@@ -159,14 +160,11 @@ export function SigningDay() {
       <div style={{ padding: '14px 14px 10px' }}>
       <ModuleIntro kicker="SIGNING DAY" title="The class" />
 
-      <div style={{
-        display: 'flex', marginTop: 12,
-        border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
-        <Tile k="SIGNED" v={String(mine.length)} />
-        <Tile k="CLASS POINTS" v={String(classPoints(mine))} />
-        <Tile k="NATIONALLY" v={myRank > 0 ? `#${myRank}` : '—'} accent last />
-      </div>
+      <MetricStrip>
+        <Metric label="SIGNED" value={String(mine.length)} note="YOUR CLASS" />
+        <Metric label="CLASS POINTS" value={String(classPoints(mine))} note="NATIONAL" />
+        <Metric label="NATIONALLY" value={myRank > 0 ? `#${myRank}` : '—'} note="OF 96" />
+      </MetricStrip>
 
       <Segmented
         label="Signing day section"
@@ -345,62 +343,32 @@ function WalkOnGroup(
 ) {
   if (men.length === 0) {
     return (
-      <div style={{
-        marginTop: 14, padding: '11px 12px',
-        border: '1px solid var(--faint)', background: 'var(--paper)',
-        font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-      }}>
-        Every hole is covered. Nobody walks on this year. The whole roster
-        is men you went and got.
-      </div>
+      <FieldNote
+        title="Every hole is covered"
+        text="Nobody walks on this year. The whole roster is men you went and got."
+      />
     );
   }
 
   return (
     <>
-      <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>
-        WALK-ONS &middot; {men.length}
+      <div className="flow-section-title" style={{ marginTop: 16 }}>
+        <span className="label">WALK-ONS REPORTING</span>
+        <b>{men.length}</b>
       </div>
-      <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-        {men.map((p, i) => (
-          <button
-            key={p.id}
-            onClick={() => onOpen(p.id)}
-            className="card-in"
-            style={{
-              width: '100%', textAlign: 'left',
-              display: 'grid', gridTemplateColumns: 'auto 1fr auto auto',
-              gap: 9, alignItems: 'center',
-              padding: '10px 11px', borderBottom: '1px solid var(--hairline)',
-              background: 'transparent', animationDelay: `${i * 40}ms`,
-            }}
-          >
-            <Avatar id={p.id} team={abbr} size={34} />
-            <span style={{ minWidth: 0 }}>
-              <span style={{
-                display: 'block', font: "400 calc(13px * var(--ts)) var(--body)",
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{p.name}</span>
-              <span style={{
-                display: 'block', marginTop: 1, font: "400 calc(10px * var(--ts)) var(--mono)",
-                color: 'var(--dim)',
-              }}>
-                {slotFor(p)} &middot; age {p.age} &middot; one year
-              </span>
+      <section className="retention-list">
+        {men.map((p) => (
+          <button className="tap" type="button" key={p.id} onClick={() => onOpen(p.id)}>
+            <span className="portrait"><Avatar id={p.id} team={abbr} size={34} /></span>
+            <span>
+              <strong>{p.name}</strong>
+              <small>{slotFor(p)} · age {p.age} · {overallOf(p)} OVR · {potentialGrade(p.potential)} POT</small>
             </span>
-            <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-              <span style={{ font: "600 calc(12px * var(--ts)) var(--mono)" }}>
-                {overallOf(p)}
-                <span style={{ color: 'var(--dim)' }}> &middot; </span>
-                {potentialGrade(p.potential)}
-              </span>
-            </span>
-            <span style={{
-              font: "700 calc(7.5px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: 'var(--dim)',
-            }}>WALK-ON</span>
+            <b style={{ color: 'var(--dim)' }}>WALK-ON</b>
+            <ChevronRightIcon />
           </button>
         ))}
-      </div>
+      </section>
     </>
   );
 }
@@ -413,52 +381,32 @@ function RecruitRow({
 }) {
   const call = verdict(p, recruitingSkill);
   return (
-    <button
-      onClick={onOpen}
-      style={{
-        width: '100%', textAlign: 'left',
-        display: 'grid', gridTemplateColumns: 'auto 1fr auto auto',
-        gap: 9, alignItems: 'center',
-        padding: '10px 11px', borderBottom: '1px solid var(--hairline)',
-        background: mine ? 'rgba(var(--clay-rgb), .10)' : 'transparent',
-      }}
-    >
-      <Avatar id={p.id} team={destination} size={34} />
-      <span style={{ minWidth: 0 }}>
-        <span style={{
-          display: 'block', font: `${mine ? 700 : 400} calc(13px * var(--ts)) var(--body)`,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>{p.player.name}</span>
-        <span style={{
-          display: 'block', marginTop: 1, font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
-        }}>
-          #{p.rank} · {slotOf(p)} · {p.state}
-          {destination ? ` · → ${destination}` : ''}
-          {p.committedWeek !== null ? ` · wk ${p.committedWeek}` : ''}
+    <div className={`recruit-row${mine ? ' mine' : ''}`}>
+      <button className="tap" type="button" onClick={onOpen}>
+        <span className="recruit-face">
+          <Avatar id={p.id} team={destination} size={34} />
+          <span>
+            <strong>{p.player.name}</strong>
+            <small>
+              #{p.rank} · {slotOf(p)} · {p.state}
+              {destination ? ` · → ${destination}` : ''}
+              {p.committedWeek !== null ? ` · wk ${p.committedWeek}` : ''}
+            </small>
+          </span>
         </span>
-      </span>
-      {/*
-        The truth, both halves of it. The board printed a band here all winter
-        and a class review that printed the same band would have nothing to
-        review — the whole point of this row is that the guessing is over.
-      */}
-      <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-        <span style={{ font: "600 calc(12px * var(--ts)) var(--mono)" }}>
-          {overallOf(p.player)}
-          <span style={{ color: 'var(--dim)' }}> · </span>
-          {potentialGrade(p.player.potential)}
+        {/*
+          The truth, both halves of it. The board printed a band here all
+          winter and a class review that printed the same band would have
+          nothing to review — the whole point of this row is that the guessing
+          is over.
+        */}
+        <span className="recruit-state">
+          {overallOf(p.player)} · {potentialGrade(p.player.potential)}
+          {call && <em style={{ color: call.tone }}>{call.short}</em>}
         </span>
-        {call && (
-          <span style={{
-            display: 'block', marginTop: 1,
-            font: "700 calc(7px * var(--ts)) var(--mono)", letterSpacing: '.08em', color: call.tone,
-          }}>{call.short}</span>
-        )}
-      </span>
-      <span style={{ font: "600 calc(11px * var(--ts)) var(--mono)", color: 'var(--clay)' }}>
-        {'★'.repeat(p.stars)}
-      </span>
-    </button>
+        <b>{'★'.repeat(p.stars)}</b>
+      </button>
+    </div>
   );
 }
 
@@ -546,11 +494,11 @@ function RecruitSheet({
             )}
           </div>
 
-          <div style={{ display: 'flex', marginTop: 12 }}>
-            <Stat k="OVERALL" v={String(overallOf(p))} />
-            <Stat k="CEILING" v={potentialGrade(p.potential)} />
-            <Stat k="WANTED" v={PRIORITY_LABEL[topPriority(prospect)]} last />
-          </div>
+          <MetricStrip>
+            <Metric label="OVERALL" value={String(overallOf(p))} note="TODAY" />
+            <Metric label="CEILING" value={potentialGrade(p.potential)} note="POTENTIAL" />
+            <Metric label="WANTED" value={PRIORITY_LABEL[topPriority(prospect)]} note="HIS PRIORITY" />
+          </MetricStrip>
 
           {/*
             What you had him at, printed under what he is.
@@ -586,18 +534,18 @@ function RecruitSheet({
             </div>
           </div>
 
-          <div className="label" style={{ marginTop: 14, marginBottom: 5 }}>LAST SPRING</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+          <div className="flow-section-title" style={{ marginTop: 14 }}>
+            <span className="label">LAST SPRING</span>
+            <b>HIGH SCHOOL</b>
+          </div>
+          <section className="prospect-stats">
             {highSchoolLine(p).map((row) => (
-              <div key={row.label} style={{
-                width: '33.33%', padding: '7px 0',
-                borderBottom: '1px solid var(--hairline)',
-              }}>
-                <div className="label">{row.label}</div>
-                <div style={{ font: "700 calc(15px * var(--ts))/1 var(--display)", marginTop: 3 }}>{row.value}</div>
+              <div key={row.label}>
+                <small>{row.label}</small>
+                <strong>{row.value}</strong>
               </div>
             ))}
-          </div>
+          </section>
 
           {chased.length > 1 && (
             <>
@@ -706,24 +654,24 @@ function WalkOnSheet(
             </div>
           </div>
 
-          <div style={{ display: 'flex', marginTop: 12 }}>
-            <Stat k="OVERALL" v={String(overallOf(man))} />
-            <Stat k="CEILING" v={potentialGrade(man.potential)} />
-            <Stat k="CLASS" v={man.classYear} last />
-          </div>
+          <MetricStrip>
+            <Metric label="OVERALL" value={String(overallOf(man))} note="TODAY" />
+            <Metric label="CEILING" value={potentialGrade(man.potential)} note="POTENTIAL" />
+            <Metric label="CLASS" value={man.classYear} note="YEAR" />
+          </MetricStrip>
 
-          <div className="label" style={{ marginTop: 14, marginBottom: 5 }}>LAST SPRING</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+          <div className="flow-section-title" style={{ marginTop: 14 }}>
+            <span className="label">LAST SPRING</span>
+            <b>HIGH SCHOOL</b>
+          </div>
+          <section className="prospect-stats">
             {highSchoolLine(man).map((row) => (
-              <div key={row.label} style={{
-                width: '33.33%', padding: '7px 0',
-                borderBottom: '1px solid var(--hairline)',
-              }}>
-                <div className="label">{row.label}</div>
-                <div style={{ font: "700 calc(15px * var(--ts))/1 var(--display)", marginTop: 3 }}>{row.value}</div>
+              <div key={row.label}>
+                <small>{row.label}</small>
+                <strong>{row.value}</strong>
               </div>
             ))}
-          </div>
+          </section>
         </div>
       </div>
     </div>
@@ -731,30 +679,4 @@ function WalkOnSheet(
   );
 }
 
-function Tile({ k, v, accent, last }: { k: string; v: string; accent?: boolean; last?: boolean }) {
-  return (
-    <div style={{
-      flex: 1, padding: '11px 8px',
-      borderRight: last ? 'none' : '1px solid var(--hairline)',
-    }}>
-      <div className="label">{k}</div>
-      <div style={{
-        font: "700 calc(22px * var(--ts))/1 var(--display)", marginTop: 4,
-        color: accent ? 'var(--clay)' : 'var(--ink)',
-      }}>{v}</div>
-    </div>
-  );
-}
 
-function Stat({ k, v, last }: { k: string; v: string; last?: boolean }) {
-  return (
-    <div style={{
-      flex: 1, paddingRight: 8,
-      borderRight: last ? 'none' : '1px solid var(--hairline)',
-      paddingLeft: last ? 8 : 0,
-    }}>
-      <div className="label">{k}</div>
-      <div style={{ font: "700 calc(14px * var(--ts))/1.1 var(--display)", marginTop: 3 }}>{v}</div>
-    </div>
-  );
-}

@@ -16,7 +16,7 @@
 
 import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { ModuleIntro, Segmented } from '../components/Kit.js';
+import { Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
 import { RecordBook } from './RecordBook.js';
 import { FINISH_LABEL, type Finish } from '../../engine/postseason.js';
 import type { SchoolSeason } from '../../engine/season.js';
@@ -120,14 +120,11 @@ function Seasons({ annals }: { annals: SchoolSeason[] }) {
 
   return (
     <div style={{ padding: '10px 14px 16px' }}>
-      <div style={{
-        display: 'flex',
-        border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
-        <Tile k="TITLES" v={titles} />
-        <Tile k="OMAHA" v={omaha} />
-        <Tile k="CONF TITLES" v={rings} last />
-      </div>
+      <MetricStrip>
+        <Metric label="TITLES" value={String(titles)} note="NATIONAL" />
+        <Metric label="OMAHA" value={String(omaha)} note="TRIPS" />
+        <Metric label="CONF TITLES" value={String(rings)} note="RINGS" />
+      </MetricStrip>
 
       <div style={{
         marginTop: 14, border: '1px solid var(--faint)', background: 'var(--paper)',
@@ -229,20 +226,6 @@ function Seasons({ annals }: { annals: SchoolSeason[] }) {
   );
 }
 
-function Tile({ k, v, last }: { k: string; v: number; last?: boolean }) {
-  return (
-    <div style={{
-      flex: 1, padding: '9px 8px',
-      borderRight: last ? 'none' : '1px solid var(--hairline)',
-    }}>
-      <div className="label">{k}</div>
-      <div style={{
-        font: "700 calc(24px * var(--ts))/1 var(--display)", marginTop: 2,
-        color: v > 0 ? 'var(--clay)' : 'var(--ink)',
-      }}>{v}</div>
-    </div>
-  );
-}
 
 const ordinal = (n: number): string => {
   const s = ['th', 'st', 'nd', 'rd'];

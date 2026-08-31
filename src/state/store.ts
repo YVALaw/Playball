@@ -36,6 +36,7 @@ import {
 } from '../engine/draft.js';
 import {
   newCoach, restoreCoach, reviewSeason, jobOffers, rosterStrength, contractFor, playerBoard,
+  canBeHired,
   approachSchool, APPROACHES_PER_SEASON, CAUGHT_SECURITY_COST, type ApproachOutcome,
   prestigeStars, skillPoints, takeChair,
   type CoachState, type CoachSkills, type CoachProfile, type JobOffer, type Review,
@@ -2930,9 +2931,36 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           (t) => !t.coach || coach.prestige > t.coach.prestige)
         : [];
 
+      /*
+        The chairs the career watches, honoured.
+
+        TRACK JOB PATH promised "your agent will flag a real opening" and until
+        now only starred an offer that arrived by other means. This is the
+        flag: a watched chair that would genuinely take the call — winnable by
+        the same board test the market uses, hireable by the same ladder — rings
+        whether or not you were sacked. Watching is the act of going looking,
+        the same as writing to a school, so it earns the same standing desk.
+      */
+      const flagged = get().watch.jobs
+        .map((abbr) => rolled.teams.find((t) => t.def.abbr === abbr))
+        .filter((t): t is NonNullable<typeof t> => !!t)
+        .filter((t) => t.index !== get().userTeam)
+        .filter((t) => (!t.coach || coach.prestige > t.coach.prestige)
+          && canBeHired(coach.prestige, t.prestige, t.def.quality))
+        .map((t) => ({
+          team: t.index,
+          school: t.def.school,
+          conference: t.conference,
+          prestige: t.prestige,
+          pitch: 'Your agent flagged it. The chair can be won.',
+        }));
+
       const offers = [
         ...wanted,
-        ...market.filter((o) => !wanted.some((w) => w.team === o.team)),
+        ...flagged.filter((o) => !wanted.some((w) => w.team === o.team)),
+        ...market.filter((o) =>
+          !wanted.some((w) => w.team === o.team)
+          && !flagged.some((f) => f.team === o.team)),
       ];
 
       set({

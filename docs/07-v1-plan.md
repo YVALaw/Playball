@@ -584,7 +584,19 @@ was fitted for two.
 
 ## Stage 10.5 · The screen
 
-**Size:** large · **Inserted August 29 2026, and it builds next**
+**Size:** large · **Inserted August 29 2026 · SHIPPED August 30–31 2026**
+
+**How it actually shipped: as a design of record, not a rule set.** The Roster
+Tabletop mockup was adopted 1:1 — its stylesheet generated into the app by
+script (`scripts/adapt-prototype-css.mjs`) so the two stay diffable — and every
+screen rebuilt on one shared kit (FixedHeader/FloatingAction, Overlay, the Kit
+components, one sheet-into-the-frame portal). Five rounds of phone testing then
+drove: dark mode; the app dressed in the school's own colours (accent family
+derived per theme from one hue, `src/ui/accent.ts`); the desk holding until red
+needs are dealt with; the captain's C; the job market; program actions on every
+college profile. The player card and the portal — the two named worst — were
+rebuilt outright. The one piece deliberately left: the tournament view, moved
+to stage 15 by request, where it rides with the rest of the park's presentation.
 
 Not a new system. A pass over what is already built, because a play report that
 was two thirds interface is the game telling you where it actually is.
@@ -726,6 +738,12 @@ be moved against his will.
 ## Stage 15 · The ballpark
 
 **Size:** large · **New — everything about the 3D park, in one place**
+
+**Carries the tournament view, by request (August 31):** *"I don't really know
+where I'm at most of the time — let's defer this for later."* The bracket is
+the last screen still wearing pre-port styling, and its real fault is that it
+answers every question except *where am I and what happens next*. One
+presentation pass with the park it is played in.
 
 The dugout screen is finished; the *park* it draws is not. This is the stage
 that stops treating the field as a diagram of where the ball went and makes it

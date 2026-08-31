@@ -145,7 +145,7 @@ export const SYSTEMS: readonly SystemDef[] = [
     key: 'pressers', label: 'Press conferences',
     blurb: 'You answer for the season, win or lose.',
     whenOff: 'Your sports information director speaks for you.',
-    casual: false, comingIn: 'the coach',
+    casual: false,
   },
   {
     key: 'assistants', label: 'Assistant coaches',
@@ -157,25 +157,25 @@ export const SYSTEMS: readonly SystemDef[] = [
     key: 'captains', label: 'Captains',
     blurb: 'You name the men who lead the room.',
     whenOff: 'The room picks its own leaders.',
-    casual: false, comingIn: 'players as people',
+    casual: false,
   },
   {
     key: 'redshirts', label: 'Redshirts',
     blurb: 'You decide who sits a year to keep it.',
     whenOff: 'Your staff decides who sits a year.',
-    casual: false, comingIn: 'the roster',
+    casual: false,
   },
   {
     key: 'depthChart', label: 'The depth chart',
     blurb: 'You set who plays where, and who backs him up.',
     whenOff: 'Your staff sets the chart.',
-    casual: false, comingIn: 'the roster',
+    casual: false,
   },
   {
     key: 'portal', label: 'The transfer portal',
     blurb: 'You work the portal in both directions.',
     whenOff: 'Your staff works the portal.',
-    casual: false, comingIn: 'the portal',
+    casual: false,
   },
   {
     key: 'facilities', label: 'Facilities and budget',

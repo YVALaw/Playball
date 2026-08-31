@@ -6,15 +6,29 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** August 27, 2026 · **Branch:** `blocks-batch` · **Pushed.**
+**Last session:** August 30–31, 2026 · **Branch:** `play-batch-2` ·
+**NOT pushed — the reporter asked that nothing push before their approval.**
 
-> **Read this first if you are picking up after stage 4.** Stages 1–4 shipped and
-> were then *played*, and the play produced eight more fixes — all of them
-> landed, all in git. Two are worth carrying as lessons rather than history:
-> a UI complaint is never allowed to move league balance (see
-> `doubleElim.ts`'s note on the night boundary), and driving the DOM with
-> JavaScript proves a thing *exists*, not that a human can reach it. Three of
-> the eight were features that existed and could not be opened.
+> **Read this first if you are picking up after the port.** Stage 10.5 shipped,
+> and it shipped differently than planned: instead of a written rule set, a
+> full mockup (the Roster Tabletop proposal, vendored at `design/Roster
+> Tabletop/`) became the design of record. Its stylesheet is **generated** into
+> `src/ui/prototype.css` by `scripts/adapt-prototype-css.mjs` — edit the
+> script's transforms, never the generated file — and `src/ui/prototype-frame.css`
+> holds the hand-written joins. Five rounds of phone testing then drove: dark
+> mode (tokens only — never give a colour its sole definition in one theme's
+> block), the team-colour accent (`src/ui/accent.ts` fills hooks the tokens
+> read), every sheet/dialog portalled into the app frame (`InFrame` in
+> Overlay.tsx — absolutely-positioned layers inside iOS momentum scrollers are
+> a bug factory; five separately-reported faults were this one cause), the
+> desk that holds until red needs are resolved, the captain's C, the job
+> market, and program actions with save-backed watchlists.
+>
+> Lessons that bind future work: a FieldNote-class component must state its
+> own ink (it inherited white inside dark panels); `.settings-list button`
+> taught that a container styling every descendant button will eventually eat
+> a Segmented; and the live journal / pendingGame must be cleared at the year
+> roll or last season's interrupted game haunts opening day.
 
 ---
 
@@ -119,7 +133,20 @@ honest fix — see §24.1 before touching `Sticky.tsx`.
 
 ---
 
-## What is next — stages 5, 6 and 7, planned August 27
+## What is next — after the port
+
+**Stage 11 (the economy and the staff it pays for) is the next unbuilt stage.**
+Before it, two standing errands from the plan cost nothing and start clocks:
+the Play Console record and the throttled browser performance profile — the
+profile is now genuinely blocking stage 15, which inherited the tournament
+view by the reporter's request.
+
+**Loose ends deliberately left:** the tournament/bracket view (stage 15, with
+the park); the Saves screen's deeper restyle; `SigningDay`'s sheet framing
+(interiors are ported, the panels still carry ~50 token-based style objects);
+REPLAY (stage 15); two-way players (with the DH-decline case).
+
+## What was next as of August 27 — stages 5, 6 and 7 (kept for history)
 
 **The old stage 5 was split, so there are eighteen stages now.** The reason is
 worth keeping: the dugout rebuild is presentation over a stream the engine

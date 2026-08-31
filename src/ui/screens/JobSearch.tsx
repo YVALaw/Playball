@@ -3,25 +3,27 @@
 //
 // Reported from testing: "if the board decided not to renew my contract we
 // should not be prompted to the team recruiting — we should go back to picking
-// a team, while maintaining in history my coach statistics and achievements.
-// The way you have it right now I can keep playing with the same team even
-// though I'm no longer contracted with them."
+// a team, while maintaining in history my coach statistics and achievements."
 //
 // Which was exactly true: being fired set a flag, printed a verdict, and then
 // handed you back the keys to a program that had just dismissed you. Getting
 // fired has to actually take the job away, and the only thing that survives is
 // what you did — the record, the rings, the tournaments.
+//
+// The offers themselves are the job market — the same screen a mid-career
+// offer opens, so the game has exactly one place where a chair is accepted and
+// exactly one two-press confirmation guarding it. This file only adds what
+// being between jobs changes: the career strip at the top, because the one
+// thing you still have is what you did.
 
 import { useDynasty } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
-import { ModuleIntro } from '../components/Kit.js';
-import { prestigeStars } from '../../engine/program.js';
+import { Metric, MetricStrip, ModuleIntro } from '../components/Kit.js';
+import { JobMarket } from './JobMarket.js';
 
 export function JobSearch() {
   const coach = useDynasty((s) => s.coach);
-  const offers = useDynasty((s) => s.offers);
   const history = useDynasty((s) => s.history);
-  const accept = useDynasty((s) => s.acceptOffer);
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   void version;
@@ -30,110 +32,27 @@ export function JobSearch() {
 
   const titles = history.filter((h) => h.finish === 'champion').length;
   const rings = history.filter((h) => h.wonConference).length;
-  const trips = history.filter((h) => h.finish !== 'missed').length;
 
   return (
     <FixedHeader header={
       <div style={{ padding: '16px 14px 10px' }}>
-        <div>
-          <ModuleIntro kicker="OUT OF A JOB" title={coach.name} />
-          {/*
-            Where the profile made at the start of the career shows up: this is
-            the one screen that is about the man rather than the program.
-          */}
-          <div style={{
-            marginTop: 3, font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
-          }}>{coach.age} · {coach.homeState}</div>
-        </div>
+        {/*
+          Where the profile made at the start of the career shows up: this is
+          the one screen that is about the man rather than the program.
+        */}
+        <ModuleIntro
+          kicker="OUT OF A JOB"
+          title={coach.name}
+          text={`${coach.age} · ${coach.homeState} · coach prestige ${coach.prestige}`}
+        />
+        <MetricStrip>
+          <Metric label="RECORD" value={`${coach.careerWins}-${coach.careerLosses}`} note="CAREER" />
+          <Metric label="TITLES" value={String(titles)} note="NATIONAL" />
+          <Metric label="CONFERENCE" value={String(rings)} note="RINGS" />
+        </MetricStrip>
       </div>
     }>
-    <div style={{ padding: '6px 14px 24px' }}>
-      {/*
-        The paragraph that used to sit here — the board has decided not to
-        renew, your record goes with you, somebody else's program is the next
-        job — said in three lines what the heading, the career tiles and the
-        list of callers below already say between them, and it said it directly
-        above the only decision on the screen.
-      */}
-
-      <div className="label" style={{ marginTop: 10, marginBottom: 6 }}>YOUR CAREER</div>
-      <div style={{
-        display: 'flex', border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
-        <Tile k="RECORD" v={`${coach.careerWins}-${coach.careerLosses}`} />
-        <Tile k="TITLES" v={String(titles)} accent={titles > 0} />
-        <Tile k="CONF" v={String(rings)} />
-        <Tile k="TOURNAMENTS" v={String(trips)} last />
-      </div>
-
-      <div className="label" style={{ marginTop: 16, marginBottom: 6 }}>
-        {offers.length > 0 ? 'WHO IS CALLING' : 'NOBODY IS CALLING'}
-      </div>
-
-      {/* The empty state stays: with no rows on screen it is the only thing
-          that explains why, which is the same job hireGateNote does. */}
-      {offers.length === 0 && (
-        <div style={{
-          padding: '14px 12px', border: '1px solid var(--faint)', background: 'var(--paper)',
-          font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
-        }}>
-          No program will have you at {coach.prestige}. Prestige is what opens
-          the board, and yours is too low.
-        </div>
-      )}
-
-      {offers.map((o) => {
-        const stars = prestigeStars(o.prestige);
-        return (
-          <button
-            key={o.team}
-            onClick={() => void accept(o.team)}
-            style={{
-              width: '100%', textAlign: 'left', marginBottom: 8, padding: '12px',
-              border: '1px solid var(--faint)', background: 'var(--paper)',
-            }}
-          >
-            <div style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-            }}>
-              <span style={{
-                font: "800 calc(19px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
-              }}>{o.school}</span>
-              <span style={{ font: "600 calc(11px * var(--ts)) var(--mono)", color: 'var(--clay)' }}>
-                {'★'.repeat(stars)}{'☆'.repeat(5 - stars)}
-              </span>
-            </div>
-            <div style={{
-              marginTop: 3, font: "500 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em',
-              color: 'var(--dim)', textTransform: 'uppercase',
-            }}>{o.conference}</div>
-            <div style={{
-              marginTop: 7, font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-            }}>{o.pitch}</div>
-            <div style={{
-              marginTop: 9, padding: '9px 0', textAlign: 'center',
-              background: 'var(--clay)', color: 'var(--cream)',
-              font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.14em',
-            }}>TAKE THE JOB</div>
-          </button>
-        );
-      })}
-    </div>
+      <JobMarket />
     </FixedHeader>
-  );
-}
-
-function Tile({ k, v, accent, last }: { k: string; v: string; accent?: boolean; last?: boolean }) {
-  return (
-    <div style={{
-      flex: 1, padding: '10px 8px',
-      borderRight: last ? 'none' : '1px solid var(--hairline)',
-    }}>
-      <div className="label">{k}</div>
-      <div style={{
-        font: "700 calc(20px * var(--ts))/1 var(--display)", marginTop: 3,
-        color: accent ? 'var(--clay)' : 'var(--ink)',
-      }}>{v}</div>
-    </div>
   );
 }
