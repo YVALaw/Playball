@@ -769,12 +769,22 @@
   box-shadow: none;
 }
 
-/* The trigger keeps its own size whatever the panel is doing. */
+/*
+   The trigger keeps its own size whatever the panel is doing — and it is a
+   circle now, a step smaller. The proposal drew it as a teardrop (one square
+   corner, three round), and the report was blunt: 'it still looks weird, it
+   could also be a bit smaller — the button itself, not when it is opened.'
+   A 54px disc with a real shadow reads as the floating button every phone
+   app has taught the thumb to expect.
+*/
 .player-actions-trigger,
-.game-manager-trigger {
-  width: 60px;
-  height: 60px;
+.game-manager-trigger,
+.college-actions-trigger {
+  width: 54px;
+  height: 54px;
   flex: none;
+  border-radius: 50%;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, .32);
 }
 
 /* ---------------------------------------------------------------------------
