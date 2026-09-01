@@ -20,7 +20,7 @@
 // quietly discounted, because a button that works and achieves nothing reads as
 // a bug.
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { boardBudget, useDynasty, useUserTeam } from '../../state/store.js';
 import {
@@ -29,6 +29,7 @@ import {
   SCHOLARSHIPS, MAX_PER_RECRUIT, RECRUITING_WEEKS,
   reportedOverall, reportedPotential, reportedTool, reportWidth, hintsFor,
   type Prospect, type Priority,
+  ensureWonderGuy,
 } from '../../engine/recruiting.js';
 import { walkOnShortfall } from '../../engine/progression.js';
 import { pitchFor, developmentScore } from '../../engine/pitch.js';
@@ -230,6 +231,22 @@ export function Board() {
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
+
+  /*
+    TESTING ONLY — leaves with the wonder guy. The save-load hook injects
+    him, but a phone session that never re-boots through loadSlot (a cached
+    bundle, a tab that lives for days) would still show a class from before
+    he existed. The board is where he is looked for, so the board makes sure
+    he is there.
+  */
+  useEffect(() => {
+    if (!season) return;
+    const before = season.recruiting.prospects.length;
+    ensureWonderGuy(season.recruiting);
+    if (season.recruiting.prospects.length !== before) {
+      useDynasty.setState((st) => ({ version: st.version + 1 }));
+    }
+  }, [season, season?.recruiting.year]);
   const lastWeek = useDynasty((s) => s.lastWeek);
 
   const pitch = useMemo(() => {
