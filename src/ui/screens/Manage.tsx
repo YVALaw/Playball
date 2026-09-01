@@ -410,6 +410,12 @@ export function Manage() {
     });
   };
 
+  // The word nobody says. From the sixth on, a side without a hit turns the
+  // scoreboard's edge gold; the flag never names it, per the dugout's law.
+  const nono = !!d && d.inning >= 6 && (r.home.hits === 0 || r.away.hits === 0);
+  // Late and close: the same read the crowd bed runs on, drawn for the eyes.
+  const late = !!d && d.inning >= 8 && Math.abs(d.homeRuns - d.awayRuns) <= 2;
+
   return (
     <div className="live-game">
       <FirstVisit id="manage" />
@@ -437,10 +443,11 @@ export function Manage() {
         scroll inside their own container while the abbreviations and the totals
         hold still, which is what makes a fourteen-inning game fit a phone.
       */}
-      <div className="live-linescore">
+      <div className={`live-linescore${nono ? ' nono' : late ? ' leverage' : ''}`}>
         <div className="live-state">
           <span>{inning}</span>
           {d && <span>{outs} OUT</span>}
+          {nono && <span className="nono-flag">DON'T SAY IT</span>}
         </div>
         <LineScore
             tone="navy"

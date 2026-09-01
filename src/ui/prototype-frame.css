@@ -1998,3 +1998,340 @@
   font-style: normal;
   letter-spacing: .1em;
 }
+
+/* ---------------------------------------------------------------------------
+   Stage 14 — the broadcast's eyes.
+
+   The takeover card for walk-offs, clinchers and titles; the confetti both it
+   and awards night throw; and the linescore's superstition about a no-hitter.
+   The card commits to one dark room in both themes — a moment is a place, not
+   a preference — so every colour here is literal on purpose.
+*/
+
+.big-moment {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 32px 22px;
+  background: #14160f;
+  color: #f5efe0;
+  animation: fadeIn 300ms ease-out both;
+  overflow: hidden;
+}
+
+.big-moment-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: min(320px, 88%);
+  padding: 30px 24px 24px;
+  background: rgba(255, 255, 255, .07);
+  border: 1px solid rgba(255, 255, 255, .22);
+  animation: momentIn 640ms cubic-bezier(.2, .9, .25, 1.12) both;
+}
+
+/* One pass of stadium light across the card, then it holds still. */
+.big-moment-card::after {
+  content: '';
+  position: absolute;
+  inset: -30%;
+  background: linear-gradient(115deg,
+    transparent 42%, rgba(255, 255, 255, .3) 50%, transparent 58%);
+  transform: translateX(-130%);
+  animation: sheenSweep 1.3s ease-out .5s both;
+  pointer-events: none;
+}
+
+.big-moment-card small {
+  margin-top: 14px;
+  font: 700 calc(9.5px * var(--ts))/1 var(--mono);
+  letter-spacing: .22em;
+  opacity: .85;
+}
+
+.big-moment-card h1 {
+  margin: 4px 0 0;
+  font: 800 calc(28px * var(--ts))/1.08 var(--display);
+  text-align: center;
+  text-wrap: balance;
+}
+
+.big-moment-card p {
+  margin: 6px 0 0;
+  max-width: 240px;
+  font: 400 calc(11.5px * var(--ts))/1.5 var(--body);
+  text-align: center;
+  opacity: .9;
+}
+
+.big-moment-card b {
+  margin-top: 10px;
+  font: 700 calc(10px * var(--ts))/1 var(--mono);
+  letter-spacing: .12em;
+  opacity: .7;
+}
+
+/* The room after a loss: same card, colour drained out of it. */
+.big-moment.loss .big-moment-card { filter: saturate(.3); }
+
+.big-moment > button {
+  padding: 13px 34px;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, .45);
+  color: inherit;
+  font: 700 calc(10px * var(--ts))/1 var(--mono);
+  letter-spacing: .18em;
+}
+.big-moment > button:active { transform: scale(.96); }
+
+@keyframes momentIn {
+  from { transform: scale(.82) rotateX(16deg); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes sheenSweep {
+  to { transform: translateX(130%); }
+}
+
+/* Confetti — see celebrate.ts, which builds the pieces and sweeps them up. */
+.confetti-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 4;
+}
+.confetti-layer i {
+  position: absolute;
+  top: -16px;
+  display: block;
+  animation: confettiFall linear both;
+}
+@keyframes confettiFall {
+  to { transform: translate(var(--drift, 0px), 105vh) rotate(var(--spin, 300deg)); }
+}
+
+/*
+  The no-hitter, acknowledged the way a dugout does: nobody says the word.
+  The linescore holds its breath from the sixth on — a gold edge and a pulsing
+  flag where the out count normally has company — and the tone vanishes the
+  instant somebody singles, which is exactly how it feels from the rail.
+*/
+.live-linescore.nono {
+  outline: 2px solid var(--yellow);
+  outline-offset: -2px;
+}
+.nono-flag {
+  color: var(--yellow);
+  font: 800 calc(7.5px * var(--ts))/1 var(--mono);
+  letter-spacing: .13em;
+  animation: flagBreathe 1.8s ease-in-out infinite;
+}
+
+/* Motion off, in both of the ways the app can be asked. */
+@media (prefers-reduced-motion: reduce) {
+  .big-moment, .big-moment-card, .big-moment-card::after,
+  .confetti-layer i, .nono-flag { animation: none; }
+}
+:root[data-motion="reduced"] .big-moment,
+:root[data-motion="reduced"] .big-moment-card,
+:root[data-motion="reduced"] .big-moment-card::after,
+:root[data-motion="reduced"] .confetti-layer i,
+:root[data-motion="reduced"] .nono-flag { animation: none; }
+:root[data-motion="full"] .big-moment { animation: fadeIn 300ms ease-out both; }
+:root[data-motion="full"] .big-moment-card { animation: momentIn 640ms cubic-bezier(.2, .9, .25, 1.12) both; }
+:root[data-motion="full"] .big-moment-card::after { animation: sheenSweep 1.3s ease-out .5s both; }
+:root[data-motion="full"] .nono-flag { animation: flagBreathe 1.8s ease-in-out infinite; }
+
+/*
+  Awards night's envelopes — stage 14.
+
+  Every card starts face-down and turns on a tap: a real 3D flip, front and
+  back stacked in one grid cell so the row is always as tall as its taller
+  face and nothing jumps when it turns. The rows inside a flipped card need
+  the same anatomy `.award-list > button` gives a plain row, restated here
+  because the flip wrapper is now the list's direct child.
+*/
+.flip {
+  perspective: 900px;
+  border-bottom: 1px solid var(--line);
+}
+.award-list > .flip:last-child { border-bottom: 0; }
+
+.flip-inner {
+  display: grid;
+  transform-style: preserve-3d;
+  transition: transform 620ms cubic-bezier(.3, .85, .3, 1);
+}
+.flip.revealed .flip-inner { transform: rotateY(180deg); }
+
+.flip-front,
+.flip-back {
+  grid-area: 1 / 1;
+  min-width: 0;
+  backface-visibility: hidden;
+}
+.flip-back { transform: rotateY(180deg); }
+/* The hidden face must not eat the visible one's taps. */
+.flip:not(.revealed) .flip-back { pointer-events: none; }
+.flip.revealed .flip-front { pointer-events: none; }
+
+.flip-front {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 78px;
+  padding: 14px 10px;
+  background: var(--band);
+  border: 0;
+  color: var(--cream);
+}
+.flip-front small {
+  font: 700 calc(9px * var(--ts))/1 var(--mono);
+  letter-spacing: .18em;
+  opacity: .8;
+  text-align: center;
+}
+.flip-front strong { font: 800 calc(22px * var(--ts))/1 var(--display); }
+.flip-front span {
+  font: 700 calc(7.5px * var(--ts))/1 var(--mono);
+  letter-spacing: .16em;
+  opacity: .55;
+}
+
+.award-list .flip-back > button,
+.award-list .flip-back > div {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 14px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 60px;
+  padding: 9px 10px;
+  border: 0;
+  border-left: 6px solid transparent;
+  color: var(--ink);
+  text-align: left;
+}
+
+.reveal-all {
+  width: 100%;
+  padding: 12px 10px;
+  background: none;
+  border: 1px dashed var(--line);
+  color: var(--dim);
+  font: 700 calc(9px * var(--ts))/1 var(--mono);
+  letter-spacing: .15em;
+}
+
+:root[data-motion="reduced"] .flip-inner { transition: none; }
+@media (prefers-reduced-motion: reduce) { .flip-inner { transition: none; } }
+:root[data-motion="full"] .flip-inner {
+  transition: transform 620ms cubic-bezier(.3, .85, .3, 1);
+}
+
+/*
+  Stage 14 depth pass — tiered on purpose.
+
+  The top of the hierarchy (the coach feature on awards night, the player
+  hero, the takeover card) gets real treatment: layered shadow, one pass of
+  light, a lean into the thumb. Ordinary rows get one pixel of press. The
+  restraint is the design — when everything is shiny, nothing is.
+*/
+
+/* The shields cast a shadow everywhere they hang. */
+.team-mark svg { filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .3)); }
+
+/* Showy tier. */
+.award-feature.showpiece {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 12px 28px -16px rgba(0, 0, 0, .5);
+}
+.award-feature.showpiece::after {
+  content: '';
+  position: absolute;
+  inset: -30%;
+  background: linear-gradient(115deg,
+    transparent 44%, rgba(255, 255, 255, .35) 50%, transparent 56%);
+  transform: translateX(-130%);
+  animation: sheenSweep 1.2s ease-out .35s both;
+  pointer-events: none;
+}
+.player-hero { box-shadow: inset 0 -40px 44px -34px rgba(0, 0, 0, .55); }
+
+/* The face-down card leans into the thumb before it turns. */
+.flip-front:active { transform: rotateY(9deg) scale(.985); }
+.flip-front { transition: transform 140ms ease; }
+
+/* Ordinary tier: one pixel of acknowledgement, no theatre. */
+.award-list > button:active,
+.award-list .flip-back > button:active,
+.job-list button:active,
+.settings-list > button:active {
+  transform: translateY(1px) scale(.996);
+}
+
+:root[data-motion="reduced"] .award-feature.showpiece::after { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .award-feature.showpiece::after { animation: none; }
+  .flip-front { transition: none; }
+}
+:root[data-motion="full"] .award-feature.showpiece::after {
+  animation: sheenSweep 1.2s ease-out .35s both;
+}
+
+/* The flip wrapper is the list's direct child, so it inherits the row's grid
+   anatomy — which crushed every envelope into the 42px mark column. A flip is
+   a stack, not a row. */
+.award-list > .flip {
+  display: block;
+  grid-template-columns: none;
+  min-height: 0;
+  padding: 0;
+  border-left: 0;
+}
+
+/* Face-down, the hidden face must not size the envelope: the first team's
+   card was four hundred pixels of black because ten hidden rows were setting
+   its height. Absolute while hidden; the reveal returns it to flow, so the
+   card grows the moment it starts to turn — an envelope opening. */
+.flip { position: relative; }
+.flip:not(.revealed) .flip-back {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/*
+  Late and close — the leverage the crowd can already hear, drawn where the
+  eyes are. Eighth inning on, two runs or fewer between the teams: the
+  linescore takes the accent edge and the inning marker breathes. The
+  no-hitter's gold outranks it when both are true; superstition beats stakes.
+*/
+.live-linescore.leverage {
+  outline: 2px solid var(--clay);
+  outline-offset: -2px;
+}
+.live-linescore.leverage .live-state span:first-child {
+  color: var(--clay);
+  animation: flagBreathe 1.8s ease-in-out infinite;
+}
+
+@keyframes flagBreathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .45; }
+}
+
+:root[data-motion="reduced"] .live-linescore.leverage .live-state span:first-child { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .live-linescore.leverage .live-state span:first-child { animation: none; }
+}

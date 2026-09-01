@@ -42,6 +42,7 @@ import { playerId, type PlayerId } from '../../engine/types.js';
 import { CoachPortrait } from '../CoachPortrait.js';
 import { useOpenTeam } from './TeamCard.js';
 import { teamColour } from '../Avatar.js';
+import { Crest } from '../Crest.js';
 import { ArrowLeftIcon, ChevronRightIcon, StarIcon } from '@radix-ui/react-icons';
 import {
   BudgetBar, FieldNote, Metric, MetricStrip, ModuleIntro, SectionHeading, Segmented,
@@ -389,9 +390,7 @@ function WatchlistSheet() {
         <section className="retention-list">
           {rows.map((t) => (
             <button className="tap" type="button" key={t.def.abbr} onClick={() => openTeam(t.index)}>
-              <span className="team-mark small" style={{ background: teamColour(t.def.abbr) }}>
-                {t.def.abbr}
-              </span>
+              <span className="team-mark small"><Crest abbr={t.def.abbr} size={30} /></span>
               <span>
                 <strong>{t.def.school}</strong>
                 <small>{t.conference} · {t.w}-{t.l} · {'★'.repeat(prestigeStars(t.prestige))}</small>

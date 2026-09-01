@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { applyTeamAccent } from './accent.js';
 import { preloadSfx, unlockAudio } from './sound.js';
+import { BigMomentCard } from './BigMoment.js';
 import { teamColour } from './Avatar.js';
 import {
   ArchiveIcon, ArrowLeftIcon, CalendarIcon, ChevronRightIcon, EnvelopeClosedIcon, GearIcon,
@@ -753,6 +754,8 @@ function Overlays(
       {overlay !== null && <TableOverlay />}
       {teamCard !== null && <TeamOverlay index={teamCard} onBack={onCloseTeam} />}
       {selectedPlayer !== null && <PlayerOverlay />}
+      {/* Above everything, because it IS the screen while it lasts. */}
+      <BigMomentCard />
     </>
   );
 }

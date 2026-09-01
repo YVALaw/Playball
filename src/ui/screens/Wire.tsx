@@ -17,6 +17,7 @@ import { FixedHeader } from '../Sticky.js';
 import { FirstVisit } from '../Tutorial.js';
 import { seasonDate } from '../format.js';
 import { wire, type WireItem, type WireKind } from '../../engine/wire.js';
+import { Crest } from '../Crest.js';
 
 const KIND_LABEL: Record<WireKind, string> = {
   upset: 'UPSET',
@@ -30,6 +31,9 @@ const KIND_LABEL: Record<WireKind, string> = {
   gem: 'ON THE MOUND',
   power: 'POWER',
   rivalry: 'THE RIVALRY',
+  chase: 'RECORD WATCH',
+  realign: 'REALIGNMENT',
+  moves: 'COACHING MOVES',
 };
 
 const KIND_TONE: Record<WireKind, string> = {
@@ -44,10 +48,13 @@ const KIND_TONE: Record<WireKind, string> = {
   gem: 'var(--navy)',
   power: 'var(--clay)',
   rivalry: 'var(--alert)',
+  chase: 'var(--clay)',
+  realign: 'var(--band)',
+  moves: 'var(--dim)',
 };
 
 /** The category chip + YOU marker row every story opens with. */
-function Kicker({ item, mine }: { item: WireItem; mine: boolean }) {
+function Kicker({ item, mine, abbr }: { item: WireItem; mine: boolean; abbr?: string }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4,
@@ -57,6 +64,7 @@ function Kicker({ item, mine }: { item: WireItem; mine: boolean }) {
         padding: '2px 6px 3px',
         background: KIND_TONE[item.kind], color: 'var(--cream)',
       }}>{KIND_LABEL[item.kind]}</span>
+      {abbr && <Crest abbr={abbr} size={13} />}
       <span style={{ flex: 1, borderTop: '1px solid var(--faint)' }} />
       {mine && (
         <span style={{
@@ -154,7 +162,10 @@ export function Wire() {
           marginTop: 12, padding: '12px 12px 13px',
           background: 'var(--paper)', border: '1px solid var(--faint)',
         }}>
-          <Kicker item={lead} mine={lead.team === userTeam || lead.against === userTeam} />
+          <Kicker
+            item={lead} abbr={season.teams[lead.team]?.def.abbr}
+            mine={lead.team === userTeam || lead.against === userTeam}
+          />
           <div style={{
             font: "800 calc(26px * var(--ts))/1.02 var(--display)", textTransform: 'uppercase',
           }}>{lead.text}</div>
@@ -189,7 +200,7 @@ export function Wire() {
                   background: 'var(--paper)',
                   border: mine ? '1px solid var(--clay)' : '1px solid var(--faint)',
                 }}>
-                  <Kicker item={item} mine={mine} />
+                  <Kicker item={item} abbr={season.teams[item.team]?.def.abbr} mine={mine} />
                   <div style={{
                     font: "800 calc(17px * var(--ts))/1.1 var(--display)", textTransform: 'uppercase',
                   }}>{item.text}</div>

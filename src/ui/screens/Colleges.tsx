@@ -15,7 +15,7 @@
 import { useState } from 'react';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { teamColour } from '../Avatar.js';
+import { Crest } from '../Crest.js';
 import { prestigeStars } from '../../engine/program.js';
 import { useOpenTeam } from './TeamCard.js';
 import { CONFERENCES } from '../../data/schools.js';
@@ -55,9 +55,7 @@ export function Colleges() {
       // of their school letters." The generated face implied a person nobody
       // in this game is.
       face: (
-        <span className="team-mark small" style={{ background: teamColour(t.def.abbr) }}>
-          {t.def.abbr}
-        </span>
+        <span className="team-mark small"><Crest abbr={t.def.abbr} size={30} /></span>
       ),
     }));
 

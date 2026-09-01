@@ -116,11 +116,11 @@
 
 <header class="top">
   <div class="top-in">
-    <div class="kicker">Playball · implementation plan · fourteen stages shipped</div>
+    <div class="kicker">Playball · implementation plan · fifteen stages shipped</div>
     <h1>The road to v1.0</h1>
     <p class="sub">Nineteen stages, ordered by what unblocks what. The game is
     already deep; this is the work that turns it into a product with a
-    personality, on a phone. <strong style="color:var(--cream)">The first fourteen
+    personality, on a phone. <strong style="color:var(--cream)">The first fifteen
     are done.</strong> Three and four did not exist when this plan was written —
     they came out of playing what stage 1 shipped, and were built the same day
     they were reported. The old stage 5 was split so the dugout could land
@@ -488,11 +488,11 @@
       </div>
     </li>
 
-    <li class="stage">
+    <li class="stage done">
       <div class="num">14</div>
       <div>
         <h3>Broadcast</h3>
-        <div class="chips"><span class="chip sz-l">Medium–large</span><span class="chip dep">Bigger felt jump than its size</span></div>
+        <div class="chips"><span class="chip done">Shipped · August 31 2026</span><span class="chip dep">1061 tests green</span></div>
         <ul>
           <li><strong>Big-moment presentation</strong> — the peaks render like a Tuesday groundout. Leverage styling, a scoreboard that changes tone during a no-hitter, one full-screen card for a walk-off or a title.</li>
           <li><strong>Sound and haptics</strong> — the game is completely silent. A dozen samples, a crowd swell that scales with leverage, haptics on contact and outs. The cheapest personality multiplier never spent.</li>
@@ -500,7 +500,9 @@
           <li><strong>School emblems</strong> and <strong>awards night</strong> (flip cards, and a celebration when the winner is one of yours)</li>
           <li><strong>Every card, in three dimensions</strong> — depth, motion and effects rather than flat panels. It lands here rather than beside the stage-7 badge that prompted it, because a treatment built for one card and rebuilt for the rest is the mistake this project has already made twice: the action button, and the park.</li>
         </ul>
-        <div class="exit"><b>Exit</b>The game sounds and looks like the sport it's about.</div>
+        <div class="exit"><b>Exit — met</b>The game sounds and looks like the sport it&rsquo;s about.</div>
+        <div class="decide"><b>How the sound shipped</b>The reporter&rsquo;s seven freesound clips, made shippable without ffmpeg &mdash; WAV and AIFF are headers over PCM, so a Node script parses both by hand, downmixes, resamples and trims; 7.3&nbsp;MB of downloads became 740&nbsp;KB. One WebAudio context unlocked by the first touch, a crowd bed that follows the leverage and swells with the play, the dugout classifying its own log &mdash; a contact word is a crack, a strikeout is leather, the walk-off gets the night&rsquo;s only roar and the only real buzz. ON by default with the mute one tap away, because a silent game that ships its sound behind a toggle stays a silent game.</div>
+        <div class="decide"><b>How the eyes shipped</b>Ninety-six procedural collegiate shields &mdash; silhouette, division and device hashed from the abbreviation, zero image assets &mdash; on the team card, the directory, the job market and the wire&rsquo;s kickers. Takeover cards for the nights that earn one (walk-offs both directions, the cup, the regional, the showdown, the title, the runner-up), ranked so a walk-off that clinches something bigger loses the screen to the clinch; loss tones drained of colour on purpose. The linescore holds its breath from the sixth of a no-hitter &mdash; the flag says DON&rsquo;T SAY IT &mdash; and takes the accent edge late and close. Awards night is a ceremony exactly once: face-down cards, a real 3D flip per tap, paper in your colours when a winner is yours, and the plain list on every later visit. The wire opens the spring with the winter and reports a record chase before the record falls, quoting the book it will have to beat. The depth pass is tiered: sheen at the top of the hierarchy, one pixel of press on ordinary rows &mdash; when everything is shiny, nothing is.</div>
       </div>
     </li>
 

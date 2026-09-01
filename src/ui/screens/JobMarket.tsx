@@ -16,7 +16,7 @@ import { useState } from 'react';
 import { ChevronRightIcon, StarIcon, StarFilledIcon } from '@radix-ui/react-icons';
 import { useDynasty } from '../../state/store.js';
 import { useOpenTeam } from './TeamCard.js';
-import { teamColour } from '../Avatar.js';
+import { Crest } from '../Crest.js';
 import { FieldNote, ModuleIntro, SectionHeading } from '../components/Kit.js';
 import { prestigeStars } from '../../engine/program.js';
 
@@ -101,9 +101,7 @@ export function JobMarket() {
           <section className="retention-list">
             {watchedIdle.map((t) => (
               <button className="tap" type="button" key={t.def.abbr} onClick={() => openTeam(t.index)}>
-                <span className="team-mark small" style={{ background: teamColour(t.def.abbr) }}>
-                  {t.def.abbr}
-                </span>
+                <span className="team-mark small"><Crest abbr={t.def.abbr} size={30} /></span>
                 <span>
                   <strong>{t.def.school}</strong>
                   <small>{t.conference} · {'★'.repeat(prestigeStars(t.prestige))} · not calling yet</small>

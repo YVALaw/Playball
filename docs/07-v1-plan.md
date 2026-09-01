@@ -818,7 +818,7 @@ be moved against his will.
 
 **Exit:** a fifteen-year save is a history rather than a number.
 
-## Stage 14 · Broadcast
+## Stage 14 · Broadcast — **SHIPPED August 31 2026**
 
 **Size:** medium–large · **New stage**
 
@@ -845,6 +845,36 @@ be moved against his will.
   the winner is one of yours.
 
 **Exit:** the game sounds and looks like the sport it is about.
+
+**As shipped.** Sound first: the reporter downloaded seven freesound clips and
+`scripts/prep-sfx.mjs` made them shippable without ffmpeg — WAV and AIFF are
+headers over PCM, so the script parses both by hand, downmixes, resamples to
+22 kHz, trims and normalizes; 7.3 MB of downloads became 740 KB. One WebAudio
+context (`src/ui/sound.ts`) unlocked by the first touch, a crowd bed that
+follows the leverage and swells with the play, haptics on the same reads, and
+the dugout classifying its own log — the one honest account of what happened.
+Sound and haptics default ON with the mute a tap away; a `bcast` marker keeps
+stored values from the placeholder era from being mistaken for choices.
+
+Then the eyes. Ninety six procedural collegiate shields (`src/ui/Crest.tsx`) —
+silhouette, division and device hashed from the abbreviation, field in the
+school's colour, zero assets — on the team card, the directory, the job
+market, the program watchlist and the wire's kickers (the bracket joins them
+when stage 15 rebuilds it). Takeover cards for the nights that earn one:
+walk-offs both directions, the cup, the regional, the showdown, the title and
+the runner-up, ranked so a walk-off that clinches something bigger loses the
+screen to the clinch (`BigMoment` in the store, one card in
+`src/ui/BigMoment.tsx`, loss tones drained of colour on purpose). The
+linescore holds its breath from the sixth of a no-hitter — DON'T SAY IT — and
+takes the accent edge when it is late and close. Awards night is a ceremony
+on the offseason step: every award face-down, a real 3D flip per tap, paper in
+the school's colours when a winner is yours, a skip for people who want the
+list — and it IS the list on any later visit. The wire opens the spring with
+the winter (realignment and the poached assistant, stamped onto the new season
+at the roll, fading as results pile up) and reports a record chase before the
+record falls, quoting the book it will have to beat. The depth pass is tiered
+on purpose: sheen and shadow at the top of the hierarchy, one pixel of press
+on ordinary rows — when everything is shiny, nothing is.
 
 ## Stage 15 · The ballpark
 

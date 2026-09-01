@@ -6,8 +6,8 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** August 30–31, 2026 · **Branch:** `play-batch-2` ·
-**NOT pushed — the reporter asked that nothing push before their approval.**
+**Last session:** August 30–31, 2026 · **Branch:** `play-batch-2` · pushed
+per stage (the reporter authorized pushing on August 31).
 
 > **Read this first if you are picking up after the port.** Stage 10.5 shipped,
 > and it shipped differently than planned: instead of a written rule set, a
@@ -135,16 +135,30 @@ honest fix — see §24.1 before touching `Sticky.tsx`.
 
 ## What is next — after the port
 
-**Stages 11, 12 and 13 shipped August 31 (see 07-v1-plan). Stage 14, broadcast, is the next unbuilt stage — and it carries the park-adjacent presentation debt (REPLAY and the tournament view live in 15).**
-Before it, two standing errands from the plan cost nothing and start clocks:
-the Play Console record and the throttled browser performance profile — the
-profile is now genuinely blocking stage 15, which inherited the tournament
-view by the reporter's request.
+**Stages 11–14 shipped August 31 (see 07-v1-plan for each shipped account).**
+**Stage 15, the ballpark, is the next unbuilt stage** — the 3D park's deep
+work plus the presentation debt it inherited: REPLAY and the tournament view
+(both deferred there by the reporter). **The throttled browser performance
+profile is genuinely blocking it** — stage 15 redesigns around a larger 3D
+field, and a frame-rate disaster changes the design, not the code. The Play
+Console record errand stands (registration done long ago, per the reporter).
+
+Stage 14 notes that bind future work: `sound.ts` is name-keyed — a better
+recording is a file swap; `prep-sfx.mjs` re-processes the raw downloads from
+`C:/Users/cronu/Downloads` if they are ever replaced; **the freesound
+licenses must be verified before store release** (`public/sfx/CREDITS.md`,
+CC-BY needs shipped credit, NC cannot ride with paid IAP). The reporter owns
+the phone taste pass on volumes and haptics. `Crest.tsx` is pure hash — do
+not add drawn randomness or crests will restyle between sessions. The
+takeover funnel is `offerBigMoment` (ranked; never set directly), fed by
+`endManagedGame` and `closeMyBracket`. The awards ceremony lives only on the
+offseason step (`phase !== null`); every later visit is the plain list.
 
 **Loose ends deliberately left:** the tournament/bracket view (stage 15, with
-the park); the Saves screen's deeper restyle; `SigningDay`'s sheet framing
-(interiors are ported, the panels still carry ~50 token-based style objects);
-REPLAY (stage 15); two-way players (with the DH-decline case).
+the park — school crests join the bracket there); the Saves screen's deeper
+restyle; `SigningDay`'s sheet framing (interiors are ported, the panels still
+carry ~50 token-based style objects); REPLAY (stage 15); two-way players
+(with the DH-decline case); freesound license verification before the store.
 
 ## What was next as of August 27 — stages 5, 6 and 7 (kept for history)
 

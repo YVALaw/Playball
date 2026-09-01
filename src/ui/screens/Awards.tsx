@@ -1,9 +1,15 @@
 // Awards.tsx
 // End of season honours, plus the All-Conference first team.
 //
-// These only mean anything once a season is in the books, so the screen says so
-// rather than showing a leaderboard of nobody.
+// Two rooms in one file. On the offseason night itself this is a CEREMONY —
+// every award face-down, flipped one tap at a time, with the room throwing
+// paper when a winner is yours — because a list of results is a spreadsheet
+// and a spreadsheet is not how anybody remembers winning Player of the Year.
+// Revisited later (from history, from the program page) it is the list again:
+// the ceremony already happened, and making somebody re-flip cards to look up
+// a name would be theatre at the expense of the reader.
 
+import { useRef, useState, type ReactNode } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { ChevronRightIcon, StarIcon } from '@radix-ui/react-icons';
@@ -16,6 +22,8 @@ import { seasonComplete } from '../../engine/season.js';
 import {
   seasonAwards, allConference, coachOfTheYear, type CoachAwardReason,
 } from '../../engine/postseason.js';
+import { sfx, buzz } from '../sound.js';
+import { burstConfetti } from '../celebrate.js';
 
 /**
  * The sentence under the headline stat, one per way of winning it. The stat
@@ -29,9 +37,47 @@ const COACH_BODY: Record<CoachAwardReason, string> = {
   wireToWire: 'Won the league and outscored everybody doing it, start to finish.',
 };
 
+/**
+ * One face-down card. Tapping turns it; a winner of yours gets the clap track,
+ * a buzz, and paper in the school's colours thrown across the whole frame.
+ * The celebration keys off the REVEAL, not the render, so scrolling past a
+ * card you already turned stays quiet.
+ */
+function FlipCard({ id, label, mine, tint, revealed, onReveal, children }: {
+  id: string; label: string; mine: boolean; tint: string;
+  revealed: boolean; onReveal: (id: string) => void; children: ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const reveal = (): void => {
+    if (revealed) return;
+    onReveal(id);
+    sfx('glove', { gain: 0.35, rate: 1.15 });
+    if (mine) {
+      sfx('clap', { gain: 0.55 });
+      buzz([20, 40, 40]);
+      const frame = ref.current?.closest('.app-frame');
+      if (frame instanceof HTMLElement) {
+        burstConfetti(frame, [tint, '#f5efe0']);
+      }
+    }
+  };
+  return (
+    <div ref={ref} className={`flip${revealed ? ' revealed' : ''}`}>
+      <div className="flip-inner">
+        <button type="button" className="flip-front" onClick={reveal}>
+          <small>{label}</small>
+          <strong>?</strong>
+          <span>TAP TO REVEAL</span>
+        </button>
+        <div className="flip-back">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 export function Awards() {
   // Rendered both as a normal screen and as a step of the offseason. The
-  // continue only belongs in the second case.
+  // continue only belongs in the second case — and so does the ceremony.
   const phase = useDynasty((s) => s.phase);
   const nextPhase = useDynasty((s) => s.nextPhase);
   const openPlayer = useDynasty((s) => s.openPlayer);
@@ -42,6 +88,11 @@ export function Awards() {
   const team = useUserTeam();
   const coachName = useDynasty((s) => s.coach.name);
   void version;
+
+  const ceremony = phase !== null;
+  const [shown, setShown] = useState<Set<string>>(() => new Set());
+  const revealedSet = (id: string): void =>
+    setShown((prev) => new Set(prev).add(id));
 
   if (!season || !team) return null;
 
@@ -63,6 +114,82 @@ export function Awards() {
   const first = allConference(season);
   const coach = coachOfTheYear(season, lastPostseason);
 
+  // Everything the night can turn over, so "is the room done" is one check.
+  const allIds = [
+    ...awards.map((a) => `a:${a.title}`),
+    'first-team',
+    ...(coach ? ['coach'] : []),
+  ];
+  const done = !ceremony || allIds.every((id) => shown.has(id));
+
+  /*
+    Each winner wears his school — the BOX, not the letters. Reported from
+    testing: "it's not the name letters that should be colored, it's the box
+    they are in", and confirmed again on the port: "I like the coloring in
+    each winner so keep that part."
+  */
+  const awardBody = (a: (typeof awards)[number]): ReactNode => {
+    const tint = teamColour(a.team);
+    const body = (
+      <>
+        <span className="award-mark" style={{ background: tint }}>{a.team}</span>
+        <span>
+          <small>{a.title.toUpperCase()}</small>
+          <strong>{a.name}</strong>
+          <p>{a.line}</p>
+        </span>
+        {a.id && <ChevronRightIcon />}
+      </>
+    );
+    const tone = { background: `${tint}33`, borderLeftColor: tint };
+    // A button only when there is a man to open. "A tap that opens nothing is
+    // worse than no tap at all."
+    return a.id
+      ? (
+        <button key={a.title} type="button" style={tone} onClick={() => openPlayer(a.id!)}>
+          {body}
+        </button>
+      )
+      : <div key={a.title} style={tone}>{body}</div>;
+  };
+
+  const coachCard = coach && (
+    <section className="award-feature showpiece">
+      <StarIcon />
+      <small>COACH OF THE YEAR</small>
+      <h2>{coach.team === team.index ? coachName : coach.school}</h2>
+      <p>
+        {coach.team === team.index ? `${coach.school} · ` : ''}
+        {coach.wins}-{coach.losses} · {coach.line}
+      </p>
+      <p>{COACH_BODY[coach.reason]}</p>
+    </section>
+  );
+
+  const firstTeamList = (
+    <section className="award-list">
+      {first.map((p, i) => {
+        const tint = teamColour(p.team);
+        return (
+          <button
+            key={`${p.position}-${p.id}-${i}`}
+            type="button"
+            style={{ background: `${tint}33`, borderLeftColor: tint }}
+            onClick={() => openPlayer(p.id)}
+          >
+            <span className="award-mark" style={{ background: tint }}>{p.position}</span>
+            <span>
+              <small>{p.team}</small>
+              <strong>{p.name}</strong>
+              <p>{p.line}</p>
+            </span>
+            <ChevronRightIcon />
+          </button>
+        );
+      })}
+    </section>
+  );
+
   return (
     <FixedHeader
       header={<ModuleIntro kicker={`${year} HONOURS`} title="Awards night" />}
@@ -72,109 +199,93 @@ export function Awards() {
     >
     <FirstVisit id="awards" />
     <main className="module-workspace">
-      <MetricStrip>
-        <Metric
-          label="YOUR PROGRAM"
-          value={String(awards.filter((a) => a.team === team.def.abbr).length
-            + (coach?.team === team.index ? 1 : 0))}
-          note="HONOURS"
-        />
-        <Metric
-          label="FIRST TEAM"
-          value={String(first.filter((p) => p.team === team.def.abbr).length)}
-          note={`OF ${first.length}`}
-        />
-        <Metric label="AWARDS" value={String(awards.length)} note="HANDED OUT" />
-      </MetricStrip>
-
       {/*
-        Coach of the Year, which is not the most wins — that award always goes
-        to whoever was handed the best roster, and it says nothing.
-
-        Four stories can win it: beating what the roster was worth, winning it
-        all at a school nobody has heard of, the biggest one-year turnaround, and
-        a conference title on the best run margin of anybody who won one. The
-        engine picks whichever was loudest this season, measured against what a
-        normal year of that story looks like, and writes the headline stat
-        itself; the card just renders it.
+        The tallies would spoil the envelopes. On the ceremony night the strip
+        waits until the last card has turned; on a revisit there is nothing
+        left to spoil and it leads, as any results page should.
       */}
-      {coach && (
-        <section className="award-feature">
-          <StarIcon />
-          <small>COACH OF THE YEAR</small>
-          <h2>{coach.team === team.index ? coachName : coach.school}</h2>
-          <p>
-            {coach.team === team.index ? `${coach.school} · ` : ''}
-            {coach.wins}-{coach.losses} · {coach.line}
-          </p>
-          <p>{COACH_BODY[coach.reason]}</p>
-        </section>
+      {done && (
+        <MetricStrip>
+          <Metric
+            label="YOUR PROGRAM"
+            value={String(awards.filter((a) => a.team === team.def.abbr).length
+              + (coach?.team === team.index ? 1 : 0))}
+            note="HONOURS"
+          />
+          <Metric
+            label="FIRST TEAM"
+            value={String(first.filter((p) => p.team === team.def.abbr).length)}
+            note={`OF ${first.length}`}
+          />
+          <Metric label="AWARDS" value={String(awards.length)} note="HANDED OUT" />
+        </MetricStrip>
       )}
 
-      {/*
-        Each winner wears his school — the BOX, not the letters. Reported from
-        testing: "it's not the name letters that should be colored, it's the box
-        they are in", and confirmed again on the port: "I like the coloring in
-        each winner so keep that part." So the colour stays exactly where it was
-        and only the anatomy around it changed.
-      */}
+      {ceremony && !done && (
+        <button
+          type="button" className="reveal-all"
+          onClick={() => setShown(new Set(allIds))}
+        >
+          SKIP THE CEREMONY — TURN EVERYTHING
+        </button>
+      )}
+
       <SectionHeading kicker="THE WINNERS" title="Who took what" />
       <section className="award-list">
         {awards.map((a) => {
-          const tint = teamColour(a.team);
-          const body = (
-            <>
-              <span className="award-mark" style={{ background: tint }}>{a.team}</span>
-              <span>
-                <small>{a.title.toUpperCase()}</small>
-                <strong>{a.name}</strong>
-                <p>{a.line}</p>
-              </span>
-              {a.id && <ChevronRightIcon />}
-            </>
-          );
-          const tone = { background: `${tint}33`, borderLeftColor: tint };
-          // A button only when there is a man to open. The record book settled
-          // this exact case with a div — "a tap that opens nothing is worse than
-          // no tap at all" — and a winner with no id was a button that silently
-          // swallowed the press.
-          return a.id
+          const id = `a:${a.title}`;
+          return ceremony
             ? (
-              <button key={a.title} type="button" style={tone} onClick={() => openPlayer(a.id!)}>
-                {body}
-              </button>
+              <FlipCard
+                key={a.title} id={id} label={a.title.toUpperCase()}
+                mine={a.team === team.def.abbr} tint={teamColour(a.team)}
+                revealed={shown.has(id)} onReveal={revealedSet}
+              >{awardBody(a)}</FlipCard>
             )
-            : <div key={a.title} style={tone}>{body}</div>;
+            : awardBody(a);
         })}
       </section>
 
       <SectionHeading kicker="ALL-CONFERENCE" title="The first team" />
-      <section className="award-list">
-        {first.map((p, i) => {
-          const tint = teamColour(p.team);
-          return (
-            <button
-              key={`${p.position}-${p.id}-${i}`}
-              type="button"
-              style={{ background: `${tint}33`, borderLeftColor: tint }}
-              onClick={() => openPlayer(p.id)}
-            >
-              <span className="award-mark" style={{ background: tint }}>{p.position}</span>
-              <span>
-                <small>{p.team}</small>
-                <strong>{p.name}</strong>
-                <p>{p.line}</p>
-              </span>
-              <ChevronRightIcon />
-            </button>
-          );
-        })}
-      </section>
+      {ceremony
+        ? (
+          <FlipCard
+            id="first-team" label="THE FIRST TEAM"
+            mine={first.some((p) => p.team === team.def.abbr)}
+            tint={teamColour(team.def.abbr)}
+            revealed={shown.has('first-team')} onReveal={revealedSet}
+          >{firstTeamList}</FlipCard>
+        )
+        : firstTeamList}
 
-      <FieldNote
-        title="The room is not over"
-        text="Season review is next. Tap any winner or first-team man to read his card before you move on."
-      />
+      {/*
+        Coach of the Year closes the night, the way it closes the real one —
+        which is why the ceremony renders it last while the reference list
+        keeps it wherever the reader's eye lands first.
+
+        Four stories can win it: beating what the roster was worth, winning it
+        all at a school nobody has heard of, the biggest one-year turnaround,
+        and a conference title on the best run margin of anybody who won one.
+        The engine picks whichever was loudest this season and writes the
+        headline stat itself; the card just renders it.
+      */}
+      {coach && <SectionHeading kicker="THE HEADLINER" title="Coach of the Year" />}
+      {coach && (ceremony
+        ? (
+          <FlipCard
+            id="coach" label="COACH OF THE YEAR"
+            mine={coach.team === team.index} tint={teamColour(team.def.abbr)}
+            revealed={shown.has('coach')} onReveal={revealedSet}
+          >{coachCard}</FlipCard>
+        )
+        : coachCard)}
+
+      {done && (
+        <FieldNote
+          title="The room is not over"
+          text="Season review is next. Tap any winner or first-team man to read his card before you move on."
+        />
+      )}
     </main>
     </FixedHeader>
   );

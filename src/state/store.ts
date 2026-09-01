@@ -482,6 +482,34 @@ export interface SeasonRecord {
   awards?: { title: string; name: string; id: PlayerId }[];
 }
 
+/**
+ * A takeover moment — stage 14. The full screen, for the handful of nights
+ * that earn it: walk-offs, clinchers and titles, plus the other side of a
+ * walk-off, because being walked off is as big as doing it and a game that
+ * only celebrates hides half the sport.
+ */
+export interface BigMoment {
+  kind: 'walkoff' | 'walkoff-against' | 'cup' | 'regional' | 'final4'
+    | 'title' | 'runner-up';
+  /** Whose crest the card wears. */
+  team: number;
+  /** The man, where one man did it (walk-offs). */
+  name?: string;
+  /** One factual line under the headline: a score, a league, a series. */
+  line: string;
+  year: number;
+}
+
+/**
+ * When two moments land in the same beat — a walk-off that also wins the
+ * title — the bigger one takes the screen and the smaller is folded into it,
+ * because two takeovers in a row is a slideshow, not a moment.
+ */
+const MOMENT_RANK: Record<BigMoment['kind'], number> = {
+  'walkoff-against': 1, walkoff: 2, cup: 3, regional: 4,
+  final4: 5, 'runner-up': 6, title: 7,
+};
+
 export interface DynastyStore {
   /** You. Follows you between jobs; see engine/program.ts. */
   coach: CoachState;
@@ -754,6 +782,12 @@ export interface DynastyStore {
    * persisted — and the day is not advanced until it finishes, so a reload
    * mid-game loses the game rather than orphaning it in a half-played day.
    */
+  /** The takeover on screen, if one is owed. Transient, like `live`. */
+  bigMoment: BigMoment | null;
+  /** Offer a moment; a bigger one already showing keeps the screen. */
+  offerBigMoment: (m: BigMoment) => void;
+  clearBigMoment: () => void;
+
   live: LiveGame | null;
   liveMeta: {
     home: number; away: number; day: number; conference: boolean;
@@ -2945,10 +2979,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     */
     const eco0 = get().economy;
     const keptStaff: typeof eco0.staff = {};
+    // The first man out the door is the wire's story; see the stamp below.
+    let poachNews: { name: string; seat: StaffSeat } | null = null;
     for (const seat of SEATS) {
       const man = eco0.staff[seat];
       if (!man) continue;
       if (poached(man, year)) {
+        poachNews ??= { name: man.name, seat };
         get().post({
           kind: 'season', year: year + 1,
           title: `${man.name} is leaving`,
@@ -3059,6 +3096,29 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       }
 
       const rolled = nextSeason(next);
+
+      /*
+        The winter, stamped for the paper — stage 14. The inbox already told
+        YOU; the wire is the country finding out. Facts only the roll knows are
+        written onto the new season here, and the feed retires them itself as
+        the spring's actual results pile up.
+      */
+      if (move) {
+        rolled.newsRealign = {
+          school: rolled.teams[move.up]?.def.school ?? '?',
+          abbr: rolled.teams[move.up]?.def.abbr ?? '?',
+          from: move.downTo, to: move.upTo,
+          downSchool: rolled.teams[move.down]?.def.school ?? '?',
+          downAbbr: rolled.teams[move.down]?.def.abbr ?? '?',
+        };
+      }
+      if (poachNews) {
+        rolled.newsStaff = {
+          name: poachNews.name,
+          seat: SEAT_LABEL[poachNews.seat],
+          school: rolled.teams[get().userTeam]?.def.school ?? '?',
+        };
+      }
 
       /*
         A year passing for the men, in the two ways stage 8 added.
@@ -4388,6 +4448,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         bracket: { ...bracket, cups },
         myBracket: null, version: version + 1,
       });
+      // The cup is a takeover — stage 14. The first thing a program wins.
+      if (me && deAsResult(myBracket.state).champion === userTeam) {
+        get().offerBigMoment({
+          kind: 'cup', team: userTeam, year: get().year,
+          line: `${me.conference} tournament champions`,
+        });
+      }
     } else if (myBracket.kind === 'regional' && myBracket.format === 'series') {
       const mine = resultOf(myBracket.state);
       const me = season.teams[userTeam];
@@ -4405,6 +4472,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         },
         myBracket: null, version: version + 1,
       });
+      // The ticket, punched — stage 14.
+      if (mine.champion === userTeam) {
+        get().offerBigMoment({
+          kind: 'regional', team: userTeam, year: get().year,
+          line: `${name} regional champions`,
+        });
+      }
     } else if (myBracket.kind === 'national' && myBracket.format === 'double') {
       // Your half is finished, so the other one runs out its remaining nights
       // here rather than holding the championship up. A stage boundary is the
@@ -4427,6 +4501,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         },
         myBracket: null, version: version + 1,
       });
+      // Through the showdown — stage 14. Two teams left in the country.
+      if (done.champion === userTeam) {
+        get().offerBigMoment({
+          kind: 'final4', team: userTeam, year: get().year,
+          line: 'Through the showdown bracket',
+        });
+      }
     } else if (myBracket.kind === 'final' && myBracket.format === 'series') {
       const mine = resultOf(myBracket.state);
       const nat = bracket.national!;
@@ -4440,6 +4521,17 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         lastPostseason: summary,
         myBracket: null, version: version + 1,
       });
+      // The whole thing, or the longest June that ends without it — stage 14.
+      // You were in the final either way; both are the biggest screen owed.
+      get().offerBigMoment(mine.champion === userTeam
+        ? {
+          kind: 'title', team: userTeam, year: get().year,
+          line: 'National champions',
+        }
+        : {
+          kind: 'runner-up', team: userTeam, year: get().year,
+          line: 'Runners-up in the country',
+        });
     }
     void get().saveNow();
   },
@@ -4447,6 +4539,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   live: null,
   liveMeta: null,
   pendingGame: null,
+
+  bigMoment: null,
+  offerBigMoment: (m) => {
+    const cur = get().bigMoment;
+    if (cur && MOMENT_RANK[cur.kind] >= MOMENT_RANK[m.kind]) return;
+    set({ bigMoment: m, version: get().version + 1 });
+  },
+  clearBigMoment: () => set({ bigMoment: null, version: get().version + 1 }),
 
   /**
    * Pick the interrupted game back up, or let the bench coach finish it.
@@ -4682,6 +4782,27 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       for (const line of side.pitching.values()) {
         if (line.outs > 0 || line.bf > 0) season.lastPitched.set(line.player.id, liveMeta.day);
       }
+    }
+
+    /*
+      The walk-off takeover — stage 14. The engine stamps walkOffBy on the
+      home half the moment it says "win it.", so the fact is already in the
+      result; this only decides whose night it was. Offered, not set: a
+      walk-off that clinches something bigger loses the screen to the clinch.
+    */
+    const woId = live.result.home.walkOffBy;
+    if (woId && (liveMeta.home === userTeam || liveMeta.away === userTeam)) {
+      let woName: string | undefined;
+      for (const l of live.result.home.batting.values()) {
+        if (l.player.id === woId) { woName = l.player.name; break; }
+      }
+      const line = `${season.teams[liveMeta.away]?.def.abbr ?? '?'} `
+        + `${live.result.away.runs} — ${live.result.home.runs} `
+        + `${season.teams[liveMeta.home]?.def.abbr ?? '?'}`;
+      get().offerBigMoment({
+        kind: liveMeta.home === userTeam ? 'walkoff' : 'walkoff-against',
+        team: liveMeta.home, name: woName, line, year: get().year,
+      });
     }
 
     // A bracket game belongs to the bracket, not to the calendar. It is handed

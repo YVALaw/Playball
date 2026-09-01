@@ -31,6 +31,7 @@ import {
 import { cultureFor, cultureOf, CULTURE_LABEL } from '../../data/cultures.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Avatar, teamColour } from '../Avatar.js';
+import { Crest } from '../Crest.js';
 import { FixedHeader } from '../Sticky.js';
 import { overallOf } from '../../engine/ratings.js';
 import { prestigeStars } from '../../engine/program.js';
@@ -111,9 +112,7 @@ export function TeamCard({ index }: { index: number }) {
                 of a man, and one at the top of a program's page would read as
                 somebody in particular. The abbreviation in the school's own
                 colour is what the tables already teach you to recognise. */}
-            <div className="team-mark" style={{ background: teamColour(t.def.abbr) }}>
-              {t.def.abbr}
-            </div>
+            <div className="team-mark"><Crest abbr={t.def.abbr} size={64} /></div>
             <div>
               <small>{t.conference} · {'★'.repeat(stars)}</small>
               <h2 style={{ color: teamColour(t.def.abbr) }}>{t.def.school}</h2>

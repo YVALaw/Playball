@@ -19,7 +19,8 @@ import type { Hitter, Pitcher } from './types.js';
 
 export type WireKind =
   | 'upset' | 'streak' | 'rout' | 'ranking' | 'milestone' | 'race'
-  | 'close' | 'sweep' | 'gem' | 'power' | 'rivalry';
+  | 'close' | 'sweep' | 'gem' | 'power' | 'rivalry'
+  | 'chase' | 'realign' | 'moves';
 
 export interface WireItem {
   kind: WireKind;
@@ -288,6 +289,12 @@ export function wire(season: SeasonState, limit = 24): WireItem[] {
   const gem = latestGem(season);
   if (gem) items.push(gem);
 
+  // The winter's headlines open the spring, and a run at the book is reported
+  // before it happens rather than after — stage 14, both.
+  items.push(...offseasonNews(season));
+  const chase = recordChase(season);
+  if (chase) items.push(chase);
+
   items.sort((a, b) => b.weight - a.weight);
 
   // Trimming the feed is most of what makes it readable.
@@ -354,6 +361,102 @@ function interleave(items: readonly WireItem[]): WireItem[] {
     }
   }
   return out;
+}
+
+/**
+ * What the winter did to the map and to your staff, while the feed is young.
+ *
+ * Both facts are stamped onto the season by the year roll (see SeasonState);
+ * the paper leads with them in February and lets them fade as actual baseball
+ * accumulates, the way realignment stops being news by the third weekend of
+ * games. Gone entirely by mid-season.
+ */
+function offseasonNews(season: SeasonState): WireItem[] {
+  const items: WireItem[] = [];
+  const played = season.results.length;
+  // Ninety six teams play ~45 games a day, so mid-season is ~1100 results.
+  if (played > 1100) return items;
+  const fade = Math.floor(played / 24);
+
+  const r = season.newsRealign;
+  if (r) {
+    const team = season.teams.findIndex((t) => t.def.abbr === r.abbr);
+    items.push({
+      kind: 'realign', team: Math.max(0, team), weight: 85 - fade,
+      text: `${r.school} are a ${r.to} program now`,
+      detail: `The trade of the winter: ${r.school} up from the ${r.from}, `
+        + `${r.downSchool} the other way. Both leagues read differently for it.`,
+    });
+  }
+
+  const st = season.newsStaff;
+  if (st) {
+    const team = season.teams.findIndex((t) => t.def.school === st.school);
+    items.push({
+      kind: 'moves', team: Math.max(0, team), weight: 66 - fade,
+      text: `${st.school} lose their ${st.seat.toLowerCase()} to a head job`,
+      detail: `${st.name} ran his room well enough that somebody handed him `
+        + 'a program of his own. The seat behind the seat is open.',
+    });
+  }
+  return items;
+}
+
+/**
+ * A run at the book, reported before it happens — stage 14.
+ *
+ * The record cards post the night a mark falls, which is the paper arriving
+ * after the parade. The month before is the story: a man on pace to pass a
+ * season record is news in every town he plays in. Read from the same
+ * all-time book the record screen shows, so the number quoted here is the
+ * number that will actually have to fall — and only one chase runs at a time,
+ * the closest, because two "chasing history" briefs in one feed cheapen both.
+ */
+function recordChase(season: SeasonState): WireItem | null {
+  const book = season.records;
+  if (!book) return null;
+
+  let best: { ratio: number; team: number; text: string; detail: string } | null = null;
+  const consider = (
+    mark: { value: number; holder: string; year: number } | undefined,
+    value: number, gp: number, who: string, team: number, word: string,
+  ): void => {
+    // Enough season to trust the pace, not so much that it is over, and a
+    // pace that actually clears the bar. Being at 55% of the mark filters the
+    // hot April that a long summer always cools off.
+    if (!mark || gp < 15 || gp >= 45 || value >= mark.value) return;
+    const pace = (value / gp) * 45;
+    if (pace <= mark.value || value < mark.value * 0.55) return;
+    const ratio = value / mark.value;
+    if (best && ratio <= best.ratio) return;
+    best = {
+      ratio, team,
+      text: `${who} is chasing the book: ${value} ${word}, ${45 - gp} games left`,
+      detail: `The season record is ${mark.value} — ${mark.holder}, ${mark.year}. `
+        + `His pace says ${Math.round(pace)}.`,
+    };
+  };
+
+  for (const record of season.teams) {
+    const gp = record.w + record.l;
+    const bats: Hitter[] = [...record.team.lineup, ...record.team.bench];
+    for (const p of bats) {
+      const line = season.batting.get(p.id);
+      if (!line) continue;
+      consider(book.seasonHR, line.hr, gp, p.name, record.index, 'home runs');
+      consider(book.seasonSB, line.sb, gp, p.name, record.index, 'stolen bases');
+    }
+    const arms: Pitcher[] = [...record.team.rotation, ...record.team.bullpen];
+    for (const p of arms) {
+      const line = season.pitching.get(p.id);
+      if (!line) continue;
+      consider(book.seasonK, line.k, gp, p.name, record.index, 'strikeouts');
+    }
+  }
+
+  if (!best) return null;
+  const b: { ratio: number; team: number; text: string; detail: string } = best;
+  return { kind: 'chase', team: b.team, weight: 72, text: b.text, detail: b.detail };
 }
 
 /**

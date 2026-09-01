@@ -673,6 +673,19 @@ export interface SeasonState {
    * forward for ever, like the careers beside it: it is the only copy.
    */
   moments?: Record<string, Moment[]>;
+
+  /**
+   * Front-page facts from the winter, for the wire — stage 14.
+   *
+   * Stamped by the year roll onto the NEW season so the paper can open the
+   * spring with them, and never read anywhere else. They age out of the feed
+   * as results accumulate and die with the season that carried them.
+   */
+  newsRealign?: {
+    school: string; abbr: string; from: string; to: string;
+    downSchool: string; downAbbr: string;
+  };
+  newsStaff?: { name: string; seat: string; school: string };
   /**
    * Who missed a week for the classroom, and when.
    *
