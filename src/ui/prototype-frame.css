@@ -2335,3 +2335,53 @@
 @media (prefers-reduced-motion: reduce) {
   .live-linescore.leverage .live-state span:first-child { animation: none; }
 }
+
+
+/* ---------------------------------------------------------------------------
+   The September 1 phone batch.
+*/
+
+/* The injured mark, beside a name wherever the roster prints one. */
+.hurt-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 5px;
+  border-radius: 50%;
+  background: var(--alert);
+  color: #fff;
+  font: 800 calc(9px * var(--ts))/1 var(--body);
+  vertical-align: 1px;
+}
+
+/* "WHAT HE WANTS" was folding itself into a column three letters wide on the
+   phone and spilling over the priorities under it. A kicker never wraps. */
+.flow-section-title .label { white-space: nowrap; flex: none; }
+.flow-section-title > b { text-align: right; }
+
+/* Reported as "can't scroll" on the roster and the tournaments. Not
+   reproducible off the phone, so this is the whole belt: the tab host and
+   June's own scroller say exactly what they are, in the terms iOS listens
+   to, and nothing inside them is allowed to argue. */
+.playball-app > main,
+.offseason-app > main,
+.postseason-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+}
+
+/* The portal's two-press signing: armed goes alarm, landed goes quiet win. */
+.portal-candidate-actions button.arming {
+  background: var(--alert);
+  color: #fff;
+  border-color: var(--alert);
+}
+.portal-candidate-actions button.landed {
+  background: var(--soft);
+  color: var(--win);
+  border-color: var(--win);
+  opacity: 1;
+}

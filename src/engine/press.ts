@@ -34,12 +34,12 @@ import { PRESSERS, type Presser, type PressTrigger, type PressAnswer } from '../
 /**
  * How many a coach faces in one season.
  *
- * The plan asked for five to eight. Eight is the cap rather than the target:
- * the triggers are lumpy -- a four-game slide, an upset and an elimination can
- * land inside a fortnight -- and without a ceiling a bad month becomes a
- * fortnight of talking instead of a fortnight of baseball.
+ * Retuned on report: "the press thing happens way too much, let's do 2 or 3
+ * per year." Three is the cap and two is the likely count -- the triggers are
+ * lumpy, and with a twelve-game cooldown a season simply runs out of room for
+ * a third unless it earns one.
  */
-export const SEASON_CAP = 8;
+export const SEASON_CAP = 3;
 
 /**
  * The smallest gap between two of them, in games played.
@@ -47,7 +47,7 @@ export const SEASON_CAP = 8;
  * Stops a single bad week producing three in a row, which is the shape that
  * makes the whole feature read as nagging rather than as punctuation.
  */
-export const COOLDOWN_GAMES = 4;
+export const COOLDOWN_GAMES = 12;
 
 /** What the season has to say for itself when a presser is considered. */
 export interface PressSituation {
@@ -161,10 +161,11 @@ export function settlePress(
     question about his reputation -- the room has heard him before. The board
     is judging what he actually said.
   */
-  const v = answer.prestige + lean;
+  // A malformed answer must cost nothing, not poison the career with NaN.
+  const v = (answer.prestige ?? 0) + lean;
   return {
     prestige: v >= 0 ? Math.round(v) : -Math.round(-v),
-    security: answer.security,
+    security: answer.security ?? 0,
     inCharacter: wears,
   };
 }

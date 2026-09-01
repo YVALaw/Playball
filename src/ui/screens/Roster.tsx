@@ -130,7 +130,11 @@ export function Roster() {
     return {
       key: p.id,
       title: p.name,
-      mark: captainOf(team.team)?.id === p.id ? <CaptainC /> : undefined,
+      mark: captainOf(team.team)?.id === p.id
+        ? <CaptainC />
+        : (isHurt(p, season.dayIndex)
+          ? <span className="hurt-mark" aria-label="injured">✚</span>
+          : undefined),
       detail: `${out ? `${out} · ` : ''}${slotOf(p)} · ${p.classYear} · ${overallOf(p)} OVR · ${pot} POT`,
       face: <Avatar id={p.id} team={team.def.abbr} size={34} />,
     };

@@ -818,8 +818,13 @@ function TableOverlay() {
   */
   const settingsPage = useDynasty((s) => s.settingsPage);
   const setSettingsPage = useDynasty((s) => s.setSettingsPage);
+  const programSheet = useDynasty((s) => s.programSheet);
+  const setProgramSheet = useDynasty((s) => s.setProgramSheet);
   const back = (): void => {
     if (overlay === 'settings' && settingsPage !== 'index') setSettingsPage('index');
+    // The coach sheet defers the same way a settings page does — its own
+    // back button was the second of two and it is gone.
+    else if (overlay === 'program' && programSheet === 'coach') setProgramSheet('board');
     else close();
   };
   return (

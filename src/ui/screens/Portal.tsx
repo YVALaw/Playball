@@ -11,6 +11,7 @@
 // 9: every man on it is a promise somebody broke, and the card says which.
 
 import { useState } from 'react';
+import { sfx, buzz } from '../sound.js';
 
 import { useDynasty } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
@@ -26,6 +27,14 @@ import type { PortalMan } from '../../engine/portal.js';
 export function Portal() {
   /** Which half of the window you are looking at. */
   const [view, setView] = useState<'leaving' | 'available'>('leaving');
+  /*
+    Two-press signing. Reported: "when clicking sign him there is no visual
+    indication or confirmation, nothing." First press arms the button on that
+    one man; the second spends the points. The armed state names the cost
+    again, because that is the fact being agreed to.
+  */
+  const [arming, setArming] = useState<string | null>(null);
+  const [landed, setLanded] = useState<string | null>(null);
   const portal = useDynasty((s) => s.portal);
   const season = useDynasty((s) => s.season);
   const userTeam = useDynasty((s) => s.userTeam);
@@ -192,14 +201,29 @@ export function Portal() {
                     </button>
                     <button
                       type="button"
-                      disabled={!can}
-                      onClick={() => (view === 'leaving'
-                        ? keepFromPortal(p.id, cost)
-                        : takeFromPortal(p.id))}
+                      className={arming === p.id ? 'arming' : landed === p.id ? 'landed' : ''}
+                      disabled={!can || landed === p.id}
+                      onClick={() => {
+                        if (landed === p.id) return;
+                        if (arming !== p.id) { setArming(p.id); return; }
+                        setArming(null);
+                        const ok = view === 'leaving'
+                          ? keepFromPortal(p.id, cost)
+                          : takeFromPortal(p.id);
+                        if (ok) {
+                          setLanded(p.id);
+                          sfx('clap', { gain: 0.4 });
+                          buzz(20);
+                        }
+                      }}
                     >
-                      {can
-                        ? (view === 'leaving' ? `Talk him round · ${cost}` : `Sign him · ${cost}`)
-                        : 'Not enough left'}
+                      {landed === p.id
+                        ? (view === 'leaving' ? '✓ HE STAYS' : '✓ HE IS IN')
+                        : arming === p.id
+                          ? `Confirm — spend ${cost}`
+                          : can
+                            ? (view === 'leaving' ? `Talk him round · ${cost}` : `Sign him · ${cost}`)
+                            : 'Not enough left'}
                     </button>
                   </div>
                 </article>

@@ -394,6 +394,22 @@ export function Today() {
           </>
         )}
 
+        {/*
+          What is waiting on you, where the conference scoreboard used to be.
+
+          Asked for in those terms, and it is the better use of the space. The
+          scoreboard was eight results you could do nothing about, sitting under
+          the one button that moves your season -- and the things you *could* do
+          something about had nowhere to be, so the press room got itself a
+          screen by interrupting and an injury got itself nothing at all.
+
+          Last night around the conference has not gone anywhere: SCHEDULE has
+          every result and CONFERENCE has the table they add up to.
+        */}
+        <NeedsYou />
+
+        {/* Below the needs, by request: "needs you is more important than the
+            other." The pulse is reference; the needs are work. */}
         <SectionHeading
           kicker="CLUB PULSE"
           title="This week"
@@ -418,19 +434,6 @@ export function Today() {
           </button>
         </section>
 
-        {/*
-          What is waiting on you, where the conference scoreboard used to be.
-
-          Asked for in those terms, and it is the better use of the space. The
-          scoreboard was eight results you could do nothing about, sitting under
-          the one button that moves your season -- and the things you *could* do
-          something about had nowhere to be, so the press room got itself a
-          screen by interrupting and an injury got itself nothing at all.
-
-          Last night around the conference has not gone anywhere: SCHEDULE has
-          every result and CONFERENCE has the table they add up to.
-        */}
-        <NeedsYou />
       </main>
 
       {/*

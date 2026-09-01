@@ -785,7 +785,7 @@ export function Postseason() {
           )}
         </div>
 
-        <div ref={scrollerRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+        <div ref={scrollerRef} className="postseason-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <div style={{ padding: '8px 0 10px' }}>
             {/*
               Who won, at the top, where it cannot be missed.

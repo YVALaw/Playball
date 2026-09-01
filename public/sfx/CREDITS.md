@@ -14,4 +14,4 @@ an app with paid IAP.
 | playball.wav | 101137 | CGEffex |
 | crowd.wav | 197285 | adrian_gomar |
 | clap.mp3 | 18364 | jasinski |
-| ump-safe.wav, ump-out.wav, ump-strike3.wav, ump-safe2.wav | 625473 | jcookvoice (CC0 — public domain) |
+| ump-ballfour.wav | 625473 | jcookvoice (CC0 — public domain) |

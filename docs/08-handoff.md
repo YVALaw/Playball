@@ -168,6 +168,16 @@ takeover funnel is `offerBigMoment` (ranked; never set directly), fed by
 `endManagedGame` and `closeMyBracket`. The awards ceremony lives only on the
 offseason step (`phase !== null`); every later visit is the plain list.
 
+**Agreed with the reporter, queued (September 1):** position changes get
+real depth ON THE PLAYER PROFILE (the chart-vs-lineup question is open —
+the reporter is considering folding the depth chart into the lineup tab
+entirely; do not invest in the chart screen until that lands). The inbox
+gets a noise pass later (it now wipes at every year roll). Two more
+TESTING fixtures now exist and must ship out together: the PSC godsquad
+and **Hans Hood** (recruiting.ts generateClass — a 20-overall/99-potential
+3B in every class, for progression testing of the planned wonder-guy
+archetype).
+
 **Loose ends deliberately left:** the tournament/bracket view (stage 15, with
 the park — school crests join the bracket there); the Saves screen's deeper
 restyle; `SigningDay`'s sheet framing (interiors are ported, the panels still

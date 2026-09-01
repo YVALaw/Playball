@@ -16,7 +16,7 @@ import { readPrefs } from '../state/devicePrefs.js';
 
 type SfxName =
   | 'crack' | 'crack2' | 'glove' | 'glove2' | 'playball' | 'clap' | 'crowd'
-  | 'ump-safe' | 'ump-safe2' | 'ump-out' | 'ump-strike3';
+  | 'ump-ballfour';
 
 const FILE: Record<SfxName, string> = {
   crack: '/sfx/crack.wav',
@@ -26,10 +26,7 @@ const FILE: Record<SfxName, string> = {
   playball: '/sfx/playball.wav',
   clap: '/sfx/clap.mp3',
   crowd: '/sfx/crowd.wav',
-  'ump-safe': '/sfx/ump-safe.wav',
-  'ump-safe2': '/sfx/ump-safe2.wav',
-  'ump-out': '/sfx/ump-out.wav',
-  'ump-strike3': '/sfx/ump-strike3.wav',
+  'ump-ballfour': '/sfx/ump-ballfour.wav',
 };
 
 let ctx: AudioContext | null = null;

@@ -506,6 +506,43 @@ export function generateClass(year: number, teams: number, rng: Rng): RecruitCla
   prospects.sort((a, b) => serviceScore(b.player) - serviceScore(a.player));
   prospects.forEach((p, i) => { p.rank = i + 1; });
 
+  /*
+    TESTING ONLY — remove with the PSC godsquad before v1.0.
+
+    Hans Hood, the wonder guy: a 20-overall third baseman with an S ceiling,
+    in every class, every year, as a one-star nobody any program can chase.
+    Asked for by the reporter to test progression — the plan is a class of
+    hidden greats who start at one or two stars and grow into the picture.
+    Attributes are ASSIGNED onto an already-generated prospect, so no draw
+    is consumed and the rest of the class is bit-for-bit what it would have
+    been. He takes the last rank; the services never rated hands they have
+    not seen. Not under vitest, for the same reason the godsquad is not.
+  */
+  if (typeof process === "undefined" || !process.env?.["VITEST"]) {
+    const donor = prospects.find((p) => p.player.type === "hitter");
+    if (donor) {
+      const copy = JSON.parse(JSON.stringify(donor)) as Prospect;
+      const h = copy.player as unknown as Record<string, unknown>;
+      h.id = ("p1hans" + year) as unknown as PlayerId;
+      h.name = "Hans Hood";
+      h.pos = "3B";
+      h.classYear = "FR";
+      h.age = 18;
+      for (const k of ["contact", "power", "eye", "speed", "range", "hands", "arm", "armAccuracy"]) {
+        if (typeof h[k] === "number") h[k] = 20;
+      }
+      h.potential = 99;
+      prospects.push({
+        ...copy,
+        id: h.id as PlayerId,
+        stars: 1,
+        minProgram: reachFloor(1),
+        rank: prospects.length + 1,
+        points: {}, spent: {}, signedBy: null, committedWeek: null,
+      });
+    }
+  }
+
   return { year, week: 0, prospects };
 }
 
@@ -976,7 +1013,9 @@ export function weeklyPoints(
   if (actions <= 0) return 0;
   const f = fit(prospect, pitch);
   // A coach with a name of his own drags recruits above his program's weight.
-  const coach = 1 + Math.max(-0.2, Math.min(0.45, (coachPrestige - 45) / 110));
+  // NaN in a saved career must read as an unknown quantity, not spread.
+  const cp = Number.isFinite(coachPrestige) ? coachPrestige : 40;
+  const coach = 1 + Math.max(-0.2, Math.min(0.45, (cp - 45) / 110));
   // And one who has trained at the phones gets more out of each hour spent.
   // Neutral at the starting skill of 20, worth about twenty percent at 99 —
   // roughly half the prestige lever above, on the effort half only, so the

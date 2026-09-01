@@ -120,13 +120,15 @@ describe('when the room gets him', () => {
     expect(shouldAsk({}, { trigger: 'trophy', gamesPlayed: 0 })).toBe(true);
   });
 
-  it('lands in the five to eight the plan asked for', () => {
+  it('lands in the two or three the reporter asked for', () => {
     /*
       Measured rather than asserted from the constants, because the cap and the
       cooldown interact and only one of them is a number anybody reads.
 
-      A plausible season: forty-five games, a trigger roughly every fourth one,
-      which is a lumpy year with a couple of bad runs in it.
+      Retuned September 1 on the report "the press thing happens way too
+      much, let us do 2 or 3 per year": cap three, cooldown twelve games. A
+      plausible season with a trigger every fourth game should land two or
+      three pressers, never four.
     */
     let state: PressState = clearPress();
     const rng = makeRng(7);
@@ -138,7 +140,7 @@ describe('when the room gets him', () => {
       state = notePress(state, `x${count}`, game);
       count++;
     }
-    expect(count, 'too few to be a feature').toBeGreaterThanOrEqual(5);
+    expect(count, 'too few to be a feature').toBeGreaterThanOrEqual(2);
     expect(count, 'too many to be punctuation').toBeLessThanOrEqual(SEASON_CAP);
   });
 });

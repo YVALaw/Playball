@@ -124,9 +124,10 @@ export function Program() {
             inbox card that deep-links here leaves it on 'coach' after the
             overlay is dismissed — and the tab has no back bar of its own. It
             was not a rendering fault; it was a one-way door. */}
-        <button className="back-link tap" type="button" onClick={() => setSheet('board')}>
-          <ArrowLeftIcon /> The program
-        </button>
+        {/* No inner back button. Reported: "in the coach profile there are
+            two back buttons." The overlay's own bar steps back to the board
+            first — the same deference settings pages get — so one control
+            does the job the two were splitting. */}
         <CoachSheet team={team} />
       </main>
     );

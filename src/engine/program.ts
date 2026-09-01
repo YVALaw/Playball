@@ -1603,6 +1603,19 @@ export function restoreCoach(saved: unknown): CoachState {
       ? c.homeState.trim() : DEFAULT_PROFILE.homeState,
     look: normalizeLook(c.look),
     philosophy: isPhilosophyId(c.philosophy) ? c.philosophy : DEFAULT_PHILOSOPHY,
+    /*
+      The two numbers every ladder reads, healed on the way in.
+
+      Found on the phone as "+NaN interest": a save was carrying NaN in
+      prestige and security, and NaN survives every Math.min/max clamp it
+      meets, so one bad write anywhere poisoned the career for good. The
+      writers are guarded now too, but a save already carrying the damage has
+      to be repaired at the door.
+    */
+    prestige: typeof c.prestige === 'number' && Number.isFinite(c.prestige)
+      ? Math.max(5, Math.min(99, c.prestige)) : ROOKIE_PRESTIGE + 15,
+    security: typeof c.security === 'number' && Number.isFinite(c.security)
+      ? Math.max(0, Math.min(100, c.security)) : 55,
     // Same rule as the face: a career that predates the ledger comes back with
     // an empty one rather than with `undefined`, which every reader would then
     // have to guard. Nothing is backdated — a coach cannot be handed Cinderella

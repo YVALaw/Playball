@@ -332,23 +332,19 @@ function KeepSheet(
         </div>
 
         <div className="retention-body">
-          <div style={{
-            padding: '9px 11px', background: 'var(--paper)',
-            borderLeft: '3px solid var(--faint)',
-            font: "400 calc(12px * var(--ts))/1.55 var(--body)",
-          }}>
-            &ldquo;{hints[0]}&rdquo;<br />
-            &ldquo;{hints[1]}&rdquo;
-          </div>
+          {/* The prospect profile's own quote anatomy, so a retention call
+              reads like every other conversation in the game. Reported: "you
+              are still using the old conversation design." */}
+          <section className="scout-note">
+            <small>WHAT HIS PEOPLE SAY</small>
+            <p>&ldquo;{hints[0]}&rdquo; &ldquo;{hints[1]}&rdquo;</p>
+          </section>
 
           {!done && (
             <>
-              <div style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-                marginTop: 12,
-              }}>
+              <div className="flow-section-title" style={{ marginTop: 12 }}>
                 <span className="label">WHAT A ROUND {man.round} MAN WANTS</span>
-                <span style={{ font: "700 calc(15px * var(--ts)) var(--display)", color: 'var(--clay)' }}>{needs}</span>
+                <b style={{ font: "700 calc(15px * var(--ts)) var(--display)" }}>{needs}</b>
               </div>
 
               <div style={{
@@ -372,17 +368,13 @@ function KeepSheet(
 
               {pitch && (
                 <>
-                  <div style={{
-                    marginTop: 9, padding: '9px 10px', background: 'var(--paper)',
-                    borderLeft: '3px solid var(--ink)',
-                  }}>
-                    <div style={{ font: "400 calc(12px * var(--ts))/1.45 var(--body)" }}>
-                      &ldquo;{KEEP_CASE[pitch]}&rdquo;
-                    </div>
-                    <div style={{
-                      marginTop: 5, font: "400 calc(10.5px * var(--ts))/1.4 var(--mono)", color: 'var(--dim)',
-                    }}>{KEEP_RESTS_ON[pitch]}</div>
-                  </div>
+                  <section className="scout-note" style={{ marginTop: 9 }}>
+                    <small>YOUR CASE</small>
+                    <p>&ldquo;{KEEP_CASE[pitch]}&rdquo;</p>
+                    <p style={{
+                      marginTop: 5, font: "400 calc(10px * var(--ts))/1.4 var(--mono)", color: 'var(--dim)',
+                    }}>{KEEP_RESTS_ON[pitch]}</p>
+                  </section>
 
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: 6, marginTop: 10,
@@ -400,15 +392,10 @@ function KeepSheet(
                   </div>
 
                   <button
+                    className="primary-command"
                     onClick={() => keepPlayer(p.id, pitch, offer)}
                     disabled={offer <= 0}
-                    style={{
-                      width: '100%', marginTop: 10, padding: '13px 10px',
-                      background: offer > 0 ? 'var(--clay)' : 'rgba(var(--ink-rgb), .12)',
-                      border: '1px solid transparent',
-                      color: offer > 0 ? 'var(--cream)' : 'var(--dim)',
-                      font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-                    }}
+                    style={{ marginTop: 10 }}
                   >MAKE THE CASE</button>
                 </>
               )}
@@ -451,12 +438,8 @@ function KeepSheet(
               </div>
               <button
                 onClick={onClose}
-                className="tap"
-                style={{
-                  width: '100%', marginTop: 10, padding: '12px 10px',
-                  background: 'var(--band)', border: '1px solid var(--ink)',
-                  color: 'var(--cream)', font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-                }}
+                className="primary-command"
+                style={{ marginTop: 10 }}
               >BACK TO THE LIST</button>
             </div>
           )}

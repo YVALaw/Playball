@@ -115,7 +115,18 @@ export function DepthChart() {
         */}
         {spots.map((spot) => {
           const order = depthAt(team.team, spot);
-          const starter = nine[spot];
+          /*
+            The name on the spot is the CHART's first man, not the engine's
+            auto-cover. Reported: "I went to the chart and the players were
+            already switched, when it is supposed to wait for me" — the header
+            was reading startersFrom, which skips the hurt, so the screen
+            showed a decision as already made while the desk still demanded
+            it. Until the cover is promoted by hand, the hurt man is who is
+            penciled in, and the row says so in alarm ink.
+          */
+          const penciled = order[0] ?? null;
+          const penciledOut = penciled !== null && !available(penciled, day);
+          const starter = penciledOut ? penciled : nine[spot];
           const showing = open === spot;
           return (
             <div key={spot} style={{ marginBottom: 6 }}>
@@ -138,8 +149,16 @@ export function DepthChart() {
                   flex: 1,
                   font: "700 calc(13px * var(--ts)) var(--display)",
                   textTransform: 'uppercase',
+                  color: penciledOut ? 'var(--alert)' : undefined,
                 }}>{starter ? starter.name : 'NOBODY'}</span>
-                {starter && (
+                {penciledOut ? (
+                  <span style={{
+                    flex: 'none',
+                    font: "800 calc(8px * var(--ts)) var(--mono)",
+                    letterSpacing: '.08em',
+                    color: 'var(--alert)',
+                  }}>✚ HURT — PICK HIS COVER</span>
+                ) : starter && (
                   <span style={{
                     flex: 'none',
                     font: "600 calc(9px * var(--ts)) var(--mono)",

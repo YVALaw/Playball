@@ -54,7 +54,7 @@ import { depthAt, startersFrom, available, squad, SPOTS } from '../engine/depthC
 import { standing, WORDS_A_SEASON } from '../engine/eligibility.js';
 import { isHurt, prognosis } from '../engine/injury.js';
 import { captainOf, candidates } from '../engine/captains.js';
-import type { Player } from '../engine/types.js';
+import type { Player, Position } from '../engine/types.js';
 
 /** One thing waiting on the coach. */
 export interface Need {
@@ -134,18 +134,26 @@ export function useNeeds(): Need[] {
       instead: while the hurt man is penciled in, the day does not move.
       Promoting his cover on the chart is the manual act that clears it.
     */
+    // One card per MAN, not per spot: a thin roster has the same name at the
+    // head of three orders, and three copies of the same demand read as a bug.
+    const penciledAt = new Map<string, { spot: Position; man: Player }[]>();
     for (const spot of SPOTS) {
       const first = depthAt(team.team, spot)[0];
       if (!first || available(first, day)) continue;
-      covered.add(first.id);
+      penciledAt.set(first.id, [...(penciledAt.get(first.id) ?? []), { spot, man: first }]);
+    }
+    for (const rows of penciledAt.values()) {
+      const man = rows[0]!.man;
+      covered.add(man.id);
+      const spotsList = rows.map((r: { spot: Position }) => r.spot).join(rows.length === 2 ? " and " : ", ");
       needs.push({
-        id: `cover-${first.id}`,
-        title: `${first.name} cannot play`,
-        note: `Still penciled in at ${spot} — ${prognosis(first, day)}. `
-          + 'Nobody is moved for you — set tonight\'s cover on the chart.',
+        id: `cover-${man.id}`,
+        title: `${man.name} cannot play`,
+        note: `Still penciled in at ${spotsList} — ${prognosis(man, day)}. `
+          + "Nobody is moved for you — set tonight's cover on the chart.",
         must: true,
-        cta: 'THE DEPTH CHART',
-        go: () => openOverlay('depth'),
+        cta: "THE DEPTH CHART",
+        go: () => openOverlay("depth"),
       });
     }
 

@@ -224,8 +224,12 @@ export function Manage() {
     recording.
   */
   const prevPlayed = useRef(0);
-  const lastLine = live?.log[live.log.length - 1] ?? '';
-  void lastLine;
+  const pendingSfx = useRef<number[]>([]);
+  const clearPending = (): void => {
+    for (const id of pendingSfx.current) window.clearTimeout(id);
+    pendingSfx.current = [];
+  };
+  useEffect(() => clearPending, []);
   useEffect(() => {
     if (!live) { prevPlayed.current = 0; return; }
     const fresh = live.log.slice(prevPlayed.current);
@@ -234,12 +238,23 @@ export function Manage() {
     // appends a whole game at once; scoring that as one play is noise.
     if (fresh.length === 0 || fresh.length > 8) return;
 
+    /*
+      Reported: "the ball is catched and the bat sound comes up instead of
+      the catching." Two causes. The catch was on guessed timers that had
+      nothing to do with the flight the screen draws — it lands with the
+      animation now, a beat before the outcome flash (ground plays resolve at
+      ~1500ms, air at ~1900ms; see the play-length effect above, which uses
+      the same numbers). And a play's scheduled sounds used to outlive it: a
+      fly ball's glove could fire during the NEXT at-bat's swing. Every
+      scheduled sound is cancelled the moment a new play starts.
+    */
+    clearPending();
     const text = fresh.join('\n');
     const vary = (): number => 0.94 + ((played * 37) % 13) / 100;
     const crack = (gain: number): void =>
       sfx(played % 2 ? 'crack' : 'crack2', { rate: vary(), gain });
     const catchAt = (ms: number, gain = 0.55): void => {
-      window.setTimeout(() => sfx('glove2', { gain }), ms);
+      pendingSfx.current.push(window.setTimeout(() => sfx('glove2', { gain }), ms));
     };
 
     // The night's biggest beat outranks everything else in it.
@@ -251,15 +266,15 @@ export function Manage() {
       return;
     }
 
-    // Baserunning events arrive as their own beats, indented.
+    // Baserunning events arrive as their own beats, indented. No voice
+    // lines here any more — the mislabeled cuts were saying the wrong words.
     if (/caught stealing/.test(text)) {
-      sfx('ump-out', { gain: 0.8, rate: vary() });
+      sfx('glove', { gain: 0.8, rate: vary() });
       crowdSwell(0.2);
       buzz(12);
       return;
     }
     if (/steals /.test(text)) {
-      sfx(played % 2 ? 'ump-safe' : 'ump-safe2', { gain: 0.8, rate: vary() });
       crowdSwell(0.3);
       buzz(15);
       return;
@@ -280,13 +295,9 @@ export function Manage() {
       crack(0.9);
       crowdSwell(0.25);
       buzz(15);
-      // The bang-bang play at first gets the snap call.
-      if (/beats out/.test(main)) {
-        window.setTimeout(() => sfx('ump-safe2', { gain: 0.7 }), 600);
-      }
     } else if (/strikes out/.test(main)) {
+      // The mitt, per the report: "we should at least listen to the mitt."
       sfx('glove', { rate: vary(), gain: 0.95 });
-      window.setTimeout(() => sfx('ump-strike3', { gain: 0.75, rate: vary() }), 280);
       crowdSwell(0.2);
       buzz(12);
     } else if (/reaches on/.test(main)) {
@@ -296,23 +307,26 @@ export function Manage() {
       buzz(12);
     } else if (/double play/.test(main)) {
       crack(0.75);
-      catchAt(550);
-      catchAt(1050, 0.5);
+      catchAt(600);
+      catchAt(1350, 0.5);
       buzz(10);
     } else if (/grounds|bunts/.test(main)) {
       crack(0.7);
       catchAt(600);
+      // The throw beats him to first as the play resolves.
+      catchAt(1350, 0.45);
       buzz(10);
     } else if (/flies out|lines out|pops out|sacrifice fly|is retired/.test(main)) {
       crack(0.75);
-      catchAt(1350);
+      catchAt(1750);
       buzz(10);
     } else if (/lays down a sacrifice/.test(main)) {
       crack(0.6);
       catchAt(600);
       buzz(8);
     } else if (/walks|walked on purpose/.test(main)) {
-      // No ball-four call in the pack yet; the crowd acknowledges the base.
+      // "Ball four, take your base." The one call the reporter confirmed.
+      sfx('ump-ballfour', { gain: 0.8, rate: vary() });
       crowdSwell(0.22);
       buzz(8);
     } else if (/hit by the pitch/.test(main)) {

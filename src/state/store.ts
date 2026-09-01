@@ -3001,6 +3001,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     clearJournal();
 
     /*
+      The inbox turns over with the year — reported: "we need to clean the
+      inbox every time a season is over." Wiped here, before the winter is
+      posted, so realignment, poaching and the carousel open the new year's
+      mail on a clean desk instead of under last season's pile.
+    */
+    set({ inbox: [] });
+
+    /*
       The staff's winter — stage 11.
 
       Poaching is derived from the man and the year (a reload cannot keep
@@ -3630,8 +3638,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     set({
       coach: {
         ...coach,
-        prestige: Math.max(0, Math.min(100, coach.prestige + out.prestige)),
-        security: Math.max(0, Math.min(100, coach.security + out.security)),
+        // NaN slides through a clamp untouched; a finite floor does not.
+        prestige: Math.max(0, Math.min(100,
+          (Number.isFinite(coach.prestige) ? coach.prestige : 40) + out.prestige)),
+        security: Math.max(0, Math.min(100,
+          (Number.isFinite(coach.security) ? coach.security : 55) + out.security)),
         // Answering it is the end of it. A man tried twice for the same letter
         // is the fault the board review already refuses to commit.
         caughtLooking: false,

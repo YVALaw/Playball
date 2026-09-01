@@ -3,17 +3,12 @@
 //
 //   node scripts/prep-ump.mjs
 //
-// The source (freesound 625473, jcookvoice, CC0) is one 25-second take with
-// four calls in it. The freesound description gives the script and the order —
-// "Safe", "You're out", "Strike three you're out", "safe" — and an RMS
-// segmentation of the file finds exactly four voiced regions matching it, so
-// each cut below is a description-confirmed region, not a guess. Windows are
-// generous; prep-style trim tightens them.
-//
-// NOTE the reporter asked for a "ball four, take your base" call — this file
-// does not contain one (the description above is the whole script). The walk
-// stays a crowd ripple until a ball-four clip exists; drop one in Downloads
-// and add a job here.
+// The source (freesound 625473, jcookvoice, CC0) is one 25-second take. The
+// page's description lists four calls, but the reporter LISTENED and the
+// description lies about at least one of them: the third region says "Ball
+// four, take your base." Ears beat metadata, so that region is the one cut
+// shipped and the rest of the take is left on the floor — the mislabeled
+// segments were reaching the game as the wrong words at the wrong moments.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -87,10 +82,8 @@ function writeWav(file, s, rate) {
 // [start s, end s, out] — regions from the RMS segmentation, order from the
 // freesound description.
 const CUTS = [
-  [1.75, 3.25, 'ump-safe.wav'],      // "Safe" — the drawn-out one
-  [4.85, 6.85, 'ump-out.wav'],       // "You're out"
-  [8.35, 9.95, 'ump-strike3.wav'],   // "Strike three, you're out"
-  [11.35, 12.15, 'ump-safe2.wav'],   // "safe" — the snap call
+  // The reporter's ears: "in reality it says ball four take a base."
+  [8.35, 9.95, 'ump-ballfour.wav'],
 ];
 
 for (const [t0, t1, name] of CUTS) {

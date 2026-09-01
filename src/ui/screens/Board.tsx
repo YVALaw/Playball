@@ -394,7 +394,9 @@ export function Board() {
       <MetricStrip>
         <Metric label="SCHOLARSHIPS" value={`${commits.length}/${SCHOLARSHIPS}`} note={full ? 'FULL' : 'COMMITTED'} />
         <Metric label="BUDGET" value={live ? String(left) : '—'} note={live ? `OF ${weekly}` : 'CLOSED'} />
-        <Metric label="PRESTIGE" value={'★'.repeat(myStars) + '☆'.repeat(5 - myStars)} note="PROGRAM PULL" />
+        {/* Filled stars only — five glyphs of tracking overflowed the box on
+            the phone, and the empty ones said nothing the note does not. */}
+        <Metric label="PRESTIGE" value={'★'.repeat(Math.max(1, myStars))} note={`OF 5 · PROGRAM PULL`} />
       </MetricStrip>
 
       <Segmented
