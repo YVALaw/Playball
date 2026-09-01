@@ -205,54 +205,120 @@ export function Manage() {
   }, [played]);
 
   /*
-    The broadcast — stage 14. The log is the one honest account of what just
-    happened, so the sound reads it rather than duplicating the engine's
-    classification: a contact word is a crack, a strikeout is the ball hitting
-    leather, a hit swells the crowd by how big it was, and the walk-off gets
-    the night's only roar. Haptics ride the same reads. Every call checks the
-    device preference inside sound.ts, so the mute is instant.
+    The broadcast — stage 14, rebuilt after the phone heard it.
+
+    The log is still the one honest account, but the first pass read only the
+    LAST line of it — and the engine appends several lines per play (the
+    forced-at note, the scoring note, the batter's line), so whole classes of
+    contact never made a sound: fielder's choices, errors, bunts, "is
+    retired". Reported as "when we hit, even if it's an out, the bat should
+    play — and sometimes it doesn't."
+
+    So the classifier now reads every line the play appended, finds the
+    batter's own line (the un-indented one), and matches against the complete
+    OUT_TEXT/hit vocabulary in engine/game.ts. Contact ALWAYS cracks. The
+    catch lands when the ball does — the same flight times the animation runs
+    on — instead of a flat 700ms. And the umpire (freesound 625473, CC0)
+    works the game: strike three called, safe on the steal, out on the caught
+    stealing. His pitch varies a few percent so forty strikeouts are not one
+    recording.
   */
+  const prevPlayed = useRef(0);
   const lastLine = live?.log[live.log.length - 1] ?? '';
+  void lastLine;
   useEffect(() => {
-    if (!live || !lastLine) return;
-    const l = lastLine;
-    const vary = () => 0.94 + ((played * 37) % 13) / 100;
-    if (/win it\./.test(l)) {
-      sfx('crack', { rate: vary() });
+    if (!live) { prevPlayed.current = 0; return; }
+    const fresh = live.log.slice(prevPlayed.current);
+    prevPlayed.current = played;
+    // A sim jump (bench coach finishing, watch fast-forward catching up)
+    // appends a whole game at once; scoring that as one play is noise.
+    if (fresh.length === 0 || fresh.length > 8) return;
+
+    const text = fresh.join('\n');
+    const vary = (): number => 0.94 + ((played * 37) % 13) / 100;
+    const crack = (gain: number): void =>
+      sfx(played % 2 ? 'crack' : 'crack2', { rate: vary(), gain });
+    const catchAt = (ms: number, gain = 0.55): void => {
+      window.setTimeout(() => sfx('glove2', { gain }), ms);
+    };
+
+    // The night's biggest beat outranks everything else in it.
+    if (/win it\./.test(text)) {
+      if (/singles|doubles|triples|HOMERS|beats out|error|sacrifice/.test(text)) crack(1);
       sfx('clap', { gain: 0.9 });
       crowdSwell(1);
       buzz([40, 60, 120]);
       return;
     }
-    if (/homers|home run/.test(l)) {
-      sfx(played % 2 ? 'crack' : 'crack2', { rate: vary(), gain: 1 });
-      crowdSwell(0.8);
-      buzz([25, 40, 60]);
-      return;
-    }
-    if (/triples|doubles/.test(l)) {
-      sfx(played % 2 ? 'crack' : 'crack2', { rate: vary() });
-      crowdSwell(0.45);
-      buzz(20);
-      return;
-    }
-    if (/singles|beats out/.test(l)) {
-      sfx(played % 2 ? 'crack' : 'crack2', { rate: vary(), gain: 0.9 });
-      crowdSwell(0.25);
-      buzz(15);
-      return;
-    }
-    if (/strikes out/.test(l)) {
-      sfx('glove', { rate: vary(), gain: 0.9 });
+
+    // Baserunning events arrive as their own beats, indented.
+    if (/caught stealing/.test(text)) {
+      sfx('ump-out', { gain: 0.8, rate: vary() });
       crowdSwell(0.2);
       buzz(12);
       return;
     }
-    if (/grounds|flies|lines out|pops|double play|forced at|sacrifice/.test(l)) {
-      sfx(played % 2 ? 'crack' : 'crack2', { rate: vary(), gain: 0.7 });
-      // The ball comes back down in a glove a beat later.
-      setTimeout(() => sfx('glove2', { gain: 0.55 }), 700);
+    if (/steals /.test(text)) {
+      sfx(played % 2 ? 'ump-safe' : 'ump-safe2', { gain: 0.8, rate: vary() });
+      crowdSwell(0.3);
+      buzz(15);
+      return;
+    }
+
+    // The batter's own line: the one that is not an indented note or a frame.
+    const main = [...fresh].reverse().find((l) => !/^[\s\n]|^---/.test(l)) ?? '';
+
+    if (/HOMERS/.test(main)) {
+      crack(1);
+      crowdSwell(0.8);
+      buzz([25, 40, 60]);
+    } else if (/triples|doubles/.test(main)) {
+      crack(0.95);
+      crowdSwell(0.45);
+      buzz(20);
+    } else if (/singles|beats out/.test(main)) {
+      crack(0.9);
+      crowdSwell(0.25);
+      buzz(15);
+      // The bang-bang play at first gets the snap call.
+      if (/beats out/.test(main)) {
+        window.setTimeout(() => sfx('ump-safe2', { gain: 0.7 }), 600);
+      }
+    } else if (/strikes out/.test(main)) {
+      sfx('glove', { rate: vary(), gain: 0.95 });
+      window.setTimeout(() => sfx('ump-strike3', { gain: 0.75, rate: vary() }), 280);
+      crowdSwell(0.2);
+      buzz(12);
+    } else if (/reaches on/.test(main)) {
+      // Errors and the fielder's choice: the ball was struck either way.
+      crack(0.85);
+      crowdSwell(0.2);
+      buzz(12);
+    } else if (/double play/.test(main)) {
+      crack(0.75);
+      catchAt(550);
+      catchAt(1050, 0.5);
       buzz(10);
+    } else if (/grounds|bunts/.test(main)) {
+      crack(0.7);
+      catchAt(600);
+      buzz(10);
+    } else if (/flies out|lines out|pops out|sacrifice fly|is retired/.test(main)) {
+      crack(0.75);
+      catchAt(1350);
+      buzz(10);
+    } else if (/lays down a sacrifice/.test(main)) {
+      crack(0.6);
+      catchAt(600);
+      buzz(8);
+    } else if (/walks|walked on purpose/.test(main)) {
+      // No ball-four call in the pack yet; the crowd acknowledges the base.
+      crowdSwell(0.22);
+      buzz(8);
+    } else if (/hit by the pitch/.test(main)) {
+      sfx('glove', { rate: 0.8, gain: 0.6 });
+      crowdSwell(0.25);
+      buzz(20);
     }
   }, [played]);
 

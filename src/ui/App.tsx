@@ -848,7 +848,14 @@ function TableOverlay() {
             its cards point, and a card that is only tappable in one of the
             three frames is not tappable. */}
         {overlay === 'inbox' && <Inbox />}
-        {overlay === 'program' && <Program />}
+        {/* No pinned header of its own either — every sheet on it (the board,
+            the money, the hall, the coach) is a plain column, so it takes the
+            same scroller the jobs screen does. Reported as the coach profile
+            refusing to scroll; it was the whole tab, and the coach sheet was
+            simply the first one tall enough to prove it. */}
+        {overlay === 'program' && (
+          <div className="screen-scroll" style={{ height: '100%' }}><Program /></div>
+        )}
         {overlay === 'depth' && <DepthChart />}
         {/* Who wears the C, with every eligible man and a reason to prefer one.
             It used to be a line at the top of the depth chart, which made the

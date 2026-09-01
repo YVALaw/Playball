@@ -15,7 +15,8 @@
 import { readPrefs } from '../state/devicePrefs.js';
 
 type SfxName =
-  | 'crack' | 'crack2' | 'glove' | 'glove2' | 'playball' | 'clap' | 'crowd';
+  | 'crack' | 'crack2' | 'glove' | 'glove2' | 'playball' | 'clap' | 'crowd'
+  | 'ump-safe' | 'ump-safe2' | 'ump-out' | 'ump-strike3';
 
 const FILE: Record<SfxName, string> = {
   crack: '/sfx/crack.wav',
@@ -25,6 +26,10 @@ const FILE: Record<SfxName, string> = {
   playball: '/sfx/playball.wav',
   clap: '/sfx/clap.mp3',
   crowd: '/sfx/crowd.wav',
+  'ump-safe': '/sfx/ump-safe.wav',
+  'ump-safe2': '/sfx/ump-safe2.wav',
+  'ump-out': '/sfx/ump-out.wav',
+  'ump-strike3': '/sfx/ump-strike3.wav',
 };
 
 let ctx: AudioContext | null = null;
@@ -101,9 +106,15 @@ function load(name: SfxName): Promise<AudioBuffer | null> {
   return p;
 }
 
-/** Warm the cache so the first crack is not late. Fire-and-forget. */
+/**
+ * Warm the whole cache. Fire-and-forget.
+ *
+ * Everything, not a shortlist — the reporter heard cracks landing seconds
+ * late, and a first-use fetch+decode on a phone is exactly that long. The
+ * entire pack is ~750 KB and it decodes once.
+ */
 export function preloadSfx(): void {
-  for (const name of ['crack', 'crack2', 'glove', 'crowd'] as SfxName[]) void load(name);
+  for (const name of Object.keys(FILE) as SfxName[]) void load(name);
 }
 
 /**

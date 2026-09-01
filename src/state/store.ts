@@ -1691,8 +1691,41 @@ function trainerNews(store: DynastyStore): void {
       title: `${row.name} is hurt`,
       body: `${row.what.charAt(0).toUpperCase()}${row.what.slice(1)}. `
         + `${row.days >= 150 ? 'He is done for the season.' : `About ${row.days} days.`} `
-        + 'The next man on the depth chart plays.',
+        + (handles(store.depth, 'lineups') || handles(store.depth, 'depthChart')
+          ? 'Nobody is moved for you — choose his cover on the chart.'
+          : 'The next man on the depth chart plays.'),
       link: { to: 'player', id: row.id },
+    });
+  }
+}
+
+/*
+  The other end of the trainer's table.
+
+  Reported: "when the player heals we should be prompted with a card that lets
+  us know the player is back and can go back to the lineup." Scanned off the
+  men rather than the trainer log so the fit day is exactly the day
+  `available` starts saying yes; keyed on the man and that day, so a week of
+  calls posts one card. Arms included — a rotation piece coming back is news
+  by the same rule.
+*/
+function recoveryNews(store: DynastyStore): void {
+  const { season, userTeam, year } = store;
+  const me = season?.teams[userTeam];
+  if (!season || !me) return;
+  const day = season.dayIndex;
+  const men = [...squad(me.team), ...me.team.rotation, ...me.team.bullpen];
+  for (const man of men) {
+    const u = man as typeof man & { outUntil?: number; why?: string };
+    if (u.why !== 'injury' || u.outUntil === undefined) continue;
+    if (day < u.outUntil || day - u.outUntil > 6) continue;
+    store.post({
+      kind: 'season', year,
+      key: `healed-${man.id}-${u.outUntil}`,
+      title: `${man.name} is fit again`,
+      body: 'The trainer has cleared him. He does not walk back into the nine '
+        + 'on his own — open the chart and put him where you want him.',
+      link: { to: 'player', id: man.id },
     });
   }
 }
@@ -3634,6 +3667,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const before = get().inbox;
     classroomNews(get());
     trainerNews(get());
+    recoveryNews(get());
     seasonNews(get());
     // On the same beat the wire is written, because both answer the same
     // question -- what just happened that is worth telling you about.

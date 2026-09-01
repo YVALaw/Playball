@@ -50,7 +50,7 @@
 import { ChevronRightIcon, SewingPinIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../state/store.js';
 import { handles } from '../state/depth.js';
-import { startersFrom, available, squad, SPOTS } from '../engine/depthChart.js';
+import { depthAt, startersFrom, available, squad, SPOTS } from '../engine/depthChart.js';
 import { standing, WORDS_A_SEASON } from '../engine/eligibility.js';
 import { isHurt, prognosis } from '../engine/injury.js';
 import { captainOf, candidates } from '../engine/captains.js';
@@ -121,21 +121,51 @@ export function useNeeds(): Need[] {
   */
   const nine = startersFrom(team.team, day);
   const nineIds = new Set(SPOTS.map((spot) => nine[spot]?.id).filter(Boolean));
+  const covered = new Set<string>();
   if (handles(depth, 'lineups') || handles(depth, 'depthChart')) {
-    const hurt: Player[] = [];
+    /*
+      A hurt man still first on his spot's chart.
+
+      This used to scan `startersFrom`'s nine — which FILTERS the
+      unavailable, so the must could never fire and the chart quietly covered
+      every injury. Reported: "when someone is hurt I don't want the chart to
+      automatically cover him — we have to edit the lineup manually and it
+      should be a requirement." The scan reads the top of each chart order
+      instead: while the hurt man is penciled in, the day does not move.
+      Promoting his cover on the chart is the manual act that clears it.
+    */
     for (const spot of SPOTS) {
-      const man = nine[spot];
-      if (man && !available(man, day)) hurt.push(man);
-    }
-    if (hurt.length > 0) {
+      const first = depthAt(team.team, spot)[0];
+      if (!first || available(first, day)) continue;
+      covered.add(first.id);
       needs.push({
-        id: 'hurt',
-        title: hurt.length === 1
-          ? `${hurt[0]!.name} cannot play`
-          : `${hurt.length} of your nine cannot play`,
-        note: 'He is still first on the chart at his spot. Move somebody up, or the '
-          + 'next man covers as he is.',
+        id: `cover-${first.id}`,
+        title: `${first.name} cannot play`,
+        note: `Still penciled in at ${spot} — ${prognosis(first, day)}. `
+          + 'Nobody is moved for you — set tonight\'s cover on the chart.',
         must: true,
+        cta: 'THE DEPTH CHART',
+        go: () => openOverlay('depth'),
+      });
+    }
+
+    /*
+      And the man walking back in. Reported with the injury rule: "when the
+      player heals we should be prompted... so the user goes back to the
+      lineup." A three-day window, self-clearing — if the cover is staying,
+      the card stops asking.
+    */
+    for (const man of squad(team.team)) {
+      const u = man as Player & { outUntil?: number; why?: string };
+      if (u.why !== 'injury' || u.outUntil === undefined) continue;
+      if (day < u.outUntil || day - u.outUntil >= 3) continue;
+      if (nineIds.has(man.id)) continue;
+      needs.push({
+        id: `back-${man.id}`,
+        title: `${man.name} is fit again`,
+        note: 'Healed, and not in tonight\'s nine. Put him back — or leave '
+          + 'the cover in. Your call, but make it on the chart.',
+        must: false,
         cta: 'THE DEPTH CHART',
         go: () => openOverlay('depth'),
       });
@@ -150,7 +180,7 @@ export function useNeeds(): Need[] {
     tour the roster to learn.
   */
   for (const man of squad(team.team)) {
-    if (!isHurt(man, day) || nineIds.has(man.id)) continue;
+    if (!isHurt(man, day) || nineIds.has(man.id) || covered.has(man.id)) continue;
     needs.push({
       id: `hurt-${man.id}`,
       title: `${man.name} is hurt`,

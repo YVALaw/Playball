@@ -46,6 +46,30 @@ export function DepthChart() {
   const men = squad(team.team);
   const out = men.filter((p) => !available(p, day));
 
+  /*
+    Where every man stands TONIGHT, so the candidate list answers the question
+    it kept raising. Reported: "I don't know which of these players is on the
+    bench and which is already starting and covering a base." Read off the
+    same `startersFrom` the game uses, so a cover shows as IN THE NINE at the
+    spot he is actually covering.
+  */
+  const startingAt = new Map<string, Position>();
+  for (const spot of SPOTS) {
+    const man = nine[spot];
+    if (man) startingAt.set(man.id, spot);
+  }
+  const standsFor = (p: Hitter, spot: Position): { text: string; tone: string } => {
+    if (!available(p, day)) {
+      const u = p as Hitter & { outUntil?: number };
+      const left = typeof u.outUntil === 'number' ? u.outUntil - day : 0;
+      return { text: left > 0 ? `OUT · ${left} MORE ${left === 1 ? 'DAY' : 'DAYS'}` : 'OUT', tone: 'var(--alert)' };
+    }
+    const at = startingAt.get(p.id);
+    if (at === spot) return { text: 'TONIGHT\'S MAN HERE', tone: 'var(--win)' };
+    if (at) return { text: `IN THE NINE · ${at}`, tone: 'var(--clay)' };
+    return { text: 'BENCH', tone: 'var(--dim)' };
+  };
+
   const spots = SPOTS;
 
   return (
@@ -161,6 +185,12 @@ export function DepthChart() {
                           {p.name}
                           {captainOf(team.team)?.id === p.id && <CaptainC />}
                           <span style={{ color: 'var(--dim)' }}> · {overallOf(p)}</span>
+                          <span style={{
+                            display: 'block',
+                            font: "700 calc(7.5px * var(--ts))/1.4 var(--mono)",
+                            letterSpacing: '.1em',
+                            color: standsFor(p, spot).tone,
+                          }}>{standsFor(p, spot).text}</span>
                           {fit2 !== 'fine' && (
                             <span style={{ color: 'var(--clay)' }}>
                               {' '}· {fit2 === 'trouble' ? 'FAILING' : 'GRADES'}
