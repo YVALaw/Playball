@@ -135,15 +135,28 @@ export function App() {
     sample cache. Once is enough; the listener removes itself.
   */
   useEffect(() => {
+    /*
+      WebKit only counts touch-RELEASE events as the gesture that may unlock
+      audio — pointerdown is not one, which is why the phone stayed silent
+      while desktop testing heard everything. Listen on the releases, keep
+      listening until the context genuinely runs (resume() is async, so the
+      ready check often passes one tap late), and let pointerdown stay only
+      to warm the sample cache early.
+    */
+    const events = ['pointerup', 'touchend', 'click', 'keydown'] as const;
+    const off = (): void => {
+      for (const e of events) window.removeEventListener(e, wake);
+      window.removeEventListener('pointerdown', warm);
+    };
     const wake = (): void => {
       unlockAudio();
       preloadSfx();
-      // resume() is async, so this often passes on the SECOND tap — which is
-      // exactly why the listener stays until the context really runs.
-      if (audioReady()) window.removeEventListener('pointerdown', wake);
+      if (audioReady()) off();
     };
-    window.addEventListener('pointerdown', wake);
-    return () => window.removeEventListener('pointerdown', wake);
+    const warm = (): void => preloadSfx();
+    for (const e of events) window.addEventListener(e, wake, { passive: true });
+    window.addEventListener('pointerdown', warm, { passive: true });
+    return off;
   }, []);
 
   return (

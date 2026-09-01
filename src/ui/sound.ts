@@ -113,9 +113,19 @@ export function preloadSfx(): void {
 export function sfx(name: SfxName, opts: { gain?: number; rate?: number } = {}): void {
   if (!readPrefs().sound) return;
   const a = audio();
-  if (!a || a.state === 'suspended') return;
+  if (!a) return;
+  /*
+    Reported from the phone: the raw file played, the dugout stayed silent.
+    iOS only grants the audio unlock inside touch-RELEASE events, and almost
+    every sfx call here happens inside a React onClick — which is one. So a
+    suspended context gets its resume attempt on every call, and the guard
+    moved to play time: by then the resume from THIS tap has usually landed,
+    and if it has not, the clip is skipped rather than queued (a backlog of
+    cracks all firing at the moment of unlock would be worse than silence).
+  */
+  if (a.state === 'suspended') { void a.resume(); promoteAudioSession(); }
   void load(name).then((buf) => {
-    if (!buf) return;
+    if (!buf || a.state !== 'running') return;
     const src = a.createBufferSource();
     src.buffer = buf;
     src.playbackRate.value = opts.rate ?? 1;
@@ -140,8 +150,9 @@ export function crowdStart(): void {
   if (!readPrefs().sound) return;
   const a = audio();
   if (!a || bedSrc) return;
+  if (a.state === 'suspended') { void a.resume(); promoteAudioSession(); }
   void load('crowd').then((buf) => {
-    if (!buf || bedSrc || !readPrefs().sound) return;
+    if (!buf || bedSrc || !readPrefs().sound || a.state !== 'running') return;
     bedSrc = a.createBufferSource();
     bedSrc.buffer = buf;
     bedSrc.loop = true;
