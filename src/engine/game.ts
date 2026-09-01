@@ -6,6 +6,7 @@ import {
   badgeSize, extraBaseBonus, fatigueBonus, gloveBonus, holdBonus, stealBonus, throwBonus,
 } from './badges.js';
 import { ENGINES } from './engines.js';
+import { fieldingAt, positionPenalty } from './positions.js';
 import { armMultiplier, legMultiplier } from './workload.js';
 import { moodMultiplier } from './morale.js';
 import {
@@ -293,6 +294,45 @@ export class TeamState {
     this.pitcher = starter;
     this.starter = starter;
     this.relief = relief.length > 0 ? relief : team.bullpen;
+    /*
+      Where each man actually stands, and what his glove is worth THERE.
+
+      This was "first man at each spot wins", with a comment saying a lineup
+      with two shortstops was a lineup bug rather than something to resolve
+      here. Both halves of that were costing the game a whole system: a
+      covered nine arrived with two catchers and nobody in left, the second
+      catcher never fielded a ball, the hole in left was filled by a fallback,
+      and out-of-position play therefore cost nothing anywhere in the
+      simulation — a catcher at shortstop fielded exactly like a shortstop.
+
+      Hardest spot first, least-bad man for it, everybody used once, and each
+      one passed through `fieldingAt`, which drops range, hands and arm by
+      what the move costs him. The bat is untouched: moving a man does not
+      stop him hitting.
+
+      For a sound nine this is the identity assignment — every man's own
+      position is his cheapest — so a well-built team's numbers do not move.
+      Only the covered, the scrambled and the shorthanded pay, which is the
+      entire point of having a depth chart at all.
+    */
+    const fieldTaken = new Set<number>();
+    for (const spot of FIELD_ORDER) {
+      let best = -1;
+      let bestCost = Number.POSITIVE_INFINITY;
+      this.order.forEach((p, i) => {
+        if (fieldTaken.has(i)) return;
+        const cost = positionPenalty(p, spot);
+        if (cost < bestCost) { bestCost = cost; best = i; }
+      });
+      if (best < 0) continue;
+      const man = this.order[best];
+      if (!man) continue;
+      fieldTaken.add(best);
+      this.byPosition.set(spot, fieldingAt(man, spot));
+    }
+    /** The nine as they are actually standing, for every average below. */
+    const afield: Hitter[] = [...this.byPosition.values()];
+
     // Averaged over the men who actually take the field, and weighted by how
     // often each of them gets a ball.
     //
@@ -306,7 +346,7 @@ export class TeamState {
     // the man who actually fields the ball, and `edge` came out positive on
     // average — turning what should be a redistribution between fielders into a
     // league-wide defensive upgrade worth about 1% of scoring.
-    const gloves: Player[] = this.order.filter((p) => p.pos !== 'DH');
+    const gloves: Player[] = afield.filter((p) => p.pos !== 'DH');
     // The man on the mound belongs in this average now that comebackers reach
     // him. Leaving him out would put a 48-range fielder on roughly a twentieth of
     // the balls in play while the baseline `edge` is measured against pretended
@@ -328,7 +368,7 @@ export class TeamState {
     // all nine let a strong-armed catcher and third baseman cover for corner
     // outfielders who cannot throw, which is exactly backwards: it is the man in
     // left field a runner is testing.
-    const outfield = this.order.filter((p) => p.pos === 'LF' || p.pos === 'CF' || p.pos === 'RF');
+    const outfield = afield.filter((p) => p.pos === 'LF' || p.pos === 'CF' || p.pos === 'RF');
     this.arm = outfield.length > 0
       ? outfield.reduce((a, p) => a + p.arm, 0) / outfield.length
       : team.lineup.reduce((a, p) => a + p.arm, 0) / team.lineup.length;
@@ -339,11 +379,9 @@ export class TeamState {
     let hold = 1;
     for (const p of outfield) hold *= 1 - (1 - holdBonus(p)) / 3;
     this.holdEdge = hold;
-    const backstop = this.order.find((p) => p.pos === 'C') ?? team.lineup.find((p) => p.pos === 'C');
-    this.catcher = backstop ?? (this.order[0] as Hitter);
-    // First man at each spot wins; a lineup with two shortstops is a lineup bug,
-    // not something to resolve here.
-    for (const p of this.order) if (!this.byPosition.has(p.pos)) this.byPosition.set(p.pos, p);
+    // The man assigned the plate, at what his glove is worth behind it — a
+    // left fielder catching pays the catcher tax for the night.
+    this.catcher = this.byPosition.get('C') ?? (this.order[0] as Hitter);
   }
 
   /**
@@ -1572,6 +1610,17 @@ const RANGE_SWING = 0.18;
  * below combined with the league's batted ball mix. Used only to centre the
  * defensive baseline, so it needs to be proportionally right rather than exact.
  */
+/**
+ * The order the field is assigned in: hardest to fill first.
+ *
+ * The same ranking `startersFrom` uses on the depth chart, and for the same
+ * reason — a shortstop can play first base and a first baseman cannot play
+ * short, so short has to choose before first does. The DH is last of all: it
+ * is a bat in a slot rather than a place on the grass, so it takes whoever is
+ * left rather than a glove somebody needed.
+ */
+const FIELD_ORDER: readonly Position[] = ['C', 'SS', '2B', 'CF', '3B', 'RF', 'LF', '1B', 'DH'];
+
 const FIELDING_SHARE: Partial<Record<Position, number>> = {
   SS: 0.15, '2B': 0.13, '3B': 0.10, '1B': 0.09, C: 0.02,
   LF: 0.16, CF: 0.19, RF: 0.16,
