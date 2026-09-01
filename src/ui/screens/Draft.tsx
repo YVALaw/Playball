@@ -61,7 +61,7 @@ export function Draft() {
   const pending = board?.men.filter((m) => m.outcome === 'pending').length ?? 0;
   const [view, setView] = useState<View>(pending > 0 ? 'keep' : 'departing');
 
-  const { undrafted, departing, national, mineLost, kept } = useMemo(() => {
+  const { undrafted, departing, national, mineLost, mineDrafted, kept } = useMemo(() => {
     const drafted = report?.drafted ?? [];
     const graduated = report?.graduated ?? [];
     const abbr = team?.def.abbr;
@@ -81,6 +81,7 @@ export function Draft() {
         .sort((a, b) => b.overall - a.overall).slice(0, 40),
       departing: mine.sort((a, b) => b.overall - a.overall),
       mineLost: mine.filter((d) => !d.returned).length,
+      mineDrafted: mine.filter((d) => !d.returned && d.reason === 'drafted').length,
       kept: mine.filter((d) => d.returned).length,
     };
   }, [report, team, version]);
@@ -105,7 +106,13 @@ export function Draft() {
       <ModuleIntro kicker={`${year} · ${team.def.abbr}`} title="Draft results" />
 
       <MetricStrip>
-        <Metric label="YOU LOST" value={String(mineLost)} note="DRAFTED" />
+        {/* Audit fix: at a program whose men graduate rather than get
+            drafted, this read "YOU LOST 6 — DRAFTED" over six graduations.
+            The note now says which door they left through. */}
+        <Metric
+          label="YOU LOST" value={String(mineLost)}
+          note={`${mineDrafted} DRAFTED · ${mineLost - mineDrafted} GRADUATED`}
+        />
         <Metric label="TALKED ROUND" value={String(kept)} note="STAYING" />
         <Metric label="BUDGET LEFT" value={String(left)} note={`OF ${pool}`} />
       </MetricStrip>

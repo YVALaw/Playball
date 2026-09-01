@@ -4896,6 +4896,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, userTeam, version } = get();
     const me = season?.teams[userTeam];
     if (!me || get().busy) return;
+    // The signature is typed, but an untyped caller (a console, a future bug)
+    // could still write a junk key straight into the save. Refuse anything the
+    // strategy does not already carry.
+    if (!(key in me.strategy)) return;
     // Mutated in place: the engine reads TeamRecord.strategy when it builds each
     // game, so this is live from the next pitch onward.
     me.strategy = { ...me.strategy, [key]: value };

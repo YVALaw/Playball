@@ -143,6 +143,20 @@ profile is genuinely blocking it** — stage 15 redesigns around a larger 3D
 field, and a frame-rate disaster changes the design, not the code. The Play
 Console record errand stands (registration done long ago, per the reporter).
 
+**The September 1 beta audit** (two hands-on seasons at Passaic Falls, the
+lowest chair, everything through real actions): the systems hold. Fixed on
+the spot: the draft metric that called graduations "DRAFTED", a setStrategy
+runtime guard, the Program tab scroller, the injury manual-cover rule (the
+old must-need was dead code), and the broadcast classifier (whole contact
+classes were silent; catches now land with the flight). Reported, not
+fixed: **the PSC godsquad hack won back-to-back national titles in a world
+the user never touched — it must come out in stage 16**; year-1 floor
+mandates require not-last and are near-unpassable at prestige 19 (make it
+a bonus in the bottom quartile); realignment ignores geography (Piedmont
+to the PACIFIC) and should prefer adjacent regions; the recruiting board
+never tells you a bid is losing. Full ledger in the session scratchpad
+(audit-findings.md) and summarized in the commit.
+
 Stage 14 notes that bind future work: `sound.ts` is name-keyed — a better
 recording is a file swap; `prep-sfx.mjs` re-processes the raw downloads from
 `C:/Users/cronu/Downloads` if they are ever replaced; **the freesound
