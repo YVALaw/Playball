@@ -506,42 +506,7 @@ export function generateClass(year: number, teams: number, rng: Rng): RecruitCla
   prospects.sort((a, b) => serviceScore(b.player) - serviceScore(a.player));
   prospects.forEach((p, i) => { p.rank = i + 1; });
 
-  /*
-    TESTING ONLY — remove with the PSC godsquad before v1.0.
-
-    Hans Hood, the wonder guy: a 20-overall third baseman with an S ceiling,
-    in every class, every year, as a one-star nobody any program can chase.
-    Asked for by the reporter to test progression — the plan is a class of
-    hidden greats who start at one or two stars and grow into the picture.
-    Attributes are ASSIGNED onto an already-generated prospect, so no draw
-    is consumed and the rest of the class is bit-for-bit what it would have
-    been. He takes the last rank; the services never rated hands they have
-    not seen. Not under vitest, for the same reason the godsquad is not.
-  */
-  if (typeof process === "undefined" || !process.env?.["VITEST"]) {
-    const donor = prospects.find((p) => p.player.type === "hitter");
-    if (donor) {
-      const copy = JSON.parse(JSON.stringify(donor)) as Prospect;
-      const h = copy.player as unknown as Record<string, unknown>;
-      h.id = ("p1hans" + year) as unknown as PlayerId;
-      h.name = "Hans Hood";
-      h.pos = "3B";
-      h.classYear = "FR";
-      h.age = 18;
-      for (const k of ["contact", "power", "eye", "speed", "range", "hands", "arm", "armAccuracy"]) {
-        if (typeof h[k] === "number") h[k] = 20;
-      }
-      h.potential = 99;
-      prospects.push({
-        ...copy,
-        id: h.id as PlayerId,
-        stars: 1,
-        minProgram: reachFloor(1),
-        rank: prospects.length + 1,
-        points: {}, spent: {}, signedBy: null, committedWeek: null,
-      });
-    }
-  }
+  ensureWonderGuy({ year, week: 0, prospects });
 
   return { year, week: 0, prospects };
 }
@@ -1343,4 +1308,43 @@ export function leadersAtWeekStart(recruits: RecruitClass): Record<string, numbe
 /** Clear the per-week action spend. Points banked already are permanent. */
 export function resetWeeklySpend(recruits: RecruitClass): void {
   for (const p of recruits.prospects) p.spent = {};
+}
+
+/*
+  TESTING ONLY — remove with the PSC godsquad before v1.0.
+
+  Hans Hood, the wonder guy: a 20-overall third baseman with an S ceiling,
+  in every class, every year, as a one-star nobody any program can chase.
+  Asked for by the reporter to test progression — the plan is a class of
+  hidden greats who start at one or two stars and grow into the picture.
+  Attributes are ASSIGNED onto a cloned prospect, so no draw is consumed.
+  Exported and also called on save-load, because the reporter went looking
+  for him in a class that had been generated before he existed.
+*/
+export function ensureWonderGuy(cls: RecruitClass): void {
+  if (typeof process !== "undefined" && process.env?.["VITEST"]) return;
+  const prospects = cls.prospects;
+  const id = ("p1hans" + cls.year) as unknown as PlayerId;
+  if (prospects.some((p) => p.id === id)) return;
+  const donor = prospects.find((p) => p.player.type === "hitter");
+  if (!donor) return;
+  const copy = JSON.parse(JSON.stringify(donor)) as Prospect;
+  const h = copy.player as unknown as Record<string, unknown>;
+  h.id = id;
+  h.name = "Hans Hood";
+  h.pos = "3B";
+  h.classYear = "FR";
+  h.age = 18;
+  for (const k of ["contact", "power", "eye", "speed", "range", "hands", "arm", "armAccuracy"]) {
+    if (typeof h[k] === "number") h[k] = 20;
+  }
+  h.potential = 99;
+  prospects.push({
+    ...copy,
+    id,
+    stars: 1,
+    minProgram: reachFloor(1),
+    rank: prospects.length + 1,
+    points: {}, spent: {}, signedBy: null, committedWeek: null,
+  });
 }

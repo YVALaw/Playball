@@ -92,6 +92,7 @@ import {
   SCHOLARSHIPS, RECRUITING_BUDGET, MAX_PER_RECRUIT, RECRUITING_WEEKS, budgetFor,
   weeklyBudget, windowBudget,
   aiTargets, weeklyPoints, closeWeek, resetWeeklySpend, canPursue, inPipeline,
+  ensureWonderGuy,
   leadersAtWeekStart,
 } from '../engine/recruiting.js';
 import { pitchFor, developmentScore } from '../engine/pitch.js';
@@ -5207,6 +5208,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // carousel keeps every coach it has hired and fired — the only chair this
     // touches on a modern save is one the market genuinely failed to fill.
     seatCoaches(loaded.season, loaded.userTeam, loaded.year);
+    // TESTING ONLY, with the godsquad: the wonder guy joins a class that was
+    // generated before he existed, so an in-flight save can test him too.
+    ensureWonderGuy(loaded.season.recruiting);
     // Restamped on every load rather than trusted from the save, so a save from
     // before the in-game skills were wired — or one that predates a job change —
     // comes up with the edge on the right program.
