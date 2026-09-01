@@ -1195,10 +1195,23 @@ describe('the top of the ladder is reserved', () => {
         if (g === 'A+') aPlus++;
       }
     }
-    // A couple of men in the country in a year, which is the whole point of the
-    // grade. Bounded on both sides: nought would make it decoration.
-    expect(s / CLASSES).toBeGreaterThan(1);
-    expect(s / CLASSES).toBeLessThan(6);
+    /*
+      Roughly a dozen men in the country in a year — one for every eight
+      programmes — which is the whole point of the grade. Bounded on both
+      sides: nought would make it decoration.
+
+      The old ceiling here was six, and it was measuring a bug rather than a
+      design. `projectPotential` reserves its projectable-freshman clause for
+      FR — a live arm with no idea where it is going — but the recruiting
+      class stamped `classYear = FR` AFTER each man was built, so three
+      quarters of every class carried an upperclassman's growth curve and
+      the clause fired at a quarter of its written rate. Fixed at the source
+      (the class is passed in now), the documented seven percent is finally
+      what actually happens, and the top of the ladder is where the code
+      always said it was.
+    */
+    expect(s / CLASSES).toBeGreaterThan(6);
+    expect(s / CLASSES).toBeLessThan(18);
     // Rare, but findable often enough to be worth scouting for.
     expect(aPlus).toBeGreaterThan(s);
   });

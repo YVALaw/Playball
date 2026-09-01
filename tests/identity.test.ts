@@ -379,7 +379,12 @@ describe('determinism', () => {
       const c = counted(4242);
       const cls = generateClass(2027, 8, c.rng);
       expect(cls.prospects.length).toBe(60);
-      expect(c.spent()).toBe(2413);
+      // 2413 before September 1. The class is built AS freshmen now — the
+      // class year is passed in rather than stamped on afterwards — and the
+      // projectable-freshman clause costs a draw that only a freshman was
+      // ever asked for, so sixty men take a branch fifteen of them used to.
+      // Still fixed, which is the property this test exists to hold.
+      expect(c.spent()).toBe(2463);
     });
   });
 });

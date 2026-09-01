@@ -261,7 +261,20 @@ export function serviceScore(p: Player): number {
   let h = 7919;
   for (let i = 0; i < p.id.length; i++) h = (h * 31 + p.id.charCodeAt(i)) | 0;
   const v = Math.sin(h * 0.0001) * 43758.5453;
-  const miss = (v - Math.floor(v) - 0.5) * 26;
+  /*
+    How wrong the services are allowed to be.
+
+    Reported after thirty seasons: "recruits are not really dynamic — a five
+    star is always good and a low star never is." They were, because this
+    error was worth ±13 on the projection half only, which is ±3.4 on a score
+    whose star bands are eight points wide: the rating was a readout of
+    current ability with a rounding error on it. At ±26 a genuine ceiling can
+    hide two bands below where it belongs and a polished eighteen-year-old
+    with nothing left can be sold a band above — which is what a bust and a
+    steal actually are. The error is per-man and stable, so every program in
+    the country is fooled by the same recruit in the same direction.
+  */
+  const miss = (v - Math.floor(v) - 0.5) * 52;
 
   // Weighted toward what he already does, because that is what a scout can
   // actually watch. The projection half carries the error.
@@ -462,9 +475,10 @@ export function generateClass(year: number, teams: number, rng: Rng): RecruitCla
       : 34 + rng() * 8;
 
     const slot = CLASS_SHAPE[i % CLASS_SHAPE.length] as Position | 'SP' | 'RP';
+    // Built AS a freshman, so his ceiling is a freshman's. See HitterOpts.
     const player: Player = slot === 'SP' || slot === 'RP'
-      ? makePitcher(rng, quality, { role: slot })
-      : makeHitter(rng, quality, { pos: slot });
+      ? makePitcher(rng, quality, { role: slot, classYear: 'FR' })
+      : makeHitter(rng, quality, { pos: slot, classYear: 'FR' });
     player.classYear = 'FR';
     // He was generated at whatever class year the draw handed him, so his age
     // has to come back into step with the freshman he is about to be.

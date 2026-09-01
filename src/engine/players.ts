@@ -291,6 +291,17 @@ export interface HitterOpts {
   bats?: Bats;
   throws?: Hand;
   pos?: Position;
+  /**
+   * The class he is actually being made for.
+   *
+   * Potential is projected against the class year — a freshman is drawn a
+   * decade of headroom, a senior almost none — and the recruiting class used
+   * to stamp `classYear = 'FR'` AFTER the man was built, so three quarters of
+   * every incoming class carried an upperclassman's growth curve for life.
+   * The hidden-gem clause is gated on FR too, so it fired at a quarter of its
+   * intended rate. Passing the class in fixes both at the source.
+   */
+  classYear?: ClassYear;
 }
 
 /**
@@ -325,7 +336,8 @@ export function makeHitter(rng: Rng, quality = 50, opts: HitterOpts = {}): Hitte
   // below can read it. The draw still happens at exactly this point in the
   // sequence — after the position and before the platoon split — so no
   // downstream number moves.
-  const classYear = pick(rng, CLASSES);
+  const drawnClass = pick(rng, CLASSES);
+  const classYear = opts.classYear ?? drawnClass;
   const spec = SPECTRUM[pos];
   let buntNoise = 0;
   let stealNoise = 0;
@@ -385,6 +397,8 @@ export function makeHitter(rng: Rng, quality = 50, opts: HitterOpts = {}): Hitte
 export interface PitcherOpts {
   throws?: Hand;
   role?: PitcherRole;
+  /** As HitterOpts.classYear — see there. */
+  classYear?: ClassYear;
 }
 
 export function makePitcher(rng: Rng, quality = 50, opts: PitcherOpts = {}): Pitcher {
@@ -396,7 +410,8 @@ export function makePitcher(rng: Rng, quality = 50, opts: PitcherOpts = {}): Pit
   const name = uniqueName(rng);
   // Hoisted for the same reason as in `makeHitter`, and drawn in the same place
   // in the sequence it always was.
-  const classYear = pick(rng, CLASSES);
+  const drawnClass = pick(rng, CLASSES);
+  const classYear = opts.classYear ?? drawnClass;
   let velocityNoise = 0;
   let accuracyNoise = 0;
   const p: Pitcher = {

@@ -200,6 +200,29 @@ export function proCareer(id: string, note: AlumnusNote, throughYear: number): P
       });
       return rows;
     }
+    /*
+      And then it ends.
+
+      Reported from a long dynasty: "I don't think you set a retirement year — I had a
+      guy who had been an All-Star for twenty two years." Washing out was the
+      only exit, and at the top of the pyramid it floors at four percent a
+      year, so a good enough man simply never left. A career has a length as
+      well as a ceiling: after eight professional seasons the odds of a last
+      one climb steeply, and nobody plays a twentieth.
+    */
+    const proYears = age;
+    const retirePct = proYears < 8 ? 0 : Math.min(90, (proYears - 7) * 11);
+    if (proYears >= 20 || (h >> 24) % 100 < retirePct) {
+      rows.push({
+        year: y,
+        level: LEVELS[level]!,
+        line: level === LEVELS.length - 1
+          ? "Retired after " + proYears + " years in the big leagues. A career."
+          : "Hung them up after " + proYears + " years in the minors.",
+        final: true,
+      });
+      return rows;
+    }
     const movePct = Math.min(72, 34 + talent);
     if (level < LEVELS.length - 1 && (h >> 8) % 100 < movePct) {
       level++;

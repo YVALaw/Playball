@@ -1181,6 +1181,30 @@ export function createSeason(
  * statistics, schedule. Deliberately does not touch the name pool, because the
  * world is continuous now and a returning junior must keep his name.
  */
+/**
+ * What a programme can scrape off the street, drifting toward what it has
+ * become.
+ *
+ * Reported after thirty seasons: "there is not enough disparity — the teams
+ * that are five star at the beginning are the same five star teams twenty
+ * five seasons later." Prestige has moved for every school since B7, but
+ * `Team.quality` — the number every walk-on and every unfilled hole is drawn
+ * against — was written once at world creation and never again. So a program
+ * that climbed from nineteen to sixty still filled its holes with the bodies
+ * a nineteen could find, and one that collapsed still filled them like a
+ * blue blood. That floor, forty points wide and welded in place, is most of
+ * why the pecking order could not move.
+ *
+ * Twelve percent of the gap a year: a decade of real success lifts the floor
+ * most of the way, one bad decade lowers it, and nothing swings in a season.
+ */
+const QUALITY_DRIFT = 0.12;
+
+function driftQuality(t: TeamRecord): void {
+  const target = 20 + t.prestige * 0.55;
+  t.team.quality = Math.round((t.team.quality + (target - t.team.quality) * QUALITY_DRIFT) * 10) / 10;
+}
+
 export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config): SeasonState {
   // Coerced rather than trusted: a non-finite rotation silently degrades the
   // schedule into the same pairing every round instead of throwing.
@@ -1198,6 +1222,9 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
     lastW: t.rw ?? t.w, lastL: t.rl ?? t.l,
     opponents: [],
   }));
+
+  // The floor follows the programme. See driftQuality.
+  for (const t2 of teams) driftQuality(t2);
 
   const world: WorldShape = { conferences: [] };
   for (const t of teams) {

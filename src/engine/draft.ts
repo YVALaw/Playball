@@ -379,8 +379,18 @@ export function pitchCredibility(kind: KeepPitch, p: Player, scene: KeepScene): 
       const edge = overallOf(p) - scene.blockedBy;
       return unit(0.5 + edge / 24);
     }
-    case 'ring':
-      return unit(0.60 * scene.prestige + 0.40 * scene.returning);
+    case "ring":
+      /*
+        Reported after thirty seasons: the draft is punishing for a small
+        school — get a good player, lose him in his junior year, and the
+        climb starts again. Measured, the case was worse than it read: the
+        same round-five junior cost a one-star programme about two and a
+        half times what he cost a blue blood, on a budget a quarter smaller,
+        because credibility here ran from 0.30 to 0.83 with prestige. The
+        floor is the fix — a coach at a small school promising a ring is
+        less believable, not unbelievable — and the ordering is untouched.
+      */
+      return unit(0.30 + 0.42 * scene.prestige + 0.28 * scene.returning);
     case 'word':
       // A rookie's word is worth something, and not much. Fifteen years in one
       // chair is worth a great deal, which is the only place in the game where

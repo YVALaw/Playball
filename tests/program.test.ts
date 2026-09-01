@@ -705,8 +705,20 @@ describe('your board, pinned', () => {
     // shape to expect: the same programs, graded against a box that has room
     // behind it. The live-league tuning tests in `rivals.test.ts` (clear rate,
     // turnover, capacity) are the real gauge.
+    // Re-pinned a third time, September 1, and this one is a rule change
+    // rather than a format change: a winning record is now a BONUS box on
+    // the develop and build lists. Reported from a thirty-season save —
+    // "I ended with a winning record the last two seasons but they neither
+    // counted nor improved my relationship with the board" — and they did
+    // not, because .500 was only ever scored on the compete list, which the
+    // smallest programmes in the country are never handed.
+    //
+    // Forty-four rows move from met to exceeded and NOTHING else moves:
+    // missed and failed are identical to the digit. That is the shape to
+    // expect from a bonus — it can only lift a season that already cleared
+    // its required boxes, and it can never save one that did not.
     expect(sweep().verdicts)
-      .toEqual({ exceeded: 1636, met: 360, missed: 612, failed: 1892 });
+      .toEqual({ exceeded: 1680, met: 316, missed: 612, failed: 1892 });
   });
 
   it('asks for the same wins and moves security by the same amount', () => {
@@ -714,16 +726,30 @@ describe('your board, pinned', () => {
     // The win target has never moved and must not: the clear rate was closed by
     // taking a box the format could not supply off the list, not by lowering the
     // number beside it, which would have hidden the incoherence behind a digit.
+    // The win target still has not moved, and that is the point of keeping
+    // it here: the September 1 pass softened the board by scoring a real
+    // achievement and by narrowing the renew band, NOT by lowering the
+    // number beside the ask.
     expect(wins).toBe(107620);
-    expect(security).toBe(-17891);
+    // Security is 484 kinder across 3600 reviews — the forty-four seasons
+    // that became exceeded, and nothing else.
+    expect(security).toBe(-17407);
   });
 
   it('keeps and lets go of exactly the same men, by the same two routes', () => {
     const { fired, sacked, notRenewed, extended } = sweep();
-    expect(fired).toBe(1815);
+    // Sacked mid-contract is untouched at 1252: the bar that stops the car
+    // is still 20, and it is the same bar every rival has. What moved is the
+    // second route — the contract that simply is not renewed — where the
+    // player's bar came down from 45 to 38. Ninety fewer men lose the job.
+    //
+    // The bar was tried at 34 first and the route caught nobody at all in
+    // this sweep. A rule that never fires is worse than a harsh one: it
+    // reads as a promise the game does not keep.
+    expect(fired).toBe(1725);
     expect(sacked).toBe(1252);
-    expect(notRenewed).toBe(563);
-    expect(extended).toBe(1227);
+    expect(notRenewed).toBe(473);
+    expect(extended).toBe(1260);
   });
 
   it('is what `reviewSeason` uses when nobody says otherwise', () => {
@@ -742,7 +768,7 @@ describe('your board, pinned', () => {
 
   it('keeps both of the bars it has always had', () => {
     expect(SACK_BAR).toBe(20);
-    expect(PLAYER_RENEW_BAR).toBe(45);
+    expect(PLAYER_RENEW_BAR).toBe(38);
     const board = playerBoard(50, 50, 45);
     expect(board.renewAt).toBe(PLAYER_RENEW_BAR);
     expect(board.expectation).toEqual(expectationFor(50, 50, 45));

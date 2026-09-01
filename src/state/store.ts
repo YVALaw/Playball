@@ -36,6 +36,7 @@ import {
 } from '../engine/draft.js';
 import {
   newCoach, restoreCoach, reviewSeason, jobOffers, rosterStrength, contractFor, playerBoard,
+  leagueShape,
   canBeHired,
   approachSchool, APPROACHES_PER_SEASON, CAUGHT_SECURITY_COST, type ApproachOutcome,
   prestigeStars, skillPoints, takeChair,
@@ -2798,8 +2799,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     me.drought = outcome.madeRegionals ? 0 : (me.drought ?? 0) + 1;
     outcome.drought = me.drought;
 
+    /*
+      Judged against the country as it is now, like everybody else. See
+      `playerBoard` — the drift correction every rival board gets was never
+      handed to the player's, and thirty seasons of league inflation landed
+      on him alone.
+    */
     const review = reviewSeason(
       coach, me.prestige, rosterStrength(me.team), outcome, seasonLength(season.config),
+      playerBoard(
+        me.prestige, rosterStrength(me.team), seasonLength(season.config),
+        me.culture?.patience, leagueShape(season.teams),
+      ),
     );
 
     // Prestige belongs to the school and survives a coaching change.
@@ -3299,7 +3310,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         .filter((t): t is NonNullable<typeof t> => !!t)
         .filter((t) => t.index !== get().userTeam)
         .filter((t) => (!t.coach || coach.prestige > t.coach.prestige)
-          && canBeHired(coach.prestige, t.prestige, t.def.quality))
+          && canBeHired(coach.prestige, t.prestige, t.team.quality))
         .map((t) => ({
           team: t.index,
           school: t.def.school,

@@ -462,10 +462,22 @@ export function objectivesFor(mandate: Mandate, targetWins: number): Objective[]
     ({ key: 'regionalTitle', label: 'Win your regional', required });
 
   switch (mandate) {
+    /*
+      A winning record is worth something at a rebuild.
+
+      Reported: "I ended with a winning record the last two seasons but they
+      neither counted nor improved my relationship with the board." They did
+      not — .500 was only ever a box on the `compete` list, so the two
+      mandates handed to the smallest programmes in the country had no way to
+      score the single most legible thing a small programme can do. It is a
+      bonus rather than a requirement: a develop board still wants growth
+      first, and two bonuses are what turn a met year into an exceeded one.
+    */
     case 'develop':
       return [
         wins,
         { key: 'notLast', label: 'Finish out of the conference cellar', required: true },
+        { key: 'winningSeason', label: 'Finish above .500', required: false },
         { key: 'topHalf', label: 'Finish in the top half of the conference', required: false },
         bid(false), stretch,
       ];
@@ -473,6 +485,7 @@ export function objectivesFor(mandate: Mandate, targetWins: number): Objective[]
       return [
         wins,
         { key: 'notLast', label: 'Stay out of the conference cellar', required: true },
+        { key: 'winningSeason', label: 'Finish above .500', required: false },
         { key: 'topHalf', label: 'Finish in the top half of the conference', required: false },
         bid(false), stretch,
       ];
@@ -824,7 +837,7 @@ export function rivalExpectation(
 export const SACK_BAR = 20;
 
 /** And the second bar, which is the player's alone. See the seam note above. */
-export const PLAYER_RENEW_BAR = 45;
+export const PLAYER_RENEW_BAR = 38;
 
 /**
  * Who is judging, and the only two things that depend on the answer.
@@ -864,11 +877,36 @@ export function sackBarFor(patience: number | undefined): number {
   return SACK_BAR - Math.max(-7, Math.min(7, Math.round((patience - MEAN) / 4)));
 }
 
-/** Yours. Every number in it is the one it has always been. */
+/**
+ * Yours.
+ *
+ * Two things changed after a thirty-season report — "the prestige for low
+ * level is way too harsh and you can get sacked far too easily."
+ *
+ * The first was a genuine seam rather than a decision. Every rival's board is
+ * handed `league` and moved back onto the calibrated middle, because the
+ * country's mean roster drifts up about ten points over thirty seasons and a
+ * target fitted to the old middle asks for wins that no longer exist. The
+ * player's board was the only one in the world never given that correction,
+ * so the drift landed entirely on him: at a settled league his board asked
+ * for two or three wins a season more than the identical rival board asked
+ * of the school across the road. Passing `league` closes it.
+ *
+ * The second is a tuning call, made deliberately. The renew bar stays above
+ * the sack bar — the player is still the one man in the league who can be
+ * let go for being merely adequate — but the band between them was
+ * twenty five points wide, and at a rebuild that is a cull dressed as a
+ * contract. Twenty five became eighteen: measured across the pinned sweep,
+ * ninety fewer coaches lose the job and the route itself stays alive, which
+ * a bar of 34 did not — there it caught nobody at all.
+ */
 export const playerBoard = (
   prestige: number, roster: number, games: number, patience?: number,
+  league?: LeagueShape,
 ): Board => ({
-  expectation: expectationFor(prestige, roster, games),
+  expectation: league
+    ? rivalExpectation(prestige, roster, league, games)
+    : expectationFor(prestige, roster, games),
   renewAt: PLAYER_RENEW_BAR,
   sackAt: sackBarFor(patience),
 });
@@ -1891,7 +1929,7 @@ export function jobOffers(
     // who would hire you. The lower bound is not a rule about them, it is about
     // you: a job far beneath where you already are is not an offer worth showing.
     .filter(({ t, prestige }) =>
-      canBeHired(coach.prestige, prestige, t.def.quality)
+      canBeHired(coach.prestige, prestige, t.team.quality)
       && prestige >= coach.prestige - 22)
     .sort((a, b) => b.prestige - a.prestige)
     .slice(0, limit);
