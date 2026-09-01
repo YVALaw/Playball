@@ -12,7 +12,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { applyTeamAccent } from './accent.js';
-import { preloadSfx, unlockAudio } from './sound.js';
+import { audioReady, preloadSfx, unlockAudio } from './sound.js';
 import { BigMomentCard } from './BigMoment.js';
 import { teamColour } from './Avatar.js';
 import {
@@ -138,7 +138,9 @@ export function App() {
     const wake = (): void => {
       unlockAudio();
       preloadSfx();
-      window.removeEventListener('pointerdown', wake);
+      // resume() is async, so this often passes on the SECOND tap — which is
+      // exactly why the listener stays until the context really runs.
+      if (audioReady()) window.removeEventListener('pointerdown', wake);
     };
     window.addEventListener('pointerdown', wake);
     return () => window.removeEventListener('pointerdown', wake);

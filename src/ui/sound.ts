@@ -28,6 +28,33 @@ const FILE: Record<SfxName, string> = {
 };
 
 let ctx: AudioContext | null = null;
+
+/*
+  The iPhone's ringer switch.
+
+  Reported from the phone: "there is no sound at all." The files were served
+  and decoded fine — iOS simply mutes ALL WebAudio while the hardware switch
+  is on silent, the way it mutes a ringtone. HTML5 media is treated as
+  playback and is NOT muted, and WebKit sorts the whole page into one bucket
+  or the other: play one <audio> element inside a user gesture and the page's
+  audio session becomes "playback", after which WebAudio ignores the switch
+  too. So the unlock plays a twentieth of a second of silence through an
+  <audio> tag. Every serious mobile web game ships this exact trick.
+*/
+const SILENCE = 'data:audio/wav;base64,UklGRkQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YSADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
+let promoted = false;
+function promoteAudioSession(): void {
+  if (promoted || typeof document === 'undefined') return;
+  promoted = true;
+  try {
+    const el = document.createElement('audio');
+    el.preload = 'auto';
+    el.src = SILENCE;
+    el.play().catch(() => { promoted = false; });
+  } catch {
+    promoted = false;
+  }
+}
 const buffers = new Map<SfxName, AudioBuffer>();
 const loading = new Map<SfxName, Promise<AudioBuffer | null>>();
 
@@ -44,8 +71,14 @@ function audio(): AudioContext | null {
  * any number of times.
  */
 export function unlockAudio(): void {
+  promoteAudioSession();
   const a = audio();
   if (a && a.state === 'suspended') void a.resume();
+}
+
+/** Whether the context is actually running — the unlock listener's exit test. */
+export function audioReady(): boolean {
+  return ctx?.state === 'running';
 }
 
 function load(name: SfxName): Promise<AudioBuffer | null> {
