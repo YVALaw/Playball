@@ -1168,9 +1168,10 @@ function Overview({
       </section>
 
             <section className="prospect-wants">
+        {/* No counter — it overflowed on the phone and the list under it
+            already answers how many. */}
         <div className="flow-section-title">
           <span className="label">WHAT HE WANTS</span>
-          <b>{wants.length} PRIORITIES</b>
         </div>
         {wants.map((k, i) => (
           <div key={k}>

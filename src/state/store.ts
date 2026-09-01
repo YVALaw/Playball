@@ -910,6 +910,16 @@ export interface DynastyStore {
 
   /** Swap two batting order spots. The engine reads team.lineup directly. */
   swapLineup: (a: number, b: number) => void;
+  /**
+   * Put a bench man into a batting slot; the man there goes to the bench.
+   *
+   * THE fix behind "he didn't appear in the lineup to be selected since he is
+   * on the bench, and we should be able to pick whoever we want to start."
+   * `team.lineup` is the nine the engine actually fields — the depth chart
+   * never was — so the swap writes there and nowhere else. Returns false when
+   * the incoming man cannot play today.
+   */
+  swapStarter: (slot: number, benchId: PlayerId) => boolean;
   /** Move a starter up or down the weekend rotation. */
   moveRotation: (index: number, delta: number) => void;
   /**
@@ -4917,6 +4927,24 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     me.strategy = { ...me.strategy, [key]: value };
     set({ version: version + 1 });
     void get().saveNow();
+  },
+
+  swapStarter: (slot, benchId) => {
+    const { season, userTeam, version } = get();
+    const team = season?.teams[userTeam]?.team;
+    if (!season || !team || get().busy) return false;
+    const bIdx = team.bench.findIndex((p) => p.id === benchId);
+    const out = team.lineup[slot];
+    const inMan = team.bench[bIdx];
+    if (bIdx < 0 || !out || !inMan) return false;
+    // A man who cannot play cannot be started — refusing here is the whole
+    // point of the manual-cover rule.
+    if (!available(inMan, season.dayIndex)) return false;
+    team.lineup[slot] = inMan;
+    team.bench[bIdx] = out;
+    set({ version: version + 1 });
+    void get().saveNow();
+    return true;
   },
 
   swapLineup: (a, b) => {

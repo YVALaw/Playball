@@ -2385,3 +2385,16 @@
   border-color: var(--win);
   opacity: 1;
 }
+
+/* #721 clipped in a 55px column: the rank box sizes to its number now and
+   the number gives back a little size to stay inside it. */
+.prospect-hero-body { grid-template-columns: 86px minmax(0, 1fr) auto; }
+.prospect-hero-body aside { min-width: 55px; max-width: 84px; padding: 7px 8px; }
+.prospect-hero-body aside strong { font-size: calc(20px * var(--ts)); }
+
+/* The bench under the nine, same row anatomy, quieter ground. */
+.lineup-bench { border: 1px solid var(--line); background: var(--paper); }
+.lineup-bench .player-row { width: 100%; border-bottom: 1px solid var(--line); }
+.lineup-bench .player-row:last-child { border-bottom: 0; }
+.lineup-bench .player-row:disabled { opacity: .55; }
+.bench-out { color: var(--alert); font-weight: 800; }

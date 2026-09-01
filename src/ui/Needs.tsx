@@ -50,7 +50,7 @@
 import { ChevronRightIcon, SewingPinIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../state/store.js';
 import { handles } from '../state/depth.js';
-import { depthAt, startersFrom, available, squad, SPOTS } from '../engine/depthChart.js';
+import { available, squad } from '../engine/depthChart.js';
 import { standing, WORDS_A_SEASON } from '../engine/eligibility.js';
 import { isHurt, prognosis } from '../engine/injury.js';
 import { captainOf, candidates } from '../engine/captains.js';
@@ -119,8 +119,7 @@ export function useNeeds(): Need[] {
     Full careers only — see the header. Counted off the same `startersFrom` the
     game itself uses, so this cannot disagree with who actually runs out.
   */
-  const nine = startersFrom(team.team, day);
-  const nineIds = new Set(SPOTS.map((spot) => nine[spot]?.id).filter(Boolean));
+  const nineIds = new Set(team.team.lineup.map((p) => p.id));
   const covered = new Set<string>();
   if (handles(depth, 'lineups') || handles(depth, 'depthChart')) {
     /*
@@ -134,26 +133,27 @@ export function useNeeds(): Need[] {
       instead: while the hurt man is penciled in, the day does not move.
       Promoting his cover on the chart is the manual act that clears it.
     */
-    // One card per MAN, not per spot: a thin roster has the same name at the
-    // head of three orders, and three copies of the same demand read as a bug.
-    const penciledAt = new Map<string, { spot: Position; man: Player }[]>();
-    for (const spot of SPOTS) {
-      const first = depthAt(team.team, spot)[0];
-      if (!first || available(first, day)) continue;
-      penciledAt.set(first.id, [...(penciledAt.get(first.id) ?? []), { spot, man: first }]);
-    }
-    for (const rows of penciledAt.values()) {
-      const man = rows[0]!.man;
+    /*
+      A hurt man in tonight's nine.
+
+      Scanned off `team.lineup` — the array the engine actually fields —
+      after the chart-top rule proved to be about a nine the game never
+      played. Reported as Hans Hood "playing" with no stats: the chart said
+      he was in, the lineup said otherwise, and the lineup was right. The
+      day holds until the hurt man is swapped out BY HAND on the lineup.
+    */
+    for (let i = 0; i < team.team.lineup.length; i++) {
+      const man = team.team.lineup[i]!;
+      if (available(man, day)) continue;
       covered.add(man.id);
-      const spotsList = rows.map((r: { spot: Position }) => r.spot).join(rows.length === 2 ? " and " : ", ");
       needs.push({
         id: `cover-${man.id}`,
         title: `${man.name} cannot play`,
-        note: `Still penciled in at ${spotsList} — ${prognosis(man, day)}. `
-          + "Nobody is moved for you — set tonight's cover on the chart.",
+        note: `Batting ${i + 1} in tonight's nine — ${prognosis(man, day)}. `
+          + 'Nobody is moved for you — swap him out on the lineup.',
         must: true,
-        cta: "THE DEPTH CHART",
-        go: () => openOverlay("depth"),
+        cta: 'THE LINEUP',
+        go: () => { useDynasty.getState().go('team', 'lineup'); },
       });
     }
 
@@ -172,10 +172,10 @@ export function useNeeds(): Need[] {
         id: `back-${man.id}`,
         title: `${man.name} is fit again`,
         note: 'Healed, and not in tonight\'s nine. Put him back — or leave '
-          + 'the cover in. Your call, but make it on the chart.',
+          + 'the cover in. Your call, but make it on the lineup.',
         must: false,
-        cta: 'THE DEPTH CHART',
-        go: () => openOverlay('depth'),
+        cta: 'THE LINEUP',
+        go: () => { useDynasty.getState().go('team', 'lineup'); },
       });
     }
   }

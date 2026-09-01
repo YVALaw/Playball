@@ -33,6 +33,8 @@ import { FirstVisit } from '../Tutorial.js';
 import { overallOf } from '../../engine/ratings.js';
 import { captainOf } from '../../engine/captains.js';
 import { battingAverage, era, inningsPitched } from '../../engine/season.js';
+import { available } from '../../engine/depthChart.js';
+import type { PlayerId } from '../../engine/types.js';
 import { CaptainC, ModuleIntro, Rating, SectionHeading } from '../components/Kit.js';
 import type { Hitter } from '../../engine/types.js';
 
@@ -46,12 +48,14 @@ export function Lineup() {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   const swapLineup = useDynasty((s) => s.swapLineup);
+  const swapStarter = useDynasty((s) => s.swapStarter);
   const moveRotation = useDynasty((s) => s.moveRotation);
   const autoLineup = useDynasty((s) => s.autoLineup);
   const team = useUserTeam();
   const [picked, setPicked] = useState<number | null>(null);
   /** Same two-tap swap, for the rotation. */
   const [pickedArm, setPickedArm] = useState<number | null>(null);
+  const [pickedBench, setPickedBench] = useState<PlayerId | null>(null);
   const [dealt, setDealt] = useState(false);
   /** Bumped on every auto-deal, so the list re-keys and animates in. */
   const [deal, setDeal] = useState(0);
@@ -71,10 +75,37 @@ export function Lineup() {
 
   const tap = (i: number): void => {
     setPickedArm(null);
+    // A bench man was picked first: he takes this batting slot, and the man
+    // in it walks to the bench. The other order of the same two taps below.
+    if (pickedBench !== null) {
+      swapStarter(i, pickedBench);
+      setPickedBench(null);
+      setPicked(null);
+      return;
+    }
     if (picked === null) { setPicked(i); return; }
     if (picked === i) { setPicked(null); return; }
     swapLineup(picked, i);
     setPicked(null);
+  };
+
+  /*
+    The bench joins the same two-tap grammar. Reported, twice over: "he didn't
+    appear in the lineup to be selected since he is on the bench... we should
+    be able to pick whoever we want to start" — and behind it, the discovery
+    that the depth chart's nine was one no game ever fielded. `team.lineup`
+    is the truth, so starting a man is: tap his spot, tap him. Or tap him,
+    then the spot.
+  */
+  const tapBench = (id: PlayerId): void => {
+    setPickedArm(null);
+    if (picked !== null) {
+      swapStarter(picked, id);
+      setPicked(null);
+      setPickedBench(null);
+      return;
+    }
+    setPickedBench(pickedBench === id ? null : id);
   };
 
   /*
@@ -106,8 +137,12 @@ export function Lineup() {
   const atSpot = spot === null ? -1 : order.findIndex((p) => p.pos === spot);
   const manAtSpot = atSpot >= 0 ? order[atSpot] : null;
 
-  const note = picked !== null
-    ? `Now tap the spot to swap with ${order[picked]?.name ?? ''}.`
+  const benchMan = pickedBench !== null
+    ? team.team.bench.find((p) => p.id === pickedBench) ?? null : null;
+  const note = benchMan
+    ? `Now tap the spot ${benchMan.name} takes in the nine.`
+    : picked !== null
+    ? `Tap a spot to swap the order — or a bench man to start him instead of ${order[picked]?.name ?? ''}.`
     : pickedArm !== null
       ? `Now tap the day for ${team.team.rotation[pickedArm]?.name ?? ''} to take.`
     : spot !== null
@@ -231,6 +266,43 @@ export function Lineup() {
           ))}
         </aside>
         </div>
+
+        <SectionHeading kicker="THE BENCH" title="Everyone else" />
+        <section className="lineup-bench">
+          {team.team.bench.map((p) => {
+            const hurt = !available(p, season.dayIndex);
+            const on = pickedBench === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                className={`player-row${on ? ' is-selected' : ''}`}
+                disabled={hurt}
+                aria-pressed={on}
+                onClick={() => tapBench(p.id)}
+              >
+                <span className="drag">{on ? <SewingPinIcon /> : null}</span>
+                <span className="portrait">
+                  <Avatar id={p.id} team={team.def.abbr} size={30} />
+                </span>
+                <span className="player-name">
+                  <strong>
+                    {p.name}
+                    {captainOf(team.team)?.id === p.id && <CaptainC />}
+                  </strong>
+                  <small>
+                    {p.pos} · Bats {p.bats} · {overallOf(p)} OVR
+                    {hurt && <b className="bench-out"> · ✚ OUT</b>}
+                  </small>
+                </span>
+                <Rating label="CON" value={(p as Hitter).contact} />
+                <Rating label="POW" value={(p as Hitter).power} />
+                <Rating label="DEF" value={(p as Hitter).range} />
+                <span className="row-chevron" />
+              </button>
+            );
+          })}
+        </section>
 
         <SectionHeading kicker="ROTATION" title="Who takes the ball" />
         <section className="rotation-list">

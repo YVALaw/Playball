@@ -53,11 +53,10 @@ export function DepthChart() {
     same `startersFrom` the game uses, so a cover shows as IN THE NINE at the
     spot he is actually covering.
   */
+  // The real nine: team.lineup, the array the engine fields. The old read
+  // (startersFrom) described a chart-nine no game ever played.
   const startingAt = new Map<string, Position>();
-  for (const spot of SPOTS) {
-    const man = nine[spot];
-    if (man) startingAt.set(man.id, spot);
-  }
+  for (const man of team.team.lineup) startingAt.set(man.id, man.pos);
   const standsFor = (p: Hitter, spot: Position): { text: string; tone: string } => {
     if (!available(p, day)) {
       const u = p as Hitter & { outUntil?: number };
