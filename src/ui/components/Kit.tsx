@@ -238,3 +238,87 @@ export function BudgetBar(
     </section>
   );
 }
+
+/* ---------------------------------------------------------------------------
+   The programme leaves.
+
+   These lived twice: Program.tsx had the ported versions, drawn with the
+   classes the adapt script generates, and TeamCard.tsx had hand-built copies
+   with the same names and inline styles — the pre-port originals, never
+   revisited. Reported repeatedly as "the universities overview still has the
+   old styling", and it was exactly that: the college profile was the last
+   screen in the app still wearing the design the port replaced.
+
+   One home now. A leaf that changes changes on every screen that uses it.
+   --------------------------------------------------------------------------- */
+
+/** A section rule, above a panel. */
+export function PanelHead({ children }: { children: ReactNode }) {
+  return (
+    <div className="flow-section-title"><span className="label">{children}</span></div>
+  );
+}
+
+/** The bordered card the rows sit in. */
+export function Panel({ children }: { children: ReactNode }) {
+  return <div className="program-panel">{children}</div>;
+}
+
+/** The quiet line under a panel. */
+export function PanelNote({ children }: { children: ReactNode }) {
+  return <div className="program-note">{children}</div>;
+}
+
+/** Nothing to show, said in the house voice. */
+export function PanelEmpty({ children }: { children: ReactNode }) {
+  return <div className="program-empty">{children}</div>;
+}
+
+/** A label and its value, one row of a panel. */
+export function Stat({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="program-stat">
+      <span className="label">{k}</span>
+      <b>{v}</b>
+    </div>
+  );
+}
+
+/** Three or four numbers across, inside one border. */
+export function Tiles({ children }: { children: ReactNode }) {
+  return <div className="program-tiles">{children}</div>;
+}
+
+export function Tile(
+  { k, v, accent }: { k: string; v: string; accent?: boolean },
+) {
+  return (
+    <div className={`program-tile${accent ? ' accent' : ''}`}>
+      <span className="label">{k}</span>
+      <strong>{v}</strong>
+    </div>
+  );
+}
+
+/**
+ * A stat that also shows where its number sits on its own scale.
+ *
+ * `note` is for the sentence a bar cannot say. Patience and ambition are
+ * opinions rather than quantities, which is why the college profile passes a
+ * phrase there and no number at all.
+ */
+export function Meter(
+  { k, v, value, note }:
+  { k: string; v: string; value: number; note?: string },
+) {
+  return (
+    <div className="program-meter">
+      <div>
+        <span className="label">{k}</span>
+        <b>{v}</b>
+      </div>
+      <i><em style={{ width: `${Math.max(2, Math.min(100, value))}%` }} /></i>
+      {note && <p>{note}</p>}
+    </div>
+  );
+}

@@ -27,6 +27,7 @@ import { dollars, remaining, SCOUT_COST, SCOUT_DAYS } from '../../engine/economy
 import { handles } from '../../state/depth.js';
 import {
   FieldNote, Metric, MetricStrip, SectionHeading, Segmented,
+  Panel, PanelHead, PanelNote, Stat, Tile, Tiles, Meter,
 } from '../components/Kit.js';
 import { cultureFor, cultureOf, CULTURE_LABEL } from '../../data/cultures.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
@@ -388,7 +389,7 @@ function Overview(
       */}
       {culture && (
         <>
-          <Head>WHAT THEY BELIEVE</Head>
+          <PanelHead>WHAT THEY BELIEVE</PanelHead>
           <Panel>
             <div style={{ padding: '10px 12px 11px' }}>
               <div style={{
@@ -408,16 +409,29 @@ function Overview(
                 font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
               }}>{culture.creed}</div>
             </div>
-            <Meter k="PATIENCE" v={culture.patience} lo="they count fast" hi="they will wait" />
-            <Meter k="AMBITION" v={culture.ambition} lo="a winning season" hi="Omaha or nothing" />
+            {/* Deliberately unnumbered. Patience and ambition are opinions,
+                not quantities, and printing "62" invites somebody to compare
+                it with "64" as though the difference meant something. The
+                ends are named instead, which is how a person would describe
+                the place out loud. */}
+            <Meter
+              k="PATIENCE" value={culture.patience}
+              v={culture.patience >= 60 ? 'they will wait'
+                : culture.patience <= 40 ? 'they count fast' : 'somewhere in between'}
+            />
+            <Meter
+              k="AMBITION" value={culture.ambition}
+              v={culture.ambition >= 60 ? 'Omaha or nothing'
+                : culture.ambition <= 40 ? 'a winning season' : 'somewhere in between'}
+            />
             {!mine && <Approach team={t.index} />}
           </Panel>
         </>
       )}
 
-      <Head>HEAD TO HEAD</Head>
+      <PanelHead>HEAD TO HEAD</PanelHead>
       {mine ? (
-        <Note>This is your program. Everything here is your own season.</Note>
+        <PanelNote>This is your program. Everything here is your own season.</PanelNote>
       ) : h2h && (h2h.games.length > 0 ? (
         <>
           <Panel>
@@ -446,33 +460,33 @@ function Overview(
             ))}
           </Panel>
           {h2h.toCome > 0 && (
-            <Note>
+            <PanelNote>
               {h2h.toCome} still to play, the next on{' '}
               {h2h.next === null ? 'the calendar' : seasonDate(year, h2h.next)}.
-            </Note>
+            </PanelNote>
           )}
         </>
       ) : (
-        <Note>
+        <PanelNote>
           You have not played {t.def.school} this season.{' '}
           {h2h.toCome > 0 && h2h.next !== null
             ? `You meet them ${h2h.toCome > 1 ? `${h2h.toCome} times, starting ` : ''}on ${seasonDate(year, h2h.next)}.`
             : 'They are not on your schedule this year.'}
-        </Note>
+        </PanelNote>
       ))}
 
       <div style={{ marginTop: 16 }}>
-        <Head>THE PROGRAM</Head>
+        <PanelHead>THE PROGRAM</PanelHead>
       </div>
       <Panel>
         <Stat k="SCHOOL" v={t.def.school} />
         <Stat k="NICKNAME" v={t.def.nickname} />
         <Stat k="CONFERENCE" v={t.conference} />
-        <Stat k="PRESTIGE" v={`${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}`} last />
+        <Stat k="PRESTIGE" v={`${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}`} />
       </Panel>
 
       <div style={{ marginTop: 16 }}>
-        <Head>THIS SEASON</Head>
+        <PanelHead>THIS SEASON</PanelHead>
       </div>
       <Panel>
         <Stat k="OVERALL" v={`${reg.w}-${reg.l}`} />
@@ -485,7 +499,6 @@ function Overview(
           v={t.streak === 0
             ? 'None'
             : `${t.streak > 0 ? 'Won' : 'Lost'} ${Math.abs(t.streak)} straight`}
-          last
         />
       </Panel>
     </>
@@ -509,7 +522,7 @@ function Roster({ t, season }: { t: Record_; season: SeasonState }) {
 
   return (
     <>
-      <Head>BATTING ORDER</Head>
+      <PanelHead>BATTING ORDER</PanelHead>
       <Panel>
         <HeadRow cols={['', 'PLAYER', 'POS', 'OVR', 'AVG', 'HR']} />
         {t.team.lineup.map((p) => {
@@ -530,7 +543,7 @@ function Roster({ t, season }: { t: Record_; season: SeasonState }) {
         })}
       </Panel>
 
-      <div style={{ marginTop: 16 }}><Head>ROTATION</Head></div>
+      <div style={{ marginTop: 16 }}><PanelHead>ROTATION</PanelHead></div>
       <Panel>
         <HeadRow cols={['', 'PLAYER', 'ROL', 'OVR', 'ERA', 'IP']} />
         {t.team.rotation.map((p) => (
@@ -538,7 +551,7 @@ function Roster({ t, season }: { t: Record_; season: SeasonState }) {
         ))}
       </Panel>
 
-      <div style={{ marginTop: 16 }}><Head>BULLPEN</Head></div>
+      <div style={{ marginTop: 16 }}><PanelHead>BULLPEN</PanelHead></div>
       <Panel>
         <HeadRow cols={['', 'PLAYER', 'ROL', 'OVR', 'ERA', 'IP']} />
         {t.team.bullpen.map((p) => (
@@ -548,7 +561,7 @@ function Roster({ t, season }: { t: Record_; season: SeasonState }) {
 
       {t.team.bench.length > 0 && (
         <>
-          <div style={{ marginTop: 16 }}><Head>BENCH</Head></div>
+          <div style={{ marginTop: 16 }}><PanelHead>BENCH</PanelHead></div>
           <Panel>
             <HeadRow cols={['', 'PLAYER', 'POS', 'OVR', 'AVG', 'HR']} />
             {t.team.bench.map((p: Hitter) => {
@@ -571,10 +584,10 @@ function Roster({ t, season }: { t: Record_; season: SeasonState }) {
         </>
       )}
 
-      <Note>
+      <PanelNote>
         Tap a name for his card. You can see what a rival has done and what he
         can do now. How much further he might go is his coach's to know.
-      </Note>
+      </PanelNote>
     </>
   );
 }
@@ -678,15 +691,15 @@ function Results({ t, me, season }: { t: Record_; me: Record_ | null; season: Se
   if (rows.length === 0) {
     return (
       <>
-        <Head>RESULTS</Head>
-        <Note>They have not played a game yet this season.</Note>
+        <PanelHead>RESULTS</PanelHead>
+        <PanelNote>They have not played a game yet this season.</PanelNote>
       </>
     );
   }
 
   return (
     <>
-      <Head>RESULTS · {rows.length} PLAYED</Head>
+      <PanelHead>RESULTS · {rows.length} PLAYED</PanelHead>
       <Panel>
         <div style={{
           position: 'sticky', top: 0, zIndex: 1,
@@ -728,104 +741,24 @@ function Results({ t, me, season }: { t: Record_; me: Record_ | null; season: Se
           );
         })}
       </Panel>
-      <Note>
+      <PanelNote>
         {mine
           ? 'Your own games carry a full box score. Open one from the SCHEDULE screen.'
           : 'Scores only. The game keeps full box scores for your program alone, so there are no batting or pitching lines to open here.'}
-      </Note>
+      </PanelNote>
     </>
   );
 }
 
 // ---------------------------------------------------------------------------
-// The same small parts the player card is built from.
+// The small parts come from the Kit now.
+//
+// This file used to carry its own Head, Panel, Note, Tile, Stat and Meter —
+// the pre-port originals, drawn with inline styles, with the same names as
+// the ported ones a screen away. That duplication IS the reported bug: the
+// college profile was the last screen still wearing the old design, and it
+// looked untouched because it literally was.
 // ---------------------------------------------------------------------------
-
-function Head({ children }: { children: ReactNode }) {
-  return (
-    <div style={{ borderBottom: '2px solid var(--ink)', paddingBottom: 6 }}>
-      <div className="label">{children}</div>
-    </div>
-  );
-}
-
-function Panel({ children }: { children: ReactNode }) {
-  return (
-    <div style={{
-      marginTop: 8, border: '1px solid var(--faint)', background: 'var(--paper)',
-    }}>{children}</div>
-  );
-}
-
-function Note({ children }: { children: ReactNode }) {
-  return (
-    <div style={{ marginTop: 8, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
-      {children}
-    </div>
-  );
-}
-
-function Tile({ k, v, last }: { k: string; v: string; last?: boolean }) {
-  return (
-    <div style={{
-      flex: 1, minWidth: 0, padding: '9px 8px',
-      borderRight: last ? 'none' : '1px solid var(--hairline)',
-    }}>
-      <div className="label" style={{
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>{k}</div>
-      <div style={{ font: "700 calc(22px * var(--ts))/1 var(--display)", marginTop: 2 }}>{v}</div>
-    </div>
-  );
-}
-
-function Stat({ k, v, last }: { k: string; v: string; last?: boolean }) {
-  return (
-    <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-      padding: '8px 12px', gap: 10,
-      borderBottom: last ? 'none' : '1px solid var(--hairline)',
-    }}>
-      <span className="label">{k}</span>
-      <span style={{
-        font: "600 calc(13px * var(--ts)) var(--mono)", textAlign: 'right',
-      }}>{v}</span>
-    </div>
-  );
-}
-
-/**
- * One of a programme's two dials.
- *
- * Deliberately unnumbered. Patience and ambition are opinions, not quantities,
- * and printing "62" invites somebody to compare it with "64" as though the
- * difference meant something. The ends are named instead, which is how a person
- * would describe the place out loud.
- */
-function Meter(
-  { k, v, lo, hi }: { k: string; v: number; lo: string; hi: string },
-) {
-  return (
-    <div style={{ padding: '8px 12px 9px', borderTop: '1px solid var(--hairline)' }}>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-      }}>
-        <span className="label">{k}</span>
-        <span style={{
-          font: "400 calc(9.5px * var(--ts)) var(--body)", color: 'var(--dim)',
-        }}>{v >= 60 ? hi : v <= 40 ? lo : 'somewhere in between'}</span>
-      </div>
-      <div style={{
-        marginTop: 4, height: 3, background: 'var(--faint)', overflow: 'hidden',
-      }}>
-        <div className="grow" style={{
-          width: `${Math.max(4, Math.min(100, v))}%`, height: '100%',
-          background: 'var(--band)',
-        }} />
-      </div>
-    </div>
-  );
-}
 
 /**
  * Shooting your shot, on the page you were already looking at.

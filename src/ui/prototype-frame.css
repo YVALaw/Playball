@@ -2405,3 +2405,25 @@
 .lineup-bench .player-row {
   grid-template-columns: 10px 30px minmax(74px, 1fr) 28px 28px 28px 10px;
 }
+
+/* The programme meter: a row, a rule of its own, and an optional sentence. */
+.program-meter { padding: 8px 12px 11px; border-bottom: 1px solid var(--hairline); }
+.program-meter:last-child { border-bottom: 0; }
+.program-meter > div {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+}
+.program-meter > div > b { font: 600 calc(14px * var(--ts)) var(--mono); }
+.program-meter > i {
+  display: block; height: 6px; margin-top: 6px;
+  background: rgba(var(--ink-rgb), .09);
+}
+.program-meter > i > em {
+  display: block; height: 100%; background: var(--clay);
+  transition: width 400ms ease;
+}
+.program-meter > p {
+  margin: 6px 0 0; color: var(--dim);
+  font: 400 calc(10.5px * var(--ts))/1.4 var(--body);
+}
+:root[data-motion="reduced"] .program-meter > i > em { transition: none; }
+@media (prefers-reduced-motion: reduce) { .program-meter > i > em { transition: none; } }
