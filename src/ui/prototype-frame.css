@@ -2398,3 +2398,10 @@
 .lineup-bench .player-row:last-child { border-bottom: 0; }
 .lineup-bench .player-row:disabled { opacity: .55; }
 .bench-out { color: var(--alert); font-weight: 800; }
+
+/* Bench rows have no batting-order number, so they must not inherit the
+   nine's 8-column grid — with one child missing, every cell shifted left and
+   the name was living in the 30px portrait column ("Ha…"). */
+.lineup-bench .player-row {
+  grid-template-columns: 10px 30px minmax(74px, 1fr) 28px 28px 28px 10px;
+}
