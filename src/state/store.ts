@@ -213,7 +213,7 @@ import {
   type PortalMan,
 } from '../engine/portal.js';
 import {
-  chartFor, depthAt, reorder, squad, available, promotions, SPOTS,
+  chartFor, depthAt, reorder, squad, available, promotions, SPOTS, fitTheNine,
 } from '../engine/depthChart.js';
 import {
   gradesOf, standing, failsThisWeek, suspend, haveAWord, driftGrades,
@@ -1368,6 +1368,11 @@ function recordFor(state: DynastyStore): SeasonRecord | null {
 function staffSetsTheCard(season: SeasonState, userTeam: number): void {
   const team = season.teams[userTeam]?.team;
   if (!team) return;
+  // The staff bench the unfit too — a casual career was the one place
+  // nobody was ever told and nobody ever moved.
+  const fit = fitTheNine(team, season.dayIndex);
+  team.lineup.splice(0, team.lineup.length, ...fit.lineup);
+  team.bench.splice(0, team.bench.length, ...fit.bench);
   const dealt = autoBattingOrder(team.lineup);
   // Same nine or nothing, the same guard `autoLineup` holds at its own door.
   if (dealt.length !== team.lineup.length) return;
@@ -4981,6 +4986,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, userTeam, version } = get();
     const team = season?.teams[userTeam]?.team;
     if (!team || get().busy) return;
+    /*
+      Bench the men who cannot play, THEN order the card.
+
+      Reported: "the auto button doesn't move hurt players out." It called a
+      helper whose contract is a pure reorder, so it never could. The fit pass
+      swaps every unavailable starter for the best available cover first.
+    */
+    if (season) {
+      const fit = fitTheNine(team, season.dayIndex);
+      team.lineup.splice(0, team.lineup.length, ...fit.lineup);
+      team.bench.splice(0, team.bench.length, ...fit.bench);
+    }
     const dealt = autoBattingOrder(team.lineup);
     // Same nine or nothing. The helper only reorders, but the invariant is
     // cheap to hold at the door and a corrupted lineup is a corrupted season.

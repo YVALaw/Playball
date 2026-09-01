@@ -1493,9 +1493,30 @@ export function advancePostseasonDay(season: SeasonState): void {
  * needs the closer concept and a save situation to hand — worth doing, and not
  * a reason to leave five pitchers idle in the meantime.
  */
+/**
+ * The rotation slot that actually takes the ball.
+ *
+ * Reported with the lineup: a suspended starter still started. The schedule
+ * names a slot rather than a man, so the slot walks forward until it finds an
+ * arm who can pitch — and hands the original back when nobody can, since the
+ * engine has to be given somebody.
+ */
+function startableSlot(team: Team, slot: number, day: number): number {
+  const rot = team.rotation;
+  if (rot.length === 0) return slot;
+  for (let i = 0; i < rot.length; i++) {
+    const at = (slot + i) % rot.length;
+    const arm = rot[at];
+    if (arm && available(arm, day)) return at;
+  }
+  return slot;
+}
+
 export function restedFirst(season: SeasonState, team: TeamRecord): Pitcher[] {
   const day = currentDay(season);
-  return [...team.team.bullpen].sort((a, b) => {
+  // A suspended or redshirted arm is not in tonight's pen. Availability was
+  // never asked here, so the classroom could send a man out to warm up.
+  return [...team.team.bullpen].filter((p) => available(p, day)).sort((a, b) => {
     const restA = day - (season.lastPitched.get(a.id) ?? -99);
     const restB = day - (season.lastPitched.get(b.id) ?? -99);
     if (restA !== restB) return restB - restA;
@@ -1601,8 +1622,8 @@ export function playGame(
 
   const result = simGame(home.team, away.team, season.rng, {
     engine: season.config.engine,
-    homeStarter: opts.homeSlot ?? slot,
-    awayStarter: opts.awaySlot ?? slot,
+    homeStarter: startableSlot(home.team, opts.homeSlot ?? slot, season.dayIndex),
+    awayStarter: startableSlot(away.team, opts.awaySlot ?? slot, season.dayIndex),
     ...(homeLineup ? { homeLineup } : {}),
     ...(awayLineup ? { awayLineup } : {}),
     homeStrategy: home.strategy,
@@ -1669,7 +1690,7 @@ function battingLines(side: GameResult['home']): BoxLine[] {
   // A starter lifted before he ever batted still played the field and belongs
   // in the book — he used to vanish from his own game entirely.
   for (const p of side.starters) {
-    if (!side.batting.has(p.name)) {
+    if (!side.batting.has(p.id)) {
       out.push({ id: p.id, name: p.name, slot: p.pos, line: '0-0' });
     }
   }

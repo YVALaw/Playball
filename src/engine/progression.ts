@@ -876,8 +876,25 @@ function regroup(team: Team, survivors: readonly Player[]): void {
   const hitters = survivors.filter((p): p is Hitter => p.type === 'hitter');
   const arms = survivors.filter((p): p is Pitcher => p.type === 'pitcher');
   const starters = arms.filter((p) => p.role === 'SP');
-  team.lineup = hitters.slice(0, LINEUP_SPOTS.length);
-  team.bench = hitters.slice(LINEUP_SPOTS.length);
+  /*
+    One man per spot, the way `refill` does it.
+
+    This used to take nine hitters off the top of the survivors in whatever
+    order they arrived in, which routinely produced two catchers and nobody at
+    short — reported as "there are times when it has players playing the same
+    position". Between the draft step and signing day that broken nine is what
+    every screen reads, and swapStarter inherits it. A spot with nobody left
+    for it takes whoever is next, because the engine cannot field eight.
+  */
+  const pool = [...hitters];
+  const lineup: Hitter[] = [];
+  for (const spot of LINEUP_SPOTS) {
+    let i = pool.findIndex((h) => h.pos === spot);
+    if (i < 0) i = pool.length > 0 ? 0 : -1;
+    if (i >= 0) lineup.push(pool.splice(i, 1)[0] as Hitter);
+  }
+  team.lineup = lineup;
+  team.bench = pool;
   team.rotation = starters.slice(0, ROTATION_SIZE);
   team.bullpen = arms.filter(
     (p) => p.role === 'RP' || starters.indexOf(p) >= ROTATION_SIZE,

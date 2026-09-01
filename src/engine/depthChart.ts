@@ -269,3 +269,39 @@ export function coverFor(
   }
   return out;
 }
+
+/**
+ * Tonight's nine, with nobody in it who cannot play.
+ *
+ * Reported: "the auto button doesn't move hurt players out." `autoBattingOrder`
+ * is a pure reorder by contract — it never sees a bench or a day, so it cannot
+ * bench anybody — and nothing sat above it. This is that layer: every
+ * unavailable starter is replaced by the best available man on the bench who
+ * can cover his spot, preferring somebody whose own position it is. A man
+ * nobody can cover for stays, because fielding eight is not a thing that
+ * happens in baseball.
+ *
+ * Returns copies of the arrays; the caller writes them back.
+ */
+export function fitTheNine(
+  team: Team, day: number,
+): { lineup: Hitter[]; bench: Hitter[]; moved: { out: Hitter; in: Hitter }[] } {
+  const lineup = [...team.lineup];
+  const bench = [...team.bench];
+  const moved: { out: Hitter; in: Hitter }[] = [];
+  if (lineup.every((p) => available(p, day))) return { lineup, bench, moved };
+
+  for (let i = 0; i < lineup.length; i++) {
+    const out = lineup[i];
+    if (!out || available(out, day)) continue;
+    // His own position first, then anybody fit — the order coverFor uses.
+    let pick = bench.findIndex((b) => available(b, day) && b.pos === out.pos);
+    if (pick < 0) pick = bench.findIndex((b) => available(b, day));
+    if (pick < 0) continue;
+    const inMan = bench[pick]!;
+    lineup[i] = inMan;
+    bench[pick] = out;
+    moved.push({ out, in: inMan });
+  }
+  return { lineup, bench, moved };
+}

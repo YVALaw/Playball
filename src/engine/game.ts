@@ -192,10 +192,21 @@ export class TeamState {
   pitcherConfidence: number = CONFIDENCE.start;
   /** Whether the one mound visit this man is allowed has been used. */
   visitUsed = false;
-  readonly batting = new Map<string, BattingLine>();
-  readonly pitching = new Map<string, PitchingLine>();
-  readonly fielding = new Map<string, FieldingLine>();
-  readonly timesThrough = new Map<string, number>();
+  /*
+    Keyed by PLAYER ID, not by name.
+
+    Reported after a long save: "having repeated names in a team causes the
+    stats to go crazy." It did exactly that — two men sharing a name on one
+    roster shared one line, so their at-bats, hits and innings were added
+    together and the box score printed one of them twice. Names are drawn
+    from a pool and collide on their own given enough rosters; the id is the
+    only thing about a man that is unique by construction. Each line carries
+    its own player, so every consumer that iterates values is unaffected.
+  */
+  readonly batting = new Map<PlayerId, BattingLine>();
+  readonly pitching = new Map<PlayerId, PitchingLine>();
+  readonly fielding = new Map<PlayerId, FieldingLine>();
+  readonly timesThrough = new Map<PlayerId, number>();
   readonly defense: number;
   /** Average outfield arm, for runners testing it. */
   readonly arm: number;
@@ -352,20 +363,20 @@ export class TeamState {
   }
 
   hitLine(p: Hitter): BattingLine {
-    let line = this.batting.get(p.name);
-    if (!line) { line = { player: p, ...blankHit() }; this.batting.set(p.name, line); }
+    let line = this.batting.get(p.id);
+    if (!line) { line = { player: p, ...blankHit() }; this.batting.set(p.id, line); }
     return line;
   }
 
   pitchLine(p: Pitcher): PitchingLine {
-    let line = this.pitching.get(p.name);
-    if (!line) { line = { player: p, ...blankPit() }; this.pitching.set(p.name, line); }
+    let line = this.pitching.get(p.id);
+    if (!line) { line = { player: p, ...blankPit() }; this.pitching.set(p.id, line); }
     return line;
   }
 
   fieldLine(p: Player): FieldingLine {
-    let line = this.fielding.get(p.name);
-    if (!line) { line = { player: p, ...blankFld() }; this.fielding.set(p.name, line); }
+    let line = this.fielding.get(p.id);
+    if (!line) { line = { player: p, ...blankFld() }; this.fielding.set(p.id, line); }
     return line;
   }
 
@@ -769,8 +780,8 @@ export function createHalfInning(
         a long night is both.
       */
       * armMultiplier(pitcher);
-    const tto = (fld.timesThrough.get(batter.name) ?? 0) + 1;
-    fld.timesThrough.set(batter.name, tto);
+    const tto = (fld.timesThrough.get(batter.id) ?? 0) + 1;
+    fld.timesThrough.set(batter.id, tto);
 
     // Where in the game we are, described once and handed to both the tendency
     // layer and the badge layer, so the two cannot end up disagreeing about
