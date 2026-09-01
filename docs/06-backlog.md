@@ -2102,3 +2102,66 @@ Four items the reporter explicitly held rather than asked for.
   balls that belong to the pitcher. Deferred by the reporter to stage 15, which
   is where the write-up now lives.
 - **The player card and the portal's readability** — stage 10.5.
+
+---
+
+## R. What is still open, September 1 2026
+
+The file's own rule is that an item leaves when it ships. Sections A through Q
+were written before stages 11–14 and the September 1 session; rather than
+rewrite them, this section is the current ledger. **If something is not listed
+here, it either shipped or was decided against.**
+
+### DECIDED — waiting on a build slot
+
+- **Stage 15.5 · the voice.** A pass over every user-facing string. Reported as
+  *"there are many things explained in a way that only an AI would
+  understand"*, which is fair and specific: the game names systems where a
+  person would name a thing. Four rules and the inventory are in
+  `07-v1-plan.md`. **The inbox noise pass folds in here** — half of what it
+  posts does not need a card, and cutting is a writing job.
+- **The recruiting report, reworked.** One line pool per potential *letter*
+  rather than lines that span a range of grades, so an attentive player can
+  learn the code and read a class properly. Protection is volume: seven grades
+  at fifteen to twenty lines, roughly a hundred and twenty lines of prose. The
+  stable per-man hash stays (if the words moved there would be nothing to
+  learn) and the development lines keep their fuzzy bands (making both axes
+  decodable would leave nothing to scout).
+- **Remove the test aids.** The loaded Pascagoula Tech roster, and Hans Hood —
+  a 20-overall, 99-potential third baseman injected into every recruiting class
+  and pinned to the foot of the board. Both are marked `TESTING ONLY` in code
+  and must leave together. PSC was measured winning back-to-back national
+  titles in a save the player never touched.
+- **Freesound licence verification** before any store release. See
+  `public/sfx/CREDITS.md`: CC-BY needs the credit shipped, NC cannot ride with
+  paid IAP.
+
+### OPEN — needs an answer before it can be built
+
+- **Prestige runs away.** Over thirty seasons a handful of programmes climb to
+  the mid-90s while the median sits in the forties. Measured with the September
+  1 quality drift switched **off** and it is unchanged, so it is a property of
+  `nextPrestige` and not of that pass. The question is whether a 94-prestige
+  tier should be that reachable.
+- **Realignment ignores geography.** A 2028 run sent Piedmont State to the
+  *Pacific*. With "the conference **is** the region" as a core fiction,
+  `realignmentFor` should prefer adjacent regions.
+- **The depth chart's future.** The reporter is considering folding it into the
+  lineup tab entirely, now that the lineup does the real work. Do not invest in
+  the chart screen until that is settled.
+- **Position changes from the player profile** — agreed in principle, no design.
+
+### PROPOSED — designed, not agreed
+
+- **The Room.** A locker-room system: derived ties between men, trust that
+  moves on decisions already being made, and four shapes of recurring decision
+  surfacing through NEEDS YOU. Written up in full as an artifact on September 1
+  in answer to *"I played many seasons and I just pressed the same buttons"*.
+  **Deferred by the reporter the same day**, along with the cheaper alternative
+  (a storyline engine over the wire's existing threads). NIL was ruled out
+  explicitly. The proposal stands if either is revived.
+
+### The standing errand
+
+- **The Play Console record.** Registration and verification are done; the
+  listing is not. Nothing is blocked on it until stage 17.

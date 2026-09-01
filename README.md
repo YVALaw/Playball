@@ -7,31 +7,49 @@ Mobile first, shipping to Android.
 
 ## Status
 
-**v0.7.4, and a batch of five feature blocks on top of it.** Ninety-six programs
-in eight conferences of twelve, a forty-five game regular season, and the whole
-loop runs: pick a job, play or simulate a season, go through the postseason a
-game at a time, hand out awards, spend coaching points, read a recruiting board
-that is honest about being vague, argue the MLB draft out of taking your junior,
-and start again the following February. Rival programs are run by ninety-five
-named men with careers of their own. There is a record book, a hall of fame, an
-inbox, badges, tendencies and a defence that is nine players rather than one
-number.
+**Fourteen of nineteen stages shipped, through September 1 2026.** Ninety-six
+programs in eight conferences of twelve, a forty-five game regular season, and
+the whole loop runs: pick a job through an interview that shapes who rings you,
+play or simulate a season, manage games at bat by at bat, go through the
+postseason a game at a time, sit awards night, spend coaching points, work the
+transfer portal and a recruiting board that is honest about being vague, argue
+the MLB draft out of taking your junior, and start again the following February.
 
-What is missing is the phone. No Capacitor project, no Android build, no
+On top of that loop: **a budget** with three assistants, four rungs of
+facilities and a scouting desk that gates what you can see of an opponent; **a
+world that moves** — a career rivalry ledger, and realignment that trades one
+programme for another about one winter in three; **a dynasty that remembers** —
+signature moments on a man's card, and alumni whose professional careers play
+out and end; and **a broadcast** — sound, haptics, ninety-six procedural
+crests, full-screen cards for walk-offs and titles, and a scoreboard that
+changes tone during a no-hitter.
+
+Rival programs are run by ninety-five named men with careers of their own, and
+the pecking order genuinely moves: measured over thirty seasons, six of the top
+twelve programmes turn over.
+
+What is missing is **the phone**. No Capacitor project, no Android build, no
 keystore, no store listing, no onboarding. It is deliberately last — nothing
-else waits on it.
+else waits on it. Before it: the ballpark's look (stage 15) and a pass over
+everything the game *says* (stage 15.5), which is where the recruiting report
+becomes a code worth learning.
 
-The engine is calibrated multi-seed against sourced NCAA D1 rates. 740 tests
-across 27 files, including determinism goldens, calibration as a regression
+The engine is calibrated multi-seed against sourced NCAA D1 rates. **1061 tests
+across 45 files**, including determinism goldens, calibration as a regression
 test, and a concurrency suite pinning the store's double-press guards.
 
 | Not built yet | |
 |---|---|
 | Capacitor / Android | hardware back button, signed build. Safe-area insets are done |
-| Injuries and fatigue across a season | |
-| Redshirts | draft eligibility exists; redshirting does not |
-| Transfer portal | |
-| Onboarding | the game now has scouting bands, badges and a record book to explain |
+| Onboarding | the game now has scouting bands, badges, a record book and an economy to explain |
+| The ballpark's *look* | crowd, stands, lighting. The geometry is done |
+| REPLAY | the events are stored and take no draws; it can land any time |
+| Two-way players | with the DH-decline case |
+| The store | the S+ player and Play Billing |
+
+**Two test aids must come out before release** (both marked in code): the
+loaded Pascagoula Tech roster, and Hans Hood — a 20-overall, 99-potential third
+baseman injected into every recruiting class to exercise the development curve.
 
 ## Docs
 
@@ -43,6 +61,9 @@ test, and a concurrency suite pinning the store's double-press guards.
 | [04-implementation-plan.md](docs/04-implementation-plan.md) | Defect register and the phase-by-phase plan |
 | [05-systems-reference.md](docs/05-systems-reference.md) | **Every system in the game, with its numbers — and the register of what the game hides from the player.** Start here |
 | [06-backlog.md](docs/06-backlog.md) | What is agreed, what is still a question, and the argument behind each |
+| [07-v1-plan.md](docs/07-v1-plan.md) | **The staged route to v1.0.** Which stage shipped when, and what each one actually did |
+| [08-handoff.md](docs/08-handoff.md) | Where the last session stopped and what the next one picks up. **Open this first** |
+| [09-beta-audit.md](docs/09-beta-audit.md) | Findings from playing the game rather than reading it |
 
 ## Run it
 
@@ -84,6 +105,21 @@ npm run carousel -- 35 20260825         thirty-five seasons of the coaching caro
 npm run parity-sweep                    the better-team-wins curve across rating gaps
 ```
 
+And five more, run with `npx tsx`, each written the day the thing it measures
+was built:
+
+```
+tests/staff-probe.ts        what an assistant is actually worth (+2.02% runs at the extreme)
+tests/balance-probe.ts      class headroom, star bands, quality drift, career lengths
+tests/churn-probe.ts        thirty real seasons: does the pecking order move
+tests/posfit-probe.ts       out-of-position play, and the identity property that protects the goldens
+tests/climb-probe.ts        can a one-star programme climb
+```
+
+Read `posfit-probe.ts` before touching the fielding assignment: it records two
+false starts that each measured the wrong thing, and the property whose failure
+would put every golden in the suite at risk.
+
 ## Layout
 
 ```
@@ -93,7 +129,8 @@ src/ui/       screens and components
 src/field/    the R3F scene, lazy loaded
 src/data/     schools, conferences, name pools
 tests/        Vitest, including calibration as a regression test
-design/       the mobile prototype, as a reference artifact
+design/       the mockup that became the design of record — see stage 10.5
+public/sfx/   the broadcast's clips, and their licences
 docs/         see above
 sim.ts        the headless CLI, kept forever
 ```
@@ -112,6 +149,10 @@ sim.ts        the headless CLI, kept forever
 | `src/engine/draft.ts` | Eligibility, what the clubs can see, the round, talking him out of it |
 | `src/engine/program.ts` | Prestige, coach skills, the board, job offers, getting fired |
 | `src/engine/rivals.ts` | The other ninety-five coaches and the carousel |
+| `src/engine/economy.ts` | The budget, the three assistant seats, facilities, the scouting desk |
+| `src/engine/world.ts` | The rivalry ledger, and realignment |
+| `src/engine/legacy.ts` | Signature moments, and what happens to a man after he leaves |
+| `src/engine/positions.ts` | What a move costs a glove. Read by the fielding assignment in `game.ts` |
 | `src/engine/pitches.ts`, `tendencies.ts`, `badges.ts`, `traits.ts` | What a man throws, what he is like, and what he is good at |
 | `src/engine/records.ts`, `hall.ts`, `achievements.ts` | The all-time book, induction, and the cabinet |
 | `sim.ts` | CLI and the calibration harness |

@@ -196,6 +196,34 @@ Line drives are the highest value outcome by a wide margin. Popups are nearly au
 
 ### Step 2: Fielding check
 
+**Who is standing there — added September 1 2026.** Before a fielder can be
+held responsible for anything, the nine have to be *at* nine distinct
+positions, and until this date they were not. `TeamState` took the first man
+claiming each spot and let the rest not exist, so a covered lineup with two
+catchers and nobody in left fielded with a hole and a spare, and the man out of
+position paid nothing for it.
+
+The nine are now assigned before the first pitch, hardest spot first —
+`FIELD_ORDER = C, SS, 2B, CF, 3B, RF, LF, 1B, DH`, the same ranking the depth
+chart's `startersFrom` uses, and the DH last because it is a bat in a slot
+rather than a place on the grass. Each man is then passed through
+`fieldingAt(p, spot)`, which drops range, hands, arm and blocking by
+`positionPenalty` — a rung tax up the defensive spectrum, plus a surcharge for
+anyone catching who is not a catcher. **The bat is untouched:** moving a man
+does not stop him hitting.
+
+Two properties are worth stating because a future change could break either:
+
+1. **A sound nine is the identity assignment.** Every man's own position is his
+   cheapest, so a well-built card is arranged exactly as it was handed in and
+   its numbers do not move. This is why the change landed with no
+   re-calibration; `tests/posfit-probe.ts` asserts it directly.
+2. **The assignment optimises.** Given two catchers and no shortstop it does
+   not put a catcher at short — it slides a real infielder across and hides the
+   catcher at first. A scrambled-but-complete nine therefore heals itself.
+
+Measured cost of a genuine cover: **+0.088 runs a game**, about four a season.
+
 Assign the responsible fielder by type and a spray direction roll (pull, center, opposite, influenced by handedness and count). Then check against that fielder's ratings.
 
 Use the Strat-O-Matic separation of concerns, which is clean and has held up for decades:

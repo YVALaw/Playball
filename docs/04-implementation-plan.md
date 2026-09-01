@@ -1,5 +1,16 @@
 # Implementation Plan
 
+> **Superseded for everything after v0.7, September 1 2026.** This file is the
+> build log and defect register for the phases that got the game to a working
+> loop, and it is accurate for that period. It stopped being maintained on
+> August 19; it does not know about stages 5 through 14, the port, the economy,
+> the world, the broadcast, or the September 1 session.
+>
+> For the route since: **`07-v1-plan.md`** (what shipped, when, and what each
+> stage actually did). For how any of it works: **`05-systems-reference.md`**.
+> For where the last session stopped: **`08-handoff.md`**. Kept unedited
+> because a build log rewritten after the fact is not a build log.
+
 **Last updated:** August 19, 2026
 **Companion docs:** `01-roadmap.md` for the product and stack, `02-sim-engine-spec.md`
 for engine internals, `03-engine-salvage-audit.md` for the two forked engine copies.

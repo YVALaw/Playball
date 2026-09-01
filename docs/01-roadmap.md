@@ -1,6 +1,6 @@
 # Roadmap
 
-**Last updated:** August 27, 2026 · stages 1–6 shipped
+**Last updated:** September 1, 2026 · stages 1–14 shipped
 **Supersedes:** v3, which by the end was wrong about most of what it claimed
 **Companion docs:** `05-systems-reference.md` for what the game does today,
 `06-backlog.md` for what it is going to do and why, `02-sim-engine-spec.md` for
@@ -418,20 +418,42 @@ drafted players at all.
 
 ## Where the stages stand
 
-Stage 7, the coach, is **complete** as of August 28 2026 — all eight pieces,
-ending with the press room. Stage 8, the roster, is **complete** the same day:
-position competence, the depth chart, real DH handling, redshirts, position
-changes and academic eligibility. Two-way players were split out by decision,
-on the same reasoning that split stage 5.
+**Fourteen of nineteen shipped, through September 1 2026.** The order, and what
+each one actually turned out to be, lives in `07-v1-plan.md`; the mechanisms
+live in `05-systems-reference.md` §§37–42. In brief:
 
-Ten stages shipped, the last three on August 28 2026: the roster (8), players
-as people (9) and the transfer portal (10). `flightRisk` was written in stage 9
-and read by nothing until stage 10 needed it, which was the cheaper order.
+| Stage | Shipped | What it added |
+|---|---|---|
+| 1–4 | Aug 2026 | Honesty and saves · how you want to play · June made legible · the screen given back |
+| 5–7 | Aug 2026 | The dugout, its depth, and the coach — all eight pieces, ending with the press room |
+| 8–10 | Aug 28 | The roster · players as people · the transfer portal |
+| 10.5 | Aug 30–31 | **The screen.** A mockup became the design of record, and every screen moved onto it |
+| 11 | Aug 31 | The economy: a budget, three assistants, facilities, a scouting desk |
+| 12 | Aug 31 | The world: a career rivalry ledger, and realignment |
+| 13 | Aug 31 | The dynasty remembers: signature moments, and alumni careers |
+| 14 | Aug 31 | Broadcast: sound, haptics, crests, takeover cards, awards night |
+| — | Sep 1 | **A thirty-season play session**, and what it found. See §42 |
 
-The next is **stage 10.5, the screen** — inserted August 29 2026 after a play
-report that was two thirds interface. Stage 11, the economy, follows it. Two
-things are already waiting on 11 by name: "a word with him" is deliberately not
-money, and the recruiting budget has now been widened twice by hand.
+**What remains:** stage 15 (the ballpark's look), **15.5 (the voice** — a pass
+over everything the game says, plus the recruiting report reworked so that it
+can be *learned*), 16 (the simulation's last mile), 17 (the store), 18 (the
+phone), 19 (ship).
+
+The recommended order is 15.5 before 15: the copy is a live irritation in
+play, and the ballpark is polish nothing is blocked on.
+
+### The September 1 session, in one paragraph
+
+Twenty-five to thirty seasons in one sitting produced more defects than any
+deliberate audit has, and three of them were bugs rather than balance: the
+per-game stat maps were keyed by player *name*, so two men sharing a name shared
+one line; AUTO could not bench an injured man because the helper it called is a
+pure reorder by contract and nothing sat above it; and availability was never
+asked on any pitcher path, so a suspended Friday starter started Friday. The
+balance findings were as sharp — three quarters of every recruiting class
+carried the wrong growth curve, the player's board was the only one in the
+world not corrected for league drift, and `Team.quality` had been welded down
+since world creation. All fixed and measured; see §42 and `09-beta-audit.md`.
 
 ### The August 29 play batch
 

@@ -5813,6 +5813,326 @@ The earlier bug was the blink lasting the entire chase — up to four seconds of
 red light in the gap. Shortening it was right and did not touch the timing,
 because the timing did not look wrong until the duration stopped hiding it.*
 
+## 37. The design of record — **STAGE 10.5, SHIPPED August 30–31 2026**
+
+The port that stopped the app being two designs. A full mockup — the *Roster
+Tabletop* proposal, vendored at `design/Roster Tabletop/` — became the design
+of record, and every screen was moved onto it.
+
+**The stylesheet is generated, not written.** `scripts/adapt-prototype-css.mjs`
+reads the mockup's CSS and emits `src/ui/prototype.css`: token renames, every
+fixed pixel size rewritten as `calc(Npx * var(--ts))` so the text-scale setting
+reaches everything, and literal colours mapped onto surface tokens (`#fff` →
+`--paper`, the wash family → `--wash`, selected tints → `--soft`, strokes →
+`--line`, greyed ink → `--mute`, chrome bars → `--field`). **Edit the script's
+transforms, never the generated file.** `src/ui/prototype-frame.css` holds the
+hand-written joins and loads after.
+
+**Everything that covers the screen goes through one door.** `InFrame`
+(`src/ui/Overlay.tsx`) portals sheets, scrims, the action button and tutorial
+cards into `.app-frame` at z-60. Absolutely-positioned layers inside iOS
+momentum scrollers produced five separately-reported faults with one cause; this
+is that cause, fixed once.
+
+**The app wears your school's colours.** `src/ui/accent.ts` fills an
+`--accent*` family that the theme blocks read through hooks — never by
+overwriting `--clay` directly, because an inline custom property beats *both*
+theme blocks and would hand dark mode the light theme's accent. Hue is kept and
+lightness is clamped per theme, because school colours are jersey colours: some
+are a navy that swallows white text, some a yellow it dies on. The alarm keeps
+`--alert` and its own places.
+
+**Theme rules that bind everything since.** Light and dark are both stated in
+`tokens.css`, twice each — once under `[data-theme]` and once under
+`prefers-color-scheme` — because the default "system" setting stamps no
+attribute at all. A colour whose only definition sits inside one theme's block
+is the classic unreadable-screen bug. `--scrim-rgb` exists because a scrim built
+from `--ink-rgb` flips light in dark mode and goes milky.
+
+---
+
+## 38. The economy, and the staff it pays for — **STAGE 11, SHIPPED August 31 2026**
+
+`src/engine/economy.ts`. A budget, three assistants, four rungs of facilities
+and a scouting desk. Everything derived from stable hashes; no draw is taken
+from the season generator, so a reload cannot reroll a market.
+
+**The money.** `annualBudget(prestige) = 750 + 13 × prestige`, in $k. A
+one-star programme gets about $1M a year and a blue blood about $2M. `wageFor`
+rounds to the nearest $5k.
+
+**The staff.** Three seats — hitting, pitching, recruiting — each with three
+candidates a year from `marketFor(worldKey, year, seat)`, banded so the seats
+differ in what they cost and what they offer. Each candidate's name, age and
+rating are hashed *separately* (`hash(id + ':f')`, `':l'`, `':r'`, `':a'`); one
+hash shifted three ways produced three brothers sharing a surname.
+
+`staffBonus` is deliberately small: hitting adds `rating / 5` to the coach's
+offense, pitching the same to defense, recruiting `rating / 4`. Training belongs
+to facilities, not to a man. `withStaff` caps the total at 99.
+
+**What it is worth, measured rather than asserted.** `tests/staff-probe.ts`
+isolates each channel at its extremes: offense 20 → 99 is **+2.02% runs**,
+defense 20 → 99 is **−1.73% runs allowed**. Small by design, and the reporter
+confirmed that is the intent — *"they have to be small, not to give a super
+advantage."* The probe also documents the noise floor: an effect of 0.4% needs
+roughly 500,000 games to see, and an early run that showed better defense
+allowing *more* runs was noise, proven so by the extreme-isolation sign test
+rather than by hope.
+
+**Facilities.** Four rungs at 0 / 500 / 900 / 1400, paid once, worth
+`trainBump` 0 / 3 / 6 / 9 to development and `devPitch` 0 / .06 / .13 / .2.
+
+**The scouting desk.** `SCOUT_COST = 35`, `SCOUT_DAYS = 10`. Buying the book on
+an opponent is what opens their tendencies: `isKnown(slot, watch, isOurs,
+opponentScouted)` gates every opponent read on it, and an unbought book prints
+*"No book"* rather than a number.
+
+**Winter.** `poached(assistant, year)` takes 25 / 12 / 4 percent of men rated
+≥70 / ≥55 / below — being good costs you your coordinator. An athletic director
+runs the staff and the buildings for a career that asked for it (`handles(depth,
+'assistants')`, `'facilities'`), and only builds with a season of headroom left.
+
+---
+
+## 39. The world: the rivalry and the map — **STAGE 12, SHIPPED August 31 2026**
+
+`src/engine/world.ts`.
+
+**The rivalry.** `rival` sat in the school data doing almost nothing. There is
+now a career ledger against that school, banked at the year roll from
+`headToHead(season, a, b)` and **reset when you take a new chair** — a rivalry
+belongs to the job, not to the man. The Today card prints it in alarm ink the
+week the fixture comes round, and `seriesStake(gamesPlayed, yourWins)` says what
+tonight settles: *A win takes the series* / *The decider* / *The sweep is on the
+table* / *The salvage game* — and nothing at all when nothing is settled. Every
+rivalry game in the country makes the wire under its own chip, weighted above
+everything but a ranked upset.
+
+**Realignment.** `realignmentFor(worldKey, year, teams, userTeam)` fires when
+`hash(worldKey:realign:year) % 100 < 34` — about one winter in three. It is a
+**trade**: the riser is the programme furthest above its own conference's
+average (gap ≥ 15), the faller is the weakest team (never yours) in a stronger
+conference that has slid ≥ 12. One-for-one, because equal-sized leagues are the
+scheduler's invariant. `applyRealignment` writes `t.conference`, which is what
+the next schedule is built from, so the leagues simply *are* different in the
+spring. Your chair can be invited up and is never the one relegated.
+
+*Open, recorded September 1:* the swap ignores geography — a 2028 run sent
+Piedmont State to the Pacific. With "the conference **is** the region" as a core
+fiction, adjacency should be preferred.
+
+---
+
+## 40. The dynasty remembers — **STAGE 13, SHIPPED August 31 2026**
+
+`src/engine/legacy.ts`.
+
+**Signature moments.** Caught at `recordResult` in `season.ts` — the one funnel
+every user game passes through — so a moment cannot be missed by the route the
+game was played on. Eight kinds: five hits, four hits, three homers, a big day,
+a walk-off, a no-hitter, a shutout, a strikeout show. Capped at
+`MOMENT_CAP = 12` per man, and the cap drops the **least** of him rather than
+the oldest, by a rank table (no-hitter 7 … strikeouts 2). June nights are
+marked.
+
+*The walk-off needed the engine to learn a name.* Nobody was writing down who
+ended a game, so `TeamState.walkOffBy` is stamped at the three engine sites that
+say *"win it."* — the walk, the bunt and the hit.
+
+*And it needed the keys fixed.* `noteMoments` takes **arrays** carrying their
+own `id`, because the engine's per-game line maps were keyed by name at the
+time; the first version wrote the book under `"Percy Bedford"` while the card
+looked it up under `p1dk5k94`, and every card came back empty. (The maps
+themselves were re-keyed to the id on September 1 — see §42.)
+
+**Alumni.** One durable note per departed man (`AlumnusNote`) and everything
+else *derived*: `proCareer(id, note, throughYear)` replays the same life every
+time it is asked. Start level by round (≤2 → Double-A, ≤5 → Single-A, else
+Rookie Ball), `talent = overall − 55 + (3 − min(3, round)) × 4`, a wash-out
+chance that climbs with age and falls with talent and level, a move-up chance of
+`min(72, 34 + talent)`, and a 9% All-Star summer at the top. Undrafted men get
+one honest line; 18% sign somewhere independent for a summer.
+
+*Careers end* (added September 1): after eight professional seasons the odds of
+a last one climb by 11 points a year and nobody plays a twentieth. Measured mean
+career **8.8 years**, longest 20. Before that, washing out was the only exit and
+it floors at 4% at the top of the pyramid, which is how the reporter ended up
+with a twenty-two-year All-Star.
+
+---
+
+## 41. Broadcast — **STAGE 14, SHIPPED August 31 2026**
+
+**Sound.** `src/ui/sound.ts`: one WebAudio context, unlocked by the first touch,
+samples cached by *name* so a better recording is a file swap. A crowd bed loops
+under the live game with a floor that follows the leverage
+(`0.08 + level × 0.2`) and swells with what just happened. `buzz()` mirrors it
+in haptics. Both default **on**, with a `bcast` marker in `devicePrefs` so that
+values stored while the toggles were disabled placeholders are not mistaken for
+choices.
+
+*The clips are the reporter's own freesound downloads, processed by
+`scripts/prep-sfx.mjs`* — a hand-written WAV **and AIFF** parser (no ffmpeg on
+the machine, and browsers cannot decode AIFF), downmix, resample to 22 kHz,
+trim, fade, normalize, 16-bit out. 7.3 MB became 740 KB. `public/sfx/CREDITS.md`
+lists every id and author; **the licences must be verified before store
+release** — CC-BY needs the credit shipped and NC cannot ride with paid IAP.
+
+*The dugout reads its own log.* The broadcast classifies the lines the play just
+appended against the engine's full `OUT_TEXT` vocabulary — the first version
+read only the last line, and the engine writes several per play, so fielder's
+choices, errors and bunts were silent. The catch is timed to the flight the
+screen draws (ground ~600 ms with the throw at ~1350, air ~1750), and every
+scheduled sound is cancelled when the next play starts, or a fly ball's glove
+lands during the following swing.
+
+**Crests.** `src/ui/Crest.tsx` draws all ninety-six procedurally: silhouette,
+field division and device hashed from the abbreviation, field in the school's
+colour, monogram on top. No image assets, and the same school wears the same
+shield forever. **Do not add drawn randomness here.**
+
+**Takeover cards.** `BigMoment` in the store, offered through `offerBigMoment`
+and ranked so that a walk-off which clinches something bigger loses the screen
+to the clinch. Seven kinds, and the two loss tones are deliberate: being walked
+off, and losing a final, get a colour-drained room and silence.
+
+**The scoreboard's tones.** From the sixth inning of a no-hitter the linescore
+takes a gold edge and a flag reading DON'T SAY IT; late and within two runs it
+takes the accent edge and the inning marker breathes.
+
+**Awards night** is a ceremony *once*: face-down cards, a real 3D flip per tap,
+the tallies withheld until the last card so they cannot spoil the envelopes,
+paper thrown when a winner is yours, and a skip for people who want the list.
+Every later visit is the plain list — `phase !== null` is the whole test.
+
+**The wire, upgraded.** Realignment and the poached assistant are stamped onto
+the *new* season at the roll (`newsRealign`, `newsStaff`) and fade as results
+accumulate; `recordChase` reports a run at a season record **before** it falls,
+quoting the mark it will have to beat, one chase at a time.
+
+---
+
+## 42. What a thirty-season save found — **SHIPPED September 1 2026**
+
+A single long play session produced more defects than any deliberate audit has.
+Recorded here in full because several were invisible from inside the code.
+
+### The bugs
+
+**Stats were keyed by name.** `TeamState.batting`, `pitching`, `fielding` and
+the times-through counter were `Map<name>`, so two men sharing a name on one
+roster **shared one line** — at-bats and innings added together, one of them
+printed twice in the box. Keyed by `PlayerId` now. Season-level maps were always
+id-keyed; this was the per-game layer alone.
+
+**AUTO could not bench anybody, by construction.** `autoBattingOrder` is a pure
+reorder by contract — it never sees a bench or a day — and nothing sat above it.
+`fitTheNine` (`depthChart.ts`) is that layer: every unavailable starter is
+swapped for the best available cover, his own position preferred. The staff's
+automatic card gets it too; a casual career was the one place nobody was told
+and nobody moved.
+
+**Hurt arms still took the ball.** Availability was never asked on *any* pitcher
+path. The schedule names a rotation **slot**, not a man, so `startableSlot`
+walks forward to the first arm who can pitch, and the relief queue filters.
+
+**`regroup` built position-blind nines** — nine hitters off the top of the
+survivors in arrival order, which routinely made two catchers and no shortstop
+between the draft step and signing day.
+
+**Three quarters of every recruiting class carried the wrong growth curve.**
+`projectPotential` reserves its projectable-freshman clause for FR, and
+`generateClass` stamped `classYear = 'FR'` *after* each man was built — so a
+recruit drew a random class year, got that class's curve for life, and the
+hidden-gem clause fired at a quarter of its written rate. The class is passed in
+now. Mean headroom **6.0 → 12.7**, real sleepers **1.75% → 8.6%**.
+
+**The player's board was never corrected for league drift.** Every rival board
+is handed `leagueShape` and moved back onto the calibrated middle, because the
+country's mean roster climbs about ten points over thirty seasons. The player's
+was not, so the entire drift landed on him. Fixed.
+
+**`Team.quality` was welded down.** Prestige has moved for all ninety-six since
+B7, but the number every walk-on is drawn against was written once at world
+creation — a forty-point gap frozen in place, and most of why the pecking order
+could not move.
+
+### The tuning that followed
+
+| Change | Measured effect |
+|---|---|
+| Service noise ±13 → ±26 on the projection half | Star bands still mean something (5★ ceilings median 82, 1★ 48) but the tails now overlap — busts and steals exist |
+| A winning record scores at `develop` and `build` | 44 seasons in the pinned sweep move met → exceeded; missed and failed do not move at all |
+| `PLAYER_RENEW_BAR` 45 → 38 | 90 fewer coaches lose the job. Tried at 34 first: it caught nobody, and a rule that never fires is worse than a harsh one |
+| `driftQuality` at 12% of the gap a year | Top-twelve turnover over 30 seasons went 4 → 6 programmes; mean movement 14.9 places of 96 |
+| Retention credibility floored (`ring`) | The same round-five junior no longer costs a one-star programme ~2.5× what it costs a blue blood |
+
+*Recorded and not fixed:* prestige runs away to the mid-90s for a handful of
+programmes over thirty seasons. Measured with `driftQuality` switched **off**
+and it is unchanged — it is a property of `nextPrestige`, not of this pass.
+
+### Position fit reaches the simulation
+
+The engine had no opinion about where a man stood. `TeamState` took *the first
+man at each spot* and let the rest not exist, so a covered nine with two
+catchers and nobody in left defended exactly like a sound one, and
+`positionPenalty` / `fieldingAt` existed purely to colour the depth chart.
+
+The nine are assigned to nine distinct spots now — `FIELD_ORDER`, hardest first,
+DH last, the same ranking `startersFrom` uses — and each is passed through
+`fieldingAt`, which drops range, hands and arm by what the move costs him. **The
+bat is untouched.** Defence, the outfield arm and the catcher are all read off
+the men as they actually stand.
+
+| | penalty off | penalty on |
+|---|---|---|
+| sound nine | 7.293 runs allowed | **7.293** |
+| covered nine | 7.100 | **7.188** |
+
+That first row is the design property and the reason this landed with **no
+re-calibration**: for a sound nine every man's own position is his cheapest, so
+the assignment is the identity. Protect it — `tests/posfit-probe.ts` checks it
+directly, and the two false starts are kept in that file because they are the
+finding (shuffling a batting order measures nothing; swapping in a man from
+another club measures the body, not the position).
+
+A free win falls out: given two catchers and no shortstop the assignment does
+not put a catcher at short, it slides a real infielder across and hides the
+catcher at first.
+
+### The screen
+
+**Dark mode was measured, not eyeballed.** Contrast between surface pairs ran
+**1.04 to 1.24** — `wash` against `field` at 1.04 is no edge at all — and
+`--mute` failed body text everywhere it was used (2.2–2.7 against the 4.5 a
+reader needs). The dark theme has a real ladder now: backdrop, field, wash,
+paper and band step apart, `--line` went 1.24 → 1.62 against paper, `--mute` to
+4.75. The alpha borders are restated stronger **in the dark blocks alone**,
+because the same percentage of a light ink on a dark ground reads far weaker
+than a dark ink on paper; the light theme measures fine and is untouched.
+
+**The college profile was never ported.** `TeamCard.tsx` carried its *own*
+`Head`, `Panel`, `Note`, `Tile`, `Stat` and `Meter` — the same names as the
+ported leaves in `Program.tsx`, but the pre-port originals with fifty-three
+inline style objects. One screen's copies were updated at the port and the
+other's were not, which is why three separate restyling attempts could not reach
+it. The six leaves live in `components/Kit.tsx` now.
+
+**Injuries follow one rule: nobody is moved for you.** The old must-need scanned
+`startersFrom`'s nine — which *filters* the unavailable — so it could never fire
+and the chart auto-covered in silence. It scans `team.lineup` now, the array the
+engine actually fields; a hurt man in it holds the day until he is swapped out by
+hand on the **lineup**, which grew a bench section for exactly that. A recovery
+card announces the man walking back in.
+
+**The player profile** grew the season-by-season book on its STATS tab (it
+existed, one tab away, behind a label that reads as biography) and an awards
+cabinet on HISTORY, scanned out of the season records the dynasty already keeps.
+
+
+---
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code
