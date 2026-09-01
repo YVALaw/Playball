@@ -21,6 +21,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { RosterMoves } from './RosterMoves.js';
+import { seasonAwards } from '../../engine/postseason.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import {
   BADGES, FAMILY_LABEL, TIER_NAME, badgeCap, badgesOf,
@@ -45,6 +46,7 @@ import {
 import {
   battingAverage, onBase, slugging, era, whip, inningsPitched,
   fieldingPct, playsAboveExpected, fieldingContext, careerName, liveCareerYear,
+  seasonComplete,
 } from '../../engine/season.js';
 import type { BoxScore, CareerYear, SeasonState } from '../../engine/season.js';
 import type { Departure } from '../../engine/progression.js';
@@ -308,7 +310,12 @@ export function Player() {
       />
       {active === 'overview' && <Overview p={p} owner={owner} isOurs={isOurs} />}
       {active === 'ratings' && <Ratings p={p} isOurs={isOurs} ownerIndex={owner.index} />}
-      {active === 'stats' && <ThisSeason p={p} />}
+      {active === 'stats' && (
+        <>
+          <ThisSeason p={p} />
+          <SeasonsUnder p={p} owner={owner} isOurs={isOurs} />
+        </>
+      )}
       {active === 'games' && <Games id={p.id} owner={owner} isOurs={isOurs} />}
       {active === 'history' && (
         <Career id={p.id} owner={owner} isPitcher={isPitcher} isOurs={isOurs} />
@@ -1332,6 +1339,102 @@ function Games({ id, owner, isOurs }: { id: PlayerId; owner: Owner; isOurs: bool
  * the season by season table, which is the only thing that can show a man
  * developing and is therefore the expensive one. See §13.6.
  */
+/**
+ * The years he has played, newest last, with this one marked unfinished.
+ *
+ * Lifted out of `Career` so the STATS tab can print the same rows. Reported:
+ * "in the stat tab add the seasonal stats, the stats they get each season" —
+ * the season-by-season book existed but lived one tab away, behind a label
+ * that reads like biography rather than numbers.
+ */
+function careerYears(
+  season: SeasonState | null, ownerIndex: number, id: PlayerId, isOurs: boolean,
+): { years: CareerYear[]; live: CareerYear | null } {
+  const archived = season?.careers?.[id] ?? [];
+  const live = isOurs && season ? liveCareerYear(season, ownerIndex, id) : null;
+  return {
+    years: live ? [...archived.filter((y) => y.year !== live.year), live] : archived,
+    live,
+  };
+}
+
+/** The timeline itself, so the two tabs cannot draw a year differently. */
+function SeasonRows(
+  { years, live, isPitcher }:
+  { years: CareerYear[]; live: CareerYear | null; isPitcher: boolean },
+) {
+  return (
+    <section className="timeline">
+      {[...years].reverse().map((y) => (
+        <div key={y.year}>
+          <b>{y.year}</b>
+          <span>
+            {y.classYear} · {y.team}
+            {y.year === live?.year ? ' · in progress' : ''}
+            <em>
+              {isPitcher
+                ? `${y.w ?? 0}-${y.l ?? 0}${y.outs ? ` · ${((y.er ?? 0) * 27 / y.outs).toFixed(2)} ERA` : ''} · ${y.k ?? 0} K${(y.errors ?? 0) > 0 ? ` · ${y.errors} E` : ''}`
+                : `${y.ab ? pct((y.h ?? 0) / y.ab) : '—'} · ${y.hr ?? 0} HR · ${y.rbi ?? 0} RBI${(y.errors ?? 0) > 0 ? ` · ${y.errors} E` : ''}`}
+            </em>
+          </span>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+/**
+ * Everything he has won, from the books that were kept.
+ *
+ * Asked for with the seasons: "in history you can also add any award they
+ * got." The season record archives the honours your own programme took, year
+ * by year, so a career's cabinet is a scan of the dynasty rather than
+ * anything new to store — and the season in progress is read live, because
+ * an award won in May should not wait until the roll to appear.
+ */
+function AwardCase({ id }: { id: PlayerId }) {
+  const history = useDynasty((s) => s.history);
+  const season = useDynasty((s) => s.season);
+  const year = useDynasty((s) => s.year);
+  const version = useDynasty((s) => s.version);
+  void version;
+
+  const won: { year: number; title: string }[] = [];
+  for (const rec of history) {
+    for (const a of rec.awards ?? []) {
+      if (a.id === id) won.push({ year: rec.year, title: a.title });
+    }
+  }
+  if (season && seasonComplete(season)) {
+    for (const a of seasonAwards(season)) {
+      if (a.id === id && !won.some((w) => w.year === year && w.title === a.title)) {
+        won.push({ year, title: a.title });
+      }
+    }
+  }
+  if (won.length === 0) return null;
+
+  return (
+    <>
+      <SectionHeading
+        kicker="THE CABINET"
+        title={won.length === 1 ? 'One honour' : `${won.length} honours`}
+      />
+      <section className="award-list">
+        {won.sort((a, b) => b.year - a.year).map((w) => (
+          <div key={`${w.year}-${w.title}`}>
+            <span className="award-mark">{w.year}</span>
+            <span>
+              <strong>{w.title}</strong>
+              <p>Won at {w.year}.</p>
+            </span>
+          </div>
+        ))}
+      </section>
+    </>
+  );
+}
+
 function Career(
   { id, owner, isPitcher, isOurs }:
   { id: PlayerId; owner: Owner; isPitcher: boolean; isOurs: boolean },
@@ -1339,8 +1442,6 @@ function Career(
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   void version;
-  const archived = season?.careers?.[id] ?? [];
-
   /*
     The year he is playing, stacked under the years he has played.
 
@@ -1357,10 +1458,7 @@ function Career(
     step and the year roll the archive already holds this year and the two would
     print twice.
   */
-  const live = isOurs && season ? liveCareerYear(season, owner.index, id) : null;
-  const years = live
-    ? [...archived.filter((y) => y.year !== live.year), live]
-    : archived;
+  const { years, live } = careerYears(season, owner.index, id, isOurs);
 
   if (years.length === 0) {
     return (
@@ -1433,22 +1531,9 @@ function Career(
         table — and a phone was never going to hold seven columns anyway. Every
         number the grid carried is on the line under the year.
       */}
-      <section className="timeline">
-        {[...years].reverse().map((y) => (
-          <div key={y.year}>
-            <b>{y.year}</b>
-            <span>
-              {y.classYear} · {y.team}
-              {y.year === live?.year ? ' · in progress' : ''}
-              <em>
-                {isPitcher
-                  ? `${y.w ?? 0}-${y.l ?? 0}${y.outs ? ` · ${((y.er ?? 0) * 27 / y.outs).toFixed(2)} ERA` : ''} · ${y.k ?? 0} K${(y.errors ?? 0) > 0 ? ` · ${y.errors} E` : ''}`
-                  : `${y.ab ? pct((y.h ?? 0) / y.ab) : '—'} · ${y.hr ?? 0} HR · ${y.rbi ?? 0} RBI${(y.errors ?? 0) > 0 ? ` · ${y.errors} E` : ''}`}
-              </em>
-            </span>
-          </div>
-        ))}
-      </section>
+      <SeasonRows years={years} live={live} isPitcher={isPitcher} />
+
+      <AwardCase id={id} />
 
       {live && (
         <FieldNote
@@ -1601,6 +1686,32 @@ function AlumnusYears({ years, isPitcher }: { years: CareerYear[]; isPitcher: bo
           </div>
         ))}
       </section>
+    </>
+  );
+}
+
+/**
+ * The season-by-season book, under this season's line on the STATS tab.
+ *
+ * Reported: "in the stat tab add the seasonal stats, the stats they get each
+ * season." The rows are the same rows the career tab prints — one component,
+ * so the two tabs can never disagree about a year.
+ */
+function SeasonsUnder(
+  { p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: boolean },
+) {
+  const season = useDynasty((s) => s.season);
+  const version = useDynasty((s) => s.version);
+  void version;
+  const { years, live } = careerYears(season ?? null, owner.index, p.id, isOurs);
+  if (years.length === 0) return null;
+  return (
+    <>
+      <SectionHeading
+        kicker="SEASON BY SEASON"
+        title={years.length === 1 ? 'One season' : `${years.length} seasons`}
+      />
+      <SeasonRows years={years} live={live} isPitcher={p.type === 'pitcher'} />
     </>
   );
 }

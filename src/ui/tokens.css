@@ -110,8 +110,8 @@
    cannot read the attribute and the attribute cannot read the media query.
    --------------------------------------------------------------------------- */
 :root[data-theme='dark'] {
-  --field: #141814;
-  --paper: #1c211d;
+  --field: #151c16;
+  --paper: #2a332b;
   --ink: #e4eae4;
   --ink-rgb: 228, 234, 228;
   --clay: var(--accent-dk, #4da97a);
@@ -119,21 +119,34 @@
   --alert: #e0655e;
   --win: #4da97a;
   --loss: #e0655e;
-  --line: #2b322c;
-  --sunk: #101410;
+  --line: #4b594d;
+  --sunk: #10160f;
   --soft: var(--accent-soft-dk, #1f3428);
-  --wash: #171c18;
-  --mute: #566057;
-  --backdrop: #0b0e0c;
-  --band: #242b25;
+  --wash: #1e261f;
+  --mute: #8d978e;
+        /*
+          Alpha borders are not theme-symmetric.
+    
+          --faint and --hairline are a percentage of the ink, and the same
+          percentage of a light ink on a dark ground reads far weaker than a
+          dark ink on paper does: measured, a hairline on the dark theme was a
+          1.06 contrast edge, which is no edge at all. Reported as "colors are
+          too similar and we can barely distinguish the background from another
+          section." Restated here rather than changed globally, because the
+          light theme measures fine.
+        */
+        --faint: rgba(var(--ink-rgb), 0.30);
+        --hairline: rgba(var(--ink-rgb), 0.19);
+  --backdrop: #070907;
+  --band: #38443a;
   --scrim-rgb: 0, 0, 0;
   --raised: var(--accent-raised-dk, #2f7a52);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --field: #141814;
-    --paper: #1c211d;
+    --field: #151c16;
+    --paper: #2a332b;
     --ink: #e4eae4;
     --ink-rgb: 228, 234, 228;
     --clay: var(--accent-dk, #4da97a);
@@ -141,13 +154,26 @@
     --alert: #e0655e;
     --win: #4da97a;
     --loss: #e0655e;
-    --line: #2b322c;
-    --sunk: #101410;
+    --line: #4b594d;
+    --sunk: #10160f;
     --soft: var(--accent-soft-dk, #1f3428);
-    --wash: #171c18;
-    --mute: #566057;
-    --backdrop: #0b0e0c;
-    --band: #242b25;
+    --wash: #1e261f;
+    --mute: #8d978e;
+        /*
+          Alpha borders are not theme-symmetric.
+    
+          --faint and --hairline are a percentage of the ink, and the same
+          percentage of a light ink on a dark ground reads far weaker than a
+          dark ink on paper does: measured, a hairline on the dark theme was a
+          1.06 contrast edge, which is no edge at all. Reported as "colors are
+          too similar and we can barely distinguish the background from another
+          section." Restated here rather than changed globally, because the
+          light theme measures fine.
+        */
+        --faint: rgba(var(--ink-rgb), 0.30);
+        --hairline: rgba(var(--ink-rgb), 0.19);
+    --backdrop: #070907;
+    --band: #38443a;
     --scrim-rgb: 0, 0, 0;
     --raised: var(--accent-raised-dk, #2f7a52);
   }
