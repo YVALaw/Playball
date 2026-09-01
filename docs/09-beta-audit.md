@@ -95,3 +95,56 @@ awards ceremony + skip + revisit-as-list · review verdicts · skill points ·
 portal take/keep · draft step · two recruiting windows + signing day ·
 walk-on backfill · redshirt · strategy · approach · year rolls with staff
 kept, ledger reset, journal clean.
+
+---
+
+# The thirty-season report — September 1, 2026
+
+The reporter played 25-30 seasons in one sitting and lost their notes. What
+follows is what they remembered, what it turned out to be, and what is left.
+
+## Bugs found behind the complaints
+
+- **Stats keyed by name.** TeamState.batting/pitching/fielding were
+  Map<name>; two men sharing a name on one roster shared one line. Fixed to
+  player id. ("Repeated names in a team causes the stats going crazy.")
+- **AUTO could not bench anybody** — autoBattingOrder is a pure reorder by
+  contract and nothing sat above it. New layer: fitTheNine.
+- **Hurt arms still pitched.** Availability was never asked on ANY pitcher
+  path; a suspended Friday starter started Friday.
+- **regroup built position-blind nines** (two catchers, no shortstop) between
+  the draft step and signing day.
+- **Three quarters of every recruiting class carried the wrong growth curve.**
+  The class year was stamped after the man was built, so projectPotential saw
+  a random class and the gem clause fired at a quarter of its written rate.
+  Mean headroom 6.0 → 12.7; sleepers 1.75% → 8.6%.
+- **The player board was never corrected for league drift** — every rival
+  board is, and the league mean roster climbs ~10 points over 30 seasons.
+- **Team.quality was welded down.** Prestige has moved since B7, but the
+  number every walk-on is drawn against was written once at world creation.
+- **Professional careers never ended** (the 22-year All-Star).
+
+## Measured, in the repo
+
+- `tests/balance-probe.ts` — class headroom, star bands, quality drift,
+  career lengths.
+- `tests/churn-probe.ts` — 30 real seasons with the rival year running.
+  Top-twelve turnover 4 → 6 programmes; mean movement 14.9 places of 96.
+
+## Open, and deliberately not fixed yet
+
+- **Prestige runs away to the mid-90s** for a handful of programmes over 30
+  seasons. Measured with the quality drift switched OFF and it is unchanged,
+  so it is a property of nextPrestige, not of the September 1 pass. Worth a
+  decision: is a 94-prestige tier too easy to reach?
+- **The sim ignores position fit entirely.** positionPenalty is computed for
+  the depth chart UI and never read by game.ts, so a catcher at short costs
+  nothing. This is the real depth behind "players playing the same position"
+  and it needs its own measured pass — it will move calibration.
+- **The other tabs.** The reporter played many seasons "just pressing the
+  same buttons". The loop is Today → play → Today. Wire, Program, Season and
+  the record book are all reference; none of them ever ASKS for anything.
+- **The inbox** carries too much that does not matter (reporter deferred it).
+- **University overview styling** still reads as the pre-port design.
+- **Position changes from the player profile** — agreed, not built.
+- The PSC godsquad and Hans Hood both ship out before v1.0.
