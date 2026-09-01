@@ -8,7 +8,9 @@ the next one picks up, `01-roadmap.md` for the order at a glance, `06-backlog.md
 §H for the feature set and §I for the August 27 pass, `05-systems-reference.md`
 for what the game does today.
 
-**Where the work stands: stages 1 through 4 are done. Stage 5, the dugout, is next.**
+**Where the work stands: stages 1 through 14 are shipped, and stage 15.5 —
+the voice — was added on September 1 out of a thirty-season play session.
+Stage 15, the ballpark, and 15.5 are what remain before the last mile.**
 
 **Nineteen stages now.** The old stage 5 was split: the dugout is presentation
 over a stream the engine already emits, and the systems that reach *into* the
@@ -953,6 +955,82 @@ been measured.
 **Decisions at the door:** whether parks differ by program or by conference;
 whether the crowd is modelled or painted; and how much of this survives on a
 four-year-old Android, which is the question the profile exists to answer.
+
+## Stage 15.5 · The voice
+
+**Size:** medium · **Added September 1 2026, out of play**
+
+Two pieces, and they are the same piece: what the game *says*.
+
+### Everything it says
+
+Reported after a long session, and it is the fairest criticism the project has
+had: *"there are many things explained in a way that only an AI would
+understand."* That is true, and it is a specific failure rather than a vague
+one. The game explains **systems** where a person would say a **thing**. It
+reaches for the abstract noun — a *decision*, a *mandate*, an *objective*, a
+*window* — where a coach would name the actual object: the lineup, what the
+board wants, the three weeks you have. It hedges. It over-qualifies. It
+writes like documentation for the thing instead of like the thing.
+
+A pass over every user-facing string, screen by screen, held to four rules:
+
+1. **Name the object, not the system.** "Set tonight's cover on the chart" over
+   "resolve the unavailability".
+2. **Say it the way a person in the room would.** Coaches, scouts and reporters
+   have voices. Board copy is not scouting copy is not the wire.
+3. **One idea per sentence, and no sentence that exists to be thorough.**
+   Most of the length in the current copy is qualification nobody asked for.
+4. **Never explain the mechanism when the consequence will do.** "He is not
+   in tonight's nine" beats "his availability flag is false".
+
+The inventory: needs cards, inbox bodies, the interview's questions and every
+answer, press questions, board mandates and verdicts, field notes, empty
+states, tutorial cards, button labels, the offseason step headings, the
+takeover cards, settings copy, and the season review. Roughly a thousand
+strings; the ones a player reads every week come first.
+
+This is also where the **inbox noise pass** lands — the reporter's own
+deferral. Half of what it posts does not need a card, and cutting is a writing
+job, not a plumbing one.
+
+### What the scouts say about a recruit
+
+A rework of the recruiting report, asked for specifically.
+
+Today each scouting line carries a *range* of grades it stays honest across —
+one line might cover A+ through S — and `ceilingLinesFor` returns every line
+whose range spans the man's grade. The effect is deliberate fog: the words
+narrow the ceiling to a band and never to a letter, so the report cannot be
+decoded, only weighed.
+
+The reporter wants the opposite, and the reasoning is good: **one pool per
+potential letter**, so the words map to exactly one grade. A player who pays
+attention *can* learn the code and read a class properly — that is the reward
+for paying attention, and it is a real skill the game does not currently have
+anywhere. The protection is volume: enough lines in every pool that learning
+it takes seasons rather than an afternoon, and no line so distinctive that one
+sighting gives the whole grade away.
+
+The work:
+
+- Retire `from`/`to` on `CeilingLine`; one pool keyed by `PotentialGrade`.
+- **Write the pools.** Seven grades (D through S+) at roughly fifteen to
+  twenty lines each — call it a hundred and twenty lines of scouting prose,
+  which is the actual cost of this stage and the reason it belongs beside the
+  voice pass rather than in a systems stage.
+- Keep the stable per-man hash, so a recruit's line never changes on a
+  re-render or a reload. That property is what makes the code learnable at
+  all: if the words moved, there would be nothing to learn.
+- The development lines keep their bands. How raw a man is *should* stay
+  fuzzy — it is the second axis, and making both axes decodable would leave
+  nothing to scout.
+- `reportedPotential` and the coach's recruiting skill are untouched. Skill
+  still buys a narrower *number*; the words are what the scouts say, and they
+  say the same thing to everybody.
+
+**Exit:** nothing in the game reads as though a machine wrote it, and a
+recruiting report is worth studying.
 
 ## Stage 16 · The simulation's last mile
 

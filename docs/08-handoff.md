@@ -178,6 +178,25 @@ and **Hans Hood** (recruiting.ts generateClass — a 20-overall/99-potential
 3B in every class, for progression testing of the planned wonder-guy
 archetype).
 
+**September 1, second half.** Position fit now reaches the simulation (see
+the shipped account in 07 and tests/posfit-probe.ts): the nine are assigned
+to nine distinct spots and each pays fieldingAt for where he stands. It
+landed with NO re-calibration because a sound nine assigns to itself — that
+identity property is the thing to protect if anyone touches the assignment.
+The college profile was ported (its private copies of the six programme
+leaves are in the Kit now). The dark theme was measured and re-laddered.
+
+**Deferred by the reporter, September 1:** The Room and the storyline engine
+(the artifact proposal stands if either is revived). **Added instead:**
+stage 15.5, the voice — a copy pass over every user-facing string plus the
+recruiting-report rework (one line pool per potential letter, ~120 lines to
+write, so the report becomes learnable). The inbox noise pass folds into it.
+
+**Still open and unowned:** prestige runs away to the mid-90s for a handful
+of programmes over 30 seasons (measured; predates the Sept 1 balance pass —
+do not blame quality drift for it). Position changes from the player profile.
+The lineup/depth-chart merge the reporter has not decided on.
+
 **Loose ends deliberately left:** the tournament/bracket view (stage 15, with
 the park — school crests join the bracket there); the Saves screen's deeper
 restyle; `SigningDay`'s sheet framing (interiors are ported, the panels still
