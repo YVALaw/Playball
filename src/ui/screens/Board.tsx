@@ -286,8 +286,19 @@ export function Board() {
     const classPlayers = signed.map((p) => p.player);
     const still = walkOnShortfall(roster, classPlayers);
 
+    /*
+      TESTING ONLY — leaves with the wonder guy. Hans Hood is rank dead-last
+      by design, which put him 350 rows past the board cap: "he has to
+      appear in every recruiting class" has to mean on the screen, not in an
+      array. While the fixture exists, he rides at the foot of the default
+      list even when the cap would cut him.
+    */
+    const capped = showAll ? ranked : ranked.slice(0, ROW_CAP);
+    const hans = ranked.find((p) => String(p.id).startsWith("p1hans"));
+    const list = hans && !capped.includes(hans) ? [...capped, hans] : capped;
+
     return {
-      list: showAll ? ranked : ranked.slice(0, ROW_CAP),
+      list,
       // What the filter actually caught, before the board's row cap. The capped
       // number is the wrong one to put on the apply button: it reads 50
       // whatever you do until you have narrowed the country down past fifty
