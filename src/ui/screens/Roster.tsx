@@ -73,7 +73,6 @@ export function Roster() {
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
   const openOverlay = useDynasty((st) => st.openOverlay);
-  const setsOwnChart = useDynasty((st) => handles(st.depth, 'depthChart'));
   /*
     The captaincy has its own switch, and this door was reading the chart's.
 
@@ -185,13 +184,18 @@ export function Roster() {
         {/* The chart, one tap from the list it is about. Hidden for a career
             that asked its staff to set it — the chart is still what the game
             plays, it is simply not this coach's to write. */}
-        {setsOwnChart && (
-          <button
-            className="square-command tap"
-            type="button"
-            onClick={() => openOverlay('depth')}
-          ><BarChartIcon /><span>Chart</span></button>
-        )}
+        {/* Ungated: this square is the chart's one door now. It used to show
+            only when the coach writes the chart himself, with a second button
+            far down the page covering the casual case — so a full career had
+            two doors and was reported confused by them, and removing the far
+            one would have left a casual career none. Reading who covers whom
+            is legitimate in either mode; the screen itself knows whether the
+            pencil is yours. */}
+        <button
+          className="square-command tap"
+          type="button"
+          onClick={() => openOverlay('depth')}
+        ><BarChartIcon /><span>Chart</span></button>
       </div>
 
       <div className="screen-tools">
@@ -252,14 +256,15 @@ export function Roster() {
         empty="Nobody fits that filter. Whole roster, no such man."
       />
 
-      <InlineActions
-        actions={[
-          { label: 'Depth chart', onClick: () => openOverlay('depth') },
-          ...(namesCaptain
-            ? [{ label: 'Name a captain', onClick: () => openOverlay('captain') }]
-            : []),
-        ]}
-      />
+      {/* One door to the chart, not two. The CHART square in the title row is
+          the way in; the copy that sat here — "all the way down, right up top
+          of the name a captain" — was the same room with a second handle, and
+          it was reported as part of why the chart feels confusing at all. */}
+      {namesCaptain && (
+        <InlineActions
+          actions={[{ label: 'Name a captain', onClick: () => openOverlay('captain') }]}
+        />
+      )}
 
       <Capacity
         groups={[

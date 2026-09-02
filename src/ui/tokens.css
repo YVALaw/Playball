@@ -530,12 +530,28 @@ button {
    without the API still gets the rise it always had. */
 :root[data-vt] .screen-in { animation: none; }
 
+/* The old screen HOLDS, at full strength, until the transition ends.
+
+   Reported: "it just flashes a black screen and the other tab appears." The
+   first version faded the old snapshot out over 130ms while the new one faded
+   in over 210 — so for a moment neither was at full strength, and what showed
+   through the dip is whatever sits behind the app frame. That is `--backdrop`,
+   the desktop letterbox, and it is near-black in BOTH themes. On a phone the
+   frame fills the screen and the backdrop is never seen — except through
+   exactly this gap.
+
+   So the choreography changed rather than the background: the outgoing screen
+   stays opaque underneath while the incoming one fades in on top of it, and
+   there is no instant at which anything behind them can show. The old snapshot
+   simply ceases when the transition does, which is invisible — by then the new
+   screen is fully over it. */
 ::view-transition-old(root) {
-  animation: fadeIn 130ms ease-in reverse both;
+  animation: none;
+  opacity: 1;
 }
 
 ::view-transition-new(root) {
-  animation: screenArrive 210ms cubic-bezier(.2, .8, .3, 1) 40ms both;
+  animation: screenArrive 200ms cubic-bezier(.2, .8, .3, 1) both;
 }
 
 @keyframes screenArrive {

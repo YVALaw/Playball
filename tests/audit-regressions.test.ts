@@ -287,3 +287,46 @@ describe('an errand carries its subject', () => {
     expect(saved).not.toContain('man-17');
   });
 });
+
+describe("the board's number is set in February", () => {
+  /*
+    Reported from play, with the reporter asking whether he was imagining it:
+    "it was asking me for 18 wins, now it is saying 19." He was not. The
+    program page recomputed the expectation from the live roster on every
+    render, so the target crept as players developed — the same drift the page
+    had already been cured of once, when it scaled by games played.
+  */
+  it('does not move when the roster develops mid-season', () => {
+    useDynasty.getState().start(4242, 0);
+    const ask = useDynasty.getState().boardAsk;
+    expect(ask).not.toBeNull();
+    const before = ask!.targetWins;
+
+    // The roster gets dramatically better overnight.
+    const me = useDynasty.getState().season!.teams[0]!;
+    for (const h of me.team.lineup) {
+      h.contact = 99; h.power = 99; h.eye = 99; h.speed = 99;
+    }
+    for (const a of me.team.rotation) {
+      a.stuff = 99; a.movement = 99; a.control = 99;
+    }
+
+    // And the board's February number has not heard about it.
+    expect(useDynasty.getState().boardAsk!.targetWins).toBe(before);
+  });
+
+  it('survives a save and comes back the same', async () => {
+    useDynasty.getState().start(4242, 0);
+    const before = useDynasty.getState().boardAsk!;
+    await useDynasty.getState().saveNow('ask-slot');
+
+    // Forget it, load, and the stamp is back — not a fresh recompute keyed to
+    // whatever the roster looks like now.
+    useDynasty.setState({ boardAsk: null });
+    const ok = await useDynasty.getState().loadSlot('ask-slot');
+    expect(ok).toBe(true);
+    expect(useDynasty.getState().boardAsk).not.toBeNull();
+    expect(useDynasty.getState().boardAsk!.targetWins).toBe(before.targetWins);
+    expect(useDynasty.getState().boardAsk!.mandate).toBe(before.mandate);
+  });
+});

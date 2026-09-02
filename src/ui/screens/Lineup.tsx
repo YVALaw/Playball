@@ -30,6 +30,7 @@ import { CheckIcon, ReloadIcon, SewingPinIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Avatar } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
+import { whyOut } from '../Needs.js';
 import { overallOf } from '../../engine/ratings.js';
 import { captainOf } from '../../engine/captains.js';
 import { battingAverage, era, inningsPitched } from '../../engine/season.js';
@@ -322,6 +323,15 @@ export function Lineup() {
                       ? ` · ${battingAverage(line).toFixed(3).replace(/^0/, '')}`
                       : ''}
                   </small>
+                  {/* Why he is not playing tonight, on the row itself — asked
+                      for plainly: "the needs you needs to always tell you why
+                      the player isn't playing tonight." The card up on the
+                      desk says it too, but the lineup is where the errand
+                      lands, and a red row that will not explain itself sends
+                      you back a screen to find out. */}
+                  {!available(p, season.dayIndex) && (
+                    <small className="row-why">✚ {whyOut(p, season.dayIndex)}</small>
+                  )}
                 </span>
                 <Rating label="CON" value={(p as Hitter).contact} />
                 <Rating label="POW" value={(p as Hitter).power} />
@@ -378,7 +388,9 @@ export function Lineup() {
                   </strong>
                   <small>
                     {p.pos} · Bats {p.bats} · {overallOf(p)} OVR
-                    {hurt && <b className="bench-out"> · ✚ OUT</b>}
+                    {/* The reason, not just the fact — same report as the
+                        order above. */}
+                    {hurt && <b className="bench-out"> · ✚ {whyOut(p, season.dayIndex)}</b>}
                   </small>
                 </span>
                 <Rating label="CON" value={(p as Hitter).contact} />

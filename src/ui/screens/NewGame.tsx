@@ -420,11 +420,22 @@ export function NewGame() {
               <p>{detail.expectation.summary}</p>
               {rival && <p>Rivalry: {rival.school}, three times a year.</p>}
 
+              {/*
+                The school's colour moved from the letters to an underline.
+                It was the ink — `color: picked.color` — on a `--paper`
+                ground, and in the dark theme paper is near-black, so a navy
+                school's SIGN WITH was navy-on-black: reported as "the buttons
+                are barely visible and the sign with looks like it is grayed
+                out". A raw brand hex can never be trusted as ink on a themed
+                surface (that is the whole argument of accent.ts); as a 3px
+                underline on a fixed cream ground it can be any colour the
+                school likes.
+              */}
               {detail.open ? (
                 <button
                   className="career-offer-sign tap"
                   type="button"
-                  style={{ color: picked.color }}
+                  style={{ boxShadow: `inset 0 -3px 0 ${picked.color}` }}
                   onClick={() => start(seed, indexOf(picked), coach, mode, {
                     skills: outcome.skills,
                     badges: outcome.badges,

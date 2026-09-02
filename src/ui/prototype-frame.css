@@ -123,11 +123,57 @@
   animation: cardIn 300ms ease-out both, flagPulse 1.5s ease-in-out 300ms 3;
 }
 
-/* Tonight's two crests. The generated sheet styles `.matchup strong`, which is
-   the 39px abbreviation these replaced; an SVG in the same slot needs to be
-   told to centre and to stop being an inline box with a text baseline under
-   it. */
-.matchup svg { display: block; margin: 0 auto; }
+/* ---------------------------------------------------------------------------
+   Tonight's matchup, sideways.
+
+   The generated sheet stacks each team as a column — 39px letters over the
+   record — and the first crest version kept that stack and grew the card.
+   This is the sketched layout instead: pitcher and record on the outer side,
+   crest pulled in toward the AT, everything on one 45px-tall row. The card is
+   back under the height the letters gave it, with the arms' own line gone
+   from underneath.
+   --------------------------------------------------------------------------- */
+.matchup { grid-template-columns: 1fr auto 1fr; padding: 10px 12px 9px; }
+.matchup svg { display: block; flex: none; }
+.matchup button {
+  display: flex; align-items: center; gap: 9px; min-width: 0;
+  padding: 0; border: 0; background: transparent; color: var(--ink);
+}
+/* Crests flush toward the middle: the left half packs right, the right half
+   packs left, and the gap between the shields is just the AT and its air. */
+.matchup button:first-of-type { justify-content: flex-end; }
+.matchup button:last-of-type { justify-content: flex-start; }
+.versus { padding: 0 4px; }
+
+.matchup-side { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.matchup button:first-of-type .matchup-side { align-items: flex-end; text-align: right; }
+.matchup button:last-of-type .matchup-side { align-items: flex-start; text-align: left; }
+/* The generated sheet gives `.matchup small` a 7px top margin for the old
+   stack; in a row that margin is a lopsided gap. */
+.matchup-side small { margin: 0; display: block; }
+.matchup-arm {
+  color: var(--dim); font-size: calc(8.5px * var(--ts)); line-height: 1.25;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+}
+.matchup-record { color: var(--ink); font-weight: 800; font-size: calc(10px * var(--ts)); }
+
+/* The warnings, banded. Everything in the card that asks for attention rather
+   than reporting a fact shares this strip — the rivalry, the held desk — in
+   the alert ink on the alert's own wash, above the actions where the eye ends
+   up anyway. `--alert-rgb` at low alpha rather than a solid, so the school
+   accent underneath the card stays out of it in both themes. */
+.match-warnings {
+  border-top: 1px solid rgba(var(--alert-rgb), .35);
+  background: rgba(var(--alert-rgb), .08);
+  padding: 8px 12px 9px;
+  display: grid; gap: 5px;
+}
+.match-warnings p {
+  display: flex; align-items: flex-start; gap: 6px; margin: 0;
+  color: var(--alert); font-size: calc(9.5px * var(--ts)); font-weight: 600;
+  line-height: 1.4;
+}
+.match-warnings svg { flex: none; margin-top: 1px; }
 
 /* The unread count, in a menu row rather than on an envelope's shoulder. It has
    room for the number here, so it prints it rather than capping at 9+. --alert
@@ -1570,12 +1616,29 @@
 /* White, with the school's colour on the letters. A dark school colour on a
    dark card is a button you cannot read, and every one of these is a school
    whose colour the tables have already taught you. */
+/* ---------------------------------------------------------------------------
+   The offer module, held to its colours in both themes.
+
+   Reported from creation in dark mode: "the green module that comes up is too
+   bright and the text has not good visibility." The module's ground was
+   `--navy`, and the dark theme repoints --navy at the bright accent cut
+   because there it paints TEXT — every place still using it as a surface goes
+   searchlight-green the moment the theme flips. The ground is pinned to the
+   deep cut directly, which is the same paint the light theme always had, and
+   every ink inside the module was chosen against it.
+   --------------------------------------------------------------------------- */
+.career-offer-detail { background: var(--accent-deep, #153a2b); }
+
 .career-offer-sign {
   width: 100%;
   margin-top: 12px;
   padding: 13px 0;
-  border: 1px solid var(--paper);
-  background: var(--paper);
+  /* Cream as a literal, not var(--paper): in dark the token goes near-black
+     and the button vanished into the module. This is the one control on a
+     pinned-dark ground, so its lights stay on in both themes. */
+  border: 0;
+  background: #f6f1e6;
+  color: #1d201d;
   font: 800 calc(10px * var(--ts)) var(--mono);
   letter-spacing: .14em;
 }
@@ -2309,9 +2372,25 @@
   backface-visibility: hidden;
 }
 .flip-back { transform: rotateY(180deg); }
-/* The hidden face must not eat the visible one's taps. */
+/* Neither 3D face takes a tap any more — see the note in Awards.tsx: WebKit
+   hit-tests rotated faces by projected quads and only half of a face-down
+   card responded on the phone. The faces are scenery; `.flip-tap` below is
+   the control. */
 .flip:not(.revealed) .flip-back { pointer-events: none; }
-.flip.revealed .flip-front { pointer-events: none; }
+.flip .flip-front { pointer-events: none; }
+
+/* The tap, flat. An absolutely-positioned 2D button over the whole card while
+   it is face down — no transform, no 3D context, nothing for a hit-test to
+   get wrong. Unmounts on reveal, so the back's own rows take over cleanly. */
+.flip-tap {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
 
 .flip-front {
   display: grid;
@@ -2667,3 +2746,41 @@
 
 /* The portal's third button state — the case was made and he left anyway — is
    `.confirmable.is-failed` now, styled once with the rest of the grammar. */
+
+/* ---------------------------------------------------------------------------
+   The unread count, back on the header's shoulder.
+
+   It left with the envelope and was asked for again the same day: the dot on
+   HOME says THAT something is unread, the number on the portrait says how
+   much. Same anatomy as the old envelope badge, but the ink flips with the
+   theme (see --alert-ink) and taps fall through to the portrait underneath.
+   --------------------------------------------------------------------------- */
+.coach-slot { position: relative; display: block; width: 40px; height: 40px; }
+.coach-badge {
+  position: absolute; top: -5px; right: -4px; z-index: 1;
+  display: grid; place-items: center; width: 17px; height: 17px;
+  border: 2px solid var(--field); border-radius: 50%;
+  background: var(--alert); color: var(--alert-ink);
+  font: 800 calc(8px * var(--ts))/1 var(--body);
+  pointer-events: none;
+}
+
+/* Prestige stars in a metric box. The ★ has no home in the display face, so it
+   arrives from the fallback font at close to a square em — sized here so five
+   of them sit inside a third of a 320-wide phone with the largest text on. */
+.metric-stars {
+  font-size: calc(15px * var(--ts));
+  letter-spacing: .06em;
+  line-height: 1.5;
+  color: var(--clay);
+}
+
+/* Why a man is out, on his own lineup row — the reason in the alert ink, one
+   size down from the meta line it follows. */
+.player-name .row-why {
+  display: block;
+  margin-top: 2px;
+  color: var(--alert);
+  font-size: calc(8px * var(--ts));
+  font-weight: 800;
+}

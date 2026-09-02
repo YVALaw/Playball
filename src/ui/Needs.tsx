@@ -85,7 +85,7 @@ export interface Need {
  * rest and a suspension were both being reported as healthy on a card whose
  * whole point is that he cannot play.
  */
-function whyOut(man: Player, day: number): string {
+export function whyOut(man: Player, day: number): string {
   const u = man as Player & { outUntil?: number; why?: string };
   if (u.why === 'injury') return prognosis(man, day);
   const back = typeof u.outUntil === 'number' ? u.outUntil - day : 0;

@@ -64,13 +64,34 @@ function FlipCard({ id, label, mine, tint, revealed, onReveal, children }: {
   return (
     <div ref={ref} className={`flip${revealed ? ' revealed' : ''}`}>
       <div className="flip-inner">
-        <button type="button" className="flip-front" onClick={reveal}>
+        {/*
+          The front face no longer takes the tap. Reported from the phone:
+          "when tapping on the right side of the screen they don't reveal, it
+          only works if I tap on the left side" — and desktop hit-testing
+          probes clean across the full width, which is the tell. WebKit
+          hit-tests 3D-transformed faces by their projected quads and gets the
+          coplanar mirrored back involved despite backface-visibility and
+          pointer-events, so which half of a face-down card worked depended on
+          the browser's arithmetic rather than on this markup.
+
+          So the tap lives on a flat overlay below instead — an ordinary 2D
+          control WebKit has no opinions about — and both faces are scenery.
+        */}
+        <button type="button" className="flip-front" tabIndex={-1} aria-hidden>
           <small>{label}</small>
           <strong>?</strong>
           <span>TAP TO REVEAL</span>
         </button>
         <div className="flip-back">{children}</div>
       </div>
+      {!revealed && (
+        <button
+          type="button"
+          className="flip-tap"
+          aria-label={`Reveal ${label}`}
+          onClick={reveal}
+        />
+      )}
     </div>
   );
 }

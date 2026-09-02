@@ -132,6 +132,11 @@ export interface SaveFile {
    * precious field in the file. Absent on older saves, which simply teach.
    */
   tutorials?: unknown;
+  /**
+   * What the board asked for, stamped the day the season opened. Absent on
+   * older saves, which recompute it once at load — mildly drifted, then frozen.
+   */
+  boardAsk?: unknown;
   /** The watchlists — programs followed and chairs the career points at. */
   watch?: unknown;
   /** The staff, the facilities and the year's spending. */
@@ -350,6 +355,8 @@ export interface SaveExtras {
   inbox?: unknown;
   /** First-visit tutorial ids already shown. */
   tutorials?: unknown;
+  /** The board's ask for the season in progress, frozen at its opening. */
+  boardAsk?: unknown;
   /** The program and job-path watchlists, by school abbreviation. */
   watch?: unknown;
   /** The program's money: staff, facilities, the year's ledger. Stage 11. */
@@ -443,6 +450,7 @@ export function buildSaveFile(
     ...(Array.isArray(extras.tutorials) && extras.tutorials.length > 0
       ? { tutorials: extras.tutorials }
       : {}),
+    ...(extras.boardAsk ? { boardAsk: extras.boardAsk } : {}),
     ...(extras.watch ? { watch: extras.watch } : {}),
     ...(extras.economy ? { economy: extras.economy } : {}),
     ...(extras.rivalry ? { rivalry: extras.rivalry } : {}),
@@ -503,6 +511,8 @@ export interface LoadedDynasty {
   inbox: unknown;
   /** First-visit tutorial ids. Empty for saves that predate teaching. */
   tutorials: unknown;
+  /** The board's frozen ask, or undefined before it was stamped. */
+  boardAsk: unknown;
   /** The watchlists, or undefined on saves that predate them. */
   watch: unknown;
   /** The economy, or undefined on saves that predate stage 11. */
@@ -575,6 +585,7 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     outcome: file.outcome ?? null,
     inbox: file.inbox ?? [],
     tutorials: file.tutorials ?? [],
+    boardAsk: file.boardAsk,
     watch: file.watch,
     economy: file.economy,
     rivalry: file.rivalry,

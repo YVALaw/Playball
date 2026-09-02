@@ -146,11 +146,18 @@ export function Today() {
   const theirArm = opponent
     ? opponent.team.rotation[slot] ?? opponent.team.rotation[0]
     : null;
-  const armLine = (p: Pitcher | null | undefined): string => {
+  /*
+    "N. Prewitt · 3.42" — the probable arm, sized for half a narrow phone.
+    The ERA rides along once he has three innings to his name; before that the
+    number would be noise wearing decimals.
+  */
+  const armShort = (p: Pitcher | null | undefined): string => {
     if (!p) return '—';
     const line = season.pitching.get(p.id);
-    const e = line && line.outs >= 9 ? ` (${era(line).toFixed(2)} ERA)` : '';
-    return `${p.name}${e}`;
+    const e = line && line.outs >= 9 ? ` · ${era(line).toFixed(2)}` : '';
+    const parts = p.name.split(' ');
+    const name = parts.length > 1 ? `${parts[0]![0]}. ${parts.slice(1).join(' ')}` : p.name;
+    return `${name}${e}`;
   };
 
   // Where the series stands, when tonight is part of one. The schedule plays
@@ -244,50 +251,67 @@ export function Today() {
               <b>{day?.kind === 'series' ? seriesTag : 'MIDWEEK'}</b>
             </div>
             {/*
-              Crests rather than the abbreviation set in 39px display type.
+              Crests rather than the abbreviation in 39px display type, and the
+              second draft of the row. The first stacked crest over record in
+              the letters' old slots, which grew the card — reported the same
+              day it shipped: "the tonight card should not change its size, I
+              just noticed how it expanded" — and left the space either side of
+              the shields carrying nothing but air.
 
-              The letters were doing two jobs badly: naming the team, and being
-              the only picture on the screen. The crest does the second one
-              properly and still does the first, because the abbreviation is
-              drawn inside it — this is a shield with NWP on it, not a wordless
-              logo. Ninety-six of them already exist and the header has worn one
-              since the port; this is the same mark at the size the card can
-              afford.
+              So the row works sideways now, the way the report sketched it:
+              each pitcher rides the empty side next to his crest, the crests
+              pull in toward the AT, and the line that used to spell the arms
+              out underneath is gone — which is what buys the height back. A
+              first initial rather than the full name, because "Giovanni
+              Galvan · 3.42" has to fit half a 320-wide phone.
             */}
             <div className="matchup">
               <button type="button" onClick={() => openTeam(team.index)}>
-                <Crest abbr={team.def.abbr} size={46} />
-                <small>{team.w}-{team.l}</small>
+                <span className="matchup-side">
+                  <small className="matchup-arm">{armShort(ourArm)}</small>
+                  <small className="matchup-record">{team.w}-{team.l}</small>
+                </span>
+                <Crest abbr={team.def.abbr} size={38} />
               </button>
               <span className="versus">{atHome ? 'VS' : 'AT'}</span>
               <button type="button" onClick={() => openTeam(opponent.index)}>
-                <Crest abbr={opponent.def.abbr} size={46} />
-                <small>{opponent.w}-{opponent.l}</small>
+                <Crest abbr={opponent.def.abbr} size={38} />
+                <span className="matchup-side">
+                  <small className="matchup-arm">{armShort(theirArm)}</small>
+                  <small className="matchup-record">{opponent.w}-{opponent.l}</small>
+                </span>
               </button>
             </div>
-            <p>
-              <SewingPinIcon /> {armLine(ourArm)} vs {armLine(theirArm)}
-            </p>
-            {/* The rivalry, named the week it comes round — with the career
-                ledger, because a rivalry IS its record. */}
-            {opponent.def.abbr === team.def.rival && (
-              <p className="rivalry-line">
-                <StarFilledIcon /> The rivalry.{' '}
-                {rivalry.w + rivalry.l > 0
-                  ? rivalry.w >= rivalry.l
-                    ? `You lead the series ${rivalry.w}-${rivalry.l}.`
-                    : `They lead the series ${rivalry.l}-${rivalry.w}.`
-                  : 'The first chapter under your watch.'}
-              </p>
-            )}
             {stake && (
               <p className="stake-line"><SewingPinIcon /> {stake}</p>
             )}
-            {held && (
-              <p className="held-note">
-                <SewingPinIcon /> {musts === 1 ? 'A decision is' : `${musts} decisions are`} waiting
-                on you below. Nothing moves until {musts === 1 ? 'it is' : 'they are'} dealt with.
-              </p>
+            {/*
+              The warnings, in one red strip where the pitchers' line used to
+              be — asked for in the same report: "the warnings make them more
+              visible and in a red strip." The rivalry and the held desk were
+              two quiet grey lines a scroll apart; anything on this card that
+              is a warning rather than a fact now shares the one band, and the
+              band only exists on a night that has one.
+            */}
+            {(opponent.def.abbr === team.def.rival || held) && (
+              <div className="match-warnings">
+                {opponent.def.abbr === team.def.rival && (
+                  <p>
+                    <StarFilledIcon /> The rivalry.{' '}
+                    {rivalry.w + rivalry.l > 0
+                      ? rivalry.w >= rivalry.l
+                        ? `You lead the series ${rivalry.w}-${rivalry.l}.`
+                        : `They lead the series ${rivalry.l}-${rivalry.w}.`
+                      : 'The first chapter under your watch.'}
+                  </p>
+                )}
+                {held && (
+                  <p>
+                    <SewingPinIcon /> {musts === 1 ? 'A decision is' : `${musts} decisions are`} waiting
+                    on you below. Nothing moves until {musts === 1 ? 'it is' : 'they are'} dealt with.
+                  </p>
+                )}
+              </div>
             )}
             <div className="match-actions">
               <button type="button" onClick={() => { go('team'); setScreen('lineup'); }}>

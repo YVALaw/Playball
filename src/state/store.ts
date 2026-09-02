@@ -41,7 +41,7 @@ import {
   approachSchool, APPROACHES_PER_SEASON, CAUGHT_SECURITY_COST, type ApproachOutcome,
   prestigeStars, skillPoints, takeChair,
   type CoachState, type CoachSkills, type CoachProfile, type JobOffer, type Review,
-  type SeasonOutcome,
+  type SeasonOutcome, type Expectation,
 } from '../engine/program.js';
 import {
   runRivalYear, seatCoaches, syncCoachMods, type CarouselMove,
@@ -454,7 +454,9 @@ export const TABS: readonly TabDef[] = [
   // was one more label sharing 360 pixels. The 'saves' screen id still
   // resolves — the menu and the overlay both route to it.
   { id: 'program', label: 'PROGRAM', screens: [
-    { id: 'records', label: 'PROGRAM' },
+    // OVERVIEW, because that is what it is — asked for by name. PROGRAM as a
+    // sub-tab of PROGRAM also said nothing the strip above had not already.
+    { id: 'records', label: 'OVERVIEW' },
     // The whole country, one door. Every other route to a rival's page goes
     // through a table that happens to mention them; this one is the directory.
     { id: 'colleges', label: 'COLLEGES' },
@@ -695,6 +697,23 @@ export interface DynastyStore {
   openOffseason: () => void;
   /** What the season came to, kept for the review screen. */
   lastOutcome: SeasonOutcome | null;
+
+  /**
+   * What the board asked for, stamped the day the season opened.
+   *
+   * The program page used to recompute this from the live roster on every
+   * render, so the target moved as players developed. Reported from play,
+   * word for word: "it was asking me for 18 wins, now it is saying 19" — and
+   * the reporter asked whether he was imagining it. He was not. The board's
+   * number is set in February and lives with it now, the same way `judge`'s
+   * own comment demands one source of truth in front of the player.
+   *
+   * Stamped at `start`, at the year roll, and on taking a new job; read by the
+   * program page, the halfway card and the June review, so the promise and the
+   * verdict are the same numbers. Old saves load without one and are stamped
+   * once on the way in — mildly drifted, then frozen.
+   */
+  boardAsk: Expectation | null;
 
   /**
    * What has happened to your world, newest first.
@@ -1951,7 +1970,11 @@ function seasonNews(store: DynastyStore): void {
   if (played.length >= half) {
     const at = played.slice(0, half);
     const w = at.filter(Boolean).length;
-    const want = playerBoard(me.prestige, rosterStrength(me.team), games).expectation;
+    // The stamped ask, so the halfway card quotes the number February gave
+    // rather than one the roster has drifted to since. The fallback is for a
+    // season loaded from a save that predates the stamp.
+    const want = store.boardAsk
+      ?? playerBoard(me.prestige, rosterStrength(me.team), games).expectation;
     store.post({
       kind: 'board', year, key: 'halfway',
       title: 'Halfway, and the board is watching',
@@ -1966,6 +1989,23 @@ function seasonNews(store: DynastyStore): void {
 function defaultUserTeam(season: SeasonState): number {
   const home = season.teams.find((t) => t.conference === HOME_CONFERENCE);
   return home?.index ?? 0;
+}
+
+/**
+ * The board's ask, computed once — see `boardAsk` on the interface.
+ *
+ * The drift-corrected form, with `leagueShape`, because that is the form the
+ * June review already uses: the correction every rival board gets was once
+ * withheld from the player's (see the note at the review), and stamping the
+ * uncorrected number here would reopen that seam from the other side.
+ */
+function boardAskFor(season: SeasonState, userTeam: number): Expectation | null {
+  const me = season.teams[userTeam];
+  if (!me) return null;
+  return playerBoard(
+    me.prestige, rosterStrength(me.team), seasonLength(season.config),
+    me.culture?.patience, leagueShape(season.teams),
+  ).expectation;
 }
 
 /**
@@ -2091,6 +2131,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     set({
       season,
       userTeam: seat,
+      boardAsk: boardAskFor(season, seat),
       needsTeam: false,
       year: START_YEAR,
       version: 1,
@@ -2931,12 +2972,22 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       handed to the player's, and thirty seasons of league inflation landed
       on him alone.
     */
+    /*
+      Judged against the checklist he was shown in February, not one recomputed
+      off the June roster. The board object still forms fresh — renew and sack
+      bars read patience, which is current — but its expectation is the stamped
+      one, so the promise and the verdict are the same numbers. The fallback
+      recompute only fires for a save from before the stamp existed.
+    */
+    const board = playerBoard(
+      me.prestige, rosterStrength(me.team), seasonLength(season.config),
+      me.culture?.patience, leagueShape(season.teams),
+    );
+    const ask = get().boardAsk;
+    if (ask) board.expectation = ask;
     const review = reviewSeason(
       coach, me.prestige, rosterStrength(me.team), outcome, seasonLength(season.config),
-      playerBoard(
-        me.prestige, rosterStrength(me.team), seasonLength(season.config),
-        me.culture?.patience, leagueShape(season.teams),
-      ),
+      board,
     );
 
     // Prestige belongs to the school and survives a coaching change.
@@ -3457,6 +3508,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         season: rolled,
         year: year + 1,
         version: get().version + 1,
+        // The new board's number, set on opening day and held all season. A
+        // fired coach gets a meaningless stamp for a chair he no longer holds;
+        // acceptOffer restamps for the one he takes.
+        boardAsk: boardAskFor(rolled, get().userTeam),
         lastOffseason: report,
         /*
           A new season, and the slate is clean twice over.
@@ -3944,6 +3999,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     applyPhilosophy(season, team, next);
     set({
       userTeam: team,
+      // A new chair is a new board, and its ask is stamped the day you sit
+      // down — even mid-season, where a part-year target is still the number
+      // this board will actually judge.
+      boardAsk: season ? boardAskFor(season, team) : get().boardAsk,
       offers: [],
       jobSearch: false,
       lastReview: null,
@@ -5212,6 +5271,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   seenTutorials: [],
   focusPlayer: null,
+  boardAsk: null,
   watch: { programs: [], jobs: [] },
   toggleProgramWatch: (abbr) => {
     const w = get().watch;
@@ -5364,6 +5424,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         outcome: get().lastOutcome,
         inbox: get().inbox,
         tutorials: get().seenTutorials,
+        boardAsk: get().boardAsk,
         watch: get().watch,
         economy: get().economy,
         rivalry: get().rivalry,
@@ -5497,6 +5558,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       season: loaded.season,
       year: loaded.year,
       userTeam: loaded.userTeam,
+      /*
+        The frozen ask, or one freeze for a save that predates the stamp: a
+        career loaded mid-season computes it once here — mildly drifted by
+        however far the roster has come, but held from this moment on, which
+        is the property that actually matters.
+      */
+      boardAsk: (loaded.boardAsk as Expectation | null | undefined)
+        ?? boardAskFor(loaded.season, loaded.userTeam),
       needsTeam: false,
       // Whatever went wrong last time went wrong with a different save. Left
       // set, a newer-build slot refused once would keep warning about itself

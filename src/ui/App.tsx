@@ -791,9 +791,24 @@ function TableOverlay() {
   const setProgramSheet = useDynasty((s) => s.setProgramSheet);
   const back = (): void => {
     if (overlay === 'settings' && settingsPage !== 'index') setSettingsPage('index');
-    // The coach sheet defers the same way a settings page does — its own
-    // back button was the second of two and it is gone.
-    else if (overlay === 'program' && programSheet === 'coach') setProgramSheet('board');
+    /*
+      Back from the coach sheet closes it. It used to step to the program
+      board first, borrowing the settings pages' deference — but a settings
+      page's home really is the settings index, while the coach sheet is
+      opened from the portrait on whatever screen you happened to be on.
+      Reported exactly as that felt: "it takes me to the program board
+      instead of the last place I was at" — the detour was a screen the
+      player never visited, inserted on the way out of one they did.
+
+      The sheet still resets on the way past, because leaving `programSheet`
+      on 'coach' is the old one-way door: the PROGRAM tab would open straight
+      onto the coach page with no way back. Reset-and-close does both jobs in
+      the one press.
+    */
+    else if (overlay === 'program' && programSheet === 'coach') {
+      setProgramSheet('board');
+      close();
+    }
     else close();
   };
   return (
@@ -932,7 +947,7 @@ function CoachMenuButton() {
 
   return (
     <>
-      <CoachAvatar look={coach.look} onClick={() => setOpen((v) => !v)} />
+      <CoachAvatar look={coach.look} badge={unread} onClick={() => setOpen((v) => !v)} />
       {open && (
         <>
           <button

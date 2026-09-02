@@ -422,9 +422,15 @@ export function Board() {
       <MetricStrip>
         <Metric label="SCHOLARSHIPS" value={`${commits.length}/${SCHOLARSHIPS}`} note={full ? 'FULL' : 'COMMITTED'} />
         <Metric label="BUDGET" value={live ? String(left) : '—'} note={live ? `OF ${weekly}` : 'CLOSED'} />
-        {/* Filled stars only — five glyphs of tracking overflowed the box on
-            the phone, and the empty ones said nothing the note does not. */}
-        <Metric label="PRESTIGE" value={'★'.repeat(Math.max(1, myStars))} note={`OF 5 · PROGRAM PULL`} />
+        {/* Sized down as well as filled-only. The display face has no star, so
+            each ★ came from the fallback font at nearly a square em — five of
+            those at the metric's 25px overflowed the box even after the empty
+            ones were dropped. Reported twice; the span is the second fix. */}
+        <Metric
+          label="PRESTIGE"
+          value={<span className="metric-stars">{'★'.repeat(Math.max(1, myStars))}</span>}
+          note={`OF 5 · PROGRAM PULL`}
+        />
       </MetricStrip>
 
       <Segmented

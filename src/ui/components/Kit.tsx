@@ -110,8 +110,12 @@ export function SectionHeading(
 
 /** One number with a label over it and a note under it. */
 export function Metric(
-  { label, value, note }: { label: string; value: string; note?: string },
+  { label, value, note }: { label: string; value: ReactNode; note?: string },
 ) {
+  // ReactNode rather than string for one caller's sake: the recruiting board's
+  // prestige stars. The display face has no ★, so the glyph falls back to the
+  // system font at nearly a full em — five of those at the metric's 25px did
+  // not fit the box, twice reported. The board hands in a sized span instead.
   return (
     <div className="metric">
       <small>{label}</small>

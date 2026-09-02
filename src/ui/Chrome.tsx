@@ -99,17 +99,31 @@ export function HeaderIcon(
  * own look, the same way it draws four thousand players — see Avatar.tsx for
  * why that is worth keeping over an asset.
  */
-export function CoachAvatar({ look, onClick }: { look: CoachLook; onClick: () => void }) {
+export function CoachAvatar(
+  { look, onClick, badge }: { look: CoachLook; onClick: () => void; badge?: number },
+) {
+  const count = badge ?? 0;
   return (
-    <button
-      className="coach-avatar tap"
-      type="button"
-      aria-label="Coach menu"
-      aria-haspopup="menu"
-      onClick={onClick}
-    >
-      <CoachPortrait look={look} size={38} />
-    </button>
+    /*
+      The wrapper exists for the badge. When the inbox moved into this menu it
+      took the only unread count in the header with it — reported straight
+      back: "I should get the notification number as well in the coach picture
+      up top." The count cannot ride the button itself, because .coach-avatar
+      clips its overflow to keep the portrait round, so a shoulder badge would
+      lose its top half. The slot is the un-clipped shoulder.
+    */
+    <span className="coach-slot">
+      <button
+        className="coach-avatar tap"
+        type="button"
+        aria-label={count > 0 ? `Coach menu, ${count} unread` : 'Coach menu'}
+        aria-haspopup="menu"
+        onClick={onClick}
+      >
+        <CoachPortrait look={look} size={38} />
+      </button>
+      {count > 0 && <span className="coach-badge" aria-hidden>{count > 9 ? '9+' : count}</span>}
+    </span>
   );
 }
 

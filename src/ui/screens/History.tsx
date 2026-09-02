@@ -57,9 +57,13 @@ export function History() {
         title={sheet === "seasons"
           ? (annals.length > 0 ? `${wins}-${losses}` : "History")
           : "The Book"}
+        // One line each — reported: "we have to remove all the text at the
+        // top, it is waaay too long." The seasons line lost its second
+        // sentence about other jobs; the book's lost the provenance essay,
+        // which the records themselves demonstrate.
         text={sheet === "seasons"
-          ? `Every season ${team.def.school} has finished, whoever was coaching it. Take another job and this page keeps showing the years the school played while you were somewhere else.`
-          : "The all-time marks across all ninety-six programs, seeded with the real NCAA ones so there is history to chase from the first game of the first season."}
+          ? `Every season ${team.def.school} has finished, whoever was coaching.`
+          : "The all-time marks, all ninety-six programs."}
       />
       <Segmented
         label="History view"

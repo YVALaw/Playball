@@ -419,13 +419,23 @@ function BoardSheet({ team }: { team: Owner }) {
   const clearReview = useDynasty((s) => s.clearReview);
   const post = useDynasty((s) => s.lastPostseason);
   const table = useConferenceTable();
+  // Above the early return, where hooks live.
+  const storedAsk = useDynasty((s) => s.boardAsk);
 
   if (!season) return null;
 
   const roster = rosterStrength(team.team);
-  // A full season's length, not games played so far. Scaling by games played
-  // meant the board's target crept up all year and was only right in September.
-  const expectation = expectationFor(team.prestige, roster, seasonLength(season.config));
+  /*
+    The stamped ask, not a live recompute — the second half of a fix that came
+    in two reports. The first: scaling by games played crept the target up all
+    year. The second, a season later: computing from the live roster did the
+    same thing more slowly — "it was asking me for 18 wins, now it is saying
+    19" — because men develop. The number is set the day the season opens and
+    read from the store ever after; the fallback only fires for a save from
+    before the stamp existed, and the load path freezes even those.
+  */
+  const expectation = storedAsk
+    ?? expectationFor(team.prestige, roster, seasonLength(season.config));
   const stars = prestigeStars(team.prestige);
 
   // What the board can see right now. Placement is only real once the games are
