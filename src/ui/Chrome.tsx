@@ -14,6 +14,7 @@
 import type { ReactNode } from 'react';
 import { ChevronDownIcon } from '@radix-ui/react-icons';
 import { CoachPortrait } from './CoachPortrait.js';
+import { useSlide } from './slide.js';
 import type { CoachLook } from '../engine/program.js';
 
 /**
@@ -137,8 +138,11 @@ export function ContextNav<T extends string>(
     onSelect: (id: T) => void;
   },
 ) {
+  // The underline slides between tabs; 12 keeps the inset the static
+  // underline always had. See slide.ts.
+  const ref = useSlide<HTMLElement>(12);
   return (
-    <nav className="context-nav" aria-label={label}>
+    <nav ref={ref} className="context-nav" aria-label={label}>
       {items.map((item) => (
         <button
           className={item.id === active ? 'active' : ''}
@@ -170,8 +174,10 @@ export function PrimaryNav<T extends string>(
     onSelect: (id: T) => void;
   },
 ) {
+  // "Same with the line in the main nav bar" — the top line slides too.
+  const ref = useSlide<HTMLElement>();
   return (
-    <nav className="primary-nav" aria-label="Career areas">
+    <nav ref={ref} className="primary-nav" aria-label="Career areas">
       {tabs.map((t) => (
         <button
           className={t.id === active ? 'active' : ''}

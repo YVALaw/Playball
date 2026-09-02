@@ -2870,3 +2870,67 @@
   font: 800 calc(13px * var(--ts))/1 var(--display);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------------------------------------------------------------------------
+   The sliding indicator, on every strip that picks one thing from a row.
+
+   Asked for globally: "the color transitioning from left to right... same
+   with the line in the main nav bar." The mechanism is slide.ts — the strip
+   carries `--slide-x`/`--slide-w` measured off its active button, stamps
+   `data-slide` while the measurement is live, and the `::before` here rides
+   the numbers. The static per-button paint each strip always had stays in
+   prototype.css as the fallback and is switched off only under [data-slide],
+   so a strip the hook never touched looks exactly as it did.
+
+   The containers go `position: relative` unconditionally — the indicator and
+   the buttons' offsetLeft both need the strip itself as their box, and two of
+   the three were `static` after the frame's own overrides.
+   --------------------------------------------------------------------------- */
+.segmented,
+.context-nav,
+.primary-nav { position: relative; }
+
+.segmented[data-slide]::before,
+.context-nav[data-slide]::before,
+.primary-nav[data-slide]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: var(--slide-w);
+  transform: translateX(var(--slide-x));
+  background: var(--clay);
+  transition:
+    transform 220ms cubic-bezier(0.22, 0.85, 0.28, 1),
+    width 220ms cubic-bezier(0.22, 0.85, 0.28, 1);
+  pointer-events: none;
+}
+
+/* Segmented: the clay fill is the indicator, behind the labels. */
+.segmented[data-slide]::before { top: 0; bottom: 0; }
+.segmented[data-slide] button { position: relative; z-index: 1; }
+.segmented[data-slide] button.active { background: transparent; }
+
+/* Context nav: the 3px underline, keeping its 12px end insets via the hook. */
+.context-nav[data-slide]::before { bottom: 0; height: 3px; }
+.context-nav[data-slide] button.active::after { display: none; }
+
+/* Primary nav: the 3px line along the top of the chosen tab. */
+.primary-nav[data-slide]::before { top: 0; height: 3px; }
+.primary-nav[data-slide] button.active { box-shadow: none; }
+
+/* The same switch all motion honours: reduced means arrive, don't travel. */
+:root[data-motion="reduced"] .segmented[data-slide]::before,
+:root[data-motion="reduced"] .context-nav[data-slide]::before,
+:root[data-motion="reduced"] .primary-nav[data-slide]::before { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .segmented[data-slide]::before,
+  .context-nav[data-slide]::before,
+  .primary-nav[data-slide]::before { transition: none; }
+}
+:root[data-motion="full"] .segmented[data-slide]::before,
+:root[data-motion="full"] .context-nav[data-slide]::before,
+:root[data-motion="full"] .primary-nav[data-slide]::before {
+  transition:
+    transform 220ms cubic-bezier(0.22, 0.85, 0.28, 1),
+    width 220ms cubic-bezier(0.22, 0.85, 0.28, 1);
+}

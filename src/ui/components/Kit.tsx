@@ -16,6 +16,7 @@ import {
   ChevronRightIcon, DotFilledIcon, PersonIcon, SewingPinIcon,
 } from '@radix-ui/react-icons';
 import { useDynasty } from '../../state/store.js';
+import { useSlide } from '../slide.js';
 
 /**
  * The head of a screen: a green kicker, a condensed title, a line of prose.
@@ -157,8 +158,11 @@ export function Segmented<T extends string>(
     label: string;
   },
 ) {
+  // The fill slides to the chosen segment rather than teleporting — see
+  // slide.ts for the mechanism and the request that asked for it globally.
+  const ref = useSlide<HTMLDivElement>();
   return (
-    <div className="segmented" role="tablist" aria-label={label}>
+    <div ref={ref} className="segmented" role="tablist" aria-label={label}>
       {options.map((option) => (
         <button
           className={value === option.value ? 'active' : ''}
