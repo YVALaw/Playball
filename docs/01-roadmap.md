@@ -425,7 +425,7 @@ live in `05-systems-reference.md` §§37–42. In brief:
 | Stage | Shipped | What it added |
 |---|---|---|
 | 1–4 | Aug 2026 | Honesty and saves · how you want to play · June made legible · the screen given back |
-| 5–7 | Aug 2026 | The dugout, its depth, and the coach — all eight pieces, ending with the press room |
+| 5–7 | Aug 2026 | The dugout, its depth, and the coach — all eight pieces, ending with the press room *(removed Sep 2)* |
 | 8–10 | Aug 28 | The roster · players as people · the transfer portal |
 | 10.5 | Aug 30–31 | **The screen.** A mockup became the design of record, and every screen moved onto it |
 | 11 | Aug 31 | The economy: a budget, three assistants, facilities, a scouting desk |
@@ -433,6 +433,7 @@ live in `05-systems-reference.md` §§37–42. In brief:
 | 13 | Aug 31 | The dynasty remembers: signature moments, and alumni careers |
 | 14 | Aug 31 | Broadcast: sound, haptics, crests, takeover cards, awards night |
 | — | Sep 1 | **A thirty-season play session**, and what it found. See §42 |
+| — | Sep 2 | **Two play batches** against the iOS field study: the board's ask frozen, the press room removed whole, positions with memory (manual moves relabel nobody), June's injury hold, one modal per tournament beat, the sliding tab indicator, legends for the books. `05` §43–44, `06` §S–T |
 
 **What remains:** stage 15 (the ballpark's look), **15.5 (the voice** — a pass
 over everything the game says, plus the recruiting report reworked so that it

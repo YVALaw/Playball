@@ -2180,7 +2180,8 @@ section is the ledger of what was *decided* and parked.
   is the argument for how the rest of that list works.
 - **The board's number is set in February** and every reader reads the stamp.
 - **A man adopts the slot he takes**, by every persistent route into the nine,
-  and the rail appoints positions.
+  and the rail appoints positions. *(Half-reversed the same evening after
+  play — manual moves stopped relabelling; see §T.)*
 
 ### DECIDED — waiting on a build slot
 
@@ -2226,7 +2227,9 @@ section is the ledger of what was *decided* and parked.
   grammar has been played with, since the two overlap.
 - **The recruit board, denser.** "Make the board smaller" — a density pass on
   the recruit rows and the board's top furniture, to be done against the
-  screen live in an offseason rather than blind.
+  screen live in an offseason rather than blind. *(Checked live in an
+  offseason the same evening, §T: rows fit at 320px with no star overflow —
+  the first pass's density work already covered it. Closed.)*
 - **The postseason presentation.** Still being designed by the reporter. Two
   facts to design against: YOUR NEXT GAME already sits in the red box
   (`Postseason.tsx`), and the winners and losers brackets being on screen
@@ -2241,3 +2244,41 @@ section is the ledger of what was *decided* and parked.
 - **The recruiting report, one line pool per potential letter** — asked again
   this pass ("I mentioned it yesterday, not sure if you added it"); it is in
   §R under DECIDED and stays there.
+
+## T. The third play batch — September 2 2026, evening
+
+Reported with five screenshots after playing the morning's build. Everything
+here shipped the same evening; the mechanics are `05` §44.
+
+### DECIDED — done this batch
+
+- **Manual lineup moves stop relabelling.** The morning's adoption rule,
+  half-reversed after one afternoon: "the automation is only if I tap on auto
+  lineup." Adoption stays for AUTO, the staff, covers and the rail — and every
+  adoption remembers `homePos`, restored the moment the man returns to the
+  bench. A manually broken set warns (THE CARD modal) and corrects nothing.
+- **The bracket holds on a hurt starter** — PLAY THIS GAME becomes FIX THE
+  LINEUP, June's version of the May hold. Engine rolls stay out (goldens);
+  staged into 16.
+- **The tournament modal pile thinned** — the stage-won modal and the final's
+  exit card both yield to the takeover that already owned their beat.
+- **The college profile fixed twice** — the overlay bar off the crest
+  (containing-block fix), and the overview's two duplicate panels replaced by
+  form tiles computed from results.
+- **The player card reshuffled** — this-season box to OVERVIEW; STATS is
+  season-by-season plus June year-by-year on the new `CareerYear.june`
+  split, with the pre-split aggregate printed underneath.
+- **The sliding indicator, globally** — segmented fill, context-nav
+  underline, primary-nav line, one hook (`slide.ts`).
+- **Legends replace essays** in program history and the Book.
+- **Two secret-leaking captions scrubbed** — the offer foot's min-prestige
+  line and the refusal card's reach-floor arithmetic. The full scrub remains
+  15.5.
+
+### STAGED — added to the plan tonight
+
+- **June injury rolls** → stage 16 (RNG stream, goldens).
+- **The assistant watches the wire** → stage 15.5 (job-post and star-portal
+  inbox cards, in the assistant's voice) with the rarity knob — a star in the
+  portal roughly once every five or six seasons — priced in stage 16 beside
+  the portal balance pass.

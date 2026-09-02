@@ -34,7 +34,7 @@ else waits on it. Before it: the ballpark's look (stage 15) and a pass over
 everything the game *says* (stage 15.5), which is where the recruiting report
 becomes a code worth learning.
 
-The engine is calibrated multi-seed against sourced NCAA D1 rates. **1061 tests
+The engine is calibrated multi-seed against sourced NCAA D1 rates. **1053 tests
 across 45 files**, including determinism goldens, calibration as a regression
 test, and a concurrency suite pinning the store's double-press guards.
 

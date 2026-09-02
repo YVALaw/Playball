@@ -968,8 +968,17 @@ Two pieces, and they are the same piece: what the game *says*.
 
 **Grew on September 2 2026:** the hidden-secrets scrub (every caption that
 explains an internal rule — the minimum-star line and its siblings — goes;
-discovery is the game), and the inbox re-voiced as mail from your assistant,
-riding the noise cut that was already here. The ledger is `06` §S.
+discovery is the game; the two lines named directly were scrubbed the same
+evening), and the inbox re-voiced as mail from your assistant, riding the
+noise cut that was already here. The ledger is `06` §S.
+
+**Grew again the same evening — the assistant watches the wire.** Asked for
+directly: "whenever there is a job post or rumors that a very high ranking
+player is going into the portal we get an inbox message." Two new card kinds
+in the assistant's voice: a chair opening anywhere in the country (the job
+market already knows; the inbox does not), and a star entering the portal —
+worded as rumour, not as a stat line. The rarity knob that makes the second
+card an event belongs to stage 16's portal balance; this stage owns the mail.
 
 ### Everything it says
 
@@ -1054,6 +1063,14 @@ bust/steady/boom drawn at generation that turns the shown potential into a
 scout's estimate over a floor-to-ceiling band, expressed through play rather
 than as June dice — and the team-scouting tendencies screen, once its design
 conversation has happened.
+
+**Grew again the same evening** (`06` §T): **June injury rolls** — the
+postseason day loop rolls no `hurtsToday` at all, so nobody gets hurt in a
+tournament; rolling them consumes RNG and moves the goldens, which is why the
+UI half (the bracket's injury hold) shipped alone. And the **star-portal
+rarity knob**: high-overall portal entries priced at roughly one every five or
+six seasons, so the assistant's wire-watch card (stage 15.5) reports an event
+rather than a Tuesday.
 
 *Park effects, camera easing, instanced markers and the 2D/3D toggle moved out
 of here into stage 15, where the rest of the park work lives.*

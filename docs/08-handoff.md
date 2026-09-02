@@ -10,6 +10,22 @@ the top of it is always current. Everything older lives in git.
 **committed locally, deliberately unpushed** — the reporter asked to review
 and test before anything goes up.
 
+> **September 2, the evening batch.** The reporter played the morning's build
+> and filed nine items with screenshots; everything shipped the same evening
+> (`05` §44, `06` §T). The headline is a reversal worth remembering: the
+> morning's adopt-on-every-route position rule lasted one afternoon of play —
+> manual moves now relabel nobody, the automation adopts and remembers
+> (`homePos`), the bench sends a man home, and a broken card warns instead
+> of self-correcting. Also: the bracket holds on a hurt starter (FIX THE
+> LINEUP), the tournament modal pile thinned to one card per beat, the
+> college profile out from under the bar and off the duplicate panels, the
+> player card's stats split into the two books (with the new
+> `CareerYear.june` engine split), the sliding indicator on all three tab
+> strips, legends for the history and the Book, and the first two
+> secret-leaking captions scrubbed. Staged: June injury rolls (goldens) and
+> the star-portal rarity knob into 16, the assistant's wire-watch mail into
+> 15.5.
+
 > **September 2, in one paragraph.** The reporter played against the iOS
 > competitor and filed twenty-seven items; the session before it produced the
 > field study (`10-field-study.md`) and a batch of adopted craft items. What

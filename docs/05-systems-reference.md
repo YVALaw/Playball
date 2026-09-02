@@ -6159,6 +6159,8 @@ before the stamp freezes once at load. It moved because it was watched moving:
 the live roster, so the target crept as men developed.
 
 **The nine is a set of nine positions, and a man adopts the slot he takes.**
+*(Superseded the same day — the manual half of this rule was reversed after an
+evening of play; see §44. The automation half stands.)*
 Every route into the lineup — `fitTheNine` covers, `swapStarter`, the rail's
 new `assignPosition` — relabels the incoming man with the slot's position, so
 the card can never read two first basemen and no DH again (it did, and the game
@@ -6183,6 +6185,78 @@ line and the glove section folded into them; the review gained the board's
 checklist and the season leaders; the recruiting board's filter panel rises
 and its list fades on a filter change; both action FABs animate closed and
 stand down on an outside tap, and the college one carries WRITE TO THEM.
+
+## 44. The third pass — SHIPPED September 2 2026, evening
+
+The same day's second batch, reported with screenshots after playing the
+morning's build.
+
+**Positions are yours to break, and the game remembers home.** The morning's
+adopt-on-every-route rule lasted one afternoon of play: "I don't want them to
+be automatically assigned, the automation is only if I tap on auto lineup."
+So `swapStarter` moves the man and touches no label; only the automation
+adopts — `fitTheNine` covers, `healPositions`, AUTO, the staff's card, and
+the rail's explicit `assignPosition` — and every adoption now remembers.
+`Hitter.homePos` is set the first time a relabel lands (`adoptSpot`) and
+cleared the moment the man returns to the bench (`restoreHome`): the bench is
+where a man is himself again, which was the reported bug ("when I return him
+to the bench he should go back to his main position"). A manual move that
+breaks the set gets a modal, not a correction: `cardGaps` reads the nine and
+THE CARD announces what is missing or doubled — "nothing is moved for you."
+AUTO also sends the whole bench home. Pinned in `tests/audit-regressions`,
+which had to reverse its own morning tests.
+
+**June warns like May.** The injury hold reaches the bracket: a hurt man in
+the nine holds PLAY THIS GAME exactly the way he holds END WEEK — the pinned
+button becomes FIX THE LINEUP, opens the postseason's own lineup card, and
+nothing is moved for you. Full careers only, the same `handles(depth)` rule
+as NEEDS YOU. The engine half of the report ("injuries are not working during
+tournaments") is true and stays true for now: `postseason.ts` rolls no
+injuries, and rolling them moves the goldens — staged into 16.
+
+**The tournament modal pile, thinned.** "Select better which one stays." The
+stage-won modal is gone — the takeover card from `closeMyBracket` (cup,
+regional, final4, title) already owns that beat, and two cards for one trophy
+is a slideshow. The national final's exit card yields to the runner-up
+takeover the same way. What remains: the stage intro (once a year), the
+title-game announcement (before it is played, a different beat), and the exit
+card for every exit that has no takeover.
+
+**The overlay stops sitting on the crest.** `FixedHeader` lays out
+`absolute; inset: 0`, and inside an overlay its containing block was the
+overlay itself — so the COLLEGE PROFILE bar covered the top of the school
+banner. `.full-overlay > .overlay-scroll` is now `position: relative`, and
+every screen an overlay hosts starts below the bar.
+
+**The college overview stops saying everything twice.** THE PROGRAM and THIS
+SEASON panels — every line a duplicate of the banner or the metric strip a
+thumb above — replaced by THE SHAPE OF THE SEASON: form tiles (last ten, home,
+road, streak) computed from `season.results`, which the save keeps for all
+ninety-six programs.
+
+**The player card reshuffles.** The current-year box (season line, fielding
+strip) moved to OVERVIEW under a THIS SEASON heading; STATS is the two books —
+season by season, and June year by year in the same timeline rows. The June
+split is new engine surface: `CareerYear.june`, written by `seasonRow` at
+the archive so the live row and the archived row cannot disagree; rows from
+before the split show the aggregate `CareerTotals.post` as one quiet line
+underneath ("two earlier Junes were kept as a single career line"). June rows
+hide the glove columns — the split never kept one.
+
+**The clay slides.** `slide.ts`: one hook measuring the active button into
+`--slide-x`/`--slide-w` on the strip, one `::before` riding them at 220ms.
+Three wearers — the segmented fill, the context-nav underline, the primary
+nav's top line — with the static paint kept as the no-JS fallback and reduced
+motion arriving instantly.
+
+**A key, not an essay.** Kit's `Legend`: the history footer paragraph and
+the Book's opening and closing essays collapsed into KEY strips; the Book's
+section notes dropped to one line apiece.
+
+**Two more captions stopped leaking.** The offer foot's "min. prestige ★★"
+and the refusal card's recitation of the reach-floor arithmetic are gone —
+the first instalment of the 15.5 secrets scrub, done early because both were
+named directly.
 
 ## Appendix A: stale comments and vestigial code found while writing this
 
