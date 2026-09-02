@@ -246,3 +246,44 @@ describe('a beaten-out bunt is a team hit', () => {
     expect(bunts).toBeGreaterThan(0);
   });
 });
+
+describe('an errand carries its subject', () => {
+  /*
+    NEEDS YOU sends the coach to the lineup about one injured man, and the
+    lineup marks him. That handoff is one field, and it has two ways to fail
+    silently: never arriving, and never leaving. Both were live during
+    development — the mark was cleared before its first paint by StrictMode's
+    synthetic unmount, and an uncleared mark would have flagged a healthy man on
+    every later visit.
+  */
+  it('go() hands the destination a man, and only the trip that asked for one', () => {
+    useDynasty.getState().start(4242, 0);
+
+    useDynasty.getState().go('team', 'lineup', 'man-17');
+    expect(useDynasty.getState().focusPlayer).toBe('man-17');
+    expect(useDynasty.getState().screen).toBe('lineup');
+
+    // Walking there yourself is not an errand, so nothing is marked.
+    useDynasty.getState().go('team', 'lineup');
+    expect(useDynasty.getState().focusPlayer).toBeNull();
+  });
+
+  it('drops the mark when the coach navigates on', () => {
+    useDynasty.getState().start(4242, 0);
+    useDynasty.getState().go('team', 'lineup', 'man-17');
+
+    useDynasty.getState().setScreen('roster');
+    expect(useDynasty.getState().focusPlayer).toBeNull();
+  });
+
+  it('keeps the mark out of the save', () => {
+    useDynasty.getState().start(4242, 0);
+    useDynasty.getState().go('team', 'lineup', 'man-17');
+    expect(useDynasty.getState().focusPlayer).toBe('man-17');
+
+    // A transient pointer at a screen is not a fact about the dynasty; a save
+    // that carried one would restore a red row for an errand long since done.
+    const saved = JSON.stringify([...disk.values()]);
+    expect(saved).not.toContain('man-17');
+  });
+});

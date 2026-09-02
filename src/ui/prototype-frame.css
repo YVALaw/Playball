@@ -81,6 +81,48 @@
   .global-header { grid-template-columns: minmax(0, 1fr) 40px; }
 }
 
+/* ---------------------------------------------------------------------------
+   The man you were sent here about.
+
+   NEEDS YOU hands the lineup an injured man (see `focusPlayer` in the store)
+   and this is how the lineup points at him: a red rail down his edge, a wash of
+   the same red behind him, and three slow pulses that stop on their own.
+
+   Three, not forever. A row that never stops pulsing becomes furniture, and the
+   job here is only to survive the second or so between the tap and the eye
+   finding the row. `--alert` rather than the accent, for the reason the token
+   exists: a green mark on a green-accented screen says nothing.
+
+   The animation is declared with `cardIn` alongside it because `.player-row`
+   in the batting order also carries `.card-in`; a second `animation` property
+   on the same element replaces the first rather than joining it, so the row
+   would have arrived without the deal animation the re-order depends on.
+   --------------------------------------------------------------------------- */
+@keyframes flagPulse {
+  0%, 100% { box-shadow: inset 3px 0 0 var(--alert), 0 0 0 0 rgba(var(--alert-rgb), .30); }
+  50%      { box-shadow: inset 3px 0 0 var(--alert), 0 0 0 6px rgba(var(--alert-rgb), 0); }
+}
+
+.player-row.is-flagged {
+  background: rgba(var(--alert-rgb), .07);
+  box-shadow: inset 3px 0 0 var(--alert);
+  animation: cardIn 300ms ease-out both, flagPulse 1.5s ease-in-out 300ms 3;
+}
+
+/* A bench man who is hurt is a disabled row, and disabled rows are dimmed. The
+   one the errand is about has to stay readable through that. */
+.player-row.is-flagged[disabled] { opacity: 1; }
+
+/* Somebody who asked for less movement still gets the rail and the wash — they
+   are the part that answers "which one". Only the pulse goes. */
+:root[data-motion="reduced"] .player-row.is-flagged { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .player-row.is-flagged { animation: none; }
+}
+:root[data-motion="full"] .player-row.is-flagged {
+  animation: cardIn 300ms ease-out both, flagPulse 1.5s ease-in-out 300ms 3;
+}
+
 /* Tonight's two crests. The generated sheet styles `.matchup strong`, which is
    the 39px abbreviation these replaced; an SVG in the same slot needs to be
    told to centre and to stop being an inline box with a text baseline under
@@ -2335,11 +2377,39 @@
 .flip-front:active { transform: rotateY(9deg) scale(.985); }
 .flip-front { transition: transform 140ms ease; }
 
-/* Ordinary tier: one pixel of acknowledgement, no theatre. */
+/* Ordinary tier: one pixel of acknowledgement, no theatre.
+ *
+ * Extended to the two row types that carry most of the tapping in the game.
+ * Surveyed live across four screens: four of eighty-eight interactive elements
+ * had any pressed state at all, and the ones without it included every roster
+ * row and every schedule row — the most-tapped things in the app.
+ *
+ * Why it matters beyond looking nice: `:active` is applied by the browser on
+ * pointer-down, before any of our script runs, so the acknowledgement cannot be
+ * delayed by the work the tap sets off. A row that opens a heavy card is
+ * exactly the row that most needs to say it heard you.
+ *
+ * `.segmented` is deliberately not here. Its selected segment turns clay the
+ * moment it is chosen, which is already the acknowledgement, and a one-pixel
+ * shift inside a strip of shared borders opens a seam for no gain. */
 .award-list > button:active,
 .award-list .flip-back > button:active,
 .job-list button:active,
-.settings-list > button:active {
+.settings-list > button:active,
+.data-table button:active,
+.series-match:active {
+  transform: translateY(1px) scale(.996);
+}
+
+/* Same switch the rest of the motion honours. */
+:root[data-motion="reduced"] .data-table button:active,
+:root[data-motion="reduced"] .series-match:active { transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .data-table button:active,
+  .series-match:active { transform: none; }
+}
+:root[data-motion="full"] .data-table button:active,
+:root[data-motion="full"] .series-match:active {
   transform: translateY(1px) scale(.996);
 }
 

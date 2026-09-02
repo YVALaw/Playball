@@ -25,7 +25,7 @@
 // `.drag` cell stays in the grid as the selection mark, which is the one thing
 // a two-tap swap genuinely needs and the proposal had nowhere to put.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CheckIcon, ReloadIcon, SewingPinIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Avatar } from '../Avatar.js';
@@ -74,6 +74,54 @@ export function Lineup() {
   const [deal, setDeal] = useState(0);
   /** Which spot on the field the rail is asking about. */
   const [spot, setSpot] = useState<string | null>(null);
+
+  /*
+    The man NEEDS YOU sent you here about.
+
+    Asked for after playing the iOS competition: tapping an injury should land
+    on the lineup with the injured man showing, not on a screen of twenty-three
+    names that looks exactly as it did before you tapped. `focusPlayer` is set
+    by `go` and is deliberately not in the save — see the store.
+
+    Taken into local state on arrival and handed straight back, rather than read
+    off the store for the life of the screen. Two reasons, one of them learned
+    the hard way:
+
+    The store's copy is the errand — one delivery — so consuming it immediately
+    means the mark cannot come back later because something else re-rendered.
+    The screen's copy is the mark, and it lasts exactly as long as the visit,
+    because the frame remounts this component on every navigation.
+
+    And the version this replaced returned `clearFocusPlayer` as the effect's
+    cleanup, which `StrictMode` calls on its synthetic unmount the instant the
+    screen mounts. The focus was gone before the first paint and the row was
+    never marked at all. Both effects here are idempotent, so running them twice
+    is the same as running them once.
+
+    Up here with the rest of the hooks rather than beside the code that uses it:
+    the two returns below are conditional and hooks are not.
+  */
+  const focus = useDynasty((s) => s.focusPlayer);
+  const clearFocus = useDynasty((s) => s.clearFocusPlayer);
+  const [flaggedId, setFlaggedId] = useState<string | null>(null);
+  const flagged = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!focus) return;
+    setFlaggedId(focus);
+    clearFocus();
+  }, [focus, clearFocus]);
+
+  /*
+    Then put him where he can be seen. A mark below the fold is a mark nobody
+    saw, and the bench sits a long way down this screen. `block: 'center'`
+    rather than the default, which parks him under the sticky toolbar.
+  */
+  useEffect(() => {
+    if (!flaggedId) return;
+    flagged.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [flaggedId]);
+
   void version;
 
   if (!season || !team) return null;
@@ -246,7 +294,9 @@ export function Lineup() {
             const marked = i === atSpot;
             return (
               <button
-                className={`player-row card-in${on || marked ? ' is-selected' : ''}`}
+                className={`player-row card-in${on || marked ? ' is-selected' : ''}`
+                  + (p.id === flaggedId ? ' is-flagged' : '')}
+                ref={p.id === flaggedId ? flagged : undefined}
                 key={p.id}
                 type="button"
                 aria-pressed={on}
@@ -308,7 +358,9 @@ export function Lineup() {
               <button
                 key={p.id}
                 type="button"
-                className={`player-row${on ? ' is-selected' : ''}`}
+                className={`player-row${on ? ' is-selected' : ''}`
+                  + (p.id === flaggedId ? ' is-flagged' : '')}
+                ref={p.id === flaggedId ? flagged : undefined}
                 disabled={hurt}
                 aria-pressed={on}
                 onClick={() => tapBench(p.id)}

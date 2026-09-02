@@ -693,7 +693,21 @@ export interface DynastyStore {
   ) => void;
   /** True before a job has been taken, so the app can show the setup screen. */
   needsTeam: boolean;
-  go: (tab: Tab, screen?: string) => void;
+  go: (tab: Tab, screen?: string, focus?: string) => void;
+
+  /**
+   * A man the screen you are about to land on should point at.
+   *
+   * Reported: tapping a hurt man's card in NEEDS YOU dropped you on the lineup
+   * with no indication of which of twenty-three names the card had been about —
+   * the errand was handed over and the answer to "which one" was left behind.
+   *
+   * Deliberately transient. It is not persisted, it is not part of the save,
+   * and the screen that honours it clears it on the way out, because a mark
+   * that survives being looked at is a mark nobody trusts the second time.
+   */
+  focusPlayer: string | null;
+  clearFocusPlayer: () => void;
   setScreen: (screen: string) => void;
   advanceDay: () => void;
   playSeason: () => Promise<void>;
@@ -2008,12 +2022,21 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     void get().saveNow();
   },
 
-  go: (tab, screen) => {
+  go: (tab, screen, focus) => {
     const def = TABS.find((t) => t.id === tab);
-    set({ tab, screen: screen ?? def?.screens[0]?.id ?? 'today', selectedPlayer: null });
+    set({
+      tab,
+      screen: screen ?? def?.screens[0]?.id ?? 'today',
+      selectedPlayer: null,
+      focusPlayer: focus ?? null,
+    });
   },
 
-  setScreen: (screen) => set({ selectedPlayer: null, screen }),
+  clearFocusPlayer: () => set({ focusPlayer: null }),
+
+  // Navigating any other way drops the mark: it belongs to the errand that set
+  // it, and an errand you walked away from is over.
+  setScreen: (screen) => set({ selectedPlayer: null, focusPlayer: null, screen }),
 
   recruit: (prospectId, actions) => {
     const { season, userTeam, version } = get();
@@ -5085,6 +5108,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   seenTutorials: [],
+  focusPlayer: null,
   watch: { programs: [], jobs: [] },
   toggleProgramWatch: (abbr) => {
     const w = get().watch;

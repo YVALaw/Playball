@@ -179,7 +179,9 @@ export function useNeeds(): Need[] {
           + 'Nobody is moved for you — swap him out on the lineup.',
         must: true,
         cta: 'THE LINEUP',
-        go: () => { useDynasty.getState().go('team', 'lineup'); },
+        // The man rides along. Landing on twenty-three names with no idea which
+        // one the card was about is the errand handed over without its subject.
+        go: () => { useDynasty.getState().go('team', 'lineup', man.id); },
       });
     }
 
@@ -201,7 +203,7 @@ export function useNeeds(): Need[] {
           + 'the cover in. Your call, but make it on the lineup.',
         must: false,
         cta: 'THE LINEUP',
-        go: () => { useDynasty.getState().go('team', 'lineup'); },
+        go: () => { useDynasty.getState().go('team', 'lineup', man.id); },
       });
     }
   }
@@ -220,8 +222,18 @@ export function useNeeds(): Need[] {
       title: `${man.name} is hurt`,
       note: `${prognosis(man, day)} The chart covers him while he heals.`,
       must: false,
-      cta: 'HIS CARD',
-      go: () => openPlayer(man.id),
+      /*
+        THE LINEUP, not HIS CARD.
+
+        Asked for after playing against the iOS competition: tapping an injury
+        should put you where the injury is dealt with. His card is the more
+        informative screen and the less useful one — it tells you how long he is
+        out, which the note above already said, and offers nothing to do about
+        it. The lineup is where the hole gets covered, and he arrives on it
+        marked so you can see which hole.
+      */
+      cta: 'THE LINEUP',
+      go: () => { useDynasty.getState().go('team', 'lineup', man.id); },
     });
   }
 

@@ -30,6 +30,8 @@
    * button. So the two meanings finally get two inks, and every site that meant
    * "look at this now" was moved off `--clay` in the same commit. */
   --alert: #c9362f;
+  /* The same red as an rgb triplet, so a glow can fade its own alpha out. */
+  --alert-rgb: 201, 54, 47;
 
   --win: #236b42;
   --loss: #c9362f;
@@ -128,6 +130,7 @@
   --clay: var(--accent-dk, #4da97a);
   --clay-rgb: var(--accent-dk-rgb, 77, 169, 122);
   --alert: #e0655e;
+  --alert-rgb: 224, 101, 94;
   --win: #4da97a;
   --loss: #e0655e;
   --line: #3a463c;
@@ -172,6 +175,7 @@
     --clay: var(--accent-dk, #4da97a);
     --clay-rgb: var(--accent-dk-rgb, 77, 169, 122);
     --alert: #e0655e;
+    --alert-rgb: 224, 101, 94;
     --win: #4da97a;
     --loss: #e0655e;
     --line: #3a463c;

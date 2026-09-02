@@ -11,7 +11,7 @@
 // The three that used to live here — Rule, Tile, Card — belonged to the design
 // this port replaced and went with it.
 
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import {
   ChevronRightIcon, DotFilledIcon, PersonIcon, SewingPinIcon,
 } from '@radix-ui/react-icons';
@@ -56,6 +56,15 @@ import { useDynasty } from '../../state/store.js';
  *
  * Marked on unmount, not on mount: marking on arrival would collapse the block
  * under the reader on the one visit it exists for.
+ *
+ * And marked only if the screen was actually up long enough to read — which is
+ * a rule that earns its keep twice. It means a screen you bounced off in half a
+ * second still introduces itself next time. It also fixes the bug the first
+ * version shipped with: `StrictMode` runs setup, cleanup, setup on every mount
+ * in development, so a bare unmount handler marked every intro as read the
+ * instant it appeared, and the prose was never seen once. The timer is cleared
+ * by that first synthetic cleanup, so the flag is still false and nothing is
+ * recorded.
  */
 export function ModuleIntro(
   { kicker, title, text }: { kicker: string; title: string; text?: string },
@@ -64,7 +73,15 @@ export function ModuleIntro(
   const seen = useDynasty((s) => s.seenTutorials).includes(key);
   const markSeen = useDynasty((s) => s.markTutorialSeen);
 
-  useEffect(() => () => markSeen(key), [key, markSeen]);
+  const read = useRef(false);
+  useEffect(() => {
+    read.current = false;
+    const t = setTimeout(() => { read.current = true; }, 1200);
+    return () => {
+      clearTimeout(t);
+      if (read.current) markSeen(key);
+    };
+  }, [key, markSeen]);
 
   const brief = seen || !text;
   return (
