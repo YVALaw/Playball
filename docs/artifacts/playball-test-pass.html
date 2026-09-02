@@ -1,0 +1,513 @@
+<title>Playball Test Pass</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+<style>
+  /* Same house system as playball-v1 and the field study, so the three read as
+     a set. One token is new: --flag, an ochre for the checks I could not run
+     myself, because those are neither pass nor fail until somebody plays them. */
+  :root {
+    --ink: #1c2430; --navy: #223247; --clay: #a8442a;
+    --paper: #fbf7ee; --field: #f2ece0; --cream: #f6f1e6; --dim: #6d7480;
+    --hair: rgba(28, 36, 48, .14); --faint: rgba(28, 36, 48, .07);
+    --win: #3f6f4a; --flag: #8a6512;
+    --display: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', monospace;
+    --body: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #ece7dc; --navy: #9fb3cd; --clay: #d9714f;
+      --paper: #1a212b; --field: #141a22; --cream: #f6f1e6; --dim: #97a0ad;
+      --hair: rgba(236, 231, 220, .16); --faint: rgba(236, 231, 220, .08);
+      --win: #7fb08c; --flag: #d6a745;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #ece7dc; --navy: #9fb3cd; --clay: #d9714f;
+    --paper: #1a212b; --field: #141a22; --cream: #f6f1e6; --dim: #97a0ad;
+    --hair: rgba(236, 231, 220, .16); --faint: rgba(236, 231, 220, .08);
+    --win: #7fb08c; --flag: #d6a745;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--field); color: var(--ink);
+    font: 400 16px/1.55 var(--body); -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 0 18px 80px; }
+  code {
+    font: 500 13px var(--mono); background: var(--faint);
+    padding: 1px 5px; border-radius: 3px; overflow-wrap: anywhere;
+  }
+  a { color: var(--clay); }
+  :focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+
+  /* ---- masthead ---------------------------------------------------------- */
+  header.top {
+    background: #223247;
+    background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 1px, transparent 1px 7px);
+    border-bottom: 4px solid #a8442a;
+    padding: 32px 18px 24px; margin-bottom: 24px;
+  }
+  .top-in { max-width: 820px; margin: 0 auto; }
+  .kicker {
+    margin: 0; font: 600 10px var(--mono); letter-spacing: .2em;
+    color: rgba(246,241,230,.62); text-transform: uppercase;
+  }
+  h1 {
+    font: 800 clamp(36px, 8vw, 58px)/0.9 var(--display);
+    text-transform: uppercase; letter-spacing: .012em;
+    color: #f6f1e6; margin: 9px 0 0; text-wrap: balance;
+  }
+  .sub { margin: 10px 0 0; max-width: 56ch; font: 400 15px/1.5 var(--body); color: rgba(246,241,230,.78); }
+
+  /* ---- progress ---------------------------------------------------------- */
+  .progress {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: var(--paper); border: 1px solid var(--hair);
+    padding: 11px 14px; margin-bottom: 22px;
+  }
+  .progress b { font: 800 26px/1 var(--display); color: var(--clay); font-variant-numeric: tabular-nums; }
+  .progress span { font: 600 10px var(--mono); letter-spacing: .13em; text-transform: uppercase; color: var(--dim); }
+  .bar { flex: 1 1 140px; height: 6px; background: var(--faint); border: 1px solid var(--hair); }
+  .bar i { display: block; height: 100%; background: var(--clay); width: 0; transition: width 260ms cubic-bezier(.2,.8,.3,1); }
+  .progress button {
+    border: 1px solid var(--hair); background: transparent; color: var(--dim);
+    font: 600 9px var(--mono); letter-spacing: .12em; text-transform: uppercase;
+    padding: 6px 9px; cursor: pointer;
+  }
+  .progress button:hover { color: var(--clay); border-color: var(--clay); }
+
+  /* ---- how to run -------------------------------------------------------- */
+  .run { background: var(--paper); border-left: 5px solid var(--clay); padding: 15px 17px 17px; margin-bottom: 26px; }
+  .run h2 { font: 700 20px/1.1 var(--display); text-transform: uppercase; margin: 0 0 9px; }
+  .run p { margin: 0 0 9px; }
+  .run p:last-child { margin-bottom: 0; }
+  .run dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 11px; }
+  .run dt { font: 600 9px var(--mono); letter-spacing: .13em; text-transform: uppercase; color: var(--dim); padding-top: 4px; }
+  .run dd { margin: 0; }
+
+  /* ---- sections ---------------------------------------------------------- */
+  h2.section {
+    font: 700 12px var(--mono); letter-spacing: .17em; text-transform: uppercase;
+    color: var(--dim); border-bottom: 2px solid var(--ink);
+    padding-bottom: 6px; margin: 38px 0 6px;
+  }
+  h2.section b { color: var(--clay); }
+  .sec-note { margin: 0 0 16px; font-size: 14.5px; color: var(--dim); max-width: 64ch; }
+
+  /* ---- a test ------------------------------------------------------------ */
+  .t {
+    display: grid; grid-template-columns: 26px 1fr; gap: 12px;
+    background: var(--paper); border: 1px solid var(--hair);
+    padding: 13px 15px 14px; margin-bottom: 9px;
+  }
+  .t.flagged { border-left: 4px solid var(--flag); }
+  .t input {
+    appearance: none; -webkit-appearance: none;
+    width: 20px; height: 20px; margin: 3px 0 0;
+    border: 1.5px solid var(--dim); background: transparent;
+    cursor: pointer; display: grid; place-items: center; flex: none;
+  }
+  .t input:checked { background: var(--win); border-color: var(--win); }
+  .t input:checked::after {
+    content: ""; width: 10px; height: 5px;
+    border-left: 2px solid var(--paper); border-bottom: 2px solid var(--paper);
+    transform: rotate(-45deg) translate(1px, -1px);
+  }
+  .t .body > * { margin: 0; }
+  .t h3 {
+    font: 700 17px/1.15 var(--display); text-transform: uppercase;
+    letter-spacing: .01em; margin: 0 0 5px; text-wrap: balance;
+  }
+  .t input:checked ~ .body h3 { color: var(--dim); text-decoration: line-through; }
+  .t .do { font-size: 14.5px; margin-bottom: 5px; }
+  .t .exp { font-size: 14.5px; }
+  .t .exp::before {
+    content: "EXPECT"; display: inline-block; margin-right: 7px;
+    font: 700 8.5px var(--mono); letter-spacing: .13em; color: var(--win);
+    vertical-align: 1px;
+  }
+  .t .fail { font-size: 13.5px; color: var(--dim); margin-top: 5px; }
+  .t .fail::before {
+    content: "FAILS IF"; display: inline-block; margin-right: 7px;
+    font: 700 8.5px var(--mono); letter-spacing: .13em; color: var(--clay);
+    vertical-align: 1px;
+  }
+  .t .note {
+    margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--hair);
+    font-size: 13.5px; color: var(--flag);
+  }
+
+  footer.end { margin-top: 40px; border-top: 2px solid var(--ink); padding-top: 14px; font-size: 13.5px; color: var(--dim); }
+  footer.end p { max-width: 68ch; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <p class="kicker">Playball · branch play-batch-2 · four commits, unpushed</p>
+    <h1>Playball Test Pass</h1>
+    <p class="sub">
+      Twenty-four checks over the ten changes. Grouped by where they can actually
+      be reached from a save sitting in the 2027 postseason, because seven of
+      them cannot be seen from there at all.
+    </p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="progress">
+    <b id="count">0</b>
+    <span>of 24 checked</span>
+    <div class="bar"><i id="bar"></i></div>
+    <button id="reset" type="button">Clear</button>
+  </div>
+
+  <div class="run">
+    <h2>Running it</h2>
+    <dl>
+      <dt>This machine</dt><dd><code>http://localhost:5174</code></dd>
+      <dt>Your phone</dt><dd><code>http://10.0.0.41:5174</code> — same wifi</dd>
+    </dl>
+    <p>
+      <strong>The phone is a different origin, so your Newport Bay save is not
+      there.</strong> IndexedDB is scoped per host, and this career lives on
+      <code>localhost</code>. The phone will open a fresh new-dynasty screen,
+      which looks exactly like a broken build and is not one. To test on the
+      device against a real career you have to start one there.
+    </p>
+    <p>
+      If a change seems missing, hard-reload once. Vite's dev server served a
+      stale copy of <code>tokens.css</code> during this work and cost an hour;
+      restarting the server is the cure.
+    </p>
+  </div>
+
+  <h2 class="section">Group one <b>·</b> Reachable right now</h2>
+  <p class="sec-note">
+    From the 2027 postseason screen your save opens on. Nothing here needs the
+    season to move.
+  </p>
+
+  <label class="t">
+    <input type="checkbox" data-id="t1">
+    <div class="body">
+      <h3>The bar is shorter and the envelope is gone</h3>
+      <p class="do">Look at the top bar on any screen.</p>
+      <p class="exp">57px instead of 64. School name in smaller type. No envelope icon — just the coach portrait on the right.</p>
+      <p class="fail">The portrait sits in the middle of the bar with a gap beside it, which would mean the grid still reserves the envelope's column.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t2">
+    <div class="body">
+      <h3>The inbox moved into the coach menu</h3>
+      <p class="do">Tap the coach portrait, top right.</p>
+      <p class="exp">A row reading <em>Inbox</em> above <em>Coach profile</em>, with a red count badge on the right when anything is unread. Tapping it opens the inbox.</p>
+      <p class="fail">The chevron wraps onto a second line under the word, or the badge overlaps it. That was a real bug once — the row is a four-column grid now.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t3">
+    <div class="body">
+      <h3>Screens leave instead of only arriving</h3>
+      <p class="do">Tap between the four bottom tabs a few times, at an ordinary pace.</p>
+      <p class="exp">The outgoing screen fades while the new one comes up under it. Both are on screen for about a fifth of a second.</p>
+      <p class="fail">The screen blanks between tabs, or the new screen visibly rises twice. This is the headline change, so if anything looks wrong here it matters more than the rest.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t4">
+    <div class="body">
+      <h3>The unread dot still works without the envelope</h3>
+      <p class="do">With something unread, look at HOME in the bottom nav.</p>
+      <p class="exp">A red dot beside the label. It is now the only thing carrying unread across screens, so it matters more than it did.</p>
+      <p class="fail">No dot, or a dot that never clears after reading the inbox.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t5">
+    <div class="body">
+      <h3>The intro block says it once</h3>
+      <p class="do">Team → Roster. Read the paragraph under "23 players". Wait a couple of seconds, go to Season, come back to Roster.</p>
+      <p class="exp">First visit: kicker, title and a line of prose, about 102px. Second visit: kicker and title only, about 53px, and one more row of the list is visible.</p>
+      <p class="fail">The prose is gone on the very first visit. That exact bug shipped in the first commit and was fixed; it is the thing most worth confirming.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t6">
+    <div class="body">
+      <h3>A screen you bounce off still introduces itself</h3>
+      <p class="do">Go to a screen you have not opened yet and leave within about a second.</p>
+      <p class="exp">Coming back, the prose is still there. It only retires once the screen has been up long enough to have been read.</p>
+      <p class="fail">It retires on a screen you never actually read.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t7">
+    <div class="body">
+      <h3>Roster rows acknowledge a tap</h3>
+      <p class="do">Press and hold a roster row without letting go.</p>
+      <p class="exp">The row dips a pixel and shrinks a hair while held, then settles. Same on schedule rows.</p>
+      <p class="fail">Nothing moves. Before this, four of eighty-eight interactive elements had any pressed state at all.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t8">
+    <div class="body">
+      <h3>The player card arrives as one motion</h3>
+      <p class="do">Tap any roster row to open a man's card. Then close it and open another.</p>
+      <p class="exp">The whole panel rises and fades in together over about 200ms.</p>
+      <p class="fail">The panel appears instantly and its contents climb inside it afterwards — that is the old behaviour, and it reads as the card assembling itself.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t9">
+    <div class="body">
+      <h3>The postseason screen is unchanged</h3>
+      <p class="do">Look over the bracket, the stage rail, YOUR NEXT GAME.</p>
+      <p class="exp">Exactly as before. Nothing in this pass touched the postseason.</p>
+      <p class="fail">Anything moved. It would mean a shared rule leaked.</p>
+    </div>
+  </label>
+
+  <h2 class="section">Group two <b>·</b> Needs the regular season</h2>
+  <p class="sec-note">
+    Reachable once the postseason finishes and February 2028 opens. Four changes
+    live here and none of them can be seen before then.
+  </p>
+
+  <label class="t">
+    <input type="checkbox" data-id="t10">
+    <div class="body">
+      <h3>Crests instead of letters in tonight's card</h3>
+      <p class="do">Home screen, the TONIGHT card.</p>
+      <p class="exp">Two shields, one per school, each with the abbreviation drawn inside it. Records still underneath. Tapping either still opens that team's card.</p>
+      <p class="fail">The crest is clipped, or sits off-centre in its half of the card.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t11">
+    <div class="body">
+      <h3>"First pitch is next." fits one line</h3>
+      <p class="do">Home screen headline, at your normal text size.</p>
+      <p class="exp">27px, matching every other screen's title. It used to be 36 and wrapped to two lines on a 375-wide phone.</p>
+      <p class="fail">Still wrapping at the default text size.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t12">
+    <div class="body">
+      <h3>AUTO reports what it did</h3>
+      <p class="do">Team → Lineup → Auto lineup.</p>
+      <p class="exp">The button becomes a check and the words "Order dealt", takes a soft team-tinted fill, and stays pressable. The note underneath changes too.</p>
+      <p class="fail">It stays reading "Auto lineup", or it becomes unpressable so you cannot deal a second order.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t13">
+    <div class="body">
+      <h3>An injury sends you to the man</h3>
+      <p class="do">Wait for a hurt player to appear in NEEDS YOU on the home screen, then tap the card.</p>
+      <p class="exp">The lineup opens, that man's row carries a red rail down its left edge and a faint red wash, pulses three times and stops, and the screen has scrolled him to the middle. Both the red "cannot play" card and the quieter "is hurt" card do this.</p>
+      <p class="fail">You land on the lineup with nothing marked, or on his player card instead. Also check the mark is gone when you come back to the lineup on your own.</p>
+    </div>
+  </label>
+
+  <h2 class="section">Group three <b>·</b> Needs the offseason</h2>
+  <p class="sec-note">
+    The transfer portal, after June. This is where the new confirm grammar lives
+    and it is the part with the most new behaviour in it.
+  </p>
+
+  <label class="t">
+    <input type="checkbox" data-id="t14">
+    <div class="body">
+      <h3>A press has to be meant</h3>
+      <p class="do">Portal → Available. Tap <em>Sign him</em> on anybody.</p>
+      <p class="exp">The button turns solid red and changes to "Confirm — spend 41", naming the cost again. A second tap spends it.</p>
+      <p class="fail">One tap spends the points. That is the whole thing this control exists to prevent.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t15">
+    <div class="body">
+      <h3>Only one thing is armed at a time</h3>
+      <p class="do">Arm one man, then tap <em>Sign him</em> on a different man.</p>
+      <p class="exp">The first stands down to its normal label as the second arms.</p>
+      <p class="fail">Two red buttons on screen at once — two live triggers is how a thumb spends points on the wrong man.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t16">
+    <div class="body">
+      <h3>Tapping anywhere else stands it down</h3>
+      <p class="do">Arm a man, then tap somewhere blank on the screen, or scroll.</p>
+      <p class="exp">It goes back to "Sign him".</p>
+      <p class="fail">It stays armed. The job market's comment claimed this behaviour for months and no code ever did it — a stray thumb left an offer armed until the next press, which took the job.</p>
+    </div>
+  </label>
+
+  <label class="t flagged">
+    <input type="checkbox" data-id="t17">
+    <div class="body">
+      <h3>Losing a man you paid for</h3>
+      <p class="do">Portal → Leaving you. Talk somebody round and hope it fails.</p>
+      <p class="exp">The button reports "He went anyway" in red text on a pale ground, and he stays on the board. The points are gone.</p>
+      <p class="fail">The button silently returns to normal, so the one action in the game that can cost everything says nothing.</p>
+      <p class="note">I could not force this myself — the scratch career had nobody in the retention half and the outcome is probabilistic. The styling is verified; the wiring is one line. Worth a real look.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t18">
+    <div class="body">
+      <h3>Signing a man clears him off the board</h3>
+      <p class="do">Complete a signing.</p>
+      <p class="exp">He disappears from the list, the points meter drops, and the inbox says so. There is deliberately no "✓ HE IS IN" label — the row unmounts on the same tick, so one would never be seen.</p>
+      <p class="fail">He stays on the board with a stale button, or the points do not move.</p>
+    </div>
+  </label>
+
+  <label class="t flagged">
+    <input type="checkbox" data-id="t19">
+    <div class="body">
+      <h3>Taking a job asks twice</h3>
+      <p class="do">Only reachable if you are offered a chair or sacked. Coach menu → the job market, then <em>Accept offer</em>.</p>
+      <p class="exp">Turns red, reads "Confirm — leave for good". Second tap takes the job.</p>
+      <p class="fail">One tap moves your career.</p>
+      <p class="note">Verified on a scratch career, not on a real one. Irreversible, so worth confirming before you ever mean it.</p>
+    </div>
+  </label>
+
+  <h2 class="section">Group four <b>·</b> Settings and accessibility</h2>
+  <p class="sec-note">
+    All four of these were checked by measurement, but they are the ones a real
+    device is best at falsifying.
+  </p>
+
+  <label class="t">
+    <input type="checkbox" data-id="t20">
+    <div class="body">
+      <h3>Dark mode, and the armed button in it</h3>
+      <p class="do">Settings → dark. Then look at an armed portal button, and at the inbox count badge.</p>
+      <p class="exp">Near-black text on the salmon fill, clearly readable. The badge the same.</p>
+      <p class="fail">Pale text on the salmon. Cream measured 3.16 against that red — under the accessibility floor — which is why the fill flips its ink in dark mode rather than keeping one colour.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t21">
+    <div class="body">
+      <h3>Text size, both ends</h3>
+      <p class="do">Settings → text size. Try <em>Small</em> and then <em>Larger</em>, and walk the main screens at each.</p>
+      <p class="exp">Nothing overflows sideways and nothing clips. Checked at 320, 360, 384, 412 and 430 wide, but a real phone is the honest test.</p>
+      <p class="fail">Any screen scrolls horizontally. The sub-nav under the header is allowed to — it is a scroller by design.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t22">
+    <div class="body">
+      <h3>Reduced motion turns the motion off, not the meaning</h3>
+      <p class="do">Settings → motion → reduced. Then change tabs, open a card, and trigger an injury mark.</p>
+      <p class="exp">No screen transition, no card rise, no pulse. The injured man still has his red rail and wash — the part that answers "which one" survives.</p>
+      <p class="fail">The transition still plays, or the injury mark disappears along with the pulse.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t23">
+    <div class="body">
+      <h3>Reset tutorials brings the prose back</h3>
+      <p class="do">Settings → show the tutorials again. Then revisit a screen whose intro had retired.</p>
+      <p class="exp">Both the teaching card and the full intro paragraph return. They share one memory on purpose: asking to be taught again should bring back everything that teaches.</p>
+      <p class="fail">The card comes back but the paragraph stays collapsed.</p>
+    </div>
+  </label>
+
+  <h2 class="section">Group five <b>·</b> Try to break it</h2>
+  <p class="sec-note">The cases most likely to hide a defect.</p>
+
+  <label class="t">
+    <input type="checkbox" data-id="t24">
+    <div class="body">
+      <h3>Hammer it</h3>
+      <p class="do">Tap four tabs as fast as you can. Arm a portal button and immediately navigate away. Background the app mid-transition and come back. Reload while a card is open.</p>
+      <p class="exp">You always land on the last screen you tapped, nothing is left mid-animation, and no control is stuck armed. The save is intact after every reload.</p>
+      <p class="fail">A screen freezes half-faded, or a control stays armed on a screen you returned to. A backgrounded webview stops serving animation frames, which is the exact condition that broke the transition once — a timer covers it now, and this is how you check the cover holds.</p>
+    </div>
+  </label>
+
+  <footer class="end">
+    <p>
+      <strong>Ticks are saved in this browser only.</strong> Nothing is sent
+      anywhere, and opening the page on another device starts it fresh.
+    </p>
+    <p>
+      Four commits on <code>play-batch-2</code>, unpushed. 1072 tests pass and
+      the production build is clean. Anything that fails here is worth more than
+      any of that.
+    </p>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var KEY = 'playball-test-pass-v1';
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('.t input'));
+    var count = document.getElementById('count');
+    var bar = document.getElementById('bar');
+
+    function read() {
+      try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; }
+      catch (e) { return {}; }
+    }
+    function write(state) {
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* private mode */ }
+    }
+    function paint() {
+      var done = boxes.filter(function (b) { return b.checked; }).length;
+      count.textContent = String(done);
+      bar.style.width = (done / boxes.length * 100) + '%';
+    }
+
+    var state = read();
+    boxes.forEach(function (b) {
+      if (state[b.dataset.id]) b.checked = true;
+      b.addEventListener('change', function () {
+        var s = read();
+        if (b.checked) s[b.dataset.id] = 1; else delete s[b.dataset.id];
+        write(s);
+        paint();
+      });
+    });
+
+    document.getElementById('reset').addEventListener('click', function () {
+      boxes.forEach(function (b) { b.checked = false; });
+      write({});
+      paint();
+    });
+
+    paint();
+  })();
+</script>
