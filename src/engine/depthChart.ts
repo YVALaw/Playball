@@ -300,32 +300,74 @@ export function fitTheNine(
     if (pick < 0) continue;
     const inMan = bench[pick]!;
     /*
-      The cover adopts the slot he is covering.
+      The cover adopts the slot he is covering — and remembers his own.
 
-      Without this the nine stopped being a set of nine positions the moment
-      anybody crossed spots: a first baseman covering the hurt DH arrived
-      still labelled 1B, and the card read two first basemen and no DH —
-      reported exactly that way from play. The label is not cosmetic: the
-      game fields BY it (fielding shares, the outfield test, the DH
-      exclusion), so a broken set bends the simulation, not just the screen.
+      Without the adoption the nine stopped being a set of nine positions the
+      moment anybody crossed spots: a first baseman covering the hurt DH
+      arrived still labelled 1B, and the card read two first basemen and no
+      DH. The label is not cosmetic: the game fields BY it (fielding shares,
+      the outfield test, the DH exclusion), so a broken set bends the
+      simulation, not just the screen.
 
-      The man going to the bench keeps the label he wore. When he heals and
-      comes back in for somebody, he adopts that slot the same way — the rule
-      has no special cases.
+      Without the memory the adoption became a life sentence — reported one
+      day later: "if you take them back to the bench, they keep the position
+      instead of returning to their main position." `adoptSpot` writes his
+      own spot down before relabelling; the man he displaces gets his own
+      back on the way to the bench.
 
-      This is deliberately only done here and in the store's manual swaps —
-      the player's own persistent card. `coverFor` below does the same
-      substitution transiently during simulated games and keeps its labels,
-      because mutating a man's position inside a one-night cover would leak a
-      permanent change out of a temporary one and move every golden in the
-      suite. Its mislabelled share weights are a known, smaller wrong.
+      This runs here and behind AUTO only. The manual swaps in the store
+      stopped relabelling entirely, on the second report's other half — "I
+      don't want them to be automatically assigned, the automation is only if
+      I tap on auto lineup" — and the screen warns about the set instead.
+      `coverFor` below still keeps its labels transiently during simulated
+      games, because mutating a man inside a one-night cover would leak a
+      permanent change and move every golden in the suite.
     */
-    if (inMan.pos !== out.pos) inMan.pos = out.pos;
+    adoptSpot(inMan, out.pos);
+    restoreHome(out);
     lineup[i] = inMan;
     bench[pick] = out;
     moved.push({ out, in: inMan });
   }
   return { lineup, bench, moved };
+}
+
+/** Relabel a man to a spot, remembering his own so the bench can undo it. */
+export function adoptSpot(man: Hitter, pos: Position): void {
+  if (man.pos === pos) return;
+  man.homePos ??= man.pos;
+  man.pos = pos;
+  // Adopted back around to his own spot: the displacement is over.
+  if (man.homePos === man.pos) delete man.homePos;
+}
+
+/** The bench is where a man is himself again. */
+export function restoreHome(man: Hitter): void {
+  if (man.homePos) {
+    man.pos = man.homePos;
+    delete man.homePos;
+  }
+}
+
+/**
+ * What is wrong with the card, said as positions.
+ *
+ * Manual moves stopped relabelling anybody, so a swap can leave the nine
+ * covering eight spots with a double somewhere — deliberately: the coach asked
+ * for exactly that ("if I do it manually and don't change the position, you
+ * should simply issue a modal warning"). This is the sentence the warning
+ * prints from. Empty arrays mean a sound card.
+ */
+export function cardGaps(
+  lineup: readonly Hitter[],
+): { missing: Position[]; doubled: Position[] } {
+  const seen = new Set<Position>();
+  const doubled: Position[] = [];
+  for (const man of lineup) {
+    if (seen.has(man.pos)) doubled.push(man.pos);
+    else seen.add(man.pos);
+  }
+  return { missing: SPOTS.filter((p) => !seen.has(p)), doubled };
 }
 
 /**
@@ -354,7 +396,8 @@ export function healPositions(lineup: readonly Hitter[]): number {
   for (const man of dupes) {
     const next = missing.shift();
     if (!next) break;
-    man.pos = next;
+    // Through adoptSpot, so even a repair is undone by a trip to the bench.
+    adoptSpot(man, next);
     moved += 1;
   }
   return moved;

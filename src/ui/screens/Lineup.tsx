@@ -31,11 +31,12 @@ import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Avatar } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
 import { whyOut } from '../Needs.js';
+import { Modal } from '../Modal.js';
 import { overallOf } from '../../engine/ratings.js';
 import { captainOf } from '../../engine/captains.js';
 import { battingAverage, era, inningsPitched } from '../../engine/season.js';
 import { handles } from '../../state/depth.js';
-import { available } from '../../engine/depthChart.js';
+import { available, cardGaps } from '../../engine/depthChart.js';
 import type { PlayerId, Position } from '../../engine/types.js';
 import { CaptainC, DidButton, FieldNote, ModuleIntro, Rating, SectionHeading } from '../components/Kit.js';
 import type { Hitter } from '../../engine/types.js';
@@ -108,6 +109,25 @@ export function Lineup() {
   const [flaggedId, setFlaggedId] = useState<string | null>(null);
   const flagged = useRef<HTMLButtonElement | null>(null);
 
+  /*
+    The card warned about, never corrected.
+
+    A manual start stopped relabelling anybody — asked for in exactly these
+    words: "I don't want them to be automatically assigned, the automation is
+    only if I tap on auto lineup. If I do it manually and don't change the
+    position, you should simply issue a modal warning letting the user know,
+    for example, you are missing X position or you have two players in the
+    same position." So after any manual move the set is read, and a broken one
+    gets this modal — once per breakage, not once per render.
+  */
+  const [gapWarn, setGapWarn] = useState<{ missing: string[]; doubled: string[] } | null>(null);
+  const warnIfBroken = (): void => {
+    const t = useDynasty.getState().season?.teams[useDynasty.getState().userTeam]?.team;
+    if (!t) return;
+    const gaps = cardGaps(t.lineup);
+    if (gaps.missing.length > 0 || gaps.doubled.length > 0) setGapWarn(gaps);
+  };
+
   useEffect(() => {
     if (!focus) return;
     setFlaggedId(focus);
@@ -158,6 +178,7 @@ export function Lineup() {
     // in it walks to the bench. The other order of the same two taps below.
     if (pickedBench !== null) {
       swapStarter(i, pickedBench);
+      warnIfBroken();
       setPickedBench(null);
       setPicked(null);
       return;
@@ -190,6 +211,7 @@ export function Lineup() {
     }
     if (picked !== null) {
       swapStarter(picked, id);
+      warnIfBroken();
       setPicked(null);
       setPickedBench(null);
       return;
@@ -490,6 +512,26 @@ export function Lineup() {
         <FirstVisit id="lineup" />
       </main>
 
+      {/* The warning the manual rule earns. It announces and corrects nothing:
+          the rail or AUTO is how the coach answers it, on purpose. */}
+      {gapWarn && (
+        <Modal
+          kicker="THE CARD"
+          title={gapWarn.missing.length > 0
+            ? `Nobody at ${gapWarn.missing.join(', ')}`
+            : `Two men at ${gapWarn.doubled.join(', ')}`}
+          lines={[
+            gapWarn.missing.length > 0 && gapWarn.doubled.length > 0
+              ? `You have two men at ${gapWarn.doubled.join(' and ')} and nobody at ${gapWarn.missing.join(' or ')}.`
+              : gapWarn.missing.length > 0
+                ? `Tonight's nine covers eight spots. ${gapWarn.missing.join(' and ')} ${gapWarn.missing.length === 1 ? 'is' : 'are'} open.`
+                : `Two men are wearing ${gapWarn.doubled.join(' and ')}.`,
+            'Nothing is moved for you. Use the rail to put a man on the open spot, or AUTO to let the bench coach sort the whole card.',
+          ]}
+          action="GOT IT"
+          onClose={() => setGapWarn(null)}
+        />
+      )}
     </>
   );
 }

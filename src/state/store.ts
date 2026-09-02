@@ -210,6 +210,7 @@ import {
 } from '../engine/portal.js';
 import {
   chartFor, depthAt, reorder, squad, available, promotions, SPOTS, fitTheNine, healPositions,
+  adoptSpot, restoreHome,
 } from '../engine/depthChart.js';
 import {
   gradesOf, standing, failsThisWeek, suspend, haveAWord, driftGrades,
@@ -5007,9 +5008,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // A man who cannot play cannot be started — refusing here is the whole
     // point of the manual-cover rule.
     if (!available(inMan, season.dayIndex)) return false;
-    // He adopts the slot he takes, so the nine stays a set of nine positions.
-    // Same rule as fitTheNine, and the note there carries the argument.
-    if (inMan.pos !== out.pos) inMan.pos = out.pos;
+    /*
+      No relabelling. This adopted the slot's position for one day and was
+      reversed on the report: "I don't want them to be automatically
+      assigned, the automation is only if I tap on auto lineup." A manual
+      start brings the man in as what he is; if that leaves the card missing
+      a spot, the lineup screen says so out loud (see `cardGaps`) and the
+      coach fixes it with the rail or with AUTO, deliberately.
+
+      The man walking to the bench does get himself back — the bench is where
+      a man is himself again, whatever he was covering.
+    */
+    restoreHome(out);
     team.lineup[slot] = inMan;
     team.bench[bIdx] = out;
     set({ version: version + 1 });
@@ -5029,10 +5039,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // Two men already in the nine trade labels, batting order untouched —
       // a substitution is not a reason to rewrite the card, and neither is
       // this. If nobody held the spot the set was broken, and he heals it.
+      // Through adoptSpot, so both remember themselves and a later trip to
+      // the bench undoes the appointment.
       const man = team.lineup[inLineup]!;
       if (holder === inLineup) return true;
-      if (holder >= 0) team.lineup[holder]!.pos = man.pos;
-      man.pos = pos;
+      if (holder >= 0) adoptSpot(team.lineup[holder]!, man.pos);
+      adoptSpot(man, pos);
       set({ version: version + 1 });
       void get().saveNow();
       return true;
@@ -5042,13 +5054,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const man = team.bench[bIdx];
     if (!man || !available(man, day)) return false;
     if (holder >= 0) {
-      // A bench man takes the spot: its holder walks to the bench wearing his
-      // own label, and the man coming in adopts the slot — the same rule
-      // every other route into the nine follows.
+      // A bench man takes the spot; its holder walks to the bench and is
+      // himself again there, whatever he had been covering.
       const out = team.lineup[holder]!;
       team.lineup[holder] = man;
       team.bench[bIdx] = out;
-      man.pos = pos;
+      adoptSpot(man, pos);
+      restoreHome(out);
       set({ version: version + 1 });
       void get().saveNow();
       return true;
@@ -5069,7 +5081,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const out = team.lineup[dupe]!;
     team.lineup[dupe] = man;
     team.bench[bIdx] = out;
-    man.pos = pos;
+    adoptSpot(man, pos);
+    restoreHome(out);
     set({ version: version + 1 });
     void get().saveNow();
     return true;
@@ -5121,10 +5134,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       team.lineup.splice(0, team.lineup.length, ...fit.lineup);
       team.bench.splice(0, team.bench.length, ...fit.bench);
     }
-    // Cards written before covers adopted their slots can carry a duplicate —
-    // the reported one was two first basemen and no DH. AUTO is the button
-    // that promises a sound card, so it repairs the set as part of the deal.
+    // AUTO is the button that promises a sound card, so it repairs the set as
+    // part of the deal — and it is the ONLY automation allowed to touch a
+    // label, per the report that reversed the manual adoption. It also sends
+    // every bench man home: the bench is where a man is himself again.
     healPositions(team.lineup);
+    for (const b of team.bench) restoreHome(b);
     const dealt = autoBattingOrder(team.lineup);
     // Same nine or nothing. The helper only reorders, but the invariant is
     // cheap to hold at the door and a corrupted lineup is a corrupted season.

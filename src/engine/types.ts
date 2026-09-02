@@ -264,6 +264,17 @@ interface PlayerCore {
 
 export interface Hitter extends PlayerCore, HitterRatings {
   type: 'hitter';
+  /**
+   * His own position, remembered while he wears somebody else's.
+   *
+   * Set the first time a cover or an appointment relabels him, cleared the
+   * moment he returns to the bench — "if you take them back to the bench,
+   * they keep the position instead of returning to their main position" was
+   * the report, and this is the memory that report was assuming existed.
+   * Sparse and optional, so every save from before it simply has nobody
+   * displaced.
+   */
+  homePos?: Position;
 }
 
 export interface Pitcher extends PlayerCore, PitcherRatings {

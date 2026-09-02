@@ -35,6 +35,7 @@ import {
 } from '../src/engine/postseason.js';
 import { makeRng } from '../src/engine/rng.js';
 import { overallOf } from '../src/engine/ratings.js';
+import { cardGaps } from '../src/engine/depthChart.js';
 import { newTeams } from '../src/engine/calibration.js';
 import { simGame } from '../src/engine/game.js';
 import { DEFAULT_STRATEGY } from '../src/engine/strategy.js';
@@ -332,26 +333,54 @@ describe("the board's number is set in February", () => {
   });
 });
 
-describe('the nine stays a set of nine positions', () => {
+
+describe('positions are yours to break, and the game remembers home', () => {
   /*
-    Reported from play: a hurt DH was covered off the bench by a man still
-    wearing 1B, and the card read two first basemen and no DH. The game fields
-    BY the label — fielding shares, the outfield test, the DH exclusion — so a
-    broken set bends the simulation, not just the screen. The rule is that a
-    man adopts the slot he takes, by every route into the nine.
+    The first version of this block pinned the opposite rule: every route into
+    the nine relabelled the man to the slot he took. Played for a weekend and
+    reversed in exactly these words — "I don't want them to be automatically
+    assigned, the automation is only if I tap on auto lineup." So the manual
+    swap moves the man and nothing else; the automation (AUTO, the staff, the
+    rail's explicit appointment) still adopts — and any adoption remembers
+    `homePos`, so a cover coming back to the bench is himself again.
   */
-  it('a bench man starting adopts the slot he takes', () => {
+  it('a manual start keeps his own label, even when it breaks the set', () => {
     useDynasty.getState().start(4242, 0);
     const t = useDynasty.getState().season!.teams[0]!.team;
-    const slotPos = t.lineup[2]!.pos;
-    const benchId = t.bench[0]!.id;
-    expect(useDynasty.getState().swapStarter(2, benchId)).toBe(true);
-    expect(t.lineup[2]!.id).toBe(benchId);
-    expect(t.lineup[2]!.pos).toBe(slotPos);
-    expect(new Set(t.lineup.map((p) => p.pos)).size).toBe(9);
+    const bench = t.bench[0]!;
+    const benchPos = bench.pos;
+    expect(useDynasty.getState().swapStarter(2, bench.id)).toBe(true);
+    expect(t.lineup[2]!.id).toBe(bench.id);
+    // No relabel. He plays where he plays.
+    expect(t.lineup[2]!.pos).toBe(benchPos);
+    expect(t.lineup[2]!.homePos).toBeUndefined();
+    // And the screen's reading of the card agrees with what just happened:
+    // broken if the labels no longer cover nine spots, clean if they do.
+    const gaps = cardGaps(t.lineup);
+    const spots = new Set(t.lineup.map((p) => p.pos));
+    expect(gaps.missing.length === 0 && gaps.doubled.length === 0).toBe(spots.size === 9);
   });
 
-  it('the rail appointment trades labels inside the nine', () => {
+  it('a cover returns to the bench as himself', () => {
+    useDynasty.getState().start(4242, 0);
+    const t = useDynasty.getState().season!.teams[0]!.team;
+    const bench = t.bench[0]!;
+    const home = bench.pos;
+    // The rail's explicit appointment: put the bench man at catcher.
+    expect(useDynasty.getState().assignPosition(bench.id, 'C')).toBe(true);
+    const inNine = t.lineup.find((p) => p.id === bench.id)!;
+    expect(inNine.pos).toBe('C');
+    if (home !== 'C') expect(inNine.homePos).toBe(home);
+    // Send him back down by starting someone else in his spot.
+    const idx = t.lineup.findIndex((p) => p.id === bench.id);
+    const other = t.bench[0]!;
+    expect(useDynasty.getState().swapStarter(idx, other.id)).toBe(true);
+    const backDown = t.bench.find((p) => p.id === bench.id)!;
+    expect(backDown.pos).toBe(home);
+    expect(backDown.homePos).toBeUndefined();
+  });
+
+  it('the rail appointment inside the nine trades labels, and both remember', () => {
     useDynasty.getState().start(4242, 0);
     const t = useDynasty.getState().season!.teams[0]!.team;
     const man = t.lineup[5]!;
@@ -361,17 +390,26 @@ describe('the nine stays a set of nine positions', () => {
     expect(man.pos).toBe('C');
     expect(holder.pos).toBe(from);
     expect(new Set(t.lineup.map((p) => p.pos)).size).toBe(9);
+    // Adoption, not amnesia: both men know where home is.
+    expect(man.homePos).toBe(from);
+    expect(holder.homePos).toBe('C');
   });
 
-  it('AUTO repairs a card written before the rule, and orders the arms', () => {
+  it('AUTO repairs a broken card, restores the bench, and orders the arms', () => {
     useDynasty.getState().start(4242, 0);
     const t = useDynasty.getState().season!.teams[0]!.team;
     // The reported corruption, made by hand: a duplicate label in the nine.
     t.lineup[0]!.pos = t.lineup[1]!.pos;
+    // And a man stranded on the bench still wearing a covered label.
+    t.bench[0]!.homePos = t.bench[0]!.pos;
+    t.bench[0]!.pos = 'C';
     // And a rotation deliberately upside down.
     t.rotation.reverse();
     useDynasty.getState().autoLineup();
     expect(new Set(t.lineup.map((p) => p.pos)).size).toBe(9);
+    // The whole bench went home — the fit pass may have reshuffled who sits
+    // where, but nobody down there is still wearing a cover.
+    for (const b of t.bench) expect(b.homePos).toBeUndefined();
     const ovr = t.rotation.map((p) => overallOf(p));
     for (let i = 1; i < ovr.length; i++) expect(ovr[i - 1]!).toBeGreaterThanOrEqual(ovr[i]!);
   });
