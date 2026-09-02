@@ -2934,3 +2934,27 @@
     transform 220ms cubic-bezier(0.22, 0.85, 0.28, 1),
     width 220ms cubic-bezier(0.22, 0.85, 0.28, 1);
 }
+
+/* The legend strip — Kit's Legend. A key, not a paragraph. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  align-items: baseline;
+  margin-top: 12px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font: 400 calc(10.5px * var(--ts))/1.4 var(--body);
+  color: var(--dim);
+}
+
+.legend-item > i {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--ink);
+  flex: none;
+}

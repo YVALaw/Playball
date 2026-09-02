@@ -350,6 +350,30 @@ export function Stat({ k, v }: { k: string; v: string }) {
   );
 }
 
+/**
+ * A compact key: the symbols a table leans on, decoded in one strip.
+ *
+ * Asked for twice in the same breath — "delete all that text in program
+ * history, instead simply add a legend... same thing in the book" — and made
+ * a leaf so the two screens cannot decode themselves differently. Each item
+ * is a mark and what it means; the strip wraps and stays out of the way.
+ */
+export function Legend(
+  { items }: { items: Array<{ mark: ReactNode; means: string }> },
+) {
+  return (
+    <div className="legend" role="note">
+      <span className="label">KEY</span>
+      {items.map((it, i) => (
+        <span key={i} className="legend-item">
+          <i>{it.mark}</i>
+          {it.means}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /** Three or four numbers across, inside one border. */
 export function Tiles({ children }: { children: ReactNode }) {
   return <div className="program-tiles">{children}</div>;

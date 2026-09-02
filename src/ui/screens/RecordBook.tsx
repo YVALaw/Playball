@@ -19,37 +19,32 @@ import {
   RECORDS, recordsIn, type RecordGroup, type RecordKey, type RecordMark,
 } from '../../engine/records.js';
 import { pct } from '../format.js';
+import { Legend } from '../components/Kit.js';
 import type { PlayerId } from '../../engine/types.js';
 
 /** The order the book reads in, and what each section is for. */
 const SECTIONS: Array<{ group: RecordGroup; title: string; note: string }> = [
-  {
-    group: 'game', title: 'SINGLE GAME',
-    note: 'One afternoon, anywhere in the country.',
-  },
+  // One line apiece, where the first draft ran to paragraphs — "same thing in
+  // the book, waaay too much text." What each line lost lives on in the code
+  // that enforces it (records.ts owns the qualifying minimums and the
+  // no-seeding rule for careers); a screen does not have to recite its rules.
+  { group: 'game', title: 'SINGLE GAME', note: '' },
   {
     group: 'feat', title: 'FEATS',
-    note: 'Not records. One no-hitter is not more than another. The number is '
-      + 'how many the country has seen, and the name is the last man to do it.',
+    note: 'Counts, not records — the name is the last man to do it.',
   },
   {
     group: 'season', title: 'SINGLE SEASON',
-    note: 'Rate marks need the same qualifying minimum the national leaderboards '
-      + 'use: two plate appearances a game to be batting, one inning a game to be '
-      + 'pitching.',
+    note: 'Rate marks need the leaderboard minimums.',
   },
   {
     group: 'career', title: 'CAREER',
-    note: 'Four years at most, and the men who left after two are in here with '
-      + 'the men who stayed. Rate marks need two qualifying seasons behind them. '
-      + 'Nothing is seeded: the real career records are four times a single-season '
-      + 'mark and would never be beaten, so every row here was set in this world.',
+    note: 'Four years at most. Rate marks need two qualifying seasons.',
   },
   { group: 'team', title: 'TEAM', note: 'Programs, not players.' },
   {
     group: 'coach', title: 'COACHING',
-    note: 'Every head coach in the country, yours among them. They are hired, '
-      + 'judged and moved on the same terms you are.',
+    note: 'Every head coach in the country, yours among them.',
   },
 ];
 
@@ -87,13 +82,22 @@ export function RecordBook() {
   // the gutter, and two of them is a column half the width of the screen.
   return (
     <>
-      <div style={{ font: "400 calc(12px * var(--ts))/1.55 var(--body)", color: 'var(--dim)' }}>
-        Every program in the country, for as long as this dynasty has run. Marks
-        tagged <Tag /> are the real ones, corrected for the league you are chasing
-        them in — most were set with aluminium bats — and each sits where a great
-        season here beats it about once in a generation. What the man actually did
-        is printed under his name, and no row asks for more than that.
-      </div>
+      {/* The five-line introduction and the three-paragraph footer both
+          collapsed into this key — "waaay too much text." Everything a reader
+          needs to decode a row, nothing they need to be told twice. */}
+      <Legend items={[
+        { mark: <Tag />, means: 'a real mark, corrected for this league' },
+        {
+          mark: <i style={{
+            display: 'inline-block', width: 10, height: 10, verticalAlign: 'baseline',
+            borderLeft: '3px solid var(--clay)',
+            background: 'rgba(var(--clay-rgb), .25)',
+          }} aria-hidden />,
+          means: 'held by your program',
+        },
+        { mark: '—', means: 'not set — whoever does it first takes it' },
+        { mark: '=', means: 'equalling a mark leaves it standing' },
+      ]} />
 
       {SECTIONS.map((s) => (
         <Section
@@ -108,23 +112,6 @@ export function RecordBook() {
         />
       ))}
 
-      <div style={{
-        marginTop: 18, paddingTop: 10, borderTop: '1px solid var(--faint)',
-        font: "400 calc(11px * var(--ts))/1.55 var(--body)", color: 'var(--dim)',
-      }}>
-        A mark has to be <strong>beaten</strong>. Equalling one leaves it where it
-        is.
-        <br /><br />
-        Career marks are taken across the whole country, the same as the rest of
-        the book. What is kept for them is a running total per man rather than
-        every season of every roster — a career record wants the total, and the
-        total is final the day he leaves.
-        <br /><br />
-        There are no career fielding records, for the reason there are no season
-        ones: the ranking statistic is plays above what an average glove{' '}
-        <em>on his own team</em> would have made, which does not mean the same
-        thing in two different rows.
-      </div>
     </>
   );
 }
@@ -145,9 +132,11 @@ function Section(
           <Row key={k} rkey={k} mark={book[k]} mine={mine} known={known} onPick={onPick} />
         ))}
       </div>
-      <div style={{
-        marginTop: 5, font: "400 calc(10.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-      }}>{note}</div>
+      {note !== '' && (
+        <div style={{
+          marginTop: 5, font: "400 calc(10.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
+        }}>{note}</div>
+      )}
     </div>
   );
 }

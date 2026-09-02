@@ -16,7 +16,7 @@
 
 import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
+import { Legend, Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
 import { RecordBook } from './RecordBook.js';
 import { FINISH_LABEL, type Finish } from '../../engine/postseason.js';
 import type { SchoolSeason } from '../../engine/season.js';
@@ -221,11 +221,20 @@ function Seasons({ annals }: { annals: SchoolSeason[] }) {
         })}
       </div>
 
-      <div style={{ marginTop: 10, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)' }}>
-        ★ marks a conference tournament title, which carries an automatic bid to the
-        national field however the regular season went. This is the school's book.
-        Your own career, wherever it was coached, is on your coach profile.
-      </div>
+      {/* The paragraph this replaces was three sentences of prose — "delete
+          all that text... instead simply add a legend." The key decodes the
+          marks; the guidance about the coach profile went with the essay. */}
+      <Legend items={[
+        { mark: '★', means: 'conference tournament title — automatic national bid' },
+        { mark: '#25', means: 'final national rank, when ranked' },
+        {
+          mark: <i style={{
+            display: 'inline-block', width: 10, height: 10, verticalAlign: 'baseline',
+            background: 'rgba(var(--clay-rgb), .25)',
+          }} aria-hidden />,
+          means: 'national title year',
+        },
+      ]} />
     </div>
   );
 }
