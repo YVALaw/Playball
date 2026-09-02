@@ -1,0 +1,301 @@
+<title>Where Playball Stands</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --ink: #1c2430; --navy: #223247; --clay: #a8442a;
+    --paper: #fbf7ee; --field: #f2ece0; --cream: #f6f1e6; --dim: #6d7480;
+    --hair: rgba(28, 36, 48, .14); --faint: rgba(28, 36, 48, .09); --win: #3f6f4a;
+    --gold: #8a6a1f;
+    --display: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --body: 'Source Sans 3', system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #ece7dc; --navy: #9fb3cd; --clay: #d9714f;
+      --paper: #1a212b; --field: #141a22; --cream: #f6f1e6; --dim: #97a0ad;
+      --hair: rgba(236, 231, 220, .16); --faint: rgba(236, 231, 220, .10); --win: #7fb08c;
+      --gold: #d3b054;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #ece7dc; --navy: #9fb3cd; --clay: #d9714f;
+    --paper: #1a212b; --field: #141a22; --cream: #f6f1e6; --dim: #97a0ad;
+    --hair: rgba(236, 231, 220, .16); --faint: rgba(236, 231, 220, .10); --win: #7fb08c;
+    --gold: #d3b054;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--field); color: var(--ink);
+    font: 400 16px/1.6 var(--body); -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px 80px; }
+
+  header.top {
+    background: var(--navy);
+    background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 1px, transparent 1px 7px);
+    border-bottom: 4px solid var(--clay);
+    padding: 34px 20px 26px; margin-bottom: 34px;
+  }
+  .top-in { max-width: 860px; margin: 0 auto; }
+  .kicker {
+    font: 600 10px var(--mono); letter-spacing: .22em;
+    color: rgba(246,241,230,.66); text-transform: uppercase;
+  }
+  h1 {
+    font: 800 clamp(38px, 8vw, 62px)/0.92 var(--display);
+    text-transform: uppercase; letter-spacing: .01em;
+    color: var(--cream); margin: 8px 0 0; text-wrap: balance;
+  }
+  .sub { margin-top: 10px; max-width: 56ch; font: 400 15px/1.55 var(--body); color: rgba(246,241,230,.76); }
+
+  .decisions {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1px; background: var(--hair); border: 1px solid var(--hair); margin-bottom: 30px;
+  }
+  .dec { background: var(--paper); padding: 12px 14px 14px; }
+  .dec dt { font: 600 9px var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--dim); }
+  .dec dd { margin: 5px 0 0; font: 700 17px/1.15 var(--display); text-transform: uppercase; color: var(--clay); }
+  .dec dd.plain { color: var(--ink); }
+  .dec dd.green { color: var(--win); }
+
+  h2.section {
+    font: 700 13px var(--mono); letter-spacing: .18em; text-transform: uppercase;
+    color: var(--dim); border-bottom: 2px solid var(--ink); padding-bottom: 7px; margin: 34px 0 22px;
+  }
+  ol.stages { list-style: none; padding: 0; margin: 0; }
+  li.stage {
+    display: grid; grid-template-columns: 54px 1fr; gap: 16px;
+    padding-bottom: 24px; margin-bottom: 24px; border-bottom: 1px solid var(--hair);
+  }
+  li.stage:last-child { border-bottom: none; }
+  .num { font: 800 34px/1 var(--display); color: var(--clay); padding-top: 2px; font-variant-numeric: tabular-nums; }
+  .stage h3 { font: 700 25px/1.05 var(--display); text-transform: uppercase; margin: 0 0 6px; letter-spacing: .01em; text-wrap: balance; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .chip {
+    font: 600 9px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+    padding: 3px 7px; border: 1px solid var(--hair); color: var(--dim); background: var(--paper);
+  }
+  .chip.sz-s { border-color: var(--win); color: var(--win); }
+  .chip.sz-m { border-color: var(--navy); color: var(--navy); }
+  .chip.sz-l { border-color: var(--clay); color: var(--clay); }
+  .chip.dep { background: transparent; }
+  .chip.first { border-color: var(--win); background: var(--win); color: var(--cream); }
+  .chip.blocked { border-color: var(--clay); background: var(--clay); color: var(--cream); }
+  .chip.new { border-color: var(--gold); color: var(--gold); }
+  .stage p { margin: 0 0 10px; }
+  .stage ul { margin: 0 0 10px; padding-left: 18px; }
+  .stage li { margin-bottom: 5px; }
+  .grew { color: var(--gold); font: 600 9px var(--mono); letter-spacing: .1em; text-transform: uppercase; margin-right: 4px; }
+  .decide { font: 400 14px/1.5 var(--body); background: var(--paper); border-left: 3px solid var(--clay); padding: 8px 12px; margin-top: 8px; }
+  .decide b { font: 600 9px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--clay); display: block; margin-bottom: 2px; }
+  code { font: 500 13px var(--mono); background: var(--faint); padding: 1px 4px; border-radius: 2px; }
+
+  /* Question rows: things waiting on the reporter, not on a build slot. */
+  .q-list { list-style: none; padding: 0; margin: 0; }
+  .q-list > li {
+    display: grid; grid-template-columns: 26px 1fr; gap: 12px;
+    background: var(--paper); border: 1px solid var(--hair); border-left: 4px solid var(--navy);
+    padding: 12px 14px; margin-bottom: 10px; font: 400 15px/1.55 var(--body);
+  }
+  .q-list > li.hot { border-left-color: var(--clay); }
+  .q-list .qm { font: 800 20px/1.2 var(--display); color: var(--navy); }
+  .q-list > li.hot .qm { color: var(--clay); }
+  .q-list b { font: 700 15px var(--body); }
+  .q-list small { display: block; margin-top: 3px; color: var(--dim); font-size: 13.5px; line-height: 1.5; }
+
+  .errands { list-style: none; padding: 0; margin: 0; }
+  .errands > li {
+    display: flex; gap: 10px; align-items: baseline;
+    padding: 9px 2px; border-bottom: 1px solid var(--faint);
+    font: 400 14.5px/1.5 var(--body);
+  }
+  .errands > li:last-child { border-bottom: none; }
+  .errands .tag {
+    flex: none; font: 600 8.5px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+    padding: 2px 6px; border: 1px solid var(--hair); color: var(--dim); background: var(--paper);
+  }
+  .errands .tag.block { border-color: var(--clay); color: var(--clay); }
+  .errands .tag.ship { border-color: var(--win); color: var(--win); }
+
+  .chain { margin: 0 0 20px; padding: 12px 14px; background: var(--paper); border: 1px dashed var(--hair); font: 400 14px/1.5 var(--body); color: var(--dim); }
+  footer.end { margin-top: 40px; padding-top: 18px; border-top: 2px solid var(--ink); font: 400 14px/1.6 var(--body); color: var(--dim); }
+  @media (max-width: 560px) {
+    li.stage { grid-template-columns: 38px 1fr; gap: 12px; }
+    .num { font-size: 26px; }
+    .stage h3 { font-size: 21px; }
+  }
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="kicker">Playball · the outstanding board · September 2 2026, evening</div>
+    <h1>Where it stands</h1>
+    <p class="sub">Everything still open, pulled from the roadmap, the plan's
+    stages, the backlog ledgers (&sect;Q through &sect;T) and the systems
+    reference — one page instead of four documents. If it is not on this board,
+    it shipped or was decided against.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <dl class="decisions">
+    <div class="dec"><dt>Stages shipped</dt><dd class="green">15 of 19</dd></div>
+    <div class="dec"><dt>Tests</dt><dd class="plain">1,053 / 45 files</dd></div>
+    <div class="dec"><dt>Next up</dt><dd>15.5 · The voice</dd></div>
+    <div class="dec"><dt>Waiting on you</dt><dd class="plain">8 decisions</dd></div>
+    <div class="dec"><dt>Branch</dt><dd class="plain">play-batch-2, unpushed</dd></div>
+  </dl>
+
+  <p class="chain"><strong>The recommended order is unchanged:</strong> 15.5
+  before 15 — the copy is a live irritation in play, and the ballpark is polish
+  nothing is blocked on. Stage 16 can interleave with either. 17 waits on the
+  Play Console listing, 18 waits on hardware (or an emulator pass pulled
+  forward), 19 is last by definition.</p>
+
+  <h2 class="section">The four and a half stages left</h2>
+  <ol class="stages">
+
+    <li class="stage">
+      <div class="num">15.5</div>
+      <div>
+        <h3>The voice</h3>
+        <div class="chips"><span class="chip first">Recommended first</span><span class="chip sz-m">Medium</span><span class="chip new">Grew twice Sept 2</span></div>
+        <p>What the game <em>says</em>, all of it.</p>
+        <ul>
+          <li><strong>The writing pass</strong> — roughly a thousand strings against four rules ("name the object, not the system"), weekly-read screens first.</li>
+          <li><strong>The inbox, re-triaged and re-voiced</strong> — a routing rule for needs-you vs inbox vs nothing, and every card rewritten as mail from your assistant. The noise cut folds in.</li>
+          <li><span class="grew">New</span><strong>The assistant watches the wire</strong> — a chair opening anywhere, and a star entering the portal (worded as rumour), each arriving as mail. The rarity knob is priced in 16.</li>
+          <li><strong>The rest of the hidden-secrets scrub</strong> — the two lines named directly went this evening; the full sweep of every rule-reciting caption remains.</li>
+          <li><strong>The recruiting report, learnable</strong> — one line pool per potential letter, ~120 lines of scouting prose. The per-man hash stays; the development bands stay fuzzy.</li>
+        </ul>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">15</div>
+      <div>
+        <h3>The ballpark</h3>
+        <div class="chips"><span class="chip sz-l">Large</span><span class="chip blocked">Blocked on the perf profile</span></div>
+        <p>The park stops being a diagram. Stands, crowd, lighting, school
+        colours in the ground, depth and scale.</p>
+        <ul>
+          <li><strong>Where the nine stand</strong> — fielders own <em>regions</em> instead of nine hand-placed points; fixes the narrow middle infield and the second baseman taking the pitcher's balls in one geometry pass.</li>
+          <li><strong>The play, drawn better</strong> — camera easing and follow, instanced markers, a real 2D/3D toggle, fielder animation beyond running to a point, and <strong>REPLAY</strong> (the events are stored, zero draws — a player over an existing stream).</li>
+          <li><strong>The tournament view, made legible</strong> — carries your postseason redesign: the red next-game box exists; the coloured drop-line through the brackets is still yours to sketch.</li>
+          <li><strong>Park effects as geometry</strong> — the one simulation item; calibration applies, so it lands last.</li>
+        </ul>
+        <div class="decide"><b>Do first, genuinely blocking</b>The throttled performance profile, outstanding since stage 5 — this stage adds geometry, lights and crowd to a scene whose frame rate on mid-range hardware has never been measured.</div>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">16</div>
+      <div>
+        <h3>The simulation's last mile</h3>
+        <div class="chips"><span class="chip sz-m">Medium</span><span class="chip new">Grew twice Sept 2</span></div>
+        <ul>
+          <li><strong>Run-expectancy AI</strong> · <strong>recruits drafted out of high school</strong> · the measurement debt (walk deficit, <code>sim.ts parity</code>, single-sample calibration figures).</li>
+          <li><strong>The portal balance pass</strong> — a 97-overall walked into a one-star window; rarer stars, noisier outcomes, the pool priced against the class.</li>
+          <li><strong>Development arcs</strong> — hidden bust / steady / boom drawn at generation; shown potential becomes a scout's estimate over a floor-to-ceiling band, expressed through play rather than June dice. Re-runs calibration and the climb probes.</li>
+          <li><strong>The team-scouting tendencies screen</strong> — waits on its design conversation (see the questions below).</li>
+          <li><span class="grew">New</span><strong>June injury rolls</strong> — the postseason loop rolls none today; rolling them moves the goldens, which is why only the bracket's injury <em>hold</em> shipped.</li>
+          <li><span class="grew">New</span><strong>The star-portal rarity knob</strong> — a high-overall entry roughly once every five or six seasons, so the wire-watch card reports an event.</li>
+        </ul>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">17</div>
+      <div>
+        <h3>The store</h3>
+        <div class="chips"><span class="chip sz-l">Medium–large</span><span class="chip dep">Needs the Console listing</span></div>
+        <p>The S+ player himself, and Play Billing with purchase, restore,
+        receipt validation and the offline case. Registration and verification
+        are done; the listing is the standing errand.</p>
+        <div class="decide"><b>Design pass before any billing code</b>What the purchase grants — per dynasty, per save, a recruit in your class, or create-a-player; consumable or permanent; and what happens to a dynasty already in progress.</div>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">18</div>
+      <div>
+        <h3>The phone</h3>
+        <div class="chips"><span class="chip sz-s">Small–medium</span><span class="chip dep">No device yet</span></div>
+        <p>Capacitor, an APK on real hardware, the frame-rate measurement,
+        IndexedDB across a force-quit, safe-area insets, the hardware back
+        button. Everything but the frame rate answers on an emulator, so that
+        pass can be pulled forward if the wait runs long.</p>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">19</div>
+      <div>
+        <h3>Ship</h3>
+        <div class="chips"><span class="chip sz-m">Medium</span></div>
+        <p>Onboarding for the first ten minutes · accessibility (focus states)
+        · <strong>remove the test aids</strong> (the loaded Pascagoula Tech
+        roster, and Hans Hood) · Freesound licence verification · keystore
+        generated and backed up · signed AAB, listing, screenshots, privacy
+        policy, content rating · closed beta, then open.</p>
+      </div>
+    </li>
+  </ol>
+
+  <h2 class="section">Waiting on you — decisions before build</h2>
+  <ul class="q-list">
+    <li class="hot"><span class="qm">1</span><div><b>The postseason presentation.</b>
+      <small>Yours to sketch: the red next-game box exists; the coloured drop-line (your path from winners into losers, in your colour) is the live idea. It gets designed before it gets built, and it rides stage 15.</small></div></li>
+    <li class="hot"><span class="qm">2</span><div><b>The depth chart's future.</b>
+      <small>You were considering folding it into the lineup tab entirely. It was parked until the new position grammar had been played with — which, after tonight's reversal, it now has. Ready to settle.</small></div></li>
+    <li><span class="qm">3</span><div><b>The scouting tendencies screen.</b>
+      <small>"They are weak against left handers, they tend to X…" — public-facing reads, so nothing hidden leaks. The design conversation is owed; per-man tendency slots already exist for the report to aggregate.</small></div></li>
+    <li><span class="qm">4</span><div><b>Prestige runs away.</b>
+      <small>Over thirty seasons a handful of programs reach the mid-90s while the median sits in the forties — a property of <code>nextPrestige</code>, not of the drift pass. Is a 94-prestige tier meant to be that reachable?</small></div></li>
+    <li><span class="qm">5</span><div><b>The low-star climb, still open.</b>
+      <small>The August 29 change shipped and measurably did not move it. The unexplored levers include class weight — which touches "the pool of recruits", the item you held for later. The two are probably one conversation.</small></div></li>
+    <li><span class="qm">6</span><div><b>Realignment ignores geography.</b>
+      <small>A run sent Piedmont State to the Pacific. With "the conference is the region" as core fiction, <code>realignmentFor</code> should prefer adjacent regions. Cheap once you say yes.</small></div></li>
+    <li><span class="qm">7</span><div><b>Position changes from the player profile.</b>
+      <small>Agreed in principle on September 1; no design yet.</small></div></li>
+    <li><span class="qm">8</span><div><b>The store's grant.</b>
+      <small>Stage 17's door decision, listed here because it is a decision and not code: what the S+ purchase actually gives, and to whom.</small></div></li>
+  </ul>
+
+  <h2 class="section">Proposed, not agreed</h2>
+  <p class="chain"><strong>The Room</strong> — the locker-room system (derived
+  ties, trust that moves on decisions you already make, four shapes of
+  recurring decision through NEEDS YOU), written up September 1 in answer to
+  <em>"I played many seasons and I just pressed the same buttons."</em> You
+  deferred it the same day, along with the cheaper storyline-engine
+  alternative; NIL was ruled out outright. Both proposals stand if revived —
+  nothing else on this board depends on them.</p>
+
+  <h2 class="section">Standing errands and small debts</h2>
+  <ul class="errands">
+    <li><span class="tag block">Blocking 15</span>The throttled browser performance profile — outstanding since stage 5, now genuinely in the way.</li>
+    <li><span class="tag">Errand</span>The Play Console listing (registration and verification done). Nothing blocked until stage 17.</li>
+    <li><span class="tag ship">Before release</span>Freesound licence verification — CC-BY needs the credit shipped; NC cannot ride with paid IAP.</li>
+    <li><span class="tag ship">Before release</span>The two test aids out together: the loaded Pascagoula Tech roster, and Hans Hood.</li>
+    <li><span class="tag">Debt</span><code>flightRisk</code> is written and read by nothing — stage 10's to claim or delete.</li>
+    <li><span class="tag">Debt</span>Durability ratings — the honest upgrade path if pure-chance injuries read as arbitrary in play.</li>
+    <li><span class="tag">Debt</span>Two-way players, and declining the DH — stage-8 spillover, in the README's not-built table.</li>
+    <li><span class="tag">Verify</span>The 260ms bracket transition to your own game has never been seen by anybody — the preview browser doesn't composite frames. One look on a phone settles it.</li>
+  </ul>
+
+  <footer class="end">
+    <p>Compiled September 2 2026, evening, from <code>01-roadmap.md</code>,
+    <code>05-systems-reference.md</code> (&sect;42–44),
+    <code>06-backlog.md</code> (&sect;Q, &sect;R, &sect;S, &sect;T) and
+    <code>07-v1-plan.md</code>. The rule is the backlog's own: an item leaves
+    this board when it ships. The full stage briefs live on the plan page,
+    <em>Playball to v1.0</em>; everything shipped through tonight is in the
+    reference's &sect;43–44.</p>
+  </footer>
+</div>
