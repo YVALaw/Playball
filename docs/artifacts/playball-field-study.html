@@ -1,0 +1,759 @@
+<title>Playball Field Study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+<style>
+  /* House system, inherited from playball-v1.html. Same navy, same clay, same
+     three faces, so the two artifacts read as siblings on a shelf. One token is
+     new: --flag, an ochre for "gap", because the accent should not double as a
+     severity colour. */
+  :root {
+    --ink: #1c2430; --navy: #223247; --clay: #a8442a;
+    --paper: #fbf7ee; --field: #f2ece0; --cream: #f6f1e6; --dim: #6d7480;
+    --hair: rgba(28, 36, 48, .14); --faint: rgba(28, 36, 48, .09);
+    --win: #3f6f4a; --flag: #8a6512;
+    --display: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', monospace;
+    --body: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #ece7dc; --navy: #9fb3cd; --clay: #d9714f;
+      --paper: #1a212b; --field: #141a22; --cream: #f6f1e6; --dim: #97a0ad;
+      --hair: rgba(236, 231, 220, .16); --faint: rgba(236, 231, 220, .10);
+      --win: #7fb08c; --flag: #d6a745;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #ece7dc; --navy: #9fb3cd; --clay: #d9714f;
+    --paper: #1a212b; --field: #141a22; --cream: #f6f1e6; --dim: #97a0ad;
+    --hair: rgba(236, 231, 220, .16); --faint: rgba(236, 231, 220, .10);
+    --win: #7fb08c; --flag: #d6a745;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--field); color: var(--ink);
+    font: 400 16px/1.62 var(--body); -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px 90px; }
+  a { color: var(--clay); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+
+  /* ---- masthead ---------------------------------------------------------- */
+  header.top {
+    background: #223247;
+    background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 1px, transparent 1px 7px);
+    border-bottom: 4px solid #a8442a;
+    padding: 36px 20px 28px; margin-bottom: 30px;
+  }
+  .top-in { max-width: 880px; margin: 0 auto; }
+  .kicker {
+    font: 600 10px var(--mono); letter-spacing: .22em;
+    color: rgba(246,241,230,.62); text-transform: uppercase; margin: 0;
+  }
+  h1 {
+    font: 800 clamp(38px, 8.4vw, 66px)/0.9 var(--display);
+    text-transform: uppercase; letter-spacing: .012em;
+    color: #f6f1e6; margin: 10px 0 0; text-wrap: balance;
+  }
+  .sub {
+    margin: 12px 0 0; max-width: 58ch;
+    font: 400 15.5px/1.55 var(--body); color: rgba(246,241,230,.78);
+  }
+
+  /* ---- the headline findings strip --------------------------------------- */
+  .findings {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: 1px; background: var(--hair); border: 1px solid var(--hair);
+    margin: 0 0 32px;
+  }
+  .fnd { background: var(--paper); padding: 13px 14px 15px; margin: 0; }
+  .fnd dt {
+    font: 600 9px var(--mono); letter-spacing: .16em;
+    text-transform: uppercase; color: var(--dim);
+  }
+  .fnd dd {
+    margin: 6px 0 0; font: 800 30px/1 var(--display);
+    color: var(--clay); font-variant-numeric: tabular-nums;
+  }
+  .fnd dd span { display: block; font: 400 12.5px/1.3 var(--body); color: var(--ink); margin-top: 5px; }
+
+  /* ---- section furniture ------------------------------------------------- */
+  h2.section {
+    font: 700 12.5px var(--mono); letter-spacing: .18em; text-transform: uppercase;
+    color: var(--dim); border-bottom: 2px solid var(--ink);
+    padding-bottom: 7px; margin: 46px 0 20px;
+  }
+  h2.section b { color: var(--clay); font-weight: 700; }
+  h3 {
+    font: 700 25px/1.08 var(--display); text-transform: uppercase;
+    letter-spacing: .01em; margin: 30px 0 10px; color: var(--ink); text-wrap: balance;
+  }
+  h4 {
+    font: 600 11px var(--mono); letter-spacing: .13em; text-transform: uppercase;
+    color: var(--dim); margin: 22px 0 8px;
+  }
+  p { margin: 0 0 14px; max-width: 66ch; }
+  .lede { font-size: 17.5px; }
+  em.q { font-style: italic; color: var(--ink); }
+
+  /* ---- the pull ---------------------------------------------------------- */
+  .pull {
+    border-left: 5px solid var(--clay); background: var(--paper);
+    padding: 17px 19px 19px; margin: 24px 0;
+  }
+  .pull.quiet { border-left-color: var(--navy); }
+  .pull h4 { margin-top: 0; }
+  .pull p:last-child { margin-bottom: 0; }
+  .pull strong { color: var(--clay); }
+
+  /* ---- archetype cards --------------------------------------------------- */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(232px, 1fr)); gap: 14px; margin: 18px 0 8px; }
+  .card { background: var(--paper); border: 1px solid var(--hair); border-top: 3px solid var(--navy); padding: 14px 15px 16px; }
+  .card.direct { border-top-color: var(--clay); }
+  .card .tag { font: 600 9px var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--dim); }
+  .card h5 { font: 700 19px/1.05 var(--display); text-transform: uppercase; margin: 5px 0 7px; color: var(--ink); }
+  .card p { font-size: 14px; line-height: 1.5; margin: 0 0 9px; max-width: none; }
+  .card p:last-child { margin-bottom: 0; }
+  .card ul { margin: 0; padding-left: 16px; font-size: 13.5px; line-height: 1.5; }
+  .card li { margin-bottom: 4px; }
+
+  /* ---- tables ------------------------------------------------------------ */
+  .scroller { overflow-x: auto; margin: 16px 0 20px; border: 1px solid var(--hair); background: var(--paper); }
+  table { border-collapse: collapse; width: 100%; min-width: 460px; font-size: 14.5px; }
+  th, td { text-align: left; padding: 9px 13px; border-bottom: 1px solid var(--faint); vertical-align: top; }
+  thead th {
+    font: 600 9.5px var(--mono); letter-spacing: .15em; text-transform: uppercase;
+    color: var(--dim); border-bottom: 1.5px solid var(--hair); white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+  td.name { font-weight: 600; }
+  .rate { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+  .rate.hi { color: var(--win); }
+  .rate.lo { color: var(--clay); }
+
+  /* ---- the screen anatomy ------------------------------------------------ */
+  .anatomy { display: grid; grid-template-columns: minmax(200px, 268px) 1fr; gap: 22px; align-items: start; margin: 18px 0 6px; }
+  .phone {
+    border: 2px solid var(--ink); border-radius: 22px; background: var(--paper);
+    padding: 8px; display: grid; gap: 5px;
+  }
+  .band { border: 1px solid var(--hair); background: var(--field); padding: 7px 9px; border-radius: 4px; }
+  .band .bl { font: 600 8.5px var(--mono); letter-spacing: .13em; text-transform: uppercase; color: var(--dim); display: block; }
+  .band .bt { font-size: 12.5px; line-height: 1.35; display: block; margin-top: 2px; }
+  .band.hot { border-color: var(--clay); }
+  .band.hot .bl { color: var(--clay); }
+  .band.primary { background: var(--clay); border-color: var(--clay); text-align: center; }
+  /* --paper, not --cream: cream on the lighter dark-mode clay is a 2.3:1 button
+     label. Paper flips with the theme and stays legible on both clays. */
+  .band.primary .bt { color: var(--paper); font-weight: 700; margin: 0; }
+  .band.grid6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .band.grid6 i {
+    font-style: normal; font: 500 10px var(--mono); text-align: center;
+    border: 1px solid var(--hair); border-radius: 3px; padding: 6px 2px; color: var(--ink);
+  }
+  .band.grid6 i.on { border-color: var(--clay); color: var(--clay); font-weight: 700; }
+  .band.grid6 .bl { grid-column: 1 / -1; }
+  .reads { margin: 0; padding: 0; list-style: none; }
+  .reads li { border-bottom: 1px solid var(--hair); padding: 0 0 12px; margin-bottom: 12px; }
+  .reads li:last-child { border-bottom: none; margin-bottom: 0; }
+  .reads b { display: block; font: 700 16px/1.15 var(--display); text-transform: uppercase; letter-spacing: .01em; color: var(--clay); margin-bottom: 3px; }
+  .reads span { font-size: 14.5px; line-height: 1.5; }
+
+  /* ---- scorecard --------------------------------------------------------- */
+  .score { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 16px; margin: 18px 0 6px; }
+  .col { background: var(--paper); border: 1px solid var(--hair); padding: 15px 16px 17px; }
+  .col > h4 { margin-top: 0; }
+  .col.ahead { border-top: 3px solid var(--win); }
+  .col.gaps { border-top: 3px solid var(--flag); }
+  .col ol, .col ul { margin: 0; padding-left: 17px; font-size: 14.5px; line-height: 1.5; }
+  .col li { margin-bottom: 8px; }
+  .col li:last-child { margin-bottom: 0; }
+  .col li b { color: var(--ink); }
+  .col.ahead li::marker { color: var(--win); }
+  .col.gaps li::marker { color: var(--flag); font-family: var(--mono); font-size: 12px; }
+
+  /* ---- ordered work ------------------------------------------------------ */
+  ol.work { list-style: none; padding: 0; margin: 16px 0 0; counter-reset: w; }
+  ol.work li {
+    display: grid; grid-template-columns: 42px 1fr; gap: 14px; counter-increment: w;
+    padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--hair);
+  }
+  ol.work li:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  ol.work li::before {
+    content: counter(w); font: 800 30px/1 var(--display); color: var(--clay);
+    font-variant-numeric: tabular-nums; padding-top: 2px;
+  }
+  ol.work b { display: block; font: 700 18px/1.1 var(--display); text-transform: uppercase; letter-spacing: .01em; margin-bottom: 3px; }
+  ol.work p { margin: 0; font-size: 14.5px; }
+
+  ul.plain { padding-left: 18px; margin: 0 0 16px; max-width: 66ch; }
+  ul.plain li { margin-bottom: 7px; }
+  code {
+    font: 500 13px var(--mono); background: var(--faint);
+    padding: 1px 5px; border-radius: 3px;
+  }
+
+  footer.src { margin-top: 46px; border-top: 2px solid var(--ink); padding-top: 16px; font-size: 13.5px; color: var(--dim); }
+  footer.src p { max-width: none; }
+  footer.src a { color: var(--clay); }
+
+  @media (max-width: 620px) {
+    .anatomy { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <p class="kicker">Playball · Field study · 2 September 2026</p>
+    <h1>Playball Field Study</h1>
+    <p class="sub">
+      Who else builds a college dynasty for a phone, how they are put together,
+      what their players say in public — and what a 2026 Android device considers
+      table stakes. Read before the port, because the port is the last thing left.
+    </p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <dl class="findings">
+    <div class="fnd">
+      <dt>College baseball dynasties on Android</dt>
+      <dd>0<span>The one good phone competitor is iOS only.</span></dd>
+    </div>
+    <div class="fnd">
+      <dt>Genre's most common complaint</dt>
+      <dd>Saves<span>Freezes, crashes, corruption — in every app in the field.</span></dd>
+    </div>
+    <div class="fnd">
+      <dt>Apps that sell save checkpoints</dt>
+      <dd>2<span>$0.99 to $3.99 for the right not to lose a dynasty.</span></dd>
+    </div>
+    <div class="fnd">
+      <dt>Frame budget at 120&nbsp;Hz</dt>
+      <dd>8.3<span>Milliseconds. 16.7 at 60. Miss it and that is jank.</span></dd>
+    </div>
+  </dl>
+
+  <p class="lede">
+    Playball is fourteen of nineteen stages in, with the whole loop running and no
+    Capacitor project. That is the right moment to look up. This is what is on the
+    shelf we are about to join, and what the platform expects of anything placed
+    there.
+  </p>
+
+  <h2 class="section">Part one <b>·</b> The field</h2>
+
+  <p>
+    There is a real and surprisingly crowded genre here, and almost none of it is
+    baseball. Three shapes recur, and each one is a different bet about what a
+    phone is for.
+  </p>
+
+  <div class="cards">
+    <div class="card direct">
+      <span class="tag">The direct competitor</span>
+      <h5>College Baseball Simulator</h5>
+      <p>
+        iOS only. Free, <strong>4.8 from 112 ratings</strong>, 50.7&nbsp;MB.
+        Recruiting on a budget, a transfer portal, pitch-by-pitch play with live
+        win probability, depth charts, an ABL draft. $3.99 God Mode; checkpoint
+        saves $0.99–$3.99.
+      </p>
+      <p>
+        It is one developer's third app in a year, off the same shell as CFB
+        Simulator (4.8/702) and CBB Simulator. The shell is thin — 47–51&nbsp;MB,
+        English only, iOS&nbsp;18+ — and the whole differentiation is the sport in
+        the title.
+      </p>
+    </div>
+    <div class="card">
+      <span class="tag">Archetype · native list app</span>
+      <h5>Looks like Settings</h5>
+      <p>
+        System font, grouped inset lists, a bottom tab bar, sheets. Cheap to
+        build, instantly legible, completely interchangeable.
+      </p>
+      <ul>
+        <li>Dynasty: College Basketball — 3.8/23</li>
+        <li>College BBALL Coach 2 — 3.7/818</li>
+        <li>College Football: Dynasty Sim — 4.0/590, and it charges $0.99 for dark mode</li>
+        <li>Hardwood Empire, Blue Bloods Basketball</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Archetype · game-styled</span>
+      <h5>Looks like a game</h5>
+      <p>
+        Astonishing Baseball Manager: <strong>4.7 from 2,700 ratings</strong>,
+        238&nbsp;MB, landscape. Dark panels, painted card art, letter-graded
+        attributes as coloured badges, morale and energy meters, player cards as
+        sheets over the standings.
+      </p>
+      <p>
+        An order of magnitude more ratings than any list app. Its top review is a
+        player shouting that it is <em class="q">not</em> pay to play.
+      </p>
+    </div>
+    <div class="card">
+      <span class="tag">Archetype · arcade hybrid</span>
+      <h5>Puts a moment in the middle</h5>
+      <p>
+        Retro Bowl College, Hoop League Tactics, Full Court Rivals. Strip the sim
+        down, hand the player something to do with a thumb. Retro Bowl's thesis —
+        tap to pass, swipe to juke, light management — made it the most played
+        football game on mobile by a distance.
+      </p>
+    </div>
+  </div>
+
+  <div class="pull quiet">
+    <h4>The gap on the shelf</h4>
+    <p>
+      <strong>Nobody has shipped a serious college baseball dynasty on Android.</strong>
+      The nearest thing, <em class="q">College Baseball: Dynasty Builder</em>, is
+      Windows-only on Steam (96% positive of 32 reviews) and its pitch is ours:
+      honest recruiting where the AI plays by the player's rules, prestige tied to
+      school attributes, conference tournaments into regionals into supers into a
+      College World Series.
+    </p>
+  </div>
+
+  <h4>Worth stealing from, outside the sport</h4>
+  <ul class="plain">
+    <li><b>WrestleVerse</b> sells itself as “the depth of TEW, the accessibility of MyGM, mobile-first”, and its headline feature is an <b>Auto Booker</b> that fills a complete show in seconds. A fast path <em>through</em> the depth rather than instead of it. Best idea in the adjacent market.</li>
+    <li><b>Football Chairman Pro</b> — seven divisions from nothing, tiny, and the longest-lived mobile management game there is.</li>
+    <li><b>Basketball Dynasty Manager</b> — markets on “no ads and no in-app purchases” as the feature itself.</li>
+  </ul>
+
+  <h2 class="section">Part two <b>·</b> Architecture</h2>
+
+  <h3>The closest sibling is not a phone game</h3>
+  <p>
+    <b>ZenGM</b> — Basketball GM and its siblings — is a single-player sports
+    management game written entirely in client-side JavaScript, and it independently
+    arrived at the architecture Playball already has.
+  </p>
+  <ul class="plain">
+    <li>The <b>UI runs on the main thread; the game runs in a Worker.</b> Two folders, two globals, messages between them.</li>
+    <li>Data lives in <b>IndexedDB with an in-memory cache on top</b>; the database is only touched for the uncommon case — old seasons, historical stats.</li>
+    <li>The worker is not tidiness. A browser throttles JavaScript in a background tab, so a simulation on the main thread <em>stops when the player looks away.</em></li>
+  </ul>
+  <p>
+    Playball matches it: <code>simWorker.ts</code> behind Comlink,
+    <code>persistence.ts</code> over <code>idb</code>, and the house rule that the
+    engine imports nothing — enforced by a test. That rule is why the engine could
+    be moved onto a worker at all, and it is worth more on a phone than it ever was
+    in a browser tab.
+  </p>
+  <p>
+    The one idea not yet taken is the explicit <b>cache tier</b>. Today the store
+    is the cache and it is large. On a phone the question is not how big state is
+    in memory — it is how much crosses the worker boundary and hits IndexedDB per
+    save, and whether that happens while something is animating.
+  </p>
+
+  <h3>The genre's real failure mode is reliability</h3>
+  <p>
+    Read enough reviews and the same words recur across every app in the field,
+    regardless of engine, price or platform.
+  </p>
+
+  <div class="scroller">
+    <table>
+      <thead>
+        <tr><th>App</th><th class="num">Rating</th><th>What its reviewers report</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="name">OOTP Baseball 27 Go!</td>
+          <td class="num"><span class="rate">4.3 / 46</span></td>
+          <td>Crashes in the inaugural draft; “crashed 3 times in less than 3 hours”; an action button broken on the lineup screen <b>for three years</b>.</td>
+        </tr>
+        <tr>
+          <td class="name">College Baseball Simulator</td>
+          <td class="num"><span class="rate hi">4.8 / 112</span></td>
+          <td>“Gets stuck with the loading bar” — a reviewer calls it unplayable. Prestige climbs too slowly; a whole roster lost after one down year.</td>
+        </tr>
+        <tr>
+          <td class="name">CFB Simulator</td>
+          <td class="num"><span class="rate hi">4.8 / 702</span></td>
+          <td>Interface bugs causing freezes that need a restart; a run of releases fixing save corruption and playoff progression. Accidental swipe-dismiss.</td>
+        </tr>
+        <tr>
+          <td class="name">College BBALL Coach 2</td>
+          <td class="num"><span class="rate lo">3.7 / 818</span></td>
+          <td><b>Saves corrupt after about eight seasons.</b> Missing UI elements block progression. Fired after one year regardless of improvement.</td>
+        </tr>
+        <tr>
+          <td class="name">Dynasty: College Basketball</td>
+          <td class="num"><span class="rate lo">3.8 / 23</span></td>
+          <td>Freezing and crashing, losing progress. NIL offers that will not negotiate.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pull">
+    <h4>The finding of the whole study</h4>
+    <p>
+      Two apps in this genre sell <strong>checkpoint tokens</strong> as an in-app
+      purchase — $0.99 for one, $2.99 for five, up to $3.99. Players are paying
+      real money for the right not to lose a dynasty.
+    </p>
+    <p>
+      Playball has 1,061 tests across 45 files, determinism goldens, calibration as
+      a regression test and a concurrency suite pinning the store's double-press
+      guards. In this market that is not diligence, <strong>it is the product</strong>.
+      Which sets one hard requirement for the port: IndexedDB writes must survive
+      the process being killed. Android <em>will</em> kill a backgrounded WebView,
+      and a half-written save is precisely the corruption those reviews describe.
+    </p>
+  </div>
+
+  <h2 class="section">Part three <b>·</b> The screens, read closely</h2>
+
+  <p>
+    I pulled the direct competitor's store screenshots and read its gameday screen
+    band by band. This is the anatomy, top to bottom on one phone.
+  </p>
+
+  <div class="anatomy">
+    <div class="phone" role="img" aria-label="Diagram of the competitor's gameday screen: a back chevron and stats pill, a sticky two-row scoreboard over state chips, a Last Play sentence card, a diamond with fielders, a two-by-three grid of pitching calls, and a full-width Sim Half button.">
+      <div class="band"><span class="bl">Bar</span><span class="bt">‹ back &nbsp;·&nbsp; <b>Stats</b> pill</span></div>
+      <div class="band hot"><span class="bl">Sticky · scoreboard</span><span class="bt">Laramie 6 &nbsp;·&nbsp; Virginia 14<br>BOT 4 · 1 out · 2–1</span></div>
+      <div class="band"><span class="bl">Last play</span><span class="bt">“Strikeout. Eugene Hwang can't handle a sharp slider.”</span></div>
+      <div class="band"><span class="bl">Diamond</span><span class="bt">Fielders placed · bases lit for runners</span></div>
+      <div class="band grid6 hot">
+        <span class="bl">Your call on the mound</span>
+        <i class="on">Power</i><i>Ground</i><i>Finesse</i>
+        <i>Around</i><i>IBB</i><i>Pen</i>
+      </div>
+      <div class="band primary"><span class="bt">Sim Half</span></div>
+    </div>
+
+    <ul class="reads">
+      <li>
+        <b>State is pinned, not scrolled</b>
+        <span>Score, inning, outs and count never leave the screen. Everything else may move under them.</span>
+      </li>
+      <li>
+        <b>The last event is a sentence</b>
+        <span>Not a diff, not a stat line. One line of plain English in its own card. This is the part Playball's stage 15.5 is already built to beat.</span>
+      </li>
+      <li>
+        <b>The decision is a fixed grid</b>
+        <span>Six tiles that never move between pitches, one wearing a Selected badge. Muscle memory beats a menu.</span>
+      </li>
+      <li>
+        <b>The escape hatch is the biggest button</b>
+        <span>Full-width, under the thumb. CFB Simulator goes further and labels its primary <em class="q">“Suggested: Run”</em> — the game telling a lapsed player what a competent coach would do.</span>
+      </li>
+    </ul>
+  </div>
+
+  <h3>Recruiting is a weekly budget, not a menu</h3>
+  <p>
+    The competitor's recruit screen is two list groups and a header.
+    <b>Weekly Actions</b> — maintain contact, call, attend a game, each with its
+    cost and a done state — sit visually apart from <b>One-Time Actions</b>, because
+    they are different kinds of decision. Then the prospect: stars, position,
+    national rank <code>#248</code>, and <b>Interest 34%</b> on a coloured bar, so
+    a whole board is scannable in one pass. Then a plain key/value list where
+    <b>“Fully Scouted”</b> sits in green among the ratings — the player always knows
+    whether he is reading a fact or a guess.
+  </p>
+  <p>
+    Playball's board is already honest about being vague. This is the interface
+    vocabulary for saying so out loud.
+  </p>
+
+  <h3>The offseason is a wizard with a visible position</h3>
+  <p>
+    Both competitors do the same thing: a hero card in the team's colour, an
+    <b>“Offseason Timeline · Stage 1 of 4”</b> progress bar, the current step and
+    the next one as cards, one primary action. The offseason is where every dynasty
+    game loses people, and everyone has landed on the same answer.
+  </p>
+
+  <h3>What players say is broken</h3>
+  <ul class="plain">
+    <li><b>Depth spread thin reads as depth removed.</b> FM26 Touch redistributed dense screens across more screens; veterans call it exasperating and say vital screens got harder to find. Fewer taps beats fewer things per screen.</li>
+    <li><b>Accidental swipe-dismiss.</b> An interactive dismiss on a screen holding unsaved decisions is a bug with a gesture.</li>
+    <li><b>Comparison that requires navigation.</b> OOTP Go has no filter depth, so comparing two players means opening two profiles — in a game that is entirely about comparing players.</li>
+    <li><b>Settings that do not stick.</b> Same app resets lineups and depth charts after every game.</li>
+    <li><b>Small type, and no pause.</b> Full Court Rivals' two commonest complaints.</li>
+  </ul>
+  <p>
+    Playball found the same class of fault from the other side: absolutely-positioned
+    layers inside iOS momentum scrollers produced five separately-reported bugs from
+    one cause. The lesson generalises. <b>On a phone, the container is the bug.</b>
+  </p>
+
+  <h2 class="section">Part four <b>·</b> What keeps people playing</h2>
+
+  <h3>The loop is recruiting, and everyone knows it</h3>
+  <p>
+    A Football Coach: College Dynasty player describes the whole game as deciding,
+    week by week, whom to pitch, whom to chase hard, whom to give up on and whom to
+    make a late run at — <em class="q">“essentially everything you do besides watching
+    or coaching games.”</em> That game is 95% positive across 1,481 Steam reviews.
+    Recruiting carries because it is the only system where a decision made now pays
+    off in two years and the payoff is a person you named.
+  </p>
+
+  <h3>Emergent narrative is the retention mechanic</h3>
+  <p>
+    Football Manager has no cutscenes. Its text is generated by a web of triggers
+    responding to context, and its players describe decade-long saves where a youth
+    graduate becomes a club legend and then retires. The attachment is the product.
+  </p>
+  <div class="pull">
+    <p>
+      Playball already has more of this machinery than any mobile competitor:
+      signature moments on a man's card, alumni whose professional careers play out
+      and end, a career rivalry ledger, ninety-five named rival coaches with careers
+      of their own, and a pecking order that genuinely moves — six of the top twelve
+      programmes turn over across thirty seasons. <strong>The competition has none of
+      it.</strong> CFB Simulator's answer is a social feed reacting to results;
+      Astonishing's is forty random events.
+    </p>
+    <p>
+      The risk is the mirror image: <strong>a system nobody meets is a system that
+      does not exist.</strong> Each of those needs a surface — a card, a line in an
+      inbox, a page in the record book — or it is engineering we never get paid for.
+    </p>
+  </div>
+
+  <h3>One session shape, not two</h3>
+  <p>
+    The best line in the research is a player on Astonishing Baseball Manager:
+    <em class="q">casual enough to pick up and put down at will, yet deep enough to
+    play for hours.</em> That is a single requirement — <b>every screen must be safe
+    to leave.</b> State persisted, position restored, no modal that punishes a phone
+    call. The counter-example is the PC port: OOTP Go and FM Touch are the deepest
+    things on the platform and their reviews are about friction, because a game
+    designed for a desk is being played in four-minute pieces on a bus.
+  </p>
+
+  <h3>The arc has to be legible, and the punishment fair</h3>
+  <p>
+    The two loudest complaints about the direct competitor are about progression,
+    not features: prestige that barely moves after five winning seasons, and
+    <em class="q">“lost my entire team after one down year despite consistent
+    success.”</em> College BBALL Coach 2 fires coaches after one year regardless of
+    improvement, which makes the rebuild — the fantasy the entire genre sells —
+    unplayable. Both are the same failure: told to build over a decade, judged on a
+    one-season window.
+  </p>
+
+  <h3>Trust is a feature you can print on the listing</h3>
+  <p>
+    Three apps in this field market on it: <em class="q">no ads and no in-app
+    purchases</em>, <em class="q">no microtransactions and no gimmicks</em>,
+    <em class="q">offline, no ads, no account</em>. And the most successful app's top
+    review is a player shouting that it is not pay-to-play. This audience has been
+    burned. Whatever the S+ player and Play Billing turn into, the listing should be
+    able to say plainly what the money does and does not buy — and the game should
+    be complete without it.
+  </p>
+  <p>
+    One more, cheap and repeatable: <b>every review thread on the 4.8-rated
+    competitor has a developer reply under it</b>, including the one-star freeze
+    report. The 3.7-rated app's eight-season save corruption has sat there long
+    enough for several reviewers to find it independently.
+  </p>
+
+  <h4>The numbers to hold ourselves to</h4>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>2026 mobile retention</th><th class="num">D1</th><th class="num">D7</th><th class="num">D30</th></tr></thead>
+      <tbody>
+        <tr><td>Cross-genre median</td><td class="num">≈26%</td><td class="num">—</td><td class="num">—</td></tr>
+        <tr><td>A good profile</td><td class="num">35%</td><td class="num">15%</td><td class="num">5%</td></tr>
+        <tr><td>Top quartile</td><td class="num">40%</td><td class="num">20%</td><td class="num">10%</td></tr>
+        <tr><td>Simulation genre, reported</td><td class="num">45–60%</td><td class="num">—</td><td class="num">20–30%</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    A single-player premium game reads differently from an ad-funded one, but D30 is
+    the number that says whether the dynasty is holding, and it is the one to watch.
+  </p>
+
+  <h2 class="section">Part five <b>·</b> What a 2026 phone expects</h2>
+
+  <p>
+    The second half of the brief: what makes an app feel bought rather than ported.
+    Most of it is measurable.
+  </p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Budget</th><th class="num">Target</th><th>Why it is that number</th></tr></thead>
+      <tbody>
+        <tr><td class="name">Process an input event</td><td class="num">≤ 50 ms</td><td>So the response is visible inside 100 ms.</td></tr>
+        <tr><td class="name">Visible response to a tap</td><td class="num">≤ 100 ms</td><td>Below this, people read it as instant.</td></tr>
+        <tr><td class="name">One animation frame</td><td class="num">16.7 ms</td><td>60 Hz. At 120 Hz it is 8.3 ms.</td></tr>
+        <tr><td class="name">Cold start, p50</td><td class="num">&lt; 1.2 s</td><td>On the target device class, not a flagship.</td></tr>
+        <tr><td class="name">Cold start, p95</td><td class="num">&lt; 2 s</td><td>First-session retention falls off past 2.5 s.</td></tr>
+        <tr><td class="name">Play flags a cold start</td><td class="num">≥ 5 s</td><td>Android vitals calls this excessive.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    Every tap must paint <em>something</em> inside 100 ms even when the work behind
+    it takes a second — which, for a game that simulates a season on a button press,
+    means the button's own state change is the deliverable, not the result.
+  </p>
+
+  <h3>Motion that reads as physical</h3>
+  <p>
+    Material 3 Expressive replaced duration-based animation with a <b>spring</b> —
+    stiffness and damping ratio instead of milliseconds and a curve. Not fashion: a
+    spring can be <b>retargeted mid-flight</b> and the physics solves a new path,
+    which is exactly what a gesture needs when the user changes their mind halfway
+    through a drag. Duration curves cannot do that; they snap.
+  </p>
+  <p>
+    Playball's motion today is duration and cubic-bezier, and it is well chosen —
+    the 220 ms sheet rise, the 260 ms directional bracket swap, one
+    <code>prefers-reduced-motion</code> block that turns all of it off. That is right
+    for everything that is not gesture-driven. <b>The moment anything becomes
+    draggable it needs a spring</b>, or letting go mid-gesture will look wrong in a
+    way nobody can name.
+  </p>
+  <p>
+    And the cheapest large win available: the <b>View Transition API</b> is
+    supported in modern Android WebView, and same-document transitions — the SPA
+    case, which is all of Playball — have been there since Chrome 111. Today
+    <code>.screen-in</code> gives every screen a 260 ms rise, which is good and is
+    also a fade in disguise: the outgoing screen is simply gone. A view transition
+    carries a player's row into his card, or a crest from a schedule row into a
+    scoreboard. That is the difference between navigating and moving.
+  </p>
+
+  <h3>The mechanical checklist</h3>
+  <div class="score">
+    <div class="col">
+      <h4>Touch, scroll, gesture</h4>
+      <ul>
+        <li>Targets <b>≥ 44–48 px</b>. Three quarters of phone touches are a thumb; about half of all use is one-handed.</li>
+        <li>Primary actions in the <b>bottom third</b>. The top corners need a grip change.</li>
+        <li><b>Five bottom tabs maximum</b>, then it collapses into More.</li>
+        <li><code>overscroll-behavior: contain</code> on scrollers, or a pull inside a sheet drags the page behind it.</li>
+        <li><code>-webkit-tap-highlight-color: transparent</code> plus a real pressed state, or every tap flashes a grey rectangle that says “web page”.</li>
+        <li>Never an absolutely-positioned layer inside a momentum scroller. Five bugs, one cause, already paid for.</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h4>Frames and lists</h4>
+      <ul>
+        <li>Animate <b><code>transform</code> and <code>opacity</code> only</b>. Anything else is layout or paint, every frame, on the main thread.</li>
+        <li><code>will-change</code> is a promise you pay for: set it on what is about to move, remove it after.</li>
+        <li>A <b>stable 60 beats an unstable 90–120</b>; <code>requestAnimationFrame</code> in a WebView is commonly still capped at 60 anyway.</li>
+        <li><b>Virtualise past ~100 rows</b>; <code>content-visibility: auto</code> is the one-line version.</li>
+        <li>Put the recruiting board's filter behind React 19's <code>useTransition</code> so the input keeps taking keystrokes while results lag a beat.</li>
+        <li>Hardware acceleration on in the manifest.</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h4>The Android platform work</h4>
+      <ul>
+        <li><b>Target API 36.</b> Play's deadline for updates to target Android 16 landed at the end of August 2026 — it is behind us.</li>
+        <li><b>Edge-to-edge is mandatory and no longer opt-out.</b> Android 16 removed the escape hatch; the WebView draws behind the system bars.</li>
+        <li>Note that <b>WebView below 140 returns wrong <code>env(safe-area-inset-*)</code> values</b>; Capacitor 8.3.2+ exposes what you need to work around it.</li>
+        <li><b>Predictive back</b> (Android 13+): <code>enableOnBackInvokedCallback</code>, and a handler that can show the destination mid-swipe. A back gesture that exits the app from the middle of a recruiting session is the worst bug on this platform.</li>
+        <li><b>Persist on <code>visibilitychange</code></b>, not on a timer. Backgrounded WebViews get killed.</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h4>Feel, sound, first run</h4>
+      <ul>
+        <li><b>Haptics with restraint</b> — meaningful interactions only, immediate, and consistent enough to become vocabulary. A walk-off must not share a buzz with the back button.</li>
+        <li><b>Assume muted.</b> Most mobile play is silent, so sound may never be the only channel for a state change.</li>
+        <li><b>Skeletons over spinners</b> where the layout is known: a skeleton hands the brain the shape that is coming.</li>
+        <li><b>Optimistic UI</b> for anything already known — a lineup, a watchlist, a coaching point. Show it, reconcile after.</li>
+        <li><b>Onboarding by doing</b>, one mechanic at a time, visible milestones, a skip that works. A reviewer of the biggest app in the genre spent money on training without understanding what it did, and said so in the review.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="section">Part six <b>·</b> The scorecard</h2>
+
+  <div class="score">
+    <div class="col ahead">
+      <h4>Already ahead of the field</h4>
+      <ul>
+        <li><b>Reliability.</b> 1,061 tests, determinism goldens, calibration as regression, a concurrency suite. Nothing in the genre is close — and reliability is the genre's defining failure.</li>
+        <li><b>The world.</b> Ninety-five rival coaches with careers, realignment, a rivalry ledger, alumni pro careers, a pecking order that moves. The competition has a social feed.</li>
+        <li><b>Motion.</b> Sheets, screens, directional swaps and one reduced-motion switch — better than every native list app in the field.</li>
+        <li><b>Voice.</b> Stage 15.5 exists at all. Their play-by-play is one sentence per event; ours is meant to be a code worth learning.</li>
+        <li><b>Chrome.</b> A bottom nav that reports a live number under each label is the best navigation idea in this study, and it is ours.</li>
+        <li><b>Safe areas</b>, done before the port. Right order.</li>
+      </ul>
+    </div>
+    <div class="col gaps">
+      <h4>Gaps this study surfaced</h4>
+      <ul>
+        <li><b>No view transitions.</b> Screens arrive; nothing travels.</li>
+        <li><b>Duration-based motion only.</b> Fine today, wrong the moment anything is draggable.</li>
+        <li><b>No virtualisation</b> on lists that are only going to get longer.</li>
+        <li><b>Save durability under process death is unproven</b> — the genre's signature bug, and the one place the suite does not reach.</li>
+        <li><b>No onboarding</b>, against a growing surface of systems.</li>
+        <li><b>Predictive back unhandled</b>, because there is no Android project yet.</li>
+        <li><b>The dynasty's memory has thin surfaces.</b> It all exists in the engine. How often does a player meet it?</li>
+        <li><b>No fast path through the depth.</b> Every successful app here gives a competent default and a way to skip.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="section">Part seven <b>·</b> In this order</h2>
+
+  <ol class="work">
+    <li><div><b>Prove the save survives a kill</b><p>Persist on <code>visibilitychange</code>; write the test that interrupts a write and reopens. This is the moat — verify it rather than assume it.</p></div></li>
+    <li><div><b>Build the fast path</b><p>A coach's recommendation on every decision screen and a one-tap advance that respects it. Depth is not diminished by a default; it is made reachable in four minutes on a bus.</p></div></li>
+    <li><div><b>View transitions</b><p>Row to detail, crest to scoreboard. The cheapest thing on this list that changes how the whole app feels.</p></div></li>
+    <li><div><b>Virtualise the long lists</b><p>Or at minimum <code>content-visibility: auto</code>, and put the recruiting filter behind <code>useTransition</code>.</p></div></li>
+    <li><div><b>Onboarding as a first season</b><p>Not a tutorial. One mechanic per week of the opening schedule, skippable, taught by doing.</p></div></li>
+    <li><div><b>Springs for anything draggable</b><p>When dragging arrives — not before, and not for anything that is not gesture-driven.</p></div></li>
+    <li><div><b>The Android platform pass</b><p>Target 36, predictive back, edge-to-edge against WebView below 140, cold start measured at p50 and p95.</p></div></li>
+    <li><div><b>Surface the memory</b><p>Every system the player does not regularly meet is engineering we have not been paid for yet.</p></div></li>
+  </ol>
+
+  <footer class="src">
+    <p>
+      <b>Sources.</b> Store listings read 2 September 2026; ratings and prices move.
+      App Store: <a href="https://apps.apple.com/us/app/college-baseball-simulator/id6769100129">College Baseball Simulator</a>,
+      <a href="https://apps.apple.com/us/app/cfb-simulator/id6752640167">CFB Simulator</a>,
+      <a href="https://apps.apple.com/us/app/astonishing-baseball-manager/id1611390483">Astonishing Baseball Manager</a>,
+      <a href="https://apps.apple.com/us/app/id1454167983">College BBALL Coach 2</a>,
+      <a href="https://apps.apple.com/us/app/college-football-dynasty-sim/id1501771663">College Football: Dynasty Sim</a>,
+      <a href="https://apps.apple.com/us/app/dynasty-college-basketball/id6760744632">Dynasty: College Basketball</a>,
+      <a href="https://apps.apple.com/app/id6748927847">Full Court Rivals</a>,
+      <a href="https://apps.apple.com/us/app/ootp-baseball-27-go/id6758360195">OOTP Baseball 27 Go!</a>.
+      Genre index: <a href="https://gmgames.org/section/iphone/">GMGames</a>.
+      Steam: <a href="https://store.steampowered.com/app/2151290/Football_Coach_College_Dynasty/">Football Coach: College Dynasty</a>,
+      <a href="https://store.steampowered.com/app/3897330/College_Baseball_Dynasty_Builder/">College Baseball: Dynasty Builder</a>.
+      Architecture: <a href="https://deepwiki.com/zengm-games/zengm">ZenGM</a>.
+      Standards: <a href="https://web.dev/articles/rail">RAIL</a>,
+      <a href="https://developer.android.com/topic/performance/vitals/launch-time">Android startup time</a>,
+      <a href="https://m3.material.io/blog/m3-expressive-motion-theming">M3 Expressive motion</a>,
+      <a href="https://developer.mozilla.org/en-US/docs/Web/API/View_Transition_API">View Transition API</a>,
+      <a href="https://developer.android.com/design/ui/mobile/guides/patterns/predictive-back">predictive back</a>,
+      <a href="https://developer.android.com/develop/ui/views/haptics/haptics-principles">haptics principles</a>,
+      <a href="https://capawesome.io/blog/capacitor-edge-to-edge-and-safe-areas-guide/">Capacitor edge-to-edge</a>.
+      Retention: <a href="https://blog.playio.co/d1-d7-d30-retention-benchmarks-2026">2026 benchmarks</a>.
+    </p>
+    <p>Full working notes, with everything that did not fit, live in <code>docs/10-field-study.md</code>.</p>
+  </footer>
+
+</div>

@@ -64,6 +64,7 @@ baseman injected into every recruiting class to exercise the development curve.
 | [07-v1-plan.md](docs/07-v1-plan.md) | **The staged route to v1.0.** Which stage shipped when, and what each one actually did |
 | [08-handoff.md](docs/08-handoff.md) | Where the last session stopped and what the next one picks up. **Open this first** |
 | [09-beta-audit.md](docs/09-beta-audit.md) | Findings from playing the game rather than reading it |
+| [10-field-study.md](docs/10-field-study.md) | The other mobile college sims, and the platform standards the port has to meet |
 
 ## Run it
 

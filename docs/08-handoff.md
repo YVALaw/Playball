@@ -41,6 +41,7 @@ per stage (the reporter authorized pushing on August 31).
 | `05-systems-reference.md` | What the game does **today**, including the hidden-mechanics index. A feature that shipped moves in here on the same commit. |
 | `01-roadmap.md` | Two-minute view. Its ordered list is now a pointer at `07`. |
 | `artifacts/playball-v1.html` | **The published plan.** Same content as `07`, as a page. See the rule below — it is not optional. |
+| `10-field-study.md` | **The shelf we are joining.** Who else ships a college dynasty for a phone, how it is built, what its reviewers complain about, and the Android numbers the port has to hit. Read before starting stage 16. Published at <https://claude.ai/code/artifact/7a0673b7-a52a-4f1f-bb7d-c495437e5658> from `artifacts/playball-field-study.html`. |
 
 ### The artifact is part of "done"
 
