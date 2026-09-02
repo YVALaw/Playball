@@ -38,7 +38,6 @@ import { Manage } from './screens/Manage.js';
 import { History } from './screens/History.js';
 import { Player } from './screens/Player.js';
 import { Program } from './screens/Program.js';
-import { PressRoom } from './screens/PressRoom.js';
 import { DepthChart } from './screens/DepthChart.js';
 import { Captain } from './screens/Captain.js';
 import { JobMarket } from './screens/JobMarket.js';
@@ -866,7 +865,6 @@ function TableOverlay() {
             are the one layer present in every frame the offseason included, and
             a question raised by the last game of a regional must still be
             answerable once the regular season's nav has gone. */}
-        {overlay === 'press' && <PressRoom />}
         {/* The one of these that does not pin its own header — it is normally
             the second sheet of HISTORY, which does the pinning for it — so it
             gets the scroller the container above deliberately does not have. */}

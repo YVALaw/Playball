@@ -20,7 +20,7 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  BarChartIcon, CheckIcon, Cross1Icon, EyeOpenIcon, IdCardIcon,
+  BarChartIcon, CheckIcon, Cross1Icon, EnvelopeClosedIcon, EyeOpenIcon, IdCardIcon,
   MixerHorizontalIcon, StarIcon,
 } from '@radix-ui/react-icons';
 import { dollars, remaining, SCOUT_COST, SCOUT_DAYS } from '../../engine/economy.js';
@@ -205,7 +205,32 @@ function CollegeActions(
   const season = useDynasty((s) => s.season);
   const userTeam = useDynasty((s) => s.userTeam);
   const scoutsHimself = useDynasty((s) => handles(s.depth, 'scouting'));
-  const [open, setOpen] = useState(false);
+  /*
+    Three states, not a boolean, because closing is a motion now. Reported:
+    "the action button has a nice opening animation but it does not when
+    closing" — `open` flipping to false hit `display: none` on the same
+    frame. CLOSING keeps the popover mounted for one 180ms exit, then a
+    timer lands it. The timer rather than animationend, so reduced motion
+    (which strips the animation) cannot strand the menu mid-state.
+  */
+  const [phase, setPhase] = useState<'closed' | 'open' | 'closing'>('closed');
+  const open = phase === 'open';
+  const requestClose = (): void => {
+    setPhase('closing');
+    window.setTimeout(() => {
+      setPhase((p) => (p === 'closing' ? 'closed' : p));
+    }, 200);
+  };
+
+  /*
+    The letter, moved in off the page — "let's move the write to them button
+    in the colleges overview to the action button." Same rules as the button
+    it replaces: three a season, never the same school twice, word can get
+    back. The outcome of a letter sent this visit lives here.
+  */
+  const approaches = useDynasty((s) => s.approaches);
+  const approach = useDynasty((s) => s.approach);
+  const [said, setSaid] = useState<string | null>(null);
 
   const tracked = watch.programs.includes(abbr);
   const jobPath = watch.jobs.includes(abbr);
@@ -218,7 +243,19 @@ function CollegeActions(
   if (!host) return null;
 
   return createPortal(
-    <aside className={`college-actions-fab${open ? ' open' : ''}`}>
+    <>
+      {/* Tapping anywhere else closes it — asked for beside the exit motion.
+          The scrim sits under the FAB (z 20 against 45), so the menu and its
+          X stay live while everything behind them stands the menu down. */}
+      {open && (
+        <button
+          className="popover-scrim"
+          type="button"
+          aria-label="Close program actions"
+          onClick={requestClose}
+        />
+      )}
+    <aside className={`college-actions-fab${open ? ' open' : ''}${phase === 'closing' ? ' closing' : ''}`}>
       <div className="college-actions-popover" aria-hidden={!open}>
         <div className="player-actions-popover-heading">
           <small>PROGRAM ACTIONS</small>
@@ -240,7 +277,7 @@ function CollegeActions(
             title={comparing ? 'Comparison open' : 'Compare with your club'}
             detail="This program's profile beside your own."
             selected={comparing}
-            onClick={() => { onCompare(); setOpen(false); }}
+            onClick={() => { onCompare(); requestClose(); }}
           />
           {/*
             The scouting desk — stage 11. One report covers the whole roster's
@@ -270,6 +307,32 @@ function CollegeActions(
             selected={jobPath}
             onClick={() => toggleJobWatch(abbr)}
           />
+          <ActionCard
+            icon={<EnvelopeClosedIcon />}
+            title={said !== null ? 'Letter sent'
+              : approaches.interest.includes(index) ? 'They would take the call'
+              : approaches.tried.includes(index) ? 'You wrote to them'
+              : approaches.tried.length >= 3 ? 'Three letters sent'
+              : 'Write to them'}
+            detail={said !== null ? said
+              : approaches.interest.includes(index) ? 'Expect them at the carousel.'
+              : approaches.tried.includes(index) ? 'Once a school a season.'
+              : approaches.tried.length >= 3 ? 'Three a season. You have sent yours.'
+              : 'Three a season, never the same school twice. Word can get back.'}
+            selected={said !== null
+              || approaches.interest.includes(index)
+              || approaches.tried.includes(index)}
+            onClick={() => {
+              if (approaches.tried.includes(index) || approaches.tried.length >= 3) return;
+              const out = approach(index);
+              setSaid(
+                out === 'interested' ? 'They would take the call.'
+                : out === 'caught' ? 'Somebody talked. Your own board has heard about it.'
+                : out === 'ignored' ? 'Nothing came back.'
+                : 'Not this season.',
+              );
+            }}
+          />
         </div>
       </div>
       <button
@@ -277,9 +340,10 @@ function CollegeActions(
         type="button"
         aria-label={open ? 'Close program actions' : 'Program actions'}
         aria-expanded={open}
-        onClick={() => setOpen(!open)}
+        onClick={() => (open ? requestClose() : setPhase('open'))}
       >{open ? <Cross1Icon /> : <MixerHorizontalIcon />}</button>
-    </aside>,
+    </aside>
+    </>,
     host,
   );
 }
@@ -424,7 +488,6 @@ function Overview(
               v={culture.ambition >= 60 ? 'Omaha or nothing'
                 : culture.ambition <= 40 ? 'a winning season' : 'somewhere in between'}
             />
-            {!mine && <Approach team={t.index} />}
           </Panel>
         </>
       )}
@@ -759,82 +822,6 @@ function Results({ t, me, season }: { t: Record_; me: Record_ | null; season: Se
 // college profile was the last screen still wearing the old design, and it
 // looked untouched because it literally was.
 // ---------------------------------------------------------------------------
-
-/**
- * Shooting your shot, on the page you were already looking at.
- *
- * Reported by going to Colleges, opening a school, and finding nowhere to do
- * it. That is the right instinct and the right place: browsing the country and
- * acting on it should be the same gesture rather than two screens.
- *
- * No odds are shown, deliberately. A percentage turns a nerve question into an
- * arithmetic one, and the interesting part of writing to a programme under
- * contract somewhere else is not knowing.
- */
-function Approach({ team }: { team: number }) {
-  const approaches = useDynasty((s) => s.approaches);
-  const approach = useDynasty((s) => s.approach);
-  const [said, setSaid] = useState<string | null>(null);
-
-  const already = approaches.tried.includes(team);
-  const spent = approaches.tried.length >= 3;
-  const bit = approaches.interest.includes(team);
-
-  const line = (): string | null => {
-    if (bit) return 'They would take the call. Expect them at the carousel.';
-    if (already) return 'You have written to them this season.';
-    if (spent) return 'Three letters a season. You have sent yours.';
-    return null;
-  };
-
-  const standing = line();
-
-  return (
-    <div style={{ padding: '9px 10px 10px', borderTop: '1px solid var(--hairline)' }}>
-      {standing ? (
-        <div style={{
-          font: "400 calc(11px * var(--ts))/1.45 var(--body)",
-          color: bit ? 'var(--win)' : 'var(--dim)',
-        }}>{standing}</div>
-      ) : (
-        <button
-          className="tap"
-          onClick={() => {
-            const out = approach(team);
-            setSaid(
-              out === 'interested' ? 'They would take the call.'
-              : out === 'caught' ? 'Somebody talked. Your own board has heard about it.'
-              : out === 'ignored' ? 'Nothing came back.'
-              : 'Not this season.',
-            );
-          }}
-          style={{
-            width: '100%', padding: '9px 10px', minHeight: 40,
-            background: 'var(--paper)',
-            border: '1px solid rgba(var(--ink-rgb), .32)',
-            font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-            color: 'var(--ink)',
-          }}
-        >WRITE TO THEM</button>
-      )}
-      {said && (
-        <div style={{
-          marginTop: 7,
-          font: "400 calc(11px * var(--ts))/1.45 var(--body)",
-          color: /talked/.test(said) ? 'var(--clay)' : 'var(--dim)',
-        }}>{said}</div>
-      )}
-      {!standing && !said && (
-        <div style={{
-          marginTop: 5,
-          font: "400 calc(10px * var(--ts))/1.4 var(--body)", color: 'var(--dim)',
-        }}>
-          Three a season, and never the same school twice. Word can get back.
-        </div>
-      )}
-    </div>
-  );
-}
 
 /**
  * The scouting dossier: the school rather than its players.

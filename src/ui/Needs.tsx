@@ -98,7 +98,6 @@ export function whyOut(man: Player, day: number): string {
 export function useNeeds(): Need[] {
   const team = useUserTeam();
   const season = useDynasty((s) => s.season);
-  const pendingPress = useDynasty((s) => s.pendingPress);
   const openOverlay = useDynasty((s) => s.openOverlay);
   const openPlayer = useDynasty((s) => s.openPlayer);
   const wordsUsed = useDynasty((s) => s.wordsUsed);
@@ -115,20 +114,11 @@ export function useNeeds(): Need[] {
   const day = season.dayIndex;
 
   /*
-    The room. First, because it is the one thing here with a clock on it — a
-    question about a game everybody has just watched stops being worth asking
-    some weeks later.
+    The press card that used to open this list is gone with the press room —
+    "the press questions, we will remove that entirely." The header's history
+    of how the room became an errand stays, because it is the argument for
+    how everything else on this list still works.
   */
-  if (pendingPress) {
-    needs.push({
-      id: 'press',
-      title: 'The press are waiting',
-      note: 'They want a word about what just happened. Nothing you say here is wrong.',
-      must: true,
-      cta: 'GO IN',
-      go: () => openOverlay('press'),
-    });
-  }
 
   /*
     Men in your nine who cannot take the field.

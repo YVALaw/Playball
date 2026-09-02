@@ -83,7 +83,16 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   const version = useDynasty((s) => s.version);
   // A career that asked its staff to decide who sits does not get the button.
   const mine = useDynasty((s) => handles(s.depth, 'redshirts'));
-  const [open, setOpen] = useState(false);
+  // Three states, matching the college FAB: closing is a motion, and the
+  // scrim below stands the menu down from anywhere. See the note there.
+  const [phase, setPhase] = useState<'closed' | 'open' | 'closing'>('closed');
+  const open = phase === 'open';
+  const requestClose = (): void => {
+    setPhase('closing');
+    window.setTimeout(() => {
+      setPhase((p) => (p === 'closing' ? 'closed' : p));
+    }, 200);
+  };
   const [area, setArea] = useState<Area>('room');
   const [target, setTarget] = useState<Position | null>(null);
   void version;
@@ -142,7 +151,16 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   if (!host) return null;
 
   return createPortal(
-    <aside className={`player-actions-fab${open ? ' open' : ''}`}>
+    <>
+      {open && (
+        <button
+          className="popover-scrim"
+          type="button"
+          aria-label="Close player actions"
+          onClick={requestClose}
+        />
+      )}
+    <aside className={`player-actions-fab${open ? ' open' : ''}${phase === 'closing' ? ' closing' : ''}`}>
       <div className="player-actions-popover" aria-hidden={!open}>
         <div className="player-actions-popover-heading">
           <small>PLAYER ACTIONS</small>
@@ -294,12 +312,13 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
         type="button"
         aria-label={open ? 'Close player actions' : 'Player actions'}
         aria-expanded={open}
-        onClick={() => setOpen(!open)}
+        onClick={() => (open ? requestClose() : setPhase('open'))}
       >
         {open ? <Cross1Icon /> : <MixerHorizontalIcon />}
       </button>
       <span className="player-actions-status" aria-hidden="true">{statusLabel}</span>
-    </aside>,
+    </aside>
+    </>,
     host,
   );
 }

@@ -2165,3 +2165,79 @@ here, it either shipped or was decided against.**
 
 - **The Play Console record.** Registration and verification are done; the
   listing is not. Nothing is blocked on it until stage 17.
+
+## S. The second test pass — September 2 2026
+
+A day of side-by-side play against the iOS competitor, from the phone. The
+fixes shipped the same day and are in `05-systems-reference.md` §43; this
+section is the ledger of what was *decided* and parked.
+
+### DECIDED — done this pass
+
+- **The press room is gone.** "The press questions, we will remove that
+  entirely." Engine, data, screen, store slice, needs card, tests. The room's
+  history stays written on NEEDS YOU's header, because how it became an errand
+  is the argument for how the rest of that list works.
+- **The board's number is set in February** and every reader reads the stamp.
+- **A man adopts the slot he takes**, by every persistent route into the nine,
+  and the rail appoints positions.
+
+### DECIDED — waiting on a build slot
+
+- **Team scouting gets a screen of tendencies.** "When we do a scouting the
+  screen comes up with hints for our play — they are weak against left
+  handers, they tend to X, they excel at hitting X type of ball." Tendencies
+  are public-facing reads, so showing them leaks nothing hidden. The design
+  conversation is still owed; the scouting desk already gates who can read
+  what, and per-man tendency slots exist (`engine/tendencies.ts`) for the
+  report to aggregate.
+- **The inbox is re-triaged and re-voiced.** Two halves: a routing rule for
+  what is NEEDS YOU versus inbox versus nothing at all ("we keep getting
+  things that are not that important"), and the cards rewritten to read like
+  mail from your assistant. The noise cut was already folded into stage 15.5;
+  the assistant voice joins it there.
+- **The portal is too generous and too predictable.** A 97-overall walked into
+  a one-star program's window, and the portal reads as a better deal than the
+  recruiting board it shares a budget with. Balance pass: rarer stars, noisier
+  outcomes, and the pool priced against the class.
+- **The hidden secrets leave the surface.** "Remove the minimum star and
+  things like this that explain the user the hidden secrets of the game —
+  these are things they have to discover as they play." A scrub of every
+  string that documents an internal rule (the board's min-prestige line, the
+  reach floor, and their siblings), folded into the 15.5 grammar review. The
+  hidden-mechanics register in `05` says what must never be printed; this adds
+  "or explained in a caption".
+- **Progression grows arcs — the 2K question, answered.** Investigated NBA
+  2K's MyNBA model: until 23 a player carries a potential *band* (floor and
+  ceiling) plus a probability of booming past it, busting under it, or
+  landing between; the band collapses to one number with age. The community's
+  verdict on 2K's version is instructive: good idea, poorly expressed —
+  booming is a coin flip at the roll rather than anything you watch happen.
+  The recommendation for Playball: keep the shown potential as the *scout's
+  estimate* (it already feeds the recruiting letters), add a hidden per-man
+  arc drawn at generation — bust / steady / boom — that reshapes the pull
+  toward a floor-to-ceiling band rather than one number, and let the arc
+  express through play (minutes, habits, culture) rather than as June dice.
+  That last clause is the part 2K got wrong and the part our habits and
+  culture systems are already positioned to get right. Touches the
+  development curve, so it re-runs calibration and the climb probes.
+- **The depth chart is still confusing.** The duplicate door is gone, but the
+  screen itself needs a rethink; parked until the lineup's new position
+  grammar has been played with, since the two overlap.
+- **The recruit board, denser.** "Make the board smaller" — a density pass on
+  the recruit rows and the board's top furniture, to be done against the
+  screen live in an offseason rather than blind.
+- **The postseason presentation.** Still being designed by the reporter. Two
+  facts to design against: YOUR NEXT GAME already sits in the red box
+  (`Postseason.tsx`), and the winners and losers brackets being on screen
+  together is the exact thing that got double elimination thrown out once —
+  `DoubleElimMap`'s one-view-at-a-time is a recorded decision. The proposed
+  coloured drop-line (your path from winners into losers, in your colour) is
+  a genuine new attempt at that old problem, not a revert; it gets designed
+  before it gets built.
+
+### CONFIRMED — already in the ledger
+
+- **The recruiting report, one line pool per potential letter** — asked again
+  this pass ("I mentioned it yesterday, not sure if you added it"); it is in
+  §R under DECIDED and stays there.

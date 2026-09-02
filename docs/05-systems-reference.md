@@ -5328,7 +5328,17 @@ Every fault above typechecked, passed the suite, and would have shipped. Five of
 them were found by measuring a distribution rather than reading the code — and
 three were cases of the majority outcome being treated as an exception.
 
-### 29.8 Piece 8: the press room
+### 29.8 Piece 8: the press room — **REMOVED September 2 2026**
+
+Cut whole, on a one-line verdict from the second play pass: *"the press
+questions, we will remove that entirely."* `engine/press.ts`,
+`data/pressers.ts`, `screens/PressRoom.tsx` and the store's press slice went
+together; the NEEDS YOU card and the `press` overlay went with them. Old saves
+still load — the file format keeps the two fields and the loader drops them.
+The badge-lean answers were the room's one mechanical tie; badges themselves
+are untouched, they simply have one fewer place to land.
+
+The description below is kept as the record of what it was.
 
 Twenty questions across nine triggers (`data/pressers.ts`), selected and priced
 in `engine/press.ts`, raised on the same beat the wire is written.
@@ -6132,6 +6142,47 @@ cabinet on HISTORY, scanned out of the season records the dynasty already keeps.
 
 
 ---
+
+## 43. The second test pass — SHIPPED September 2 2026
+
+Reported from a session of side-by-side play against the iOS competition and a
+day inside the game. Three system changes, the press room's removal (§29.8),
+and a screen batch.
+
+**The board's ask is stamped in February and held.** `boardAsk` in the store:
+computed once when a season opens — at `start`, at the year roll, on taking a
+new chair — with the same drift-corrected `playerBoard` call the review uses,
+and read by the program page, the halfway card and the June review, so the
+promise and the verdict are the same numbers. It rides the save; a save from
+before the stamp freezes once at load. It moved because it was watched moving:
+"it was asking me for 18 wins, now it is saying 19" — the page recomputed from
+the live roster, so the target crept as men developed.
+
+**The nine is a set of nine positions, and a man adopts the slot he takes.**
+Every route into the lineup — `fitTheNine` covers, `swapStarter`, the rail's
+new `assignPosition` — relabels the incoming man with the slot's position, so
+the card can never read two first basemen and no DH again (it did, and the game
+fields BY the label: shares, the outfield test, the DH exclusion). AUTO also
+repairs any broken set from an older save (`healPositions`) and orders the
+rotation best-arm-first with the fourth-best at midweek. `coverFor`, the
+transient in-game substitution, deliberately keeps its labels: mutating a man
+inside a one-night cover would leak permanent changes and move the goldens.
+
+**The rail appoints.** Tap a position, then a man — in the nine or on the
+bench — and he takes that spot; the old holder trades labels or walks to the
+bench wearing his own. A lone rail tap still marks and asks, unchanged.
+
+**And the screens:** transitions hold the outgoing screen opaque underneath
+(the black flash was `--backdrop` showing through a crossfade dip); the tonight
+card carries pitchers beside the crests and its warnings in one red strip; the
+coach portrait wears the unread count; back from the coach sheet closes it;
+awards reveal from a flat overlay button (WebKit hit-tests 3D faces by
+projected quads — only half the card answered on the phone); lineup rows say
+why a man is out; season rows on the player card expand to the full honest
+line and the glove section folded into them; the review gained the board's
+checklist and the season leaders; the recruiting board's filter panel rises
+and its list fades on a filter change; both action FABs animate closed and
+stand down on an outside tap, and the college one carries WRITE TO THEM.
 
 ## Appendix A: stale comments and vestigial code found while writing this
 

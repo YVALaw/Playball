@@ -34,6 +34,7 @@ import {
   freezeRegularSeason, conferenceField, conferenceIds, conferenceTournament,
 } from '../src/engine/postseason.js';
 import { makeRng } from '../src/engine/rng.js';
+import { overallOf } from '../src/engine/ratings.js';
 import { newTeams } from '../src/engine/calibration.js';
 import { simGame } from '../src/engine/game.js';
 import { DEFAULT_STRATEGY } from '../src/engine/strategy.js';
@@ -328,5 +329,50 @@ describe("the board's number is set in February", () => {
     expect(useDynasty.getState().boardAsk).not.toBeNull();
     expect(useDynasty.getState().boardAsk!.targetWins).toBe(before.targetWins);
     expect(useDynasty.getState().boardAsk!.mandate).toBe(before.mandate);
+  });
+});
+
+describe('the nine stays a set of nine positions', () => {
+  /*
+    Reported from play: a hurt DH was covered off the bench by a man still
+    wearing 1B, and the card read two first basemen and no DH. The game fields
+    BY the label — fielding shares, the outfield test, the DH exclusion — so a
+    broken set bends the simulation, not just the screen. The rule is that a
+    man adopts the slot he takes, by every route into the nine.
+  */
+  it('a bench man starting adopts the slot he takes', () => {
+    useDynasty.getState().start(4242, 0);
+    const t = useDynasty.getState().season!.teams[0]!.team;
+    const slotPos = t.lineup[2]!.pos;
+    const benchId = t.bench[0]!.id;
+    expect(useDynasty.getState().swapStarter(2, benchId)).toBe(true);
+    expect(t.lineup[2]!.id).toBe(benchId);
+    expect(t.lineup[2]!.pos).toBe(slotPos);
+    expect(new Set(t.lineup.map((p) => p.pos)).size).toBe(9);
+  });
+
+  it('the rail appointment trades labels inside the nine', () => {
+    useDynasty.getState().start(4242, 0);
+    const t = useDynasty.getState().season!.teams[0]!.team;
+    const man = t.lineup[5]!;
+    const from = man.pos;
+    const holder = t.lineup.find((p) => p.pos === 'C')!;
+    expect(useDynasty.getState().assignPosition(man.id, 'C')).toBe(true);
+    expect(man.pos).toBe('C');
+    expect(holder.pos).toBe(from);
+    expect(new Set(t.lineup.map((p) => p.pos)).size).toBe(9);
+  });
+
+  it('AUTO repairs a card written before the rule, and orders the arms', () => {
+    useDynasty.getState().start(4242, 0);
+    const t = useDynasty.getState().season!.teams[0]!.team;
+    // The reported corruption, made by hand: a duplicate label in the nine.
+    t.lineup[0]!.pos = t.lineup[1]!.pos;
+    // And a rotation deliberately upside down.
+    t.rotation.reverse();
+    useDynasty.getState().autoLineup();
+    expect(new Set(t.lineup.map((p) => p.pos)).size).toBe(9);
+    const ovr = t.rotation.map((p) => overallOf(p));
+    for (let i = 1; i < ovr.length; i++) expect(ovr[i - 1]!).toBeGreaterThanOrEqual(ovr[i]!);
   });
 });

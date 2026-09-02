@@ -6,8 +6,26 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** August 30–31, 2026 · **Branch:** `play-batch-2` · pushed
-per stage (the reporter authorized pushing on August 31).
+**Last session:** September 2, 2026 · **Branch:** `play-batch-2` ·
+**committed locally, deliberately unpushed** — the reporter asked to review
+and test before anything goes up.
+
+> **September 2, in one paragraph.** The reporter played against the iOS
+> competitor and filed twenty-seven items; the session before it produced the
+> field study (`10-field-study.md`) and a batch of adopted craft items. What
+> shipped: the board's ask frozen at February (`boardAsk`), the press room
+> removed whole, positions made a true set with slot adoption and rail
+> appointments, AUTO reworking the rotation, screen transitions that hold the
+> outgoing screen (the black flash was `--backdrop` through a crossfade dip),
+> the tonight card to the reporter's sketch, the confirm grammar
+> (`Confirmable`/`DidButton`), the intro that retires, and a dozen smaller
+> fixes — all in `05` §43 and `06` §S. **The plan artifact was found one
+> session stale and republished** — the Sept 1 repo edit had never been
+> pushed to the URL; check the live copy after every scope change, not the
+> file. Parked with arguments in `06` §S: scouting tendencies, inbox rework,
+> portal balance, hidden-secrets scrub, development arcs (2K-style bands,
+> expressed through play), the recruit board density pass, and the
+> postseason redesign the reporter is still sketching.
 
 > **Read this first if you are picking up after the port.** Stage 10.5 shipped,
 > and it shipped differently than planned: instead of a written rule set, a

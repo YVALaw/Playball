@@ -36,7 +36,7 @@ import { captainOf } from '../../engine/captains.js';
 import { battingAverage, era, inningsPitched } from '../../engine/season.js';
 import { handles } from '../../state/depth.js';
 import { available } from '../../engine/depthChart.js';
-import type { PlayerId } from '../../engine/types.js';
+import type { PlayerId, Position } from '../../engine/types.js';
 import { CaptainC, DidButton, FieldNote, ModuleIntro, Rating, SectionHeading } from '../components/Kit.js';
 import type { Hitter } from '../../engine/types.js';
 
@@ -63,6 +63,7 @@ export function Lineup() {
   */
   const mine = useDynasty((s) => handles(s.depth, 'lineups'));
   const swapStarter = useDynasty((s) => s.swapStarter);
+  const assignPosition = useDynasty((s) => s.assignPosition);
   const moveRotation = useDynasty((s) => s.moveRotation);
   const autoLineup = useDynasty((s) => s.autoLineup);
   const team = useUserTeam();
@@ -74,7 +75,7 @@ export function Lineup() {
   /** Bumped on every auto-deal, so the list re-keys and animates in. */
   const [deal, setDeal] = useState(0);
   /** Which spot on the field the rail is asking about. */
-  const [spot, setSpot] = useState<string | null>(null);
+  const [spot, setSpot] = useState<Position | null>(null);
 
   /*
     The man NEEDS YOU sent you here about.
@@ -137,6 +138,22 @@ export function Lineup() {
 
   const tap = (i: number): void => {
     setPickedArm(null);
+    /*
+      A position on the rail was picked first: this tap assigns the man to
+      that spot rather than starting an order swap. Asked for exactly this
+      way — "when you press on one and then press on the player, the player
+      is assigned to that position... in case someone gets injured and you
+      want your next best player here instead of the one suggested by the
+      engine." The rail used to only mark; now marking is what a lone tap
+      does, and a second tap on a man is the appointment.
+    */
+    if (spot !== null) {
+      const man = order[i];
+      if (man) assignPosition(man.id, spot);
+      setSpot(null);
+      setPicked(null);
+      return;
+    }
     // A bench man was picked first: he takes this batting slot, and the man
     // in it walks to the bench. The other order of the same two taps below.
     if (pickedBench !== null) {
@@ -161,6 +178,16 @@ export function Lineup() {
   */
   const tapBench = (id: PlayerId): void => {
     setPickedArm(null);
+    // The rail grammar reaches the bench too: spot then man, and he comes in
+    // at that spot for whoever held it. Refused (and the spot kept armed) if
+    // he cannot play today, so the note can say why nothing happened.
+    if (spot !== null) {
+      const ok = assignPosition(id, spot);
+      if (ok) setSpot(null);
+      setPickedBench(null);
+      setPicked(null);
+      return;
+    }
     if (picked !== null) {
       swapStarter(picked, id);
       setPicked(null);
@@ -209,8 +236,8 @@ export function Lineup() {
       ? `Now tap the day for ${team.team.rotation[pickedArm]?.name ?? ''} to take.`
     : spot !== null
       ? manAtSpot
-        ? `${manAtSpot.name} is batting ${atSpot + 1} at ${spot}.`
-        : `Nobody in tonight's nine is at ${spot}.`
+        ? `${manAtSpot.name} is at ${spot}, batting ${atSpot + 1}. Tap a man to put him there instead.`
+        : `Nobody in tonight's nine is at ${spot}. Tap a man to put him there.`
       : dealt
         ? 'Order dealt. Tap two spots to fine-tune it.'
         : 'Tap two spots to swap them.';

@@ -22,6 +22,7 @@ import { Avatar } from '../Avatar.js';
 import { rpiOrder, standings, regularRecord } from '../../engine/season.js';
 import { overallOf } from '../../engine/ratings.js';
 import { FINISH_LABEL } from '../../engine/postseason.js';
+import { objectiveMet } from '../../engine/program.js';
 import type { Hitter, PlayerId } from '../../engine/types.js';
 
 export function SeasonReview() {
@@ -32,6 +33,10 @@ export function SeasonReview() {
   const next = useDynasty((s) => s.nextPhase);
   const openPlayer = useDynasty((s) => s.openPlayer);
   const openOverlay = useDynasty((s) => s.openOverlay);
+  // The February stamp and the June outcome — the two ends of the promise the
+  // checklist below settles. Hooks, so they live above the early return.
+  const ask = useDynasty((s) => s.boardAsk);
+  const outcome = useDynasty((s) => s.lastOutcome);
   const team = useUserTeam();
   /*
     Read once and cleared, so the card fires on the season it belongs to.
@@ -92,6 +97,31 @@ export function SeasonReview() {
   }
 
   const delta = review ? review.prestigeAfter - review.prestigeBefore : 0;
+
+  /*
+    The tops of the books, one man per question. Thirty at-bats and ninety
+    outs are the same floors the awards use, so a leader here is a man the
+    line genuinely belongs to rather than whoever went two-for-three once.
+  */
+  const leaders: { id: PlayerId; name: string; line: string; k: string }[] = [];
+  const bats = ([...team.team.lineup, ...team.team.bench] as Hitter[])
+    .map((p) => ({ p, l: season.batting.get(p.id) }))
+    .filter((x): x is { p: Hitter; l: NonNullable<typeof x.l> } => !!x.l && x.l.ab >= 30);
+  const arms = [...team.team.rotation, ...team.team.bullpen]
+    .map((p) => ({ p, l: season.pitching.get(p.id) }))
+    .filter((x): x is { p: (typeof x)['p']; l: NonNullable<typeof x.l> } => !!x.l && x.l.outs >= 90);
+  const bestBat = [...bats].sort((a, b) => b.l.h / b.l.ab - a.l.h / a.l.ab)[0];
+  const bestPow = [...bats].sort((a, b) => b.l.hr - a.l.hr)[0];
+  const bestArm = [...arms].sort((a, b) => a.l.er / a.l.outs - b.l.er / b.l.outs)[0];
+  const bestK = [...arms].sort((a, b) => b.l.k - a.l.k)[0];
+  if (bestBat) leaders.push({ id: bestBat.p.id, name: bestBat.p.name, k: 'AVG', line: `${(bestBat.l.h / bestBat.l.ab).toFixed(3).replace(/^0/, '')} on the year` });
+  if (bestPow && bestPow.l.hr > 0 && bestPow.p.id !== bestBat?.p.id) {
+    leaders.push({ id: bestPow.p.id, name: bestPow.p.name, k: 'HR', line: `${bestPow.l.hr} home runs` });
+  }
+  if (bestArm) leaders.push({ id: bestArm.p.id, name: bestArm.p.name, k: 'ERA', line: `${((bestArm.l.er * 27) / bestArm.l.outs).toFixed(2)} across ${Math.floor(bestArm.l.outs / 3)} innings` });
+  if (bestK && bestK.p.id !== bestArm?.p.id) {
+    leaders.push({ id: bestK.p.id, name: bestK.p.name, k: 'K', line: `${bestK.l.k} strikeouts` });
+  }
 
   // What the year is remembered as. Null for a season that is remembered as
   // nothing, which is most of them.
@@ -219,6 +249,81 @@ export function SeasonReview() {
         }}>
           <strong>{FINISH_LABEL[finish]}</strong>
         </div>
+      )}
+
+      {/*
+        What the board asked in February, box by box — the same stamped
+        checklist the program page showed all season (see `boardAsk`), settled
+        here where the year is judged. Part of the "expand the review" pass:
+        the screen stated conclusions and skipped the terms they were reached
+        on.
+      */}
+      {ask && outcome && (
+        <>
+          <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>
+            WHAT THE BOARD ASKED · {ask.mandate.toUpperCase()}
+          </div>
+          <div style={{
+            padding: '4px 12px', border: '1px solid var(--faint)', background: 'var(--paper)',
+          }}>
+            {ask.objectives.map((o, i) => {
+              const met = objectiveMet(o, outcome);
+              return (
+                <div
+                  key={o.key}
+                  style={{
+                    display: 'flex', justifyContent: 'space-between', gap: 10,
+                    alignItems: 'baseline', padding: '9px 0',
+                    borderBottom: i < ask.objectives.length - 1 ? '1px solid var(--hairline)' : 'none',
+                  }}
+                >
+                  <span style={{ font: "400 calc(12.5px * var(--ts))/1.4 var(--body)" }}>
+                    {o.label}
+                    {!o.required && (
+                      <span style={{ color: 'var(--dim)', font: "400 calc(10px * var(--ts)) var(--body)" }}>
+                        {' '}· stretch
+                      </span>
+                    )}
+                  </span>
+                  <b style={{
+                    flex: 'none',
+                    font: "800 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.1em',
+                    color: met ? 'var(--win)' : 'var(--alert)',
+                  }}>{met ? 'MET' : 'MISSED'}</b>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* The men behind the record — the top of each book, every name a door.
+          Same expansion pass: an MVP alone said who carried it and nothing
+          about who else showed up. */}
+      {leaders.length > 0 && (
+        <>
+          <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>SEASON LEADERS</div>
+          <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+            {leaders.map((l, i) => (
+              <button
+                key={l.id}
+                onClick={() => openPlayer(l.id)}
+                style={{
+                  width: '100%', display: 'flex', gap: 10, alignItems: 'center',
+                  textAlign: 'left', padding: '9px 12px', background: 'transparent',
+                  borderBottom: i < leaders.length - 1 ? '1px solid var(--hairline)' : 'none',
+                }}
+              >
+                <Avatar id={l.id} team={team.def.abbr} size={30} />
+                <span style={{ minWidth: 0, flex: 1 }}>
+                  <span style={{ display: 'block', font: "700 calc(12.5px * var(--ts))/1.2 var(--body)" }}>{l.name}</span>
+                  <span style={{ display: 'block', font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>{l.line}</span>
+                </span>
+                <span className="label" style={{ flex: 'none' }}>{l.k}</span>
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
       {mvp && (

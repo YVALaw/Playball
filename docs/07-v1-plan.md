@@ -418,7 +418,11 @@ sweep, dial.
 **Culture also drifts.** A school that keeps failing grows impatient; a new
 athletic director arrives with different ideas.
 
-### Piece 8 · Press conferences — **SHIPPED**
+### Piece 8 · Press conferences — **SHIPPED, then REMOVED September 2 2026**
+
+Cut whole on the second test pass — "the press questions, we will remove that
+entirely." The record of what it was stays below and in `05` §29.8; the badge
+leans it exercised lost one stage, not their meaning.
 
 Five to eight a season, only after something real, each reading your badges and
 moving prestige, morale and how recruits see you. **The pool waits** until the
@@ -962,6 +966,11 @@ four-year-old Android, which is the question the profile exists to answer.
 
 Two pieces, and they are the same piece: what the game *says*.
 
+**Grew on September 2 2026:** the hidden-secrets scrub (every caption that
+explains an internal rule — the minimum-star line and its siblings — goes;
+discovery is the game), and the inbox re-voiced as mail from your assistant,
+riding the noise cut that was already here. The ledger is `06` §S.
+
 ### Everything it says
 
 Reported after a long session, and it is the fairest criticism the project has
@@ -1038,6 +1047,13 @@ recruiting report is worth studying.
 
 Run-expectancy AI · recruits drafted out of high school · the measurement debt
 (the walk deficit, `sim.ts parity`, single-sample calibration figures).
+
+**Grew on September 2 2026** (argued in `06` §S): the portal balance pass (a
+97-overall walked into a one-star window), development arcs — a hidden
+bust/steady/boom drawn at generation that turns the shown potential into a
+scout's estimate over a floor-to-ceiling band, expressed through play rather
+than as June dice — and the team-scouting tendencies screen, once its design
+conversation has happened.
 
 *Park effects, camera easing, instanced markers and the 2D/3D toggle moved out
 of here into stage 15, where the rest of the park work lives.*

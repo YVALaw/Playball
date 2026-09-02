@@ -205,16 +205,11 @@ import type { Region } from '../data/schools.js';
 import type { CultureEdge } from '../data/cultures.js';
 import { note, earnedBadges, type HabitKey } from '../engine/habits.js';
 import {
-  shouldAsk, pickPresser, settlePress, notePress, clearPress,
-  type PressState,
-} from '../engine/press.js';
-import { PRESSERS, type Presser, type PressTrigger, type PressAnswer } from '../data/pressers.js';
-import {
   openPortal, makeTheCase as portalCase, releaseFrom, signFromPortal, staffWorksPortal,
   type PortalMan,
 } from '../engine/portal.js';
 import {
-  chartFor, depthAt, reorder, squad, available, promotions, SPOTS, fitTheNine,
+  chartFor, depthAt, reorder, squad, available, promotions, SPOTS, fitTheNine, healPositions,
 } from '../engine/depthChart.js';
 import {
   gradesOf, standing, failsThisWeek, suspend, haveAWord, driftGrades,
@@ -261,7 +256,7 @@ export type SettingsPage = 'index' | 'display' | 'sound' | 'play';
 
 export type Overlay =
   'schedule' | 'standings' | 'rankings' | 'saves' | 'inbox' | 'program' | 'book'
-  | 'settings' | 'depth' | 'press' | 'captain' | 'jobs';
+  | 'settings' | 'depth' | 'captain' | 'jobs';
 
 /** The three tabs of the program page, which is addressable from the inbox. */
 export type ProgramSheet = 'board' | 'money' | 'watchlist' | 'coach' | 'hall';
@@ -366,13 +361,27 @@ function crossfade(run: () => void): void {
       */
       setTimeout(finish, 100);
     });
-  }) as { finished?: Promise<unknown> } | undefined;
+  }) as {
+    finished?: Promise<unknown>;
+    ready?: Promise<unknown>;
+    updateCallbackDone?: Promise<unknown>;
+  } | undefined;
 
   // `finished` resolves when the animation ends and rejects if it is skipped —
   // a second navigation landing on top of this one, which is a thing a thumb
   // does. Either way the attribute comes off, and the timer covers the case
   // where neither ever settles.
   if (t?.finished) void t.finished.then(done, done);
+  /*
+    And the other two promises are swallowed on purpose. A transition started
+    while the document is hidden aborts with InvalidStateError, and the
+    rejection lands on `ready` — a promise nothing here ever needed — as an
+    uncaught error in the console, once per navigation, every time the app is
+    driven in the background. The navigation itself is fine: `run()` already
+    happened. Found by navigating a hidden pane and watching the console fill.
+  */
+  t?.ready?.catch(() => {});
+  t?.updateCallbackDone?.catch(() => {});
   setTimeout(done, 600);
 }
 
@@ -749,8 +758,6 @@ export interface DynastyStore {
     mid-question must come back to the same one -- which it does, since the
     question is derived rather than drawn. See `engine/press.ts`.
   */
-  press: PressState;
-  pendingPress: { presser: Presser; trigger: PressTrigger } | null;
 
   /*
     Stage 8. The roster, as something you manage rather than read.
@@ -796,10 +803,6 @@ export interface DynastyStore {
   keepFromPortal: (id: PlayerId, offer: number) => boolean;
   /** Sign somebody else's. */
   takeFromPortal: (id: PlayerId) => boolean;
-  /** Say it, take what it costs, and close the room. */
-  answerPress: (answer: PressAnswer) => void;
-  /** Walk out without answering. Costs nothing; the question is spent. */
-  duckPress: () => void;
 
   /**
    * Begin a dynasty. Pass a team index to choose the job, and the profile the
@@ -1055,6 +1058,17 @@ export interface DynastyStore {
    * the incoming man cannot play today.
    */
   swapStarter: (slot: number, benchId: PlayerId) => boolean;
+  /**
+   * Put this man at this position, tonight and until somebody else takes it.
+   *
+   * The rail's second job — asked for as: "when you press on one and then
+   * press on the player, the player is assigned to that position... in case
+   * someone gets injured and you want your next best player here instead of
+   * the one suggested by the engine." A man already in the nine trades labels
+   * with the spot's holder; a bench man comes in for him. Returns false when
+   * the man cannot play today.
+   */
+  assignPosition: (id: PlayerId, pos: Position) => boolean;
   /** Move a starter up or down the weekend rotation. */
   moveRotation: (index: number, delta: number) => void;
   /**
@@ -1710,94 +1724,6 @@ const RUN_MARKS: readonly { at: number; won: boolean; title: string }[] = [
   Returns the first thing worth asking about, most important first: a season
   ending outranks a trophy outranks a run outranks one night's result.
 */
-function pressTriggerFor(store: DynastyStore): PressTrigger | null {
-  const { season, userTeam, coach } = store;
-  const me = season?.teams[userTeam];
-  if (!season || !me) return null;
-
-  // The letter got out. Once, and only while it is still news.
-  if (coach.caughtLooking) return 'caughtLooking';
-
-  const post = store.lastPostseason;
-  if (post) {
-    if (post.champion === userTeam
-      || post.regionChampions.includes(userTeam)
-      || post.conferenceChampions.includes(userTeam)) return 'trophy';
-    return 'knockedOut';
-  }
-
-  // A run, which the board and the room both notice at different lengths.
-  if (me.streak <= -4) return 'losingStreak';
-  if (me.streak >= 6) return 'winningStreak';
-
-  /*
-    One night against the odds, in either direction.
-
-    Read off prestige rather than off the RPI table, because the table moves all
-    year and the question is about who those two programs *are*. Twenty points
-    is roughly two stars, which is the gap where a result stops being a result
-    and starts being a story.
-  */
-  const last = season.results[season.results.length - 1];
-  if (last && (last.home === userTeam || last.away === userTeam)) {
-    const iAmHome = last.home === userTeam;
-    const themIndex = iAmHome ? last.away : last.home;
-    const them = season.teams[themIndex];
-    if (them) {
-      const iWon = iAmHome ? last.homeRuns > last.awayRuns : last.awayRuns > last.homeRuns;
-      const gap = them.prestige - me.prestige;
-      if (iWon && gap >= 20) return 'bigWin';
-      if (!iWon && gap <= -20) return 'badLoss';
-    }
-  }
-  return null;
-}
-
-/**
- * The one worth raising, if the season has earned it and the coach is not sick
- * of them yet.
- *
- * Returns it rather than writing it. The first version assigned straight onto
- * the store the way `seasonNews` appends to the inbox, which reads naturally
- * and does nothing: a plain field assignment is not a `set`, so the question
- * existed in state and no screen ever heard about it.
- */
-function pressToRaise(store: DynastyStore): { presser: Presser; trigger: PressTrigger } | null {
-  if (store.pendingPress) return null;
-  /*
-    What this coach has said he wants to be asked.
-
-    `depth.ts` has carried a `pressers` key since the mode was designed --
-    "your sports information director speaks for you" -- and piece 8 shipped
-    without consulting it, which is the one rule the depth mode is not allowed
-    to break in either direction. The engine still models everything: the
-    season raises exactly the same triggers, and a casual career simply is not
-    stopped to answer for them.
-  */
-  if (!handles(store.depth, 'pressers')) return null;
-  const { season, userTeam } = store;
-  const me = season?.teams[userTeam];
-  if (!season || !me) return null;
-  const trigger = pressTriggerFor(store);
-  if (!trigger) return null;
-  if (!shouldAsk(store.press, { trigger, gamesPlayed: me.gp })) return null;
-  /*
-    Mixed with the man's own name, so a second dynasty is not asked the same
-    questions in the same order as the first.
-
-    `WORLD_SEED` alone is what `earnedBadges` uses and it is the same number in
-    every career, which is fine for a threshold nobody sees and wrong for a
-    question the player reads. Cheap, derived, and it takes no draw.
-  */
-  let careerish = WORLD_SEED >>> 0;
-  for (let i = 0; i < store.coach.name.length; i++) {
-    careerish = Math.imul(careerish ^ store.coach.name.charCodeAt(i), 16777619) >>> 0;
-  }
-  const presser = pickPresser(trigger, store.press, careerish, store.year);
-  if (!presser) return null;
-  return { presser, trigger };
-}
-
 /*
   The classroom's news, read off what the season already did.
 
@@ -2035,21 +1961,6 @@ let simGeneration = 0;
  * report.
  */
 let saveTicket = 0;
-
-/**
- * The open question, back from a save.
- *
- * By id, so a rewritten pool does not strand a career on a sentence that no
- * longer exists -- an unknown id simply comes back as no question pending,
- * which costs the player one presser and nothing else.
- */
-function restorePending(raw: unknown): { presser: Presser; trigger: PressTrigger } | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const { id, trigger } = raw as { id?: unknown; trigger?: unknown };
-  if (typeof id !== 'string' || typeof trigger !== 'string') return null;
-  const presser = PRESSERS.find((p) => p.id === id);
-  return presser ? { presser, trigger: trigger as PressTrigger } : null;
-}
 
 export const useDynasty = create<DynastyStore>((set, get) => ({
   season: null,
@@ -3526,10 +3437,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           review, and a man should not be tried twice for the same letter.
         */
         approaches: { tried: [], interest: [] },
-        // Eight a season means eight *this* season. The ids reset with it, so
-        // next year may ask a question this one already used.
-        press: clearPress(),
-        pendingPress: null,
         // Four conversations a season means four *this* season.
         wordsUsed: 0,
         // Last winter's announcements, cleared with everything else. The action
@@ -3642,8 +3549,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   clearReview: () => set({ lastReview: null }),
   inbox: [],
   post: (item) => set({ inbox: push(get().inbox, newItem(item)) }),
-  press: {},
-  pendingPress: null,
   portal: null,
 
   keepFromPortal: (id, offer) => {
@@ -3847,97 +3752,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     win his way past it -- and a season of pressers is a personality, not a
     second career ladder.
   */
-  answerPress: (answer) => {
-    const { pendingPress, coach, season, userTeam, version } = get();
-    if (!pendingPress) return;
-    const me = season?.teams[userTeam];
-    const out = settlePress(answer, coach.badges ?? []);
-    /*
-      A receipt, because this was the one decision in the game that did not
-      leave one.
-
-      Found in audit: answering moved prestige and security and closed the
-      overlay in the same breath, so the room simply vanished and nothing
-      anywhere told the coach what he had just bought or spent. Every other
-      consequential action in the game posts a card — a word with a man, a
-      captaincy, a signing — and this is the loudest of them.
-
-      The direction is named and the numbers are not, which is the same rule
-      the board's own verdict follows: a coach knows how a press conference
-      went, he does not know it went 3.
-    */
-    const moved = out.prestige === 0 && out.security === 0
-      ? 'It will not have changed anybody\'s mind.'
-      : [
-        out.prestige > 0 ? 'Your name is worth a little more this morning.'
-          : out.prestige < 0 ? 'It cost you something with the people who write about you.' : '',
-        out.security > 0 ? 'The board liked hearing it.'
-          : out.security < 0 ? 'The board did not enjoy reading it.' : '',
-      ].filter(Boolean).join(' ');
-    get().post({
-      kind: 'season', year: get().year,
-      key: `press-${pendingPress.presser.id}-${me?.gp ?? 0}`,
-      title: 'You faced the press',
-      body: `"${answer.text}" ${moved}`,
-    });
-    set({
-      coach: {
-        ...coach,
-        // NaN slides through a clamp untouched; a finite floor does not.
-        prestige: Math.max(0, Math.min(100,
-          (Number.isFinite(coach.prestige) ? coach.prestige : 40) + out.prestige)),
-        security: Math.max(0, Math.min(100,
-          (Number.isFinite(coach.security) ? coach.security : 55) + out.security)),
-        // Answering it is the end of it. A man tried twice for the same letter
-        // is the fault the board review already refuses to commit.
-        caughtLooking: false,
-      },
-      press: notePress(get().press, pendingPress.presser.id, me?.gp ?? 0),
-      pendingPress: null,
-      // The room is an overlay now, so answering it has to close it. Without
-      // this the question is spent and the player is left looking at the
-      // screen that asked it, with nothing on it.
-      overlay: null,
-      version: version + 1,
-    });
-    void get().saveNow();
-  },
-
-  duckPress: () => {
-    const { pendingPress, coach, season, userTeam, version } = get();
-    if (!pendingPress) return;
-    // Saying nothing is still an answer, and it still gets a line in the
-    // record — see the note in `answerPress`.
-    get().post({
-      kind: 'season', year: get().year,
-      key: `press-duck-${pendingPress.presser.id}-${season?.teams[userTeam]?.gp ?? 0}`,
-      title: 'You said nothing to the press',
-      body: 'No quote, no cost. The room will ask somebody else, and it will '
-        + 'ask you again.',
-    });
-    // Saying nothing costs nothing and spends the question. It is a real
-    // option: a coach who does not want to answer tonight should be able not
-    // to, and the room moves on to somebody who will.
-    set({
-      coach: { ...coach, caughtLooking: false },
-      press: notePress(get().press, pendingPress.presser.id, season?.teams[userTeam]?.gp ?? 0),
-      pendingPress: null,
-      overlay: null,
-      version: version + 1,
-    });
-    void get().saveNow();
-  },
-
   noteSeasonNews: () => {
     const before = get().inbox;
     classroomNews(get());
     trainerNews(get());
     recoveryNews(get());
     seasonNews(get());
-    // On the same beat the wire is written, because both answer the same
-    // question -- what just happened that is worth telling you about.
-    const raised = pressToRaise(get());
-    if (raised) set({ pendingPress: raised });
     // One version bump for the whole scan rather than one per card, and none at
     // all when there was nothing to say — every caller is already re-rendering
     // for its own reasons and a scan that finds nothing must not add a frame.
@@ -5187,8 +5007,69 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // A man who cannot play cannot be started — refusing here is the whole
     // point of the manual-cover rule.
     if (!available(inMan, season.dayIndex)) return false;
+    // He adopts the slot he takes, so the nine stays a set of nine positions.
+    // Same rule as fitTheNine, and the note there carries the argument.
+    if (inMan.pos !== out.pos) inMan.pos = out.pos;
     team.lineup[slot] = inMan;
     team.bench[bIdx] = out;
+    set({ version: version + 1 });
+    void get().saveNow();
+    return true;
+  },
+
+  assignPosition: (id, pos) => {
+    const { season, userTeam, version } = get();
+    const team = season?.teams[userTeam]?.team;
+    if (!season || !team || get().busy) return false;
+    const day = season.dayIndex;
+    const holder = team.lineup.findIndex((p) => p.pos === pos);
+
+    const inLineup = team.lineup.findIndex((p) => p.id === id);
+    if (inLineup >= 0) {
+      // Two men already in the nine trade labels, batting order untouched —
+      // a substitution is not a reason to rewrite the card, and neither is
+      // this. If nobody held the spot the set was broken, and he heals it.
+      const man = team.lineup[inLineup]!;
+      if (holder === inLineup) return true;
+      if (holder >= 0) team.lineup[holder]!.pos = man.pos;
+      man.pos = pos;
+      set({ version: version + 1 });
+      void get().saveNow();
+      return true;
+    }
+
+    const bIdx = team.bench.findIndex((p) => p.id === id);
+    const man = team.bench[bIdx];
+    if (!man || !available(man, day)) return false;
+    if (holder >= 0) {
+      // A bench man takes the spot: its holder walks to the bench wearing his
+      // own label, and the man coming in adopts the slot — the same rule
+      // every other route into the nine follows.
+      const out = team.lineup[holder]!;
+      team.lineup[holder] = man;
+      team.bench[bIdx] = out;
+      man.pos = pos;
+      set({ version: version + 1 });
+      void get().saveNow();
+      return true;
+    }
+    /*
+      Nobody holds the spot, so the set is broken — a card from before covers
+      adopted their slots. Somebody in the nine is wearing a duplicate; he is
+      the one displaced, which makes this gesture the manual repair for
+      exactly the two-first-basemen card that was reported.
+    */
+    const seen = new Set<string>();
+    const dupe = team.lineup.findIndex((p) => {
+      if (seen.has(p.pos)) return true;
+      seen.add(p.pos);
+      return false;
+    });
+    if (dupe < 0) return false;
+    const out = team.lineup[dupe]!;
+    team.lineup[dupe] = man;
+    team.bench[bIdx] = out;
+    man.pos = pos;
     set({ version: version + 1 });
     void get().saveNow();
     return true;
@@ -5240,11 +5121,29 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       team.lineup.splice(0, team.lineup.length, ...fit.lineup);
       team.bench.splice(0, team.bench.length, ...fit.bench);
     }
+    // Cards written before covers adopted their slots can carry a duplicate —
+    // the reported one was two first basemen and no DH. AUTO is the button
+    // that promises a sound card, so it repairs the set as part of the deal.
+    healPositions(team.lineup);
     const dealt = autoBattingOrder(team.lineup);
     // Same nine or nothing. The helper only reorders, but the invariant is
     // cheap to hold at the door and a corrupted lineup is a corrupted season.
     if (dealt.length !== team.lineup.length) return;
     team.lineup.splice(0, team.lineup.length, ...dealt);
+    /*
+      And the rotation, in the same press — asked for directly: "when hitting
+      auto lineup it should also automatically rework the pitching rotation."
+      Best arm takes Friday, the weekend follows in order, and the fourth-best
+      gets the midweek start, which is what the slot labels have always meant.
+      Available arms first, so a hurt ace does not hold Friday from the bench.
+    */
+    const day = season?.dayIndex ?? 0;
+    team.rotation.sort((a, b) => {
+      const fitA = available(a, day) ? 1 : 0;
+      const fitB = available(b, day) ? 1 : 0;
+      if (fitA !== fitB) return fitB - fitA;
+      return overallOf(b) - overallOf(a);
+    });
     set({ version: version + 1 });
     void get().saveNow();
   },
@@ -5440,10 +5339,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           without stranding a save on a version of a sentence.
         */
         wordsUsed: get().wordsUsed,
-        press: get().press,
-        pendingPress: get().pendingPress
-          ? { id: get().pendingPress!.presser.id, trigger: get().pendingPress!.trigger }
-          : null,
       });
       if (ticket === saveTicket) set({ saveState: 'saved' });
     } catch (e) {
@@ -5591,8 +5486,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // The season's press so far, and the question that was open. A save from
       // before any of this has neither, which is a coach nobody has asked
       // anything yet -- the correct starting state rather than a crash.
-      press: (loaded.press ?? {}) as PressState,
-      pendingPress: restorePending(loaded.pendingPress),
       wordsUsed: typeof loaded.wordsUsed === 'number' ? loaded.wordsUsed : 0,
       jobSearch,
       offers,

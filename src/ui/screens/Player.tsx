@@ -39,7 +39,7 @@ import { Avatar, teamColour } from '../Avatar.js';
 import { SewingPinIcon } from '@radix-ui/react-icons';
 import { captainOf } from '../../engine/captains.js';
 import { handles } from '../../state/depth.js';
-import { proCareer } from '../../engine/legacy.js';
+import { proCareer, type Moment } from '../../engine/legacy.js';
 import {
   CaptainC, DataTable, FieldNote, Metric, ModuleIntro, SectionHeading, Segmented,
 } from '../components/Kit.js';
@@ -951,14 +951,42 @@ function SignatureMoments({ id }: { id: string }) {
   const season = useDynasty((s) => s.season);
   const moments = season?.moments?.[id] ?? [];
   if (moments.length === 0) return null;
+
+  /*
+    One night per kind of night — the best of it.
+
+    Reported with an example: a pitcher listed four strikeout games, 13, 14,
+    15 and the 16. "We should just keep there the greater, so there is space
+    for other things without filling this with same achievements." The store
+    keeps them all (the cap there is about memory, not taste); the shrine
+    shows the one worth the shelf.
+
+    Which one is "the greater": the biggest number in the line, then a June
+    night over a regular one, then the later night — walk-offs and no-hitters
+    have no magnitude, so for those the tiebreaks are the whole rule.
+  */
+  const magnitude = (m: Moment): number => Number(m.line.match(/\d+/)?.[0] ?? 0);
+  const best = new Map<Moment['kind'], Moment>();
+  for (const m of moments) {
+    const cur = best.get(m.kind);
+    if (!cur) { best.set(m.kind, m); continue; }
+    const keep =
+      magnitude(m) !== magnitude(cur) ? magnitude(m) > magnitude(cur)
+      : (m.postseason ?? false) !== (cur.postseason ?? false) ? (m.postseason ?? false)
+      : m.year !== cur.year ? m.year > cur.year
+      : m.day > cur.day;
+    if (keep) best.set(m.kind, m);
+  }
+  const shown = [...best.values()].sort((a, b) => a.year - b.year || a.day - b.day);
+
   return (
     <>
       <SectionHeading
         kicker="SIGNATURE MOMENTS"
-        title={moments.length === 1 ? 'One night' : `${moments.length} nights`}
+        title={shown.length === 1 ? 'One night' : `${shown.length} nights`}
       />
       <section className="timeline moment-timeline">
-        {moments.map((m, i) => (
+        {shown.map((m, i) => (
           <div key={`${m.year}-${m.day}-${i}`}>
             <b>{m.year}</b>
             <span>
@@ -1083,7 +1111,10 @@ function ThisSeason({ p }: { p: AnyPlayer }) {
       </section>
 
       <InJune p={p} />
-      <Fielding p={p} />
+      {/* The glove section left this tab by request — "remove the in the
+          field with the glove section" — its numbers fold into each season's
+          expanded row instead, where the season by season list shows the
+          whole line on a tap. */}
     </>
   );
 }
@@ -1164,94 +1195,6 @@ function InJune({ p }: { p: AnyPlayer }) {
             : `${tournaments} postseasons.`}
         </div>
       </Panel>
-    </>
-  );
-}
-
-/**
- * The glove's half of the season, and the one number on this card that cannot be
- * printed on its own.
- *
- * Plays above average is a redistribution against a fielder's own teammates, and
- * an error is a play not made — so the league itself sits *below* zero, at about
- * one play a game per team. A bare "−3" next to every man in the country would
- * tell nine players out of ten that they are bad defenders, which is not what the
- * number says. What it says is where he stands among the other gloves, so that is
- * what the card leads with: his rate per hundred chances, the league's own rate
- * beside it in the same units, and his rank among everyone who has fielded
- * enough to be ranked. Zero is not the comparison and the screen never implies
- * it is.
- */
-function Fielding({ p }: { p: AnyPlayer }) {
-  const season = useDynasty((s) => s.season);
-  const version = useDynasty((s) => s.version);
-  void version;
-  if (!season) return null;
-
-  const fld = season.fielding?.get(p.id);
-  if (!fld || fld.chances === 0) return null;
-
-  const ctx = fieldingContext(season, p.id);
-  const pae = playsAboveExpected(fld);
-  const signed = `${pae > 0 ? '+' : ''}${pae}`;
-  const rate = (v: number): string => `${v > 0 ? '+' : ''}${v.toFixed(1)}`;
-  const catcher = p.type === 'hitter' && p.pos === 'C';
-  const attempts = fld.sba + fld.cs;
-
-  return (
-    <>
-      <SectionHeading kicker="IN THE FIELD" title="With the glove" />
-
-      <section className="season-line">
-        {/* The rate leads, not the count: it is the figure that survives being
-            compared with a man at another position, and the one the league line
-            underneath is quoted in. Accented when he beats that line rather than
-            when he clears zero, because zero is not the bar. */}
-        <Tile
-          k="PER 100 CHANCES"
-          v={ctx ? rate(ctx.rate) : '—'}
-          accent={!!ctx && ctx.rate > ctx.leagueRate}
-        />
-        <Tile
-          k="AMONG GLOVES"
-          v={ctx && ctx.ranked ? `${ordinal(ctx.rank)}/${ctx.qualified}` : '—'}
-        />
-        <Tile k="CHANCES" v={String(fld.chances)} />
-      </section>
-
-      <Panel>
-        {ctx && <Stat k="LEAGUE AVERAGE" v={`${rate(ctx.leagueRate)} per 100`} />}
-        <Stat k="PLAYS ABOVE AVERAGE" v={signed} />
-        <Stat k="PLAYS MADE" v={String(fld.plays)} />
-        <Stat
-          k="ERRORS"
-          v={fld.throwing > 0 ? `${fld.errors} (${fld.throwing} throwing)` : String(fld.errors)}
-        />
-        <Stat k="FIELDING PCT" v={pct(fieldingPct(fld))} last={!catcher} />
-        {catcher && (
-          <>
-            {/* The engine has no pitch location, so a ball in the dirt and a
-                ball he missed are one event to it — and one event to the runner,
-                who moves up either way. Labelled as both rather than claiming a
-                distinction the simulation cannot make. */}
-            <Stat k="PASSED BALLS / WP" v={String(fld.pb)} />
-            <Stat
-              k="RUNNERS CAUGHT"
-              v={attempts === 0 ? 'none ran' : `${fld.cs} of ${attempts}`}
-            />
-            <Stat
-              k="CAUGHT STEALING PCT"
-              v={attempts === 0 ? '—' : pct(fld.cs / attempts)}
-              last
-            />
-          </>
-        )}
-      </Panel>
-
-      <Note>
-        Plays above average is outs an average glove would not have made, errors
-        already off. Read the gap to the league line, not the sign.
-      </Note>
     </>
   );
 }
@@ -1363,22 +1306,83 @@ function SeasonRows(
   { years, live, isPitcher }:
   { years: CareerYear[]; live: CareerYear | null; isPitcher: boolean },
 ) {
+  /*
+    Tap a season and it opens. Asked for: "you can tab on them and they will
+    expand and show all the stats in there, and when I mean all its all —
+    OPS, etc., the main important ones."
+
+    "All" means all the record book kept. `CareerYear` stores counting
+    numbers, so every rate here is computed from them, and the ones the book
+    cannot honestly reconstruct are not shown: no pitcher WHIP (the book
+    keeps no hits or walks against), and OBP is hits-plus-walks over
+    at-bats-plus-walks because nobody wrote down the sacrifices. The glove's
+    three counters fold in here too, which is where the old IN THE FIELD
+    section went.
+  */
+  const [openYear, setOpenYear] = useState<number | null>(null);
+  const ip = (outs: number): string => `${Math.floor(outs / 3)}.${outs % 3}`;
   return (
     <section className="timeline">
-      {[...years].reverse().map((y) => (
-        <div key={y.year}>
-          <b>{y.year}</b>
-          <span>
-            {y.classYear} · {y.team}
-            {y.year === live?.year ? ' · in progress' : ''}
-            <em>
-              {isPitcher
-                ? `${y.w ?? 0}-${y.l ?? 0}${y.outs ? ` · ${((y.er ?? 0) * 27 / y.outs).toFixed(2)} ERA` : ''} · ${y.k ?? 0} K${(y.errors ?? 0) > 0 ? ` · ${y.errors} E` : ''}`
-                : `${y.ab ? pct((y.h ?? 0) / y.ab) : '—'} · ${y.hr ?? 0} HR · ${y.rbi ?? 0} RBI${(y.errors ?? 0) > 0 ? ` · ${y.errors} E` : ''}`}
-            </em>
-          </span>
-        </div>
-      ))}
+      {[...years].reverse().map((y) => {
+        const on = openYear === y.year;
+        const ab = y.ab ?? 0; const h = y.h ?? 0; const bb = y.bb ?? 0;
+        const d = y.d ?? 0; const t = y.t ?? 0; const hr = y.hr ?? 0;
+        const tb = (h - d - t - hr) + 2 * d + 3 * t + 4 * hr;
+        const obp = ab + bb > 0 ? (h + bb) / (ab + bb) : 0;
+        const slg = ab > 0 ? tb / ab : 0;
+        const outs = y.outs ?? 0; const er = y.er ?? 0; const k = y.k ?? 0;
+        const line: Array<[string, string]> = isPitcher
+          ? [
+            ['W-L', `${y.w ?? 0}-${y.l ?? 0}`],
+            ['ERA', outs > 0 ? ((er * 27) / outs).toFixed(2) : '—'],
+            ['IP', outs > 0 ? ip(outs) : '—'],
+            ['K', String(k)],
+            ['K/9', outs > 0 ? ((k * 27) / outs).toFixed(1) : '—'],
+            ['E', String(y.errors ?? 0)],
+          ]
+          : [
+            ['AVG', ab > 0 ? pct(h / ab) : '—'],
+            ['OBP', ab + bb > 0 ? pct(obp) : '—'],
+            ['SLG', ab > 0 ? pct(slg) : '—'],
+            ['OPS', ab > 0 ? pct(obp + slg) : '—'],
+            ['HR', String(hr)],
+            ['RBI', String(y.rbi ?? 0)],
+            ['2B+3B', String(d + t)],
+            ['BB', String(bb)],
+            ['SB', String(y.sb ?? 0)],
+            ['CHANCES', String(y.chances ?? 0)],
+            ['PLAYS', String(y.plays ?? 0)],
+            ['E', String(y.errors ?? 0)],
+          ];
+        return (
+          <div key={y.year}>
+            <b>{y.year}</b>
+            <span>
+              <button
+                className="timeline-line tap"
+                type="button"
+                aria-expanded={on}
+                onClick={() => setOpenYear(on ? null : y.year)}
+              >
+                {y.classYear} · {y.team}
+                {y.year === live?.year ? ' · in progress' : ''}
+                <em>
+                  {isPitcher
+                    ? `${y.w ?? 0}-${y.l ?? 0}${y.outs ? ` · ${((y.er ?? 0) * 27 / y.outs).toFixed(2)} ERA` : ''} · ${y.k ?? 0} K`
+                    : `${y.ab ? pct((y.h ?? 0) / y.ab) : '—'} · ${y.hr ?? 0} HR · ${y.rbi ?? 0} RBI`}
+                </em>
+              </button>
+              {on && (
+                <span className="timeline-detail card-in">
+                  {line.map(([kk, vv]) => (
+                    <i key={kk}><small>{kk}</small><strong>{vv}</strong></i>
+                  ))}
+                </span>
+              )}
+            </span>
+          </div>
+        );
+      })}
     </section>
   );
 }
@@ -1520,27 +1524,12 @@ function Career(
         </div>
       </section>
 
-      <SectionHeading
-        kicker="COLLEGE CAREER"
-        title={years.length === 1 ? 'One season' : `${years.length} seasons`}
-      />
-
-      {/*
-        The proposal's timeline: a rule down the left with a node per year. It
-        is the right shape for a career, which is a sequence rather than a
-        table — and a phone was never going to hold seven columns anyway. Every
-        number the grid carried is on the line under the year.
-      */}
-      <SeasonRows years={years} live={live} isPitcher={isPitcher} />
-
+      {/* The season-by-season table left this tab by request — "you can
+          remove the college career since we are already going to have this in
+          stats" — where it now opens per year on a tap. What stays here is
+          what STATS does not carry: the nights, the three career marks above,
+          and the cabinet. */}
       <AwardCase id={id} />
-
-      {live && (
-        <FieldNote
-          title="The top row is unfinished"
-          text="This season goes into the book in June, with whatever it says on the last day."
-        />
-      )}
     </>
   );
 }

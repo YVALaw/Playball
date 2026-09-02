@@ -464,12 +464,18 @@ export function Board() {
       {/* Filtering replaces the body rather than pushing it down. The rest of
           this branch is the board itself; see the note on the FILTER button. */}
       {filtersOpen ? (
-        <FilterPanel
-          filters={filters}
-          onChange={setFilters}
-          homeState={homeState}
-          myStars={myStars}
-        />
+        /* The panel arrives instead of appearing — the same rise every sheet
+           in the app makes, because that is what it is: a mode laid over the
+           board. Asked for: "it should do an opening animation instead of
+           simply appearing." */
+        <div className="rise-in">
+          <FilterPanel
+            filters={filters}
+            onChange={setFilters}
+            homeState={homeState}
+            myStars={myStars}
+          />
+        </div>
       ) : <>
       {live && lastWeek && (
         <div style={{
@@ -510,9 +516,18 @@ export function Board() {
         <RosterView />
       ) : (
         <>
-          <div style={{
-            marginTop: 10, border: '1px solid var(--faint)', background: 'var(--paper)',
-          }}>
+          {/*
+            Keyed on what shaped it, so a change of filters or view fades the
+            list in rather than cutting. Reported: "when filtering, the screen
+            flicks" — the rows swapped in the same frame the state changed.
+            One 260ms fade on the container, not per-row theatre.
+          */}
+          <div
+            className="fade-in"
+            key={`${view}:${JSON.stringify(filters)}`}
+            style={{
+              marginTop: 10, border: '1px solid var(--faint)', background: 'var(--paper)',
+            }}>
             {(view === 'recruits' ? list : view === 'targets' ? targets : commits).length === 0 && (
               <div style={{
                 padding: '18px 12px', font: "400 calc(12px * var(--ts)) var(--body)", color: 'var(--dim)',

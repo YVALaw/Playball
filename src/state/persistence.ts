@@ -33,7 +33,8 @@ const DB_NAME = 'playball';
 const STORE = 'dynasties';
 
 export interface SaveFile {
-  /** The season's press conferences so far, and the one still open. */
+  /** The press room's state, from before the feature was removed. Read and
+      dropped, so a save written mid-answer still loads. */
   press?: unknown;
   pendingPress?: unknown;
   /** Stage 8: conversations spent this season. */

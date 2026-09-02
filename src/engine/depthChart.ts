@@ -299,9 +299,63 @@ export function fitTheNine(
     if (pick < 0) pick = bench.findIndex((b) => available(b, day));
     if (pick < 0) continue;
     const inMan = bench[pick]!;
+    /*
+      The cover adopts the slot he is covering.
+
+      Without this the nine stopped being a set of nine positions the moment
+      anybody crossed spots: a first baseman covering the hurt DH arrived
+      still labelled 1B, and the card read two first basemen and no DH —
+      reported exactly that way from play. The label is not cosmetic: the
+      game fields BY it (fielding shares, the outfield test, the DH
+      exclusion), so a broken set bends the simulation, not just the screen.
+
+      The man going to the bench keeps the label he wore. When he heals and
+      comes back in for somebody, he adopts that slot the same way — the rule
+      has no special cases.
+
+      This is deliberately only done here and in the store's manual swaps —
+      the player's own persistent card. `coverFor` below does the same
+      substitution transiently during simulated games and keeps its labels,
+      because mutating a man's position inside a one-night cover would leak a
+      permanent change out of a temporary one and move every golden in the
+      suite. Its mislabelled share weights are a known, smaller wrong.
+    */
+    if (inMan.pos !== out.pos) inMan.pos = out.pos;
     lineup[i] = inMan;
     bench[pick] = out;
     moved.push({ out, in: inMan });
   }
   return { lineup, bench, moved };
+}
+
+/**
+ * Make the nine a set of nine positions again.
+ *
+ * Cards written before covers adopted their slots (see `fitTheNine`) can carry
+ * a duplicate — two first basemen and no DH was the reported case — and the
+ * game fields by the label, so the broken set bends the simulation. This walks
+ * the card once: the first man wearing a label keeps it, and every later
+ * duplicate is handed one of the missing positions in card order.
+ *
+ * Mutates the men, which is the point: the repair is the card's truth now.
+ * Returns how many labels moved, so a caller can say nothing when nothing was
+ * wrong — which is every card written after the adoption rule.
+ */
+export function healPositions(lineup: readonly Hitter[]): number {
+  const seen = new Set<Position>();
+  const dupes: Hitter[] = [];
+  for (const man of lineup) {
+    if (seen.has(man.pos)) dupes.push(man);
+    else seen.add(man.pos);
+  }
+  if (dupes.length === 0) return 0;
+  const missing = SPOTS.filter((p) => !seen.has(p));
+  let moved = 0;
+  for (const man of dupes) {
+    const next = missing.shift();
+    if (!next) break;
+    man.pos = next;
+    moved += 1;
+  }
+  return moved;
 }

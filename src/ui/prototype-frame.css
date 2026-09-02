@@ -2784,3 +2784,79 @@
   font-size: calc(8px * var(--ts));
   font-weight: 800;
 }
+
+/* ---------------------------------------------------------------------------
+   The action menus leave the way they arrive.
+
+   Reported: "the action button has a nice opening animation but it does not
+   when closing" — flipping `.open` off hit `display: none` on the same frame.
+   The component holds a CLOSING phase for one exit's length; these rules give
+   that phase the same curve backwards, and the scrim handles the other half
+   of the report: tapping anywhere else stands the menu down.
+   --------------------------------------------------------------------------- */
+@keyframes actions-close {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to   { opacity: 0; transform: scale(.88) translateY(12px); }
+}
+
+.college-actions-fab.closing { width: min(304px, calc(100vw - 22px)); }
+.player-actions-fab.closing { width: min(304px, calc(100vw - 22px)); }
+.college-actions-fab.closing .college-actions-popover,
+.player-actions-fab.closing .player-actions-popover {
+  display: block;
+  animation: actions-close .18s ease-in both;
+  pointer-events: none;
+}
+
+:root[data-motion="reduced"] .college-actions-fab.closing .college-actions-popover,
+:root[data-motion="reduced"] .player-actions-fab.closing .player-actions-popover { animation: none; opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .college-actions-fab.closing .college-actions-popover,
+  .player-actions-fab.closing .player-actions-popover { animation: none; opacity: 0; }
+}
+
+/* ---------------------------------------------------------------------------
+   A season on the timeline opens on a tap.
+
+   The row became a button and the full line lives underneath it — every rate
+   the record book can honestly reconstruct, in the metric-strip's own cell
+   anatomy at timeline scale. See SeasonRows for what "all the stats" can and
+   cannot mean against what CareerYear actually stores.
+   --------------------------------------------------------------------------- */
+.timeline-line {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.timeline-detail {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  background: var(--line);
+}
+.timeline-detail i {
+  display: block;
+  padding: 6px 7px 7px;
+  background: var(--paper);
+  font-style: normal;
+}
+.timeline-detail small {
+  display: block;
+  color: var(--dim);
+  font-size: calc(6.5px * var(--ts));
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+.timeline-detail strong {
+  display: block;
+  margin-top: 2px;
+  font: 800 calc(13px * var(--ts))/1 var(--display);
+  font-variant-numeric: tabular-nums;
+}
