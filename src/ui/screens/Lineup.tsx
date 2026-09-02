@@ -125,7 +125,11 @@ export function Lineup() {
     const t = useDynasty.getState().season?.teams[useDynasty.getState().userTeam]?.team;
     if (!t) return;
     const gaps = cardGaps(t.lineup);
-    if (gaps.missing.length > 0 || gaps.doubled.length > 0) setGapWarn(gaps);
+    // Deduped for the sentence: three catchers is still "two men at C" to a
+    // reader, not "at C and C".
+    if (gaps.missing.length > 0 || gaps.doubled.length > 0) {
+      setGapWarn({ missing: gaps.missing, doubled: [...new Set(gaps.doubled)] });
+    }
   };
 
   useEffect(() => {

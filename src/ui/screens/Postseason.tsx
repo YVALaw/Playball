@@ -22,6 +22,9 @@ import { Modal } from '../Modal.js';
 import { IdCardIcon } from '@radix-ui/react-icons';
 import { ModuleIntro, Segmented } from '../components/Kit.js';
 import { Lineup } from './Lineup.js';
+import { available } from '../../engine/depthChart.js';
+import { handles } from '../../state/depth.js';
+import { whyOut } from '../Needs.js';
 import { DoubleElimMap, type DECols } from '../DoubleElimMap.js';
 import { BoxScoreSheet } from './Schedule.js';
 import { teamColour } from '../Avatar.js';
@@ -51,7 +54,7 @@ let confViewMemo: ConfView = 'winners';
 let natViewMemo: NatView = 'winners';
 
 export function Postseason() {
-  const [modal, setModal] = useState<'in' | 'out' | 'won' | 'title' | null>(null);
+  const [modal, setModal] = useState<'in' | 'out' | 'title' | null>(null);
   const [showLineup, setShowLineup] = useState(false);
   /*
     A bracket game, opened.
@@ -96,6 +99,7 @@ export function Postseason() {
   const team = useUserTeam();
   const knockout = useDynasty((s) => s.knockout);
   const seen = useDynasty((s) => s.postseasonSeen);
+  const depth = useDynasty((s) => s.depth);
   const markSeen = useDynasty((s) => s.markPostseasonSeen);
   const version = useDynasty((s) => s.version);
   void version;
@@ -151,7 +155,11 @@ export function Postseason() {
     : 0;
   const inTheField = mySeed > 0;
   const introKey = `${year}:in:${stageKey}`;
-  const outKey = reported && knockout ? `${year}:out:${knockout.kind}` : '';
+  // No out card for the national final: the runner-up takeover from
+  // closeMyBracket already owns that beat, and "select better which one
+  // stays" is the instruction this whole cull answers.
+  const outKey = reported && knockout && knockout.kind !== 'final'
+    ? `${year}:out:${knockout.kind}` : '';
 
   /** Whether the tier on screen is finished, and whether you won something. */
   const nat = bracket?.national ?? null;
@@ -163,12 +171,6 @@ export function Postseason() {
   const wonConference = bracket?.cups.some((c) => c.champion === userTeam) ?? false;
   const wonRegional = bracket?.regionals.some((r) => r.champion === userTeam) ?? false;
   const wonTitle = nat?.final?.champion === userTeam;
-  const iWonStage = bracket !== null && (
-    bracket.stage === 'conference' ? (stagePlayed && wonConference)
-      : bracket.stage === 'regional' ? (stagePlayed && wonRegional)
-      : wonTitle
-  );
-  const winKey = iWonStage ? `${year}:win:${stageKey}` : '';
 
   /*
     A title game, announced before it is played.
@@ -227,11 +229,6 @@ export function Postseason() {
       setModal('out');
       return;
     }
-    if (winKey && !seen.includes(winKey)) {
-      markSeen(winKey);
-      setModal('won');
-      return;
-    }
     if (stageKey === 'conference' && (inTheField ? stillIn : true)
       && !seen.includes(introKey)) {
       markSeen(introKey);
@@ -243,7 +240,7 @@ export function Postseason() {
       markSeen(titleGame.key);
       setModal('title');
     }
-  }, [bracket, stageKey, outKey, winKey, introKey, seen, markSeen, stillIn, inTheField,
+  }, [bracket, stageKey, outKey, introKey, seen, markSeen, stillIn, inTheField,
     titleGame]);
 
   if (!season || !team || !bracket) return null;
@@ -528,25 +525,20 @@ export function Postseason() {
     };
   })();
 
-  // A banner and a sentence. Anything longer is read at the one moment nobody
-  // is reading.
-  const wonCard = bracket.stage === 'conference'
-    ? {
-        kicker: `${year} ${team.conference.toUpperCase()}`,
-        title: 'Conference champions',
-        lines: [`${team.def.school} take the ${team.conference}. Gas up the bus.`],
-      }
-    : bracket.stage === 'regional'
-      ? {
-          kicker: `${year} REGIONAL`,
-          title: 'Regional champions',
-          lines: [`${team.def.school} win the region, and a seat at the national table.`],
-        }
-      : {
-          kicker: `${year} NATIONAL CHAMPIONSHIP`,
-          title: 'National champions',
-          lines: [`${team.def.school} win it all. Nobody left to beat.`],
-        };
+
+  /*
+    The June injury hold — the regular season's rule, kept through the
+    tournaments. Reported: "I never get a warning during tournaments, I think
+    injuries are not working during tournaments." Half of that is the engine
+    (nobody gets hurt IN June — the rolls are staged work, see the backlog);
+    this is the other half: a man hurt in May is still hurt tonight, the
+    bracket fields the card exactly as written, and nothing here said a word.
+    Full careers only, the same rule as NEEDS YOU — the coach who writes the
+    card is the one the game waits for.
+  */
+  const hurtNine = (handles(depth, 'lineups') || handles(depth, 'depthChart'))
+    ? team.team.lineup.filter((m) => !available(m, season.dayIndex))
+    : [];
 
   /** What the pinned button does right now. */
   const due = myBracket
@@ -558,6 +550,8 @@ export function Postseason() {
   const action: {
     label: string;
     run: () => void;
+    /** The red line under the button, when the card is holding it. */
+    note?: string;
     secondary?: { label: string; onClick: () => void } | null;
   } = reviewing !== null
     // Looking back at a finished tournament. The one thing the button can
@@ -569,11 +563,23 @@ export function Postseason() {
         run: () => setReviewing(null),
       }
     : due
-    ? {
-        label: 'PLAY THIS GAME',
-        run: manage,
-        secondary: { label: 'SIMULATE THIS GAME', onClick: () => sim('game') },
-      }
+    ? (hurtNine.length > 0
+      // Held, exactly the way END WEEK holds: the game will field this card
+      // as written, so a hurt man in the nine stops the night until the
+      // coach moves him. FIX THE LINEUP opens the same card the YourNext
+      // panel does; nothing is moved for you.
+      ? {
+          label: 'FIX THE LINEUP',
+          run: () => setShowLineup(true),
+          note: hurtNine.length === 1
+            ? `${hurtNine[0]!.name} is in your nine and cannot play — ${whyOut(hurtNine[0]!, season.dayIndex)}. Nobody is moved for you.`
+            : `${hurtNine.length} men in your nine cannot play. Nobody is moved for you.`,
+        }
+      : {
+          label: 'PLAY THIS GAME',
+          run: manage,
+          secondary: { label: 'SIMULATE THIS GAME', onClick: () => sim('game') },
+        })
     : myBracket
       ? {
           /*
@@ -699,16 +705,6 @@ export function Postseason() {
             }
             setModal(null);
           }}
-        />
-      )}
-      {modal === 'won' && (
-        <Modal
-          kicker={wonCard.kicker}
-          title={wonCard.title}
-          lines={wonCard.lines}
-          tone="win"
-          action="LET'S GO"
-          onClose={() => setModal(null)}
         />
       )}
 
@@ -935,6 +931,7 @@ export function Postseason() {
           <FloatingAction
             label={action.label}
             onClick={action.run}
+            note={action.note}
             secondary={action.secondary ?? null}
           />
         </div>
