@@ -19,7 +19,7 @@ import { useDynasty } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { IdCardIcon, ReloadIcon, StarIcon } from '@radix-ui/react-icons';
 import { Avatar } from '../Avatar.js';
-import { FieldNote, ModuleIntro, Segmented } from '../components/Kit.js';
+import { Confirmable, FieldNote, ModuleIntro, Segmented } from '../components/Kit.js';
 import { overallOf } from '../../engine/ratings.js';
 import { prestigeStars } from '../../engine/program.js';
 import { windowBudget } from '../../engine/recruiting.js';
@@ -43,19 +43,20 @@ export function Portal() {
   /*
     Two-press signing. Reported: "when clicking sign him there is no visual
     indication or confirmation, nothing." First press arms the button on that
-    one man; the second spends the points. The armed state names the cost
-    again, because that is the fact being agreed to.
+    one man; the second spends the points, and the armed state names the cost
+    again because that is the fact being agreed to.
+
+    The three pieces of state that used to run it — armed, landed, lost — live
+    in `Confirmable` now. This screen invented that pattern and the job market
+    had grown its own copy; both speak it off one component, so a press means
+    the same thing wherever it is made. See Kit.tsx.
   */
-  const [arming, setArming] = useState<string | null>(null);
   /*
     Whether you shop the portal yourself. A delegated career gets an empty
     board on purpose (the store clears it), and the screen used to blame a
     thin winter for a list the staff had already worked.
   */
   const runsPortal = useDynasty((s) => handles(s.depth, 'portal'));
-  /** A man the case was made for and lost anyway — see the button. */
-  const [lost, setLost] = useState<string | null>(null);
-  const [landed, setLanded] = useState<string | null>(null);
   const portal = useDynasty((s) => s.portal);
   const season = useDynasty((s) => s.season);
   const userTeam = useDynasty((s) => s.userTeam);
@@ -234,43 +235,56 @@ export function Portal() {
                     <button type="button" onClick={() => openPlayer(p.id)}>
                       <IdCardIcon />Card
                     </button>
-                    <button
-                      type="button"
-                      className={arming === p.id ? 'arming'
-                        : landed === p.id ? 'landed'
-                        : lost === p.id ? 'lost' : ''}
-                      disabled={!can || landed === p.id}
-                      onClick={() => {
-                        if (landed === p.id) return;
-                        if (arming !== p.id) { setArming(p.id); return; }
-                        setArming(null);
+                    {/*
+                      The arm-then-confirm this screen invented is now Kit's
+                      `Confirmable`, and the job market speaks the same grammar
+                      off the same component. What is kept here is everything
+                      that is actually about the portal: the words, the cost,
+                      and the sound and the buzz that mark the two outcomes.
+
+                      Keyed on the man. Without it, React reuses one button
+                      element down the list and a settled state would follow the
+                      position rather than the player — sign the top man, filter
+                      the list, and somebody else is wearing his answer.
+                    */}
+                    <Confirmable
+                      key={p.id}
+                      disabled={!can}
+                      idle={can
+                        ? (view === 'leaving' ? `Talk him round · ${cost}` : `Sign him · ${cost}`)
+                        : 'Not enough left'}
+                      armed={`Confirm — spend ${cost}`}
+                      /*
+                        No settled label, and this is worth knowing rather than
+                        guessing at: on success the man leaves this board. A kept
+                        man comes off `leaving` and a signed man comes off
+                        `available`, both in the store, so a row that reported
+                        "✓ HE IS IN" would be a row that unmounts on the same
+                        tick. The old hand-rolled version passed one anyway and
+                        it was dead the whole time — checked by signing a man and
+                        watching the list, not by reading it.
+
+                        What confirms the success is the board itself: he is off
+                        it, the points meter drops, and the inbox says so.
+
+                        The failure is the state that needed a label, and only on
+                        the retention half — `keepFromPortal` leaves a man you
+                        lost sitting right where he was. That is the one action
+                        in the game that can cost everything and say nothing.
+                        Signing is guarded by `disabled` instead, so its only
+                        false path is an affordability race, and "He went anyway"
+                        would be the wrong sentence for it.
+                      */
+                      failed={view === 'leaving' ? 'He went anyway' : undefined}
+                      onConfirm={() => {
                         const ok = view === 'leaving'
                           ? keepFromPortal(p.id, cost)
                           : takeFromPortal(p.id);
-                        if (ok) {
-                          setLost(null);
-                          setLanded(p.id);
-                          sfx('clap', { gain: 0.4 });
-                          buzz(20);
-                        } else {
-                          // He went anyway, and the points went with him. The
-                          // one action in the game that could cost everything
-                          // and say nothing.
-                          setLost(p.id);
-                          buzz([30, 40, 30]);
-                        }
+                        if (ok) { sfx('clap', { gain: 0.4 }); buzz(20); }
+                        else buzz([30, 40, 30]);
+                        return ok;
                       }}
-                    >
-                      {lost === p.id
-                        ? 'He went anyway'
-                        : landed === p.id
-                        ? (view === 'leaving' ? '✓ HE STAYS' : '✓ HE IS IN')
-                        : arming === p.id
-                          ? `Confirm — spend ${cost}`
-                          : can
-                            ? (view === 'leaving' ? `Talk him round · ${cost}` : `Sign him · ${cost}`)
-                            : 'Not enough left'}
-                    </button>
+                    />
                   </div>
                 </article>
               );

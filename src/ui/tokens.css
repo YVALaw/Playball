@@ -32,6 +32,12 @@
   --alert: #c9362f;
   /* The same red as an rgb triplet, so a glow can fade its own alpha out. */
   --alert-rgb: 201, 54, 47;
+  /* The ink that goes ON an alert fill, which is not the same question as what
+     --alert itself is. In the dark theme --alert has to stay light because it is
+     a text colour there (the loss column, a failed action, the unread dot), and
+     cream on that lighter red measures 3.16 — below AA for an eleven point
+     label. So the fill flips its ink instead of its ground. */
+  --alert-ink: #f4f8f4;
 
   --win: #236b42;
   --loss: #c9362f;
@@ -131,6 +137,7 @@
   --clay-rgb: var(--accent-dk-rgb, 77, 169, 122);
   --alert: #e0655e;
   --alert-rgb: 224, 101, 94;
+  --alert-ink: #121711;
   --win: #4da97a;
   --loss: #e0655e;
   --line: #3a463c;
@@ -176,6 +183,7 @@
     --clay-rgb: var(--accent-dk-rgb, 77, 169, 122);
     --alert: #e0655e;
     --alert-rgb: 224, 101, 94;
+    --alert-ink: #121711;
     --win: #4da97a;
     --loss: #e0655e;
     --line: #3a463c;

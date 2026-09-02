@@ -11,7 +11,7 @@
 // The three that used to live here — Rule, Tile, Card — belonged to the design
 // this port replaced and went with it.
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ChevronRightIcon, DotFilledIcon, PersonIcon, SewingPinIcon,
 } from '@radix-ui/react-icons';
@@ -378,5 +378,182 @@ export function Meter(
       <i><em style={{ width: `${Math.max(2, Math.min(100, value))}%` }} /></i>
       {note && <p>{note}</p>}
     </div>
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   Saying that something happened
+
+   Two components, and between them they are the whole of how this game answers
+   a press. They exist because the answer had been given four separate times, in
+   four different shapes, each one added after somebody reported its absence:
+
+     Lineup      AUTO turned into a check and the words "Order dealt"
+     Portal      a two-press sign, arming red and settling green
+     JobMarket   a two-press accept, arming red and settling nowhere
+     Board       the week's spending simply turned on
+
+   Four mechanisms is three too many. A player learns a vocabulary once and then
+   trusts it everywhere, and the only way to be trusted everywhere is to look
+   the same everywhere — which is the one thing four hand-rolled versions in
+   four files cannot do.
+
+   The rule they share, and the reason it is state rather than a toast: the
+   answer lives on the control that was pressed, and it stays there. A message
+   that fades in three seconds is gone before a player who looked away comes
+   back, and this game is built to be put down mid-thought and picked up again.
+   --------------------------------------------------------------------------- */
+
+/**
+ * A press that has to be meant.
+ *
+ * First press arms and restates what is about to be spent; second press does
+ * it. Extracted from the portal and the job market, which had grown the same
+ * idea independently — and the portal's version is the richer of the two, so it
+ * is the one this keeps: an armed state, a settled state, and a state for the
+ * case where you paid and lost anyway.
+ *
+ * `onConfirm` returning `false` means the thing was attempted and did not come
+ * off. That is a real outcome in this game — the portal can spend your points
+ * on a man who leaves anyway — and a control that reported success either way
+ * would be lying at the one moment it matters most.
+ *
+ * Only one control in the app is armed at a time. Arming a second disarms the
+ * first, which is not tidiness: two live triggers on one screen is how a thumb
+ * spends forty points on the wrong man. There is deliberately no timer — a
+ * player reading a cost before agreeing to it should not be racing one.
+ */
+let armed: { id: symbol; disarm: () => void } | null = null;
+
+export function Confirmable(
+  { idle, armed: armedLabel, done, failed, disabled, className, onConfirm }:
+  {
+    /** What it says before anybody has pressed it. */
+    idle: ReactNode;
+    /** What it says once armed — name the cost again, it is what is agreed to. */
+    armed: ReactNode;
+    /** What it says afterwards. Omit and it simply returns to `idle`. */
+    done?: ReactNode;
+    /** What it says when `onConfirm` reported the attempt did not come off. */
+    failed?: ReactNode;
+    disabled?: boolean;
+    /** The container's own class, kept so screens keep their layout. */
+    className?: string;
+    onConfirm: () => boolean | void;
+  },
+) {
+  const [state, setState] = useState<'idle' | 'armed' | 'done' | 'failed'>('idle');
+  const me = useRef(Symbol('confirmable'));
+  const btn = useRef<HTMLButtonElement | null>(null);
+
+  // Whoever unmounts while armed gives the lock back, or nothing else on the
+  // next screen can ever arm.
+  useEffect(() => {
+    const id = me.current;
+    return () => { if (armed?.id === id) armed = null; };
+  }, []);
+
+  /*
+    Touching anything else stands it down.
+
+    The job market's comment claimed this and its code never did it: an offer
+    armed by a stray thumb stayed armed until the next press, which committed.
+    That is the one failure this control exists to prevent, sitting inside the
+    control that prevents it.
+
+    Capture phase, so it is heard before whatever was actually tapped acts on
+    it, and only while something is armed — an idle button listens to nothing.
+    The button's own presses are excluded or arming would undo itself on the
+    way in.
+  */
+  useEffect(() => {
+    if (state !== 'armed') return;
+    const stand = (e: PointerEvent): void => {
+      if (btn.current && e.target instanceof Node && btn.current.contains(e.target)) return;
+      if (armed?.id === me.current) armed = null;
+      setState('idle');
+    };
+    document.addEventListener('pointerdown', stand, true);
+    return () => document.removeEventListener('pointerdown', stand, true);
+  }, [state]);
+
+  const press = (): void => {
+    if (state === 'done') return;
+    if (state !== 'armed') {
+      armed?.disarm();
+      armed = { id: me.current, disarm: () => setState('idle') };
+      setState('armed');
+      return;
+    }
+    armed = null;
+    const ok = onConfirm();
+    if (ok === false) { setState(failed ? 'failed' : 'idle'); return; }
+    setState(done ? 'done' : 'idle');
+  };
+
+  const label = state === 'armed' ? armedLabel
+    : state === 'done' ? (done ?? idle)
+    : state === 'failed' ? (failed ?? idle)
+    : idle;
+
+  return (
+    <button
+      ref={btn}
+      className={[
+        className, 'confirmable',
+        state === 'armed' ? 'is-armed' : '',
+        state === 'done' ? 'is-done' : '',
+        state === 'failed' ? 'is-failed' : '',
+      ].filter(Boolean).join(' ')}
+      type="button"
+      // The armed state is a question, and a screen reader should hear it as
+      // one rather than as a label that changed under it.
+      aria-live={state === 'armed' ? 'polite' : undefined}
+      disabled={disabled || state === 'done'}
+      onClick={press}
+    >{label}</button>
+  );
+}
+
+/**
+ * A press that only has to be reported.
+ *
+ * The other half of the vocabulary, and the smaller one: an action with no cost
+ * and nothing to agree to, which still has to say it happened. Extracted from
+ * the lineup's AUTO, whose report was written after this exact complaint —
+ * *"when clicking on set lineup automatically there is not a visual
+ * confirmation that it happened"* — because it had reordered nine rows and, if
+ * you had not memorised the old order, nothing on screen had visibly changed.
+ *
+ * `done` is past tense on purpose. "Order dealt" is a different sentence from
+ * "Auto lineup", and the difference is the whole point: the button is reporting
+ * rather than offering.
+ *
+ * Stays pressable afterwards, unlike `Confirmable`. Dealing a second order is a
+ * reasonable thing to want and the report simply refreshes.
+ */
+export function DidButton(
+  { idle, done, icon, doneIcon, className, disabled, onPress }:
+  {
+    idle: ReactNode;
+    done: ReactNode;
+    icon?: ReactNode;
+    doneIcon?: ReactNode;
+    className?: string;
+    disabled?: boolean;
+    onPress: () => void;
+  },
+) {
+  const [did, setDid] = useState(false);
+  return (
+    <button
+      className={[className, 'did-button', did ? 'is-done' : ''].filter(Boolean).join(' ')}
+      type="button"
+      disabled={disabled}
+      onClick={() => { onPress(); setDid(true); }}
+    >
+      {did ? (doneIcon ?? icon) : icon}
+      {did ? done : idle}
+    </button>
   );
 }

@@ -36,7 +36,7 @@ import { battingAverage, era, inningsPitched } from '../../engine/season.js';
 import { handles } from '../../state/depth.js';
 import { available } from '../../engine/depthChart.js';
 import type { PlayerId } from '../../engine/types.js';
-import { CaptainC, FieldNote, ModuleIntro, Rating, SectionHeading } from '../components/Kit.js';
+import { CaptainC, DidButton, FieldNote, ModuleIntro, Rating, SectionHeading } from '../components/Kit.js';
 import type { Hitter } from '../../engine/types.js';
 
 /** Friday, Saturday, Sunday, then the midweek arm. */
@@ -235,14 +235,16 @@ export function Lineup() {
             reports, and the rows themselves arrive with the card animation so
             the list is visibly re-dealt.
           */}
-          <button
-            className={dealt ? 'did' : ''}
-            type="button"
-            onClick={() => { autoLineup(); setPicked(null); setDealt(true); setDeal((n) => n + 1); }}
-          >
-            {dealt ? <CheckIcon /> : <ReloadIcon />}
-            {dealt ? 'Order dealt' : 'Auto lineup'}
-          </button>
+          {/* This is where `DidButton` came from, so it goes back onto it: the
+              report was hand-rolled here and the same idea was owed to half the
+              actions in the game. */}
+          <DidButton
+            idle="Auto lineup"
+            done="Order dealt"
+            icon={<ReloadIcon />}
+            doneIcon={<CheckIcon />}
+            onPress={() => { autoLineup(); setPicked(null); setDealt(true); setDeal((n) => n + 1); }}
+          />
           {/*
             No save button, and that is not an omission.
 

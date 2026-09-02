@@ -17,7 +17,7 @@ import { ChevronRightIcon, StarIcon, StarFilledIcon } from '@radix-ui/react-icon
 import { useDynasty } from '../../state/store.js';
 import { useOpenTeam } from './TeamCard.js';
 import { Crest } from '../Crest.js';
-import { FieldNote, ModuleIntro, SectionHeading } from '../components/Kit.js';
+import { Confirmable, FieldNote, ModuleIntro, SectionHeading } from '../components/Kit.js';
 import { prestigeStars } from '../../engine/program.js';
 
 export function JobMarket() {
@@ -29,11 +29,15 @@ export function JobMarket() {
   const coach = useDynasty((s) => s.coach);
   const openTeam = useOpenTeam();
   /*
-    The armed offer. Accepting is one of two irreversible acts in the game (the
-    other starts a season), so the button asks twice: the first press arms it,
-    the second signs. Tapping anywhere else stands it down.
+    Accepting is one of two irreversible acts in the game (the other starts a
+    season), so the button asks twice: the first press arms it, the second
+    signs, and tapping anywhere else stands it down.
+
+    That last clause used to be written here and not implemented anywhere — an
+    offer armed by a stray thumb stayed armed until the next press, which took
+    the job. It is real now, and it lives in `Confirmable` with the rest of the
+    grammar rather than in this file. See Kit.tsx.
   */
-  const [arming, setArming] = useState<number | null>(null);
 
   if (!season) return null;
 
@@ -82,14 +86,28 @@ export function JobMarket() {
                 <b>{'★'.repeat(prestigeStars(o.prestige))}</b>
                 <ChevronRightIcon />
               </button>
-              <button
-                className={arming === o.team ? 'arming' : ''}
-                type="button"
-                onClick={() => {
-                  if (arming === o.team) void acceptOffer(o.team);
-                  else setArming(o.team);
-                }}
-              >{arming === o.team ? 'Confirm — leave for good' : 'Accept offer'}</button>
+              {/*
+                The same two-press grammar the portal speaks, off the same
+                component — this screen had grown its own copy of it, one state
+                variable and two labels, and the two versions had already
+                drifted: the portal settled into a green "he is in" and this one
+                settled into nothing at all.
+
+                No `done` state here on purpose, and it is not an omission.
+                Accepting an offer ends the job search outright: the screen it
+                is on goes away in the same tick, so a settled label would be a
+                promise made to a control nobody ever sees again.
+
+                Keyed on the job, for the reason the portal's is keyed on the
+                man — a reused element would carry an armed state to whichever
+                offer landed in its position next.
+              */}
+              <Confirmable
+                key={o.team}
+                idle="Accept offer"
+                armed="Confirm — leave for good"
+                onConfirm={() => { void acceptOffer(o.team); }}
+              />
             </div>
           ))}
         </section>

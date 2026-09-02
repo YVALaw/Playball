@@ -53,11 +53,13 @@ export function contrast(a: string, b: string): number {
 const LIGHT = {
   paper: '#ffffff', wash: '#f5f7f2', field: '#fffefa', band: '#1d201d',
   ink: '#1d201d', cream: '#f4f8f4', mute: '#888e87',
+  alert: '#c9362f', win: '#236b42', alertInk: '#f4f8f4',
 };
 
 const DARK = {
   paper: '#1c231d', wash: '#161c17', field: '#121711', band: '#26312a',
   ink: '#e4eae4', cream: '#f4f8f4', mute: '#93a094',
+  alert: '#e0655e', win: '#4da97a', alertInk: '#121711',
 };
 
 /**
@@ -81,6 +83,27 @@ const PAIRS: readonly { text: string; on: string; large?: boolean; what: string 
   { text: 'mute', on: 'paper', large: true, what: 'an inactive label on a card' },
   { text: 'mute', on: 'wash', large: true, what: 'an inactive label on a fill' },
   { text: 'cream', on: 'band', what: 'reversed text on a dark band' },
+  /*
+    The confirm grammar — `Confirmable` in Kit.tsx.
+
+    Three states that only ever appear on an irreversible press, which makes
+    them the states least likely to be seen during ordinary development and the
+    worst ones to have shipped illegible. The armed fill is the one that will
+    be read under pressure: it is the sentence naming what is about to be
+    spent.
+
+    All three are held to the strict 4.5 rather than the 3.0 that AA allows
+    bold text, because all three clear it — a pair that does not need the
+    allowance should not be given it.
+
+    The armed pair is the reason `--alert-ink` exists. `--alert` has to stay
+    light in the dark theme, where it is a text colour on dark ground, so cream
+    on it measured 3.16 and this test caught it before the button shipped. The
+    fill flips its ink instead of its ground.
+  */
+  { text: 'alertInk', on: 'alert', what: 'the armed label on an armed button' },
+  { text: 'alert', on: 'wash', what: 'a failed action reporting on a quiet fill' },
+  { text: 'win', on: 'paper', what: 'a settled action on a card' },
 ];
 
 describe('the palette carries its own text', () => {
@@ -157,6 +180,29 @@ describe('every school can wear its own colour', () => {
       if (onPaper < 4.5) failures.push(`${s.abbr} on paper ${onPaper.toFixed(2)}`);
       if (onSoft < 4.5) failures.push(`${s.abbr} on its own soft ${onSoft.toFixed(2)}`);
       if (onField < 4.5) failures.push(`${s.abbr} on chrome ${onField.toFixed(2)}`);
+    }
+    expect(failures, failures.join(' · ')).toEqual([]);
+  });
+
+  /*
+    The settled state, which is the one pairing in the confirm grammar that is
+    not a fixed pair at all.
+
+    `.confirmable.is-done` puts `--win` on `--soft`, and `--soft` is the school
+    accent's own tint — so a green word sits on ninety six different grounds,
+    one of which might be a green. That is the exact shape of the bug this file
+    was written for, and the header names the portal's DONE state as one of the
+    rules that shipped broken the first time.
+  */
+  it('keeps a settled action legible on every school tint', () => {
+    const failures: string[] = [];
+    for (const s of SCHOOLS) {
+      const p = accentPalette(s.color)!;
+      const light = contrast(LIGHT.win, p.accentSoft!);
+      const dark = contrast(DARK.win, p.accentSoftDk!);
+      // 800-weight display at ten point: AA large, so 3.0.
+      if (light < 3) failures.push(`${s.abbr} done on light tint ${light.toFixed(2)}`);
+      if (dark < 3) failures.push(`${s.abbr} done on dark tint ${dark.toFixed(2)}`);
     }
     expect(failures, failures.join(' · ')).toEqual([]);
   });

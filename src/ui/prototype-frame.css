@@ -143,7 +143,7 @@
   padding: 1px 6px;
   border-radius: 9px;
   background: var(--alert);
-  color: var(--paper);
+  color: var(--alert-ink);
   font: 700 calc(10px * var(--ts))/1.5 var(--body);
   text-align: center;
   font-variant-numeric: tabular-nums;
@@ -1096,8 +1096,8 @@
   color: #fff;
 }
 
-/* The auto-lineup button reports that it did something. */
-.editor-toolbar button.did { background: var(--soft); }
+/* The auto-lineup button's report moved to DidButton, and is styled with the
+   rest of the confirm grammar further down this file. */
 
 
 /* ---------------------------------------------------------------------------
@@ -2047,10 +2047,6 @@
   color: var(--yellow);
 }
 .job-list > div > button:last-child { color: var(--clay); font-weight: 800; }
-.job-list > div > button.arming {
-  background: var(--alert);
-  color: var(--cream);
-}
 
 /* ---------------------------------------------------------------------------
    The budget sheet — stage 11. The staff card is the one new shape: a man,
@@ -2536,18 +2532,63 @@
   touch-action: pan-y;
 }
 
-/* The portal's two-press signing: armed goes alarm, landed goes quiet win. */
-.portal-candidate-actions button.arming {
+/* ---------------------------------------------------------------------------
+   The one vocabulary for "are you sure" and "that happened".
+
+   Three containers used to style these three states themselves — the portal's
+   candidate row, the job market's offer row and the lineup's toolbar — with the
+   same intent and three sets of rules. Armed went alarm-red in two of them and
+   the third had no settled state at all, so agreeing to something felt
+   different depending on which screen you were agreeing on.
+
+   Styled on the control's own class rather than on "every button inside this
+   container", which is the shape that ate a Segmented once already and would
+   again. A screen keeps its layout rule and inherits the grammar.
+
+   See `Confirmable` and `DidButton` in Kit.tsx for the behaviour.
+   --------------------------------------------------------------------------- */
+/* The class is doubled on purpose, and it is the only trick in this block.
+
+   These rules have to beat whatever the containing screen already says about
+   its buttons, and two of those container rules set colour from a descendant
+   selector: `.job-list > div > button:last-child` weighs (0,2,2), which beats a
+   plain `.confirmable.is-armed` at (0,2,0) — the armed button would have kept
+   clay text on an alert fill. Repeating the class lifts these to (0,3,0), and a
+   class always outranks an element, so one extra token wins against every
+   container in the app without naming any of them.
+
+   The alternative was to teach each container about each state, which is the
+   fragmentation this component exists to end. */
+.confirmable.confirmable.is-armed {
   background: var(--alert);
-  color: #fff;
   border-color: var(--alert);
+  color: var(--alert-ink);
 }
-.portal-candidate-actions button.landed {
+
+/* Settled, and it stays settled. --soft is the accent at rest, which is what a
+   thing that came off should look like: quiet, and unmistakably yours. */
+.confirmable.confirmable.is-done {
   background: var(--soft);
-  color: var(--win);
   border-color: var(--win);
+  color: var(--win);
+  /* A done control is disabled, and disabled is dimmed everywhere else in the
+     app. This is the one place where dimming would hide the answer. */
   opacity: 1;
 }
+
+/* You paid and it did not come off. Not red-filled — that is the armed state,
+   and a filled red rectangle reporting an outcome reads as an error in the app
+   rather than a result in the game. */
+.confirmable.confirmable.is-failed {
+  background: var(--wash);
+  border-color: var(--alert);
+  color: var(--alert);
+}
+
+/* A DidButton is reporting, not settling, and it stays pressable — so it takes
+   the quiet fill and none of the green. This is what the lineup's AUTO already
+   looked like; it is here now instead of in the toolbar's own rules. */
+.did-button.did-button.is-done { background: var(--soft); }
 
 /* #721 clipped in a 55px column: the rank box sizes to its number now and
    the number gives back a little size to stay inside it. */
@@ -2624,9 +2665,5 @@
   margin-bottom: 2px;
 }
 
-/* The portal's third button state: the case was made and he left anyway. */
-.portal-candidate-actions button.lost {
-  background: var(--wash);
-  color: var(--alert);
-  border-color: var(--alert);
-}
+/* The portal's third button state — the case was made and he left anyway — is
+   `.confirmable.is-failed` now, styled once with the rest of the grammar. */
