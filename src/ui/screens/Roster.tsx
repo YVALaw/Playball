@@ -74,6 +74,14 @@ export function Roster() {
   const team = useUserTeam();
   const openOverlay = useDynasty((st) => st.openOverlay);
   const setsOwnChart = useDynasty((st) => handles(st.depth, 'depthChart'));
+  /*
+    The captaincy has its own switch, and this door was reading the chart's.
+
+    Found in audit: a coach who handed the depth chart to his staff also lost
+    the only permanent route to the captain screen, while one who handed over
+    the captaincy still got a live "Name a captain". Two settings, crossed.
+  */
+  const namesCaptain = useDynasty((st) => handles(st.depth, 'captains'));
   const openPlayer = useDynasty((s) => s.openPlayer);
   const [mode, setMode] = useState<Mode>('all');
   /*
@@ -247,7 +255,7 @@ export function Roster() {
       <InlineActions
         actions={[
           { label: 'Depth chart', onClick: () => openOverlay('depth') },
-          ...(setsOwnChart
+          ...(namesCaptain
             ? [{ label: 'Name a captain', onClick: () => openOverlay('captain') }]
             : []),
         ]}

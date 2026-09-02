@@ -11,6 +11,8 @@ import { useConferenceTable, useDynasty, useUserTeam } from '../../state/store.j
 import { useOpenTeam } from './TeamCard.js';
 import { regularRecord } from '../../engine/season.js';
 import { FieldNote, ModuleIntro } from '../components/Kit.js';
+// The cut is the engine's, not a number typed into a sentence. See below.
+import { CONF_ADVANCE, CONF_FIELD } from '../../engine/postseason.js';
 import { ChevronRightIcon } from '@radix-ui/react-icons';
 
 export function Standings() {
@@ -40,7 +42,7 @@ export function Standings() {
       <ModuleIntro
         kicker="CONFERENCE"
         title={`${team.conference} race`}
-        text="The standings reduced to what changes your next decision. The top six here play the tournament."
+        text={`The standings reduced to what changes your next decision. The top ${CONF_FIELD} here play the tournament.`}
       />
 
       <section className="standings-table">
@@ -75,8 +77,8 @@ export function Standings() {
       </section>
 
       <FieldNote
-        title="The line that matters is sixth"
-        text={`${season.teams.length} programs across ${new Set(season.teams.map((t) => t.conference)).size} conferences. Six from this table play the conference tournament, and a regional is what the winner of that plays for. Tap a program to read its page.`}
+        title={`The line that matters is ${CONF_FIELD}th`}
+        text={`${season.teams.length} programs across ${new Set(season.teams.map((t) => t.conference)).size} conferences. ${CONF_FIELD} from this table play the conference tournament, and the ${CONF_ADVANCE} who come through it go to a regional. Tap a program to read its page.`}
       />
     </main>
   );

@@ -160,6 +160,16 @@ function Card({ item, onOpen }: { item: InboxItem; onOpen: (l: InboxLink) => voi
     before this rendered — it is the only thing distinguishing what arrived this
     morning from what has been sitting here since March.
   */
+  /*
+    The tone, finally used.
+
+    KIND_TONE was written, documented at length — clay for the things that
+    are about your job, the board and an offer being the two that can change
+    what you do next — and then referenced nowhere, so a board verdict and a
+    rival hiring a coach rendered identically. Found in audit. It is a left
+    edge rather than a coloured label, because the label is already carrying
+    the kind in words.
+  */
   const inner = (
     <>
       <i className="unread-dot" />
@@ -172,13 +182,15 @@ function Card({ item, onOpen }: { item: InboxItem; onOpen: (l: InboxLink) => voi
     </>
   );
 
+  const tone = { borderLeft: `3px solid ${KIND_TONE[item.kind]}` };
   if (!item.link) {
-    return <div className={item.read ? 'read' : ''}>{inner}</div>;
+    return <div className={item.read ? 'read' : ''} style={tone}>{inner}</div>;
   }
   const link = item.link;
   return (
     <button
       className={`tap${item.read ? ' read' : ''}`}
+      style={tone}
       type="button"
       onClick={() => onOpen(link)}
     >{inner}</button>

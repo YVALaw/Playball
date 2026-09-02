@@ -33,9 +33,10 @@ import { FirstVisit } from '../Tutorial.js';
 import { overallOf } from '../../engine/ratings.js';
 import { captainOf } from '../../engine/captains.js';
 import { battingAverage, era, inningsPitched } from '../../engine/season.js';
+import { handles } from '../../state/depth.js';
 import { available } from '../../engine/depthChart.js';
 import type { PlayerId } from '../../engine/types.js';
-import { CaptainC, ModuleIntro, Rating, SectionHeading } from '../components/Kit.js';
+import { CaptainC, FieldNote, ModuleIntro, Rating, SectionHeading } from '../components/Kit.js';
 import type { Hitter } from '../../engine/types.js';
 
 /** Friday, Saturday, Sunday, then the midweek arm. */
@@ -48,6 +49,18 @@ export function Lineup() {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   const swapLineup = useDynasty((s) => s.swapLineup);
+  /*
+    Whether this card is yours to write.
+
+    Found in audit: nothing on this screen ever asked. A casual coach could
+    reorder his nine, watch the button flip to "Order dealt", read "Saved as
+    you go" underneath — and then his own bench coach overwrote the card on
+    the next sim, because `staffSetsTheCard` runs before every day, every
+    week and every managed game he does not set himself. The screen was
+    promising something the game undid a tap later, which is worse than not
+    offering it.
+  */
+  const mine = useDynasty((s) => handles(s.depth, 'lineups'));
   const swapStarter = useDynasty((s) => s.swapStarter);
   const moveRotation = useDynasty((s) => s.moveRotation);
   const autoLineup = useDynasty((s) => s.autoLineup);
@@ -191,10 +204,29 @@ export function Lineup() {
             something already true would be theatre, and worse, it would imply
             an unsaved state that can be lost.
           */}
-          <span className="saved-mark"><CheckIcon /> Saved as you go</span>
+          <span className="saved-mark">
+            <CheckIcon /> {mine ? 'Saved as you go' : 'Your bench coach writes this'}
+          </span>
         </section>
 
         <p className="selection-note"><SewingPinIcon /> {note}</p>
+
+        {/*
+          Whose card this is, said once, where the promise used to be.
+
+          A casual coach's edits were accepted and then overwritten by his own
+          staff before the next pitch — the screen showed "Order dealt" for a
+          card the game was about to rewrite. It says so now, and points at
+          the one switch that changes it.
+        */}
+        {!mine && (
+          <FieldNote
+            title="Your bench coach writes the card"
+            text="You can move anybody here to see what he would do differently, but
+              the staff set the nine before every game. Settings, then What you
+              handle, hands the lineup back."
+          />
+        )}
 
         {/*
           The order and the field, side by side.

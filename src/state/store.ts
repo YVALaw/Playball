@@ -3581,7 +3581,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, userTeam, version } = get();
     const rec = season?.teams[userTeam];
     if (!season || !rec) return false;
-    const man = squad(rec.team).find((p) => p.id === id);
+    /*
+      Arms included.
+
+      This searched `squad` — the lineup and the bench — so a pitcher could
+      never be rested at all: the control rendered, it was disabled by a
+      fatigue number that is always zero for arms, and the action behind it
+      could not have found him anyway. Found in audit.
+    */
+    const man = [...squad(rec.team), ...rec.team.rotation, ...rec.team.bullpen]
+      .find((p) => p.id === id);
     if (!man) return false;
     // Never over a man who is already out; resting the injured is not a
     // decision, it is a no-op wearing one's clothes.
@@ -3662,6 +3671,34 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (!pendingPress) return;
     const me = season?.teams[userTeam];
     const out = settlePress(answer, coach.badges ?? []);
+    /*
+      A receipt, because this was the one decision in the game that did not
+      leave one.
+
+      Found in audit: answering moved prestige and security and closed the
+      overlay in the same breath, so the room simply vanished and nothing
+      anywhere told the coach what he had just bought or spent. Every other
+      consequential action in the game posts a card — a word with a man, a
+      captaincy, a signing — and this is the loudest of them.
+
+      The direction is named and the numbers are not, which is the same rule
+      the board's own verdict follows: a coach knows how a press conference
+      went, he does not know it went 3.
+    */
+    const moved = out.prestige === 0 && out.security === 0
+      ? 'It will not have changed anybody\'s mind.'
+      : [
+        out.prestige > 0 ? 'Your name is worth a little more this morning.'
+          : out.prestige < 0 ? 'It cost you something with the people who write about you.' : '',
+        out.security > 0 ? 'The board liked hearing it.'
+          : out.security < 0 ? 'The board did not enjoy reading it.' : '',
+      ].filter(Boolean).join(' ');
+    get().post({
+      kind: 'season', year: get().year,
+      key: `press-${pendingPress.presser.id}-${me?.gp ?? 0}`,
+      title: 'You faced the press',
+      body: `"${answer.text}" ${moved}`,
+    });
     set({
       coach: {
         ...coach,
@@ -3688,6 +3725,15 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   duckPress: () => {
     const { pendingPress, coach, season, userTeam, version } = get();
     if (!pendingPress) return;
+    // Saying nothing is still an answer, and it still gets a line in the
+    // record — see the note in `answerPress`.
+    get().post({
+      kind: 'season', year: get().year,
+      key: `press-duck-${pendingPress.presser.id}-${season?.teams[userTeam]?.gp ?? 0}`,
+      title: 'You said nothing to the press',
+      body: 'No quote, no cost. The room will ask somebody else, and it will '
+        + 'ask you again.',
+    });
     // Saying nothing costs nothing and spends the question. It is a real
     // option: a coach who does not want to answer tonight should be able not
     // to, and the room moves on to somebody who will.

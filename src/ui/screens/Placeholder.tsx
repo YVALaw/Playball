@@ -6,9 +6,15 @@
 // list here described eleven screens as "built later" years after they were
 // built.
 
-const BUILT_LATER: Record<string, string> = {
-  portal: 'Transfer portal, both directions. Not built.',
-};
+/*
+  Nothing is listed here any more.
+
+  The portal was the last entry and it shipped in stage 10; leaving the line
+  in meant the one screen whose whole job is to be honest about what does not
+  exist was lying about something that does. If a genuinely unbuilt id ever
+  routes here again, name it — otherwise the fallback below is the truth.
+*/
+const BUILT_LATER: Record<string, string> = {};
 
 export function Placeholder({ id }: { id: string }) {
   return (

@@ -418,19 +418,41 @@ export function Today() {
         />
         <section className="pulse-grid">
           <button type="button" onClick={() => { go('team'); setScreen('stats'); }}>
+            {/*
+              One card, one side of the ball.
+
+              This tile printed TEAM AVG over a line about innings pitched —
+              and when nobody had thrown one it read "TEAM AVG — / no innings
+              yet", which is a batting card explaining itself with a pitching
+              sentence. Found in an outside audit and confirmed on a fresh
+              career. The bat gets the headline and the bat gets the note; the
+              arm has its own tile beside it now.
+            */}
             <small>TEAM AVG</small>
             <strong>{ourAvg === null ? '—' : ourAvg.toFixed(3).replace(/^0/, '')}</strong>
-            <span>{ourEra === null ? 'no innings yet' : `${ourEra.toFixed(2)} team ERA`}</span>
+            <span>{ourAvg === null
+              ? (team.gp === 0 ? 'no games yet' : 'not enough at-bats yet')
+              : `${team.rs} run${team.rs === 1 ? '' : 's'} scored`}</span>
           </button>
           <button type="button" onClick={() => { go('season'); setScreen('stand'); }}>
             <small>{team.conference.toUpperCase()}</small>
             <strong>{team.cw}-{team.cl}</strong>
             <span>{team.w}-{team.l} overall</span>
           </button>
-          <button type="button" onClick={() => { go('team'); setScreen('roster'); }}>
-            <small>GAMES PLAYED</small>
-            <strong>{team.gp}</strong>
-            <span>of {seasonLength(season.config)}</span>
+          {/*
+            The arm, which had no tile at all.
+
+            This was GAMES PLAYED — a number the header already carries as a
+            record and the schedule carries as a calendar, so the pulse spent
+            a third of itself repeating. Bat, league, arm: three tiles, three
+            different questions.
+          */}
+          <button type="button" onClick={() => { go('team'); setScreen('stats'); }}>
+            <small>TEAM ERA</small>
+            <strong>{ourEra === null ? '—' : ourEra.toFixed(2)}</strong>
+            <span>{ourEra === null
+              ? (team.gp === 0 ? 'no innings yet' : 'not enough innings yet')
+              : `${team.ra} run${team.ra === 1 ? '' : 's'} allowed`}</span>
           </button>
         </section>
 

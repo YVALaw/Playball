@@ -78,6 +78,23 @@ export interface Need {
  * cannot act on from here is a notification, and this game has an inbox for
  * those.
  */
+/**
+ * Why a man is unavailable, said the way each reason deserves.
+ *
+ * `prognosis` is the injury voice and says "fit" about everybody else, so a
+ * rest and a suspension were both being reported as healthy on a card whose
+ * whole point is that he cannot play.
+ */
+function whyOut(man: Player, day: number): string {
+  const u = man as Player & { outUntil?: number; why?: string };
+  if (u.why === 'injury') return prognosis(man, day);
+  const back = typeof u.outUntil === 'number' ? u.outUntil - day : 0;
+  if (u.why === 'academic') {
+    return back > 1 ? `ineligible for ${back} more days` : 'ineligible today';
+  }
+  return back > 1 ? `resting, back in ${back} days` : 'resting today';
+}
+
 export function useNeeds(): Need[] {
   const team = useUserTeam();
   const season = useDynasty((s) => s.season);
@@ -149,7 +166,16 @@ export function useNeeds(): Need[] {
       needs.push({
         id: `cover-${man.id}`,
         title: `${man.name} cannot play`,
-        note: `Batting ${i + 1} in tonight's nine — ${prognosis(man, day)}. `
+        /*
+          Why he cannot go, in the words that fit the reason.
+
+          This called `prognosis` for every unavailable man, and prognosis
+          answers about INJURIES — it returns the literal word "fit" for
+          anyone whose absence is anything else. So a rested regular and an
+          ineligible one both produced a red card reading "cannot play —
+          fit", on the most prominent surface in the game. Found in audit.
+        */
+        note: `Batting ${i + 1} in tonight's nine — ${whyOut(man, day)}. `
           + 'Nobody is moved for you — swap him out on the lineup.',
         must: true,
         cta: 'THE LINEUP',

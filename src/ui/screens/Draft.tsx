@@ -596,7 +596,7 @@ function DraftOdds(
       <ModuleIntro kicker={`${team.def.abbr} · ${year}`} title="The draft" />
     }
       action={phase !== null && (
-    <FloatingAction label="TO RECRUITING" onClick={() => void nextPhase('draft')} />
+    <FloatingAction label="TO THE PORTAL" onClick={() => void nextPhase('draft')} />
   )}
     >
     <div style={{ padding: '10px 14px 20px' }}>

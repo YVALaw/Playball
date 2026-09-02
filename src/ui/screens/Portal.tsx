@@ -11,6 +11,8 @@
 // 9: every man on it is a promise somebody broke, and the card says which.
 
 import { useState } from 'react';
+import { handles } from '../../state/depth.js';
+import { flightRisk } from '../../engine/morale.js';
 import { sfx, buzz } from '../sound.js';
 
 import { useDynasty } from '../../state/store.js';
@@ -24,6 +26,17 @@ import { windowBudget } from '../../engine/recruiting.js';
 import { mood } from '../../engine/morale.js';
 import type { PortalMan } from '../../engine/portal.js';
 
+/**
+ * What it actually takes to talk a man out of the portal.
+ *
+ * The same arithmetic `makeTheCase` runs (`engine/portal.ts`): his cost
+ * again, plus however far out of the door he already is. A man who is
+ * content costs his number; a man who has had enough costs twice it.
+ */
+function keepCost(m: PortalMan): number {
+  return Math.round(m.cost * (1 + flightRisk(m.player)));
+}
+
 export function Portal() {
   /** Which half of the window you are looking at. */
   const [view, setView] = useState<'leaving' | 'available'>('leaving');
@@ -34,6 +47,14 @@ export function Portal() {
     again, because that is the fact being agreed to.
   */
   const [arming, setArming] = useState<string | null>(null);
+  /*
+    Whether you shop the portal yourself. A delegated career gets an empty
+    board on purpose (the store clears it), and the screen used to blame a
+    thin winter for a list the staff had already worked.
+  */
+  const runsPortal = useDynasty((s) => handles(s.depth, 'portal'));
+  /** A man the case was made for and lost anyway — see the button. */
+  const [lost, setLost] = useState<string | null>(null);
   const [landed, setLanded] = useState<string | null>(null);
   const portal = useDynasty((s) => s.portal);
   const season = useDynasty((s) => s.season);
@@ -139,18 +160,32 @@ export function Portal() {
         {(view === 'leaving' ? portal.leaving : portal.available.slice(0, 25)).length === 0 ? (
           <section className="portal-empty">
             <StarIcon />
-            <strong>{view === 'leaving' ? 'Nobody has put his name in' : 'Nobody worth having'}</strong>
+            <strong>{view === 'leaving' ? 'Nobody has put his name in' : runsPortal ? 'Nobody worth having' : 'Your staff worked it for you'}</strong>
             <p>
               {view === 'leaving'
                 ? 'That is what keeping your word looks like.'
-                : 'The pool is thin this winter. Your points go to the class instead.'}
+                : runsPortal
+                  ? 'The pool is thin this winter. Your points go to the class instead.'
+                  : 'Your staff worked the board and signed whoever was worth having. '
+                    + 'Settings, then What you handle, brings it back to your desk.'}
             </p>
           </section>
         ) : (
           <section className="portal-board">
             {(view === 'leaving' ? portal.leaving : portal.available.slice(0, 25)).map((m) => {
               const p = m.player;
-              const cost = view === 'leaving' ? Math.round(m.cost * 1.5) : m.cost;
+              /*
+                The price the ENGINE asks, not a flat markup.
+
+                This read `cost * 1.5` while `makeTheCase` requires
+                `cost * (1 + flightRisk)` — anywhere from 1.0x for a content
+                man to 2.0x for one already halfway out the door. So a happy
+                man was overcharged by half, and an unhappy one was offered a
+                number that could not possibly keep him: the case failed, the
+                points were spent anyway, and nothing on the screen said so.
+                Found in audit.
+              */
+              const cost = view === 'leaving' ? keepCost(m) : m.cost;
               const can = left >= cost;
               return (
                 <article className={`portal-candidate ${view === 'leaving' ? 'leaving' : 'incoming'}`} key={p.id}>
@@ -201,7 +236,9 @@ export function Portal() {
                     </button>
                     <button
                       type="button"
-                      className={arming === p.id ? 'arming' : landed === p.id ? 'landed' : ''}
+                      className={arming === p.id ? 'arming'
+                        : landed === p.id ? 'landed'
+                        : lost === p.id ? 'lost' : ''}
                       disabled={!can || landed === p.id}
                       onClick={() => {
                         if (landed === p.id) return;
@@ -211,13 +248,22 @@ export function Portal() {
                           ? keepFromPortal(p.id, cost)
                           : takeFromPortal(p.id);
                         if (ok) {
+                          setLost(null);
                           setLanded(p.id);
                           sfx('clap', { gain: 0.4 });
                           buzz(20);
+                        } else {
+                          // He went anyway, and the points went with him. The
+                          // one action in the game that could cost everything
+                          // and say nothing.
+                          setLost(p.id);
+                          buzz([30, 40, 30]);
                         }
                       }}
                     >
-                      {landed === p.id
+                      {lost === p.id
+                        ? 'He went anyway'
+                        : landed === p.id
                         ? (view === 'leaving' ? '✓ HE STAYS' : '✓ HE IS IN')
                         : arming === p.id
                           ? `Confirm — spend ${cost}`

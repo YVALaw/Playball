@@ -1000,7 +1000,19 @@ export function weeklyPoints(
   // roughly half the prestige lever above, on the effort half only, so the
   // skill rewards working the board rather than replacing it.
   const skill = 1 + (recruitingSkill - 20) / 400;
-  const passive = f * 2.2;
+  /*
+    The passive half, earned rather than granted.
+
+    This paid `f * 2.2` the moment a single point touched a recruit, and
+    nothing capped how many recruits you could touch. Measured in audit: a
+    56-point week spread one-per-man across 56 recruits returned roughly
+    269f of interest against 148f for one concentrated push — so the
+    dominant strategy was to bid the minimum on everybody, and the board
+    even shipped a NOBODY IS ON HIM filter to find them. Ramped over the
+    first three points, the spread costs what it should and a real push
+    still wins.
+  */
+  const passive = f * 2.2 * Math.min(1, actions / 3);
   const pitched = actions * f * coach * skill * 2.6;
   return passive + pitched;
 }

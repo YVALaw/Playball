@@ -2427,3 +2427,43 @@
 }
 :root[data-motion="reduced"] .program-meter > i > em { transition: none; }
 @media (prefers-reduced-motion: reduce) { .program-meter > i > em { transition: none; } }
+
+/* ---------------------------------------------------------------------------
+   Findings from the September 1 screen audit.
+*/
+
+/*
+  June's most important card was laid out for a five-column scoreboard and
+  renders one line of text. `.postseason-next-match` is
+  `1fr 28px 23px 1fr 28px` in the generated sheet — TEAM, score, vs, TEAM,
+  score — so "at Allegheny Ridge" got a third of the row at display size and
+  wrapped to three lines while 79px of empty columns sat beside it. The
+  action row underneath is `repeat(3, 1fr)` and renders a single button.
+*/
+.postseason-next-match { grid-template-columns: 1fr; }
+.postseason-action-grid { grid-template-columns: 1fr; }
+
+/*
+  The stage rail read "1Conference". The generated rule styles `b` and the
+  screen renders `strong`, and the number's `span` had no rule at all — with
+  `button { font: inherit }` both fell back to body text with no separator.
+*/
+.postseason-stage-rail strong {
+  display: block;
+  font: 800 calc(11px * var(--ts))/1.2 var(--display);
+  text-transform: uppercase;
+  letter-spacing: .02em;
+}
+.postseason-stage-rail span {
+  display: block;
+  font: 800 calc(9px * var(--ts))/1 var(--mono);
+  color: var(--clay);
+  margin-bottom: 2px;
+}
+
+/* The portal's third button state: the case was made and he left anyway. */
+.portal-candidate-actions button.lost {
+  background: var(--wash);
+  color: var(--alert);
+  border-color: var(--alert);
+}
