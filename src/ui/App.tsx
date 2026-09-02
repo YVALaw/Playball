@@ -25,7 +25,7 @@ import {
 import { StepRail } from './StepRail.js';
 import { Overlay } from './Overlay.js';
 import {
-  ClubSwitcher, CoachAvatar, ContextNav, HeaderIcon, PrimaryNav, RecordChip,
+  ClubSwitcher, CoachAvatar, ContextNav, PrimaryNav, RecordChip,
 } from './Chrome.js';
 import { Today } from './screens/Today.js';
 import { Standings } from './screens/Standings.js';
@@ -424,9 +424,8 @@ function AppBody(
         {/* The bar steps aside while a game is being managed — the dugout owns
             the whole screen, the same rule the regular season follows. */}
         {!live && (
-          <header className="global-header" style={{ gridTemplateColumns: 'minmax(0,1fr) 40px 40px' }}>
+          <header className="global-header" style={{ gridTemplateColumns: 'minmax(0,1fr) 40px' }}>
             <ClubSwitcher abbr={team.def.abbr} kicker="Postseason" name={team.def.school} />
-            <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
             {/*
               The way to your own settings, in the month you are most likely to
               want them.
@@ -535,7 +534,7 @@ function AppBody(
       <div className="app-frame" style={{
         display: 'flex', flexDirection: 'column', minHeight: 0,
       }}>
-        <header className="global-header" style={{ gridTemplateColumns: 'minmax(0,1fr) 40px 40px' }}>
+        <header className="global-header" style={{ gridTemplateColumns: 'minmax(0,1fr) 40px' }}>
           <ClubSwitcher abbr={team.def.abbr} kicker={`${year} Offseason`} name={team.def.school} />
           {/* The bottom nav is gone from here by design, and it took HOME ·
               INBOX with it — during the seven steps that have most to report.
@@ -543,7 +542,6 @@ function AppBody(
               missing nav owes this frame; the season badge that used to fill
               the corner is gone, because the review screen already says what
               the year came to and a header is not a trophy shelf. */}
-          <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
           <CoachMenuButton />
         </header>
         <SaveAlert />
@@ -635,7 +633,6 @@ function AppBody(
           name={team.def.school}
         />
         <RecordChip label={team.conference} value={`${team.w}-${team.l}`} />
-        <InboxButton unread={unread} onOpen={() => openOverlay('inbox')} />
         <CoachMenuButton />
       </header>
 
@@ -672,34 +669,6 @@ function AppBody(
       />
       <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
     </div>
-  );
-}
-
-/**
- * The way into the inbox from anywhere, with the count on it.
- *
- * Reported: the inbox is unreachable outside the regular season. It was a HOME
- * sub-screen, and HOME does not exist during the offseason or the postseason —
- * so the one stretch of the year when it has the most to say, the verdict, the
- * offers, the draft, the hall and every coaching change in the country, was the
- * stretch you could not open it in.
- *
- * The top bar is the one piece of furniture both of those frames have, so the
- * button lives there and opens the inbox as an overlay, which works over all
- * three. The sub-nav count and the dot on HOME stay as they were: they are how
- * you notice it while the season is on, and this is how you get to it when it
- * is not.
- *
- * An envelope with the count on its shoulder rather than the word INBOX and the
- * count inside it. The button used to change colour entirely when something was
- * unread, which worked on a navy bar and does not on paper — a filled red
- * rectangle in the top right of a white header is an error, not a notification.
- */
-function InboxButton({ unread, onOpen }: { unread: number; onOpen: () => void }) {
-  return (
-    <HeaderIcon label="Inbox" onClick={onOpen} badge={unread}>
-      <EnvelopeClosedIcon width={17} height={17} />
-    </HeaderIcon>
   );
 }
 
@@ -954,6 +923,9 @@ function CoachMenuButton() {
   const team = useUserTeam();
   const setProgramSheet = useDynasty((s) => s.setProgramSheet);
   const openOverlay = useDynasty((s) => s.openOverlay);
+  // Read here rather than passed down: the menu is rendered from three
+  // different frames and none of them should have to know the inbox exists.
+  const unread = useDynasty((s) => unreadCount(s.inbox));
   const [open, setOpen] = useState(false);
 
   const go = (run: () => void) => { setOpen(false); run(); };
@@ -977,6 +949,29 @@ function CoachMenuButton() {
                 <small>{team ? `Head Coach · ${team.def.school}` : "Between jobs"}</small>
               </span>
             </div>
+            {/* The inbox, moved in off the bar.
+
+                It was a 40px square in every header in the game, and a header
+                is the most expensive real estate the app has — it is on screen
+                on every screen. In here it is one tap further away and carries
+                its count in words rather than on a badge, which is more room
+                than the shoulder of an envelope ever had.
+
+                What pays for the extra tap is the dot on HOME in the bottom
+                nav: that is how unread survives being three screens away, and
+                with the envelope gone it is now the only thing doing that job,
+                so it stays. */}
+            <button
+              className={unread > 0 ? 'has-count' : undefined}
+              type="button"
+              role="menuitem"
+              onClick={() => go(() => openOverlay("inbox"))}
+            >
+              <EnvelopeClosedIcon />
+              Inbox
+              {unread > 0 && <span className="menu-count">{unread}</span>}
+              <ChevronRightIcon />
+            </button>
             <button
               type="button"
               role="menuitem"

@@ -11,10 +11,11 @@
 // The three that used to live here — Rule, Tile, Card — belonged to the design
 // this port replaced and went with it.
 
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import {
   ChevronRightIcon, DotFilledIcon, PersonIcon, SewingPinIcon,
 } from '@radix-ui/react-icons';
+import { useDynasty } from '../../state/store.js';
 
 /**
  * The head of a screen: a green kicker, a condensed title, a line of prose.
@@ -22,15 +23,55 @@ import {
  * The prose is not decoration. Every screen in the proposal opens by saying
  * what it is for, which is the one thing a dense table of numbers cannot say
  * about itself.
+ *
+ * ---------------------------------------------------------------------------
+ * It says it once, and then it stops saying it
+ * ---------------------------------------------------------------------------
+ *
+ * Measured on the roster at 375x812: the header, the context nav, this block
+ * and the filter row cost 248px before the first row of the list — thirty-one
+ * per cent of the screen, on every screen, forever. The competition spends
+ * about a hundred. Our rows are fine at 58px; the preamble was the whole gap.
+ *
+ * Deleting the prose is the wrong fix, because the rule above is a good one:
+ * "OVR is what a man is, POT is what he might become" genuinely earns its
+ * height the first time somebody meets the roster. It earns nothing the
+ * fortieth time.
+ *
+ * So it retires. Full on the first visit, kicker and title afterwards, and
+ * about fifty pixels back on every screen from then on.
+ *
+ * Two things worth knowing about how:
+ *
+ * The key is `kicker + title` rather than a new prop, so all sixty-two call
+ * sites across twenty-eight screens are untouched — a screen that shows two
+ * intros in two branches retires them separately, which is what you want.
+ *
+ * The memory is `seenTutorials`, the array `FirstVisit` already keeps in the
+ * save. Reusing it means intros are remembered per career, written through the
+ * same way, and forgotten by the same RESET TUTORIALS the saves screen already
+ * offers — asking to be taught again should bring the prose back with it.
+ * `markTutorialSeen` early-returns on a repeat, so the unmount below is free
+ * after the first one.
+ *
+ * Marked on unmount, not on mount: marking on arrival would collapse the block
+ * under the reader on the one visit it exists for.
  */
 export function ModuleIntro(
   { kicker, title, text }: { kicker: string; title: string; text?: string },
 ) {
+  const key = `intro:${kicker}:${title}`;
+  const seen = useDynasty((s) => s.seenTutorials).includes(key);
+  const markSeen = useDynasty((s) => s.markTutorialSeen);
+
+  useEffect(() => () => markSeen(key), [key, markSeen]);
+
+  const brief = seen || !text;
   return (
-    <section className="module-intro">
+    <section className={brief ? 'module-intro is-brief' : 'module-intro'}>
       <small>{kicker}</small>
       <h1>{title}</h1>
-      {text && <p>{text}</p>}
+      {!brief && <p>{text}</p>}
     </section>
   );
 }

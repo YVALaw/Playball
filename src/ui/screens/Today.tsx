@@ -30,6 +30,7 @@ import { seasonDate } from '../format.js';
 import { NeedsYou, useNeeds } from '../Needs.js';
 import { seriesStake } from '../../engine/world.js';
 import { SectionHeading } from '../components/Kit.js';
+import { Crest } from '../Crest.js';
 import type { Pitcher } from '../../engine/types.js';
 
 /**
@@ -242,14 +243,25 @@ export function Today() {
               <span>{atHome ? 'TONIGHT VS' : 'TONIGHT AT'} {opponent.def.school.toUpperCase()}</span>
               <b>{day?.kind === 'series' ? seriesTag : 'MIDWEEK'}</b>
             </div>
+            {/*
+              Crests rather than the abbreviation set in 39px display type.
+
+              The letters were doing two jobs badly: naming the team, and being
+              the only picture on the screen. The crest does the second one
+              properly and still does the first, because the abbreviation is
+              drawn inside it — this is a shield with NWP on it, not a wordless
+              logo. Ninety-six of them already exist and the header has worn one
+              since the port; this is the same mark at the size the card can
+              afford.
+            */}
             <div className="matchup">
               <button type="button" onClick={() => openTeam(team.index)}>
-                <strong>{team.def.abbr}</strong>
+                <Crest abbr={team.def.abbr} size={46} />
                 <small>{team.w}-{team.l}</small>
               </button>
               <span className="versus">{atHome ? 'VS' : 'AT'}</span>
               <button type="button" onClick={() => openTeam(opponent.index)}>
-                <strong>{opponent.def.abbr}</strong>
+                <Crest abbr={opponent.def.abbr} size={46} />
                 <small>{opponent.w}-{opponent.l}</small>
               </button>
             </div>

@@ -54,8 +54,57 @@
 .global-header {
   position: static;
   height: auto;
-  padding: calc(env(safe-area-inset-top) + 12px) 14px 11px;
+  /* 8 and 8 rather than 12 and 11. The bar measured 64px and its height is set
+     by the three 40px controls in it, not by the padding, so trimming the
+     padding is the whole of what is available: 64 to 57. The controls
+     themselves stay at 40 — they are already under the 44px touch-target
+     guidance and shrinking them to buy seven more pixels would be paying for
+     screen with misses. */
+  padding: calc(env(safe-area-inset-top) + 8px) 14px 8px;
   flex: none;
+}
+
+/* The school name comes down with the headlines. It is an identity that never
+   changes sitting in 22px display type on every screen in the game, and the
+   coach menu says it again in full one tap away. */
+.club-switcher strong { font-size: calc(19px * var(--ts)); }
+
+/* One column fewer, now that the envelope has moved into the coach menu. The
+   generated rule still declares four (club, record, inbox, coach) and the
+   narrow-screen rule three; leave either in place and the avatar sits in the
+   inbox's old column with a hole beside it. */
+.global-header { grid-template-columns: minmax(0, 1fr) auto 40px; }
+
+@media (max-width: 380px) {
+  /* The record chip is hidden at this width by the generated sheet, so the
+     bar is down to the club and the coach. */
+  .global-header { grid-template-columns: minmax(0, 1fr) 40px; }
+}
+
+/* Tonight's two crests. The generated sheet styles `.matchup strong`, which is
+   the 39px abbreviation these replaced; an SVG in the same slot needs to be
+   told to centre and to stop being an inline box with a text baseline under
+   it. */
+.matchup svg { display: block; margin: 0 auto; }
+
+/* The unread count, in a menu row rather than on an envelope's shoulder. It has
+   room for the number here, so it prints it rather than capping at 9+. --alert
+   for the same reason the nav dot uses it: a count in the accent says nothing
+   on an accented row. */
+/* A menu row is `20px 1fr 15px` — icon, label, chevron. The count is a fourth
+   child, so without a column of its own the chevron wraps to a second line
+   under the label, which is exactly what it did the first time. */
+.account-menu > button.has-count { grid-template-columns: 20px 1fr auto 15px; }
+
+.account-menu .menu-count {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 9px;
+  background: var(--alert);
+  color: var(--paper);
+  font: 700 calc(10px * var(--ts))/1.5 var(--body);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .context-nav,
@@ -1690,6 +1739,20 @@
 .module-intro h1 { font-size: calc(27px * var(--ts)); }
 .module-intro { padding-bottom: 12px; }
 .dashboard-heading h2 { font-size: calc(20px * var(--ts)); }
+
+/* The same headline on the home screen, which the pass above missed: the
+   masthead kept the proposal's 36px while every other screen came down to 27,
+   so "First pitch is next." was the largest type in the game and wrapped to two
+   lines on a 375 wide phone. Same size as everywhere else now, and the rule
+   under it moves up with it. */
+.club-masthead h1 { font-size: calc(27px * var(--ts)); }
+.club-masthead { padding-bottom: 12px; }
+
+/* A screen you have already been introduced to.
+   See ModuleIntro in Kit.tsx for why the prose leaves after one visit. The
+   kicker and the title stay — you still need to know which screen you are on —
+   and the block drops from about 102px to about 50px. */
+.module-intro.is-brief { padding-bottom: 8px; }
 
 /* ---------------------------------------------------------------------------
    The program page's leaves, one class each. The screen was the last big one
