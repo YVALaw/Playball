@@ -283,6 +283,16 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* The containing block for any screen laid out `absolute; inset: 0` inside an
+   overlay — `FixedHeader` does exactly that. Without this, the nearest
+   positioned ancestor is the overlay itself, so the screen's own header starts
+   at the overlay's TOP edge and the COLLEGE PROFILE bar sits on the school
+   crest. Reported with a screenshot: "the top bar covers half of the school
+   crest." Scoped to the overlay scroller: the app's other scrollers get their
+   positioning from their own screens, and widening this would move every
+   absolutely-placed child in the game at once. */
+.full-overlay > .overlay-scroll { position: relative; }
+
 /* The diamond rail beside the batting order.
  *
  * Absolute in the proposal too, but against the phone box and offset by the

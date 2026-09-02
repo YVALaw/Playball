@@ -135,7 +135,7 @@ export function TeamCard({ index }: { index: number }) {
       </>
     }>
       <div style={{ padding: '12px 14px 20px' }}>
-        {sheet === 'overview' && <Overview t={t} me={me} season={season} rank={rank} stars={stars} />}
+        {sheet === 'overview' && <Overview t={t} me={me} season={season} />}
         {sheet === 'roster' && <Roster t={t} season={season} />}
         {sheet === 'results' && <Results t={t} me={me} season={season} />}
         {/* Scouting the school rather than its players — asked for by name:
@@ -429,12 +429,10 @@ function headToHead(season: SeasonState, mine: number, theirs: number): {
 }
 
 function Overview(
-  { t, me, season, rank, stars }:
-  { t: Record_; me: Record_ | null; season: SeasonState; rank: number; stars: number },
+  { t, me, season }:
+  { t: Record_; me: Record_ | null; season: SeasonState },
 ) {
   const year = useDynasty((s) => s.year);
-  const diff = t.rs - t.ra;
-  const reg = regularRecord(t);
   const mine = me && me.index === t.index;
   const h2h = me && !mine ? headToHead(season, me.index, t.index) : null;
 
@@ -538,32 +536,56 @@ function Overview(
         </PanelNote>
       ))}
 
-      <div style={{ marginTop: 16 }}>
-        <PanelHead>THE PROGRAM</PanelHead>
-      </div>
-      <Panel>
-        <Stat k="SCHOOL" v={t.def.school} />
-        <Stat k="NICKNAME" v={t.def.nickname} />
-        <Stat k="CONFERENCE" v={t.conference} />
-        <Stat k="PRESTIGE" v={`${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}`} />
-      </Panel>
+      {/*
+        The form guide, not the fact sheet.
 
-      <div style={{ marginTop: 16 }}>
-        <PanelHead>THIS SEASON</PanelHead>
-      </div>
-      <Panel>
-        <Stat k="OVERALL" v={`${reg.w}-${reg.l}`} />
-        <Stat k="CONFERENCE" v={`${t.cw}-${t.cl}`} />
-        <Stat k="NATIONAL RANK" v={rank > 0 ? `#${rank} RPI` : 'Unranked'} />
-        <Stat k="RUNS" v={`${t.rs} scored · ${t.ra} allowed`} />
-        <Stat k="RUN DIFFERENTIAL" v={`${diff > 0 ? '+' : ''}${diff}`} />
-        <Stat
-          k="STREAK"
-          v={t.streak === 0
-            ? 'None'
-            : `${t.streak > 0 ? 'Won' : 'Lost'} ${Math.abs(t.streak)} straight`}
-        />
-      </Panel>
+        Two panels used to follow here — THE PROGRAM (school, nickname,
+        conference, prestige) and THIS SEASON (record, rank, runs) — and every
+        line of both was already printed in the banner and the metric strip a
+        thumb's width above. Reported as "feels outdated and doesn't really
+        follow the whole style of the app", and the redundancy was most of why:
+        a page that says everything twice reads like two designs pasted
+        together. What replaces them is the one thing the header does NOT say —
+        how the season is actually going: the recent stretch, the splits, the
+        streak, computed from the results the save already keeps for everybody.
+      */}
+      {(() => {
+        const games = season.results
+          .filter((r) => r.home === t.index || r.away === t.index)
+          .sort((a, b) => a.day - b.day)
+          .map((r) => {
+            const home = r.home === t.index;
+            const us = home ? r.homeRuns : r.awayRuns;
+            const them = home ? r.awayRuns : r.homeRuns;
+            return { home, won: us > them };
+          });
+        if (games.length === 0) {
+          return (
+            <div style={{ marginTop: 16 }}>
+              <PanelHead>THE SHAPE OF THE SEASON</PanelHead>
+              <PanelNote>No games yet. The header fills in as they play.</PanelNote>
+            </div>
+          );
+        }
+        const wl = (gs: { won: boolean }[]): string =>
+          `${gs.filter((g) => g.won).length}-${gs.filter((g) => !g.won).length}`;
+        const streak = t.streak === 0 ? '—' : `${t.streak > 0 ? 'W' : 'L'}${Math.abs(t.streak)}`;
+        return (
+          <>
+            <div style={{ marginTop: 16 }}>
+              <PanelHead>THE SHAPE OF THE SEASON</PanelHead>
+            </div>
+            <Tiles>
+              <Tile k={`LAST ${Math.min(10, games.length)}`} v={wl(games.slice(-10))} />
+              <Tile k="HOME" v={wl(games.filter((g) => g.home))} />
+              <Tile k="ROAD" v={wl(games.filter((g) => !g.home))} />
+              {/* The accent is earned, not decorative: five straight either
+                  way is the line where a run becomes the story of a team. */}
+              <Tile k="STREAK" v={streak} accent={Math.abs(t.streak) >= 5} />
+            </Tiles>
+          </>
+        );
+      })()}
     </>
   );
 }
