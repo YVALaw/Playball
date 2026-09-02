@@ -502,6 +502,47 @@ button {
    remembering to. */
 .screen-in { animation: riseIn 260ms cubic-bezier(.2, .8, .3, 1) both; }
 
+/* ---------------------------------------------------------------------------
+   One screen leaving while the next one arrives.
+
+   `.screen-in` above is only half a transition: the frame keys `<main>` on the
+   screen, so the outgoing subtree is gone in the same commit the incoming one
+   mounts and the rise plays into an empty frame. `crossfade` in the store puts
+   both on screen for the length of this animation — see the long note there.
+
+   Deliberately quieter than the rise it replaces. The outgoing screen fades
+   without moving and the incoming one comes up four pixels, which is enough to
+   say "this is a new screen" and little enough that somebody moving through
+   four tabs in three seconds is not watching choreography. The old snapshot
+   leaves first so the two are never both at full strength.
+   --------------------------------------------------------------------------- */
+/* While a transition is running, the frame's own arrival animation stands down
+   — otherwise the screen rises 14px inside a snapshot that is already rising
+   four, and arrives twice. The class stays for the fallback path: a browser
+   without the API still gets the rise it always had. */
+:root[data-vt] .screen-in { animation: none; }
+
+::view-transition-old(root) {
+  animation: fadeIn 130ms ease-in reverse both;
+}
+
+::view-transition-new(root) {
+  animation: screenArrive 210ms cubic-bezier(.2, .8, .3, 1) 40ms both;
+}
+
+@keyframes screenArrive {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* The store already declines to start a transition under reduced motion, so
+   this is the belt to that pair of braces: a UA default cross-fade would
+   otherwise still run if the check above were ever bypassed. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) { animation: none; }
+}
+
 /* The two transitions worth having everywhere: a bar that grows, and a control
    that changes state under your thumb. */
 .grow { transition: width 420ms cubic-bezier(.2, .8, .3, 1); }

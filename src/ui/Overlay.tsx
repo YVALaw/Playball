@@ -44,7 +44,11 @@ export function Overlay(
       </header>
       {/* The scroller. A div rather than a <main>, because what it wraps is
           already a screen with its own <main> in it. */}
-      <div className="overlay-scroll screen-in">{children}</div>
+      {/* The rise moved to `.full-overlay` itself. It was on this wrapper, so
+          the panel appeared instantly and its contents climbed inside it —
+          which reads as the card assembling rather than as the card arriving.
+          One motion, on the thing that is actually new. */}
+      <div className="overlay-scroll">{children}</div>
       {floating}
     </section>
   );

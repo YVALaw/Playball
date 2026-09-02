@@ -275,6 +275,107 @@ export type ProgramSheet = 'board' | 'money' | 'watchlist' | 'coach' | 'hall';
  * available at all times and urgent at none. Every step here happens once, in
  * order, and the game does not go forward until you have done it.
  */
+/**
+ * A screen change that the outgoing screen is present for.
+ *
+ * ---------------------------------------------------------------------------
+ * What was wrong
+ * ---------------------------------------------------------------------------
+ *
+ * Reported after playing the iOS competition: *"one screen doesn't just appear
+ * when we tap on another option, it does a transition."* Ours appeared.
+ *
+ * The cause is one attribute. `App` renders `<main key={phase ?? screen}>`, so a
+ * screen change unmounts the old subtree and mounts the new one in the same
+ * commit — there is no frame on which both exist. `.screen-in` then plays its
+ * 260ms rise into an empty frame, which is a cut with a flourish on the end
+ * rather than a transition. A native push has both screens on screen the whole
+ * way, and that continuity is the entire effect.
+ *
+ * ---------------------------------------------------------------------------
+ * Why a view transition rather than keeping both mounted
+ * ---------------------------------------------------------------------------
+ *
+ * Keeping both screens alive would mean holding two subtrees, two scroll
+ * positions and two sets of effects, and it would fight the remount the frame
+ * depends on. `startViewTransition` snapshots the outgoing DOM instead, so both
+ * are on screen without either being mounted twice. It works with the `key`
+ * rather than against it.
+ *
+ * Supported in modern Android WebView, which is where this ships.
+ *
+ * ---------------------------------------------------------------------------
+ * Two frames rather than flushSync
+ * ---------------------------------------------------------------------------
+ *
+ * The API wants the DOM updated inside the callback. The usual way to make
+ * React comply is `flushSync`, and the usual way to reach it is importing
+ * `react-dom` — into the store, which has never imported a renderer and should
+ * not start. Returning a promise that resolves after two animation frames gives
+ * React the same guarantee from the outside: by the second frame the commit
+ * this callback triggered has painted.
+ *
+ * Measured before writing any of this, because it is the thing that would make
+ * it worse rather than better: the heaviest screen in the game commits in about
+ * 40ms on a dev machine. A phone is three to five times slower on script, so
+ * budget roughly 120–200ms there — still inside a transition nobody is waiting
+ * on, and the reason this was safe to add at all.
+ */
+function crossfade(run: () => void): void {
+  const doc = typeof document === 'undefined' ? null : document;
+  const start = (doc as unknown as {
+    startViewTransition?: (cb: () => Promise<void> | void) => unknown;
+  } | null)?.startViewTransition;
+
+  /*
+    No API, no DOM (the store is exercised in node by a thousand tests), or a
+    player who has asked for less movement. `data-motion` is stamped on the root
+    by devicePrefs; "system" defers to the media query, which is the same switch
+    every other animation in the app honours.
+  */
+  const motion = doc?.documentElement.dataset.motion;
+  const stopped = motion === 'reduced'
+    || (motion !== 'full' && typeof matchMedia === 'function'
+      && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  if (!start || !doc || stopped) { run(); return; }
+
+  /*
+    `.screen-in` is the other half of this and must stand down while it runs.
+    The frame puts a 260ms rise on every arriving screen, which was the whole
+    of the old transition; left on, it plays inside the snapshot the API is
+    already animating and the screen arrives twice. It stays in the stylesheet
+    because it is still the fallback wherever there is no view transition to
+    replace it — a browser without the API, or a player who turned motion off.
+  */
+  const root = doc.documentElement;
+  root.dataset.vt = '1';
+  const done = (): void => { delete root.dataset.vt; };
+
+  const t = start.call(doc, () => {
+    run();
+    return new Promise<void>((resolve) => {
+      let settled = false;
+      const finish = (): void => { if (!settled) { settled = true; resolve(); } };
+      requestAnimationFrame(() => requestAnimationFrame(finish));
+      /*
+        A frame budget's worth of insurance, and it is not theoretical: a hidden
+        or backgrounded WebView stops serving animation frames entirely. Found
+        exactly that way — the transition never completed because the two frames
+        never arrived. `run()` has already been called by then, so the state is
+        correct either way; without this the transition simply never ends.
+      */
+      setTimeout(finish, 100);
+    });
+  }) as { finished?: Promise<unknown> } | undefined;
+
+  // `finished` resolves when the animation ends and rejects if it is skipped —
+  // a second navigation landing on top of this one, which is a thing a thumb
+  // does. Either way the attribute comes off, and the timer covers the case
+  // where neither ever settles.
+  if (t?.finished) void t.finished.then(done, done);
+  setTimeout(done, 600);
+}
+
 export type Phase =
   | null            // the season is on
   | 'awards'
@@ -2024,19 +2125,21 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   go: (tab, screen, focus) => {
     const def = TABS.find((t) => t.id === tab);
-    set({
+    crossfade(() => set({
       tab,
       screen: screen ?? def?.screens[0]?.id ?? 'today',
       selectedPlayer: null,
       focusPlayer: focus ?? null,
-    });
+    }));
   },
 
   clearFocusPlayer: () => set({ focusPlayer: null }),
 
   // Navigating any other way drops the mark: it belongs to the errand that set
   // it, and an errand you walked away from is over.
-  setScreen: (screen) => set({ selectedPlayer: null, focusPlayer: null, screen }),
+  setScreen: (screen) => crossfade(() => set({
+    selectedPlayer: null, focusPlayer: null, screen,
+  })),
 
   recruit: (prospectId, actions) => {
     const { season, userTeam, version } = get();
