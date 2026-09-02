@@ -24,7 +24,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { boardBudget, useDynasty, useUserTeam } from '../../state/store.js';
 import {
-  fit, weeklyPoints, canPursue, inPipeline, reachFloor, byRank,
+  fit, weeklyPoints, canPursue, inPipeline, byRank,
   PRIORITIES, PRIORITY_LABEL, PRIORITY_BLURB,
   SCHOLARSHIPS, MAX_PER_RECRUIT, RECRUITING_WEEKS,
   reportedOverall, reportedPotential, reportedTool, reportWidth, hintsFor,
@@ -1239,11 +1239,13 @@ function Overview({
           borderLeft: '3px solid var(--clay)',
           font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
         }}>
+          {/* The formula lived here — which stars hear out which prestige,
+              minus one in-state — and reciting it was the same leak the offer
+              foot had. The fact stays; the arithmetic goes back inside the
+              game. */}
           <strong style={{ color: 'var(--ink)' }}>He will not take the call.</strong>
-          {' '}A {'★'.repeat(prospect.stars)} recruit hears out a{' '}
-          {'★'.repeat(reachFloor(prospect.stars))} program and up, one more
-          rung down if he is from your own state, and he is not. Build the program
-          up and players like him start listening.
+          {' '}A recruit like him does not answer programs like yours yet.
+          Build the place up and players like him start listening.
         </div>
       )}
 
@@ -1314,10 +1316,12 @@ function Overview({
             })}
           </div>
           <div className="prospect-offer-foot">
-            <span>
-              {left} left this week · min. prestige {'★'.repeat(reachFloor(prospect.stars))}
-              {pipeline ? ' − 1 here' : ''}
-            </span>
+            {/* The prestige floor used to be printed here — "min. prestige
+                ★★★" — which handed a hidden mechanic to the player as a
+                number. Part of the secrets scrub: the game may keep rules it
+                does not recite, and a recruit who is out of reach already
+                says so in his own voice on the card. */}
+            <span>{left} left this week</span>
             <button type="button" disabled={spent === 0} onClick={() => onSet(0)}>Clear</button>
           </div>
         </section>
