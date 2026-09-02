@@ -77,6 +77,64 @@ function tuned(
   return fromHsl([h, clamp(Math.max(s, sMin), 0, 0.72), clamp(l, lLo, lHi)]);
 }
 
+/*
+  Lightness is not brightness, and that is the whole problem.
+
+  Every cut above is clamped on HSL lightness, which treats a saturated blue
+  at 55% and a yellow at 55% as the same thing. The eye does not: relative
+  luminance weights green at 0.72 and blue at 0.07, so a navy school's accent
+  came out of a 48-60% band looking almost black. Measured across all ninety
+  six colours, the dark cut failed to carry text on more than half of them —
+  Selma Forge and Albuquerque landed at 2.34 against a card, where 4.5 is the
+  floor for reading.
+
+  So the band is a starting point and the CONTRAST is the constraint: walk
+  the lightness until the colour can actually carry the text it has to, or
+  until there is nowhere left to walk. tests/contrast.test.ts is the proof.
+*/
+
+const relLum = ([r, g, b]: [number, number, number]): number => {
+  const ch = (c: number): number => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b);
+};
+
+const ratio = (a: [number, number, number], b: [number, number, number]): number => {
+  const l1 = Math.max(relLum(a), relLum(b));
+  const l2 = Math.min(relLum(a), relLum(b));
+  return (l1 + 0.05) / (l2 + 0.05);
+};
+
+/**
+ * The app's own dark surfaces, which the dark accent has to sit on.
+ *
+ * Kept in step with the dark blocks of `tokens.css` by the contrast test —
+ * change one without the other and it fails.
+ */
+const DARK_PAPER: [number, number, number] = [28, 35, 29];
+const DARK_FIELD: [number, number, number] = [18, 23, 17];
+const WHITE: [number, number, number] = [255, 255, 255];
+
+/** Walk lightness one way until the colour clears every bar set for it. */
+function untilLegible(
+  base: [number, number, number], startL: number, sMin: number,
+  step: number,
+  clears: (c: [number, number, number]) => boolean,
+): [number, number, number] {
+  const [h, s] = toHsl(base);
+  const sat = clamp(Math.max(s, sMin), 0, 0.72);
+  let l = startL;
+  let out = fromHsl([h, sat, l]);
+  for (let i = 0; i < 60 && !clears(out); i++) {
+    l = clamp(l + step, 0.04, 0.96);
+    out = fromHsl([h, sat, l]);
+    if (l <= 0.04 || l >= 0.96) break;
+  }
+  return out;
+}
+
 /** The custom properties this file owns, for a clean reset. */
 const HOOKS = [
   '--accent', '--accent-rgb', '--accent-deep', '--accent-soft',
@@ -90,6 +148,34 @@ const HOOKS = [
  * the accent at command strength, a deep version for the navy surfaces, a
  * whisper of it for selected rows, and the dark theme's brighter cut of each.
  */
+/**
+ * The eight values a school's colour becomes, without touching the document.
+ *
+ * Split out of `applyTeamAccent` so the palette can be CHECKED rather than
+ * trusted: `tests/contrast.test.ts` runs every one of the ninety six school
+ * colours through this and asserts that the text each value has to carry is
+ * actually legible on the surface it sits on, in both themes. That test
+ * exists because `--navy` shipped for weeks painting dark ink on dark
+ * surfaces, and no amount of looking at one save was going to find it.
+ */
+export function accentPalette(colour: string): Record<string, string> | null {
+  const base = rgb(colour);
+  if (!base) return null;
+  const softDk = tuned(base, 0.14, 0.19, 0.22);
+  return {
+    accent: hex(tuned(base, 0.24, 0.40, 0.30)),
+    accentDeep: hex(tuned(base, 0.13, 0.20, 0.26)),
+    accentSoft: hex(tuned(base, 0.90, 0.94, 0.14)),
+    accentSoftDk: hex(softDk),
+    accentDk: hex(untilLegible(base, 0.54, 0.34, 0.02, (c) => (
+      ratio(c, DARK_PAPER) >= 4.6
+      && ratio(c, DARK_FIELD) >= 4.6
+      && ratio(c, softDk) >= 4.6
+    ))),
+    accentRaisedDk: hex(untilLegible(base, 0.39, 0.32, -0.02, (c) => ratio(c, WHITE) >= 4.6)),
+  };
+}
+
 export function applyTeamAccent(colour: string | null): void {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
@@ -101,9 +187,15 @@ export function applyTeamAccent(colour: string | null): void {
   const light = tuned(base, 0.24, 0.40, 0.30);
   const deep = tuned(base, 0.13, 0.20, 0.26);
   const soft = tuned(base, 0.90, 0.94, 0.14);
-  const dark = tuned(base, 0.48, 0.60, 0.34);
   const softDk = tuned(base, 0.14, 0.19, 0.22);
-  const raisedDk = tuned(base, 0.34, 0.44, 0.32);
+  // Bright enough to be read on a card, on the chrome, and on its own tint.
+  const dark = untilLegible(base, 0.54, 0.34, 0.02, (c) => (
+    ratio(c, DARK_PAPER) >= 4.6
+    && ratio(c, DARK_FIELD) >= 4.6
+    && ratio(c, softDk) >= 4.6
+  ));
+  // Dark enough that the white on the action button's disc survives it.
+  const raisedDk = untilLegible(base, 0.39, 0.32, -0.02, (c) => ratio(c, WHITE) >= 4.6);
 
   root.style.setProperty('--accent', hex(light));
   root.style.setProperty('--accent-rgb', light.join(', '));

@@ -41,6 +41,11 @@ export interface DevicePrefs {
    * `--ts` custom property. 1 is the design exactly as drawn.
    */
   textScale: number;
+  /**
+   * Stamped once the default became LARGE. Its absence means the stored
+   * scale predates that and was never anybody's choice.
+   */
+  tsz?: boolean;
   /** The dugout's field. 3D is the default and the design; 2D is the fallback. */
   field: FieldMode;
   /** Motion. `system` honours `prefers-reduced-motion`, the other two override. */
@@ -78,7 +83,18 @@ export const TEXT_SCALES: readonly { value: number; label: string }[] = [
 ];
 
 export const DEFAULT_PREFS: DevicePrefs = {
-  textScale: 1,
+  /*
+    LARGE, not normal.
+
+    Asked for directly: "make the large text the default when we first
+    start." This is a phone game with a lot of small mono labels on it, and
+    the honest reading of the room is that the comfortable size should be
+    what a new player meets — the three other sizes are still one tap away
+    in settings, including the smaller one for anybody who wants the density
+    back.
+  */
+  textScale: 1.15,
+  tsz: true,
   field: '3d',
   motion: 'system',
   theme: 'system',
@@ -125,10 +141,19 @@ export function readPrefs(): DevicePrefs {
   }
   if (!raw || typeof raw !== 'object') return { ...DEFAULT_PREFS };
   const o = raw as Partial<DevicePrefs>;
-  const scale = TEXT_SCALES.some((t) => t.value === o.textScale)
-    ? o.textScale! : DEFAULT_PREFS.textScale;
+  /*
+    A stored 1 from before the default moved is not a choice.
+
+    Same problem the broadcast had with its toggles: everybody who played
+    before this change has `textScale: 1` written down, and none of them
+    picked it. The `tsz` marker separates the eras — without it, take the
+    new default; with it, the number really was chosen.
+  */
+  const chosen = TEXT_SCALES.some((t) => t.value === o.textScale);
+  const scale = o.tsz === true && chosen ? o.textScale! : DEFAULT_PREFS.textScale;
   return {
     textScale: scale,
+    tsz: true,
     field: o.field === '2d' ? '2d' : '3d',
     motion: o.motion === 'reduced' || o.motion === 'full' ? o.motion : 'system',
     theme: o.theme === 'light' || o.theme === 'dark' ? o.theme : 'system',

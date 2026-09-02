@@ -61,7 +61,18 @@
      the desktop letterbox behind the phone frame, which used to borrow --ink
      and cannot once --ink turns light. */
   --wash: #f5f7f2;
-  --mute: #afb4af;
+  /*
+    Greyed, not vanished.
+
+    This was #afb4af, which measures 2.11 against white — the exact
+    complaint that keeps coming back as "text the same colour as the
+    background". --mute marks things that are genuinely inactive (the step
+    a career has not reached yet), and AA exempts disabled controls from the
+    4.5 floor, so it should not read as live text. But it does have to be
+    readable: 3.3 is the floor the contrast test holds it to, which is off
+    without being absent.
+  */
+  --mute: #888e87;
   --backdrop: #1d201d;
   /* The black bands -- table heads, question cards, the FABs. Black in the
      light theme, and still dark in the dark one, where --ink flips light. */
@@ -110,8 +121,8 @@
    cannot read the attribute and the attribute cannot read the media query.
    --------------------------------------------------------------------------- */
 :root[data-theme='dark'] {
-  --field: #151c16;
-  --paper: #2a332b;
+  --field: #121711;
+  --paper: #1c231d;
   --ink: #e4eae4;
   --ink-rgb: 228, 234, 228;
   --clay: var(--accent-dk, #4da97a);
@@ -119,34 +130,43 @@
   --alert: #e0655e;
   --win: #4da97a;
   --loss: #e0655e;
-  --line: #4b594d;
+  --line: #3a463c;
   --sunk: #10160f;
   --soft: var(--accent-soft-dk, #1f3428);
-  --wash: #1e261f;
-  --mute: #8d978e;
+  --wash: #161c17;
+  --mute: #93a094;
         /*
-          Alpha borders are not theme-symmetric.
-    
-          --faint and --hairline are a percentage of the ink, and the same
-          percentage of a light ink on a dark ground reads far weaker than a
-          dark ink on paper does: measured, a hairline on the dark theme was a
-          1.06 contrast edge, which is no edge at all. Reported as "colors are
-          too similar and we can barely distinguish the background from another
-          section." Restated here rather than changed globally, because the
-          light theme measures fine.
+          The border does the separating, not the brightness.
+          Two passes to get here, and the first was wrong in an instructive
+          way. The surfaces started a hair apart — wash against field measured
+          1.04, which is no edge at all — so the first fix pulled the card
+          surfaces UP until they were visibly lighter. That measured fine and
+          looked cheap: lifting a card on a dark ground reads as washed-out
+          grey, and it came straight back as "the shade you used to
+          differentiate the background from the content doesn't look good".
+
+          So the surfaces are deep and close again (steps of 1.08 to 1.22) and
+          the EDGE carries the separation instead: --line reads 1.62 against
+          paper and 1.83 against the chrome. The alpha borders are restated
+          stronger for the original reason — the same percentage of a light ink
+          on a dark ground is weaker than a dark ink on paper — and the light
+          theme, which measures fine, is untouched.
         */
         --faint: rgba(var(--ink-rgb), 0.30);
         --hairline: rgba(var(--ink-rgb), 0.19);
-  --backdrop: #070907;
-  --band: #38443a;
+  --backdrop: #0a0d0a;
+  --band: #26312a;
   --scrim-rgb: 0, 0, 0;
   --raised: var(--accent-raised-dk, #2f7a52);
+  /* See the note in the media block below: this is the token that was
+     never given a dark value, and it paints text. */
+  --navy: var(--accent-dk, #4da97a);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --field: #151c16;
-    --paper: #2a332b;
+    --field: #121711;
+    --paper: #1c231d;
     --ink: #e4eae4;
     --ink-rgb: 228, 234, 228;
     --clay: var(--accent-dk, #4da97a);
@@ -154,27 +174,52 @@
     --alert: #e0655e;
     --win: #4da97a;
     --loss: #e0655e;
-    --line: #4b594d;
+    --line: #3a463c;
     --sunk: #10160f;
     --soft: var(--accent-soft-dk, #1f3428);
-    --wash: #1e261f;
-    --mute: #8d978e;
+    --wash: #161c17;
+    --mute: #93a094;
         /*
-          Alpha borders are not theme-symmetric.
-    
-          --faint and --hairline are a percentage of the ink, and the same
-          percentage of a light ink on a dark ground reads far weaker than a
-          dark ink on paper does: measured, a hairline on the dark theme was a
-          1.06 contrast edge, which is no edge at all. Reported as "colors are
-          too similar and we can barely distinguish the background from another
-          section." Restated here rather than changed globally, because the
-          light theme measures fine.
+          The border does the separating, not the brightness.
+          Two passes to get here, and the first was wrong in an instructive
+          way. The surfaces started a hair apart — wash against field measured
+          1.04, which is no edge at all — so the first fix pulled the card
+          surfaces UP until they were visibly lighter. That measured fine and
+          looked cheap: lifting a card on a dark ground reads as washed-out
+          grey, and it came straight back as "the shade you used to
+          differentiate the background from the content doesn't look good".
+
+          So the surfaces are deep and close again (steps of 1.08 to 1.22) and
+          the EDGE carries the separation instead: --line reads 1.62 against
+          paper and 1.83 against the chrome. The alpha borders are restated
+          stronger for the original reason — the same percentage of a light ink
+          on a dark ground is weaker than a dark ink on paper — and the light
+          theme, which measures fine, is untouched.
         */
         --faint: rgba(var(--ink-rgb), 0.30);
         --hairline: rgba(var(--ink-rgb), 0.19);
-    --backdrop: #070907;
-    --band: #38443a;
+    --backdrop: #0a0d0a;
+    --band: #26312a;
     --scrim-rgb: 0, 0, 0;
+    /*
+      The one token that never got a dark value, and it paints TEXT.
+
+      `--navy` is the deep accent — dark ink meant for light surfaces — and
+      it was defined once, in the light block, and left there. Every rule
+      using it as a colour therefore painted dark-on-dark once the theme
+      flipped: the dugout call buttons, the manager panel, the watch and sim
+      commands, the round trigger, the postseason stage rail, the portal and
+      recruit DONE states, the final-game link, the college compare labels.
+      Measured, the active stage-rail tab was text rgb(38,64,57) on
+      background rgb(36,61,54) — a contrast ratio of 1.04, which is not low,
+      it is invisible.
+
+      The dark cut of the accent is the right value rather than plain ink:
+      these are the app wearing the school's colour, and `accent.ts` already
+      clamps that cut to 48-60% lightness precisely so it can carry text.
+      Measured against --paper it lands between 4.5 and 6.6.
+    */
+    --navy: var(--accent-dk, #4da97a);
     --raised: var(--accent-raised-dk, #2f7a52);
   }
 }
