@@ -310,10 +310,14 @@ export function Player() {
       />
       {active === 'overview' && <Overview p={p} owner={owner} isOurs={isOurs} />}
       {active === 'ratings' && <Ratings p={p} isOurs={isOurs} ownerIndex={owner.index} />}
+      {/* Rearranged by request: "remove the box where it says the current
+          year stats and instead put them in overview; in stats we will only
+          keep the season by season, and one season by season as well but to
+          record the june stats." */}
       {active === 'stats' && (
         <>
-          <ThisSeason p={p} />
           <SeasonsUnder p={p} owner={owner} isOurs={isOurs} />
+          <JuneByYear p={p} owner={owner} isOurs={isOurs} />
         </>
       )}
       {active === 'games' && <Games id={p.id} owner={owner} isOurs={isOurs} />}
@@ -604,6 +608,10 @@ function Overview({ p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: bo
           </strong>
         </div>
       </section>
+
+      {/* The year in progress, moved here from STATS — the overview is where
+          a card is read at a glance, and the glance wants the current line. */}
+      <ThisSeason p={p} />
     </>
   );
 }
@@ -1039,6 +1047,7 @@ function BarGroup({ title, children }: { title: string; children: ReactNode }) {
  */
 function ThisSeason({ p }: { p: AnyPlayer }) {
   const season = useDynasty((s) => s.season);
+  const year = useDynasty((s) => s.year);
   const version = useDynasty((s) => s.version);
   void version;
   const id = p.id;
@@ -1068,6 +1077,7 @@ function ThisSeason({ p }: { p: AnyPlayer }) {
 
   return (
     <>
+      <SectionHeading kicker="THIS SEASON" title={String(year)} />
       <section className="season-line">
         {isPitcher && pit ? (
           <>
@@ -1110,91 +1120,75 @@ function ThisSeason({ p }: { p: AnyPlayer }) {
         ) : null}
       </section>
 
-      <InJune p={p} />
       {/* The glove section left this tab by request — "remove the in the
           field with the glove section" — its numbers fold into each season's
           expanded row instead, where the season by season list shows the
-          whole line on a tap. */}
+          whole line on a tap. The IN JUNE panel that closed this section is
+          gone the same way: June lives on STATS now, year by year. */}
     </>
   );
 }
 
 /**
- * What he has done when it mattered.
+ * His Junes, year by year — the same timeline the seasons use.
  *
  * Season totals in this game include tournament play, so June cannot be got by
- * subtracting one book from another — it is counted a second time in its own,
- * and carried down a career on `CareerTotals.post`. This is the only place a
- * *player's* postseason shows up: the leaderboard on the stats screen answers
- * "who hit best in the tournament", and this answers "what did he do in his".
+ * subtracting one book from another — it is counted a second time in its own
+ * books, and from now on each year's split is written onto his career row at
+ * the archive (`CareerYear.june`). Asked for in exactly this shape: "one
+ * season by season as well but to record the june stats, year by year just
+ * like the season by season."
+ *
+ * The one honest limit: rows written before the split existed have no June of
+ * their own — those tournaments live only in the aggregate `CareerTotals.post`
+ * line, which is printed underneath whenever it knows more than the rows do.
  *
  * Absent entirely for a man who has never played a postseason game, which is
- * most of a roster in February. A panel of dashes is not information.
+ * most of a roster in February. A timeline of dashes is not information.
  */
-function InJune({ p }: { p: AnyPlayer }) {
+function JuneByYear(
+  { p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: boolean },
+) {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   void version;
   const isPitcher = p.type === 'pitcher';
 
-  // This June, and the whole career including it. The career row is written at
-  // the board meeting, so during a postseason it is still last year's total —
-  // the two are shown separately rather than added, which would double-count.
-  const bat = season?.postBatting?.get(p.id);
-  const pit = season?.postPitching?.get(p.id);
-  const career = season?.careerTotals?.get(p.id)?.post;
+  const { years, live } = careerYears(season ?? null, owner.index, p.id, isOurs);
+  const toRow = (y: CareerYear): CareerYear => ({
+    year: y.year, classYear: y.classYear, team: y.team, name: y.name, ...y.june,
+  });
+  const rows = years.filter((y) => y.june).map(toRow);
+  const liveRow = live?.june ? toRow(live) : null;
 
-  const playedNow = isPitcher ? (pit?.g ?? 0) > 0 : (bat?.g ?? 0) > 0;
-  const playedEver = (career?.y ?? 0) > 0;
-  if (!playedNow && !playedEver) return null;
+  // The aggregate, for the Junes the rows cannot reach. Its `y` counts every
+  // tournament ever folded in; the rows only know the ones written since the
+  // split existed. The live June is not folded into the aggregate until the
+  // year rolls, so it is excluded from the comparison by year.
+  const post = season?.careerTotals?.get(p.id)?.post;
+  const unrowed = (post?.y ?? 0) - rows.filter((r) => r.year !== liveRow?.year).length;
 
-  const tournaments = (career?.y ?? 0) + (playedNow ? 1 : 0);
+  if (rows.length === 0 && (post?.y ?? 0) === 0) return null;
 
   return (
     <>
-      <SectionHeading kicker="IN JUNE" title="When it mattered" />
-      <Panel>
-        {playedNow && (isPitcher
-          ? pit && pit.outs > 0 && (
-            <>
-              <Stat k="THIS JUNE" v={`${pit.w}-${pit.l}`} />
-              <Stat k="ERA" v={era(pit).toFixed(2)} />
-              <Stat k="INNINGS" v={inningsPitched(pit).toFixed(1)} />
-              <Stat k="STRIKEOUTS" v={String(pit.k)} last />
-            </>
-          )
-          : bat && bat.ab > 0 && (
-            <>
-              <Stat k="THIS JUNE" v={pct(battingAverage(bat))} />
-              <Stat k="HITS" v={`${bat.h}-for-${bat.ab}`} />
-              <Stat k="HOME RUNS" v={String(bat.hr)} />
-              <Stat k="RUNS BATTED IN" v={String(bat.rbi)} last />
-            </>
-          ))}
-        {career && career.y > 0 && (isPitcher
-          ? career.outs > 0 && (
-            <>
-              <Stat k="CAREER" v={`${career.w}-${career.l}`} />
-              <Stat k="CAREER ERA" v={((career.er * 27) / career.outs).toFixed(2)} />
-              <Stat k="CAREER K" v={String(career.k)} last />
-            </>
-          )
-          : career.ab > 0 && (
-            <>
-              <Stat k="CAREER" v={pct(career.h / career.ab)} />
-              <Stat k="CAREER HITS" v={`${career.h}-for-${career.ab}`} />
-              <Stat k="CAREER HR" v={String(career.hr)} last />
-            </>
-          ))}
-        <div style={{
-          padding: '7px 10px', borderTop: '1px solid var(--hairline)',
-          font: "400 calc(10.5px * var(--ts))/1.4 var(--body)", color: 'var(--dim)',
-        }}>
-          {tournaments === 1
-            ? 'One postseason.'
-            : `${tournaments} postseasons.`}
-        </div>
-      </Panel>
+      <SectionHeading
+        kicker="IN JUNE"
+        title={rows.length === 1 ? 'One tournament' : `${Math.max(rows.length, post?.y ?? 0)} tournaments`}
+      />
+      {rows.length > 0 && (
+        <SeasonRows years={rows} live={liveRow} isPitcher={isPitcher} glove={false} />
+      )}
+      {post && unrowed > 0 && (
+        <Note>
+          {unrowed === 1 ? 'One earlier June was' : `${unrowed} earlier Junes were`} kept
+          as a single career line:{' '}
+          {isPitcher
+            ? `${post.w}-${post.l}${post.outs > 0 ? `, ${((post.er * 27) / post.outs).toFixed(2)} ERA` : ''} and ${post.k} strikeouts`
+            : `${post.ab > 0 ? pct(post.h / post.ab) : '—'} with ${post.hr} home runs`}
+          {' '}when it mattered.
+        </Note>
+      )}
     </>
   );
 }
@@ -1303,8 +1297,10 @@ function careerYears(
 
 /** The timeline itself, so the two tabs cannot draw a year differently. */
 function SeasonRows(
-  { years, live, isPitcher }:
-  { years: CareerYear[]; live: CareerYear | null; isPitcher: boolean },
+  { years, live, isPitcher, glove = true }:
+  { years: CareerYear[]; live: CareerYear | null; isPitcher: boolean;
+    /** June rows carry no fielding — the split never kept a glove. */
+    glove?: boolean },
 ) {
   /*
     Tap a season and it opens. Asked for: "you can tab on them and they will
@@ -1338,7 +1334,7 @@ function SeasonRows(
             ['IP', outs > 0 ? ip(outs) : '—'],
             ['K', String(k)],
             ['K/9', outs > 0 ? ((k * 27) / outs).toFixed(1) : '—'],
-            ['E', String(y.errors ?? 0)],
+            ...(glove ? [['E', String(y.errors ?? 0)] as [string, string]] : []),
           ]
           : [
             ['AVG', ab > 0 ? pct(h / ab) : '—'],
@@ -1350,9 +1346,13 @@ function SeasonRows(
             ['2B+3B', String(d + t)],
             ['BB', String(bb)],
             ['SB', String(y.sb ?? 0)],
-            ['CHANCES', String(y.chances ?? 0)],
-            ['PLAYS', String(y.plays ?? 0)],
-            ['E', String(y.errors ?? 0)],
+            ...(glove
+              ? [
+                ['CHANCES', String(y.chances ?? 0)] as [string, string],
+                ['PLAYS', String(y.plays ?? 0)] as [string, string],
+                ['E', String(y.errors ?? 0)] as [string, string],
+              ]
+              : []),
           ];
         return (
           <div key={y.year}>
@@ -1693,7 +1693,17 @@ function SeasonsUnder(
   const version = useDynasty((s) => s.version);
   void version;
   const { years, live } = careerYears(season ?? null, owner.index, p.id, isOurs);
-  if (years.length === 0) return null;
+  if (years.length === 0) {
+    // The tab's only tenant until he appears — the current-year box moved to
+    // the overview, so without this a freshman's STATS tab would be blank.
+    return (
+      <section className="empty-state">
+        <h2>No seasons yet</h2>
+        <p>His first appearance writes the first row. Until then, the year in
+          progress lives on the overview.</p>
+      </section>
+    );
+  }
   return (
     <>
       <SectionHeading

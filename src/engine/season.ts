@@ -147,6 +147,20 @@ export interface CareerYear {
    * summed down a career column.
    */
   chances?: number; plays?: number; errors?: number;
+  /**
+   * His June, split out — the same counting columns, tournament games only.
+   *
+   * The season totals above already include these games; the split exists so
+   * a career page can answer "what did he do when it mattered" year by year,
+   * which an aggregate CareerTotals.post line cannot. Optional three ways: a
+   * row written before the split existed has none, a man whose team missed
+   * June has none, and a man who sat the tournament out has none.
+   */
+  june?: {
+    ab?: number; h?: number; d?: number; t?: number;
+    hr?: number; rbi?: number; bb?: number; sb?: number;
+    w?: number; l?: number; outs?: number; er?: number; k?: number;
+  };
 }
 
 /**
@@ -302,6 +316,33 @@ function seasonRow(
     ...(fld && fld.chances > 0
       ? { chances: fld.chances, plays: fld.plays, errors: fld.errors }
       : {}),
+    // The June split, from the postseason books. Written here so the archive
+    // and the live row cannot disagree about a tournament.
+    ...(juneSplit(season, p.id) ?? {}),
+  };
+}
+
+/** The `june` property for a row, or nothing for a man who sat June out. */
+function juneSplit(
+  season: SeasonState, id: PlayerId,
+): { june: NonNullable<CareerYear['june']> } | null {
+  const bat = season.postBatting?.get(id);
+  const pit = season.postPitching?.get(id);
+  const batted = bat && (bat.ab > 0 || bat.bb > 0 || bat.hbp > 0);
+  const pitched = pit && pit.outs > 0;
+  if (!batted && !pitched) return null;
+  return {
+    june: {
+      ...(batted && bat
+        ? {
+          ab: bat.ab, h: bat.h, d: bat.d, t: bat.t,
+          hr: bat.hr, rbi: bat.rbi, bb: bat.bb, sb: bat.sb,
+        }
+        : {}),
+      ...(pitched && pit
+        ? { w: pit.w, l: pit.l, outs: pit.outs, er: pit.er, k: pit.k }
+        : {}),
+    },
   };
 }
 

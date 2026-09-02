@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   createSeason, simSeason, standings, seasonLength, nextSeason, DEFAULT_SEASON,
-  recordCareerMarks,
+  recordCareerMarks, archiveSeason,
 } from '../src/engine/season.js';
 import { departAndDevelop, fillRosters } from '../src/engine/progression.js';
 import { CONFERENCES } from '../src/data/schools.js';
@@ -527,6 +527,34 @@ describe('postseason statistics', () => {
       // The June half can never exceed the career it is part of.
       expect(c.post!.ab).toBeLessThanOrEqual(c.ab);
       expect(c.post!.k).toBeLessThanOrEqual(c.k);
+    }
+  });
+
+  it('writes each June onto the career row, year by year', () => {
+    // Asked for on the player card: "one season by season as well but to
+    // record the june stats, year by year just like the season by season."
+    // The split is written by seasonRow at the archive, so the row a career
+    // page reads carries the tournament — and only for men who played in it.
+    const { s } = played(7306);
+    for (let t = 0; t < s.teams.length; t++) archiveSeason(s, t, 2027);
+    let split = 0;
+    for (const rows of Object.values(s.careers ?? {})) {
+      const y = rows.find((r) => r.year === 2027);
+      if (!y?.june) continue;
+      split++;
+      // Never more than the season it is part of — the same containment the
+      // books themselves obey.
+      if (y.june.ab !== undefined) expect(y.june.ab).toBeLessThanOrEqual(y.ab ?? 0);
+      if (y.june.outs !== undefined) expect(y.june.outs).toBeLessThanOrEqual(y.outs ?? 0);
+    }
+    expect(split).toBeGreaterThan(0);
+    // And a man with no June line gets no split: absent, not zeroes.
+    const junePlayers = new Set<string>([
+      ...(s.postBatting?.keys() ?? []), ...(s.postPitching?.keys() ?? []),
+    ].map(String));
+    for (const [id, rows] of Object.entries(s.careers ?? {})) {
+      const y = rows.find((r) => r.year === 2027);
+      if (y?.june) expect(junePlayers.has(id)).toBe(true);
     }
   });
 
