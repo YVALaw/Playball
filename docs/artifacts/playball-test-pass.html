@@ -173,8 +173,15 @@
     <h2>Running it</h2>
     <dl>
       <dt>This machine</dt><dd><code>http://localhost:5174</code></dd>
-      <dt>Your phone</dt><dd><code>http://10.0.0.41:5174</code> — same wifi</dd>
+      <dt>Your phone</dt><dd><code>http://10.0.0.40:5174</code> — same wifi</dd>
     </dl>
+    <p>
+      That address is a DHCP lease and will change. The authority is the line
+      Vite prints on startup — <code>Network: http://…:5174/</code> — not
+      anything read off <code>ipconfig</code>, which lists a pile of
+      <code>169.254</code> link-local addresses for adapters that are not
+      connected to anything.
+    </p>
     <p>
       <strong>The phone is a different origin, so your Newport Bay save is not
       there.</strong> IndexedDB is scoped per host, and this career lives on
