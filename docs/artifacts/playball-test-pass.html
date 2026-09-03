@@ -150,12 +150,13 @@
 
 <header class="top">
   <div class="top-in">
-    <p class="kicker">Playball · branch play-batch-2 · four commits, unpushed</p>
+    <p class="kicker">Playball · play-batch-2 · the September batch, unpushed</p>
     <h1>Playball Test Pass</h1>
     <p class="sub">
-      Twenty-four checks over the ten changes. Grouped by where they can actually
-      be reached from a save sitting in the 2027 postseason, because seven of
-      them cannot be seen from there at all.
+      Twenty-eight checks over three stages and last night's phone fixes.
+      Grouped by where a career can actually reach them: some are one tap from
+      any save, some need a game night, some need June, and a few only show
+      themselves across seasons.
     </p>
   </div>
 </header>
@@ -164,7 +165,7 @@
 
   <div class="progress">
     <b id="count">0</b>
-    <span>of 24 checked</span>
+    <span>of 28 checked</span>
     <div class="bar"><i id="bar"></i></div>
     <button id="reset" type="button">Clear</button>
   </div>
@@ -172,315 +173,347 @@
   <div class="run">
     <h2>Running it</h2>
     <dl>
-      <dt>This machine</dt><dd><code>http://localhost:5174</code></dd>
-      <dt>Your phone</dt><dd><code>http://10.0.0.40:5174</code> — same wifi</dd>
+      <dt>Your phone</dt><dd><code>http://10.0.0.40:5173</code> — same wifi, the frozen build</dd>
+      <dt>This machine</dt><dd><code>http://localhost:5174</code> — the dev server, your live save</dd>
     </dl>
     <p>
-      That address is a DHCP lease and will change. The authority is the line
-      Vite prints on startup — <code>Network: http://…:5174/</code> — not
-      anything read off <code>ipconfig</code>, which lists a pile of
-      <code>169.254</code> link-local addresses for adapters that are not
-      connected to anything.
+      <strong>The phone address serves the frozen build</strong> — it never
+      hot-reloads under you mid-game, and it only moves forward when
+      <code>npm run build</code> runs. It is current as of these fixes. The
+      10.0.0.40 lease can change; the authority is the Network line Vite prints.
     </p>
     <p>
-      <strong>The phone is a different origin, so your Newport Bay save is not
-      there.</strong> IndexedDB is scoped per host, and this career lives on
-      <code>localhost</code>. The phone will open a fresh new-dynasty screen,
-      which looks exactly like a broken build and is not one. To test on the
-      device against a real career you have to start one there.
+      A dynasty is per-origin: the phone's save lives at the phone address and
+      your desktop save at <code>localhost</code>. A fresh new-dynasty screen on
+      a device that never played there is correct, not broken.
     </p>
     <p>
-      If a change seems missing, hard-reload once. Vite's dev server served a
-      stale copy of <code>tokens.css</code> during this work and cost an hour;
-      restarting the server is the cure.
+      Two of the biggest new systems are deliberately rare. A TWO-WAY recruit
+      appears at most three times in a national class of 721, some years not at
+      all — and only in classes generated after this build. A star in the portal
+      is roughly one winter in five or six. Not seeing them is the system
+      working; the ochre notes below mark every check like that.
     </p>
   </div>
 
-  <h2 class="section">Group one <b>·</b> Reachable right now</h2>
-  <p class="sec-note">
-    From the 2027 postseason screen your save opens on. Nothing here needs the
-    season to move.
-  </p>
+  <h2 class="section">Group one <b>·</b> One tap from any save</h2>
+  <p class="sec-note">Nothing here needs the calendar to move.</p>
 
   <label class="t">
     <input type="checkbox" data-id="t1">
     <div class="body">
-      <h3>The bar is shorter and the envelope is gone</h3>
-      <p class="do">Look at the top bar on any screen.</p>
-      <p class="exp">57px instead of 64. School name in smaller type. No envelope icon — just the coach portrait on the right.</p>
-      <p class="fail">The portrait sits in the middle of the bar with a gap beside it, which would mean the grid still reserves the envelope's column.</p>
+      <h3>The indicators slide</h3>
+      <p class="do">Tap between bottom tabs, then between a screen's sub-tabs, then a segmented control (2D/3D in settings, or NEXT GAME | BRACKET in June).</p>
+      <p class="exp">The underline and the pill slide from the old choice to the new one — all three kinds of strip, same motion.</p>
+      <p class="fail">Any indicator that teleports, or a slide that lands offset from the label it belongs to after rotating the phone.</p>
     </div>
   </label>
 
   <label class="t">
     <input type="checkbox" data-id="t2">
     <div class="body">
-      <h3>The inbox moved into the coach menu</h3>
-      <p class="do">Tap the coach portrait, top right.</p>
-      <p class="exp">A row reading <em>Inbox</em> above <em>Coach profile</em>, with a red count badge on the right when anything is unread. Tapping it opens the inbox.</p>
-      <p class="fail">The chevron wraps onto a second line under the word, or the badge overlaps it. That was a real bug once — the row is a four-column grid now.</p>
+      <h3>The mail is quieter, and it talks like Townsend</h3>
+      <p class="do">Read the inbox after a simmed week, and open a few tutorials.</p>
+      <p class="exp">Every kept letter opens “Coach —” in one voice. Tutorials carry TOWNSEND SHOWS YOU AROUND. No grade spam, no healed-player notes, no streak confetti, no captain-vote mail.</p>
+      <p class="fail">A machine-voiced card in the middle of the letters, or the old noise back in any form.</p>
     </div>
   </label>
 
   <label class="t">
     <input type="checkbox" data-id="t3">
     <div class="body">
-      <h3>Screens leave instead of only arriving</h3>
-      <p class="do">Tap between the four bottom tabs a few times, at an ordinary pace.</p>
-      <p class="exp">The outgoing screen fades while the new one comes up under it. Both are on screen for about a fifth of a second.</p>
-      <p class="fail">The screen blanks between tabs, or the new screen visibly rises twice. This is the headline change, so if anything looks wrong here it matters more than the rest.</p>
+      <h3>The scout's book, closed and open</h3>
+      <p class="do">Open a rival's college profile → DOSSIER. Then buy SCOUT THEM from their action button and look again.</p>
+      <p class="exp">Before: A CLOSED BOOK, with a line saying what SCOUT THEM does. After: HOW THEY BEAT YOU, AND HOW YOU BEAT THEM — three to five reads with real counts (“5 of 9 hunt strike one”) and a counter-move on every line. The same purchase lights the tendency line on each of their player cards.</p>
+      <p class="fail">An empty sheet after buying, a read whose count is obviously wrong for the roster shown, or the book open for a club you never scouted (full-depth career only — casual staffs buy it for you).</p>
     </div>
   </label>
 
   <label class="t">
     <input type="checkbox" data-id="t4">
     <div class="body">
-      <h3>The unread dot still works without the envelope</h3>
-      <p class="do">With something unread, look at HOME in the bottom nav.</p>
-      <p class="exp">A red dot beside the label. It is now the only thing carrying unread across screens, so it matters more than it did.</p>
-      <p class="fail">No dot, or a dot that never clears after reading the inbox.</p>
+      <h3>The recruiting board reads like a scout wrote it</h3>
+      <p class="do">Open a few recruits across the star bands and read their ceiling lines.</p>
+      <p class="exp">Each potential letter speaks in its own register, stable for that recruit across visits. The words never name a number or an internal rule.</p>
+      <p class="fail">A line that changes on re-render, or copy that leaks a mechanic (“minimum star”, a threshold, a percentage).</p>
     </div>
   </label>
 
   <label class="t">
     <input type="checkbox" data-id="t5">
     <div class="body">
-      <h3>The intro block says it once</h3>
-      <p class="do">Team → Roster. Read the paragraph under "23 players". Wait a couple of seconds, go to Season, come back to Roster.</p>
-      <p class="exp">First visit: kicker, title and a line of prose, about 102px. Second visit: kicker and title only, about 53px, and one more row of the list is visible.</p>
-      <p class="fail">The prose is gone on the very first visit. That exact bug shipped in the first commit and was fixed; it is the thing most worth confirming.</p>
+      <h3>TWO-WAY, on the board and on the card</h3>
+      <p class="do">Scan a new class for a recruit tagged TWO-WAY. If one exists, open him.</p>
+      <p class="exp">The slot reads TWO-WAY on the board, signing day and the draft. His card shows the bat tools and, under them, AND ON THE MOUND with a full arm block and repertoire. If he plays a season for you, STATS carries both tables.</p>
+      <p class="fail">A crash opening him anywhere, a rotation row printing a blank where SP should be, or him listed twice in the ALL view of the roster.</p>
+      <p class="note">At most three per national class, some years none — and only in classes generated after this build. Not finding one is normal; finding one is the test.</p>
     </div>
   </label>
 
   <label class="t">
     <input type="checkbox" data-id="t6">
     <div class="body">
-      <h3>A screen you bounce off still introduces itself</h3>
-      <p class="do">Go to a screen you have not opened yet and leave within about a second.</p>
-      <p class="exp">Coming back, the prose is still there. It only retires once the screen has been up long enough to have been read.</p>
-      <p class="fail">It retires on a screen you never actually read.</p>
+      <h3>June, year by year, on the player card</h3>
+      <p class="do">Open a veteran's card → STATS.</p>
+      <p class="exp">Season rows, and beneath them the June-by-June timeline for every postseason he played.</p>
+      <p class="fail">A June missing for a year the team played one, or postseason numbers folded into the regular rows.</p>
     </div>
   </label>
+
+  <h2 class="section">Group two <b>·</b> Game night</h2>
+  <p class="sec-note">The park, stage 15 — play a game in the dugout, 3D on.</p>
 
   <label class="t">
     <input type="checkbox" data-id="t7">
     <div class="body">
-      <h3>Roster rows acknowledge a tap</h3>
-      <p class="do">Press and hold a roster row without letting go.</p>
-      <p class="exp">The row dips a pixel and shrinks a hair while held, then settles. Same on schedule rows.</p>
-      <p class="fail">Nothing moves. Before this, four of eighty-eight interactive elements had any pressed state at all.</p>
+      <h3>Day and night come off the fixture</h3>
+      <p class="do">Play a midweek game, then a weekend series game.</p>
+      <p class="exp">Midweek is afternoon light; series and June play under the towers, lit rims on the crowd bowl, wall panels in the home school's colour.</p>
+      <p class="fail">A night park on a Tuesday, washed-out colours, or the wall gap in left field back again.</p>
     </div>
   </label>
 
   <label class="t">
     <input type="checkbox" data-id="t8">
     <div class="body">
-      <h3>The player card arrives as one motion</h3>
-      <p class="do">Tap any roster row to open a man's card. Then close it and open another.</p>
-      <p class="exp">The whole panel rises and fades in together over about 200ms.</p>
-      <p class="fail">The panel appears instantly and its contents climb inside it afterwards — that is the old behaviour, and it reads as the card assembling itself.</p>
+      <h3>The camera rides the ball, and outs read as outs</h3>
+      <p class="do">Watch a few balls in play — a grounder run down, a fly caught deep, a gapper.</p>
+      <p class="exp">The view eases toward where the ball dies. On any out the ball sits in the fielder's hands the moment the play is his — never floating behind him. The chaser turns, a receiver breaks for the bag, everyone walks home after.</p>
+      <p class="fail">An out that reads safe for a beat, a fielder chasing across the whole diamond for a ball that was never his, bases flickering while the camera moves.</p>
     </div>
   </label>
 
   <label class="t">
     <input type="checkbox" data-id="t9">
     <div class="body">
-      <h3>The postseason screen is unchanged</h3>
-      <p class="do">Look over the bracket, the stage rail, YOUR NEXT GAME.</p>
-      <p class="exp">Exactly as before. Nothing in this pass touched the postseason.</p>
-      <p class="fail">Anything moved. It would mean a shared rule leaked.</p>
+      <h3>Walks walk, and nobody teleports</h3>
+      <p class="do">Wait for a walk with runners on. Watch the bases.</p>
+      <p class="exp">The batter trots down and every forced runner advances visibly — no silent bases-loaded jump between pitches. And no walk sound effect; that audio is gone on purpose.</p>
+      <p class="fail">Runners blinking onto bags, or the old chime.</p>
     </div>
   </label>
-
-  <h2 class="section">Group two <b>·</b> Needs the regular season</h2>
-  <p class="sec-note">
-    Reachable once the postseason finishes and February 2028 opens. Four changes
-    live here and none of them can be seen before then.
-  </p>
 
   <label class="t">
     <input type="checkbox" data-id="t10">
     <div class="body">
-      <h3>Crests instead of letters in tonight's card</h3>
-      <p class="do">Home screen, the TONIGHT card.</p>
-      <p class="exp">Two shields, one per school, each with the abbreviation drawn inside it. Records still underneath. Tapping either still opens that team's card.</p>
-      <p class="fail">The crest is clipped, or sits off-centre in its half of the card.</p>
+      <h3>The homer gets its show</h3>
+      <p class="do">Hit one out. If you can, hit one with the bases full.</p>
+      <p class="exp">Three firework volleys along the wall and HOME RUN splashed big over the park — GRAND SLAM when three scored ahead of him. Gone in under three seconds.</p>
+      <p class="fail">The words missing, the splash sticking around, or the same runner's dot finishing the play twice.</p>
     </div>
   </label>
 
   <label class="t">
     <input type="checkbox" data-id="t11">
     <div class="body">
-      <h3>"First pitch is next." fits one line</h3>
-      <p class="do">Home screen headline, at your normal text size.</p>
-      <p class="exp">27px, matching every other screen's title. It used to be 36 and wrapped to two lines on a 375-wide phone.</p>
-      <p class="fail">Still wrapping at the default text size.</p>
+      <h3>SEE THAT AGAIN</h3>
+      <p class="do">After a good play, open the manager tools and tap the replay.</p>
+      <p class="exp">The whole play again — flight, chase, camera, a homer's full show. Disabled mid-play.</p>
+      <p class="fail">A replay that alters anything: the score, the count, the runners.</p>
     </div>
   </label>
 
   <label class="t">
     <input type="checkbox" data-id="t12">
     <div class="body">
-      <h3>AUTO reports what it did</h3>
-      <p class="do">Team → Lineup → Auto lineup.</p>
-      <p class="exp">The button becomes a check and the words "Order dealt", takes a soft team-tinted fill, and stays pressable. The note underneath changes too.</p>
-      <p class="fail">It stays reading "Auto lineup", or it becomes unpressable so you cannot deal a second order.</p>
+      <h3>The 2D diamond keeps parity</h3>
+      <p class="do">Switch to 2D in settings and play half an inning.</p>
+      <p class="exp">A dot slides from the plate to the landing spot; the ring reads green for a hit, clay for an out, gold for a homer.</p>
+      <p class="fail">Plays resolving with no motion at all, or the field preference not surviving a reload.</p>
     </div>
   </label>
 
   <label class="t">
     <input type="checkbox" data-id="t13">
     <div class="body">
-      <h3>An injury sends you to the man</h3>
-      <p class="do">Wait for a hurt player to appear in NEEDS YOU on the home screen, then tap the card.</p>
-      <p class="exp">The lineup opens, that man's row carries a red rail down its left edge and a faint red wash, pulses three times and stops, and the screen has scrolled him to the middle. Both the red "cannot play" card and the quieter "is hurt" card do this.</p>
-      <p class="fail">You land on the lineup with nothing marked, or on his player card instead. Also check the mark is gone when you come back to the lineup on your own.</p>
+      <h3>The manager button closes like it opens</h3>
+      <p class="do">Open and close the in-game tools a few times. Tap outside it to dismiss. Same for the college and player action buttons.</p>
+      <p class="exp">A real closing motion, not a vanish; the scrim tap stands the menu down from anywhere.</p>
+      <p class="fail">The menu stuck half-open after fast taps, or a dead scrim.</p>
     </div>
   </label>
-
-  <h2 class="section">Group three <b>·</b> Needs the offseason</h2>
-  <p class="sec-note">
-    The transfer portal, after June. This is where the new confirm grammar lives
-    and it is the part with the most new behaviour in it.
-  </p>
 
   <label class="t">
     <input type="checkbox" data-id="t14">
     <div class="body">
-      <h3>A press has to be meant</h3>
-      <p class="do">Portal → Available. Tap <em>Sign him</em> on anybody.</p>
-      <p class="exp">The button turns solid red and changes to "Confirm — spend 41", naming the cost again. A second tap spends it.</p>
-      <p class="fail">One tap spends the points. That is the whole thing this control exists to prevent.</p>
+      <h3>The mound visit knows who it's about</h3>
+      <p class="do">Visit two different pitchers across games and read the lines.</p>
+      <p class="exp">Copy that fits the man and leaves him in — never a second identical speech.</p>
+      <p class="fail">The same sentence for the ace and the long man every time.</p>
     </div>
   </label>
 
   <label class="t">
     <input type="checkbox" data-id="t15">
     <div class="body">
-      <h3>Only one thing is armed at a time</h3>
-      <p class="do">Arm one man, then tap <em>Sign him</em> on a different man.</p>
-      <p class="exp">The first stands down to its normal label as the second arms.</p>
-      <p class="fail">Two red buttons on screen at once — two live triggers is how a thumb spends points on the wrong man.</p>
+      <h3>Opposing coaches bunt when the board says to</h3>
+      <p class="do">Across several games, note when the CPU drops a sacrifice.</p>
+      <p class="exp">Mostly late and close with a runner to move and a weak bat up. Early-inning giveaway bunts from sensible coaches should be rare now.</p>
+      <p class="fail">A pattern of obviously self-harming bunts from a RARELY coach, or none ever from an OFTEN one.</p>
+      <p class="note">A feel check over many games, not a single-game verdict.</p>
     </div>
   </label>
+
+  <h2 class="section">Group three <b>·</b> June</h2>
+  <p class="sec-note">The postseason redesign, the new injuries, and both of last night's fixes.</p>
 
   <label class="t">
     <input type="checkbox" data-id="t16">
     <div class="body">
-      <h3>Tapping anywhere else stands it down</h3>
-      <p class="do">Arm a man, then tap somewhere blank on the screen, or scroll.</p>
-      <p class="exp">It goes back to "Sign him".</p>
-      <p class="fail">It stays armed. The job market's comment claimed this behaviour for months and no code ever did it — a stray thumb left an offer armed until the next press, which took the job.</p>
+      <h3>The pregame show carries the night</h3>
+      <p class="do">Reach the postseason. Look at NEXT GAME | BRACKET.</p>
+      <p class="exp">Crests, probable arms with their lines, and a stake sentence that knows the situation — unbeaten, elimination, clincher. The bracket tab is one map with your drop to the losers side marked. The championship pins above the national A/B toggle.</p>
+      <p class="fail">A stake line that contradicts the bracket, or the old winners/losers tab pair anywhere.</p>
     </div>
   </label>
 
-  <label class="t flagged">
+  <label class="t">
     <input type="checkbox" data-id="t17">
     <div class="body">
-      <h3>Losing a man you paid for</h3>
-      <p class="do">Portal → Leaving you. Talk somebody round and hope it fails.</p>
-      <p class="exp">The button reports "He went anyway" in red text on a pale ground, and he stays on the board. The points are gone.</p>
-      <p class="fail">The button silently returns to normal, so the one action in the game that can cost everything says nothing.</p>
-      <p class="note">I could not force this myself — the scratch career had nobody in the retention half and the outcome is probabilistic. The styling is verified; the wiring is one line. Worth a real look.</p>
+      <h3>June can hurt you now</h3>
+      <p class="do">Play deep runs. When a starter goes down between rounds, look at NEXT GAME.</p>
+      <p class="exp">The button flips to FIX THE LINEUP and holds the night until you move him — nobody is moved for you. A day-to-day knock heals across tournament nights; a serious one honestly doesn't.</p>
+      <p class="fail">A hurt man silently fielded, or an injury that can never heal no matter how many June nights pass.</p>
+      <p class="note">Injuries are rolled per night at the regular season's real rates — a clean June happens.</p>
     </div>
   </label>
 
   <label class="t">
     <input type="checkbox" data-id="t18">
     <div class="body">
-      <h3>Signing a man clears him off the board</h3>
-      <p class="do">Complete a signing.</p>
-      <p class="exp">He disappears from the list, the points meter drops, and the inbox says so. There is deliberately no "✓ HE IS IN" label — the row unmounts on the same tick, so one would never be seen.</p>
-      <p class="fail">He stays on the board with a stale button, or the points do not move.</p>
+      <h3>The lineup card lets go — last night's trap</h3>
+      <p class="do">Open SET THE LINEUP from the pregame, then tap JUNE in the bottom bar. Also try it from a stage review.</p>
+      <p class="exp">One tap: the card closes and you're on the bracket. No detour through another tab first.</p>
+      <p class="fail">The exact bug you reported — HOME refusing until you visit somewhere else.</p>
     </div>
   </label>
 
-  <label class="t flagged">
+  <label class="t">
     <input type="checkbox" data-id="t19">
     <div class="body">
-      <h3>Taking a job asks twice</h3>
-      <p class="do">Only reachable if you are offered a chair or sacked. Coach menu → the job market, then <em>Accept offer</em>.</p>
-      <p class="exp">Turns red, reads "Confirm — leave for good". Second tap takes the job.</p>
-      <p class="fail">One tap moves your career.</p>
-      <p class="note">Verified on a scratch career, not on a real one. Irreversible, so worth confirming before you ever mean it.</p>
+      <h3>A bye night says so — last night's phantom sim</h3>
+      <p class="do">Enter a ten-team conference bracket as a top-six seed, on play-in night.</p>
+      <p class="exp">No PLAY/SIMULATE THIS GAME for a game that isn't tonight. Instead the waiting card — the round is still forming — and SIM TO MY NEXT GAME pinned, which runs the play-in and stops at your game.</p>
+      <p class="fail">A sim button that visibly does nothing again.</p>
     </div>
   </label>
-
-  <h2 class="section">Group four <b>·</b> Settings and accessibility</h2>
-  <p class="sec-note">
-    All four of these were checked by measurement, but they are the ones a real
-    device is best at falsifying.
-  </p>
 
   <label class="t">
     <input type="checkbox" data-id="t20">
     <div class="body">
-      <h3>Dark mode, and the armed button in it</h3>
-      <p class="do">Settings → dark. Then look at an armed portal button, and at the inbox count badge.</p>
-      <p class="exp">Near-black text on the salmon fill, clearly readable. The badge the same.</p>
-      <p class="fail">Pale text on the salmon. Cream measured 3.16 against that red — under the accessibility floor — which is why the fill flips its ink in dark mode rather than keeping one colour.</p>
+      <h3>A two-way man bats for himself</h3>
+      <p class="do">If you have one: start him on the mound with his bat in the order and play the game.</p>
+      <p class="exp">He pitches and hits in the same box score, both lines real. Pulling him off the mound leaves his bat in.</p>
+      <p class="fail">A duplicate of him on the field, or either half of his line missing.</p>
+      <p class="note">Needs a two-way man on your roster — see check five.</p>
     </div>
   </label>
+
+  <h2 class="section">Group four <b>·</b> The offseason</h2>
 
   <label class="t">
     <input type="checkbox" data-id="t21">
     <div class="body">
-      <h3>Text size, both ends</h3>
-      <p class="do">Settings → text size. Try <em>Small</em> and then <em>Larger</em>, and walk the main screens at each.</p>
-      <p class="exp">Nothing overflows sideways and nothing clips. Checked at 320, 360, 384, 412 and 430 wide, but a real phone is the honest test.</p>
-      <p class="fail">Any screen scrolls horizontally. The sub-nav under the header is allowed to — it is a scroller by design.</p>
+      <h3>A cleared board holds the line — your minus one</h3>
+      <p class="do">Have a winning season with a May appearance and meet the board. Watch the review's prestige line.</p>
+      <p class="exp">MET or EXCEEDED on a season with something to show no longer bleeds a rounding point — your exact case holds flat. Falling short still costs, and a losing season is not sheltered by a friendly board.</p>
+      <p class="fail">A satisfied board and a real winning June-touched season still reading minus one.</p>
     </div>
   </label>
 
   <label class="t">
     <input type="checkbox" data-id="t22">
     <div class="body">
-      <h3>Reduced motion turns the motion off, not the meaning</h3>
-      <p class="do">Settings → motion → reduced. Then change tabs, open a card, and trigger an injury mark.</p>
-      <p class="exp">No screen transition, no card rise, no pulse. The injured man still has his red rail and wash — the part that answers "which one" survives.</p>
-      <p class="fail">The transition still plays, or the injury mark disappears along with the pulse.</p>
+      <h3>Position changes are a winter ritual</h3>
+      <p class="do">Try to change a player's position mid-season, then in the offseason.</p>
+      <p class="exp">In-season the card is shut with the reason on it — a spot is learned over a winter, not a Tuesday. In the offseason it works: he retrains, opens next year at the new spot, a big move plays a step behind for a while.</p>
+      <p class="fail">The card working in May, or refusing in the winter.</p>
     </div>
   </label>
 
   <label class="t">
     <input type="checkbox" data-id="t23">
     <div class="body">
-      <h3>Reset tutorials brings the prose back</h3>
-      <p class="do">Settings → show the tutorials again. Then revisit a screen whose intro had retired.</p>
-      <p class="exp">Both the teaching card and the full intro paragraph return. They share one memory on purpose: asking to be taught again should bring back everything that teaches.</p>
-      <p class="fail">The card comes back but the paragraph stays collapsed.</p>
+      <h3>The pros can take a signed kid</h3>
+      <p class="do">Sign top-end recruits over several offseasons and read your signing-day class.</p>
+      <p class="exp">Rarely, a signed row wears DRAFTED BY THE PROS — never arrives; the walk-on projection already knows, and the mail at the roll tells you straight. The higher his ceiling, the realer the risk.</p>
+      <p class="fail">A poached kid appearing on the roster anyway, or the projection disagreeing with June's arrivals.</p>
+      <p class="note">One to three kids per national class carry the risk — signing ordinary recruits, you may never see it.</p>
     </div>
   </label>
-
-  <h2 class="section">Group five <b>·</b> Try to break it</h2>
-  <p class="sec-note">The cases most likely to hide a defect.</p>
 
   <label class="t">
     <input type="checkbox" data-id="t24">
     <div class="body">
+      <h3>The portal has a market</h3>
+      <p class="do">Shop the portal across winters.</p>
+      <p class="exp">Rich winters and thin ones. Mid-range proven men priced like proven men; anyone at 85+ costing most of a window. A true star wanting out is an event the wire mails you about — roughly one winter in five or six.</p>
+      <p class="fail">A 90+ shelf every winter, or an elite man cheap enough to be an obvious steal.</p>
+      <p class="note">The rarity IS the design — a bare shelf is a pass, not a fail.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t25">
+    <div class="body">
+      <h3>Gems hide where you can afford to look</h3>
+      <p class="do">As a small program, scout the two- and three-star bands hard for a few classes.</p>
+      <p class="exp">Real finds exist now — modest-looking kids whose reads hint at a top ceiling. The learnable report is how you tell them apart; the stars alone won't.</p>
+      <p class="fail">The bands as barren as they used to be, or gems so common the stars stop meaning anything.</p>
+    </div>
+  </label>
+
+  <h2 class="section">Group five <b>·</b> The long game</h2>
+  <p class="sec-note">Only visible across seasons — keep half an eye out rather than hunting.</p>
+
+  <label class="t">
+    <input type="checkbox" data-id="t26">
+    <div class="body">
+      <h3>Potential letters drift both ways</h3>
+      <p class="do">Watch a few of your own freshmen's potential letters across two or three winters.</p>
+      <p class="exp">Some quietly climb — the C kid whose ceiling was underwritten — and some sink. Watched, never announced.</p>
+      <p class="fail">Letters that never move for anybody, or a card that prints the word “boom” or “bust” anywhere.</p>
+    </div>
+  </label>
+
+  <label class="t">
+    <input type="checkbox" data-id="t27">
+    <div class="body">
+      <h3>Dynasties rise and fall</h3>
+      <p class="do">Across seasons, watch the top of the national table.</p>
+      <p class="exp">A program holds 90+ only while the titles keep coming — a decade reign is possible and earned. Nobody squats at the top on near-misses forever.</p>
+      <p class="fail">The same crown for fifteen years without a title, or the top so brittle no dynasty ever forms.</p>
+    </div>
+  </label>
+
+  <h2 class="section">Group six <b>·</b> Try to break it</h2>
+
+  <label class="t">
+    <input type="checkbox" data-id="t28">
+    <div class="body">
       <h3>Hammer it</h3>
-      <p class="do">Tap four tabs as fast as you can. Arm a portal button and immediately navigate away. Background the app mid-transition and come back. Reload while a card is open.</p>
-      <p class="exp">You always land on the last screen you tapped, nothing is left mid-animation, and no control is stuck armed. The save is intact after every reload.</p>
-      <p class="fail">A screen freezes half-faded, or a control stays armed on a screen you returned to. A backgrounded webview stops serving animation frames, which is the exact condition that broke the transition once — a timer covers it now, and this is how you check the cover holds.</p>
+      <p class="do">Spam the nav during June with cards open. Background the app mid-game and PICK IT UP. Reload mid-bracket. Rotate the phone on the park, the dossier, the pregame.</p>
+      <p class="exp">You land where you tapped, the bracket is where you left it after a reload, the resumed game is your game, and every screen fits the width it's given.</p>
+      <p class="fail">Anything stuck, doubled, sideways-scrolling, or lost.</p>
     </div>
   </label>
 
   <footer class="end">
     <p>
       <strong>Ticks are saved in this browser only.</strong> Nothing is sent
-      anywhere, and opening the page on another device starts it fresh.
+      anywhere, and opening the page on another device starts fresh.
     </p>
     <p>
-      Four commits on <code>play-batch-2</code>, unpushed. 1072 tests pass and
-      the production build is clean. Anything that fails here is worth more than
-      any of that.
+      Three stages on <code>play-batch-2</code>, unpushed. 1080 tests pass, the
+      probes are green, and the build is clean. Anything that fails here is
+      worth more than all of that.
     </p>
   </footer>
 </div>
 
 <script>
   (function () {
-    var KEY = 'playball-test-pass-v1';
+    var KEY = 'playball-test-pass-v2';
     var boxes = Array.prototype.slice.call(document.querySelectorAll('.t input'));
     var count = document.getElementById('count');
     var bar = document.getElementById('bar');
