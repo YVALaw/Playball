@@ -3690,6 +3690,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   changePosition: (id, to) => {
     const { season, userTeam, version } = get();
+    /*
+      An offseason ritual, not a Tuesday — stage 16's door. The gate is the
+      rail itself: `phase` is non-null exactly while the winter is open, so
+      a move committed here is settled once by the year roll's `settleIn`
+      before he plays a game — the winter of retraining is real, and the
+      remaining settling is the temporary glove penalty on a big move,
+      scaled by the climb in `movePosition`. The UI says why the card is
+      shut in May; this guard is for everything that is not the UI.
+    */
+    if (get().phase === null) return false;
     const rec = season?.teams[userTeam];
     if (!rec) return false;
     const man = squad(rec.team).find((p) => p.id === id);
@@ -3699,8 +3709,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     get().post({
       kind: 'season', year: get().year,
       title: `${man.name} moves to ${to}`,
-      body: 'He will be a step behind there for a season or two, and then he '
-        + 'will not.',
+      body: 'He retrains over the winter and opens next season at the new '
+        + 'spot. A big move leaves him a step behind for a while, and then '
+        + 'it does not.',
       link: { to: 'player', id: man.id },
     });
     void get().saveNow();

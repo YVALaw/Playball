@@ -83,6 +83,10 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   const setRedshirt = useDynasty((s) => s.setRedshirt);
   const restMan = useDynasty((s) => s.restMan);
   const changePosition = useDynasty((s) => s.changePosition);
+  // The offseason rail is non-null exactly while the winter is open, which
+  // is when a position change is allowed — the door made it a ritual: "he
+  // retrains over winter and opens next season at the new spot."
+  const winter = useDynasty((s) => s.phase) !== null;
   const version = useDynasty((s) => s.version);
   // A career that asked its staff to decide who sits does not get the button.
   const mine = useDynasty((s) => handles(s.depth, 'redshirts'));
@@ -277,17 +281,20 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
             <div className="action-list">
               <ActionCard
                 icon={<ReloadIcon />}
-                title={target ? `List him at ${target}` : 'Change his position'}
-                detail={alsoPlays.length === 0
-                  ? 'There is nowhere else he can stand.'
-                  : target
-                    ? `Move him from ${p.pos} to ${target} for good. He will learn the new spot over time.`
-                    : 'Pick a spot below. This is permanent, not a lineup change.'}
+                title={!winter ? 'Change his position'
+                  : target ? `List him at ${target}` : 'Change his position'}
+                detail={!winter
+                  ? 'A new spot is learned over a winter, not a Tuesday. Come back in the offseason.'
+                  : alsoPlays.length === 0
+                    ? 'There is nowhere else he can stand.'
+                    : target
+                      ? `Move him from ${p.pos} to ${target} for good. He retrains over the winter and opens next season there — a big move leaves him a step behind for a while.`
+                      : 'Pick a spot below. This is permanent, not a lineup change.'}
                 selected={target !== null}
-                disabled={target === null}
+                disabled={!winter || target === null}
                 onClick={() => { changePosition(p.id, target as Position); setTarget(null); }}
               />
-              {alsoPlays.length > 0 && (
+              {winter && alsoPlays.length > 0 && (
                 <div className="position-picker">
                   <small>LIST HIM AT</small>
                   {alsoPlays.map((spot) => (
