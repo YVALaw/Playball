@@ -205,7 +205,7 @@ import type { Region } from '../data/schools.js';
 import type { CultureEdge } from '../data/cultures.js';
 import { note, earnedBadges, type HabitKey } from '../engine/habits.js';
 import {
-  openPortal, makeTheCase as portalCase, releaseFrom, signFromPortal, staffWorksPortal,
+  openPortal, makeTheCase as portalCase, releaseFrom, signFromPortal, staffWorksPortal, STAR_LINE,
   type PortalMan,
 } from '../engine/portal.js';
 import {
@@ -2325,11 +2325,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         asked for by name: "rumors that a very high ranking player is going
         into the portal." Worded as rumour, never a stat line, per the
         plan. The rarity that makes this an event (roughly one winter in
-        five or six) is stage 16's portal-balance knob; until it lands the
-        threshold sits high and the mail is capped at two, so tonight's
-        too-generous portal cannot flood the desk it writes to.
+        five or six) is stage 16's portal-balance knob, STAR_WANDER — landed
+        — and the threshold is the same STAR_LINE the model itself uses, so
+        the mail and the mechanism cannot drift apart. The cap of two stays
+        as a belt against a rich market year.
       */
-      for (const m of theirs.filter((x) => overallOf(x.player) >= 90).slice(0, 2)) {
+      for (const m of theirs.filter((x) => overallOf(x.player) >= STAR_LINE).slice(0, 2)) {
         const fromRec = season.teams[m.from];
         get().post({
           kind: 'wire', year: get().year,

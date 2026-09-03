@@ -36,6 +36,14 @@
 import type { Player, PlayerId, Team } from './types.js';
 import type { TeamRecord } from './season.js';
 import { overallOf } from './ratings.js';
+
+/**
+ * A star's base itch to move, per winter. See `entersPortal`: multiplied by
+ * the market and summed over however many STAR_LINE men the developed league
+ * carries, it is what makes the answer come out at about one star in the
+ * portal per five or six seasons.
+ */
+const STAR_WANDER = 0.012;
 import { flightRisk, moodOf, expectationOf, squadRanks, UNHAPPY } from './morale.js';
 
 /** What the portal writes on a man. Sparse, so an older save has none. */
@@ -68,7 +76,44 @@ export interface PortalMan {
  */
 export function portalCost(p: Player): number {
   const ovr = overallOf(p);
-  return Math.max(8, Math.round((ovr - 28) * 1.15));
+  /*
+    Priced against the class -- the stage 16 balance pass.
+
+    The complaint was value, in as many words: "the portal reads as a better
+    deal than the recruiting board it shares a budget with." It did. The most
+    a courtship can put on one recruit is MAX_PER_RECRUIT a week for the
+    window -- thirty-six points for a lottery ticket -- while the old line
+    priced a proven ninety at seventy-one, well under half a window. So the
+    linear rule keeps pricing the ordinary shelf, and a premium squares away
+    from seventy-five: a proven eighty-five now costs most of a week's
+    budget more than the best recruit can absorb, and a true star prices at
+    a whole window -- roughly the class he would be replacing.
+  */
+  const premium = Math.max(0, ovr - 75) ** 2 * 0.22;
+  return Math.max(8, Math.round((ovr - 28) * 1.15 + premium));
+}
+
+/**
+ * The line above which a man is the wire's business. One constant shared
+ * with the inbox rumour so the mail and the model cannot drift apart --
+ * "align rumour threshold" was written into the same door decision as the
+ * rarity knob below.
+ */
+export const STAR_LINE = 85;
+
+/**
+ * How the winter's market runs, derived from the year alone.
+ *
+ * "Noisier outcomes": the same league should hand you a rich window one
+ * winter and a bare one the next, because a shelf you can plan around is a
+ * shop. Multiplies every man's chance, so it moves the whole pool between
+ * roughly sixty and a hundred and forty percent of its base -- and it is a
+ * hash, not a draw, for the same reason everything since stage 7 is.
+ */
+export function portalMarket(year: number, seed: number): number {
+  let h = ((year * 2246822519) ^ (seed * 3266489917)) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 2654435761) >>> 0;
+  return 0.6 + 0.8 * (((h >>> 8) % 1000) / 1000);
 }
 
 /**
@@ -94,6 +139,7 @@ export function entersPortal(
   const expected = expectationOf(p, opts.squadRank);
   const got = opts.games > 0 ? opts.starts / opts.games : 0;
   const buried = Math.max(0, expected - got);
+  const market = portalMarket(opts.year, opts.seed);
 
   /*
     Two contributions, and neither on its own should empty a roster.
@@ -101,8 +147,22 @@ export function entersPortal(
     A merely restless man stays; a miserable one usually goes; a man who is
     fine but has not played all year sometimes goes anyway, which is the case
     every college coach actually loses people to.
+
+    A star walks through a different door. Above STAR_LINE the buried channel
+    is replaced, not scaled, because what it measured up there was never
+    true: an ace read squadRank twenty -- the promise ranks hitters -- so
+    "he was told he would play" was putting the best arm in the country in
+    the portal as bookkeeping, which is exactly the ninety-seven the report
+    complained about. What remains for a star is mood, which stays at full
+    strength (a genuinely miserable star leaves, and stage 9's promises keep
+    their teeth), and the wander -- the itch that makes a star's winter the
+    wire's story roughly once every five or six years league-wide. The knob
+    is priced against the developed league's census in the carousel probe,
+    not the seeded one: a fresh league holds nobody above eighty-two.
   */
-  const chance = Math.min(0.85, risk * 0.55 + buried * 0.4);
+  const chance = overallOf(p) >= STAR_LINE
+    ? Math.min(0.85, Math.max(risk * 0.55, STAR_WANDER) * market)
+    : Math.min(0.85, (risk * 0.55 + buried * 0.4) * market);
   if (chance <= 0) return false;
 
   let h = ((opts.year * 2654435761) ^ (opts.seed * 40503)) >>> 0;

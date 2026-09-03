@@ -31,6 +31,9 @@ import {
   RECRUITING_WEEKS, aiTargets, closeWeek, leadersAtWeekStart, resetWeeklySpend, weeklyPoints,
 } from '../src/engine/recruiting.js';
 import { pitchFor, developmentScore } from '../src/engine/pitch.js';
+import { openPortal, type Portable } from '../src/engine/portal.js';
+import { overallOf } from '../src/engine/ratings.js';
+import type { Player } from '../src/engine/types.js';
 import { makeRng } from '../src/engine/rng.js';
 import { CONFERENCES, type Region } from '../src/data/schools.js';
 
@@ -124,6 +127,21 @@ const drift = { quiet: 0, moved: 0, debut: 0 };
  * whether the crown tracks the trophies.
  */
 const reignRun = new Map<number, number>();
+/**
+ * The portal's shelf, measured rather than guessed. Stage 16's balance pass
+ * is stated as a rate — "a star in the portal roughly once every five or six
+ * seasons" — and the only place that rate exists is a full league playing
+ * full seasons. Measure-only: the flags openPortal stamps are wiped after
+ * the tally so the probe's league is not carrying a portal it never runs.
+ */
+const portalYears: { size: number; over85: number; over90: number; top: number }[] = [];
+/**
+ * And the star population itself, because the knob's arithmetic needs it: a
+ * seeded league holds nobody above 82 — stars are grown, not dealt — so the
+ * rate "one star in the portal per five or six winters" can only be priced
+ * against how many stars a developed league actually carries.
+ */
+const starCensus: { at85: number; at88: number; at90: number }[] = [];
 const reigns: { team: number; len: number; ended: number }[] = [];
 const titlesBy = new Map<number, number>();
 const titleSnapshots: { year: number; spread: Record<CoachTitle, number> }[] = [];
@@ -208,6 +226,30 @@ for (let y = 0; y < YEARS; y++) {
   });
   syncCoachMods(season, -1, null);
   titlesBy.set(post.champion, (titlesBy.get(post.champion) ?? 0) + 1);
+  {
+    const pool = openPortal(season.teams, {
+      year: season.year ?? 0, seed: season.seed ?? 0, games: 45,
+    });
+    const ovrs = pool.map((m) => overallOf(m.player));
+    portalYears.push({
+      size: pool.length,
+      over85: ovrs.filter((o) => o >= 85).length,
+      over90: ovrs.filter((o) => o >= 90).length,
+      top: Math.max(0, ...ovrs),
+    });
+    for (const m of pool) delete (m.player as Player & Portable).inPortal;
+    const ovrAll: number[] = [];
+    for (const rec of season.teams) {
+      for (const man of [
+        ...rec.team.lineup, ...rec.team.bench, ...rec.team.rotation, ...rec.team.bullpen,
+      ]) ovrAll.push(overallOf(man));
+    }
+    starCensus.push({
+      at85: ovrAll.filter((o) => o >= 85).length,
+      at88: ovrAll.filter((o) => o >= 88).length,
+      at90: ovrAll.filter((o) => o >= 90).length,
+    });
+  }
   for (const t of season.teams) {
     if (t.prestige >= 90) reignRun.set(t.index, (reignRun.get(t.index) ?? 0) + 1);
     else if (reignRun.has(t.index)) {
@@ -349,6 +391,23 @@ for (const [team, len] of reignRun) reigns.push({ team, len, ended: season.year 
     console.log('  %s  %d seasons, ended year %d, %d titles for the program, prestige now %d',
       (t?.def.abbr ?? String(r.team)).padEnd(5), r.len, r.ended, titlesBy.get(r.team) ?? 0, t?.prestige ?? 0);
   }
+}
+
+{
+  const tot = (k: 'size' | 'over85' | 'over90') => portalYears.reduce((a, y) => a + y[k], 0);
+  console.log('portal shelf   %s men/yr   85+ %s/yr   90+ %s in %d yrs   best-of-year med %d  max %d',
+    (tot('size') / YEARS).toFixed(1), (tot('over85') / YEARS).toFixed(2),
+    tot('over90'), YEARS,
+    [...portalYears.map((y) => y.top)].sort((a, b) => a - b)[Math.floor(YEARS / 2)] ?? 0,
+    Math.max(...portalYears.map((y) => y.top)));
+}
+
+{
+  const late = starCensus.slice(-15);
+  const avg = (k: 'at85' | 'at88' | 'at90') =>
+    (late.reduce((a, y) => a + y[k], 0) / (late.length || 1)).toFixed(1);
+  console.log('star census    85+ %s  88+ %s  90+ %s   (league-wide, mean of final 15 yrs)',
+    avg('at85'), avg('at88'), avg('at90'));
 }
 
 console.log('clear rate by mandate:');

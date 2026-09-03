@@ -10,7 +10,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  portalCost, entersPortal, reasonFor, openPortal, makeTheCase,
+  portalCost, entersPortal, reasonFor, openPortal, makeTheCase, STAR_LINE, portalMarket,
   releaseFrom, signFromPortal, staffWorksPortal, type PortalMan,
 } from '../src/engine/portal.js';
 import { setMood, squadRanks, SETTLED } from '../src/engine/morale.js';
@@ -148,6 +148,82 @@ describe('the pool', () => {
     const worst = [...men].sort((a, b) => overallOf(a) - overallOf(b))[0]!;
     expect(portalCost(best)).toBeGreaterThan(portalCost(worst));
     expect(portalCost(worst)).toBeGreaterThanOrEqual(8);
+  });
+});
+
+/*
+  Stage 16's balance pass, measured before it was written (carousel probe,
+  30 seasons, seed 4242): the developed league carries about fifteen men at
+  STAR_LINE, the old model's only star channel was an ace reading squadRank
+  twenty -- "he was told he would play" as bookkeeping -- and a proven
+  ninety cost seventy-one points against a window of about a hundred and
+  seventy. The door: rarer stars (one per five or six winters, the wire's
+  event), noisier outcomes, the pool priced against the class.
+*/
+describe('the balance pass', () => {
+  /** A star, made rather than found: a seeded league holds nobody above 82. */
+  const starFrom = (team: Team): Player => {
+    const man = team.lineup.find((p) => p.classYear !== 'SR') ?? team.lineup[0]!;
+    const h = man as Player & {
+      contact: number; power: number; eye: number; speed: number;
+    };
+    h.contact = 99; h.power = 99; h.eye = 99; h.speed = 99;
+    expect(overallOf(man)).toBeGreaterThanOrEqual(STAR_LINE);
+    return man;
+  };
+
+  it('prices a star at the class he would replace', () => {
+    const world = fresh();
+    const star = starFrom(world.teams[2]!.team);
+    // The most a courtship can put on one recruit is thirty-six points; a
+    // proven man above the premium line must cost well past that, and a true
+    // star most of a whole window -- otherwise the portal out-deals the
+    // board it shares a budget with.
+    expect(portalCost(star)).toBeGreaterThan(100);
+    // While the ordinary shelf stays priced for depth programs to shop.
+    const journeyman = world.teams[2]!.team.bench[0]!;
+    expect(portalCost(journeyman)).toBeLessThan(60);
+  });
+
+  it('keeps a content star out of the pool that bookkeeping used to put him in', () => {
+    const world = fresh();
+    const star = starFrom(world.teams[4]!.team);
+    setMood(star, SETTLED);
+    // The exact case of the report: a top man whose promise arithmetic reads
+    // "buried" (squadRank twenty, no starts recorded) walked into the portal.
+    // Under the star door his settled mood and the wander are all that is
+    // left, and the wander is priced at about one entry per five or six
+    // winters across the WHOLE league's stars -- so this one man, sampled
+    // over thirty winters, goes at most once.
+    let went = 0;
+    for (let year = 2027; year < 2057; year++) {
+      if (entersPortal(star, { squadRank: 20, starts: 0, games: 45, year, seed: 4242 })) went++;
+    }
+    expect(went).toBeLessThanOrEqual(1);
+  });
+
+  it('still loses a genuinely miserable star', () => {
+    const world = fresh();
+    const star = starFrom(world.teams[6]!.team);
+    setMood(star, 2);
+    // Stage 9's promises keep their teeth above the line: mood is the one
+    // channel the star door leaves at full strength.
+    let went = 0;
+    for (let year = 2027; year < 2037; year++) {
+      if (entersPortal(star, { squadRank: 1, starts: 45, games: 45, year, seed: 4242 })) went++;
+    }
+    expect(went, 'a miserable star never left in ten winters').toBeGreaterThan(3);
+  });
+
+  it('runs a different market every winter, and the same market twice', () => {
+    const years = Array.from({ length: 12 }, (_, i) => portalMarket(2027 + i, 4242));
+    // Derived, so it answers the same way twice.
+    expect(portalMarket(2030, 4242)).toBe(portalMarket(2030, 4242));
+    // Noisy, so the shelf cannot be planned around: the swing between the
+    // richest and thinnest of a dozen winters is real money.
+    expect(Math.max(...years) - Math.min(...years)).toBeGreaterThan(0.3);
+    // And bounded, so no winter is a flood or a famine.
+    for (const m of years) { expect(m).toBeGreaterThanOrEqual(0.6); expect(m).toBeLessThanOrEqual(1.4); }
   });
 });
 
