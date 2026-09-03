@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { createSeason, simSeason, nextSeason } from '../src/engine/season.js';
 import {
   advanceOffseason, departAndDevelop, fillRosters, walkOnShortfall,
-  walkOnClass, walkOnSeed,
+  walkOnClass, walkOnSeed, arcOf, arcReach,
 } from '../src/engine/progression.js';
 import { coveredSince } from '../src/ui/screens/Board.js';
 import { AI_KEEP_SHARE } from '../src/engine/draft.js';
@@ -844,5 +844,75 @@ describe('the other ninety five programs keep men too', () => {
     for (const r of season.teams) {
       expect(season.draft?.rivalSpend[r.index] ?? 0).toBeLessThanOrEqual(ceiling);
     }
+  });
+});
+
+/*
+  Stage 16's development arcs — the 2K question, answered without the coin
+  flip. The arc is a hash of the man's id (no draw, no reload re-rolling who
+  blooms), the reveal moves the scout's number three points a June toward a
+  fixed goal, and the pull then chases the revised number through play. The
+  word never prints — what the player sees is the letter drifting, asked for
+  in both directions: "a player that came in as a C player but he starts
+  getting better and we see the potential go up."
+*/
+describe('the arcs', () => {
+  it('answers the same way twice, and cuts the same three ways forever', () => {
+    const season = createSeason(makeRng(11), undefined, SMALL);
+    const men = everyone(season);
+    const counts = { bust: 0, steady: 0, boom: 0 };
+    for (const p of men) {
+      expect(arcOf(p)).toBe(arcOf(p));
+      counts[arcOf(p)]++;
+    }
+    // Most men are simply what they are; the tails are real but minority.
+    expect(counts.steady).toBeGreaterThan(men.length * 0.55);
+    expect(counts.boom).toBeGreaterThan(men.length * 0.08);
+    expect(counts.bust).toBeGreaterThan(men.length * 0.08);
+    // And the reach agrees with the arc in sign, jitter and all.
+    for (const p of men) {
+      const r = arcReach(p);
+      if (arcOf(p) === 'boom') expect(r).toBeGreaterThanOrEqual(8);
+      else if (arcOf(p) === 'bust') expect(r).toBeLessThanOrEqual(-9);
+      else expect(r).toBe(0);
+    }
+  });
+
+  it('moves the letter both ways across the winters, through play', () => {
+    /*
+      The whole point, sampled across a real league rather than staged: after
+      three offseasons the booms' ceilings have risen from where they were
+      generated and the busts' have sunk, without any of them being told.
+    */
+    let season = createSeason(makeRng(23), undefined, SMALL);
+    const before = new Map<string, number>();
+    const arcs = new Map<string, ReturnType<typeof arcOf>>();
+    for (const p of everyone(season)) {
+      if (p.classYear !== 'FR') continue;
+      before.set(String(p.id), p.potential);
+      arcs.set(String(p.id), arcOf(p));
+    }
+    for (let y = 0; y < 3; y++) {
+      simSeason(season);
+      signClasses(season);
+      departAndDevelop(season, season.rng, { userTeam: -1 });
+      fillRosters(season, season.rng, { userTeam: -1 });
+      season = nextSeason(season);
+    }
+    let boomsUp = 0; let booms = 0; let bustsDown = 0; let busts = 0;
+    for (const p of everyone(season)) {
+      const was = before.get(String(p.id));
+      if (was === undefined) continue;
+      const arc = arcs.get(String(p.id))!;
+      if (arc === 'boom') { booms++; if (p.potential > was) boomsUp++; }
+      if (arc === 'bust') { busts++; if (p.potential < was) bustsDown++; }
+    }
+    expect(booms).toBeGreaterThan(5);
+    expect(busts).toBeGreaterThan(5);
+    // Every boom that stayed three years is now projected higher; nearly
+    // every bust lower (the revise-upward rule keeps a bust who still
+    // produces from reading below what he already does).
+    expect(boomsUp).toBe(booms);
+    expect(bustsDown / busts).toBeGreaterThan(0.7);
   });
 });
