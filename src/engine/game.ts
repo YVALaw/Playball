@@ -14,7 +14,7 @@ import {
   mult, clamp, platoonMultiplier, BASERUNNING,
 } from './ratings.js';
 import {
-  RUNNING, STEALS, BUNT, HOOK, alignmentAgainst,
+  RUNNING, STEALS, BUNT, HOOK, alignmentAgainst, buntEdge,
   DEFAULT_STRATEGY, type Strategy,
 } from './strategy.js';
 import { pullMultiplier, runningMods, shiftBias } from './tendencies.js';
@@ -2033,21 +2033,27 @@ function chooseTactic(
   const appetite = BUNT[bat.strategy.bunt];
   if (appetite === 0) return undefined;
 
-  // A runner to move, an out to spare, and a batter you do not mind losing.
-  const runnerOn = bases[0] !== null && bases[2] === null;
-  if (!runnerOn || outs >= 2) return undefined;
-  if (inning < 6) return undefined;
-
-  // One run has to actually matter. Down four, a bunt is just an out.
-  const margin = bat.runs - fld.runs;
-  if (margin < -2 || margin > 2) return undefined;
-
   const due = bat.order[bat.spot];
   if (!due) return undefined;
-  // Good hitters swing. This is a call you make for the bottom of the order.
-  const weak = (due.contact + due.power) / 2 < 48;
 
-  const chance = appetite * (weak ? 1.0 : 0.35);
+  /*
+    The board decides, the policy decides how much to trust the board.
+
+    Stage 16 replaced the rules of thumb (sixth inning on, first base only,
+    a flat weak-batter discount) with `buntEdge`, the run-expectancy
+    comparison itself — so the automatic coach now bunts when the base-out
+    state says to. The policy knob keeps its old meaning exactly: an OFTEN
+    coach takes the marginal and even slightly losing boards, which is what
+    bunting by rule is, and a RARE one waits for a clearly positive one.
+  */
+  const edge = buntEdge(
+    bases[0] !== null, bases[1] !== null, bases[2] !== null,
+    outs, inning, bat.runs - fld.runs, (due.contact + due.power) / 2,
+  );
+  if (edge === null) return undefined;
+  const trust = edge >= 0.02 ? 1.6 : edge >= -0.02 ? 0.9 : edge >= -0.06 ? 0.3 : 0;
+  const chance = Math.min(0.9, appetite * trust);
+  if (chance <= 0) return undefined;
   return rng() < chance ? 'bunt' : undefined;
 }
 

@@ -75,6 +75,75 @@ export const BUNT: Record<BuntPolicy, number> = {
   often: 0.46,
 };
 
+// ---------------------------------------------------------------------------
+// The run-expectancy board — stage 16's AI decision layer
+// ---------------------------------------------------------------------------
+
+/*
+  The backlog's ask, verbatim: "`chooseTactic` is heuristic. This is the
+  difference between an opponent who bunts by rule and one who bunts when
+  the base-out state says to."
+
+  Two tables, both the standard sabermetric furniture (Tango et al., the
+  2010s major-league matrices), indexed [outs][base state] where the state
+  is a bitmask: 1 = first occupied, 2 = second, 4 = third. RE is what an
+  average inning yields from here to its end; SCORE_P is the chance at
+  least one run scores, which is the number that matters when one run wins
+  the game. RE is scaled to this league's measured run environment (5.30
+  per team per nine, about 11% over the source era); SCORE_P is used raw,
+  because the bunt call compares two entries of the same table and the
+  level cancels.
+*/
+const RE_SCALE = 1.11;
+const RE24: readonly (readonly number[])[] = [
+  [0.481, 0.859, 1.100, 1.437, 1.350, 1.784, 1.964, 2.292],
+  [0.254, 0.509, 0.664, 0.884, 0.950, 1.130, 1.376, 1.541],
+  [0.098, 0.224, 0.319, 0.429, 0.353, 0.478, 0.580, 0.752],
+];
+const SCORE_P: readonly (readonly number[])[] = [
+  [0.26, 0.42, 0.61, 0.61, 0.83, 0.84, 0.85, 0.85],
+  [0.16, 0.27, 0.40, 0.41, 0.65, 0.64, 0.67, 0.65],
+  [0.07, 0.13, 0.22, 0.23, 0.26, 0.27, 0.27, 0.32],
+];
+
+const stateOf = (first: boolean, second: boolean, third: boolean): number =>
+  (first ? 1 : 0) | (second ? 2 : 0) | (third ? 4 : 0);
+
+/**
+ * What the board says a sacrifice is worth right now, or null when the
+ * state has no bunt in it at all (nobody to move, two outs, a man already
+ * on third — the squeeze stays out of the automatic coach's book).
+ *
+ * Positive means the state genuinely argues for it: late and close the
+ * comparison runs on the chance of scoring at all, where moving the runner
+ * with a weak bat up is a real play; early, it runs on expected runs,
+ * where the answer is almost always no — which is the truth the old
+ * heuristic hard-coded and this now derives. The batter folds in as an
+ * adjustment: the out a bunt spends costs less when the man spending it
+ * was likely an out anyway.
+ */
+export function buntEdge(
+  first: boolean, second: boolean, third: boolean,
+  outs: number, inning: number, margin: number, batterQuality: number,
+): number | null {
+  if (outs >= 2) return null;
+  if (third) return null;
+  if (!first && !second) return null;
+  const now = stateOf(first, second, third);
+  // A clean sacrifice: every runner up one base, one more out. The failure
+  // modes (lead man forced, the pop-up) and the beaten-out single roughly
+  // offset at the rates `sacrifice` actually produces, so the clean
+  // advance is an honest expectation, not a best case.
+  const after = stateOf(false, first, second);
+  const oneRunBaseball = inning >= 7 && margin >= -1 && margin <= 1;
+  const table = oneRunBaseball ? SCORE_P : RE24;
+  const scale = oneRunBaseball ? 1 : RE_SCALE;
+  const edge = ((table[outs + 1]?.[after] ?? 0) - (table[outs]?.[now] ?? 0)) * scale;
+  // The out costs less when the man spending it was probably an out: a
+  // 30-quality bat adds about seven hundredths, a 70 takes the same away.
+  return edge + (48 - batterQuality) * 0.004;
+}
+
 /** Pitches added to or taken off a starter's leash before the bullpen stirs. */
 export const HOOK: Record<HookPolicy, number> = {
   quick: -15,
