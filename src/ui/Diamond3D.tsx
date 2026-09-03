@@ -843,39 +843,39 @@ function Defense(
  * The walk-off and title takeovers still own the BIG nights; this is for
  * every homer in between.
  */
-function HomerBurst({ plan }: { plan: PlayPlan }) {
+/** One volley of a home run's firework: a ring of sparks from one point. */
+function Volley(
+  { at, t0, count, spread }:
+  { at: THREE.Vector3; t0: number; count: number; spread: number },
+) {
   const group = useRef<THREE.Group>(null);
   const t = useRef(0);
   const seeds = useRef(
-    Array.from({ length: 16 }, (_, i) => ({
+    Array.from({ length: count }, (_, i) => ({
       dir: new THREE.Vector3(
-        Math.sin(i * 2.399) * (0.6 + (i % 3) * 0.25),
-        0.9 + ((i * 7) % 5) * 0.18,
-        Math.cos(i * 2.399) * (0.6 + (i % 3) * 0.25),
+        Math.sin(i * 2.399) * (spread + (i % 3) * 0.3),
+        1.0 + ((i * 7) % 5) * 0.22,
+        Math.cos(i * 2.399) * (spread + (i % 3) * 0.3),
       ),
+      size: 0.05 + ((i * 13) % 4) * 0.02,
     })),
   );
-  // Where it crosses the wall: along the flight, at the wall's height.
-  const at = useRef(new THREE.Vector3(
-    plan.target.x * 0.82, 1.5, plan.target.z * 0.82,
-  ));
-  const T0 = plan.flight * 0.8;
-  const DUR = 1.0;
+  const DUR = 1.1;
 
   useFrame((_, delta) => {
     t.current += delta;
     const g = group.current;
     if (!g) return;
-    const k = (t.current - T0) / DUR;
+    const k = (t.current - t0) / DUR;
     g.visible = k >= 0 && k < 1;
     if (!g.visible) return;
     g.children.forEach((m, i) => {
       const seed = seeds.current[i];
       if (!seed) return;
       m.position.set(
-        at.current.x + seed.dir.x * k * 2.1,
-        at.current.y + seed.dir.y * k * 2.1 - 2.6 * k * k,
-        at.current.z + seed.dir.z * k * 2.1,
+        at.x + seed.dir.x * k * 2.3,
+        at.y + seed.dir.y * k * 2.3 - 2.8 * k * k,
+        at.z + seed.dir.z * k * 2.3,
       );
       const mat = (m as THREE.Mesh).material as THREE.MeshBasicMaterial;
       mat.opacity = 1 - k;
@@ -884,9 +884,9 @@ function HomerBurst({ plan }: { plan: PlayPlan }) {
 
   return (
     <group ref={group} visible={false}>
-      {seeds.current.map((_, i) => (
+      {seeds.current.map((seed, i) => (
         <mesh key={i}>
-          <sphereGeometry args={[0.07, 6, 5]} />
+          <sphereGeometry args={[seed.size, 6, 5]} />
           <meshBasicMaterial
             color={i % 3 === 0 ? '#d9b83a' : i % 3 === 1 ? '#f6f1e6' : '#e0655e'}
             transparent opacity={1}
@@ -895,6 +895,35 @@ function HomerBurst({ plan }: { plan: PlayPlan }) {
         </mesh>
       ))}
     </group>
+  );
+}
+
+/**
+ * The home run's show: three volleys along the wall, staggered like a real
+ * display — where the ball leaves, then either side of it. Bigger than the
+ * first draft by request: "we need something like big words and more
+ * firework." The words are the DOM's job (see Manage's hr-splash); the sky
+ * is this one's.
+ */
+function HomerBurst({ plan }: { plan: PlayPlan }) {
+  const at = useMemo(() => {
+    const centre = new THREE.Vector3(plan.target.x * 0.82, 1.5, plan.target.z * 0.82);
+    // Flanks slide along the wall's tangent, so the volleys straddle the spot.
+    const tangent = new THREE.Vector3(-centre.z, 0, centre.x).normalize();
+    return [
+      centre,
+      centre.clone().addScaledVector(tangent, 1.7).setY(1.35),
+      centre.clone().addScaledVector(tangent, -1.7).setY(1.35),
+    ];
+  }, [plan.target.x, plan.target.z]);
+  const T0 = plan.flight * 0.8;
+
+  return (
+    <>
+      <Volley at={at[0]!} t0={T0} count={26} spread={0.75} />
+      <Volley at={at[1]!} t0={T0 + 0.28} count={18} spread={0.6} />
+      <Volley at={at[2]!} t0={T0 + 0.52} count={18} spread={0.6} />
+    </>
   );
 }
 

@@ -3190,3 +3190,45 @@
   border-left-color: var(--team, var(--alert));
   color: var(--team, var(--alert));
 }
+
+/* ---------------------------------------------------------------------------
+   The home run's words, over the park.
+
+   Asked for after the first burst: "we need something like big words and
+   more firework." The fireworks are the scene's (three volleys along the
+   wall); the words are the DOM's, in the display face at a size no in-scene
+   mesh could hold, glowing gold and gone in two and a half seconds. GRAND
+   SLAM when the bases emptied ahead of him.
+   --------------------------------------------------------------------------- */
+.hr-splash {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  font: 800 calc(40px * var(--ts))/0.9 var(--display);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  text-align: center;
+  color: #f6f1e6;
+  text-shadow:
+    0 2px 16px rgba(0, 0, 0, .6),
+    0 0 30px rgba(217, 184, 58, .85);
+  animation: hr-splash 2.6s cubic-bezier(0.16, 0.9, 0.3, 1) both;
+}
+
+@keyframes hr-splash {
+  0%   { opacity: 0; transform: scale(.55); }
+  10%  { opacity: 0; transform: scale(.55); }
+  22%  { opacity: 1; transform: scale(1.1); }
+  32%  { transform: scale(1); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.05); }
+}
+
+:root[data-motion="reduced"] .hr-splash { animation: none; }
+@media (prefers-reduced-motion: reduce) { .hr-splash { animation: none; } }
+:root[data-motion="full"] .hr-splash {
+  animation: hr-splash 2.6s cubic-bezier(0.16, 0.9, 0.3, 1) both;
+}

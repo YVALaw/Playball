@@ -94,6 +94,14 @@ export function Manage() {
   const [book, setBook] = useState(true);
   const [scoreTick, setScoreTick] = useState(0);
   const [ball, setBall] = useState<BallHit | null>(null);
+  /*
+    The words a home run deserves — asked for after seeing the first burst:
+    "we need something like big words and more firework." A DOM splash over
+    the park rather than 3D text: the display font the whole app speaks, at
+    a size no in-scene mesh could match, gone in two and a half seconds.
+    GRAND SLAM when three men were aboard to score ahead of him.
+  */
+  const [splash, setSplash] = useState<{ tick: number; text: string } | null>(null);
   const ballTick = useRef(0);
   const lastRuns = useRef(0);
   const logRef = useRef<HTMLDivElement>(null);
@@ -137,6 +145,16 @@ export function Manage() {
     }
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   });
+
+  useEffect(() => {
+    if (!ball || ball.y <= 1) return undefined;
+    setSplash({
+      tick: ball.tick,
+      text: scoredRunners.length >= 3 ? 'GRAND SLAM' : 'HOME RUN',
+    });
+    const id = window.setTimeout(() => setSplash(null), 2600);
+    return () => window.clearTimeout(id);
+  }, [ball?.tick]);
 
   // Follow the ball. `lastPlay` is cleared on every submit, so whatever contact
   // event is in it belongs to the play that just happened — and a play with no
@@ -592,8 +610,13 @@ export function Manage() {
           to spend on a renderer its owner did not want.
         */}
         <div className="ballpark-scene">
+          {splash && (
+            <div className="hr-splash" key={splash.tick} aria-hidden>
+              {splash.text}
+            </div>
+          )}
           {flatField ? (
-            <Diamond runners={d?.runners ?? []} scoreTick={scoreTick} size={200} />
+            <Diamond runners={d?.runners ?? runnersHeld.current} scoreTick={scoreTick} size={200} />
           ) : (
             <Suspense fallback={
               <Diamond runners={d?.runners ?? runnersHeld.current} scoreTick={scoreTick} size={200} />
