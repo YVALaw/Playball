@@ -1163,6 +1163,17 @@ scaling now has a home in stage 2's settings sheet) · **remove the test aids**
 up permanently · signed AAB, listing, screenshots, privacy policy, content
 rating · closed beta, then open.
 
+**Grew September 4 — the guided tutorial, decided from the phone.** The
+card tutorials give way to a guided first stretch: a main card that titles
+the errand ("Set your nine", "Play your first game", "Read the mail",
+"Spend a coach point") and then the glow-path grammar — the one the
+failing-man errand already ships (action button, then SCHOOL, then HAVE A
+WORD, one light at a time) — walks the player through doing it rather than
+reading about it. The reporter's own words: "you still would have the main
+card that will tell you at least the title of what you are doing and then
+guided to do whatever you have to do." Folds the budget-teaching item
+below into itself, since the budget is one of the weekly errands.
+
 **Grew September 2, night:** **the budget gets taught.** Reported: "we have
 to teach the users about the budget and things they have to pay for — it
 doesn't really have the importance it should have." The money is real (the

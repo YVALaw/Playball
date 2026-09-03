@@ -3545,6 +3545,39 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       signed: filled.signed,
       walkOns: filled.walkOns,
     };
+    /*
+      The winter, in one page — chosen from the phone: "I like the
+      card/email when the season starts letting you know whatever super
+      important at the beginning." The reporter lost Hans Hood to the July
+      draft and only found the letter days later, so the season now opens
+      with ONE letter that leads with exactly the things a coach would be
+      angriest to learn late: signed kids the pros took, and the men the
+      draft pulled off the roster. Posted last so it sits newest and
+      unread at first pitch; every individual letter it summarises is
+      still underneath it. Quiet winters write no letter at all.
+    */
+    {
+      const gone = report.drafted.filter((d) => !d.returned);
+      const lines: string[] = [];
+      for (const lost of filled.poached) {
+        lines.push(`${lost.name} (${lost.pos}) signed pro out of high school — he never arrives.`);
+      }
+      for (const d of gone.slice(0, 4)) {
+        lines.push(`${d.name} went in round ${d.round ?? '?'} of the draft.`);
+      }
+      if (gone.length > 4) lines.push(`…and ${gone.length - 4} more to the draft.`);
+      if (lines.length > 0) {
+        get().post({
+          kind: 'board', year: get().year,
+          title: 'Before first pitch — the winter, in one page',
+          body: `Coach — read this one before you fill out a card. `
+            + lines.join(' ')
+            + ` ${report.recruits} new men are on the roster. Everything `
+            + 'else from the winter is in the letters below this one.',
+          link: { to: 'team', index: get().userTeam },
+        });
+      }
+    }
     done(season, report);
   },
 

@@ -67,6 +67,7 @@ export function Lineup() {
   const assignPosition = useDynasty((s) => s.assignPosition);
   const moveRotation = useDynasty((s) => s.moveRotation);
   const promoteArm = useDynasty((s) => s.promoteArm);
+  const openPlayer = useDynasty((s) => s.openPlayer);
   const autoLineup = useDynasty((s) => s.autoLineup);
   const keepCover = useDynasty((s) => s.keepCover);
   const team = useUserTeam();
@@ -190,7 +191,19 @@ export function Lineup() {
       return;
     }
     if (picked === null) { setPicked(i); return; }
-    if (picked === i) { setPicked(null); return; }
+    /*
+      The second tap on the same man opens his card — approved with one
+      condition, that BACK puts you where you were: it does by
+      construction, because the card is an overlay and the lineup never
+      unmounts beneath it. The pick clears so closing the card leaves no
+      row armed.
+    */
+    if (picked === i) {
+      const man = order[i];
+      setPicked(null);
+      if (man) openPlayer(man.id);
+      return;
+    }
     swapLineup(picked, i);
     setPicked(null);
   };
@@ -222,7 +235,14 @@ export function Lineup() {
       setPickedBench(null);
       return;
     }
-    setPickedBench(pickedBench === id ? null : id);
+    // The same second-tap grammar as the order: tapping the man you already
+    // picked reads as "show me him", not as a shrug.
+    if (pickedBench === id) {
+      setPickedBench(null);
+      openPlayer(id);
+      return;
+    }
+    setPickedBench(id);
   };
 
   /*
@@ -238,7 +258,12 @@ export function Lineup() {
   const tapArm = (i: number): void => {
     setPicked(null);
     if (pickedArm === null) { setPickedArm(i); return; }
-    if (pickedArm === i) { setPickedArm(null); return; }
+    if (pickedArm === i) {
+      const man = team?.team.rotation[i];
+      setPickedArm(null);
+      if (man) openPlayer(man.id);
+      return;
+    }
     moveRotation(pickedArm, i - pickedArm);
     setPickedArm(null);
   };
@@ -523,9 +548,9 @@ export function Lineup() {
                 key={p.id}
                 type="button"
                 className={canTake ? 'is-live' : ''}
-                disabled={!canTake}
                 onClick={() => {
-                  if (pickedArm === null) return;
+                  // No promotion armed: the tap is a question about the man.
+                  if (pickedArm === null) { openPlayer(p.id); return; }
                   promoteArm(p.id, pickedArm);
                   setPickedArm(null);
                 }}
