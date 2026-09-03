@@ -156,9 +156,12 @@ export function seedRivalInterest(season: SeasonState, userTeam: number): void {
  * caps against it, and `recruit` refuses above it.
  */
 export function boardBudget(season: SeasonState | null, userTeam: number): number {
+  // One pool, three claims: June's draft spending and the portal's both
+  // come off the same window the class is signed from.
   return weeklyBudget(
     prestigeStars(season?.teams[userTeam]?.prestige ?? 50),
-    season?.draft?.spent ?? 0,
+    (season?.draft?.spent ?? 0)
+      + (season?.portalSpend?.[userTeam] ?? 0),
   );
 }
 
@@ -1097,6 +1100,17 @@ export interface DynastyStore {
   assignPosition: (id: PlayerId, pos: Position) => boolean;
   /** Move a starter up or down the weekend rotation. */
   moveRotation: (index: number, delta: number) => void;
+  /**
+   * A pen arm into the rotation, the man he replaces sliding down.
+   *
+   * The pen used to be read-only on the lineup screen on the argument that
+   * who comes IN is a game-night decision — true of the pen's order, and
+   * nothing to do with staff roles. Reported from the phone: "I had a
+   * freshman SP better than another one who's starting and it would not
+   * let me bring him up from the bullpen." Same gates as swapStarter: no
+   * hurt arm takes a rotation slot.
+   */
+  promoteArm: (penId: PlayerId, slot: number) => boolean;
   /**
    * Deal the current nine into a sound batting order in one tap.
    *
@@ -2158,7 +2172,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
             // way `boardBudget` takes the user's draft spend off his.
             record.index, pitch, staff?.prestige ?? 45, recruits.prospects,
             holesFor(record), season.rng, atWeekStart,
-            season.draft?.rivalSpend[record.index] ?? 0,
+            (season.draft?.rivalSpend[record.index] ?? 0)
+              + (season.portalSpend?.[record.index] ?? 0),
           );
 
       for (const { prospect, actions } of spends) {
@@ -2366,6 +2381,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           const from = season.teams[m.from];
           if (from) releaseFrom(from.team, m.player.id);
         }
+        // And onto the one-pool ledger, exactly as a hands-on signing goes.
+        (season.portalSpend ??= {})[get().userTeam] =
+          (season.portalSpend[get().userTeam] ?? 0)
+          + took.reduce((a, m) => a + m.cost, 0);
         set({ portal: { leaving: mine, available: [], spent: 0 } });
       } else {
         set({ portal: { leaving: mine, available: theirs, spent: 0 } });
@@ -2414,6 +2433,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
             taken.add(m.player.id);
             const from = season.teams[m.from];
             if (from) releaseFrom(from.team, m.player.id);
+            // The same pool for all ninety six: what a rival spends here
+            // thins its own recruiting week, the rule the user now plays by.
+            (season.portalSpend ??= {})[other.index] =
+              (season.portalSpend[other.index] ?? 0) + m.cost;
           }
         }
       }
@@ -3557,6 +3580,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const stars = prestigeStars(rec.prestige);
     const left = windowBudget(stars) - portal.spent;
     const { spent, stayed } = portalCase(man, offer, left);
+    (season.portalSpend ??= {})[userTeam] =
+      (season.portalSpend[userTeam] ?? 0) + spent;
     set({
       portal: {
         ...portal,
@@ -3592,6 +3617,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (from) releaseFrom(from.team, man.player.id);
     signFromPortal(rec.team, man);
 
+    (season.portalSpend ??= {})[userTeam] =
+      (season.portalSpend[userTeam] ?? 0) + man.cost;
     set({
       portal: {
         ...portal,
@@ -5110,6 +5137,25 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     order[b] = x;
     set({ version: version + 1 });
     void get().saveNow();
+  },
+
+  promoteArm: (penId, slot) => {
+    const { season, userTeam, version } = get();
+    const team = season?.teams[userTeam]?.team;
+    if (!season || !team || get().busy) return false;
+    if (slot < 0 || slot >= team.rotation.length) return false;
+    const up = team.bullpen.find((p) => p.id === penId);
+    const down = team.rotation[slot];
+    if (!up || !down) return false;
+    if (!available(up, injuryClock(season))) return false;
+    // He takes the ball as a starter; the man he bumped keeps his own role
+    // in the pen, the way refill has always slid spare starters down.
+    up.role = 'SP';
+    team.rotation[slot] = up;
+    team.bullpen = [down, ...team.bullpen.filter((p) => p.id !== penId)];
+    set({ version: version + 1 });
+    void get().saveNow();
+    return true;
   },
 
   moveRotation: (index, delta) => {

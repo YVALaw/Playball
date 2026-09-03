@@ -1405,7 +1405,13 @@ describe('the board screen', () => {
       expect(got.length).toBeGreaterThan(0);
       for (const p of got) {
         expect(p.stars).toBe(3);
-        expect(p.player.type).toBe('pitcher');
+        // A two-way man answers the SP door with his arm while his type
+        // stays 'hitter' — that is the fix for Hood Hans being invisible
+        // under the one-star SP filter, not a leak.
+        const arm = p.player.type === 'pitcher'
+          || ((p.player as { twoWay?: boolean }).twoWay === true
+            && (p.player as { role?: string }).role === 'SP');
+        expect(arm, p.player.name).toBe(true);
       }
       expect(anyFilter(set)).toBe(true);
     });

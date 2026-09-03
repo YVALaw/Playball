@@ -112,7 +112,18 @@ export const anyFilter = (f: Filters): boolean =>
 export function matchesFilters(
   p: Prospect, f: Filters, homeState: string, programStars: number,
 ): boolean {
-  if (f.pos && slotOf(p) !== f.pos) return false;
+  /*
+    A two-way man answers to every door he can walk through: the SP chip
+    finds his arm, the DH chip his bat, and his own row still reads
+    TWO-WAY. Reported from the phone: Hood Hans was invisible under the
+    one-star SP filter, which is exactly where a coach shopping for arms
+    would look for him.
+  */
+  if (f.pos && slotOf(p) !== f.pos) {
+    const tw = isTwoWay(p.player)
+      && (f.pos === (p.player as { role?: string }).role || f.pos === p.player.pos);
+    if (!tw) return false;
+  }
   if (f.state && p.state !== f.state) return false;
   if (f.stars.length > 0 && !f.stars.includes(p.stars)) return false;
   if (f.pipelineOnly && !inPipeline(p, homeState)) return false;

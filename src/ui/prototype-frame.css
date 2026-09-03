@@ -744,7 +744,7 @@
   color: #c8d7cb;
 }
 
-.modal-action { background: var(--clay); color: #fff; }
+.modal-action { background: var(--command); color: #fff; }
 .modal-card.tone-win .modal-action { background: var(--yellow); color: #182b21; }
 .modal-card.tone-clay .modal-action { background: var(--alert); color: #fff; }
 
@@ -1836,7 +1836,7 @@
   height: 14px;
   margin-left: 5px;
   vertical-align: 1px;
-  background: var(--navy);
+  background: var(--panel);
   color: var(--cream);
   font: 800 calc(9px * var(--ts))/1 var(--mono);
   font-style: normal;
@@ -3231,4 +3231,35 @@
 @media (prefers-reduced-motion: reduce) { .hr-splash { animation: none; } }
 :root[data-motion="full"] .hr-splash {
   animation: hr-splash 2.6s cubic-bezier(0.16, 0.9, 0.3, 1) both;
+}
+
+/* ---------------------------------------------------------------------------
+   The park, while its chunk downloads. The 2D field left by request; this
+   placeholder holds the seat so the dugout never flashes empty. Three lights
+   over a dark ground — the towers before the game.
+   --------------------------------------------------------------------------- */
+.park-loading {
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  justify-items: center;
+  background: var(--panel);
+  border: 1px solid var(--ink);
+}
+.park-loading span {
+  font: 700 calc(9px * var(--ts)) var(--mono);
+  letter-spacing: .22em;
+  color: rgba(246, 241, 230, .55);
+}
+.park-loading div { display: flex; gap: 8px; }
+.park-loading i {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--yellow); opacity: .25;
+  animation: park-tower 1.2s ease-in-out infinite;
+}
+.park-loading i:nth-child(2) { animation-delay: .2s; }
+.park-loading i:nth-child(3) { animation-delay: .4s; }
+@keyframes park-tower { 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .park-loading i { animation: none; opacity: .7; }
 }

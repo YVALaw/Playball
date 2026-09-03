@@ -16,7 +16,7 @@ import {
 } from '../../state/depth.js';
 import {
   readPrefs, writePrefs, applyPrefs, TEXT_SCALES,
-  type DevicePrefs, type FieldMode, type MotionPref, type ThemePref,
+  type DevicePrefs, type MotionPref, type ThemePref,
 } from '../../state/devicePrefs.js';
 
 /** A row that reads as a sentence and toggles on the right. */
@@ -172,15 +172,6 @@ export function Settings() {
             value={prefs.textScale}
             options={TEXT_SCALES.map((t) => ({ value: t.value, label: t.label.toUpperCase() }))}
             onPick={(v) => put({ textScale: v })}
-          />
-          <Choice<FieldMode>
-            label="The field"
-            value={prefs.field}
-            options={[
-              { value: '3d', label: '3D' },
-              { value: '2d', label: 'DIAMOND' },
-            ]}
-            onPick={(v) => put({ field: v })}
           />
           <Choice<ThemePref>
             label="Theme"

@@ -20,12 +20,10 @@ import { battingAverage } from '../../engine/season.js';
 import { pct } from '../format.js';
 import { useDynasty } from '../../state/store.js';
 import { handles } from '../../state/depth.js';
-import { readPrefs } from '../../state/devicePrefs.js';
 import {
   buzz, crowdLeverage, crowdStart, crowdStop, crowdSwell, sfx,
 } from '../sound.js';
 import { lazy, Suspense } from 'react';
-import { Diamond } from '../Diamond.js';
 import { LineScore } from '../LineScore.js';
 
 /**
@@ -58,10 +56,10 @@ export function Manage() {
   // Separate from the pen on purpose: somebody can want the bullpen and not the
   // conversations, or the other way round.
   const myVisits = handles(depth, 'moundVisits');
-  // Read once when the game opens rather than subscribed to: nobody changes
-  // their field preference in the middle of an at-bat, and re-reading storage
-  // on every pitch to find that out would be absurd.
-  const [flatField] = useState(() => readPrefs().field === '2d');
+  // The 2D field is gone by request — "completely removing the 2D ballpark
+  // in the dugout; instead we can add a lazy loading when the 3D is
+  // loading." The park is the park; while its chunk downloads, a dressed
+  // placeholder holds the seat.
   // The full linescore, on request rather than always. See the top bar.
   const submitTactic = useDynasty((s) => s.submitTactic);
   const visitMound = useDynasty((s) => s.visitMound);
@@ -177,6 +175,9 @@ export function Manage() {
       // anybody. The field draws a catch as a glove and everything else as a
       // ball on the grass with somebody running after it.
       caught: wasOut && battedBall !== 'ground',
+      // A booted or thrown-away ball never settles into anybody's hands —
+      // that posture is what made an error read as a clean out.
+      loose: (contact as { errored?: boolean } | undefined)?.errored === true,
       tick: ballTick.current,
     });
     // `wasOut` is read above and belongs here: identical landing coordinates
@@ -640,17 +641,12 @@ export function Manage() {
               {splash.text}
             </div>
           )}
-          {flatField ? (
-            <Diamond
-              runners={d?.runners ?? runnersHeld.current}
-              scoreTick={scoreTick} size={200} ball={ball}
-            />
-          ) : (
+          {(
             <Suspense fallback={
-              <Diamond
-                runners={d?.runners ?? runnersHeld.current}
-                scoreTick={scoreTick} size={200} ball={ball}
-              />
+              <div className="park-loading" style={{ height: 250 }} aria-hidden>
+                <span>THE PARK</span>
+                <div><i /><i /><i /></div>
+              </div>
             }>
               <Diamond3D
                 runners={d?.runners ?? runnersHeld.current} scoreTick={scoreTick}
@@ -660,6 +656,19 @@ export function Manage() {
                 night={!!meta && (meta.postseason === true
                   || season?.schedule[season.dayIndex]?.kind !== 'midweek')}
                 accent={meta ? teamColour(season?.teams[meta.home]?.def.abbr ?? '') : undefined}
+                // The men wear their own shirts — asked for from the dugout:
+                // fielders in the defending school's colour, runners in the
+                // batting side's. Top of the inning the away side bats.
+                defenceColour={meta
+                  ? teamColour(season?.teams[
+                    d?.half === 'top' ? meta.home : meta.away
+                  ]?.def.abbr ?? '')
+                  : undefined}
+                offenceColour={meta
+                  ? teamColour(season?.teams[
+                    d?.half === 'top' ? meta.away : meta.home
+                  ]?.def.abbr ?? '')
+                  : undefined}
               />
             </Suspense>
           )}
@@ -724,7 +733,7 @@ export function Manage() {
             // reading as dim grey filler, which is a large part of why a manager
             // can call for a steal all afternoon and never notice the failures.
             const called = line.startsWith('[bunt]') || line.startsWith('[intentional]')
-              || /caught stealing|thrown out|forced at/.test(line);
+              || /caught stealing|thrown out|forced at|error/.test(line);
             return (
               <p
                 className={`${i === recent.length - 1 ? 'latest' : ''}${called ? ' called' : ''}`}

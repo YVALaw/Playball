@@ -532,6 +532,14 @@ export interface FieldLine {
  */
 export interface PlayEvent {
   kind: 'pitch' | 'contact' | 'advance' | 'out' | 'score';
+  /**
+   * Set on 'contact' when the defense booted or threw it away. Reported
+   * from the phone as an impossible play: a comebacker that put the batter
+   * on and scored two read as "a ground out to the pitcher", because the
+   * park settled the loose ball into his hands and nothing on screen said
+   * error. The log always did; now the geometry does too.
+   */
+  errored?: boolean;
   /** Set on 'pitch'. What the pitch resolved to. */
   pitch?: PitchResult;
   /** Set on 'contact'. */

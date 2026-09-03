@@ -66,6 +66,7 @@ export function Lineup() {
   const swapStarter = useDynasty((s) => s.swapStarter);
   const assignPosition = useDynasty((s) => s.assignPosition);
   const moveRotation = useDynasty((s) => s.moveRotation);
+  const promoteArm = useDynasty((s) => s.promoteArm);
   const autoLineup = useDynasty((s) => s.autoLineup);
   const keepCover = useDynasty((s) => s.keepCover);
   const team = useUserTeam();
@@ -504,27 +505,41 @@ export function Lineup() {
           games — {midweekInnings.toFixed(0)} innings so far.
         </p>
 
-        {/* The pen, most rested arms doing most of the work. Read-only here —
-            who comes in is a game-night decision, made from the BULLPEN button
-            on the manage screen — but the rotation's other half belongs on the
-            same screen as the rotation. */}
-        <SectionHeading kicker="THE BULLPEN" title="The rest of the staff" />
+        {/* The pen. Who comes IN tonight stays a game-night decision on the
+            manage screen — but staff ROLES are set here: pick a rotation
+            slot above, then tap the arm who should take that ball. Reported
+            from the phone: a better freshman SP could not be brought up. */}
+        <SectionHeading
+          kicker="THE BULLPEN"
+          title={pickedArm !== null ? 'Tap an arm to hand him the ball' : 'The rest of the staff'}
+        />
         <section className="rotation-list">
           {team.team.bullpen.map((p) => {
             const line = season.pitching.get(p.id);
             const ip = line ? inningsPitched(line) : 0;
+            const canTake = pickedArm !== null;
             return (
-              <div key={p.id}>
+              <button
+                key={p.id}
+                type="button"
+                className={canTake ? 'is-live' : ''}
+                disabled={!canTake}
+                onClick={() => {
+                  if (pickedArm === null) return;
+                  promoteArm(p.id, pickedArm);
+                  setPickedArm(null);
+                }}
+              >
                 <span>{p.role}</span>
                 <strong>{p.name}</strong>
                 <small>
-                  {overallOf(p)} OVR
+                  {armValue(p)} OVR
                   {line && line.outs > 0
                     ? ` · ${era(line).toFixed(2)} · ${ip.toFixed(0)} IP`
                     : ''}
                 </small>
-                <span />
-              </div>
+                <i className="drag">{canTake ? <SewingPinIcon /> : null}</i>
+              </button>
             );
           })}
         </section>

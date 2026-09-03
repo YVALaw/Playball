@@ -18,6 +18,18 @@
   /* Both read through a hook so a career can wear its school's colour — see
      accent.ts. With no hook set, these are exactly the values they always were. */
   --navy: var(--accent-deep, #153a2b); /* the dark surface: app bar, hero cards, the live frame */
+  /* The announcement panel's ground. Split from --navy because the two roles
+     pulled apart in dark mode: --navy paints TEXT there and was walked
+     BRIGHT to carry on dark paper — and every hero card wearing it as a
+     background put cream and gold on a bright school colour. Reported from
+     the phone with screenshots: Bitterroot Valley's tan June card was
+     unreadable. Light keeps the deep cut; dark takes the tinted dark cut,
+     which carries cream at 10:1 by construction. */
+  --panel: var(--accent-deep, #153a2b);
+  /* What a primary command sits on, under white text. Light rides the
+     accent (now walked for white); dark takes the raised cut, which was
+     built for exactly this and then never worn by the buttons. */
+  --command: var(--clay);
   --clay: var(--accent, #236b42);      /* the accent: active states, rules, primary commands */
 
   /* The alarm, which used to be the accent as well.
@@ -171,6 +183,8 @@
   /* See the note in the media block below: this is the token that was
      never given a dark value, and it paints text. */
   --navy: var(--accent-dk, #4da97a);
+  --panel: var(--accent-soft-dk, #26312a);
+  --command: var(--accent-raised-dk, #2f7a52);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -232,6 +246,8 @@
       Measured against --paper it lands between 4.5 and 6.6.
     */
     --navy: var(--accent-dk, #4da97a);
+    --panel: var(--accent-soft-dk, #26312a);
+    --command: var(--accent-raised-dk, #2f7a52);
     --raised: var(--accent-raised-dk, #2f7a52);
   }
 }

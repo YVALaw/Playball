@@ -42,6 +42,12 @@ export interface BallHit {
    */
   kind: BattedBall;
   /**
+   * The defense booted or threw this one away. A loose ball never settles
+   * into the chaser's hands — that posture is the park's word for OUT,
+   * and an error wearing it was reported as an impossible play.
+   */
+  loose?: boolean;
+  /**
    * Whether the batter reached. Decides what the ball flashes when it lands, so
    * the field says how the play ended without waiting for the log line.
    */
@@ -92,6 +98,10 @@ interface Props {
   night?: boolean;
   /** The home school's colour, worn by the outfield wall's panels. */
   accent?: string;
+  /** The fielding side's colour, worn by the nine men out there. */
+  defenceColour?: string;
+  /** The batting side's colour, worn by the runner dots. */
+  offenceColour?: string;
   /** Bumped when a run scores, to flash the plate. */
   scoreTick?: number;
   /** The last batted ball, or null when nothing was put in play. */
@@ -347,7 +357,10 @@ function RunnerDot(
  * has already taken him off them. He is a few hundred milliseconds of follow
  * through, and the alternative is a red dot blinking out of existence on third.
  */
-function ScoringRunner({ from, onDone }: { from: 0 | 1 | 2 | 3; onDone: () => void }) {
+function ScoringRunner(
+  { from, colour, onDone }:
+  { from: 0 | 1 | 2 | 3; colour?: string; onDone: () => void },
+) {
   const ref = useRef<THREE.Mesh>(null);
   const path = useRef<THREE.Vector3[]>(
     basePath(from, 4).map((p) => new THREE.Vector3(...p)),
@@ -382,7 +395,7 @@ function ScoringRunner({ from, onDone }: { from: 0 | 1 | 2 | 3; onDone: () => vo
   return (
     <mesh ref={ref}>
       <sphereGeometry args={[0.34, 12, 10]} />
-      <meshBasicMaterial color={CLAY} transparent opacity={1} />
+      <meshBasicMaterial color={colour ?? CLAY} transparent opacity={1} />
     </mesh>
   );
 }
@@ -519,6 +532,8 @@ export interface PlayPlan {
   outcomeAt: number;
   caught: boolean;
   homer: boolean;
+  /** A booted or thrown-away ball: it never sits in anybody's hands. */
+  loose: boolean;
 }
 
 /**
@@ -573,7 +588,7 @@ export function playPlan(hit: BallHit, stations: THREE.Vector3[]): PlayPlan {
       pickup: flight, throwTo: MOUND_SPOT, throwAt: flight + 9, done: flight + 0.5,
       // A ball leaving the yard needs no colour to explain it.
       outcomeAt: Infinity,
-      caught: false, homer: true,
+      caught: false, homer: true, loose: false,
     };
   }
 
@@ -621,7 +636,7 @@ export function playPlan(hit: BallHit, stations: THREE.Vector3[]): PlayPlan {
     done: pickup + THROW_DUR,
     // See `outcomeAt`. Only a ball fielded on the ground waits for the man.
     outcomeAt: hit.caught || hit.hit ? flight : arrive,
-    caught: hit.caught, homer: false,
+    caught: hit.caught, homer: false, loose: hit.loose === true,
   };
 }
 
@@ -672,7 +687,9 @@ function BallInFlight({ hit, plan }: { hit: BallHit; plan: PlayPlan }) {
         // the fielder from this camera, and a ball behind a fielder is the
         // picture of a single. HOLD_DUR before pickup is exactly his arrival.
         const arrive = plan.pickup - HOLD_DUR;
-        if (plan.caught || now >= arrive) {
+        // A loose ball lies where it kicked to — the in-hands posture is
+        // the park's word for OUT, and an error must never wear it.
+        if (!plan.loose && (plan.caught || now >= arrive)) {
           b.position.set(plan.rest.x * 0.97, 0.45, plan.rest.z * 0.97 + 0.18);
         } else {
           const roll = Math.min(1, (now - plan.flight) / ROLL_DUR);
@@ -769,7 +786,8 @@ function BallInFlight({ hit, plan }: { hit: BallHit; plan: PlayPlan }) {
  * frame drew.
  */
 function Defense(
-  { plan, stations }: { plan: PlayPlan | null; stations: THREE.Vector3[] },
+  { plan, stations, colour }:
+  { plan: PlayPlan | null; stations: THREE.Vector3[]; colour?: string },
 ) {
   const refs = useRef<(THREE.Mesh | null)[]>([]);
   const t = useRef(0);
@@ -875,7 +893,7 @@ function Defense(
           position={[s.x, s.y, s.z]}
         >
           <sphereGeometry args={[0.28, 10, 8]} />
-          <meshBasicMaterial color={FIELDER} />
+          <meshBasicMaterial color={colour ?? FIELDER} />
         </mesh>
       ))}
     </group>
@@ -1372,7 +1390,7 @@ function DemandDriver({ stamp }: { stamp: string }) {
 
 export function Diamond3D({
   runners, scoreTick = 0, ball = null, scored, height = 150,
-  night = false, accent,
+  night = false, accent, defenceColour, offenceColour,
 }: Props) {
   // Men who scored on the last play, kept alive just long enough to finish.
   const previous = useRef<readonly Runner[]>([]);
@@ -1458,14 +1476,14 @@ export function Diamond3D({
           <CameraRig plan={plan} tick={ball?.tick ?? 0} />
           <Field night={night} accent={accent} />
           <Plate tick={scoreTick} />
-          <Defense plan={plan} stations={stations} />
+          <Defense plan={plan} stations={stations} colour={defenceColour} />
           {([1, 2, 3] as const).map((b) => <Base key={b} at={b} />)}
           {runners.map((r) => (
             <RunnerDot
               key={r.id}
               base={r.base}
               from={opened.current && !aboard.current.has(r.id) ? 0 : r.base}
-              colour={CLAY}
+              colour={offenceColour ?? CLAY}
             />
           ))}
           {ball && plan && <BallInFlight key={ball.tick} hit={ball} plan={plan} />}
@@ -1473,6 +1491,7 @@ export function Diamond3D({
             <ScoringRunner
               key={f.key}
               from={f.from}
+              colour={offenceColour}
               onDone={() => setFinishing((list) => list.filter((x) => x.key !== f.key))}
             />
           ))}

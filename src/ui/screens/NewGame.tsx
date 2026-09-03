@@ -49,7 +49,7 @@ import {
   CONFERENCES, STATES_BY_REGION, type SchoolDef,
 } from '../../data/schools.js';
 import {
-  prestigeStars, expectationFor, contractFor, requiredCoachPrestige,
+  prestigeStars, contractFor, leagueShape, playerBoard, requiredCoachPrestige,
   canBeHired, hireGateNote, ROOKIE_PRESTIGE, rosterStrength, startingOffers, offerPitch,
   randomProfile, clampAge, MIN_COACH_AGE, MAX_COACH_AGE, DEFAULT_LOOK,
   type CoachProfile, type CoachLook, type Mandate,
@@ -168,11 +168,25 @@ export function NewGame() {
 
   const preview = (school: SchoolDef) => {
     const roster = rosterOf(school);
+    /*
+      The same call the board actually stamps on day one — playerBoard with
+      the league shape and the school's patience — not the raw
+      expectationFor. The comment above this screen already records this
+      exact bug being fixed once (quality-only rosters moved a job across a
+      mandate boundary), and it crept back in from the other side when the
+      drift correction was added to the live board and not to the offer:
+      reported as "the job offer was asking for 13 wins but the program is
+      asking for 16." One function, one number, both rooms.
+    */
+    const record = world.teams[indexOf(school)];
     return {
       roster,
       stars: prestigeStars(school.prestige),
       contract: contractFor(school.prestige),
-      expectation: expectationFor(school.prestige, roster, seasonLength(world.config)),
+      expectation: playerBoard(
+        school.prestige, roster, seasonLength(world.config),
+        record?.culture?.patience, leagueShape(world.teams),
+      ).expectation,
       open: canBeHired(ROOKIE_PRESTIGE, school.prestige, roster),
       needs: requiredCoachPrestige(school.prestige, roster),
       gate: hireGateNote(ROOKIE_PRESTIGE, school.prestige, roster),

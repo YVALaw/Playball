@@ -885,6 +885,17 @@ export interface SeasonState {
    */
   draft?: DraftBoard;
   /**
+   * What each program spent in the portal this offseason, by team index.
+   *
+   * The docs promised one pool three ways — keep the drafted man, work the
+   * portal, sign the class — and only the draft half was ever wired into
+   * the recruiting week. Reported from the phone in exactly those terms:
+   * "the portal budget is not connected to the recruiting budget when it
+   * should be, so you have to be wise." Sparse and not carried forward,
+   * like the draft board it sits beside.
+   */
+  portalSpend?: Record<number, number>;
+  /**
    * Every conference's final regular season table, one after another, recorded
    * the moment the schedule runs out.
    *

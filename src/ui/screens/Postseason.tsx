@@ -889,7 +889,38 @@ export function Postseason() {
               </div>
             )}
 
-            {reviewing === null && !iAmOut && juneTab === 'next' && (
+            {/*
+              Between stages the pregame has nothing to stage and used to say
+              "the round is still being played" under a CHAMPIONS banner —
+              reported from the phone: "I won the conference finals and the
+              next game box said the round was still being played but the
+              conference had already ended." Standing here un-eliminated with
+              the stage played means you WON it, so the card says that, and
+              points at the same button that moves the June along.
+            */}
+            {reviewing === null && !iAmOut && juneTab === 'next'
+              && myBracket === null && stagePlayed && (
+              <section className="pregame-show is-waiting">
+                <div className="pregame-kicker">
+                  <small>YOUR NEXT GAME</small>
+                  <span>{bracket.stage === 'conference' ? 'CONFERENCE — WON'
+                    : bracket.stage === 'regional' ? 'REGIONAL — WON' : 'JUNE'}</span>
+                </div>
+                <p className="pregame-sub">
+                  {bracket.stage === 'conference'
+                    ? (wonConference
+                      ? 'The tournament is yours. The regionals form from the sixteen conference winners — the button below moves June along.'
+                      : 'This stage is settled. The button below moves June along.')
+                    : bracket.stage === 'regional'
+                      ? (wonRegional
+                        ? 'The regional is yours. The national field is next — the button below moves June along.'
+                        : 'This stage is settled. The button below moves June along.')
+                      : 'This stage is settled. The button below moves June along.'}
+                </p>
+              </section>
+            )}
+            {reviewing === null && !iAmOut && juneTab === 'next'
+              && !(myBracket === null && stagePlayed) && (
               <PregameShow
                 myBracket={myBracket}
                 userTeam={userTeam}

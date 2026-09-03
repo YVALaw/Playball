@@ -116,6 +116,36 @@ const ratio = (a: [number, number, number], b: [number, number, number]): number
 const DARK_PAPER: [number, number, number] = [28, 35, 29];
 const DARK_FIELD: [number, number, number] = [18, 23, 17];
 const WHITE: [number, number, number] = [255, 255, 255];
+/** What the announcement panels actually print on `--navy`. */
+const CREAM: [number, number, number] = [246, 241, 230];
+const GOLD: [number, number, number] = [236, 184, 61];
+
+/**
+ * The navy-surface cut, contrast-walked like the dark one.
+ *
+ * `--accent-deep` was the one value still cut on the HSL band alone, and
+ * the file's own warning above applied to it in full: a yellow or sky
+ * school at lightness 0.20 is still BRIGHT to the eye, and the June banner
+ * printed cream body and gold display on it — reported from the phone as
+ * "bright color plus white letters, kind of hard to see." The panel's own
+ * inks are the constraint: walk darker until cream body text clears 4.6
+ * and the gold display line clears 3.0 (it is 32px display type, so the
+ * large-text floor is the honest one).
+ */
+/**
+ * The command accent. Every primary button is this colour under white
+ * text, so the band is a starting point and white is the constraint —
+ * the same lesson the dark cut and the deep cut each learned separately.
+ */
+function lightAccent(base: [number, number, number]): [number, number, number] {
+  return untilLegible(base, 0.34, 0.30, -0.02, (c) => ratio(c, WHITE) >= 4.5);
+}
+
+function deepCut(base: [number, number, number]): [number, number, number] {
+  return untilLegible(base, 0.20, 0.26, -0.02, (c) => (
+    ratio(c, CREAM) >= 4.6 && ratio(c, GOLD) >= 3.0
+  ));
+}
 
 /** Walk lightness one way until the colour clears every bar set for it. */
 function untilLegible(
@@ -163,8 +193,8 @@ export function accentPalette(colour: string): Record<string, string> | null {
   if (!base) return null;
   const softDk = tuned(base, 0.14, 0.19, 0.22);
   return {
-    accent: hex(tuned(base, 0.24, 0.40, 0.30)),
-    accentDeep: hex(tuned(base, 0.13, 0.20, 0.26)),
+    accent: hex(lightAccent(base)),
+    accentDeep: hex(deepCut(base)),
     accentSoft: hex(tuned(base, 0.90, 0.94, 0.14)),
     accentSoftDk: hex(softDk),
     accentDk: hex(untilLegible(base, 0.54, 0.34, 0.02, (c) => (
@@ -184,8 +214,8 @@ export function applyTeamAccent(colour: string | null): void {
     for (const k of HOOKS) root.style.removeProperty(k);
     return;
   }
-  const light = tuned(base, 0.24, 0.40, 0.30);
-  const deep = tuned(base, 0.13, 0.20, 0.26);
+  const light = lightAccent(base);
+  const deep = deepCut(base);
   const soft = tuned(base, 0.90, 0.94, 0.14);
   const softDk = tuned(base, 0.14, 0.19, 0.22);
   // Bright enough to be read on a card, on the chrome, and on its own tint.

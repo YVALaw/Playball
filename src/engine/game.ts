@@ -1027,6 +1027,7 @@ export function createHalfInning(
           kind: 'contact',
           battedBall: pa.kind as BattedBall,
           ...(landing ? { landing } : {}),
+          ...(errored ? { errored: true } : {}),
         });
       }
       const moves = runnerMoves(basesBefore, bases, scored.slice(0, counted));

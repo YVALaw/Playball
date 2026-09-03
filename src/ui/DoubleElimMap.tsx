@@ -100,19 +100,35 @@ export function DoubleElimMap(
       className="card-in"
       style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}
     >
+      {/*
+        Organised as a bracket rather than as stacked lists — reported from
+        the phone in two words: "organize the bracket." Two rules do it: the
+        round labels live in their own row so they align across the map
+        instead of shoving their column's boxes down, and each round's cards
+        spread across the column's full height, which seats a semifinal
+        midway between the two games that feed it — the shape a bracket is
+        recognised by.
+      */}
       <div style={{
         display: 'flex', gap: 10, padding: '4px 14px 8px', minWidth: 'min-content',
+        alignItems: 'stretch',
       }}>
         {columns.map((col, ci) => (
           <div key={ci} style={{
-            display: 'flex', flexDirection: 'column', justifyContent: 'space-around',
-            gap: 8, minWidth: 104,
+            display: 'flex', flexDirection: 'column', minWidth: 104,
           }}>
-            <div className="label" style={{ textAlign: 'center' }}>{col.title}</div>
-            {col.slots.map((s) => (
-              <SlotCard key={`${s.side}${s.round}${s.slot}`}
-                s={s} abbr={abbr} userTeam={userTeam} onOpen={onOpen} />
-            ))}
+            <div className="label" style={{ textAlign: 'center', marginBottom: 6 }}>
+              {col.title}
+            </div>
+            <div style={{
+              flex: 1, display: 'flex', flexDirection: 'column',
+              justifyContent: 'space-around', gap: 8,
+            }}>
+              {col.slots.map((s) => (
+                <SlotCard key={`${s.side}${s.round}${s.slot}`}
+                  s={s} abbr={abbr} userTeam={userTeam} onOpen={onOpen} />
+              ))}
+            </div>
           </div>
         ))}
       </div>

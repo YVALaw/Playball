@@ -214,10 +214,35 @@ describe('every school can wear its own colour', () => {
     for (const s of SCHOOLS) {
       const p = accentPalette(s.color)!;
       const light = contrast('#ffffff', p.accentDeep!);
+      const command = contrast('#ffffff', p.accent!);
       const dark = contrast('#ffffff', p.accentRaisedDk!);
+      if (command < 4.5) failures.push(s.abbr + ' white on command ' + command.toFixed(2));
       if (light < 4.5) failures.push(`${s.abbr} white on deep ${light.toFixed(2)}`);
       if (dark < 4.5) failures.push(`${s.abbr} white on raised ${dark.toFixed(2)}`);
     }
     expect(failures, failures.join(' · ')).toEqual([]);
+  });
+});
+
+describe('the announcement panels', () => {
+  it('carries the June banner\u2019s own inks on every school\u2019s deep', () => {
+    /*
+      Reported from the phone: "we have to work the contrast between the
+      June is here banner and the letters \u2014 some where the color is bright
+      plus white letter." The deep cut was the one accent value still cut on
+      the HSL band alone, and lightness is not brightness: a yellow school
+      at 0.20 lightness is still bright to the eye. The panel prints cream
+      body and a 32px gold display line, so those exact inks are the bars \u2014
+      4.6 for the body, 3.0 for the display size.
+    */
+    const failures: string[] = [];
+    for (const s of SCHOOLS) {
+      const p = accentPalette(s.color)!;
+      const cream = contrast('#f6f1e6', p.accentDeep!);
+      const gold = contrast('#ecb83d', p.accentDeep!);
+      if (cream < 4.6) failures.push(`${s.abbr} cream ${cream.toFixed(2)}`);
+      if (gold < 3.0) failures.push(`${s.abbr} gold ${gold.toFixed(2)}`);
+    }
+    expect(failures, failures.join(' \u00b7 ')).toEqual([]);
   });
 });

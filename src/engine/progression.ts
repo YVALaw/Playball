@@ -15,6 +15,7 @@ import {
   type DraftBoard, type DraftedMan,
 } from './draft.js';
 import { ageFor, makeHitter, makePitcher, releaseNames, reserveNames } from './players.js';
+import { adoptSpot } from './depthChart.js';
 import { prestigeStars } from './program.js';
 import { GENERATED_POTENTIAL_CAP } from './scouting.js';
 import { armValue, overallOf, clamp } from './ratings.js';
@@ -406,9 +407,32 @@ function refill(
   };
 
   // The lineup wants a body at every spot on the diamond. Take the best
-  // returning player who plays there; sign one if nobody does.
+  // returning player who plays there; sign one if nobody does. The DH slot
+  // is the exception because a DH is not a species — it takes the best bat
+  // left whatever his position, and never manufactures a "DH". Reported:
+  // "there should not be a need for DH; we just select someone to be there."
   const lineup: Hitter[] = [];
   for (const spot of LINEUP_SPOTS) {
+    if (spot === 'DH') {
+      /*
+        The slot adopts him rather than him becoming a "DH": position
+        memory keeps his real spot on the card, the engine keeps its one
+        man per label, and a returning starter moved here is NOT a recruit
+        — only a signed bat consumed for the slot counts.
+      */
+      const returning = hitters.shift();
+      const best = returning ?? signedHitters.shift();
+      if (best) {
+        if (!returning) counted(best);
+        adoptSpot(best, 'DH');
+        lineup.push(best);
+      } else {
+        const made = freshHitter('1B');
+        adoptSpot(made, 'DH');
+        lineup.push(made);
+      }
+      continue;
+    }
     const i = hitters.findIndex((h) => h.pos === spot);
     if (i >= 0) lineup.push(hitters.splice(i, 1)[0] as Hitter);
     else lineup.push(freshHitter(spot));
@@ -590,6 +614,14 @@ export function walkOnShortfall(
   };
 
   for (const spot of LINEUP_SPOTS) {
+    if (spot === 'DH') {
+      // The same three-step choice refill's DH branch makes: best returning
+      // bat, else best signed bat, else the manufactured man is an ordinary
+      // corner bat rather than a "DH".
+      const best = hitters.shift() ?? signedHitters.shift();
+      if (!best) short.push('1B');
+      continue;
+    }
     const i = hitters.findIndex((h) => h.pos === spot);
     if (i >= 0) hitters.splice(i, 1);
     else takeHitter(spot);
@@ -688,9 +720,17 @@ export function holesFor(survivors: readonly Player[]): { pos: string; count: nu
   const out: { pos: string; count: number }[] = [];
 
   for (const spot of LINEUP_SPOTS) {
+    // A DH is a slot, not a species: any bat fills it, so it can never be
+    // a hole with a name. The shortfall it could cause is a body count,
+    // rolled into BENCH below.
+    if (spot === 'DH') continue;
     if (!hitters.some((h) => h.pos === spot)) out.push({ pos: spot, count: 1 });
   }
-  const benchShort = BENCH_SIZE - Math.max(0, hitters.length - LINEUP_SPOTS.length);
+  const fieldHoles = out.length;
+  // Nine in the lineup and the bench behind them, less the bodies here and
+  // the ones the named holes will bring in.
+  const benchShort = LINEUP_SPOTS.length + BENCH_SIZE
+    - hitters.length - fieldHoles;
   if (benchShort > 0) out.push({ pos: 'BENCH', count: benchShort });
 
   const sp = arms.filter((p) => p.role === 'SP').length;
@@ -998,9 +1038,19 @@ function regroup(team: Team, survivors: readonly Player[]): void {
   const pool = [...hitters];
   const lineup: Hitter[] = [];
   for (const spot of LINEUP_SPOTS) {
-    let i = pool.findIndex((h) => h.pos === spot);
+    let i = spot === 'DH'
+      // The DH slot takes the best bat standing, whatever he plays; men
+      // already adopted as DH count as themselves through homePos.
+      ? (pool.length > 0
+        ? pool.reduce((b, h, idx, xs) => (overallOf(h) > overallOf(xs[b]!) ? idx : b), 0)
+        : -1)
+      : pool.findIndex((h) => h.pos === spot);
     if (i < 0) i = pool.length > 0 ? 0 : -1;
-    if (i >= 0) lineup.push(pool.splice(i, 1)[0] as Hitter);
+    if (i >= 0) {
+      const man = pool.splice(i, 1)[0] as Hitter;
+      if (spot === 'DH') adoptSpot(man, 'DH');
+      lineup.push(man);
+    }
   }
   team.lineup = lineup;
   team.bench = pool;
