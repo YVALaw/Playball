@@ -257,7 +257,7 @@ export type SettingsPage = 'index' | 'display' | 'sound' | 'play';
 
 export type Overlay =
   'schedule' | 'standings' | 'rankings' | 'saves' | 'inbox' | 'program' | 'book'
-  | 'settings' | 'depth' | 'captain' | 'jobs';
+  | 'settings' | 'captain' | 'jobs';
 
 /** The three tabs of the program page, which is addressable from the inbox. */
 export type ProgramSheet = 'board' | 'money' | 'watchlist' | 'coach' | 'hall';

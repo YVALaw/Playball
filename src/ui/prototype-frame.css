@@ -3005,3 +3005,13 @@
 
 :root[data-motion="reduced"] .guide-glow { animation: none; }
 @media (prefers-reduced-motion: reduce) { .guide-glow { animation: none; } }
+
+/* Where else he can stand, under the position on the player card's info —
+   the one fact the removed depth chart screen held that was worth keeping. */
+.player-quick-facts .also-plays {
+  display: block;
+  margin-top: 2px;
+  color: var(--dim);
+  font: 400 calc(9px * var(--ts))/1.3 var(--mono);
+  letter-spacing: .04em;
+}

@@ -35,6 +35,7 @@ import {
 } from '../../engine/tendencies.js';
 import { draftEligible } from '../../engine/draft.js';
 import { overallOf, platoonSplit, naturalPos } from '../../engine/ratings.js';
+import { secondaryPositions } from '../../engine/positions.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { SewingPinIcon } from '@radix-ui/react-icons';
 import { captainOf } from '../../engine/captains.js';
@@ -594,6 +595,16 @@ function Overview({ p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: bo
               ? ((p as Pitcher).role === 'SP' ? 'Starter' : 'Reliever')
               : naturalPos(p as Hitter)}
           </strong>
+          {/* Where else he can stand — asked for with the depth chart's
+              removal: "we also have to add secondary positions to the
+              player's profile info." The hardest three, same edit the action
+              button's FIELD area makes, because the easy ones tell you
+              nothing you had not guessed. */}
+          {!isPitcher && secondaryPositions(p as Hitter).length > 0 && (
+            <span className="also-plays">
+              also {secondaryPositions(p as Hitter).slice(0, 3).join(' · ')}
+            </span>
+          )}
         </div>
         <div>
           <small>CONFERENCE</small>

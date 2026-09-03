@@ -38,7 +38,6 @@ import { Manage } from './screens/Manage.js';
 import { History } from './screens/History.js';
 import { Player } from './screens/Player.js';
 import { Program } from './screens/Program.js';
-import { DepthChart } from './screens/DepthChart.js';
 import { Captain } from './screens/Captain.js';
 import { JobMarket } from './screens/JobMarket.js';
 import { Portal } from './screens/Portal.js';
@@ -844,7 +843,11 @@ function TableOverlay() {
         {overlay === 'program' && (
           <div className="screen-scroll" style={{ height: '100%' }}><Program /></div>
         )}
-        {overlay === 'depth' && <DepthChart />}
+        {/* The depth chart screen is gone — removed whole in the sorting
+            session ("remove it entirely"): the lineup, the rail and AUTO do
+            its work, and the one fact it held (where else a man can stand)
+            lives on the player card's info now. The engine's chartFor is
+            untouched; it was never this screen's. */}
         {/* Who wears the C, with every eligible man and a reason to prefer one.
             It used to be a line at the top of the depth chart, which made the
             room's own pick the only name anybody ever saw. */}

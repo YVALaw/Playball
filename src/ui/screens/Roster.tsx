@@ -21,7 +21,7 @@
 // was a spreadsheet on a 390 pixel screen and the columns were 26 pixels wide.
 
 import { useState } from 'react';
-import { MixerHorizontalIcon, BarChartIcon } from '@radix-ui/react-icons';
+import { MixerHorizontalIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { handles } from '../../state/depth.js';
 import { Avatar } from '../Avatar.js';
@@ -181,21 +181,6 @@ export function Roster() {
           title={`${rows.length} ${rows.length === 1 ? 'player' : 'players'}`}
           text="The current group, organized for quick staff decisions."
         />
-        {/* The chart, one tap from the list it is about. Hidden for a career
-            that asked its staff to set it — the chart is still what the game
-            plays, it is simply not this coach's to write. */}
-        {/* Ungated: this square is the chart's one door now. It used to show
-            only when the coach writes the chart himself, with a second button
-            far down the page covering the casual case — so a full career had
-            two doors and was reported confused by them, and removing the far
-            one would have left a casual career none. Reading who covers whom
-            is legitimate in either mode; the screen itself knows whether the
-            pencil is yours. */}
-        <button
-          className="square-command tap"
-          type="button"
-          onClick={() => openOverlay('depth')}
-        ><BarChartIcon /><span>Chart</span></button>
       </div>
 
       <div className="screen-tools">
