@@ -1010,9 +1010,36 @@ function Field() {
 const EYE: [number, number, number] = [0, 6.7, 7.9];
 const AIM: [number, number, number] = [0, 0.5, -4.15];
 
-function CameraRig() {
+/**
+ * How far the aim travels toward a play, as a fraction of the way there.
+ * Under a half on purpose: a broadcast pans WITH a play, it does not chase
+ * it, and the plate must never leave the bottom of the frame.
+ */
+const FOLLOW = 0.42;
+/** The eye drifts a shade sideways with the pan, for parallax. */
+const EYE_DRIFT = 0.12;
+/** Smoothing rate. Higher is snappier; this is a camera operator, not a servo. */
+const EASE = 3.2;
+
+function CameraRig({ plan, tick }: { plan: PlayPlan | null; tick: number }) {
   const camera = useThree((s) => s.camera);
   const size = useThree((s) => s.size);
+
+  // The current aim and seat, eased every frame. Refs, so re-renders never
+  // snap the camera; the effect below only re-asserts on a real resize.
+  const aim = useRef(new THREE.Vector3(...AIM));
+  const eye = useRef(new THREE.Vector3(...EYE));
+  const t = useRef(0);
+  useEffect(() => { t.current = 0; }, [tick]);
+
+  // The same switch the rest of the motion honours: reduced means the fixed
+  // seat, exactly the camera the field has always had.
+  const still = useMemo(() => {
+    const mode = document.documentElement.getAttribute('data-motion');
+    const pref = typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return mode === 'reduced' || (mode !== 'full' && pref);
+  }, []);
 
   useEffect(() => {
     // Framed so the park fills the panel rather than floating in it.
@@ -1022,10 +1049,35 @@ function CameraRig() {
     // camera was pointed under it. Looking deeper tips the whole park up into
     // the frame and drops home plate toward the bottom edge, which is also the
     // angle a television camera actually uses.
-    camera.position.set(...EYE);
-    camera.lookAt(...AIM);
+    camera.position.copy(eye.current);
+    camera.lookAt(aim.current);
     camera.updateProjectionMatrix();
   }, [camera, size.width, size.height]);
+
+  /*
+    The follow — stage 15's "a camera that follows the play rather than
+    watching from one fixed seat." During a play the aim eases part-way
+    toward where the ball dies and the seat drifts a shade the same way;
+    when the play is done both ease home. Exponential smoothing, so the rate
+    is frame-rate independent and a dropped frame cannot make the pan lurch.
+    It rides the same demand-driven frame window as everything else in the
+    scene — a still park stays a still park, at zero cost.
+  */
+  useFrame((_, delta) => {
+    t.current += delta;
+    let desiredAim = new THREE.Vector3(...AIM);
+    let desiredEye = new THREE.Vector3(...EYE);
+    if (!still && plan && t.current < plan.done + 0.35) {
+      const there = new THREE.Vector3(plan.rest.x, 0.5, plan.rest.z);
+      desiredAim = desiredAim.lerp(there, FOLLOW);
+      desiredEye = new THREE.Vector3(EYE[0] + there.x * EYE_DRIFT, EYE[1], EYE[2]);
+    }
+    const k = 1 - Math.exp(-delta * EASE);
+    aim.current.lerp(desiredAim, k);
+    eye.current.lerp(desiredEye, k);
+    camera.position.copy(eye.current);
+    camera.lookAt(aim.current);
+  });
 
   return null;
 }
@@ -1047,7 +1099,8 @@ function DemandDriver({ stamp }: { stamp: string }) {
     let raf = 0;
     // Long enough for the slowest sequence in the scene: a deep fly, the
     // outcome blink, the throw back in, and the fielder's walk to his station.
-    const until = performance.now() + 4600;
+    // The slowest sequence plus the camera's ease back to its seat.
+    const until = performance.now() + 5200;
     const loop = (): void => {
       invalidate();
       if (performance.now() < until) raf = requestAnimationFrame(loop);
@@ -1131,7 +1184,7 @@ export function Diamond3D({
             runners.map((x) => `${x.id}${x.base}`).join(','),
             finishing.length,
           ].join(':')} />
-          <CameraRig />
+          <CameraRig plan={plan} tick={ball?.tick ?? 0} />
           <Field />
           <Plate tick={scoreTick} />
           <Defense plan={plan} stations={stations} />
