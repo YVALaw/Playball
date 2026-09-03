@@ -25,6 +25,7 @@
 // same rule you rise by.
 
 import type { SeasonState } from './season.js';
+import { regionOf } from './postseason.js';
 
 /** One realignment: two programs change places. */
 export interface Realignment {
@@ -50,6 +51,29 @@ const RISE_GAP = 15;
 const SLIDE_GAP = 12;
 /** Roughly one winter in three moves somebody. "Every few years." */
 const FIRES = 34;
+
+/**
+ * Which regions touch which — the country's map, for the winter's moves.
+ *
+ * A program changes leagues the way real ones do: into its own region or the
+ * one next door, never across the country. Reported from a long run — "a
+ * 2028 run sent Piedmont State to the Pacific" — and decided September 2,
+ * night (`06` §U): with "the conference IS the region" as core fiction, a
+ * cross-country trade breaks the world's own story. Unknown conferences (the
+ * tests' synthetic leagues) all fall back to one region and stay tradeable.
+ */
+const NEIGHBOURS: Record<string, readonly string[]> = {
+  SOUTH: ['CENTRAL', 'NORTH'],
+  NORTH: ['SOUTH', 'CENTRAL'],
+  CENTRAL: ['SOUTH', 'NORTH', 'WEST'],
+  WEST: ['CENTRAL'],
+};
+
+const nearEnough = (a: string, b: string): boolean => {
+  const ra = regionOf(a);
+  const rb = regionOf(b);
+  return ra === rb || (NEIGHBOURS[ra] ?? []).includes(rb);
+};
 
 /**
  * The winter's move, if the country makes one. Pure and derived: the same
@@ -94,7 +118,10 @@ export function realignmentFor(
   // The faller: the weakest man in the strongest league above the riser's,
   // provided he has genuinely slid — and never the user's chair.
   const better = [...avg.entries()]
-    .filter(([id, a]) => id !== up!.conference && a > (avg.get(up!.conference) ?? 0))
+    .filter(([id, a]) => id !== up!.conference && a > (avg.get(up!.conference) ?? 0)
+      // Geography holds: his own region, or the one next door. A winter with
+      // no near-enough league simply passes — rarer moves beat absurd ones.
+      && nearEnough(up!.conference, id))
     .sort((a, b) => b[1] - a[1]);
   for (const [confId, confAvg] of better) {
     const weakest = (confs.get(confId) ?? [])

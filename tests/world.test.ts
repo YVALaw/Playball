@@ -73,6 +73,37 @@ describe('realignment', () => {
     }
   });
 
+  it('keeps a trade inside the region or next door', () => {
+    /*
+      Real conference names, so regionOf answers honestly: the riser plays in
+      the PAC (WEST). The strongest league above him is the ATL — SOUTH, the
+      other side of the country — and the near option is the MTN, one region
+      over is not even needed: same region. Decided September 2, night, after
+      Piedmont State was sent to the Pacific: the move goes nearby or not at
+      all.
+    */
+    const teams: { index: number; conference: string; prestige: number }[] = [];
+    const spec: [string, number[]][] = [
+      ['ATL', [90, 84, 80, 40]],  // strongest league, far away — never legal
+      ['MTN', [80, 74, 70, 42]],  // strong AND same region — the destination
+      ['PAC', [76, 52, 50, 48]],  // the riser's league (WEST)
+    ];
+    let i = 0;
+    for (const [conference, prestiges] of spec) {
+      for (const prestige of prestiges) teams.push({ index: i++, conference, prestige });
+    }
+    let moved = 0;
+    for (let y = 2027; y < 2127; y++) {
+      const move = realignmentFor('w', y, teams, 99);
+      if (!move) continue;
+      moved++;
+      expect(move.upTo).not.toBe('ATL');
+      expect(move.upTo).toBe('MTN');
+    }
+    // The rule must bend the moves, not stop them: winters still trade.
+    expect(moved).toBeGreaterThan(0);
+  });
+
   it('stays home when nobody has outgrown anywhere', () => {
     const flat = country().map((t) => ({ ...t, prestige: 50 }));
     for (let y = 2027; y < 2077; y++) {
