@@ -48,12 +48,18 @@ const headingFor = (slots: DESlot[], fallback: string): string => {
 };
 
 export function DoubleElimMap(
-  { de, view, abbr, userTeam, onOpen }:
+  { de, view, abbr, userTeam, onOpen, showFinal = true }:
   {
     de: DECols;
     view: 'winners' | 'losers';
     abbr: (i: number) => string;
     userTeam: number;
+    /**
+     * Whether this instance draws the FINAL column. The one-map layout
+     * stacks a winners view over a losers view, and the final belongs to
+     * the pair — drawn once, on top — not to each half twice.
+     */
+    showFinal?: boolean;
     /**
      * Open a played game.
      *
@@ -65,14 +71,17 @@ export function DoubleElimMap(
     onOpen?: (s: DESlot) => void;
   },
 ) {
+  const finalCol = showFinal
+    ? [{ title: 'FINAL', slots: finalsToShow(de.final) }]
+    : [];
   const columns: { title: string; slots: DESlot[] }[] = view === 'winners'
     ? [
       ...de.winners.map((r, i) => ({ title: headingFor(r, `W${i + 1}`), slots: r })),
-      { title: 'FINAL', slots: finalsToShow(de.final) },
+      ...finalCol,
     ]
     : [
       ...de.losers.map((r, i) => ({ title: headingFor(r, `L${i + 1}`), slots: r })),
-      { title: 'FINAL', slots: finalsToShow(de.final) },
+      ...finalCol,
     ];
 
   /*

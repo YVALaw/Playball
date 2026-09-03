@@ -3052,3 +3052,141 @@
   font: 700 calc(8.5px * var(--ts)) var(--mono);
   letter-spacing: .1em;
 }
+
+/* ---------------------------------------------------------------------------
+   The pregame show — the NEXT GAME tab.
+
+   The red box, promoted, to the reporter's design: "make it bigger and better
+   looking to give it a feel of importance now that we are in the tournament
+   stages." Crests face off over the probable arms, the stake is said in
+   words, and PLAY / SIM act right on the card. The alert red stays the
+   frame's voice for the tournament, carried as a border and the kicker
+   rather than a red field a whole card wide.
+   --------------------------------------------------------------------------- */
+.pregame-show {
+  margin: 4px 14px 12px;
+  padding: 0 0 14px;
+  background: var(--paper);
+  border: 1px solid var(--hair, var(--faint));
+  border-top: 4px solid var(--alert);
+}
+
+.pregame-kicker {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 14px 0;
+}
+
+.pregame-kicker small {
+  font: 800 calc(9px * var(--ts)) var(--mono);
+  letter-spacing: .16em;
+  color: var(--alert);
+}
+
+.pregame-kicker span {
+  font: 600 calc(8px * var(--ts)) var(--mono);
+  letter-spacing: .12em;
+  color: var(--dim);
+}
+
+.pregame-match {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
+  gap: 8px;
+  padding: 12px 14px 0;
+}
+
+.pregame-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.pregame-side strong {
+  font: 800 calc(14px * var(--ts))/1.05 var(--display);
+  text-transform: uppercase;
+  letter-spacing: .01em;
+  text-wrap: balance;
+}
+
+.pregame-side em {
+  font: 400 calc(9px * var(--ts)) var(--mono);
+  font-style: normal;
+  color: var(--dim);
+}
+
+.pregame-vs {
+  align-self: center;
+  font: 800 calc(13px * var(--ts))/1 var(--display);
+  color: var(--dim);
+  padding-top: 14px;
+}
+
+.pregame-sub {
+  margin: 10px 14px 0;
+  text-align: center;
+  font: 400 calc(10.5px * var(--ts))/1.45 var(--body);
+  color: var(--dim);
+}
+
+.pregame-stake {
+  margin: 6px 14px 0;
+  text-align: center;
+  font: 700 calc(11px * var(--ts))/1.4 var(--body);
+}
+
+.pregame-stake.tone-win { color: var(--win); }
+.pregame-stake.tone-alert { color: var(--alert); }
+.pregame-stake.tone-dim { color: var(--dim); font-weight: 400; }
+
+.pregame-hold {
+  margin: 10px 14px 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--alert);
+  background: var(--field);
+  font: 400 calc(10.5px * var(--ts))/1.45 var(--body);
+  color: var(--dim);
+}
+
+.pregame-show .primary-command { margin: 12px 14px 0; width: calc(100% - 28px); }
+.pregame-show .secondary-command { margin: 8px 14px 0; width: calc(100% - 28px); }
+
+.pregame-lineup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 14px 0;
+  padding: 8px 12px;
+  min-height: 36px;
+  border: 1px solid var(--hair, var(--faint));
+  background: transparent;
+  color: var(--clay);
+  font: 700 calc(9px * var(--ts)) var(--mono);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.pregame-show.is-waiting { border-top-color: var(--dim); }
+.pregame-show.is-waiting .pregame-sub { padding-bottom: 4px; }
+
+/* The drop between the two halves of one map: where a loss sends you, said
+   in your colour when it is you it sent. */
+.drop-strip {
+  margin: 2px 14px 6px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--dim);
+  background: var(--paper);
+  font: 600 calc(9px * var(--ts)) var(--mono);
+  letter-spacing: .08em;
+  color: var(--dim);
+}
+
+.drop-strip.is-you {
+  border-left-color: var(--team, var(--alert));
+  color: var(--team, var(--alert));
+}

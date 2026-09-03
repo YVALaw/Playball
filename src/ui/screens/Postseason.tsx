@@ -22,6 +22,10 @@ import { Modal } from '../Modal.js';
 import { IdCardIcon } from '@radix-ui/react-icons';
 import { ModuleIntro, Segmented } from '../components/Kit.js';
 import { Lineup } from './Lineup.js';
+import { Crest } from '../Crest.js';
+import { era } from '../../engine/season.js';
+import type { SeasonState } from '../../engine/season.js';
+import type { Hitter } from '../../engine/types.js';
 import { available } from '../../engine/depthChart.js';
 import { handles } from '../../state/depth.js';
 import { whyOut } from '../Needs.js';
@@ -41,17 +45,24 @@ import {
 } from '../../engine/doubleElim.js';
 import { FirstVisit } from '../Tutorial.js';
 
-type ConfView = 'winners' | 'losers';
-type NatView = 'winners' | 'losers';
+type JuneTab = 'next' | 'bracket';
+type NatHalf = 'A' | 'B';
 
 /*
-  The toggles remember themselves across an unmount — managing a game covers
+  The tabs remember themselves across an unmount — managing a game covers
   this screen, and coming back to a different tab than you left reads as the
   screen forgetting you. Module scope on purpose: session-long, never saved,
   exactly the lifetime a view preference deserves.
+
+  These replaced the winners/losers toggles in the redesign the reporter
+  settled in the sorting session (`06` §U): "instead of having two tabs
+  called winners and losers... a next game and bracket tabs." The bracket
+  draws both halves of a double elimination stacked — one map — so nobody
+  ever has to remember which side they are on; the only half-toggle left is
+  the national's A/B, because those genuinely are two separate rooms.
 */
-let confViewMemo: ConfView = 'winners';
-let natViewMemo: NatView = 'winners';
+let juneTabMemo: JuneTab = 'next';
+let natHalfMemo: NatHalf | null = null;
 
 export function Postseason() {
   const [modal, setModal] = useState<'in' | 'out' | 'title' | null>(null);
@@ -79,10 +90,11 @@ export function Postseason() {
     stage advancing under you still moves the screen with it.
   */
   const [reviewing, setReviewing] = useState<number | null>(null);
-  const [confView, setConfView0] = useState<ConfView>(confViewMemo);
-  const [natView, setNatView0] = useState<NatView>(natViewMemo);
-  const setConfView = (v: ConfView): void => { confViewMemo = v; setConfView0(v); };
-  const setNatView = (v: NatView): void => { natViewMemo = v; setNatView0(v); };
+  const [juneTab, setJuneTab0] = useState<JuneTab>(juneTabMemo);
+  const setJuneTab = (v: JuneTab): void => { juneTabMemo = v; setJuneTab0(v); };
+  // Null until the reader picks one; the default is whichever half is yours.
+  const [natHalf, setNatHalf0] = useState<NatHalf | null>(natHalfMemo);
+  const setNatHalf = (v: NatHalf): void => { natHalfMemo = v; setNatHalf0(v); };
 
   const season = useDynasty((s) => s.season);
   const bracket = useDynasty((s) => s.bracket);
@@ -122,14 +134,17 @@ export function Postseason() {
     tournament at most, and the map fades in under it -- which it now actually
     does. This comment described the fade for weeks before one existed.
   */
-  const mySide: 'winners' | 'losers' | null = myBracket && myBracket.format === 'double'
-    ? ((myBracket.state.losses.get(userTeam) ?? 0) > 0 ? 'losers' : 'winners')
-    : null;
+  /*
+    The follow-the-side effect lived here — losing in the winners bracket
+    used to move the VIEW to the losers side for you. The one-map redesign
+    made it meaningless: both sides are on screen, stacked, with your drop
+    marked between them. What elimination does move is the tab — a knocked
+    out team has no next game, so the pregame show yields to the bracket.
+  */
+  const nowOut = myBracket ? myBracket.state.eliminated.includes(userTeam) : false;
   useEffect(() => {
-    if (mySide === null || reviewing !== null) return;
-    if (bracket?.stage === 'conference') setConfView(mySide);
-    else if (bracket?.stage === 'national') setNatView(mySide);
-  }, [mySide, bracket?.stage, reviewing]);
+    if (nowOut) setJuneTab('bracket');
+  }, [nowOut]);
 
   /*
     Two different questions, and conflating them was half the bug.
@@ -333,8 +348,8 @@ export function Postseason() {
   */
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   // The stage on the screen, not the stage the tournament is on -- the rail
-  // lets you walk back to a finished one and its toggle is just as real there.
-  const lookingAt = shown === 2 ? natView : confView;
+  // lets you walk back to a finished one, and centring is just as owed there.
+  const lookingAt = `${juneTab}:${natHalf ?? ''}`;
   useLayoutEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return undefined;
@@ -699,10 +714,8 @@ export function Postseason() {
           */
           onClose={() => {
             setReviewing(null);
-            if (mySide !== null) {
-              if (bracket.stage === 'conference') setConfView(mySide);
-              else if (bracket.stage === 'national') setNatView(mySide);
-            }
+            // The card just announced the game; TAKE THE FIELD lands on it.
+            setJuneTab('next');
             setModal(null);
           }}
         />
@@ -765,18 +778,14 @@ export function Postseason() {
 
           <StageRail at={rung} shown={shown} onGo={(i) => setReviewing(i === rung ? null : i)} />
 
-          {bracket.stage === 'conference' && (
+          {/* The stage's two rooms. Reviewing an older stage or being out of
+              June both mean there is no next game, so the toggle only shows
+              while the question it answers exists. */}
+          {reviewing === null && !iAmOut && (
             <SubToggle
-              options={[['winners', 'WINNERS'], ['losers', 'LOSERS']]}
-              at={confView}
-              onGo={(v) => setConfView(v as ConfView)}
-            />
-          )}
-          {bracket.stage === 'national' && (
-            <SubToggle
-              options={[['winners', 'WINNERS'], ['losers', 'LOSERS']]}
-              at={natView}
-              onGo={(v) => setNatView(v as NatView)}
+              options={[['next', 'NEXT GAME'], ['bracket', 'BRACKET']]}
+              at={juneTab}
+              onGo={(v) => setJuneTab(v as JuneTab)}
             />
           )}
         </div>
@@ -855,28 +864,35 @@ export function Postseason() {
               </div>
             )}
 
-            {myBracket && !iAmOut && reviewing === null && <YourNext
-              myBracket={myBracket} userTeam={userTeam} name={name}
-              onLineup={() => setShowLineup(true)}
-            />}
+            {reviewing === null && !iAmOut && juneTab === 'next' && (
+              <PregameShow
+                myBracket={myBracket}
+                userTeam={userTeam}
+                season={season}
+                me={team}
+                name={name}
+                abbr={abbr}
+                hurtNine={hurtNine}
+                onLineup={() => setShowLineup(true)}
+                onPlay={manage}
+                onSim={() => sim('game')}
+              />
+            )}
 
             {/*
-              The half you are looking at, arriving rather than appearing.
+              The brackets, arriving rather than appearing.
 
-              Reported as "quite wild": losing in the winners bracket moves you
-              to the losers side and the whole map was replaced between two
-              frames. The comment above `mySide` has claimed since it was
-              written that "the map fades in under it" -- it never did, and the
-              only transition in this file was a button background.
-
-              Keyed on the stage *and* the side, so it plays when the view
-              changes and not on every re-render underneath it: a bracket that
-              re-faded every time a score arrived would be worse than the jump.
-              `.fade-in` is off under `prefers-reduced-motion` with everything
-              else, which is why it is a class and not an inline animation.
+              This wrapper once swapped between the winners and losers halves
+              — the "quite wild" jump report, and the fade that answered it.
+              The one-map redesign retired the swap (both halves are always
+              on screen, stacked), so the key is the stage and the national's
+              A/B room now, and the fade only plays when one of those
+              genuinely changes. Off under `prefers-reduced-motion` with
+              everything else.
             */}
+            {(reviewing !== null || iAmOut || juneTab === 'bracket') && (
             <div
-              className={lookingAt === 'losers' ? 'swap-fwd' : 'swap-back'}
+              className="swap-back"
               key={`${shown}:${lookingAt}`}
             >
             {shown === 0 && (
@@ -885,7 +901,6 @@ export function Postseason() {
                 mine={myBracket?.kind === 'conference' && myBracket.format === 'double'
                   ? myBracket.state : null}
                 myConference={team.conference}
-                view={confView}
                 abbr={abbr}
                 userTeam={userTeam}
                 onOpen={openSlot}
@@ -913,17 +928,26 @@ export function Postseason() {
                 nat={nat}
                 myBracket={myBracket}
                 sideShow={sideShow}
-                view={natView}
+                half={natHalf ?? (myBracket?.kind === 'national' && myBracket.format === 'double'
+                  ? (myBracket.half ?? 'A') : 'A')}
+                onHalf={setNatHalf}
                 abbr={abbr}
                 userTeam={userTeam}
                 onOpen={openSlot}
               />
             )}
             </div>
+            )}
           </div>
         </div>
 
-        {/* Pinned to the frame, not the scroll. Same spot, every tab. */}
+        {/* Pinned to the frame, not the scroll — except while the pregame
+            show has the game: PLAY and SIM moved onto that card by decision
+            ("PLAY / SIM move onto the card itself"), and a second pair of
+            the same buttons underneath it is noise. Every other state keeps
+            the bar: between rounds it simulates to your next game, out or
+            reviewing it advances the tournament. */}
+        {!(reviewing === null && !iAmOut && juneTab === 'next' && due) && (
         <div style={{
           flex: 'none', padding: '0 14px',
           background: 'var(--field)', borderTop: '1px solid var(--faint)',
@@ -935,6 +959,7 @@ export function Postseason() {
             secondary={action.secondary ?? null}
           />
         </div>
+        )}
       </div>
     </>
   );
@@ -1002,75 +1027,208 @@ function SubToggle(
 // ---------------------------------------------------------------------------
 
 /** What you are due to play, and the door to your lineup. */
-function YourNext(
-  { myBracket, userTeam, name, onLineup }:
+/**
+ * The full pregame show — the NEXT GAME tab's whole reason to exist.
+ *
+ * The reporter's design, decided at the batch's door: "the red box... be the
+ * main one and make it bigger and better looking to give it a feel of
+ * importance now that we are in the tournament stages", and then "the full
+ * matchup card... PLAY / SIM move onto the card itself." Crests, the probable
+ * arms picked exactly the way the engine will pick them (appearances modulo
+ * three — the same arithmetic playSeriesGame uses), the stake said in words,
+ * and the two buttons that act on it. The injury hold moves here with them:
+ * a hurt man in the nine turns PLAY into FIX THE LINEUP, same as the pinned
+ * bar it inherited the job from.
+ */
+function PregameShow(
+  { myBracket, userTeam, season, me, name, abbr, hurtNine, onLineup, onPlay, onSim }:
   {
-    myBracket: NonNullable<ReturnType<typeof useDynasty.getState>['myBracket']>;
+    myBracket: ReturnType<typeof useDynasty.getState>['myBracket'];
     userTeam: number;
+    season: SeasonState;
+    me: { def: { abbr: string; school: string }; conference: string };
     name: (i: number) => string;
+    abbr: (i: number) => string;
+    hurtNine: Hitter[];
     onLineup: () => void;
+    onPlay: () => void;
+    onSim: () => void;
   },
 ) {
-  let line: string | null = null;
+  // Who tonight is against, and what it is worth — or null between rounds.
+  let opp: number | null = null;
+  let home = false;
+  let formatLabel = '';
   let sub: string | null = null;
+  let stake: { line: string; tone: 'win' | 'alert' | 'dim' } | null = null;
 
-  if (myBracket.format === 'series') {
+  if (myBracket && myBracket.format === 'series') {
+    formatLabel = 'BEST OF THREE';
     const next = nextGameFor(myBracket.state, userTeam);
-    const s = liveSeries(myBracket.state, userTeam);
-    if (next && s) {
-      const host = hostOfGame(s, s.games.length);
-      const other = next.a === userTeam ? next.b : next.a;
-      line = `${host === userTeam ? 'vs' : 'at'} ${name(other)}`;
-      const wins = (t: number): number => s.games.filter((g) => g.winner === t).length;
-      const len = myBracket.state.lengths[s.round] ?? 3;
-      sub = `Game ${s.games.length + 1} of ${len} · you ${wins(userTeam)}-${wins(other)} · first to ${clincher(len)}`;
+    const sr = liveSeries(myBracket.state, userTeam);
+    if (next && sr) {
+      const host = hostOfGame(sr, sr.games.length);
+      opp = next.a === userTeam ? next.b : next.a;
+      home = host === userTeam;
+      const wins = (t: number): number => sr.games.filter((g) => g.winner === t).length;
+      const len = myBracket.state.lengths[sr.round] ?? 3;
+      const mine = wins(userTeam);
+      const theirs = wins(opp);
+      const need = clincher(len);
+      sub = `Game ${sr.games.length + 1} of ${len} · you ${mine}-${theirs} · first to ${need}`;
+      stake = mine === need - 1 && theirs === need - 1
+        ? { line: 'Winner takes the series. Loser goes home.', tone: 'alert' }
+        : mine === need - 1
+          ? { line: 'Win tonight and the series is yours.', tone: 'win' }
+          : theirs === need - 1
+            ? { line: 'Lose tonight and it is over.', tone: 'alert' }
+            : null;
     }
-  } else {
+  } else if (myBracket) {
+    formatLabel = 'DOUBLE ELIMINATION';
     const slot = liveSlotFor(myBracket.state, userTeam);
     if (slot && slot.a !== null && slot.b !== null) {
       const host = slot.side === 'F' ? slot.a
         : (slot.aSeed <= slot.bSeed ? slot.a : slot.b);
-      const other = slot.a === userTeam ? slot.b : slot.a;
-      line = `${host === userTeam ? 'vs' : 'at'} ${name(other)}`;
+      opp = slot.a === userTeam ? slot.b : slot.a;
+      home = host === userTeam;
       const losses = myBracket.state.losses.get(userTeam) ?? 0;
-      /*
-        The stake, before the game rather than after it.
-
-        Reported from testing: he came through the losers bracket, won the
-        first final, lost the second and was out — and had no way of knowing
-        beforehand that he needed both. In a double elimination the man
-        arriving unbeaten needs one win and the man arriving with a loss needs
-        two, and "Championship · the reset" is bracket jargon that teaches
-        nobody that. So the card says it in words.
-      */
       if (slot.side === 'F') {
-        sub = losses === 0
-          ? 'Championship · win one and it is yours'
-          : 'Championship · you must win this AND the next one';
+        sub = 'Championship';
+        stake = losses === 0
+          ? { line: 'You arrived unbeaten. Win one and it is yours.', tone: 'win' }
+          : { line: 'You must win this one AND the next.', tone: 'alert' };
       } else {
-        sub = `${slotName(slot)} · ${losses === 0 ? 'unbeaten' : 'one loss, elimination baseball'}`;
+        sub = slotName(slot);
+        stake = losses === 0
+          ? { line: 'Unbeaten. A loss drops you to the losers bracket, not out.', tone: 'dim' }
+          : { line: 'One loss already. Lose again and the run ends here.', tone: 'alert' };
       }
     }
   }
-  if (!line) return null;
 
-  /*
-    The proposal's next-game card, which is the shape this always wanted: a
-    kicker saying what the game is, the matchup set big, the stake underneath,
-    and the one thing you can still do about it.
-  */
+  // Between rounds: nothing to stage yet. The pinned bar below simulates to
+  // your next game; the card only has to say the round is still forming.
+  if (opp === null) {
+    return (
+      <section className="pregame-show is-waiting">
+        <div className="pregame-kicker">
+          <small>YOUR NEXT GAME</small>
+          <span>{formatLabel || 'JUNE'}</span>
+        </div>
+        <p className="pregame-sub">
+          The round is still being played. Your next game forms when it
+          finishes — the button below takes you straight to it.
+        </p>
+      </section>
+    );
+  }
+
+  // The probable arms, the way the engine will pick them: appearances mod 3.
+  const used = (side: number): number =>
+    ((myBracket!.state as { appearances?: Map<number, number> }).appearances?.get(side) ?? 0) % 3;
+  const armFor = (side: number): string => {
+    const rec = season.teams[side];
+    const arm = rec?.team.rotation[used(side)] ?? rec?.team.rotation[0];
+    if (!arm) return '—';
+    const line = season.pitching.get(arm.id);
+    const e = line && line.outs >= 9 ? ` · ${era(line).toFixed(2)}` : '';
+    const parts = arm.name.split(' ');
+    const short = parts.length > 1 ? `${parts[0]![0]}. ${parts.slice(1).join(' ')}` : arm.name;
+    return `${short}${e}`;
+  };
+
+  const held = hurtNine.length > 0;
+
   return (
-    <section className="postseason-next-card">
-      <div className="postseason-next-kicker">
+    <section className="pregame-show">
+      <div className="pregame-kicker">
         <small>YOUR NEXT GAME</small>
-        <span>{myBracket.format === 'series' ? 'BEST OF THREE' : 'DOUBLE ELIMINATION'}</span>
+        <span>{formatLabel}</span>
       </div>
-      <div className="postseason-next-match"><strong>{line}</strong></div>
-      {sub && <p>{sub}</p>}
-      <div className="postseason-action-grid">
-        <button type="button" onClick={onLineup}><IdCardIcon />Set the lineup</button>
+
+      <div className="pregame-match">
+        <div className="pregame-side">
+          <Crest abbr={me.def.abbr} size={54} />
+          <strong style={{ color: teamColour(me.def.abbr) }}>{me.def.school}</strong>
+          <em>{armFor(userTeam)}</em>
+        </div>
+        <div className="pregame-vs">{home ? 'VS' : 'AT'}</div>
+        <div className="pregame-side">
+          <Crest abbr={abbr(opp)} size={54} />
+          <strong style={{ color: teamColour(abbr(opp)) }}>{name(opp)}</strong>
+          <em>{armFor(opp)}</em>
+        </div>
       </div>
+
+      {sub && <p className="pregame-sub">{sub}</p>}
+      {stake && (
+        <p className={`pregame-stake tone-${stake.tone}`}>{stake.line}</p>
+      )}
+
+      {held ? (
+        <>
+          <p className="pregame-hold">
+            {hurtNine.length === 1
+              ? `${hurtNine[0]!.name} is in your nine and cannot play — ${whyOut(hurtNine[0]!, season.dayIndex)}. Nobody is moved for you.`
+              : `${hurtNine.length} men in your nine cannot play. Nobody is moved for you.`}
+          </p>
+          <button className="primary-command tap" type="button" onClick={onLineup}>
+            FIX THE LINEUP
+          </button>
+        </>
+      ) : (
+        <>
+          <button className="primary-command tap" type="button" onClick={onPlay}>
+            PLAY THIS GAME
+          </button>
+          <button className="secondary-command tap" type="button" onClick={onSim}>
+            SIMULATE THIS GAME
+          </button>
+        </>
+      )}
+      <button className="pregame-lineup tap" type="button" onClick={onLineup}>
+        <IdCardIcon /> Set the lineup
+      </button>
     </section>
+  );
+}
+
+/**
+ * One double elimination as ONE map: the winners road, the drop marked in
+ * your colour, and the losers road under it. The stacked layout is what let
+ * the winners/losers toggle retire — see the redesign note at the top.
+ */
+function OneMap(
+  { de, abbr, userTeam, onOpen, mineAbbr }:
+  {
+    de: DECols;
+    abbr: (i: number) => string;
+    userTeam: number;
+    onOpen?: (s: DESlot) => void;
+    /** Set when the user's team plays in this bracket — paints the drop. */
+    mineAbbr: string | null;
+  },
+) {
+  // He dropped if he appears anywhere on the losers side.
+  const dropped = mineAbbr !== null && de.losers.some((r) =>
+    r.some((sl) => sl.a === userTeam || sl.b === userTeam));
+  return (
+    <>
+      <DoubleElimMap de={de} view="winners" abbr={abbr} userTeam={userTeam} onOpen={onOpen} />
+      <div
+        className={`drop-strip${dropped ? ' is-you' : ''}`}
+        style={dropped && mineAbbr ? { ['--team' as string]: teamColour(mineAbbr) } : undefined}
+      >
+        {dropped
+          ? `▼ ${mineAbbr} dropped here — one more loss ends the run`
+          : '▼ a loss above drops a team into the bracket below'}
+      </div>
+      <DoubleElimMap
+        de={de} view="losers" abbr={abbr} userTeam={userTeam} onOpen={onOpen}
+        showFinal={false}
+      />
+    </>
   );
 }
 
@@ -1079,12 +1237,11 @@ function YourNext(
 // ---------------------------------------------------------------------------
 
 function ConferenceStage(
-  { cups, mine, myConference, view, abbr, userTeam, onOpen }:
+  { cups, mine, myConference, abbr, userTeam, onOpen }:
   {
     cups: ConferenceTournament[];
     mine: DoubleElim | null;
     myConference: string;
-    view: ConfView;
     abbr: (i: number) => string;
     userTeam: number;
     onOpen: (s: DESlot) => void;
@@ -1121,7 +1278,16 @@ function ConferenceStage(
               {r.conference}{r.you ? ' · YOU' : ''}
             </span>
           </div>
-          <DoubleElimMap de={r.de} view={view} abbr={abbr} userTeam={userTeam} onOpen={onOpen} />
+          {/* Your tournament is ONE map — both halves, the drop marked.
+              The other eleven leagues get the winners road and the final:
+              their losers brackets are reading material, and eleven more
+              stacked maps would bury yours. Tap into a cup's games as
+              always; the seeds and scores carry the story. */}
+          {r.you
+            ? <OneMap de={r.de} abbr={abbr} userTeam={userTeam} onOpen={onOpen}
+                mineAbbr={abbr(userTeam)} />
+            : <DoubleElimMap de={r.de} view="winners" abbr={abbr}
+                userTeam={userTeam} onOpen={onOpen} />}
         </div>
       ))}
     </>
@@ -1338,12 +1504,14 @@ function TeamLine(
 // ---------------------------------------------------------------------------
 
 function NationalStage(
-  { nat, myBracket, sideShow, view, abbr, userTeam, onOpen }:
+  { nat, myBracket, sideShow, half, onHalf, abbr, userTeam, onOpen }:
   {
     nat: NationalProgress | null;
     myBracket: ReturnType<typeof useDynasty.getState>['myBracket'];
     sideShow: ReturnType<typeof useDynasty.getState>['sideShow'];
-    view: NatView;
+    /** Which of the two rooms is on screen. */
+    half: NatHalf;
+    onHalf: (h: NatHalf) => void;
     abbr: (i: number) => string;
     userTeam: number;
     onOpen: (s: DESlot) => void;
@@ -1368,7 +1536,7 @@ function NationalStage(
     this, a live bracket sat next to a finished one with nothing to
     distinguish them, which is what read as "everything is already played".
   */
-  const half = (which: 'A' | 'B'): { de: DECols; tag: string; tone: string } | null => {
+  const halfOf = (which: 'A' | 'B'): { de: DECols; tag: string; tone: string } | null => {
     if (myBracket?.kind === 'national' && myBracket.format === 'double'
       && myBracket.half === which) {
       const s = myBracket.state;
@@ -1393,35 +1561,15 @@ function NationalStage(
       : null;
   };
 
+  const shownHalf = halfOf(half);
+  const iPlayHere = myBracket?.kind === 'national' && myBracket.format === 'double'
+    && myBracket.half === half;
+
   return (
     <>
-      {(['A', 'B'] as const).map((label) => {
-        const h = half(label);
-        return (
-        <div key={label} style={{ marginBottom: 10 }}>
-          <div style={{
-            margin: '0 14px 4px', paddingBottom: 3, borderBottom: '2px solid var(--ink)',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-          }}>
-            <span className="label">NATIONAL BRACKET {label}</span>
-            {h && (
-              <span style={{
-                font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: h.tone,
-              }}>{h.tag}</span>
-            )}
-          </div>
-          {h
-            ? <DoubleElimMap de={h.de} view={view === 'losers' ? 'losers' : 'winners'}
-                abbr={abbr} userTeam={userTeam} onOpen={onOpen} />
-            : (
-              <div style={{
-                padding: '10px 14px', font: "400 calc(11px * var(--ts)) var(--body)", color: 'var(--dim)',
-              }}>Waiting on the field to be drawn.</div>
-            )}
-        </div>
-        );
-      })}
-
+      {/* The championship first — "final pinned above", from the batch's
+          door. It is where the whole month is pointed; the rooms it is fed
+          from sit under it, one at a time. */}
       <div style={{ padding: '0 14px', marginBottom: 10 }}>
         <div style={{
           paddingBottom: 3, marginBottom: 6, borderBottom: '2px solid var(--ink)',
@@ -1444,6 +1592,40 @@ function NationalStage(
             padding: '8px 0', font: "400 calc(11px * var(--ts)) var(--body)", color: 'var(--dim)',
           }}>The two bracket champions meet here.</div>
         )}
+      </div>
+
+      {/* The two rooms, one at a time — the halves genuinely are separate
+          tournaments, which is why this toggle survived the redesign that
+          retired winners/losers everywhere else. */}
+      <SubToggle
+        options={[['A', 'BRACKET A'], ['B', 'BRACKET B']]}
+        at={half}
+        onGo={(v) => onHalf(v as NatHalf)}
+      />
+
+      <div style={{ marginBottom: 10 }}>
+        <div style={{
+          margin: '0 14px 4px', paddingBottom: 3, borderBottom: '2px solid var(--ink)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+        }}>
+          <span className="label">NATIONAL BRACKET {half}</span>
+          {shownHalf && (
+            <span style={{
+              font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em',
+              color: shownHalf.tone,
+            }}>{shownHalf.tag}</span>
+          )}
+        </div>
+        {shownHalf
+          ? <OneMap
+              de={shownHalf.de} abbr={abbr} userTeam={userTeam} onOpen={onOpen}
+              mineAbbr={iPlayHere ? abbr(userTeam) : null}
+            />
+          : (
+            <div style={{
+              padding: '10px 14px', font: "400 calc(11px * var(--ts)) var(--body)", color: 'var(--dim)',
+            }}>Waiting on the field to be drawn.</div>
+          )}
       </div>
     </>
   );
