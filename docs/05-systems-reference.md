@@ -6360,6 +6360,33 @@ find are fixed. Doors recorded for 16: at most three two-way men per class;
 prestige tuned so dynasties hold 90+ for about a decade and thirty seasons
 show two or three reigns.
 
+## 47. The performance profile — MEASURED September 3 2026
+
+The errand that blocked stage 15 since stage 5, finally run. Method: a live
+game in WATCH mode (the field animating continuously, plays resolving), on
+the dev build in the desktop browser, three instruments at once — rAF frame
+deltas, a 10ms event-loop lag sampler, and a buffered longtask observer.
+
+**The numbers.** 3,165 frames over twelve seconds: p50 delta 6.1ms (the
+display's own 165Hz refresh — the scene never misses vsync), p99 12.1ms,
+worst 12.3ms, zero frames over 33ms. Main-thread busy time during play:
+lag p50 0.0ms, p95 0.9ms, worst 1.4ms over eight seconds — the animation
+loop's script cost is under a millisecond a frame. The eight long tasks the
+buffered observer caught (61–203ms) all predate the sample window: they are
+screen mounts and sim steps, the already-known transition costs, not the
+field.
+
+**The verdict, with the 3–5× phone multiplier the project already uses.**
+The field itself costs so little that even at 5× a slow Android holds 60fps
+with roughly two-thirds of the frame budget free — there is real room for
+stands, lighting and a crowd. The honest limits: this is the CURRENT scene
+(the stage will add geometry, and each addition re-runs this measurement),
+and the device answer stays provisional until stage 18's hardware pass. The
+rule the profile sets for the crowd decision the reporter delegated to it:
+**build painted first, structure for an instanced upgrade, and re-measure
+per addition** — the budget says the upgrade is plausible, the phone gets
+the final word.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

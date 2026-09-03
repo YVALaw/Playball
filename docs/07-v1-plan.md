@@ -955,10 +955,12 @@ model as well as in the picture. Calibration applies, so it lands last.
 **Exit:** the ballpark is somewhere you would look at even when nothing is
 happening.
 
-**Do first:** the throttled performance profile, which has been an outstanding
-errand since stage 5 and is now genuinely blocking — this stage adds geometry,
-lights and crowd to a scene whose frame rate on mid-range hardware has never
-been measured.
+**Do first:** ~~the throttled performance profile~~ **MEASURED September 3**
+(`05` §47): the field costs under a millisecond of script a frame and never
+misses vsync on desktop — with the project's 3–5× phone multiplier, a slow
+Android holds 60fps with roughly two-thirds of its budget free. Rule set for
+the crowd: painted first, structured for an instanced upgrade, re-measure
+per addition; stage 18's hardware pass has the final word.
 
 **Decisions at the door:** whether parks differ by program or by conference;
 whether the crowd is modelled or painted; and how much of this survives on a
