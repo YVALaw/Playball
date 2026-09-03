@@ -997,16 +997,15 @@ describe('a scouting report is a band, not a number', () => {
 });
 
 describe('a hint is vague, and never false', () => {
-  it('draws every line only for a grade it stays honest at', () => {
+  it('says only what his own letter is allowed to say', () => {
+    // Reversed in the sorting session: a ceiling line belongs to exactly ONE
+    // grade now, so the words CAN be learned — that is the point, and the
+    // pool sizes below are the protection. Development keeps its bands.
     const prospects = nationalClass();
     for (const p of prospects) {
       const { ceiling, development } = hintsFor(p);
-
-      const grade = gradeIndex(potentialGrade(p.player.potential));
-      expect(grade, `"${ceiling.text}" about a ${potentialGrade(p.player.potential)}`)
-        .toBeGreaterThanOrEqual(gradeIndex(ceiling.from));
-      expect(grade, `"${ceiling.text}" about a ${potentialGrade(p.player.potential)}`)
-        .toBeLessThanOrEqual(gradeIndex(ceiling.to));
+      expect(ceiling.grade, `"${ceiling.text}"`)
+        .toBe(potentialGrade(p.player.potential));
 
       const band = RAWNESS.indexOf(rawnessOf(p.player));
       expect(band, `"${development.text}" about a ${rawnessOf(p.player)} player`)
@@ -1015,28 +1014,38 @@ describe('a hint is vague, and never false', () => {
     }
   });
 
-  it('writes no line that belongs to a single grade', () => {
-    // The whole system turns on this. A line eligible for exactly one grade is
-    // the letter spelled out in words: see it twice, learn what it means, and
-    // the band underneath it becomes decoration.
+  it('is a code: one letter per line, and no line said twice', () => {
+    // The learnability contract. A text that appeared in two pools would make
+    // the code lie; a pool that is thin would make it an afternoon's study
+    // instead of a career's. Volume is the protection the design names.
+    const seen = new Set<string>();
     for (const line of CEILING_LINES) {
-      expect(gradeIndex(line.to), line.text).toBeGreaterThan(gradeIndex(line.from));
+      expect(seen.has(line.text), line.text).toBe(false);
+      seen.add(line.text);
     }
+    for (const g of GRADE_LADDER) {
+      if (gradeIndex(g) <= gradeIndex(TOP_GENERATED_GRADE)) {
+        expect(ceilingLinesFor(g).length, g).toBeGreaterThanOrEqual(15);
+      } else {
+        // The store's letter still has a voice waiting for its man.
+        expect(ceilingLinesFor(g).length, g).toBeGreaterThan(0);
+      }
+    }
+    // Development stays deliberately fuzzy — every line spans bands.
     for (const line of DEVELOPMENT_LINES) {
       expect(RAWNESS.indexOf(line.to), line.text)
         .toBeGreaterThan(RAWNESS.indexOf(line.from));
     }
   });
 
-  it('lets adjacent grades share, so the same words turn up on different players', () => {
-    // Structurally: a line a D can draw is still on the table for an S.
+  it('never lets two letters share a sentence, and a class still reads varied', () => {
+    // The old design shared lines across grades on purpose; the reversal
+    // means the opposite must now hold: hear a line twice and it MEANS the
+    // same letter both times.
     const modest = ceilingLinesFor('D');
     const elite = ceilingLinesFor('S');
-    expect(modest.filter((l) => elite.includes(l)).length).toBeGreaterThan(0);
+    expect(modest.filter((l) => elite.includes(l)).length).toBe(0);
 
-    // And in a real class it actually happens, rather than being possible in
-    // principle: most of the lines that get used are used on more than one
-    // grade, so hearing one leaves you genuinely unsure which you are looking at.
     const prospects = nationalClass();
     const heard = new Map<string, Set<PotentialGrade>>();
     for (const p of prospects) {
@@ -1045,44 +1054,50 @@ describe('a hint is vague, and never false', () => {
       grades.add(potentialGrade(p.player.potential));
       heard.set(text, grades);
     }
-    const ambiguous = [...heard.values()].filter((g) => g.size > 1).length;
+    for (const [text, grades] of heard) expect(grades.size, text).toBe(1);
+    // And the volume protection shows up in play: a class uses many distinct
+    // sentences, so the code cannot be learned off one board.
     expect(heard.size).toBeGreaterThan(20);
-    expect(ambiguous).toBeGreaterThan(heard.size / 2);
+
+    // Development still shares across bands — the second axis stays fuzzy.
+    const done = developmentLinesFor('finished');
+    const near = developmentLinesFor('close');
+    expect(done.filter((l) => near.includes(l)).length).toBeGreaterThan(0);
   });
 
-  it('gives a better ceiling more to say, without taking the quiet lines away', () => {
-    // Higher grades draw from a wider pool *and* keep everything underneath, so
-    // an understated line on a genuinely special player is honest rather than a
-    // bug. That is where a steal comes from.
-    expect(ceilingLinesFor('D').length).toBeLessThan(ceilingLinesFor('C').length);
-    expect(ceilingLinesFor('C').length).toBeLessThan(ceilingLinesFor('B').length);
-    expect(ceilingLinesFor('A').length).toBeGreaterThan(ceilingLinesFor('B').length);
-    expect(ceilingLinesFor('S').length).toBeGreaterThan(ceilingLinesFor('B').length);
-
-    // Nothing an ordinary recruit could have had is withheld from a great one.
-    for (const line of ceilingLinesFor('D')) {
-      if (line.to === 'S+') expect(ceilingLinesFor('S')).toContain(line);
-    }
-
-    // And a real class produces the hidden ones: some of the best players in
-    // the country get described in words a nobody could have earned.
+  it('spreads a class across its pools instead of leaning on a few lines', () => {
+    // With one pool per letter, the fairness question changes shape: no
+    // grade's pool may be thin enough that its recruits all sound alike.
     const prospects = nationalClass();
-    const understated = prospects.filter((p) => {
-      const grade = potentialGrade(p.player.potential);
-      return (grade === 'A' || grade === 'S' || grade === 'S+')
-        && hintsFor(p).ceiling.from === 'D';
-    });
-    expect(understated.length).toBeGreaterThan(0);
+    const usage = new Map<PotentialGrade, Set<string>>();
+    for (const p of prospects) {
+      const g = potentialGrade(p.player.potential);
+      const texts = usage.get(g) ?? new Set<string>();
+      texts.add(hintsFor(p).ceiling.text);
+      usage.set(g, texts);
+    }
+    for (const [g, texts] of usage) {
+      const pool = ceilingLinesFor(g).length;
+      // A populous grade should be heard in many voices — at least half its
+      // pool in one national class.
+      if ((usage.get(g)?.size ?? 0) > 0 && pool > 0) {
+        const men = prospects.filter(
+          (p) => potentialGrade(p.player.potential) === g,
+        ).length;
+        if (men >= pool * 2) expect(texts.size, g).toBeGreaterThanOrEqual(pool / 2);
+      }
+    }
   });
 
   it('is a big enough pool that the board does not read like a form letter', () => {
-    expect(CEILING_LINES.length + DEVELOPMENT_LINES.length).toBeGreaterThanOrEqual(30);
-    // Every grade clears the sketch the design started from, comfortably.
-    expect(ceilingLinesFor('D').length).toBeGreaterThanOrEqual(2);
-    expect(ceilingLinesFor('C').length).toBeGreaterThanOrEqual(4);
-    expect(ceilingLinesFor('B').length).toBeGreaterThanOrEqual(4);
-    expect(ceilingLinesFor('A').length).toBeGreaterThanOrEqual(5);
-    expect(ceilingLinesFor('S').length).toBeGreaterThanOrEqual(8);
+    // "Roughly a hundred and twenty lines of scouting prose, which is the
+    // actual cost of this stage" — the design's own sizing, held here.
+    expect(CEILING_LINES.length + DEVELOPMENT_LINES.length).toBeGreaterThanOrEqual(120);
+    expect(ceilingLinesFor('D').length).toBeGreaterThanOrEqual(15);
+    expect(ceilingLinesFor('C').length).toBeGreaterThanOrEqual(15);
+    expect(ceilingLinesFor('B').length).toBeGreaterThanOrEqual(15);
+    expect(ceilingLinesFor('A').length).toBeGreaterThanOrEqual(15);
+    expect(ceilingLinesFor('S').length).toBeGreaterThanOrEqual(15);
     for (const band of RAWNESS) {
       expect(developmentLinesFor(band).length, band).toBeGreaterThanOrEqual(4);
     }

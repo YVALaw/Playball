@@ -712,68 +712,163 @@ export function reportedPotential(
 }
 
 /**
- * A line a scout will say out loud, and the grades it stays honest for.
+ * A line a scout will say out loud — and, since the sorting session, the ONE
+ * letter it is ever said about.
  *
- * `to` is not "the highest grade this describes well". It is the highest grade
- * at which the line is still **true** — the point past which it stops being an
- * understatement and starts being a lie. "He is close to the player he is going
- * to be" is quiet praise for a C and simply false about an S, so it stops at C.
- * "He plays hard, and that travels" is true of everybody, so it never stops, and
- * a player who has watched two of those turn into All-Americans will start
- * wondering about the third. That wondering is the whole game.
+ * This is a deliberate reversal, decided by the reporter and worth recording
+ * because the old design argued the opposite in this very spot. Lines used to
+ * span a RANGE of grades so the words could never be decoded, only weighed —
+ * deliberate fog. The reporter wants the opposite, and the reasoning is good:
+ * one pool per potential letter means a player who pays attention CAN learn
+ * the code and read a class properly. That is a real skill the game did not
+ * have anywhere, and it is the reward for paying attention. The protection is
+ * volume — fifteen or more lines a grade, so learning the code takes seasons
+ * rather than an afternoon — and register: adjacent pools shade into each
+ * other in tone, so a line you have not learned tells you roughly where you
+ * are without telling you exactly.
+ *
+ * The development lines below keep their fuzzy bands, also by decision: how
+ * raw a man is is the second axis, and making both axes decodable would leave
+ * nothing to scout.
  */
 export interface CeilingLine {
   readonly text: string;
-  readonly from: PotentialGrade;
-  readonly to: PotentialGrade;
+  /** The one letter this line is ever said about. */
+  readonly grade: PotentialGrade;
 }
 
+const POOL = (grade: PotentialGrade, texts: readonly string[]): CeilingLine[] =>
+  texts.map((text) => ({ text, grade }));
+
 /**
- * Everything the area men come back saying.
- *
- * Ordered from the most guarded to the loudest, which is also roughly the order
- * of their floors — so the pool a recruit draws from is close to a prefix of
- * this list extended upward, and a better ceiling means more to choose from
- * without ever losing the quiet lines underneath.
+ * Everything the area men come back saying, one pool per letter, quietest
+ * grade first. S+ exists for the store's man alone — no recruit generates
+ * there — and reads accordingly.
  */
 export const CEILING_LINES: readonly CeilingLine[] = [
-  { text: 'He is close to the player he is going to be.', from: 'D', to: 'C' },
-  { text: 'Polished for his age. Whether there is any more is the question.', from: 'D', to: 'B' },
-  { text: 'Nobody came back from seeing him with a story to tell.', from: 'D', to: 'B' },
-  { text: 'Our area man likes him more than the rankings do.', from: 'D', to: 'B' },
-  { text: 'There is no one loud thing about him. He just plays.', from: 'D', to: 'B' },
-  { text: 'He is going to have to earn every inch of it.', from: 'D', to: 'S+' },
-  { text: 'He would have to develop, but the frame is there.', from: 'D', to: 'S+' },
-  { text: 'He plays hard, and that travels.', from: 'D', to: 'S+' },
-  { text: 'Two years of good coaching and we would know a lot more.', from: 'D', to: 'S+' },
-  { text: 'The body is going to change. What happens after that, nobody can say.', from: 'D', to: 'S+' },
-  { text: 'Nobody has watched him enough to be confident either way.', from: 'D', to: 'S+' },
-  { text: 'Coaches in the area think he can play at this level.', from: 'C', to: 'A' },
-  { text: 'Late to the sport. Nobody is sure where his line goes.', from: 'C', to: 'S+' },
-  { text: 'The raw material is better than the results so far.', from: 'C', to: 'S+' },
-  { text: 'There is more here than the numbers say.', from: 'C', to: 'S+' },
-  { text: 'He has a tool you could build something around.', from: 'C', to: 'S+' },
-  { text: 'Every list has him somewhere. No two of them agree where.', from: 'C', to: 'S+' },
-  { text: 'He would not be the first out of that county to surprise people.', from: 'C', to: 'S+' },
-  { text: "Our man wrote 'interesting' and underlined it twice.", from: 'C', to: 'S+' },
-  { text: 'He is a better athlete than he is a baseball player, for now.', from: 'C', to: 'S+' },
-  { text: 'Scouts keep finding reasons to go back and see him again.', from: 'B', to: 'S+' },
-  { text: 'He has been the best player on every field he has been on.', from: 'B', to: 'S+' },
-  { text: 'Two programs offered him after one look.', from: 'B', to: 'S+' },
-  { text: 'The staff argued about him for an hour and got nowhere.', from: 'B', to: 'S+' },
-  { text: 'He does not look like a high school player out there.', from: 'B', to: 'S+' },
-  { text: 'If it ever comes together we will be glad we were early.', from: 'B', to: 'S+' },
-  { text: 'The upside is the reason he is on this list at all.', from: 'B', to: 'S+' },
-  { text: 'Our cross-checker moved a trip to go and see him.', from: 'B', to: 'S+' },
-  { text: 'People who saw him in the summer have not stopped talking about it.', from: 'B', to: 'S+' },
-  { text: 'There are people who believe he is the best in the state.', from: 'A', to: 'S+' },
-  { text: 'There is talk he will be drafted out of high school.', from: 'A', to: 'S+' },
-  { text: 'Every program in the country has been through his gym.', from: 'A', to: 'S+' },
-  { text: 'The area men have run out of comparisons.', from: 'A', to: 'S+' },
-  { text: 'Nobody on this staff wants to be the one who passed.', from: 'A', to: 'S+' },
-  { text: 'People stop what they are doing to watch him.', from: 'A', to: 'S+' },
-  { text: 'He has a chance to be something, and the room knows it.', from: 'A', to: 'S+' },
-  { text: 'Three head coaches have already been to his house.', from: 'A', to: 'S+' },
+  ...POOL('D', [
+  "He is close to the player he is going to be.",
+  "Nobody came back from seeing him with a story to tell.",
+  "What you see in the first inning is what you get in the ninth.",
+  "The second look told us what the first one did.",
+  "Steady is the word every report on him ends with.",
+  "He knows his own game better than most seniors know theirs.",
+  "Four honest years in him, whoever takes them.",
+  "The rankings and the tape agree on him, which is rare enough.",
+  "He plays within himself. Always has.",
+  "You know exactly what you are getting, and so does he.",
+  "His coach calls him dependable and means it as high praise.",
+  "No surprises in him, good or bad.",
+  "He makes the plays he is supposed to make.",
+  "The kind of kid who makes a bus trip shorter.",
+  "Somebody will be glad to have him around the place.",
+  "He was the same player in April as in June.",
+  "The clipboard already suits him.",
+  ]),
+  ...POOL('C', [
+  "He will play, somewhere, for somebody, most weekends.",
+  "Our area man likes him more than the rankings do.",
+  "There is no one loud thing about him. He just plays.",
+  "He does one thing well enough to build an argument on.",
+  "He would help most rosters and headline none of them.",
+  "Polished for his age. Whether there is any more is the question.",
+  "You can find a spot for him without squinting.",
+  "The staff liked him fine, and nobody fought about it.",
+  "He wins the drills. Games are closer.",
+  "A good camp got him on this list. A good spring keeps him there.",
+  "He has been coached hard, and it shows in the right ways.",
+  "Every league needs fifty of him.",
+  "The word is useful, and it is not an insult.",
+  "He gets more from his tools than the tools deserve.",
+  "Nobody doubts he plays. The argument is where.",
+  "His floor is what sells him.",
+  "A program guy, the way scouts mean it kindly.",
+  ]),
+  ...POOL('B', [
+  "Scouts keep finding reasons to go back and see him again.",
+  "Two programs offered him after one look.",
+  "The staff argued about him for an hour and got nowhere.",
+  "He does not look like a high school player out there.",
+  "The upside is the reason he is on this list at all.",
+  "Our cross-checker moved a trip to go and see him.",
+  "He has been the best player on every field he has been on.",
+  "People who saw him in the summer have not stopped talking about it.",
+  "If it ever comes together we will be glad we were early.",
+  "He would have to develop, but the frame is there.",
+  "One tool plays right now. The rest are on their way.",
+  "You leave his games having underlined something.",
+  "The area man used the word starter and did not hedge it.",
+  "Twice this spring he did something you could not teach.",
+  "His bad days still look like somebody's good ones.",
+  "A name other coaches ask about, carefully.",
+  "He passes the eye test getting off the bus.",
+  ]),
+  ...POOL('A', [
+  "There are people who believe he is the best in the state.",
+  "Every program in the country has been through his gym.",
+  "Nobody on this staff wants to be the one who passed.",
+  "People stop what they are doing to watch him.",
+  "Three head coaches have already been to his house.",
+  "The area men have run out of comparisons.",
+  "He has a chance to be something, and the room knows it.",
+  "A rival staffer called him the one that got away. In May.",
+  "The park goes quiet when it is his turn.",
+  "You write the report in the first inning and spend the rest checking it.",
+  "Grown men rearrange their weekends to watch a seventeen-year-old.",
+  "The question is not whether he plays. It is how soon.",
+  "His name came up in three other recruits' interviews.",
+  "The tape undersells him, and the tape is good.",
+  "Somebody is going to build a class around him.",
+  "He is circled on every board we have seen.",
+  "The state tournament felt like his audition, and he knew it.",
+  ]),
+  ...POOL('A+', [
+  "There is talk he will be drafted out of high school.",
+  "The pro men outnumber the college men at his games now.",
+  "His coach has stopped returning calls about him.",
+  "The argument is not the state anymore. It is the country.",
+  "An agent has already been polite to his mother.",
+  "We stopped writing reports and started writing contingencies.",
+  "Every board in the country has him. The argument is the round.",
+  "You plan your visit around everyone else who will be there.",
+  "He made a jaded room lean forward.",
+  "Losing him to the draft is the risk everybody prices in.",
+  "His games get moved to bigger parks.",
+  "The fence behind the plate is all radar guns and clipboards.",
+  "He is the reason the showcase sold out.",
+  "Nobody wants to be second into his living room.",
+  "The last one this loud out of that league is on television now.",
+  ]),
+  ...POOL('S', [
+  "The word generational got used, and nobody laughed.",
+  "He is the best player anybody in that room has scouted.",
+  "Whole staffs fly out to see him. Not scouts. Staffs.",
+  "His name is shorthand now. You say it and the room nods.",
+  "The plan is not to develop him. The plan is to deserve him.",
+  "A network truck found his high school in March.",
+  "The country knows him. The question is who gets him.",
+  "You do not compare anybody to him. It goes the other way.",
+  "His junior year broke a record that had a statue attached.",
+  "Somebody offered his little brother, just to be near it.",
+  "He changes what a program is allowed to want.",
+  "The first time you see him, you check the age twice.",
+  "Every program has a plan for him. Most of them are prayers.",
+  "The line for his autograph outlasted the game.",
+  "His hat decision will have its own press conference.",
+  "You will tell people you saw him at seventeen.",
+  ]),
+  ...POOL('S+', [
+  "There is no report. Reports are for players like other players.",
+  "The oldest scout in the room said once a lifetime, and left.",
+  "Nobody argues about him. There is nothing to argue.",
+  "The tape looks sped up. It is not.",
+  "His high school games have a waiting list.",
+  "You measure the others against him and apologise.",
+  "The word is not prospect. Nobody has found the word yet.",
+  "Somebody asked what he cannot do, and the room went quiet.",
+  "The rankings have him first, and it reads like an understatement.",
+  "Whatever the ceiling is, nobody has seen him touch it.",
+  ]),
 ];
 
 /**
@@ -830,13 +925,9 @@ export const DEVELOPMENT_LINES: readonly DevelopmentLine[] = [
   { text: 'He would need time before he helped anybody.', from: 'raw', to: 'project' },
 ];
 
-/** The lines that stay honest about a recruit of this grade. */
-export const ceilingLinesFor = (grade: PotentialGrade): CeilingLine[] => {
-  const g = GRADE_LADDER.indexOf(grade);
-  return CEILING_LINES.filter(
-    (l) => GRADE_LADDER.indexOf(l.from) <= g && g <= GRADE_LADDER.indexOf(l.to),
-  );
-};
+/** His letter's own pool — the whole of what may be said about him. */
+export const ceilingLinesFor = (grade: PotentialGrade): CeilingLine[] =>
+  CEILING_LINES.filter((l) => l.grade === grade);
 
 /** The same, for how much of him is left to come. */
 export const developmentLinesFor = (band: Rawness): DevelopmentLine[] => {
