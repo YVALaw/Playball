@@ -3482,6 +3482,17 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const filled = fillRosters(season, season.rng, {
       userTeam: get().userTeam,
     });
+    // The sting, by name. Rare on purpose -- see takenByPros.
+    for (const lost of filled.poached) {
+      get().post({
+        kind: 'season', year: get().year,
+        title: `${lost.name} never arrives`,
+        body: 'Coach — the pros called his name in July and he signed the '
+          + 'cheque instead of the housing form. Nothing you did wrong; he was '
+          + 'exactly as good as we said he was. The scholarship comes back. '
+          + 'The plan does not.',
+      });
+    }
     const report: OffseasonReport = {
       ...(get().lastOffseason ?? {
         graduated: [], drafted: [], recruits: 0, signed: [], walkOns: [],

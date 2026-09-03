@@ -25,7 +25,7 @@ import {
   type Prospect, type Priority,
 } from '../../engine/recruiting.js';
 import { highSchoolLine, potentialGrade, GRADE_LADDER } from '../../engine/scouting.js';
-import { walkOnClass, walkOnSeed } from '../../engine/progression.js';
+import { enrolling, takenByPros, walkOnClass, walkOnSeed } from '../../engine/progression.js';
 import { overallOf } from '../../engine/ratings.js';
 import type { Pitcher, Player } from '../../engine/types.js';
 import { Avatar } from '../Avatar.js';
@@ -122,9 +122,15 @@ export function SigningDay() {
     const me = season?.teams[userTeam]?.team;
     const roster: Player[] = me
       ? [...me.lineup, ...me.bench, ...me.rotation, ...me.bullpen] : [];
-    const classPlayers = prospects
-      .filter((p) => p.signedBy === userTeam)
-      .map((p) => p.player);
+    // Less the men the pros took in July: the walk-on projection has to see
+    // the class the year roll will actually receive, or the men on this
+    // screen and the men in June disagree — the one thing they must not do.
+    const classPlayers = enrolling(
+      prospects
+        .filter((p) => p.signedBy === userTeam)
+        .map((p) => p.player),
+      season?.recruiting.year ?? 0,
+    );
 
     const table = [...byTeam.entries()]
       .map(([t, list]) => ({ team: t, list, points: classPoints(list) }))
@@ -217,6 +223,7 @@ export function SigningDay() {
                 <RecruitRow
                   key={p.id} p={p} onOpen={() => setOpenId({ kind: 'recruit', id: p.id })}
                   recruitingSkill={recruitingSkill}
+                  poached={takenByPros(p.player, season?.recruiting.year ?? 0)}
                 />
               ))}
             </section>
@@ -378,10 +385,10 @@ function WalkOnGroup(
 }
 
 function RecruitRow({
-  p, onOpen, recruitingSkill, destination, mine,
+  p, onOpen, recruitingSkill, destination, mine, poached,
 }: {
   p: Prospect; onOpen: () => void; recruitingSkill: number;
-  destination?: string; mine?: boolean;
+  destination?: string; mine?: boolean; poached?: boolean;
 }) {
   const call = verdict(p, recruitingSkill);
   return (
@@ -395,6 +402,7 @@ function RecruitRow({
               #{p.rank} · {slotOf(p)} · {p.state}
               {destination ? ` · → ${destination}` : ''}
               {p.committedWeek !== null ? ` · wk ${p.committedWeek}` : ''}
+              {poached ? ' · DRAFTED BY THE PROS — never arrives' : ''}
             </small>
           </span>
         </span>

@@ -996,13 +996,62 @@ export function reinstate(
  * Runs after signing day, so a scholarship you spent is a player who arrives and
  * a scholarship you did not is a body thirteen points below your own level.
  */
+/**
+ * The pros get to him first — stage 16's "recruits drafted out of high
+ * school who never arrive. Signed, then gone before they play a game.
+ * Cheap, and it stings in the right way."
+ *
+ * Derived off the man and the year, no draw — a reload cannot un-draft him
+ * and the roll moves no stream. Weighted by the ceiling, because that is
+ * what a July draft room buys: a signed 78 is safe almost always, a signed
+ * 92 is a real risk every single time. Across a whole country's class this
+ * takes one to three kids a year, so losing one is an event with a name on
+ * it rather than a tax.
+ */
+export function takenByPros(p: Player, year: number): boolean {
+  if (p.potential < 78) return false;
+  let h = ((year * 2654435761) ^ 977) >>> 0;
+  const id = String(p.id);
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619) >>> 0;
+  return h % 1000 < (p.potential - 76) * 6;
+}
+
+/**
+ * The half of a signed class that actually enrols.
+ *
+ * One function because four surfaces have to agree on it exactly: the year
+ * roll that puts the class on the roster, the class review's walk-on
+ * projection, the signing-day screen, and the tests that hold the
+ * projection to "exactly the men who turn up in June." The July pro draft
+ * runs before signing day, so a review that knows is honest, not psychic.
+ */
+export function enrolling(players: Player[], year: number): Player[] {
+  return players.filter((p) => !takenByPros(p, year));
+}
+
 export function fillRosters(
   season: SeasonState, rng: Rng, opts: OffseasonOpts = {},
-): { recruits: number; signed: Prospect[]; walkOns: OffseasonReport['walkOns'] } {
+): {
+  recruits: number; signed: Prospect[]; walkOns: OffseasonReport['walkOns'];
+  poached: { id: string; name: string; pos: string; stars?: number }[];
+} {
   const classFor = new Map<number, Player[]>();
   const signed: Prospect[] = [];
+  const poached: { id: string; name: string; pos: string; stars?: number }[] = [];
   for (const prospect of season.recruiting.prospects) {
     if (prospect.signedBy === null) continue;
+    if (takenByPros(prospect.player, season.recruiting.year)) {
+      // He never enrols. The walk-on arithmetic below never sees him, so the
+      // hole he leaves is filled the way any unspent scholarship is.
+      if (prospect.signedBy === opts.userTeam) {
+        const man = prospect.player;
+        poached.push({
+          id: String(man.id), name: man.name,
+          pos: man.type === 'pitcher' ? (man as Pitcher).role : man.pos,
+        });
+      }
+      continue;
+    }
     const list = classFor.get(prospect.signedBy) ?? [];
     list.push(prospect.player);
     classFor.set(prospect.signedBy, list);
@@ -1060,7 +1109,7 @@ export function fillRosters(
       });
     }
   }
-  return { recruits, signed, walkOns };
+  return { recruits, signed, walkOns, poached };
 }
 
 /**

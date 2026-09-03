@@ -31,7 +31,7 @@ import {
   type Prospect, type Priority,
   ensureWonderGuy,
 } from '../../engine/recruiting.js';
-import { walkOnShortfall } from '../../engine/progression.js';
+import { enrolling, walkOnShortfall } from '../../engine/progression.js';
 import { pitchFor, developmentScore } from '../../engine/pitch.js';
 import { overallOf } from '../../engine/ratings.js';
 import { highSchoolLine } from '../../engine/scouting.js';
@@ -300,7 +300,11 @@ export function Board() {
     const roster: Player[] = team
       ? [...team.team.lineup, ...team.team.bench, ...team.team.rotation, ...team.team.bullpen]
       : [];
-    const classPlayers = signed.map((p) => p.player);
+    // Less the men the pros took in July -- they never arrive, and the
+    // projection has to know it the same way the year roll will.
+    const classPlayers = enrolling(
+      signed.map((p) => p.player), season?.recruiting.year ?? 0,
+    );
     const still = walkOnShortfall(roster, classPlayers);
 
     /*
