@@ -12,6 +12,7 @@ import {
   StopwatchIcon,
 } from '@radix-ui/react-icons';
 import { PlayerName } from '../PlayerName.js';
+import { teamColour } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
 import { InFrame } from '../Overlay.js';
 import { overallOf } from '../../engine/ratings.js';
@@ -471,6 +472,19 @@ export function Manage() {
   const d = live.pending;
   const r = live.result;
 
+  /*
+    The runners the FIELD draws, held across the gap between decisions.
+
+    Between one batter resolving and the next decision arriving, `d` is
+    briefly null — and rendering `d?.runners ?? []` through that gap
+    unmounted every runner dot, so the remount placed the men ON their new
+    bags with no trip between them. Reported: "sometimes the walks simply
+    load the bases without showing the walking animation." A real
+    bases-empty state still clears, because it arrives WITH a decision.
+  */
+  const runnersHeld = useRef<NonNullable<typeof d>['runners']>([]);
+  if (d) runnersHeld.current = d.runners;
+
   // The pending decision knows the live state; once the game is over it is null,
   // so fall back to the final line.
   const inning = d ? `${d.half === 'top' ? '▲' : '▼'} ${d.inning}` : 'FINAL';
@@ -582,11 +596,16 @@ export function Manage() {
             <Diamond runners={d?.runners ?? []} scoreTick={scoreTick} size={200} />
           ) : (
             <Suspense fallback={
-              <Diamond runners={d?.runners ?? []} scoreTick={scoreTick} size={200} />
+              <Diamond runners={d?.runners ?? runnersHeld.current} scoreTick={scoreTick} size={200} />
             }>
               <Diamond3D
-                runners={d?.runners ?? []} scoreTick={scoreTick}
+                runners={d?.runners ?? runnersHeld.current} scoreTick={scoreTick}
                 ball={ball} scored={{ runners: scoredRunners, tick: scoreTick }} height={250}
+                // Midweek plays in the afternoon; the weekend series and all
+                // of June under the lights. Derived from the fixture, never asked.
+                night={!!meta && (meta.postseason === true
+                  || season?.schedule[season.dayIndex]?.kind !== 'midweek')}
+                accent={meta ? teamColour(season?.teams[meta.home]?.def.abbr ?? '') : undefined}
               />
             </Suspense>
           )}

@@ -83,6 +83,15 @@ const FLIGHT: Record<BattedBall, { arc: number; base: number; per: number; hops:
 
 interface Props {
   runners: readonly Runner[];
+  /**
+   * Under the lights. Derived from the fixture by the caller — midweek games
+   * play in the afternoon, weekend series and all of June at night — so the
+   * park answers the docs' line that "a midweek afternoon and a June night
+   * are not the same game" without a setting to manage.
+   */
+  night?: boolean;
+  /** The home school's colour, worn by the outfield wall's panels. */
+  accent?: string;
   /** Bumped when a run scores, to flash the plate. */
   scoreTick?: number;
   /** The last batted ball, or null when nothing was put in play. */
@@ -153,6 +162,19 @@ const MOUND = '#b89a75';
 // sunburst radiating from a point that is not home plate, which is the sort of
 // detail that draws the eye precisely because it is wrong.
 const GRASS_LIGHT = '#456f4d';
+
+/** Multiply a hex colour toward black — the night's whole lighting model,
+    since every material here is deliberately unlit. */
+function shade(hex: string, f: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.round(((n >> 16) & 255) * f);
+  const g = Math.round(((n >> 8) & 255) * f);
+  const b = Math.round((n & 255) * f);
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
+/** How much of the grass the lights leave. */
+const NIGHT_F = 0.74;
 const TRACK = '#b08a5e';
 const WALL = '#2f5a3c';
 const WALL_CAP = '#c9d2c5';
@@ -644,12 +666,21 @@ function BallInFlight({ hit, plan }: { hit: BallHit; plan: PlayPlan }) {
         b.visible = now < plan.flight + 0.5;
       } else if (now < plan.throwAt) {
         // Landed. A caught ball is held where it was caught; a live one rolls
-        // out and then lies there while the man runs it down.
-        const roll = plan.caught
-          ? 1
-          : Math.min(1, (now - plan.flight) / ROLL_DUR);
-        b.position.lerpVectors(plan.target, plan.rest, roll);
-        b.position.y = plan.caught ? GLOVE_Y : BALL_REST;
+        // out and lies there ONLY until the man arrives — from then it is in
+        // his hands. Reported: "the outs still look like they were safe, the
+        // ball appears behind them for a second" — the rest spot is beyond
+        // the fielder from this camera, and a ball behind a fielder is the
+        // picture of a single. HOLD_DUR before pickup is exactly his arrival.
+        const arrive = plan.pickup - HOLD_DUR;
+        if (!plan.caught && now >= arrive) {
+          b.position.set(plan.rest.x * 0.97, 0.45, plan.rest.z * 0.97 + 0.18);
+        } else {
+          const roll = plan.caught
+            ? 1
+            : Math.min(1, (now - plan.flight) / ROLL_DUR);
+          b.position.lerpVectors(plan.target, plan.rest, roll);
+          b.position.y = plan.caught ? GLOVE_Y : BALL_REST;
+        }
         b.visible = true;
       } else {
         // The throw. Where it goes is the play being made — see `playPlan`.
@@ -708,6 +739,7 @@ function BallInFlight({ hit, plan }: { hit: BallHit; plan: PlayPlan }) {
 
   return (
     <group>
+      {plan.homer && <HomerBurst plan={plan} />}
       <mesh ref={ball}>
         <sphereGeometry args={[0.17, 8, 6]} />
         <meshBasicMaterial color={CREAM} />
@@ -804,9 +836,77 @@ function Defense(
   );
 }
 
-function Base({ at }: { at: 1 | 2 | 3 }) {
+/**
+ * The home run's moment: a firework of sparks where the ball leaves the
+ * yard. Sixteen points thrown outward with a little gravity, additive so
+ * they read as light, gone inside a second — a celebration, not a cutscene.
+ * The walk-off and title takeovers still own the BIG nights; this is for
+ * every homer in between.
+ */
+function HomerBurst({ plan }: { plan: PlayPlan }) {
+  const group = useRef<THREE.Group>(null);
+  const t = useRef(0);
+  const seeds = useRef(
+    Array.from({ length: 16 }, (_, i) => ({
+      dir: new THREE.Vector3(
+        Math.sin(i * 2.399) * (0.6 + (i % 3) * 0.25),
+        0.9 + ((i * 7) % 5) * 0.18,
+        Math.cos(i * 2.399) * (0.6 + (i % 3) * 0.25),
+      ),
+    })),
+  );
+  // Where it crosses the wall: along the flight, at the wall's height.
+  const at = useRef(new THREE.Vector3(
+    plan.target.x * 0.82, 1.5, plan.target.z * 0.82,
+  ));
+  const T0 = plan.flight * 0.8;
+  const DUR = 1.0;
+
+  useFrame((_, delta) => {
+    t.current += delta;
+    const g = group.current;
+    if (!g) return;
+    const k = (t.current - T0) / DUR;
+    g.visible = k >= 0 && k < 1;
+    if (!g.visible) return;
+    g.children.forEach((m, i) => {
+      const seed = seeds.current[i];
+      if (!seed) return;
+      m.position.set(
+        at.current.x + seed.dir.x * k * 2.1,
+        at.current.y + seed.dir.y * k * 2.1 - 2.6 * k * k,
+        at.current.z + seed.dir.z * k * 2.1,
+      );
+      const mat = (m as THREE.Mesh).material as THREE.MeshBasicMaterial;
+      mat.opacity = 1 - k;
+    });
+  });
+
   return (
-    <mesh position={BAG[at]} rotation={[-Math.PI / 2, 0, Math.PI / 4]}>
+    <group ref={group} visible={false}>
+      {seeds.current.map((_, i) => (
+        <mesh key={i}>
+          <sphereGeometry args={[0.07, 6, 5]} />
+          <meshBasicMaterial
+            color={i % 3 === 0 ? '#d9b83a' : i % 3 === 1 ? '#f6f1e6' : '#e0655e'}
+            transparent opacity={1}
+            blending={THREE.AdditiveBlending} depthWrite={false}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function Base({ at }: { at: 1 | 2 | 3 }) {
+  // Lifted off the turf: at y = 0 the bag was exactly coplanar with the
+  // infield grass, and the moment the camera started moving the z-fight
+  // showed as the reported blink. A fixed camera had simply been hiding it.
+  return (
+    <mesh
+      position={[BAG[at][0], 0.02, BAG[at][2]]}
+      rotation={[-Math.PI / 2, 0, Math.PI / 4]}
+    >
       <planeGeometry args={[0.62, 0.62]} />
       <meshBasicMaterial color={CREAM} />
     </mesh>
@@ -825,16 +925,42 @@ function Base({ at }: { at: 1 | 2 | 3 }) {
  * Still primitives and flat colours. The whole park is a few hundred triangles,
  * which is what lets a phone hold sixty frames while a game is being managed.
  */
-function Field() {
+function Field({ night = false, accent }: { night?: boolean; accent?: string }) {
   const WALL_R = 8.9;
   const TRACK_R = 8.2;
+  // One dimmer for the whole park. Chalk and the foul poles keep their
+  // colour — lime and yellow are what floodlights are FOR.
+  const c = (hex: string): string => (night ? shade(hex, NIGHT_F) : hex);
+
+  // The crowd: a painted speckle, baked once. Neutral mix by decision —
+  // "the crowd painted, until the profile says otherwise" and the reporter
+  // chose the generic speckle over home tinting.
+  const crowd = useMemo(() => {
+    const cv = document.createElement('canvas');
+    cv.width = 256; cv.height = 64;
+    const g = cv.getContext('2d');
+    if (g) {
+      g.fillStyle = night ? '#232a33' : '#4a5560';
+      g.fillRect(0, 0, 256, 64);
+      const hues = ['#c9d2c5', '#a8442a', '#3f6f4a', '#d9b83a', '#5b7ea6', '#b0682f'];
+      for (let i = 0; i < 900; i++) {
+        g.fillStyle = hues[(Math.random() * hues.length) | 0] as string;
+        g.globalAlpha = night ? 0.5 : 0.75;
+        g.fillRect(Math.random() * 256, Math.random() * 64, 1.6, 1.6);
+      }
+    }
+    const tx = new THREE.CanvasTexture(cv);
+    tx.wrapS = THREE.RepeatWrapping;
+    tx.repeat.set(6, 1);
+    return tx;
+  }, [night]);
 
   return (
     <group>
       {/* Outfield grass, a 270 degree wedge with its gap behind the plate. */}
       <mesh position={[0, -0.02, -3.4]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[TRACK_R, 32, -Math.PI * 0.25, Math.PI * 1.5]} />
-        <meshBasicMaterial color={GRASS} />
+        <meshBasicMaterial color={c(GRASS)} />
       </mesh>
 
       {/* Mown stripes. Alternating wedges, which is what a groundskeeper's
@@ -848,42 +974,63 @@ function Field() {
           <circleGeometry
             args={[TRACK_R, 8, -Math.PI * 0.25 + (i * 2 * Math.PI * 1.5) / 14, (Math.PI * 1.5) / 14]}
           />
-          <meshBasicMaterial color={GRASS_LIGHT} />
+          <meshBasicMaterial color={c(GRASS_LIGHT)} />
         </mesh>
       ))}
 
       {/* Warning track, then the wall standing on it. */}
       <mesh position={[0, -0.012, -3.4]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[TRACK_R, WALL_R, 32, 1, -Math.PI * 0.25, Math.PI * 1.5]} />
-        <meshBasicMaterial color={TRACK} />
+        <meshBasicMaterial color={c(TRACK)} />
       </mesh>
 
+      {/* The wall. Cylinder theta runs a quarter-turn off circle theta —
+          see the note on the cap below; both start at +PI/4 so the wall
+          covers the same fan as the grass it stands on. The left-field gap
+          the reporter found was exactly this mismatch. */}
       <mesh position={[0, 0.42, -3.4]}>
         <cylinderGeometry
-          args={[WALL_R, WALL_R, 0.85, 32, 1, true, -Math.PI * 0.25, Math.PI * 1.5]}
+          args={[WALL_R, WALL_R, 0.85, 32, 1, true, Math.PI * 0.25, Math.PI * 1.5]}
         />
-        <meshBasicMaterial color={WALL} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={c(WALL)} side={THREE.DoubleSide} />
       </mesh>
+
+      {/* The wall's panels, in the home school's colour — the "96 grounds in
+          one park" trick at its cheapest: the ground is shared, the paint is
+          theirs. Alternating panels, slightly proud of the wall so they read
+          as boards rather than stripes. */}
+      {accent && Array.from({ length: 5 }, (_, i) => (
+        <mesh key={`panel-${i}`} position={[0, 0.42, -3.4]}>
+          <cylinderGeometry
+            args={[WALL_R - 0.03, WALL_R - 0.03, 0.62, 6, 1, true,
+              Math.PI * (0.25 + 0.11 + i * 0.28), Math.PI * 0.14]}
+          />
+          <meshBasicMaterial
+            color={night ? shade(accent, NIGHT_F) : accent}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ))}
 
       {/* The skinned infield: a dirt diamond with the grass inset inside it, so
           what is left showing is the basepaths. */}
       <mesh position={[0, -0.01, -2.1]} rotation={[-Math.PI / 2, 0, Math.PI / 4]}>
         <planeGeometry args={[4.7, 4.7]} />
-        <meshBasicMaterial color={DIRT} />
+        <meshBasicMaterial color={c(DIRT)} />
       </mesh>
       <mesh position={[0, 0, -2.1]} rotation={[-Math.PI / 2, 0, Math.PI / 4]}>
         <planeGeometry args={[3.3, 3.3]} />
-        <meshBasicMaterial color={GRASS} />
+        <meshBasicMaterial color={c(GRASS)} />
       </mesh>
 
       {/* Dirt around the plate, and the mound. */}
       <mesh position={[0, 0.001, -0.1]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[1.15, 20]} />
-        <meshBasicMaterial color={DIRT} />
+        <meshBasicMaterial color={c(DIRT)} />
       </mesh>
       <mesh position={[0, 0, -2.1]}>
         <cylinderGeometry args={[0.62, 0.72, 0.1, 16]} />
-        <meshBasicMaterial color={MOUND} />
+        <meshBasicMaterial color={c(MOUND)} />
       </mesh>
 
       {/*
@@ -906,19 +1053,45 @@ function Field() {
         </mesh>
       ))}
 
+      {/*
+        The stands — the bowl wrap. One sloped bank rising beyond the wall
+        (a truncated cone whose slant IS the rake of the seats), wearing the
+        painted crowd, and two low straight banks shadowing the foul lines.
+        Painted, not modelled, per the profile's rule: the whole crowd is one
+        baked speckle texture.
+      */}
+      <mesh position={[0, 1.05, -3.4]}>
+        <cylinderGeometry
+          args={[10.6, 9.0, 1.55, 32, 1, true, Math.PI * 0.25, Math.PI * 1.5]}
+        />
+        <meshBasicMaterial map={crowd} color={c('#ffffff')} side={THREE.BackSide} />
+      </mesh>
+      {/* A rim above the bank so the bowl ends on a line, not a raw edge. */}
+      <mesh position={[0, 1.86, -3.4]}>
+        <cylinderGeometry
+          args={[10.64, 10.64, 0.09, 32, 1, true, Math.PI * 0.25, Math.PI * 1.5]}
+        />
+        <meshBasicMaterial color={c('#39424c')} side={THREE.DoubleSide} />
+      </mesh>
+      {/* The foul-line banks were here for one build and cut the same day:
+          placed flat across the infield corners, they read as two black slabs
+          INSIDE the park ("two big parts of the stand that go into the park").
+          The bowl above already wraps the whole fan, so the lines stay open
+          and the enclosure loses nothing. */}
+
       {/* Backstop, behind the plate. */}
       <mesh position={[0, 0.3, 1.5]}>
         <cylinderGeometry args={[2.2, 2.2, 0.6, 16, 1, true, Math.PI * 0.72, Math.PI * 0.56]} />
-        <meshBasicMaterial color={FENCE} side={THREE.DoubleSide} transparent opacity={0.5} />
+        <meshBasicMaterial color={c(FENCE)} side={THREE.DoubleSide} transparent opacity={0.5} />
       </mesh>
 
       {/* The wall wears a cap rail, which is most of what makes it read as a
           wall rather than a green cliff the grass falls off. */}
       <mesh position={[0, 0.86, -3.4]}>
         <cylinderGeometry
-          args={[8.94, 8.94, 0.07, 32, 1, true, -Math.PI * 0.25, Math.PI * 1.5]}
+          args={[8.94, 8.94, 0.07, 32, 1, true, Math.PI * 0.25, Math.PI * 1.5]}
         />
-        <meshBasicMaterial color={WALL_CAP} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={c(WALL_CAP)} side={THREE.DoubleSide} />
       </mesh>
 
       {/* Foul poles, where the lines meet the wall. Yellow, because eighty
@@ -965,11 +1138,11 @@ function Field() {
         ))}
         <mesh position={[0, 1.75, 0]}>
           <boxGeometry args={[2.7, 1.2, 0.14]} />
-          <meshBasicMaterial color={BOARD} />
+          <meshBasicMaterial color={c(BOARD)} />
         </mesh>
         <mesh position={[0, 1.75, 0.08]}>
           <planeGeometry args={[2.3, 0.8]} />
-          <meshBasicMaterial color={BOARD_FACE} />
+          <meshBasicMaterial color={night ? '#3d5c8f' : BOARD_FACE} />
         </mesh>
       </group>
 
@@ -982,8 +1155,19 @@ function Field() {
           </mesh>
           <mesh position={[0, 3.15, 0]}>
             <boxGeometry args={[0.85, 0.5, 0.12]} />
-            <meshBasicMaterial color={CREAM} />
+            <meshBasicMaterial color={night ? '#fff3bd' : CREAM} />
           </mesh>
+          {/* At night the heads bloom — one additive disc is the whole
+              floodlight effect, and it is what sells the hour. */}
+          {night && (
+            <mesh position={[0, 3.15, 0.1]}>
+              <circleGeometry args={[0.55, 12]} />
+              <meshBasicMaterial
+                color="#fff3bd" transparent opacity={0.28}
+                blending={THREE.AdditiveBlending} depthWrite={false}
+              />
+            </mesh>
+          )}
         </group>
       ))}
     </group>
@@ -1113,6 +1297,7 @@ function DemandDriver({ stamp }: { stamp: string }) {
 
 export function Diamond3D({
   runners, scoreTick = 0, ball = null, scored, height = 150,
+  night = false, accent,
 }: Props) {
   // Men who scored on the last play, kept alive just long enough to finish.
   const previous = useRef<readonly Runner[]>([]);
@@ -1185,7 +1370,7 @@ export function Diamond3D({
             finishing.length,
           ].join(':')} />
           <CameraRig plan={plan} tick={ball?.tick ?? 0} />
-          <Field />
+          <Field night={night} accent={accent} />
           <Plate tick={scoreTick} />
           <Defense plan={plan} stations={stations} />
           {([1, 2, 3] as const).map((b) => <Base key={b} at={b} />)}
