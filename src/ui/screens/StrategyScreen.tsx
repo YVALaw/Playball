@@ -37,7 +37,7 @@ const GROUPS: Array<Group<keyof Strategy>> = [
     options: [
       { value: 'never', label: 'NEVER', cost: 'Nobody runs. No steals, and none given away' },
       { value: 'selective', label: 'SELECTIVE', cost: 'Your runners go when the matchup is right' },
-      { value: 'constant', label: 'CONSTANT', cost: 'Twice the steals and twice the outs on the bases' },
+      { value: 'constant', label: 'CONSTANT', cost: 'Twice the steal attempts, and the outs that come with them' },
     ],
   },
   {

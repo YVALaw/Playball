@@ -2416,6 +2416,18 @@ voice, the wire's templates, the tutorials and the offseason steps were read
 against the four rules, and the offenders fixed (the roster caption was the
 last). The reporter's own read at testing is the last word on the exit.
 
+### The reporter's language audit — September 3
+
+The reporter ran an independent audit of every user-facing string (vendored
+at `docs/artifacts/language-audit-2026-09-03/`) and asked for more work on
+the writing. Triaged the same day in `docs/11-language-triage.md`: the
+accuracy tier (twenty copy-versus-engine conflicts, the field-of-eight and
+carry-over falsehoods among them) and the mechanics tier shipped
+immediately; the voice-flattening tier was adapted or declined against the
+register decided at 15.5's door; the engineering finds (the sim-failure
+channel riding the save-error surface, unclassified load errors) head the
+standing worklist in that file.
+
 ### And found while testing, the same night
 
 Filed by the reporter during the sorting session; sorted where they land.

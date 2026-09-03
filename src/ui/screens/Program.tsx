@@ -518,7 +518,7 @@ function BoardSheet({ team }: { team: Owner }) {
                 marginTop: 9, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
               }}>
                 {review.extended
-                  ? 'A new deal on the table.'
+                  ? `Extended — ${review.contractYears} year${review.contractYears === 1 ? '' : 's'} on the new deal.`
                   : `${review.contractYears} year${review.contractYears === 1 ? '' : 's'} left on your contract.`}
               </div>
             )}
@@ -530,7 +530,7 @@ function BoardSheet({ team }: { team: Owner }) {
                   border: '1px solid rgba(var(--ink-rgb), .42)',
                   font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.1em',
                 }}
-              >UNDERSTOOD</button>
+              >GOT IT</button>
             )}
           </div>
         </div>

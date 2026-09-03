@@ -66,8 +66,8 @@ export function JobMarket() {
           <h2>Nobody is calling</h2>
           <p>
             {fired
-              ? `No program will have you at ${coach.prestige}. Prestige is what
-                opens the board, and yours is too low.`
+              ? `No offers at coach prestige ${coach.prestige}. Chairs open every
+                June, and a rebuilt name gets calls again.`
               : 'Offers arrive at the June board meeting, and they follow your record. Track a chair and your agent flags it the year it can be won.'}
           </p>
         </section>

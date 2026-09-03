@@ -835,8 +835,8 @@ export function Manage() {
                   <strong>{d.outing.visitUsed ? 'Visit already used' : 'Visit the mound'}</strong>
                   <small>
                     {d.outing.visitUsed
-                      ? 'One a game, and it has gone.'
-                      : 'Settle him down. It buys back a little of what he has lost.'}
+                      ? 'Already been out to this man. A new arm brings a fresh visit.'
+                      : 'Settle him down. One visit per pitcher, and it buys back a little.'}
                   </small>
                   <ChevronRightIcon />
                 </button>

@@ -53,7 +53,7 @@ export function CoachPoints() {
           }}>{left}</span>
           <span style={{ font: "400 calc(12px * var(--ts))/1.4 var(--body)", color: 'var(--dim)' }}>
             {left > 0
-              ? 'points to spend. They do not carry over. A coach who never improves gets left behind.'
+              ? 'points to spend. Unspent ones keep — they are yours until you use them.'
               : 'Nothing left to spend this year.'}
           </span>
         </div>

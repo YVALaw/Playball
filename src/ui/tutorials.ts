@@ -70,8 +70,8 @@ export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
     {
       title: 'The long haul',
       body: 'Forty-five games: eleven weekend series in the conference and '
-        + 'twelve midweek dates. Finish top six of your twelve and you play '
-        + 'June baseball. Finish seventh and you get very good at golf.',
+        + 'twelve midweek dates. Finish top eight of your twelve and you play '
+        + 'June baseball. Finish ninth and you get very good at golf.',
     },
   ],
   program: [
@@ -95,8 +95,8 @@ export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
       title: 'You make the calls',
       body: 'Your calls are under the log, and the greyed ones are telling you '
         + 'why they are off the table. SWING AWAY never hurt anybody. The round '
-        + 'button in the corner is the bench, the bullpen and the mound — each of '
-        + 'those spends a man for the night, so spend him like you mean it.',
+        + 'button in the corner is the bench, the bullpen and the mound — the '
+        + 'first two spend a man for the night; a mound visit leaves him in.',
     },
     {
       title: 'Watch the field',
@@ -162,9 +162,10 @@ export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
   recruiting: [
     {
       title: 'Three weeks in November',
-      body: 'Fifty points a week, spread across the kids you want. Points '
-        + 'carry over and the biggest pile usually signs him. The clock only '
-        + 'moves when you end the week, so shop around first.',
+      body: 'Your weekly points come from the program\u2019s pull. Spread them '
+        + 'across the kids you want: interest builds over the three weeks, '
+        + 'but unspent points vanish at the bell. The clock only moves when '
+        + 'you end the week, so shop around first.',
     },
     {
       title: 'Reading the reports',

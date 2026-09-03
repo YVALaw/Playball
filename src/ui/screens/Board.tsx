@@ -912,7 +912,7 @@ function NeedsView(
           ? 'Every spot is covered. Nobody walks on this year. The whole roster '
             + 'is men you went and got.'
           : `${total} walk-on${total === 1 ? '' : 's'} as it stands. Anything you do `
-            + "not sign gets filled by whoever turns up, thirteen points below your "
+            + "not sign gets filled by whoever turns up, well below your "
             + "program's own level, and he is gone again the moment the season ends."}
       </div>
 

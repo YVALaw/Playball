@@ -177,7 +177,7 @@ export function SigningDay() {
         options={[
           { value: 'mine' as const, label: 'Your class' },
           { value: 'rankings' as const, label: 'Rankings' },
-          { value: 'all' as const, label: 'Every recruit' },
+          { value: 'all' as const, label: 'Top signings' },
         ]}
       />
       </div>

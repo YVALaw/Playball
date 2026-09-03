@@ -1,6 +1,6 @@
 // Standings.tsx
 // The conference table, which is the only standing that decides anything: the
-// top six here play the tournament that decides who goes to a regional.
+// top eight here play the tournament that decides who goes to a regional.
 //
 // The proposal's standings table — a dark head row, a rank in red, the program,
 // its record and the games back — with the two columns this game needs that a

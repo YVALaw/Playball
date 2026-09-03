@@ -293,9 +293,10 @@ export function Portal() {
         )}
 
         <FieldNote
-          title="The pool is shared"
-          text="Every point spent here is a point the class does not get. Whatever
-            survives the window goes into recruiting with you."
+          title="This window's money"
+          text="These points are the transfer window's own — spend them or lose
+            them when the window shuts. The recruiting budget is a separate
+            pocket."
         />
       </main>
     </FixedHeader>

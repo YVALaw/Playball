@@ -133,9 +133,9 @@ export function SeasonReview() {
           note: `${team.def.school} win it all. Nothing you do to a program moves it further.`,
         }
       : finish === 'runner-up'
-        ? { title: 'National runners up', note: 'One game short in Omaha. It counts, and it stings.' }
+        ? { title: 'National runners up', note: 'The last series of the year, and the wrong end of it. It counts, and it stings.' }
         : finish === 'omaha'
-          ? { title: 'Omaha', note: 'You made the College World Series. Four teams out of ninety six.' }
+          ? { title: 'The national field', note: 'You reached the national showdown — the last twenty standing out of ninety six.' }
           : wonConference
             ? {
                 title: `${team.conference} champions`,

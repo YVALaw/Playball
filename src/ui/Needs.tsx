@@ -366,8 +366,7 @@ export function NeedsYou() {
           <div>
             <strong>{musts} {musts === 1 ? "decision is" : "decisions are"} waiting on you</strong>
             <p>
-              Marked in red above. Nothing stops until they are dealt with, but a
-              week goes past either way.
+              Marked in red above. The day holds until they are dealt with.
             </p>
           </div>
         </section>

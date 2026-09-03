@@ -1,0 +1,82 @@
+[
+  {
+    "file": "01-coach.jpg",
+    "bytes": 35691,
+    "identicalToInspectedCapture": true,
+    "width": 1280,
+    "height": 720,
+    "format": "JPEG"
+  },
+  {
+    "file": "02-play-style.jpg",
+    "bytes": 28521,
+    "identicalToInspectedCapture": true,
+    "width": 1280,
+    "height": 720,
+    "format": "JPEG"
+  },
+  {
+    "file": "03-interview.jpg",
+    "bytes": 37238,
+    "identicalToInspectedCapture": true,
+    "width": 1280,
+    "height": 720,
+    "format": "JPEG"
+  },
+  {
+    "file": "04-strategy.jpg",
+    "bytes": 34034,
+    "identicalToInspectedCapture": true,
+    "width": 1280,
+    "height": 720,
+    "format": "JPEG"
+  },
+  {
+    "file": "05-offers.jpg",
+    "bytes": 38139,
+    "identicalToInspectedCapture": true,
+    "width": 1280,
+    "height": 720,
+    "format": "JPEG"
+  },
+  {
+    "file": "06-offer-detail.jpg",
+    "bytes": 41774,
+    "identicalToInspectedCapture": true,
+    "width": 1280,
+    "height": 720,
+    "format": "JPEG"
+  },
+  {
+    "file": "07-home-tutorial.jpg",
+    "bytes": 45913,
+    "identicalToInspectedCapture": true,
+    "width": 1280,
+    "height": 720,
+    "format": "JPEG"
+  },
+  {
+    "file": "08-settings.jpg",
+    "bytes": 29282,
+    "identicalToInspectedCapture": true,
+    "width": 1280,
+    "height": 720,
+    "format": "JPEG"
+  },
+  {
+    "file": "09-sound.jpg",
+    "bytes": 18781,
+    "identicalToInspectedCapture": true,
+    "width": 1280,
+    "height": 720,
+    "format": "JPEG"
+  },
+  {
+    "file": "10-saves.jpg",
+    "bytes": 58149,
+    "identicalToInspectedCapture": true,
+    "width": 1280,
+    "height": 720,
+    "format": "JPEG"
+  }
+]

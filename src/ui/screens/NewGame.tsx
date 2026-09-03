@@ -629,14 +629,16 @@ function Identity(
             {COACH_SKIN.map((c, i) => (
               <Swatch
                 key={c} colour={c} on={look.skin === i}
+                label={`Skin tone ${i + 1} of ${COACH_SKIN.length}`}
                 onClick={() => setLook({ skin: i })}
               />
             ))}
           </Row>
-          <Row label="HAIR COLOUR">
+          <Row label="HAIR COLOR">
             {COACH_HAIR.map((c, i) => (
               <Swatch
                 key={c} colour={c} on={look.hair === i}
+                label={`Hair color ${i + 1} of ${COACH_HAIR.length}`}
                 onClick={() => setLook({ hair: i })}
               />
             ))}
@@ -888,14 +890,17 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
  * tapped and shuffle the row under your thumb.
  */
 function Swatch(
-  { colour, on, onClick }: { colour: string; on: boolean; onClick: () => void },
+  { colour, on, onClick, label }:
+  { colour: string; on: boolean; onClick: () => void;
+    /** What a screen reader says. A hex code spoken aloud is not a colour. */
+    label: string },
 ) {
   return (
     <button
       className={`career-swatch tap${on ? ' selected' : ''}`}
       type="button"
       onClick={onClick}
-      aria-label={colour}
+      aria-label={label}
       style={{ background: colour }}
     />
   );
@@ -963,7 +968,7 @@ function InterviewStep(
     >
       <main className="module-workspace career-workspace">
         <ModuleIntro
-          kicker={`${questions.length} QUESTIONS · ${i + 1}`}
+          kicker={`QUESTION ${i + 1} OF ${questions.length}`}
           title="The interview"
         />
 

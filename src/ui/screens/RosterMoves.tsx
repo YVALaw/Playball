@@ -313,7 +313,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
                   ? 'Undo the preseason eligibility decision.'
                   : preseason
                     ? `Preseason only. One appearance burns the season. ${redshirtCount(team)} of ${MAX_REDSHIRTS} used.`
-                    : 'The season has started. One appearance already burned this year.'}
+                    : 'Redshirts are set before the first pitch of the season, and it has been thrown.'}
                 selected={sitting}
                 disabled={!canSit && !sitting}
                 onClick={() => setRedshirt(p.id, !sitting)}

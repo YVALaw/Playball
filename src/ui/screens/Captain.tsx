@@ -49,7 +49,7 @@ function caseFor(p: Player): string {
   const feeling = mood(p);
   const room = feeling === 'unhappy' ? ' He is unhappy, which the room will hear.'
     : feeling === 'restless' ? ' He is restless.'
-      : feeling === 'buzzing' ? ' He is playing the best baseball of his life.' : '';
+      : feeling === 'buzzing' ? ' He is buzzing, and the room can feel it.' : '';
   return `${year} with ${held.length === 1 ? held[0] : held.join(' and ')}.${room}`;
 }
 
@@ -100,9 +100,8 @@ export function Captain() {
           {suggested && (
             <FieldNote
               title={`The room would pick ${suggested.name}`}
-              text={`${caseFor(suggested)} You do not have to agree — a captain the
-                coach chose and the room did not is a different season from one
-                they both wanted, and both of them happen.`}
+              text={`${caseFor(suggested)} You do not have to agree — the C is
+                yours to hand out.`}
             />
           )}
 

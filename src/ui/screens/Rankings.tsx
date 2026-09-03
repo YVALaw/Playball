@@ -119,10 +119,10 @@ export function Rankings() {
 
       <FieldNote
         title={depth === 'top25' && mineAt >= 25
-          ? `You are ${mineAt + 1}th`
+          ? `You are ranked #${mineAt + 1}`
           : preseason ? 'Nobody remembers the poll' : 'Tap a program'}
         text={preseason
-          ? 'A projection off the rosters, nothing more. Once the games start counting the real table takes over.'
+          ? 'Three parts roster, one part reputation. After the opening games the RPI takes over.'
           : depth === 'top25' && mineAt >= 25
             ? 'Outside the twenty five. Switch to the full table to see the company you are keeping.'
             : 'Every row opens that program: its roster, its season, and how you have done against it.'}

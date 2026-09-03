@@ -603,7 +603,7 @@ function DraftOdds(
       <MetricStrip>
         <Metric label="SENIORS" value={String(seniors.length)} note="GRADUATING" />
         <Metric label="ELIGIBLE" value={String(exposed.length)} note="EXPOSED" />
-        <Metric label="LIKELY GONE" value={String(atRisk)} note="PROJECTED" />
+        <Metric label="AT RISK" value={String(atRisk)} note="PROJECTED" />
       </MetricStrip>
 
       {exposed.length > 0 && (
@@ -644,8 +644,8 @@ function DraftOdds(
 function OddsRow({ player, odds }: { player: Player; odds: number | null }) {
   const openPlayer = useDynasty((s) => s.openPlayer);
   const word = odds === null ? 'GRADUATING'
-    : odds >= 0.7 ? 'GONE' : odds >= 0.35 ? 'LIKELY'
-    : odds >= 0.12 ? 'POSSIBLE' : 'SAFE';
+    : odds >= 0.7 ? 'GONE' : odds >= 0.35 ? 'AT RISK'
+    : odds >= 0.12 ? 'OUTSIDE SHOT' : 'SAFE';
   const tone = odds === null ? 'var(--dim)'
     : odds >= 0.35 ? 'var(--clay)' : odds >= 0.12 ? 'var(--ink)' : 'var(--win)';
 

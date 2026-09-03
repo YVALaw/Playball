@@ -34,7 +34,7 @@ import { BoxScoreSheet } from './Schedule.js';
 import { teamColour } from '../Avatar.js';
 import {
   conferenceField, liveSeries, nextGameFor, hostOfGame, roundName, clincher,
-  regionOf, REGIONS, CONF_FIELD, CONF_ADVANCE,
+  regionOf, REGIONS, CONF_FIELD, CONF_ADVANCE, NATIONAL_BIDS,
 } from '../../engine/postseason.js';
 import type {
   Series, SeriesBracket, RegionalSeries, ConferenceTournament, TournamentResult,
@@ -231,9 +231,14 @@ export function Postseason() {
       key: `${year}:title:${myBracket.kind}`,
       kicker: isFinal ? `${year} · NATIONAL CHAMPIONSHIP` : `${year} · REGIONAL CHAMPIONSHIP`,
       title: `${team.def.school} v ${(season.teams[other]?.def.school ?? '?')}`,
-      lines: stake(
-        `Best of ${len}, first to ${clincher(len)}. You lead it ${wins(userTeam)}-${wins(other)}.`,
-      ),
+      lines: stake((() => {
+        const mine = wins(userTeam);
+        const theirs = wins(other);
+        const standing = mine === theirs
+          ? (mine === 0 ? '' : ` Level at ${mine}-${theirs}.`)
+          : mine > theirs ? ` You lead it ${mine}-${theirs}.` : ` You trail it ${mine}-${theirs}.`;
+        return `Best of ${len}, first to ${clincher(len)}.${standing}`;
+      })()),
     };
   })();
 
@@ -446,7 +451,7 @@ export function Postseason() {
         good: true,
         title: `${ordinal(mySeed)} seed`,
         lines: [
-          `Double elimination. Two losses and it is winter.`,
+          `Double elimination — a loss drops you, it does not end you.`,
           `Finish top ${CONF_ADVANCE} and you play a regional.`,
         ],
       }
@@ -535,7 +540,7 @@ export function Postseason() {
       title: 'Out of the showdown',
       lines: [
         `${team.def.school} take a second loss${where}.`,
-        'Sixteen reach the showdown. Most of the country never sees it.',
+        `${NATIONAL_BIDS} reach the showdown. Most of the country never sees it.`,
       ],
     };
   })();

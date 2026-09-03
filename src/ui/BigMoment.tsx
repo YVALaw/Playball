@@ -29,7 +29,7 @@ const SENTENCE: Record<string, string> = {
   walkoff: 'wins it in the last at-bat.',
   'walkoff-against': 'ends it. There was no next at-bat.',
   cup: 'The banner goes up in your building.',
-  regional: 'The national twenty is set, and you are in it.',
+  regional: 'A ticket to the national twenty, punched on the field.',
   final4: 'Two teams left in the country. Yours is one.',
   title: 'Everything the program is for, and it happened this June.',
   'runner-up': 'The last series of the year went the other way.',
