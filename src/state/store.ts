@@ -210,7 +210,7 @@ import {
 } from '../engine/portal.js';
 import {
   chartFor, depthAt, reorder, squad, available, promotions, SPOTS, fitTheNine, healPositions,
-  adoptSpot, restoreHome,
+  adoptSpot, restoreHome, settleReturn,
 } from '../engine/depthChart.js';
 import {
   gradesOf, standing, failsThisWeek, suspend, haveAWord, driftGrades,
@@ -843,6 +843,12 @@ export interface DynastyStore {
   guide: 'word' | null;
   startGuide: (g: 'word') => void;
   clearGuide: () => void;
+  /**
+   * The other answer to "is he going back in?" — keep the cover, on purpose.
+   * The first answer is putting him back, which every route into the nine
+   * stamps by itself. See Unavailable.returnDecided.
+   */
+  keepCover: (id: PlayerId) => void;
   setScreen: (screen: string) => void;
   advanceDay: () => void;
   playSeason: () => Promise<void>;
@@ -2101,6 +2107,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   guide: null,
   startGuide: (g) => set({ guide: g }),
   clearGuide: () => set({ guide: null }),
+  keepCover: (id) => {
+    const { season, userTeam, version } = get();
+    const team = season?.teams[userTeam]?.team;
+    if (!team) return;
+    const man = team.bench.find((p) => p.id === id);
+    if (!man) return;
+    settleReturn(man);
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
 
   // Navigating any other way drops the mark: it belongs to the errand that set
   // it, and an errand you walked away from is over.
@@ -5036,6 +5052,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       a man is himself again, whatever he was covering.
     */
     restoreHome(out);
+    // And the man coming IN has answered the return question, if one was open.
+    settleReturn(inMan);
     team.lineup[slot] = inMan;
     team.bench[bIdx] = out;
     set({ version: version + 1 });
@@ -5076,6 +5094,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       team.lineup[holder] = man;
       team.bench[bIdx] = out;
       adoptSpot(man, pos);
+      settleReturn(man);
       restoreHome(out);
       set({ version: version + 1 });
       void get().saveNow();
@@ -5098,6 +5117,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     team.lineup[dupe] = man;
     team.bench[bIdx] = out;
     adoptSpot(man, pos);
+    settleReturn(man);
     restoreHome(out);
     set({ version: version + 1 });
     void get().saveNow();
@@ -5156,6 +5176,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // every bench man home: the bench is where a man is himself again.
     healPositions(team.lineup);
     for (const b of team.bench) restoreHome(b);
+    // AUTO is a decision too: whoever it fielded is back on purpose.
+    for (const m of team.lineup) settleReturn(m);
     const dealt = autoBattingOrder(team.lineup);
     // Same nine or nothing. The helper only reorders, but the invariant is
     // cheap to hold at the door and a corrupted lineup is a corrupted season.

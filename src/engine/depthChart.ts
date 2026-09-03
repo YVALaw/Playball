@@ -53,6 +53,19 @@ export interface Unavailable {
   /** Suspended until this day index. Academic today; injury in stage 9. */
   outUntil?: number;
   why?: 'academic' | 'injury';
+  /**
+   * The coach has answered "is he going back in?" for THIS injury.
+   *
+   * Stamped with the outUntil it settles, so a later injury re-asks. Written
+   * by the store when a healed man re-enters the nine by any route, or when
+   * the coach explicitly keeps the cover; read by NEEDS YOU, whose
+   * healed-return card is a must until one of those happens — "he can not
+   * play until deciding if he is going back to the lineup or not, that way
+   * we don't forget." Injuries only ever roll against the nine, so every
+   * healed man on the bench was a displaced starter; there are no false
+   * positives to guard.
+   */
+  returnDecided?: number;
 }
 
 /** Whether he can be picked at all today. */
@@ -342,6 +355,20 @@ export function adoptSpot(man: Hitter, pos: Position): void {
 }
 
 /** The bench is where a man is himself again. */
+/**
+ * Entering the nine answers the return question by itself.
+ *
+ * Called by every route in — the manual swap, the rail, AUTO — so the
+ * healed-return must (see Unavailable.returnDecided) clears the moment the
+ * man is actually back, without the coach filing anything.
+ */
+export function settleReturn(man: Player): void {
+  const u = man as Player & Unavailable;
+  if (u.why === 'injury' && typeof u.outUntil === 'number') {
+    u.returnDecided = u.outUntil;
+  }
+}
+
 export function restoreHome(man: Hitter): void {
   if (man.homePos) {
     man.pos = man.homePos;

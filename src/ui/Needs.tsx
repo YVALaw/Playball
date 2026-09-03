@@ -85,6 +85,28 @@ export interface Need {
  * rest and a suspension were both being reported as healthy on a card whose
  * whole point is that he cannot play.
  */
+/**
+ * Whether "is he going back in?" is still an open question for this man.
+ *
+ * Asked for as a hold: "use can not play until deciding if he is going back
+ * to the lineup or not, that way we don't forget." True for a man healed
+ * from an INJURY who is not in the nine and whose return was never settled —
+ * and injuries only ever roll against the nine, so he was a displaced
+ * starter by construction. The fortnight grace exists for saves from before
+ * the rule: a man healed long ago with the cover still in is a decision the
+ * coach already lived with, not a hold to spring on an old season. Inside a
+ * live season the grace never triggers, because the hold stops the days.
+ */
+export function returnPending(man: Player, day: number): boolean {
+  const u = man as Player & {
+    outUntil?: number; why?: string; returnDecided?: number;
+  };
+  if (u.why !== 'injury' || u.outUntil === undefined) return false;
+  if (day < u.outUntil) return false;
+  if (u.returnDecided === u.outUntil) return false;
+  return day - u.outUntil < 14;
+}
+
 export function whyOut(man: Player, day: number): string {
   const u = man as Player & { outUntil?: number; why?: string };
   if (u.why === 'injury') return prognosis(man, day);
@@ -176,22 +198,22 @@ export function useNeeds(): Need[] {
     }
 
     /*
-      And the man walking back in. Reported with the injury rule: "when the
-      player heals we should be prompted... so the user goes back to the
-      lineup." A three-day window, self-clearing — if the cover is staying,
-      the card stops asking.
+      And the man walking back in — a HOLD now, not a nudge. The first
+      version was a soft three-day card that cleared itself, and the report
+      that replaced it says why that was wrong: "add to needs you a
+      confirmation when the injured player can get back to play — he can not
+      play until deciding if he is going back to the lineup or not, that way
+      we don't forget." Every route back into the nine settles it silently
+      (see settleReturn); KEEP THE COVER on the lineup is the other answer.
     */
     for (const man of squad(team.team)) {
-      const u = man as Player & { outUntil?: number; why?: string };
-      if (u.why !== 'injury' || u.outUntil === undefined) continue;
-      if (day < u.outUntil || day - u.outUntil >= 3) continue;
-      if (nineIds.has(man.id)) continue;
+      if (nineIds.has(man.id) || !returnPending(man, day)) continue;
       needs.push({
         id: `back-${man.id}`,
-        title: `${man.name} is fit again`,
-        note: 'Healed, and not in tonight\'s nine. Put him back — or leave '
-          + 'the cover in. Your call, but make it on the lineup.',
-        must: false,
+        title: `${man.name} is fit — decide his return`,
+        note: 'Healed, and the cover still has his spot. Nothing moves until '
+          + 'you put him back in the nine or keep the cover. Settle it on the lineup.',
+        must: true,
         cta: 'THE LINEUP',
         go: () => { useDynasty.getState().go('team', 'lineup', man.id); },
       });

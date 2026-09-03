@@ -3015,3 +3015,40 @@
   font: 400 calc(9px * var(--ts))/1.3 var(--mono);
   letter-spacing: .04em;
 }
+
+/* The healed-return strip: the bench's one standing question, and its answer
+   button. Alert-bordered because it is a hold, not a notice. */
+.return-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 9px 11px;
+  background: var(--paper);
+  border: 1px solid var(--hair, var(--faint));
+  border-left: 3px solid var(--alert);
+}
+
+.return-strip strong {
+  display: block;
+  font: 700 calc(11px * var(--ts))/1.3 var(--body);
+}
+
+.return-strip span {
+  display: block;
+  margin-top: 1px;
+  color: var(--dim);
+  font: 400 calc(10px * var(--ts))/1.4 var(--body);
+}
+
+.return-strip button {
+  flex: none;
+  padding: 8px 11px;
+  min-height: 36px;
+  border: 1px solid var(--alert);
+  background: transparent;
+  color: var(--alert);
+  font: 700 calc(8.5px * var(--ts)) var(--mono);
+  letter-spacing: .1em;
+}

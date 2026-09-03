@@ -30,7 +30,7 @@ import { CheckIcon, ReloadIcon, SewingPinIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Avatar } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
-import { whyOut } from '../Needs.js';
+import { returnPending, whyOut } from '../Needs.js';
 import { Modal } from '../Modal.js';
 import { overallOf } from '../../engine/ratings.js';
 import { captainOf } from '../../engine/captains.js';
@@ -67,6 +67,7 @@ export function Lineup() {
   const assignPosition = useDynasty((s) => s.assignPosition);
   const moveRotation = useDynasty((s) => s.moveRotation);
   const autoLineup = useDynasty((s) => s.autoLineup);
+  const keepCover = useDynasty((s) => s.keepCover);
   const team = useUserTeam();
   const [picked, setPicked] = useState<number | null>(null);
   /** Same two-tap swap, for the rotation. */
@@ -415,6 +416,21 @@ export function Lineup() {
         </div>
 
         <SectionHeading kicker="THE BENCH" title="Everyone else" />
+        {/* The healed-return hold's other answer. Swapping him in settles the
+            question by itself; this button is how the coach says "the cover
+            keeps the spot" — and until one of the two happens, NEEDS YOU
+            holds the day. Full careers only, the same rule as the card. */}
+        {mine && team.team.bench.filter((p) => returnPending(p, season.dayIndex)).map((p) => (
+          <div key={`return-${p.id}`} className="return-strip">
+            <div>
+              <strong>{p.name} is fit again.</strong>
+              <span>Swap him back in — or keep the cover. The day holds until you choose.</span>
+            </div>
+            <button type="button" className="tap" onClick={() => keepCover(p.id)}>
+              KEEP THE COVER
+            </button>
+          </div>
+        ))}
         <section className="lineup-bench">
           {team.team.bench.map((p) => {
             const hurt = !available(p, season.dayIndex);
