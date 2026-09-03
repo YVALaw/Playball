@@ -68,6 +68,26 @@ export function Postseason() {
   const [modal, setModal] = useState<'in' | 'out' | 'title' | null>(null);
   const [showLineup, setShowLineup] = useState(false);
   /*
+    A nav tap stands the takeovers down.
+
+    June renders this component in place for the whole month, so the lineup
+    card and a stage review — full-screen overlays held in local state —
+    survive a tap on JUNE in the bottom bar: the store changes tab and
+    screen, the render tree comes back identical, and the card is still
+    covering it. Reported from the phone: "if you tap set up lineup during
+    the postseason and then try to go back to the Home Screen it won't let
+    you — you go to any other first." The store counts nav taps now, and a
+    new count closes whatever is standing.
+  */
+  const navEpoch = useDynasty((st) => st.navEpoch);
+  const epochSeen = useRef(navEpoch);
+  useEffect(() => {
+    if (epochSeen.current === navEpoch) return;
+    epochSeen.current = navEpoch;
+    setShowLineup(false);
+    setReviewing(null);
+  }, [navEpoch]);
+  /*
     A bracket game, opened.
 
     Box scores are stored only for the user's own program, so this is honest

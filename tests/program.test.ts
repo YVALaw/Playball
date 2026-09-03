@@ -1010,6 +1010,43 @@ describe('a small programme climbing', () => {
   and the five-star bucket inflated from a seeded 3 to 22. That is the
   permanence these pin against.
 */
+/*
+  The cleared board's shelter — reported from the phone by the reporter
+  himself, playing a three-star: "I met all the board expectations but 1 and
+  still my school dropped -1 in prestige. That doesn't make sense." It
+  didn't: the board asks for what keeps the seat while the drift argues the
+  season in the absolute, and at mid-table an honest did-what-was-asked year
+  can argue a point below the name. The board's own grade now gates the
+  blue-blood rate for everybody below the summit.
+*/
+describe('the cleared board', () => {
+  it('holds the line on a season the board approved of', () => {
+    // The reporter's shape: a winning year, a regional, a satisfied board.
+    const solid = outcome({
+      wins: 23, losses: 22, madeRegionals: true, drought: 0,
+    });
+    const at = 58;
+    // Cleared, the mild negative drift rounds away; uncleared it is a real
+    // step down. Same season, different grade, and only the fall changes.
+    expect(nextPrestige(at, solid, true)).toBeGreaterThanOrEqual(nextPrestige(at, solid));
+    expect(nextPrestige(at, solid, true)).toBe(at);
+    expect(nextPrestige(at, solid)).toBeLessThan(at);
+  });
+
+  it('does not shelter a rising season, a summit seat, or a failed review', () => {
+    // A positive drift is untouched -- the shelter is only about the fall.
+    const good = outcome({ wins: 30, losses: 15, madeRegionals: true, madeTournament: true });
+    expect(nextPrestige(50, good, true)).toBe(nextPrestige(50, good));
+    // And above the summit the title drought rules, checklist or no
+    // checklist -- permanence is not for sale to a friendly board.
+    const omaha = outcome({
+      wins: 33, losses: 12, madeRegionals: true, madeTournament: true,
+      wonConference: true, wonRegional: true, reachedOmaha: true, sinceTitle: 3,
+    });
+    expect(nextPrestige(92, omaha, true)).toBe(nextPrestige(92, omaha));
+  });
+});
+
 describe('the summit', () => {
   const elite = { wins: 33, losses: 12 };
 

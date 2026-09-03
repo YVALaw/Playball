@@ -338,7 +338,9 @@ export function summitDrag(current: number, o: SeasonOutcome): number {
   return base * (0.3 + 0.85 * droughtBite) * height;
 }
 
-export function nextPrestige(current: number, o: SeasonOutcome): number {
+export function nextPrestige(
+  current: number, o: SeasonOutcome, boardCleared = false,
+): number {
   /*
     Up quickly, down slowly.
 
@@ -410,8 +412,41 @@ export function nextPrestige(current: number, o: SeasonOutcome): number {
   const climbing = current < CLIMBING_UNDER;
   const sheltered = climbing && gap < 0 && (o.drought ?? DROUGHT_GRACE) < DROUGHT_GRACE;
 
-  const rate = sheltered ? 0.045 : thinning ? 0.22 : sticky ? 0.12 : 0.18;
-  const drift = gap * rate;
+  /*
+    And the cleared board's shelter — the same report as the blue blood's,
+    one rung down. A three-star coach met every box but one and watched the
+    standing slip anyway, because the board asks for what keeps the seat
+    while the drift argues the season in the absolute — and at mid-table,
+    winning percentage clusters near .500 by construction, so an honest
+    "did what was asked" year can still argue a point or two below the
+    name. The board's own grade is the gate: MET or EXCEEDED takes the
+    slow-fall rate the top of the table already gets, so an ordinary year
+    the board approved of holds the line, and falling short is what costs.
+    The summit is exempt on purpose — up there permanence answers to the
+    title drought, not the checklist. Measured on the carousel like every
+    other rate in this function; the mean is the number to watch.
+  */
+  /*
+    Gated on the season having something to show — a May appearance or a
+    winning record — because a develop-mandate cellar board is cleared by
+    sixteen quiet wins, and sheltering those emptied the one-star bucket in
+    the measurement (13 programs to 6): the same "applied to everybody"
+    inflation the blue-blood shelter's own comment warns about. The board's
+    approval defends a season that stood for something; it does not float a
+    program the country never saw.
+  */
+  const showed = o.madeRegionals === true || winPct(o) >= 0.5;
+  const cleared = boardCleared && showed && gap < 0 && current <= SUMMIT_OVER;
+  const rate = sheltered ? 0.045 : thinning ? 0.22 : (sticky || cleared) ? 0.12 : 0.18;
+  let drift = gap * rate;
+  /*
+    And a cleared board never loses to rounding. At mid-table the sheltered
+    drift lands in the -0.5..-1 band constantly, where Math.round turns "the
+    board is satisfied" into -1 anyway — which is the exact minus one the
+    report was about. A season the board approved of gives ground only when
+    it honestly argued a full point away even at the slow rate.
+  */
+  if (cleared && drift > -1) drift = Math.max(0, drift);
   return Math.max(5, Math.min(95, Math.round(current + drift + climbBonus(current, o))));
 }
 
@@ -1977,7 +2012,9 @@ export function reviewSeason(
     expectation,
     outcome,
     prestigeBefore: programPrestige,
-    prestigeAfter: nextPrestige(programPrestige, outcome),
+    prestigeAfter: nextPrestige(
+      programPrestige, outcome, verdict === 'met' || verdict === 'exceeded',
+    ),
     coachPrestigeBefore: coach.prestige,
     coachPrestigeAfter: nextCoachPrestige(coach, outcome, programPrestige, badRun),
     securityBefore,

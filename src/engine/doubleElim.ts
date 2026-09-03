@@ -372,7 +372,18 @@ export function nextRoundName(state: DoubleElim): string | null {
 
 /** The game this team is due to play, if any. */
 export function liveSlotFor(state: DoubleElim, team: number): DESlot | null {
-  return readySlots(state).find((s) => s.a === team || s.b === team) ?? null;
+  /*
+    Off `nextRound`, not `readySlots` — the exact drift the nextRound
+    comment warned about, one caller over. At the draw of a ten-team
+    bracket a bye seed's opening game is "ready" the same instant the
+    play-in is, so this said his game was due, the pregame card offered
+    PLAY and SIMULATE THIS GAME, and the sim then honestly stepped the
+    play-in — other people's games — while his own card sat there looking
+    broken. Reported exactly so: "I hit simulate this game but nothing
+    happens." Due means due TONIGHT, in the round the engine will
+    actually step.
+  */
+  return nextRound(state).find((s) => s.a === team || s.b === team) ?? null;
 }
 
 /**

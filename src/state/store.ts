@@ -819,6 +819,13 @@ export interface DynastyStore {
   /** True before a job has been taken, so the app can show the setup screen. */
   needsTeam: boolean;
   go: (tab: Tab, screen?: string, focus?: string) => void;
+  /**
+   * Every nav tap, counted. Screens that keep local full-screen takeovers
+   * (June, whose component never unmounts within its month) watch this and
+   * stand them down — a nav tap is an instruction to leave wherever you
+   * stand, even when the destination renders the same component.
+   */
+  navEpoch: number;
 
   /**
    * A man the screen you are about to land on should point at.
@@ -2029,9 +2036,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       screen: screen ?? def?.screens[0]?.id ?? 'today',
       selectedPlayer: null,
       focusPlayer: focus ?? null,
+      // Every nav tap, counted. June renders the Postseason component in
+      // place for the whole month, so its local takeovers (the lineup
+      // card, a stage review) survive a tap that was supposed to leave —
+      // reported as HOME not working until some other tab was visited
+      // first. The screens watch this and stand their takeovers down.
+      navEpoch: get().navEpoch + 1,
     }));
   },
 
+  navEpoch: 0,
   clearFocusPlayer: () => set({ focusPlayer: null }),
   guide: null,
   startGuide: (g) => set({ guide: g }),

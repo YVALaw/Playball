@@ -854,6 +854,18 @@ describe('ten-team double elimination', () => {
     const seated = de.winners[1]!.flatMap((s) => [s.a, s.b]).filter((t) => t !== null);
     expect(seated).toHaveLength(6);
     expect(new Set(seated)).toEqual(new Set(seeds.slice(0, 6)));
+    /*
+      But standing is not due. On play-in night a bye seed's opening game is
+      "ready" — both names known since the draw — and liveSlotFor used to
+      say so, which put PLAY and SIMULATE THIS GAME on a pregame card whose
+      game the engine was not going to step. Reported from the phone: "I
+      hit simulate this game but nothing happens." Due means due TONIGHT.
+    */
+    expect(liveSlotFor(de, seeds[0]!)).toBeNull();
+    expect(liveSlotFor(de, seeds[7]!)).not.toBeNull();
+    stepDoubleElim(de);
+    // Play-in settled: now the top seed's game is genuinely tonight's.
+    expect(liveSlotFor(de, seeds[0]!)).not.toBeNull();
   });
 
   it('keeps a play-in loser alive, which is the whole point of the change', () => {
