@@ -2341,11 +2341,12 @@ work now lives.
   new 16.5; 16 goes from medium to large.
 
 ### The next batch — settled, small, ready to build
+*(All shipped the same night, plus the healed-return hold — `05` §45.)*
 
 1. **The postseason redesign** — NEXT GAME and BRACKET tabs, the promoted
-   next-game card, the one-map bracket with the drop-line.
-2. **The depth chart removal.**
-3. **Realignment geography.**
+   next-game card, the one-map bracket with the drop-line. **SHIPPED.**
+2. **The depth chart removal.** **SHIPPED.**
+3. **Realignment geography.** **SHIPPED.**
 
 ### The batch's door, answered — later the same night
 

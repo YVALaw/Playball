@@ -10,6 +10,16 @@ the top of it is always current. Everything older lives in git.
 **committed locally, deliberately unpushed** — the reporter asked to review
 and test before anything goes up.
 
+> **September 2, late night — the sorting session and the batch it opened.**
+> Every open decision was answered in one sitting (`06` §U), four fresh test
+> findings were fixed on the spot (the guided glow, the desktop frame fix,
+> the walk clip, the dugout FAB's close), and then the whole next batch
+> shipped before the night ended: June's two rooms (the pregame show and the
+> one-map bracket with the drop marked, `05` §45), the depth chart removed
+> with secondary positions joining the player card, realignment held to the
+> region or next door, and the healed-return hold. Two-way players finally
+> got a home (stage 16, now large). 1,054 tests.
+
 > **September 2, the evening batch.** The reporter played the morning's build
 > and filed nine items with screenshots; everything shipped the same evening
 > (`05` §44, `06` §T). The headline is a reversal worth remembering: the

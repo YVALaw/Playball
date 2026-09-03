@@ -6288,6 +6288,43 @@ whole save family and never again; abandoning the errand keeps the lesson
 for next time. One `.guide-glow` class, reduced motion keeps the static
 outline. `Segmented` learned an optional `glow` prop for step two.
 
+## 45. The next batch — SHIPPED September 2 2026, late night
+
+The three items the sorting session settled, plus the needs work filed at
+the same door. All verified through a full June on the scratch origin;
+1,054 tests.
+
+**June gets its two rooms.** The winners/losers toggles are gone. The stage
+tabs are NEXT GAME and BRACKET (`juneTab`, module-memoed like the toggles
+it replaced). NEXT GAME is the full pregame show (`PregameShow`): crests
+face off, the probable arms are picked exactly the way `playSeriesGame`
+picks them (appearances modulo three), the stake is said in words ("Win
+tonight and the series is yours" / "One loss already. Lose again and the
+run ends here"), and PLAY / SIM / SET THE LINEUP act on the card — with the
+injury hold riding along as FIX THE LINEUP. The pinned bar stands down
+while the card has the game and returns for every other state. BRACKET
+draws a double elimination as ONE map (`OneMap`): winners road, a drop
+strip painted in your colour when it was you it sent down, losers road
+under it (`DoubleElimMap` grew `showFinal` so the final draws once). The
+only half-toggle left is the national's A/B — two genuinely separate rooms
+— under a championship pinned above. Elimination retires the pregame tab.
+
+**The depth chart screen is gone.** Screen, overlay entry, the roster's
+Chart square. `chartFor` and the engine are untouched. The one fact worth
+keeping — where else a man can stand — joined the player profile's info
+under POSITION (`secondaryPositions`, hardest three).
+
+**Realignment trades inside the region or next door.** `NEIGHBOURS` in
+world.ts; a winter with no near-enough league passes. Pinned with a PAC
+riser who must land in the MTN and never the ATL.
+
+**The healed man holds the day.** `Unavailable.returnDecided`: every route
+into the nine stamps it (`settleReturn` — the manual swap, the rail,
+AUTO), KEEP THE COVER on the lineup is the other answer, and until one
+happens the fit-again card is a must. Injuries only roll against the nine,
+so every healed bench man was a displaced starter — no false positives. A
+fortnight's grace spares old saves a retroactive hold.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code
