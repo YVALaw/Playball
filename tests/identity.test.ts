@@ -356,7 +356,7 @@ describe('determinism', () => {
     // extra numbers on some men and not others, and a pin that only ever saw
     // the common path would miss a draw added inside a branch.
     it.each([
-      { what: 'a hitter', spent: [31, 31, 31, 31, 31, 32, 31, 31] },
+      { what: 'a hitter', spent: [31, 31, 31, 31, 31, 34, 31, 31] },
       { what: 'a pitcher', spent: [30, 30, 30, 30, 31, 30, 30, 30] },
     ])('is fixed for $what', ({ what, spent }) => {
       const got = spent.map((_, i) => {
@@ -379,12 +379,15 @@ describe('determinism', () => {
       const c = counted(4242);
       const cls = generateClass(2027, 8, c.rng);
       expect(cls.prospects.length).toBe(60);
-      // 2413 before September 1. The class is built AS freshmen now — the
-      // class year is passed in rather than stamped on afterwards — and the
-      // projectable-freshman clause costs a draw that only a freshman was
-      // ever asked for, so sixty men take a branch fifteen of them used to.
+      // 2413 before September 1, 2463 until stage 16. The class is built AS
+      // freshmen — the class year is passed in rather than stamped on
+      // afterwards — and the projectable-freshman clause costs a draw that
+      // only a freshman was ever asked for. The findable-gems knob then
+      // gated that clause to sub-52 currents, so the polished half of the
+      // class stopped spending the gate draw and the count came DOWN even
+      // as the raw draw itself got a longer, occasionally rejected tail.
       // Still fixed, which is the property this test exists to hold.
-      expect(c.spent()).toBe(2463);
+      expect(c.spent()).toBe(2442);
     });
   });
 });

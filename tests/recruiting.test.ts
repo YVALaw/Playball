@@ -12,7 +12,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   generateClass, aiTargets, closeWeek, resetWeeklySpend, weeklyPoints, fit,
-  canPursue, inPipeline, reachFloor,
+  canPursue, inPipeline, reachFloor, starsFor,
   leadersAtWeekStart, byRank,
   PRIORITIES, RECRUITING_WEEKS, SCHOLARSHIPS, RECRUITING_BUDGET, MAX_PER_RECRUIT,
   commitPointsFor, budgetFor, weeklyBudget, windowBudget,
@@ -1409,5 +1409,37 @@ describe('the board screen', () => {
       }
       expect(anyFilter(set)).toBe(true);
     });
+  });
+});
+
+/*
+  Stage 16's findable gems — the door: "more mid- and low-star recruits
+  carrying hidden high potential, so a small program can out-scout instead
+  of out-bid." Measured before the knob (ten classes, seed 4242): 4.4 elite
+  ceilings a year at three stars or fewer, 0.6 of them in the one- and
+  two-star bands; after: 12.0 and 2.6, with the five-star shelf keeping its
+  certainty. These pin the shape loosely — the exact counts belong to the
+  census in the class comment, not to a suite that has to survive seeds.
+*/
+describe('findable gems', () => {
+  it('hides real ceilings where a small program can afford to look', () => {
+    const rng = makeRng(9091);
+    let elite = 0;
+    let fiveStarSure = 0;
+    for (let y = 0; y < 4; y++) {
+      const cls = generateClass(2030 + y, 96, rng);
+      for (const pr of cls.prospects) {
+        const stars = starsFor(pr.player);
+        const grade = potentialGrade(pr.player.potential);
+        if (stars <= 3 && (grade === 'A+' || grade === 'S')) elite++;
+        if (stars >= 5 && (grade === 'A' || grade === 'A+' || grade === 'S')) fiveStarSure++;
+      }
+    }
+    // Enough gems that scouting is a skill (roughly one per eight programs a
+    // year), and not so many that stars stop meaning anything.
+    expect(elite).toBeGreaterThanOrEqual(20);
+    expect(elite).toBeLessThanOrEqual(90);
+    // The top of the board still buys certainty by the armful.
+    expect(fiveStarSure).toBeGreaterThanOrEqual(80);
   });
 });

@@ -44,8 +44,24 @@ function projectPotential(rng: Rng, overall: number, cls: ClassYear): number {
    * where it is going, an athlete who has played two years of baseball. He looks
    * ordinary, and he is not. This is the only reason scouting a board is worth
    * doing rather than sorting it.
+   *
+   * Widened and aimed for stage 16's findable gems — the door: "more mid-
+   * and low-star recruits carrying hidden high potential, so a small program
+   * can out-scout instead of out-bid." Measured before the change (ten
+   * classes, seed 4242): 4.4 recruits a year in the whole country carried an
+   * A+ or S ceiling at three stars or fewer, and the one- and two-star bands
+   * — where a small program actually shops — held 0.6 of those between them.
+   * Two faults, and the first fix exposed the second: a raw bonus capped at
+   * 34 could not lift a modest kid into the top grades, and widening it for
+   * every freshman fattened the FIVE-star shelf instead, because a polished
+   * kid's raw ceiling leaks into his rating through the projection term. So
+   * the channel is gated to kids the services can honestly file as ordinary
+   * — a sub-52 current — which is also what the fiction always said raw
+   * meant: the athlete who has played two years of baseball is not already
+   * a sixty. Stars still buy certainty; gems are what scouting buys.
    */
-  const raw = cls === 'FR' && rng() < 0.07 ? normal(rng, 20, 8, 6, 34) : 0;
+  const raw = cls === 'FR' && overall < 52 && rng() < 0.14
+    ? normal(rng, 24, 9, 8, 42) : 0;
 
   // Capped short of S+ rather than at 99. This is the single funnel every
   // generated player passes through — a recruiting class, a walk-on, the roster
