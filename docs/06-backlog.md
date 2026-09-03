@@ -2392,6 +2392,30 @@ stall:
 - **The crowd waits for the profile.** Geometry first; modelled versus
   painted is decided by the throttled performance profile's numbers.
 
+### The fourth door round — and 15.5 closes
+
+- **The assistant is friendly and joking — and he teaches.** "I would even
+  have him be the one speaking in the tutorials." The tutorial copy was
+  already written in his register ("like a bench coach who likes you"); the
+  cards now carry his byline — TOWNSEND SHOWS YOU AROUND — and every kept
+  mail body opens "Coach —" in the same voice.
+- **Two-way players: at most three per recruiting class.** Stage 16's
+  generation knob, recorded at the door.
+- **Prestige target: dynasties rise and fall.** A great program holds 90+
+  for roughly a decade of sustained titles; thirty seasons should show two
+  or three reigns. The probe measures exactly this.
+- **The college action button, specced.** "Add more actions and
+  clarifications... we don't know where to look, what they are for and if
+  follow-up screens are needed." Every card now answers all three — what it
+  does, where the result lands, what follows — and the tendencies screen
+  (16) becomes SCOUT THEM's follow-up surface when it lands.
+
+**And with that, stage 15.5 shipped whole.** The writing pass ran as a
+directed sweep rather than a blind rewrite: the weekly captions, the board's
+voice, the wire's templates, the tutorials and the offseason steps were read
+against the four rules, and the offenders fixed (the roster caption was the
+last). The reporter's own read at testing is the last word on the exit.
+
 ### And found while testing, the same night
 
 Filed by the reporter during the sorting session; sorted where they land.

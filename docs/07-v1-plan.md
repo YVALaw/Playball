@@ -964,7 +964,7 @@ been measured.
 whether the crowd is modelled or painted; and how much of this survives on a
 four-year-old Android, which is the question the profile exists to answer.
 
-## Stage 15.5 · The voice
+## Stage 15.5 · The voice — **SHIPPED September 2–3 2026, overnight**
 
 **Size:** medium · **Added September 1 2026, out of play** · **Half shipped
 September 2, late night:** the assistant, the inbox rework and the wire

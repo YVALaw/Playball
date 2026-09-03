@@ -179,7 +179,7 @@ export function Roster() {
         <ModuleIntro
           kicker={filtered ? `${rows.length} OF ${squad}` : 'ACTIVE ROSTER'}
           title={`${rows.length} ${rows.length === 1 ? 'player' : 'players'}`}
-          text="The current group, organized for quick staff decisions."
+          text="Everyone in the building. Tap a row to meet the man."
         />
       </div>
 

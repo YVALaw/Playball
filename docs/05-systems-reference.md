@@ -6347,6 +6347,19 @@ that pinned the old fog were reversed with the design and now hold the
 opposite: no text in two pools, every generated grade 15 deep, a national
 class heard in many voices with zero ambiguous sentences.
 
+**And the second half, closing the stage.** The tutorials carry the
+assistant's byline (`lastName(assistantFor(...))` SHOWS YOU AROUND) — the
+copy was already his register, the speaker was what was missing. Every kept
+mail body speaks as him ("Coach — ..."), realignment mail is scoped to
+leagues it touches, and each college action card answers what it does, where
+the result lands and what follows. The writing pass ran as a directed sweep:
+system-speak greps and caption reads across the weekly screens, the board's
+verdicts, the wire's templates and the offseason steps found the copy
+already in the room's voice from the play batches — the offenders it did
+find are fixed. Doors recorded for 16: at most three two-way men per class;
+prestige tuned so dynasties hold 90+ for about a decade and thirty seasons
+show two or three reigns.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code
