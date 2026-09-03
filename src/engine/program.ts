@@ -273,6 +273,40 @@ export function climbBonus(current: number, o: SeasonOutcome): number {
   return pts * scale;
 }
 
+/**
+ * Where the air gets thin. Above this, a season is priced by its jewels
+ * rather than its score — see `summitDrag`.
+ */
+export const SUMMIT_OVER = 85;
+
+/**
+ * The drag at the top — stage 16's door, decided at the sorting session:
+ * "reaching 90+ stays possible; holding it takes continued titles, and
+ * slippage on mediocre years is faster up there. Dynasties still possible,
+ * permanence no longer free."
+ *
+ * The mechanism has to be written in jewels because the score cannot see
+ * them from up here: an elite team wins about seventy-two percent, which
+ * puts a title year and an Omaha exit both at the target's ceiling — the
+ * clamp at 100 erases exactly the distinction the door asks for. So the
+ * summit reads the flags directly: a title year pays no drag at all (a
+ * champion holds the crown, which is the "dynasties still possible" half),
+ * an Omaha run leaks a little, a mere conference title leaks properly, and
+ * anything less finds no grip at all. Scaled by altitude, zero at the
+ * summit line, full at the cap — the mirror of `climbLift`, one for each
+ * end of the table.
+ */
+export function summitDrag(current: number, o: SeasonOutcome): number {
+  if (current <= SUMMIT_OVER) return 0;
+  const height = (current - SUMMIT_OVER) / (95 - SUMMIT_OVER);
+  const short =
+    o.wonTitle ? 0 :
+    o.reachedOmaha ? 10 :
+    o.wonConference ? 14 :
+    o.madeTournament ? 17 : 20;
+  return short * height;
+}
+
 export function nextPrestige(current: number, o: SeasonOutcome): number {
   /*
     Up quickly, down slowly.
@@ -288,9 +322,19 @@ export function nextPrestige(current: number, o: SeasonOutcome): number {
     comes back down, which inflates the league a rung at a time and makes the
     number mean nothing after twenty years -- so the soak watches the mean.
   */
-  const gap = programTarget(current, o) - current;
   /*
-    The slow fall is the top of the table's alone.
+    The drag prices the altitude, not the season: it can pull a target down
+    to the summit line, but a season already arguing for less than the summit
+    is left to argue exactly what it argued before -- the ordinary fall is
+    the ordinary fall, and the drag's whole job is to make good-but-not-great
+    years insufficient up where the score's ceiling would otherwise make them
+    read as perfect.
+  */
+  const raw = programTarget(current, o);
+  const gap = Math.max(raw - summitDrag(current, o), Math.min(raw, SUMMIT_OVER)) - current;
+  /*
+    The slow fall is the top of the table's alone -- and it ends at the
+    summit, where the door asks for the opposite.
 
     Applied to everybody it raised the league mean seven points and emptied the
     bottom star bucket entirely -- ninety six programs all drifting up is not a
@@ -299,7 +343,15 @@ export function nextPrestige(current: number, o: SeasonOutcome): number {
     complaint was ever about: a blue blood does not stop being one the first
     spring it fails to win a trophy.
   */
-  const sticky = current >= 70 && gap < 0;
+  const sticky = current >= 70 && current <= SUMMIT_OVER && gap < 0;
+  /*
+    And above the summit the shelter inverts: "slippage on mediocre years is
+    faster up there." Faster than the base rate, not a cliff -- one bad year
+    costs the crown, the blue-blood shelter below 85 then catches the
+    standing, so a dynasty that stumbles falls off the summit and lands as a
+    blue blood rather than falling through the table.
+  */
+  const thinning = current > SUMMIT_OVER && gap < 0;
 
   /*
     And the small school's grace, which is the other half of the same report.
@@ -327,7 +379,7 @@ export function nextPrestige(current: number, o: SeasonOutcome): number {
   const climbing = current < CLIMBING_UNDER;
   const sheltered = climbing && gap < 0 && (o.drought ?? DROUGHT_GRACE) < DROUGHT_GRACE;
 
-  const rate = sheltered ? 0.045 : sticky ? 0.12 : 0.18;
+  const rate = sheltered ? 0.045 : thinning ? 0.22 : sticky ? 0.12 : 0.18;
   const drift = gap * rate;
   return Math.max(5, Math.min(95, Math.round(current + drift + climbBonus(current, o))));
 }

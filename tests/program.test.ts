@@ -14,7 +14,7 @@ import {
   initialPrestige, leagueShape, playerBoard, rivalBoard, rivalExpectation,
   rosterStrength, CALIBRATED_LEAGUE, PLAYER_RENEW_BAR, SACK_BAR,
   nextPrestige, programTarget, seasonScore, climbLift, climbBonus,
-  CLIMBING_UNDER, DROUGHT_GRACE,
+  CLIMBING_UNDER, DROUGHT_GRACE, SUMMIT_OVER, summitDrag,
   type Mandate, type SeasonOutcome, type Expectation, type CoachState,
   type ObjectiveKey, type Verdict,
 } from '../src/engine/program.js';
@@ -996,5 +996,66 @@ describe('a small programme climbing', () => {
     expect(seasonScore(june)).toBe(seasonScore(june));
     expect(programTarget(small, june)).toBeGreaterThan(seasonScore(june));
     expect(programTarget(blue, june)).toBe(seasonScore(june));
+  });
+});
+
+/*
+  The drag at the top -- stage 16's door: "reaching 90+ stays possible;
+  holding it takes continued titles, and slippage on mediocre years is faster
+  up there. Dynasties still possible, permanence no longer free."
+
+  Measured before it was written (carousel probe, 30 seasons, seed 4242): the
+  undragged league put EIGHT programmes at 90+ simultaneously in year thirty,
+  one of which held the crown for thirteen straight seasons with zero titles,
+  and the five-star bucket inflated from a seeded 3 to 22. That is the
+  permanence these pin against.
+*/
+describe('the summit', () => {
+  const elite = { wins: 33, losses: 12 };
+
+  it('charges nothing below the line, and by altitude and jewels above it', () => {
+    const omaha = outcome({ ...elite, madeRegionals: true, madeTournament: true,
+      wonConference: true, wonRegional: true, reachedOmaha: true });
+    expect(summitDrag(SUMMIT_OVER, omaha)).toBe(0);
+    expect(summitDrag(70, omaha)).toBe(0);
+    expect(summitDrag(95, omaha)).toBeGreaterThan(summitDrag(90, omaha));
+    // A title year pays no drag at all: a champion holds the crown.
+    expect(summitDrag(95, outcome({ ...omaha, wonTitle: true }))).toBe(0);
+  });
+
+  it('lets continued titles hold 90+, and nothing less', () => {
+    const title = outcome({ ...elite, madeRegionals: true, madeTournament: true,
+      wonConference: true, wonRegional: true, reachedOmaha: true, wonTitle: true });
+    const omaha = outcome({ ...title, wonTitle: false });
+    const league = outcome({ ...omaha, reachedOmaha: false, wonRegional: false });
+    // The champion stands. The Omaha run leaks. The mere conference title
+    // leaks faster -- the score alone cannot see any of this from up here,
+    // because at seventy-two percent the target's ceiling makes all three
+    // years read as perfect.
+    expect(nextPrestige(95, title)).toBe(95);
+    expect(nextPrestige(95, omaha)).toBeLessThan(95);
+    expect(nextPrestige(95, league)).toBeLessThan(nextPrestige(95, omaha));
+    // And reaching 90+ stays possible: one title year from the high eighties
+    // arrives, and the next climbs on from there.
+    expect(nextPrestige(88, title)).toBeGreaterThanOrEqual(90);
+    expect(nextPrestige(nextPrestige(88, title), title)).toBeGreaterThan(90);
+  });
+
+  it('drops a mediocre year off the summit faster than the shelter below it', () => {
+    const mediocre = outcome({ wins: 25, losses: 20, madeRegionals: true });
+    const above = 92 - nextPrestige(92, mediocre);
+    const below = 80 - nextPrestige(80, mediocre);
+    // "Slippage on mediocre years is faster up there": the blue-blood shelter
+    // ends at the summit line instead of protecting the very standing the
+    // door wants contestable.
+    expect(above).toBeGreaterThan(below);
+    // But the drag prices the altitude, not the season: a year already
+    // arguing for less than the summit falls at the thin-air rate on its own
+    // argument, with no extra charge stacked on top.
+    const target = programTarget(92, mediocre);
+    expect(nextPrestige(92, mediocre)).toBe(Math.round(92 + (target - 92) * 0.22));
+    // One bad year costs the crown, not the decade: the fall lands in blue
+    // blood country, where the shelter catches it.
+    expect(nextPrestige(92, mediocre)).toBeGreaterThan(75);
   });
 });

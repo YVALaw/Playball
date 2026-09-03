@@ -115,6 +115,17 @@ const TITLE_LADDER: readonly CoachTitle[] = [
   'Champion', 'Dynasty', 'Legend',
 ];
 const drift = { quiet: 0, moved: 0, debut: 0 };
+/**
+ * Dynasties. Stage 16's prestige target is stated in reigns — "a great
+ * program holds 90+ for roughly a decade of sustained titles; thirty seasons
+ * should show two or three reigns" — and a reign is a run of consecutive
+ * seasons at 90+ by one program, measured after the year's reviews. Titles
+ * are counted per program alongside, because the door's sentence is about
+ * whether the crown tracks the trophies.
+ */
+const reignRun = new Map<number, number>();
+const reigns: { team: number; len: number; ended: number }[] = [];
+const titlesBy = new Map<number, number>();
 const titleSnapshots: { year: number; spread: Record<CoachTitle, number> }[] = [];
 const spreadNow = (): Record<CoachTitle, number> => {
   const out = Object.fromEntries(
@@ -196,6 +207,14 @@ for (let y = 0; y < YEARS; y++) {
     year: season.year ?? 0, userTeam: -1, games: 45,
   });
   syncCoachMods(season, -1, null);
+  titlesBy.set(post.champion, (titlesBy.get(post.champion) ?? 0) + 1);
+  for (const t of season.teams) {
+    if (t.prestige >= 90) reignRun.set(t.index, (reignRun.get(t.index) ?? 0) + 1);
+    else if (reignRun.has(t.index)) {
+      reigns.push({ team: t.index, len: reignRun.get(t.index)!, ended: season.year ?? 0 });
+      reignRun.delete(t.index);
+    }
+  }
 
   for (const t of season.teams) {
     const was = t.coach ? before.get(t.coach) : undefined;
@@ -317,6 +336,19 @@ for (const [label, get] of [
   console.log('  %s med %s  p75 %s  p90 %s  max %s',
     label.padEnd(18), String(at(xs, 0.5)).padStart(4), String(at(xs, 0.75)).padStart(4),
     String(at(xs, 0.9)).padStart(4), String(Math.max(...xs)).padStart(4));
+}
+
+for (const [team, len] of reignRun) reigns.push({ team, len, ended: season.year ?? 0 });
+{
+  const real = reigns.filter((r) => r.len >= 3);
+  console.log('reigns at 90+  %d of length 3+  (runs: %s)',
+    real.length, reigns.map((r) => r.len).sort((a, b) => b - a).join(',') || 'none');
+  console.log('  seasons spent at 90+, league-wide: %d', reigns.reduce((a, r) => a + r.len, 0));
+  for (const r of real) {
+    const t = season.teams[r.team];
+    console.log('  %s  %d seasons, ended year %d, %d titles for the program, prestige now %d',
+      (t?.def.abbr ?? String(r.team)).padEnd(5), r.len, r.ended, titlesBy.get(r.team) ?? 0, t?.prestige ?? 0);
+  }
 }
 
 console.log('clear rate by mandate:');
