@@ -29,7 +29,7 @@ import { FirstVisit } from '../Tutorial.js';
 import { overallOf, naturalPos } from '../../engine/ratings.js';
 import { captainOf } from '../../engine/captains.js';
 import { potentialGrade } from '../../engine/scouting.js';
-import { battingAverage, era, inningsPitched } from '../../engine/season.js';
+import { battingAverage, era, inningsPitched, injuryClock } from '../../engine/season.js';
 import { isHurt } from '../../engine/injury.js';
 import { available } from '../../engine/depthChart.js';
 import {
@@ -139,7 +139,7 @@ export function Roster() {
       title: p.name,
       mark: captainOf(team.team)?.id === p.id
         ? <CaptainC />
-        : (isHurt(p, season.dayIndex)
+        : (isHurt(p, injuryClock(season))
           ? <span className="hurt-mark" aria-label="injured">✚</span>
           : undefined),
       detail: `${out ? `${out} · ` : ''}${slotOf(p)} · ${p.classYear} · ${overallOf(p)} OVR · ${pot} POT`,

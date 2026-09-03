@@ -23,7 +23,7 @@ import { IdCardIcon } from '@radix-ui/react-icons';
 import { ModuleIntro, Segmented } from '../components/Kit.js';
 import { Lineup } from './Lineup.js';
 import { Crest } from '../Crest.js';
-import { era } from '../../engine/season.js';
+import { era, injuryClock } from '../../engine/season.js';
 import type { SeasonState } from '../../engine/season.js';
 import type { Hitter } from '../../engine/types.js';
 import { available } from '../../engine/depthChart.js';
@@ -557,7 +557,7 @@ export function Postseason() {
     card is the one the game waits for.
   */
   const hurtNine = (handles(depth, 'lineups') || handles(depth, 'depthChart'))
-    ? team.team.lineup.filter((m) => !available(m, season.dayIndex))
+    ? team.team.lineup.filter((m) => !available(m, injuryClock(season)))
     : [];
 
   /** What the pinned button does right now. */
@@ -592,7 +592,7 @@ export function Postseason() {
           label: 'FIX THE LINEUP',
           run: () => setShowLineup(true),
           note: hurtNine.length === 1
-            ? `${hurtNine[0]!.name} is in your nine and cannot play — ${whyOut(hurtNine[0]!, season.dayIndex)}. Nobody is moved for you.`
+            ? `${hurtNine[0]!.name} is in your nine and cannot play — ${whyOut(hurtNine[0]!, injuryClock(season))}. Nobody is moved for you.`
             : `${hurtNine.length} men in your nine cannot play. Nobody is moved for you.`,
         }
       : {
@@ -1175,7 +1175,7 @@ function PregameShow(
         <>
           <p className="pregame-hold">
             {hurtNine.length === 1
-              ? `${hurtNine[0]!.name} is in your nine and cannot play — ${whyOut(hurtNine[0]!, season.dayIndex)}. Nobody is moved for you.`
+              ? `${hurtNine[0]!.name} is in your nine and cannot play — ${whyOut(hurtNine[0]!, injuryClock(season))}. Nobody is moved for you.`
               : `${hurtNine.length} men in your nine cannot play. Nobody is moved for you.`}
           </p>
           <button className="primary-command tap" type="button" onClick={onLineup}>

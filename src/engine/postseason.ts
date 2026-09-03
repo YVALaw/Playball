@@ -7,7 +7,7 @@
 
 import {
   playGame, recordResult, onBase, slugging, era, inningsPitched, standings, rpiOrder,
-  advancePostseasonDay, seedTeams, regularRecord,
+  advancePostseasonDay, seedTeams, regularRecord, rollHurtsFor,
 } from './season.js';
 import type {
   BattingSeason, GameSummary, PitchingSeason, SeasonState, TeamRecord,
@@ -111,6 +111,10 @@ function play(bracket: Bracket, round: string, a: number, b: number): BracketGam
       });
   if (ready) bracket.preplayed?.delete(pairKey(a, b));
   advancePostseasonDay(bracket.season);
+  // June hurts at full severity — stage 16's door. Rolled after the night
+  // so tomorrow's pregame hold catches it; derived, so it moves no stream.
+  rollHurtsFor(bracket.season, home);
+  rollHurtsFor(bracket.season, away);
 
   const homeWon = summary.homeRuns > summary.awayRuns;
   const game: BracketGame = {
@@ -396,6 +400,13 @@ export function stepBracket(
   // lets a bullpen recover between games instead of the same three arms
   // carrying a team through every round of June.
   advancePostseasonDay(state.season);
+  // And the trainer's room stays open in June — stage 16's door, full
+  // severity. Everyone who took the field tonight rolls once; derived, so
+  // nothing downstream shifts.
+  for (const s of round) {
+    if (s.a !== null) rollHurtsFor(state.season, s.a);
+    if (s.b !== null) rollHurtsFor(state.season, s.b);
+  }
   promote(state);
 }
 

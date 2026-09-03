@@ -530,6 +530,35 @@ describe('postseason statistics', () => {
     }
   });
 
+  it('June hurts: the trainer works the tournaments, deterministically', () => {
+    /*
+      Stage 16's door: "injuries are not working during tournaments" was
+      true, and full severity was the decision. The rolls are derived — no
+      draws — so the same June must produce the same casualties, and the
+      clock they are written on (injuryClock) keeps ticking through the
+      postseason where dayIndex has frozen.
+    */
+    const one = played(7309);
+    const two = played(7309);
+    const marks = (s2: ReturnType<typeof played>['s']) => {
+      const out: string[] = [];
+      for (const t of s2.teams) {
+        for (const m of t.team.lineup.concat(t.team.bench)) {
+          const u = m as typeof m & { outUntil?: number; why?: string };
+          if (u.why === 'injury' && (u.outUntil ?? 0) > s2.dayIndex) {
+            out.push(`${m.id}:${u.outUntil}`);
+          }
+        }
+      }
+      return out.sort();
+    };
+    const a = marks(one.s);
+    const b = marks(two.s);
+    // Somebody, somewhere in a whole June, got hurt — and identically twice.
+    expect(a.length).toBeGreaterThan(0);
+    expect(b).toEqual(a);
+  });
+
   it('writes each June onto the career row, year by year', () => {
     // Asked for on the player card: "one season by season as well but to
     // record the june stats, year by year just like the season by season."

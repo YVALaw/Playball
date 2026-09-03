@@ -51,6 +51,7 @@ import { ChevronRightIcon, SewingPinIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../state/store.js';
 import { handles } from '../state/depth.js';
 import { available, squad } from '../engine/depthChart.js';
+import { injuryClock } from '../engine/season.js';
 import { standing, WORDS_A_SEASON } from '../engine/eligibility.js';
 import { isHurt, prognosis } from '../engine/injury.js';
 import { captainOf, candidates } from '../engine/captains.js';
@@ -133,7 +134,9 @@ export function useNeeds(): Need[] {
   const needs: Need[] = [];
   if (!team || !season) return needs;
 
-  const day = season.dayIndex;
+  // The injury clock, not the schedule index: identical in the regular
+  // season, still ticking through June — see injuryClock in the engine.
+  const day = injuryClock(season);
 
   /*
     The press card that used to open this list is gone with the press room —

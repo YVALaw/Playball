@@ -29,7 +29,7 @@
 // reference stripped and put back — see `portableMyBracket` in the store.
 
 import type { SeasonState } from './season.js';
-import { playGame, recordResult, advancePostseasonDay } from './season.js';
+import { playGame, recordResult, advancePostseasonDay, rollHurtsFor } from './season.js';
 import type { GameResult } from './game.js';
 import { pairKey, seedOrder, type BracketGame } from './postseason.js';
 
@@ -476,7 +476,15 @@ export function stepDoubleElim(
   for (const s of nextRound(state)) playSlot(state, s, preplayed);
   // Newly-ready slots are tomorrow's business and are deliberately not counted.
   const unfinished = tonight.some((s) => s.winner === null);
-  if (!unfinished) advancePostseasonDay(state.season);
+  if (!unfinished) {
+    advancePostseasonDay(state.season);
+    // June hurts — stage 16's door, full severity. One roll per man who
+    // played tonight; derived off the clock, so it moves no stream.
+    for (const s of tonight) {
+      if (s.a !== null) rollHurtsFor(state.season, s.a);
+      if (s.b !== null) rollHurtsFor(state.season, s.b);
+    }
+  }
 }
 
 /** The whole thing at once, for the seven tournaments nobody is watching. */

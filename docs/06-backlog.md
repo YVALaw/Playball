@@ -2428,6 +2428,21 @@ register decided at 15.5's door; the engineering finds (the sim-failure
 channel riding the save-error surface, unclassified load errors) head the
 standing worklist in that file.
 
+### Stage 16's door — September 3
+
+- **Two-way men work both jobs at once.** A lineup spot AND a rotation
+  slot, batting for himself on the days he pitches (the college P/DH rule),
+  fatigue crossing both ways. No weekly hat, no rest dial.
+- **June hurts at full severity.** The same honest model as the season — a
+  tournament injury can break a title run, and the bracket's hold already
+  carries the decision.
+- **The arc moves the letter BOTH ways.** The reporter's emphasis, verbatim:
+  "not only getting worse but also getting better — a player that came in
+  as a C but he starts getting better and we see the potential go up." The
+  scout re-estimates each June; booms climb, busts slide.
+- **Tendencies: the team card.** Three to five reads in scout voice on the
+  college profile, gated by the desk — the hints-for-your-plan shape.
+
 ### And found while testing, the same night
 
 Filed by the reporter during the sorting session; sorted where they land.

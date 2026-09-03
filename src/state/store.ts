@@ -12,6 +12,7 @@
 
 import { create } from 'zustand';
 import {
+  injuryClock,
   createSeason, simNextDay, simSeason, seasonComplete, standings, nextSeason, rpi, rpiOrder,
   seasonLength, regularRecord, archiveSeason, recordSeasonMarks,
   recordCareerMarks, recordResult, restedFirst, seedTeams,
@@ -4969,7 +4970,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (bIdx < 0 || !out || !inMan) return false;
     // A man who cannot play cannot be started — refusing here is the whole
     // point of the manual-cover rule.
-    if (!available(inMan, season.dayIndex)) return false;
+    if (!available(inMan, injuryClock(season))) return false;
     /*
       No relabelling. This adopted the slot's position for one day and was
       reversed on the report: "I don't want them to be automatically
@@ -4995,7 +4996,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, userTeam, version } = get();
     const team = season?.teams[userTeam]?.team;
     if (!season || !team || get().busy) return false;
-    const day = season.dayIndex;
+    const day = injuryClock(season);
     const holder = team.lineup.findIndex((p) => p.pos === pos);
 
     const inLineup = team.lineup.findIndex((p) => p.id === id);

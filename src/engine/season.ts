@@ -1554,6 +1554,51 @@ export function advancePostseasonDay(season: SeasonState): void {
 }
 
 /**
+ * The clock injuries live on — stage 16's June rolls made it necessary.
+ *
+ * Injuries have always been written in DAY-INDEX units (`hurt(p,
+ * season.dayIndex, ...)`), and every reader — coverFor, the holds, the
+ * needs list, prognosis — compares against `season.dayIndex`. That axis
+ * freezes when the schedule runs out, so a June injury written against it
+ * could never heal inside June. This extends the same axis by one tick per
+ * postseason night: identical to `dayIndex` all season (nothing about the
+ * regular season moves), and counting again through June, so a day-to-day
+ * knock heals between rounds while a blown elbow honestly does not. Old
+ * saves' outUntil values stay comparable because the axis never jumped.
+ */
+export function injuryClock(season: SeasonState): number {
+  if (!seasonComplete(season)) return season.dayIndex;
+  const first = firstPostseasonDay(season);
+  return season.dayIndex + Math.max(0, (season.postseasonDay ?? first) - first);
+}
+
+/**
+ * One team's injury pass for one night: exactly the day loop's roll, shared
+ * with the postseason so June and May cannot drift. Derived, never drawn —
+ * `hurtsToday` takes no random numbers, so calling this in June moves no
+ * stream and re-running a night re-rolls nothing.
+ */
+export function rollHurtsFor(season: SeasonState, teamIndex: number): void {
+  const rec = season.teams[teamIndex];
+  if (!rec) return;
+  const clock = injuryClock(season);
+  for (const p of rec.team.lineup) {
+    if (!available(p, clock)) continue;
+    const going = hurtsToday(
+      p, clock, season.seed ?? 0, strainMultiplier(p), season.year ?? 0,
+    );
+    if (!going) continue;
+    hurt(p, clock, going.what, going.days);
+    if (teamIndex === season.captureBoxFor) {
+      (season.trainer ??= []).push({
+        id: p.id, name: p.name, what: going.what,
+        days: going.days, day: clock,
+      });
+    }
+  }
+}
+
+/**
  * Relief order for one game: longest rested first, ties broken by quality so a
  * manager reaches for his best available arm rather than an arbitrary one.
  *
@@ -1666,8 +1711,8 @@ export function playGame(
   */
   const homeRested = restedLineup(home.team, season.rng);
   const awayRested = restedLineup(away.team, season.rng);
-  const homeLineup = coverFor(home.team, homeRested ?? home.team.lineup, season.dayIndex);
-  const awayLineup = coverFor(away.team, awayRested ?? away.team.lineup, season.dayIndex);
+  const homeLineup = coverFor(home.team, homeRested ?? home.team.lineup, injuryClock(season));
+  const awayLineup = coverFor(away.team, awayRested ?? away.team.lineup, injuryClock(season));
 
   /*
     A day in the legs, for the men who played and the men who did not.
@@ -1690,8 +1735,8 @@ export function playGame(
 
   const result = simGame(home.team, away.team, season.rng, {
     engine: season.config.engine,
-    homeStarter: startableSlot(home.team, opts.homeSlot ?? slot, season.dayIndex),
-    awayStarter: startableSlot(away.team, opts.awaySlot ?? slot, season.dayIndex),
+    homeStarter: startableSlot(home.team, opts.homeSlot ?? slot, injuryClock(season)),
+    awayStarter: startableSlot(away.team, opts.awaySlot ?? slot, injuryClock(season)),
     ...(homeLineup ? { homeLineup } : {}),
     ...(awayLineup ? { awayLineup } : {}),
     homeStrategy: home.strategy,
@@ -2076,24 +2121,7 @@ export function simNextDay(season: SeasonState, opts: DayOptions = {}): GameSumm
     shifted underneath everything.
   */
   for (const g of day.games) {
-    for (const side of [g.home, g.away]) {
-      const rec = season.teams[side];
-      if (!rec) continue;
-      for (const p of rec.team.lineup) {
-        if (!available(p, season.dayIndex)) continue;
-        const going = hurtsToday(
-          p, season.dayIndex, season.seed ?? 0, strainMultiplier(p), season.year ?? 0,
-        );
-        if (!going) continue;
-        hurt(p, season.dayIndex, going.what, going.days);
-        if (side === season.captureBoxFor) {
-          (season.trainer ??= []).push({
-            id: p.id, name: p.name, what: going.what,
-            days: going.days, day: season.dayIndex,
-          });
-        }
-      }
-    }
+    for (const side of [g.home, g.away]) rollHurtsFor(season, side);
   }
 
   season.dayIndex += 1;

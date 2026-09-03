@@ -29,6 +29,7 @@ import { handles } from '../../state/depth.js';
 import { standing, WORDS_A_SEASON } from '../../engine/eligibility.js';
 import { canRedshirt, MAX_REDSHIRTS, redshirtCount } from '../../engine/redshirt.js';
 import { secondaryPositions } from '../../engine/positions.js';
+import { injuryClock } from '../../engine/season.js';
 import { isHurt, prognosis } from '../../engine/injury.js';
 import { legWeariness } from '../../engine/workload.js';
 import { mood, promiseOf, squadRanks } from '../../engine/morale.js';
@@ -120,14 +121,15 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   const school = standing(p);
   const sitting = (p as AnyPlayer & { redshirt?: boolean }).redshirt === true;
   const outUntil = (p as AnyPlayer & { outUntil?: number }).outUntil;
-  const suspended = typeof outUntil === 'number' && season.dayIndex < outUntil;
+  const clock = injuryClock(season);
+  const suspended = typeof outUntil === 'number' && clock < outUntil;
   const wordsLeft = WORDS_A_SEASON - wordsUsed;
   // The real rule: one appearance burns the season, so this is only a decision
   // before the first pitch of the year.
   const preseason = season.dayIndex === 0;
   const canSit = preseason && mine && canRedshirt(p) && redshirtCount(team) < MAX_REDSHIRTS;
 
-  const hurtNow = isHurt(p, season.dayIndex);
+  const hurtNow = isHurt(p, clock);
   const tired = legWeariness(p);
   const resting = !hurtNow && suspended;
   const ranks = squadRanks(team);
@@ -180,7 +182,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
           <small>PLAYER ACTIONS</small>
           <strong>{p.name}</strong>
           <span>
-            {hurtNow ? prognosis(p, season.dayIndex)
+            {hurtNow ? prognosis(p, clock)
               : sitting ? 'Redshirted. This season does not count against him.'
                 : `${feeling.toUpperCase()} · he ${promiseOf(p, rank)}.`}
           </span>
@@ -207,7 +209,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
                 icon={<StopwatchIcon />}
                 title={resting ? 'He is already sitting' : 'Give him three days'}
                 detail={hurtNow
-                  ? prognosis(p, season.dayIndex)
+                  ? prognosis(p, clock)
                   : tired > 0.35
                     ? 'He has played a great many days in a row. Take the miles out of his legs.'
                     : 'Rest is for a man who needs it. His legs are fine.'}
@@ -226,7 +228,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
             {hurtNow && (
               <FieldNote
                 title="The trainer owns this one"
-                text={`${prognosis(p, season.dayIndex)} Rest will not speed it up —
+                text={`${prognosis(p, clock)} Rest will not speed it up —
                   the depth chart decides who covers him while he heals.`}
               />
             )}

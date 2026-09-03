@@ -34,7 +34,7 @@ import { returnPending, whyOut } from '../Needs.js';
 import { Modal } from '../Modal.js';
 import { overallOf } from '../../engine/ratings.js';
 import { captainOf } from '../../engine/captains.js';
-import { battingAverage, era, inningsPitched } from '../../engine/season.js';
+import { battingAverage, era, inningsPitched, injuryClock } from '../../engine/season.js';
 import { handles } from '../../state/depth.js';
 import { available, cardGaps } from '../../engine/depthChart.js';
 import type { PlayerId, Position } from '../../engine/types.js';
@@ -383,8 +383,8 @@ export function Lineup() {
                       desk says it too, but the lineup is where the errand
                       lands, and a red row that will not explain itself sends
                       you back a screen to find out. */}
-                  {!available(p, season.dayIndex) && (
-                    <small className="row-why">✚ {whyOut(p, season.dayIndex)}</small>
+                  {!available(p, injuryClock(season)) && (
+                    <small className="row-why">✚ {whyOut(p, injuryClock(season))}</small>
                   )}
                 </span>
                 <Rating label="CON" value={(p as Hitter).contact} />
@@ -420,7 +420,7 @@ export function Lineup() {
             question by itself; this button is how the coach says "the cover
             keeps the spot" — and until one of the two happens, NEEDS YOU
             holds the day. Full careers only, the same rule as the card. */}
-        {mine && team.team.bench.filter((p) => returnPending(p, season.dayIndex)).map((p) => (
+        {mine && team.team.bench.filter((p) => returnPending(p, injuryClock(season))).map((p) => (
           <div key={`return-${p.id}`} className="return-strip">
             <div>
               <strong>{p.name} is fit again.</strong>
@@ -433,7 +433,7 @@ export function Lineup() {
         ))}
         <section className="lineup-bench">
           {team.team.bench.map((p) => {
-            const hurt = !available(p, season.dayIndex);
+            const hurt = !available(p, injuryClock(season));
             const on = pickedBench === p.id;
             return (
               <button
@@ -459,7 +459,7 @@ export function Lineup() {
                     {p.pos} · Bats {p.bats} · {overallOf(p)} OVR
                     {/* The reason, not just the fact — same report as the
                         order above. */}
-                    {hurt && <b className="bench-out"> · ✚ {whyOut(p, season.dayIndex)}</b>}
+                    {hurt && <b className="bench-out"> · ✚ {whyOut(p, injuryClock(season))}</b>}
                   </small>
                 </span>
                 <Rating label="CON" value={(p as Hitter).contact} />
