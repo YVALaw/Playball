@@ -111,11 +111,11 @@ concedes the synthesis: *"put personality into occasional reactions."* So:
 
 Ordered; each is a bounded pass.
 
-1. **Split the failure channels.** Simulation failures ride the save-error
-   surface, so NOT SAVED can describe a crashed sim and the retry runs
-   `saveNow`. Give the sim its own message and safe retry
-   (`store.ts`/`simClient.ts`/`App.tsx`). The audit's single best
-   engineering find.
+1. **Split the failure channels — DONE September 3.** `simError` is its
+   own store channel; the banner reads THE SIM STOPPED · TAP TO RUN IT
+   AGAIN and its tap re-runs the sim, which is safe because a failed run
+   never replaced the season (the generation guard). The save banner is a
+   save banner again.
 2. **Classify load errors.** Every failed load reads as a version mismatch
    (`App.tsx:267` region); route unknown causes to "Couldn't open this
    dynasty" with a real recovery path, and keep the version story for

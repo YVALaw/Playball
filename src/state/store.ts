@@ -1181,6 +1181,16 @@ export interface DynastyStore {
   loadSlot: (slot?: string) => Promise<boolean>;
   saveState: 'idle' | 'saving' | 'saved' | 'error';
   lastSaveError: string | null;
+  /**
+   * A failed season simulation, on its own channel.
+   *
+   * The audit's best engineering find: this used to ride `lastSaveError`,
+   * so a crashed sim wore the NOT SAVED banner and its retry ran `saveNow`
+   * — an action that could not fix anything. The season is only replaced on
+   * success (the generation guard), so re-running the sim from the same
+   * state is safe, and that is what the banner's tap does now.
+   */
+  simError: string | null;
   /** Why the save on disk could not be opened, if it could not. */
   loadError: string | null;
 
@@ -2731,6 +2741,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   playSeason: async () => {
+    set({ simError: null });
     const { season, busy } = get();
     if (!season || busy) return;
     set({ busy: true, progress: null });
@@ -2767,14 +2778,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       get().noteSeasonNews();
       void get().saveNow();
     } catch (e) {
-      // Routed somewhere the player can actually see. This used to write only
-      // `lastSaveError`, which nothing renders unless `saveState` is 'error' —
-      // a failed sim un-dimmed the button and looked like nothing happened.
+      // Its own channel — see simError on the store. The save banner used to
+      // wear this failure, and its retry saved instead of simulating.
       set({
         busy: false,
         progress: null,
-        saveState: 'error',
-        lastSaveError: `The season could not be simulated: ${e instanceof Error ? e.message : String(e)}`,
+        simError: e instanceof Error ? e.message : String(e),
       });
     }
   },
@@ -5267,6 +5276,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   saveState: 'idle',
   lastSaveError: null,
+  simError: null,
   loadError: null,
 
   saveNow: async (slot = AUTOSAVE_SLOT, name?: string) => {

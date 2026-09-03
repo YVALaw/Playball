@@ -690,6 +690,35 @@ function SaveAlert({ topmost }: { topmost?: boolean }) {
   const saveState = useDynasty((s) => s.saveState);
   const lastSaveError = useDynasty((s) => s.lastSaveError);
   const saveNow = useDynasty((s) => s.saveNow);
+  const simError = useDynasty((s) => s.simError);
+  const playSeason = useDynasty((s) => s.playSeason);
+  // The sim's failure is not a save failure, and its retry runs the sim —
+  // safe, because a failed run never replaced the season.
+  if (simError !== null) {
+    return (
+      <button
+        onClick={() => { void playSeason(); }}
+        className="tap"
+        style={{
+          flex: 'none', width: '100%', textAlign: 'left',
+          padding: '7px 14px 8px',
+          paddingTop: topmost ? 'calc(env(safe-area-inset-top) + 7px)' : 7,
+          background: 'var(--alert)', color: 'var(--cream)',
+        }}
+      >
+        <div style={{ font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em' }}>
+          THE SIM STOPPED · TAP TO RUN IT AGAIN
+        </div>
+        <div style={{
+          marginTop: 2, font: "400 calc(10px * var(--ts))/1.35 var(--body)",
+          color: 'rgba(var(--cream-rgb), .82)',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          Nothing was lost — the season is exactly where it was.
+        </div>
+      </button>
+    );
+  }
   if (saveState !== 'error') return null;
   return (
     <button
