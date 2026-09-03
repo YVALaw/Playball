@@ -15,6 +15,10 @@ import { createPortal } from 'react-dom';
 import { readPrefs } from '../state/devicePrefs.js';
 import { useDynasty } from '../state/store.js';
 import { TUTORIALS } from './tutorials.js';
+import { assistantFor } from '../engine/program.js';
+
+/** "Leonardo Townsend" is the masthead's business; a card just says Townsend. */
+const lastName = (full: string): string => full.split(' ').pop() ?? full;
 
 /**
  * Show this screen's first-visit tutorial, if it has one and it is unseen.
@@ -24,6 +28,13 @@ import { TUTORIALS } from './tutorials.js';
  * the key in the copy table and in the save.
  */
 export function FirstVisit({ id }: { id: string }) {
+  /*
+    Who is talking. Decided at 15.5's door: the assistant is "the one
+    speaking in the tutorials" — the same right-hand man who signs the inbox,
+    so the game has ONE friendly voice teaching it and writing home about it.
+    The copy was already written in his register; this is the byline.
+  */
+  const assistant = useDynasty((s) => assistantFor(s.coach.name));
   const seen = useDynasty((s) => s.seenTutorials);
   const markSeen = useDynasty((s) => s.markTutorialSeen);
   const pages = TUTORIALS[id];
@@ -86,7 +97,8 @@ export function FirstVisit({ id }: { id: string }) {
       <section className="tutorial-card rise-in" onClick={(e) => e.stopPropagation()}>
         <div className="flow-section-title">
           <span className="label">
-            FIRST TIME HERE{pages.length > 1 ? ` · ${page + 1} OF ${pages.length}` : ''}
+            {lastName(assistant).toUpperCase()} SHOWS YOU AROUND
+            {pages.length > 1 ? ` · ${page + 1} OF ${pages.length}` : ''}
           </span>
           <button className="tap" type="button" onClick={() => done.current()}>SKIP</button>
         </div>

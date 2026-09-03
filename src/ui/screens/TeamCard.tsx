@@ -267,15 +267,17 @@ function CollegeActions(
             icon={<StarIcon />}
             title={tracked ? 'Program tracked' : 'Track program'}
             detail={tracked
-              ? 'Saved to the watchlist on your program tab.'
-              : 'Keep it in view as the season changes.'}
+              ? 'They are on WATCHLIST, on your program tab. Tap again to drop them.'
+              : 'Files them under WATCHLIST on your program tab, so their season stays one tap away.'}
             selected={tracked}
             onClick={() => toggleProgramWatch(abbr)}
           />
           <ActionCard
             icon={<BarChartIcon />}
             title={comparing ? 'Comparison open' : 'Compare with your club'}
-            detail="This program's profile beside your own."
+            detail={comparing
+              ? 'The side-by-side is on the OVERVIEW sheet behind this menu.'
+              : 'Puts their profile beside yours, right here on the overview.'}
             selected={comparing}
             onClick={() => { onCompare(); requestClose(); }}
           />
@@ -289,12 +291,12 @@ function CollegeActions(
             title={!scoutsHimself ? 'Your staff scouts them'
               : scouted ? 'Book bought' : `Scout them · ${dollars(SCOUT_COST)}`}
             detail={!scoutsHimself
-              ? 'Every report arrives as part of the wage bill.'
+              ? 'Your staff buys these books out of the wage bill; the reads are already on their player cards.'
               : scouted
-                ? `Their tendencies read for the next ${SCOUT_DAYS} days.`
+                ? `Bought. Open any of their players — the tendency line on his card reads for the next ${SCOUT_DAYS} days.`
                 : canAfford
-                  ? 'Buy the book: every tendency on their roster, readable on each card.'
-                  : 'The ledger cannot carry it this year.'}
+                  ? `Buys their book for ${SCOUT_DAYS} days: every man's tendencies show on his player card, under their ROSTER sheet.`
+                  : 'The ledger cannot carry it this year. The budget is on your program tab.'}
             selected={scouted || !scoutsHimself}
             onClick={() => { if (scoutsHimself && !scouted && canAfford) scoutTeam(index); }}
           />
@@ -302,8 +304,8 @@ function CollegeActions(
             icon={<IdCardIcon />}
             title={jobPath ? 'Job path tracked' : 'Track job path'}
             detail={jobPath
-              ? 'When this chair calls you, the market stars it.'
-              : 'Note interest without applying for a job that is not open.'}
+              ? 'Starred at the job market, and the wire writes to your inbox when this chair moves. Tap again to stop.'
+              : 'Quiet interest, no application: the job market stars this chair when it opens, and your assistant writes when it moves.'}
             selected={jobPath}
             onClick={() => toggleJobWatch(abbr)}
           />
@@ -315,10 +317,10 @@ function CollegeActions(
               : approaches.tried.length >= 3 ? 'Three letters sent'
               : 'Write to them'}
             detail={said !== null ? said
-              : approaches.interest.includes(index) ? 'Expect them at the carousel.'
-              : approaches.tried.includes(index) ? 'Once a school a season.'
-              : approaches.tried.length >= 3 ? 'Three a season. You have sent yours.'
-              : 'Three a season, never the same school twice. Word can get back.'}
+              : approaches.interest.includes(index) ? 'They would take the call — expect them when chairs move. Watch your inbox.'
+              : approaches.tried.includes(index) ? 'Sent this season. Once a school a season is the rule.'
+              : approaches.tried.length >= 3 ? 'Three a season, and you have sent yours. The market reopens with the year.'
+              : 'Asks about the chair, quietly. Three a season, never the same school twice, and word can get back to your board.'}
             selected={said !== null
               || approaches.interest.includes(index)
               || approaches.tried.includes(index)}
