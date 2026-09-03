@@ -6325,6 +6325,28 @@ happens the fit-again card is a must. Injuries only roll against the nine,
 so every healed bench man was a displaced starter — no false positives. A
 fortnight's grace spares old saves a retroactive hold.
 
+## 46. Stage 15.5, first half — SHIPPED September 2 2026, late night
+
+**The inbox gets a desk.** `assistantFor(coachName)` derives the one
+right-hand man from the coach's name — deterministic, no save migration, the
+same man for the whole career. The inbox masthead is his desk. New `wire`
+kind: a watched chair changing hands (postCarousel narrowed to exactly that,
+in-conference cards and the rollup gone) and the star-portal rumour at the
+portal's opening (threshold 90, capped at two, worded as rumour with no stat
+line; the rarity that makes it an event is 16's knob). Cut, per the routing
+rule: injury, ineligibility and healed mail, streak cards, the draft count,
+winter badges, the captain card. `classroomNews`/`trainerNews`/
+`recoveryNews` removed whole — their engine logs still fill for the
+surfaces that read them.
+
+**The scouting report becomes a code.** `CeilingLine` is `{ text, grade }`
+now — one pool per potential letter, D through S+, ~110 lines of prose with
+15+ per generated grade, S+ reserved for the store's man. `hintsFor` and
+the per-man hash unchanged; development lines keep their bands. The tests
+that pinned the old fog were reversed with the design and now hold the
+opposite: no text in two pools, every generated grade 15 deep, a national
+class heard in many voices with zero ambiguous sentences.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

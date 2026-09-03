@@ -900,10 +900,13 @@ was collected here rather than left scattered across three stages, because they
 are one piece of work and doing them separately means redrawing the same park
 three times.
 
-**The place itself.**
+**The place itself.** *(Scoped at the door, September 2, night: "for now
+let's keep the one we have only" — no per-program or per-conference parks in
+this pass; the stage dresses the one ground. And the crowd's
+modelled-or-painted call belongs to the performance profile's numbers.)*
 
-- **Stands, crowd and the shape of a ground.** Ninety-six programs currently
-  play in one anonymous bowl. A park should say whose it is.
+- **Stands, crowd and the shape of a ground** — for the one park the game
+  has. Whose-park-is-whose left v1 at the door.
 - **Lighting and time of day** — a midweek afternoon and a June night are not
   the same game.
 - **School colours in the park**, not only on the cards around it.
@@ -963,7 +966,13 @@ four-year-old Android, which is the question the profile exists to answer.
 
 ## Stage 15.5 · The voice
 
-**Size:** medium · **Added September 1 2026, out of play**
+**Size:** medium · **Added September 1 2026, out of play** · **Half shipped
+September 2, late night:** the assistant, the inbox rework and the wire
+(`05` §46), and the learnable scouting report — one pool per letter, ~110
+lines of prose, the tests reversed with the design. What remains of the
+stage is the writing pass itself ("Everything it says", below) — the named
+secret-leaks are already out and a sweep found no more captions reciting
+rules.
 
 Two pieces, and they are the same piece: what the game *says*.
 

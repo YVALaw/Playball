@@ -2374,6 +2374,24 @@ must: a healed man cannot play again until the coach decides his return —
 back into the nine, or the cover keeps the spot — "that way we don't
 forget." Rides the next batch with the rest of the needs work.
 
+### The stage doors, answered — the run to three stages
+
+Asked before starting 15.5, with 15's doors batched in so the run does not
+stall:
+
+- **What still earns mail:** the wire-watch pair, trophies and milestones,
+  and board/job pressure. **Recruiting news is cut** — no signing-day mail,
+  no flip mail, no rival-class mail. Also cut on inspection, by the same
+  routing rule: ineligibility cards, streak cards, the draft count, and the
+  healed card (the hold owns it now).
+- **Job posts reach the inbox for watched chairs only.** The full market
+  stays on the job screen.
+- **Stage 15 keeps the one ballpark.** "For now let's keep the one we have
+  only" — the archetype/per-conference question is deferred out of v1's
+  ballpark pass entirely; the stage dresses the ground it has.
+- **The crowd waits for the profile.** Geometry first; modelled versus
+  painted is decided by the throttled performance profile's numbers.
+
 ### And found while testing, the same night
 
 Filed by the reporter during the sorting session; sorted where they land.
