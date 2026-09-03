@@ -144,6 +144,17 @@ export interface SeasonOutcome {
    * forever".
    */
   drought?: number;
+  /**
+   * Springs in a row, this one included, without a NATIONAL title.
+   *
+   * Read only by `summitDrag`, and only above the summit line — the door's
+   * word is "CONTINUED titles", and a single sentence cannot be priced off
+   * a single year: a dynasty is allowed a near-miss June between crowns,
+   * and what it is not allowed is a drought. Optional for the same reason
+   * `drought` is: an absent counter means "not counted", and the drag then
+   * treats the year on its own merits.
+   */
+  sinceTitle?: number;
 }
 
 export const winPct = (o: SeasonOutcome): number =>
@@ -299,12 +310,32 @@ export const SUMMIT_OVER = 85;
 export function summitDrag(current: number, o: SeasonOutcome): number {
   if (current <= SUMMIT_OVER) return 0;
   const height = (current - SUMMIT_OVER) / (95 - SUMMIT_OVER);
-  const short =
+  /*
+    Two sizings were measured and both failed the door from opposite sides.
+    Flat prices of 10/14/17/20 let a re-dealt league grow a SEVENTEEN-season
+    zero-title squatter (Omaha's 10 settles at 92.5 — the equilibrium for a
+    repeated year is (100 + 8.5·paid)/(1 + paid/10)); flat 22/26/30/34
+    killed the squatter and every dynasty with it — a four-title program
+    held the crown three seasons, because one early June exit at 0.22 was
+    an instant ejection. The door's word is CONTINUED titles, which is a
+    sentence about a run of years, not about one of them.
+
+    So the drag prices the title DROUGHT. The first title-less year at
+    altitude is near-free (a dynasty is allowed a near-miss June between
+    crowns), the second leans, and by the third the ladder reaches the
+    ejection prices — a program that has genuinely stopped winning it
+    slides under 90 across four or five years, while one that keeps
+    winning every second or third spring keeps resetting the meter and
+    holds. The base ladder still orders the years (an Omaha exit is a
+    better argument than a bare bid), and a title still pays nothing.
+  */
+  const base =
     o.wonTitle ? 0 :
     o.reachedOmaha ? 10 :
-    o.wonConference ? 14 :
-    o.madeTournament ? 17 : 20;
-  return short * height;
+    o.wonConference ? 13 :
+    o.madeTournament ? 15 : 17;
+  const droughtBite = Math.min(2, Math.max(0, (o.sinceTitle ?? 2) - 1));
+  return base * (0.3 + 0.85 * droughtBite) * height;
 }
 
 export function nextPrestige(current: number, o: SeasonOutcome): number {

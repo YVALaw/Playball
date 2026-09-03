@@ -616,6 +616,9 @@ export function runRivalYear(
     // same rule the player does.
     record.drought = outcome.madeRegionals ? 0 : (record.drought ?? 0) + 1;
     outcome.drought = record.drought;
+    // The title drought, for the summit's drag. Same shape, same reason.
+    record.sinceTitle = outcome.wonTitle ? 0 : (record.sinceTitle ?? 0) + 1;
+    outcome.sinceTitle = record.sinceTitle;
     const roster = rosterStrength(record.team);
     const review = reviewSeason(
       coach, record.prestige, roster, outcome, games,

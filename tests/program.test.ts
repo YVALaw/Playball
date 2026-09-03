@@ -1028,13 +1028,31 @@ describe('the summit', () => {
       wonConference: true, wonRegional: true, reachedOmaha: true, wonTitle: true });
     const omaha = outcome({ ...title, wonTitle: false });
     const league = outcome({ ...omaha, reachedOmaha: false, wonRegional: false });
-    // The champion stands. The Omaha run leaks. The mere conference title
-    // leaks faster -- the score alone cannot see any of this from up here,
-    // because at seventy-two percent the target's ceiling makes all three
-    // years read as perfect.
+    // The champion stands; anything less leaks. High up, the drag floors at
+    // the summit line, so an Omaha exit and a mere conference title read the
+    // same from 95 -- "not a title" -- and only at cruising altitude do they
+    // separate. The pin that matters is the door's own sentence: a program
+    // that reaches June's last weekend EVERY year and never wins it settles
+    // under 90 -- measured after a re-dealt league produced a seventeen-season
+    // zero-title squatter at the first, gentler prices.
     expect(nextPrestige(95, title)).toBe(95);
     expect(nextPrestige(95, omaha)).toBeLessThan(95);
-    expect(nextPrestige(95, league)).toBeLessThan(nextPrestige(95, omaha));
+    expect(nextPrestige(95, league)).toBeLessThanOrEqual(nextPrestige(95, omaha));
+    let held = 95;
+    for (let y = 0; y < 10; y++) {
+      // The counter the world actually maintains: springs without a title.
+      held = nextPrestige(held, { ...omaha, sinceTitle: y + 1 });
+    }
+    expect(held, 'perpetual Omaha without a title kept the crown').toBeLessThan(90.5);
+    // And the other half of the door: a program that keeps WINNING it —
+    // every other spring — holds a decade reign without breaking a sweat.
+    let crown = 92;
+    for (let y = 0; y < 10; y++) {
+      crown = nextPrestige(crown, y % 2 === 0
+        ? { ...title, sinceTitle: 0 }
+        : { ...omaha, sinceTitle: 1 });
+    }
+    expect(crown, 'a true dynasty could not hold its own crown').toBeGreaterThanOrEqual(90);
     // And reaching 90+ stays possible: one title year from the high eighties
     // arrives, and the next climbs on from there.
     expect(nextPrestige(88, title)).toBeGreaterThanOrEqual(90);

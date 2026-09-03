@@ -6461,17 +6461,26 @@ rolls are derived, so the same June produces the same casualties twice (by
 test) and no stream moves. All three postseason night sites roll both
 participants after the night, so the pregame FIX-THE-LINEUP hold catches it.
 
-**The summit drag** (`SUMMIT_OVER`, `summitDrag` — program.ts, §44's door).
-Measured first: eight programs at 90+ simultaneously in year thirty, one
-holding the crown thirteen straight seasons with zero titles. Above 85 a
-season is priced by its jewels, because at seventy-two percent the target's
-ceiling makes a title year and an Omaha exit read identically: a champion
-pays no drag, an Omaha run leaks, a mere conference title leaks properly,
-and the blue-blood shelter inverts on the way down (rate 0.22). Same seed
-after: twelve reigns for twenty-one, 83 program-seasons at 90+ for 204,
-longest reign nine, every run of five-plus belonging to a program with
-titles. Turnover, tenure, clear rate, champions: unmoved. The carousel
-probe now prints reigns and a star census.
+**The summit drag** (`SUMMIT_OVER`, `summitDrag`, `sinceTitle` —
+program.ts, §44's door). Measured first: eight programs at 90+
+simultaneously in year thirty, one holding the crown thirteen straight
+seasons with zero titles. Above 85 a season is priced by its jewels,
+because at seventy-two percent the target's ceiling makes a title year and
+an Omaha exit read identically — and it took three sizings to price them,
+each measured over thirty seasons. Flat prices let a re-dealt league grow
+a SEVENTEEN-season zero-title squatter (Omaha's 10 settles at 92.5 by the
+repeated-year equilibrium (100 + 8.5·paid)/(1 + paid/10)); flat ejection
+prices killed the squatter and every dynasty with it (a four-title program
+held three seasons). The door's word is CONTINUED titles — a sentence
+about a run of years — so the drag prices the title DROUGHT: the first
+crownless June at altitude is near-free, the second leans, the third
+reaches ejection prices, and a title resets the meter. Measured at the
+final sizing: ten reigns of 3+, the longest FIFTEEN seasons on three
+titles, an eight-season reign on six, zero-title long runs extinct, 89
+program-seasons at 90+ for the undragged 204, sixteen distinct champions,
+turnover and clear rate unmoved. The carousel probe now prints reigns and
+a star census; the blue-blood shelter still inverts above the line
+(rate 0.22).
 
 **The portal balance pass** (portal.ts). The 97-overall was bookkeeping:
 promises rank hitters, so every ace read squadRank twenty and "he was told

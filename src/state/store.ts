@@ -2837,6 +2837,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // The drought. Same rule as the other ninety five — see `runRivalYear`.
     me.drought = outcome.madeRegionals ? 0 : (me.drought ?? 0) + 1;
     outcome.drought = me.drought;
+    // The title drought too — the summit reads it; see summitDrag.
+    me.sinceTitle = outcome.wonTitle ? 0 : (me.sinceTitle ?? 0) + 1;
+    outcome.sinceTitle = me.sinceTitle;
 
     /*
       Judged against the country as it is now, like everybody else. See

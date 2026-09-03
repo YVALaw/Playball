@@ -463,11 +463,20 @@ export function Manage() {
   // first: a steal now emits one of its own, and a run scored on the plate
   // appearance after it must still flash.
   const scoredRunners = useMemo(() => {
-    return (live?.lastPlay ?? [])
+    const crossed = (live?.lastPlay ?? [])
       .filter((e) => e.kind === 'advance')
       .flatMap((e) => e.runners ?? [])
       .filter((r) => r.to === 4)
       .map((r) => ({ id: r.id, from: r.from }));
+    // One crossing per man per play, however many advance groups mention it —
+    // a resumed journal can replay the same crossing into lastPlay twice, and
+    // downstream these become React keys.
+    const seen = new Set<string>();
+    return crossed.filter((r) => {
+      if (seen.has(String(r.id))) return false;
+      seen.add(String(r.id));
+      return true;
+    });
   }, [live, version]);
 
   // A run crossing is the one moment worth announcing, so the plate flashes.

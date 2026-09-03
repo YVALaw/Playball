@@ -2501,3 +2501,8 @@ against the promises above:
 Still open after the stage, on purpose: the store's grant (17), the
 language-triage worklist items 2–7 (`docs/11`), and the screen queue. The
 reporter tests all three stages next; the final audit rides near ship.
+
+- **A React 19 dev warning on boot** — "cannot use a ref on a React element
+  as a container to createPortal if that element also sets children" — fires
+  once on a dev load of a save with a benched game; no visible breakage, and
+  StrictMode-only. Worth a look when a portal next changes hands.

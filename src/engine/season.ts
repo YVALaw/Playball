@@ -518,6 +518,11 @@ export interface TeamRecord {
    */
   drought?: number;
   /**
+   * Springs in a row without a national title. The summit's own drought —
+   * see `summitDrag`, which is the only reader. Sparse like its sibling.
+   */
+  sinceTitle?: number;
+  /**
    * The user coach's offense and defense skills, set only on the program he
    * runs. `playGame` forwards them into every game this team plays — managed or
    * simmed, the same tiny edge — and the store keeps them current when a skill

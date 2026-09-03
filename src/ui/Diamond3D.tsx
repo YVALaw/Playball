@@ -1386,10 +1386,21 @@ export function Diamond3D({
   useEffect(() => {
     const list = scored?.runners ?? [];
     if (list.length === 0) return;
-    setFinishing((f) => [
-      ...f,
-      ...list.map((r) => ({ key: `${r.id}-${scored?.tick ?? 0}`, from: r.from })),
-    ]);
+    // Idempotent on purpose: StrictMode runs effects twice in dev, and a
+    // second append of the same play's runners rendered every finisher as a
+    // duplicate key. The key set is the play's identity; adding it twice is
+    // adding nothing.
+    setFinishing((f) => {
+      const have = new Set(f.map((x) => x.key));
+      const add: { key: string; from: 0 | 1 | 2 | 3 }[] = [];
+      for (const r of list) {
+        const key = `${r.id}-${scored?.tick ?? 0}`;
+        if (have.has(key)) continue;
+        have.add(key);
+        add.push({ key, from: r.from });
+      }
+      return add.length === 0 ? f : [...f, ...add];
+    });
   }, [scored?.tick]);
 
   // Who was already on base before this play. Anyone else is the batter, and he

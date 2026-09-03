@@ -337,9 +337,11 @@ locked* in `06-backlog.md`.
     and park effects as geometry (§K1, §K2). Collected into one stage because
     they are one piece of work, and doing them apart means redrawing the same
     park three times. *Take the throttled profile first.*
-16. **The simulation's last mile** — run-expectancy AI, recruits drafted out of
-    high school, the measurement debt. The 3D and park-geometry items moved
-    into stage 15.
+16. **The simulation's last mile** — SHIPPED September 3 2026: run-expectancy
+    AI, recruits drafted out of high school, the measurement debt — and the
+    sorting session's growth: June injuries, the summit drag, the portal
+    balance, findable gems, arcs, the winter ritual, the scout's book, and
+    two-way players. `05` §49.
 17. **The store** — the S+ player and Play Billing.
 18. **The phone** — Capacitor and an APK on real hardware. Deferred to here
     because there is no Android device yet; the two errands at the top of the
@@ -395,11 +397,12 @@ comes off `weeklyBudget(stars, spentInJune)`, the same call the user's board
 header makes, which was the precondition for letting the other ninety-five keep
 drafted players at all.
 
-- **The last percentage point of the walk deficit.** The eight-seed sweep reads
-  walks 5.2% under target and only about half of that is accounted for. It is a
-  game-level effect of the kind the pace channel turned out to be, and it wants
-  the same treatment: isolate a channel, measure it against the sweep, dial it.
-  §18.8
+- **The last percentage point of the walk deficit.** *(Closed to numbers,
+  September 3 2026.)* The run-expectancy bunt call recovered the situational
+  layer's unexplained point on its way in — the old heuristic was spending
+  plate appearances on bad bunts — and the sweep's worst deviation fell 5.2%
+  to 4.0%. The residual is bounded and attributed (per-PA −1.4%, badges −0.5%
+  known; the rest is the PA shortfall compounding); `05` §49 and §18.8.
 
 ## Debt
 
