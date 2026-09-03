@@ -882,9 +882,13 @@ record falls, quoting the book it will have to beat. The depth pass is tiered
 on purpose: sheen and shadow at the top of the hierarchy, one pixel of press
 on ordinary rows — when everything is shiny, nothing is.
 
-## Stage 15 · The ballpark
+## Stage 15 · The ballpark — **SHIPPED September 3 2026**
 
-**Size:** large · **New — everything about the 3D park, in one place**
+**Size:** large · **New — everything about the 3D park, in one place** ·
+Full write-up in `05` §48; the one ground per the door decision, the
+tournament view having left with the sorting session, instanced markers
+skipped against the re-measured profile, park effects out with the
+one-park door.
 
 **Carried the tournament view — and gave it back (September 2, night).** It
 rode here only because it was undesigned; the design is now settled (`06`

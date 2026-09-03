@@ -6387,6 +6387,67 @@ rule the profile sets for the crowd decision the reporter delegated to it:
 per addition** — the budget says the upgrade is plausible, the phone gets
 the final word.
 
+## 48. Stage 15, the ballpark — SHIPPED September 3 2026
+
+Built in one sitting against live play, with the reporter filing findings
+mid-build. The one ground (the whose-park question left v1 at the door).
+
+**The defense owns its ground.** `regionOwner` partitions the fan — the
+mound's lane to the pitcher, the infield in four lanes, the outfield in
+thirds — and `playPlan` asks it instead of measuring distance. Kills the
+reported 2B-to-the-mound chase; pinned in `tests/field-regions` including
+that every station stands inside its own region.
+
+**The camera has an operator.** The aim eases 42% of the way toward where
+the ball dies, the seat drifts for parallax, exponential smoothing keeps it
+frame-rate independent, reduced motion keeps the fixed seat. Rides the
+demand window, stretched to cover the ease home.
+
+**The park is dressed.** The left-field wall gap was cylinder theta running
+a quarter-turn off circle theta — wall and cap now cover the grass's own
+fan. A raked bowl beyond the wall wears a painted neutral crowd (one baked
+CanvasTexture; the foul-line banks lasted one build — they cut into the
+park and the bowl needed no help). Wall panels in the home school's colour.
+Day and night derived from the fixture: midweek afternoons, series and June
+under glowing towers (`shade()` is the whole lighting model — every
+material is deliberately unlit). Foul poles, scoreboard, mown stripes and
+light towers predated the stage and stayed.
+
+**The play reads honestly.** Three reports, one root: a ball NOT in the
+fielder's hands reads as a hit. A run-down grounder lay beyond its chaser;
+a caught fly floated at glove height, which this camera projects as
+BEHIND the dot. Both now sit in the man's hands from the moment the play is
+his. The bases stopped blinking (coplanar with the grass; the new moving
+camera exposed the z-fight — lifted). Walks stopped teleporting runners
+(the decision gap blinks null between batters and the field was unmounting
+every dot; it holds the last runner set across the gap).
+
+**The whole play is played.** The chaser plants a half-step toward his
+target before the throw (the turn), the nearest man breaks for the bag as
+it leaves (the receiver), leans into the catch while it is in the air (the
+stretch), and everyone walks home after.
+
+**The homer gets a show.** Three volleys staggered along the wall's
+tangent, sixty-two additive sparks — and HOME RUN (or GRAND SLAM when three
+scored ahead of him) splashes over the park in the display face with a gold
+glow, DOM not mesh, gone in 2.6 seconds, held still under reduced motion.
+
+**REPLAY.** SEE THAT AGAIN in the manager tools re-keys the last BallHit;
+the flight, the chase, the receiver, the pan and a homer's show run again.
+Zero draws, zero engine, disabled mid-play.
+
+**2D/3D parity.** The flat diamond reads the same BallHit in its own
+abstract language: a dot slides plate-to-landing, rings green for a hit,
+clay for an out, gold for a homer.
+
+**Instanced markers — skipped, with the numbers.** The item existed for
+"the render cost that comes with a busier park"; the busier park is
+painted, and the re-measured profile on the dressed scene reads p50 0.0ms /
+p95 1.3ms main-thread with zero long tasks during live play. Fifteen
+meshes do not need instancing; the one ~34ms spike per play is the React
+commit, not the scene. Park effects as geometry left v1 with the one-park
+door decision.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code
