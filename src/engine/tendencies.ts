@@ -29,7 +29,7 @@
 
 import { fastballShare, repertoireOf } from './pitches.js';
 import { scoutNoise } from './scouting.js';
-import type { Hitter, Pitcher, Player } from './types.js';
+import type { Hitter, Pitcher, Player, Team } from './types.js';
 
 /**
  * The nine slots. A player has one reading in each slot that applies to him:
@@ -219,6 +219,148 @@ export function tendencyLabel(p: Player, slot: TendencyId): string | null {
   const pole = tendenciesOf(p)[slot] ?? 0;
   if (pole === 0) return null;
   return pole > 0 ? TENDENCIES[slot].plus : TENDENCIES[slot].minus;
+}
+
+// ---------------------------------------------------------------------------
+// The scout's book: what a TEAM is like
+// ---------------------------------------------------------------------------
+
+/**
+ * One read on a rival club, in the scout's own voice: what they do, and what
+ * to do about it.
+ */
+export interface TeamRead {
+  slot: TendencyId;
+  title: string;
+  text: string;
+}
+
+/**
+ * The book's lines, one pair per slot. {n} is how many men carry the habit
+ * and {of} how many were counted — the scout says the number out loud
+ * because "four of the nine" is a plan and "some of them" is a shrug. Every
+ * text names the counter-move, because a read you cannot act on is trivia.
+ */
+const READS: Record<TendencyId, { plus: [string, string]; minus: [string, string] }> = {
+  approach: {
+    plus: ['They chase',
+      '{n} of the {of} in that lineup are free swingers. Spin it off the plate early — nobody up there came to walk.'],
+    minus: ['They make you throw it',
+      '{n} of {of} are patient bats. A nibbler walks the yard against this club; attack the zone and let the defence work.'],
+  },
+  firstPitch: {
+    plus: ['Ambush hitters',
+      '{n} of {of} hunt strike one. Start soft and away, and save the fastball for when you are ahead.'],
+    minus: ['They give you strike one',
+      '{n} of {of} watch the first pitch go by. Take the free strike every at-bat and work from ahead.'],
+  },
+  running: {
+    plus: ['They run',
+      '{n} of {of} have the green light. A quick delivery and an early throw over cools them; a slow arm feeds them bases.'],
+    minus: ['Station to station',
+      '{n} of {of} never take the extra base. Play the outfield honest and take every double play they offer.'],
+  },
+  spray: {
+    plus: ['Shift them',
+      '{n} of {of} pull everything. The shift was invented for this lineup — lean the defence and let them hit into it.'],
+    minus: ['They use the whole field',
+      '{n} of {of} hit it where it is pitched. Play everyone straight up; a shift against this club is a gift to them.'],
+  },
+  clutch: {
+    plus: ['Dangerous with men on',
+      '{n} of {of} turn into somebody else in scoring position. Keep the bases clean — the walk that sets them up is the mistake.'],
+    minus: ['They tighten up',
+      '{n} of {of} press when it matters. Put a runner on and make them feel it; their numbers come with the bases empty.'],
+  },
+  zone: {
+    plus: ['Their arms come at you',
+      '{n} of their {of} arms attack the zone. Sit on something early — the first strike is coming, and it is hittable.'],
+    minus: ['A staff of nibblers',
+      '{n} of {of} arms live off the plate. Take until they prove it; the walks are sitting there.'],
+  },
+  pace: {
+    plus: ['Quick workers',
+      '{n} of {of} arms get the ball and throw it, and they go deep for it. Long at-bats are the only road into that bullpen.'],
+    minus: ['They burn their own counts',
+      '{n} of {of} arms take their time and pay for it in pitches. Be patient and the starter is gone by the sixth.'],
+  },
+  mix: {
+    plus: ['Power arms',
+      '{n} of their {of} arms throw the fastball first, second and third. Sit dead red and swing like you mean it.'],
+    minus: ['Junkballers',
+      '{n} of {of} arms spin it and slow it. Stay back, take it the other way, and do not chase the changeup in the dirt.'],
+  },
+  poise: {
+    plus: ['They bear down in trouble',
+      '{n} of {of} arms find another gear with runners on. Traffic does not rattle this staff — score with damage, not patience.'],
+    minus: ['They unravel with men on',
+      '{n} of {of} arms lose the thread once somebody is standing behind them. Crowd the bases; one single starts the avalanche.'],
+  },
+};
+
+/**
+ * The team card — stage 16's tendencies screen, decided at the door: "team
+ * card, 3–5 reads," on the rival's college profile, filled in once the
+ * desk has scouted them (the caller holds the gate; this is pure).
+ *
+ * Aggregated from the same per-man poles the sim actually plays, counted
+ * over the men who take the field — the nine in the lineup for the bat
+ * slots, the whole staff for the arm slots — and a read only makes the book
+ * when the count clears the league's base rate by a whole man, because
+ * "about as many free swingers as anybody" is not a read. Strongest skews
+ * first, at most five; when a club genuinely has fewer than three habits
+ * worth planning around, the book says that too, which is itself a read.
+ */
+export function teamReads(team: Team): TeamRead[] {
+  const bats = team.lineup;
+  const arms = [...team.rotation, ...team.bullpen];
+  const found: { read: TeamRead; strength: number }[] = [];
+  for (const slot of [...HITTER_TENDENCIES, ...PITCHER_TENDENCIES]) {
+    const men: Player[] = TENDENCIES[slot].side === 'hitter' ? bats : arms;
+    if (men.length === 0) continue;
+    let plus = 0;
+    let minus = 0;
+    for (const m of men) {
+      const pole = tendenciesOf(m)[slot] ?? 0;
+      if (pole > 0) plus += 1;
+      else if (pole < 0) minus += 1;
+    }
+    const expected = men.length * POLE_SHARE;
+    for (const [side, n] of [['plus', plus], ['minus', minus]] as const) {
+      // Two men sharing a habit is the least a scout will put his name to;
+      // anything below that is one player's card, not a team read.
+      if (n < 2) continue;
+      const [title, text] = READS[slot][side];
+      found.push({
+        read: {
+          slot, title,
+          text: text.replace('{n}', String(n)).replace('{of}', String(men.length)),
+        },
+        strength: n - expected,
+      });
+    }
+  }
+  /*
+    Strongest skews first. Everything a whole man above the league's base
+    rate makes the book on its own; when a club is too ordinary to fill
+    three lines that way, the strongest leans fill in behind them — still
+    real counts, just milder — and a club with nothing at all gets told so,
+    which is itself the read.
+  */
+  found.sort((a, b) => b.strength - a.strength);
+  const strong = found.filter((f) => f.strength >= 1);
+  const leans = found.filter((f) => f.strength < 1);
+  const book = strong.slice(0, 5).map((f) => f.read);
+  while (book.length < 3 && leans.length > 0) {
+    book.push((leans.shift() as { read: TeamRead }).read);
+  }
+  if (book.length < 3) {
+    book.push({
+      slot: 'approach', title: 'No habits worth planning around',
+      text: 'The rest of the book is blank on purpose: they are about as ordinary as a club gets. Play them straight and beat them on talent.',
+    });
+  }
+  return book;
 }
 
 // ---------------------------------------------------------------------------

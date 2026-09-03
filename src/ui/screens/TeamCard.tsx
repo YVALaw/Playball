@@ -36,6 +36,7 @@ import { Crest } from '../Crest.js';
 import { FixedHeader } from '../Sticky.js';
 import { overallOf } from '../../engine/ratings.js';
 import { prestigeStars } from '../../engine/program.js';
+import { teamReads } from '../../engine/tendencies.js';
 import {
   battingAverage, era, inningsPitched, regularRecord, rpiOrder,
 } from '../../engine/season.js';
@@ -166,7 +167,9 @@ export function TeamCard({ index }: { index: number }) {
             </p>
           </section>
         )}
-        {sheet === 'dossier' && <Dossier t={t} stars={stars} />}
+        {sheet === 'dossier' && (
+          <Dossier t={t} stars={stars} rival={me !== null && me.index !== t.index} />
+        )}
       </div>
       {me && me.index !== t.index && (
         <CollegeActions
@@ -293,9 +296,9 @@ function CollegeActions(
             detail={!scoutsHimself
               ? 'Your staff buys these books out of the wage bill; the reads are already on their player cards.'
               : scouted
-                ? `Bought. Open any of their players — the tendency line on his card reads for the next ${SCOUT_DAYS} days.`
+                ? `Bought. The team's habits are on their DOSSIER sheet, and every man's tendency line reads on his card for the next ${SCOUT_DAYS} days.`
                 : canAfford
-                  ? `Buys their book for ${SCOUT_DAYS} days: every man's tendencies show on his player card, under their ROSTER sheet.`
+                  ? `Buys their book for ${SCOUT_DAYS} days: the team's habits fill their DOSSIER sheet, and every man's tendencies show on his player card.`
                   : 'The ledger cannot carry it this year. The budget is on your program tab.'}
             selected={scouted || !scoutsHimself}
             onClick={() => { if (scoutsHimself && !scouted && canAfford) scoutTeam(index); }}
@@ -863,9 +866,22 @@ function Results({ t, me, season }: { t: Record_; me: Record_ | null; season: Se
  * no information the world did not already publish — it stops making you infer
  * it from a table.
  */
-function Dossier({ t, stars }: { t: Owner; stars: number }) {
+function Dossier({ t, stars, rival }: { t: Owner; stars: number; rival: boolean }) {
   const culture = cultureOf(t.def.abbr);
   const coach = t.coach;
+  /*
+    The scout's book — stage 16's tendencies screen, exactly where the door
+    put it: a team card on the rival's college profile, filled in once the
+    desk has scouted them. The same purchase that lights the per-man lines
+    (SCOUT THEM on the action button) opens this sheet; a casual career's
+    staff buys the books out of the wage bill, so theirs is always open.
+  */
+  const economy = useDynasty((s) => s.economy);
+  const season = useDynasty((s) => s.season);
+  const scoutsHimself = useDynasty((s) => handles(s.depth, 'scouting'));
+  const day = season?.dayIndex ?? 0;
+  const booked = rival && ((economy.scouted[t.index] ?? -1) >= day || !scoutsHimself);
+  const reads = booked ? teamReads(t.team) : null;
 
   /** What his points have gone into, loudest first. */
   const strengths = coach
@@ -886,6 +902,23 @@ function Dossier({ t, stars }: { t: Owner; stars: number }) {
       <SectionHeading kicker="THE PROGRAMME" title={culture?.name ?? 'A place with a history'} />
       {culture && (
         <FieldNote title={CULTURE_LABEL[culture.edge]} text={culture.creed} />
+      )}
+
+      {rival && (
+        <>
+          <SectionHeading
+            kicker="THE SCOUT'S BOOK"
+            title={reads ? 'How they beat you, and how you beat them' : 'A closed book'}
+          />
+          {reads
+            ? reads.map((r) => <FieldNote key={r.slot + r.title} title={r.title} text={r.text} />)
+            : (
+              <FieldNote
+                title="The desk has not been paid"
+                text="SCOUT THEM on the action button buys their book: the team's habits fill this sheet and every man's tendency line reads on his card."
+              />
+            )}
+        </>
       )}
 
       <section className="split-grid">

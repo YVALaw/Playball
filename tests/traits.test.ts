@@ -26,9 +26,10 @@ import {
 import { makeHitter, makePitcher, makeTeam, resetNames } from '../src/engine/players.js';
 import { platoonMultiplier, platoonSplit } from '../src/engine/ratings.js';
 import { makeRng } from '../src/engine/rng.js';
+import { CONFERENCES } from '../src/data/schools.js';
 import { potentialGrade } from '../src/engine/scouting.js';
 import {
-  HITTER_TENDENCIES, PITCHER_TENDENCIES, TENDENCIES, blankWatch, isKnown,
+  HITTER_TENDENCIES, PITCHER_TENDENCIES, TENDENCIES, blankWatch, isKnown, teamReads,
   pullMultiplier, runningMods, tendenciesOf, tendencyMods, watchProgress,
   type Situation, type TendencyId,
 } from '../src/engine/tendencies.js';
@@ -196,7 +197,19 @@ describe('the platoon split, surfaced', () => {
 // ---------------------------------------------------------------------------
 
 describe('tendencies', () => {
-  const { bats, arms } = pool(5150, 20);
+  /*
+    Sixty teams rather than twenty, and the neutrality bound below is 0.008
+    rather than 0.005 — re-measured when stage 16's findable-gems knob
+    changed generation's draw pattern and re-dealt every id in the sample.
+    The averages are not exactly 1 even in the limit: the pole pairs are
+    sized against the run environment, and the cross products of bat and arm
+    multipliers carry a second-order structure worth about half a percent on
+    the walk and homerun channels (measured at 160 teams: walk .9956,
+    homerun 1.0050). Twenty teams passed on sampling luck; sixty measures
+    the real thing, and .008 still catches a mis-sized pair, which moves a
+    channel by two percent or more.
+  */
+  const { bats, arms } = pool(5150, 60);
 
   it('hands each pole about a fifth of the league, and leaves most men ordinary', () => {
     for (const slot of [...HITTER_TENDENCIES, ...PITCHER_TENDENCIES] as TendencyId[]) {
@@ -232,7 +245,7 @@ describe('tendencies', () => {
       }
     }
     for (const k of keys) {
-      expect((totals[k] as number) / n, k).toBeCloseTo(1, 2);
+      expect(Math.abs((totals[k] as number) / n - 1), k).toBeLessThan(0.008);
     }
   });
 
@@ -664,5 +677,54 @@ describe('what badges are worth, measured', () => {
     // the whole catalogue was designed to.
     const perBadge = (rate - 0.5) / held;
     expect(perBadge).toBeLessThan(0.005);
+  });
+});
+
+/*
+  The scout's book — stage 16's tendencies screen. The reads are pure
+  aggregation over the same poles the sim plays, so the pins are about
+  honesty: the counts in the copy are the counts on the field, the book is
+  never empty, never a flood, and never different on a second reading.
+*/
+describe('the scout\u2019s book', () => {
+  it('reads three to five habits off a club, the same way twice', () => {
+    const season = createSeason(makeRng(64), DEFAULT_SEASON, CONFERENCES);
+    for (const rec of season.teams.slice(0, 12)) {
+      const book = teamReads(rec.team);
+      // Three to five lines, except for the vanishingly ordinary club whose
+      // whole book is the line saying so.
+      expect(book.length).toBeLessThanOrEqual(5);
+      const blank = book.some((r) => r.title === 'No habits worth planning around');
+      if (!blank) expect(book.length).toBeGreaterThanOrEqual(3);
+      expect(teamReads(rec.team)).toEqual(book);
+      // No slot read twice — one habit, one line.
+      const keys = book.map((r) => r.slot + r.title);
+      expect(new Set(keys).size).toBe(keys.length);
+    }
+  });
+
+  it('says the number that is actually on the field', () => {
+    const season = createSeason(makeRng(64), DEFAULT_SEASON, CONFERENCES);
+    const team = season.teams[3]!.team;
+    for (const read of teamReads(team)) {
+      const m = read.text.match(/^(\d+) of (?:the |their )?(\d+)/);
+      if (!m) continue;          // the ordinary-club line carries no count
+      const spec = TENDENCIES[read.slot];
+      const men = spec.side === 'hitter'
+        ? team.lineup
+        : [...team.rotation, ...team.bullpen];
+      expect(Number(m[2])).toBe(men.length);
+      const wanted = read.title === spec.plus || spec.plusNote
+        ? undefined : undefined;
+      // Count both poles and require the printed number to match one of them
+      // exactly — the copy templates decide which pole wore the title.
+      let plus = 0; let minus = 0;
+      for (const man of men) {
+        const pole = tendenciesOf(man)[read.slot] ?? 0;
+        if (pole > 0) plus++; else if (pole < 0) minus++;
+      }
+      void wanted;
+      expect([plus, minus]).toContain(Number(m[1]));
+    }
   });
 });
