@@ -16,7 +16,7 @@ import {
   runDoubleElim, resultOfDE,
   type DoubleElim, type DoubleElimResult,
 } from './doubleElim.js';
-import { overallOf } from './ratings.js';
+import { armValue, overallOf } from './ratings.js';
 import type { ClassYear, PlayerId, Position } from './types.js';
 import type { GameResult } from './game.js';
 
@@ -991,7 +991,12 @@ function rosterIndex(season: SeasonState): Map<PlayerId, RosterEntry> {
       index.set(p.id, { name: p.name, pos: p.pos, classYear: p.classYear, team, isPitcher: false });
     }
     for (const p of [...team.team.rotation, ...team.team.bullpen]) {
-      index.set(p.id, { name: p.name, pos: p.pos, classYear: p.classYear, team, isPitcher: true });
+      // Never overwrite the lineup entry: a two-way man reads as a position
+      // player to the awards, which is how the real award reads the real
+      // archetype.
+      if (!index.has(p.id)) {
+        index.set(p.id, { name: p.name, pos: p.pos, classYear: p.classYear, team, isPitcher: true });
+      }
     }
   }
   return index;
@@ -1111,7 +1116,7 @@ export function coachAwardCandidates(
   const strengthOf = (t: TeamRecord): number => {
     const all: number[] = [
       ...t.team.lineup.map((p) => overallOf(p)),
-      ...t.team.rotation.slice(0, 3).map((p) => overallOf(p)),
+      ...t.team.rotation.slice(0, 3).map((p) => armValue(p)),
     ];
     return all.length === 0 ? 50 : all.reduce((a, b) => a + b, 0) / all.length;
   };

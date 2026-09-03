@@ -20,7 +20,7 @@ import {
 import { pullMultiplier, runningMods, shiftBias } from './tendencies.js';
 import { plateTraits } from './traits.js';
 import type {
-  BattedBall, EngineFn, EngineName, FieldLine, HitLine, Hitter, PAKind, Pitcher,
+  Arm, BattedBall, EngineFn, EngineName, FieldLine, HitLine, Hitter, PAKind, Pitcher,
   PitchLine, PitchResult, Player, PlayerId, PlayEvent, Position, Rng, Tactic, TacticMods, Team,
 } from './types.js';
 
@@ -89,7 +89,7 @@ const blankFld = (): FieldLine =>
   ({ chances: 0, plays: 0, expected: 0, errors: 0, throwing: 0, pb: 0, sba: 0, cs: 0 });
 
 export type BattingLine = HitLine & { player: Hitter };
-export type PitchingLine = PitchLine & { player: Pitcher };
+export type PitchingLine = PitchLine & { player: Arm };
 /** The pitcher is on here too: he fields comebackers like anybody else. */
 export type FieldingLine = FieldLine & { player: Player };
 
@@ -117,8 +117,8 @@ export interface SimOptions {
    * reaches for bullpen[0], who then throws ninety innings while five team-mates
    * throw none. The season decides the order; the game just follows it.
    */
-  homeBullpen?: readonly Pitcher[];
-  awayBullpen?: readonly Pitcher[];
+  homeBullpen?: readonly Arm[];
+  awayBullpen?: readonly Arm[];
   /**
    * The batting order for this game only. Lets the season rest a regular
    * without mutating the roster, which is how a bench player gets a start.
@@ -164,8 +164,8 @@ export interface GameResult {
    * Crediting the starter instead produced visible nonsense — a reliever with 85
    * innings and no decisions at all, winning Pitcher of the Year at 0-0.
    */
-  winningPitcher: Pitcher | null;
-  losingPitcher: Pitcher | null;
+  winningPitcher: Arm | null;
+  losingPitcher: Arm | null;
 }
 
 type Say = (s: string) => void;
@@ -180,7 +180,7 @@ export class TeamState {
   runs = 0;
   hits = 0;
   readonly lineScore: number[] = [];
-  pitcher: Pitcher;
+  pitcher: Arm;
   penIndex = 0;
   pitcherPitches = 0;
   /**
@@ -229,9 +229,9 @@ export class TeamState {
   readonly byPosition = new Map<Position, Hitter>();
 
   /** The arm that took the ball, kept so the season layer can credit the decision. */
-  readonly starter: Pitcher;
+  readonly starter: Arm;
   /** Relief order for this game, most rested first. */
-  readonly relief: readonly Pitcher[];
+  readonly relief: readonly Arm[];
   /** Bench bats already used. Once a man is out he cannot return — NCAA rule. */
   readonly usedBench: Hitter[] = [];
   /**
@@ -240,7 +240,7 @@ export class TeamState {
    * arm must not discard the two ahead of him, and a man taken out must never
    * be offered again.
    */
-  readonly usedPen: Pitcher[] = [];
+  readonly usedPen: Arm[] = [];
   /** How this coach plays. See engine/strategy.ts. */
   readonly strategy: Strategy;
   /**
@@ -273,7 +273,7 @@ export class TeamState {
     team: Team,
     isHome: boolean,
     starterIndex = 0,
-    relief: readonly Pitcher[] = team.bullpen,
+    relief: readonly Arm[] = team.bullpen,
     lineup: readonly Hitter[] = team.lineup,
     strategy: Strategy = DEFAULT_STRATEGY,
     coachMods?: { offense: number; defense: number },
@@ -357,7 +357,10 @@ export class TeamState {
     gloves.push(starter);
     let weighted = 0, weight = 0;
     for (const p of gloves) {
-      const w = FIELDING_SHARE[p.pos] ?? 0.11;
+      // The starter's share is the mound's whatever his pos field says — a
+      // two-way man's pos is his BAT's slot, and while he is out there
+      // fielding comebackers he is standing sixty feet six inches away.
+      const w = p === starter ? (FIELDING_SHARE['P'] ?? 0.11) : (FIELDING_SHARE[p.pos] ?? 0.11);
       weighted += p.range * w;
       weight += w;
     }
@@ -406,7 +409,7 @@ export class TeamState {
     return line;
   }
 
-  pitchLine(p: Pitcher): PitchingLine {
+  pitchLine(p: Arm): PitchingLine {
     let line = this.pitching.get(p.id);
     if (!line) { line = { player: p, ...blankPit() }; this.pitching.set(p.id, line); }
     return line;
@@ -481,8 +484,8 @@ export function simGame(
   // Updated every time the lead changes hands. Whatever is here when the game
   // ends is the decision.
   let leadHolder: TeamState | null = null;
-  let creditTo: Pitcher | null = null;
-  let blameTo: Pitcher | null = null;
+  let creditTo: Arm | null = null;
+  let blameTo: Arm | null = null;
   const onScore = (bat: TeamState, fld: TeamState): void => {
     if (bat.runs <= fld.runs) return;          // scored but did not take the lead
     if (leadHolder === bat) return;            // already ahead; not a lead change
@@ -591,7 +594,7 @@ export function createHalfInning(
    * They did not: the intentional walk threw its list of scorers away unread, so
    * a bases-loaded free pass erased the man on third instead of scoring him.
    */
-  const bringHome = (runners: readonly Hitter[], pitcher: Pitcher, earned: boolean): void => {
+  const bringHome = (runners: readonly Hitter[], pitcher: Arm, earned: boolean): void => {
     for (const runner of runners) {
       bat.hitLine(runner).r++;
       const guilty = blame.get(runner) ?? pitcher;
@@ -1134,7 +1137,7 @@ function describeCount(pitches: readonly PitchResult[]): string {
 
 function forceAdvance(
   bases: Bases, batter: Hitter, scored: Hitter[],
-  blame: Map<Hitter, Pitcher>, pitcher: Pitcher,
+  blame: Map<Hitter, Arm>, pitcher: Arm,
 ): void {
   if (bases[0] && bases[1] && bases[2]) { scored.push(bases[2]); bases[2] = null; }
   if (bases[0] && bases[1]) { bases[2] = bases[1]; bases[1] = null; }
@@ -1159,7 +1162,7 @@ const BASE_WORD: readonly string[] = ['first', 'second', 'third'];
 
 export function advanceOnHit(
   bases: Bases, batter: Hitter, numBases: number, rng: Rng,
-  scored: Hitter[], blame: Map<Hitter, Pitcher>, pitcher: Pitcher,
+  scored: Hitter[], blame: Map<Hitter, Arm>, pitcher: Arm,
   run: { attempt: number; risk: number } = RUNNING.balanced,
   defenceArm = 50,
   say?: Say,
@@ -1703,7 +1706,7 @@ const COVER_FIRST_SHARE = 0.50;
  * one is the pitcher's — and the engine keeps a single culprit rather than
  * pretending to know which end of a play it resolved in one roll failed.
  */
-export function throwRisk(fielder: Player, covering: Pitcher): number {
+export function throwRisk(fielder: Player, covering: Arm): number {
   const pos = fielder.pos;
   if (pos === 'LF' || pos === 'CF' || pos === 'RF' || pos === 'DH') return 0;
   // ON A LINE, which is the badge that names exactly this roll and nothing else.
@@ -1732,7 +1735,7 @@ const OUT_TEXT: Partial<Record<PAKind, string>> = {
 
 function resolveOut(
   bases: Bases, batter: Hitter, kind: PAKind, outs: number, rng: Rng,
-  scored: Hitter[], blame: Map<Hitter, Pitcher>, pitcher: Pitcher,
+  scored: Hitter[], blame: Map<Hitter, Arm>, pitcher: Arm,
   called?: TacticMods,
   fielder?: Player | null,
   note?: Say,
@@ -1809,7 +1812,7 @@ function resolveOut(
 function sacrifice(
   bases: Bases, batter: Hitter, outs: number, rng: Rng,
   bLine: BattingLine, pLine: PitchingLine,
-  blame: Map<Hitter, Pitcher>, pitcher: Pitcher,
+  blame: Map<Hitter, Arm>, pitcher: Arm,
   note?: Say,
 ): { outs: number; text: string; scored: Hitter[]; hit?: boolean } {
   const scored: Hitter[] = [];
@@ -2173,7 +2176,7 @@ function maybeChangePitcher(fld: TeamState, say: Say): void {
   // Walk past anyone the manager already spent. In a fully automatic game the
   // pen is used strictly in order and this never skips; in a game handed to the
   // computer late, an arm the manager burned must not come back out.
-  let next: Pitcher | undefined;
+  let next: Arm | undefined;
   while (fld.penIndex < fld.relief.length && !next) {
     const cand = fld.relief[fld.penIndex++];
     if (cand && cand !== fld.pitcher && !fld.usedPen.includes(cand)) next = cand;

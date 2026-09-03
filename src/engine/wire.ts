@@ -15,7 +15,7 @@
 import {
   standings, rpiOrder, era, inningsPitched, type SeasonState,
 } from './season.js';
-import type { Hitter, Pitcher } from './types.js';
+import type { Arm, Hitter, Pitcher } from './types.js';
 
 export type WireKind =
   | 'upset' | 'streak' | 'rout' | 'ranking' | 'milestone' | 'race'
@@ -446,7 +446,7 @@ function recordChase(season: SeasonState): WireItem | null {
       consider(book.seasonHR, line.hr, gp, p.name, record.index, 'home runs');
       consider(book.seasonSB, line.sb, gp, p.name, record.index, 'stolen bases');
     }
-    const arms: Pitcher[] = [...record.team.rotation, ...record.team.bullpen];
+    const arms: Arm[] = [...record.team.rotation, ...record.team.bullpen];
     for (const p of arms) {
       const line = season.pitching.get(p.id);
       if (!line) continue;
@@ -508,7 +508,7 @@ function leagueLeaders(season: SeasonState): WireItem[] {
       if (!line || line.hr === 0) continue;
       if (!hr || line.hr > hr.n) hr = { n: line.hr, name: p.name, team: record.index };
     }
-    const arms: Pitcher[] = [...record.team.rotation, ...record.team.bullpen];
+    const arms: Arm[] = [...record.team.rotation, ...record.team.bullpen];
     for (const p of arms) {
       const line = season.pitching.get(p.id);
       if (!line || inningsPitched(line) < 15) continue;

@@ -386,8 +386,9 @@ describe('determinism', () => {
       // gated that clause to sub-52 currents, so the polished half of the
       // class stopped spending the gate draw and the count came DOWN even
       // as the raw draw itself got a longer, occasionally rejected tail.
-      // Still fixed, which is the property this test exists to hold.
-      expect(c.spent()).toBe(2442);
+      // Still fixed, which is the property this test exists to hold. 2466
+      // after stage 16's two-way quota: every SP slot rolls the gate.
+      expect(c.spent()).toBe(2466);
     });
   });
 });

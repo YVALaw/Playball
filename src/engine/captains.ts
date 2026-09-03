@@ -29,6 +29,7 @@
 // does not make anybody happy. That distinction is the design: a captain is not
 // a morale bonus, he is the reason a bad April does not become a mutiny.
 
+import { uniquePlayers } from './types.js';
 import type { Player, PlayerId, Team } from './types.js';
 import { overallOf } from './ratings.js';
 
@@ -51,9 +52,10 @@ export function canLead(p: Player): boolean {
 
 /** Everybody eligible, best first — the shortlist the screen shows. */
 export function candidates(team: Team): Player[] {
-  const all: Player[] = [
+  // One body once: a two-way man is one name on the shortlist.
+  const all: Player[] = uniquePlayers([
     ...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen,
-  ];
+  ]);
   return all.filter(canLead).sort((a, b) => overallOf(b) - overallOf(a));
 }
 

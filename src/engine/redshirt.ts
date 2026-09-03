@@ -28,6 +28,7 @@
 // behind a senior. Play him now for a hundred at-bats he is not ready for, or
 // sit him and have him as a senior when the senior is gone.
 
+import { uniquePlayers } from './types.js';
 import type { Player, Team } from './types.js';
 import { squad } from './depthChart.js';
 
@@ -62,9 +63,10 @@ export function canRedshirt(p: Player): boolean {
 
 /** How many this program is already sitting. */
 export function redshirtCount(team: Team): number {
-  return squad(team).filter((p) => (p as Player & Redshirtable).redshirt).length
-    + [...team.rotation, ...team.bullpen]
-      .filter((p) => (p as Player & Redshirtable).redshirt).length;
+  // One body once: a two-way man sitting a year is one redshirt, not two.
+  return uniquePlayers([
+    ...squad(team), ...team.rotation, ...team.bullpen,
+  ]).filter((p) => (p as Player & Redshirtable).redshirt).length;
 }
 
 /** Sit him down for the year, if the rules allow it. */
@@ -110,7 +112,7 @@ export function bankRedshirt(p: Player): number {
  */
 export function staffRedshirts(team: Team, depthRank: (p: Player) => number): Player[] {
   const out: Player[] = [];
-  const candidates = [...squad(team), ...team.rotation, ...team.bullpen]
+  const candidates = uniquePlayers([...squad(team), ...team.rotation, ...team.bullpen])
     .filter((p) => canRedshirt(p) && p.classYear === 'FR')
     .sort((a, b) => depthRank(b) - depthRank(a));
   for (const p of candidates) {

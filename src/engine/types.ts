@@ -287,11 +287,64 @@ export interface Pitcher extends PlayerCore, PitcherRatings {
 
 export type Player = Hitter | Pitcher;
 
+/**
+ * One man in two rating systems at once — stage 16, split out of stage 8
+ * with the design already settled: "they arrive two-way rather than being
+ * made, they are rare the way they are in life, and pitching does not
+ * suppress the bat."
+ *
+ * Structurally he is a Hitter carrying a whole arm, flattened onto the same
+ * object exactly as a Pitcher carries it — the same field names, so every
+ * consumer of a mound occupant (the pitch model, the repertoire, fatigue,
+ * the box score's role column) reads him without indirection. He is ONE
+ * object standing in two arrays: his lineup spot and his rotation slot hold
+ * the same reference, which is what makes the fatigue crossing real (his
+ * legs and his arm are the same body) and what lets a save survive — the
+ * structured clone preserves shared identity, so he comes back as one man.
+ *
+ * `type` stays 'hitter', deliberately: the batting order, development,
+ * morale, the promise and every card that reads him as a person get him
+ * free, and the mound-side call sites the integration touched take
+ * `Arm` and ask `isTwoWay` where the two halves genuinely differ.
+ */
+export interface TwoWay extends Hitter, PitcherRatings {
+  twoWay: true;
+  role: PitcherRole;
+  sidearm: boolean;
+  /** The arm's own platoon talent — the bat's rides on the Hitter side. */
+  armPlatoon: number;
+}
+
+/** Anybody who can legally stand on the mound. */
+export type Arm = Pitcher | TwoWay;
+
+export const isTwoWay = (p: Player | Arm): p is TwoWay =>
+  (p as TwoWay).twoWay === true;
+
+/** Narrow a mound occupant to the true Pitcher type where one is needed. */
+export const isPitcher = (p: Player | Arm): p is Pitcher => p.type === 'pitcher';
+
+/**
+ * One body once. A two-way man stands in two of a team's four arrays, so
+ * the idiomatic four-array concat hands him to a loop twice — and a loop
+ * that ages, develops, moods or counts a man must never see him twice.
+ */
+export const uniquePlayers = <T extends Player>(xs: readonly T[]): T[] => {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const p of xs) {
+    if (seen.has(String(p.id))) continue;
+    seen.add(String(p.id));
+    out.push(p);
+  }
+  return out;
+};
+
 export interface Team {
   name: string;
   lineup: Hitter[];
-  rotation: Pitcher[];
-  bullpen: Pitcher[];
+  rotation: Arm[];
+  bullpen: Arm[];
   bench: Hitter[];
   quality: number;
 }
@@ -412,7 +465,7 @@ export interface PAResult {
 
 export type EngineFn = (
   batter: Hitter,
-  pitcher: Pitcher,
+  pitcher: Arm,
   ctx: PAContext,
   rng: Rng,
 ) => PAResult;

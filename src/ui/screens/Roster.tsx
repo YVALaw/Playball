@@ -35,6 +35,7 @@ import { available } from '../../engine/depthChart.js';
 import {
   Capacity, CaptainC, DataTable, InlineActions, ModuleIntro, Segmented, type Row,
 } from '../components/Kit.js';
+import { uniquePlayers } from '../../engine/types.js';
 import type { Hitter, Pitcher, Player } from '../../engine/types.js';
 
 type Mode = 'all' | 'bat' | 'arm';
@@ -111,7 +112,7 @@ export function Roster() {
 
   const hitters = hittersAll.filter(keep);
   const arms = armsAll.filter(keep);
-  const everybody: Player[] = [...hitters, ...arms]
+  const everybody: Player[] = uniquePlayers([...hitters, ...arms])
     .sort((a, b) => overallOf(b) - overallOf(a));
 
   // Only spots somebody actually plays get a chip, in scorebook order.

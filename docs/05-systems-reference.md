@@ -6448,6 +6448,112 @@ meshes do not need instancing; the one ~34ms spike per play is the React
 commit, not the scene. Park effects as geometry left v1 with the one-park
 door decision.
 
+## 49. Stage 16, the simulation's last mile — **SHIPPED September 3 2026**
+
+Ten units in one overnight sitting, every one measured before and after.
+
+**June injury rolls** (`injuryClock`, `rollHurtsFor` — season.ts). Injuries
+are written in day-index units and that axis froze when the schedule ran
+out, so nobody ever got hurt in a tournament and a June injury could never
+heal. The clock extends the same axis one tick per postseason night —
+identical all season, alive in June — and every reader moved onto it. The
+rolls are derived, so the same June produces the same casualties twice (by
+test) and no stream moves. All three postseason night sites roll both
+participants after the night, so the pregame FIX-THE-LINEUP hold catches it.
+
+**The summit drag** (`SUMMIT_OVER`, `summitDrag` — program.ts, §44's door).
+Measured first: eight programs at 90+ simultaneously in year thirty, one
+holding the crown thirteen straight seasons with zero titles. Above 85 a
+season is priced by its jewels, because at seventy-two percent the target's
+ceiling makes a title year and an Omaha exit read identically: a champion
+pays no drag, an Omaha run leaks, a mere conference title leaks properly,
+and the blue-blood shelter inverts on the way down (rate 0.22). Same seed
+after: twelve reigns for twenty-one, 83 program-seasons at 90+ for 204,
+longest reign nine, every run of five-plus belonging to a program with
+titles. Turnover, tenure, clear rate, champions: unmoved. The carousel
+probe now prints reigns and a star census.
+
+**The portal balance pass** (portal.ts). The 97-overall was bookkeeping:
+promises rank hitters, so every ace read squadRank twenty and "he was told
+he would play" was the only star channel. Above `STAR_LINE` (85, shared
+with the wire's rumour so mail and model cannot drift) the buried channel
+is replaced by mood at full strength plus `STAR_WANDER`, priced off the
+probe's census (15.2 men at 85+ in a developed league × 0.012 ≈ one star
+per five or six winters). `portalMarket` hashes the year into a 0.6–1.4
+swing. The pool is priced against the class: a premium squares away from
+75, so a proven 85 costs more than the thirty-six points a courtship can
+put on any recruit, and a star costs roughly a window.
+
+**Findable gems** (players.ts `projectPotential`). Measured: 4.4 elite
+ceilings a year at ≤3 stars, 0.6 in the one- and two-star bands. The raw
+channel is gated to sub-52 currents (widening it for everybody fattened
+the FIVE-star shelf through the projection term) at one kid in ten, tail
+to 42. After: 12.0 and 2.6, five-star shelf keeping its certainty. The
+climb floor re-measured: 7/10 autopilot two-star careers touch Omaha in
+thirty years, none win it all — the gems help a scout, not a script.
+
+**Development arcs** (`arcOf`, `arcReach` — progression.ts). The 2K answer
+without the coin flip: the arc (15% boom / 15% bust / 70% steady) is a
+hash of the id — fixed from the day he exists, no draw, reload-proof. Each
+June the number moves three points toward a jittered goal and the year's
+growth chases the revised number through play (growthMult, culture,
+redshirt). Both directions, per the door's exact ask. HIDDEN: the word
+never prints; the letter drifts.
+
+**The winter ritual** (store `changePosition` gate). Move a man in the
+offseason, the year roll's settleIn is the winter of retraining before he
+plays a game, and the climb-scaled settling is the glove penalty. The card
+shuts in-season with the reason on it.
+
+**The scout's book** (`teamReads` — tendencies.ts; TeamCard DOSSIER).
+Three to five reads aggregated from the exact poles the sim plays, counted
+over the men who take the field, thresholded a whole man above the 21%
+base rate, scout-voiced with the counter-move on every line. Gated on the
+same SCOUT THEM purchase that lights the per-man lines; casual staffs buy
+it out of the wage bill. In passing, the tendency neutrality pin moved to
+sixty teams at ±0.008 — the cross products carry ~0.5% of real
+second-order structure and twenty teams had been passing on luck.
+
+**Recruits drafted out of high school** (`takenByPros`, `enrolling` —
+progression.ts). Derived off man and year, aimed at the ceiling (potential
+78 barely at risk, 92 a real one), one to three kids per national class.
+One `enrolling` filter feeds the year roll, the walk-on projection, the
+signing-day screen (the row wears DRAFTED BY THE PROS) and the tests, so
+every surface knows the same thing at the same time.
+
+**The run-expectancy AI** (`buntEdge` — strategy.ts). The RE24 and
+scoring-probability matrices, scaled to the league's 5.30, replace the
+bunt heuristics; the policy knob keeps its meaning (OFTEN takes losing
+boards, which is what bunting by rule is). Measured: worst sweep deviation
+fell 5.2% → 4.0% and the fall was the walk row — the old call was
+spending plate appearances on bad bunts. The walk ledger now reads: layer
+cost recovered; residual −4.0%/game is mostly the PA shortfall (−1.4%
+per-PA), badges −0.5% known; LEAGUE.walk stays at its sourced 9.1%.
+
+**Two-way players** (types `TwoWay`/`Arm`/`isTwoWay`/`uniquePlayers`, and
+some forty integration sites). One man in two rating systems: a Hitter
+carrying a whole flattened arm, ONE object standing in his lineup spot and
+his rotation slot — which is what makes the fatigue crossing real (legs
+and arm are the same body; a real outing now leans on tomorrow's bat) and
+what lets the save survive (IndexedDB's structured clone preserves shared
+references; pinned). The mound side widened to `Arm` through the whole
+pitch model; `armValue` ranks arms as arms where `overallOf` would have
+ranked a staff by somebody's batting; tendencies read him on both sides;
+badges open both doors; develop grows both halves off one ceiling; the
+awards read him as a position player (the real award's reading); every
+walk that ages, moods, counts or scans a roster dedupes to bodies. He
+bats for himself while he pitches — the P/DH case is the DH slot plus the
+mound held by the same reference, and the box score carries both his
+lines. Generated ≤3 per national class (usually one or two, some years
+none), tagged TWO-WAY on every board, both stat tables on his card.
+Leaderboards split for free: the season books were always independent maps.
+
+**What deliberately did not ship here:** the pool's grant (stage 17's own
+design pass), `sim.ts parity`'s wrong verdict (the parity-sweep is the
+real instrument and prints the curve; the stale one-gap verdict is noted
+in its header), and the last per-PA walk point — measured, bounded,
+attributed, and not worth unbalancing seven calibrated rows to chase.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

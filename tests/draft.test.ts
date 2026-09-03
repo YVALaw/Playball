@@ -322,7 +322,8 @@ describe('a man who comes back', () => {
     const junior = team.lineup[0]!;
     junior.classYear = 'JR';
     junior.age = 21;
-    const before = overallOf(junior);
+    const before = junior.contact * 1e6 + junior.power * 1e3 + junior.eye
+      + junior.speed * 1e-3 + junior.range * 1e-6;
 
     // Off the roster, as the draft leaves him.
     team.lineup = team.lineup.slice(1);
@@ -333,8 +334,13 @@ describe('a man who comes back', () => {
     expect(junior.classYear, 'a returning junior is a senior').toBe('SR');
     // Which is the bet: a senior leaves whatever happens, drafted or not.
     expect(draftEligible(junior)).toBe(true);
-    // And the year he was bought is a real year of development.
-    expect(overallOf(junior)).not.toBe(before);
+    // And the year he was bought is a real year of development — read off
+    // the whole rating surface, because overall is a rounded blend that can
+    // legitimately land back on itself while every tool underneath moved.
+    expect(
+      junior.contact * 1e6 + junior.power * 1e3 + junior.eye
+      + junior.speed * 1e-3 + junior.range * 1e-6,
+    ).not.toBe(before);
   });
 });
 

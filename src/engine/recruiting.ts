@@ -24,7 +24,7 @@
 // which a small program actually takes somebody. That is the moment the mode
 // exists to produce.
 
-import { ageFor, makeHitter, makePitcher } from './players.js';
+import { ageFor, makeHitter, makeTwoWay, makePitcher } from './players.js';
 import { overallOf } from './ratings.js';
 import {
   GRADE_LADDER, TOP_GENERATED_GRADE, potentialGrade, scoutNoise, type PotentialGrade,
@@ -465,6 +465,15 @@ export function generateClass(year: number, teams: number, rng: Rng): RecruitCla
   const size = Math.round(teams * 7.5);
   const prospects: Prospect[] = [];
 
+  /*
+    The two-way men — stage 16, quota straight from the door: "at most three
+    per recruit list a year." Converted off SP slots at a rate that averages
+    a couple per national class and never exceeds three, so most years the
+    country has one or two of them and some years none at all — rare the way
+    they are in life. They arrive two-way rather than being made.
+  */
+  let twoWayLeft = 3;
+
   for (let i = 0; i < size; i++) {
     const roll = rng();
     const quality =
@@ -475,10 +484,14 @@ export function generateClass(year: number, teams: number, rng: Rng): RecruitCla
       : 34 + rng() * 8;
 
     const slot = CLASS_SHAPE[i % CLASS_SHAPE.length] as Position | 'SP' | 'RP';
+    const goesBothWays = slot === 'SP' && twoWayLeft > 0 && rng() < 0.015;
+    if (goesBothWays) twoWayLeft -= 1;
     // Built AS a freshman, so his ceiling is a freshman's. See HitterOpts.
-    const player: Player = slot === 'SP' || slot === 'RP'
-      ? makePitcher(rng, quality, { role: slot, classYear: 'FR' })
-      : makeHitter(rng, quality, { pos: slot, classYear: 'FR' });
+    const player: Player = goesBothWays
+      ? makeTwoWay(rng, quality)
+      : slot === 'SP' || slot === 'RP'
+        ? makePitcher(rng, quality, { role: slot, classYear: 'FR' })
+        : makeHitter(rng, quality, { pos: slot, classYear: 'FR' });
     player.classYear = 'FR';
     // He was generated at whatever class year the draw handed him, so his age
     // has to come back into step with the freshman he is about to be.

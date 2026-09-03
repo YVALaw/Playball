@@ -43,6 +43,7 @@ import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { MixerHorizontalIcon } from '@radix-ui/react-icons';
 import { withStaff } from '../../engine/economy.js';
 import { FieldNote, Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
+import { isTwoWay } from '../../engine/types.js';
 import type { Hitter, Pitcher, Player, Position } from '../../engine/types.js';
 
 type View = 'recruits' | 'targets' | 'commits' | 'needs' | 'roster';
@@ -213,7 +214,8 @@ const topPriority = (p: Prospect): Priority =>
   [...PRIORITIES].sort((a, b) => p.priorities[b] - p.priorities[a])[0] as Priority;
 
 const slotOf = (p: Prospect): string =>
-  p.player.type === 'pitcher' ? (p.player as Pitcher).role : p.player.pos;
+  isTwoWay(p.player) ? 'TWO-WAY'
+    : p.player.type === 'pitcher' ? (p.player as Pitcher).role : p.player.pos;
 
 export function Board() {
   const season = useDynasty((s) => s.season);

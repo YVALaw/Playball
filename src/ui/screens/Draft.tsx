@@ -33,6 +33,7 @@ import {
 import { prestigeStars } from '../../engine/program.js';
 import { windowBudget } from '../../engine/recruiting.js';
 import { overallOf } from '../../engine/ratings.js';
+import { isTwoWay } from '../../engine/types.js';
 import type { Pitcher, Player } from '../../engine/types.js';
 import { Avatar } from '../Avatar.js';
 
@@ -45,7 +46,8 @@ const VIEW_LABEL: Record<View, string> = {
   undrafted: 'UNDRAFTED',
 };
 
-const slotOf = (p: Player): string => (p.type === 'pitcher' ? (p as Pitcher).role : p.pos);
+const slotOf = (p: Player): string =>
+  isTwoWay(p) ? 'TWO-WAY' : p.type === 'pitcher' ? (p as Pitcher).role : p.pos;
 
 export function Draft() {
   const phase = useDynasty((s) => s.phase);

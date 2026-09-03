@@ -41,7 +41,7 @@ import {
   battingAverage, era, inningsPitched, regularRecord, rpiOrder,
 } from '../../engine/season.js';
 import { pct, seasonDate } from '../format.js';
-import type { Hitter, Pitcher } from '../../engine/types.js';
+import type {Arm, Hitter, Pitcher } from '../../engine/types.js';
 import type { SeasonState } from '../../engine/season.js';
 
 type Record_ = SeasonState['teams'][number];
@@ -684,7 +684,7 @@ function Roster({ t, season }: { t: Record_; season: SeasonState }) {
 
 function ArmRow(
   { p, abbr, season, onClick }:
-  { p: Pitcher; abbr: string; season: SeasonState; onClick: () => void },
+  { p: Arm; abbr: string; season: SeasonState; onClick: () => void },
 ) {
   const line = season.pitching.get(p.id);
   return (

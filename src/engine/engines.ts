@@ -12,8 +12,7 @@ import {
   strikeoutProbability, battedBallType, CONTEXT, mult, clamp, SEQUENCE,
 } from './ratings.js';
 import { pitchOutcome, applyPitch, type Count } from './pitchModel.js';
-import type {
-  BattedBall, EngineFn, EngineName, EventVector, Hitter, PAContext, PAEvent,
+import type {Arm, BattedBall, EngineFn, EngineName, EventVector, Hitter, PAContext, PAEvent,
   PAKind, PAResult, Pitcher, PitchResult, Rng,
 } from './types.js';
 
@@ -45,7 +44,7 @@ function contextMultiplier(ctx: PAContext): number {
 // base_i = (batter_i * pitcher_i) / league_i, then normalize across all seven.
 export function log5Outcome(
   batter: Hitter,
-  pitcher: Pitcher,
+  pitcher: Arm,
   ctx: PAContext,
   rng: Rng,
 ): PAEvent {
@@ -148,7 +147,7 @@ function pick(rng: Rng, weights: readonly number[]): number {
 function constrainedSequence(
   target: SequenceTarget,
   batter: Hitter,
-  pitcher: Pitcher,
+  pitcher: Arm,
   ctx: PAContext,
   rng: Rng,
 ): { pitches: PitchResult[]; count: Count } {
@@ -268,7 +267,7 @@ const BIP: Record<BattedBall, { hit: number; double: number; triple: number; hom
 
 function resolveBallInPlay(
   batter: Hitter,
-  pitcher: Pitcher,
+  pitcher: Arm,
   ctx: PAContext,
   rng: Rng,
 ): { event: PAEvent; kind: PAKind } {

@@ -22,10 +22,11 @@ import { activeIds, honoursByPlayer, inductees } from '../engine/hall.js';
 import {
   recordCoachMarks, RECORDS, type RecordKey, type RecordMark,
 } from '../engine/records.js';
-import { overallOf } from '../engine/ratings.js';
+import { armValue, overallOf } from '../engine/ratings.js';
 import type { GameResult } from '../engine/game.js';
 import { playerId } from '../engine/types.js';
-import type { Hitter, Pitcher, Player, PlayerId, Position, Tactic } from '../engine/types.js';
+import { isTwoWay, uniquePlayers } from '../engine/types.js';
+import type {Arm, Hitter, Pitcher, Player, PlayerId, Position, Tactic } from '../engine/types.js';
 import { createLiveGame, type LiveGame } from '../engine/liveGame.js';
 import {
   departAndDevelop, fillRosters, holesFor as rosterHoles, reinstate,
@@ -962,7 +963,7 @@ export interface DynastyStore {
   resumeGame: (take: boolean) => Promise<void>;
   submitTactic: (t: Tactic) => void;
   pinchHitFor: (h: Hitter) => void;
-  bringIn: (p: Pitcher) => void;
+  bringIn: (p: Arm) => void;
   /** Go and talk to him. Once per pitcher per outing, confidence only. */
   visitMound: () => void;
   autoFinish: () => void;
@@ -3259,9 +3260,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       delete rolled.trainer;
       const mineNow = rolled.teams[get().userTeam];
       if (mineNow) {
-        const men = [
+        // One body once: a two-way man's mood, grades and winter healing
+        // settle a single time however many units carry him.
+        const men = uniquePlayers([
           ...squad(mineNow.team), ...mineNow.team.rotation, ...mineNow.team.bullpen,
-        ];
+        ]);
         /*
           What a season did to the men, settled once, in June.
 
@@ -5149,7 +5152,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       const fitA = available(a, day) ? 1 : 0;
       const fitB = available(b, day) ? 1 : 0;
       if (fitA !== fitB) return fitB - fitA;
-      return overallOf(b) - overallOf(a);
+      // armValue: a two-way man's slot in the rotation is his arm's.
+      return armValue(b) - armValue(a);
     });
     set({ version: version + 1 });
     void get().saveNow();

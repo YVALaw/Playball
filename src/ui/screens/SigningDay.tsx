@@ -27,6 +27,7 @@ import {
 import { highSchoolLine, potentialGrade, GRADE_LADDER } from '../../engine/scouting.js';
 import { enrolling, takenByPros, walkOnClass, walkOnSeed } from '../../engine/progression.js';
 import { overallOf } from '../../engine/ratings.js';
+import { isTwoWay } from '../../engine/types.js';
 import type { Pitcher, Player } from '../../engine/types.js';
 import { Avatar } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
@@ -47,7 +48,8 @@ const classPoints = (list: readonly Prospect[]): number =>
   list.reduce((a, p) => a + p.stars * p.stars, 0);
 
 const slotOf = (p: Prospect): string =>
-  p.player.type === 'pitcher' ? (p.player as Pitcher).role : p.player.pos;
+  isTwoWay(p.player) ? 'TWO-WAY'
+    : p.player.type === 'pitcher' ? (p.player as Pitcher).role : p.player.pos;
 
 const topPriority = (p: Prospect): Priority =>
   [...PRIORITIES].sort((a, b) => p.priorities[b] - p.priorities[a])[0] as Priority;

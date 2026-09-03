@@ -23,7 +23,7 @@
 // not visibly worse; he is a fraction slower and a fraction likelier to pull
 // something, and it is the second half that costs a program its season.
 
-import type { Pitcher, Player } from './types.js';
+import type {Arm, Pitcher, Player } from './types.js';
 
 /** What a man carries through the season. Sparse: a fresh save has none. */
 export interface Worked {
@@ -107,7 +107,7 @@ export function rested(p: Player): void {
 export const SEASON_INNINGS = 95;
 
 /** How deep into his year he is, nought to one and beyond. */
-export function armMileage(p: Pitcher): number {
+export function armMileage(p: Arm): number {
   const w = p as Pitcher & Worked;
   return (w.outs ?? 0) / 3 / SEASON_INNINGS;
 }
@@ -122,14 +122,26 @@ export function armMileage(p: Pitcher): number {
  * Deliberately separate from `fatigueMultiplier`, which is what he spends
  * inside one outing. These multiply: a tired arm having a long night is both.
  */
-export function armMultiplier(p: Pitcher): number {
+export function armMultiplier(p: Arm): number {
   return 1 - Math.min(0.09, Math.max(0, armMileage(p) - 0.55) * 0.09);
 }
 
 /** Outs recorded, added to his year. */
-export function threw(p: Pitcher, outs: number): void {
+export function threw(p: Arm, outs: number): void {
   const w = p as Pitcher & Worked;
   w.outs = (w.outs ?? 0) + outs;
+  /*
+    The crossing — stage 16's door, "both jobs at once ... crossing
+    fatigue." A two-way man's legs and arm are the same body: the day he is
+    in the lineup already ticks `straight` like any other start, and a real
+    outing on top of it is a second hard day inside the same twenty-four
+    hours. Priced as one extra day per three innings thrown, so a one-out
+    cameo costs his bat nothing and a seven-inning start leans on it the
+    way it would lean on a real one.
+  */
+  if ((p as Player & { twoWay?: true }).twoWay === true && outs >= 3) {
+    w.straight = (w.straight ?? 0) + Math.min(3, Math.floor(outs / 9) + 1);
+  }
 }
 
 /** A fresh spring for everybody. */

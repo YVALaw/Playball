@@ -8,11 +8,12 @@
 // which is the only thing stopping the pitch system from being flavour text with
 // a multiplier attached.
 
-import { overallOf } from './ratings.js';
+import { armValue, overallOf } from './ratings.js';
 import { prestigeStars } from './program.js';
 import type { Pitch, Prospect } from './recruiting.js';
 import type { SeasonState, TeamRecord } from './season.js';
 import type { Region } from '../data/schools.js';
+import { uniquePlayers } from './types.js';
 import type { Player } from './types.js';
 
 /** Clamp to the 0..1 scale every pitch component uses. */
@@ -47,7 +48,9 @@ function playingTimeAt(record: TeamRecord, prospect: Prospect): number {
   let blocked = 0;
   for (const r of rivals) {
     const leaving = r.classYear === 'SR' ? 0.15 : r.classYear === 'JR' ? 0.6 : 1;
-    blocked = Math.max(blocked, overallOf(r) * leaving);
+    // In the arm pool a two-way man blocks with his arm, not his bat.
+    const worth = p.type === 'pitcher' ? armValue(r as import('./types.js').Arm) : overallOf(r);
+    blocked = Math.max(blocked, worth * leaving);
   }
 
   // Level with the man ahead of him is a real chance to play; well behind is not.
@@ -92,10 +95,10 @@ export function pitchFor(
  * does not, whatever its record says.
  */
 export function developmentScore(record: TeamRecord): number {
-  const roster: Player[] = [
+  const roster: Player[] = uniquePlayers([
     ...record.team.lineup, ...record.team.bench,
     ...record.team.rotation, ...record.team.bullpen,
-  ];
+  ]);
   const grown = roster.filter((p) => p.classYear !== 'FR');
   if (grown.length === 0) return 0.5;
 

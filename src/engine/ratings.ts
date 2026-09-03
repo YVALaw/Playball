@@ -2,8 +2,8 @@
 // Everything that turns a 0 to 100 rating into a real baseball rate lives here.
 // Tune in this file only. Nothing else should hardcode a baseball number.
 
-import type {
-  BattedBall, EventVector, FieldingRatings, Hitter, HitterRatings, OffensiveEvent,
+import { isTwoWay } from './types.js';
+import type {Arm, BattedBall, EventVector, FieldingRatings, Hitter, HitterRatings, OffensiveEvent,
   PAEvent, Pitcher, PitcherRatings, Position, Rng,
 } from './types.js';
 
@@ -366,17 +366,20 @@ export function batterVector(batter: Hitter): EventVector {
   return buildVector(BAT_SENS, BAT_NORM, batter);
 }
 
-export function pitcherVector(pitcher: Pitcher): EventVector {
+export function pitcherVector(pitcher: Arm): EventVector {
   return buildVector(PIT_SENS, PIT_NORM, pitcher);
 }
 
 // Platoon. Returns the multiplier applied to a batter's offensive events.
 // Opposite hand favors the batter, same hand favors the pitcher.
 // platoonSkill is the player's full split size as a share of production.
-export function platoonMultiplier(batter: Hitter, pitcher: Pitcher): number {
+export function platoonMultiplier(batter: Hitter, pitcher: Arm): number {
   const bats = batter.bats === 'S' ? (pitcher.throws === 'R' ? 'L' : 'R') : batter.bats;
   const sameHand = bats === pitcher.throws;
-  const skill = batter.platoonSkill + pitcher.platoonSkill;
+  // A two-way man's platoonSkill is his BAT's split; on the mound his arm
+  // has its own, which is the whole reason armPlatoon exists as a field.
+  const armSkill = isTwoWay(pitcher) ? pitcher.armPlatoon : pitcher.platoonSkill;
+  const skill = batter.platoonSkill + armSkill;
   // Overall production is a weighted average of both matchups, so split the
   // effect in half either side of the mean.
   return sameHand ? 1 - skill / 2 : 1 + skill / 2;
@@ -483,7 +486,7 @@ const JENSEN_K = 0.9593;
  */
 export function strikeoutProbability(
   batter: Hitter,
-  pitcher: Pitcher,
+  pitcher: Arm,
   fatigueMult = 1,
 ): number {
   const raw =
@@ -496,7 +499,7 @@ export function strikeoutProbability(
 
 export function battedBallType(
   batter: Hitter,
-  pitcher: Pitcher,
+  pitcher: Arm,
   rng: Rng,
   groundBias = 1,
 ): BattedBall {
@@ -530,12 +533,12 @@ export function battedBallType(
  * down a second time in the UI — and a duplicated constant is a constant that
  * eventually disagrees with itself.
  */
-export function pitchBudget(pitcher: Pitcher): number {
+export function pitchBudget(pitcher: Arm): number {
   return 30 + pitcher.stamina * 0.85;      // stamina 80 gives roughly 98 pitches
 }
 
 export function fatigueMultiplier(
-  pitcher: Pitcher, pitchCount: number, slope = 1,
+  pitcher: Arm, pitchCount: number, slope = 1,
 ): number {
   const budget = pitchBudget(pitcher);
   if (pitchCount <= budget) return 1;
@@ -762,6 +765,23 @@ export function overallOf(p: Hitter | Pitcher): number {
                + gloveScore(p) * HITTER_GLOVE)
     : Math.round(p.stuff * 0.33 + p.movement * 0.27 + p.control * 0.27 + p.stamina * 0.09
                + gloveScore(p) * PITCHER_GLOVE);
+}
+
+/**
+ * What the man is worth ON THE MOUND — for a Pitcher exactly `overallOf`,
+ * for a two-way man the same arm formula read off his flattened arm fields.
+ *
+ * Exists because `overallOf` answers "how good is this player" through his
+ * type, and a two-way man's type is 'hitter': every rotation-context sort
+ * that ranked him through it was ranking a pitching staff by somebody's
+ * batting. Used everywhere an ARM is being compared with arms — the pen's
+ * rested-first tie-break, the rotation sort, roster strength's front three —
+ * and nowhere a PERSON is being compared with people.
+ */
+export function armValue(p: Arm): number {
+  if (!isTwoWay(p)) return overallOf(p);
+  return Math.round(p.stuff * 0.33 + p.movement * 0.27 + p.control * 0.27 + p.stamina * 0.09
+             + gloveScore(p) * PITCHER_GLOVE);
 }
 
 /**

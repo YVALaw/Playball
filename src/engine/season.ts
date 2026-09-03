@@ -17,7 +17,7 @@ import { started } from './morale.js';
 import { strainMultiplier, played, rested, threw } from './workload.js';
 import { available } from './depthChart.js';
 import { makeTeam, reserveNames, resetNames } from './players.js';
-import { overallOf } from './ratings.js';
+import { armValue, overallOf } from './ratings.js';
 import { initialPrestige } from './program.js';
 import { strategyFor, type Strategy } from './strategy.js';
 import { generateClass, type RecruitClass } from './recruiting.js';
@@ -44,8 +44,8 @@ import type { Inductee } from './hall.js';
 // module, so a value import back the other way would be a runtime cycle. The
 // school annals speak the postseason's vocabulary for how a year ended.
 import type { Finish } from './postseason.js';
-import type {
-  EngineName, FieldLine, HitLine, Hitter, PitchLine, Pitcher, Player, PlayerId, Rng,
+import { uniquePlayers } from './types.js';
+import type {Arm, EngineName, FieldLine, HitLine, Hitter, PitchLine, Pitcher, Player, PlayerId, Rng,
   Team, TeamId,
 } from './types.js';
 
@@ -1410,8 +1410,8 @@ export function fieldingFor(season: SeasonState, id: PlayerId): FieldingSeason {
  * keep yet.
  */
 interface Decision {
-  winner: Pitcher | null;
-  loser: Pitcher | null;
+  winner: Arm | null;
+  loser: Arm | null;
 }
 
 function foldSide(
@@ -1625,7 +1625,7 @@ function startableSlot(team: Team, slot: number, day: number): number {
   return slot;
 }
 
-export function restedFirst(season: SeasonState, team: TeamRecord): Pitcher[] {
+export function restedFirst(season: SeasonState, team: TeamRecord): Arm[] {
   const day = currentDay(season);
   // A suspended or redshirted arm is not in tonight's pen. Availability was
   // never asked here, so the classroom could send a man out to warm up.
@@ -1633,7 +1633,9 @@ export function restedFirst(season: SeasonState, team: TeamRecord): Pitcher[] {
     const restA = day - (season.lastPitched.get(a.id) ?? -99);
     const restB = day - (season.lastPitched.get(b.id) ?? -99);
     if (restA !== restB) return restB - restA;
-    return overallOf(b) - overallOf(a);
+    // armValue, not overallOf: a two-way man in the pen is ranked on his
+    // arm here, whatever his bat is worth.
+    return armValue(b) - armValue(a);
   });
 }
 
@@ -2089,9 +2091,10 @@ export function simNextDay(season: SeasonState, opts: DayOptions = {}): GameSumm
     const rec = season.teams[mine];
     const week = season.dayIndex / 7;
     if (rec) {
-      const men = [
+      // One body once: a two-way man fails a class exactly one time.
+      const men = uniquePlayers([
         ...rec.team.lineup, ...rec.team.bench, ...rec.team.rotation, ...rec.team.bullpen,
-      ];
+      ]);
       for (const p of men) {
         const a = p as typeof p & { outUntil?: number; why?: string };
         if (typeof a.outUntil === 'number' && season.dayIndex < a.outUntil) continue;

@@ -32,7 +32,7 @@ import { Avatar } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
 import { returnPending, whyOut } from '../Needs.js';
 import { Modal } from '../Modal.js';
-import { overallOf } from '../../engine/ratings.js';
+import { armValue, overallOf } from '../../engine/ratings.js';
 import { captainOf } from '../../engine/captains.js';
 import { battingAverage, era, inningsPitched, injuryClock } from '../../engine/season.js';
 import { handles } from '../../state/depth.js';
@@ -490,7 +490,7 @@ export function Lineup() {
                   {captainOf(team.team)?.id === p.id && <CaptainC />}
                 </strong>
                 <small>
-                  {overallOf(p)} OVR
+                  {armValue(p)} OVR
                   {line && line.outs > 0 ? ` · ${era(line).toFixed(2)}` : ''}
                 </small>
                 <i className="drag">{on ? <SewingPinIcon /> : null}</i>

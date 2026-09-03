@@ -13,7 +13,7 @@ import { GENERATED_POTENTIAL_CAP, scoutNoise } from './scouting.js';
 import { FIRST, LAST } from '../data/names.js';
 import { CLASS_ORDER, playerId } from './types.js';
 import type {
-  Bats, ClassYear, Hand, Hitter, PitcherRole, Pitcher, PlayerId, Position, Rng, Team,
+  Bats, ClassYear, Hand, Hitter, PitcherRole, Pitcher, PlayerId, Position, Rng, Team, TwoWay,
 } from './types.js';
 
 const POSITIONS: readonly Position[] = ['C','1B','2B','3B','SS','LF','CF','RF','DH'];
@@ -482,6 +482,43 @@ export function makePitcher(rng: Rng, quality = 50, opts: PitcherOpts = {}): Pit
   );
   signWithBadges(p);
   return p;
+}
+
+/**
+ * The rare one — stage 16's two-way man, arriving two-way rather than being
+ * made, exactly as the stage-8 split promised. Built as a hitter first (the
+ * whole HitterRatings surface, his DH slot, his bat's platoon split), then
+ * an arm is drawn onto the same object with the same field names a Pitcher
+ * carries, so every mound consumer reads him without indirection. His bat
+ * is drawn a touch above the class and his arm at it: the archetype is the
+ * best athlete on the field, not two mediocrities stapled together — and
+ * pitching does not suppress the bat, which was the founding sentence.
+ *
+ * Appended draws only — he costs more stream than an ordinary man, which is
+ * fine everywhere a class is generated (the count pins re-record) and
+ * nowhere else, because nothing converts an existing man.
+ */
+export function makeTwoWay(rng: Rng, quality = 50): TwoWay {
+  const bat = makeHitter(rng, quality + 3, { pos: 'DH' });
+  let velocityNoise = 0;
+  const man = bat as TwoWay;
+  man.twoWay = true;
+  man.role = 'SP';
+  man.sidearm = false;
+  man.armPlatoon = Math.max(0, gauss(rng) * 0.02);
+  man.stuff = normal(rng, quality + 2, 13);
+  man.movement = normal(rng, quality, 12);
+  man.control = normal(rng, quality + 1, 13);
+  man.stamina = normal(rng, 62, 10);
+  man.groundBall = normal(rng, 50, 15);
+  man.holdRunners = normal(rng, quality, 14);
+  velocityNoise = gauss(rng);
+  man.velocity = Math.round(
+    Math.max(78, Math.min(103, 80 + man.stuff * 0.19 + velocityNoise * 2.2)),
+  );
+  // One ceiling for one body: the bat's projection stands, and develop
+  // grows both halves toward it in step.
+  return man;
 }
 
 const LINEUP_POSITIONS: readonly Position[] = ['C','1B','2B','3B','SS','LF','CF','RF','DH'];

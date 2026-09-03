@@ -15,8 +15,7 @@ import { createHalfInning, TeamState, RULES, type SimOptions, moundVisit } from 
 import { pitchBudget, CONFIDENCE } from './ratings.js';
 import type { GameResult } from './game.js';
 import { ENGINES } from './engines.js';
-import type {
-  EngineFn, Hitter, Pitcher, PlayerId, PlayEvent, Rng, Tactic, Team,
+import type {Arm, EngineFn, Hitter, Pitcher, PlayerId, PlayEvent, Rng, Tactic, Team,
 } from './types.js';
 
 /** What the manager is being asked, and what he can answer. */
@@ -29,7 +28,7 @@ export interface Decision {
   awayRuns: number;
   homeRuns: number;
   batter: Hitter;
-  pitcher: Pitcher;
+  pitcher: Arm;
   /**
    * The man on the mound's outing so far, for the screen.
    *
@@ -98,7 +97,7 @@ export interface LiveGame {
   /** Send a bench bat up in place of the man due. */
   pinchHit: (hitter: Hitter) => boolean;
   /** Go to the bullpen. */
-  changePitcher: (arm: Pitcher) => boolean;
+  changePitcher: (arm: Arm) => boolean;
   /**
    * Go and talk to him. Confidence only, once per pitcher per outing.
    *
@@ -109,7 +108,7 @@ export interface LiveGame {
   visitMound: () => boolean;
   /** Who is available off the bench and in the pen. */
   readonly benchAvailable: readonly Hitter[];
-  readonly bullpenAvailable: readonly Pitcher[];
+  readonly bullpenAvailable: readonly Arm[];
 }
 
 export interface LiveOptions extends SimOptions {
@@ -238,8 +237,8 @@ export function createLiveGame(
   // Same decision tracking the fast path uses, so a managed game credits the
   // pitcher of record by the same rule.
   let leadHolder: TeamState | null = null;
-  let creditTo: Pitcher | null = null;
-  let blameTo: Pitcher | null = null;
+  let creditTo: Arm | null = null;
+  let blameTo: Arm | null = null;
   const onScore = (bat: TeamState, fld: TeamState): void => {
     if (bat.runs <= fld.runs) return;
     if (leadHolder === bat) return;

@@ -6,7 +6,8 @@
 // sequence to land on it — see constrainedSequence in engines.ts.
 
 import { mult, clamp, LEAGUE_PITCH } from './ratings.js';
-import type { Hitter, PAContext, Pitcher, PitchResult, Rng } from './types.js';
+import type {
+  Arm, Hitter, PAContext, Pitcher, PitchResult, Rng } from './types.js';
 
 /** The twelve reachable counts. */
 export type CountKey = `${0 | 1 | 2 | 3}-${0 | 1 | 2}`;
@@ -90,7 +91,7 @@ export function pitchOutcome(
   balls: number,
   strikes: number,
   batter: Hitter,
-  pitcher: Pitcher,
+  pitcher: Arm,
   ctx: PAContext,
   rng: Rng,
 ): PitchResult {

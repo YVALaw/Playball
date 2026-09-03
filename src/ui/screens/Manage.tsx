@@ -940,7 +940,7 @@ export function Manage() {
             ? live.benchAvailable.map((h: Hitter) => ({
                 id: h.id, name: h.name, note: h.pos, rating: overallOf(h),
               }))
-            : live.bullpenAvailable.map((p: Pitcher) => ({
+            : live.bullpenAvailable.map((p) => ({
                 id: p.id, name: p.name, note: `${p.throws}HP`, rating: overallOf(p),
               }))}
           onPick={(id) => {

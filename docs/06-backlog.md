@@ -2468,3 +2468,36 @@ Filed by the reporter during the sorting session; sorted where they land.
   as a whole. → the screen queue in `07`.
 - **The college action button rework** — specifics owed by the reporter. →
   the screen queue in `07`.
+
+## V. Stage 16 ships whole — September 3 2026, overnight
+
+The heavy stage, built in one sitting against the doors §T and §U recorded.
+Every unit measured before and after; the write-up is `05` §49 and the plan
+entry carries the numbers. What this section exists to record is the ledger
+against the promises above:
+
+- **June injury rolls** — landed on a new axis (`injuryClock`) instead of a
+  stream change, so the goldens never moved and the deferral reason ("RNG
+  stream, goldens") dissolved rather than being paid.
+- **Prestige drag at the top** — the thirty-season measurement re-ran as
+  promised: twelve reigns for twenty-one, and the zero-title thirteen-season
+  squatter is extinct. The probe now prints reigns permanently.
+- **The star-portal rarity knob** — priced off a census the probe did not
+  have (a developed league carries 15.2 men at the line; a seeded one has
+  nobody above 82), landing within noise of one-in-five-or-six. The wire's
+  threshold is the same constant the model rolls, so §T's alignment note is
+  now structural rather than procedural.
+- **Findable gems** — re-ran the climb probes as promised: the floor holds
+  (7/10 autopilot two-star careers touch Omaha across thirty years, none
+  win it all), which is the right shape — the gems reward the scout at the
+  desk, not the script.
+- **Arcs, the ritual, the scout's book, the pros' July, the
+  run-expectancy board, two-way players** — all per their entries, §49.
+- **The walk deficit** — the run-expectancy call recovered the situational
+  layer's unexplained point on its way in (worst sweep deviation 5.2% →
+  4.0%, the fall entirely on the walk row). The residual is bounded and
+  attributed in §49; LEAGUE.walk stays at its sourced 9.1%.
+
+Still open after the stage, on purpose: the store's grant (17), the
+language-triage worklist items 2–7 (`docs/11`), and the screen queue. The
+reporter tests all three stages next; the final audit rides near ship.

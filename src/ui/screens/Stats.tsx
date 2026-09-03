@@ -27,6 +27,7 @@ import {
   DataTable, FieldNote, Metric, MetricStrip, ModuleIntro, SectionHeading, Segmented,
   type Row,
 } from '../components/Kit.js';
+import { uniquePlayers } from '../../engine/types.js';
 import type { Player, PlayerId } from '../../engine/types.js';
 
 type Scope = 'national' | 'team' | 'june' | 'fielding';
@@ -70,9 +71,9 @@ export function Stats() {
   // with a chance recorded, best rate first among the qualified, the rest by
   // volume with a dash where the rate would be shouting noise.
   const bar = rankableChances(season);
-  const gloveRows = [
+  const gloveRows = uniquePlayers([
     ...team.team.lineup, ...team.team.bench, ...team.team.rotation, ...team.team.bullpen,
-  ]
+  ])
     .map((p) => ({ p: p as Player, line: season.fielding?.get(p.id) }))
     .filter((r): r is { p: Player; line: FieldingSeason } =>
       r.line !== undefined && r.line.chances > 0)

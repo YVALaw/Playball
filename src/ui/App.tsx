@@ -11,6 +11,7 @@
 // design/Roster Tabletop/ is the design of record.
 
 import { useEffect, useRef, useState } from 'react';
+import { uniquePlayers } from '../engine/types.js';
 import { applyTeamAccent } from './accent.js';
 import { audioReady, preloadSfx, unlockAudio } from './sound.js';
 import { BigMomentCard } from './BigMoment.js';
@@ -597,8 +598,10 @@ function AppBody(
     which saves a trip for exactly the questions a player asks most often.
   */
   const today = season.schedule[season.dayIndex];
-  const menCount = team.team.lineup.length + team.team.bench.length
-    + team.team.rotation.length + team.team.bullpen.length;
+  const menCount = uniquePlayers([
+    ...team.team.lineup, ...team.team.bench,
+    ...team.team.rotation, ...team.team.bullpen,
+  ]).length;
   const navMeta: Record<string, string> = {
     home: today ? seasonDate(year, today.day).split(' ').slice(1).join(' ').toUpperCase() : 'FINAL',
     team: `${menCount} MEN`,

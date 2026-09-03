@@ -1073,9 +1073,20 @@ The work:
 **Exit:** nothing in the game reads as though a machine wrote it, and a
 recruiting report is worth studying.
 
-## Stage 16 · The simulation's last mile
+## Stage 16 · The simulation's last mile — **SHIPPED September 3 2026**
 
-**Size:** large — was medium until the sorting session; two-way players did that
+**Size:** large — was medium until the sorting session; two-way players did
+that · Full write-up in `05` §49. Every unit landed in one overnight sitting:
+June injury rolls on the new injuryClock; the summit drag (twelve reigns for
+twenty-one, measured); the portal balance pass with STAR_LINE and the market
+swing; findable gems (12.0 elite ceilings a year at three stars or fewer, for
+4.4); development arcs, both directions, per the reporter's sentence; the
+position-change winter ritual; the scout's book on the rival dossier;
+recruits drafted out of high school; the run-expectancy bunt call (which
+recovered a point of the walk deficit on its way in); and two-way players —
+one object in two arrays, batting for himself while he pitches, fatigue
+crossing one body. The measurement debt closed to numbers: worst sweep
+deviation 4.0%, its best since before the situational layer.
 
 Run-expectancy AI · recruits drafted out of high school · the measurement debt
 (the walk deficit, `sim.ts parity`, single-sample calibration figures).

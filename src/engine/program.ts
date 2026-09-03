@@ -20,7 +20,7 @@
 import {
   LIFER_SEASONS, restoreAchievements, type AchievementLog,
 } from './achievements.js';
-import { overallOf } from './ratings.js';
+import { armValue, overallOf } from './ratings.js';
 import { FIRST, LAST } from '../data/names.js';
 import { ALL_STATES } from '../data/schools.js';
 import { DEFAULT_PHILOSOPHY, isPhilosophyId, type PhilosophyId } from './strategy.js';
@@ -634,7 +634,9 @@ export function gradeObjectives(
  */
 export function rosterStrength(team: Team): number {
   const bats = team.lineup.map(overallOf);
-  const arms = team.rotation.slice(0, 3).map(overallOf);
+  // The front three are worth their arms here whatever their bats do; a
+  // two-way ace measured on his batting would understate his own staff.
+  const arms = team.rotation.slice(0, 3).map(armValue);
   const all = [...bats, ...arms];
   if (all.length === 0) return 50;
   return Math.round(all.reduce((a, b) => a + b, 0) / all.length);

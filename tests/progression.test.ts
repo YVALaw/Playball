@@ -16,6 +16,7 @@ import { overallOf } from '../src/engine/ratings.js';
 import { makeRng } from '../src/engine/rng.js';
 import { CONFERENCES } from '../src/data/schools.js';
 import type { SeasonState } from '../src/engine/season.js';
+import { uniquePlayers } from '../src/engine/types.js';
 import type { Player } from '../src/engine/types.js';
 
 /** Two conferences is enough to prove the mechanics and keeps the suite quick. */
@@ -230,15 +231,23 @@ describe('a signed class actually arrives', () => {
     const me = 0;
     const signed = season.recruiting.prospects.slice(0, 8);
     for (const p of signed) { p.signedBy = me; p.committedWeek = 3; }
-    const ids = new Set(signed.map((p) => p.player.id));
+    // Less the pros: the top of the board is exactly where a July draft
+    // room shops, and a signed kid they took must NOT arrive.
+    const arriving = signed.filter((p) => !takenByPros(p.player, season.recruiting.year));
+    const ids = new Set(arriving.map((p) => p.player.id));
+    const gone = new Set(
+      signed.filter((p) => takenByPros(p.player, season.recruiting.year))
+        .map((p) => p.player.id),
+    );
 
     advanceOffseason(season, rng, { userTeam: me });
 
     const t = season.teams[me]!.team;
-    const roster = [...t.lineup, ...t.bench, ...t.rotation, ...t.bullpen];
+    const roster = uniquePlayers([...t.lineup, ...t.bench, ...t.rotation, ...t.bullpen]);
     const landed = roster.filter((p) => ids.has(p.id));
 
-    expect(landed.length, 'signed recruits went missing').toBe(signed.length);
+    expect(landed.length, 'signed recruits went missing').toBe(arriving.length);
+    expect(roster.some((p) => gone.has(p.id)), 'a drafted-away kid arrived anyway').toBe(false);
     // And the roster is still a fieldable team.
     expect(t.lineup).toHaveLength(9);
     expect(t.rotation).toHaveLength(4);

@@ -215,10 +215,17 @@ describe('morale', () => {
   it('states a promise rather than inferring one', () => {
     // The reason it is stated: recruiting a man on the promise of a job and
     // then sitting him is a thing you *did*, and the game should say so.
-    expect(expectationOf(best, 1)).toBeGreaterThan(0.6);
-    expect(expectationOf(best, 20)).toBeLessThan(0.3);
-    expect(promiseOf(best, 1)).toBe('expects to start');
-    expect(promiseOf(best, 20)).toContain('earn it');
+    // Class year fixed, because the freshman discount is real and whether
+    // lineup[0] happens to be one is the seed's business, not this pin's.
+    const junior = { ...best, classYear: 'JR' as const };
+    expect(expectationOf(junior, 1)).toBeGreaterThan(0.6);
+    expect(expectationOf(junior, 20)).toBeLessThan(0.3);
+    expect(promiseOf(junior, 1)).toBe('expects to start');
+    // The bottom of the roster is a freshman's seat: a junior at rank 20
+    // is 'in the mix' by the seniority term, which is correct and not this
+    // pin's business.
+    const frosh = { ...best, classYear: 'FR' as const };
+    expect(promiseOf(frosh, 20)).toContain('earn it');
   });
 
   it('asks less of a freshman than of a senior at the same standing', () => {
@@ -314,13 +321,18 @@ describe('the captain', () => {
       Without the gate, naming a captain is a free buff applied to your best
       player, and the answer is the same man every year. With it the question
       is who in this room is actually like that -- and sometimes that is not a
-      man anywhere near your best.
+      man anywhere near your best. A single room can honestly have nobody --
+      that is the gate working -- so the pin reads thirty rooms: leadership
+      exists in the country, and no room is wall-to-wall captains.
     */
-    const team = aTeam();
-    const eligible = candidates(team);
-    const all = [...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen];
-    expect(eligible.length, 'nobody in the room can lead it').toBeGreaterThan(0);
-    expect(eligible.length, 'everybody is a captain').toBeLessThan(all.length);
+    let anyRoom = 0;
+    for (const t of world.teams.slice(0, 30)) {
+      const eligible = candidates(t.team);
+      const all = [...t.team.lineup, ...t.team.bench, ...t.team.rotation, ...t.team.bullpen];
+      if (eligible.length > 0) anyRoom += 1;
+      expect(eligible.length, 'everybody is a captain').toBeLessThan(all.length);
+    }
+    expect(anyRoom, 'no room in thirty can lead itself').toBeGreaterThan(0);
   });
 
   it('never offers a freshman', () => {
@@ -332,7 +344,9 @@ describe('the captain', () => {
   });
 
   it('shows the room its own choice, seniority first', () => {
-    const team = aTeam();
+    // The first room that has a choice to make; which team that is belongs
+    // to the seed.
+    const team = world.teams.find((t) => candidates(t.team).length > 0)!.team;
     const pick = roomsChoice(team);
     expect(pick).not.toBeNull();
     expect(canLead(pick!)).toBe(true);
@@ -347,7 +361,7 @@ describe('the captain', () => {
   });
 
   it('names him, and forgets him when he leaves', () => {
-    const team = aTeam();
+    const team = world.teams.find((t) => candidates(t.team).length > 0)!.team;
     const man = candidates(team)[0]!;
     expect(appoint(team, man)).toBe(true);
     expect(captainOf(team)?.id).toBe(man.id);
@@ -358,7 +372,7 @@ describe('the captain', () => {
   it('does not keep a captain who is no longer eligible', () => {
     // He graduated, or the roster turned over. The room notices before the
     // save file does.
-    const team = aTeam();
+    const team = world.teams.find((t) => candidates(t.team).length > 0)!.team;
     const man = candidates(team)[0]!;
     appoint(team, man);
     const stripped = { ...man };

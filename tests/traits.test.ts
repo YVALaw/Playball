@@ -36,18 +36,18 @@ import {
 import {
   createSeason, recordResult, simNextDay, DEFAULT_SEASON, seasonLength,
 } from '../src/engine/season.js';
-import type { Hitter, Pitcher, Player } from '../src/engine/types.js';
+import type {Arm, Hitter, Pitcher, Player } from '../src/engine/types.js';
 
 // ---------------------------------------------------------------------------
 // Shared fixtures
 // ---------------------------------------------------------------------------
 
 /** A big pool of generated men, built once. Reused by everything below. */
-function pool(seed = 4242, teams = 14): { bats: Hitter[]; arms: Pitcher[] } {
+function pool(seed = 4242, teams = 14): { bats: Hitter[]; arms: Arm[] } {
   resetNames();
   const rng = makeRng(seed);
   const bats: Hitter[] = [];
-  const arms: Pitcher[] = [];
+  const arms: Arm[] = [];
   for (let i = 0; i < teams; i++) {
     const t = makeTeam(rng, `T${i}`, 50);
     bats.push(...t.lineup, ...t.bench);

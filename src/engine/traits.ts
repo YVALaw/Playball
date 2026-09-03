@@ -14,13 +14,13 @@
 
 import { badgeMods } from './badges.js';
 import { tendencyMods, type Situation } from './tendencies.js';
-import type { Hitter, Pitcher, TraitMods } from './types.js';
+import type {Arm, Hitter, Pitcher, TraitMods } from './types.js';
 
 export type { Situation, TraitMods };
 
 export function plateTraits(
   batter: Hitter,
-  pitcher: Pitcher,
+  pitcher: Arm,
   catcher: Hitter | null,
   sit: Situation,
 ): TraitMods {

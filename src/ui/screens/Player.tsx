@@ -52,6 +52,7 @@ import {
 import type { BoxScore, CareerYear, SeasonState } from '../../engine/season.js';
 import type { Departure } from '../../engine/progression.js';
 import { pct, seasonDate } from '../format.js';
+import { isTwoWay } from '../../engine/types.js';
 import type {
   ClassYear, Hitter, Pitcher, PlayerId, Player as AnyPlayer,
 } from '../../engine/types.js';
@@ -286,7 +287,8 @@ export function Player() {
   const ovr = overallOf(p);
   // A DH's card names the position he actually plays — the DH is where the
   // coach bats him, not what he is. See `naturalPos`.
-  const slot = isPitcher ? (p as Pitcher).role : naturalPos(p as Hitter);
+  const slot = isTwoWay(p) ? 'TWO-WAY'
+    : isPitcher ? (p as Pitcher).role : naturalPos(p as Hitter);
   const dhToday = !isPitcher && p.pos === 'DH';
 
   // A tab that is not on offer must never be the one on screen. Cheap insurance
@@ -738,6 +740,20 @@ function Ratings(
                 <Bar key={key} label={label} value={Math.round((p as Hitter)[key])} />
               ))}
           </section>
+
+          {/* The other half of the rare man: his arm, under his bat, with
+              the same bars a pitcher's card uses — one body, two jobs. */}
+          {isTwoWay(p) && (
+            <>
+              <Repertoire p={p as never} />
+              <SectionHeading kicker="AND ON THE MOUND" title="The arm he also brings" />
+              <section className="tool-table">
+                {PITCHER_BARS.map(([key, label]) => (
+                  <Bar key={key} label={label} value={Math.round(p[key])} />
+                ))}
+              </section>
+            </>
+          )}
 
           <SectionHeading
             kicker="WITH THE GLOVE"
@@ -1715,6 +1731,9 @@ function SeasonsUnder(
       </section>
     );
   }
+  // The two-way man's book has two halves and gets both tables — the
+  // leaderboard split, carried onto his own card.
+  const both = isTwoWay(p) && years.some((y) => (y.outs ?? 0) > 0);
   return (
     <>
       <SectionHeading
@@ -1722,6 +1741,12 @@ function SeasonsUnder(
         title={years.length === 1 ? 'One season' : `${years.length} seasons`}
       />
       <SeasonRows years={years} live={live} isPitcher={p.type === 'pitcher'} />
+      {both && (
+        <>
+          <SectionHeading kicker="AND ON THE MOUND" title="The same seasons, pitched" />
+          <SeasonRows years={years} live={live} isPitcher={true} />
+        </>
+      )}
     </>
   );
 }

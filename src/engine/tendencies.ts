@@ -29,7 +29,8 @@
 
 import { fastballShare, repertoireOf } from './pitches.js';
 import { scoutNoise } from './scouting.js';
-import type { Hitter, Pitcher, Player, Team } from './types.js';
+import { isTwoWay } from './types.js';
+import type { Arm, Hitter, Pitcher, Player, Team } from './types.js';
 
 /**
  * The nine slots. A player has one reading in each slot that applies to him:
@@ -191,8 +192,8 @@ const MIX_POWER = 0.655;
 
 function poleOf(p: Player, slot: TendencyId): Pole {
   if (slot === 'mix') {
-    if (p.type !== 'pitcher') return 0;
-    const share = fastballShare(repertoireOf(p));
+    if (p.type !== 'pitcher' && !isTwoWay(p)) return 0;
+    const share = fastballShare(repertoireOf(p as Arm));
     return share >= MIX_POWER ? 1 : share <= MIX_JUNK ? -1 : 0;
   }
   const u = scoutNoise(p.id, SALT[slot]);
@@ -207,7 +208,12 @@ const CACHE = new Map<string, TendencySet>();
 export function tendenciesOf(p: Player): TendencySet {
   const hit = CACHE.get(p.id);
   if (hit) return hit;
-  const slots = p.type === 'hitter' ? HITTER_TENDENCIES : PITCHER_TENDENCIES;
+  // A two-way man is read on both sides of the ball, which is the honest
+  // version of him: FREE SWINGER at the plate and NIBBLER on the mound can
+  // be the same young man having two different arguments with the zone.
+  const slots = isTwoWay(p)
+    ? [...HITTER_TENDENCIES, ...PITCHER_TENDENCIES]
+    : p.type === 'hitter' ? HITTER_TENDENCIES : PITCHER_TENDENCIES;
   const set: TendencySet = {};
   for (const slot of slots) set[slot] = poleOf(p, slot);
   CACHE.set(p.id, set);
@@ -509,7 +515,7 @@ const NEUTRAL: TendencyMods = {
 };
 
 export function tendencyMods(
-  batter: Hitter, pitcher: Pitcher, sit: Situation,
+  batter: Hitter, pitcher: Arm, sit: Situation,
 ): TendencyMods {
   const b = tendenciesOf(batter);
   const p = tendenciesOf(pitcher);

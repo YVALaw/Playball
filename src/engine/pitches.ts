@@ -24,7 +24,7 @@
 // generator nothing. It is never stored, and no save has to carry it.
 
 import { scoutNoise } from './scouting.js';
-import type { Pitcher } from './types.js';
+import type {Arm, Pitcher } from './types.js';
 
 /**
  * The eleven pitches the game knows about.
@@ -219,7 +219,7 @@ function capSecondary(list: Offering[]): Offering[] {
     : o);
 }
 
-function build(p: Pitcher): Offering[] {
+function build(p: Arm): Offering[] {
   const id = p.id;
   if (scoutNoise(id, SALT.knuckler) < 0.012) return knuckleballer(id);
 
@@ -311,7 +311,7 @@ function build(p: Pitcher): Offering[] {
  */
 const CACHE = new Map<string, Repertoire>();
 
-export function repertoireOf(p: Pitcher): Repertoire {
+export function repertoireOf(p: Arm): Repertoire {
   const hit = CACHE.get(p.id);
   if (hit) return hit;
   const built = build(p);
@@ -335,6 +335,6 @@ export function fastballShare(rep: Repertoire): number {
  * Derived off `velocity`, which the generator already ties to `stuff`, so the
  * change of speed a card shows agrees with the fastball number beside it.
  */
-export function speedOf(p: Pitcher, id: PitchId): number {
+export function speedOf(p: Arm, id: PitchId): number {
   return Math.round(p.velocity * PITCHES[id].velocity);
 }

@@ -31,7 +31,7 @@ import { NeedsYou, useNeeds } from '../Needs.js';
 import { seriesStake } from '../../engine/world.js';
 import { SectionHeading } from '../components/Kit.js';
 import { Crest } from '../Crest.js';
-import type { Pitcher } from '../../engine/types.js';
+import type {Arm, Pitcher } from '../../engine/types.js';
 
 /**
  * A team's collective batting average, straight off the season books.
@@ -151,7 +151,7 @@ export function Today() {
     The ERA rides along once he has three innings to his name; before that the
     number would be noise wearing decimals.
   */
-  const armShort = (p: Pitcher | null | undefined): string => {
+  const armShort = (p: Arm | null | undefined): string => {
     if (!p) return '—';
     const line = season.pitching.get(p.id);
     const e = line && line.outs >= 9 ? ` · ${era(line).toFixed(2)}` : '';

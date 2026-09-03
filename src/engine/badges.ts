@@ -39,8 +39,9 @@
 
 import { potentialGrade, scoutNoise } from './scouting.js';
 import type { Situation } from './tendencies.js';
+import { isTwoWay } from './types.js';
 import type {
-  BadgeId, BadgeTier, HeldBadge, Hitter, Pitcher, Player, Position,
+  Arm, BadgeId, BadgeTier, HeldBadge, Hitter, Pitcher, Player, Position,
 } from './types.js';
 
 export type { BadgeId, BadgeTier, HeldBadge };
@@ -69,9 +70,12 @@ type Eligible = (p: Player) => boolean;
 
 const anyone: Eligible = () => true;
 const hitters: Eligible = (p) => p.type === 'hitter';
-const pitchers: Eligible = (p) => p.type === 'pitcher';
-const starters: Eligible = (p) => p.type === 'pitcher' && p.role === 'SP';
-const relievers: Eligible = (p) => p.type === 'pitcher' && p.role === 'RP';
+// A two-way man is a pitcher for badge purposes too — RUBBER ARM and
+// PAINTER live on the arm, whichever side of the ball his type says.
+const arm = (p: Player): p is Arm => p.type === 'pitcher' || isTwoWay(p);
+const pitchers: Eligible = (p) => arm(p);
+const starters: Eligible = (p) => arm(p) && p.role === 'SP';
+const relievers: Eligible = (p) => arm(p) && p.role === 'RP';
 const at = (...spots: Position[]): Eligible => (p) => p.type === 'hitter' && spots.includes(p.pos);
 
 const INFIELD: Position[] = ['C', '1B', '2B', '3B', 'SS'];
@@ -404,7 +408,7 @@ const NEUTRAL: BadgeMods =
  * the pitcher a rating for who was catching him.
  */
 export function badgeMods(
-  batter: Hitter, pitcher: Pitcher, catcher: Hitter | null, sit: Situation,
+  batter: Hitter, pitcher: Arm, catcher: Hitter | null, sit: Situation,
 ): BadgeMods {
   const m: BadgeMods = { ...NEUTRAL };
 
@@ -463,7 +467,7 @@ export const gloveBonus = (p: Player): number => 1 - badgeSize(p, 'vacuum') * 2.
 export const throwBonus = (p: Player): number => 1 - badgeSize(p, 'onALine') * 2.2;
 
 /** RUBBER ARM. A multiplier on how fast he tires past his budget. */
-export const fatigueBonus = (p: Pitcher): number => 1 - badgeSize(p, 'rubberArm') * 2.2;
+export const fatigueBonus = (p: Arm): number => 1 - badgeSize(p, 'rubberArm') * 2.2;
 
 /** GYM RAT. A multiplier on the systematic pull toward his ceiling. */
 export const growthBonus = (p: Player): number => 1 + badgeSize(p, 'gymRat') * 2.2;

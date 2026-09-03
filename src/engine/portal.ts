@@ -36,6 +36,7 @@
 import type { Player, PlayerId, Team } from './types.js';
 import type { TeamRecord } from './season.js';
 import { overallOf } from './ratings.js';
+import { isTwoWay, uniquePlayers } from './types.js';
 
 /**
  * A star's base itch to move, per winter. See `entersPortal`: multiplied by
@@ -196,9 +197,9 @@ export function openPortal(
   const out: PortalMan[] = [];
   for (const rec of teams) {
     const ranks = squadRanks(rec.team);
-    const men: Player[] = [
+    const men: Player[] = uniquePlayers([
       ...rec.team.lineup, ...rec.team.bench, ...rec.team.rotation, ...rec.team.bullpen,
-    ];
+    ]);
     for (const p of men) {
       const starts = (p as Player & { starts?: number }).starts ?? 0;
       const squadRank = ranks.get(p.id) ?? 20;
@@ -264,6 +265,11 @@ export function signFromPortal(team: Team, man: PortalMan): void {
     if (arm.role === 'SP') team.rotation.push(arm); else team.bullpen.push(arm);
   } else {
     team.bench.push(p as never);
+    // A two-way man moves with both jobs: the bat rides the bench until the
+    // card is set, and the arm reports straight to its half of the staff.
+    if (isTwoWay(p)) {
+      if (p.role === 'SP') team.rotation.push(p); else team.bullpen.push(p);
+    }
   }
 }
 

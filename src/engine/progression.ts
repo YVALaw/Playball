@@ -17,22 +17,23 @@ import {
 import { ageFor, makeHitter, makePitcher, releaseNames, reserveNames } from './players.js';
 import { prestigeStars } from './program.js';
 import { GENERATED_POTENTIAL_CAP } from './scouting.js';
-import { overallOf, clamp } from './ratings.js';
+import { armValue, overallOf, clamp } from './ratings.js';
 import { windowBudget } from './recruiting.js';
 import type { Prospect } from './recruiting.js';
 import { gauss, makeRng } from './rng.js';
 import { cultureFor } from '../data/cultures.js';
 import { bankRedshirt } from './redshirt.js';
 import type { SeasonState } from './season.js';
+import { isTwoWay, uniquePlayers } from './types.js';
 import type {
-  ClassYear, Hitter, Pitcher, Player, PlayerId, Position, Rng, Team,
+  Arm, ClassYear, Hitter, Pitcher, Player, PlayerId, Position, Rng, Team,
 } from './types.js';
 
 /** Roughly how many bodies a program has to replace. Sizes the AI's board. */
 function countHoles(team: Team): number {
-  const roster: Player[] = [
+  const roster: Player[] = uniquePlayers([
     ...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen,
-  ];
+  ]);
   return roster.filter((p) => p.classYear === 'SR' || p.classYear === 'JR').length;
 }
 
@@ -280,6 +281,15 @@ function develop(p: Player, rng: Rng, growthMult = 1): number {
     p.blocking = bump(p.blocking);
     p.bunt = bump(p.bunt);
     p.steal = bump(p.steal);
+    if (isTwoWay(p)) {
+      // Both halves of him grow off the one ceiling: the same winter that
+      // adds bat adds arm, at the same pull, with its own noise per field.
+      p.stuff = bump(p.stuff);
+      p.movement = bump(p.movement);
+      p.control = bump(p.control);
+      p.stamina = bump(p.stamina);
+      p.velocity = Math.round(clamp(p.velocity + delta * 0.08, 79, 103));
+    }
   } else {
     p.stuff = bump(p.stuff);
     p.movement = bump(p.movement);
@@ -312,6 +322,11 @@ function develop(p: Player, rng: Rng, growthMult = 1): number {
 const byOverall = <T extends Player>(xs: T[]): T[] =>
   [...xs].sort((a, b) => overallOf(b) - overallOf(a));
 
+/** Anybody with an arm job, ranked by the arm. */
+const isArm = (p: Player): p is Arm => p.type === 'pitcher' || isTwoWay(p);
+const byArm = <T extends Arm>(xs: T[]): T[] =>
+  [...xs].sort((a, b) => armValue(b) - armValue(a));
+
 /**
  * Rebuild a roster to its structural shape, filling every hole with a freshman.
  *
@@ -335,13 +350,16 @@ function refill(
   team: Team, survivors: Player[], rng: Rng, signed: Player[] = [],
   collect?: Player[], walkOns: readonly Player[] = [],
 ): number {
-  const hitters = byOverall(survivors.filter((p): p is Hitter => p.type === 'hitter'));
-  const arms = byOverall(survivors.filter((p): p is Pitcher => p.type === 'pitcher'));
+  const bodies = uniquePlayers(survivors);
+  const hitters = byOverall(bodies.filter((p): p is Hitter => p.type === 'hitter'));
+  // A two-way man is in BOTH pools — his lineup spot and his rotation slot
+  // are the same body, which is the entire feature.
+  const arms = byArm(bodies.filter(isArm));
   let recruits = 0;
 
   // The signed class, best first, waiting to be placed.
   const signedHitters = byOverall(signed.filter((p): p is Hitter => p.type === 'hitter'));
-  const signedArms = byOverall(signed.filter((p): p is Pitcher => p.type === 'pitcher'));
+  const signedArms = byArm(signed.filter(isArm));
 
   // The men who walk on, drawn in advance and queued by the spot they were
   // drawn for. `walkOnClass` walks this same placement order, so the queue holds
@@ -355,29 +373,36 @@ function refill(
     if (queue) queue.push(p); else spare.set(key, [p]);
   }
 
+  // One body, one count — a two-way signing placed at a lineup spot AND a
+  // rotation slot is still one recruit. Every path that hands out a man
+  // reports him through this.
+  const countedIds = new Set<string>();
+  const counted = <T extends Player>(man: T): T => {
+    if (!countedIds.has(String(man.id))) { countedIds.add(String(man.id)); recruits += 1; }
+    return man;
+  };
+
   const freshHitter = (pos: Position): Hitter => {
-    recruits += 1;
     // Somebody you actually recruited who plays here, else the best bat signed,
     // else a walk-on.
     const exact = signedHitters.findIndex((h) => h.pos === pos);
-    if (exact >= 0) return signedHitters.splice(exact, 1)[0] as Hitter;
+    if (exact >= 0) return counted(signedHitters.splice(exact, 1)[0] as Hitter);
     const any = signedHitters.shift();
-    if (any) { any.pos = pos; return any; }
+    if (any) { any.pos = pos; return counted(any); }
     const p = (spare.get(pos)?.shift() as Hitter | undefined)
       ?? (walkOnHitter(rng, team.quality, pos));
     collect?.push(p);
-    return p;
+    return counted(p);
   };
-  const freshArm = (role: 'SP' | 'RP'): Pitcher => {
-    recruits += 1;
+  const freshArm = (role: 'SP' | 'RP'): Arm => {
     const exact = signedArms.findIndex((a) => a.role === role);
-    if (exact >= 0) return signedArms.splice(exact, 1)[0] as Pitcher;
+    if (exact >= 0) return counted(signedArms.splice(exact, 1)[0] as Arm);
     const any = signedArms.shift();
-    if (any) { any.role = role; return any; }
+    if (any) { any.role = role; return counted(any); }
     const p = (spare.get(role)?.shift() as Pitcher | undefined)
       ?? (walkOnArm(rng, team.quality, role));
     collect?.push(p);
-    return p;
+    return counted(p);
   };
 
   // The lineup wants a body at every spot on the diamond. Take the best
@@ -397,12 +422,12 @@ function refill(
   const starters = arms.filter((p) => p.role === 'SP');
   const relievers = arms.filter((p) => p.role === 'RP');
 
-  const rotation: Pitcher[] = starters.splice(0, ROTATION_SIZE);
+  const rotation: Arm[] = starters.splice(0, ROTATION_SIZE);
   while (rotation.length < ROTATION_SIZE) rotation.push(freshArm('SP'));
 
   // Starters who did not make the rotation slide to the bullpen, exactly as they
   // would in a real program.
-  const bullpen: Pitcher[] = [...relievers, ...starters].slice(0, BULLPEN_SIZE);
+  const bullpen: Arm[] = [...relievers, ...starters].slice(0, BULLPEN_SIZE);
   while (bullpen.length < BULLPEN_SIZE) bullpen.push(freshArm('RP'));
 
   // A signed recruit who does not fit anywhere simply does not arrive. He was
@@ -417,8 +442,25 @@ function refill(
   // threw them away. From the player's side that is the worst bug the game can
   // have: you spent three weeks and eight scholarships on men who then did not
   // exist. If he signed, he is on the roster; the bench and bullpen carry him.
-  for (const extra of signedHitters) { recruits += 1; bench.push(extra); }
-  for (const extra of signedArms) { recruits += 1; bullpen.push(extra); }
+  /*
+    A two-way signing is one recruit, not two: his bat may already have been
+    placed while his arm still waits here (or the other way round), and both
+    placements are the same young man. The id sets keep the count and the
+    arrays honest — pushed into the second unit if genuinely unplaced there,
+    counted once ever.
+  */
+  const batIds = new Set([...lineup, ...bench].map((m) => String(m.id)));
+  const armIds = new Set([...rotation, ...bullpen].map((m) => String(m.id)));
+  for (const extra of signedHitters) {
+    if (batIds.has(String(extra.id))) continue;
+    counted(extra);
+    bench.push(extra); batIds.add(String(extra.id));
+  }
+  for (const extra of signedArms) {
+    if (armIds.has(String(extra.id))) continue;
+    counted(extra);
+    bullpen.push(extra); armIds.add(String(extra.id));
+  }
 
   team.lineup = lineup;
   team.bench = bench;
@@ -522,10 +564,12 @@ export function walkOnClass(
 export function walkOnShortfall(
   survivors: readonly Player[], signed: readonly Player[],
 ): { pos: string; count: number }[] {
-  const hitters = byOverall(survivors.filter((p): p is Hitter => p.type === 'hitter'));
-  const arms = byOverall(survivors.filter((p): p is Pitcher => p.type === 'pitcher'));
-  const signedHitters = byOverall(signed.filter((p): p is Hitter => p.type === 'hitter'));
-  const signedArms = byOverall(signed.filter((p): p is Pitcher => p.type === 'pitcher'));
+  const roster = uniquePlayers(survivors);
+  const classIn = uniquePlayers(signed);
+  const hitters = byOverall(roster.filter((p): p is Hitter => p.type === 'hitter'));
+  const arms = byArm(roster.filter(isArm));
+  const signedHitters = byOverall(classIn.filter((p): p is Hitter => p.type === 'hitter'));
+  const signedArms = byArm(classIn.filter(isArm));
 
   const short: string[] = [];
   // The same three-step choice `freshHitter` and `freshArm` make: somebody
@@ -638,8 +682,9 @@ function evidenceFor(season: SeasonState, id: PlayerId): BadgeEvidence {
  * and a catcher short" rather than "you lost six players".
  */
 export function holesFor(survivors: readonly Player[]): { pos: string; count: number }[] {
-  const hitters = survivors.filter((p): p is Hitter => p.type === 'hitter');
-  const arms = survivors.filter((p): p is Pitcher => p.type === 'pitcher');
+  const one = uniquePlayers(survivors);
+  const hitters = one.filter((p): p is Hitter => p.type === 'hitter');
+  const arms = one.filter(isArm);
   const out: { pos: string; count: number }[] = [];
 
   for (const spot of LINEUP_SPOTS) {
@@ -734,9 +779,9 @@ export function departAndDevelop(
       : 0;
 
     const growthMult = 1 + (trainer - 20) / 500;
-    const roster: Player[] = [
+    const roster: Player[] = uniquePlayers([
       ...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen,
-    ];
+    ]);
 
     const survivors: Player[] = [];
     // A rival's drafted underclassmen, held until the roster loop is done: his
@@ -936,8 +981,9 @@ export function departAndDevelop(
  * disagree about a fourth starter.
  */
 function regroup(team: Team, survivors: readonly Player[]): void {
-  const hitters = survivors.filter((p): p is Hitter => p.type === 'hitter');
-  const arms = survivors.filter((p): p is Pitcher => p.type === 'pitcher');
+  const bodies = uniquePlayers(survivors);
+  const hitters = bodies.filter((p): p is Hitter => p.type === 'hitter');
+  const arms = bodies.filter(isArm);
   const starters = arms.filter((p) => p.role === 'SP');
   /*
     One man per spot, the way `refill` does it.
