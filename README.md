@@ -44,7 +44,7 @@ test, and a concurrency suite pinning the store's double-press guards.
 | Onboarding | the game now has scouting bands, badges, a record book and an economy to explain |
 | The ballpark's *look* | crowd, stands, lighting. The geometry is done |
 | REPLAY | the events are stored and take no draws; it can land any time |
-| Two-way players | with the DH-decline case |
+| Two-way players | with the DH-decline case — stage 16 |
 | The store | the S+ player and Play Billing |
 
 **Two test aids must come out before release** (both marked in code): the

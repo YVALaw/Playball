@@ -1053,7 +1053,7 @@ recruiting report is worth studying.
 
 ## Stage 16 · The simulation's last mile
 
-**Size:** medium
+**Size:** large — was medium until the sorting session; two-way players did that
 
 Run-expectancy AI · recruits drafted out of high school · the measurement debt
 (the walk deficit, `sim.ts parity`, single-sample calibration figures).
@@ -1072,6 +1072,16 @@ UI half (the bracket's injury hold) shipped alone. And the **star-portal
 rarity knob**: high-overall portal entries priced at roughly one every five or
 six seasons, so the assistant's wire-watch card (stage 15.5) reports an event
 rather than a Tuesday.
+
+**Grew a fourth time, closing a loose end the sorting session surfaced**
+(`06` §U): **two-way players, and the pitcher-hits DH case that shares
+their engine work.** Split out of stage 8 on August 28 with the design
+already settled — they arrive two-way rather than being made, they are rare
+the way they are in life, and pitching does not suppress the bat — and then
+never given the "own stage" the split promised. Asked directly and answered:
+they land here, beside the rest of the engine's last mile, because both
+re-run calibration and the leaderboard splits belong with the measurement
+debt. This makes 16 the heavy stage; it was medium and is now large.
 
 **Grew a third time — the sorting session** (`06` §U): **position changes
 as an offseason ritual** — an action on your own player's card in the

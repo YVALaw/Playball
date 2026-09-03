@@ -1273,6 +1273,8 @@ remembers his moments and then tells you he is in Triple-A is a person.
 
 ### H10 · Two-way players
 
+*(Scheduled September 2, night — stage 16; §U.)*
+
 Deferred for years, and the decision has aged badly: modern college baseball is
 full of them and it is the most distinctive thing in the sport right now.
 
@@ -1796,6 +1798,7 @@ reading a one-sample distribution shift should discount it the way I did not.
 - **Durability ratings**, deferred with "for now" attached — the honest upgrade
   path if pure chance reads as arbitrary in play.
 - **Two-way players** and **declining the DH**, both still stage-8 spillover.
+  *(Given a home September 2, night — stage 16; §U.)*
 
 ## N. Stage 10, the transfer portal — shipped August 28, 2026
 
@@ -2329,6 +2332,13 @@ work now lives.
   which is the reading half of the same skill.
 - **The store's grant — held on purpose.** The door decision stays at stage
   17's own design pass. Not blocking anything until then.
+- **Two-way players get a home — stage 16.** Surfaced by the reporter the
+  same night: "I remember we said it was going to be deferred and worked on
+  later but I didn't see it in the things we are missing." Right on both
+  counts — stage 8's split promised "their own stage" and no stage was ever
+  numbered, so they floated in the debts list. Folded into 16 (with the
+  pitcher-hits DH case that shares the engine work) rather than post-v1 or a
+  new 16.5; 16 goes from medium to large.
 
 ### The next batch — settled, small, ready to build
 
