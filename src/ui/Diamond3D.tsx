@@ -499,6 +499,40 @@ export interface PlayPlan {
   homer: boolean;
 }
 
+/**
+ * Which station's ground a spot belongs to.
+ *
+ * The fan runs from the plate at the origin out along -z, foul lines at
+ * ±45°. The battery's rule survives from the old chooser — the catcher
+ * never chases — but the pitcher now OWNS the mound's lane instead of being
+ * penalised out of it: anything dying short and central is his, which is
+ * exactly the comebacker and the tapped ball in front of the mound. The
+ * infield ring splits into four lanes by line, the outfield into thirds by
+ * angle. Exported for the test that pins the reported plays.
+ */
+export function regionOwner(spot: THREE.Vector3): number {
+  const x = spot.x;
+  const depth = -spot.z;                       // positive out toward CF
+  const r = Math.hypot(x, depth);
+
+  // The mound's lane: short and central. His feet, his ball.
+  if (depth >= 0 && r < 2.6 && Math.abs(x) < 1.1) return 1;
+
+  // The infield ring, in four lanes.
+  if (r < 4.9) {
+    if (x >= 1.8) return 2;                    // 1B
+    if (x >= 0) return 3;                      // 2B
+    if (x > -1.8) return 4;                    // SS
+    return 5;                                  // 3B
+  }
+
+  // The outfield, in thirds by angle off the CF line.
+  const theta = Math.atan2(x, depth);          // radians; + toward RF
+  if (theta < -0.26) return 6;                 // LF
+  if (theta > 0.26) return 8;                  // RF
+  return 7;                                    // CF
+}
+
 export function playPlan(hit: BallHit, stations: THREE.Vector3[]): PlayPlan {
   const [tx, , tz] = toWorld(hit.x, hit.y);
   const homer = hit.y > 1;
@@ -521,16 +555,13 @@ export function playPlan(hit: BallHit, stations: THREE.Vector3[]): PlayPlan {
     };
   }
 
-  // Whoever is closest to where it finishes. The battery stays home: a catcher
-  // never chases and a pitcher only fields what is at his feet.
+  // The man whose ground it is. Stage 15's fix for the two reports that were
+  // one bug: 'the second baseman goes all the way to the pitcher to catch a
+  // ball' — nearest-man plus a flat penalty still lost the mound's lane to
+  // the middle infield. A defense does not chase by proximity; each man owns
+  // a REGION, and the ball's resting place names its owner.
   const spot = new THREE.Vector3(rest.x, DOT_Y, rest.z);
-  let chaser = 1;
-  let bestD = Infinity;
-  stations.forEach((s, i) => {
-    if (i === 0) return;
-    const d = s.distanceToSquared(spot) + (i === 1 ? 6 : 0);
-    if (d < bestD) { bestD = d; chaser = i; }
-  });
+  const chaser = regionOwner(spot);
 
   // A catch happens at the moment of arrival by definition, so the man has to
   // be there; a ball on the ground is run down after it stops rolling.
