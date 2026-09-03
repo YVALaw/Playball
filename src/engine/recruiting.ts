@@ -534,6 +534,7 @@ export function generateClass(year: number, teams: number, rng: Rng): RecruitCla
   prospects.forEach((p, i) => { p.rank = i + 1; });
 
   ensureWonderGuy({ year, week: 0, prospects });
+  ensureHoodHans({ year, week: 0, prospects });
 
   return { year, week: 0, prospects };
 }
@@ -1451,6 +1452,55 @@ export function resetWeeklySpend(recruits: RecruitClass): void {
   Exported and also called on save-load, because the reporter went looking
   for him in a class that had been generated before he existed.
 */
+/**
+ * TESTING ONLY — the two-way fixture, asked for by name: "add one two-way
+ * to each class that I would recognize for testing, as Hood Hans." The
+ * wonder guy's mirror image in every sense: Hans Hood is nothing now with
+ * everything to come; Hood Hans is the finished article twice over — a real
+ * bat AND a real arm, ready the day he steps on campus — so every piece of
+ * the two-way machinery (both jobs on signing, the P/DH card, the crossing
+ * fatigue, the split leaderboards, the TWO-WAY tag) can be tested on demand
+ * instead of waiting for the honest quota to deal one. One star and no
+ * reach floor so any program can sign him; additive, outside the class's
+ * own at-most-three; gated out of the test runner exactly as Hans is.
+ */
+export function ensureHoodHans(cls: RecruitClass): void {
+  if (typeof process !== "undefined" && process.env?.["VITEST"]) return;
+  const prospects = cls.prospects;
+  const id = ("p1hood" + cls.year) as unknown as PlayerId;
+  if (prospects.some((p) => p.id === id)) return;
+  const donor = prospects.find((p) => p.player.type === "hitter");
+  if (!donor) return;
+  const copy = JSON.parse(JSON.stringify(donor)) as Prospect;
+  const h = copy.player as unknown as Record<string, unknown>;
+  h.id = id;
+  h.name = "Hood Hans";
+  h.pos = "DH";
+  h.classYear = "FR";
+  h.age = 18;
+  // The bat.
+  h.contact = 74; h.power = 76; h.eye = 70; h.speed = 62;
+  h.range = 48; h.hands = 55; h.arm = 72; h.armAccuracy = 60;
+  h.blocking = 30; h.bunt = 45; h.steal = 40;
+  // The arm, flattened on exactly as makeTwoWay lays it down.
+  h.twoWay = true;
+  h.role = "SP";
+  h.sidearm = false;
+  h.armPlatoon = 0.03;
+  h.stuff = 72; h.movement = 68; h.control = 70; h.stamina = 64;
+  h.groundBall = 52; h.holdRunners = 60;
+  h.velocity = 94;
+  h.potential = 84;
+  prospects.push({
+    ...copy,
+    id,
+    stars: 1,
+    minProgram: reachFloor(1),
+    rank: prospects.length + 1,
+    points: {}, spent: {}, signedBy: null, committedWeek: null,
+  });
+}
+
 export function ensureWonderGuy(cls: RecruitClass): void {
   if (typeof process !== "undefined" && process.env?.["VITEST"]) return;
   const prospects = cls.prospects;
