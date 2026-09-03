@@ -886,11 +886,12 @@ on ordinary rows — when everything is shiny, nothing is.
 
 **Size:** large · **New — everything about the 3D park, in one place**
 
-**Carries the tournament view, by request (August 31):** *"I don't really know
-where I'm at most of the time — let's defer this for later."* The bracket is
-the last screen still wearing pre-port styling, and its real fault is that it
-answers every question except *where am I and what happens next*. One
-presentation pass with the park it is played in.
+**Carried the tournament view — and gave it back (September 2, night).** It
+rode here only because it was undesigned; the design is now settled (`06`
+§U: NEXT GAME and BRACKET tabs, the next-game card promoted to the main
+surface, one bracket map with the coloured drop-line) and none of it needs
+the park, so it moved to the next build batch. This stage keeps the ground
+the games are played on.
 
 The dugout screen is finished; the *park* it draws is not. This is the stage
 that stops treating the field as a diagram of where the ball went and makes it
@@ -1072,6 +1073,19 @@ rarity knob**: high-overall portal entries priced at roughly one every five or
 six seasons, so the assistant's wire-watch card (stage 15.5) reports an event
 rather than a Tuesday.
 
+**Grew a third time — the sorting session** (`06` §U): **position changes
+as an offseason ritual** — an action on your own player's card in the
+offseason; he retrains over winter, opens next season at the new spot, and a
+big move carries a temporary glove penalty. **Prestige drag at the top** —
+reaching 90+ stays possible, holding it takes continued titles; re-run the
+thirty-season measurement after. **The pool's findable gems** — more mid- and
+low-star recruits carrying hidden high potential, so a small program can
+out-scout instead of out-bid; the answer to both "do something with the pool"
+and §P's still-open climb, it re-runs the climb probes and pairs with 15.5's
+learnable report, which is the reading half of the same skill. And the
+**tendencies screen's design is settled**: a sheet on the rival's college
+profile, filled in once the desk has scouted them.
+
 *Park effects, camera easing, instanced markers and the 2D/3D toggle moved out
 of here into stage 15, where the rest of the park work lives.*
 
@@ -1105,6 +1119,27 @@ scaling now has a home in stage 2's settings sheet) · **remove the test aids**
 (SIM SEASON, the loaded Pascagoula Tech roster) · keystore generated and backed
 up permanently · signed AAB, listing, screenshots, privacy policy, content
 rating · closed beta, then open.
+
+**Grew September 2, night:** **the budget gets taught.** Reported: "we have
+to teach the users about the budget and things they have to pay for — it
+doesn't really have the importance it should have." The money is real (the
+board, the scout, the portal all draw on it) and nothing ever says so to a
+new coach. Part teaching (a first-visit on the money surface, a line in
+onboarding), part presentation (the budget wearing its consequences where it
+is spent).
+
+## The screen queue — one-offs waiting for a batch
+
+Not a stage: settled or reporter-owned screen work that gets picked up in
+play batches, the way every screen fix so far has been. Added September 2,
+night (`06` §U):
+
+- **The college profile, the rest of the pass.** The overview sheet and the
+  crest overlap shipped on September 2; the reporter reports the profile
+  still "not looking very well" as a whole, so the remaining sheets (roster,
+  results, dossier) get the same treatment against the kit.
+- **The college action button.** "There are a few things we have to work on
+  there" — the reporter owes the list; the rework waits on it.
 
 ---
 

@@ -2138,18 +2138,22 @@ here, it either shipped or was decided against.**
 
 ### OPEN — needs an answer before it can be built
 
-- **Prestige runs away.** Over thirty seasons a handful of programmes climb to
+- **Prestige runs away.** *(Answered September 2, night — drag at the top; §U.)*
+  Over thirty seasons a handful of programmes climb to
   the mid-90s while the median sits in the forties. Measured with the September
   1 quality drift switched **off** and it is unchanged, so it is a property of
   `nextPrestige` and not of that pass. The question is whether a 94-prestige
   tier should be that reachable.
-- **Realignment ignores geography.** A 2028 run sent Piedmont State to the
+- **Realignment ignores geography.** *(Answered September 2, night — adjacent
+  regions; next batch; §U.)* A 2028 run sent Piedmont State to the
   *Pacific*. With "the conference **is** the region" as a core fiction,
   `realignmentFor` should prefer adjacent regions.
-- **The depth chart's future.** The reporter is considering folding it into the
+- **The depth chart's future.** *(Answered September 2, night — removed
+  entirely; next batch; §U.)* The reporter is considering folding it into the
   lineup tab entirely, now that the lineup does the real work. Do not invest in
   the chart screen until that is settled.
 - **Position changes from the player profile** — agreed in principle, no design.
+  *(Designed September 2, night — the offseason ritual; stage 16; §U.)*
 
 ### PROPOSED — designed, not agreed
 
@@ -2222,7 +2226,8 @@ section is the ledger of what was *decided* and parked.
   That last clause is the part 2K got wrong and the part our habits and
   culture systems are already positioned to get right. Touches the
   development curve, so it re-runs calibration and the climb probes.
-- **The depth chart is still confusing.** The duplicate door is gone, but the
+- **The depth chart is still confusing.** *(Settled September 2, night — the
+  screen is removed entirely; next batch; §U.)* The duplicate door is gone, but the
   screen itself needs a rethink; parked until the lineup's new position
   grammar has been played with, since the two overlap.
 - **The recruit board, denser.** "Make the board smaller" — a density pass on
@@ -2230,7 +2235,8 @@ section is the ledger of what was *decided* and parked.
   screen live in an offseason rather than blind. *(Checked live in an
   offseason the same evening, §T: rows fit at 320px with no star overflow —
   the first pass's density work already covered it. Closed.)*
-- **The postseason presentation.** Still being designed by the reporter. Two
+- **The postseason presentation.** *(Designed September 2, night — §U; moved
+  to the next batch.)* Still being designed by the reporter. Two
   facts to design against: YOUR NEXT GAME already sits in the red box
   (`Postseason.tsx`), and the winners and losers brackets being on screen
   together is the exact thing that got double elimination thrown out once —
@@ -2282,3 +2288,77 @@ here shipped the same evening; the mechanics are `05` §44.
   inbox cards, in the assistant's voice) with the rarity knob — a star in the
   portal roughly once every five or six seasons — priced in stage 16 beside
   the portal balance pass.
+
+## U. The sorting session — September 2 2026, night
+
+Eight decisions that were waiting on the reporter, asked and answered in one
+sitting. §R's OPEN list is cleared by it; each answer below names where the
+work now lives.
+
+- **The postseason presentation — designed.** One map with the coloured
+  drop-line (your path from the winners side down into the losers side, in
+  your colour). The WINNERS/LOSERS toggle goes; the stage's tabs become
+  **NEXT GAME** and **BRACKET**, and the red next-game box is promoted to the
+  main surface — "make it bigger and better looking to give it a feel of
+  importance now that we are in the tournament stages." Moved OUT of stage 15
+  into the next build batch: the settled design is screen work with no park
+  dependency — the only reason it rode 15 was that it was undesigned.
+- **The depth chart — removed entirely.** The lineup, the rail and AUTO do
+  the work; the cover order surfaces only where it matters. The screen, its
+  overlay entry and its nav door go together. Next batch.
+- **Realignment prefers adjacent regions.** `realignmentFor` stops sending
+  Piedmont State to the Pacific. Small and self-contained; next batch.
+- **The tendencies screen — design settled.** A sheet on the rival's college
+  profile, filled in once you have scouted them through the desk (which
+  already gates who reads what). Stays stage 16; the design conversation it
+  was waiting on has now happened.
+- **Position changes — the offseason ritual.** An action on your own
+  player's card during the offseason: he retrains over winter and opens next
+  season at the new spot, with a temporary glove penalty on a big move.
+  Stage 16.
+- **Prestige gets drag at the top.** Reaching 90+ stays possible; holding it
+  takes continued titles, and slippage on mediocre years is faster up there.
+  Dynasties still possible, permanence no longer free. Stage 16 — re-run the
+  thirty-season measurement after.
+- **The pool grows findable gems.** More mid- and low-star recruits carrying
+  hidden high potential, so a small program can out-scout instead of
+  out-bid — the climb becomes a scouting skill. This is the answer to both
+  held items at once: "do something with the pool" and the low-star climb §P
+  left open. Stage 16 for the generation change (it re-runs the climb
+  probes); it pairs deliberately with 15.5's learnable scouting report,
+  which is the reading half of the same skill.
+- **The store's grant — held on purpose.** The door decision stays at stage
+  17's own design pass. Not blocking anything until then.
+
+### The next batch — settled, small, ready to build
+
+1. **The postseason redesign** — NEXT GAME and BRACKET tabs, the promoted
+   next-game card, the one-map bracket with the drop-line.
+2. **The depth chart removal.**
+3. **Realignment geography.**
+
+### And found while testing, the same night
+
+Filed by the reporter during the sorting session; sorted where they land.
+
+- **The failing-man errand teaches itself.** Tapping the NEEDS YOU card for a
+  struggling player lands on his profile and then nothing says what to do.
+  Designed by the reporter in the report itself: first time only, a guided
+  glow — the action button's border glows red, then the SCHOOL tab, then
+  HAVE A WORD — walking the player through the errand once. **Build item,
+  taken into the current session.**
+- **Desktop lets the profile out of the phone.** On a PC the player profile
+  fills the whole browser instead of staying at the frame's phone width.
+  **Bug, taken into the current session.**
+- **The walk sound goes.** "Delete the audio when the player is walked while
+  playing in the dugout." **Taken into the current session.**
+- **The action button vanishes instead of closing.** Opens with an animation,
+  disappears without one. **Bug, taken into the current session.**
+- **The budget gets taught** — "it doesn't really have the importance it
+  should have." → stage 19's onboarding (grew tonight), part teaching, part
+  presentation.
+- **The college profile, the rest of the pass** — the overview and the crest
+  shipped tonight; the reporter reports the profile still not looking right
+  as a whole. → the screen queue in `07`.
+- **The college action button rework** — specifics owed by the reporter. →
+  the screen queue in `07`.
