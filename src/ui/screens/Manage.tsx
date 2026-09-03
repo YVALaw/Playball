@@ -184,6 +184,22 @@ export function Manage() {
   }, [landing?.x, landing?.y, battedBall, wasOut, version]);
 
   /*
+    REPLAY — named in stage 5's brief, built in stage 15. The events already
+    take zero random draws, so seeing a play again is nothing but re-keying
+    the same BallHit: the flight, the chase, the throw, the camera's pan and
+    a homer's whole show all run again off the fresh tick. Nothing touches
+    the engine — a replay is a picture, and pictures are free.
+  */
+  const lastHit = useRef<BallHit | null>(null);
+  useEffect(() => { if (ball) lastHit.current = ball; }, [ball]);
+  const replay = (): void => {
+    const hit = lastHit.current;
+    if (!hit) return;
+    ballTick.current += 1;
+    setBall({ ...hit, tick: ballTick.current });
+  };
+
+  /*
     The calls sleep while the play is on the field.
 
     Reported from testing: *"you didn't work in the minigame's buttons to grey
@@ -807,6 +823,17 @@ export function Manage() {
                 <button type="button" onClick={() => { setAuto(null); setTools(false); }}>
                   <strong>Take the dugout back</strong>
                   <small>Stop him. The next call is yours again.</small>
+                  <ChevronRightIcon />
+                </button>
+              )}
+              {lastHit.current && (
+                <button
+                  type="button"
+                  disabled={playing}
+                  onClick={() => { setTools(false); replay(); }}
+                >
+                  <strong>See that again</strong>
+                  <small>The last ball in play, run back — the field replays it.</small>
                   <ChevronRightIcon />
                 </button>
               )}
