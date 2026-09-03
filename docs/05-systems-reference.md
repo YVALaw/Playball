@@ -6258,6 +6258,36 @@ and the refusal card's recitation of the reach-floor arithmetic are gone —
 the first instalment of the 15.5 secrets scrub, done early because both were
 named directly.
 
+**And later the same night, from live testing during the sorting session:**
+
+**The frame gets its containing-block job back.** `.playball-app` sits on the
+same element as `.app-frame`, and the port's `position: static` override was
+cancelling tokens.css's `.app-frame { position: relative }` — so every
+absolutely-positioned layer (the player card, the table overlays, the InFrame
+portals) positioned against the VIEWPORT. Invisible on a phone, where the
+frame is the viewport; on a desktop "it opens the whole site instead of
+keeping it as phone display size." One selector: `.app-frame.playball-app
+{ position: relative }`.
+
+**The dugout's menu leaves the way it arrives.** The game-manager FAB was the
+one action menu still snapping to `display: none` on close; it now carries
+the same three-phase close (`closing` + `actions-close`) and the same
+outside-tap scrim as the player and college FABs.
+
+**The ball-four clip is cut.** "Delete the audio when the player is walked" —
+a walk keeps the ambient crowd swell and the haptic; the voice clip goes.
+
+**The guided errand.** The failing-man card teaches by lighting the path
+instead of writing a paragraph, to the reporter's own design: tapping the
+NEEDS YOU card starts a transient `guide: 'word'` in the store (beside
+`focusPlayer`, same lifetime rules); the action button's border pulses red
+until opened, SCHOOL until chosen, HAVE A WORD until pressed — each light
+derived from the state the previous tap produced. The press stamps
+`guide:word` into `seenTutorials`, so the path lights once per player's
+whole save family and never again; abandoning the errand keeps the lesson
+for next time. One `.guide-glow` class, reduced motion keeps the static
+outline. `Segmented` learned an optional `glow` prop for step two.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

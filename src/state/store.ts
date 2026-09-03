@@ -832,6 +832,17 @@ export interface DynastyStore {
    */
   focusPlayer: string | null;
   clearFocusPlayer: () => void;
+  /**
+   * A first-time errand being taught, by lighting the path rather than
+   * writing a paragraph. Designed by the reporter for the failing-man card:
+   * "the action button should be glowing red in the borders, then school tab
+   * should be glowing red, then have a word should be glowing." Transient
+   * like focusPlayer; the once-ness lives in seenTutorials ('guide:word'),
+   * stamped only when the word is actually had.
+   */
+  guide: 'word' | null;
+  startGuide: (g: 'word') => void;
+  clearGuide: () => void;
   setScreen: (screen: string) => void;
   advanceDay: () => void;
   playSeason: () => Promise<void>;
@@ -2087,6 +2098,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   clearFocusPlayer: () => set({ focusPlayer: null }),
+  guide: null,
+  startGuide: (g) => set({ guide: g }),
+  clearGuide: () => set({ guide: null }),
 
   // Navigating any other way drops the mark: it belongs to the errand that set
   // it, and an errand you walked away from is over.
@@ -3922,7 +3936,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   openPlayer: (id) => set({ selectedPlayer: id }),
 
-  closePlayer: () => set({ selectedPlayer: null }),
+  // The guide dies with the card: a glow that survived onto some OTHER
+  // player's card would be teaching the wrong errand.
+  closePlayer: () => set({ selectedPlayer: null, guide: null }),
 
   playPostseason: async () => {
     const { season, busy, version } = get();

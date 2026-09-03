@@ -73,8 +73,22 @@ export function Manage() {
   const go = useDynasty((s) => s.go);
   const saveNow = useDynasty((s) => s.saveNow);
   const [modal, setModal] = useState<Modal>(null);
-  /** The dugout tools, behind the round button in the corner. */
-  const [tools, setTools] = useState(false);
+  /** The dugout tools, behind the round button in the corner. Three phases,
+      the same grammar as the player and college FABs: the menu leaves the way
+      it arrives — reported here too, "a nice animation when opening but not
+      when closing, it simply disappears." */
+  const [toolsPhase, setToolsPhase] = useState<'closed' | 'open' | 'closing'>('closed');
+  const tools = toolsPhase === 'open';
+  const closeTools = (): void => {
+    setToolsPhase('closing');
+    window.setTimeout(() => {
+      setToolsPhase((ph) => (ph === 'closing' ? 'closed' : ph));
+    }, 200);
+  };
+  const setTools = (next: boolean): void => {
+    if (next) setToolsPhase('open');
+    else closeTools();
+  };
   /** The linescore, open by default and closed by BOX. */
   const [book, setBook] = useState(true);
   const [scoreTick, setScoreTick] = useState(0);
@@ -325,8 +339,9 @@ export function Manage() {
       catchAt(600);
       buzz(8);
     } else if (/walks|walked on purpose/.test(main)) {
-      // "Ball four, take your base." The one call the reporter confirmed.
-      sfx('ump-ballfour', { gain: 0.8, rate: vary() });
+      // The ball-four call was here and was confirmed once — then cut on
+      // September 2: "delete the audio when the player is walked." A walk
+      // keeps the ambient swell and the haptic; the voice clip goes.
       crowdSwell(0.22);
       buzz(8);
     } else if (/hit by the pitch/.test(main)) {
@@ -710,8 +725,16 @@ export function Manage() {
         column down the right of the screen — a column the field and the log
         both wanted back.
       */}
+      {d && tools && (
+        <button
+          className="popover-scrim"
+          type="button"
+          aria-label="Close manager tools"
+          onClick={closeTools}
+        />
+      )}
       {d && (
-        <aside className={`game-manager-fab${tools ? ' open' : ''}`}>
+        <aside className={`game-manager-fab${tools ? ' open' : ''}${toolsPhase === 'closing' ? ' closing' : ''}`}>
           <section className="game-manager-popover">
             <div>
               <small>MANAGER TOOLS</small>

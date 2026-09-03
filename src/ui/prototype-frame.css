@@ -44,6 +44,17 @@
   flex-direction: column;
 }
 
+/* The main frame wears .app-frame AND .playball-app on one element, and the
+   static above cancels tokens.css's `.app-frame { position: relative }` —
+   so every absolutely-positioned layer (the player card, the table overlays,
+   the InFrame portals) positioned against the VIEWPORT instead of the phone.
+   Invisible on a handset, where the frame is the viewport; on a desktop "it
+   opens the whole site instead of keeping it as phone display size."
+   Reported September 2, night. Relative is in-flow exactly like static, so
+   the column layout is untouched — the frame just gets its containing-block
+   job back. */
+.app-frame.playball-app { position: relative; }
+
 /* --------------------------------------------------------------------------
    The chrome, as rows.
 
@@ -2811,18 +2822,23 @@
 
 .college-actions-fab.closing { width: min(304px, calc(100vw - 22px)); }
 .player-actions-fab.closing { width: min(304px, calc(100vw - 22px)); }
+/* The dugout's manager tools were the one menu still vanishing — same report,
+   September 2, night: "it simply disappears." Same exit as the other two. */
 .college-actions-fab.closing .college-actions-popover,
-.player-actions-fab.closing .player-actions-popover {
+.player-actions-fab.closing .player-actions-popover,
+.game-manager-fab.closing .game-manager-popover {
   display: block;
   animation: actions-close .18s ease-in both;
   pointer-events: none;
 }
 
 :root[data-motion="reduced"] .college-actions-fab.closing .college-actions-popover,
-:root[data-motion="reduced"] .player-actions-fab.closing .player-actions-popover { animation: none; opacity: 0; }
+:root[data-motion="reduced"] .player-actions-fab.closing .player-actions-popover,
+:root[data-motion="reduced"] .game-manager-fab.closing .game-manager-popover { animation: none; opacity: 0; }
 @media (prefers-reduced-motion: reduce) {
   .college-actions-fab.closing .college-actions-popover,
-  .player-actions-fab.closing .player-actions-popover { animation: none; opacity: 0; }
+  .player-actions-fab.closing .player-actions-popover,
+  .game-manager-fab.closing .game-manager-popover { animation: none; opacity: 0; }
 }
 
 /* ---------------------------------------------------------------------------
@@ -2958,3 +2974,34 @@
   color: var(--ink);
   flex: none;
 }
+
+/* ---------------------------------------------------------------------------
+   The guided errand: lighting the path instead of writing a paragraph.
+
+   Designed by the reporter for the failing-man card, September 2, night:
+   "the action button should be glowing red in the borders, then school tab
+   should be glowing red, then have a word should be glowing so that guides
+   the player... the first time." One class, three wearers, each lit by the
+   state the previous tap produced (see RosterMoves). The pulse is a
+   box-shadow ring so it costs no layout; the outline is the half that
+   survives reduced motion.
+   --------------------------------------------------------------------------- */
+@keyframes guide-glow {
+  0%   { box-shadow: 0 0 0 0 rgba(224, 101, 94, .75); }
+  70%  { box-shadow: 0 0 0 8px rgba(224, 101, 94, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(224, 101, 94, 0); }
+}
+
+.guide-glow {
+  outline: 2px solid var(--alert);
+  outline-offset: 1px;
+  animation: guide-glow 1.3s cubic-bezier(0.33, 0, 0.35, 1) infinite;
+}
+
+/* The round trigger keeps its own shadow; the ring rides on top of it. */
+.player-actions-trigger.guide-glow {
+  animation: guide-glow 1.3s cubic-bezier(0.33, 0, 0.35, 1) infinite;
+}
+
+:root[data-motion="reduced"] .guide-glow { animation: none; }
+@media (prefers-reduced-motion: reduce) { .guide-glow { animation: none; } }

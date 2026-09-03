@@ -150,12 +150,14 @@ export function Rating({ label, value }: { label: string; value: number }) {
 
 /** The tab strip. Scrolls when there are more options than there is room. */
 export function Segmented<T extends string>(
-  { value, options, onChange, label }:
+  { value, options, onChange, label, glow }:
   {
     value: T;
     options: ReadonlyArray<{ value: T; label: string }>;
     onChange: (value: T) => void;
     label: string;
+    /** One option lit as the next step of a guided errand. See store `guide`. */
+    glow?: T;
   },
 ) {
   // The fill slides to the chosen segment rather than teleporting — see
@@ -165,7 +167,10 @@ export function Segmented<T extends string>(
     <div ref={ref} className="segmented" role="tablist" aria-label={label}>
       {options.map((option) => (
         <button
-          className={value === option.value ? 'active' : ''}
+          className={[
+            value === option.value ? 'active' : '',
+            glow === option.value ? 'guide-glow' : '',
+          ].filter(Boolean).join(' ')}
           key={option.value}
           type="button"
           role="tab"

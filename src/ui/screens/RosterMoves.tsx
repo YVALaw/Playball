@@ -52,15 +52,17 @@ const SCHOOL_WORDS: Record<'fine' | 'watch' | 'trouble', { label: string; line: 
 
 /** One thing a coach can do, as the proposal draws it. */
 function ActionCard(
-  { icon, title, detail, onClick, selected = false, disabled = false }:
+  { icon, title, detail, onClick, selected = false, disabled = false, glow = false }:
   {
     icon: ReactNode; title: string; detail: string;
     onClick?: () => void; selected?: boolean; disabled?: boolean;
+    /** Lit as the final step of a guided errand. */
+    glow?: boolean;
   },
 ) {
   return (
     <button
-      className={`action-card${selected ? ' selected' : ''}`}
+      className={`action-card${selected ? ' selected' : ''}${glow ? ' guide-glow' : ''}`}
       type="button"
       disabled={disabled}
       onClick={onClick}
@@ -83,6 +85,18 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   const version = useDynasty((s) => s.version);
   // A career that asked its staff to decide who sits does not get the button.
   const mine = useDynasty((s) => handles(s.depth, 'redshirts'));
+  /*
+    The guided errand, lighting one control at a time. Designed by the
+    reporter for the failing-man card: the action button glows until it is
+    opened, SCHOOL glows until it is chosen, HAVE A WORD glows until it is
+    pressed — and the press stamps 'guide:word' so the path never lights
+    twice. Each light is derived from the state the previous tap produced,
+    which is what makes the sequence a sequence.
+  */
+  const guide = useDynasty((s) => s.guide);
+  const clearGuide = useDynasty((s) => s.clearGuide);
+  const markTutorialSeen = useDynasty((s) => s.markTutorialSeen);
+  const guiding = guide === 'word';
   // Three states, matching the college FAB: closing is a motion, and the
   // scrim below stands the menu down from anywhere. See the note there.
   const [phase, setPhase] = useState<'closed' | 'open' | 'closing'>('closed');
@@ -175,6 +189,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
         <Segmented
           label="Player action area"
           value={area}
+          glow={guiding && open && area !== 'school' ? 'school' : undefined}
           onChange={setArea}
           options={[
             { value: 'room', label: 'Room' },
@@ -235,7 +250,14 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
                   ? SCHOOL_WORDS.fine.line
                   : `${SCHOOL_WORDS[school].line} ${wordsLeft} of ${WORDS_A_SEASON} conversations left.`}
                 disabled={school === 'fine' || wordsLeft <= 0}
-                onClick={() => wordWith(p.id)}
+                glow={guiding && school !== 'fine' && wordsLeft > 0}
+                onClick={() => {
+                  wordWith(p.id);
+                  if (guiding) {
+                    markTutorialSeen('guide:word');
+                    clearGuide();
+                  }
+                }}
               />
             </div>
             <FieldNote
@@ -308,7 +330,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
       </div>
 
       <button
-        className="player-actions-trigger"
+        className={`player-actions-trigger${guiding && !open ? ' guide-glow' : ''}`}
         type="button"
         aria-label={open ? 'Close player actions' : 'Player actions'}
         aria-expanded={open}

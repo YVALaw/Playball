@@ -274,7 +274,17 @@ export function useNeeds(): Need[] {
           + 'season. He works it out or he sits.',
       must: wordsLeft > 0,
       cta: 'HIS CARD',
-      go: () => openPlayer(man.id),
+      go: () => {
+        openPlayer(man.id);
+        // First time only, and only while there is a word to have: light the
+        // path (action button, SCHOOL, HAVE A WORD) instead of leaving the
+        // player on a card with no idea what to do. The stamp is written when
+        // the word lands, not here — abandoning the errand keeps the lesson.
+        const st = useDynasty.getState();
+        if (wordsLeft > 0 && !st.seenTutorials.includes('guide:word')) {
+          st.startGuide('word');
+        }
+      },
     });
   }
 
