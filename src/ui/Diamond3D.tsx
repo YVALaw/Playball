@@ -672,14 +672,12 @@ function BallInFlight({ hit, plan }: { hit: BallHit; plan: PlayPlan }) {
         // the fielder from this camera, and a ball behind a fielder is the
         // picture of a single. HOLD_DUR before pickup is exactly his arrival.
         const arrive = plan.pickup - HOLD_DUR;
-        if (!plan.caught && now >= arrive) {
+        if (plan.caught || now >= arrive) {
           b.position.set(plan.rest.x * 0.97, 0.45, plan.rest.z * 0.97 + 0.18);
         } else {
-          const roll = plan.caught
-            ? 1
-            : Math.min(1, (now - plan.flight) / ROLL_DUR);
+          const roll = Math.min(1, (now - plan.flight) / ROLL_DUR);
           b.position.lerpVectors(plan.target, plan.rest, roll);
-          b.position.y = plan.caught ? GLOVE_Y : BALL_REST;
+          b.position.y = BALL_REST;
         }
         b.visible = true;
       } else {
@@ -778,6 +776,27 @@ function Defense(
 
   useEffect(() => { t.current = 0; }, [plan]);
 
+  /*
+    Who takes the throw — stage 15's "the throw, the tag, the turn." The
+    nearest man to where the ball is going, the battery's catcher excluded
+    and the chaser excluded (a man cannot throw to himself). For a throw
+    back to the mound that is the pitcher already standing there, and the
+    receiver logic quietly does nothing, which is right.
+  */
+  const receiver = (() => {
+    if (!plan || plan.homer || plan.chaser < 0) return -1;
+    let best = -1;
+    let bestD = Infinity;
+    stations.forEach((st, i) => {
+      if (i === 0 || i === plan.chaser) return;
+      const d = st.distanceToSquared(plan.throwTo);
+      if (d < bestD) { bestD = d; best = i; }
+    });
+    // A receiver already on his spot needs no walk; skip him inside a step.
+    return best >= 0 && (stations[best]?.distanceTo(plan.throwTo) ?? 0) > 0.4
+      ? best : -1;
+  })();
+
   useFrame((_, delta) => {
     t.current += delta;
     const now = t.current;
@@ -786,9 +805,34 @@ function Defense(
       if (!m) return;
 
       const chasing = plan !== null && i === plan.chaser && now <= plan.done;
-      const goal = chasing
-        ? new THREE.Vector3(plan.rest.x, DOT_Y, plan.rest.z)
-        : station;
+      // The receiver breaks for the bag as the chaser sets himself, takes
+      // the throw leaning INTO it (the stretch), and walks back when the
+      // play is over.
+      const receiving = plan !== null && i === receiver
+        && now >= plan.throwAt - 0.35 && now <= plan.done + 0.25;
+
+      let goal = station;
+      if (chasing) {
+        goal = new THREE.Vector3(plan.rest.x, DOT_Y, plan.rest.z);
+        // The turn: with the ball in hand he plants a half-step toward the
+        // man he is throwing to, which is what makes the throw HIS.
+        if (now >= plan.pickup - HOLD_DUR * 0.4 && now <= plan.throwAt) {
+          const wind = plan.throwTo.clone().sub(goal);
+          if (wind.lengthSq() > 0.01) {
+            goal = goal.clone().addScaledVector(wind.normalize(), 0.18);
+          }
+        }
+        goal.y = DOT_Y;
+      } else if (receiving) {
+        goal = new THREE.Vector3(plan.throwTo.x, DOT_Y, plan.throwTo.z);
+        // The stretch: while the throw is in the air he leans to meet it.
+        if (now >= plan.throwAt && now <= plan.throwAt + THROW_DUR + 0.1) {
+          const lean = new THREE.Vector3(plan.rest.x, DOT_Y, plan.rest.z).sub(goal);
+          if (lean.lengthSq() > 0.01) {
+            goal = goal.clone().addScaledVector(lean.normalize(), 0.16);
+          }
+        }
+      }
 
       const gap = m.position.distanceTo(goal);
       if (gap < 0.02) return;
@@ -807,8 +851,10 @@ function Defense(
       */
       const deadline = plan !== null && chasing
         ? (plan.caught ? plan.flight : plan.pickup)
-        : Infinity;
-      const speed = chasing
+        : plan !== null && receiving
+          ? plan.throwAt + THROW_DUR
+          : Infinity;
+      const speed = chasing || receiving
         ? Math.max(FIELDER_SPEED, gap / Math.max(0.15, deadline - now))
         : FIELDER_SPEED;
 
