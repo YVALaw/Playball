@@ -981,6 +981,13 @@ market already knows; the inbox does not), and a star entering the portal —
 worded as rumour, not as a stat line. The rarity knob that makes the second
 card an event belongs to stage 16's portal balance; this stage owns the mail.
 
+**Settled at the door (September 2, night):** the assistant is **one
+right-hand man with a generated name** — hired with you, riding your career,
+signing everything — not a desk-per-topic chorus and not an unnamed office.
+And the noise cut has its first three names, given outright: **captain
+namings, injury announcements** (NEEDS YOU already carries them) **and badge
+earns stop arriving as mail.** "Just super important things."
+
 ### Everything it says
 
 Reported after a long session, and it is the fairest criticism the project has

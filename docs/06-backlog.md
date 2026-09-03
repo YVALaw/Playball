@@ -2347,6 +2347,32 @@ work now lives.
 2. **The depth chart removal.**
 3. **Realignment geography.**
 
+### The batch's door, answered — later the same night
+
+Four build questions asked at the door and answered before the first line:
+
+- **NEXT GAME is the full pregame show.** Big crests, the probable arms with
+  their season lines, what is at stake, series state for a best-of-three —
+  and PLAY / SIM move onto the card itself. The pinned bar keeps SIM TO MY
+  NEXT GAME.
+- **The national keeps a small A/B toggle inside the BRACKET tab**, final
+  pinned above; the conference goes toggle-free — one map, the drop-line.
+- **The cover order surfaces nowhere.** The rail and AUTO are the whole
+  answer. But **secondary positions join the player profile's info** — where
+  else a man can stand, on the card itself, not only inside the action
+  button's FIELD area.
+- **The assistant is one right-hand man with a generated name**, hired with
+  you, signing everything. And the reporter named the first three cuts of
+  the noise pass outright: captain namings, injury announcements (NEEDS YOU
+  already has them) and badge earns stop arriving as mail — "just super
+  important things."
+
+And one more need, filed at the same door: **the healed-return hold.** Today
+"X is fit again" is a quiet three-day card that clears itself. It becomes a
+must: a healed man cannot play again until the coach decides his return —
+back into the nine, or the cover keeps the spot — "that way we don't
+forget." Rides the next batch with the rest of the needs work.
+
 ### And found while testing, the same night
 
 Filed by the reporter during the sorting session; sorted where they land.
