@@ -632,10 +632,16 @@ export function Manage() {
             </div>
           )}
           {flatField ? (
-            <Diamond runners={d?.runners ?? runnersHeld.current} scoreTick={scoreTick} size={200} />
+            <Diamond
+              runners={d?.runners ?? runnersHeld.current}
+              scoreTick={scoreTick} size={200} ball={ball}
+            />
           ) : (
             <Suspense fallback={
-              <Diamond runners={d?.runners ?? runnersHeld.current} scoreTick={scoreTick} size={200} />
+              <Diamond
+                runners={d?.runners ?? runnersHeld.current}
+                scoreTick={scoreTick} size={200} ball={ball}
+              />
             }>
               <Diamond3D
                 runners={d?.runners ?? runnersHeld.current} scoreTick={scoreTick}
