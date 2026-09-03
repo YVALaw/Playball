@@ -29,6 +29,7 @@ import {
   INBOX_LABEL, type InboxItem, type InboxKind, type InboxLink,
 } from '../../engine/inbox.js';
 import type { PlayerId } from '../../engine/types.js';
+import { assistantFor } from '../../engine/program.js';
 
 /**
  * The stripe down the left of a card.
@@ -40,6 +41,9 @@ import type { PlayerId } from '../../engine/types.js';
 const KIND_TONE: Record<InboxKind, string> = {
   board: 'var(--clay)',
   offer: 'var(--clay)',
+  // The wire is rumour and openings — job-adjacent, so it borrows the
+  // career colour without being quite the board.
+  wire: 'var(--clay)',
   achievement: 'var(--win)',
   draft: 'var(--ink)',
   carousel: 'var(--dim)',
@@ -79,6 +83,7 @@ function useOpen(): (link: InboxLink) => void {
 export function Inbox() {
   const inbox = useDynasty((s) => s.inbox);
   const readInbox = useDynasty((s) => s.readInbox);
+  const assistant = useDynasty((s) => assistantFor(s.coach.name));
   const open = useOpen();
 
   /*
@@ -107,7 +112,14 @@ export function Inbox() {
   return (
     <FixedHeader
       header={
-        <ModuleIntro kicker="WHAT HAPPENED TO YOU" title="The inbox" />
+        // The mail has a sender now — stage 15.5's one right-hand man, who
+        // signs everything. Derived from the coach's name (assistantFor), so
+        // he is the same man for the whole career on every device.
+        <ModuleIntro
+          kicker={`FROM THE DESK OF ${assistant.toUpperCase()}`}
+          title="The inbox"
+          text="Your assistant keeps the pile short: what happened, what is opening, and what the board thinks of you."
+        />
       }
     >
       <div style={{ padding: '2px 14px 20px' }}>
@@ -117,10 +129,9 @@ export function Inbox() {
             background: 'var(--paper)', textAlign: 'center',
             font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
           }}>
-            Nothing yet. A run of wins, a record one of your men has taken, the
-            board at the halfway mark, and then everything June brings — the
-            verdict, the draft, the hall, and every coaching change in your
-            conference.
+            Nothing yet. {assistant} writes when it matters: a record one of
+            your men has taken, the board at the halfway mark, a chair you
+            watch coming open, and what June decides.
           </div>
         )}
 

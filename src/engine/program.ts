@@ -1513,6 +1513,32 @@ export const TITLE_BLURB: Record<CoachTitle, string> = {
   Legend: 'Three titles and a career long enough that nobody remembers the start.',
 };
 
+/**
+ * The right-hand man — stage 15.5's decision: ONE named assistant to the
+ * head coach, who signs everything the inbox says. "Just a random name."
+ *
+ * Derived from the coach's own name rather than stored: deterministic, so he
+ * is the same man on every device and every reload, needs no save migration,
+ * and rides the whole career the way the door decision asked — a coach's
+ * name never changes, so neither does his. The offsets walk on a collision
+ * so he cannot share the coach's surname and read as a brother.
+ */
+function hashStr(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return Math.abs(h);
+}
+
+export function assistantFor(coachName: string): string {
+  const f = hashStr(`${coachName}:asst:f`) % FIRST.length;
+  let l = hashStr(`${coachName}:asst:l`) % LAST.length;
+  if (coachName.endsWith(` ${LAST[l]}`)) l = (l + 1) % LAST.length;
+  return `${FIRST[f]} ${LAST[l]}`;
+}
+
 export function newCoach(
   profile: CoachProfile = DEFAULT_PROFILE,
   contractLength = 4,

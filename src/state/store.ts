@@ -18,7 +18,6 @@ import {
   type SeasonState, type TeamRecord,
 } from '../engine/season.js';
 import { activeIds, honoursByPlayer, inductees } from '../engine/hall.js';
-import { BADGES } from '../engine/badges.js';
 import {
   recordCoachMarks, RECORDS, type RecordKey, type RecordMark,
 } from '../engine/records.js';
@@ -1626,13 +1625,23 @@ function postCarousel(
   store: DynastyStore, year: number, myConference: string,
   moves: readonly CarouselMove[],
 ): void {
-  const inConference = (t: number | undefined): boolean =>
-    t !== undefined && store.season?.teams[t]?.conference === myConference;
-
-  let counted = 0;
+  void myConference;
+  /*
+    Narrowed twice in the 15.5 noise cut. It used to post every in-conference
+    move plus a rollup of the rest; the reporter's routing rule ("just super
+    important things") and the wire-watch's "watched only" answer leave one
+    case: a chair on YOUR job watchlist changing hands. That is the assistant
+    watching the wire — so the card wears the wire's kind, not the carousel's.
+    Everything else is still on the rankings table where it always was.
+  */
+  const watched = new Set(store.watch.jobs);
+  const abbrOf = (t: number | undefined): string | null =>
+    t !== undefined ? store.season?.teams[t]?.def.abbr ?? null : null;
   for (const m of moves) {
-    const near = inConference(m.team) || inConference(m.from);
-    if (!near) { counted += 1; continue; }
+    const chair = abbrOf(m.team);
+    const left = abbrOf(m.from);
+    const hit = (chair && watched.has(chair)) || (left && watched.has(left));
+    if (!hit) continue;
     const title = m.kind === 'poached'
       ? `${m.coach} leaves ${m.fromSchool} for ${m.school}`
       : m.kind === 'sacked'
@@ -1641,16 +1650,9 @@ function postCarousel(
           ? `${m.coach} retires at ${m.school}`
           : `${m.school} hire ${m.coach}`;
     store.post({
-      kind: 'carousel', year, title, body: m.detail,
-      // The program the move is about, which is the page with the man on it.
+      kind: 'wire', year, title,
+      body: `You track this chair. ${m.detail}`,
       ...(m.team !== undefined ? { link: { to: 'team' as const, index: m.team } } : {}),
-    });
-  }
-  if (counted > 0) {
-    store.post({
-      kind: 'carousel', year,
-      title: `${counted} more coaching change${counted === 1 ? '' : 's'} around the country`,
-      body: 'Outside your conference. The full picture is on the rankings table.',
     });
   }
 }
@@ -1709,28 +1711,6 @@ function regularGames(season: SeasonState, rec: TeamRecord): boolean[] {
   return out.slice(0, played.w + played.l);
 }
 
-/** The longest run of each kind in a list of results. */
-function bestRuns(games: readonly boolean[]): { won: number; lost: number } {
-  let won = 0;
-  let lost = 0;
-  let w = 0;
-  let l = 0;
-  for (const win of games) {
-    if (win) { w += 1; l = 0; } else { l += 1; w = 0; }
-    won = Math.max(won, w);
-    lost = Math.max(lost, l);
-  }
-  return { won, lost };
-}
-
-/** Runs long enough to be worth a card, and what to call one. */
-const RUN_MARKS: readonly { at: number; won: boolean; title: string }[] = [
-  { at: 6, won: true, title: 'Six in a row' },
-  { at: 10, won: true, title: 'Ten straight' },
-  { at: 5, won: false, title: 'Five straight defeats' },
-  { at: 9, won: false, title: 'Nine straight defeats' },
-];
-
 /*
   What the season just did that is worth being asked about.
 
@@ -1756,19 +1736,16 @@ const RUN_MARKS: readonly { at: number; won: boolean; title: string }[] = [
   press and a season played out a day at a time produce the same cards, and
   neither posts the same one twice.
 */
-function classroomNews(store: DynastyStore): void {
-  const { season, year } = store;
-  for (const row of season?.classroom ?? []) {
-    store.post({
-      kind: 'season', year,
-      key: `grades-${row.id}-${row.day}`,
-      title: `${row.name} is ineligible`,
-      body: 'He is short of where he needs to be in the classroom and misses '
-        + 'the week. Whoever is next on the depth chart plays.',
-      link: { to: 'player', id: row.id },
-    });
-  }
-}
+/*
+  Gone in the 15.5 noise cut — the reporter's routing rule, given with names:
+  "stop having so many things coming into inbox such as... when someone gets
+  injured (we already had that in needs you)... just super important things."
+  Ineligibility, injuries and recoveries are all roster facts with a better
+  surface: the needs list carries the injury and the healed-return hold, the
+  roster rows say who is out and why. The engine logs they read
+  (season.classroom, season.trainer) still fill — nothing downstream lost its
+  data, the inbox just stopped repeating it.
+*/
 
 /*
   The trainer's room, read off what the season already did.
@@ -1777,53 +1754,7 @@ function classroomNews(store: DynastyStore): void {
   went and when, so a season simulated in one press still owes the coach the
   news. Keyed on the man and the day, so it cannot post twice.
 */
-function trainerNews(store: DynastyStore): void {
-  const { season, year } = store;
-  for (const row of season?.trainer ?? []) {
-    store.post({
-      kind: 'season', year,
-      key: `hurt-${row.id}-${row.day}`,
-      title: `${row.name} is hurt`,
-      body: `${row.what.charAt(0).toUpperCase()}${row.what.slice(1)}. `
-        + `${row.days >= 150 ? 'He is done for the season.' : `About ${row.days} days.`} `
-        + (handles(store.depth, 'lineups') || handles(store.depth, 'depthChart')
-          ? 'Nobody is moved for you — choose his cover on the chart.'
-          : 'The next man on the depth chart plays.'),
-      link: { to: 'player', id: row.id },
-    });
-  }
-}
 
-/*
-  The other end of the trainer's table.
-
-  Reported: "when the player heals we should be prompted with a card that lets
-  us know the player is back and can go back to the lineup." Scanned off the
-  men rather than the trainer log so the fit day is exactly the day
-  `available` starts saying yes; keyed on the man and that day, so a week of
-  calls posts one card. Arms included — a rotation piece coming back is news
-  by the same rule.
-*/
-function recoveryNews(store: DynastyStore): void {
-  const { season, userTeam, year } = store;
-  const me = season?.teams[userTeam];
-  if (!season || !me) return;
-  const day = season.dayIndex;
-  const men = [...squad(me.team), ...me.team.rotation, ...me.team.bullpen];
-  for (const man of men) {
-    const u = man as typeof man & { outUntil?: number; why?: string };
-    if (u.why !== 'injury' || u.outUntil === undefined) continue;
-    if (day < u.outUntil || day - u.outUntil > 6) continue;
-    store.post({
-      kind: 'season', year,
-      key: `healed-${man.id}-${u.outUntil}`,
-      title: `${man.name} is fit again`,
-      body: 'The trainer has cleared him. He does not walk back into the nine '
-        + 'on his own — open the chart and put him where you want him.',
-      link: { to: 'player', id: man.id },
-    });
-  }
-}
 
 function seasonNews(store: DynastyStore): void {
   const { season, userTeam, year } = store;
@@ -1860,23 +1791,8 @@ function seasonNews(store: DynastyStore): void {
   const played = regularGames(season, me);
   const won = played.filter(Boolean).length;
 
-  // A RUN. Six wins is a thing people notice; five defeats is a thing the board
-  // notices. Only the longer of the two rungs is filed, so a season simmed in
-  // one press does not report the same ten game run twice on its way past six.
-  const runs = bestRuns(played);
-  for (const r of RUN_MARKS) {
-    const run = r.won ? runs.won : runs.lost;
-    if (run < r.at) continue;
-    if (RUN_MARKS.some((o) => o.won === r.won && o.at > r.at && run >= o.at)) continue;
-    store.post({
-      kind: 'season', year, key: `run-${r.won ? 'w' : 'l'}-${r.at}`,
-      title: r.title,
-      body: r.won
-        ? `${run} straight wins. The country's tables are on the season tab.`
-        : `${run} in a row the wrong way. The schedule says where it went.`,
-      link: { to: 'schedule' },
-    });
-  }
+  // The RUN cards (six straight, five dropped) went in the 15.5 noise cut: a
+  // streak is texture, not a trophy, and the schedule tells the story better.
 
   // THE POLL. Only the three rungs that mean anything, and only the best one
   // reached — three cards in one press saying you passed 25th, 10th and first
@@ -2391,6 +2307,27 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         .filter((m) => m.from !== get().userTeam)
         .sort((a, b) => overallOf(b.player) - overallOf(a.player));
 
+      /*
+        The wire hears about the big ones — the assistant's other card,
+        asked for by name: "rumors that a very high ranking player is going
+        into the portal." Worded as rumour, never a stat line, per the
+        plan. The rarity that makes this an event (roughly one winter in
+        five or six) is stage 16's portal-balance knob; until it lands the
+        threshold sits high and the mail is capped at two, so tonight's
+        too-generous portal cannot flood the desk it writes to.
+      */
+      for (const m of theirs.filter((x) => overallOf(x.player) >= 90).slice(0, 2)) {
+        const fromRec = season.teams[m.from];
+        get().post({
+          kind: 'wire', year: get().year,
+          title: `Word is ${m.player.name} wants out`,
+          body: `${fromRec?.def.school ?? 'Somebody'}'s best player is said to be
+            looking around. Every program in the country will make the same
+            call you are about to.`,
+          link: { to: 'player', id: m.player.id },
+        });
+      }
+
       if (rec && !handles(get().depth, 'portal')) {
         // Your staff, out of sight. It still costs the same budget, so a
         // casual career is not quietly richer than a full one.
@@ -2685,38 +2622,15 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
             });
           }
         }
-        const lost = report.drafted.filter((d) => d.team === mine && !d.returned).length;
-        if (lost > 0) {
-          get().post({
-            kind: 'draft', year,
-            title: `${lost} of your men drafted`,
-            body: 'The conversation about keeping them is on the draft step, and it is paid for out of the recruiting budget you are about to open the board with.',
-          });
-        }
+        // The "N of your men drafted" card went in the 15.5 noise cut: it
+        // posted while you were standing ON the draft step it pointed at.
         /*
-          What the winter actually produced, which is otherwise invisible.
-
-          Development moves a rating a point or two and shows up as a number on
-          a screen nobody opens twice. A badge is a thing with a name, and it is
-          the only visible return on the TRAINING skill — so it gets a line
-          rather than being something a coach finds by chance six months later
-          on a player card. One item for the whole class, because four separate
-          notices about four sophomores is how an inbox becomes noise.
+          The winter-badges card went in the 15.5 noise cut, named outright:
+          "when they get badges, not needed to be announced." The argument it
+          used to make for itself — that badges are TRAINING's only visible
+          return — lost to the routing rule; the chips on the player card are
+          where a badge lives, and finding one there is its own small moment.
         */
-        if (report.badges.length > 0) {
-          const list = report.badges
-            .map((b) => `${b.name} — ${BADGES[b.badge].label}`)
-            .slice(0, 8)
-            .join('; ');
-          const more = report.badges.length > 8 ? `, and ${report.badges.length - 8} more` : '';
-          get().post({
-            kind: 'draft', year,
-            title: report.badges.length === 1
-              ? 'One of your men picked something up'
-              : `${report.badges.length} of your men picked something up`,
-            body: `${list}${more}. Earned from what they did last spring, or worked on over the winter.`,
-          });
-        }
       }
       set({
         phase: next,
@@ -3674,13 +3588,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       .find((p) => p.id === id);
     if (!man || !appoint(rec.team, man)) return false;
     set({ version: version + 1 });
-    get().post({
-      kind: 'season', year: get().year,
-      title: `${man.name} is your captain`,
-      body: 'The room has somebody to look at when it goes badly. He will not '
-        + 'make anybody happy; he will stop a bad month becoming a bad year.',
-      link: { to: 'player', id: man.id },
-    });
+    // The captain card went in the 15.5 noise cut, named outright: "when we
+    // name someone captain... not needed to be announced." You just did it —
+    // mail telling you so is the inbox writing to itself. The C on his row
+    // is the record.
     void get().saveNow();
     return true;
   },
@@ -3785,9 +3696,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   */
   noteSeasonNews: () => {
     const before = get().inbox;
-    classroomNews(get());
-    trainerNews(get());
-    recoveryNews(get());
+    // classroomNews / trainerNews / recoveryNews lived here until the 15.5
+    // noise cut — see the note where they were defined.
     seasonNews(get());
     // One version bump for the whole scan rather than one per card, and none at
     // all when there was nothing to say — every caller is already re-rendering

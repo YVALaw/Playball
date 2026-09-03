@@ -34,6 +34,9 @@ export type InboxKind =
   | 'offer'
   | 'achievement'
   | 'draft'
+  // The assistant's wire-watch — stage 15.5. A chair you track changing
+  // hands, a star said to be entering the portal. Rumour, not record.
+  | 'wire'
   | 'carousel'
   | 'hall'
   // The two that fire between February and June. Everything above is written
@@ -83,6 +86,7 @@ export interface InboxItem {
 export const INBOX_LABEL: Record<InboxKind, string> = {
   board: 'THE BOARD',
   offer: 'AN OFFER',
+  wire: 'THE WIRE',
   achievement: 'ACHIEVEMENT',
   draft: 'THE DRAFT',
   carousel: 'THE CAROUSEL',
