@@ -20,3 +20,6 @@ android/
 *.keystore
 *.jks
 key.properties
+
+# The staged APK, copied where a person can find it.
+Playball-*.apk
