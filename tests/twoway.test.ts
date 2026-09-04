@@ -13,7 +13,7 @@ import { isTwoWay, uniquePlayers } from '../src/engine/types.js';
 import { armValue, overallOf, platoonMultiplier } from '../src/engine/ratings.js';
 import { tendenciesOf, HITTER_TENDENCIES, PITCHER_TENDENCIES, teamReads } from '../src/engine/tendencies.js';
 import { repertoireOf } from '../src/engine/pitches.js';
-import { simGame } from '../src/engine/game.js';
+import { simGame, TeamState } from '../src/engine/game.js';
 import { threw } from '../src/engine/workload.js';
 import type { Player, TwoWay } from '../src/engine/types.js';
 
@@ -92,6 +92,58 @@ describe('both jobs at once', () => {
     const hisBat = [...res.home.batting.values()].find((l) => l.player.id === man.id);
     expect(hisBat).toBeDefined();
     expect((hisBat?.ab ?? 0) + (hisBat?.bb ?? 0)).toBeGreaterThan(0);
+  });
+
+  it('never stands in the field while he pitches', () => {
+    // Stage 21: the field map used to seat him in left while he stood
+    // sixty feet six away. On his pitching night he is mound and bat only.
+    const { team, man } = club(58);
+    const st = new TeamState(team, true, 0);
+    for (const fielder of st.byPosition.values()) {
+      expect(String(fielder.id)).not.toBe(String(man.id));
+    }
+  });
+
+  it('a bench glove covers the spot his bat vacates, and the DH keeps the DH seat', () => {
+    resetNames();
+    const rng = makeRng(66);
+    const team = makeTeam(rng, 'TW', 55);
+    const man = makeTwoWay(rng, 58);
+    // He grew into left field over a winter; the DH seat belongs to
+    // another bat entirely.
+    man.pos = 'LF';
+    const lfIdx = team.lineup.findIndex((h) => h.pos === 'LF');
+    expect(lfIdx).toBeGreaterThanOrEqual(0);
+    team.lineup[lfIdx] = man;
+    team.rotation[0] = man;
+    const st = new TeamState(team, true, 0);
+    // Nobody in the field is him.
+    for (const fielder of st.byPosition.values()) {
+      expect(String(fielder.id)).not.toBe(String(man.id));
+    }
+    // The DH man was not dragged into the grass to pay for it.
+    expect(st.byPosition.get('DH')?.pos).toBe('DH');
+    // And a bench body holds his spot for the night, batting nowhere.
+    const cover = st.byPosition.get('LF');
+    expect(cover).toBeDefined();
+    expect(st.order.some((m) => String(m.id) === String(cover?.id))).toBe(false);
+    expect(st.fieldCover?.spot).toBe('LF');
+  });
+
+  it('a two-way reliever is covered the moment he takes the ball', () => {
+    resetNames();
+    const rng = makeRng(77);
+    const team = makeTeam(rng, 'TW', 55);
+    const man = makeTwoWay(rng, 58);
+    man.pos = 'LF';
+    man.role = 'RP';
+    const lfIdx = team.lineup.findIndex((h) => h.pos === 'LF');
+    team.lineup[lfIdx] = man;
+    // An ordinary starter has the ball; the two-way man is out in left.
+    const st = new TeamState(team, true, 0);
+    expect([...st.byPosition.values()].some((f) => String(f.id) === String(man.id))).toBe(true);
+    st.coverPitcher(man);
+    expect([...st.byPosition.values()].some((f) => String(f.id) === String(man.id))).toBe(false);
   });
 
   it('crosses the fatigue: a real start leans on the same body', () => {

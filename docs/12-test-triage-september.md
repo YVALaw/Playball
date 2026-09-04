@@ -206,3 +206,25 @@ visibly); and a **result card** at the end — the coach you made, his
 four skills, two badges, and who calls a man like him. A quick-start
 "pick a background" fallback (preset answer sets through the same
 settle()) stays on the table.
+
+## Stage 21 — built September 4
+
+The trace confirmed the sim seated him at LF **while** he pitched — one
+body, two stations. Now, per the reporter's three answers: on his
+pitching night his bat stays in the order, the DH keeps the DH seat, and
+the best free bench glove is seated at the spot he vacates **before** the
+general assignment can shuffle anyone else out of position — fielding
+without batting, all night, so the mid-game hook needs no reshuffle: he
+simply bats on, a DH the rest of the way. A two-way RELIEVER who jogs in
+from a field spot gets the same cover the moment he takes the ball
+(`TeamState.coverPitcher`, called on both the sim's and the managed
+game's pitching changes). `fieldCover` records the stand-in.
+
+The card: the hero reads **TWO-WAY · SP · 1B**; a **Batting / Pitching
+toggle** on the STATS and GAMES sheets switches the season-by-season
+table, the June table and the game log between his two books (the
+stacked "and on the mound" second table retired in its favour); the
+overview's THIS SEASON shows both lines at a glance; and the lineup row
+carries his arm's role so his pitching nights are legible. Three new
+engine pins hold it: never in the field while he pitches, the bench
+cover at his exact spot with the DH untouched, and the reliever cover.

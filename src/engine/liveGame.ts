@@ -417,6 +417,7 @@ export function createLiveGame(
       if (arm === mine.pitcher || mine.usedPen.includes(arm)) return false;
       mine.usedPen.push(arm);
       mine.pitcher = arm;
+      mine.coverPitcher(arm);
       mine.pitcherPitches = 0;
       // A new man, a new outing: his own confidence and his own visit.
       mine.pitcherConfidence = CONFIDENCE.relief;

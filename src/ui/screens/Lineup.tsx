@@ -33,6 +33,7 @@ import { FirstVisit } from '../Tutorial.js';
 import { returnPending, whyOut } from '../Needs.js';
 import { Modal } from '../Modal.js';
 import { armValue, overallOf } from '../../engine/ratings.js';
+import { isTwoWay } from '../../engine/types.js';
 import { captainOf } from '../../engine/captains.js';
 import { battingAverage, era, inningsPitched, injuryClock } from '../../engine/season.js';
 import { handles } from '../../state/depth.js';
@@ -425,7 +426,7 @@ export function Lineup() {
                     {captainOf(team.team)?.id === p.id && <CaptainC />}
                   </strong>
                   <small>
-                    {p.pos} · Bats {p.bats} · {overallOf(p)} OVR
+                    {p.pos}{isTwoWay(p) ? ` · ${(p as unknown as { role: string }).role}` : ''} · Bats {p.bats} · {overallOf(p)} OVR
                     {line && line.ab > 0
                       ? ` · ${battingAverage(line).toFixed(3).replace(/^0/, '')}`
                       : ''}

@@ -204,6 +204,8 @@ export function gameLogFor(
   },
   id: PlayerId,
   teamIndex: number,
+  /** A two-way man's card asks for one half; everybody else takes both. */
+  half?: 'bat' | 'arm',
 ): GameLogRow[] {
   const rows: GameLogRow[] = [];
   for (const box of Object.values(season.boxScores ?? {})) {
@@ -212,7 +214,9 @@ export function gameLogFor(
 
     const batting = home ? box.homeBatting : box.awayBatting;
     const pitching = home ? box.homePitching : box.awayPitching;
-    const line = [...batting, ...pitching].find((l) => l.id === id);
+    const pool = half === 'arm' ? pitching : half === 'bat' ? batting
+      : [...batting, ...pitching];
+    const line = pool.find((l) => l.id === id);
     if (!line) continue;
 
     const us = home ? box.homeRuns : box.awayRuns;
@@ -242,6 +246,7 @@ export function Player() {
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
   const [sheet, setSheet] = useState<Sheet>('overview');
+  const [half, setHalf] = useState<'bat' | 'arm'>('bat');
   void version;
 
   if (!season || !team || !selected) return <Nobody />;
@@ -287,7 +292,8 @@ export function Player() {
   const ovr = overallOf(p);
   // A DH's card names the position he actually plays — the DH is where the
   // coach bats him, not what he is. See `naturalPos`.
-  const slot = isTwoWay(p) ? 'TWO-WAY'
+  const slot = isTwoWay(p)
+    ? `TWO-WAY · ${(p as unknown as Pitcher).role} · ${naturalPos(p as Hitter)}`
     : isPitcher ? (p as Pitcher).role : naturalPos(p as Hitter);
   const dhToday = !isPitcher && p.pos === 'DH';
 
@@ -317,13 +323,31 @@ export function Player() {
           year stats and instead put them in overview; in stats we will only
           keep the season by season, and one season by season as well but to
           record the june stats." */}
+      {isTwoWay(p) && (active === 'stats' || active === 'games') && (
+        <Segmented
+          label="Which half of his game"
+          value={half}
+          onChange={setHalf}
+          options={[
+            { value: 'bat' as const, label: 'Batting' },
+            { value: 'arm' as const, label: 'Pitching' },
+          ]}
+        />
+      )}
       {active === 'stats' && (
         <>
-          <SeasonsUnder p={p} owner={owner} isOurs={isOurs} />
-          <JuneByYear p={p} owner={owner} isOurs={isOurs} />
+          <SeasonsUnder p={p} owner={owner} isOurs={isOurs} half={half} />
+          <JuneByYear p={p} owner={owner} isOurs={isOurs} half={half} />
         </>
       )}
-      {active === 'games' && <Games id={p.id} owner={owner} isOurs={isOurs} />}
+      {active === 'games' && (
+        <Games
+          id={p.id}
+          owner={owner}
+          isOurs={isOurs}
+          half={isTwoWay(p) ? half : undefined}
+        />
+      )}
       {active === 'history' && (
         <Career id={p.id} owner={owner} isPitcher={isPitcher} isOurs={isOurs} />
       )}
@@ -1090,7 +1114,7 @@ function ThisSeason({ p }: { p: AnyPlayer }) {
   const batted = bat && (bat.ab > 0 || bat.bb > 0 || bat.hbp > 0);
   const pitched = pit && pit.outs > 0;
 
-  if (isPitcher ? !pitched : !batted) {
+  if (isTwoWay(p) ? !batted && !pitched : isPitcher ? !pitched : !batted) {
     return (
       <section className="empty-state">
         <h2>No line yet</h2>
@@ -1126,6 +1150,16 @@ function ThisSeason({ p }: { p: AnyPlayer }) {
         ) : null}
       </section>
 
+      {isTwoWay(p) && pitched && pit && (
+        <>
+          <SectionHeading kicker="AND ON THE MOUND" title="The same season, pitched" />
+          <section className="season-line">
+            <Metric label="ERA" value={era(pit).toFixed(2)} note={`${pit.w}-${pit.l} RECORD`} />
+            <Metric label="INNINGS" value={inningsPitched(pit).toFixed(1)} note={`${pit.sv} SAVES`} />
+            <Metric label="STRIKEOUTS" value={String(pit.k)} note={`${pit.bb} WALKS`} />
+          </section>
+        </>
+      )}
       <section className="fielding-strip">
         {isPitcher && pit ? (
           <>
@@ -1171,12 +1205,13 @@ function ThisSeason({ p }: { p: AnyPlayer }) {
  * most of a roster in February. A timeline of dashes is not information.
  */
 function JuneByYear(
-  { p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: boolean },
+  { p, owner, isOurs, half }:
+  { p: AnyPlayer; owner: Owner; isOurs: boolean; half?: 'bat' | 'arm' },
 ) {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   void version;
-  const isPitcher = p.type === 'pitcher';
+  const isPitcher = isTwoWay(p) ? half === 'arm' : p.type === 'pitcher';
 
   const { years, live } = careerYears(season ?? null, owner.index, p.id, isOurs);
   const toRow = (y: CareerYear): CareerYear => ({
@@ -1232,7 +1267,10 @@ function JuneByYear(
  * result. Same three facts the grid carried, in the shape the rest of the app
  * already reads lists in.
  */
-function Games({ id, owner, isOurs }: { id: PlayerId; owner: Owner; isOurs: boolean }) {
+function Games(
+  { id, owner, isOurs, half }:
+  { id: PlayerId; owner: Owner; isOurs: boolean; half?: 'bat' | 'arm' },
+) {
   const season = useDynasty((s) => s.season);
   const year = useDynasty((s) => s.year);
   const version = useDynasty((s) => s.version);
@@ -1248,7 +1286,7 @@ function Games({ id, owner, isOurs }: { id: PlayerId; owner: Owner; isOurs: bool
     );
   }
 
-  const rows = gameLogFor(season, id, owner.index);
+  const rows = gameLogFor(season, id, owner.index, half);
 
   if (rows.length === 0) {
     return (
@@ -1707,8 +1745,10 @@ function AlumnusYears({ years, isPitcher }: { years: CareerYear[]; isPitcher: bo
  * so the two tabs can never disagree about a year.
  */
 function SeasonsUnder(
-  { p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: boolean },
+  { p, owner, isOurs, half }:
+  { p: AnyPlayer; owner: Owner; isOurs: boolean; half?: 'bat' | 'arm' },
 ) {
+  const asPitcher = isTwoWay(p) ? half === 'arm' : p.type === 'pitcher';
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   void version;
@@ -1724,22 +1764,15 @@ function SeasonsUnder(
       </section>
     );
   }
-  // The two-way man's book has two halves and gets both tables — the
-  // leaderboard split, carried onto his own card.
-  const both = isTwoWay(p) && years.some((y) => (y.outs ?? 0) > 0);
+  // The two-way man's book has two halves; the BATTING/PITCHING toggle
+  // above decides which one this table reads (it used to stack both).
   return (
     <>
       <SectionHeading
         kicker="SEASON BY SEASON"
         title={years.length === 1 ? 'One season' : `${years.length} seasons`}
       />
-      <SeasonRows years={years} live={live} isPitcher={p.type === 'pitcher'} />
-      {both && (
-        <>
-          <SectionHeading kicker="AND ON THE MOUND" title="The same seasons, pitched" />
-          <SeasonRows years={years} live={live} isPitcher={true} />
-        </>
-      )}
+      <SeasonRows years={years} live={live} isPitcher={asPitcher} />
     </>
   );
 }

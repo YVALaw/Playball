@@ -254,6 +254,11 @@ export class TeamState {
   /** Stage 13: who ended a walk-off win, for the card that remembers it. */
   walkOffBy: PlayerId | null = null;
   /**
+   * Stage 21: the bench glove standing in for a two-way man on his pitching
+   * night — fielding without batting. Null on every ordinary night.
+   */
+  fieldCover: { spot: Position; man: Hitter } | null = null;
+  /**
    * How much less often a runner tests this outfield, from CANNON.
    *
    * Computed once here rather than per play because it is a property of who is
@@ -316,11 +321,34 @@ export class TeamState {
       entire point of having a depth chart at all.
     */
     const fieldTaken = new Set<number>();
+    // The night's starter, if he is ALSO in the batting order — a two-way
+    // man on his pitching night. He must not be seated in the field, and
+    // the DH must not be dragged out of the DH seat to cover for him.
+    const moundBound = this.order.findIndex((m) => m.id === starter.id);
+    if (moundBound >= 0) {
+      const dhIdx = this.order.findIndex((m, i) => i !== moundBound && m.pos === 'DH');
+      const dhMan = dhIdx >= 0 ? this.order[dhIdx] : undefined;
+      if (dhMan) {
+        fieldTaken.add(dhIdx);
+        this.byPosition.set('DH', fieldingAt(dhMan, 'DH'));
+      }
+      // The bench cover takes HIS spot, before the general assignment can
+      // shuffle the other eight out of their own seats to fill it.
+      const vacated = this.order[moundBound]?.pos;
+      if (vacated && vacated !== 'DH') {
+        const cover = this.benchCoverFor(vacated);
+        if (cover) {
+          this.byPosition.set(vacated, fieldingAt(cover, vacated));
+          this.fieldCover = { spot: vacated, man: cover };
+        }
+      }
+    }
     for (const spot of FIELD_ORDER) {
+      if (this.byPosition.has(spot)) continue;
       let best = -1;
       let bestCost = Number.POSITIVE_INFINITY;
       this.order.forEach((p, i) => {
-        if (fieldTaken.has(i)) return;
+        if (fieldTaken.has(i) || i === moundBound) return;
         const cost = positionPenalty(p, spot);
         if (cost < bestCost) { bestCost = cost; best = i; }
       });
@@ -329,6 +357,16 @@ export class TeamState {
       if (!man) continue;
       fieldTaken.add(best);
       this.byPosition.set(spot, fieldingAt(man, spot));
+    }
+    if (moundBound >= 0) {
+      for (const spot of FIELD_ORDER) {
+        if (spot === 'DH' || this.byPosition.has(spot)) continue;
+        const cover = this.benchCoverFor(spot);
+        if (cover) {
+          this.byPosition.set(spot, fieldingAt(cover, spot));
+          this.fieldCover = { spot, man: cover };
+        }
+      }
     }
     /** The nine as they are actually standing, for every average below. */
     const afield: Hitter[] = [...this.byPosition.values()];
@@ -385,6 +423,41 @@ export class TeamState {
     // The man assigned the plate, at what his glove is worth behind it — a
     // left fielder catching pays the catcher tax for the night.
     this.catcher = this.byPosition.get('C') ?? (this.order[0] as Hitter);
+  }
+
+  /** The best free bench glove for a spot; null when the bench is spent. */
+  private benchCoverFor(spot: Position): Hitter | null {
+    const seated = new Set<string>([
+      ...this.order.map((m) => String(m.id)),
+      ...[...this.byPosition.values()].map((m) => String(m.id)),
+    ]);
+    let cover: Hitter | null = null;
+    let cost = Number.POSITIVE_INFINITY;
+    for (const b of this.team.bench) {
+      if (seated.has(String(b.id))) continue;
+      const c = positionPenalty(b, spot);
+      if (c < cost) { cost = c; cover = b; }
+    }
+    return cover;
+  }
+
+  /**
+   * A two-way RELIEVER leaves a hole in the field where he stood; fill it
+   * as he jogs to the mound. Ordinary relievers are found nowhere in
+   * `byPosition` and this does nothing.
+   */
+  coverPitcher(next: Arm): void {
+    for (const [spot, man] of this.byPosition) {
+      if (String(man.id) !== String(next.id)) continue;
+      const cover = this.benchCoverFor(spot);
+      if (cover) {
+        this.byPosition.set(spot, fieldingAt(cover, spot));
+        this.fieldCover = { spot, man: cover };
+      } else {
+        this.byPosition.delete(spot);
+      }
+      return;
+    }
   }
 
   /**
@@ -2191,6 +2264,7 @@ function maybeChangePitcher(fld: TeamState, say: Say): void {
   if (!next) return;
   fld.usedPen.push(next);
   fld.pitcher = next;
+  fld.coverPitcher(next);
   fld.pitcherPitches = 0;
   // A new man is a new outing in every sense: his own budget, his own
   // confidence, and his own visit still to spend.
