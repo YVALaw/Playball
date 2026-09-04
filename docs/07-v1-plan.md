@@ -1171,11 +1171,13 @@ Needs its own design door — what leverage is, what asking costs.
 ## Stage 21 · The two-way, whole — **BUILT September 4 2026, in review**
 
 **Size:** small–medium · The trace found him seated in left while he
-pitched; now the bat stays, the DH holds the DH seat, a bench glove
-covers his exact spot, a hooked man bats on as a DH, and a two-way
-reliever is covered as he takes the ball. The card wears both positions
-and a Batting/Pitching toggle. Three pins hold the field rule; details
-in `12-test-triage-september.md`.
+pitched. The rule, corrected by the reporter to the real baseball: on
+his pitching night the nine is the eight field spots plus him as P — he
+bats and pitches, the DH sits on a bench that grows a seat (still
+available to pinch-hit), and his grass is taken by a bench bat batting
+in the DH's slot. Nobody fields without batting. The card wears both
+positions and a Batting/Pitching toggle. Pins hold the field rule;
+details in `12-test-triage-september.md`.
 
 Nothing today reconciles a man in the nine at LF who is also the night's
 starter — trace what the sim actually does, then the design call. The

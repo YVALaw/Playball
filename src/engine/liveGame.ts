@@ -368,7 +368,7 @@ export function createLiveGame(
     // from the program for good, which turned every substitution into a quiet
     // roster cut.
     get benchAvailable() {
-      return mine.team.bench.filter(
+      return mine.benchTonight.filter(
         (h) => !mine.usedBench.includes(h) && !mine.order.includes(h),
       );
     },
@@ -395,7 +395,7 @@ export function createLiveGame(
     pinchHit(hitter) {
       if (over || bat() !== mine) return false;
       const outgoing = mine.order[mine.spot];
-      if (!outgoing || !mine.team.bench.includes(hitter)) return false;
+      if (!outgoing || !mine.benchTonight.includes(hitter)) return false;
       if (mine.usedBench.includes(hitter) || mine.order.includes(hitter)) return false;
       // Marks him used for this game and nothing more. The man he replaced is
       // done for the day too — he is out of the order and cannot re-enter.

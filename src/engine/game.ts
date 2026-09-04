@@ -259,6 +259,12 @@ export class TeamState {
    */
   fieldCover: { spot: Position; man: Hitter } | null = null;
   /**
+   * Tonight's bench. Identical to the roster's bench on an ordinary night;
+   * on a two-way man's pitching night it grows a seat — the DH sits here,
+   * still available, and the man who took his grass came off of it.
+   */
+  benchTonight: Hitter[] = [];
+  /**
    * How much less often a runner tests this outfield, from CANNON.
    *
    * Computed once here rather than per play because it is a property of who is
@@ -287,6 +293,7 @@ export class TeamState {
     this.coachOffMult = 1 + ((coachMods?.offense ?? 20) - 20) * 0.0001;
     this.coachDefMult = 1 - ((coachMods?.defense ?? 20) - 20) * 0.0001;
     this.team = team;
+    this.benchTonight = [...team.bench];
     this.isHome = isHome;
     this.order = lineup.slice(0, 9);
     // The nine who took the field for the first pitch. `order` is mutated by
@@ -321,25 +328,30 @@ export class TeamState {
       entire point of having a depth chart at all.
     */
     const fieldTaken = new Set<number>();
-    // The night's starter, if he is ALSO in the batting order — a two-way
-    // man on his pitching night. He must not be seated in the field, and
-    // the DH must not be dragged out of the DH seat to cover for him.
+    /*
+      The night's starter, if he is ALSO in the batting order — a two-way
+      man on his pitching night. The nine that night is the eight field
+      spots plus HIM AS THE PITCHER: he bats and pitches, the DH sits on
+      the bench (which grows a seat to hold him, still available), and the
+      man who takes his grass comes off the bench batting like anybody
+      else. Nobody ever fields without batting.
+    */
     const moundBound = this.order.findIndex((m) => m.id === starter.id);
     if (moundBound >= 0) {
-      const dhIdx = this.order.findIndex((m, i) => i !== moundBound && m.pos === 'DH');
-      const dhMan = dhIdx >= 0 ? this.order[dhIdx] : undefined;
-      if (dhMan) {
-        fieldTaken.add(dhIdx);
-        this.byPosition.set('DH', fieldingAt(dhMan, 'DH'));
-      }
-      // The bench cover takes HIS spot, before the general assignment can
-      // shuffle the other eight out of their own seats to fill it.
       const vacated = this.order[moundBound]?.pos;
       if (vacated && vacated !== 'DH') {
+        const dhIdx = this.order.findIndex((m, i) => i !== moundBound && m.pos === 'DH');
+        const dhMan = dhIdx >= 0 ? this.order[dhIdx] : undefined;
         const cover = this.benchCoverFor(vacated);
-        if (cover) {
+        if (dhMan && cover) {
+          this.order[dhIdx] = cover;
+          // The snapshot was taken before this seat changed hands; tonight the
+          // cover IS a starter, and the box must label him as one.
+          (this.starters as Hitter[])[dhIdx] = cover;
+          fieldTaken.add(dhIdx);
           this.byPosition.set(vacated, fieldingAt(cover, vacated));
           this.fieldCover = { spot: vacated, man: cover };
+          this.benchTonight = [...this.benchTonight.filter((b) => b !== cover), dhMan];
         }
       }
     }
@@ -357,16 +369,6 @@ export class TeamState {
       if (!man) continue;
       fieldTaken.add(best);
       this.byPosition.set(spot, fieldingAt(man, spot));
-    }
-    if (moundBound >= 0) {
-      for (const spot of FIELD_ORDER) {
-        if (spot === 'DH' || this.byPosition.has(spot)) continue;
-        const cover = this.benchCoverFor(spot);
-        if (cover) {
-          this.byPosition.set(spot, fieldingAt(cover, spot));
-          this.fieldCover = { spot, man: cover };
-        }
-      }
     }
     /** The nine as they are actually standing, for every average below. */
     const afield: Hitter[] = [...this.byPosition.values()];
@@ -433,7 +435,7 @@ export class TeamState {
     ]);
     let cover: Hitter | null = null;
     let cost = Number.POSITIVE_INFINITY;
-    for (const b of this.team.bench) {
+    for (const b of this.benchTonight) {
       if (seated.has(String(b.id))) continue;
       const c = positionPenalty(b, spot);
       if (c < cost) { cost = c; cover = b; }
@@ -449,10 +451,20 @@ export class TeamState {
   coverPitcher(next: Arm): void {
     for (const [spot, man] of this.byPosition) {
       if (String(man.id) !== String(next.id)) continue;
+      // Same rule as a start, mid-game: the DH's night ends (to the bench,
+      // where his seat is kept), and a bench bat enters at the vacated
+      // grass, batting in the DH's slot.
+      const dhIdx = this.order.findIndex((m) => m.pos === 'DH' && String(m.id) !== String(next.id));
+      const dhMan = dhIdx >= 0 ? this.order[dhIdx] : undefined;
       const cover = this.benchCoverFor(spot);
-      if (cover) {
+      if (dhMan && cover) {
+        this.order[dhIdx] = cover;
         this.byPosition.set(spot, fieldingAt(cover, spot));
+        if (String(this.byPosition.get('DH')?.id ?? '') === String(dhMan.id)) {
+          this.byPosition.delete('DH');
+        }
         this.fieldCover = { spot, man: cover };
+        this.benchTonight = [...this.benchTonight.filter((b) => b !== cover), dhMan];
       } else {
         this.byPosition.delete(spot);
       }
@@ -2154,7 +2166,9 @@ function maybePinchHit(
   const due = bat.order[spot];
   if (!due) return;
 
-  const available = bat.team.bench.filter((h) => !bat.usedBench.includes(h));
+  const available = bat.benchTonight.filter(
+    (h) => !bat.usedBench.includes(h) && !bat.order.includes(h),
+  );
   if (available.length === 0) return;
 
   const margin = bat.runs - fld.runs;

@@ -207,18 +207,20 @@ four skills, two badges, and who calls a man like him. A quick-start
 "pick a background" fallback (preset answer sets through the same
 settle()) stays on the table.
 
-## Stage 21 — built September 4
+## Stage 21 — built September 4, corrected the same night
 
 The trace confirmed the sim seated him at LF **while** he pitched — one
-body, two stations. Now, per the reporter's three answers: on his
-pitching night his bat stays in the order, the DH keeps the DH seat, and
-the best free bench glove is seated at the spot he vacates **before** the
-general assignment can shuffle anyone else out of position — fielding
-without batting, all night, so the mid-game hook needs no reshuffle: he
-simply bats on, a DH the rest of the way. A two-way RELIEVER who jogs in
-from a field spot gets the same cover the moment he takes the ball
-(`TeamState.coverPitcher`, called on both the sim's and the managed
-game's pitching changes). `fieldCover` records the stand-in.
+body, two stations. The first build put a NON-batting bench glove on his
+grass; the reporter corrected it twice to the real rule, now final: **on
+his pitching night the nine is C, 1B, 2B, 3B, SS, RF, CF, LF, P** — he
+bats and pitches as the P slot (the box labels him `P` that night), the
+**DH sits on the bench**, which grows a seat to hold him and keeps him
+available (`TeamState.benchTonight`, read by every pinch-hit path), and
+the man who takes his grass **comes off the bench batting** in the DH's
+slot. Nobody ever fields without batting. A two-way RELIEVER taking the
+ball mid-game sits the DH the same way (`coverPitcher`, on both the
+sim's and the managed game's pitching changes). On non-pitching days
+nothing changes: he plays his position and bats.
 
 The card: the hero reads **TWO-WAY · SP · 1B**; a **Batting / Pitching
 toggle** on the STATS and GAMES sheets switches the season-by-season

@@ -1814,7 +1814,9 @@ function battingLines(side: GameResult['home']): BoxLine[] {
     if (l.sb) extras.push(`${l.sb} SB`);
     out.push({
       id: l.player.id, name: l.player.name,
-      slot: started.has(l.player.id) ? l.player.pos : 'PH',
+      slot: started.has(l.player.id)
+        ? (side.pitching.has(l.player.id) ? 'P' : l.player.pos)
+        : 'PH',
       line: `${l.h}-${l.ab}${extras.length ? ', ' + extras.join(', ') : ''}`,
     });
   }

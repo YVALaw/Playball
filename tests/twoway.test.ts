@@ -104,7 +104,7 @@ describe('both jobs at once', () => {
     }
   });
 
-  it('a bench glove covers the spot his bat vacates, and the DH keeps the DH seat', () => {
+  it('his pitching night: eight fielders and him as P, the DH to the bench', () => {
     resetNames();
     const rng = makeRng(66);
     const team = makeTeam(rng, 'TW', 55);
@@ -116,21 +116,31 @@ describe('both jobs at once', () => {
     expect(lfIdx).toBeGreaterThanOrEqual(0);
     team.lineup[lfIdx] = man;
     team.rotation[0] = man;
+    const dhMan = team.lineup.find((h) => h.pos === 'DH')!;
+    expect(dhMan).toBeDefined();
     const st = new TeamState(team, true, 0);
-    // Nobody in the field is him.
+    // He bats — and stands nowhere in the field.
+    expect(st.order.some((m) => String(m.id) === String(man.id))).toBe(true);
     for (const fielder of st.byPosition.values()) {
       expect(String(fielder.id)).not.toBe(String(man.id));
     }
-    // The DH man was not dragged into the grass to pay for it.
-    expect(st.byPosition.get('DH')?.pos).toBe('DH');
-    // And a bench body holds his spot for the night, batting nowhere.
+    // The DH sat for the night: off the order, onto a bench that grew a
+    // seat to hold him, still available.
+    expect(st.order.some((m) => String(m.id) === String(dhMan.id))).toBe(false);
+    expect(st.benchTonight.some((m) => String(m.id) === String(dhMan.id))).toBe(true);
+    // Every man in the field bats. Nobody ever fields without batting.
+    const orderIds = new Set(st.order.map((m) => String(m.id)));
+    for (const fielder of st.byPosition.values()) {
+      expect(orderIds.has(String(fielder.id))).toBe(true);
+    }
+    // And his grass is manned by the bench bat who took the DH's slot.
     const cover = st.byPosition.get('LF');
     expect(cover).toBeDefined();
-    expect(st.order.some((m) => String(m.id) === String(cover?.id))).toBe(false);
+    expect(orderIds.has(String(cover!.id))).toBe(true);
     expect(st.fieldCover?.spot).toBe('LF');
   });
 
-  it('a two-way reliever is covered the moment he takes the ball', () => {
+  it('a two-way reliever taking the ball sits the DH the same way', () => {
     resetNames();
     const rng = makeRng(77);
     const team = makeTeam(rng, 'TW', 55);
@@ -139,11 +149,20 @@ describe('both jobs at once', () => {
     man.role = 'RP';
     const lfIdx = team.lineup.findIndex((h) => h.pos === 'LF');
     team.lineup[lfIdx] = man;
+    const dhMan = team.lineup.find((h) => h.pos === 'DH')!;
     // An ordinary starter has the ball; the two-way man is out in left.
     const st = new TeamState(team, true, 0);
     expect([...st.byPosition.values()].some((f) => String(f.id) === String(man.id))).toBe(true);
     st.coverPitcher(man);
+    // Off the grass, still batting; the DH's night is over; his stand-in
+    // fields AND bats.
     expect([...st.byPosition.values()].some((f) => String(f.id) === String(man.id))).toBe(false);
+    expect(st.order.some((m) => String(m.id) === String(dhMan.id))).toBe(false);
+    expect(st.benchTonight.some((m) => String(m.id) === String(dhMan.id))).toBe(true);
+    const orderIds = new Set(st.order.map((m) => String(m.id)));
+    for (const fielder of st.byPosition.values()) {
+      expect(orderIds.has(String(fielder.id))).toBe(true);
+    }
   });
 
   it('crosses the fatigue: a real start leans on the same body', () => {
