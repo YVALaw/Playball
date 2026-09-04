@@ -307,8 +307,8 @@ export function Today() {
                 )}
                 {held && (
                   <p>
-                    <SewingPinIcon /> {musts === 1 ? 'A decision is' : `${musts} decisions are`} waiting
-                    on you below. Nothing moves until {musts === 1 ? 'it is' : 'they are'} dealt with.
+                    <SewingPinIcon /> Nothing moves until
+                    {musts === 1 ? ' the decision below is' : ' the decisions below are'} made.
                   </p>
                 )}
               </div>

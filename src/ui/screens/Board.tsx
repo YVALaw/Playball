@@ -516,8 +516,8 @@ export function Board() {
             )}
             <div style={{ color: 'var(--dim)' }}>
               {lastWeek.gone === 0
-                ? `Nobody came off the board anywhere. Your budget is back to ${weekly}.`
-                : `${lastWeek.gone} recruit${lastWeek.gone === 1 ? '' : 's'} signed elsewhere and ${lastWeek.gone === 1 ? 'is' : 'are'} off the board. Your budget is back to ${weekly}.`}
+                ? 'Nobody came off the board anywhere.'
+                : `${lastWeek.gone} recruit${lastWeek.gone === 1 ? '' : 's'} signed elsewhere.`}
             </div>
           </div>
         </div>
@@ -607,9 +607,8 @@ export function Board() {
               <div style={{
                 marginTop: 6, font: "400 calc(11px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
               }}>
-                A program of yours can call a recruit one grade above it, and one
-                more than that inside your own state. Build the program up and
-                players like these start listening.
+                Out of reach for now. Build the program up and names like these
+                start listening.
               </div>
             </>
           )}
@@ -831,7 +830,7 @@ function FilterPanel({
           on={filters.pipelineOnly}
           onClick={() => set('pipelineOnly', !filters.pipelineOnly)}
           label={`IN MY PIPELINE${homeState ? ` · ${homeState}` : ''}`}
-          note={`Your own state. Worth a star of reach on top of your ${'★'.repeat(myStars)}.`}
+          note="Worth a star of reach at home."
         />
         <Switch
           on={filters.untouchedOnly}
@@ -926,11 +925,9 @@ function NeedsView(
         font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--ink)',
       }}>
         {total === 0
-          ? 'Every spot is covered. Nobody walks on this year. The whole roster '
-            + 'is men you went and got.'
-          : `${total} walk-on${total === 1 ? '' : 's'} as it stands. Anything you do `
-            + "not sign gets filled by whoever turns up, well below your "
-            + "program's own level, and he is gone again the moment the season ends."}
+          ? 'Every spot covered. The whole roster is men you went and got.'
+          : `${total} walk-on${total === 1 ? '' : 's'} as it stands. Whoever turns `
+            + 'up is well below your level, and gone in a year.'}
       </div>
 
       {short.length > 0 && (
@@ -1219,12 +1216,12 @@ function Overview({
         <div>
           <small>ESTIMATED OVERALL</small>
           <strong>{overall.low}&ndash;{overall.high}</strong>
-          <span>not a final rating</span>
+          <span>today</span>
         </div>
         <div>
           <small>ESTIMATED CEILING</small>
           <strong>{ceiling.low}&ndash;{ceiling.high}</strong>
-          <span>report range</span>
+          <span>in time</span>
         </div>
       </section>
 
@@ -1296,7 +1293,6 @@ function Overview({
           font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
         }}>
           <strong style={{ color: 'var(--ink)' }}>Your class is full.</strong>
-          {' '}Every scholarship is spoken for.
         </div>
       )}
 
@@ -1377,12 +1373,12 @@ function Report({
         <div>
           <small>ESTIMATED OVERALL</small>
           <strong>{overall.low}&ndash;{overall.high}</strong>
-          <span>not a final rating</span>
+          <span>today</span>
         </div>
         <div>
           <small>ESTIMATED CEILING</small>
           <strong>{ceiling.low}&ndash;{ceiling.high}</strong>
-          <span>report range</span>
+          <span>in time</span>
         </div>
       </section>
 
@@ -1410,9 +1406,8 @@ function Report({
 
       <FieldNote
         title="Estimates, not measurements"
-        text={`Your reports run ${Math.round(reportWidth(recruitingSkill))} points wide
-          at recruiting ${recruitingSkill}, and he is somewhere inside each band —
-          not in the middle. Nothing narrows them but the skill itself.`}
+        text="He is somewhere inside each band — not in the middle. Only your
+          RECRUITING skill narrows them."
       />
     </>
   );
@@ -1436,8 +1431,8 @@ function Stats({ prospect }: { prospect: Prospect }) {
       </section>
       <FieldNote
         title="Read the competition"
-        text="High school numbers, against high school pitching. Everybody's look
-          absurd; what matters is whose look absurd for the right reasons."
+        text="Everybody's numbers look absurd against high school pitching. Ask
+          whose look absurd for the right reasons."
       />
     </>
   );

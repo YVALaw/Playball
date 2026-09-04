@@ -269,10 +269,10 @@ export const KEEP_CASE: Record<KeepPitch, string> = {
  * deliver.
  */
 export const KEEP_RESTS_ON: Record<KeepPitch, string> = {
-  stock: 'Rests on how much of him is still to come, and on your TRAINING.',
-  role: 'Rests on your depth chart at his spot. He can read it too.',
-  ring: 'Rests on the program’s standing and on who is coming back.',
-  word: 'Rests on your own name and how long you have sat in this chair.',
+  stock: 'How much of him is still to come — and your TRAINING.',
+  role: 'Your depth chart at his spot. He can read it too.',
+  ring: 'The program’s standing, and who is coming back.',
+  word: 'Your name, and how long you have sat in this chair.',
 };
 
 /**
@@ -477,13 +477,13 @@ export const PULL_LINES: readonly PullLine[] = [
   { text: 'He asked what you did with the last man who was where he is.', of: ['development', 'prestige'] },
   { text: 'He is asking who else you are bringing in at his position.', of: ['development', 'playingTime'] },
   { text: 'He wants the ball, and he has not been shy about saying so.', of: ['playingTime'] },
-  { text: 'He asked what the depth chart looks like in April.', of: ['playingTime', 'winning'] },
+  { text: 'The depth chart in April came up before anything else.', of: ['playingTime', 'winning'] },
   { text: 'He has sat behind somebody for three years and he is done with it.', of: ['playingTime'] },
   { text: 'He talked about June more than he talked about money.', of: ['winning'] },
   { text: 'He wants to leave here having won something.', of: ['winning', 'prestige'] },
-  { text: 'He asked who else is coming back next spring.', of: ['winning', 'playingTime'] },
+  { text: 'Who else comes back next spring — that was his first question.', of: ['winning', 'playingTime'] },
   { text: 'He keeps coming back to what this place would look like on a résumé.', of: ['prestige'] },
-  { text: 'He wants to be somewhere people have heard of.', of: ['prestige', 'winning'] },
+  { text: 'Somewhere people have heard of. That is the whole list.', of: ['prestige', 'winning'] },
   { text: 'He is weighing the badge on the front of the shirt.', of: ['prestige', 'development'] },
   { text: 'His father drove four hours to sit in on the meeting.', of: ['proximity'] },
   { text: 'He has never lived more than an hour from that house.', of: ['proximity'] },

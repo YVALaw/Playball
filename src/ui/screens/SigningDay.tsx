@@ -205,7 +205,7 @@ export function SigningDay() {
               <h2>{myRank > 0 ? `#${myRank} in the country` : 'Signed and sealed'}</h2>
               <p>
                 {mine.length === 0
-                  ? 'Nobody signed. Every hole gets a walk-on, and a walk-on is a long way below the men you were bidding on.'
+                  ? 'Nobody signed.'
                   : `${mine.filter((m) => m.stars >= 4).length} of them at four stars or better.`}
               </p>
             </div>
@@ -215,8 +215,8 @@ export function SigningDay() {
             <section className="empty-state">
               <h2>An empty class</h2>
               <p>
-                Every hole on the roster gets filled by a walk-on, and a walk-on
-                is a long way below the players you were bidding on.
+                Every hole gets a walk-on, a long way below the men you were
+                bidding on.
               </p>
             </section>
           ) : (
@@ -662,9 +662,8 @@ function WalkOnSheet(
             <div style={{
               marginTop: 5, font: "400 calc(11px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
             }}>
-              Nobody offered him anything and nobody had to. He fills a spot your
-              class left open, and he is off the roster again next June whatever
-              he does with it.
+              Nobody offered him anything and nobody had to. He fills a hole for
+              a year, and then he is gone.
             </div>
           </div>
 

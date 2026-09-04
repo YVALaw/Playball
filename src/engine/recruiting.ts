@@ -64,11 +64,11 @@ export const PRIORITY_LABEL: Record<Priority, string> = {
 };
 
 export const PRIORITY_BLURB: Record<Priority, string> = {
-  prestige: 'wants to sign somewhere that means something',
-  playingTime: 'wants to be in the lineup as a freshman',
-  winning: 'wants to play in June, right away',
-  proximity: 'wants to stay near home',
-  development: 'wants a coach who will make him a draft pick',
+  prestige: 'a big name signs him',
+  playingTime: 'a crowded depth chart scares him off',
+  winning: 'your record is the pitch',
+  proximity: 'the home-state call lands first',
+  development: 'he is buying a road to the draft',
 };
 
 export interface Prospect {
@@ -764,7 +764,7 @@ export const CEILING_LINES: readonly CeilingLine[] = [
   "He is close to the player he is going to be.",
   "Nobody came back from seeing him with a story to tell.",
   "What you see in the first inning is what you get in the ninth.",
-  "The second look told us what the first one did.",
+  "His ceiling already has a ladder against it.",
   "Steady is the word every report on him ends with.",
   "He knows his own game better than most seniors know theirs.",
   "Four honest years in him, whoever takes them.",
@@ -776,7 +776,7 @@ export const CEILING_LINES: readonly CeilingLine[] = [
   "He makes the plays he is supposed to make.",
   "The kind of kid who makes a bus trip shorter.",
   "Somebody will be glad to have him around the place.",
-  "He was the same player in April as in June.",
+  "The projection meeting on him was a short one.",
   "The clipboard already suits him.",
   ]),
   ...POOL('C', [

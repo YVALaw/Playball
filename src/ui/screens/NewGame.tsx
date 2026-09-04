@@ -347,8 +347,7 @@ export function NewGame() {
             {coach.age}{' · '}{coach.homeState}{' · '}
             {philosophyOf(coach.philosophy ?? DEFAULT_PHILOSOPHY).name}
           </span>
-          <p>COACH PRESTIGE {ROOKIE_PRESTIGE} · {offers.length} PROGRAM
-            {offers.length === 1 ? '' : 'S'} CALLED</p>
+          <p>COACH PRESTIGE {ROOKIE_PRESTIGE}</p>
         </button>
 
         {/* Only the chairs that actually rang. The rest of the country starts
@@ -399,11 +398,11 @@ export function NewGame() {
                   <span>{detail.tag}</span>
                   <p>
                     {picked.prestige - picked.quality >= 12
-                      ? 'The name is bigger than the team. Expectations will not wait for the roster to catch up.'
+                      ? 'Expectations will not wait for the roster to catch up.'
                       : picked.quality - picked.prestige >= 12
                         ? 'Better than its reputation right now. This roster is a window, and windows close.'
                         : picked.prestige >= 60
-                          ? 'They have been good for a long time and they intend to stay that way.'
+                          ? 'They intend to stay exactly that.'
                           : 'Nothing here yet. Whatever gets built, you build it.'}
                   </p>
                 </>

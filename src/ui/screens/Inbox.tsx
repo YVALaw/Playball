@@ -120,7 +120,7 @@ export function Inbox() {
         <ModuleIntro
           kicker={`FROM THE DESK OF ${assistant.toUpperCase()}`}
           title="The inbox"
-          text="Your assistant keeps the pile short: what happened, what is opening, and what the board thinks of you."
+          text="He only writes when it matters."
         />
       }
     >
@@ -131,9 +131,7 @@ export function Inbox() {
             background: 'var(--paper)', textAlign: 'center',
             font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
           }}>
-            Nothing yet. {assistant} writes when it matters: a record one of
-            your men has taken, the board at the halfway mark, a chair you
-            watch coming open, and what June decides.
+            Nothing yet. {assistant} writes when something deserves ink.
           </div>
         )}
 
@@ -153,6 +151,7 @@ export function Inbox() {
         {reading && (
           <OpenLetter
             item={reading}
+            signed={assistant}
             onGo={open}
             onClose={() => setReading(null)}
           />
@@ -190,8 +189,8 @@ function ctaLabel(link: InboxLink): string {
  * this is the paper inside, with the one action at the bottom.
  */
 function OpenLetter(
-  { item, onGo, onClose }:
-  { item: InboxItem; onGo: (l: InboxLink) => void; onClose: () => void },
+  { item, signed, onGo, onClose }:
+  { item: InboxItem; signed: string; onGo: (l: InboxLink) => void; onClose: () => void },
 ) {
   return (
     <div className="mail-scrim" onClick={onClose} role="dialog" aria-modal="true"
@@ -200,9 +199,9 @@ function OpenLetter(
         <header>
           <small>{INBOX_LABEL[item.kind]} · {item.year}</small>
           <h2>{item.title}</h2>
-          <span>From the desk of your assistant</span>
         </header>
         <p>{item.body !== '' ? item.body : 'No more than the headline, Coach.'}</p>
+        <p className="mail-sign">— {signed}</p>
         <footer>
           {item.link && (
             <button

@@ -363,7 +363,7 @@ export function teamReads(team: Team): TeamRead[] {
   if (book.length < 3) {
     book.push({
       slot: 'approach', title: 'No habits worth planning around',
-      text: 'The rest of the book is blank on purpose: they are about as ordinary as a club gets. Play them straight and beat them on talent.',
+      text: 'Blank on purpose. Play them straight and beat them on talent.',
     });
   }
   return book;

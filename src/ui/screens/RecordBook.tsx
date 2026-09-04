@@ -194,7 +194,7 @@ function Row(
               )}
             </>
           )
-          : 'Not set. Whoever does it first takes it.'}
+          : 'Not set.'}
       </span>
     </>
   );

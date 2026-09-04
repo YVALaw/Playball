@@ -180,7 +180,7 @@ export function Roster() {
         <ModuleIntro
           kicker={filtered ? `${rows.length} OF ${squad}` : 'ACTIVE ROSTER'}
           title={`${rows.length} ${rows.length === 1 ? 'player' : 'players'}`}
-          text="Everyone in the building. Tap a row to meet the man."
+          text="Everyone in the building."
         />
       </div>
 
@@ -239,7 +239,7 @@ export function Roster() {
       <DataTable
         rows={rows}
         onOpen={(id) => openPlayer(id as Parameters<typeof openPlayer>[0])}
-        empty="Nobody fits that filter. Whole roster, no such man."
+        empty="Nobody fits that filter."
       />
 
       {/* One door to the chart, not two. The CHART square in the title row is

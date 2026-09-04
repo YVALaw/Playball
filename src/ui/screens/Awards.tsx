@@ -125,7 +125,7 @@ export function Awards() {
           marginTop: 8, font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
           maxWidth: 250, margin: '8px auto 0',
         }}>
-          Awards are handed out when the regular season is over.
+          Handed out in June.
         </div>
       </div>
     );
@@ -181,7 +181,7 @@ export function Awards() {
       <h2>{coach.team === team.index ? coachName : coach.school}</h2>
       <p>
         {coach.team === team.index ? `${coach.school} · ` : ''}
-        {coach.wins}-{coach.losses} · {coach.line}
+        {coach.wins}-{coach.losses}
       </p>
       <p>{COACH_BODY[coach.reason]}</p>
     </section>
@@ -301,12 +301,6 @@ export function Awards() {
         )
         : coachCard)}
 
-      {done && (
-        <FieldNote
-          title="The room is not over"
-          text="Season review is next. Tap any winner or first-team man to read his card before you move on."
-        />
-      )}
     </main>
     </FixedHeader>
   );

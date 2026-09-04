@@ -72,9 +72,8 @@ export function Captain() {
       <ModuleIntro
         kicker="THE ROOM"
         title={current ? `${current.name} wears the C` : 'Nobody wears the C'}
-        text="A captain does not make anybody better. He is the reason a bad April
-          does not become a bad year — and who you pick is a decision the room
-          will read either way."
+        text="The C is the reason a bad April does not become a bad year. The
+          room reads who you pick either way."
       />
 
       {men.length === 0 ? (
@@ -82,9 +81,8 @@ export function Captain() {
           <StarIcon />
           <h2>Nobody is ready</h2>
           <p>
-            A freshman never leads a room, and neither does a man without one of
-            the three badges that say he can. Recruit for it, or wait for
-            somebody to earn one.
+            Nobody here can carry the C yet. Leaders are upperclassmen with the
+            makeup for it — recruit one, or wait.
           </p>
         </section>
       ) : (
@@ -100,8 +98,7 @@ export function Captain() {
           {suggested && (
             <FieldNote
               title={`The room would pick ${suggested.name}`}
-              text={`${caseFor(suggested)} You do not have to agree — the C is
-                yours to hand out.`}
+              text="You do not have to agree — the C is yours to hand."
             />
           )}
 

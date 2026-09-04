@@ -65,7 +65,6 @@ export function Schedule() {
           <ModuleIntro
             kicker={`${year} SEASON`}
             title={played === rows.length ? 'The year, in full' : 'The road ahead'}
-            text="Every series, result and box score in one season view."
           />
           <span className="month-button">{reg.w}-{reg.l}</span>
         </div>
@@ -151,7 +150,8 @@ export function Schedule() {
 
         <FieldNote
           title="Every played game keeps its book"
-          text="Tap a final to open the full box score — both sides, batting and pitching, with every name in it tappable. A game still to come opens the program you are playing."
+          text="Tap a final for the full box score; a date still to come opens the
+            opponent."
         />
       </main>
 

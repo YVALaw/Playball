@@ -985,7 +985,13 @@ export function createHalfInning(
       case 'homerun':
         bLine.ab++; bLine.h++; bLine.hr++; bat.hits++; pLine.h++; pLine.hr++;
         addOuts(advanceOnHit(bases, batter, 4, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note, 0, fld.holdEdge));
-        say(`${cnt} ${batter.name} HOMERS to deep left${scored.length > 1 ? `, ${scored.length} run shot` : ''}. (${hand})`);
+        {
+          // Where it actually left the yard — the spray model already chose
+          // the lane, and every homer was announced "to deep left".
+          const dir = fielder?.pos === 'RF' ? 'right'
+            : fielder?.pos === 'CF' ? 'center' : 'left';
+          say(`${cnt} ${batter.name} HOMERS to deep ${dir}${scored.length > 1 ? `, ${scored.length} run shot` : ''}. (${hand})`);
+        }
         break;
       default: {
         bLine.ab++;

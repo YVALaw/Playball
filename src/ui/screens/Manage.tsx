@@ -497,7 +497,7 @@ export function Manage() {
           marginTop: 8, marginBottom: 14, font: "400 calc(12px * var(--ts))/1.6 var(--body)",
           color: 'var(--dim)', maxWidth: 250, marginLeft: 'auto', marginRight: 'auto',
         }}>
-          Take the dugout and call every plate appearance of your next game.
+          Every call of the next game, yours.
         </div>
         <button
           onClick={() => void startManagedGame()}
@@ -780,7 +780,7 @@ export function Manage() {
             <div>
               <small>FINAL</small>
               <strong>{awayRuns > homeRuns ? away?.def.school : home?.def.school}</strong>
-              <span>Record it and the day moves on.</span>
+              <span>That is the ballgame.</span>
             </div>
             <div>
               <button className="selected" type="button" onClick={() => void endManagedGame()}>
@@ -840,13 +840,13 @@ export function Manage() {
                   onClick={() => { setAuto('watch'); setTools(false); }}
                 >
                   <strong>Watch it play</strong>
-                  <small>The bench coach calls it and you watch the field.</small>
+                  <small>The bench coach takes it from here.</small>
                   <ChevronRightIcon />
                 </button>
               ) : (
                 <button type="button" onClick={() => { setAuto(null); setTools(false); }}>
                   <strong>Take the dugout back</strong>
-                  <small>Stop him. The next call is yours again.</small>
+                  <small>The next call is yours again.</small>
                   <ChevronRightIcon />
                 </button>
               )}
@@ -857,7 +857,7 @@ export function Manage() {
                   onClick={() => { setTools(false); replay(); }}
                 >
                   <strong>See that again</strong>
-                  <small>The last ball in play, run back — the field replays it.</small>
+                  <small>The last ball in play, run back.</small>
                   <ChevronRightIcon />
                 </button>
               )}
@@ -867,7 +867,7 @@ export function Manage() {
                 onClick={() => { setTools(false); once(autoFinish)(); }}
               >
                 <strong>Sim the rest</strong>
-                <small>Hand him the clipboard for good. Keep it for the blowouts.</small>
+                <small>The clipboard is his for good. Best saved for blowouts.</small>
                 <ChevronRightIcon />
               </button>
               {/*
@@ -928,8 +928,8 @@ export function Manage() {
                   <strong>{d.outing.visitUsed ? 'Visit already used' : 'Visit the mound'}</strong>
                   <small>
                     {d.outing.visitUsed
-                      ? 'Already been out to this man. A new arm brings a fresh visit.'
-                      : 'Settle him down. One visit per pitcher, and it buys back a little.'}
+                      ? 'A new arm brings a fresh visit.'
+                      : 'One per pitcher, and it buys back a little.'}
                   </small>
                   <ChevronRightIcon />
                 </button>

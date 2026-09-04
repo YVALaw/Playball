@@ -301,7 +301,7 @@ export function Lineup() {
         <ModuleIntro
           kicker="TEAM · LINEUP"
           title="Starting nine"
-          text="Set the batting order, the field, and the rotation for tonight."
+          text="Tonight's card."
         />
 
         <section className="editor-toolbar">
@@ -353,9 +353,8 @@ export function Lineup() {
         {!mine && (
           <FieldNote
             title="Your bench coach writes the card"
-            text="You can move anybody here to see what he would do differently, but
-              the staff set the nine before every game. Settings, then What you
-              handle, hands the lineup back."
+            text="The staff set the nine. Settings, then What you handle, hands
+              it back."
           />
         )}
 
@@ -450,7 +449,7 @@ export function Lineup() {
           <div key={`return-${p.id}`} className="return-strip">
             <div>
               <strong>{p.name} is fit again.</strong>
-              <span>Swap him back in — or keep the cover. The day holds until you choose.</span>
+              <span>The card holds until you choose.</span>
             </div>
             <button type="button" className="tap" onClick={() => keepCover(p.id)}>
               KEEP THE COVER
@@ -525,9 +524,8 @@ export function Lineup() {
           })}
         </section>
         <p className="selection-note">
-          <SewingPinIcon /> Your Friday arm starts the opener of every conference
-          series. The midweek starter takes all twelve non-conference
-          games — {midweekInnings.toFixed(0)} innings so far.
+          <SewingPinIcon /> Friday opens every series; MID takes the twelve
+          midweeks — {midweekInnings.toFixed(0)} innings so far.
         </p>
 
         {/* The pen. Who comes IN tonight stays a game-night decision on the
@@ -586,7 +584,7 @@ export function Lineup() {
               : gapWarn.missing.length > 0
                 ? `Tonight's nine covers eight spots. ${gapWarn.missing.join(' and ')} ${gapWarn.missing.length === 1 ? 'is' : 'are'} open.`
                 : `Two men are wearing ${gapWarn.doubled.join(' and ')}.`,
-            'Nothing is moved for you. Use the rail to put a man on the open spot, or AUTO to let the bench coach sort the whole card.',
+            'Put a man on the open spot, or let AUTO sort the card.',
           ]}
           action="GOT IT"
           onClose={() => setGapWarn(null)}

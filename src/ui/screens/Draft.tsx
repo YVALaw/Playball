@@ -433,7 +433,7 @@ function KeepSheet(
                       </strong> behind it. It was worth {Math.round(man.made)} against
                       the {man.needed} a round {man.round} man wanted.
                       {stayed
-                        ? ' He comes back a year older, a year better, and with no leverage at all next June. That is the bet you just made on his behalf.'
+                        ? ' He comes back a year older, a year better, and with no leverage at all next June.'
                         : ' Not enough, and the money is spent.'}
                     </>
                   )}
@@ -514,7 +514,7 @@ function NationalBoard({ rows, abbr }: { rows: Departure[]; abbr: string }) {
     return (
       <section className="empty-state">
         <h2>Nobody taken</h2>
-        <p>No club took anybody. That has never happened.</p>
+        <p>That has never happened.</p>
       </section>
     );
   }

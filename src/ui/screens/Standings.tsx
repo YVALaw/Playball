@@ -42,7 +42,6 @@ export function Standings() {
       <ModuleIntro
         kicker="CONFERENCE"
         title={`${team.conference} race`}
-        text={`The standings reduced to what changes your next decision. The top ${CONF_FIELD} here play the tournament.`}
       />
 
       <section className="standings-table">
@@ -78,7 +77,8 @@ export function Standings() {
 
       <FieldNote
         title={`The line that matters is ${CONF_FIELD}th`}
-        text={`${season.teams.length} programs across ${new Set(season.teams.map((t) => t.conference)).size} conferences. ${CONF_FIELD} from this table play the conference tournament, and the ${CONF_ADVANCE} who come through it go to a regional. Tap a program to read its page.`}
+        text={`${CONF_FIELD} from this table play the conference tournament; the
+          ${CONF_ADVANCE} who come through it go regional.`}
       />
     </main>
   );

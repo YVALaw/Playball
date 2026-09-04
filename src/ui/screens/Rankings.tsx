@@ -74,7 +74,7 @@ export function Rankings() {
       <ModuleIntro
         kicker={preseason ? 'PRESEASON · PROJECTED' : 'NATIONAL · RPI'}
         title={depth === 'top25' ? 'Top 25' : 'The country'}
-        text="Form, strength of schedule, and the country's changing baseball temperature."
+        text="Who is beating whom, weighted by whom they beat."
       />
 
       <Segmented
@@ -117,16 +117,14 @@ export function Rankings() {
         ))}
       </section>
 
-      <FieldNote
-        title={depth === 'top25' && mineAt >= 25
-          ? `You are ranked #${mineAt + 1}`
-          : preseason ? 'Nobody remembers the poll' : 'Tap a program'}
-        text={preseason
-          ? 'Three parts roster, one part reputation. After the opening games the RPI takes over.'
-          : depth === 'top25' && mineAt >= 25
-            ? 'Outside the twenty five. Switch to the full table to see the company you are keeping.'
-            : 'Every row opens that program: its roster, its season, and how you have done against it.'}
-      />
+      {(preseason || (depth === 'top25' && mineAt >= 25)) && (
+        <FieldNote
+          title={preseason ? 'Nobody remembers the poll' : `You are ranked #${mineAt + 1}`}
+          text={preseason
+            ? 'Three parts roster, one part reputation. After the opening games the RPI takes over.'
+            : 'Outside the twenty five. Switch to the full table to see the company you are keeping.'}
+        />
+      )}
     </main>
   );
 }

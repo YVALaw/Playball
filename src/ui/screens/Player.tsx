@@ -441,8 +441,7 @@ function Alumnus(
       <ModuleIntro
         kicker={`FORMER PLAYER${abbr ? ` · ${abbr}` : ''}`}
         title={name}
-        text="He has left the program. There is nothing left to scout and no current
-          line to read — what the game keeps of him now is the record book."
+        text="What the game keeps of him now is the record book."
       />
       <Segmented
         label="Player card section"
@@ -516,8 +515,7 @@ function ProYears({ id }: { id: string }) {
       {!over && note.reason === 'drafted' && (
         <FieldNote
           title="Still playing"
-          text="The book adds a line every June. Most careers end quietly in the
-            middle of the pyramid; his has not ended yet."
+          text="The pros have him now. The book adds a line every June."
         />
       )}
     </>
@@ -583,9 +581,8 @@ function Overview({ p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: bo
 
       {isOurs ? <BadgeChips p={p} /> : (
         <Note>
-          He plays for someone else. You can see what he has done and what he can
-          do now — how much further he might go, and what he is good at that no
-          box score shows, is your rival&apos;s problem to know.
+          What he has done is public. What he might still become is your
+          rival&apos;s problem to know.
         </Note>
       )}
 
@@ -808,7 +805,7 @@ function Repertoire({ p }: { p: Pitcher }) {
       </section>
       <FieldNote
         title="The bar is how often, not how good"
-        text="A man who throws sixty per cent four-seamers and a man who throws forty are different pitchers with the same three ratings. This is the same data the POWER ARM and JUNKBALLER readings come off."
+        text="The same data the POWER ARM and JUNKBALLER readings come off."
       />
     </>
   );
@@ -895,7 +892,7 @@ function Platoon({ p }: { p: AnyPlayer }) {
       {p.type === 'hitter' && switchHitter && (
         <FieldNote
           title="He turns around"
-          text="A switch hitter takes the platoon advantage against everybody, which is why both columns read the same."
+          text="He takes the platoon advantage against everybody."
         />
       )}
       {p.type === 'hitter' && !switchHitter && p.platoonSkill < 0 && (
@@ -969,8 +966,8 @@ function Tendencies(
         <FieldNote
           title={scouted ? 'You are reading a rival' : 'Nobody has scouted them'}
           text={scouted
-            ? 'The book on him, bought and paid for. It reads for the next stretch of games.'
-            : 'Buy the book from PROGRAM ACTIONS on their college page. One report covers the whole roster.'}
+            ? 'Bought and paid for, good for the next stretch of games.'
+            : 'SCOUT THEM on their college page buys the whole roster\u2019s book.'}
         />
       )}
     </>
@@ -1097,7 +1094,7 @@ function ThisSeason({ p }: { p: AnyPlayer }) {
     return (
       <section className="empty-state">
         <h2>No line yet</h2>
-        <p>He has not appeared this season. The book opens on his first pitch.</p>
+        <p>The book opens on his first pitch.</p>
       </section>
     );
   }
@@ -1208,8 +1205,8 @@ function JuneByYear(
       )}
       {post && unrowed > 0 && (
         <Note>
-          {unrowed === 1 ? 'One earlier June was' : `${unrowed} earlier Junes were`} kept
-          as a single career line:{' '}
+          {unrowed === 1 ? 'One earlier June' : `${unrowed} earlier Junes`} in
+          one line:{' '}
           {isPitcher
             ? `${post.w}-${post.l}${post.outs > 0 ? `, ${((post.er * 27) / post.outs).toFixed(2)} ERA` : ''} and ${post.k} strikeouts`
             : `${post.ab > 0 ? pct(post.h / post.ab) : '—'} with ${post.hr} home runs`}
@@ -1246,11 +1243,7 @@ function Games({ id, owner, isOurs }: { id: PlayerId; owner: Owner; isOurs: bool
     return (
       <section className="empty-state">
         <h2>Not your program</h2>
-        <p>
-          Game logs are kept only for your own men. Every other school keeps its
-          season totals and nothing finer — tens of thousands of rows through
-          every autosave is the alternative.
-        </p>
+        <p>Game logs are kept for your own men only.</p>
       </section>
     );
   }
@@ -1283,7 +1276,8 @@ function Games({ id, owner, isOurs }: { id: PlayerId; owner: Owner; isOurs: bool
       />
       <FieldNote
         title="This season only"
-        text="Box scores cover the year in progress and are cleared at the roll. What survives it is the record book, on HISTORY."
+        text="Box scores last the season. What survives the roll of the year is
+          the record book, on HISTORY."
       />
     </>
   );
@@ -1457,7 +1451,6 @@ function AwardCase({ id }: { id: PlayerId }) {
             <span className="award-mark">{w.year}</span>
             <span>
               <strong>{w.title}</strong>
-              <p>Won at {w.year}.</p>
             </span>
           </div>
         ))}
@@ -1498,7 +1491,7 @@ function Career(
         <p>
           {isOurs
             ? 'He has not been in a game. The book starts with his first one.'
-            : 'The season-by-season book is kept for your own program only — every school in the country would put tens of thousands of rows through each autosave.'}
+            : 'The season-by-season book is kept for your own program only.'}
         </p>
       </section>
     );
@@ -1726,8 +1719,8 @@ function SeasonsUnder(
     return (
       <section className="empty-state">
         <h2>No seasons yet</h2>
-        <p>His first appearance writes the first row. Until then, the year in
-          progress lives on the overview.</p>
+        <p>Until his first appearance, the year in progress lives on the
+          overview.</p>
       </section>
     );
   }

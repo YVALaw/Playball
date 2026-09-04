@@ -86,9 +86,7 @@ export function StrategyScreen() {
       <ModuleIntro
         kicker="TEAM IDENTITY"
         title="Standing strategy"
-        text="Set the situations your club should recognise without interrupting every
-          inning. These are live from the next pitch, and every one of them gives
-          something up — there is no column here that is simply better."
+        text="Live from the next pitch, and every column gives something up."
       />
 
       {/*
@@ -125,9 +123,7 @@ export function StrategyScreen() {
 
       <FieldNote
         title="Nothing here is free"
-        text="An aggressive running game does take more bases and does run into more
-          outs. A full shift is big against a pull-heavy lineup and badly punished
-          by one that runs. The notes are the trade the engine actually makes."
+        text="The notes on each row are the trade the engine actually makes."
       />
     </main>
   );

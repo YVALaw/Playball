@@ -471,7 +471,6 @@ export function Postseason() {
         good: true,
         title: `${ordinal(mySeed)} seed`,
         lines: [
-          `Double elimination — a loss drops you, it does not end you.`,
           `Finish top ${CONF_ADVANCE} and you play a regional.`,
         ],
       }
@@ -909,13 +908,13 @@ export function Postseason() {
                 <p className="pregame-sub">
                   {bracket.stage === 'conference'
                     ? (wonConference
-                      ? 'The tournament is yours. The regionals form from the sixteen conference winners — the button below moves June along.'
-                      : 'This stage is settled. The button below moves June along.')
+                      ? 'The tournament is yours. Sixteen conference winners form the regionals next.'
+                      : 'This stage is settled.')
                     : bracket.stage === 'regional'
                       ? (wonRegional
-                        ? 'The regional is yours. The national field is next — the button below moves June along.'
-                        : 'This stage is settled. The button below moves June along.')
-                      : 'This stage is settled. The button below moves June along.'}
+                        ? 'The regional is yours. The national field forms next.'
+                        : 'This stage is settled.')
+                      : 'This stage is settled.'}
                 </p>
               </section>
             )}
@@ -1174,7 +1173,7 @@ function PregameShow(
         </div>
         <p className="pregame-sub">
           The round is still being played. Your next game forms when it
-          finishes — the button below takes you straight to it.
+          finishes.
         </p>
       </section>
     );
@@ -1278,7 +1277,7 @@ function OneMap(
       >
         {dropped
           ? `▼ ${mineAbbr} dropped here — one more loss ends the run`
-          : '▼ a loss above drops a team into the bracket below'}
+          : '▼ losses land here'}
       </div>
       <DoubleElimMap
         de={de} view="losers" abbr={abbr} userTeam={userTeam} onOpen={onOpen}
@@ -1578,7 +1577,7 @@ function NationalStage(
       <div style={{
         padding: '20px 14px', textAlign: 'center',
         font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-      }}>The field is being announced.</div>
+      }}>The field is being drawn.</div>
     );
   }
   const seeds = nat.field.seeds;
@@ -1646,7 +1645,7 @@ function NationalStage(
         ) : (
           <div style={{
             padding: '8px 0', font: "400 calc(11px * var(--ts)) var(--body)", color: 'var(--dim)',
-          }}>The two bracket champions meet here.</div>
+          }}>Waiting on both brackets.</div>
         )}
       </div>
 
@@ -1680,7 +1679,7 @@ function NationalStage(
           : (
             <div style={{
               padding: '10px 14px', font: "400 calc(11px * var(--ts)) var(--body)", color: 'var(--dim)',
-            }}>Waiting on the field to be drawn.</div>
+            }}>The field is being drawn.</div>
           )}
       </div>
     </>

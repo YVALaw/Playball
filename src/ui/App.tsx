@@ -268,10 +268,8 @@ function AppBody(
               font: "400 calc(12px * var(--ts))/1.55 var(--body)",
             }}>
               <strong>Your saved dynasty could not be opened.</strong> It was
-              written by a different version of the game. Start a new one to get
-              in — then look under PROGRAM · SAVES, where every other dynasty on
-              this device is still listed, and this one will open again in the
-              build that wrote it.
+              written by a different build. Start a new one — this dynasty stays
+              under PROGRAM · SAVES and opens again in the build that wrote it.
               <div style={{
                 marginTop: 6, font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
               }}>{loadError}</div>
@@ -337,8 +335,8 @@ function AppBody(
             <div style={{
               marginTop: 10, font: "400 calc(12.5px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
             }}>
-              The dynasty on this device points at a program that is not in the
-              world any more. Start a new one to carry on.
+              This save points at a program that no longer exists. Start a new
+              one to carry on.
             </div>
             <button
               onClick={newDynasty}
@@ -365,14 +363,13 @@ function AppBody(
             <div style={{
               marginTop: 10, font: "400 calc(12.5px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
             }}>
-              This browser is not letting the game open its local storage. That
-              usually means another tab has the game open, or site data is
-              blocked for this address.
+              The browser will not open the game's storage — another tab may
+              have it open, or site data is blocked here.
             </div>
             <div style={{
               marginTop: 8, font: "400 calc(12.5px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
             }}>
-              You can play anyway — nothing will be saved between sessions.
+              You can play anyway; nothing will be saved.
             </div>
             <button
               onClick={() => {
@@ -747,7 +744,7 @@ function SaveAlert({ topmost }: { topmost?: boolean }) {
         color: 'rgba(var(--cream-rgb), .82)',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
-        {lastSaveError ?? 'The last write to this device did not complete.'}
+        {lastSaveError ?? 'The save did not complete.'}
       </div>
     </button>
   );
@@ -1088,7 +1085,7 @@ function SeasonOpener() {
       tone={opener.schoolAfter >= opener.schoolBefore ? 'win' : 'clay'}
       lines={[
         opener.message,
-        `The program's name ${move(opener.schoolBefore, opener.schoolAfter)}; yours ${move(opener.coachBefore, opener.coachAfter)}.`,
+        `The school's name ${move(opener.schoolBefore, opener.schoolAfter)}; yours ${move(opener.coachBefore, opener.coachAfter)}.`,
         `This year they want ${opener.targetWins} wins. ${opener.askDetail}`,
         ...opener.stings,
       ]}

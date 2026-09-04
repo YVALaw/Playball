@@ -215,7 +215,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
                 detail={hurtNow
                   ? prognosis(p, clock)
                   : tired > 0.35
-                    ? 'He has played a great many days in a row. Take the miles out of his legs.'
+                    ? 'Take the miles out of his legs.'
                     : 'Rest is for a man who needs it. His legs are fine.'}
                 selected={resting}
                 disabled={hurtNow || resting || tired <= 0.35 || !mine}
@@ -232,14 +232,13 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
             {hurtNow && (
               <FieldNote
                 title="The trainer owns this one"
-                text={`${prognosis(p, clock)} Rest will not speed it up —
-                  the depth chart decides who covers him while he heals.`}
+                text="Rest will not speed it up."
               />
             )}
             {!mine && !hurtNow && (
               <FieldNote
                 title="Your staff handles this"
-                text="You asked for a desk that does not decide who sits. Rest and redshirts are theirs; the lineup is still yours."
+                text="Rest and redshirts are theirs; the lineup is still yours."
               />
             )}
           </div>
@@ -266,12 +265,12 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
                 }}
               />
             </div>
-            <FieldNote
-              title={SCHOOL_WORDS[school].label}
-              text={suspended
-                ? 'He is sitting out this week.'
-                : SCHOOL_WORDS[school].line}
-            />
+            {suspended && (
+              <FieldNote
+                title={SCHOOL_WORDS[school].label}
+                text="He is sitting out this week."
+              />
+            )}
           </div>
         )}
 
@@ -288,7 +287,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
                   : alsoPlays.length === 0
                     ? 'There is nowhere else he can stand.'
                     : target
-                      ? `Move him from ${p.pos} to ${target} for good. He retrains over the winter and opens next season there — a big move leaves him a step behind for a while.`
+                      ? `${p.pos} to ${target}, for good. He opens next season there, a step behind for a while.`
                       : 'Pick a spot below. This is permanent, not a lineup change.'}
                 selected={target !== null}
                 disabled={!winter || target === null}
@@ -331,7 +330,8 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
             {!preseason && !sitting && (
               <FieldNote
                 title="February only"
-                text="A redshirt is a decision made before the first pitch of the year. After that the season is spent whether he plays again or not."
+                text="After the first pitch of the year, the season is spent whether
+                  he plays again or not."
               />
             )}
           </div>

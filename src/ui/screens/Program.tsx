@@ -153,7 +153,7 @@ export function Program() {
       <ModuleIntro
         kicker={`${team.conference} · ${year}`}
         title={team.def.school}
-        text="Prestige, the board's expectation, the people shaping the program, and the names that stayed."
+        text="The school, and what it thinks of you."
       />
 
       {/* The board is talking to you and you are one tab away from hearing it.
@@ -259,7 +259,7 @@ function MoneySheet({ team }: { team: Owner }) {
         <FieldNote
           title="Your athletic director runs the staff"
           text="Seats are kept filled with the best man the budget carries. Take
-            the job back from settings whenever you like."
+            it back from Settings any time."
         />
       )}
       {SEATS.map((seat) => {
@@ -321,13 +321,13 @@ function MoneySheet({ team }: { team: Owner }) {
           <strong>Level {economy.facilities} of {MAX_FACILITY}</strong>
           <small>
             {economy.facilities > 0 && level
-              ? `Worth ${level.trainBump} points of training, and a better tour.`
+              ? `Worth ${level.trainBump} TRAINING, and a better tour.`
               : 'What the school gave you. The recruits notice.'}
           </small>
           <p>
             {next
               ? `Next: ${next.label.toLowerCase()} — ${dollars(next.cost)}, once.
-                Development and the recruiting pitch both read it.`
+                Development and the recruiting pitch both feel it.`
               : 'Nothing left to build. This is the lab everybody tours.'}
           </p>
         </div>
@@ -344,9 +344,8 @@ function MoneySheet({ team }: { team: Owner }) {
       <SectionHeading kicker="THE SCOUTING DESK" title={books === 0 ? 'No books bought' : `${books} ${books === 1 ? 'book' : 'books'} this year`} />
       <FieldNote
         title={`A report is ${dollars(SCOUT_COST)}`}
-        text="Bought from PROGRAM ACTIONS on any college page. One report reads
-          the whole roster's tendencies for a stretch of games — a habit no
-          budget survives, which is the decision."
+        text="Bought from PROGRAM ACTIONS on any college page. One book reads a
+          whole roster for a stretch of games — a habit no budget survives."
       />
     </>
   );
@@ -381,17 +380,15 @@ function WatchlistSheet() {
             : rows.length === 1 ? '1 program worth tracking'
               : `${rows.length} programs worth tracking`}
         </strong>
-        <p>
-          {rows.length > 0
-            ? 'Open a program to compare it, read its roster, or follow a possible career path.'
-            : 'Use PROGRAM ACTIONS on any college profile to save it here.'}
-        </p>
+        {rows.length === 0 && (
+          <p>PROGRAM ACTIONS on any college page files it here.</p>
+        )}
       </section>
       {rows.length === 0 ? (
         <section className="watchlist-empty">
           <StarIcon />
           <strong>The board is clean</strong>
-          <p>Watched colleges live here instead of disappearing when a profile closes.</p>
+          <p>PROGRAM ACTIONS on any college page files it here.</p>
         </section>
       ) : (
         <section className="retention-list">
@@ -555,7 +552,7 @@ function BoardSheet({ team }: { team: Owner }) {
                   ? 'A program wants to talk'
                   : `${offers.length} programs want to talk`}
               </strong>
-              <small>Open the job market to read the offers before anything is signed.</small>
+              <small>Nothing is signed without you.</small>
             </span>
             <ChevronRightIcon />
           </button>
@@ -737,7 +734,7 @@ function CoachSheet({ team }: { team: Owner }) {
               k="COACH PRESTIGE"
               v={String(coach.prestige)}
               value={coach.prestige}
-              note="What the rest of the country thinks of you. It decides whose call you get. The program's own prestige is a different number, and it stays with the school."
+              note="What the country thinks of you — it decides whose call you get. The school's prestige stays with the school."
               last
             />
           </Panel>
@@ -778,8 +775,8 @@ function CoachSheet({ team }: { team: Owner }) {
               </div>
             </Panel>
             <Note>
-              What he carries between programs. It sets five controls the first day he
-              arrives, and every one of them is yours to change on the strategy screen.
+              It sets five controls the day he arrives — all yours to change on
+              the strategy screen.
             </Note>
           </div>
         </>
@@ -813,8 +810,8 @@ function CoachSheet({ team }: { team: Owner }) {
           ))}
           <Note>
             {coach.skillPoints > 0
-              ? 'Points are spent on the coach step of the offseason, where they can still be taken back before the step closes.'
-              : 'Points arrive at the board meeting each June, three for a season and more for silverware, and are spent on the coach step.'}
+              ? 'Spent on the coach step of the offseason.'
+              : 'Three arrive each June, more for silverware — spent on the coach step.'}
           </Note>
         </>
       )}
@@ -906,8 +903,7 @@ function CoachSheet({ team }: { team: Owner }) {
                 })}
               </Panel>
               <Note>
-                Earned once and kept for ever, wherever you coach next. Records are
-                the other half of the book, and those exist to be broken.
+                Earned once and kept for ever, wherever you coach next.
               </Note>
             </div>
           )}
@@ -936,8 +932,7 @@ function CareerView({ history, coach }: { history: SeasonRecord[]; coach: CoachS
             padding: '16px 12px', textAlign: 'center',
             font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
           }}>
-            No seasons on the record yet. The first one goes in at the June
-            board meeting.
+            The first line goes in at the June board meeting.
           </div>
         </Panel>
       </>
@@ -995,8 +990,7 @@ function CareerView({ history, coach }: { history: SeasonRecord[]; coach: CoachS
         </div>
       ))}
       <Note>
-        Your career, wherever it was coached. Each school's own history,
-        including the years you were somewhere else, is on its HISTORY screen.
+        Your career, wherever it was coached.
       </Note>
     </>
   );

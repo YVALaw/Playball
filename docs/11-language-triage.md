@@ -141,3 +141,57 @@ Ordered; each is a bounded pass.
 The audit's `generated.md` (wire families, all 53 report lines, interview
 scenarios, cultures) largely postdates its own capture — the report pools
 were rewritten September 2 — but its repetition rules feed worklist item 4.
+
+## The redundancy pass — September 3, the whole app
+
+The reporter's second ask, after playing with the new inbox: *"a full audit
+of the language in the whole app … shorter … witty … no redundancies,
+things explaining the same thing over and over, things that can be explained
+with the visuals."* Three parallel inventories (screens A–M, screens N–Z +
+App, engine/store/tutorials) fed one rewrite pass, applied file by file in
+one voice. The rulebook it ran under:
+
+- an intro is two short sentences at most, and never a list of the tab
+  labels rendered under it;
+- a note never restates its own title, a button detail is one sentence of
+  outcome, an empty state is one fact and one next step;
+- nothing narrates a visible control ("the button below…", "tap a row…"
+  where every row in the app opens);
+- letters are "Coach —", three sentences at the outside, one joke, signed
+  "— {assistant}" at the foot instead of a "from the desk of" header;
+- wire details add colour, never re-run the headline's numbers;
+- one canonical home per explanation (scouting books explain themselves at
+  SCOUT THEM; every other surface points, in one line).
+
+**Touched:** every screen under `src/ui/screens/` plus `App.tsx`,
+`tutorials.ts` (every card compressed, two whole pages deleted as covered
+on-screen, jokes kept), and the generated copy in `store.ts` (sixteen
+letter bodies), `program.ts` (verdict messages, mandate summaries, two
+coach titles), `wire.ts` (eleven details), `draft.ts`, `recruiting.ts`,
+`tendencies.ts`, `cultures.ts` (four creeds un-twinned).
+
+**Corrections of record against the tiers above:**
+
+- The tier-1 portal bullet ("window money, separate pocket") is
+  **superseded** — the reporter had the budgets unified into one pool on
+  September 2, and this pass deleted the separate-pocket FieldNote that
+  survived it. The portal header now carries the one-pool story.
+- Portal's "half again" keep price predated flight-risk pricing; now
+  price-shape-agnostic.
+- RosterMoves' injury note pointed at the deleted depth chart; gone.
+- Settings' teaching-off note promised "the reset below still works" while
+  the reset is hidden when the toggle is off; gone.
+- The verdict messages no longer open with the same words as the headline
+  printed above them (board sheet, season review, and the season-opener
+  modal all pair them).
+
+**Kept on purpose:** facility blurbs (purchase decisions need their facts),
+the offer pitches' "They …" frame (the assistant reporting a school),
+scout-quote jargon (cross-checkers and hat press conferences are the
+charm), the interview file (already one line each), and the tendencies
+READS template (a consistent scouting frame reads as intentional).
+
+Worklist status after the pass: **#5 and #6 are covered** (labels that name
+facts landed; every double-lecture found was subtracted); **#4 partially**
+(prestige-as-"name" now consistent across Program/App; points vs dollars
+kept distinct); #2, #3 and #7 remain.

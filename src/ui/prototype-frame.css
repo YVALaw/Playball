@@ -3324,3 +3324,7 @@
   letter-spacing: .12em;
 }
 .mail-close:hover { color: var(--clay); }
+.mail-open .mail-sign {
+  margin-top: 8px; border-top: 0; padding-top: 0;
+  font: 400 italic calc(10px * var(--ts)) var(--body); color: var(--dim);
+}

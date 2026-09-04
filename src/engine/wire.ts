@@ -127,8 +127,7 @@ export function wire(season: SeasonState, limit = 24): WireItem[] {
           `Bragging rights: ${name(winner)} take down ${name(loser)}, ${hi}-${lo}`,
         ][v]!,
         detail: `${wDef.school} and ${lDef.school} have played this game for `
-          + `longer than anybody can defend, and tonight it belonged to `
-          + `${wDef.nickname}.`,
+          + 'longer than anybody can defend.',
       });
     }
 
@@ -153,8 +152,8 @@ export function wire(season: SeasonState, limit = 24): WireItem[] {
         against: loser,
         weight: 60 + gap + (ranked ? 25 : 0),
         text: line,
-        detail: `A win nobody priced: ${name(winner)} came in at ${recordOf(winner)}, `
-          + `and ${name(loser)} at ${recordOf(loser)} were the better side on paper.`,
+        detail: `${name(loser)} at ${recordOf(loser)} were the better side on `
+          + 'paper. That is why they play the games.',
       });
     } else if (margin >= 11) {
       items.push({
@@ -169,7 +168,7 @@ export function wire(season: SeasonState, limit = 24): WireItem[] {
           `${name(winner)} bury ${name(loser)} under ${hi} runs`,
           `No contest: ${name(winner)} ${hi}, ${name(loser)} ${lo}`,
         ][v]!,
-        detail: `${hi} runs, ${an(margin)} ${margin}-run margin, and it was decided early.`,
+        detail: 'Decided early, and the bullpen got the night off.',
       });
     } else if (margin === 1 && g.innings > 9) {
       // The long ones. A one-run game that needed extra innings is the story
@@ -184,8 +183,7 @@ export function wire(season: SeasonState, limit = 24): WireItem[] {
           `${g.innings} innings, one run: ${abbr(winner)} edge ${abbr(loser)} ${hi}-${lo}`,
           `${name(winner)} win the staring contest, ${hi}-${lo} in ${g.innings}`,
         ][v]!,
-        detail: `Neither side led by more than a run when it mattered; `
-          + `${name(winner)} move to ${recordOf(winner)}.`,
+        detail: 'Neither side led by more than a run until the handshake line.',
       });
     }
   }
@@ -219,7 +217,7 @@ export function wire(season: SeasonState, limit = 24): WireItem[] {
         `A clean weekend: ${name(first)} take all three from ${abbr(other)}`,
         `${name(other)} leave the ${name(first)} series empty-handed`,
       ][v]!,
-      detail: `Three games, three wins — ${name(first)} stand at ${recordOf(first)}.`,
+      detail: 'Three wins in one weekend is how a résumé gets written.',
     });
   }
 
@@ -275,8 +273,7 @@ export function wire(season: SeasonState, limit = 24): WireItem[] {
       items.push({
         kind: 'race', team: first.index, weight: 40,
         text: `${t.conference} is a coin flip: ${abbr(first.index)} and ${abbr(second.index)} are level`,
-        detail: `${name(first.index)} at ${first.cw}-${first.cl}, `
-          + `${name(second.index)} at ${second.cw}-${second.cl}, and every series now counts double.`,
+        detail: 'Every series between them counts double from here.',
       });
     }
   }
@@ -384,8 +381,8 @@ function offseasonNews(season: SeasonState): WireItem[] {
     items.push({
       kind: 'realign', team: Math.max(0, team), weight: 85 - fade,
       text: `${r.school} are a ${r.to} program now`,
-      detail: `The trade of the winter: ${r.school} up from the ${r.from}, `
-        + `${r.downSchool} the other way. Both leagues read differently for it.`,
+      detail: `${r.downSchool} go the other way. Both leagues read differently `
+        + 'for it.',
     });
   }
 
@@ -395,8 +392,8 @@ function offseasonNews(season: SeasonState): WireItem[] {
     items.push({
       kind: 'moves', team: Math.max(0, team), weight: 66 - fade,
       text: `${st.school} lose their ${st.seat.toLowerCase()} to a head job`,
-      detail: `${st.name} ran his room well enough that somebody handed him `
-        + 'a program of his own. The seat behind the seat is open.',
+      detail: `${st.name} ran his room too well to keep. The seat behind the `
+        + 'seat is open.',
     });
   }
   return items;
@@ -432,7 +429,7 @@ function recordChase(season: SeasonState): WireItem | null {
     best = {
       ratio, team,
       text: `${who} is chasing the book: ${value} ${word}, ${45 - gp} games left`,
-      detail: `The season record is ${mark.value} — ${mark.holder}, ${mark.year}. `
+      detail: `The book says ${mark.value} — ${mark.holder}, ${mark.year}. `
         + `His pace says ${Math.round(pace)}.`,
     };
   };
@@ -487,7 +484,7 @@ function bestBat(season: SeasonState): WireItem | null {
     kind: 'milestone', team: best.team, weight: 50,
     text: `${best.name} is hitting ${printed}`
       + ` for ${season.teams[best.team]?.def.abbr ?? '?'}`,
-    detail: `Nobody with a qualified season is close`
+    detail: `Nobody in the country is close`
       + `${best.hr > 0 ? `; ${best.hr} of the hits have left the park` : ''}`
       + `${best.sb > 0 ? `, with ${best.sb} bags stolen` : ''}.`,
   };
@@ -529,7 +526,7 @@ function leagueLeaders(season: SeasonState): WireItem[] {
   if (arm) {
     items.push({
       kind: 'gem', team: arm.team, weight: 43,
-      text: `${arm.name}'s ${arm.era.toFixed(2)} ERA is the best qualified mark going`,
+      text: `${arm.name}'s ${arm.era.toFixed(2)} ERA is the best in the country`,
       detail: `${arm.k} strikeouts for ${abbr(arm.team)}, and hitters are running out of ideas.`,
     });
   }

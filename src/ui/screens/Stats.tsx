@@ -118,7 +118,6 @@ export function Stats() {
       <ModuleIntro
         kicker={`${year} NUMBERS`}
         title={scopeLabel}
-        text="League leaders, your own club, postseason lines, and the glove work behind them."
       />
 
       <Segmented
@@ -153,7 +152,9 @@ export function Stats() {
           />
           <FieldNote
             title="Zero is not average"
-            text={`+/100 is the outs he made that an average glove would not have, per hundred balls hit at him, errors already deducted. An error is a play nobody made, so the whole league sits at ${fmtRate(leagueFieldingRate(season))}. Above that line is a man helping his pitcher.`}
+            text={`Outs made that an average glove would not, per hundred balls,
+              errors deducted. The league sits at ${fmtRate(leagueFieldingRate(season))};
+              above that is a man helping his pitcher.`}
           />
         </>
       ) : (
@@ -178,7 +179,8 @@ export function Stats() {
           />
           <FieldNote
             title="Zero is not average"
-            text={`An error is a play nobody made, so the league itself sits at ${fmtRate(leagueFieldingRate(season))}. Anything above that line is a fielder helping his pitcher.`}
+            text={`The league sits at ${fmtRate(leagueFieldingRate(season))}, not
+              zero — an error is a play nobody made.`}
           />
         </>
       )}

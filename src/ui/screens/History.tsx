@@ -104,8 +104,7 @@ function Seasons({ annals }: { annals: SchoolSeason[] }) {
           marginTop: 8, font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
           maxWidth: 270, margin: '8px auto 0',
         }}>
-          The school writes a season into its book every June. Careers begun
-          before the book existed start it with their next finished year.
+          Every June writes a line. The first one lands when a season finishes.
         </div>
       </div>
     );

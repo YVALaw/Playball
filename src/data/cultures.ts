@@ -125,8 +125,8 @@ export const CULTURES: Record<string, SchoolCulture> = {
   PIN: { name: 'First in', creed: 'They would rather try something and be wrong than be late.', edge: 'ambition', patience: 44, ambition: 62 },
   CAL: { name: 'Dig for it', creed: 'Nothing here has ever come up easy and they prefer it that way.', edge: 'power', patience: 68, ambition: 48 },
   OAK: { name: 'The quiet school', creed: 'Good grades, good gloves, and no fuss about either.', edge: 'defense', patience: 70, ambition: 42 },
-  VER: { name: 'Let it fly', creed: 'The ball carries here, and so does the philosophy.', edge: 'power', patience: 42, ambition: 64 },
-  SUT: { name: 'Ride for the brand', creed: 'Four years, or do not bother knocking.', edge: 'loyalty', patience: 74, ambition: 36 },
+  VER: { name: 'Let it fly', creed: 'Thin air, and a lineup built to use it.', edge: 'power', patience: 42, ambition: 64 },
+  SUT: { name: 'Ride for the brand', creed: 'They remember who stayed.', edge: 'loyalty', patience: 74, ambition: 36 },
   CSC: { name: 'Mill work', creed: 'Rain, reps, and a bullpen that throws all winter.', edge: 'pitching', patience: 64, ambition: 34 },
   SLS: { name: 'Grow your own', creed: 'They have not signed a rated recruit in eleven years. On purpose.', edge: 'development', patience: 72, ambition: 32 },
   KLM: { name: 'Set the line', creed: 'Patient, quiet, and unusually good at stealing a game.', edge: 'defense', patience: 66, ambition: 28 },
@@ -172,7 +172,7 @@ export const CULTURES: Record<string, SchoolCulture> = {
   MSK: { name: 'Shifting ground', creed: 'Nobody plays one position here for four years.', edge: 'development', patience: 68, ambition: 26 },
   KNK: { name: 'Work the current', creed: 'Small ball, small budget, small complaints.', edge: 'development', patience: 70, ambition: 24 },
   SDY: { name: 'The long winter', creed: 'They judge a coach on his fourth year, not his first.', edge: 'loyalty', patience: 86, ambition: 22 },
-  WBS: { name: 'Hammer and heat', creed: 'Nobody is recruited here. Everybody is made here.', edge: 'power', patience: 74, ambition: 22 },
+  WBS: { name: 'Hammer and heat', creed: 'The weight room is the recruiting pitch.', edge: 'power', patience: 74, ambition: 22 },
 
   // --- Mountain -------------------------------------------------------------
   TET: { name: 'The high ground', creed: 'Altitude, attitude, and a fence nobody clears cheaply.', edge: 'power', patience: 52, ambition: 58 },
@@ -185,7 +185,7 @@ export const CULTURES: Record<string, SchoolCulture> = {
   GRJ: { name: 'One-run games', creed: 'They have lost more of them than anybody, and learned from it.', edge: 'defense', patience: 66, ambition: 28 },
   BUT: { name: 'Dig and hold', creed: 'A century of hard work, and no apologies for the record.', edge: 'tradition', patience: 74, ambition: 26 },
   CDA: { name: 'Slow water', creed: 'They will give a coach six years. They will also notice all six.', edge: 'loyalty', patience: 82, ambition: 24 },
-  RWL: { name: 'Wind and dust', creed: 'The hardest place in the country to win, and they know it.', edge: 'tradition', patience: 80, ambition: 20 },
+  RWL: { name: 'Wind and dust', creed: 'Winning here counts double, and everybody knows it.', edge: 'tradition', patience: 80, ambition: 20 },
   SLD: { name: 'Climb something', creed: 'Nobody has ever expected anything, so anything is a triumph.', edge: 'ambition', patience: 70, ambition: 24 },
 
   // --- Northeast ------------------------------------------------------------

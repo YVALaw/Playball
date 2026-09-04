@@ -117,8 +117,8 @@ export function Portal() {
               <small>TRANSFER PORTAL · {portal.leaving.length + portal.available.length} NAMES</small>
               <h1>Transfer room</h1>
               <p>
-                Keep the promises that matter. The same points sign a class, so
-                whatever is left here goes into recruiting with you.
+                Keep the promises that matter — whatever is left here goes into
+                recruiting with you.
               </p>
             </div>
             <div className="portal-command-mark">
@@ -137,8 +137,8 @@ export function Portal() {
               <i style={{ width: `${Math.round((left / Math.max(1, budget)) * 100)}%` }} />
             </div>
             <small>
-              Keeping a man costs half again what taking one does. That is the
-              price of a promise you did not keep.
+              Keeping a man costs more than taking one. That is the price of a
+              promise you did not keep.
             </small>
           </div>
         </section>
@@ -158,7 +158,6 @@ export function Portal() {
             <small>{view === 'leaving' ? 'RETENTION BOARD' : 'INCOMING BOARD'}</small>
             <h2>{view === 'leaving' ? 'Men with a foot out' : 'Men you could have'}</h2>
           </div>
-          <span>{left} PTS</span>
         </div>
 
         {(view === 'leaving' ? portal.leaving : portal.available.slice(0, 25)).length === 0 ? (
@@ -170,8 +169,7 @@ export function Portal() {
                 ? 'That is what keeping your word looks like.'
                 : runsPortal
                   ? 'The pool is thin this winter. Your points go to the class instead.'
-                  : 'Your staff worked the board and signed whoever was worth having. '
-                    + 'Settings, then What you handle, brings it back to your desk.'}
+                  : 'Settings, then What you handle, brings it back to your desk.'}
             </p>
           </section>
         ) : (
@@ -295,12 +293,6 @@ export function Portal() {
           </section>
         )}
 
-        <FieldNote
-          title="This window's money"
-          text="These points are the transfer window's own — spend them or lose
-            them when the window shuts. The recruiting budget is a separate
-            pocket."
-        />
       </main>
     </FixedHeader>
   );

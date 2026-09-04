@@ -786,11 +786,11 @@ export function expectationFor(prestige: number, roster: number, games: number):
   // requires and never had the seats for — two sources of truth in front of the
   // player, which is the failure `judge` was rewritten to end.
   const summary = {
-    championship: `Win the conference and go deep. ${targetWins} wins on the way there.`,
-    contend: `Top three, and push on into June. ${targetWins} wins is the floor.`,
-    compete: `A winning season, and push for a bid. The board wants ${targetWins}.`,
-    build: `Stay respectable while you reload. ${targetWins} wins keeps the room calm.`,
-    develop: `Bring players on. ${targetWins} wins would be real progress.`,
+    championship: 'Go deep in June, nothing less.',
+    contend: 'Top three, and push on into June.',
+    compete: 'A winning season, and push for a bid.',
+    build: 'Stay respectable while you reload.',
+    develop: 'Bring players on.',
   }[mandate];
 
   const detail = {
@@ -1625,8 +1625,8 @@ export const TITLE_BLURB: Record<CoachTitle, string> = {
   Firefighter: 'Takes the jobs nobody else will, and has done it twice.',
   Lifer: 'Has been at one place long enough that the place is partly his.',
   Builder: 'Left a programme considerably better than he found it.',
-  Respected: 'Keeps reaching June. Has never won it, and is thought of well anyway.',
-  'Nearly man': 'Has been close enough to touch it more than once.',
+  Respected: 'Keeps reaching June. Has never won it, and it has not hurt him.',
+  'Nearly man': 'Twice within nine innings of everything.',
   Contender: 'Three regional banners. The last game is the only one left.',
   Champion: 'Won the country.',
   Dynasty: 'Won it three times. People plan around him.',
@@ -1998,14 +1998,14 @@ export function reviewSeason(
     : notRenewed
       ? 'Your contract expires and the board has chosen not to renew it.'
       : extended
-        ? `The board is delighted and has torn up your deal — ${coach.contractLength} more years.`
+        ? `They have torn up your deal — ${coach.contractLength} more years.`
         : verdict === 'exceeded'
-          ? 'The board is delighted. Nobody expected this.'
+          ? 'Nobody expected this.'
           : verdict === 'met'
-            ? 'The board is satisfied. Do it again.'
+            ? 'Do it again.'
             : verdict === 'missed'
-              ? `The board expected more. ${contractYears} year${contractYears === 1 ? '' : 's'} left to convince them.${run}`
-              : `The board is not happy. Your seat is warm.${run}`;
+              ? `${contractYears} year${contractYears === 1 ? '' : 's'} left to convince them.${run}`
+              : `Your seat is warm.${run}`;
 
   return {
     verdict,

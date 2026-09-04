@@ -56,8 +56,7 @@ export function JobMarket() {
       <ModuleIntro
         kicker={`${offers.length} OPEN ${offers.length === 1 ? 'CHAIR' : 'CHAIRS'}`}
         title="The market"
-        text="Every offer changes prestige, expectations, pipeline, and the shape of
-          your next season."
+        text="A new chair resets everything around you."
       />
 
       {offers.length === 0 ? (
@@ -66,9 +65,8 @@ export function JobMarket() {
           <h2>Nobody is calling</h2>
           <p>
             {fired
-              ? `No offers at coach prestige ${coach.prestige}. Chairs open every
-                June, and a rebuilt name gets calls again.`
-              : 'Offers arrive at the June board meeting, and they follow your record. Track a chair and your agent flags it the year it can be won.'}
+              ? 'Chairs open every June. Rebuild the name and the phone rings again.'
+              : 'Offers land at the June board meeting. Track a chair and your agent flags it the year it can be won.'}
           </p>
         </section>
       ) : (
@@ -132,13 +130,6 @@ export function JobMarket() {
         </>
       )}
 
-      {offers.length > 0 && (
-        <FieldNote
-          title="Taking a job is for keeps"
-          text="Your contract here ends the moment you sign there. The roster, the
-            class you signed, and the promises you made all stay behind."
-        />
-      )}
     </main>
   );
 }

@@ -155,8 +155,7 @@ export function Settings() {
           marginTop: 12, font: "400 calc(10.5px * var(--ts))/1.5 var(--body)",
           color: 'var(--dim)',
         }}>
-          Display and sound belong to this device and follow you between
-          dynasties. How you play belongs to this career and rides the save.
+          Display and sound follow the device; how you play rides the save.
         </div>
       </Frame>
     );
@@ -199,9 +198,7 @@ export function Settings() {
           <Row
             label="Explain the screens"
             blurb="Each screen says what it is for, once."
-            note={prefs.tutorials
-              ? 'Each screen says what it is for, once.'
-              : 'Nothing explains itself. Turn this back on and the reset below still works.'}
+            note={prefs.tutorials ? '\u00a0' : 'Nothing explains itself.'}
             on={prefs.tutorials}
             onToggle={() => put({ tutorials: !prefs.tutorials })}
           />
@@ -234,7 +231,7 @@ export function Settings() {
             <div style={{
               marginTop: 2, font: "400 calc(10px * var(--ts))/1.35 var(--body)",
               color: 'var(--dim)',
-            }}>Every screen explains itself once more on your next visit.</div>
+            }}>On your next visit to each.</div>
           </button>
           )}
         </section>

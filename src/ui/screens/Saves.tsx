@@ -152,10 +152,8 @@ export function Saves() {
             detail={savesError}
             action={{ label: 'TRY AGAIN', onClick: () => { void refreshSaves(); } }}
           >
-            Usually that means another tab has Playball open, or site data is
-            blocked for this address. The season on screen is real and you can
-            keep playing it — but nothing can be saved or loaded until this
-            clears, and closing the page will lose it.
+            Another tab may have Playball open, or site data is blocked here.
+            You can keep playing, but nothing saves until this clears.
           </Notice>
         )}
 
@@ -168,16 +166,14 @@ export function Saves() {
               onClick: () => { void useDynasty.getState().saveNow(); },
             } : undefined}
           >
-            Everything you have done since is still here, on screen. It is not on
-            disk.
+            Everything since is still on screen — just not on disk.
           </Notice>
         )}
 
         {loadError && (
           <Notice title="A save would not open" detail={loadError}>
-            Most often that is a dynasty written by a newer build of the game
-            than this one, which cannot be read backwards. It is still on the
-            list, and it will open again in the build that wrote it.
+            Usually a save from a newer build of the game. It will open again
+            in the build that wrote it.
           </Notice>
         )}
 
@@ -194,9 +190,8 @@ export function Saves() {
             <div style={{
               marginTop: 5, font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
             }}>
-              {team.def.school} as they stand right now, {year}, {team.w}-{team.l},
-              filed under a name of your own and left alone from then on. Take one
-              before anything you might want to come back from.
+              {team.def.school}, {year}, {team.w}-{team.l}, filed under a name of
+              your own. Take one before anything you might want to come back from.
             </div>
             <input
               value={name}
@@ -261,8 +256,7 @@ export function Saves() {
               maxWidth: 270, margin: '8px auto 0',
               font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
             }}>
-              The game writes your career down on its own as you play, so this
-              list fills itself. Copies you take by hand appear here too.
+              The game saves on its own; copies you take by hand land here too.
             </div>
           </div>
         )}
@@ -295,8 +289,7 @@ export function Saves() {
           <div style={{
             marginTop: 5, font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
           }}>
-            Each screen introduces itself the first time you open it, then stays
-            quiet. Reset them and every screen teaches again on its next visit.
+            Reset the tutorials and every screen teaches again.
           </div>
           <button
             onClick={() => { resetTutorials(); setTutorialsReset(true); }}
@@ -321,9 +314,9 @@ export function Saves() {
           <div style={{
             marginTop: 5, font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
           }}>
-            A new world, a new job and a coach of your own. The career you are in
-            now keeps its place on the list above only if you have saved a copy of
-            it — the autosave belongs to whichever dynasty is being played.
+            A new world, a new job, a coach of your own. The career on screen
+            survives only as a saved copy — the autosave follows whichever
+            dynasty is being played.
           </div>
           <button
             onClick={() => setAsk({ kind: 'new' })}
@@ -349,7 +342,7 @@ export function Saves() {
               // device — but it is almost never what somebody in the middle of a
               // season means to do, and the reason it is nearly useless there is
               // worth saying rather than leaving them to discover.
-              ? 'This is the slot the game writes to on its own. If a career is being played, the next thing that happens in it writes a new one straight back, so deleting this only helps if you are about to load something else or start again.'
+              ? 'The game writes this slot on its own — a played career writes a new one straight back. Delete it only to clear the device or start again.'
               : 'There is no second copy of this dynasty and no way back to it once it is gone.',
           ]}
           cancel={{ label: 'KEEP IT', onClick: () => setAsk(null) }}

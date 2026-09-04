@@ -64,7 +64,7 @@ export function Colleges() {
       <ModuleIntro
         kicker="NATIONAL DIRECTORY"
         title="College programs"
-        text="Search any program in the country and open its complete card — roster, season, and how you have done against it."
+        text="Every program in the country, one tap deep."
       />
 
       <label className="search-row">

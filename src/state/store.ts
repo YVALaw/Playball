@@ -1707,7 +1707,7 @@ function postCarousel(
           : `${m.school} hire ${m.coach}`;
     store.post({
       kind: 'wire', year, title,
-      body: `Coach — news on a chair you watch. ${m.detail}`,
+      body: `Coach — ${m.detail}. You asked me to watch this chair.`,
       ...(m.team !== undefined ? { link: { to: 'team' as const, index: m.team } } : {}),
     });
   }
@@ -1838,8 +1838,8 @@ function seasonNews(store: DynastyStore): void {
     store.post({
       kind: 'record', year, key: `book-${key}`,
       title: `${mark.holder} — ${spec.label.toLowerCase()}`,
-      body: `Coach — that is the all-time ${spec.group} mark${mark.detail ? ` (${mark.detail})` : ''}, `
-        + 'and it is wearing our name now. I have already checked the book twice.',
+      body: `Coach — the all-time ${spec.group} mark${mark.detail ? ` (${mark.detail})` : ''}, `
+        + 'wearing our name now. I checked the book twice.',
       link: mark.id ? { to: 'player', id: mark.id } : { to: 'book' },
     });
   }
@@ -1860,8 +1860,8 @@ function seasonNews(store: DynastyStore): void {
       store.post({
         kind: 'season', year, key: `rpi-${at}`,
         title: at === 1 ? 'Number one in the country' : `Into the top ${at}`,
-        body: `Coach — ${me.def.school} are ${rank === 1 ? 'top of the country' : `No. ${rank}`} `
-          + `at ${won}-${played.length - won}. I bought a paper just to read it out loud.`,
+        body: `Coach — ${won}-${played.length - won}, and the country has `
+          + 'noticed. I bought a paper just to read it out loud.',
         link: { to: 'program', sheet: 'board' },
       });
     }
@@ -1895,8 +1895,8 @@ function seasonNews(store: DynastyStore): void {
       kind: 'board', year, key: 'halfway',
       title: 'Halfway, and the board is watching',
       body: `Coach — ${w}-${half - w} at the turn puts us on for `
-        + `${Math.round((w / half) * games)} wins against the ${want.targetWins} `
-        + `upstairs asked for. ${want.detail}`,
+        + `${Math.round((w / half) * games)} wins, against the ${want.targetWins} `
+        + 'upstairs asked for.',
       link: { to: 'program', sheet: 'board' },
     });
   }
@@ -2392,9 +2392,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         get().post({
           kind: 'wire', year: get().year,
           title: `Word is ${m.player.name} wants out`,
-          body: `Coach — ${fromRec?.def.school ?? 'somebody'}'s best player is `
-            + 'said to be looking around. I heard it from two people who heard '
-            + 'it from the same guy, which around here counts as confirmed.',
+          body: `Coach — ${fromRec?.def.school ?? 'somebody'}'s locker room has `
+            + 'a draught. Two people heard it from the same guy, which around '
+            + 'here counts as confirmed.',
           link: { to: 'player', id: m.player.id },
         });
       }
@@ -2585,9 +2585,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           title: going.length === 1
             ? `${going[0]!.name} goes into the hall`
             : `${going.length} men go into the hall`,
-          body: `Coach — ${going.map((m) => `${m.name}, ${m.line}`).join('. ')}. `
-            + 'There is a plaque with the name on it now, on the program page. '
-            + 'Bring a handkerchief.',
+          body: going.length === 1 && going[0]
+            ? `Coach — ${going[0].line}. There is a plaque with his name on it `
+              + 'now. Bring a handkerchief.'
+            : `Coach — ${going.map((m) => m.name).join(', ')}. Plaques all `
+              + 'round. Bring a handkerchief.',
           // One man opens his own card; a class opens the wall they are on.
           link: going.length === 1 && going[0]
             ? { to: 'player', id: going[0].id }
@@ -3130,9 +3132,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         kind: 'board', year,
         link: { to: 'program', sheet: 'coach' },
         title: 'Your prestige has taken a hit',
-        body: `Coach — ${review.badRun} seasons in a row the board would not sign `
-          + `off on, and word travels. ${review.prestigePenalty} points off your `
-          + `name, on top of the season itself. We go again.`,
+        body: `Coach — word travels. ${review.prestigePenalty} points off your `
+          + 'name, on top of the season itself. We go again.',
       });
     }
     /*
@@ -3295,9 +3296,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
               ? `Coach — the ${move.upTo} called and the board said yes before `
                 + `the phone was down. ${faller?.school ?? 'Somebody'} goes the `
                 + 'other way. Pack for better ballparks.'
-              : `Coach — ${riser?.school ?? '?'} outgrew the ${move.downTo} and `
-                + `traded places with ${faller?.school ?? '?'}. Your league looks `
-                + 'different in the spring.',
+              : `Coach — they traded places with ${faller?.school ?? '?'}. `
+                + 'Your league reads different in the spring.',
           });
         }
       }
@@ -3545,7 +3545,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         get().post({
           kind: 'offer', year: year + 1,
           title: `${o.school} want to talk to you`,
-          body: `Coach — ${o.school} called the desk. ${o.conference}, `
+          body: `Coach — ${o.conference}, `
             + `${prestigeStars(o.prestige)} star. ${o.pitch}`,
           /*
             Where the decision is, not where the description is.
@@ -3576,9 +3576,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         kind: 'season', year: get().year,
         title: `${lost.name} never arrives`,
         body: 'Coach — the pros called his name in July and he signed the '
-          + 'cheque instead of the housing form. Nothing you did wrong; he was '
-          + 'exactly as good as we said he was. The scholarship comes back. '
-          + 'The plan does not.',
+          + 'cheque instead of the housing form. The scholarship comes back; '
+          + 'the plan does not.',
       });
     }
     const report: OffseasonReport = {
@@ -3695,7 +3694,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       get().post({
         kind: 'season', year: get().year,
         title: `${man.player.name} is staying`,
-        body: 'He was in the portal and he is not any more.',
+        body: 'Coach — he was in the portal and he is not any more.',
         link: { to: 'player', id: man.player.id },
       });
     }
@@ -3752,8 +3751,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     get().post({
       kind: 'season', year: get().year,
       title: `A word with ${man.name}`,
-      body: `He is on top of it again — ${lift} to the good. `
-        + `${WORDS_A_SEASON - wordsUsed - 1} left this season.`,
+      body: `Coach — he is on top of it again. `
+        + `${WORDS_A_SEASON - wordsUsed - 1} of your words left this season.`,
       link: { to: 'player', id: man.id },
     });
     void get().saveNow();
@@ -3868,9 +3867,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     get().post({
       kind: 'season', year: get().year,
       title: `${man.name} moves to ${to}`,
-      body: 'He retrains over the winter and opens next season at the new '
-        + 'spot. A big move leaves him a step behind for a while, and then '
-        + 'it does not.',
+      body: 'Coach — he retrains over the winter and opens next season there, '
+        + 'a step behind for a while.',
       link: { to: 'player', id: man.id },
     });
     void get().saveNow();
@@ -3931,7 +3929,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       get().post({
         kind: 'carousel', year,
         title: `${displaced.name} out at ${season.teams[team]?.def.school ?? 'your new job'}`,
-        body: `They moved him on to hire you. ${displaced.careerWins}-${displaced.careerLosses} in the chair.`,
+        body: `Coach — they moved him on to hire you. ${displaced.careerWins}-${displaced.careerLosses} in the chair.`,
       });
     }
     if (leaving && leaving.index !== team) {
@@ -3940,7 +3938,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         get().post({
           kind: 'carousel', year,
           title: `${took.name} takes over at ${leaving.def.school}`,
-          body: 'The job you left did not stay open long.',
+          body: 'Coach — the job you left did not stay open long.',
         });
       }
     }
@@ -4656,12 +4654,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       : myBracket.kind === 'regional' ? 'the regional'
       : 'the national tournament';
     const body = advanced
-      ? `Coach — out of ${where} in the ${label}, and somehow that is fine: ${
+      ? `Coach — out of ${where}, and somehow that is fine: ${
         myBracket.kind === 'conference' ? 'a regional championship series is next'
           : 'the national field still has a place for us'}. Bus leaves early.`
-      : `Coach — out of ${where} in the ${label}. ${
-        me?.w ?? 0}-${me?.l ?? 0} on the year. I will start on next season's `
-        + 'binder tonight.';
+      : `Coach — ${me?.w ?? 0}-${me?.l ?? 0} on the year. I will start on `
+        + `next season's binder tonight.`;
     set({
       knockout: {
         year, kind: myBracket.kind, label, advanced,

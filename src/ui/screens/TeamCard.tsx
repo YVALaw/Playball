@@ -157,14 +157,7 @@ export function TeamCard({ index }: { index: number }) {
               <strong>vs</strong>
               <span><b>{reg.w}-{reg.l}</b> Record</span>
             </div>
-            <p>
-              {t.prestige > me.prestige
-                ? `${t.def.school} has the stronger profile today.`
-                : t.prestige < me.prestige
-                  ? `${me.def.school} has the stronger profile today.`
-                  : 'Dead level on profile today.'}
-              {' '}Prestige decides whose calls get answered.
-            </p>
+            <p>Prestige decides whose calls get answered.</p>
           </section>
         )}
         {sheet === 'dossier' && (
@@ -263,7 +256,7 @@ function CollegeActions(
         <div className="player-actions-popover-heading">
           <small>PROGRAM ACTIONS</small>
           <strong>{school}</strong>
-          <span>Keep a useful read on the wider college game.</span>
+          <span>What your desk can do about them.</span>
         </div>
         <div className="action-list">
           <ActionCard
@@ -271,7 +264,7 @@ function CollegeActions(
             title={tracked ? 'Program tracked' : 'Track program'}
             detail={tracked
               ? 'They are on WATCHLIST, on your program tab. Tap again to drop them.'
-              : 'Files them under WATCHLIST on your program tab, so their season stays one tap away.'}
+              : 'Files them under WATCHLIST on your program tab.'}
             selected={tracked}
             onClick={() => toggleProgramWatch(abbr)}
           />
@@ -296,10 +289,10 @@ function CollegeActions(
             detail={!scoutsHimself
               ? 'Your staff buys these books out of the wage bill; the reads are already on their player cards.'
               : scouted
-                ? `Bought. The team's habits are on their DOSSIER sheet, and every man's tendency line reads on his card for the next ${SCOUT_DAYS} days.`
+                ? `Bought — on DOSSIER and every man's card for the next ${SCOUT_DAYS} days.`
                 : canAfford
-                  ? `Buys their book for ${SCOUT_DAYS} days: the team's habits fill their DOSSIER sheet, and every man's tendencies show on his player card.`
-                  : 'The ledger cannot carry it this year. The budget is on your program tab.'}
+                  ? `Their habits on DOSSIER and every man's tendencies on his card, for ${SCOUT_DAYS} days.`
+                  : 'The ledger cannot carry it this year.'}
             selected={scouted || !scoutsHimself}
             onClick={() => { if (scoutsHimself && !scouted && canAfford) scoutTeam(index); }}
           />
@@ -308,7 +301,7 @@ function CollegeActions(
             title={jobPath ? 'Job path tracked' : 'Track job path'}
             detail={jobPath
               ? 'Starred at the job market, and the wire writes to your inbox when this chair moves. Tap again to stop.'
-              : 'Quiet interest, no application: the job market stars this chair when it opens, and your assistant writes when it moves.'}
+              : 'Quiet interest, no application. Your assistant writes when the chair moves.'}
             selected={jobPath}
             onClick={() => toggleJobWatch(abbr)}
           />
@@ -323,7 +316,7 @@ function CollegeActions(
               : approaches.interest.includes(index) ? 'They would take the call — expect them when chairs move. Watch your inbox.'
               : approaches.tried.includes(index) ? 'Sent this season. Once a school a season is the rule.'
               : approaches.tried.length >= 3 ? 'Three a season, and you have sent yours. The market reopens with the year.'
-              : 'Asks about the chair, quietly. Three a season, never the same school twice, and word can get back to your board.'}
+              : 'Asks about the chair, quietly. Three a season, and word can get back to your board.'}
             selected={said !== null
               || approaches.interest.includes(index)
               || approaches.tried.includes(index)}
@@ -497,7 +490,7 @@ function Overview(
 
       <PanelHead>HEAD TO HEAD</PanelHead>
       {mine ? (
-        <PanelNote>This is your program. Everything here is your own season.</PanelNote>
+        <PanelNote>You cannot play yourself.</PanelNote>
       ) : h2h && (h2h.games.length > 0 ? (
         <>
           <Panel>
@@ -568,7 +561,7 @@ function Overview(
           return (
             <div style={{ marginTop: 16 }}>
               <PanelHead>THE SHAPE OF THE SEASON</PanelHead>
-              <PanelNote>No games yet. The header fills in as they play.</PanelNote>
+              <PanelNote>No games yet.</PanelNote>
             </div>
           );
         }
@@ -675,8 +668,8 @@ function Roster({ t, season }: { t: Record_; season: SeasonState }) {
       )}
 
       <PanelNote>
-        Tap a name for his card. You can see what a rival has done and what he
-        can do now. How much further he might go is his coach's to know.
+        What a rival has done is public; what he might become is his
+        coach&apos;s to know.
       </PanelNote>
     </>
   );
@@ -834,7 +827,7 @@ function Results({ t, me, season }: { t: Record_; me: Record_ | null; season: Se
       <PanelNote>
         {mine
           ? 'Your own games carry a full box score. Open one from the SCHEDULE screen.'
-          : 'Scores only. The game keeps full box scores for your program alone, so there are no batting or pitching lines to open here.'}
+          : 'Scores only — full box scores are kept for your program alone.'}
       </PanelNote>
     </>
   );
@@ -915,7 +908,7 @@ function Dossier({ t, stars, rival }: { t: Owner; stars: number; rival: boolean 
             : (
               <FieldNote
                 title="The desk has not been paid"
-                text="SCOUT THEM on the action button buys their book: the team's habits fill this sheet and every man's tendency line reads on his card."
+                text="SCOUT THEM on the action button buys their book."
               />
             )}
         </>
@@ -984,15 +977,14 @@ function Dossier({ t, stars, rival }: { t: Owner; stars: number; rival: boolean 
       ) : (
         <FieldNote
           title="Nobody has been named"
-          text="The chair is empty, or this programme predates the coaching carousel in your save."
+          text="The chair is empty."
         />
       )}
 
       <FieldNote
         title="This is scouting, not a leak"
-        text="Everything here is what the country already publishes about a programme — its
-          reputation, its record, and the man in the chair. What his players can
-          actually do stays on their own cards, gated the way it always was."
+        text="Only what the country already publishes. What his players can do
+          stays on their own cards."
       />
     </>
   );

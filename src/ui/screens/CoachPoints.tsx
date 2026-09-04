@@ -53,7 +53,7 @@ export function CoachPoints() {
           }}>{left}</span>
           <span style={{ font: "400 calc(12px * var(--ts))/1.4 var(--body)", color: 'var(--dim)' }}>
             {left > 0
-              ? 'points to spend. Unspent ones keep — they are yours until you use them.'
+              ? 'points to spend — they keep until you use them.'
               : 'Nothing left to spend this year.'}
           </span>
         </div>
@@ -66,8 +66,8 @@ export function CoachPoints() {
           font: "400 calc(11px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
         }}>
           {back > 0
-            ? `${back} point${back === 1 ? '' : 's'} put on this year can still come off. Once you continue, they are his.`
-            : 'Anything you put on can come back off until you leave this step.'}
+            ? `${back} point${back === 1 ? '' : 's'} come back off until you continue.`
+            : '\u00a0'}
         </div>
       </div>
 
