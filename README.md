@@ -37,18 +37,32 @@ season opener reorganized, the two-way player made whole, playbooks that
 turn scouting into leverage, and the lineup gate — then the store, the
 phone, and ship.
 
-The engine is calibrated multi-seed against sourced NCAA D1 rates. **1083 tests
-across 47 files**, including determinism goldens, calibration as a regression
+The engine is calibrated multi-seed against sourced NCAA D1 rates. **1107 tests
+across 50 files**, including determinism goldens, calibration as a regression
 test, and a concurrency suite pinning the store's double-press guards.
+
+**It installs.** `npm run apk` builds a real Android package — Capacitor over
+the same bundle the browser runs, no server, offline. The toolchain lives
+outside the repo and outside PATH; the script supplies it. `npm run apk --
+release` builds the unsigned release, and the keystore is stage 19's job and
+the one thing that must never be lost.
 
 | Not built yet | |
 |---|---|
-| Capacitor / Android | hardware back button, signed build. Safe-area insets are done |
 | Onboarding | the guided tutorial — a titled card, then a glow path through doing it (stage 19) |
-| The two-way, whole | rotation-night duties, the role line, both stat halves (stage 21) |
-| Playbooks | per-opponent counter-play minted by scouting (stage 22) |
 | REPLAY | the events are stored and take no draws; it can land any time |
-| The store | the S+ player and Play Billing (stage 17, dead last with 18–19) |
+| The store | the S+ player and Play Billing (stage 17, dead last with 19) |
+| The budget screen | the hiring market has no decision in it yet — a redesign, not a fix |
+| Negotiating the board | arguing a mandate down after a gutted roster (stage 20b) |
+| The creation interview | three questions instead of five, payoffs shown (stage 24) |
+
+Shipped since: the two-way whole and corrected to the rulebook, playbooks,
+the lineup gate, the season opener, and the Android shell — package, launcher
+icon, and a back gesture that peels one layer per press.
+
+**The gesture rule, for anyone touching a list:** tap selects, tap again puts
+down, **hold** reads the man. Never double-tap — allowing it taxes every tap,
+because none can act until the window for a second has passed.
 
 **Two test aids must come out before release** (both marked in code): the
 loaded Pascagoula Tech roster, and Hans Hood — a 20-overall, 99-potential third

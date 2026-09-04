@@ -506,3 +506,23 @@ is a rewrite.
 The two engine figures are from the August calibration pass and have not been
 re-timed since the fielding rework added a per-ball-in-play fielder lookup, which
 is the first change in a while that could plausibly cost something.
+
+---
+
+## The order, as it stands after the APK pass — September 4 2026
+
+Stages 20–23 shipped, and stage 18 was **pulled forward out of the tail**: the
+reporter moved to BlueStacks, where a browser tab over a LAN address is not a
+secure context and Chrome will only ever hand him a shortcut. An APK installs
+into it directly and reads the Android target far more honestly, so the shell
+came early. The rest of the tail keeps its order.
+
+**Done:** P → 20 → 21 → 22 → 23 → **18 (the shell)**.
+**Next:** the APK report's five batches (`14-apk-report-triage.md`), then
+17 (the store) → 19 (ship), with 20b (negotiating the board) and 24 (the
+creation interview) booked for their design talks.
+
+**Measurements still owed**, unchanged by any of the above: the screen
+transition has never been timed, and the 3D field has never been run on a
+phone. The APK makes the second one answerable for the first time — it is now
+a build-and-install away rather than a hardware purchase away.
