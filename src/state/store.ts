@@ -731,6 +731,16 @@ export interface DynastyStore {
    * once on the way in — mildly drifted, then frozen.
    */
   boardAsk: Expectation | null;
+  /**
+   * Give a board that has no stamp one, once.
+   *
+   * A save that reaches the program page without an ask used to make the
+   * screen recompute from the live roster on every render, so the mandate
+   * crept upward as men developed — "it was asking me for 18 wins, now it is
+   * saying 19". The number is settled the first time it is needed and held
+   * from there.
+   */
+  stampBoardAsk: () => void;
 
   /**
    * What has happened to your world, newest first.
@@ -4004,6 +4014,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // down — even mid-season, where a part-year target is still the number
       // this board will actually judge.
       boardAsk: season ? boardAskFor(season, team) : get().boardAsk,
+      /*
+        And the old board's letter goes with the old board. The season
+        opener carries ITS OWN copy of the ask, stamped at the roll; left
+        standing across a move it would keep presenting the number the
+        previous school wanted while the board upstairs showed the new
+        one. That is the two-number mandate the reporter kept meeting.
+      */
+      seasonOpener: null,
       offers: [],
       jobSearch: false,
       lastReview: null,
@@ -5413,6 +5431,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   seenTutorials: [],
   focusPlayer: null,
   boardAsk: null,
+  stampBoardAsk: () => {
+    const { season, userTeam, boardAsk } = get();
+    if (boardAsk || !season) return;
+    set({ boardAsk: boardAskFor(season, userTeam) });
+    void get().saveNow();
+  },
   watch: { programs: [], jobs: [] },
   toggleProgramWatch: (abbr) => {
     const w = get().watch;

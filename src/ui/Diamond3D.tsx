@@ -206,12 +206,27 @@ function rimFor(hex: string): string {
   return lum > 0.45 ? '#14181c' : '#f4efe2';
 }
 
-/** The hull itself — a child of the man, so it follows him everywhere. */
+/**
+ * The hull itself — a child of the man, so it follows him everywhere.
+ *
+ * Drawn first and writing no depth, which is the fix for a reported bug: "the
+ * borders in the fielders and batters blink and on some occasions disappear
+ * when they are next to each other." An inverted hull is a slightly larger
+ * sphere, so two men standing close had each one's hull intersecting the
+ * other's body at nearly equal depth — the pair fought for the same pixels
+ * and the winner changed every frame. A rim that writes no depth cannot fight
+ * anything, and drawing rims before bodies keeps every body cleanly on top of
+ * its own outline. It still depth-TESTS, so a rim never shines through turf.
+ */
 function Rim({ of, r }: { of: string; r: number }) {
   return (
-    <mesh scale={1.16}>
+    <mesh scale={1.16} renderOrder={-1}>
       <sphereGeometry args={[r, 12, 10]} />
-      <meshBasicMaterial color={rimFor(of)} side={THREE.BackSide} />
+      <meshBasicMaterial
+        color={rimFor(of)}
+        side={THREE.BackSide}
+        depthWrite={false}
+      />
     </mesh>
   );
 }

@@ -132,9 +132,21 @@ export function Lineup() {
   useLayoutEffect(() => {
     const still = typeof window.matchMedia === 'function'
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    /*
+      `offsetTop`, not `getBoundingClientRect().top` — and that one word was
+      the whole of a reported bug: "the animation when they are swapping
+      places flicks and blinks when it's ending, same when we tap auto set."
+
+      A rect INCLUDES the transform the animation is currently applying. This
+      effect runs on every render, so a re-render landing mid-flight measured
+      each row where it was drawn rather than where it belonged, wrote that
+      down as the row's home, and animated the next move from a lie. AUTO,
+      which moves every row at once and bumps the version, hit it every time.
+      `offsetTop` is layout only and never sees the transform.
+    */
     const tops = new Map<string, number>();
     for (const [id, el] of rowEls.current) {
-      if (el.isConnected) tops.set(id, el.getBoundingClientRect().top);
+      if (el.isConnected) tops.set(id, el.offsetTop);
     }
     if (!still) {
       for (const [id, el] of rowEls.current) {
@@ -142,6 +154,11 @@ export function Lineup() {
         const now = tops.get(id);
         if (was !== undefined && now !== undefined && Math.abs(was - now) > 1
           && typeof el.animate === 'function') {
+          // One glide per row. A second animation stacked on a running one
+          // is the other half of the blink.
+          if (typeof el.getAnimations === 'function') {
+            for (const a of el.getAnimations()) a.cancel();
+          }
           el.animate(
             [{ transform: `translateY(${was - now}px)` }, { transform: 'translateY(0)' }],
             { duration: 260, easing: 'cubic-bezier(.2, .8, .2, 1)' },

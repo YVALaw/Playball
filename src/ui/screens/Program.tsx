@@ -427,6 +427,13 @@ function BoardSheet({ team }: { team: Owner }) {
   const storedAsk = useDynasty((s) => s.boardAsk);
   const opener = useDynasty((s) => s.seasonOpener);
   const takeSeason = useDynasty((s) => s.dismissSeasonOpener);
+  const stampAsk = useDynasty((s) => s.stampBoardAsk);
+  /*
+    A board with no stamp gets one, once, instead of recomputing from the
+    live roster on every render — which is how the number used to creep as
+    men developed. Whatever it says first is what it says all season.
+  */
+  useEffect(() => { if (!storedAsk) stampAsk(); }, [storedAsk, stampAsk]);
 
   if (!season) return null;
 
