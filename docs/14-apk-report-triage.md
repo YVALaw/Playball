@@ -24,8 +24,8 @@ inbox), 6 (the bullpen gesture), 3 (the swap flicker), 4 (the fielder
 rims) and 7 (the mandate) are fixed and pinned. Item 8 (the dossier
 scroll) the reporter judged a one-off and it is dropped. **Item 5, the
 postseason box score, is the one left** — and it did not reproduce:
- is stamped correctly (measured 0 for userTeam 0) and
- carries it forward, so the engine files a box for every game
+`captureBoxFor` is stamped correctly (measured 0 for userTeam 0) and
+`nextSeason` carries it forward, so the engine files a box for every game
 the user plays. Tapping an OPPONENT-only game is silent by design — the
 box is kept for your program alone — so the open question is whether the
 game tapped was one of ours.
