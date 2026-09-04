@@ -409,7 +409,7 @@ export function Board() {
         />
       )}
       header={
-      <div style={{ padding: '12px 14px 10px' }}>
+      <div className="dense-head" style={{ padding: '9px 14px 6px' }}>
       <div className="screen-title-row">
         <ModuleIntro
           kicker={`RECRUITING · ${live ? `WEEK ${week} OF ${RECRUITING_WEEKS}` : 'SIGNED'}`}

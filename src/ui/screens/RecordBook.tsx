@@ -13,7 +13,7 @@
 // record book that starts empty is a page of dashes; a record book that opens
 // with Incaviglia in it is a list of things to go and do.
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import {
   RECORDS, recordsIn, type RecordGroup, type RecordKey, type RecordMark,
@@ -64,6 +64,19 @@ export function RecordBook() {
     the country, or your own career book, which is the one archive that outlives
     a roster.
   */
+  /*
+    The marks taken since the book was last opened, snapshotted on mount and
+    then cleared — the same contract the inbox dots use, and for the same
+    reason: a dot that vanished as you looked at it would never be seen.
+    Records stopped writing letters at the reporter's ask ("the user will
+    receive a lot of notifications from this"), so this is how a new mark
+    announces itself.
+  */
+  const unseenRecords = useDynasty((s) => s.unseenRecords);
+  const clearUnseenRecords = useDynasty((s) => s.clearUnseenRecords);
+  const [fresh] = useState(() => new Set(unseenRecords));
+  useEffect(() => { clearUnseenRecords(); }, [clearUnseenRecords]);
+
   const known = useMemo(() => {
     const ids = new Set<string>();
     if (!season) return ids;
@@ -108,6 +121,7 @@ export function RecordBook() {
           book={book}
           mine={team.def.abbr}
           known={known}
+          fresh={fresh}
           onPick={openPlayer}
         />
       ))}
@@ -117,11 +131,12 @@ export function RecordBook() {
 }
 
 function Section(
-  { title, note, keys, book, mine, known, onPick }:
+  { title, note, keys, book, mine, known, fresh, onPick }:
   {
     title: string; note: string; keys: RecordKey[];
     book: Partial<Record<RecordKey, RecordMark>>;
-    mine: string; known: Set<string>; onPick: (id: PlayerId) => void;
+    mine: string; known: Set<string>; fresh: Set<string>;
+    onPick: (id: PlayerId) => void;
   },
 ) {
   return (
@@ -129,7 +144,7 @@ function Section(
       <div className="label" style={{ marginBottom: 4 }}>{title}</div>
       <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
         {keys.map((k) => (
-          <Row key={k} rkey={k} mark={book[k]} mine={mine} known={known} onPick={onPick} />
+          <Row key={k} rkey={k} mark={book[k]} mine={mine} known={known} fresh={fresh} onPick={onPick} />
         ))}
       </div>
       {note !== '' && (
@@ -142,19 +157,24 @@ function Section(
 }
 
 function Row(
-  { rkey, mark, mine, known, onPick }:
+  { rkey, mark, mine, known, fresh, onPick }:
   {
     rkey: RecordKey; mark: RecordMark | undefined;
-    mine: string; known: Set<string>; onPick: (id: PlayerId) => void;
+    mine: string; known: Set<string>; fresh: Set<string>;
+    onPick: (id: PlayerId) => void;
   },
 ) {
   const spec = RECORDS[rkey];
   const ours = mark !== undefined && !mark.ncaa && mark.team === mine;
+  // Taken since the book was last opened. The dot survives the visit that
+  // clears it — the set is read once, on mount, exactly as the inbox does.
+  const isNew = fresh.has(rkey);
   const tappable = mark?.id !== undefined && known.has(mark.id);
 
   const body = (
     <>
       <span className="label" style={{ gridColumn: 1, alignSelf: 'center' }}>
+        {isNew && <i className="unread-dot" />}
         {spec.label}
       </span>
       <span style={{

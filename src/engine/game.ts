@@ -899,7 +899,36 @@ export function createHalfInning(
       // event stream have to stay one to one.
       if (events) {
         events.push({ kind: 'pitch', pitch: 'inplay' });
-        events.push({ kind: 'contact', battedBall: 'ground' });
+        /*
+          A bunt has to LAND somewhere, or the park has nothing to draw.
+
+          Reported: "there is no animation for sac bunt — the player on base
+          just appeared in the next base, and the batter or ball didn't do
+          anything." The event was being emitted without the `landing` every
+          other contact carries, so the field had a play with no ball in it
+          and simply moved the runners.
+
+          Where a bunt actually goes: dead and short, down one line or back
+          at the mound. Picked off the same stable hash the rest of the spray
+          uses, so a replay drops it in the same place and no draw is spent.
+        */
+        {
+          let h = (outs + 1) * 2654435761;
+          for (let i = 0; i < String(batter.id).length; i++) {
+            h = (h * 31 + String(batter.id).charCodeAt(i)) | 0;
+          }
+          const pick = Math.abs(h) % 3;
+          const y = 0.10 + (Math.abs(h >> 8) % 5) * 0.012;
+          // Fair territory is the wedge |x| <= y, so a bunt down the line
+          // hugs the chalk at 0.9 of it rather than crossing it. The third
+          // lane is the one straight back at the pitcher.
+          const lane = pick === 2 ? 0 : (pick === 0 ? -1 : 1) * y * 0.9;
+          events.push({
+            kind: 'contact',
+            battedBall: 'ground',
+            landing: { x: lane, y },
+          });
+        }
         const moves = runnerMoves(buntBases, bases, res.scored);
         if (moves.length > 0) events.push({ kind: 'advance', runners: moves });
         if (outs > buntOuts) events.push({ kind: 'out', outs: outs - buntOuts });

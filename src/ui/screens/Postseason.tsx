@@ -1188,12 +1188,27 @@ function PregameShow(
   // Between rounds: nothing to stage yet. The pinned bar below simulates to
   // your next game; the card only has to say the round is still forming.
   if (opp === null) {
+    // The bracket's own arithmetic: what you have won and lost inside it,
+    // and therefore which side you are on.
+    const de = myBracket && 'losers' in myBracket.state ? myBracket.state : null;
+    const deLosses = de?.losses.get(userTeam) ?? 0;
+    const deWins = de === null ? 0 : [...de.winners, ...de.losers, de.final]
+      .flat().filter((sl) => sl.winner === userTeam).length;
+    const side = de === null
+      ? null
+      : deLosses === 0 ? 'WINNERS BRACKET' : 'LOSERS BRACKET';
     return (
       <section className="pregame-show is-waiting">
         <div className="pregame-kicker">
           <small>YOUR NEXT GAME</small>
           <span>{formatLabel || 'JUNE'}</span>
         </div>
+        {side !== null && (
+          <div className={`june-standing${deLosses === 0 ? ' unbeaten' : ''}`}>
+            <strong>{deWins}&ndash;{deLosses}</strong>
+            <span>{side}</span>
+          </div>
+        )}
         <div className="pregame-match">
           <div className="pregame-side">
             <Crest abbr={me.def.abbr} size={54} />
@@ -1208,8 +1223,9 @@ function PregameShow(
           </div>
         </div>
         <p className="pregame-sub">
-          The round is still being played. Your opponent lands when it
-          finishes.
+          {de !== null && deLosses === 0
+            ? 'The other side is still playing. A loss would drop you, not end you.'
+            : 'The other side is still playing. Another loss ends the run.'}
         </p>
       </section>
     );

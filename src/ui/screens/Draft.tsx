@@ -104,7 +104,7 @@ export function Draft() {
     // under them. Same reason as the recruiting board: what you are looking at
     // and how many there are should not scroll away from the list itself.
     <FixedHeader header={
-      <div style={{ padding: '14px 14px 10px' }}>
+      <div className="dense-head" style={{ padding: '10px 14px 6px' }}>
       <ModuleIntro kicker={`${year} · ${team.def.abbr}`} title="Draft results" />
 
       <MetricStrip>

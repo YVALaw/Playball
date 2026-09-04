@@ -41,7 +41,7 @@ import {
   leagueShape,
   canBeHired,
   approachSchool, APPROACHES_PER_SEASON, CAUGHT_SECURITY_COST, type ApproachOutcome,
-  prestigeStars, skillPoints, takeChair,
+  prestigeStars, skillPoints, takeChair, objectivesFor,
   type CoachState, type CoachSkills, type CoachProfile, type JobOffer, type Review,
   type SeasonOutcome, type Expectation,
 } from '../engine/program.js';
@@ -741,6 +741,20 @@ export interface DynastyStore {
    * from there.
    */
   stampBoardAsk: () => void;
+  /**
+   * Ask the board to reconsider what it wants, once a season.
+   *
+   * Returns the wins it came down by, or zero when it will not move. Built
+   * to the case the reporter described rather than as a general haggle:
+   * "if we are coming from a national championship year but most of our
+   * good players leave, the board comes with unrealistic expectations — we
+   * could talk them into better milestones." That case is measurable, so
+   * the board concedes when last winter genuinely took the side apart and
+   * declines when it did not. The full negotiation is stage 20b.
+   */
+  argueTerms: () => number;
+  /** Whether the board has already heard it this season. */
+  arguedTerms: boolean;
 
   /**
    * What has happened to your world, newest first.
@@ -849,6 +863,15 @@ export interface DynastyStore {
    * live, so the dot points there instead of the inbox retelling them.
    */
   unseenTrophies: string[];
+  /**
+   * All-time marks taken since you last opened the book.
+   *
+   * The same grammar the cabinet uses: a dot on PROGRAM, then on the book,
+   * then on the row itself, instead of a letter for every first-ever
+   * anything in a young career.
+   */
+  unseenRecords: string[];
+  clearUnseenRecords: () => void;
   clearUnseenTrophies: () => void;
   portalArrivals: string[];
   /**
@@ -1165,6 +1188,14 @@ export interface DynastyStore {
    * series), so it is the unit a casual session advances by.
    */
   simWeek: () => void;
+  /**
+   * The man whose injury cut a simulated week short, if one did.
+   *
+   * Reported: a week should stop when it costs you somebody, not run to the
+   * end and tell you afterwards. Read once by the card that says so.
+   */
+  weekStoppedBy: string | null;
+  clearWeekStop: () => void;
 
   /**
    * Which first-visit tutorials have been shown, by screen id.
@@ -1884,13 +1915,10 @@ function seasonNews(store: DynastyStore): void {
     if (!mark || !freshMark(mark, me.def.abbr, year)) continue;
     const spec = RECORDS[key as RecordKey];
     if (spec.group === 'coach') continue;
-    store.post({
-      kind: 'record', year, key: `book-${key}`,
-      title: `${mark.holder} — ${spec.label.toLowerCase()}`,
-      body: `Coach — the all-time ${spec.group} mark${mark.detail ? ` (${mark.detail})` : ''}, `
-        + 'wearing our name now. I checked the book twice.',
-      link: mark.id ? { to: 'player', id: mark.id } : { to: 'book' },
-    });
+    // A dot, not a letter — see `unseenRecords`.
+    if (!store.unseenRecords.includes(key)) {
+      store.unseenRecords = [...store.unseenRecords, key];
+    }
   }
 
   const played = regularGames(season, me);
@@ -2156,6 +2184,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     void get().saveNow();
   },
   unseenTrophies: [],
+  unseenRecords: [],
+  clearUnseenRecords: () => {
+    if (get().unseenRecords.length === 0) return;
+    set({ unseenRecords: [] });
+  },
   clearUnseenTrophies: () => {
     if (get().unseenTrophies.length === 0) return;
     set({ unseenTrophies: [] });
@@ -3554,6 +3587,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         // fired coach gets a meaningless stamp for a chair he no longer holds;
         // acceptOffer restamps for the one he takes.
         boardAsk: boardAskFor(rolled, get().userTeam),
+        arguedTerms: false,
         lastOffseason: report,
         /*
           A new season, and the slate is clean twice over.
@@ -3824,15 +3858,19 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const man = [...squad(rec.team), ...rec.team.rotation, ...rec.team.bullpen]
       .find((p) => p.id === id);
     if (!man) return false;
+    /*
+      No letter. Reported twice: "in inbox, don't notify about the players
+      you had a word with", and again — "I remember telling you to remove
+      the notification inbox when we have a word with a player."
+
+      He is right, and it is the inbox rule the whole audit turned on: you
+      were standing there when it happened, so a letter telling you about it
+      is the assistant reporting your own morning back to you. The lift is
+      real and shows where it belongs, on the man.
+    */
     const lift = haveAWord(man, coach.skills.training);
+    void lift;
     set({ wordsUsed: wordsUsed + 1, version: version + 1 });
-    get().post({
-      kind: 'season', year: get().year,
-      title: `A word with ${man.name}`,
-      body: `Coach — he is on top of it again. `
-        + `${WORDS_A_SEASON - wordsUsed - 1} of your words left this season.`,
-      link: { to: 'player', id: man.id },
-    });
     void get().saveNow();
     return true;
   },
@@ -4031,6 +4069,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // down — even mid-season, where a part-year target is still the number
       // this board will actually judge.
       boardAsk: season ? boardAskFor(season, team) : get().boardAsk,
+      arguedTerms: false,
       /*
         And the old board's letter goes with the old board. The season
         opener carries ITS OWN copy of the ask, stamped at the roll; left
@@ -5434,17 +5473,53 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (start === undefined) return;
     let guard = 0;
     const auto = !handles(get().depth, 'lineups');
+    /*
+      A week stops the moment it costs you somebody.
+
+      Reported: "if after the first game of the week one of my players got
+      injured, I want the simulation to stop and ask me to fix the lineup
+      instead of keeping going until the sim ends and then informing me."
+      He is right — the whole point of the week button is that nothing needs
+      deciding, and a man going down is exactly the thing that does. The
+      card is set for you only in casual; a coach who sets his own nine gets
+      the week back so he can set it again.
+    */
+    const mine = get().userTeam;
+    const roster = (): Player[] => {
+      const t = season.teams[mine]?.team;
+      return t ? [...t.lineup, ...t.bench, ...t.rotation, ...t.bullpen] : [];
+    };
+    const walkingWounded = (): Set<string> => {
+      const day = injuryClock(season);
+      return new Set(roster().filter((p) => !available(p, day)).map((p) => String(p.id)));
+    };
+    let hurt = walkingWounded();
+    let struck: string | null = null;
+
     while (!seasonComplete(season)
       && season.schedule[season.dayIndex]?.week === start
       && guard++ < 10) {
-      if (auto) staffSetsTheCard(season, get().userTeam);
+      if (auto) staffSetsTheCard(season, mine);
       simNextDay(season);
+      const now = walkingWounded();
+      const fresh = [...now].filter((id) => !hurt.has(id));
+      hurt = now;
+      if (fresh.length > 0 && !auto) {
+        struck = fresh[0] ?? null;
+        break;
+      }
+    }
+    if (struck !== null) {
+      const man = roster().find((p) => String(p.id) === struck);
+      if (man) set({ weekStoppedBy: man.name });
     }
     set({ version: get().version + 1 });
     get().noteSeasonNews();
     void get().saveNow();
   },
 
+  weekStoppedBy: null,
+  clearWeekStop: () => { if (get().weekStoppedBy !== null) set({ weekStoppedBy: null }); },
   seenTutorials: [],
   focusPlayer: null,
   boardAsk: null,
@@ -5453,6 +5528,41 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (boardAsk || !season) return;
     set({ boardAsk: boardAskFor(season, userTeam) });
     void get().saveNow();
+  },
+
+  arguedTerms: false,
+  argueTerms: () => {
+    const { boardAsk, lastOffseason, arguedTerms, season } = get();
+    if (!boardAsk || !season || arguedTerms) return 0;
+
+    /*
+      The case, in the only terms that can be checked: how many men who
+      would have played left over the winter. Graduations and the draft
+      both count — a side is just as gone either way — and the bar is set
+      where "most of our good players left" stops being a figure of speech.
+    */
+    const lost = (lastOffseason?.graduated.length ?? 0)
+      + (lastOffseason?.drafted.filter((d) => !d.returned).length ?? 0);
+    // Nine is a whole starting side. Six is enough to be arguing in good
+    // faith; below that the board is being asked for a favour, not a fix.
+    const HEAVY = 6;
+    set({ arguedTerms: true });
+    if (lost < HEAVY) { void get().saveNow(); return 0; }
+
+    // One win back per man beyond the bar, and never more than a fifth of
+    // the ask — a board that concedes the season is not a board.
+    const give = Math.min(lost - HEAVY + 1, Math.max(1, Math.round(boardAsk.targetWins * 0.2)));
+    const target = Math.max(1, boardAsk.targetWins - give);
+    set({
+      boardAsk: {
+        ...boardAsk,
+        targetWins: target,
+        objectives: objectivesFor(boardAsk.mandate, target),
+      },
+      version: get().version + 1,
+    });
+    void get().saveNow();
+    return give;
   },
   watch: { programs: [], jobs: [] },
   toggleProgramWatch: (abbr) => {

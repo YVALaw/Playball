@@ -19,7 +19,9 @@
 // leadership badges is not on the list — those are the room's rules, not the
 // screen's, and `appoint` enforces them whatever this page renders.
 
+import { useState } from 'react';
 import { StarIcon } from '@radix-ui/react-icons';
+import { Modal } from '../Modal.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Avatar } from '../Avatar.js';
 import { BADGES, badgesOf } from '../../engine/badges.js';
@@ -58,6 +60,9 @@ export function Captain() {
   const version = useDynasty((s) => s.version);
   const nameCaptain = useDynasty((s) => s.nameCaptain);
   const clearCaptain = useDynasty((s) => s.clearCaptain);
+  // Who is being handed the C, pending a yes. Nothing changes until it comes.
+  const [asking, setAsking] = useState<string | null>(null);
+  const [stripping, setStripping] = useState(false);
   const openPlayer = useDynasty((s) => s.openPlayer);
   void version;
 
@@ -66,6 +71,7 @@ export function Captain() {
   const men = candidates(team.team);
   const current = captainOf(team.team);
   const suggested = roomsChoice(team.team);
+  const asked = men.find((m) => String(m.id) === asking) ?? null;
 
   return (
     <main className="module-workspace">
@@ -129,7 +135,7 @@ export function Captain() {
                     className="captain-pick tap"
                     type="button"
                     disabled={isCurrent}
-                    onClick={() => nameCaptain(p.id as PlayerId)}
+                    onClick={() => setAsking(String(p.id))}
                   >{isCurrent ? 'He has it' : 'Give him the C'}</button>
                 </div>
               );
@@ -140,10 +146,35 @@ export function Captain() {
             <button
               className="secondary-command tap"
               type="button"
-              onClick={() => clearCaptain()}
+              onClick={() => setStripping(true)}
             >TAKE THE C OFF {current.name.toUpperCase()}</button>
           )}
         </>
+      )}
+
+      {asked && (
+        <Modal
+          kicker="THE ARMBAND"
+          title={`Give the C to ${asked.name}?`}
+          lines={[
+            current
+              ? `${current.name} loses it the moment he takes it.`
+              : 'The room steadies around whoever wears it.',
+          ]}
+          action="GIVE HIM THE C"
+          cancel={{ label: 'NOT YET', onClick: () => setAsking(null) }}
+          onClose={() => { nameCaptain(asked.id as PlayerId); setAsking(null); }}
+        />
+      )}
+      {stripping && current && (
+        <Modal
+          kicker="THE ARMBAND"
+          title={`Take the C off ${current.name}?`}
+          lines={['The room goes without one until you name somebody.']}
+          action="TAKE IT OFF"
+          cancel={{ label: 'LEAVE IT', onClick: () => setStripping(false) }}
+          onClose={() => { clearCaptain(); setStripping(false); }}
+        />
       )}
     </main>
   );

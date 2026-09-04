@@ -3455,3 +3455,74 @@
   font: 400 calc(11.5px * var(--ts))/1.45 var(--body); color: var(--dim);
 }
 .start-door:disabled, .start-continue:disabled { opacity: .5; }
+
+/* ---------------------------------------------------------------------------
+   The coach card stops pushing itself open.
+
+   Reported with a screenshot at the larger default text: the name and its rule
+   ran off the right edge of the panel, taking the pencil with them. A grid item
+   is `min-width: auto` by default, so the `1fr` column could not shrink below
+   the width of the name inside it — the input's own `min-width: 0` was being
+   overruled one level up. The age row gets the same treatment, and its label is
+   allowed to give way first since the stepper is the part you aim at.
+   --------------------------------------------------------------------------- */
+.career-identity { min-width: 0; }
+.career-identity > div { min-width: 0; }
+.career-name-edit { min-width: 0; gap: 8px; }
+.career-name-edit input { min-width: 0; text-overflow: ellipsis; }
+.career-name-edit svg { flex: none; }
+.career-age { min-width: 0; flex-wrap: wrap; }
+.career-age small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.career-age button { flex: none; }
+
+/* Where you stand while June's other half plays. Reported: the waiting card
+   said nothing about the record or which side of the draw you were on, and it
+   is the card you sit on longest. */
+.june-standing {
+  display: flex; align-items: baseline; justify-content: center; gap: 10px;
+  margin: 2px 0 6px; padding: 7px 12px;
+  background: var(--field); border-top: 1px solid var(--faint);
+  border-bottom: 1px solid var(--faint);
+}
+.june-standing strong {
+  font: 800 calc(26px * var(--ts))/1 var(--display);
+  color: var(--clay); font-variant-numeric: tabular-nums;
+}
+.june-standing.unbeaten strong { color: var(--win); }
+.june-standing span {
+  font: 600 calc(9.5px * var(--ts)) var(--mono); letter-spacing: .16em;
+  color: var(--dim);
+}
+
+/* The player hero grows with its own type.
+   Reported with a screenshot: on the RATINGS tab the OVR tile was cut off at
+   the top while POT still showed. The box was a fixed 218px with `overflow:
+   hidden`, and everything inside it is sized in `calc(px * var(--ts))` — so
+   raising the default text size pushed the stack past a ceiling that had not
+   moved. Height and the potential tile's offset now scale with the same
+   variable the contents do. */
+.player-hero { height: auto; min-height: calc(206px * var(--ts)); }
+.player-hero .player-pot { top: calc(68px * var(--ts)); }
+
+/* ---------------------------------------------------------------------------
+   Density, on the screens the reporter marked.
+
+   "In draft, you are leaving way too much space open there." And, for the
+   board: "reduce the size of the board text as well as the boxes with the
+   scholarship, budget etc; also reduce a bit the filter button and the space
+   between the subtabs and where the recruits appear — same thing in the class
+   screen."
+
+   The app's own spacing was drawn before the text default went up, so every
+   gap is now carrying a third more air than it was designed with. These pull
+   the marked screens back without touching the rest of the app.
+   --------------------------------------------------------------------------- */
+
+.dense-head .module-intro { padding-bottom: 8px; }
+.dense-head .module-intro h2 { font-size: calc(26px * var(--ts)); }
+.dense-head .metric-strip { margin-bottom: 9px; }
+.dense-head .metric-strip > div { padding: 8px 9px; }
+.dense-head .metric-strip strong { font-size: calc(21px * var(--ts)); }
+/* The gap between the sub-tabs and the first row they filter. */
+.dense-head .segmented { margin-bottom: 8px; }
+.dense-head .screen-title-row button { padding: 7px 9px; }

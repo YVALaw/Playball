@@ -101,6 +101,26 @@ export function Manage() {
     GRAND SLAM when three men were aboard to score ahead of him.
   */
   const [splash, setSplash] = useState<{ tick: number; text: string } | null>(null);
+  /*
+    Which side is in the field, as the PARK is showing it — which lags the
+    scoreboard by however long the last play takes to finish.
+  */
+  const [shownHalf, setShownHalf] = useState<'top' | 'bottom'>('top');
+  /*
+    Turn the sides over once the play is dead — a beat after, so the men who
+    were chasing it have walked back to their stations first. Without the
+    wait the third out repainted every shirt mid-chase, which is what "they
+    just appear all of a sudden" was.
+  */
+  // Read from the store rather than from `d`, which is only in scope past the
+  // early returns below — and a hook cannot live there.
+  const liveHalf = useDynasty((s) => s.live?.pending?.half);
+  useEffect(() => {
+    if (liveHalf === undefined || liveHalf === shownHalf) return undefined;
+    if (ball !== null) return undefined;      // a ball is still in play
+    const t = setTimeout(() => setShownHalf(liveHalf), 700);
+    return () => clearTimeout(t);
+  }, [liveHalf, shownHalf, ball]);
   const ballTick = useRef(0);
   const lastRuns = useRef(0);
   const logRef = useRef<HTMLDivElement>(null);
@@ -678,12 +698,12 @@ export function Manage() {
                 // batting side's. Top of the inning the away side bats.
                 defenceColour={meta
                   ? teamColour(season?.teams[
-                    d?.half === 'top' ? meta.home : meta.away
+                    shownHalf === 'top' ? meta.home : meta.away
                   ]?.def.abbr ?? '')
                   : undefined}
                 offenceColour={meta
                   ? teamColour(season?.teams[
-                    d?.half === 'top' ? meta.away : meta.home
+                    shownHalf === 'top' ? meta.away : meta.home
                   ]?.def.abbr ?? '')
                   : undefined}
                 positioning={positioning}

@@ -53,6 +53,7 @@ import {
 } from '../../engine/economy.js';
 import { handles } from '../../state/depth.js';
 import { FirstVisit } from '../Tutorial.js';
+import { Modal } from '../Modal.js';
 import { pct } from '../format.js';
 
 /** The record for one program, as the season carries it. */
@@ -428,6 +429,11 @@ function BoardSheet({ team }: { team: Owner }) {
   const opener = useDynasty((s) => s.seasonOpener);
   const takeSeason = useDynasty((s) => s.dismissSeasonOpener);
   const stampAsk = useDynasty((s) => s.stampBoardAsk);
+  const argueTerms = useDynasty((s) => s.argueTerms);
+  const arguedTerms = useDynasty((s) => s.arguedTerms);
+  // What the board said when it was asked to think again: the wins it came
+  // down by, or 0 for a case it did not accept.
+  const [argued, setArgued] = useState<number | null>(null);
   /*
     A board with no stamp gets one, once, instead of recomputing from the
     live roster on every render — which is how the number used to creep as
@@ -506,7 +512,34 @@ function BoardSheet({ team }: { team: Owner }) {
           <button className="primary-command tap" type="button" onClick={takeSeason}>
             TAKE THE SEASON
           </button>
+          {/*
+            Reported: "didn't see the button to refuse what they are asking
+            for, only button was take the season." You can put a case now —
+            once — and the board answers it. It concedes when the winter
+            genuinely took the side apart, which is the reporter's own
+            example, and declines when it did not.
+          */}
+          {!arguedTerms && (
+            <button
+              className="secondary-command tap"
+              type="button"
+              onClick={() => setArgued(argueTerms())}
+            >ASK THEM TO RECONSIDER</button>
+          )}
         </section>
+      )}
+      {argued !== null && (
+        <Modal
+          kicker="THE BOARD"
+          title={argued > 0 ? 'They will take less' : 'They will not move'}
+          lines={[
+            argued > 0
+              ? `You put the winter to them and they heard it. The ask comes down ${argued} win${argued === 1 ? '' : 's'}.`
+              : 'They looked at the same roster you did and saw no case in it. The number stands.',
+          ]}
+          action="UNDERSTOOD"
+          onClose={() => setArgued(null)}
+        />
       )}
       {/* The board meeting takes precedence over everything else on this tab. */}
       {review && (

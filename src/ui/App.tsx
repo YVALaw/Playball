@@ -189,7 +189,7 @@ function AppBody(
   const unread = useDynasty((s) => unreadCount(s.inbox));
   // New silverware waiting in the cabinet — the dot that replaced the
   // achievement letters.
-  const trophyDot = useDynasty((s) => s.unseenTrophies.length > 0);
+  const trophyDot = useDynasty((s) => s.unseenTrophies.length > 0 || s.unseenRecords.length > 0);
 
   const needsTeam = useDynasty((s) => s.needsTeam);
   const phase = useDynasty((s) => s.phase);
@@ -850,6 +850,7 @@ function Overlays(
       {teamCard !== null && <TeamOverlay index={teamCard} onBack={onCloseTeam} />}
       {selectedPlayer !== null && <PlayerOverlay />}
       <SeasonOpener />
+      <WeekStopped />
       <PlaybookInvite />
       {/* Above everything, because it IS the screen while it lasts. */}
       <BigMomentCard />
@@ -1059,7 +1060,7 @@ function CoachMenuButton() {
   const unread = useDynasty((s) => unreadCount(s.inbox));
   // New silverware waiting in the cabinet — the dot that replaced the
   // achievement letters.
-  const trophyDot = useDynasty((s) => s.unseenTrophies.length > 0);
+  const trophyDot = useDynasty((s) => s.unseenTrophies.length > 0 || s.unseenRecords.length > 0);
   const [open, setOpen] = useState(false);
 
   const go = (run: () => void) => { setOpen(false); run(); };
@@ -1246,6 +1247,30 @@ function SeasonOpener() {
       ]}
       action="READ THE BOARD'S TERMS"
       onClose={toBoard}
+    />
+  );
+}
+
+function WeekStopped() {
+  const who = useDynasty((s) => s.weekStoppedBy);
+  const clear = useDynasty((s) => s.clearWeekStop);
+  const go = useDynasty((s) => s.go);
+  if (who === null) return null;
+  /*
+    The week stops where it broke. Reported: "if after the first game of the
+    week one of my players got injured, I want the simulation to stop and ask
+    me to fix the lineup instead of keeping going until the sim ends and then
+    informing me."
+  */
+  return (
+    <Modal
+      kicker="THE WEEK STOPPED"
+      title={who + " is hurt"}
+      tone="clay"
+      lines={["The rest of the week is still there. Set a nine that can play it."]}
+      action="SET THE LINEUP"
+      cancel={{ label: "LATER", onClick: clear }}
+      onClose={() => { clear(); go("team", "lineup"); }}
     />
   );
 }

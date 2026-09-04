@@ -1467,10 +1467,11 @@ export function resetWeeklySpend(recruits: RecruitClass): void {
 export function ensureHoodHans(cls: RecruitClass): void {
   if (typeof process !== "undefined" && process.env?.["VITEST"]) return;
   const prospects = cls.prospects;
-  const id = ("p1hood" + cls.year) as unknown as PlayerId;
-  if (prospects.some((p) => p.id === id)) return;
+  // The donor first, because his id is what puts this world into the name.
   const donor = prospects.find((p) => p.player.type === "hitter");
   if (!donor) return;
+  const id = ("p1hood" + cls.year + "-" + String(donor.player.id)) as unknown as PlayerId;
+  if (prospects.some((p) => p.id === id)) return;
   const copy = JSON.parse(JSON.stringify(donor)) as Prospect;
   const h = copy.player as unknown as Record<string, unknown>;
   h.id = id;
@@ -1504,10 +1505,10 @@ export function ensureHoodHans(cls: RecruitClass): void {
 export function ensureWonderGuy(cls: RecruitClass): void {
   if (typeof process !== "undefined" && process.env?.["VITEST"]) return;
   const prospects = cls.prospects;
-  const id = ("p1hans" + cls.year) as unknown as PlayerId;
-  if (prospects.some((p) => p.id === id)) return;
   const donor = prospects.find((p) => p.player.type === "hitter");
   if (!donor) return;
+  const id = ("p1hans" + cls.year + "-" + String(donor.player.id)) as unknown as PlayerId;
+  if (prospects.some((p) => p.id === id)) return;
   const copy = JSON.parse(JSON.stringify(donor)) as Prospect;
   const h = copy.player as unknown as Record<string, unknown>;
   h.id = id;
