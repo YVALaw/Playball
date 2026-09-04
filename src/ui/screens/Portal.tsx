@@ -70,7 +70,10 @@ export function Portal() {
   const rec = season?.teams[userTeam];
   if (!portal || !rec) return null;
 
-  const budget = windowBudget(prestigeStars(rec.prestige));
+  // The same pool the draft already drew from and the recruiting weeks
+  // draw from next — the screen shows what is genuinely left of it.
+  const budget = windowBudget(prestigeStars(rec.prestige))
+    - (season?.draft?.spent ?? 0);
   const left = budget - portal.spent;
 
   return (

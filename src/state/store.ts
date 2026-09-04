@@ -829,6 +829,29 @@ export interface DynastyStore {
    * stand, even when the destination renders the same component.
    */
   navEpoch: number;
+  /**
+   * Trophies earned and not yet looked at. The PROGRAM tab wears a red dot
+   * while any exist; opening the cabinet clears them. Replaced the
+   * achievement letters at the reporter's ask — the cabinet is where they
+   * live, so the dot points there instead of the inbox retelling them.
+   */
+  unseenTrophies: string[];
+  clearUnseenTrophies: () => void;
+  portalArrivals: string[];
+  /**
+   * The board, before the first pitch — one modal at the top of a new
+   * season: last year's verdict, both prestige moves, the new asks and the
+   * winter's stings. Null once accepted. Transient: a reload before
+   * reading loses the ceremony, never the facts, which all live on PROGRAM.
+   */
+  seasonOpener: {
+    year: number; headline: string; message: string;
+    schoolBefore: number; schoolAfter: number;
+    coachBefore: number; coachAfter: number;
+    askSummary: string; askDetail: string; targetWins: number;
+    stings: string[];
+  } | null;
+  dismissSeasonOpener: () => void;
 
   /**
    * A man the screen you are about to land on should point at.
@@ -2060,6 +2083,15 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   navEpoch: 0,
+  /** Who arrived through the portal this window; one letter at its close. */
+  portalArrivals: [],
+  seasonOpener: null,
+  dismissSeasonOpener: () => set({ seasonOpener: null }),
+  unseenTrophies: [],
+  clearUnseenTrophies: () => {
+    if (get().unseenTrophies.length === 0) return;
+    set({ unseenTrophies: [] });
+  },
   clearFocusPlayer: () => set({ focusPlayer: null }),
   guide: null,
   startGuide: (g) => set({ guide: g }),
@@ -2214,16 +2246,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const chair = season.teams[userTeam];
     const top = mineThisWeek.find((c) => c.prospect.rank === 1);
     if (top && chair) {
-      for (const id of awardTopRecruit(
+      const won = awardTopRecruit(
         get().coach.achievements, get().year, chair.def.abbr, top.prospect.player.name,
-      )) {
-        get().post({
-          kind: 'achievement', year: get().year,
-          title: ACHIEVEMENTS[id].name.toUpperCase(),
-          body: `Coach — ${top.prospect.player.name} said yes. The number one `
-            + 'player in the country is coming HERE. I have told everyone I have ever met.',
-          link: { to: 'program', sheet: 'coach' },
-        });
+      );
+      if (won.length > 0) {
+        set({ unseenTrophies: [...get().unseenTrophies, ...won] });
       }
     }
 
@@ -2375,7 +2402,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       if (rec && !handles(get().depth, 'portal')) {
         // Your staff, out of sight. It still costs the same budget, so a
         // casual career is not quietly richer than a full one.
-        const budget = windowBudget(prestigeStars(rec.prestige));
+        const budget = windowBudget(prestigeStars(rec.prestige))
+          - (season.draft?.spent ?? 0);
         const took = staffWorksPortal(rec.team, theirs, budget);
         for (const m of took) {
           const from = season.teams[m.from];
@@ -2385,6 +2413,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         (season.portalSpend ??= {})[get().userTeam] =
           (season.portalSpend[get().userTeam] ?? 0)
           + took.reduce((a, m) => a + m.cost, 0);
+        if (took.length > 0) {
+          set({
+            portalArrivals: [
+              ...get().portalArrivals, ...took.map((m) => m.player.name),
+            ],
+          });
+        }
         set({ portal: { leaving: mine, available: [], spent: 0 } });
       } else {
         set({ portal: { leaving: mine, available: theirs, spent: 0 } });
@@ -2428,7 +2463,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           if (other.index === get().userTeam) continue;
           const going = stillOut.filter((m) => !taken.has(m.player.id) && m.from !== other.index);
           if (going.length === 0) break;
-          const budget = windowBudget(prestigeStars(other.prestige));
+          const budget = windowBudget(prestigeStars(other.prestige))
+            - (season.draft?.rivalSpend[other.index] ?? 0);
           for (const m of staffWorksPortal(other.team, going, budget)) {
             taken.add(m.player.id);
             const from = season.teams[m.from];
@@ -2441,7 +2477,27 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         }
       }
 
-      set({ portal: null });
+      /*
+        The window's one letter. Individual signings stopped writing home
+        the moment they happened; this is the whole haul in a sentence,
+        posted as the portal closes so it reads as news about a finished
+        thing rather than a running commentary.
+      */
+      const came = get().portalArrivals;
+      if (came.length > 0) {
+        const names = came.length === 1
+          ? came[0]
+          : `${came.slice(0, -1).join(', ')} and ${came[came.length - 1]}`;
+        get().post({
+          kind: 'season', year: get().year,
+          title: came.length === 1
+            ? 'One came in through the portal'
+            : `${came.length} came in through the portal`,
+          body: `Coach — ${names}. Eligible immediately, on the roster now.`,
+          link: { to: 'team', index: get().userTeam },
+        });
+      }
+      set({ portal: null, portalArrivals: [] });
     }
 
     /*
@@ -2664,16 +2720,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         const first = report.drafted[0];
         const mine = get().userTeam;
         if (first && first.round === 1 && first.team === mine && chair) {
-          for (const id of awardFirstOverall(
+          const won = awardFirstOverall(
             get().coach.achievements, year, chair.def.abbr, first.name,
-          )) {
-            get().post({
-              kind: 'achievement', year,
-              title: ACHIEVEMENTS[id].name.toUpperCase(),
-              body: `Coach — ${first.name} went first overall last night. First. `
-                + 'Overall. Nobody in the country got taken ahead of one of ours.',
-              link: { to: 'program', sheet: 'coach' },
-            });
+          );
+          if (won.length > 0) {
+            set({ unseenTrophies: [...get().unseenTrophies, ...won] });
           }
         }
         // The "N of your men drafted" card went in the 15.5 noise cut: it
@@ -3070,14 +3121,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       version: get().version + 1,
     });
 
-    // Filed after the state is set, so nothing here can be lost to the write
-    // above it clobbering an inbox that grew while it was being assembled.
-    get().post({
-      kind: 'board', year,
-      title: BOARD_HEADLINE[review.verdict],
-      body: review.message,
-      link: { to: 'program', sheet: 'board' },
-    });
+    // The verdict letter retired at the reporter's ask: the board's word is
+    // now the season opener the new year begins with — reviewed and
+    // accepted, beside the NEW asks — rather than a card in the pile. The
+    // prestige-hit letter below stays: a penalty deserves its own paper.
     if (review.prestigePenalty > 0) {
       get().post({
         kind: 'board', year,
@@ -3088,16 +3135,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           + `name, on top of the season itself. We go again.`,
       });
     }
-    for (const id of earned) {
-      const spec = ACHIEVEMENTS[id];
-      const row = coach.achievements[id];
-      get().post({
-        kind: 'achievement', year,
-        title: spec.name.toUpperCase(),
-        body: row?.detail ? `${spec.note} ${capitalise(row.detail)}.` : spec.note,
-        // The cabinet, which is where the thing he just earned is kept.
-        link: { to: 'program', sheet: 'coach' },
-      });
+    /*
+      Achievements leave the inbox for a red dot on the door — the
+      reporter's ask: "instead of getting them in the inbox, add the red
+      dot where we need to go and see it." They live in the cabinet on
+      PROGRAM, so the PROGRAM tab wears the dot until the cabinet is read.
+    */
+    if (earned.length > 0) {
+      set({ unseenTrophies: [...get().unseenTrophies, ...earned] });
     }
     postCarousel(get(), year, me.conference, rivals.moves);
 
@@ -3557,24 +3602,45 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       still underneath it. Quiet winters write no letter at all.
     */
     {
-      const gone = report.drafted.filter((d) => !d.returned);
+      /*
+        Only the surprises make the opener — refined from the phone: "don't
+        add the players that left in the draft or graduated; just if a
+        recruit ends up not coming to the team, and the board mandates."
+        The draft was its own screen and its own night; a signed kid
+        silently never arriving is the one roster fact nothing else showed.
+      */
       const lines: string[] = [];
       for (const lost of filled.poached) {
         lines.push(`${lost.name} (${lost.pos}) signed pro out of high school — he never arrives.`);
       }
-      for (const d of gone.slice(0, 4)) {
-        lines.push(`${d.name} went in round ${d.round ?? '?'} of the draft.`);
-      }
-      if (gone.length > 4) lines.push(`…and ${gone.length - 4} more to the draft.`);
-      if (lines.length > 0) {
-        get().post({
-          kind: 'board', year: get().year,
-          title: 'Before first pitch — the winter, in one page',
-          body: `Coach — read this one before you fill out a card. `
-            + lines.join(' ')
-            + ` ${report.recruits} new men are on the roster. Everything `
-            + 'else from the winter is in the letters below this one.',
-          link: { to: 'team', index: get().userTeam },
+      /*
+        The season opener — the reporter's design, from the phone: "the
+        board is delighted notification could be something we need to
+        accept and review at the beginning of the year, with the new board
+        expectations also showing there," and "the winter letter should
+        open like a modal once the offseason ends." One modal at the top of
+        the new season: last year's verdict in the board's own words, what
+        it did to both names, the NEW asks, and the winter's stings. The
+        boardAsk read here is the fresh stamp — the roll set it above,
+        before this runs.
+      */
+      const review = get().lastReview;
+      const ask = get().boardAsk;
+      if (review && ask) {
+        set({
+          seasonOpener: {
+            year: get().year,
+            headline: BOARD_HEADLINE[review.verdict],
+            message: review.message,
+            schoolBefore: review.prestigeBefore,
+            schoolAfter: review.prestigeAfter,
+            coachBefore: review.coachPrestigeBefore,
+            coachAfter: review.coachPrestigeAfter,
+            askSummary: ask.summary,
+            askDetail: ask.detail,
+            targetWins: ask.targetWins,
+            stings: lines,
+          },
         });
       }
     }
@@ -3611,7 +3677,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const man = portal.leaving.find((m) => m.player.id === id);
     if (!man) return false;
     const stars = prestigeStars(rec.prestige);
-    const left = windowBudget(stars) - portal.spent;
+    // One pool, three claims: June's draft spending comes off the portal's
+    // window exactly as both come off the recruiting weeks.
+    const left = windowBudget(stars) - (season.draft?.spent ?? 0) - portal.spent;
     const { spent, stayed } = portalCase(man, offer, left);
     (season.portalSpend ??= {})[userTeam] =
       (season.portalSpend[userTeam] ?? 0) + spent;
@@ -3642,7 +3710,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const man = portal.available.find((m) => m.player.id === id);
     if (!man) return false;
     const stars = prestigeStars(rec.prestige);
-    if (portal.spent + man.cost > windowBudget(stars)) return false;
+    if ((season.draft?.spent ?? 0) + portal.spent + man.cost > windowBudget(stars)) {
+      return false;
+    }
 
     // Off his old roster and onto yours, in that order -- a man on two rosters
     // is the kind of thing that only shows up as a duplicated name in June.
@@ -3658,13 +3728,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         spent: portal.spent + man.cost,
         available: portal.available.filter((m) => m.player.id !== id),
       },
+      // One letter when the window closes, not one per man — the
+      // reporter's ask: "I brought 3 players from the portal, give me just
+      // one notification once the portal is over."
+      portalArrivals: [...get().portalArrivals, man.player.name],
       version: version + 1,
-    });
-    get().post({
-      kind: 'season', year: get().year,
-      title: `${man.player.name} is coming`,
-      body: `From ${man.fromName}. He is eligible immediately.`,
-      link: { to: 'player', id: man.player.id },
     });
     void get().saveNow();
     return true;
@@ -4599,10 +4667,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         year, kind: myBracket.kind, label, advanced,
         ...(placing > 0 ? { placing } : {}),
       },
-      inbox: push(get().inbox, newItem({
+      // Only the ending is worth a letter. STILL ALIVE was cut by the
+      // reporter: surviving a stage already has its modal, and a letter
+      // restating it was one more thing between him and the mail that
+      // matters.
+      inbox: advanced ? get().inbox : push(get().inbox, newItem({
         year, kind: 'season',
         key: `knockout-${myBracket.kind}`,
-        title: advanced ? 'Still alive' : 'The season is over',
+        title: 'The season is over',
         body,
       })),
     });

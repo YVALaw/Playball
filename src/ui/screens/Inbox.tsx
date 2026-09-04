@@ -19,7 +19,7 @@
 // cards with no arrow, so which is which is visible before it is tapped rather
 // than after.
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ChevronRightIcon } from '@radix-ui/react-icons';
 import { useDynasty } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
@@ -85,6 +85,8 @@ export function Inbox() {
   const readInbox = useDynasty((s) => s.readInbox);
   const assistant = useDynasty((s) => assistantFor(s.coach.name));
   const open = useOpen();
+  // The letter being read, if any. The list is envelopes; this is the paper.
+  const [reading, setReading] = useState<InboxItem | null>(null);
 
   /*
     Read on arrival, not on the way out.
@@ -143,11 +145,18 @@ export function Inbox() {
             </div>
             <section className="message-list">
             {items.map((item) => (
-              <Card key={item.id} item={item} onOpen={open} />
+              <Card key={item.id} item={item} onOpen={setReading} />
             ))}
             </section>
           </div>
         ))}
+        {reading && (
+          <OpenLetter
+            item={reading}
+            onGo={open}
+            onClose={() => setReading(null)}
+          />
+        )}
       </div>
     </FixedHeader>
   );
@@ -161,7 +170,57 @@ export function Inbox() {
  * in what happens after you press it. The arrow says the same thing again for
  * anybody who is skimming.
  */
-function Card({ item, onOpen }: { item: InboxItem; onOpen: (l: InboxLink) => void }) {
+/** What the button inside a letter says, per destination. */
+function ctaLabel(link: InboxLink): string {
+  switch (link.to) {
+    case 'player': return 'OPEN HIS CARD';
+    case 'team': return 'SEE THE TEAM';
+    case 'book': return 'OPEN THE RECORD BOOK';
+    case 'schedule': return 'THE SCHEDULE';
+    case 'program':
+      return link.sheet === 'board' ? 'SEE THE BOARD'
+        : link.sheet === 'hall' ? 'THE HALL OF FAME' : 'THE CABINET';
+  }
+}
+
+/**
+ * One letter, opened — the reporter's ask: "these inbox messages should
+ * open looking like a real email, and inside there a button to take us
+ * wherever the email is talking about." The list rows are envelopes now;
+ * this is the paper inside, with the one action at the bottom.
+ */
+function OpenLetter(
+  { item, onGo, onClose }:
+  { item: InboxItem; onGo: (l: InboxLink) => void; onClose: () => void },
+) {
+  return (
+    <div className="mail-scrim" onClick={onClose} role="dialog" aria-modal="true"
+      aria-label={item.title}>
+      <article className="mail-open card-in" onClick={(e) => e.stopPropagation()}>
+        <header>
+          <small>{INBOX_LABEL[item.kind]} · {item.year}</small>
+          <h2>{item.title}</h2>
+          <span>From the desk of your assistant</span>
+        </header>
+        <p>{item.body !== '' ? item.body : 'No more than the headline, Coach.'}</p>
+        <footer>
+          {item.link && (
+            <button
+              className="primary-command tap"
+              type="button"
+              onClick={() => { const l = item.link; onClose(); if (l) onGo(l); }}
+            >{ctaLabel(item.link)}</button>
+          )}
+          <button className="mail-close tap" type="button" onClick={onClose}>
+            BACK TO THE MAIL
+          </button>
+        </footer>
+      </article>
+    </div>
+  );
+}
+
+function Card({ item, onOpen }: { item: InboxItem; onOpen: (item: InboxItem) => void }) {
   /*
     The proposal's message list. A dot on the left that says whether it is new,
     the kind it is in green over the headline, the body under it, and the time
@@ -187,23 +246,26 @@ function Card({ item, onOpen }: { item: InboxItem; onOpen: (l: InboxLink) => voi
       <span>
         <small>{INBOX_LABEL[item.kind]}</small>
         <strong>{item.title}</strong>
-        {item.body !== '' && <p>{item.body}</p>}
+        {item.body !== '' && (
+          <p style={{
+            display: '-webkit-box', WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical', overflow: 'hidden',
+          }}>{item.body}</p>
+        )}
       </span>
       {item.link ? <ChevronRightIcon /> : <time>{item.read ? '' : 'NEW'}</time>}
     </>
   );
 
   const tone = { borderLeft: `3px solid ${KIND_TONE[item.kind]}` };
-  if (!item.link) {
-    return <div className={item.read ? 'read' : ''} style={tone}>{inner}</div>;
-  }
-  const link = item.link;
+  // Every row opens its letter now — link or not — so the list reads as
+  // envelopes and the letter carries the button.
   return (
     <button
       className={`tap${item.read ? ' read' : ''}`}
       style={tone}
       type="button"
-      onClick={() => onOpen(link)}
+      onClick={() => onOpen(item)}
     >{inner}</button>
   );
 }

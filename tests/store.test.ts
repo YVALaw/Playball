@@ -135,19 +135,25 @@ describe('the world reports itself', () => {
   // carousel nobody is told about, or a board verdict that reaches a screen and
   // nowhere else. These check that settling a season actually files something.
 
-  it('files the board\'s verdict where it can be read later', () => {
+  it('files the board\'s verdict where it can be read later', async () => {
     useDynasty.setState({ inbox: [] });
     useDynasty.getState().start(4242, 0);
     expect(useDynasty.getState().inbox).toHaveLength(0);
 
     useDynasty.getState().settleSeason();
-    const inbox = useDynasty.getState().inbox;
-    expect(inbox.some((i) => i.kind === 'board')).toBe(true);
-    expect(unreadCount(inbox)).toBeGreaterThan(0);
-
-    // And opening the screen is the only thing that clears the badge.
-    useDynasty.getState().readInbox();
-    expect(unreadCount(useDynasty.getState().inbox)).toBe(0);
+    // The verdict LETTER retired at the reporter's ask — the verdict is
+    // filed on lastReview and, once the year rolls, presented as the
+    // season opener the new year begins with.
+    expect(useDynasty.getState().lastReview?.verdict).toBeDefined();
+    await useDynasty.getState().rollYear();
+    const opener = useDynasty.getState().seasonOpener;
+    expect(opener).not.toBeNull();
+    expect(opener?.headline.startsWith('The board')).toBe(true);
+    expect(opener?.targetWins ?? 0).toBeGreaterThan(0);
+    // TAKE THE SEASON is the acceptance, and it is the only thing that
+    // clears the modal.
+    useDynasty.getState().dismissSeasonOpener();
+    expect(useDynasty.getState().seasonOpener).toBeNull();
   });
 
   it('runs the other ninety five careers at the same meeting', () => {
@@ -204,6 +210,12 @@ describe('the world reports itself', () => {
   it('carries the inbox and the cabinet onto the save record', () => {
     useDynasty.getState().start(4242, 0);
     useDynasty.getState().settleSeason();
+    // The verdict no longer writes a letter; the record needs one, so post
+    // one the way the season does.
+    useDynasty.getState().post({
+      kind: 'season', year: useDynasty.getState().year,
+      title: 'A letter for the record', body: 'Coach — this one is for the test.',
+    });
     const s = useDynasty.getState();
     const file = buildSaveFile(
       'slot', 'Dynasty', s.season as SeasonState, s.year, s.userTeam,
@@ -1014,7 +1026,9 @@ describe('the inbox during a season', () => {
     useDynasty.getState().settleSeason();
 
     const inbox = useDynasty.getState().inbox;
-    const verdict = inbox.find((i) => i.kind === 'board' && i.id.endsWith('halfway') === false);
+    // The verdict letter retired; the halfway card is the season's board
+    // letter now, and it points the same place the verdict used to.
+    const verdict = inbox.find((i) => i.kind === 'board');
     expect(verdict?.link).toEqual({ to: 'program', sheet: 'board' });
 
     // And the destinations survive a reload, which is the only place a link can

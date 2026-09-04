@@ -3263,3 +3263,64 @@
 @media (prefers-reduced-motion: reduce) {
   .park-loading i { animation: none; opacity: .7; }
 }
+
+/* ---------------------------------------------------------------------------
+   A letter, opened. The inbox rows are envelopes; this is the paper — asked
+   for as "looking like a real email, and inside there a button to take us
+   wherever the email is talking about."
+   --------------------------------------------------------------------------- */
+.mail-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 44;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(var(--scrim-rgb), .55);
+}
+.mail-open {
+  width: 100%;
+  max-width: 340px;
+  max-height: 82%;
+  overflow-y: auto;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-top: 4px solid var(--clay);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .4);
+  padding: 16px 16px 14px;
+}
+.mail-open header small {
+  font: 700 calc(8.5px * var(--ts)) var(--mono);
+  letter-spacing: .16em;
+  color: var(--clay);
+}
+.mail-open header h2 {
+  margin: 6px 0 2px;
+  font: 800 calc(20px * var(--ts))/1.05 var(--display);
+  text-transform: uppercase;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.mail-open header span {
+  font: 400 italic calc(9px * var(--ts)) var(--body);
+  color: var(--dim);
+}
+.mail-open > p {
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: calc(10px * var(--ts));
+  line-height: 1.6;
+  color: var(--ink);
+}
+.mail-open footer { display: grid; gap: 4px; margin-top: 14px; }
+.mail-open footer .primary-command { margin-top: 0; }
+.mail-close {
+  min-height: 40px;
+  border: 0;
+  background: transparent;
+  color: var(--dim);
+  font: 700 calc(9px * var(--ts)) var(--mono);
+  letter-spacing: .12em;
+}
+.mail-close:hover { color: var(--clay); }

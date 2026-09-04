@@ -11,6 +11,7 @@
 // design/Roster Tabletop/ is the design of record.
 
 import { useEffect, useRef, useState } from 'react';
+import { Modal } from './Modal.js';
 import { uniquePlayers } from '../engine/types.js';
 import { applyTeamAccent } from './accent.js';
 import { audioReady, preloadSfx, unlockAudio } from './sound.js';
@@ -185,6 +186,9 @@ function AppBody(
   // Selected as a number rather than as the list, so a card being marked read
   // does not re-render the whole chrome.
   const unread = useDynasty((s) => unreadCount(s.inbox));
+  // New silverware waiting in the cabinet — the dot that replaced the
+  // achievement letters.
+  const trophyDot = useDynasty((s) => s.unseenTrophies.length > 0);
 
   const needsTeam = useDynasty((s) => s.needsTeam);
   const phase = useDynasty((s) => s.phase);
@@ -492,7 +496,8 @@ function AppBody(
               label: t.id === 'home' ? 'June' : titleCase(t.label),
               meta: t.id === 'home' ? 'THE BRACKET' : '',
               icon: TAB_ICON[t.id],
-              alert: t.id === 'home' && unread > 0,
+              alert: (t.id === 'home' && unread > 0)
+                || (t.id === 'program' && trophyDot),
             }))}
             active={tab}
             onSelect={(id) => go(id as Tab)}
@@ -768,6 +773,7 @@ function Overlays(
       {overlay !== null && <TableOverlay />}
       {teamCard !== null && <TeamOverlay index={teamCard} onBack={onCloseTeam} />}
       {selectedPlayer !== null && <PlayerOverlay />}
+      <SeasonOpener />
       {/* Above everything, because it IS the screen while it lasts. */}
       <BigMomentCard />
     </>
@@ -974,6 +980,9 @@ function CoachMenuButton() {
   // Read here rather than passed down: the menu is rendered from three
   // different frames and none of them should have to know the inbox exists.
   const unread = useDynasty((s) => unreadCount(s.inbox));
+  // New silverware waiting in the cabinet — the dot that replaced the
+  // achievement letters.
+  const trophyDot = useDynasty((s) => s.unseenTrophies.length > 0);
   const [open, setOpen] = useState(false);
 
   const go = (run: () => void) => { setOpen(false); run(); };
@@ -1055,6 +1064,40 @@ function CoachMenuButton() {
  * designs": it saved forty pixels and cost the player the one control in the
  * app that always looks the same wherever it appears.
  */
+/**
+ * The board, before the first pitch — the reporter's design, whole: the
+ * verdict he used to get as a letter, reviewed and ACCEPTED at the top of
+ * the new season, with the new asks and the winter's stings beside it.
+ * Renders over the first screen of the year and nothing else; TAKE THE
+ * SEASON is the acceptance.
+ */
+function SeasonOpener() {
+  const opener = useDynasty((s) => s.seasonOpener);
+  const dismiss = useDynasty((s) => s.dismissSeasonOpener);
+  const live = useDynasty((s) => s.live);
+  const phase = useDynasty((s) => s.phase);
+  if (!opener || live || phase !== null) return null;
+  const move = (before: number, after: number): string => {
+    const d = after - before;
+    return d === 0 ? `held at ${after}` : d > 0 ? `up ${d} to ${after}` : `down ${-d} to ${after}`;
+  };
+  return (
+    <Modal
+      kicker={`${opener.year} · THE BOARD, BEFORE FIRST PITCH`}
+      title={opener.headline.replace(/^The board is /, '').replace(/^The board /, '')}
+      tone={opener.schoolAfter >= opener.schoolBefore ? 'win' : 'clay'}
+      lines={[
+        opener.message,
+        `The program's name ${move(opener.schoolBefore, opener.schoolAfter)}; yours ${move(opener.coachBefore, opener.coachAfter)}.`,
+        `This year they want ${opener.targetWins} wins. ${opener.askDetail}`,
+        ...opener.stings,
+      ]}
+      action="TAKE THE SEASON"
+      onClose={dismiss}
+    />
+  );
+}
+
 function PlayerOverlay() {
   const selectedPlayer = useDynasty((s) => s.selectedPlayer);
   const close = useDynasty((s) => s.closePlayer);

@@ -21,7 +21,7 @@
 // one "reputation" bar would hide the only interesting case — a good coach doing
 // well at a bad job.
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ACHIEVEMENTS, ACHIEVEMENT_IDS } from '../../engine/achievements.js';
 import {
   useDynasty, useUserTeam, useConferenceTable, type SeasonRecord,
@@ -87,6 +87,12 @@ export function Program() {
   // about an achievement opens the cabinet. A component that owns its own tab
   // cannot be told which tab to be on.
   const sheet = useDynasty((s) => s.programSheet);
+  const clearUnseenTrophies = useDynasty((s) => s.clearUnseenTrophies);
+  // The cabinet read clears the door's dot — same contract as the inbox
+  // and its envelope.
+  useEffect(() => {
+    if (sheet === 'coach') clearUnseenTrophies();
+  }, [sheet, clearUnseenTrophies]);
   const watch = useDynasty((s) => s.watch);
   const setSheet = useDynasty((s) => s.setProgramSheet);
   void version;
