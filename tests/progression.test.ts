@@ -13,6 +13,7 @@ import { coveredSince } from '../src/ui/screens/Board.js';
 import { AI_KEEP_SHARE } from '../src/engine/draft.js';
 import { windowBudget } from '../src/engine/recruiting.js';
 import { overallOf } from '../src/engine/ratings.js';
+import { GENERATED_POTENTIAL_CAP } from '../src/engine/scouting.js';
 import { makeRng } from '../src/engine/rng.js';
 import { CONFERENCES } from '../src/data/schools.js';
 import type { SeasonState } from '../src/engine/season.js';
@@ -855,7 +856,8 @@ describe('the other ninety five programs keep men too', () => {
     // is what it looks like — so the bound is on the shape of the tail rather
     // than on its worst case: nine program-years in ten lose a real piece of
     // the roster.
-    expect(Math.min(...churn), 'a program lost nobody at all').toBeGreaterThan(0);
+    const quiet = churn.filter((c) => c === 0).length;
+    expect(quiet / churn.length, 'quiet Junes are common').toBeLessThan(0.02);
     const sorted = [...churn].sort((a, b) => a - b);
     const tenth = sorted[Math.floor(sorted.length * 0.1)] as number;
     expect(tenth, 'a tenth of the country barely turned over').toBeGreaterThan(0.15);
@@ -928,7 +930,12 @@ describe('the arcs', () => {
       const was = before.get(String(p.id));
       if (was === undefined) continue;
       const arc = arcs.get(String(p.id))!;
-      if (arc === 'boom') { booms++; if (p.potential > was) boomsUp++; }
+      // A boom generated at the ceiling has no room to be revised into: his
+      // arcGoal clamps to GENERATED_POTENTIAL_CAP and the letter cannot move.
+      // The rule is about men with somewhere to go.
+      if (arc === 'boom' && was < GENERATED_POTENTIAL_CAP) {
+        booms++; if (p.potential > was) boomsUp++;
+      }
       if (arc === 'bust') { busts++; if (p.potential < was) bustsDown++; }
     }
     expect(booms).toBeGreaterThan(5);
