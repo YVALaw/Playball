@@ -2506,3 +2506,46 @@ reporter tests all three stages next; the final audit rides near ship.
   as a container to createPortal if that element also sets children" — fires
   once on a dev load of a save with a benched game; no visible breakage, and
   StrictMode-only. Worth a look when a portal next changes hands.
+
+## W. The September 3 phone report — triaged into stages
+
+*(The full sort lives in `12-test-triage-september.md`; this is the
+decisions ledger.)*
+
+The reporter's third phone pass, taken as planning: "not coding yet …
+sort between stages or create stages." Every ambiguous claim was checked
+against source before sorting, and four engine questions got answers:
+
+- **Captains** damp the room's mood swings to 60% of raw (`morale.ts:142`)
+  — real, single-channel. Decision: no second channel for now; stage 19's
+  guided tutorial teaches it in simple words at the moment of choosing.
+- **Strategy is live** — alignment feeds every ball in play, running every
+  advance. Decision: stage 22 builds playbooks on top, with a
+  counter-play layer (bunt-and-run club → infield in, hold runners; power
+  club → space out).
+- **The budget "conversion" is one pool, two denominations** — draft and
+  portal print the window (~200), recruiting prints the remainder over
+  three weeks (~56). Decision: no prose — a small "168 / 3 weeks" line
+  under the big weekly number. Batch P.
+- **Two-way rotation nights are unhandled** — nothing reconciles a man in
+  the nine at LF who is also the night's starter, and his profile hides
+  the arm half. Decision: stage 21; candidate design a per-night toggle.
+
+**New bookings:** Batch P (verified bugs: the grand-slam bar counts the
+batter's own crossing; no-replay on mound visits; postseason vs-TBD card,
+route-not-result finals copy, winner's banner; fielder contrast strokes;
+inbox read-state repro; lineup swap animation; layout-never-moves cuts on
+Captain and Lineup; two-way tag off the list rows; strategy line into the
+coach info list) · **Stage 20** the opener reorganized (sections, a
+rotating pool of six-plus headlines, plain prestige lines, the board
+button; 20b books negotiating the terms) · **Stage 21** the two-way,
+whole · **Stage 22** playbooks, plus the staff/facility effect audit ·
+**Stage 23** the lineup gate (blocking modal, no leaving with an open
+spot, player cards allowed).
+
+**Order re-affirmed:** 17–19 run dead last, after 23 — store, phone, ship
+when the game is near final. P → 20 → 21 → 22 → 23 → 17 → 18 → 19.
+
+**Testing surface:** the reporter moves from the iPhone to an Android
+emulator — stage 18's emulator-answerable questions get answered in play
+rather than waiting on hardware.

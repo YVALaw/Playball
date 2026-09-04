@@ -7,7 +7,7 @@ Mobile first, shipping to Android.
 
 ## Status
 
-**Fourteen of nineteen stages shipped, through September 1 2026.** Ninety-six
+**Sixteen of twenty-three stages shipped, through September 3 2026.** Ninety-six
 programs in eight conferences of twelve, a forty-five game regular season, and
 the whole loop runs: pick a job through an interview that shapes who rings you,
 play or simulate a season, manage games at bat by at bat, go through the
@@ -29,23 +29,26 @@ the pecking order genuinely moves: measured over thirty seasons, six of the top
 twelve programmes turn over.
 
 What is missing is **the phone**. No Capacitor project, no Android build, no
-keystore, no store listing, no onboarding. It is deliberately last — nothing
-else waits on it. Before it: the ballpark's look (stage 15) and a pass over
-everything the game *says* (stage 15.5), which is where the recruiting report
-becomes a code worth learning.
+keystore, no store listing, no onboarding. It is deliberately dead last —
+nothing else waits on it, and testing runs on an Android emulator in the
+meantime. Before it, from the September phone report
+(`docs/12-test-triage-september.md`): a verified-bug polish batch, the
+season opener reorganized, the two-way player made whole, playbooks that
+turn scouting into leverage, and the lineup gate — then the store, the
+phone, and ship.
 
-The engine is calibrated multi-seed against sourced NCAA D1 rates. **1054 tests
-across 45 files**, including determinism goldens, calibration as a regression
+The engine is calibrated multi-seed against sourced NCAA D1 rates. **1083 tests
+across 47 files**, including determinism goldens, calibration as a regression
 test, and a concurrency suite pinning the store's double-press guards.
 
 | Not built yet | |
 |---|---|
 | Capacitor / Android | hardware back button, signed build. Safe-area insets are done |
-| Onboarding | the game now has scouting bands, badges, a record book and an economy to explain |
-| The ballpark's *look* | crowd, stands, lighting. The geometry is done |
+| Onboarding | the guided tutorial — a titled card, then a glow path through doing it (stage 19) |
+| The two-way, whole | rotation-night duties, the role line, both stat halves (stage 21) |
+| Playbooks | per-opponent counter-play minted by scouting (stage 22) |
 | REPLAY | the events are stored and take no draws; it can land any time |
-| Two-way players | with the DH-decline case — stage 16 |
-| The store | the S+ player and Play Billing |
+| The store | the S+ player and Play Billing (stage 17, dead last with 18–19) |
 
 **Two test aids must come out before release** (both marked in code): the
 loaded Pascagoula Tech roster, and Hans Hood — a 20-overall, 99-potential third

@@ -1132,9 +1132,77 @@ profile, filled in once the desk has scouted them.
 *Park effects, camera easing, instanced markers and the 2D/3D toggle moved out
 of here into stage 15, where the rest of the park work lives.*
 
+## Batch P · The September polish pass
+
+**Size:** one session · **All verified against source, no open design
+questions** · Sorted September 3 from the third phone report; the full
+list with the code findings lives in `12-test-triage-september.md`.
+
+The grand-slam bar (the batter's own crossing is being counted) · layout
+never moves (Captain's pushed-in note cut, Lineup's helper gets reserved
+space) · fielder/runner contrast strokes against the grass · no replay
+animation on mound visits, pinch hits or pitching changes · the inbox
+read-state repro · the postseason waiting room (a vs-TBD card that stays
+put, finals copy that reads the route not the last result, the winner's
+banner instead of "this stage is settled") · budget labels in one form
+with the small "168 / 3 weeks" line · the two-way tag off recruit list
+rows · the promised lineup swap animation · standing strategy as a line
+in the coach info list.
+
+## Stage 20 · The opener, reorganized
+
+**Size:** small–medium · **20b booked, not built**
+
+The season-opener modal, structured: verdict · what moved · the new
+terms · the winter's stings, each under its own heading. A rotating pool
+of six or seven headlines in the game's register so seasons open
+differently ("delighted" leaves the title slot). Prestige moves in plain
+form — "School prestige 47 → 57. Yours 31 → 34." And the action opens
+the program board to read and accept the new terms.
+
+**20b — the board across the table.** Negotiating the milestones: a
+gutted roster after a title year should be arguable back to sane asks.
+Needs its own design door — what leverage is, what asking costs.
+
+## Stage 21 · The two-way, whole
+
+**Size:** small–medium · **Starts with an engine trace**
+
+Nothing today reconciles a man in the nine at LF who is also the night's
+starter — trace what the sim actually does, then the design call. The
+candidate (the reporter's word): a **toggle** for colliding duties on his
+rotation nights. Plus the card: role reads "MID SP · LF", the stats view
+carries both halves (the leaderboard split exists — carry it over), and
+the lineup says which nights he pitches before it surprises anybody.
+
+## Stage 22 · Playbooks — scouting becomes leverage
+
+**Size:** medium–large · **The reporter's design seed, September 3**
+
+The standing strategy becomes the default playbook; scouting a team
+mints a per-opponent playbook that can be applied for the series. Its
+counter-play layer is the point: a club that bunts and runs → infield
+in, hold runners; a power club → space the defence out. The report is
+the input; the playbook is what you do about it. Strategy tab
+restructures around this. Folded in: the audit of what staff seats and
+facility rungs really do in the engine (strengthen where thin), and the
+captain's-second-channel decision (currently: stay single-channel,
+taught in stage 19).
+
+## Stage 23 · The lineup gate
+
+**Size:** small
+
+The coverage warning becomes a blocking modal wherever you are on the
+lineup screen; leaving is refused while the diamond is short, and the
+one allowed excursion is a player card via the second-tap grammar, which
+returns in place.
+
 ## Stage 17 · The store
 
-**Size:** medium–large · **Needs:** the Console record
+**Size:** medium–large · **Needs:** the Console record · **Runs after
+stage 23** — the September 3 re-affirmation: store, phone and ship are
+the last three stages, taken when the game is near final.
 
 The S+ player himself, and Play Billing with purchase, restore, receipt
 validation and the offline case.
@@ -1146,16 +1214,20 @@ in progress. Its own design pass before any billing code.
 
 ## Stage 18 · The phone
 
-**Size:** small–medium · **Deferred — no device yet**
+**Size:** small–medium · **Deferred — no device yet** · **Runs after 23**
 
 Capacitor, an APK on real hardware, the frame-rate measurement, IndexedDB
 across a force-quit, safe-area insets, the hardware back button. Everything
-except the frame rate can be answered on an emulator, so the emulator pass can
-be pulled forward alone if the wait runs long.
+except the frame rate can be answered on an emulator — and from September 3
+the reporter **tests on an Android emulator day to day**, so those questions
+get answered in play rather than waiting for this stage.
 
 ## Stage 19 · Ship
 
-**Size:** medium
+**Size:** medium · **Dead last, after 18** · **Grew September 3:** the
+guided tutorial teaches the captain in simple words at the moment of
+choosing one — "he keeps a bad week from becoming a bad month" — since
+the Captain screen's own explanation was cut in batch P.
 
 Onboarding for the first ten minutes · accessibility (focus states; text
 scaling now has a home in stage 2's settings sheet) · **remove the test aids**
@@ -1215,6 +1287,12 @@ because silence is the loudest thing about the game right now.
 Stage 6's assistant coaches touch stage 10's money if they are paid for, which
 is the argument for paying them in prestige instead. Decide that at stage 6's
 door, not stage 10's.
+
+**The tail, re-affirmed September 3.** Stages 17–19 run dead last, after the
+September stages: **P → 20 → 21 → 22 → 23 → 17 → 18 → 19.** Store, phone and
+ship happen when the game is in near-final condition — the original plan,
+restored after the new stages were booked. 20–23 are ordered by how loudly
+the phone complained.
 
 ## What did not make the list
 

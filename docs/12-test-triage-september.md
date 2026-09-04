@@ -134,9 +134,39 @@ The coverage warning becomes a blocking modal, not a top-of-screen strip:
 - Sits beside stage 19's guided tutorial in spirit: the game stops you
   before the mistake, once, instead of narrating always.
 
-## Standing bookings, unchanged
+## The reporter's calls — September 3, closing the loop
 
-Stage 17 (the store design door), stage 18 (phone/Capacitor), stage 19
-(guided tutorial, keeping the title card). Batch P slots before or
-between them at the reporter's call; 20–23 are new bookings in the order
-above, which is the order of how loudly the phone complained.
+Read back and answered the same evening:
+
+- **Captain**: no second engine channel for now. The guided tutorial
+  (stage 19) teaches what the C does in simple words at the moment of
+  choosing one — "he keeps a bad week from becoming a bad month" — and
+  the Captain screen's pushed-in explanation dies in batch P.
+- **Playbooks grow a counter-play layer** (stage 22): the per-team
+  playbook is not just their tendencies read back — it recommends and
+  applies counters. A club that bunts and runs → play the infield in,
+  hold runners; a power club → space the defence out and pitch to
+  contact. The scouting report becomes the *input*; the playbook is what
+  you do about it.
+- **Budget**: no explanation paragraphs. The recruiting board's big
+  weekly number carries one small line beneath it — "168 / 3 weeks" —
+  and that is the entire teaching. Batch P.
+- **Two-way rotation nights**: candidate design is a **toggle** — the
+  reporter's word — likely per-night: his card offers "bat tonight /
+  rest the bat" (or LF vs mound priority) when duties collide. Settled
+  properly at stage 21's door, after the engine trace says what happens
+  today.
+
+## The order — re-affirmed September 3
+
+Stages 17–19 move to **dead last**, after stage 23 — the original plan
+restored: store, phone and ship happen when the game is in near-final
+condition. Execution order from here:
+
+**Batch P → 20 → 21 → 22 → 23 → 17 (store) → 18 (phone) → 19 (ship).**
+
+And the testing surface changes: **the reporter tests on an Android
+emulator from now on**, not the iPhone — the game meets its intended
+system early. Stage 18's emulator-answerable questions (IndexedDB across
+a force-quit, safe-area insets, the hardware back button) stop waiting
+for hardware and get answered as they come up in play.

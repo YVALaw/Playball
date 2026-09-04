@@ -1,6 +1,7 @@
 # Roadmap
 
-**Last updated:** September 1, 2026 · stages 1–14 shipped
+**Last updated:** September 3, 2026 · stages 1–16 shipped · stages 20–23
+booked from the September phone report (`12-test-triage-september.md`)
 **Supersedes:** v3, which by the end was wrong about most of what it claimed
 **Companion docs:** `05-systems-reference.md` for what the game does today,
 `06-backlog.md` for what it is going to do and why, `02-sim-engine-spec.md` for
@@ -255,8 +256,9 @@ get sacked and get poached). What genuinely remains part-done:
 
 **This list is now a pointer.** The scope, the platform, the money and the
 depth question were all settled in August 2026, and the route from here is
-nineteen staged steps in **`07-v1-plan.md`** — which supersedes the ordering
-that used to live in this section. What follows is the two-minute version.
+the staged plan in **`07-v1-plan.md`** (twenty-three stages after September
+3's additions) — which supersedes the ordering that used to live in this
+section. What follows is the two-minute version.
 
 The one decision that shapes all of it: **a player chooses how deep a game he
 wants**, at coach creation and changeable after. The engine always models
@@ -421,7 +423,8 @@ drafted players at all.
 
 ## Where the stages stand
 
-**Fourteen of nineteen shipped, through September 1 2026.** The order, and what
+**Sixteen of twenty-three shipped, through September 3 2026** — four stages
+were added September 3 from the phone report. The order, and what
 each one actually turned out to be, lives in `07-v1-plan.md`; the mechanisms
 live in `05-systems-reference.md` §§37–42. In brief:
 
@@ -437,14 +440,18 @@ live in `05-systems-reference.md` §§37–42. In brief:
 | 14 | Aug 31 | Broadcast: sound, haptics, crests, takeover cards, awards night |
 | — | Sep 1 | **A thirty-season play session**, and what it found. See §42 |
 | — | Sep 2 | **Two play batches** against the iOS field study: the board's ask frozen, the press room removed whole, positions with memory (manual moves relabel nobody), June's injury hold, one modal per tournament beat, the sliding tab indicator, legends for the books. `05` §43–44, `06` §S–T |
+| 15 | Sep 3 | **The ballpark** — the one ground dressed; 2D removed for a lazy-load; team colours on the field |
+| 15.5 | Sep 2–3 | **The voice** — the learnable report, the inbox as mail, then the full-app language pass (`docs/11`) |
+| 16 | Sep 3 | **The simulation's last mile** — June injuries, summit drag, findable gems, the RE bunt call, two-way players. `05` §49, `06` §V |
+| — | Sep 3 | **The phone report triaged** — batch P and stages 20–23 booked. `12-test-triage-september.md`, `06` §W |
 
-**What remains:** stage 15 (the ballpark's look), **15.5 (the voice** — a pass
-over everything the game says, plus the recruiting report reworked so that it
-can be *learned*), 16 (the simulation's last mile), 17 (the store), 18 (the
-phone), 19 (ship).
-
-The recommended order is 15.5 before 15: the copy is a live irritation in
-play, and the ballpark is polish nothing is blocked on.
+**What remains, in execution order:** **batch P** (the verified-bug polish
+pass) · **20** (the opener reorganized; 20b the board negotiation) ·
+**21** (the two-way, whole) · **22** (playbooks — scouting becomes
+leverage) · **23** (the lineup gate) · then the tail the plan always
+intended, dead last: **17** (the store), **18** (the phone), **19**
+(ship). The reporter tests on an Android emulator from September 3 on, so
+stage 18's emulator-answerable questions resolve in play.
 
 ### The September 1 session, in one paragraph
 
