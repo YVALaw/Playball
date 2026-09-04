@@ -222,6 +222,14 @@ ball mid-game sits the DH the same way (`coverPitcher`, on both the
 sim's and the managed game's pitching changes). On non-pitching days
 nothing changes: he plays his position and bats.
 
+Two follow-ups the same night: **the box score carries both of his
+games** — his batting row wears **PH** (pitcher-hitter, the DH's cousin,
+the reporter's own label) while his arm's row sits in the pitching table
+below it, and since PH stopped meaning pinch hitter, a man off the bench
+is now **SUB**. And confirmed on ask: nothing is fixed to LF — the
+engine covers whatever position his bat actually holds, wherever the
+winters have moved him.
+
 The card: the hero reads **TWO-WAY · SP · 1B**; a **Batting / Pitching
 toggle** on the STATS and GAMES sheets switches the season-by-season
 table, the June table and the game log between his two books (the

@@ -1814,9 +1814,12 @@ function battingLines(side: GameResult['home']): BoxLine[] {
     if (l.sb) extras.push(`${l.sb} SB`);
     out.push({
       id: l.player.id, name: l.player.name,
+      // The two-way man's batting row wears PH — pitcher-hitter, the DH's
+      // cousin — while his arm's row sits in the pitching table below it.
+      // PH therefore stopped meaning pinch hitter; a man off the bench is SUB.
       slot: started.has(l.player.id)
-        ? (side.pitching.has(l.player.id) ? 'P' : l.player.pos)
-        : 'PH',
+        ? (side.pitching.has(l.player.id) ? 'PH' : l.player.pos)
+        : 'SUB',
       line: `${l.h}-${l.ab}${extras.length ? ', ' + extras.join(', ') : ''}`,
     });
   }
