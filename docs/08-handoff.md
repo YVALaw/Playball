@@ -6,9 +6,58 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 2, 2026 · **Branch:** `play-batch-2` ·
-**committed locally, deliberately unpushed** — the reporter asked to review
-and test before anything goes up.
+**Last session:** September 4, 2026 · **Branch:** `play-batch-2` ·
+**pushed through `58e834c`, everything after it local** — the reporter
+approves pushes one at a time.
+
+> **September 4 — the September run, then the app itself.**
+>
+> Stages 20 through 23 shipped in order: the season opener reorganised into
+> one sectioned card whose only door is the board (where TAKE THE SEASON now
+> lives); the two-way made whole and then *corrected to the rulebook* — on his
+> pitching night the nine is the eight field spots plus him, the DH sits on a
+> bench that grows a seat to hold him, and nobody ever fields without batting;
+> playbooks, where scouting finally became leverage (eight controls at three
+> options each, all computed, and the 3D stations move with the applied book);
+> and the lineup gate, where a short nine holds the door.
+>
+> Then the game became an app. A web manifest and a launcher icon drawn in
+> code (there is no image library in the tree), Capacitor, and an APK — built
+> against a toolchain assembled by hand, because the winget Android Studio
+> package installs the IDE and not the SDK, and the SDK's own wizard cannot be
+> driven headlessly. Nothing is installed system-wide: `npm run apk` supplies
+> JAVA_HOME and ANDROID_HOME itself. The hardware back gesture learned to peel
+> one layer per press, written against the History API so one handler serves
+> the APK, the browser and the home-screen icon alike.
+>
+> **Two things went wrong that the next session should know about.**
+>
+> First, **the suite was reported green when it was not.** Runs were piped
+> into `tail`, so the exit code being read was tail's — always zero — and two
+> progression tests failed unnoticed from stage 21 onward. Both turned out to
+> be assertions that could not hold: a boom GENERATED at the potential cap has
+> no room to rise, and "no program anywhere lost nobody" contradicted its own
+> comment about quiet Junes. **Always capture vitest's own exit code.**
+>
+> Second, **stage 21 shipped a real bug twice.** The engine was right — the
+> two-way pitched and batted — but every label came off the roster instead of
+> the night, so the box put him in left field and his cover at a second centre
+> field. `TeamState.playedAt` now records where each man actually stood, off
+> the field map the simulation itself reads.
+>
+> **Where the work stands.** The APK report (`14-apk-report-triage.md`) is
+> thirty-six items in five batches. Batch R — the regressions — is half done:
+> the two-way box, the inbox layout, and the lineup gesture are fixed and
+> pinned. **Still open in R:** the swap/AUTO animation flicker, the fielder
+> rims blinking when two men are close, the postseason box score not opening,
+> the mandate reading 17 on the opener and 23 on the board, and the dossier
+> not scrolling. Batches S (density), T (deletions — every red line in
+> `13-phone-report-pending.md` is a CUT, not a rewrite), U (behaviour) and V
+> (the dugout's missing motion) are untouched.
+>
+> **The gesture rule, decided and applied:** tap selects, tap again puts down,
+> **hold** reads the man. Never double-tap — allowing it taxes every tap,
+> because none can act until the window for a second has passed.
 
 > **September 2, late night — the sorting session and the batch it opened.**
 > Every open decision was answered in one sitting (`06` §U), four fresh test

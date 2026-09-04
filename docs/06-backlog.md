@@ -2549,3 +2549,59 @@ when the game is near final. P → 20 → 21 → 22 → 23 → 17 → 18 → 19.
 **Testing surface:** the reporter moves from the iPhone to an Android
 emulator — stage 18's emulator-answerable questions get answered in play
 rather than waiting on hardware.
+
+---
+
+## W. The APK pass — September 4 2026
+
+The game stopped being a browser tab. Everything below came out of playing it
+installed, and the full sort is `14-apk-report-triage.md`; the screenshots and
+their marks are `13-phone-report-pending.md`.
+
+**The rule for those screenshots, in the reporter's own words:** "all those
+pictures with red lines is things you have to remove." Struck through means
+CUT — the panel above it is expected to carry the meaning alone. Almost every
+mark is a FieldNote restating the tiles directly above it, which is the
+language pass's own rule being broken in the one component built to explain
+things. It is a sweep, not a dozen separate edits.
+
+**Shipped this session, out of stages 20–23 and the shell:** the season opener
+in four titled sections with a rotating headline and the acceptance moved to
+the board; the two-way corrected to the rulebook (eight fielders plus him,
+the DH to a bench that grows a seat, nobody fielding without batting);
+playbooks (eight controls, three options each, computed, with the 3D stations
+following the applied book); the lineup gate; a web manifest and a code-drawn
+launcher icon; Capacitor and a working `npm run apk`; and the hardware back
+gesture peeling one layer per press.
+
+**Decided and applied — the gesture rule.** Tap selects, tap again puts down,
+**hold** reads the man. Double-tap is refused on purpose: allowing it taxes
+every tap, since none can act until the window for a second has passed, so the
+commonest action on the screen would feel late to serve the rarest.
+
+**Still open, in priority order:**
+
+- **Batch R, the rest of the regressions** — the swap/AUTO animation flicker,
+  the fielder rims blinking when two men are close, the postseason box score
+  refusing to open, the mandate reading 17 on the opener and 23 on the board,
+  the dossier not scrolling.
+- **Batch S, density** — the room the URL bar used to take: a bigger tonight
+  card, larger text as the default, the draft's dead space, the recruiting
+  board and class screen tightened, the manager sheet overflowing its edge,
+  the Ratings tab clipping the hero.
+- **Batch T, the deletions** — every red line.
+- **Batch U, behaviour** — AUTO that runs until the coach takes the game back;
+  sim week stopping on an injury; the tonight card opening the opponent from
+  anywhere on it; records leaving the inbox for a trail of dots; no letter
+  about a man you already had a word with; a confirmation on the captain; a
+  way to refuse the board's terms; Hood Hans not signing pro every single time.
+- **Batch V, the dugout's missing motion** — a change-over animation for three
+  outs, and a sacrifice bunt that currently teleports the runner.
+- **Bigger than a batch** — the program budget screen has no decision in it
+  ("we would always go for the one on top of every list"); the offer card
+  needs rebuilding rather than trimming; prestige still punishes a met
+  mandate and needs measuring rather than another tweak.
+
+**A process failure worth keeping.** The suite was reported green while two
+tests failed: the runs were piped into `tail`, so the exit code read was
+tail's. Capture vitest's own exit code, always.
