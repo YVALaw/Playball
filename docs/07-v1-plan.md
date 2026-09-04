@@ -8,13 +8,15 @@ the next one picks up, `01-roadmap.md` for the order at a glance, `06-backlog.md
 §H for the feature set and §I for the August 27 pass, `05-systems-reference.md`
 for what the game does today.
 
-**Where the work stands: stages 1 through 14 are shipped, and stage 15.5 —
-the voice — was added on September 1 out of a thirty-season play session.
-Stage 15, the ballpark, and 15.5 are what remain before the last mile.**
+**Where the work stands, September 5 2026: stages 1 through 16 shipped,
+then the September run — batch P, the opener (20), the two-way (21) and
+playbooks (22), all built and in review. Stage 23 (the lineup gate) is
+next; 17–19 — store, phone, ship — run dead last, per the September 3
+re-affirmation. Testing moved to an Android emulator.**
 
-**Nineteen stages now.** The old stage 5 was split: the dugout is presentation
-over a stream the engine already emits, and the systems that reach *into* the
-simulation are their own stage behind it.
+**Twenty-three stages now** (nineteen, plus 20–23 booked September 3 from
+the phone report; stage 24, the creation interview, is booked in
+`12-test-triage-september.md` and joins this file at its design door).
 
 ---
 
