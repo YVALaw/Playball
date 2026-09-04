@@ -48,7 +48,11 @@ run('npm', ['run', 'build'], ROOT);
 console.log('\n— copying it into the shell —');
 run('npx', ['cap', 'sync', 'android'], ROOT);
 console.log(`\n— assembling the ${release ? 'release' : 'debug'} APK —`);
-run('gradlew.bat', [release ? 'assembleRelease' : 'assembleDebug'], path.join(ROOT, 'android'));
+// By absolute path: with `shell: true` the command goes to cmd.exe, which
+// will not reliably find a batch file sitting in the working directory.
+const android = path.join(ROOT, 'android');
+run(`"${path.join(android, 'gradlew.bat')}"`,
+  [release ? 'assembleRelease' : 'assembleDebug'], android);
 
 const out = path.join(
   ROOT, 'android', 'app', 'build', 'outputs', 'apk',
