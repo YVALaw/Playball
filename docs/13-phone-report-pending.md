@@ -121,3 +121,48 @@ the one component built to explain things.
   where the first one is.
 - Sent without marks, so it may simply be context for something in the
   written list.
+
+---
+
+# The rule for every red line
+
+**Struck through means CUT.** Stated plainly by the reporter: "all those
+pictures with red lines is things you have to remove." So the marks are
+not "reword this" — they are deletions, and the panels above them are
+expected to carry the meaning alone. Recorded here because it changes
+every item above from a rewrite into a removal.
+
+# 11 · The offer card (4:20) — "doesn't look good and doesn't feel good reading it"
+
+Not a red line: a whole-card verdict. The reporter's words —
+"the writing doesn't look good and doesn't feel good reading it, non
+organized either." So this one is a rebuild, not a trim.
+
+What is actually wrong with it, before any rewriting:
+
+- **Three sections, three different grammars for a heading.**
+  `SLEEPING GIANT` (gold, no label saying what kind of thing it is),
+  `Hardrock · TRADITION` (nickname plus a word), `THE MANDATE` (a
+  definite article). Nothing tells the reader these are the same *kind*
+  of row, so the card reads as three unrelated notices stacked up.
+- **The nickname changes number mid-card**: `Hardrocks` in the subtitle,
+  `Hardrock · TRADITION` two rows down.
+- **"They mine. They do not shop."** is a riddle. It is the culture line
+  doing a joke before the reader knows what culture lines are for.
+- **"They want somebody who will treat the place the way it expects."**
+  — one of the twelve `offerPitch` returns the engine audit already
+  flagged for all opening on "They…", and it says nothing a coach can
+  act on.
+- **THE MANDATE carries no number.** "Stay respectable while you reload"
+  is the one row that should be concrete — the board's ask elsewhere in
+  the game is a win total and a finish. And the rivalry fact is filed
+  under it, where it does not belong.
+- **Two star renderings in the app**: `★★★☆☆` here against `★★★`
+  everywhere else.
+- **`roster 39`** does not say what 39 counts.
+- The modal sits over a page still legible around it, and the title
+  underneath ("Programs that called") shows through the top edge.
+
+Rebuild target: one consistent row grammar, the facts grouped as
+*what the job is* / *what they are like* / *what they will ask of you*,
+and the mandate stated in the same terms the board will later judge.
