@@ -1062,35 +1062,76 @@ function CoachMenuButton() {
  * app that always looks the same wherever it appears.
  */
 /**
- * The board, before the first pitch — the reporter's design, whole: the
- * verdict he used to get as a letter, reviewed and ACCEPTED at the top of
- * the new season, with the new asks and the winter's stings beside it.
- * Renders over the first screen of the year and nothing else; TAKE THE
- * SEASON is the acceptance.
+ * The board, before the first pitch — reorganized at stage 20 to the
+ * reporter's read ("everything is thrown at you with no visible
+ * delineation"): one card, four titled sections, a title that rotates by
+ * year, and the acceptance moved to the board itself. The modal's one door
+ * opens the program board, where the checklist is; TAKE THE SEASON lives
+ * there now. The card hides while the program screen is open and waits on
+ * every other screen until the terms are taken.
  */
+const OPENER_TITLES = [
+  'Play ball, skipper',
+  'Another spring, Coach',
+  'The calendar says February',
+  'First pitch is close',
+  'Dust off the cap',
+  'The cage is warm',
+  'New year, same dugout',
+];
+
 function SeasonOpener() {
   const opener = useDynasty((s) => s.seasonOpener);
-  const dismiss = useDynasty((s) => s.dismissSeasonOpener);
   const live = useDynasty((s) => s.live);
   const phase = useDynasty((s) => s.phase);
+  const screen = useDynasty((s) => s.screen);
+  const overlay = useDynasty((s) => s.overlay);
+  const openOverlay = useDynasty((s) => s.openOverlay);
+  const setSheet = useDynasty((s) => s.setProgramSheet);
   if (!opener || live || phase !== null) return null;
-  const move = (before: number, after: number): string => {
-    const d = after - before;
-    return d === 0 ? `held at ${after}` : d > 0 ? `up ${d} to ${after}` : `down ${-d} to ${after}`;
-  };
+  // Reading the board IS the errand - the card stands down while you are there.
+  if (screen === 'records' || overlay === 'program') return null;
+  const toBoard = (): void => { setSheet('board'); openOverlay('program'); };
+  const moved = (label: string, b: number, a: number) => (
+    <span className="opener-row" key={label}>
+      <span>{label}</span>
+      <b style={a === b ? undefined : { color: a > b ? 'var(--win)' : 'var(--clay)' }}>
+        {b} → {a}
+      </b>
+    </span>
+  );
   return (
     <Modal
-      kicker={`${opener.year} · THE BOARD, BEFORE FIRST PITCH`}
-      title={opener.headline.replace(/^The board is /, '').replace(/^The board /, '')}
+      kicker={`${opener.year} · BEFORE FIRST PITCH`}
+      title={OPENER_TITLES[opener.year % OPENER_TITLES.length]!}
       tone={opener.schoolAfter >= opener.schoolBefore ? 'win' : 'clay'}
       lines={[
-        opener.message,
-        `The school's name ${move(opener.schoolBefore, opener.schoolAfter)}; yours ${move(opener.coachBefore, opener.coachAfter)}.`,
-        `This year they want ${opener.targetWins} wins. ${opener.askDetail}`,
-        ...opener.stings,
+        <>
+          <span className="opener-k">THE VERDICT</span>
+          {opener.headline}. {opener.message}
+        </>,
+        <>
+          <span className="opener-k">WHAT MOVED</span>
+          {moved('SCHOOL PRESTIGE', opener.schoolBefore, opener.schoolAfter)}
+          {moved('YOURS', opener.coachBefore, opener.coachAfter)}
+        </>,
+        ...(opener.stings.length > 0
+          ? [
+            <>
+              <span className="opener-k">THE WINTER</span>
+              {opener.stings.map((t, i) => (
+                <span className="opener-line" key={i}>{t}</span>
+              ))}
+            </>,
+          ]
+          : []),
+        <>
+          <span className="opener-k">THE NEW TERMS</span>
+          They want {opener.targetWins} wins. {opener.askDetail}
+        </>,
       ]}
-      action="TAKE THE SEASON"
-      onClose={dismiss}
+      action="READ THE BOARD'S TERMS"
+      onClose={toBoard}
     />
   );
 }

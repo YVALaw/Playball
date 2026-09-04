@@ -1149,9 +1149,13 @@ with the small "168 / 3 weeks" line · the two-way tag off recruit list
 rows · the promised lineup swap animation · standing strategy as a line
 in the coach info list.
 
-## Stage 20 · The opener, reorganized
+## Stage 20 · The opener, reorganized — **BUILT September 4 2026, in review**
 
-**Size:** small–medium · **20b booked, not built**
+**Size:** small–medium · **20b booked, not built** · Decisions taken at the
+door: forced board visit (the modal's one door opens the board; TAKE THE
+SEASON is a strip above the checklist, and the card returns anywhere else
+until the terms are taken) and one card with titled sections. Title pool
+of seven, rotated by year. Details in `12-test-triage-september.md`.
 
 The season-opener modal, structured: verdict · what moved · the new
 terms · the winter's stings, each under its own heading. A rotating pool

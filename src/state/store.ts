@@ -2086,7 +2086,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   /** Who arrived through the portal this window; one letter at its close. */
   portalArrivals: [],
   seasonOpener: null,
-  dismissSeasonOpener: () => set({ seasonOpener: null }),
+  dismissSeasonOpener: () => {
+    set({ seasonOpener: null });
+    void get().saveNow();
+  },
   unseenTrophies: [],
   clearUnseenTrophies: () => {
     if (get().unseenTrophies.length === 0) return;

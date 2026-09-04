@@ -424,6 +424,8 @@ function BoardSheet({ team }: { team: Owner }) {
   const table = useConferenceTable();
   // Above the early return, where hooks live.
   const storedAsk = useDynasty((s) => s.boardAsk);
+  const opener = useDynasty((s) => s.seasonOpener);
+  const takeSeason = useDynasty((s) => s.dismissSeasonOpener);
 
   if (!season) return null;
 
@@ -486,6 +488,18 @@ function BoardSheet({ team }: { team: Owner }) {
 
   return (
     <>
+      {/* Stage 20: the season is taken HERE, on the checklist it binds you
+          to — the opener modal's one door leads to this strip. */}
+      {opener && (
+        <section className="opener-accept">
+          <small>{opener.year} · THE BOARD&rsquo;S TERMS</small>
+          <strong>{opener.askSummary}</strong>
+          <span>The boxes below are the whole list.</span>
+          <button className="primary-command tap" type="button" onClick={takeSeason}>
+            TAKE THE SEASON
+          </button>
+        </section>
+      )}
       {/* The board meeting takes precedence over everything else on this tab. */}
       {review && (
         <div style={{

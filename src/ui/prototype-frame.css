@@ -3327,3 +3327,34 @@
   margin-top: 8px; border-top: 0; padding-top: 0;
   font: 400 italic calc(10px * var(--ts)) var(--body); color: var(--dim);
 }
+
+/* Stage 20: the opener's titled sections, and the board's acceptance strip. */
+.season-verdict p .opener-k {
+  display: block; margin-bottom: 4px;
+  font: 600 calc(8.5px * var(--ts)) var(--mono); letter-spacing: .16em;
+  opacity: .65;
+}
+.season-verdict p .opener-row {
+  display: flex; justify-content: space-between; gap: 12px;
+}
+.season-verdict p .opener-row b { font-variant-numeric: tabular-nums; }
+.season-verdict p .opener-line { display: block; }
+.opener-accept {
+  margin: 0 0 16px; padding: 12px;
+  background: var(--field); border-left: 3px solid var(--win);
+}
+.opener-accept small {
+  display: block;
+  font: 600 calc(8.5px * var(--ts)) var(--mono); letter-spacing: .16em;
+  color: var(--dim);
+}
+.opener-accept strong {
+  display: block; margin-top: 4px;
+  font: 800 calc(16px * var(--ts))/1.15 var(--display);
+  text-transform: uppercase; color: var(--ink);
+}
+.opener-accept > span {
+  display: block; margin-top: 4px;
+  font: 400 calc(11.5px * var(--ts))/1.5 var(--body); color: var(--dim);
+}
+.opener-accept button { margin-top: 10px; width: 100%; }

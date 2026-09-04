@@ -101,6 +101,20 @@ thrown at you with no visible delineation."
   after a title year should be arguable back to sane milestones. Needs
   its own design (what leverage is, what asking costs).
 
+**Built September 4, to the reporter's two answers** (forced board visit;
+one card with sections): the modal is one card with four titled sections
+— THE VERDICT (the board's words), WHAT MOVED (prestige as `47 → 57`
+rows, coloured by direction), THE WINTER (poached stings, only when
+any), THE NEW TERMS (the win number and the board's mood line) — under a
+title drawn from a seven-entry pool rotated by year ("Play ball,
+skipper", "The cage is warm", …). Its one door is READ THE BOARD'S
+TERMS, which opens the program board; **TAKE THE SEASON lives on the
+board itself now**, a green-edged strip above the checklist, and
+accepting there is what clears the year's card. The card stands down
+while the board is open and returns on any other screen until the terms
+are taken — nobody starts a season without seeing the objectives.
+Verified live end to end; acceptance saves immediately.
+
 ## Stage 21 — the two-way, whole
 
 - Trace what the sim actually does on his rotation night while he holds
