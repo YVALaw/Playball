@@ -294,3 +294,23 @@ to.
 **Still owed:** the budget screen redesign (32), which is a design
 conversation rather than a fix — "there is no real dilemma of whom to hire,
 we would always go for the one on top of every list."
+
+---
+
+## The list is closed — September 5
+
+Item 32, the budget screen, was the last of the thirty-eight. Measured
+before it was touched and the reporter's read was righter than he knew:
+the top candidate was not merely better but better VALUE (7.66 skill
+points per $100k at rating 88 against 5.00 at 27), so the list was
+correctly sorted with a dominant top — and three of them cost 49% of a
+mid-table budget, so nothing was given up either. A man is a shape now
+(the WINTER he builds against THE NIGHT he is worth), wages curve so the
+value column reverses, an assistant is worth less where the coach is
+already strong, and the plant branches into three buildings bought once
+apiece. The screen shows the fit and not the answer, which was his call.
+
+**Everything from the APK report is done or booked as its own stage.**
+What remains is in `07-v1-plan.md`: the tail (17 store, 19 ship), the two
+booked design doors (20b arguing the terms, 24 the creation interview),
+the new art stage (25), and the screen queue.

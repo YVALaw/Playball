@@ -1352,3 +1352,49 @@ to delay a release.
 
 A stage moves out of this file when it ships, and what it did moves into
 `05-systems-reference.md` on the same commit.
+
+## Stage 25 · The art — crests and faces
+
+**Size:** medium · **Booked September 5 2026** · **Runs before 19**
+
+Asked for directly: "I'm now planning on adding visuals for school crests
+as well as assets for the profile avatar."
+
+Everything visual in the game is drawn from primitives today — the crest
+is initials in a shield, the player avatar and the coach portrait are
+generated from a few flat shapes, and the park is a few hundred triangles.
+That was the right call for ninety-six programmes nobody had drawn yet,
+and it is the last thing that still reads as a prototype.
+
+**What the stage owns.**
+
+- **The crest.** Ninety-six of them, and the constraint is that they must
+  survive being 26px in a nav row and 64px on a college page. Whatever the
+  pipeline is — drawn assets, a richer generator, or a hybrid where a
+  hand-drawn shell takes the school's own colours — it has to answer for
+  all ninety-six without ninety-six separate files being hand-tuned.
+- **The player avatar.** Faces that read as people at 40px in a roster
+  row. Today's generator already carries skin, hair, facial hair and a
+  shirt colour, so the question is whether the assets replace it or feed
+  it better parts.
+- **The coach portrait**, which is the same problem with more of the
+  screen to play with and the creation screen already built around it.
+
+**Decisions this stage opens, and none of them are settled:**
+
+- **Generated, drawn, or both.** A drawn set gives quality and costs a
+  file per school; a better generator keeps ninety-six free and caps how
+  distinctive any one crest can be. The hybrid — a small set of shells,
+  each taking the school's colours and initials — is the middle, and is
+  what the accent system already does for the app's own chrome.
+- **Where the weight goes.** The bundle budget is 250 KB gzipped
+  excluding the 3D chunk, and it is at 203 KB. Ninety-six crests at any
+  real fidelity do not fit inside that, so this stage either raises the
+  budget deliberately or loads art the way the park is loaded — lazily,
+  and never on the critical path.
+- **What happens on a rival's page** versus your own, since a college
+  profile shows a crest at size and the roster shows fifty faces at once.
+
+**Why before 19 rather than after.** Ship is the stage that takes the
+screenshots, and the store listing is the one place the game is judged on
+how it looks before anybody plays it.
