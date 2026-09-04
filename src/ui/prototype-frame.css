@@ -860,7 +860,6 @@
 .message-list > div.read,
 .message-list > button.read { background: var(--wash); }
 .message-list > *:last-child { border-bottom: 0; }
-.message-list .read .unread-dot { background: #c9cec9; }
 .message-list svg { color: var(--clay); align-self: center; }
 .message-list time { font-weight: 800; color: var(--alert); }
 

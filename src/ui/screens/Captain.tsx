@@ -72,8 +72,6 @@ export function Captain() {
       <ModuleIntro
         kicker="THE ROOM"
         title={current ? `${current.name} wears the C` : 'Nobody wears the C'}
-        text="The C is the reason a bad April does not become a bad year. The
-          room reads who you pick either way."
       />
 
       {men.length === 0 ? (
@@ -95,13 +93,6 @@ export function Captain() {
             top of it is what makes ignoring it a decision instead of an
             oversight.
           */}
-          {suggested && (
-            <FieldNote
-              title={`The room would pick ${suggested.name}`}
-              text="You do not have to agree — the C is yours to hand."
-            />
-          )}
-
           <SectionHeading
             kicker="ELIGIBLE"
             title={men.length === 1 ? 'One man' : `${men.length} men`}

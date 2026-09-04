@@ -382,7 +382,6 @@ button { font:inherit; cursor:pointer; }
 .message-list button { display:grid; grid-template-columns:8px 1fr auto; gap:8px; width:100%; min-height:92px; padding:11px 10px; border:0; border-bottom:1px solid var(--line); background:var(--paper); color:var(--ink); text-align:left; }
 .message-list button.read { background:var(--wash); }
 .unread-dot { width:7px; height:7px; margin-top:3px; border-radius:50%; background:var(--alert); }
-.message-list button.read .unread-dot { background:#c9cec9; }
 .message-list strong { display:block; font-size:calc(10px * var(--ts)); }
 .message-list small { display:block; margin-top:3px; color:var(--clay); font-size:calc(8px * var(--ts)); font-weight:800; }
 .message-list p { margin:7px 0 0; color:var(--dim); font-size:calc(8px * var(--ts)); line-height:1.4; }
@@ -973,4 +972,16 @@ button { font:inherit; cursor:pointer; }
   .college-actions-fab { right:10px; }
   .college-actions-fab.open { width:calc(100vw - 20px); }
   .college-actions-popover { padding-left:9px; padding-right:9px; border-radius:0 28px 28px 28px; }
+}
+
+/* Batch P: the selection note keeps two lines of room so a longer hint
+   never pushes the card below it. */
+.selection-note { min-height: calc(24px * var(--ts)); }
+
+/* Batch P: the TBD seat on a between-rounds matchup card. */
+.pregame-side .pregame-tbd {
+  width: 54px; height: 54px; border-radius: 50%;
+  border: 2px dashed var(--faint);
+  display: grid; place-items: center;
+  font: 800 calc(20px * var(--ts)) var(--display); color: var(--dim);
 }

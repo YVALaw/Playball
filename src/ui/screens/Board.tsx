@@ -228,6 +228,12 @@ const slotOf = (p: Prospect): string =>
   isTwoWay(p.player) ? 'TWO-WAY'
     : p.player.type === 'pitcher' ? (p.player as Pitcher).role : p.player.pos;
 
+/** The outside of the envelope: only the open card says TWO-WAY. */
+const listSlotOf = (p: Prospect): string =>
+  isTwoWay(p.player)
+    ? ((p.player as { role?: string }).role ?? p.player.pos)
+    : slotOf(p);
+
 export function Board() {
   const season = useDynasty((s) => s.season);
   const userTeam = useDynasty((s) => s.userTeam);
@@ -438,7 +444,11 @@ export function Board() {
 
       <MetricStrip>
         <Metric label="SCHOLARSHIPS" value={`${commits.length}/${SCHOLARSHIPS}`} note={full ? 'FULL' : 'COMMITTED'} />
-        <Metric label="BUDGET" value={live ? String(left) : '—'} note={live ? `OF ${weekly}` : 'CLOSED'} />
+        <Metric
+          label="BUDGET"
+          value={live ? String(left) : '—'}
+          note={live ? `${weekly * RECRUITING_WEEKS} / ${RECRUITING_WEEKS} WEEKS` : 'CLOSED'}
+        />
         {/* Sized down as well as filled-only. The display face has no star, so
             each ★ came from the fallback font at nearly a square em — five of
             those at the metric's 25px overflowed the box even after the empty
@@ -706,7 +716,7 @@ function Row({
           <span>
             <strong>{p.player.name}</strong>
             <small>
-              #{p.rank} · {slotOf(p)} · {p.state} · {PRIORITY_LABEL[topPriority(p)]}
+              #{p.rank} · {listSlotOf(p)} · {p.state} · {PRIORITY_LABEL[topPriority(p)]}
             </small>
           </span>
         </span>

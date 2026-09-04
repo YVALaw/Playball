@@ -148,7 +148,7 @@ export function Manage() {
     if (!ball || ball.y <= 1) return undefined;
     setSplash({
       tick: ball.tick,
-      text: scoredRunners.length >= 3 ? 'GRAND SLAM' : 'HOME RUN',
+      text: scoredRunners.length >= 4 ? 'GRAND SLAM' : 'HOME RUN',
     });
     const id = window.setTimeout(() => setSplash(null), 2600);
     return () => window.clearTimeout(id);
@@ -182,7 +182,9 @@ export function Manage() {
     });
     // `wasOut` is read above and belongs here: identical landing coordinates
     // with a different outcome must still refresh what the ball flashes.
-  }, [landing?.x, landing?.y, battedBall, wasOut, version]);
+    // playSeq, not version: version moves on mound visits and substitutions
+    // too, and those play nothing.
+  }, [landing?.x, landing?.y, battedBall, wasOut, live?.playSeq]);
 
   /*
     REPLAY — named in stage 5's brief, built in stage 15. The events already

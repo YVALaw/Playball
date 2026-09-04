@@ -730,6 +730,7 @@ function CoachSheet({ team }: { team: Owner }) {
                 ? `${coach.contractYears} of ${coach.contractLength} years left`
                 : 'Final year'}
             />
+            <Stat k="PHILOSOPHY" v={philosophy.name} />
             <Meter
               k="COACH PRESTIGE"
               v={String(coach.prestige)}
@@ -757,28 +758,6 @@ function CoachSheet({ team }: { team: Owner }) {
             </Panel>
           </div>
 
-          <div style={{ marginTop: 14 }}>
-            <Head>STRATEGY</Head>
-            {/*
-              The name and the sentence both come out of the engine. They are
-              printed on the creation step as well, and one copy of a sentence in
-              two screens is two sentences that eventually say different things.
-            */}
-            <Panel>
-              <div style={{ padding: '11px 12px' }}>
-                <div style={{
-                  font: "800 calc(20px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
-                }}>{philosophy.name}</div>
-                <div style={{
-                  marginTop: 6, font: "400 calc(12px * var(--ts))/1.5 var(--body)",
-                }}>{philosophy.blurb}</div>
-              </div>
-            </Panel>
-            <Note>
-              It sets five controls the day he arrives — all yours to change on
-              the strategy screen.
-            </Note>
-          </div>
         </>
       )}
 

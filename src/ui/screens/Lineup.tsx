@@ -25,7 +25,7 @@
 // `.drag` cell stays in the grid as the selection mark, which is the one thing
 // a two-tap swap genuinely needs and the proposal had nowhere to put.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CheckIcon, ReloadIcon, SewingPinIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Avatar } from '../Avatar.js';
@@ -111,6 +111,30 @@ export function Lineup() {
   const clearFocus = useDynasty((s) => s.clearFocusPlayer);
   const [flaggedId, setFlaggedId] = useState<string | null>(null);
   const flagged = useRef<HTMLButtonElement | null>(null);
+  const rowEls = useRef(new Map<string, HTMLElement>());
+  const rowTops = useRef(new Map<string, number>());
+  useLayoutEffect(() => {
+    const still = typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const tops = new Map<string, number>();
+    for (const [id, el] of rowEls.current) {
+      if (el.isConnected) tops.set(id, el.getBoundingClientRect().top);
+    }
+    if (!still) {
+      for (const [id, el] of rowEls.current) {
+        const was = rowTops.current.get(id);
+        const now = tops.get(id);
+        if (was !== undefined && now !== undefined && Math.abs(was - now) > 1
+          && typeof el.animate === 'function') {
+          el.animate(
+            [{ transform: `translateY(${was - now}px)` }, { transform: 'translateY(0)' }],
+            { duration: 260, easing: 'cubic-bezier(.2, .8, .2, 1)' },
+          );
+        }
+      }
+    }
+    rowTops.current = tops;
+  });
 
   /*
     The card warned about, never corrected.
@@ -378,7 +402,11 @@ export function Lineup() {
               <button
                 className={`player-row card-in${on || marked ? ' is-selected' : ''}`
                   + (p.id === flaggedId ? ' is-flagged' : '')}
-                ref={p.id === flaggedId ? flagged : undefined}
+                ref={(el) => {
+                  if (el) rowEls.current.set(String(p.id), el);
+                  else rowEls.current.delete(String(p.id));
+                  if (p.id === flaggedId) flagged.current = el;
+                }}
                 key={p.id}
                 type="button"
                 aria-pressed={on}

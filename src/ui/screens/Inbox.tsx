@@ -98,6 +98,11 @@ export function Inbox() {
   */
   useEffect(() => { readInbox(); }, [readInbox]);
 
+  // What was unread when you walked in — frozen before the visit clears it.
+  const [fresh] = useState(() => new Set(
+    useDynasty.getState().inbox.filter((i) => !i.read).map((i) => i.id),
+  ));
+
   // Grouped by season, newest first. A flat list of forty cards reads as one
   // undifferentiated wall; a year heading is the only structure it needs,
   // because the year is what the player is orienting by.
@@ -143,7 +148,7 @@ export function Inbox() {
             </div>
             <section className="message-list">
             {items.map((item) => (
-              <Card key={item.id} item={item} onOpen={setReading} />
+              <Card key={item.id} item={item} fresh={fresh.has(item.id)} onOpen={setReading} />
             ))}
             </section>
           </div>
@@ -219,7 +224,10 @@ function OpenLetter(
   );
 }
 
-function Card({ item, onOpen }: { item: InboxItem; onOpen: (item: InboxItem) => void }) {
+function Card(
+  { item, fresh, onOpen }:
+  { item: InboxItem; fresh: boolean; onOpen: (item: InboxItem) => void },
+) {
   /*
     The proposal's message list. A dot on the left that says whether it is new,
     the kind it is in green over the headline, the body under it, and the time
@@ -241,7 +249,7 @@ function Card({ item, onOpen }: { item: InboxItem; onOpen: (item: InboxItem) => 
   */
   const inner = (
     <>
-      <i className="unread-dot" />
+      {fresh && <i className="unread-dot" />}
       <span>
         <small>{INBOX_LABEL[item.kind]}</small>
         <strong>{item.title}</strong>
@@ -252,7 +260,7 @@ function Card({ item, onOpen }: { item: InboxItem; onOpen: (item: InboxItem) => 
           }}>{item.body}</p>
         )}
       </span>
-      {item.link ? <ChevronRightIcon /> : <time>{item.read ? '' : 'NEW'}</time>}
+      {item.link ? <ChevronRightIcon /> : <time>{fresh ? 'NEW' : ''}</time>}
     </>
   );
 

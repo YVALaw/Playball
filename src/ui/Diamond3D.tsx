@@ -195,6 +195,24 @@ const BOARD = '#1c2430';
 const BOARD_FACE = '#31435f';
 /** The defense. The other uniform on the field. */
 const FIELDER = '#2b3b55';
+
+/** The rim a shirt needs to read against grass: ink on light, cream on dark. */
+function rimFor(hex: string): string {
+  const n = parseInt(hex.replace('#', ''), 16);
+  if (Number.isNaN(n)) return '#14181c';
+  const lum = (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+  return lum > 0.45 ? '#14181c' : '#f4efe2';
+}
+
+/** The hull itself — a child of the man, so it follows him everywhere. */
+function Rim({ of, r }: { of: string; r: number }) {
+  return (
+    <mesh scale={1.16}>
+      <sphereGeometry args={[r, 12, 10]} />
+      <meshBasicMaterial color={rimFor(of)} side={THREE.BackSide} />
+    </mesh>
+  );
+}
 /** What the ball flashes on arrival: an out, and a man aboard. */
 const OUT_RED = '#c4382a';
 const HIT_BLUE = '#2f6fb0';
@@ -346,6 +364,7 @@ function RunnerDot(
     <mesh ref={ref}>
       <sphereGeometry args={[0.34, 12, 10]} />
       <meshBasicMaterial color={colour} />
+      <Rim of={colour} r={0.34} />
     </mesh>
   );
 }
@@ -396,6 +415,7 @@ function ScoringRunner(
     <mesh ref={ref}>
       <sphereGeometry args={[0.34, 12, 10]} />
       <meshBasicMaterial color={colour ?? CLAY} transparent opacity={1} />
+      <Rim of={colour ?? CLAY} r={0.34} />
     </mesh>
   );
 }
@@ -894,6 +914,7 @@ function Defense(
         >
           <sphereGeometry args={[0.28, 10, 8]} />
           <meshBasicMaterial color={colour ?? FIELDER} />
+          <Rim of={colour ?? FIELDER} r={0.28} />
         </mesh>
       ))}
     </group>

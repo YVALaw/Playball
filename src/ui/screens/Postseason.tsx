@@ -206,6 +206,11 @@ export function Postseason() {
   const wonConference = bracket?.cups.some((c) => c.champion === userTeam) ?? false;
   const wonRegional = bracket?.regionals.some((r) => r.champion === userTeam) ?? false;
   const wonTitle = nat?.final?.champion === userTeam;
+  // The name on a settled stage's banner: my own conference's cup winner.
+  const settledCup = bracket?.cups.find((c) => c.conference === team?.conference);
+  const settledChamp = settledCup && settledCup.champion !== null
+    ? season?.teams[settledCup.champion]?.def.school ?? null
+    : null;
 
   /*
     A title game, announced before it is played.
@@ -234,9 +239,11 @@ export function Postseason() {
         key: `${year}:title:${stageKey}:${slot.round}`,
         kicker: `${year} · ${where.toUpperCase()}`,
         title: `${team.def.school} v ${(season.teams[other]?.def.school ?? '?')}`,
-        lines: stake(losses === 0
-          ? 'You arrived unbeaten. Win one and it is yours.'
-          : 'You came through the losers bracket. You must win this one AND the next.'),
+        lines: stake(slot.round === 1
+          ? 'The reset. One game, winner take all.'
+          : losses === 0
+            ? 'You arrived unbeaten. Win one and it is yours.'
+            : 'You came through the losers bracket. Win this one AND the next.'),
       };
     }
     if (myBracket.kind !== 'regional' && myBracket.kind !== 'final') return null;
@@ -902,19 +909,22 @@ export function Postseason() {
               <section className="pregame-show is-waiting">
                 <div className="pregame-kicker">
                   <small>YOUR NEXT GAME</small>
-                  <span>{bracket.stage === 'conference' ? 'CONFERENCE — WON'
-                    : bracket.stage === 'regional' ? 'REGIONAL — WON' : 'JUNE'}</span>
+                  <span>{bracket.stage === 'conference'
+                    ? (wonConference ? 'CONFERENCE — WON' : 'CONFERENCE — SETTLED')
+                    : bracket.stage === 'regional'
+                      ? (wonRegional ? 'REGIONAL — WON' : 'REGIONAL — SETTLED')
+                      : 'JUNE'}</span>
                 </div>
                 <p className="pregame-sub">
                   {bracket.stage === 'conference'
                     ? (wonConference
                       ? 'The tournament is yours. Sixteen conference winners form the regionals next.'
-                      : 'This stage is settled.')
+                      : `${settledChamp ?? 'The field'} take the ${team.conference}. Your place in June holds.`)
                     : bracket.stage === 'regional'
                       ? (wonRegional
                         ? 'The regional is yours. The national field forms next.'
-                        : 'This stage is settled.')
-                      : 'This stage is settled.'}
+                        : 'The regional is decided.')
+                      : 'The stage is decided.'}
                 </p>
               </section>
             )}
@@ -1149,10 +1159,12 @@ function PregameShow(
       home = host === userTeam;
       const losses = myBracket.state.losses.get(userTeam) ?? 0;
       if (slot.side === 'F') {
-        sub = 'Championship';
-        stake = losses === 0
-          ? { line: 'You arrived unbeaten. Win one and it is yours.', tone: 'win' }
-          : { line: 'You must win this one AND the next.', tone: 'alert' };
+        sub = slot.round === 1 ? 'Championship · the reset' : 'Championship';
+        stake = slot.round === 1
+          ? { line: 'One game, winner take all.', tone: 'alert' }
+          : losses === 0
+            ? { line: 'You arrived unbeaten. Win one and it is yours.', tone: 'win' }
+            : { line: 'You came through the losers bracket. Win this one AND the next.', tone: 'alert' };
       } else {
         sub = slotName(slot);
         stake = losses === 0
@@ -1171,8 +1183,21 @@ function PregameShow(
           <small>YOUR NEXT GAME</small>
           <span>{formatLabel || 'JUNE'}</span>
         </div>
+        <div className="pregame-match">
+          <div className="pregame-side">
+            <Crest abbr={me.def.abbr} size={54} />
+            <strong style={{ color: teamColour(me.def.abbr) }}>{me.def.school}</strong>
+            <em>&nbsp;</em>
+          </div>
+          <div className="pregame-vs">VS</div>
+          <div className="pregame-side">
+            <span className="pregame-tbd" aria-hidden>?</span>
+            <strong>TBD</strong>
+            <em>&nbsp;</em>
+          </div>
+        </div>
         <p className="pregame-sub">
-          The round is still being played. Your next game forms when it
+          The round is still being played. Your opponent lands when it
           finishes.
         </p>
       </section>

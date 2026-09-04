@@ -87,6 +87,12 @@ export interface LiveGame {
    * Cleared and rebuilt on every step, so it is always just the latest play.
    */
   readonly lastPlay: readonly PlayEvent[];
+  /**
+   * Counts plate appearances stepped. The field keys its animation to this,
+   * so a mound visit or a substitution — which bump the store's version but
+   * play nothing — cannot replay the last ball.
+   */
+  readonly playSeq: number;
   readonly over: boolean;
   readonly log: readonly string[];
   readonly result: GameResult;
@@ -251,6 +257,7 @@ export function createLiveGame(
   // appearance at a time rather than accumulating a whole game's worth: the
   // manager only ever needs to see the play that just happened.
   let events: PlayEvent[] = [];
+  let playSeq = 0;
 
   let inning = 1;
   let half: 'top' | 'bottom' = 'top';
@@ -295,7 +302,10 @@ export function createLiveGame(
       // Your turn: stop and ask, unless you have handed it over — either for
       // the rest of the game, or permanently for the pitching half.
       if (!auto && (bat() === mine || (fld() === mine && !opts.autoPitching))) return;
-      if (current?.step()) closeHalf();
+      if (current) {
+        playSeq += 1;
+        if (current.step()) closeHalf();
+      }
     }
   };
 
@@ -341,6 +351,7 @@ export function createLiveGame(
   return {
     get pending() { return decision(); },
     get lastPlay() { return events; },
+    get playSeq() { return playSeq; },
     get over() { return over; },
     get log() { return log; },
     get result(): GameResult {
@@ -371,6 +382,7 @@ export function createLiveGame(
       if (over || !current) return;
       // Only the play that just happened, so the field animates one thing.
       events.length = 0;
+      playSeq += 1;
       if (current.step(tactic)) closeHalf();
       advance();
     },

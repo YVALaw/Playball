@@ -36,9 +36,18 @@ stages that need them start informed.
   at LF *and* the night's starter. What the sim does on his rotation
   night needs a trace before the design call. His profile also hides the
   arm half: no role line beside "TWO WAY · LF", no pitching table.
-- **The inbox dots** are deliberately snapshotted for the visit that
-  clears them (`Inbox.tsx:228`) — the reported "still unread" needs a
-  repro to tell a snapshot gone stale from the nav badge lagging.
+- **The inbox dots** — reproduced and root-caused in the build session:
+  the dot was rendered on EVERY row and merely recoloured grey once read,
+  so every letter wore an unread-looking dot for ever. The design intent
+  ("the dot survives the visit that clears it") never had its mechanism —
+  the unread set is now snapshotted once at mount, before `readInbox`
+  clears it; rows in the snapshot wear the dot and NEW for that visit,
+  everything else wears nothing.
+- **The replay-on-mound-visit root cause**: the field's ball effect
+  depended on the store `version`, which moves on every write — visits,
+  pinch hitters, pitching changes included. The engine now counts plate
+  appearances (`LiveGame.playSeq`) and the field animates only when that
+  counter moves. Verified live: a play bumps it, a visit does not.
 
 ## Batch P — the polish pass (bugs and small moves, next build session)
 
