@@ -179,3 +179,16 @@ emulator from now on**, not the iPhone — the game meets its intended
 system early. Stage 18's emulator-answerable questions (IndexedDB across
 a force-quit, safe-area insets, the hardware back button) stop waiting
 for hardware and get answered as they come up in play.
+
+## Stage 24 — the creation interview, punchier (booked September 4)
+
+The reporter's call after the archetype-grid conversation: the interview
+stays, the boredom goes. Design as discussed, to be talked through more
+before the build: **three questions, not five** (the pool of 81 stays);
+per-answer swings widened, not inflated — +5-style numbers with a real
+minus so the net stays ~+2; **the consequence reveals after the tap**
+(stat moves and the badge vote animate in, so each answer pays off
+visibly); and a **result card** at the end — the coach you made, his
+four skills, two badges, and who calls a man like him. A quick-start
+"pick a background" fallback (preset answer sets through the same
+settle()) stays on the table.
