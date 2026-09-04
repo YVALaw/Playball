@@ -333,3 +333,30 @@ Four money pins joined `playbooks.test.ts` (17 total in the file).
 **Noticed in passing, not fixed:** the managed-game path may not charge
 `threw` at all — arm mileage might only accrue from simmed games. Worth
 its own trace next batch.
+
+## Stage 23 — the lineup gate, built September 5
+
+To the reporter's two answers (always armed; fix-myself + AUTO):
+
+- A short nine **holds the door**: while your card has a spot uncovered
+  or two men wearing one, every `go()` and every overlay is refused from
+  the lineup screen — the refusal bumps `lineupGate` and the warning
+  re-presents wherever you are, exactly as asked ("if we try going
+  anywhere else the message appears again"). Arriving on the screen with
+  a card already broken presents it without waiting for a tap.
+- The modal carries two doors: **I'LL SET IT** (stay and fix) and **LET
+  AUTO SORT IT** (the bench coach deals a sound card and the door opens).
+  Its last line says the rule: "The card holds the door until the
+  diamond is covered."
+- The player card stays reachable — the second-tap grammar never routes
+  through `go`/`openOverlay` — and a staff-run card never holds you:
+  the desk that sets your nine cannot take you hostage over it.
+- Verified live: broken card → navigation refused + modal; AUTO → card
+  completes; sound card → navigation passes without a bump.
+
+**And a probe that became a pin** (`tests/ninth-probe.test.ts`): the
+reporter thought a home side up five had to bat the bottom of the ninth;
+forty managed games of real tactic calls, home and away, auto-pitching
+mixed in, never once offer a bottom-nine with the home side ahead — and
+he then recalled he was likely the away side, where the home team's last
+licks are correct baseball. The invariant stays pinned either way.

@@ -10,8 +10,8 @@ for what the game does today.
 
 **Where the work stands, September 5 2026: stages 1 through 16 shipped,
 then the September run — batch P, the opener (20), the two-way (21) and
-playbooks (22), all built and in review. Stage 23 (the lineup gate) is
-next; 17–19 — store, phone, ship — run dead last, per the September 3
+playbooks (22), all built and in review. Stage 23, the lineup gate, closed the run;
+17–19 — store, phone, ship — run dead last, per the September 3
 re-affirmation. Testing moved to an Android emulator.**
 
 **Twenty-three stages now** (nineteen, plus 20–23 booked September 3 from
@@ -1209,9 +1209,11 @@ facility rungs really do in the engine (strengthen where thin), and the
 captain's-second-channel decision (currently: stay single-channel,
 taught in stage 19).
 
-## Stage 23 · The lineup gate
+## Stage 23 · The lineup gate — **BUILT September 5 2026, in review**
 
-**Size:** small
+**Size:** small · Always armed, two doors (I'LL SET IT / LET AUTO SORT
+IT), player card reachable, staff-run cards never held. Details in
+`12-test-triage-september.md`.
 
 The coverage warning becomes a blocking modal wherever you are on the
 lineup screen; leaving is refused while the diamond is short, and the

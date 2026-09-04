@@ -149,6 +149,7 @@ export function Lineup() {
     gets this modal — once per breakage, not once per render.
   */
   const [gapWarn, setGapWarn] = useState<{ missing: string[]; doubled: string[] } | null>(null);
+  const gateTick = useDynasty((s) => s.lineupGate);
   const warnIfBroken = (): void => {
     const t = useDynasty.getState().season?.teams[useDynasty.getState().userTeam]?.team;
     if (!t) return;
@@ -165,6 +166,17 @@ export function Lineup() {
     setFlaggedId(focus);
     clearFocus();
   }, [focus, clearFocus]);
+
+  /*
+    Stage 23: the gate. A refused exit bumps the store's tick and this
+    re-presents the warning wherever you are on the screen; arriving with
+    a card already broken presents it once without waiting for a tap.
+  */
+  useEffect(() => {
+    if (!mine) return;
+    warnIfBroken();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gateTick, mine]);
 
   /*
     Then put him where he can be seen. A mark below the fold is a mark nobody
@@ -613,10 +625,17 @@ export function Lineup() {
               : gapWarn.missing.length > 0
                 ? `Tonight's nine covers eight spots. ${gapWarn.missing.join(' and ')} ${gapWarn.missing.length === 1 ? 'is' : 'are'} open.`
                 : `Two men are wearing ${gapWarn.doubled.join(' and ')}.`,
-            'Put a man on the open spot, or let AUTO sort the card.',
+            'The card holds the door until the diamond is covered.',
           ]}
-          action="GOT IT"
-          onClose={() => setGapWarn(null)}
+          action="LET AUTO SORT IT"
+          onClose={() => {
+            autoLineup();
+            setPicked(null);
+            setDealt(true);
+            setDeal((n) => n + 1);
+            setGapWarn(null);
+          }}
+          cancel={{ label: "I'LL SET IT", onClick: () => setGapWarn(null) }}
         />
       )}
     </>

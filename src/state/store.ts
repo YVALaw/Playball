@@ -216,7 +216,7 @@ import {
 } from '../engine/portal.js';
 import {
   chartFor, depthAt, reorder, squad, available, promotions, SPOTS, fitTheNine, healPositions,
-  adoptSpot, restoreHome, settleReturn,
+  adoptSpot, restoreHome, settleReturn, cardGaps,
 } from '../engine/depthChart.js';
 import {
   gradesOf, standing, failsThisWeek, suspend, haveAWord, driftGrades,
@@ -1208,6 +1208,11 @@ export interface DynastyStore {
   upgradeFacilities: () => void;
   /** Buy the book on one opponent, good for the next stretch of days. */
   scoutTeam: (team: number) => void;
+  /**
+   * Stage 23: bumped every time a navigation is refused because the nine
+   * is short. The lineup screen re-presents its gate modal on each bump.
+   */
+  lineupGate: number;
   /** Stage 22: write one control of the playbook against a club. */
   setPlaybook: (abbr: string, key: keyof Strategy, value: Strategy[keyof Strategy]) => void;
   /** Fill the whole book from what the desk knows about them. */
@@ -2084,6 +2089,22 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   go: (tab, screen, focus) => {
+    // Stage 23: a broken nine holds the door. cardGaps is the same read
+    // the lineup's own warning prints from, and the gate only ever holds
+    // a card that is YOURS to fix.
+    {
+      const st = get();
+      if (st.screen === 'lineup' && handles(st.depth, 'lineups')) {
+        const t = st.season?.teams[st.userTeam]?.team;
+        if (t) {
+          const gaps = cardGaps(t.lineup);
+          if (gaps.missing.length > 0 || gaps.doubled.length > 0) {
+            set({ lineupGate: st.lineupGate + 1 });
+            return;
+          }
+        }
+      }
+    }
     const def = TABS.find((t) => t.id === tab);
     crossfade(() => set({
       tab,
@@ -4072,7 +4093,22 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     return outcome;
   },
 
-  openOverlay: (o) => set(o === 'settings' ? { overlay: o, settingsPage: 'index' } : { overlay: o }),
+  openOverlay: (o) => {
+    // Stage 23: the lineup gate holds overlays too — the player card is
+    // the one allowed excursion, and it does not come through here.
+    const st = get();
+    if (st.screen === 'lineup' && handles(st.depth, 'lineups')) {
+      const t = st.season?.teams[st.userTeam]?.team;
+      if (t) {
+        const gaps = cardGaps(t.lineup);
+        if (gaps.missing.length > 0 || gaps.doubled.length > 0) {
+          set({ lineupGate: st.lineupGate + 1 });
+          return;
+        }
+      }
+    }
+    set(o === 'settings' ? { overlay: o, settingsPage: 'index' } : { overlay: o });
+  },
   closeOverlay: () => set({ overlay: null }),
   settingsPage: 'index',
   setSettingsPage: (p) => set({ settingsPage: p }),
@@ -5539,6 +5575,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     void get().saveNow();
   },
 
+  lineupGate: 0,
   playbookInvite: null,
   dismissPlaybookInvite: () => set({ playbookInvite: null }),
   playbookFocus: null,
