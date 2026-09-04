@@ -238,3 +238,32 @@ overview's THIS SEASON shows both lines at a glance; and the lineup row
 carries his arm's role so his pitching nights are legible. Three new
 engine pins hold it: never in the field while he pitches, the bench
 cover at his exact spot with the DH untouched, and the reliever cover.
+
+## Stage 22 — the door decisions, September 4
+
+The reporter's three answers, plus two requirements raised in them:
+
+- **Auto-apply with a banner** when playing a scouted club — and the
+  SCOUT THEM purchase flows STRAIGHT into the playbook editor: the
+  moment you buy the book, the game asks you to set up the plan against
+  them and takes you there.
+- **A full editable playbook, NOT pre-filled** — you build it yourself,
+  with an AUTO-SET button that fills the counters from the scouting
+  reads for anyone who wants the desk to do it.
+- **Season-long once minted.**
+- **The settings must be computed, not decorative**: playing in, spacing
+  out, pulling the shift left or right — each one a real lever in the
+  sim's odds.
+- **The dugout must show it**: the 3D fielders stand where the playbook
+  puts them, and the chase logic follows the actual stations — never an
+  outfielder going for a ball on the dirt.
+
+The audit behind the build: today `alignment` is an abstract outs
+multiplier (`alignmentAgainst`), the 3D `STATIONS` are a hard-coded
+constant, and `playPlan`'s region ownership never hears about strategy.
+The stage therefore grows the strategy model with real positioning
+(infield in/normal/back, outfield shallow/normal/deep, shift
+left/none/right), keeps every new lever ZERO-SUM around the current
+baseline so calibration holds at the defaults, and parameterizes both
+the engine's lanes/advances and the 3D stations + chase off the same
+applied playbook.
