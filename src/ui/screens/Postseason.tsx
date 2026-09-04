@@ -1245,6 +1245,9 @@ function PregameShow(
       {stake && (
         <p className={`pregame-stake tone-${stake.tone}`}>{stake.line}</p>
       )}
+      {season.playbooks?.[abbr(opp)] && (
+        <p className="pregame-sub">Playing the {abbr(opp)} book.</p>
+      )}
 
       {held ? (
         <>

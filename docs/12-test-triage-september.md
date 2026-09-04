@@ -267,3 +267,41 @@ left/none/right), keeps every new lever ZERO-SUM around the current
 baseline so calibration holds at the defaults, and parameterizes both
 the engine's lanes/advances and the 3D stations + chase off the same
 applied playbook.
+
+## Stage 22 — built September 4-5 (the playbooks half)
+
+To the door decisions, whole:
+
+- **Eight controls, three options each**: the standing five plus INFIELD
+  DEPTH (on the grass / standard / back), OUTFIELD DEPTH (shallow /
+  standard / deep) and OVERSHIFT (shade left / no call / shade right).
+  Optional on `Strategy` so philosophies and old saves read unchanged.
+- **Every lever is computed** (`defenseFactors`, one call per plate
+  appearance): the grass infield kills the run from third and the bunt
+  and pays in singles through; the deep outfield closes the gaps and
+  concedes the grass in front plus the sac-fly tag; the called shift
+  takes singles on the right call and is a genuine gift on the wrong
+  one, flipping with the batter's hands. Neutral rows are exactly 1.0 —
+  the engine at defaults is the engine as calibrated, and the AI plays
+  its standing game, so league totals hold.
+- **The dugout shows it**: `stationsFor` moves the 3D stations with the
+  applied trio, and the chase (`chaserFor`) is ring-gated
+  nearest-STATION — the man who runs a ball down is the man standing
+  there, and an outfielder can never own a ball on the dirt. Verified on
+  screen: infield-in + shade-left + deep reads instantly.
+- **The books**: minted at SCOUT THEM (a copy of the standing strategy,
+  deliberately not pre-filled), season-long on `season.playbooks`,
+  auto-applied through one seam (`appliedStrategy`) that every game
+  builder in the app reads — sim, managed, and postseason alike. The
+  purchase asks on the spot ("The book is bought — set up the playbook
+  against {school}?") and takes you to the editor; AUTO SET fills the
+  counters from the lineup's hands, power, speed and their bunt-and-run
+  habits. Banners: the tonight card reads "· THEIR BOOK IS ON", the
+  postseason pregame says "Playing the {ABBR} book."
+- **Pins**: 13 in `tests/playbooks.test.ts` — the zero-sum factor rules,
+  the apply seam (user reads the book, rivals never do), and the
+  stations/chase honesty.
+
+**Still open in stage 22:** the money half — the staff-seat and
+facility-rung effect audit, and strengthening where thin. Its own
+session; it starts with measurement, not design.

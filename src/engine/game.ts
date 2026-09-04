@@ -14,7 +14,7 @@ import {
   mult, clamp, platoonMultiplier, BASERUNNING,
 } from './ratings.js';
 import {
-  RUNNING, STEALS, BUNT, HOOK, alignmentAgainst, buntEdge,
+  RUNNING, STEALS, BUNT, HOOK, buntEdge, defenseFactors,
   DEFAULT_STRATEGY, type Strategy,
 } from './strategy.js';
 import { pullMultiplier, runningMods, shiftBias } from './tendencies.js';
@@ -842,10 +842,13 @@ export function createHalfInning(
       return false;
     }
 
+    // Stage 22: the whole defensive positioning, computed once per plate
+    // appearance — the bunt branch below and the full PA both read it.
+    const defense = defenseFactors(fld.strategy, batter, shiftBias(batter));
     if (tactic === 'bunt') {
       const buntBases: Bases = [bases[0], bases[1], bases[2]];
       const buntOuts = outs;
-      const res = sacrifice(bases, batter, outs, rng, bLine, pLine, blame, pitcher, note);
+      const res = sacrifice(bases, batter, outs, rng, bLine, pLine, blame, pitcher, note, defense.buntBeat);
       addOuts(res.outs);
       // A beaten-out bunt is a hit everywhere a hit is counted. The batting and
       // pitching lines already took it inside `sacrifice`; the team counter —
@@ -944,7 +947,9 @@ export function createHalfInning(
       offenseMult: bat.coachOffMult * legMultiplier(batter) * moodMultiplier(batter),
       // A shift is a bet on this hitter, not a flat upgrade — and a hitter who
       // pulls everything is a better bet than his power rating alone says.
-      alignment: alignmentAgainst(fld.strategy.alignment, batter, shiftBias(batter)),
+      // Stage 22: the whole defensive positioning, one computed answer.
+      alignment: defense.singles,
+      gapMult: defense.gaps,
       traits,
       ...(called ? { mods: called } : {}),
     }, rng);
@@ -1086,7 +1091,7 @@ export function createHalfInning(
           const looking = pa.pitches[pa.pitches.length - 1] === 'called';
           say(`${cnt} ${batter.name} strikes out ${looking ? 'looking' : 'swinging'}.`);
         } else {
-          const res = resolveOut(bases, batter, pa.kind, outs, rng, scored, blame, pitcher, called, fielder, note);
+          const res = resolveOut(bases, batter, pa.kind, outs, rng, scored, blame, pitcher, called, fielder, note, defense);
           addOuts(res.outs);
           say(`${cnt} ${batter.name} ${res.text}`);
         }
@@ -1831,11 +1836,13 @@ function resolveOut(
   called?: TacticMods,
   fielder?: Player | null,
   note?: Say,
+  defense?: { fromThird: number; sacFly: number },
 ): { outs: number; text: string } {
   // A call can raise the double play risk or make a sacrifice fly likelier.
   const dpRate = BASERUNNING.doublePlayRate * ((called?.doublePlay ?? BASERUNNING.doublePlayRate) / BASERUNNING.doublePlayRate);
-  const sacFly = called?.sacFly ?? BASERUNNING.sacFlyOnFly;
-  const fromThird = called?.scoreFromThird ?? BASERUNNING.scoreFromThirdOnGroundOut;
+  const sacFly = (called?.sacFly ?? BASERUNNING.sacFlyOnFly) * (defense?.sacFly ?? 1);
+  const fromThird = (called?.scoreFromThird ?? BASERUNNING.scoreFromThirdOnGroundOut)
+    * (defense?.fromThird ?? 1);
   if (kind === 'ground' && bases[0] && outs < 2) {
     if (rng() < clamp(dpRate * mult(batter.speed, -0.40), 0.08, 0.62)) {
       if (bases[2] && rng() < BASERUNNING.scoreFromThirdOnDoublePlay) {
@@ -1906,6 +1913,8 @@ function sacrifice(
   bLine: BattingLine, pLine: PitchingLine,
   blame: Map<Hitter, Arm>, pitcher: Arm,
   note?: Say,
+  /** The infield's depth, as a multiplier on beating the bunt out. */
+  buntBeat = 1,
 ): { outs: number; text: string; scored: Hitter[]; hit?: boolean } {
   const scored: Hitter[] = [];
   const leadIndex = bases[2] ? 2 : bases[1] ? 1 : bases[0] ? 0 : -1;
@@ -1919,7 +1928,7 @@ function sacrifice(
   // the ball where nobody can get to it in time. A team-level bunt policy has
   // existed since coaching strategy landed; who could execute it did not, so a
   // slugger dropped one as well as a leadoff man.
-  if (rng() < clamp(0.09 * mult(batter.speed, 0.9) * mult(batter.bunt, 0.50), 0.02, 0.28)) {
+  if (rng() < clamp(0.09 * buntBeat * mult(batter.speed, 0.9) * mult(batter.bunt, 0.50), 0.02, 0.28)) {
     bLine.ab++; bLine.h++; pLine.h++;
     // The runners it retires count. Thrown away, a man gunned down going first
     // to third on a bunt single left the bases without the out ever being

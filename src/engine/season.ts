@@ -642,6 +642,21 @@ export interface GameSummary {
   innings: number;
 }
 
+/**
+ * Whose strategy actually plays tonight.
+ *
+ * The user's side reads the opponent's playbook when one has been minted —
+ * that is the auto-apply the reporter chose — and every other pairing reads
+ * the standing strategy it always has. `captureBoxFor` is the user's chair,
+ * the same marker the box scores key on.
+ */
+export function appliedStrategy(
+  season: SeasonState, rec: TeamRecord, opp: TeamRecord,
+): Strategy {
+  if (rec.index !== season.captureBoxFor) return rec.strategy;
+  return season.playbooks?.[opp.def.abbr] ?? rec.strategy;
+}
+
 export interface SeasonState {
   config: SeasonConfig;
   rng: Rng;
@@ -713,6 +728,13 @@ export interface SeasonState {
    */
   boxScores: Record<number, BoxScore>;
   captureBoxFor: number | null;
+  /**
+   * Stage 22: the user's opponent playbooks, keyed by school abbreviation.
+   * Minted when a club is scouted, edited on the strategy screen, applied
+   * automatically whenever that club is across the field — and gone with
+   * the season, because a new spring is a new league.
+   */
+  playbooks?: Record<string, Strategy>;
   /**
    * Signature moments, per man — stage 13. Written only when they happen and
    * capped per player, so the book stays a life rather than a ledger. Carried
@@ -1757,8 +1779,8 @@ export function playGame(
     awayStarter: startableSlot(away.team, opts.awaySlot ?? slot, injuryClock(season)),
     ...(homeLineup ? { homeLineup } : {}),
     ...(awayLineup ? { awayLineup } : {}),
-    homeStrategy: home.strategy,
-    awayStrategy: away.strategy,
+    homeStrategy: appliedStrategy(season, home, away),
+    awayStrategy: appliedStrategy(season, away, home),
     homeBullpen: restedFirst(season, home),
     awayBullpen: restedFirst(season, away),
     // The coach-skill nudge, present only on the user's program. Passing it

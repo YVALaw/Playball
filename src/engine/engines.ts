@@ -72,6 +72,7 @@ export function log5Outcome(
   // settles the event before it picks a batted ball type, so this has to act on
   // the outcome distribution rather than on the grounder after the fact.
   const shift = ctx.alignment ?? 1;
+  const gaps = ctx.gapMult ?? 1;
 
   // The defence behind the pitcher.
   //
@@ -105,7 +106,8 @@ export function log5Outcome(
     if (ev === 'out') continue;
     const inPlay = ev === 'single' || ev === 'double' || ev === 'triple';
     b[ev] *= offense * (inPlay ? defence : 1)
-      * (called?.[ev] ?? 1) * (ev === 'single' ? shift : 1) * perEvent(ev);
+      * (called?.[ev] ?? 1) * (ev === 'single' ? shift : 1)
+      * (ev === 'double' || ev === 'triple' ? gaps : 1) * perEvent(ev);
     sum += b[ev];
   }
   b.out = Math.max(0.05, 1 - sum);

@@ -102,6 +102,8 @@ interface Props {
   defenceColour?: string;
   /** The batting side's colour, worn by the runner dots. */
   offenceColour?: string;
+  /** Stage 22: tonight's positioning — the stations stand where it says. */
+  positioning?: FieldPositioning;
   /** Bumped when a run scores, to flash the plate. */
   scoreTick?: number;
   /** The last batted ball, or null when nothing was put in play. */
@@ -464,6 +466,46 @@ function Plate({ tick }: { tick: number }) {
  * `toWorld` by hand — except the catcher, who belongs behind the plate where
  * the camera can see him, not on top of it.
  */
+/** The trio of positioning calls the stations answer to. */
+export interface FieldPositioning {
+  infield?: 'in' | 'normal' | 'back';
+  outfield?: 'shallow' | 'normal' | 'deep';
+  shift?: 'left' | 'none' | 'right';
+}
+
+/**
+ * Stage 22: where the nine actually stand TONIGHT. The base chart below is
+ * the 'normal' answer; infield depth slides the dirt four along the plate
+ * line, outfield depth moves the leash radially, and a called overshift
+ * shades everyone toward the pull side. The chase (`chaserFor`) reads the
+ * same stations, so the man who runs a ball down is the man standing there
+ * — never a constant from a chart the playbook already overruled.
+ */
+export function stationsFor(p?: FieldPositioning): [number, number, number][] {
+  const base = STATIONS.map((s) => [...s] as [number, number, number]);
+  const infield = p?.infield ?? 'normal';
+  const outfield = p?.outfield ?? 'normal';
+  const shift = p?.shift ?? 'none';
+  const inZ = infield === 'in' ? 0.55 : infield === 'back' ? -0.45 : 0;
+  const dx = shift === 'left' ? -0.85 : shift === 'right' ? 0.85 : 0;
+  for (const i of [2, 3, 4, 5]) {
+    base[i]![0] += dx;
+    base[i]![2] += inZ;
+  }
+  const scale = outfield === 'shallow' ? 0.87 : outfield === 'deep' ? 1.13 : 1;
+  const spin = shift === 'left' ? -0.11 : shift === 'right' ? 0.11 : 0;
+  if (scale === 1 && spin === 0) return base;
+  for (const i of [6, 7, 8]) {
+    const [x, , z] = base[i]!;
+    const depth = -z;
+    const r = Math.hypot(x, depth) * scale;
+    const theta = Math.atan2(x, depth) + spin;
+    base[i]![0] = r * Math.sin(theta);
+    base[i]![2] = -r * Math.cos(theta);
+  }
+  return base;
+}
+
 export const STATIONS: readonly [number, number, number][] = [
   [0, 0, 0.55],                      // C
   [0, 0, -1.71],                     // P
@@ -590,6 +632,24 @@ export function regionOwner(spot: THREE.Vector3): number {
   return 7;                                    // CF
 }
 
+/**
+ * Ring-gated nearest man. The ball names its ring (mound lane, dirt,
+ * grass); the ring names its men; the closest station takes the chase.
+ */
+export function chaserFor(spot: THREE.Vector3, stations: THREE.Vector3[]): number {
+  const depth = -spot.z;
+  const r = Math.hypot(spot.x, depth);
+  if (depth >= 0 && r < 2.6 && Math.abs(spot.x) < 1.1) return 1;
+  const ring = r < 4.9 ? [2, 3, 4, 5] : [6, 7, 8];
+  let best = ring[0]!;
+  let bd = Number.POSITIVE_INFINITY;
+  for (const i of ring) {
+    const d = stations[i]?.distanceTo(spot) ?? Number.POSITIVE_INFINITY;
+    if (d < bd) { bd = d; best = i; }
+  }
+  return best;
+}
+
 export function playPlan(hit: BallHit, stations: THREE.Vector3[]): PlayPlan {
   const [tx, , tz] = toWorld(hit.x, hit.y);
   const homer = hit.y > 1;
@@ -612,13 +672,13 @@ export function playPlan(hit: BallHit, stations: THREE.Vector3[]): PlayPlan {
     };
   }
 
-  // The man whose ground it is. Stage 15's fix for the two reports that were
-  // one bug: 'the second baseman goes all the way to the pitcher to catch a
-  // ball' — nearest-man plus a flat penalty still lost the mound's lane to
-  // the middle infield. A defense does not chase by proximity; each man owns
-  // a REGION, and the ball's resting place names its owner.
+  // The man whose ground it is. Stage 15 gave each man a REGION so the
+  // mound's lane could not be lost to the middle infield; stage 22 moves
+  // the stations with the playbook, so ownership inside a ring goes to the
+  // nearest STATION — wherever tonight's book put it. The rings still hold:
+  // an outfielder can never own a ball on the dirt.
   const spot = new THREE.Vector3(rest.x, DOT_Y, rest.z);
-  const chaser = regionOwner(spot);
+  const chaser = chaserFor(spot, stations);
 
   // A catch happens at the moment of arrival by definition, so the man has to
   // be there; a ball on the ground is run down after it stops rolling.
@@ -1411,7 +1471,7 @@ function DemandDriver({ stamp }: { stamp: string }) {
 
 export function Diamond3D({
   runners, scoreTick = 0, ball = null, scored, height = 150,
-  night = false, accent, defenceColour, offenceColour,
+  night = false, accent, defenceColour, offenceColour, positioning,
 }: Props) {
   // Men who scored on the last play, kept alive just long enough to finish.
   const previous = useRef<readonly Runner[]>([]);
@@ -1459,7 +1519,8 @@ export function Diamond3D({
 
   // One script for the play, read by the ball and by the nine men chasing it.
   const stations = useMemo(
-    () => STATIONS.map((s) => new THREE.Vector3(s[0], DOT_Y, s[2])), [],
+    () => stationsFor(positioning).map((s) => new THREE.Vector3(s[0], DOT_Y, s[2])),
+    [positioning?.infield, positioning?.outfield, positioning?.shift],
   );
   const plan = useMemo(
     () => (ball ? playPlan(ball, stations) : null),

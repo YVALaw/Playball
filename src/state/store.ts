@@ -12,6 +12,7 @@
 
 import { create } from 'zustand';
 import {
+  appliedStrategy,
   injuryClock,
   createSeason, simNextDay, simSeason, seasonComplete, standings, nextSeason, rpi, rpiOrder,
   seasonLength, regularRecord, archiveSeason, recordSeasonMarks,
@@ -233,7 +234,8 @@ import { captainOf, candidates, roomsChoice, appoint, standDown, canLead } from 
 import { MAX_BADGES, badgeOf } from '../data/badges.js';
 import { makeRng } from '../engine/rng.js';
 import {
-  autoBattingOrder, strategyFor, strategyForPhilosophy, type Strategy,
+  autoBattingOrder, strategyFor, strategyForPhilosophy,
+  DEFAULT_STRATEGY, type Strategy,
 } from '../engine/strategy.js';
 import { HOME_CONFERENCE, CONFERENCES } from '../data/schools.js';
 import {
@@ -1205,6 +1207,16 @@ export interface DynastyStore {
   upgradeFacilities: () => void;
   /** Buy the book on one opponent, good for the next stretch of days. */
   scoutTeam: (team: number) => void;
+  /** Stage 22: write one control of the playbook against a club. */
+  setPlaybook: (abbr: string, key: keyof Strategy, value: Strategy[keyof Strategy]) => void;
+  /** Fill the whole book from what the desk knows about them. */
+  autoSetPlaybook: (abbr: string) => void;
+  /** The club whose freshly-bought book is waiting to be set up. */
+  playbookInvite: string | null;
+  dismissPlaybookInvite: () => void;
+  /** Which book the strategy screen has open. Null is the standing default. */
+  playbookFocus: string | null;
+  setPlaybookFocus: (abbr: string | null) => void;
   markTutorialSeen: (id: string) => void;
   /** Forget every tutorial, so the next visit to each screen teaches again. */
   resetTutorials: () => void;
@@ -4471,8 +4483,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         awayStarter: slot,
         // The same wiring the fast path gets: the Strategy screen's settings
         // govern the game you manage, and the pen is offered most rested first.
-        homeStrategy: home.strategy,
-        awayStrategy: away.strategy,
+        homeStrategy: appliedStrategy(season, home, away),
+        awayStrategy: appliedStrategy(season, away, home),
         homeBullpen: restedFirst(season, home),
         awayBullpen: restedFirst(season, away),
         // And the coach-skill nudge, so a managed game and a simmed one play
@@ -4840,8 +4852,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       engine: season.config.engine,
       homeStarter: j.homeStarter,
       awayStarter: j.awayStarter,
-      homeStrategy: home.strategy,
-      awayStrategy: away.strategy,
+      homeStrategy: appliedStrategy(season, home, away),
+      awayStrategy: appliedStrategy(season, away, home),
       homeBullpen: restedFirst(season, home),
       awayBullpen: restedFirst(season, away),
       ...(home.coachMods ? { homeCoachMods: home.coachMods } : {}),
@@ -4962,8 +4974,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         awayStarter: g.slot,
         // The same wiring the fast path gets: the Strategy screen's settings
         // govern the game you manage, and the pen is offered most rested first.
-        homeStrategy: home.strategy,
-        awayStrategy: away.strategy,
+        homeStrategy: appliedStrategy(season, home, away),
+        awayStrategy: appliedStrategy(season, away, home),
         homeBullpen: restedFirst(season, home),
         awayBullpen: restedFirst(season, away),
         // And the coach-skill nudge, so a managed game and a simmed one play
@@ -5433,16 +5445,84 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const until = economy.scouted[team] ?? -1;
     if (until >= season.dayIndex + SCOUT_DAYS) return;
     if (remaining(economy, me.prestige) < SCOUT_COST) return;
+    /*
+      Stage 22: buying the book mints the playbook — the reporter's flow:
+      "the moment you scout a team it right away asks you to set up their
+      playbook against them and takes you to do it." The book starts as a
+      copy of the standing strategy, deliberately NOT pre-filled with
+      counters; AUTO SET on the screen is the shortcut for whoever wants
+      the desk's opinion.
+    */
+    const abbr = season.teams[team]?.def.abbr;
+    if (abbr && !season.playbooks?.[abbr]) {
+      season.playbooks = {
+        ...(season.playbooks ?? {}),
+        [abbr]: { ...DEFAULT_STRATEGY, ...me.strategy },
+      };
+    }
     set({
       economy: {
         ...economy,
         spent: economy.spent + SCOUT_COST,
         scouted: { ...economy.scouted, [team]: season.dayIndex + SCOUT_DAYS },
       },
+      ...(abbr ? { playbookInvite: abbr } : {}),
       version: get().version + 1,
     });
     void get().saveNow();
   },
+
+  setPlaybook: (abbr, key, value) => {
+    const { season, version } = get();
+    const book = season?.playbooks?.[abbr];
+    if (!season || !book) return;
+    season.playbooks = {
+      ...season.playbooks,
+      [abbr]: { ...book, [key]: value } as Strategy,
+    };
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  autoSetPlaybook: (abbr) => {
+    const { season, version } = get();
+    const opp = season?.teams.find((t) => t.def.abbr === abbr);
+    const book = season?.playbooks?.[abbr];
+    if (!season || !opp || !book) return;
+    /*
+      The desk's counters, from what the purchase legitimately bought: the
+      roster in front of everybody and the habits the book covers. A
+      lineup that leans one way gets the overshift called on that side; a
+      power lineup pushes the outfield back; a running, bunting club
+      brings the corners onto the grass.
+    */
+    const bats = opp.team.lineup;
+    const righties = bats.filter((h) => h.bats === 'R').length;
+    const lefties = bats.filter((h) => h.bats === 'L').length;
+    const power = bats.reduce((a, h) => a + h.power, 0) / Math.max(1, bats.length);
+    const speed = bats.reduce((a, h) => a + h.speed, 0) / Math.max(1, bats.length);
+    const runs = opp.strategy.steals === 'constant' || opp.strategy.running === 'aggressive';
+    const bunts = opp.strategy.bunt === 'often';
+    season.playbooks = {
+      ...season.playbooks,
+      [abbr]: {
+        ...book,
+        shift: righties - lefties >= 3 ? 'left'
+          : lefties - righties >= 3 ? 'right' : 'none',
+        outfield: power >= 54 ? 'deep'
+          : power <= 47 && speed >= 53 ? 'shallow' : 'normal',
+        infield: bunts || (runs && speed >= 52) ? 'in'
+          : power >= 56 ? 'back' : 'normal',
+      },
+    };
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  playbookInvite: null,
+  dismissPlaybookInvite: () => set({ playbookInvite: null }),
+  playbookFocus: null,
+  setPlaybookFocus: (abbr) => set({ playbookFocus: abbr }),
 
   markTutorialSeen: (id) => {
     const seen = get().seenTutorials;

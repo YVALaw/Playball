@@ -247,7 +247,10 @@ export function Today() {
         {todayGame && opponent && (
           <section className="next-game">
             <div className="match-label">
-              <span>{atHome ? 'TONIGHT VS' : 'TONIGHT AT'} {opponent.def.school.toUpperCase()}</span>
+              <span>
+                {atHome ? 'TONIGHT VS' : 'TONIGHT AT'} {opponent.def.school.toUpperCase()}
+                {season?.playbooks?.[opponent.def.abbr] ? ' · THEIR BOOK IS ON' : ''}
+              </span>
               <b>{day?.kind === 'series' ? seriesTag : 'MIDWEEK'}</b>
             </div>
             {/*

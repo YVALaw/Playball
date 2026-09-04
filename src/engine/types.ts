@@ -444,6 +444,11 @@ export interface PAContext {
    * than being a flat team rating.
    */
   alignment?: number;
+  /**
+   * Outfield depth as a multiplier on the gaps — doubles and triples.
+   * One when the outfield stands where it always stood.
+   */
+  gapMult?: number;
   /** Engine B only: bends the zone rate instead of the outcome table. */
   zoneBias?: number;
   /** The manager's call, if anyone made one. */

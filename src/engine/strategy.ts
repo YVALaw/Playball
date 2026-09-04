@@ -19,6 +19,9 @@ export type StealPolicy = 'never' | 'selective' | 'constant';
 export type BuntPolicy = 'never' | 'rare' | 'often';
 export type HookPolicy = 'quick' | 'standard' | 'patient';
 export type Alignment = 'straight' | 'situational' | 'shift';
+export type InfieldDepth = 'in' | 'normal' | 'back';
+export type OutfieldDepth = 'shallow' | 'normal' | 'deep';
+export type ShiftSide = 'left' | 'none' | 'right';
 
 export interface Strategy {
   running: RunningPolicy;
@@ -26,6 +29,21 @@ export interface Strategy {
   bunt: BuntPolicy;
   hook: HookPolicy;
   alignment: Alignment;
+  /*
+    Stage 22: positioning, made real. Optional — absent means 'normal',
+    which is exactly the game as it played before the controls existed,
+    so a philosophy preset and a save from last week both read unchanged.
+  */
+  /** Corners and middle up on the grass, standard, or conceding depth. */
+  infield?: InfieldDepth;
+  /** The outfield's leash: singles in front vs doubles over their heads. */
+  outfield?: OutfieldDepth;
+  /**
+   * A directional overshift, called side by side. 'none' leaves the
+   * standing `alignment` policy in charge; a called side overrides it —
+   * and calling the WRONG side against a hitter is a genuine gift.
+   */
+  shift?: ShiftSide;
 }
 
 export const DEFAULT_STRATEGY: Strategy = {
@@ -34,6 +52,9 @@ export const DEFAULT_STRATEGY: Strategy = {
   bunt: 'rare',
   hook: 'standard',
   alignment: 'straight',
+  infield: 'normal',
+  outfield: 'normal',
+  shift: 'none',
 };
 
 // ---------------------------------------------------------------------------
@@ -218,6 +239,82 @@ export function alignmentAgainst(
 
   const s = SHIFT.shift;
   return (1 + (s.vsPower - 1) * pull) * (1 + (s.vsSpeed - 1) * wheels);
+}
+
+/**
+ * Everything the defence's positioning does to one plate appearance,
+ * computed in one place so the game loop asks a single question.
+ *
+ * Every number is a trade in the family of `SHIFT` above (full shift =
+ * 0.82 on singles against a pure pull hitter), and every control's
+ * 'normal' row is exactly 1.0 — the engine at defaults is the engine as
+ * calibrated.
+ */
+export interface DefenseFactors {
+  /** Multiplier on a ball in play becoming a single. */
+  singles: number;
+  /** Multiplier on the gaps — doubles and triples. */
+  gaps: number;
+  /** Multiplier on the RBI groundout with a man on third. */
+  fromThird: number;
+  /** Multiplier on a sacrifice fly getting the tag home. */
+  sacFly: number;
+  /** Multiplier on a bunt being beaten out against this infield. */
+  buntBeat: number;
+}
+
+const INFIELD: Record<InfieldDepth, { singles: number; fromThird: number; buntBeat: number }> = {
+  // Up on the grass: the run at the plate dies and so does the bunt, and
+  // ground balls find the outfield for it.
+  in: { singles: 1.07, fromThird: 0.35, buntBeat: 0.55 },
+  normal: { singles: 1.00, fromThird: 1.00, buntBeat: 1.00 },
+  // Conceding depth: outs everywhere, runs included.
+  back: { singles: 0.96, fromThird: 1.30, buntBeat: 1.35 },
+};
+
+const OUTFIELD: Record<OutfieldDepth, { singles: number; gaps: number; sacFly: number }> = {
+  // In on the grass: the ball in front of them dies, the one over their
+  // heads runs for ever.
+  shallow: { singles: 0.94, gaps: 1.14, sacFly: 0.80 },
+  normal: { singles: 1.00, gaps: 1.00, sacFly: 1.00 },
+  // Nothing lands behind them; everything lands in front.
+  deep: { singles: 1.05, gaps: 0.86, sacFly: 1.15 },
+};
+
+/**
+ * The called overshift against this hitter. The right side takes singles
+ * away in the `SHIFT` family; the wrong side is a gift; a switch hitter
+ * makes every call a coin toss barely worth making.
+ */
+function calledShift(side: ShiftSide, batter: Hitter, pullBias: number): number {
+  if (side === 'none') return 1;
+  const pullSide = batter.bats === 'L' ? 'right' : batter.bats === 'R' ? 'left' : null;
+  if (!pullSide) return 1.03;
+  const pull = Math.max(0, Math.min(1.4, ((batter.power - 45) / 30) * pullBias));
+  return side === pullSide
+    ? 1 - 0.16 * Math.min(1, 0.35 + pull * 0.6)
+    : 1.10;
+}
+
+/** One call per plate appearance: what the defence's positioning is worth. */
+export function defenseFactors(
+  s: Strategy, batter: Hitter, pullBias = 1,
+): DefenseFactors {
+  const inf = INFIELD[s.infield ?? 'normal'];
+  const of = OUTFIELD[s.outfield ?? 'normal'];
+  const shift = s.shift ?? 'none';
+  // A called side overrides the standing alignment policy; 'none' leaves
+  // the policy in charge, exactly as it has been since strategy landed.
+  const lateral = shift === 'none'
+    ? alignmentAgainst(s.alignment, batter, pullBias)
+    : calledShift(shift, batter, pullBias);
+  return {
+    singles: lateral * inf.singles * of.singles,
+    gaps: of.gaps,
+    fromThird: inf.fromThird,
+    sacFly: of.sacFly,
+    buntBeat: inf.buntBeat,
+  };
 }
 
 // ---------------------------------------------------------------------------

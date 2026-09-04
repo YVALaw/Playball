@@ -771,6 +771,7 @@ function Overlays(
       {teamCard !== null && <TeamOverlay index={teamCard} onBack={onCloseTeam} />}
       {selectedPlayer !== null && <PlayerOverlay />}
       <SeasonOpener />
+      <PlaybookInvite />
       {/* Above everything, because it IS the screen while it lasts. */}
       <BigMomentCard />
     </>
@@ -1079,6 +1080,40 @@ const OPENER_TITLES = [
   'The cage is warm',
   'New year, same dugout',
 ];
+
+/**
+ * Stage 22: the scouting desk's follow-through — "the moment you scout a
+ * team it right away asks you to set up their playbook against them and
+ * takes you to do it."
+ */
+function PlaybookInvite() {
+  const invite = useDynasty((s) => s.playbookInvite);
+  const dismiss = useDynasty((s) => s.dismissPlaybookInvite);
+  const go = useDynasty((s) => s.go);
+  const setFocus = useDynasty((s) => s.setPlaybookFocus);
+  const closeOverlay = useDynasty((s) => s.closeOverlay);
+  const season = useDynasty((s) => s.season);
+  if (!invite) return null;
+  const school = season?.teams.find((t) => t.def.abbr === invite)?.def.school ?? invite;
+  return (
+    <Modal
+      kicker="THE SCOUTING DESK"
+      title="The book is bought"
+      lines={[
+        `Set up the playbook against ${school}? It applies itself whenever
+        they are across the field.`,
+      ]}
+      action="SET IT UP"
+      onClose={() => {
+        dismiss();
+        setFocus(invite);
+        closeOverlay();
+        go('program', 'strategy');
+      }}
+      cancel={{ label: 'LATER', onClick: dismiss }}
+    />
+  );
+}
 
 function SeasonOpener() {
   const opener = useDynasty((s) => s.seasonOpener);

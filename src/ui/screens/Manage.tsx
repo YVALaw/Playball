@@ -36,6 +36,7 @@ import { LineScore } from '../LineScore.js';
  * WebGL gets the game rather than a placeholder.
  */
 import type { BallHit } from '../Diamond3D.js';
+import { appliedStrategy } from '../../engine/season.js';
 
 const Diamond3D = lazy(() =>
   import('../Diamond3D.js').then((m) => ({ default: m.Diamond3D })));
@@ -465,6 +466,21 @@ export function Manage() {
   // by the time the screen sees the new state. All advance events, not just the
   // first: a steal now emits one of its own, and a run scored on the plate
   // appearance after it must still flash.
+  // Stage 22: tonight's defensive positioning — the fielding side's book,
+  // playbook-aware, so the men on the field stand where the engine says.
+  const positioning = useMemo(() => {
+    if (!season || !meta) return undefined;
+    const half = live?.pending?.half;
+    const fi = half === 'top' ? meta.home : meta.away;
+    const oi = half === 'top' ? meta.away : meta.home;
+    const f = season.teams[fi];
+    const o = season.teams[oi];
+    if (!f || !o) return undefined;
+    const st = appliedStrategy(season, f, o);
+    return { infield: st.infield, outfield: st.outfield, shift: st.shift };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [season, meta, live?.pending?.half, version]);
+
   const scoredRunners = useMemo(() => {
     const crossed = (live?.lastPlay ?? [])
       .filter((e) => e.kind === 'advance')
@@ -671,6 +687,7 @@ export function Manage() {
                     d?.half === 'top' ? meta.away : meta.home
                   ]?.def.abbr ?? '')
                   : undefined}
+                positioning={positioning}
               />
             </Suspense>
           )}
