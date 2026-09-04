@@ -206,3 +206,48 @@ where a bracket game's box is stored and what that costs a save.
     player back at the door, with the sim generation bumped and the worker
     disposed so nothing in flight can write it back. Walked live — deleted,
     poked the app the way a tap would, and the row stayed gone.
+
+---
+
+## Coverage audit — September 4, at the reporter's insistence
+
+He asked me to re-read his own list against this triage, twice, and both
+times it found something. This is the verified state, checked against the
+CODE rather than against memory.
+
+**41. The recruiting budget tile contradicted itself** — and this one had
+been written down in `13-phone-report-pending.md` §1 and then **never made
+it into the numbered list here**, which is exactly how an item gets lost.
+Cause: the big number was what is left of THIS WEEK (29) while the note
+printed the whole window (159), and the slash read as a division giving 53.
+Both true, of different things. The note names its own number now.
+
+**Item 5 (the postseason box score) is closed.** Not a lookup fix: a June
+game now carries its lines on its own summary, which is what the bracket
+slot stores, so a rival's game is as readable as yours. Measured cost —
+2,195 bytes a box, about 640 KB across a full June — and it never
+accumulates, because the bracket is cleared when June ends. The day-keyed
+store is untouched, so the regular season and older saves are unchanged.
+Four pins, written at the engine seam **after the first version of them
+silently skipped**: it reached for `season.bracket`, which does not exist
+(the bracket lives on the store), so the guard returned early and the test
+passed without asserting anything.
+
+### Verified present in code
+
+Tonight card crests at 52 · text default 1.3 · hold-to-open on the lineup ·
+AUTO, and the bail-out that made it "a few plays" is gone · `playedAt` on
+TeamState · rims with `depthWrite={false}` · FLIP measuring `offsetTop` ·
+the start screen · a bracket slot's own box.
+
+### Verified ABSENT, and still owed
+
+The sac-bunt animation · the three-outs changeover · a confirmation on the
+captain screen · a way to refuse the board (the only "refuse" in App.tsx is
+three unrelated comments) · sim-week stopping on an injury · records
+leaving the inbox for a trail of dots · no letter about a man already
+spoken to · Hood Hans's certainty · the draft's dead space · the
+recruiting and class density · the Ratings hero clip · the postseason
+card's record and bracket wording (37) · the dugout sheet's grouping was
+done, its ORDER question (38) settled · the budget screen redesign · the
+offer card · the prestige balance · the saves screen itself.

@@ -447,7 +447,14 @@ export function Board() {
         <Metric
           label="BUDGET"
           value={live ? String(left) : '—'}
-          note={live ? `${weekly * RECRUITING_WEEKS} / ${RECRUITING_WEEKS} WEEKS` : 'CLOSED'}
+          /*
+            What the big number IS. Reported as a contradiction — "budget 29,
+            and underneath 159 / 3 weeks" — and both were true of different
+            things: 29 is what is left of THIS WEEK, 159 was the whole window,
+            and the slash read as a division that gave 53. The note names the
+            number above it now, which is the only job it has.
+          */
+          note={live ? `OF ${weekly} THIS WEEK` : 'CLOSED'}
         />
         {/* Sized down as well as filled-only. The display face has no star, so
             each ★ came from the fallback font at nearly a square em — five of

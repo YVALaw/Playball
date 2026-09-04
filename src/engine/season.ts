@@ -647,6 +647,14 @@ export interface GameSummary {
   awayRuns: number;
   conference: boolean;
   innings: number;
+  /**
+   * The full lines, for a game whose box a screen can open.
+   *
+   * Carried on the summary rather than filed by day, because a June day
+   * holds many games and the bracket slot is where the tap already is.
+   * Present for postseason games only; season.results keeps the lean copy.
+   */
+  box?: BoxScore;
 }
 
 /**
@@ -1987,8 +1995,17 @@ export function recordResult(
       },
     );
   }
-  if (keepFor !== null && (homeIndex === keepFor || awayIndex === keepFor)) {
-    season.boxScores[today] = {
+  /*
+    Built for the user's games as always, and for EVERY game in June, so a
+    bracket slot can carry its own. The lines are the expensive part, so
+    nothing else asks for them: a regular-season game between two rival
+    programs still builds nothing.
+  */
+  const wantBox = (keepFor !== null && (homeIndex === keepFor || awayIndex === keepFor))
+    || opts.postseason === true;
+  let box: BoxScore | null = null;
+  if (wantBox) {
+    box = {
       day: today, home: homeIndex, away: awayIndex,
       homeRuns: hr, awayRuns: ar, innings: result.innings,
       homeBatting: battingLines(result.home),
@@ -2004,6 +2021,10 @@ export function recordResult(
       awayErrors: result.away.errors,
       homeErrors: result.home.errors,
     };
+  }
+  // The day-keyed store stays the user's own, exactly as it was.
+  if (box && keepFor !== null && (homeIndex === keepFor || awayIndex === keepFor)) {
+    season.boxScores[today] = box;
   }
 
   // What you learned by watching, from the same test that decides whose box
@@ -2105,8 +2126,10 @@ export function recordResult(
     conference,
     innings: result.innings,
   };
+  // The league's own log keeps the lean summary; only the caller that can
+  // display a box — the bracket — is handed one.
   if (opts.record ?? true) season.results.push(summary);
-  return summary;
+  return box && opts.postseason === true ? { ...summary, box } : summary;
 }
 
 /** Sim every game on the next scheduled day. Returns that day's summaries. */

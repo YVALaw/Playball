@@ -24,7 +24,7 @@ import { ModuleIntro, Segmented } from '../components/Kit.js';
 import { Lineup } from './Lineup.js';
 import { Crest } from '../Crest.js';
 import { era, injuryClock } from '../../engine/season.js';
-import type { SeasonState } from '../../engine/season.js';
+import type { SeasonState, BoxScore } from '../../engine/season.js';
 import type { Hitter } from '../../engine/types.js';
 import { available } from '../../engine/depthChart.js';
 import { handles } from '../../state/depth.js';
@@ -96,7 +96,9 @@ export function Postseason() {
     programs would put tens of thousands of rows in a save to serve a screen
     almost nobody opens for a game they were not in.
   */
-  const [openDay, setOpenDay] = useState<number | null>(null);
+  // The box being read, not the day it was played on: a June day holds
+  // several games, so the day alone could never name one.
+  const [openBox, setOpenBox] = useState<BoxScore | null>(null);
   /*
     Which stage is on screen, which is not always the stage being played.
 
@@ -300,11 +302,20 @@ export function Postseason() {
     nothing for a game between two programs that are not yours. Nothing is a
     perfectly good answer here: the score is already on the card.
   */
+  /*
+    Any match played opens its own box now — the reporter's second report on
+    this: "in the previous design we could tap any of the matches and it
+    would show us the box score." A bracket game carries its lines with it,
+    so a rival's game is as readable as your own; the day-keyed store is the
+    fallback for a slot from a save written before that.
+  */
   const openSlot = (slot: DESlot): void => {
-    const day = slot.game?.day;
-    if (day === undefined) return;
-    if (!season.boxScores?.[day]) return;
-    setOpenDay(day);
+    const g = slot.game;
+    if (!g) return;
+    if (g.box) { setOpenBox(g.box); return; }
+    const day = g.day;
+    if (day === undefined || !season.boxScores?.[day]) return;
+    setOpenBox(season.boxScores[day]);
   };
 
   const name = (i: number): string => season.teams[i]?.def.school ?? '?';
@@ -754,11 +765,11 @@ export function Postseason() {
 
       {/* A bracket game, opened. Same sheet the schedule uses, because a
           postseason box score is a box score. */}
-      {openDay !== null && season.boxScores?.[openDay] && (
+      {openBox !== null && (
         <BoxScoreSheet
-          box={season.boxScores[openDay]}
+          box={openBox}
           season={season}
-          onClose={() => setOpenDay(null)}
+          onClose={() => setOpenBox(null)}
         />
       )}
 
