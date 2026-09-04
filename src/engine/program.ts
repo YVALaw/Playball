@@ -437,6 +437,20 @@ export function nextPrestige(
   */
   const showed = o.madeRegionals === true || winPct(o) >= 0.5;
   const cleared = boardCleared && showed && gap < 0 && current <= SUMMIT_OVER;
+  /*
+    And the hold, which is a different thing from the shelter above.
+
+    Below the blue-blood band there is no `sticky` and, until this was
+    measured, no protection at all for a season that did what it was told:
+    a cleared board and an uncleared one landed on the same number. That is
+    the reporter's complaint and it was exactly right.
+
+    Deliberately capped at 70 rather than run to the summit. Applied to the
+    whole table it moved the league mean +1.2 and nearly doubled the 90+
+    bucket (1.1 to 2.1 of ninety six) — the top of the table growing is not
+    what "I met the mandate and still lost prestige" was ever about.
+  */
+  const hold = boardCleared && gap < 0 && current < 70;
   const rate = sheltered ? 0.045 : thinning ? 0.22 : (sticky || cleared) ? 0.12 : 0.18;
   let drift = gap * rate;
   /*
@@ -446,7 +460,26 @@ export function nextPrestige(
     report was about. A season the board approved of gives ground only when
     it honestly argued a full point away even at the slow rate.
   */
+  /*
+    And doing what you were asked never costs you the standing.
+
+    Raised three times, most plainly: "I met 3 of the required mandates and
+    missed 3 bonuses — how is it possible that meeting their expectations
+    makes me lose prestige?" Measured before it was touched, and he was
+    exactly right: a cleared board and an uncleared one landed on the SAME
+    number at every standing (54 → 52 either way), because the shelter asked
+    for a May appearance or a winning record on top — and a develop board is
+    routinely cleared at 20-25. The board's whole job is to say what this
+    program is for; clearing it and still sliding makes the checklist a
+    decoration.
+
+    So a cleared board HOLDS. It does not build — the gentler rate above is
+    still reserved for a season the country saw, and nothing here drifts a
+    quiet program upward — which is what kept the one-star bucket from
+    emptying the last time this was widened.
+  */
   if (cleared && drift > -1) drift = Math.max(0, drift);
+  if (hold) drift = Math.max(0, drift);
   return Math.max(5, Math.min(95, Math.round(current + drift + climbBonus(current, o))));
 }
 

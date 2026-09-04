@@ -387,7 +387,7 @@ export function NewGame() {
               <small>{MANDATE_LABEL[detail.expectation.mandate]} · {confNameOf(picked)}</small>
               <strong>{picked.school}</strong>
               <p>
-                {picked.nickname} · {'★'.repeat(detail.stars)}{'☆'.repeat(5 - detail.stars)}
+                {picked.nickname} · {'★'.repeat(detail.stars)}
                 {' · roster '}{detail.roster} · {detail.contract} year deal
               </p>
 
@@ -395,15 +395,16 @@ export function NewGame() {
                   spelled out rather than left to two numbers side by side. */}
               {detail.tag && (
                 <>
-                  <span>{detail.tag}</span>
+                  <hr />
+                  <small>THE JOB · {detail.tag}</small>
                   <p>
                     {picked.prestige - picked.quality >= 12
-                      ? 'Expectations will not wait for the roster to catch up.'
+                      ? 'The name is ahead of the roster, and the board counts the name.'
                       : picked.quality - picked.prestige >= 12
-                        ? 'Better than its reputation right now. This roster is a window, and windows close.'
+                        ? 'The roster is ahead of the name. Windows close.'
                         : picked.prestige >= 60
-                          ? 'They intend to stay exactly that.'
-                          : 'Nothing here yet. Whatever gets built, you build it.'}
+                          ? 'Good for a long time, and they intend to stay that way.'
+                          : 'Nothing here yet. Whatever gets built, you build.'}
                   </p>
                 </>
               )}
@@ -418,7 +419,7 @@ export function NewGame() {
               {culture && (
                 <>
                   <hr />
-                  <small>{culture.name} · {CULTURE_LABEL[culture.edge]}</small>
+                  <small>THE PLACE · {CULTURE_LABEL[culture.edge]}</small>
                   <p>{culture.creed}</p>
                   {record && (
                     <p>{offerPitch(record, {
@@ -429,9 +430,13 @@ export function NewGame() {
               )}
 
               <hr />
-              <small>THE MANDATE</small>
+              <small>THE ASK · {detail.expectation.targetWins} WINS</small>
               <p>{detail.expectation.summary}</p>
-              {rival && <p>Rivalry: {rival.school}, three times a year.</p>}
+              {rival && (
+                <p className="offer-aside">
+                  {rival.school} are the rivalry. Three times a year.
+                </p>
+              )}
 
               {/*
                 The school's colour moved from the letters to an underline.

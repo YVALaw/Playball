@@ -251,3 +251,46 @@ recruiting and class density · the Ratings hero clip · the postseason
 card's record and bracket wording (37) · the dugout sheet's grouping was
 done, its ORDER question (38) settled · the budget screen redesign · the
 offer card · the prestige balance · the saves screen itself.
+
+---
+
+## The last of the list — September 4, late
+
+**35. Prestige stopped punishing a met mandate, and it was measured both
+ways before and after.** The complaint was exactly right and the mechanism
+was not what the code's own comments implied: the shelter required a May
+appearance or a winning record ON TOP of the cleared board, and a
+develop-mandate board is routinely cleared at 20-25. Measured, a cleared
+board and an uncleared one landed on the SAME number at every standing —
+54 → 52 either way. Clearing the checklist bought nothing.
+
+A cleared board now HOLDS the standing below 70. It does not build: the
+gentler rate is still the shown season's alone, so nothing drifts a quiet
+programme upward. The cap at 70 came out of measurement rather than taste
+— run to the summit it moved the league mean +1.2 and nearly doubled the
+90+ bucket (1.1 to 2.1 of ninety six), and the top of the table growing
+was never what the complaint was about. Capped, the carousel reads mean
+55.9 against a 55.4 baseline with 85+ at 10.1 against 11.5. Four pins hold
+both halves: the complaint fixed, and the league not inflated by fixing it.
+
+**39. The saves screen is a saves screen.** The delete bug was fixed
+earlier; this is the mess. It had grown two sections that belong elsewhere
+and now said so twice — HELP, the tutorial reset Settings already owns and
+the language audit flagged, and START AGAIN, which is the front door's NEW
+CAREER now that the front door exists. Both gone, with the dead modal and
+state behind them. The autosave's delete warning was also lying: it still
+said a played career "writes a new one straight back", which was true
+until the delete was fixed and is not now.
+
+**34. The offer card, rebuilt rather than trimmed.** The fault was
+organisation, not sentences: three rows carried three different grammars
+for a heading, the nickname changed number halfway down, and THE MANDATE —
+the row that decides whether you take the job — carried no number while a
+rivalry fact sat filed under it. One grammar now, in the order a coach
+asks: THE JOB, THE PLACE, THE ASK · N WINS, with the rivalry as an aside.
+The ask is stated in the same terms the program page will later hold you
+to.
+
+**Still owed:** the budget screen redesign (32), which is a design
+conversation rather than a fix — "there is no real dilemma of whom to hire,
+we would always go for the one on top of every list."

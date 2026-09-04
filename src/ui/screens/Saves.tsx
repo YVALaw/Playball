@@ -77,9 +77,7 @@ function midnightsBetween(then: number, now: number): number {
 }
 
 /** What the player has been asked to confirm, if anything. */
-type Ask =
-  | { kind: 'delete'; save: SaveSummary }
-  | { kind: 'new' };
+type Ask = { kind: 'delete'; save: SaveSummary };
 
 export function Saves() {
   const saves = useDynasty((s) => s.saves);
@@ -88,9 +86,7 @@ export function Saves() {
   const refreshSaves = useDynasty((s) => s.refreshSaves);
   const saveAs = useDynasty((s) => s.saveAs);
   const deleteSlot = useDynasty((s) => s.deleteSlot);
-  const resetTutorials = useDynasty((s) => s.resetTutorials);
   const loadSlot = useDynasty((s) => s.loadSlot);
-  const newDynasty = useDynasty((s) => s.newDynasty);
   const saveState = useDynasty((s) => s.saveState);
   const lastSaveError = useDynasty((s) => s.lastSaveError);
   const loadError = useDynasty((s) => s.loadError);
@@ -110,7 +106,6 @@ export function Saves() {
    */
   const [removing, setRemoving] = useState(false);
   const [ask, setAsk] = useState<Ask | null>(null);
-  const [tutorialsReset, setTutorialsReset] = useState(false);
   /**
    * Re-read on a timer so "just now" does not still say "just now" an hour
    * later. Cheap, and the alternative is a screen that quietly lies about how
@@ -190,8 +185,7 @@ export function Saves() {
             <div style={{
               marginTop: 5, font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
             }}>
-              {team.def.school}, {year}, {team.w}-{team.l}, filed under a name of
-              your own. Take one before anything you might want to come back from.
+              {team.def.school}, {year}, {team.w}-{team.l} — under a name of your own.
             </div>
             <input
               value={name}
@@ -256,7 +250,7 @@ export function Saves() {
               maxWidth: 270, margin: '8px auto 0',
               font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
             }}>
-              The game saves on its own; copies you take by hand land here too.
+              The game saves on its own. Copies land here too.
             </div>
           </div>
         )}
@@ -278,56 +272,6 @@ export function Saves() {
           />
         ))}
 
-        {/* ------------------------------------------------------------------
-            Help. The first-visit tutorials teach each screen once and then stay
-            out of the way; this is the one place they can be asked back.
-        */}
-        <div style={{
-          marginTop: 22, paddingTop: 14, borderTop: '2px solid var(--ink)',
-        }}>
-          <div className="label">HELP</div>
-          <div style={{
-            marginTop: 5, font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-          }}>
-            Reset the tutorials and every screen teaches again.
-          </div>
-          <button
-            onClick={() => { resetTutorials(); setTutorialsReset(true); }}
-            className="tap"
-            style={{
-              width: '100%', marginTop: 10, padding: '12px 10px', minHeight: 44,
-              background: 'transparent', border: '1px solid rgba(var(--ink-rgb), .4)',
-              color: 'var(--ink)', font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-            }}
-          >{tutorialsReset ? 'THEY WILL SHOW AGAIN' : 'SHOW THE TUTORIALS AGAIN'}</button>
-        </div>
-
-        {/* ------------------------------------------------------------------
-            And the way out of all of them. Down here, outlined rather than
-            filled, and behind a confirmation: it is the only control on the
-            screen that ends the career you are in the middle of.
-        */}
-        <div style={{
-          marginTop: 22, paddingTop: 14, borderTop: '2px solid var(--ink)',
-        }}>
-          <div className="label">START AGAIN</div>
-          <div style={{
-            marginTop: 5, font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-          }}>
-            A new world, a new job, a coach of your own. The career on screen
-            survives only as a saved copy — the autosave follows whichever
-            dynasty is being played.
-          </div>
-          <button
-            onClick={() => setAsk({ kind: 'new' })}
-            className="tap"
-            style={{
-              width: '100%', marginTop: 10, padding: '13px 10px',
-              background: 'transparent', border: '1px solid var(--ink)',
-              color: 'var(--ink)', font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-            }}
-          >NEW DYNASTY</button>
-        </div>
       </div>
 
       {ask?.kind === 'delete' && (
@@ -342,7 +286,7 @@ export function Saves() {
               // device — but it is almost never what somebody in the middle of a
               // season means to do, and the reason it is nearly useless there is
               // worth saying rather than leaving them to discover.
-              ? 'The game writes this slot on its own — a played career writes a new one straight back. Delete it only to clear the device or start again.'
+              ? 'This is the career you are playing. Deleting it closes the career and stands you back at the front door.'
               : 'There is no second copy of this dynasty and no way back to it once it is gone.',
           ]}
           cancel={{ label: 'KEEP IT', onClick: () => setAsk(null) }}
@@ -351,22 +295,6 @@ export function Saves() {
         />
       )}
 
-      {ask?.kind === 'new' && (
-        <Modal
-          kicker="START AGAIN"
-          title="New dynasty"
-          tone="clay"
-          lines={[
-            'A new world is built from scratch and takes over the autosave.',
-            team
-              ? `${team.def.school}, ${year}, ${team.w}-${team.l} — if you have not saved a copy of this career, it goes when the new one starts.`
-              : 'Anything not saved to a slot of its own goes when the new one starts.',
-          ]}
-          cancel={{ label: 'NOT YET', onClick: () => setAsk(null) }}
-          action="BUILD A NEW WORLD"
-          onClose={() => { setAsk(null); newDynasty(); }}
-        />
-      )}
     </FixedHeader>
   );
 }

@@ -3526,3 +3526,11 @@
 /* The gap between the sub-tabs and the first row they filter. */
 .dense-head .segmented { margin-bottom: 8px; }
 .dense-head .screen-title-row button { padding: 7px 9px; }
+
+/* The rivalry is an aside on the offer card, not part of the ask it was filed
+   under. Reported with the card as a whole: "non organized either." */
+.career-offer-detail .offer-aside {
+  margin-top: 5px;
+  font: 400 calc(11px * var(--ts))/1.45 var(--body);
+  opacity: .75;
+}
