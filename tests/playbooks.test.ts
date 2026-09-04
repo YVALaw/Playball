@@ -148,3 +148,51 @@ describe('the stations: the men stand where the playbook says', () => {
     expect([6, 7]).toContain(chaserFor(ball, shaded));
   });
 });
+
+// ---------------------------------------------------------------------------
+// The money half: what the wages and the bricks now buy.
+// ---------------------------------------------------------------------------
+
+import { devBonus, armCareFor, FACILITIES, marketFor } from '../src/engine/economy.js';
+import { threw } from '../src/engine/workload.js';
+import type { Arm, Pitcher } from '../src/engine/types.js';
+
+describe('the money: each seat and rung buys something a season can feel', () => {
+  const staffOf = (seat: 'hitting' | 'pitching', rating: number) => ({
+    [seat]: { ...marketFor('w', 2030, seat)[0]!, rating },
+  });
+
+  it('the game-side coaches develop their own side', () => {
+    expect(devBonus({})).toEqual({ bat: 0, arm: 0 });
+    const hitting = devBonus(staffOf('hitting', 84));
+    expect(hitting.bat).toBe(14);
+    expect(hitting.arm).toBe(0);
+    const pitching = devBonus(staffOf('pitching', 60));
+    expect(pitching.arm).toBe(10);
+    expect(pitching.bat).toBe(0);
+  });
+
+  it('the pitching coach carries the mileage, floor held', () => {
+    expect(armCareFor({})).toBe(1);
+    expect(armCareFor(staffOf('pitching', 80))).toBeCloseTo(0.8, 5);
+    expect(armCareFor(staffOf('pitching', 99))).toBe(0.78);
+  });
+
+  it('the rungs guard bodies, best lab best guard', () => {
+    const guards = FACILITIES.map((f) => f.injuryGuard);
+    expect(guards[0]).toBe(1);
+    for (let i = 1; i < guards.length; i++) {
+      expect(guards[i]!).toBeLessThan(guards[i - 1]!);
+    }
+  });
+
+  it('cared-for innings put less mileage in the arm, and none in the stats', () => {
+    const raw = { id: 'a1', type: 'pitcher' } as unknown as Arm;
+    const cared = { id: 'a2', type: 'pitcher' } as unknown as Arm;
+    threw(raw, 18);
+    threw(cared, 18, 0.8);
+    const w = (a: Arm): number => (a as Pitcher & { outs?: number }).outs ?? 0;
+    expect(w(raw)).toBe(18);
+    expect(w(cared)).toBeCloseTo(14.4, 5);
+  });
+});

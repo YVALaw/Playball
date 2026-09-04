@@ -305,3 +305,31 @@ To the door decisions, whole:
 **Still open in stage 22:** the money half — the staff-seat and
 facility-rung effect audit, and strengthening where thin. Its own
 session; it starts with measurement, not design.
+
+## Stage 22 — the money half, built September 5
+
+The audit priced an elite hitting coach at +0.15% on events — a rumour
+of a thumb, defended from poaching at $230k a year. The reporter's three
+answers, all the recommended doors, built:
+
+- **The development split**: the hitting coach develops bats, the
+  pitching coach develops arms (`devBonus`, up to +14 TRAINING-points a
+  side — a shade over the top facility rung), threaded through
+  `departAndDevelop` as `trainingBat`/`trainingArm`. A two-way man, one
+  body under both coaches, reads the mean of the two rooms. User-side
+  only; rivals stay priced into their head coach.
+- **The pitching coach carries the mileage**: `threw(p, outs, care)` —
+  the same innings put less wear in a well-managed arm (elite ≈ −20%,
+  floor 0.78). The stat lines never see it; the workload counter does.
+- **The rungs guard bodies**: `FacilityLevel.injuryGuard` (1 → 0.96 →
+  0.93 → 0.86) multiplies the injury roll's strain for the user's men —
+  deterministic, no draw moved. Stamped on the record beside coachMods
+  at every dressing site and on the day a rung is bought.
+- SEAT_NOTE copy tells the new truth; the facility card adds "fewer
+  pulled muscles."
+
+Four money pins joined `playbooks.test.ts` (17 total in the file).
+
+**Noticed in passing, not fixed:** the managed-game path may not charge
+`threw` at all — arm mileage might only accrue from simmed games. Worth
+its own trace next batch.

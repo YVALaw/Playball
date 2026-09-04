@@ -321,7 +321,8 @@ function MoneySheet({ team }: { team: Owner }) {
           <strong>Level {economy.facilities} of {MAX_FACILITY}</strong>
           <small>
             {economy.facilities > 0 && level
-              ? `Worth ${level.trainBump} TRAINING, and a better tour.`
+              ? `Worth ${level.trainBump} TRAINING, a better tour, and fewer
+                pulled muscles.`
               : 'What the school gave you. The recruits notice.'}
           </small>
           <p>

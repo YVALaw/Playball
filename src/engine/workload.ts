@@ -127,9 +127,12 @@ export function armMultiplier(p: Arm): number {
 }
 
 /** Outs recorded, added to his year. */
-export function threw(p: Arm, outs: number): void {
+export function threw(p: Arm, outs: number, care = 1): void {
   const w = p as Pitcher & Worked;
-  w.outs = (w.outs ?? 0) + outs;
+  // `care` is the pitching coach's stage-22 channel: the same innings put
+  // less mileage in a well-managed arm. The stat lines never see it — this
+  // counter is workload, nothing else.
+  w.outs = (w.outs ?? 0) + outs * care;
   /*
     The crossing — stage 16's door, "both jobs at once ... crossing
     fatigue." A two-way man's legs and arm are the same body: the day he is

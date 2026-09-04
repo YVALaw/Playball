@@ -62,6 +62,7 @@ import type { AlumnusNote } from '../engine/legacy.js';
 import {
   annualBudget, freshEconomy, marketFor, poached, remaining, wageBill,
   withStaff, FACILITIES, MAX_FACILITY, SCOUT_COST, SCOUT_DAYS, SEATS,
+  devBonus, armCareFor,
   SEAT_LABEL, type Assistant, type Economy, type StaffSeat,
 } from '../engine/economy.js';
 import {
@@ -1622,6 +1623,7 @@ function staffSetsTheCard(season: SeasonState, userTeam: number): void {
 function applyCoachMods(
   season: SeasonState, userTeam: number, coach: CoachState,
   staff: Economy['staff'] = {},
+  facilities = 0,
 ): void {
   // Every chair, not just yours. It used to clear the field and write one row,
   // which was right when the other ninety five benches were nobody's — now each
@@ -1632,7 +1634,10 @@ function applyCoachMods(
   // The user's row carries his staff as well — stage 11. An assistant is a
   // bonus on the calibrated skills, applied here so every path that dresses
   // the mods prices him the same way.
-  syncCoachMods(season, userTeam, withStaff(coach.skills, staff));
+  syncCoachMods(season, userTeam, withStaff(coach.skills, staff), {
+    armCare: armCareFor(staff),
+    injuryGuard: FACILITIES[facilities]?.injuryGuard ?? 1,
+  });
 }
 
 /**
@@ -2011,7 +2016,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // their programs are worth. Without it the entire hiring ladder would be
     // open to whoever won a game first — you included.
     seatCoaches(season, seat, START_YEAR);
-    applyCoachMods(season, seat, coach, get().economy.staff);
+    applyCoachMods(season, seat, coach, get().economy.staff, get().economy.facilities);
     applyPhilosophy(season, seat, coach);
 
     /*
@@ -2702,6 +2707,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           // worth nine points of the skill — see engine/economy.ts.
           training: get().coach.skills.training
             + (FACILITIES[get().economy.facilities]?.trainBump ?? 0),
+          // Stage 22: the game-side coaches develop their own side.
+          trainingBat: get().coach.skills.training
+            + (FACILITIES[get().economy.facilities]?.trainBump ?? 0)
+            + devBonus(get().economy.staff).bat,
+          trainingArm: get().coach.skills.training
+            + (FACILITIES[get().economy.facilities]?.trainBump ?? 0)
+            + devBonus(get().economy.staff).arm,
         });
         /*
           The alumni book — stage 13. One durable note per man who left YOUR
@@ -2797,7 +2809,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     };
     // The in-game skills live on the team record too; keep the copy current the
     // moment a point lands, or the next game plays at last year's numbers.
-    if (season) applyCoachMods(season, userTeam, next, get().economy.staff);
+    if (season) applyCoachMods(season, userTeam, next, get().economy.staff, get().economy.facilities);
     set({
       coach: next,
       spentThisStep: { ...spentThisStep, [skill]: (spentThisStep[skill] ?? 0) + 1 },
@@ -2821,7 +2833,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       skillPoints: coach.skillPoints + 1,
       skills: { ...coach.skills, [skill]: coach.skills[skill] - 1 },
     };
-    if (season) applyCoachMods(season, userTeam, next, get().economy.staff);
+    if (season) applyCoachMods(season, userTeam, next, get().economy.staff, get().economy.facilities);
     set({
       coach: next,
       spentThisStep: { ...spentThisStep, [skill]: on - 1 },
@@ -3077,7 +3089,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     });
     // Their benches changed hands, so the edge every one of their games is
     // played with has to be restamped before the next season starts.
-    syncCoachMods(season, userTeam, withStaff(coach.skills, get().economy.staff));
+    syncCoachMods(season, userTeam, withStaff(coach.skills, get().economy.staff), {
+      armCare: armCareFor(get().economy.staff),
+      injuryGuard: FACILITIES[get().economy.facilities]?.injuryGuard ?? 1,
+    });
 
     /*
       The season, into the record books, here rather than at the year roll.
@@ -3939,7 +3954,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const displaced = seatCoaches(season, team, year);
     const leaving = season.teams[userTeam];
     // The old program loses the in-game edge, the new one gains it.
-    applyCoachMods(season, team, next, get().economy.staff);
+    applyCoachMods(season, team, next, get().economy.staff, get().economy.facilities);
     if (displaced) {
       get().post({
         kind: 'carousel', year,
@@ -5404,7 +5419,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (remaining(economy, me.prestige) < man.wage) return;
     const staff = { ...economy.staff, [seat]: man };
     // Re-dress the mods the games read; the staff stacks on the coach's own.
-    syncCoachMods(season, userTeam, withStaff(get().coach.skills, staff));
+    syncCoachMods(season, userTeam, withStaff(get().coach.skills, staff), {
+      armCare: armCareFor(staff),
+      injuryGuard: FACILITIES[economy.facilities]?.injuryGuard ?? 1,
+    });
     set({ economy: { ...economy, staff }, version: get().version + 1 });
     void get().saveNow();
   },
@@ -5427,6 +5445,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (economy.facilities >= MAX_FACILITY) return;
     const next = FACILITIES[economy.facilities + 1];
     if (!next || remaining(economy, me.prestige) < next.cost) return;
+    const rec = season.teams[get().userTeam];
+    if (rec) rec.injuryGuard = next.injuryGuard;
     set({
       economy: {
         ...economy,
@@ -5662,7 +5682,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // Restamped on every load rather than trusted from the save, so a save from
     // before the in-game skills were wired — or one that predates a job change —
     // comes up with the edge on the right program.
-    applyCoachMods(loaded.season, loaded.userTeam, coach, usableEconomy(loaded.economy).staff);
+    applyCoachMods(loaded.season, loaded.userTeam, coach, usableEconomy(loaded.economy).staff, usableEconomy(loaded.economy).facilities);
     /*
       Older saves carry no school annals. The one program whose past such a
       save *does* know is the user's own — his career rows name their school —

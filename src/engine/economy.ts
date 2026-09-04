@@ -72,8 +72,8 @@ export const SEAT_LABEL: Record<StaffSeat, string> = {
 
 /** What each seat actually buys, in the words the screen prints. */
 export const SEAT_NOTE: Record<StaffSeat, string> = {
-  pitching: 'Stacks on your defense. Balls in play against you die a little more often.',
-  hitting: 'Stacks on your offense. Your hitters take slightly better at-bats.',
+  pitching: 'Develops your arms over the winter, and carries their innings through the spring.',
+  hitting: 'Develops your bats over the winter, and sharpens their at-bats a touch.',
   recruiting: 'Every hour on a recruit counts for more, and your reports run tighter.',
 };
 
@@ -172,6 +172,31 @@ export function withStaff(
   };
 }
 
+/**
+ * The development bonus each game-side coach brings, in points of the
+ * TRAINING scale, split by the side he works. An elite man is worth a
+ * shade more than the top facility rung — the wage now buys something a
+ * roster can feel year over year.
+ */
+export function devBonus(
+  staff: Partial<Record<StaffSeat, Assistant>>,
+): { bat: number; arm: number } {
+  return {
+    bat: staff.hitting ? Math.round(staff.hitting.rating / 6) : 0,
+    arm: staff.pitching ? Math.round(staff.pitching.rating / 6) : 0,
+  };
+}
+
+/**
+ * How the pitching coach carries his arms' season: workload accrues at
+ * this rate, so a staff under a good man wears its innings better. An
+ * elite coach is worth about a fifth of the mileage.
+ */
+export function armCareFor(staff: Partial<Record<StaffSeat, Assistant>>): number {
+  const r = staff.pitching?.rating ?? 0;
+  return Math.max(0.78, 1 - r / 400);
+}
+
 /** The wage bill a roll will collect. */
 export function wageBill(staff: Partial<Record<StaffSeat, Assistant>>): number {
   return SEATS.reduce((a, s) => a + (staff[s]?.wage ?? 0), 0);
@@ -202,6 +227,11 @@ export interface FacilityLevel {
   trainBump: number;
   /** Added to the recruiting pitch's development read (0–1 scale). */
   devPitch: number;
+  /**
+   * Multiplier on the injury roll's strain — a body kept in a real
+   * facility pulls fewer muscles. One at the bottom rung.
+   */
+  injuryGuard: number;
 }
 
 /**
@@ -209,10 +239,10 @@ export interface FacilityLevel {
  * cannot staff up and build in the same year — which is the decision.
  */
 export const FACILITIES: readonly FacilityLevel[] = [
-  { cost: 0, label: 'What the school gave you', trainBump: 0, devPitch: 0 },
-  { cost: 500, label: 'A real weight room', trainBump: 3, devPitch: 0.06 },
-  { cost: 900, label: 'An indoor practice facility', trainBump: 6, devPitch: 0.13 },
-  { cost: 1400, label: 'A player development lab', trainBump: 9, devPitch: 0.2 },
+  { cost: 0, label: 'What the school gave you', trainBump: 0, devPitch: 0, injuryGuard: 1 },
+  { cost: 500, label: 'A real weight room', trainBump: 3, devPitch: 0.06, injuryGuard: 0.96 },
+  { cost: 900, label: 'An indoor practice facility', trainBump: 6, devPitch: 0.13, injuryGuard: 0.93 },
+  { cost: 1400, label: 'A player development lab', trainBump: 9, devPitch: 0.2, injuryGuard: 0.86 },
 ];
 
 export const MAX_FACILITY = FACILITIES.length - 1;

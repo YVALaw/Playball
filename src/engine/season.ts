@@ -531,6 +531,13 @@ export interface TeamRecord {
    */
   coachMods?: { offense: number; defense: number };
   /**
+   * Stage 22: the pitching coach's workload care and the facilities'
+   * injury guard, stamped by the store on the user's record only. One
+   * everywhere else — rivals are priced in, as ever.
+   */
+  armCare?: number;
+  injuryGuard?: number;
+  /**
    * The man in the chair, on every program except the one you are running.
    *
    * On the team record rather than in a parallel array because the coach belongs
@@ -1623,7 +1630,9 @@ export function rollHurtsFor(season: SeasonState, teamIndex: number): void {
   for (const p of rec.team.lineup) {
     if (!available(p, clock)) continue;
     const going = hurtsToday(
-      p, clock, season.seed ?? 0, strainMultiplier(p), season.year ?? 0,
+      p, clock, season.seed ?? 0,
+      strainMultiplier(p) * (rec.injuryGuard ?? 1),
+      season.year ?? 0,
     );
     if (!going) continue;
     hurt(p, clock, going.what, going.days);
@@ -1797,11 +1806,11 @@ export function playGame(
     estimate. `fatigueMultiplier` is what a man spends inside one outing;
     this is what he carries into the next one.
   */
-  for (const side of [result.home, result.away]) {
+  for (const [rec, side] of [[home, result.home], [away, result.away]] as const) {
     // Keyed by name, which is how `TeamState` keeps them; the line carries the
     // player itself, so the name is only the key and never the identity.
     for (const line of side.pitching.values()) {
-      threw(line.player, line.outs);
+      threw(line.player, line.outs, rec.armCare ?? 1);
     }
   }
 

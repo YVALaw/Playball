@@ -278,12 +278,18 @@ export function seatCoaches(
  */
 export function syncCoachMods(
   season: SeasonState, userTeam: number, userSkills: CoachSkills | null,
+  /** Stage 22: the money's two body channels, stamped beside the mods. */
+  care?: { armCare: number; injuryGuard: number },
 ): void {
   for (const record of season.teams) {
     if (record.index === userTeam) {
       if (userSkills) {
         record.coachMods = { offense: userSkills.offense, defense: userSkills.defense };
       } else delete record.coachMods;
+      if (care) {
+        record.armCare = care.armCare;
+        record.injuryGuard = care.injuryGuard;
+      }
       continue;
     }
     const c = record.coach;

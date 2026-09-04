@@ -679,6 +679,10 @@ export interface OffseasonOpts {
    * of a class, invisible in any single offseason.
    */
   training?: number;
+  /** Stage 22: the hitting coach's development channel, bats only. */
+  trainingBat?: number;
+  /** And the pitching coach's, arms only. A two-way man reads the mean. */
+  trainingArm?: number;
 }
 
 const emptyReport = (): OffseasonReport => ({
@@ -819,6 +823,20 @@ export function departAndDevelop(
       : 0;
 
     const growthMult = 1 + (trainer - 20) / 500;
+    /*
+      Stage 22: the game-side coaches develop their own side. The split
+      only exists on the user's record — a rival's whole staff is already
+      priced into his head coach — and a two-way man, one body under both
+      coaches, reads the mean of the two rooms.
+    */
+    const coached = record.index === mine;
+    const batMult = coached && opts.trainingBat !== undefined
+      ? 1 + (opts.trainingBat - 20) / 500 : growthMult;
+    const armMult = coached && opts.trainingArm !== undefined
+      ? 1 + (opts.trainingArm - 20) / 500 : growthMult;
+    const growthFor = (p: Player): number =>
+      (p as { twoWay?: true }).twoWay === true ? (batMult + armMult) / 2
+        : p.type === 'pitcher' ? armMult : batMult;
     const roster: Player[] = uniquePlayers([
       ...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen,
     ]);
@@ -901,8 +919,8 @@ export function departAndDevelop(
       if (next === null) continue;        // unreachable: seniors always depart
       if (!sat) p.classYear = next;
       const growth = sat
-        ? growthMult * bankRedshirt(p)
-        : growthMult + growthFromCulture(p);
+        ? growthFor(p) * bankRedshirt(p)
+        : growthFor(p) + growthFromCulture(p);
       const gained = develop(p, rng, growth);
       report.developmentNet += gained;
       if (gained > 0) report.improved += 1; else report.declined += 1;
