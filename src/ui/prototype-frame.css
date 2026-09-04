@@ -3366,3 +3366,27 @@
   font: 400 calc(11.5px * var(--ts))/1.5 var(--body); color: var(--dim);
 }
 .opener-accept button { margin-top: 10px; width: 100%; }
+
+/* The manager sheet's two groups, and the width it kept overflowing.
+   Reported: "Make the next move" cut off at the right edge. The popover was
+   sized from its content; it is bounded by the frame now and its title wraps
+   rather than running off. */
+.game-tool-group {
+  display: block; margin: 10px 0 2px;
+  font: 600 calc(8.5px * var(--ts)) var(--mono); letter-spacing: .16em;
+  color: var(--dim);
+}
+.game-tool-options > .game-tool-group:first-child { margin-top: 0; }
+.game-manager-popover {
+  max-width: min(320px, calc(100vw - 28px));
+  box-sizing: border-box;
+}
+.game-manager-popover > div > strong { display: block; text-wrap: balance; }
+
+/* The tonight card's label is a door now — the whole strip opens the
+   opponent, not just the crest below it. It keeps the row layout it had as
+   a div; only the tap target is new. */
+.next-game > .match-label-tap {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; text-align: left;
+}

@@ -580,19 +580,17 @@ function Overview({ p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: bo
   return (
     <>
       <section className="profile-bio">
-        <p>
-          {CLASS_NAME[p.classYear]}
-          {isPitcher
-            ? ` ${(p as Pitcher).role === 'SP' ? 'starter' : 'reliever'}`
-            : ` ${p.pos}`}
-          {isPitcher && (p as Pitcher).sidearm ? ', throwing from the side' : ''}
-          {' '}at {owner.def.school}, {p.bats === 'S' ? 'switch hitting' : p.bats === 'L' ? 'batting left' : 'batting right'}
-          {' '}and throwing {p.throws === 'L' ? 'left' : 'right'}
-          {isPitcher ? `, up to ${(p as Pitcher).velocity} on the fastball` : ''}.
-          {eligible
-            ? ' He is draft eligible in June, which is a decision that arrives whether you want it or not.'
-            : p.classYear === 'SR' ? ' This is his last year.' : ''}
-        </p>
+        {/* The paragraph that used to open this card was the tiles below it
+            read aloud — class, role, school, bats and throws are all on the
+            hero, and age, overall, potential and velocity are in the strip.
+            Only these two facts were nowhere else. */}
+        {(eligible || p.classYear === 'SR') && (
+          <p>
+            {eligible
+              ? 'Draft eligible in June.'
+              : 'This is his last year.'}
+          </p>
+        )}
         <div>
           <span><b>{p.age}</b><small>AGE</small></span>
           <span><b>{overallOf(p)}</b><small>OVERALL</small></span>
@@ -827,10 +825,6 @@ function Repertoire({ p }: { p: Pitcher }) {
           </div>
         ))}
       </section>
-      <FieldNote
-        title="The bar is how often, not how good"
-        text="The same data the POWER ARM and JUNKBALLER readings come off."
-      />
     </>
   );
 }
@@ -907,12 +901,6 @@ function Platoon({ p }: { p: AnyPlayer }) {
         different from what a reader would assume. An ordinary split explains
         itself.
       */}
-      {p.type !== 'hitter' && p.platoonSkill === 0 && (
-        <FieldNote
-          title="No split to speak of"
-          text="Lefties and righties get the same man. The zeros are the reading, not a gap in it."
-        />
-      )}
       {p.type === 'hitter' && switchHitter && (
         <FieldNote
           title="He turns around"

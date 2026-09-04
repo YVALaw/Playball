@@ -119,7 +119,7 @@ export function Rankings() {
 
       {(preseason || (depth === 'top25' && mineAt >= 25)) && (
         <FieldNote
-          title={preseason ? 'Nobody remembers the poll' : `You are ranked #${mineAt + 1}`}
+          title={preseason ? 'The preseason poll' : `You are ranked #${mineAt + 1}`}
           text={preseason
             ? 'Three parts roster, one part reputation. After the opening games the RPI takes over.'
             : 'Outside the twenty five. Switch to the full table to see the company you are keeping.'}

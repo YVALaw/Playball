@@ -363,17 +363,9 @@ export function NeedsYou() {
           </button>
         ))}
       </section>
-      {musts > 0 && (
-        <section className="field-note">
-          <SewingPinIcon />
-          <div>
-            <strong>{musts} {musts === 1 ? "decision is" : "decisions are"} waiting on you</strong>
-            <p>
-              Marked in red above. The day holds until they are dealt with.
-            </p>
-          </div>
-        </section>
-      )}
+      {/* The card at the top of TODAY already says the day is held, in red,
+          above these very rows. This said it a second time and then narrated
+          where the first one was. One notice is a notice; two is noise. */}
     </>
   );
 }

@@ -246,13 +246,17 @@ export function Today() {
 
         {todayGame && opponent && (
           <section className="next-game">
-            <div className="match-label">
+            <button
+              className="match-label match-label-tap tap"
+              type="button"
+              onClick={() => openTeam(opponent.index)}
+            >
               <span>
                 {atHome ? 'TONIGHT VS' : 'TONIGHT AT'} {opponent.def.school.toUpperCase()}
                 {season?.playbooks?.[opponent.def.abbr] ? ' · THEIR BOOK IS ON' : ''}
               </span>
               <b>{day?.kind === 'series' ? seriesTag : 'MIDWEEK'}</b>
-            </div>
+            </button>
             {/*
               Crests rather than the abbreviation in 39px display type, and the
               second draft of the row. The first stacked crest over record in
@@ -274,11 +278,11 @@ export function Today() {
                   <small className="matchup-arm">{armShort(ourArm)}</small>
                   <small className="matchup-record">{team.w}-{team.l}</small>
                 </span>
-                <Crest abbr={team.def.abbr} size={38} />
+                <Crest abbr={team.def.abbr} size={52} />
               </button>
               <span className="versus">{atHome ? 'VS' : 'AT'}</span>
               <button type="button" onClick={() => openTeam(opponent.index)}>
-                <Crest abbr={opponent.def.abbr} size={38} />
+                <Crest abbr={opponent.def.abbr} size={52} />
                 <span className="matchup-side">
                   <small className="matchup-arm">{armShort(theirArm)}</small>
                   <small className="matchup-record">{opponent.w}-{opponent.l}</small>

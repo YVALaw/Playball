@@ -93,7 +93,7 @@ export const DEFAULT_PREFS: DevicePrefs = {
     in settings, including the smaller one for anybody who wants the density
     back.
   */
-  textScale: 1.15,
+  textScale: 1.3,
   tsz: true,
   field: '3d',
   motion: 'system',

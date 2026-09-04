@@ -446,7 +446,6 @@ export function Manage() {
     // Watching stops when there is something to manage. That was a second
     // button for a while and did not need to be: somebody who asked to watch
     // still wants the dugout back when it matters.
-    if (worthManaging()) { setAuto(null); return undefined; }
     const beat = 900;
     const t = setTimeout(() => {
       const cur = useDynasty.getState().live;
@@ -852,61 +851,19 @@ export function Manage() {
                 kind of decision as who is pitching it — and the row under the
                 calls was the last thing pushing them off a short screen.
               */}
-              {auto === null ? (
-                <button
-                  type="button"
-                  disabled={playing}
-                  onClick={() => { setAuto('watch'); setTools(false); }}
-                >
-                  <strong>Watch it play</strong>
-                  <small>The bench coach takes it from here.</small>
-                  <ChevronRightIcon />
-                </button>
-              ) : (
-                <button type="button" onClick={() => { setAuto(null); setTools(false); }}>
-                  <strong>Take the dugout back</strong>
-                  <small>The next call is yours again.</small>
-                  <ChevronRightIcon />
-                </button>
-              )}
-              {lastHit.current && (
-                <button
-                  type="button"
-                  disabled={playing}
-                  onClick={() => { setTools(false); replay(); }}
-                >
-                  <strong>See that again</strong>
-                  <small>The last ball in play, run back.</small>
-                  <ChevronRightIcon />
-                </button>
-              )}
-              <button
-                type="button"
-                disabled={playing}
-                onClick={() => { setTools(false); once(autoFinish)(); }}
-              >
-                <strong>Sim the rest</strong>
-                <small>The clipboard is his for good. Best saved for blowouts.</small>
-                <ChevronRightIcon />
-              </button>
               {/*
-                The way out without ending anything, and it writes on the way.
-                Reported from testing: "going back to the desk from the minigame
-                should save the progress as it is at the moment we exit." What it
-                can honestly save is the dynasty — the season, the roster, the
-                calendar — because a half-played game is a running coroutine and
-                there is nothing serialisable to write. The game keeps in memory
-                and PLAY BALL resumes it.
-
-                June does not get this door: its frame is the bracket, and
-                mid-bracket saving is restricted to stage boundaries on purpose.
+                Two groups, because the reporter's sentence had two halves:
+                "we have to organise the buttons inside the action button,
+                also remove the short explanation on those buttons — they
+                are not really needed since the titles are self
+                explanatory." Managing the game and handing it over are
+                different kinds of decision and were interleaved in one flat
+                list. Every sub-line is gone; the two counts that were facts
+                rather than restatements ride in their own titles.
               */}
-              {bracket === null && (
-                <button type="button" onClick={() => { void saveNow(); go('home'); }}>
-                  <strong>Back to the desk</strong>
-                  <small>The game keeps. PLAY BALL picks it up where you left it.</small>
-                  <ChevronRightIcon />
-                </button>
+              {(d.side === 'offense' || (d.side === 'defense' && (myPen || myVisits))
+                || lastHit.current) && (
+                <small className="game-tool-group">THIS INNING</small>
               )}
               {d.side === 'offense' && (
                 <button
@@ -914,12 +871,10 @@ export function Manage() {
                   disabled={playing || live.benchAvailable.length === 0}
                   onClick={() => { setModal('pinch'); setTools(false); }}
                 >
-                  <strong>Pinch hit for {d.batter.name}</strong>
-                  <small>
-                    {live.benchAvailable.length === 0
-                      ? 'The bench is empty.'
-                      : `${live.benchAvailable.length} on the bench.`}
-                  </small>
+                  <strong>
+                    Pinch hit for {d.batter.name}
+                    {live.benchAvailable.length > 0 ? ` · ${live.benchAvailable.length}` : ''}
+                  </strong>
                   <ChevronRightIcon />
                 </button>
               )}
@@ -929,12 +884,10 @@ export function Manage() {
                   disabled={playing || live.bullpenAvailable.length === 0}
                   onClick={() => { setModal('pen'); setTools(false); }}
                 >
-                  <strong>Go to the bullpen</strong>
-                  <small>
-                    {live.bullpenAvailable.length === 0
-                      ? 'Nobody is available.'
-                      : `${live.bullpenAvailable.length} arms available.`}
-                  </small>
+                  <strong>
+                    Go to the bullpen
+                    {live.bullpenAvailable.length > 0 ? ` · ${live.bullpenAvailable.length}` : ''}
+                  </strong>
                   <ChevronRightIcon />
                 </button>
               )}
@@ -945,11 +898,55 @@ export function Manage() {
                   onClick={() => { void visitMound(); setTools(false); }}
                 >
                   <strong>{d.outing.visitUsed ? 'Visit already used' : 'Visit the mound'}</strong>
-                  <small>
-                    {d.outing.visitUsed
-                      ? 'A new arm brings a fresh visit.'
-                      : 'One per pitcher, and it buys back a little.'}
-                  </small>
+                  <ChevronRightIcon />
+                </button>
+              )}
+              {lastHit.current && (
+                <button
+                  type="button"
+                  disabled={playing}
+                  onClick={() => { setTools(false); replay(); }}
+                >
+                  <strong>See that again</strong>
+                  <ChevronRightIcon />
+                </button>
+              )}
+
+              <small className="game-tool-group">THE DUGOUT</small>
+              {auto === null ? (
+                <button
+                  type="button"
+                  disabled={playing}
+                  onClick={() => { setAuto('watch'); setTools(false); }}
+                >
+                  <strong>AUTO</strong>
+                  <ChevronRightIcon />
+                </button>
+              ) : (
+                <button type="button" onClick={() => { setAuto(null); setTools(false); }}>
+                  <strong>Take the dugout back</strong>
+                  <ChevronRightIcon />
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={playing}
+                onClick={() => { setTools(false); once(autoFinish)(); }}
+              >
+                <strong>Sim the rest</strong>
+                <ChevronRightIcon />
+              </button>
+              {/*
+                The way out without ending anything, and it writes on the way.
+                What it can honestly save is the dynasty — a half-played game
+                is a running coroutine with nothing serialisable to write — so
+                the game keeps in memory and PLAY BALL resumes it. June does
+                not get this door: its frame is the bracket, and mid-bracket
+                saving is restricted to stage boundaries on purpose.
+              */}
+              {bracket === null && (
+                <button type="button" onClick={() => { void saveNow(); go('home'); }}>
+                  <strong>Back to the desk</strong>
                   <ChevronRightIcon />
                 </button>
               )}

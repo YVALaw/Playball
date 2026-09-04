@@ -1125,12 +1125,7 @@ function HallSheet() {
         it are not the hall.
       */}
       {inducted.length === 0
-        ? (
-          <FieldNote
-            title="It meets in June"
-            text="Finished careers only. Nobody goes in until he has left."
-          />
-        )
+        ? null
         : inducted.map((m) => (
           <Plaque
             key={m.id}
@@ -1154,7 +1149,7 @@ function HallSheet() {
         not. Two different questions, one screen, and the screen has to say which
         is which loudly enough to survive being skimmed.
       */}
-      <SectionHeading kicker="CAREER LEADERS · NOT INDUCTIONS" title="Your record men" />
+      <SectionHeading kicker="CAREER LEADERS" title="Your record men" />
       <Head>BATTING · BY CAREER HITS</Head>
       <Table cols={BAT_COLS} head={['PLAYER', 'H', 'AVG', 'HR']}>
         {bats.length === 0
