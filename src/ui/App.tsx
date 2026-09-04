@@ -240,6 +240,65 @@ function AppBody(
    */
   useEffect(() => { setTeamCard(null); }, [phase, tab, screen, setTeamCard]);
 
+  /*
+    Android's back button, and the browser's.
+
+    Stage 18. Wrapped in Capacitor the hardware back gesture is wired to the
+    WebView's history, so an app that never pushes a history entry has
+    exactly one behaviour available to it: quit. A player who opened a
+    card, a table and a rival's page would lose the whole session to one
+    thumb-swipe meant to close the card.
+
+    So the app keeps one sentinel entry on the history stack and answers
+    every pop by peeling exactly one layer — the same order the screen is
+    stacked in, which is the order a player thinks in: the card over the
+    table over the tab. Anything peeled re-arms the sentinel; only the root
+    of HOME with nothing open lets the pop through, and that is the one
+    press that closes the game.
+
+    The lineup gate composes with this for free: `go()` refuses while the
+    nine is short and raises its own modal, so the back gesture cannot walk
+    out of a card the front door will not let you leave either.
+
+    Written against the History API rather than @capacitor/app, so the same
+    handler serves the APK, the browser and the game held as a home-screen
+    icon — where the gesture is the system's back and behaves identically.
+  */
+  // Set before the handler that reads it: the press that finds nothing
+  // left to close is the press that leaves.
+  const exiting = useRef(false);
+  const backRef = useRef<() => void>(() => {});
+  backRef.current = (): void => {
+    const s = useDynasty.getState();
+    // A blocking card is the screen while it lasts: the back press is
+    // swallowed rather than obeyed. These are answered on their own terms —
+    // the opener on the board, the big moment by reading it.
+    if (s.seasonOpener || s.playbookInvite || s.bigMoment) return;
+    if (s.selectedPlayer !== null) { s.closePlayer(); return; }
+    if (teamCard !== null) { setTeamCard(null); return; }
+    if (s.overlay !== null) { s.closeOverlay(); return; }
+    // Up a level: to the tab's own first screen, then to HOME.
+    const first = TABS.find((t) => t.id === s.tab)?.screens[0]?.id;
+    if (first && s.screen !== first) { s.go(s.tab, first); return; }
+    if (s.tab !== 'home') { s.go('home'); return; }
+    // Nothing left to close. Let the pop stand, and the shell closes.
+    exiting.current = true;
+  };
+  useEffect(() => {
+    const arm = (): void => { history.pushState({ playball: true }, ''); };
+    arm();
+    const onPop = (): void => {
+      exiting.current = false;
+      backRef.current();
+      // Re-arm unless this press was the one that leaves. Without the
+      // sentinel the next press would land on whatever preceded the app.
+      if (!exiting.current) arm();
+      else history.back();
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
 
   useEffect(() => {
     if (season || checked) return;
