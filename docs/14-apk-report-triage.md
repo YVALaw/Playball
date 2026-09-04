@@ -19,6 +19,17 @@ Two things run through the whole list and are worth saying once:
 
 ## ⚠ Batch R — regressions, before anything else
 
+**Seven of eight closed, September 4.** Item 1 (the two-way box), 2 (the
+inbox), 6 (the bullpen gesture), 3 (the swap flicker), 4 (the fielder
+rims) and 7 (the mandate) are fixed and pinned. Item 8 (the dossier
+scroll) the reporter judged a one-off and it is dropped. **Item 5, the
+postseason box score, is the one left** — and it did not reproduce:
+ is stamped correctly (measured 0 for userTeam 0) and
+ carries it forward, so the engine files a box for every game
+the user plays. Tapping an OPPONENT-only game is silent by design — the
+box is kept for your program alone — so the open question is whether the
+game tapped was one of ours.
+
 1. **The two-way ace pitched only on paper.** Set as the Friday starter,
    the dugout named somebody else as the starting pitcher, and when the
    game ended his card had a pitching line for it. Stage 21 seats him in
