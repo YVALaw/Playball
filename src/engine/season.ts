@@ -1848,8 +1848,15 @@ function battingLines(side: GameResult['home']): BoxLine[] {
       // The two-way man's batting row wears PH — pitcher-hitter, the DH's
       // cousin — while his arm's row sits in the pitching table below it.
       // PH therefore stopped meaning pinch hitter; a man off the bench is SUB.
+      // PH still wins for the pitcher-hitter. Everybody else is labelled by
+      // where he STOOD tonight rather than by what the roster calls him: the
+      // bench bat covering a two-way man's grass was going into the book
+      // wearing his own position, so the card showed two centre fielders and
+      // nobody in left.
       slot: started.has(l.player.id)
-        ? (side.pitching.has(l.player.id) ? 'PH' : l.player.pos)
+        ? (side.pitching.has(l.player.id)
+          ? 'PH'
+          : (side.playedAt.get(String(l.player.id)) ?? l.player.pos))
         : 'SUB',
       line: `${l.h}-${l.ab}${extras.length ? ', ' + extras.join(', ') : ''}`,
     });
@@ -1858,7 +1865,10 @@ function battingLines(side: GameResult['home']): BoxLine[] {
   // in the book — he used to vanish from his own game entirely.
   for (const p of side.starters) {
     if (!side.batting.has(p.id)) {
-      out.push({ id: p.id, name: p.name, slot: p.pos, line: '0-0' });
+      out.push({
+        id: p.id, name: p.name,
+        slot: side.playedAt.get(String(p.id)) ?? p.pos, line: '0-0',
+      });
     }
   }
   return out;

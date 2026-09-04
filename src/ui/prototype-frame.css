@@ -847,7 +847,13 @@
 
 /* An inbox card that leads nowhere is a div rather than a button, so the list's
    row rules have to reach both. */
-.message-list > div {
+/* Both element kinds, and that is the whole of a reported bug: the inbox rows
+   became <button> when every row learned to open its letter, and only the
+   `.read` rule below was taught the new tag. The layout rule still said
+   `> div`, so a button got no grid at all — it shrank to fit and every letter
+   after the first broke to one word a line. */
+.message-list > div,
+.message-list > button {
   display: grid;
   grid-template-columns: 8px 1fr auto;
   gap: 8px;
@@ -855,6 +861,8 @@
   padding: 11px 10px;
   border-bottom: 1px solid var(--line);
   background: var(--paper);
+  width: 100%;
+  text-align: left;
 }
 
 .message-list > div.read,

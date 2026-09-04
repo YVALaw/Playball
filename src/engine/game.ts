@@ -176,6 +176,18 @@ export class TeamState {
   readonly order: Hitter[];
   /** The starting nine, frozen before any substitution touches `order`. */
   readonly starters: readonly Hitter[];
+  /**
+   * Where each man actually stood tonight, by id.
+   *
+   * A player's `pos` is what he is on the roster, and on a two-way man's
+   * pitching night the roster and the night disagree: he is an outfielder
+   * who is standing on the mound, and the bench bat covering his grass is
+   * a centre fielder standing in left. Reported from the phone as the
+   * starting pitcher being "someone else's name" — the engine had him
+   * right and the card was reading roster labels at a game that had moved
+   * everybody. The box reads this instead.
+   */
+  readonly playedAt = new Map<string, string>();
   spot = 0;
   runs = 0;
   hits = 0;
@@ -370,6 +382,16 @@ export class TeamState {
       fieldTaken.add(best);
       this.byPosition.set(spot, fieldingAt(man, spot));
     }
+    /*
+      What the box score will call each of them. The field map is the
+      truth — it is what the simulation itself asks when a ball is hit —
+      so the labels come off it rather than off the roster.
+    */
+    for (const [spot, man] of this.byPosition) this.playedAt.set(String(man.id), spot);
+    // And the man on the mound wears PH — pitcher-hitter, the label the
+    // reporter named for a man doing both jobs in one night.
+    if (moundBound >= 0) this.playedAt.set(String(starter.id), 'PH');
+
     /** The nine as they are actually standing, for every average below. */
     const afield: Hitter[] = [...this.byPosition.values()];
 
@@ -464,6 +486,9 @@ export class TeamState {
           this.byPosition.delete('DH');
         }
         this.fieldCover = { spot, man: cover };
+        this.playedAt.set(String(cover.id), spot);
+        this.playedAt.set(String(next.id), 'PH');
+        this.playedAt.delete(String(dhMan.id));
         this.benchTonight = [...this.benchTonight.filter((b) => b !== cover), dhMan];
       } else {
         this.byPosition.delete(spot);

@@ -38,6 +38,7 @@ import { captainOf } from '../../engine/captains.js';
 import { battingAverage, era, inningsPitched, injuryClock } from '../../engine/season.js';
 import { handles } from '../../state/depth.js';
 import { available, cardGaps } from '../../engine/depthChart.js';
+import { useHold } from '../useLongPress.js';
 import type { PlayerId, Position } from '../../engine/types.js';
 import { CaptainC, DidButton, FieldNote, ModuleIntro, Rating, SectionHeading } from '../components/Kit.js';
 import type { Hitter } from '../../engine/types.js';
@@ -75,6 +76,20 @@ export function Lineup() {
   const [picked, setPicked] = useState<number | null>(null);
   /** Same two-tap swap, for the rotation. */
   const [pickedArm, setPickedArm] = useState<number | null>(null);
+  /*
+    The arm picked FROM the pen, waiting for a day to be given.
+
+    Reported: "I remember we fixed bringing players from the bullpen to
+    start, but now if I press on someone from the bullpen it just takes me
+    to their profile." The feature worked and was unreachable — promotion
+    could only be armed from the rotation side, and nothing on the pen said
+    so, so the obvious gesture fell through to the card. It arms from
+    either end now.
+  */
+  const [pickedPen, setPickedPen] = useState<PlayerId | null>(null);
+  // Hold a row to read the man. See useLongPress for why it is not a
+  // second tap and not a double tap.
+  const { hold, consumed } = useHold();
   const [pickedBench, setPickedBench] = useState<PlayerId | null>(null);
   const [dealt, setDealt] = useState(false);
   /** Bumped on every auto-deal, so the list re-keys and animates in. */
@@ -235,12 +250,8 @@ export function Lineup() {
       unmounts beneath it. The pick clears so closing the card leaves no
       row armed.
     */
-    if (picked === i) {
-      const man = order[i];
-      setPicked(null);
-      if (man) openPlayer(man.id);
-      return;
-    }
+    // Tapping him again puts him down. The card is a HOLD now.
+    if (picked === i) { setPicked(null); return; }
     swapLineup(picked, i);
     setPicked(null);
   };
@@ -294,15 +305,29 @@ export function Lineup() {
   */
   const tapArm = (i: number): void => {
     setPicked(null);
-    if (pickedArm === null) { setPickedArm(i); return; }
-    if (pickedArm === i) {
-      const man = team?.team.rotation[i];
+    // A man picked out of the pen is waiting for a day, and this is the day.
+    if (pickedPen !== null) {
+      promoteArm(pickedPen, i);
+      setPickedPen(null);
       setPickedArm(null);
-      if (man) openPlayer(man.id);
       return;
     }
+    if (pickedArm === null) { setPickedArm(i); return; }
+    if (pickedArm === i) { setPickedArm(null); return; }
     moveRotation(pickedArm, i - pickedArm);
     setPickedArm(null);
+  };
+
+  /** The pen's half of the same grammar: pick the man, then pick his day. */
+  const tapPen = (id: PlayerId): void => {
+    setPicked(null);
+    if (pickedArm !== null) {
+      promoteArm(id, pickedArm);
+      setPickedArm(null);
+      setPickedPen(null);
+      return;
+    }
+    setPickedPen(pickedPen === id ? null : id);
   };
 
   /*
@@ -544,11 +569,12 @@ export function Lineup() {
             const on = pickedArm === i;
             return (
               <button
-                className={on ? 'is-selected' : ''}
+                className={on ? 'is-selected' : pickedPen !== null ? 'is-live' : ''}
                 key={p.id}
                 type="button"
                 aria-pressed={on}
-                onClick={() => tapArm(i)}
+                {...hold(() => openPlayer(p.id))}
+                onClick={() => { if (consumed()) return; tapArm(i); }}
               >
                 <span>{SLOTS[i]}</span>
                 <strong>
@@ -575,7 +601,11 @@ export function Lineup() {
             from the phone: a better freshman SP could not be brought up. */}
         <SectionHeading
           kicker="THE BULLPEN"
-          title={pickedArm !== null ? 'Tap an arm to hand him the ball' : 'The rest of the staff'}
+          title={pickedArm !== null
+            ? 'Tap an arm to hand him the ball'
+            : pickedPen !== null
+              ? 'Now tap the day he starts'
+              : 'The rest of the staff'}
         />
         <section className="rotation-list">
           {team.team.bullpen.map((p) => {
@@ -586,13 +616,10 @@ export function Lineup() {
               <button
                 key={p.id}
                 type="button"
-                className={canTake ? 'is-live' : ''}
-                onClick={() => {
-                  // No promotion armed: the tap is a question about the man.
-                  if (pickedArm === null) { openPlayer(p.id); return; }
-                  promoteArm(p.id, pickedArm);
-                  setPickedArm(null);
-                }}
+                className={pickedPen === p.id ? 'is-selected' : canTake ? 'is-live' : ''}
+                aria-pressed={pickedPen === p.id}
+                {...hold(() => openPlayer(p.id))}
+                onClick={() => { if (consumed()) return; tapPen(p.id); }}
               >
                 <span>{p.role}</span>
                 <strong>{p.name}</strong>
