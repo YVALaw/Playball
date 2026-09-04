@@ -1186,9 +1186,16 @@ rotation nights. Plus the card: role reads "MID SP · LF", the stats view
 carries both halves (the leaderboard split exists — carry it over), and
 the lineup says which nights he pitches before it surprises anybody.
 
-## Stage 22 · Playbooks — scouting becomes leverage
+## Stage 22 · Playbooks — scouting becomes leverage — **BUILT September 4–5 2026, in review**
 
-**Size:** medium–large · **The reporter's design seed, September 3**
+**Size:** medium–large · Both halves shipped: eight strategy controls
+(three positioning levers, all computed, all zero-sum at defaults), the
+season-long opponent books minted at SCOUT THEM with the ask-and-take-you
+flow and AUTO SET, the 3D stations and chase following the applied book,
+and the money made real — development split by coaching side, the
+pitching coach carrying mileage, facility rungs guarding bodies.
+Seventeen pins in tests/playbooks.test.ts; details in
+`12-test-triage-september.md`.
 
 The standing strategy becomes the default playbook; scouting a team
 mints a per-opponent playbook that can be applied for the series. Its
