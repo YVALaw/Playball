@@ -145,3 +145,38 @@ The app has the URL bar's height back, and the reporter wants it spent:
 
 The reporter asked directly. See the reply in conversation and the
 decision recorded in stage notes once taken.
+
+---
+
+## Items missed on the first sort — added September 4
+
+Caught by the reporter asking me to re-read his own list against my
+triage, which is exactly why he asked. Both were real omissions.
+
+37. **The postseason next-game card says nothing about where you stand.**
+    His words: "when we are in the next game there is no visual indication
+    of record — I lost and it just gave me the TBD card and then came with
+    the one-loss thing. We should add the record there very well visible,
+    and add simple wording like winners bracket or losers bracket." So the
+    card carries two things it does not today: **your bracket record**, big
+    enough to read at a glance, and **which side of the draw you are on**
+    in plain words. Related to the route-reading fix in batch P — that
+    stopped the card lying about how you got there; this makes it say so
+    out loud, and on the waiting card too, not only after a result.
+
+38. **The dugout action sheet needs its buttons ORGANISED, not just
+    stripped.** Item 20 captured only half the sentence: "we have to
+    organise the buttons inside the action button, *also* remove the short
+    explanation." The order and grouping are their own job — the sheet
+    currently runs Watch it play · Sim the rest · Back to the desk · Go to
+    the bullpen · Visit the mound, which mixes *leaving the game* with
+    *managing the game* in one flat list.
+
+**And one correction to item 5.** The postseason box score is not "silent
+by design for a rival's game" — the reporter is explicit that the previous
+design opened a box for ANY match tapped: "in the previous design we had
+it so that we could tap any of the matches and it would show us the box
+score but now it doesn't." That is a bigger job than a lookup fix, because
+only the user's games are captured (`captureBoxFor`) and `boxScores` is
+keyed by day while a June day holds many games. It needs a decision about
+where a bracket game's box is stored and what that costs a save.
