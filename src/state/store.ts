@@ -1277,6 +1277,23 @@ export interface DynastyStore {
    * save that is no longer there.
    */
   saves: SaveSummary[];
+  /** The slot this career was loaded from, when it was not the autosave. */
+  loadedSlot: string | null;
+  /**
+   * The front door is standing open.
+   *
+   * True until the player chooses a career to be in — which is the whole
+   * point of the start screen. It also gives a deleted career somewhere to
+   * go: the app used to resume the autosave on boot and never leave it, so
+   * deleting the live slot "didn't really delete it" — `saveNow` defaults
+   * to that slot and half the app calls it, so the next tap wrote the file
+   * straight back.
+   */
+  atStart: boolean;
+  /** Chosen a door. */
+  leaveStart: () => void;
+  /** Close the career and stand at the door again, writing nothing. */
+  backToStart: () => void;
   savesState: 'idle' | 'loading' | 'ready' | 'error';
   /** Why the list could not be read. Almost always storage being refused. */
   savesError: string | null;
@@ -5806,6 +5823,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       boardAsk: (loaded.boardAsk as Expectation | null | undefined)
         ?? boardAskFor(loaded.season, loaded.userTeam),
       needsTeam: false,
+      // Through the front door and into the career. Remembering WHICH file it
+      // came from is what lets a delete of that file take the career with it,
+      // rather than being undone by the next autosave.
+      atStart: false,
+      loadedSlot: slot,
       // Whatever went wrong last time went wrong with a different save. Left
       // set, a newer-build slot refused once would keep warning about itself
       // over the top of the career that loaded perfectly well afterwards.
@@ -5923,6 +5945,37 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   saves: [],
+  /** The slot this career was loaded from or last written to by name. */
+  loadedSlot: null,
+  atStart: true,
+  leaveStart: () => set({ atStart: false }),
+  backToStart: () => {
+    /*
+      Everything in flight stops. A sim landing after this would write the
+      career back into the slot it was just let go of, which is the bug
+      this screen exists to end.
+    */
+    simGeneration += 1;
+    disposeWorker();
+    set({
+      atStart: true,
+      season: null,
+      live: null,
+      bracket: null,
+      needsTeam: false,
+      busy: false,
+      progress: null,
+      seasonOpener: null,
+      selectedPlayer: null,
+      overlay: null,
+      phase: null,
+      inbox: [],
+      boardAsk: null,
+      lastReview: null,
+      version: get().version + 1,
+    });
+    void get().refreshSaves();
+  },
   savesState: 'idle',
   savesError: null,
 
@@ -5951,11 +6004,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   deleteSlot: async (slot) => {
     let failure: string | null = null;
+    // Whether this is the file the live career is writing to. Deleting that
+    // one used to be undone by the very next tap, because saveNow defaults
+    // to the autosave slot — reported as "hitting delete a save doesn't
+    // really delete it". Letting the file go now lets the career go too.
+    const live = get().season !== null
+      && (slot === AUTOSAVE_SLOT || slot === get().loadedSlot);
     try {
       await deleteSave(slot);
     } catch (e) {
       failure = e instanceof Error ? e.message : String(e);
     }
+    if (failure === null && live) get().backToStart();
     await get().refreshSaves();
     // After the refresh, which clears `savesError` on success — a delete that
     // failed used to have its message wiped by the very refresh that followed

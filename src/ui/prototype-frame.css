@@ -3390,3 +3390,68 @@
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   width: 100%; text-align: left;
 }
+
+/* ---------------------------------------------------------------------------
+   The front door.
+
+   Asked for by name: "we need to start creating the starting screen, like new
+   game, load game." It is also where a career goes when its file is deleted,
+   which is the only way that delete could ever stick.
+   --------------------------------------------------------------------------- */
+.start-screen {
+  display: flex; flex-direction: column; min-height: 100%;
+  padding: calc(env(safe-area-inset-top) + 34px) 18px
+           calc(env(safe-area-inset-bottom) + 24px);
+  background: var(--field); gap: 26px;
+}
+.start-screen > header { text-align: left; }
+.start-screen > header small {
+  display: block;
+  font: 600 calc(9px * var(--ts)) var(--mono); letter-spacing: .22em;
+  color: var(--clay);
+}
+.start-screen > header h1 {
+  margin: 4px 0 0;
+  font: 800 calc(46px * var(--ts))/.92 var(--display);
+  text-transform: uppercase; color: var(--ink); letter-spacing: -.01em;
+}
+.start-doors { display: flex; flex-direction: column; gap: 10px; }
+
+.start-continue {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; text-align: left;
+  padding: 15px 14px;
+  background: var(--command); border: 0;
+  border-left: 3px solid var(--win);
+}
+.start-continue small {
+  display: block;
+  font: 600 calc(8.5px * var(--ts)) var(--mono); letter-spacing: .18em;
+  color: rgba(var(--cream-rgb), .75);
+}
+.start-continue strong {
+  display: block; margin-top: 3px;
+  font: 800 calc(21px * var(--ts))/1.05 var(--display);
+  text-transform: uppercase; color: #fff;
+}
+.start-continue em {
+  display: block; margin-top: 3px; font-style: normal;
+  font: 400 calc(11px * var(--ts)) var(--body);
+  color: rgba(var(--cream-rgb), .8);
+}
+
+.start-door {
+  display: block; width: 100%; text-align: left;
+  padding: 14px; background: var(--paper);
+  border: 1px solid var(--line);
+}
+.start-door strong {
+  display: block;
+  font: 800 calc(16px * var(--ts))/1.1 var(--display);
+  text-transform: uppercase; color: var(--ink);
+}
+.start-door small {
+  display: block; margin-top: 3px;
+  font: 400 calc(11.5px * var(--ts))/1.45 var(--body); color: var(--dim);
+}
+.start-door:disabled, .start-continue:disabled { opacity: .5; }

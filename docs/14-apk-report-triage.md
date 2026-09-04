@@ -180,3 +180,29 @@ score but now it doesn't." That is a bigger job than a lookup fix, because
 only the user's games are captured (`captureBoxFor`) and `boxScores` is
 keyed by day while a June day holds many games. It needs a decision about
 where a bracket game's box is stored and what that costs a save.
+
+---
+
+## Added September 4, later — the front door and the save files
+
+39. **The save files screen is messy and does not work as intended.** The
+    reporter's headline case: **"hitting delete a save doesn't really delete
+    it."** Root cause found and fixed the same session — `saveNow` defaults
+    to the autosave slot and a large part of the app calls it, so deleting
+    the file the live career was writing to was undone by the very next tap.
+    The file was genuinely gone; the career put it straight back. **The rest
+    of the screen — its layout, its wordiness, and the three long
+    machine-voiced paragraphs the language audit already flagged — is still
+    owed.**
+
+40. **A starting screen.** "Like new game, load game etc." **Built**: the app
+    now opens at its own front door instead of resuming the last career
+    automatically — CONTINUE (the most recent save, with school, year,
+    record and how long ago), NEW CAREER, LOAD A CAREER, SETTINGS. Nothing
+    is read off disk until a door is chosen.
+
+    The two are one piece of work: a career needs somewhere to be let go
+    **of**. Deleting the live slot now closes the career and stands the
+    player back at the door, with the sim generation bumped and the worker
+    disposed so nothing in flight can write it back. Walked live — deleted,
+    poked the app the way a tap would, and the row stayed gone.

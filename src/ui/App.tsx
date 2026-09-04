@@ -63,6 +63,7 @@ import { OpenTeam, TeamCard } from './screens/TeamCard.js';
 import { Colleges } from './screens/Colleges.js';
 import { CoachPortrait } from './CoachPortrait.js';
 import { Settings } from './screens/Settings.js';
+import { Start } from './screens/Start.js';
 import { seasonDate } from './format.js';
 import { prestigeStars } from '../engine/program.js';
 
@@ -202,6 +203,8 @@ function AppBody(
   const loadError = useDynasty((s) => s.loadError);
   const newDynasty = useDynasty((s) => s.newDynasty);
   const openOverlay = useDynasty((s) => s.openOverlay);
+  const refreshSaves = useDynasty((s) => s.refreshSaves);
+  const atStart = useDynasty((s) => s.atStart);
   const [checked, setChecked] = useState(false);
 
   /**
@@ -300,17 +303,34 @@ function AppBody(
   }, []);
 
 
+  /*
+    The app opens at its own front door now rather than inside the last
+    career. Asked for by name — "we need to start creating the starting
+    screen, like new game, load game" — and it is also where a deleted
+    career goes: resuming automatically meant the live autosave could only
+    be left by deleting it, and deleting it did nothing because the next
+    tap wrote it back.
+
+    The saves are read here so the door knows whether it has a CONTINUE to
+    offer; nothing is loaded until somebody chooses it.
+  */
   useEffect(() => {
-    if (season || checked) return;
-    // Resume where the player left off. With nothing to come back to, ask which
-    // job to take rather than assigning one — that choice is the first real
-    // decision the game makes you make.
-    // Always finish, however it goes. Without the catch a rejected load leaves
-    // `checked` false and the app on its loading screen permanently.
-    void loadSlot()
-      .catch(() => false)
-      .finally(() => setChecked(true));
-  }, [season, checked, loadSlot]);
+    if (checked) return;
+    void refreshSaves().catch(() => {}).finally(() => setChecked(true));
+  }, [checked, refreshSaves]);
+
+  if (atStart && !season && checked) {
+    return (
+      <div className="app-frame">
+        <Start
+          onNew={() => useDynasty.setState({ needsTeam: true })}
+          onLoad={() => openOverlay('saves')}
+          onSettings={() => openOverlay('settings')}
+        />
+        <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
+      </div>
+    );
+  }
 
   if (!season && needsTeam && checked) {
     return (
