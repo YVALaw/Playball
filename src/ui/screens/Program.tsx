@@ -50,6 +50,7 @@ import {
 import {
   annualBudget, dollars, marketFor, remaining, wageBill,
   FACILITIES, MAX_FACILITY, SCOUT_COST, SEATS, SEAT_LABEL, SEAT_NOTE,
+  BUILDINGS, winterCraft, nightCraft, shapeOf, fitFactor, type Assistant, type StaffSeat,
 } from '../../engine/economy.js';
 import { handles } from '../../state/depth.js';
 import { FirstVisit } from '../Tutorial.js';
@@ -223,13 +224,42 @@ function TabStrip(
  * have at least two things it could have been — is why all three live on one
  * sheet: the argument between them IS the feature.
  */
+/**
+ * The fact about YOUR side that makes this man worth more or less here.
+ *
+ * The reporter's call when the market was redesigned: "show the fit, not the
+ * answer." So this names something true about the roster or the coach and
+ * stops — it never says which of the three to take, because a desk that
+ * recommends re-creates the ranked list it replaced with an extra step.
+ */
+function fitLine(
+  seat: StaffSeat, m: Assistant, own: number, youngSide: number,
+): string {
+  const teacher = m.winter >= 0.5;
+  if (seat === 'recruiting') {
+    return own >= 55
+      ? 'You recruit well yourself, so a second voice here says less.'
+      : 'Recruiting is not your strong side.';
+  }
+  const what = seat === 'hitting' ? 'bats' : 'arms';
+  if (teacher) {
+    return youngSide >= 5
+      ? `${youngSide} of your ${what} are underclassmen.`
+      : `Your ${what} are mostly finished articles.`;
+  }
+  return own >= 55
+    ? `You already coach ${what} well on the night.`
+    : `Your own ${seat === 'hitting' ? 'OFFENSE' : 'DEFENSE'} is ${own}.`;
+}
+
 function MoneySheet({ team }: { team: Owner }) {
   const economy = useDynasty((s) => s.economy);
+  const coachSkills = useDynasty((s) => s.coach.skills);
   const year = useDynasty((s) => s.year);
   const season = useDynasty((s) => s.season);
   const hireAssistant = useDynasty((s) => s.hireAssistant);
   const fireAssistant = useDynasty((s) => s.fireAssistant);
-  const upgradeFacilities = useDynasty((s) => s.upgradeFacilities);
+  const build = useDynasty((s) => s.build);
   const runsStaff = useDynasty((s) => handles(s.depth, 'assistants'));
   const runsFacilities = useDynasty((s) => handles(s.depth, 'facilities'));
 
@@ -237,6 +267,12 @@ function MoneySheet({ team }: { team: Owner }) {
   const wages = wageBill(economy.staff);
   const left = remaining(economy, team.prestige);
   const level = FACILITIES[economy.facilities];
+  // How much of each side of the club is still being made — the fact the
+  // fit line reports about a teacher.
+  const youngBats = team.team.lineup.concat(team.team.bench)
+    .filter((q) => q.classYear === 'FR' || q.classYear === 'SO').length;
+  const youngArms = team.team.rotation.concat(team.team.bullpen)
+    .filter((q) => q.classYear === 'FR' || q.classYear === 'SO').length;
   const next = FACILITIES[economy.facilities + 1];
   const books = Object.values(economy.scouted).length;
   const worldKey = String(season?.seed ?? 0);
@@ -287,60 +323,89 @@ function MoneySheet({ team }: { team: Owner }) {
                 )}
               </section>
             ) : (
-              <section className="job-list">
-                {marketFor(worldKey, year, seat).map((m, slot) => (
-                  <div key={m.id}>
-                    <button type="button" disabled>
-                      <span>
-                        <strong>{m.name}</strong>
-                        <small>age {m.age} · rated {m.rating} · {SEAT_NOTE[seat]}</small>
-                      </span>
-                      <b>{dollars(m.wage)}</b>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!runsStaff || left < m.wage}
-                      onClick={() => hireAssistant(seat, slot)}
-                    >{left < m.wage ? 'Too dear' : 'Hire'}</button>
-                  </div>
-                ))}
+              <section className="hire-market">
+                {marketFor(worldKey, year, seat).map((m, slot) => {
+                  const w = winterCraft(m);
+                  const n = nightCraft(m);
+                  const top = Math.max(w, n, 1);
+                  return (
+                    <article className="hire-card" key={m.id}>
+                      <header>
+                        <span>
+                          <strong>{m.name}</strong>
+                          <small>{shapeOf(m)} · age {m.age}</small>
+                        </span>
+                        <b>{dollars(m.wage)}</b>
+                      </header>
+                      {/* The two halves of the man, side by side, because
+                          comparing them across cards IS the decision. */}
+                      <div className="hire-split">
+                        <span>
+                          <small>WINTER</small>
+                          <i style={{ width: `${Math.round((w / top) * 100)}%` }} />
+                          <b>{w}</b>
+                        </span>
+                        <span>
+                          <small>THE NIGHT</small>
+                          <i style={{ width: `${Math.round((n / top) * 100)}%` }} />
+                          <b>{n}</b>
+                        </span>
+                      </div>
+                      <p className="hire-fit">{fitLine(
+                        seat, m,
+                        seat === 'hitting' ? coachSkills.offense
+                          : seat === 'pitching' ? coachSkills.defense
+                            : coachSkills.recruiting,
+                        seat === 'pitching' ? youngArms : youngBats,
+                      )}</p>
+                      <button
+                        className="tap"
+                        type="button"
+                        disabled={!runsStaff || left < m.wage}
+                        onClick={() => hireAssistant(seat, slot)}
+                      >{left < m.wage ? 'Beyond the budget' : 'Hire him'}</button>
+                    </article>
+                  );
+                })}
               </section>
             )}
           </div>
         );
       })}
 
-      <SectionHeading kicker="FACILITIES" title={level?.label ?? 'Bare ground'} />
+      <SectionHeading
+        kicker="THE PLANT"
+        title={(economy.built?.length ?? economy.facilities) === 0
+          ? 'Bare ground'
+          : `${economy.built?.length ?? economy.facilities} of ${BUILDINGS.length} up`}
+      />
       {!runsFacilities && (
         <FieldNote
           title="Your athletic director spends the budget"
-          text="The next rung is bought when the money is there."
+          text="He puts up whichever building the money reaches first."
         />
       )}
-      <section className="staff-card">
-        <div>
-          <strong>Level {economy.facilities} of {MAX_FACILITY}</strong>
-          <small>
-            {economy.facilities > 0 && level
-              ? `Worth ${level.trainBump} TRAINING, a better tour, and fewer
-                pulled muscles.`
-              : 'What the school gave you. The recruits notice.'}
-          </small>
-          <p>
-            {next
-              ? `Next: ${next.label.toLowerCase()} — ${dollars(next.cost)}, once.
-                Development and the recruiting pitch both feel it.`
-              : 'Nothing left to build. This is the lab everybody tours.'}
-          </p>
-        </div>
-        {next && runsFacilities && (
-          <button
-            className="tap"
-            type="button"
-            disabled={left < next.cost}
-            onClick={() => upgradeFacilities()}
-          >{left < next.cost ? 'Too dear' : `Build · ${dollars(next.cost)}`}</button>
-        )}
+      <section className="build-market">
+        {BUILDINGS.map((b) => {
+          const up = (economy.built ?? []).includes(b.key);
+          return (
+            <article className={`build-card${up ? ' is-up' : ''}`} key={b.key}>
+              <header>
+                <strong>{b.label}</strong>
+                <b>{up ? 'UP' : dollars(b.cost)}</b>
+              </header>
+              <p>{b.blurb}</p>
+              {!up && runsFacilities && (
+                <button
+                  className="tap"
+                  type="button"
+                  disabled={left < b.cost}
+                  onClick={() => build(b.key)}
+                >{left < b.cost ? 'Beyond the budget' : 'Break ground'}</button>
+              )}
+            </article>
+          );
+        })}
       </section>
 
       <SectionHeading kicker="THE SCOUTING DESK" title={books === 0 ? 'No books bought' : `${books} ${books === 1 ? 'book' : 'books'} this year`} />

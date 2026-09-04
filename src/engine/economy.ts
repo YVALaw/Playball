@@ -82,11 +82,33 @@ export interface Assistant {
   id: string;
   name: string;
   age: number;
-  /** 25–88. What he is worth, and what everything else is derived from. */
+  /** 25–88. What he is worth in total, across both halves of his craft. */
   rating: number;
+  /**
+   * How his craft is split, 0 to 1: how much of him is the WINTER.
+   *
+   * 1 is a pure developer — everything he knows goes into what your men
+   * become between seasons. 0 is a pure game-night man, worth his rating
+   * once the season starts and nothing at all to a freshman in February.
+   * Most sit between, and two men of equal rating on opposite sides of it
+   * are the whole reason this screen is a decision now.
+   */
+  winter: number;
   /** $k a year, owed every roll he is still on the staff. */
   wage: number;
   seat: StaffSeat;
+}
+
+/** What he builds between seasons: rating spent on the winter half. */
+export const winterCraft = (a: Assistant): number => Math.round(a.rating * a.winter);
+/** What he is worth once the games start. */
+export const nightCraft = (a: Assistant): number => Math.round(a.rating * (1 - a.winter));
+
+/** How the screen names a man's shape, in his own words. */
+export function shapeOf(a: Assistant): string {
+  if (a.winter >= 0.68) return 'A TEACHER';
+  if (a.winter <= 0.32) return 'A GAME-NIGHT MAN';
+  return 'BOTH HALVES';
 }
 
 /** The same stable string hash the rivals and the classroom use. */
@@ -96,9 +118,18 @@ function hash(s: string): number {
   return Math.abs(h);
 }
 
-/** What a man of this quality costs a year. Rounded to 5 so it reads as a wage. */
+/**
+ * What a man of this quality costs a year. Rounded to 5 so it reads as a wage.
+ *
+ * The curve is the point. It was linear, which made the best man the best
+ * VALUE as well as the best man — 7.66 skill points per $100k against 5.00
+ * at the bottom — so no hire ever cost anything to prefer. Quality is bought
+ * at a worsening rate now: the last twenty points of a coordinator cost more
+ * than the first fifty, which is what a scarce good does.
+ */
 export function wageFor(rating: number): number {
-  return Math.round((40 + rating * 2.2) / 5) * 5;
+  const t = Math.max(0, Math.min(1, (rating - 25) / 63));
+  return Math.round((70 + 430 * t * t) / 5) * 5;
 }
 
 /**
@@ -120,11 +151,19 @@ function candidate(worldKey: string, year: number, seat: StaffSeat, slot: number
   */
   const band = slot === 0 ? [62, 26] : slot === 1 ? [44, 22] : [27, 18];
   const rating = (band[0] ?? 44) + hash(id + ':r') % (band[1] ?? 20);
+  /*
+    And his shape, spread across the whole range so a market of three
+    reliably offers a choice rather than three of the same man. Hashed like
+    everything else here: no draw, and the same market every time a career
+    is replayed.
+  */
+  const winter = 0.18 + (hash(id + ':w') % 65) / 100;
   return {
     id,
     name: `${first} ${last}`,
     age: 31 + (hash(id + ':a') % 26),
     rating,
+    winter,
     wage: wageFor(rating),
     seat,
   };
@@ -148,14 +187,40 @@ export function marketFor(worldKey: string, year: number, seat: StaffSeat): Assi
  * coordinator is worth 15 points of recruiting skill, which `weeklyPoints`
  * prices at about four percent more interest a week.
  */
-export function staffBonus(staff: Partial<Record<StaffSeat, Assistant>>): CoachSkills {
+/**
+ * What an assistant adds where the coach is already this good.
+ *
+ * A brilliant hitting coach on top of a Hitting Guru is worth less than the
+ * same man covering a weak side — the second voice in a room saying what the
+ * first one already said. Full value at the starting twenty, and about half
+ * of it by the time the coach is elite himself, so the right hire depends on
+ * who YOU are. That is the creation interview reaching forward into the rest
+ * of the career, which is what it was for.
+ */
+export function fitFactor(ownSkill: number): number {
+  const over = Math.max(0, Math.min(70, ownSkill - 20));
+  return 1 - 0.5 * (over / 70);
+}
+
+export function staffBonus(
+  staff: Partial<Record<StaffSeat, Assistant>>,
+  own?: CoachSkills,
+): CoachSkills {
   const b = { offense: 0, defense: 0, training: 0, recruiting: 0 };
   const hitting = staff.hitting;
   const pitching = staff.pitching;
   const recruiting = staff.recruiting;
-  if (hitting) b.offense = Math.round(hitting.rating / 5);
-  if (pitching) b.defense = Math.round(pitching.rating / 5);
-  if (recruiting) b.recruiting = Math.round(recruiting.rating / 4);
+  // The NIGHT half. What he builds over the winter is paid in devBonus,
+  // which is the other side of the same man.
+  if (hitting) {
+    b.offense = Math.round(nightCraft(hitting) / 5 * fitFactor(own?.offense ?? 20));
+  }
+  if (pitching) {
+    b.defense = Math.round(nightCraft(pitching) / 5 * fitFactor(own?.defense ?? 20));
+  }
+  if (recruiting) {
+    b.recruiting = Math.round(nightCraft(recruiting) / 4 * fitFactor(own?.recruiting ?? 20));
+  }
   return b;
 }
 
@@ -163,7 +228,8 @@ export function staffBonus(staff: Partial<Record<StaffSeat, Assistant>>): CoachS
 export function withStaff(
   skills: CoachSkills, staff: Partial<Record<StaffSeat, Assistant>>,
 ): CoachSkills {
-  const b = staffBonus(staff);
+  // The coach's own skills decide how much a second voice is worth.
+  const b = staffBonus(staff, skills);
   return {
     offense: Math.min(99, skills.offense + b.offense),
     defense: Math.min(99, skills.defense + b.defense),
@@ -181,9 +247,12 @@ export function withStaff(
 export function devBonus(
   staff: Partial<Record<StaffSeat, Assistant>>,
 ): { bat: number; arm: number } {
+  // The winter half, so a teacher is worth more here than the game-night
+  // man of the same quality — and worth less on the night. One man, two
+  // numbers, and the screen shows both.
   return {
-    bat: staff.hitting ? Math.round(staff.hitting.rating / 6) : 0,
-    arm: staff.pitching ? Math.round(staff.pitching.rating / 6) : 0,
+    bat: staff.hitting ? Math.round(winterCraft(staff.hitting) / 4) : 0,
+    arm: staff.pitching ? Math.round(winterCraft(staff.pitching) / 4) : 0,
   };
 }
 
@@ -240,12 +309,79 @@ export interface FacilityLevel {
  */
 export const FACILITIES: readonly FacilityLevel[] = [
   { cost: 0, label: 'What the school gave you', trainBump: 0, devPitch: 0, injuryGuard: 1 },
-  { cost: 500, label: 'A real weight room', trainBump: 3, devPitch: 0.06, injuryGuard: 0.96 },
-  { cost: 900, label: 'An indoor practice facility', trainBump: 6, devPitch: 0.13, injuryGuard: 0.93 },
-  { cost: 1400, label: 'A player development lab', trainBump: 9, devPitch: 0.2, injuryGuard: 0.86 },
+  { cost: 620, label: 'One building up', trainBump: 3, devPitch: 0.06, injuryGuard: 0.96 },
+  { cost: 1280, label: 'Two of the three', trainBump: 6, devPitch: 0.13, injuryGuard: 0.93 },
+  { cost: 1860, label: 'The whole plant', trainBump: 9, devPitch: 0.2, injuryGuard: 0.86 },
 ];
 
 export const MAX_FACILITY = FACILITIES.length - 1;
+
+/** The three things a programme can put up, and what each is for. */
+export type Building = 'cage' | 'pen' | 'clubhouse';
+
+export interface BuildingSpec {
+  key: Building;
+  label: string;
+  /** One line: what it buys, in the terms the screen already speaks. */
+  blurb: string;
+  cost: number;
+  /** Extra winter development, on top of the rung the count buys. */
+  bat: number;
+  arm: number;
+  /** Multiplier on the strain roll — the pen is where arms are kept whole. */
+  guard: number;
+  /** Added to the recruiting pitch's development read. */
+  pitch: number;
+}
+
+/**
+ * Priced so a mid-table programme puts up ONE and lives with the choice for
+ * a while. Deliberately close together in cost: the decision is meant to be
+ * about what your side needs, not about which one is affordable.
+ */
+export const BUILDINGS: readonly BuildingSpec[] = [
+  {
+    key: 'cage',
+    label: 'The hitting barn',
+    blurb: 'Bats come back from the winter further along.',
+    cost: 620, bat: 4, arm: 0, guard: 1, pitch: 0.04,
+  },
+  {
+    key: 'pen',
+    label: 'The pitching lab',
+    blurb: 'Arms develop, and they break down less.',
+    cost: 660, bat: 0, arm: 4, guard: 0.9, pitch: 0.04,
+  },
+  {
+    key: 'clubhouse',
+    label: 'The clubhouse',
+    blurb: 'Recruits notice, and the room holds together.',
+    cost: 580, bat: 1, arm: 1, guard: 0.97, pitch: 0.12,
+  },
+];
+
+export const buildingSpec = (k: Building): BuildingSpec =>
+  BUILDINGS.find((b) => b.key === k) ?? BUILDINGS[0]!;
+
+/**
+ * What a programme's buildings are worth together.
+ *
+ * Reads the list when there is one and falls back to the old rung count, so
+ * a career saved before the branch keeps exactly the facilities it paid for.
+ */
+export function builtBonus(built: readonly Building[] | undefined): {
+  bat: number; arm: number; guard: number; pitch: number;
+} {
+  const out = { bat: 0, arm: 0, guard: 1, pitch: 0 };
+  for (const k of built ?? []) {
+    const b = buildingSpec(k);
+    out.bat += b.bat;
+    out.arm += b.arm;
+    out.guard *= b.guard;
+    out.pitch += b.pitch;
+  }
+  return out;
+}
 
 // ---------------------------------------------------------------------------
 // The scouting desk
@@ -265,8 +401,16 @@ export const SCOUT_DAYS = 10;
  * empty seats and a clean ledger — nothing, rather than everything.
  */
 export interface Economy {
-  /** Facilities rung, 0–3. */
+  /**
+   * Facilities rung, 0–3 — the COUNT of what has been built.
+   *
+   * Kept as a number so every reader of FACILITIES[level] still works and a
+   * save written before the buildings branched loads without migration.
+   * `built` says WHICH, and each one adds its own thing on top.
+   */
   facilities: number;
+  /** Which buildings are up. Absent on a save from before the branch. */
+  built?: Building[];
   /** Who sits in each seat. Absent means vacant. */
   staff: Partial<Record<StaffSeat, Assistant>>;
   /** $k spent this year on everything but wages (wages are counted live). */

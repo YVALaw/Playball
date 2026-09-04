@@ -158,18 +158,25 @@ import { threw } from '../src/engine/workload.js';
 import type { Arm, Pitcher } from '../src/engine/types.js';
 
 describe('the money: each seat and rung buys something a season can feel', () => {
-  const staffOf = (seat: 'hitting' | 'pitching', rating: number) => ({
-    [seat]: { ...marketFor('w', 2030, seat)[0]!, rating },
+  // Winter stated rather than inherited from the market's hash: an
+  // assistant is a SHAPE now, and development reads the winter half, so a
+  // fixture that leaves it to chance is a fixture that pins nothing.
+  const staffOf = (seat: 'hitting' | 'pitching', rating: number, winter = 0.5) => ({
+    [seat]: { ...marketFor('w', 2030, seat)[0]!, rating, winter },
   });
 
   it('the game-side coaches develop their own side', () => {
     expect(devBonus({})).toEqual({ bat: 0, arm: 0 });
     const hitting = devBonus(staffOf('hitting', 84));
-    expect(hitting.bat).toBe(14);
+    expect(hitting.bat).toBe(11);
     expect(hitting.arm).toBe(0);
     const pitching = devBonus(staffOf('pitching', 60));
-    expect(pitching.arm).toBe(10);
+    expect(pitching.arm).toBe(8);
     expect(pitching.bat).toBe(0);
+    // And the shape is what decides it: the same man spent on the winter
+    // builds more than the one who is worth his rating on the night.
+    expect(devBonus(staffOf('hitting', 84, 1)).bat)
+      .toBeGreaterThan(devBonus(staffOf('hitting', 84, 0.2)).bat);
   });
 
   it('the pitching coach carries the mileage, floor held', () => {

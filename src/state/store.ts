@@ -62,8 +62,8 @@ import type { AlumnusNote } from '../engine/legacy.js';
 import {
   annualBudget, freshEconomy, marketFor, poached, remaining, wageBill,
   withStaff, FACILITIES, MAX_FACILITY, SCOUT_COST, SCOUT_DAYS, SEATS,
-  devBonus, armCareFor,
-  SEAT_LABEL, type Assistant, type Economy, type StaffSeat,
+  devBonus, armCareFor, buildingSpec, builtBonus,
+  SEAT_LABEL, type Assistant, type Economy, type StaffSeat, type Building,
 } from '../engine/economy.js';
 import {
   readJournal, writeJournal, noteAction, clearJournal, journalMatches,
@@ -1246,7 +1246,14 @@ export interface DynastyStore {
   /** Let him go. No severance — the wage simply stops next roll. */
   fireAssistant: (seat: StaffSeat) => void;
   /** One rung up, paid once, forever. */
-  upgradeFacilities: () => void;
+  /**
+   * Put one of the three buildings up.
+   *
+   * Reported of the old ladder: "I would just build one of the buildings"
+   * — there was only ever a next rung, so there was no question of which.
+   * Returns false when it is already up or the money is not there.
+   */
+  build: (which: Building) => boolean;
   /** Buy the book on one opponent, good for the next stretch of days. */
   scoutTeam: (team: number) => void;
   /**
@@ -5625,24 +5632,33 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     void get().saveNow();
   },
 
-  upgradeFacilities: () => {
+  build: (which) => {
     const { season, userTeam, economy } = get();
     const me = season?.teams[userTeam];
-    if (!season || !me) return;
-    if (economy.facilities >= MAX_FACILITY) return;
-    const next = FACILITIES[economy.facilities + 1];
-    if (!next || remaining(economy, me.prestige) < next.cost) return;
-    const rec = season.teams[get().userTeam];
-    if (rec) rec.injuryGuard = next.injuryGuard;
+    if (!season || !me) return false;
+    const up = economy.built ?? [];
+    if (up.includes(which)) return false;
+    const spec = buildingSpec(which);
+    if (remaining(economy, me.prestige) < spec.cost) return false;
+
+    const built = [...up, which];
+    // The count IS the rung, so the ladder's cumulative effects follow the
+    // buildings without a second source of truth.
+    const level = Math.min(MAX_FACILITY, built.length);
+    const rung = FACILITIES[level];
+    const rec = season.teams[userTeam];
+    if (rec) rec.injuryGuard = (rung?.injuryGuard ?? 1) * builtBonus(built).guard;
     set({
       economy: {
         ...economy,
-        facilities: economy.facilities + 1,
-        spent: economy.spent + next.cost,
+        built,
+        facilities: level,
+        spent: economy.spent + spec.cost,
       },
       version: get().version + 1,
     });
     void get().saveNow();
+    return true;
   },
 
   scoutTeam: (team) => {

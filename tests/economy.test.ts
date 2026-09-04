@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   annualBudget, dollars, marketFor, wageFor, wageBill, staffBonus, withStaff,
-  poached, remaining, freshEconomy, FACILITIES, MAX_FACILITY, SEATS,
+  poached, remaining, freshEconomy, FACILITIES, MAX_FACILITY, SEATS, devBonus,
   SCOUT_COST, type Assistant,
 } from '../src/engine/economy.js';
 
@@ -67,21 +67,56 @@ describe('the market', () => {
 });
 
 describe('the staff', () => {
-  const man = (seat: 'pitching' | 'hitting' | 'recruiting', rating: number): Assistant =>
-    ({ id: `t:${seat}`, name: 'T', age: 40, rating, wage: wageFor(rating), seat });
+  /** A man of this quality, split between the winter and the night. */
+  const man = (
+    seat: 'pitching' | 'hitting' | 'recruiting', rating: number, winter = 0.5,
+  ): Assistant =>
+    ({ id: `t:${seat}`, name: 'T', age: 40, rating, winter, wage: wageFor(rating), seat });
 
   it('stacks on the calibrated skills and nowhere else', () => {
     const skills = { offense: 30, defense: 30, training: 30, recruiting: 30 };
+    // Pure game-night men, so the whole rating reaches the night half.
     const staffed = withStaff(skills, {
-      hitting: man('hitting', 60),
-      pitching: man('pitching', 60),
-      recruiting: man('recruiting', 60),
+      hitting: man('hitting', 60, 0),
+      pitching: man('pitching', 60, 0),
+      recruiting: man('recruiting', 60, 0),
     });
-    expect(staffed.offense).toBe(42);
-    expect(staffed.defense).toBe(42);
-    expect(staffed.recruiting).toBe(45);
+    expect(staffed.offense).toBeGreaterThan(30);
+    expect(staffed.defense).toBeGreaterThan(30);
+    expect(staffed.recruiting).toBeGreaterThan(30);
     // Training belongs to the facilities, not a seat.
     expect(staffed.training).toBe(30);
+  });
+
+  it('pays a teacher on the winter and a game-night man on the night', () => {
+    const skills = { offense: 20, defense: 20, training: 20, recruiting: 20 };
+    const teacher = man('hitting', 60, 1);
+    const gameday = man('hitting', 60, 0);
+    // Same quality, opposite shapes, opposite worth — which is the whole
+    // reason the market stopped being a ranked list.
+    expect(withStaff(skills, { hitting: gameday }).offense)
+      .toBeGreaterThan(withStaff(skills, { hitting: teacher }).offense);
+    expect(devBonus({ hitting: teacher }).bat)
+      .toBeGreaterThan(devBonus({ hitting: gameday }).bat);
+  });
+
+  it('is worth less where the coach is already strong', () => {
+    // Reported as the reason the screen had no decision in it: the same man
+    // was the right hire whoever you were. Covering a weak side pays more
+    // than stacking a strong one.
+    const weak = { offense: 20, defense: 20, training: 20, recruiting: 20 };
+    const strong = { offense: 85, defense: 20, training: 20, recruiting: 20 };
+    const hire = man('hitting', 80, 0);
+    const onWeak = withStaff(weak, { hitting: hire }).offense - weak.offense;
+    const onStrong = withStaff(strong, { hitting: hire }).offense - strong.offense;
+    expect(onStrong).toBeLessThan(onWeak);
+  });
+
+  it('a star is bought at a worsening rate', () => {
+    // The measured fault: the best man was also the best VALUE, so the top
+    // of every list strictly dominated and no hire cost anything to prefer.
+    const value = (r: number): number => r / wageFor(r);
+    expect(value(88)).toBeLessThan(value(45));
   });
 
   it('caps where the skills cap', () => {

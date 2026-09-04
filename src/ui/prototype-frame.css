@@ -3534,3 +3534,78 @@
   font: 400 calc(11px * var(--ts))/1.45 var(--body);
   opacity: .75;
 }
+
+/* ---------------------------------------------------------------------------
+   The hiring market, which stopped being a list.
+
+   Reported: "they don't feel like options, but a list — and also look like a
+   list." Three rows in rating order, and the top one was strictly the best
+   buy. A man is a shape now, so the card shows the shape: what he builds over
+   the WINTER against what he is worth on THE NIGHT, as two bars that can be
+   read across candidates at a glance. Cards, not rows, because rows imply an
+   order and there is no longer one.
+   --------------------------------------------------------------------------- */
+.hire-market { display: flex; flex-direction: column; gap: 9px; }
+.hire-card {
+  padding: 11px 12px;
+  background: var(--paper); border: 1px solid var(--line);
+}
+.hire-card > header {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+}
+.hire-card > header strong {
+  display: block;
+  font: 800 calc(16px * var(--ts))/1.1 var(--display); color: var(--ink);
+}
+.hire-card > header small {
+  display: block; margin-top: 2px;
+  font: 600 calc(8.5px * var(--ts)) var(--mono); letter-spacing: .14em;
+  color: var(--clay);
+}
+.hire-card > header b {
+  font: 800 calc(14px * var(--ts)) var(--mono); color: var(--ink);
+  font-variant-numeric: tabular-nums; flex: none;
+}
+.hire-split { display: flex; gap: 12px; margin-top: 9px; }
+.hire-split > span { flex: 1; min-width: 0; }
+.hire-split small {
+  display: block;
+  font: 600 calc(8px * var(--ts)) var(--mono); letter-spacing: .14em;
+  color: var(--dim);
+}
+.hire-split i {
+  display: block; height: 6px; margin: 4px 0 3px;
+  background: var(--clay); min-width: 2px;
+}
+.hire-split b {
+  font: 700 calc(11px * var(--ts)) var(--mono); color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.hire-fit {
+  margin: 8px 0 0;
+  font: 400 calc(11.5px * var(--ts))/1.45 var(--body); color: var(--dim);
+}
+.hire-card button { width: 100%; margin-top: 10px; }
+
+/* And the plant: three buildings competing for one budget, so the question is
+   which rather than whether. */
+.build-market { display: flex; flex-direction: column; gap: 9px; }
+.build-card {
+  padding: 11px 12px; background: var(--paper); border: 1px solid var(--line);
+}
+.build-card.is-up { border-left: 3px solid var(--win); }
+.build-card > header {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+}
+.build-card > header strong {
+  font: 800 calc(15px * var(--ts))/1.1 var(--display); color: var(--ink);
+}
+.build-card > header b {
+  font: 700 calc(11px * var(--ts)) var(--mono); color: var(--clay);
+  font-variant-numeric: tabular-nums; flex: none;
+}
+.build-card p {
+  margin: 5px 0 0;
+  font: 400 calc(11.5px * var(--ts))/1.45 var(--body); color: var(--dim);
+}
+.build-card button { width: 100%; margin-top: 10px; }
