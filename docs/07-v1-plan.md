@@ -1168,9 +1168,14 @@ the program board to read and accept the new terms.
 gutted roster after a title year should be arguable back to sane asks.
 Needs its own design door — what leverage is, what asking costs.
 
-## Stage 21 · The two-way, whole
+## Stage 21 · The two-way, whole — **BUILT September 4 2026, in review**
 
-**Size:** small–medium · **Starts with an engine trace**
+**Size:** small–medium · The trace found him seated in left while he
+pitched; now the bat stays, the DH holds the DH seat, a bench glove
+covers his exact spot, a hooked man bats on as a DH, and a two-way
+reliever is covered as he takes the ball. The card wears both positions
+and a Batting/Pitching toggle. Three pins hold the field rule; details
+in `12-test-triage-september.md`.
 
 Nothing today reconciles a man in the nine at LF who is also the night's
 starter — trace what the sim actually does, then the design call. The
