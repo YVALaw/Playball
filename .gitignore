@@ -2,3 +2,21 @@ node_modules/
 dist/
 .DS_Store
 *.log
+
+# Stage 18 — the native shell.
+#
+# The android/ project is GENERATED: `npx cap add android` writes it and
+# `npx cap sync` refreshes it from dist/ on every build. Committing it means
+# committing a second copy of the app plus a Gradle wrapper, and every
+# regenerate lands as a thousand-line diff nobody reads. The config that
+# actually decides the shell — capacitor.config.ts — is committed instead,
+# so the project can be rebuilt from scratch by anyone with the toolchain.
+#
+# The one thing that must NEVER be regenerated is the signing keystore: lose
+# it and the app can never be updated on a store listing again. It is
+# ignored here so it cannot be committed by accident, and stage 19 owns
+# backing it up somewhere permanent.
+android/
+*.keystore
+*.jks
+key.properties
