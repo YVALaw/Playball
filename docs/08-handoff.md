@@ -6,9 +6,68 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 4, 2026 · **Branch:** `play-batch-2` ·
-**pushed through `58e834c`, everything after it local** — the reporter
-approves pushes one at a time.
+**Last session:** September 5, 2026 · **Branch:** `main` · **pushed
+through the interface pass (`8d97eb9`) and the docs commit after it.**
+
+> **September 5 — the interface pass, merged and read.**
+>
+> The reporter had the whole interface rebuilt outside the repo, against a
+> copy of the tree with no npm packages, and handed the folder over. It is
+> sixty-seven files and eight thousand lines: every screen onto one written
+> interaction language (`docs/INTERACTION_DESIGN.md` — data surfaces stay
+> dense, a decision shows state → context → tradeoff → consequence → verb, a
+> story leads with the result), Program as a dashboard with four doors,
+> Budget as a Plan · Staff · Facilities · Network workspace, History as
+> three rooms, the player card as four sheets, Decisions sheets in place of
+> every sliders icon, hold feedback on the lineup, a postseason frame, and
+> the offseason's seven circles replaced by a roadmap. On the engine side,
+> four systems nobody had booked — assistants who develop, a coaching tree
+> that rides a job move, recruiting pipelines as 0–100 program assets, three
+> levels per building — and replay, captured off the real event stream.
+> `05` §50 is the account, checked against the code rather than the pass's
+> own notes.
+>
+> **It had never been compiled where it was written.** Five type errors
+> came out of the merge: Today's "This week" tiles called a `setScreen` hook
+> the rewrite had removed (a ReferenceError on tap), and History's Alumni
+> grid handed string keys to `openPlayer`. Fixed with the idioms the new
+> code already used, then: type check clean, build clean, 1,133 tests across
+> 54 files, and a career walked from the front door to Today, Schedule,
+> Standings, Program and Roster with no runtime errors. **The rule for any
+> future outside pass: it is done when `npm run check` says so here, and
+> not before.** The APK was not rebuilt.
+>
+> **Then it was read twice, file by file, and `06` §X is the batch.** The
+> five to take first: the Staff room's `Replace` button cannot fire because
+> `hireAssistant` still refuses a filled seat; the rotation "heal" rewrites
+> any honest spare starter as a reliever for life, because progression has
+> always parked surplus SPs in the bullpen with no `homeRole`; the winter's
+> staff development and AD hires never re-sync the coach mods, so the games
+> play a whole season on last year's staff; the AD's auto-build stores a
+> stale rung; and the portal's REVIEW SIGNING sheet has no layout at all.
+> Two to **measure before deciding**: replay now stores every pitch of every
+> user game on the box, on every save, against a 12.3 KB-a-year budget
+> nobody re-measured; and the user's home state now pays 15% more recruiting
+> fit than any AI program's, undocumented. Then the seams — three bottom
+> sheets that declare `role="dialog"` and trap nothing, a hold haptic that
+> ignores the setting, a rail scroll that ignores `wantsMotion()`, the
+> coaching-tree list with no CSS, a screen's worth of dead CSS including the
+> "command card" the pass's notes describe and never built. Nothing in §X
+> is fixed yet; §X ends with the order to take them in.
+>
+> **Two things the pass decided on its own, now recorded as decisions:**
+> the plant has three levels per building (the morning's item 32 had
+> settled on once apiece — superseded, and accepted), and the five-question
+> situational interview is gone from the UI in favour of a background
+> picker, which leaves `interviewResult.ts` with no caller and stage 24's
+> reveal to decide which pool it builds on.
+>
+> **Where the work stands.** Stages 1–16, 18 and 20–23 shipped; the APK
+> list closed the morning of September 5. Left: the §X batch → the rest of
+> 24 (the reveal and the result card) → 25 (the art, generated) → 26's
+> verdict from the reporter → 20b at its design door → 17 → 19. **The test
+> aids are back on purpose** (`docs/TESTING_SHORTCUTS.md`) and leave
+> together in 19.
 
 > **September 4 — the September run, then the app itself.**
 >
@@ -129,11 +188,12 @@ approves pushes one at a time.
 
 | File | What it is |
 |---|---|
-| `07-v1-plan.md` | **The route.** Seventeen staged steps to v1.0. Stages 1–4 are done; stage 5 is next. |
+| `07-v1-plan.md` | **The route.** Twenty-six stages to v1.0. Twenty-one are done; the §X review batch, then 24, 25, 20b, 17 and 19 remain. |
+| `INTERACTION_DESIGN.md` | **The interface rulebook**, since September 5. Three kinds of screen and what a decision must show before it offers a verb. Read before adding any screen. |
 | `06-backlog.md` | The decisions and the argument behind each. §H is the agreed feature set, §I the pass that produced stages 3 and 4; *Decisions locked* holds the rules that bind every feature. |
 | `05-systems-reference.md` | What the game does **today**, including the hidden-mechanics index. A feature that shipped moves in here on the same commit. |
 | `01-roadmap.md` | Two-minute view. Its ordered list is now a pointer at `07`. |
-| `artifacts/playball-v1.html` | **The published plan.** Same content as `07`, as a page. See the rule below — it is not optional. |
+| `artifacts/playball-v1.html` | **The published plan.** Same content as `07`, as a page, at <https://claude.ai/code/artifact/072559a8-d9a1-445b-851e-bb15364f49ab> — republished September 5 with stages 15–26 and the interface pass. See the rule below — it is not optional. |
 | `10-field-study.md` | **The shelf we are joining.** Who else ships a college dynasty for a phone, how it is built, what its reviewers complain about, and the Android numbers the port has to hit. Read before starting stage 16. Published at <https://claude.ai/code/artifact/7a0673b7-a52a-4f1f-bb7d-c495437e5658> from `artifacts/playball-field-study.html`. |
 
 ### The artifact is part of "done"
@@ -354,16 +414,21 @@ emulator pass can be pulled forward at any time.
 
 ## Test aids currently in the build — remove before v1.0
 
-Both flagged in the code and listed in `06-backlog.md` §G5:
+Three, all marked `TESTING ONLY` in code, all listed in
+`docs/TESTING_SHORTCUTS.md`, removed September 4 and put back September 5
+so the new interface could be played a season at a time:
 
-- **SIM SEASON** on the dashboard (`Today.tsx`).
-- **The loaded Pascagoula Tech roster** — five men at 99 plus a guaranteed
-  rookie offer (`store.start` and `NewGame.tsx`). Gated out of vitest.
+- **SIM THE SEASON** on Today (`Today.tsx`, the TEST BUILD strip).
+- **The guaranteed Pascagoula Tech offer** (`NewGame.tsx`).
+- **PSC's five 99s** (`store.start`). Gated out of vitest.
+
+Hans Hood, the fourth, is gone for good — `ensureHoodHans` no longer
+exists. Stage 19 removes the three together.
 
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (799 tests)
+npm run check      # typecheck + the whole suite (1,133 tests, 54 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing
@@ -387,6 +452,11 @@ and confirmed fixed by reading `getBoundingClientRect()` against the frame, not
 by looking at it.
 
 **Commit style:** narrative first line, prose body explaining the *why*, ending
-with the `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>` trailer.
+with the `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>` trailer.
+
+**Verifying in the Browser pane:** if the pane is hidden, animation frames
+do not run and the store's crossfade commits one event late — every
+navigation reads as the *previous* one. That is the pane, not the app;
+front the tab or read `getBoundingClientRect()` rather than chasing it.
 PowerShell here-strings break on apostrophes — use `git commit -F <file>` or a
 bash heredoc.

@@ -2130,9 +2130,11 @@ here, it either shipped or was decided against.**
   stable per-man hash stays (if the words moved there would be nothing to
   learn) and the development lines keep their fuzzy bands (making both axes
   decodable would leave nothing to scout).
-- **DONE — Remove the test aids.** The forced Pascagoula Tech offer/99-rated
-  roster and the named recruiting fixtures were removed from normal dynasties
-  in the September 4 decision-visibility pass.
+- **Remove the test aids — half done, then half undone.** Hans Hood is gone
+  for good (September 4). The loaded Pascagoula Tech roster and its
+  guaranteed offer were removed the same day and **restored September 5**,
+  with SIM THE SEASON, so the interface overhaul could be played a season at a
+  time (`docs/TESTING_SHORTCUTS.md`). All three leave together in stage 19.
 - **Freesound licence verification** before any store release. See
   `public/sfx/CREDITS.md`: CC-BY needs the credit shipped, NC cannot ride with
   paid IAP.
@@ -2603,3 +2605,237 @@ commonest action on the screen would feel late to serve the rarest.
 **A process failure worth keeping.** The suite was reported green while two
 tests failed: the runs were piped into `tail`, so the exit code read was
 tail's. Capture vitest's own exit code, always.
+
+## X. The interface pass, and what to change in it — September 5 2026
+
+The whole interface arrived in one pass, authored against a copy of the
+tree and merged as `8d97eb9` (`05` §50 is the account; the pass's own four
+notes are listed there). It was never compiled where it was written, so
+the merge began with five type errors, and the review below was the first
+time anyone read it against the code that was already here. Two reviewers
+read every changed file; every item was verified by reading, not by
+memory. Nothing here is fixed yet — this is the batch, sorted.
+
+### Decisions the pass took without a door
+
+Recorded so nobody later mistakes them for accidents.
+
+- **Three levels per building.** Item 32 (`14`) had just settled the plant
+  as three buildings bought once apiece. The pass kept that and gave each
+  building two more rungs at 1 · 1.75 · 2.6 of its effect, priced at 72%
+  and 96% of the base. Accepted: it gives a built programme somewhere to
+  spend in year five, which the once-apiece plant did not. The old
+  `facilities` rung count is still read alongside — see the stale-count
+  bug below.
+- **Assistants develop, and wages curve.** A kept teacher is worth keeping
+  now; the top of the market costs a premium. Accepted, unmeasured — the
+  staff probe (`tests/staff-probe.ts`) has not been rerun against the
+  curve, and should be before anyone tunes it.
+- **The interview asks three.** Stage 24's count, without its reveal or its
+  result card. Accepted as the half it is.
+- **The five-question situational interview is gone from the UI** and
+  replaced by a four-card background picker. `drawQuestions`, `settle`,
+  `ASKED` and `ASKED_CASUAL` in `interviewResult.ts` now have no caller
+  outside their tests. Decide at stage 24's door whether the reveal is
+  built on the old pool (keep the engine) or on the cards (delete it).
+- **Delete sits beside LOAD on every save, the autosave included.** The
+  September 4 front-door commit had already made the autosave deletable
+  with its own warning; the pass moved the control from a mode to a peer
+  button. Kept, with a question: is a trash button on the career being
+  played too easy to hit? The confirm copy carries the consequence, which
+  is the rule.
+- **Test aids back in.** SIM THE SEASON, the PSC offer and its 99s
+  (`docs/TESTING_SHORTCUTS.md`). Deliberate; they leave together in 19.
+
+### The batch — bugs first
+
+1. **Replace cannot fire.** Staff shows the candidate deck for a filled
+   seat and labels the button `Replace · $X`, but `hireAssistant` still
+   returns early when the seat is occupied (`store.ts`). Fire the
+   incumbent inside the hire, charging the new wage against the room
+   freed — or hide the deck while the seat is filled. The first is what
+   the screen promises.
+2. **The AD's auto-build stores a stale rung.** In the year roll the
+   `built` array is captured before the new building is pushed, so
+   `economy.facilities` lags one behind on a new build and the old-ladder
+   readers (`FACILITIES[facilities]` for injury guard, dev pitch, train
+   bump) under-apply until the next winter. Compute from the updated list.
+3. **The hold haptic ignores the haptics setting.** `useLongPress` calls
+   `navigator.vibrate` directly; everything else goes through `buzz()`,
+   which reads the preference. One-line fix.
+4. **One motion gate bypasses the app's own.** The offseason rail's
+   auto-scroll reads raw `prefers-reduced-motion` instead of
+   `wantsMotion()`, so "reduced" chosen in Settings on a system with no OS
+   preference still scrolls smoothly. Every new CSS animation in the pass
+   is gated both ways (`data-motion` and the media query) — checked — so
+   this is the one script-side miss.
+5. **The dashboard and Budget disagree on scouting reports.** The Overview
+   card counts every book ever bought; the Network room counts live ones.
+   One helper, filtered by day.
+6. **`PlayerCap` in the ballpark is drawn inside the player sphere** and
+   never visible — three draw calls per marker for nothing. Raise it or
+   delete it; the new halo may make it redundant.
+
+### The batch — regressions and seams
+
+7. **New bottom sheets (Manage, Inbox, Board) declare `role="dialog"` but
+   never move, trap or restore focus, and ignore Escape.** `Modal.tsx`
+   already has the pattern; extract it into a hook and use it in all
+   three. This is the accessibility line the roadmap's `[~]` has carried
+   since August.
+8. **Alert dots are bare `<i>` with no accessible name** (Kit, Chrome).
+9. **The six-option status filter overflows a phone** — options five and
+   six clip at 320–360px with no scroll affordance. A wrapping chip row,
+   or four options and a drop-down.
+10. **The coaching-tree list on the coach profile has no CSS** —
+    `.coach-tree-list` / `.coach-tree-row` appear in no stylesheet, so
+    the one new screen the tree gets renders as inline text.
+11. **The `program` tutorial only fires on the Board subpage**; a first
+    visit to the new dashboard teaches nothing. Either a hub entry in
+    `tutorials.ts` or an explicit decision that the hub explains itself.
+12. **Probable-pitcher buttons are live but inert when the slot is
+    empty.** `disabled={!ourArm}`.
+13. **Replay position is not reset when the box changes**, and the
+    frame-advance interval sets state inside a `setState` updater (runs
+    twice under StrictMode). Key the sheet on the box; move the
+    end-of-frames check into the interval body.
+14. **What the pass dropped, and whether it meant to.** The player card's
+    AGE / OVERALL / POTENTIAL strip and the position / bats quick facts
+    (age, POT, school and conference survive on the hero); Inbox's year
+    headers; History's legend and sticky header; the Book showing every
+    room at once; Schedule's "every played game keeps its book" note; the
+    offer cards no longer toggling off on a second tap. Each was a
+    deliberate cut in the pass's own notes. Play a season before
+    restoring any of them; the year headers in a long inbox are the one
+    most likely to be missed.
+
+### The batch — cleanups
+
+15. Dead portal lookup in the Board sheet (`.app-frame` query left from
+    the `createPortal` version).
+16. The pipeline threshold `35` duplicated as a magic number in Board;
+    export a `PIPELINE_MIN` from economy.ts.
+17. Unused imports in Program.tsx (eight) and NewGame.tsx (two); the
+    `has-profile-alert` class in App.tsx has no rule.
+18. The poach landing is computed twice in the year roll and matches
+    coaches by name; resolve once and carry the assistant's id into
+    `coachFromAssistant`.
+19. `proCareer()` recomputed per alumnus per render in History; memoise.
+20. A redundant sheet-reset effect in Player.tsx that the parent's `key`
+    already handles.
+21. The Wire effect keyed on `watch.programs.join('|')`.
+
+
+### The second reading — offseason, June, the stylesheet, and the engine's edges
+
+Read separately, against the store and the engine rather than the screens,
+and it found the four items that matter most in the whole list.
+
+22. **The rotation "heal" rewrites real spare starters as relievers.**
+    `promoteArm` treats a bullpen arm labelled SP with no `homeRole` as the
+    old corrupted state and heals him to RP. But `progression.ts` has
+    always put surplus starters in the bullpen as SP with no `homeRole` —
+    `refill` and `regroup` both do it — so a legitimate sixth starter
+    promoted into the rotation and later sent back is a reliever for the
+    rest of his career. The corrupted shape and the honest one are
+    indistinguishable from the role alone, so the heal cannot be done
+    there. Use `up.homeRole ?? up.role` and drop the inference; if the
+    legacy state needs healing, do it once at load in `usableTeam`, where
+    the whole staff can be read together.
+23. **Coach mods go stale for a whole season after the winter.** Assistants
+    now develop at the roll, the AD hires and builds at the roll, and all of
+    it lands in `rolledEconomy` — but the mods the games read were last
+    synced before any of that, and `nextSeason` carries the old ones
+    forward. Everything the winter changed is invisible to the simulation
+    until a reload, a hire or a build happens to re-sync. Call the sync on
+    the rolled economy inside `done()` before the `set`.
+24. **The user's home state pays 15% more than anyone else's.**
+    `pipelineStrength` floors the home state at 60 for the user, which the
+    recruiting fit reads as `networkScale` 1.15; the ninety-five AI
+    programs have no callback and fall to the pre-pass value of 45, scale
+    1.0. The pass's notes claim reach parity and say nothing about fit. Keep
+    the 60 floor for reach only and read the home fit off 45 for everybody,
+    or give the AI the same callback. **Undocumented balance change —
+    measure before deciding**, and rerun the climb probes: a 15% home
+    bonus is exactly the kind of thumb the low-star climb was measured
+    without.
+25. **Replay rides every save, per pitch.** A captured game now keeps its
+    verbose log and its whole `PlayEvent` stream — `'pitch'` events
+    included — on `boxScores[day].replay`, for every one of the user's
+    fifty-odd games, serialised on every `saveNow`. The roadmap has guarded
+    12.3 KB a year for a month; this was not measured and the pass does not
+    mention it. Measure it first (one season, stringify the boxes). Then
+    either cap retained replays to the last N games, drop `'pitch'` events
+    at save time and keep the play-level ones, or store replay off the box
+    on the same clear-at-June rule item 5 of `14` used for postseason
+    boxes.
+26. **The portal's REVIEW SIGNING sheet has no layout.** It uses a bare
+    `sheet-scrim`, which only ever carried the backdrop blur and the fade;
+    every other sheet pairs it with a positioned class. Inside `InFrame`
+    that is no dim, no bottom anchor, the sheet at the top-left and
+    tap-outside covering only its own box. Give it a scrim class like
+    `retention-scrim`, and a safe-area bottom pad — `.retention-call-modern`
+    and `.portal-sign-sheet` are both bottom sheets without one, where
+    `.playbook-library-sheet` and `.profile-command-sheet` have it.
+27. **The screen surface's `pageSoftIn` has no reduced-motion guard**, the
+    one new keyframe without the pair every other one carries. And
+    `.bracket-view-transition` with `bracketRoomIn` is defined twice at
+    different timings; the second wins silently.
+28. **The postseason lineup takeover slides vertically under full
+    motion**, not horizontally as designed: it carries both `screen-in` and
+    its own class, and the higher-specificity `[data-motion="full"]
+    .screen-in` rule takes it back to the rise. Drop `screen-in` there.
+29. **Dead CSS, a screen's worth.** `season-flow-current` (the command
+    card, never built), five `season-review-*` classes (the screen uses
+    `season-report-*`), `staff-seat-*`, `facility-choice*`,
+    `facility-effect-box`, `facility-level-track`, `facility-swipe-deck`,
+    `portal-fixed-mini`, `postseason-hero`, `championship-tease`,
+    `bracket-board*`, `prospect-hero*`, `action-player-summary`,
+    `coach-card`, `dossier-rank`, `featured-player`, `section-heading`,
+    `start-save-note`, `tone-{conference,national,omaha}`. None is emitted
+    by any TSX. Remove them, and fix the season-flow note that describes
+    the card.
+30. **Hard-coded colours** in the frame stylesheet — `#a9c6af`, `#405246`,
+    `#d8e1d9` and some thirty `#fff` on the money, scout and staff cards —
+    bypass the tokens and will not follow the theme. The rule since dark
+    mode: never give a colour its only definition outside the tokens.
+31. **Two name matches that should be id matches.** The alumni Show-debut
+    letter fires on `line.startsWith('Called up')` against a prose literal
+    in `legacy.ts`; the tree refresh finds an assistant-turned-head-coach
+    by `coach.name === man.name`. A `debut` flag on `ProYear`, and the
+    assistant's id stamped onto the `RivalCoach` in `coachFromAssistant`.
+32. **The pass's own audit note contradicts the code** — it says the PSC
+    fixture and SIM THE SEASON were removed; they are live. Annotated at
+    the top of `AUDIT_IMPLEMENTATION.md` rather than rewritten, since the
+    note is a record of what that pass believed.
+
+### Verified sound, so nobody re-checks it
+
+The generated `prototype.css` is byte-identical to what
+`adapt-prototype-css.mjs` regenerates from the design source. No z-index
+collisions between the new sheets, the Decisions launcher, the Dugout tray
+and the existing overlays. The postseason frame class clears by unmount.
+The stage cards derive from `bracket.stage` and the rail's gating matches
+`goPhase`. `liveGame.ts` captures each event once. No `Math.random` or
+`Date` in any engine or state addition. Every new save field is optional,
+`SCHEMA_VERSION` is still 4, and `usableEconomy` sanitises the new economy
+fields. No TODO, FIXME, `console.log` or `debugger` in the added lines.
+
+### The test aids, as code
+
+They are linked only by comments today. SIM THE SEASON is
+`Today.tsx` 421–436 plus its CSS, not gated; the PSC offer is
+`NewGame.tsx` 264–272, not gated; the five 99s are `store.start`, gated
+only by `!process.env.VITEST`. Before stage 19, put one
+`TEST_SHORTCUTS = import.meta.env.DEV` flag in a shared module and gate all
+three on it, so removing them is deleting one constant rather than finding
+three comments. `playSeason` itself is a real engine path the worker uses
+and stays.
+
+### The order to take them in
+
+Bugs 1, 2, 22, 23 and 26 first — a button that cannot fire, a rung that
+lags, a starter demoted for life, a winter the games never see, a sheet
+with no floor. Then 25 measured, and 24 measured, before either is
+decided. Then the accessibility trio (7, 8, 9) together, since they are
+one hook and two labels. The rest ride the next play batch.

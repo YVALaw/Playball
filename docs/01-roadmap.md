@@ -1,7 +1,8 @@
 # Roadmap
 
-**Last updated:** September 3, 2026 · stages 1–16 shipped · stages 20–23
-booked from the September phone report (`12-test-triage-september.md`)
+**Last updated:** September 5, 2026 · stages 1–16, 18 and 20–23 shipped ·
+the APK report closed · **the interface pass merged September 5** (`05` §50)
+· 24 part-built, 25 and 26 booked, 17 and 19 the tail
 **Supersedes:** v3, which by the end was wrong about most of what it claimed
 **Companion docs:** `05-systems-reference.md` for what the game does today,
 `06-backlog.md` for what it is going to do and why, `02-sim-engine-spec.md` for
@@ -49,8 +50,8 @@ game at a time on a full-screen field with a defense on it, hand out awards,
 spend coaching points, read a recruiting board that is honest about being
 vague, argue the draft out of taking your junior, and start again in February —
 against ninety-five rival programs run by men with careers of their own.
-Twenty-eight test files cover it, calibration among them, so the engine cannot
-drift without something failing.
+Fifty-four test files and 1,133 tests cover it, calibration among them, so
+the engine cannot drift without something failing.
 
 The August 2026 interface overhaul and its feedback pass are described in §20
 of the systems reference: first-visit tutorials that persist, the wire as a
@@ -59,11 +60,15 @@ menu, a colleges directory, preseason power rankings, roster filters, win cards
 in June, a draft conversation in a sheet, and honest ball flight with fielders
 who chase it.
 
-**What is missing is the phone.** There is no Capacitor project, no Android
-build, no keystore, no store listing. The whole point of the project is a phone
-game and the only thing it has ever run in is a desktop browser. That is the
-largest single gap in the plan, and it is deliberately last — nothing else waits
-on it, and doing it early means carrying a second build for a year.
+**The phone arrived September 4** — Capacitor, `npm run apk`, a launcher
+icon and a back gesture — and **the interface arrived September 5**: one
+merged pass moved every screen onto a single interaction language (data
+surfaces dense, decision surfaces showing state, tradeoff and consequence
+before a verb, narrative surfaces leading with the result), and brought
+assistants that develop, a coaching tree, recruiting pipelines, facility
+levels and replay with it. `05` §50 is the account. What is missing now is
+the tail: the store, the keystore and listing, the guided tutorial, the
+art, and the test aids coming out.
 
 ## The stack
 
@@ -444,14 +449,16 @@ live in `05-systems-reference.md` §§37–42. In brief:
 | 15.5 | Sep 2–3 | **The voice** — the learnable report, the inbox as mail, then the full-app language pass (`docs/11`) |
 | 16 | Sep 3 | **The simulation's last mile** — June injuries, summit drag, findable gems, the RE bunt call, two-way players. `05` §49, `06` §V |
 | — | Sep 3 | **The phone report triaged** — batch P and stages 20–23 booked. `12-test-triage-september.md`, `06` §W |
+| P, 20–23 | Sep 4 | **The September run** — the polish batch, the opener in sections, the two-way corrected to the rulebook, playbooks, the lineup gate |
+| 18 | Sep 4 | **The shell, pulled forward** — manifest, launcher icon, Capacitor, `npm run apk`, the back gesture. Then the APK report's thirty-eight items, closed by Sep 5 (`14-apk-report-triage.md`) |
+| — | Sep 5 | **The interface pass** — every screen onto one interaction language; Program as a dashboard, Budget as a workspace, Decisions sheets, the offseason roadmap, the postseason frame; assistants develop, a coaching tree, pipelines, facility levels, replay. `05` §50, `06` §X |
 
-**What remains, in execution order:** **batch P** (the verified-bug polish
-pass) · **20** (the opener reorganized; 20b the board negotiation) ·
-**21** (the two-way, whole) · **22** (playbooks — scouting becomes
-leverage) · **23** (the lineup gate) · then the tail the plan always
-intended, dead last: **17** (the store), **18** (the phone), **19**
-(ship). The reporter tests on an Android emulator from September 3 on, so
-stage 18's emulator-answerable questions resolve in play.
+**What remains, in execution order:** the rest of **24** (the interview's
+reveal and result card) · **25** (the art — crests and faces, generated) ·
+**26**'s verdict from the reporter · **20b** (arguing the board's terms, at
+its design door) · then the tail, dead last: **17** (the store) and **19**
+(ship — the guided tutorial, accessibility, the keystore and listing, and
+the test aids out). The reporter tests on an Android emulator.
 
 ### The September 1 session, in one paragraph
 
@@ -526,3 +533,27 @@ creation interview) booked for their design talks.
 transition has never been timed, and the 3D field has never been run on a
 phone. The APK makes the second one answerable for the first time — it is now
 a build-and-install away rather than a hardware purchase away.
+
+## After the interface pass — September 5 2026
+
+The APK list closed on the morning of September 5, and the same day the
+whole interface was rebuilt in one pass authored against a copy of the
+tree and merged as `8d97eb9` (`05` §50). It cut across the plan rather
+than following it: stage 24's three questions, a visual pass on stage 26,
+both screen-queue items, and four systems nobody had booked — assistants
+that develop, a coaching tree, recruiting pipelines, and three levels per
+building — plus replay, which the README had promised "can land any time"
+and which did.
+
+**Done:** P → 20 → 21 → 22 → 23 → 18 → the APK list → **the interface
+pass**.
+**Next:** the review of the pass (`06` §X lists what to change) → the rest
+of 24 → 25 → 20b at its door → 17 → 19. Stage 26 waits on the reporter's
+verdict, not on a build.
+
+**The pass re-opened one thing on purpose:** the test aids are back
+(`docs/TESTING_SHORTCUTS.md`) so the new screens can be played a season at
+a time. They leave together in stage 19. **And it was never compiled where
+it was written** — five type errors came out of the merge — so the rule for
+any future outside pass is the one the suite already taught: nothing is
+done until `npm run check` says so here.

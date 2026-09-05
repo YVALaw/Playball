@@ -6,13 +6,17 @@ by hand through the store's own actions.
 
 ## Confirmed, must fix before v1.0
 
-No open release-fixture blockers from this ledger.
+- **F1 · The PSC godsquad, restored on purpose.** Removed in the September
+  4 audit pass, then put back on September 5 with SIM THE SEASON so the
+  interface overhaul could be tested a season at a time
+  (`docs/TESTING_SHORTCUTS.md`). Stage 19 removes all three together. Hans
+  Hood stayed removed.
 
 ## Fixed during this audit
 
-- **F1 · PSC/recruiting test fixtures removed.** Normal dynasties no longer
-  force Pascagoula Tech into the starting offers, boost its roster to 99s, or
-  inject named test prospects into every recruiting class.
+- **Hans Hood removed.** `ensureHoodHans` and `ensureWonderGuy` are gone
+  from recruiting.ts, so no named prospect rides every class. (PSC came back
+  the next day — see F1 above.)
 
 - **A1 · Program overlay could not scroll** — no sheet on the tab had a
   scroller; the coach profile was the first tall enough to prove it. Fixed

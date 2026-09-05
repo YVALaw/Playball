@@ -314,3 +314,11 @@ apiece. The screen shows the fit and not the answer, which was his call.
 What remains is in `07-v1-plan.md`: the tail (17 store, 19 ship), the two
 booked design doors (20b arguing the terms, 24 the creation interview),
 the new art stage (25), and the screen queue.
+
+**Later the same day — the interface pass** (`05` §50) rebuilt the budget
+screen again on top of item 32's decision: the shapes and the curved wages
+stayed, the plant grew three levels per building, and the whole thing moved
+into a Plan · Staff · Facilities · Network workspace. The reporter's verdict
+on the visual side (stage 26) is still owed. The same pass closed both
+screen-queue items and stage 24's question count. Its review list is
+`06` §X.

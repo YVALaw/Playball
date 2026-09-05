@@ -6563,6 +6563,208 @@ real instrument and prints the curve; the stale one-gap verdict is noted
 in its header), and the last per-PA walk point — measured, bounded,
 attributed, and not worth unbalancing seven calibrated rows to chase.
 
+## 50. The interface pass — **SHIPPED September 5 2026**
+
+One commit (`8d97eb9`), sixty-seven files, authored outside the repo
+against a copy of the tree and merged the same day. Every screen moved onto
+one interaction language, written down in `docs/INTERACTION_DESIGN.md` and
+summarised here because that file is a rulebook and this one is the record.
+Four short notes came with it — `AUDIT_IMPLEMENTATION.md`,
+`docs/VISUAL_POLISH_PASS.md`, `docs/REFINEMENT_PASS_2026-09-05.md`,
+`docs/SEASON_FLOW_REDESIGN_2026-09-05.md` — and they are the pass's own
+account; this section is what actually reached the code, checked against it.
+
+**The rule the whole pass rests on.** Three kinds of screen. A *data
+surface* (roster, standings, schedule, rankings, results, award lists) is a
+list and stays dense, because its job is scanning. A *decision surface*
+(budget, staff, facilities, coach points, portal, draft retention, program
+and player actions, strategy, job offers) shows, in order, the state, why the
+decision exists, the tradeoff, what remains after, and then a verb. A
+*narrative surface* (board reviews, job calls, draft outcomes, alumni events,
+postseason transitions) leads with the result. Money is never shown as a
+price alone: cost, what is available, what remains after, and the mechanical
+effect. Confirmations repeat the consequence, never "are you sure".
+
+### 50.1 Program, as a dashboard
+
+PROGRAM opens on **Overview** — prestige, the year's record, and four cards
+that are doors: **Board**, **Budget**, **Watchlist**, **Hall**. Each opens a
+focused subpage with an explicit return; the tab's own tap always returns to
+Overview, while deep links from Inbox and Today still land on the subpage
+they name (`ProgramSheet` grew an `'overview'` value). The tab strip is
+Overview · Colleges · History · Strategy.
+
+**Budget is a planning workspace**, not a ledger: a money command centre
+(available, committed, allocation) over four rooms — **Plan**, which names
+the three things competing for the same money and points at the most
+relevant next decision; **Staff**, organised by seat (a current assistant
+shows his winter/night shape, tenure, wage and, for the coordinator, his
+state; a vacancy compares candidates inside the seat they would fill and
+prints the money left after the hire, with a true Hire / Replace / can't-
+afford primary button); **Facilities**, three specialty tiles (Bat / Arm /
+Club) that open one focused building with all three levels visible, current
+effect, next effect, cost and post-project budget, and a Build / Upgrade
+verb; and **Network**, the recruiting relationships beside the scouting
+desk. Coaching Tree left the budget for the coach's career profile.
+
+**History is one archive with three rooms** — Seasons (yearbook cards),
+The Book (one record room at a time: Single Game, Feats, Season, Career,
+Team, Coaching, via `record-room-selector`), and Alumni. An alumnus's
+durable note is enough to reopen his card years after his roster row is
+gone, so the pro timeline never becomes unreachable; the Alumni grid casts
+its keys to `PlayerId` once (the merge fixed this — the pass shipped it as
+a plain string).
+
+### 50.2 The player card, and decision sheets
+
+Four sheets: **Overview · Ratings · Stats · Legacy**. Game logs folded into
+Stats; career and honours live under Legacy; an alumnus shows Overview and
+Legacy only. Overview no longer repeats the hero's identity; your own man's
+Overview surfaces availability, mood and role expectation, draft watch and
+portal risk; an opponent's card keeps private information private.
+
+Player and program actions open a **Decisions sheet** from an overflow
+affordance (the sliders icon is reserved for real filters — Roster and
+Recruiting). The sheet opens on state first (mood, workload and injury,
+academics, eligibility for a player; record, RPI, run differential for a
+program), then groups the verbs by purpose: recovery, conversation,
+position, redshirt for a man; matchup decisions (scout, compare, follow)
+apart from career decisions (track the job, the quiet approach) for a
+school. The college profile reserves its own bottom footprint for the
+launcher so the dossier scrolls above it instead of under it. The Dugout
+uses the same grammar but opens on inning, score, outs and bases before a
+compact two-column list — speed over hierarchy during live play, on
+purpose.
+
+**Roster filters** grew a status axis: Injured · Mood issue · Draft
+eligible · Redshirt · Captain, beside the position filters.
+
+### 50.3 Lineup, Today, ballpark
+
+**Hold** (`HOLD_MS` = 450) reads the man from starters, bench, rotation and
+bullpen: the held row compresses, gains a side accent and fills a timed
+rail, a completed hold gives a short haptic on devices that have one and
+opens the card straight onto Stats; hold and tap are mutually exclusive, so
+reading never moves anyone. Selection feedback sits in a fixed-height slot
+so choosing a man no longer pushes the order down.
+
+**Pitchers keep a home role** (`homeRole` on the roster and TeamState). An
+RP borrowed into the rotation wears SP while he is there and goes back to
+RP when he returns to the pen; an older save carrying the former
+SP-in-bullpen-with-no-homeRole corruption heals the next time the arm is
+swapped. Both the reported RP → rotation → bullpen sequence and the legacy
+shape are pinned in `tests/liveGame.test.ts` / `tests/store.test.ts`.
+
+**Tonight** is two rows: crests, records and VS/AT above; two fixed
+probable-pitcher cells below, both tappable and both opening on Stats. Long
+school names and pitcher names truncate with an ellipsis inside the card.
+Today also shows opponent-playbook preparation and the board's ask, and
+calls out a **coaching-tree matchup** when the next opponent is coached by
+a former assistant.
+
+**Every animated marker on the field** carries a neutral halo — a dark
+outer ring and a warm light inner ring — under the existing uniform rim, so
+one edge always reads against grass, dirt and any school palette without
+weakening the team colour.
+
+### 50.4 June and the offseason
+
+The frame gets a **postseason visual mode**. Conference · Regionals ·
+National are stage cards reading CURRENT STAGE / COMPLETED / UP NEXT
+(`Postseason.tsx`); NEXT GAME / BRACKET is a two-room navigation; the
+pregame card carries tournament hierarchy; bracket maps use contained round
+columns with the user's team emphasised; the postseason lineup takeover
+slides in horizontally instead of cutting. Stage review and the box score
+are unchanged.
+
+The **offseason roadmap** replaces the seven small circles: a horizontally
+scrolling rail whose steps read NOW · DONE · REVISIT · LOCKED
+(`StepRail.tsx`), centred on NOW, past steps tappable, future steps visible
+but held. The pass's own note also describes a "current-step command card"
+above the rail; that card was never built — only its CSS shipped
+(`season-flow-current`, with no element emitting it) — and the rail's own
+header comment says it was removed. A step ahead of NOW that has already
+been reached is labelled REVISIT, which reads wrong forward; `06` §X. The seven steps are unchanged — Awards, Season review,
+Coach development, Draft, Portal, Recruiting, Class review · Signing Day
+(the last is now labelled as both). Awards are event cards with the same
+reveal and skip controls; Season review separates record and rank tiles,
+board objectives, leaders, MVP and prestige movement; Draft carries a needs
+grid and retention sheets; Portal reads as one two-sided room (budget state,
+retention candidates, incoming candidates); Signing Day separates the class
+summary, rankings and top signings. Seasonal sheets share one rise
+animation; the reduced-motion setting still disables all of it.
+
+### 50.5 The engine side of the pass
+
+The pass touched the engine in five places, each small and each deliberate.
+
+**Assistants develop** (`developAssistant`, economy.ts). One winter at a
+time, deterministic off a hash of the man's id and the year: below a ceiling
+of 84, a chance of `30 + 35·winter + 0.35·max(0, 70 − rating)` percent of
++1, a smaller chance of +2 under 72, and the wage drifting 22% of the way to
+market each year rather than jumping. `wageFor` is a curve now —
+`70 + 430·t²` thousand, t from rating 25 to 88, rounded to five — so the last
+twenty points of a coordinator cost more than the first fifty. `fitFactor`
+halves an assistant's worth where the coach is already elite on that side.
+
+**The coaching tree** (`Economy.tree`, `CoachingTreeEntry`). A high-value
+assistant can enter the national carousel (`coachFromAssistant`, rivals.ts)
+and leaves only when it actually gives him a chair; the tree records seat,
+years with you, last school, career line and titles. It rides a job move
+with you (store, `tree: [...]`), shows on the coach profile
+(`Program.tsx`), and Today reads it for the matchup line.
+
+**Pipelines** (`PipelineEntry`, 0–100 per state). Home state has a floor of
+60; a recruiting coordinator brings one state at `max(60, 0.82·rating)`; a
+signing adds `8 + 3·(stars − 1)`; an idle year cools a market by 4;
+labels COLD < 35 ≤ EMERGING < 60 ≤ ESTABLISHED < 80 ≤ STRONG, and 60+ is the
+reach threshold that used to belong to the home state alone. `pitch.ts`
+takes `pipelineStrength` as an optional read. The recruiting board's
+Pipeline filter covers home, staff-carried and earned markets.
+
+**Facilities have levels** (`facilityLevel`, `FACILITY_MAX_LEVEL` = 3).
+Each of the three buildings — the hitting barn, the pitching lab, the
+clubhouse — climbs three rungs at multipliers 1 · 1.75 · 2.6 on its base
+effect; level two costs 72% of the base price and level three 96%; the
+injury guard floors at 0.72. `facilityLevels` on the economy is read first
+and an older save's `built` list infers level one, so nobody loses a
+building. **This supersedes the September 5 "bought once apiece" plant**
+(`14` item 32) — the three buildings are still bought one at a time, but
+each now has somewhere to go afterwards.
+
+**Replay is captured, not reconstructed.** `season.ts` keeps the log and
+the PlayEvent stream on a game summary when `captureBoxFor` matches either
+side (or `opts.capture` is set); `liveGame.ts` accumulates the same real
+stream for a managed game instead of returning an empty list at the final.
+Box Score gains a Replay view where the events exist — inning and half,
+outs, live score, bases, the actual call, scrubber, play/pause, frame
+stepping and scoring-play jumps. Older saves keep the box and show no
+replay. Zero random draws, by construction; the pinned reporting rule is
+untouched.
+
+Also: the **creation interview asks three** (`ASKED` = 3,
+interviewResult.ts; Casual still two) from the same pool of eighty-one;
+**alumni mail** — a first arrival at The Show and the end of a top-level
+career reach the Inbox (`alumni-debut-` / `alumni-retire-` keys); watchlisted
+programs get priority on The Wire; `ensureHoodHans` and `ensureWonderGuy`
+are gone from recruiting.ts.
+
+### 50.6 What the merge found
+
+The pass was built without the npm tree and had only been parsed, never
+type-checked, built or run. Under `tsc` it carried five errors: Today's
+"This week" tiles called a `setScreen` hook the rewrite had removed — a
+ReferenceError on tap — and History's Alumni grid handed string keys to
+`openPlayer`. Both fixed in the merge using the idioms the new code already
+used. After that: type check clean, Vite build clean, **1,133 tests across
+54 files**, and a career walked from the front door through the offer
+screen to Today, Schedule, Standings, Program and Roster with no runtime
+errors. The Android build was not re-run.
+
+**Restored for testing, and owed to stage 19:** SIM THE SEASON, the
+guaranteed Pascagoula Tech offer and its five 99s
+(`docs/TESTING_SHORTCUTS.md`).
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

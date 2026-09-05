@@ -90,6 +90,7 @@
   .chip.dep { background: transparent; }
   .chip.done { border-color: var(--win); background: var(--win); color: var(--cream); }
   .chip.new { border-color: var(--clay); background: var(--clay); color: var(--cream); }
+  .chip.first { border-color: var(--win); background: var(--win); color: var(--cream); }
   li.stage.done .num { color: var(--win); }
   li.stage.done h3 { color: var(--dim); }
   li.stage.done h3::after {
@@ -116,12 +117,18 @@
 
 <header class="top">
   <div class="top-in">
-    <div class="kicker">Playball · implementation plan · fifteen stages shipped</div>
+    <div class="kicker">Playball · implementation plan · twenty-one of twenty-six stages shipped · the interface pass merged Sept 5</div>
     <h1>The road to v1.0</h1>
-    <p class="sub">Nineteen stages, ordered by what unblocks what. The game is
+    <p class="sub">Twenty-six stages, ordered by what unblocks what. The game is
     already deep; this is the work that turns it into a product with a
-    personality, on a phone. <strong style="color:var(--cream)">The first fifteen
-    are done.</strong> Three and four did not exist when this plan was written —
+    personality, on a phone. <strong style="color:var(--cream)">Stages 1 through
+    16, 18 and 20 through 23 are done, and on September 5 the whole interface
+    was rebuilt in one merged pass</strong> &mdash; every screen onto one
+    language, with assistants who develop, a coaching tree, recruiting
+    pipelines, facility levels and replay riding along. What is left is the
+    tail: the interview&rsquo;s payoff (24), the art (25), the budget&rsquo;s
+    verdict (26), the board across the table (20b), the store (17) and ship
+    (19). Three and four did not exist when this plan was written —
     they came out of playing what stage 1 shipped, and were built the same day
     they were reported. The old stage 5 was split so the dugout could land
     without a calibrated engine riding on the same pass — and both halves have
@@ -506,11 +513,11 @@
       </div>
     </li>
 
-    <li class="stage">
+    <li class="stage done">
       <div class="num">15</div>
       <div>
         <h3>The ballpark</h3>
-        <div class="chips"><span class="chip new">New</span><span class="chip sz-l">Large</span><span class="chip dep">All the 3D work, in one place</span></div>
+        <div class="chips"><span class="chip first">SHIPPED Sept 3</span><span class="chip sz-l">Large</span><span class="chip dep">The one ground dressed; 2D removed for a lazy-load; team colours on the field</span></div>
         <p>The dugout <em>screen</em> is finished; the park it draws is not.
         This is the stage that stops treating the field as a diagram of where
         the ball went and makes it somewhere games are played. Everything
@@ -530,11 +537,11 @@
       </div>
     </li>
 
-    <li class="stage">
+    <li class="stage done">
       <div class="num">15.5</div>
       <div>
         <h3>The voice</h3>
-        <div class="chips"><span class="chip new">Added Sept 1</span><span class="chip sz-m">Medium</span><span class="chip dep">Out of play</span></div>
+        <div class="chips"><span class="chip new">Added Sept 1</span><span class="chip first">SHIPPED Sept 2&ndash;3</span><span class="chip sz-m">Medium</span></div>
         <p>Two pieces, and they are the same piece: what the game <em>says</em>.</p>
         <p><span class="chip new">Grew Sept 2</span> The hidden-secrets scrub — every caption that explains an internal rule (the minimum-star line and its siblings) goes; discovery is the game; the two lines named directly were scrubbed that evening — and the inbox re-voiced as mail from your assistant, riding the noise cut already here.</p>
         <p><span class="chip new">Grew Sept 2, evening</span> <strong>The assistant watches the wire.</strong> Asked for directly: a chair opening anywhere in the country, and a star entering the portal — worded as rumour, not a stat line — each arrives as mail in the assistant&rsquo;s voice. The rarity knob that makes the portal card an event is priced in stage 16; this stage owns the mail.</p>
@@ -546,7 +553,7 @@
         <div class="decide"><b>Two calls made inside it</b>The stable per-man hash stays &mdash; if a recruit&rsquo;s words moved between renders there would be nothing to learn. And the development lines keep their fuzzy bands: how raw a man is is the second axis, and making both decodable would leave nothing to scout.</div>
       </div>
     </li>
-    <li class="stage">
+    <li class="stage done">
       <div class="num">16</div>
       <div>
         <h3>The simulation's last mile</h3>
@@ -575,6 +582,136 @@
       </div>
     </li>
 
+    <li class="stage done">
+      <div class="num">20</div>
+      <div>
+        <h3>The opener, reorganized</h3>
+        <div class="chips"><span class="chip new">Booked Sept 3</span><span class="chip first">SHIPPED Sept 4</span><span class="chip sz-s">Small–medium</span></div>
+        <p>The season-opening card in four titled sections &mdash; verdict,
+        what moved, the new terms, the winter&rsquo;s stings &mdash; under a
+        headline drawn from a rotating pool, with the acceptance moved to the
+        board, where TAKE THE SEASON now lives. Prestige in plain form: &ldquo;School
+        prestige 47 &rarr; 57. Yours 31 &rarr; 34.&rdquo;</p>
+        <div class="decide"><b>20b &mdash; the board across the table</b>Negotiating the milestones: a gutted roster after a title year should be arguable back to sane asks. Booked, not built; it needs its own design door &mdash; what leverage is, what asking costs.</div>
+      </div>
+    </li>
+
+    <li class="stage done">
+      <div class="num">21</div>
+      <div>
+        <h3>The two-way, whole</h3>
+        <div class="chips"><span class="chip new">Booked Sept 3</span><span class="chip first">SHIPPED Sept 4, corrected the same night</span><span class="chip sz-m">Medium</span></div>
+        <p>Corrected to the rulebook: on his pitching night the nine is the
+        eight field spots plus him, the DH sits on a bench that grows a seat to
+        hold him, and nobody ever fields without batting. The box carries both
+        of his games (his batting row wears PH), and <code>TeamState.playedAt</code>
+        records where each man actually stood, off the field map the simulation
+        itself reads &mdash; the fix for a bug that shipped twice because every
+        label came off the roster instead of the night.</p>
+      </div>
+    </li>
+
+    <li class="stage done">
+      <div class="num">22</div>
+      <div>
+        <h3>Playbooks &mdash; scouting becomes leverage</h3>
+        <div class="chips"><span class="chip new">Booked Sept 3</span><span class="chip first">SHIPPED Sept 4&ndash;5</span><span class="chip sz-m">Medium</span></div>
+        <p>Eight controls at three options each, all computed from the report,
+        and the 3D stations move with the applied book. Strategy has two stable
+        states now &mdash; the standing plan and the selected opponent plan &mdash;
+        with saved plans in a library sheet that scales to many schools, and an
+        AUTO that changes a defensive dimension as well as the handedness values,
+        so it never lands as a no-op.</p>
+      </div>
+    </li>
+
+    <li class="stage done">
+      <div class="num">23</div>
+      <div>
+        <h3>The lineup gate</h3>
+        <div class="chips"><span class="chip new">Booked Sept 3</span><span class="chip first">SHIPPED Sept 5</span><span class="chip sz-s">Small</span></div>
+        <p>A short or doubled nine holds the door: navigation away from a broken
+        card that is yours to fix bumps the gate instead of leaving. The gesture
+        rule was decided with it and applies to every list &mdash; tap selects, tap
+        again puts down, <strong>hold</strong> reads the man. Never double-tap.</p>
+      </div>
+    </li>
+
+    <li class="stage done">
+      <div class="num">&sect;</div>
+      <div>
+        <h3>The interface pass</h3>
+        <div class="chips"><span class="chip first">MERGED Sept 5</span><span class="chip sz-l">Large</span><span class="chip dep">Not a stage &mdash; cut across six</span></div>
+        <p><strong>Every screen onto one language</strong>, written down in
+        <code>docs/INTERACTION_DESIGN.md</code>: data surfaces stay dense because
+        their job is scanning; a decision shows state, context, tradeoff and
+        consequence before it offers a verb; a story leads with the result;
+        money is never a price alone. Program became a dashboard with four
+        doors; Budget a planning workspace (Plan &middot; Staff by seat &middot;
+        Facilities as three specialty tiles with a level track &middot; Network);
+        History three rooms; the player card four sheets; every sliders icon a
+        Decisions sheet that opens on state; the lineup&rsquo;s hold fills a rail
+        and opens the man on Stats; June gets its own frame with stage cards;
+        the offseason&rsquo;s seven circles became a roadmap reading NOW &middot;
+        DONE &middot; REVISIT &middot; LOCKED. On the engine side: assistants who
+        develop over winters and wages that curve; a coaching tree that rides a
+        job move and calls out a former assistant across the dugout; recruiting
+        pipelines as 0&ndash;100 program assets; three levels per building; and
+        replay captured off the real event stream, zero draws. The account is
+        <code>05</code> &sect;50.</p>
+        <div class="decide"><b>What the merge found</b>It was authored against a copy of the tree with no npm packages and had only ever been parsed. Five type errors, one of them a crash on tap. Fixed in the merge; type check, build and 1,133 tests clean after. Nothing from outside is done until <code>npm run check</code> says so here.</div>
+        <div class="decide"><b>What it re-opened</b>The test aids, on purpose (<code>docs/TESTING_SHORTCUTS.md</code>), and a thirty-two-item review in <code>06</code> &sect;X. Five to fix first: a Replace button that cannot fire, a rotation &ldquo;heal&rdquo; that demotes any honest spare starter for life, a winter whose staff changes never reach the games, an AD auto-build that stores a stale rung, and a portal sheet with no layout. Two to measure before deciding: replay now stores every pitch of every game on every save, and the user&rsquo;s home state pays 15% more recruiting fit than any rival&rsquo;s. Then the seams &mdash; sheets that declare a dialog and trap nothing, a hold haptic that ignores the setting, and a screen&rsquo;s worth of dead CSS including a command card the notes describe and the code never built.</div>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">24</div>
+      <div>
+        <h3>The creation interview, punchier</h3>
+        <div class="chips"><span class="chip new">Booked Sept 4</span><span class="chip sz-s">Small</span><span class="chip dep">Part built Sept 5</span></div>
+        <p><strong>Built:</strong> three questions instead of five, from the
+        same pool of eighty-one, with card-based choices. <strong>Owed, and the
+        part actually asked for:</strong> the consequence revealing after the
+        tap &mdash; stat moves and the badge vote animating in, so each answer
+        visibly pays off &mdash; and a result card at the end: the coach you
+        made, his four skills, two badges, and who calls a man like him. Swings
+        widened with a real minus so the net stays about +2.</p>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">25</div>
+      <div>
+        <h3>The art &mdash; crests and faces</h3>
+        <div class="chips"><span class="chip new">Booked Sept 5</span><span class="chip sz-m">Medium</span><span class="chip dep">Runs before 19</span></div>
+        <p>Everything visual is drawn from primitives and it is the last thing
+        that still reads as a prototype. <strong>Generated, not drawn</strong>
+        &mdash; the reporter&rsquo;s call &mdash; so the stage is about making
+        what the generator draws worth looking at: ninety-six crests that
+        survive 26px in a nav row and 64px on a college page (the second colour
+        and self-sizing landed September 5), faces that read as people at 40px
+        in a roster row, and the coach portrait. Sizing is the real work.
+        Before ship, because the listing is judged on how it looks before
+        anybody plays it.</p>
+      </div>
+    </li>
+
+    <li class="stage">
+      <div class="num">26</div>
+      <div>
+        <h3>The budget screen, visually</h3>
+        <div class="chips"><span class="chip new">Booked Sept 5</span><span class="chip sz-s">Small–medium</span><span class="chip dep">A pass shipped Sept 5 &mdash; verdict owed</span></div>
+        <p>The decision was rebuilt September 5 in the morning (a man is a
+        shape, a star costs, the plant branches) and the reporter&rsquo;s read
+        was &ldquo;I like the new idea but visually it still needs work.&rdquo;
+        The interface pass rebuilt it the same afternoon without waiting for the
+        mockup: a money command centre over Plan, Staff, Facilities and Network,
+        the money left after every decision printed beside it. If the mockup
+        comes, it is a review of this rather than a brief for it. One design
+        change rode in: the three buildings have three levels each now.</p>
+      </div>
+    </li>
+
     <li class="stage">
       <div class="num">17</div>
       <div>
@@ -586,15 +723,21 @@
       </div>
     </li>
 
-    <li class="stage">
+    <li class="stage done">
       <div class="num">18</div>
       <div>
         <h3>The phone</h3>
-        <div class="chips"><span class="chip sz-m">Small–medium</span><span class="chip dep">Deferred — no device yet</span></div>
-        <p>Capacitor, an APK on real hardware, the frame-rate measurement,
-        IndexedDB across a force-quit, safe-area insets, the hardware back
-        button. Everything except the frame rate can be answered on an emulator,
-        so the emulator pass can be pulled forward alone if the wait runs long.</p>
+        <div class="chips"><span class="chip first">SHIPPED Sept 4 &mdash; pulled forward</span><span class="chip sz-m">Small–medium</span></div>
+        <p><strong>The game installs.</strong> A web manifest and a launcher icon
+        drawn in code, Capacitor, and <code>npm run apk</code> against a
+        toolchain the script supplies itself (nothing system-wide). The hardware
+        back gesture peels one layer per press, written against the History API
+        so one handler serves the APK, the browser and the home-screen icon.
+        Pulled out of the tail because the reporter moved to BlueStacks, where a
+        LAN tab is not a secure context and an APK reads the Android target
+        honestly. The APK report that followed &mdash; thirty-eight items in
+        five batches &mdash; closed on September 5 (<code>14</code>).</p>
+        <div class="decide"><b>Still owed</b>The frame rate on a phone, and the screen transition timed. Both are a build-and-install away now.</div>
       </div>
     </li>
 
@@ -605,7 +748,9 @@
         <div class="chips"><span class="chip sz-m">Medium</span></div>
         <p>Onboarding for the first ten minutes · accessibility (focus states;
         text scaling now has a home in stage 2) · <strong>remove the test
-        aids</strong> (SIM SEASON, the loaded Pascagoula roster) · <strong>keystore
+        aids</strong> (SIM THE SEASON, the guaranteed Pascagoula Tech offer and
+        its five 99s &mdash; put back on purpose September 5 so the new screens
+        could be played a season at a time; Hans Hood is already gone) · <strong>keystore
         generated and backed up permanently</strong> · signed AAB, listing,
         screenshots, privacy policy, content rating · closed beta, then open.</p>
         <div class="exit"><b>Exit</b>v1.0 on the Play Store.</div>
@@ -648,6 +793,15 @@
   one card per beat, split the player&rsquo;s June into its own year-by-year
   book, and put one sliding indicator under all three tab strips. Ledgers:
   <code>05</code> §43&ndash;44, <code>06</code> §S&ndash;T.</p>
+  <p class="chain"><strong>September 4&ndash;5 &mdash; the phone, the list, and
+  the interface.</strong> Stages 20 through 23 shipped in order, the shell came
+  early so the reporter could install into an emulator, the APK report&rsquo;s
+  thirty-eight items closed in a day and a half, and then the whole interface
+  arrived in one merged pass from outside the tree. Two lessons: a suite is
+  only green when <em>vitest&rsquo;s own</em> exit code says so (two failures hid
+  behind a <code>tail</code> for three stages), and an outside pass is only done
+  when it compiles here (five type errors, one a crash on tap). Ledgers:
+  <code>05</code> &sect;50, <code>06</code> &sect;W&ndash;X, <code>14</code>.</p>
   <p class="chain"><strong>Stages 12, 13 and 14 are independent</strong> of
   everything above and of each other — the ones to move earlier when the big
   systems get heavy. Stage 14 in particular will feel like a bigger jump than

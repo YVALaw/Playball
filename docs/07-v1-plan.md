@@ -9,14 +9,19 @@ the next one picks up, `01-roadmap.md` for the order at a glance, `06-backlog.md
 for what the game does today.
 
 **Where the work stands, September 5 2026: stages 1 through 16 shipped,
-then the September run — batch P, the opener (20), the two-way (21) and
-playbooks (22), all built and in review. Stage 23, the lineup gate, closed the run;
-17–19 — store, phone, ship — run dead last, per the September 3
-re-affirmation. Testing moved to an Android emulator.**
+then the September run — batch P, the opener (20), the two-way (21),
+playbooks (22) and the lineup gate (23) — then the shell (18, pulled
+forward) and the APK report's thirty-eight items, all closed. On September
+5 the whole interface moved onto one interaction language in a single
+merged pass (`05` §50, `docs/INTERACTION_DESIGN.md`), which took stage 24's
+three questions, stage 26's visual pass and both screen-queue items with
+it. What is left: 17 (the store), 19 (ship), 20b (arguing the terms), the
+rest of 24 (the reveal and the result card), 25 (the art), and 26's verdict.
+Testing runs on an Android emulator.**
 
-**Twenty-three stages now** (nineteen, plus 20–23 booked September 3 from
-the phone report; stage 24, the creation interview, is booked in
-`12-test-triage-september.md` and joins this file at its design door).
+**Twenty-six stages now** (nineteen, plus 20–23 booked September 3 from
+the phone report, 24 from the September 4 triage, 25 and 26 booked
+September 5).
 
 ---
 
@@ -1277,7 +1282,8 @@ the Captain screen's own explanation was cut in batch P.
 
 Onboarding for the first ten minutes · accessibility (focus states; text
 scaling now has a home in stage 2's settings sheet) · **remove the test aids**
-(SIM SEASON, the loaded Pascagoula Tech roster) · keystore generated and backed
+(SIM THE SEASON, the guaranteed Pascagoula Tech offer and its five 99s —
+`docs/TESTING_SHORTCUTS.md`; Hans Hood is already gone) · keystore generated and backed
 up permanently · signed AAB, listing, screenshots, privacy policy, content
 rating · closed beta, then open.
 
@@ -1306,12 +1312,15 @@ Not a stage: settled or reporter-owned screen work that gets picked up in
 play batches, the way every screen fix so far has been. Added September 2,
 night (`06` §U):
 
-- **The college profile, the rest of the pass.** The overview sheet and the
-  crest overlap shipped on September 2; the reporter reports the profile
-  still "not looking very well" as a whole, so the remaining sheets (roster,
-  results, dossier) get the same treatment against the kit.
-- **The college action button.** "There are a few things we have to work on
-  there" — the reporter owes the list; the rework waits on it.
+- ~~**The college profile, the rest of the pass.**~~ **Done September 5** in
+  the interface pass: rebuilt identity-first, team colour as accent rather
+  than ink, an intelligence grid for the dossier, and the profile scrolling
+  above a reserved launcher footprint (`05` §50.2).
+- ~~**The college action button.**~~ **Done September 5**: the sliders icon
+  gave way to a Decisions sheet that opens on record, RPI and run
+  differential before separating matchup decisions from career decisions.
+  The reporter never sent his list, so the sheet is the proposal and the
+  list, if it comes, is a review of it.
 
 ---
 
@@ -1352,6 +1361,53 @@ to delay a release.
 
 A stage moves out of this file when it ships, and what it did moves into
 `05-systems-reference.md` on the same commit.
+
+## The interface pass — **SHIPPED September 5 2026**
+
+**Size:** large · **Not a stage; it cut across six of them** · Merged as
+one commit (`8d97eb9`) after being authored against a copy of the tree.
+The account is `05` §50; the rulebook it left behind is
+`docs/INTERACTION_DESIGN.md`.
+
+Every screen onto one language: data surfaces stay dense, decision
+surfaces show state → context → tradeoff → consequence → verb, narrative
+surfaces lead with the result. Program as a dashboard with four doors;
+Budget as a planning workspace (Plan · Staff · Facilities · Network);
+History as three rooms; the player card as four sheets; Decisions sheets
+in place of the sliders icon on players, programs and the dugout; hold
+feedback on the lineup; the postseason frame; the offseason roadmap. On the
+engine side: assistants that develop, a coaching tree, pipelines as
+persistent assets, three levels per building, and replay captured off the
+real event stream.
+
+**What it closed:** stage 24's three-question interview (not its reveal or
+result card); a visual pass on stage 26 (the reporter's verdict is still
+owed); both screen-queue items. **What it re-opened:** the test aids, put
+back on purpose (`docs/TESTING_SHORTCUTS.md`). **What it found:** five
+type errors, because it had never been compiled where it was written —
+and, on reading, the thirty-two-item batch in `06` §X: five bugs to fix
+first (a Replace that cannot fire, a spare starter demoted for life, a
+winter the games never see, a stale rung, a sheet with no floor), two
+things to measure before deciding (replay's save cost, a 15% home-state
+recruiting edge only the user gets), and a screen's worth of dead CSS
+including a "command card" its notes describe and it never built.
+
+## Stage 24 · The creation interview, punchier — **PARTLY BUILT September 5 2026**
+
+**Size:** small · **Booked September 4** from the archetype-grid
+conversation; the brief is in `12-test-triage-september.md`.
+
+**Built:** three questions instead of five (`ASKED` = 3 in
+`interviewResult.ts`; Casual still asks two), from the same pool of
+eighty-one, with card-based control, approach and interview choices.
+
+**Still owed, and the part the reporter actually asked for:** the
+consequence revealing after the tap (stat moves and the badge vote
+animating in, so each answer visibly pays off); the result card at the end
+— the coach you made, his four skills, two badges, and who calls a man
+like him; the per-answer swings widened with a real minus so the net stays
+about +2; and the quick-start "pick a background" fallback, still on the
+table.
 
 ## Stage 25 · The art — crests and faces
 
@@ -1402,10 +1458,17 @@ and it is the last thing that still reads as a prototype.
 screenshots, and the store listing is the one place the game is judged on
 how it looks before anybody plays it.
 
-## Stage 26 · The budget screen, visually — **awaiting the reporter's mockup**
+## Stage 26 · The budget screen, visually — **A PASS SHIPPED September 5 2026, verdict owed**
 
-**Size:** small–medium · **Booked September 5 2026** · **Blocked on a
-mockup**
+**Size:** small–medium · **Booked September 5 2026** · **The interface
+pass built it the same day, without the mockup.** Budget is now a money
+command centre over four rooms — Plan, Staff by seat, Facilities as three
+specialty tiles with a level track, and Network — with the money left
+after every decision printed beside it (`05` §50.1). The reporter still
+owns the verdict; if the mockup comes, it is a review of this rather than
+a brief for it. Note the design change that came with it: the plant is
+three buildings with **three levels each** now, not three bought once
+apiece — the September 5 decision below is superseded on that point.
 
 The budget screen's *decision* was rebuilt on September 5 — assistants
 became shapes, wages curved so a star costs a premium, and the plant

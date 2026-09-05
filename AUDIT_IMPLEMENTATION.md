@@ -1,3 +1,14 @@
+> **Read this first (added at the merge, September 5 2026).** This file is
+> the pass's own account, kept as written. Two things in it are no longer
+> true. The release fixtures it says were removed — the guaranteed Pascagoula
+> Tech offer, its five 99-rated players, and SIM THE SEASON — were **put back
+> on September 5** for UI testing (`docs/TESTING_SHORTCUTS.md`); only Hans
+> Hood stayed removed. And its verification sections describe syntax-level
+> parsing only: the pass was never type-checked, built or run where it was
+> written, and the merge found five type errors. What actually reached the
+> code, checked against it, is `docs/05-systems-reference.md` §50; the
+> review of it is `docs/06-backlog.md` §X.
+
 # Playball — Audit Implementation Pass
 
 Date: 2026-09-04

@@ -33,7 +33,7 @@ The seven-step flow is still:
 7. Class review / Signing Day
 
 The old seven tiny circles were replaced by:
-- a current-step command card,
+- ~~a current-step command card~~ — *never built; only its CSS shipped (`06` §X item 29)*,
 - a horizontally scrollable roadmap,
 - DONE / NOW / REVISIT / LOCKED states,
 - past steps still tappable,

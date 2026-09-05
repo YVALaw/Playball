@@ -7,7 +7,8 @@ Mobile first, shipping to Android.
 
 ## Status
 
-**Sixteen of twenty-three stages shipped, through September 3 2026.** Ninety-six
+**Twenty-one of twenty-six stages shipped, through September 5 2026, and
+the interface rebuilt whole the same day.** Ninety-six
 programs in eight conferences of twelve, a forty-five game regular season, and
 the whole loop runs: pick a job through an interview that shapes who rings you,
 play or simulate a season, manage games at bat by at bat, go through the
@@ -28,17 +29,23 @@ Rival programs are run by ninety-five named men with careers of their own, and
 the pecking order genuinely moves: measured over thirty seasons, six of the top
 twelve programmes turn over.
 
-What is missing is **the phone**. No Capacitor project, no Android build, no
-keystore, no store listing, no onboarding. It is deliberately dead last —
-nothing else waits on it, and testing runs on an Android emulator in the
-meantime. Before it, from the September phone report
-(`docs/12-test-triage-september.md`): a verified-bug polish batch, the
-season opener reorganized, the two-way player made whole, playbooks that
-turn scouting into leverage, and the lineup gate — then the store, the
-phone, and ship.
+**The interface, since September 5**, follows one written rulebook
+(`docs/INTERACTION_DESIGN.md`): lists stay dense where the job is scanning;
+a decision shows what is true, why it is being asked, what it trades, what
+is left after, and then a verb; a story leads with the result. Program is a
+dashboard with four doors, Budget a planning workspace, the player card four
+sheets, and every action launcher a Decisions sheet that opens on state
+before offering anything. With it came assistants who develop over winters,
+a coaching tree, recruiting pipelines as program assets, three levels per
+building, and replay off the real event stream. `docs/05-systems-reference.md`
+§50 is the account.
 
-The engine is calibrated multi-seed against sourced NCAA D1 rates. **1107 tests
-across 50 files**, including determinism goldens, calibration as a regression
+What is missing is **the tail**: the store, the keystore and listing, the
+guided tutorial, the art stage, and the test aids coming out. Testing runs
+on an Android emulator against `npm run apk`.
+
+The engine is calibrated multi-seed against sourced NCAA D1 rates. **1133 tests
+across 54 files**, including determinism goldens, calibration as a regression
 test, and a concurrency suite pinning the store's double-press guards.
 
 **It installs.** `npm run apk` builds a real Android package — Capacitor over
@@ -50,22 +57,30 @@ the one thing that must never be lost.
 | Not built yet | |
 |---|---|
 | Onboarding | the guided tutorial — a titled card, then a glow path through doing it (stage 19) |
-| REPLAY | the events are stored and take no draws; it can land any time |
 | The store | the S+ player and Play Billing (stage 17, dead last with 19) |
 | Negotiating the board | arguing a mandate down after a gutted roster (stage 20b) |
+| The interview's payoff | the answer's consequence revealing after the tap, and a result card (the rest of stage 24) |
+| The art | crests and faces worth looking at, still generated, sized for 26px and 64px alike (stage 25) |
+| The budget's verdict | the reporter's read on the rebuilt Budget screen (stage 26) |
 
 Shipped since: the two-way whole and corrected to the rulebook, playbooks,
-the lineup gate, the season opener, the three-question creation interview, and
-the decision-visibility pass across Program, Player, Today, recruiting and the
-budget. The Android shell is in too — package, launcher icon, and a back gesture
-that peels one layer per press.
+the lineup gate, the season opener, the Android shell — package, launcher
+icon, and a back gesture that peels one layer per press — the APK report's
+thirty-eight items, and then the interface pass: the three-question
+interview, Program as a dashboard, the Budget workspace, Decisions sheets,
+the offseason roadmap, the postseason frame, hold feedback on the lineup,
+and REPLAY, which the table above used to promise.
 
 **The gesture rule, for anyone touching a list:** tap selects, tap again puts
 down, **hold** reads the man. Never double-tap — allowing it taxes every tap,
 because none can act until the window for a second has passed.
 
-**Release fixtures removed.** The forced Pascagoula Tech offer/99-rated roster
-and the named recruiting test prospects no longer run in normal dynasties.
+**Test aids in the build, and they must leave together before a store build**
+(`docs/TESTING_SHORTCUTS.md`): SIM THE SEASON on Today, the guaranteed
+Pascagoula Tech offer, and its five 99-rated starters. They were taken out in
+the September 4 audit pass and put back on September 5 for rapid UI testing.
+Hans Hood, the 99-potential third baseman injected into every class, is gone
+for good — `ensureHoodHans` no longer exists.
 
 ## Docs
 
@@ -81,6 +96,12 @@ and the named recruiting test prospects no longer run in normal dynasties.
 | [08-handoff.md](docs/08-handoff.md) | Where the last session stopped and what the next one picks up. **Open this first** |
 | [09-beta-audit.md](docs/09-beta-audit.md) | Findings from playing the game rather than reading it |
 | [10-field-study.md](docs/10-field-study.md) | The other mobile college sims, and the platform standards the port has to meet |
+| [11-language-triage.md](docs/11-language-triage.md) | The full-app copy audit from stage 15.5 |
+| [12-test-triage-september.md](docs/12-test-triage-september.md) | The September phone report, sorted into batch P and stages 20–24 |
+| [13-phone-report-pending.md](docs/13-phone-report-pending.md), [14-apk-report-triage.md](docs/14-apk-report-triage.md) | The APK report: the screenshots with their marks, and the thirty-eight items, all closed |
+| [INTERACTION_DESIGN.md](docs/INTERACTION_DESIGN.md) | **The interface rulebook.** Three kinds of screen, and what a decision must show before it offers a verb. Read before adding any screen |
+| [TESTING_SHORTCUTS.md](docs/TESTING_SHORTCUTS.md) | The three test aids in the build, and the rule that they leave together |
+| [AUDIT_IMPLEMENTATION.md](AUDIT_IMPLEMENTATION.md), [VISUAL_POLISH_PASS.md](docs/VISUAL_POLISH_PASS.md), [REFINEMENT_PASS_2026-09-05.md](docs/REFINEMENT_PASS_2026-09-05.md), [SEASON_FLOW_REDESIGN_2026-09-05.md](docs/SEASON_FLOW_REDESIGN_2026-09-05.md) | The interface pass's own notes, in the order they were written. `05` §50 is what actually reached the code |
 
 ## Run it
 
