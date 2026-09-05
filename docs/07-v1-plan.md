@@ -1380,21 +1380,42 @@ and it is the last thing that still reads as a prototype.
 - **The coach portrait**, which is the same problem with more of the
   screen to play with and the creation screen already built around it.
 
-**Decisions this stage opens, and none of them are settled:**
+**Decisions, settled by the reporter September 5:**
 
-- **Generated, drawn, or both.** A drawn set gives quality and costs a
-  file per school; a better generator keeps ninety-six free and caps how
-  distinctive any one crest can be. The hybrid — a small set of shells,
-  each taking the school's colours and initials — is the middle, and is
-  what the accent system already does for the app's own chrome.
-- **Where the weight goes.** The bundle budget is 250 KB gzipped
-  excluding the 3D chunk, and it is at 203 KB. Ninety-six crests at any
-  real fidelity do not fit inside that, so this stage either raises the
-  budget deliberately or loads art the way the park is loaded — lazily,
-  and never on the critical path.
-- **What happens on a rival's page** versus your own, since a college
-  profile shows a crest at size and the roster shows fifty faces at once.
+- **Generated, not drawn.** "They are generated, don't worry about them
+  being similar." So the pipeline stays procedural and the stage is about
+  making what the generator draws worth looking at — no per-school files,
+  and a family resemblance across ninety-six crests is acceptable rather
+  than a problem to design around.
+- **Size is not a constraint.** "The whole thing is still very low in size,
+  don't worry about a couple more bytes." The bundle sits at 203 KB against
+  a 250 KB budget and the art is generated anyway, so richness costs code
+  rather than payload. The budget line stays in the roadmap as a watch, not
+  as a gate on this stage.
+- **Sizing is the real work.** "We just have to resize it where needed." A
+  crest is drawn at 26px in a nav row and 64px on a college page, a face at
+  40px in a roster row and 72px on the creation screen, and the same
+  geometry cannot serve both without detail that appears and disappears
+  with the size it is drawn at.
 
 **Why before 19 rather than after.** Ship is the stage that takes the
 screenshots, and the store listing is the one place the game is judged on
 how it looks before anybody plays it.
+
+## Stage 26 · The budget screen, visually — **awaiting the reporter's mockup**
+
+**Size:** small–medium · **Booked September 5 2026** · **Blocked on a
+mockup**
+
+The budget screen's *decision* was rebuilt on September 5 — assistants
+became shapes, wages curved so a star costs a premium, and the plant
+branched into three buildings — and the reporter's verdict was "I like the
+new idea in the budget but visually it still needs work." He owns the
+mockup and the stage waits for it.
+
+What exists now, so the mockup has something to argue with: each candidate
+is a card with his shape drawn as two bars (WINTER against THE NIGHT), a
+wage, and one line of fit about your own side. The three buildings are
+cards priced within eighty thousand of each other. Both were built to stop
+reading as ranked lists, which was the reported fault; whether they read
+as anything better is the open question.
