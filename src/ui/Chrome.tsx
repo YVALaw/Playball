@@ -133,7 +133,7 @@ export function ContextNav<T extends string>(
   { label, items, active, onSelect }:
   {
     label: string;
-    items: ReadonlyArray<{ id: T; label: string }>;
+    items: ReadonlyArray<{ id: T; label: string; alert?: boolean }>;
     active: T;
     onSelect: (id: T) => void;
   },
@@ -150,7 +150,7 @@ export function ContextNav<T extends string>(
           type="button"
           aria-current={item.id === active ? 'page' : undefined}
           onClick={() => onSelect(item.id)}
-        >{item.label}</button>
+        >{item.label}{item.alert && <i className="nav-alert" />}</button>
       ))}
     </nav>
   );

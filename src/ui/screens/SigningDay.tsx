@@ -170,7 +170,7 @@ export function SigningDay() {
     // The class totals and the three views hold still; the names scroll.
     <FixedHeader header={
       <div style={{ padding: '14px 14px 10px' }}>
-      <ModuleIntro kicker="SIGNING DAY" title="The class" />
+      <ModuleIntro kicker="CLASS REVIEW · SIGNING DAY" title="Your incoming class" />
 
       <MetricStrip>
         <Metric label="SIGNED" value={String(mine.length)} note="YOUR CLASS" />
@@ -178,7 +178,7 @@ export function SigningDay() {
         <Metric label="NATIONALLY" value={myRank > 0 ? `#${myRank}` : '—'} note="OF 96" />
       </MetricStrip>
 
-      <Segmented
+      <Segmented<View>
         label="Signing day section"
         value={view}
         onChange={setView}
@@ -193,7 +193,7 @@ export function SigningDay() {
       action={<FloatingAction label="START NEXT SEASON" onClick={() => void next('signing')} />}
     >
     <FirstVisit id="signing" />
-    <div style={{ padding: '10px 14px 22px' }}>
+    <div className="offseason-signing" style={{ padding: '10px 14px 22px' }}>
       {view === 'mine' && (
         <>
           {/* The class as one number and one sentence, which is what a signing
@@ -259,7 +259,7 @@ export function SigningDay() {
       )}
 
       {view === 'rankings' && (
-        <div style={{
+        <div className="class-ranking-board" style={{
           marginTop: 10, border: '1px solid var(--faint)', background: 'var(--paper)',
         }}>
           {rankings.slice(0, 25).map((row, i) => {
@@ -298,7 +298,7 @@ export function SigningDay() {
       )}
 
       {view === 'all' && (
-        <div style={{
+        <div className="class-top-signings" style={{
           marginTop: 10, border: '1px solid var(--faint)', background: 'var(--paper)',
         }}>
           {signed.slice(0, 60).map((p) => (
@@ -357,8 +357,8 @@ function WalkOnGroup(
   if (men.length === 0) {
     return (
       <FieldNote
-        title="Every hole is covered"
-        text="Nobody walks on this year. The whole roster is men you went and got."
+        title="No walk-ons needed"
+        text="Your recruiting class covered every roster opening."
       />
     );
   }

@@ -257,6 +257,7 @@ export function createLiveGame(
   // appearance at a time rather than accumulating a whole game's worth: the
   // manager only ever needs to see the play that just happened.
   let events: PlayEvent[] = [];
+  const allEvents: PlayEvent[] = [];
   let playSeq = 0;
 
   let inning = 1;
@@ -304,7 +305,10 @@ export function createLiveGame(
       if (!auto && (bat() === mine || (fld() === mine && !opts.autoPitching))) return;
       if (current) {
         playSeq += 1;
-        if (current.step()) closeHalf();
+        const before = events.length;
+        const closed = current.step();
+        allEvents.push(...events.slice(before));
+        if (closed) closeHalf();
       }
     }
   };
@@ -358,7 +362,7 @@ export function createLiveGame(
       const homeWon = home.runs > away.runs;
       const winnerIs = homeWon ? home : away;
       return {
-        home, away, innings: inning, log, playEvents: [],
+        home, away, innings: inning, log, playEvents: [...allEvents],
         winningPitcher: leadHolder === winnerIs ? creditTo : null,
         losingPitcher: leadHolder === winnerIs ? blameTo : null,
       };
@@ -383,7 +387,9 @@ export function createLiveGame(
       // Only the play that just happened, so the field animates one thing.
       events.length = 0;
       playSeq += 1;
-      if (current.step(tactic)) closeHalf();
+      const closed = current.step(tactic);
+      allEvents.push(...events);
+      if (closed) closeHalf();
       advance();
     },
 

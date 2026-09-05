@@ -410,9 +410,12 @@ export const PIPELINE_REACH_BONUS = 1;
  * two different games depending on when the save was made.
  */
 export function canPursue(
-  prospect: Prospect, programStars: number, inPipeline = false,
+  prospect: Prospect, programStars: number, inPipeline: boolean | number = false,
 ): boolean {
-  const reach = programStars + (inPipeline ? PIPELINE_REACH_BONUS : 0);
+  // A mature out-of-state pipeline can extend reach too. Boolean callers are
+  // the original home-state rule; numeric callers are Pipeline 2.0 strength.
+  const hasReachPipeline = typeof inPipeline === 'number' ? inPipeline >= 60 : inPipeline;
+  const reach = programStars + (hasReachPipeline ? PIPELINE_REACH_BONUS : 0);
   return reach >= reachFloor(prospect.stars);
 }
 
@@ -533,8 +536,6 @@ export function generateClass(year: number, teams: number, rng: Rng): RecruitCla
   prospects.sort((a, b) => serviceScore(b.player) - serviceScore(a.player));
   prospects.forEach((p, i) => { p.rank = i + 1; });
 
-  ensureWonderGuy({ year, week: 0, prospects });
-  ensureHoodHans({ year, week: 0, prospects });
 
   return { year, week: 0, prospects };
 }
@@ -1012,6 +1013,8 @@ export interface Pitch {
   winning: number;
   region: Region;
   development: number;
+  /** Optional staff network, 0-100 by recruit state. Home-state logic is the fallback. */
+  pipelineStrength?: (state: string) => number;
 }
 
 /**
@@ -1075,10 +1078,14 @@ export function fit(prospect: Prospect, pitch: Pitch): number {
     + w.winning * pitch.winning
     + w.proximity * proximity
     + w.development * pitch.development;
-  if (pitch.state !== prospect.state) return base;
-  // Capped at 1 because that is what a fit is, and because the programs whose
-  // scores are already up against the ceiling are the ones this is not for.
-  return Math.min(1, base * (1 + pipelineEdge(pitch.stars)));
+  const network = pitch.pipelineStrength?.(prospect.state)
+    ?? (pitch.state === prospect.state ? 45 : 0);
+  if (network <= 0) return base;
+  // A real relationship can now exist outside the home state. At the old
+  // home-state floor (45) this stays close to the previous bonus; a staff that
+  // repeatedly signs a market can turn it into a genuine competitive edge.
+  const networkScale = 0.55 + Math.min(1, network / 100);
+  return Math.min(1, base * (1 + pipelineEdge(pitch.stars) * networkScale));
 }
 
 /**
@@ -1439,93 +1446,4 @@ export function leadersAtWeekStart(recruits: RecruitClass): Record<string, numbe
 /** Clear the per-week action spend. Points banked already are permanent. */
 export function resetWeeklySpend(recruits: RecruitClass): void {
   for (const p of recruits.prospects) p.spent = {};
-}
-
-/*
-  TESTING ONLY — remove with the PSC godsquad before v1.0.
-
-  Hans Hood, the wonder guy: a 20-overall third baseman with an S ceiling,
-  in every class, every year, as a one-star nobody any program can chase.
-  Asked for by the reporter to test progression — the plan is a class of
-  hidden greats who start at one or two stars and grow into the picture.
-  Attributes are ASSIGNED onto a cloned prospect, so no draw is consumed.
-  Exported and also called on save-load, because the reporter went looking
-  for him in a class that had been generated before he existed.
-*/
-/**
- * TESTING ONLY — the two-way fixture, asked for by name: "add one two-way
- * to each class that I would recognize for testing, as Hood Hans." The
- * wonder guy's mirror image in every sense: Hans Hood is nothing now with
- * everything to come; Hood Hans is the finished article twice over — a real
- * bat AND a real arm, ready the day he steps on campus — so every piece of
- * the two-way machinery (both jobs on signing, the P/DH card, the crossing
- * fatigue, the split leaderboards, the TWO-WAY tag) can be tested on demand
- * instead of waiting for the honest quota to deal one. One star and no
- * reach floor so any program can sign him; additive, outside the class's
- * own at-most-three; gated out of the test runner exactly as Hans is.
- */
-export function ensureHoodHans(cls: RecruitClass): void {
-  if (typeof process !== "undefined" && process.env?.["VITEST"]) return;
-  const prospects = cls.prospects;
-  // The donor first, because his id is what puts this world into the name.
-  const donor = prospects.find((p) => p.player.type === "hitter");
-  if (!donor) return;
-  const id = ("p1hood" + cls.year + "-" + String(donor.player.id)) as unknown as PlayerId;
-  if (prospects.some((p) => p.id === id)) return;
-  const copy = JSON.parse(JSON.stringify(donor)) as Prospect;
-  const h = copy.player as unknown as Record<string, unknown>;
-  h.id = id;
-  h.name = "Hood Hans";
-  h.pos = "DH";
-  h.classYear = "FR";
-  h.age = 18;
-  // The bat.
-  h.contact = 74; h.power = 76; h.eye = 70; h.speed = 62;
-  h.range = 48; h.hands = 55; h.arm = 72; h.armAccuracy = 60;
-  h.blocking = 30; h.bunt = 45; h.steal = 40;
-  // The arm, flattened on exactly as makeTwoWay lays it down.
-  h.twoWay = true;
-  h.role = "SP";
-  h.sidearm = false;
-  h.armPlatoon = 0.03;
-  h.stuff = 72; h.movement = 68; h.control = 70; h.stamina = 64;
-  h.groundBall = 52; h.holdRunners = 60;
-  h.velocity = 94;
-  h.potential = 84;
-  prospects.push({
-    ...copy,
-    id,
-    stars: 1,
-    minProgram: reachFloor(1),
-    rank: prospects.length + 1,
-    points: {}, spent: {}, signedBy: null, committedWeek: null,
-  });
-}
-
-export function ensureWonderGuy(cls: RecruitClass): void {
-  if (typeof process !== "undefined" && process.env?.["VITEST"]) return;
-  const prospects = cls.prospects;
-  const donor = prospects.find((p) => p.player.type === "hitter");
-  if (!donor) return;
-  const id = ("p1hans" + cls.year + "-" + String(donor.player.id)) as unknown as PlayerId;
-  if (prospects.some((p) => p.id === id)) return;
-  const copy = JSON.parse(JSON.stringify(donor)) as Prospect;
-  const h = copy.player as unknown as Record<string, unknown>;
-  h.id = id;
-  h.name = "Hans Hood";
-  h.pos = "3B";
-  h.classYear = "FR";
-  h.age = 18;
-  for (const k of ["contact", "power", "eye", "speed", "range", "hands", "arm", "armAccuracy"]) {
-    if (typeof h[k] === "number") h[k] = 20;
-  }
-  h.potential = 99;
-  prospects.push({
-    ...copy,
-    id,
-    stars: 1,
-    minProgram: reachFloor(1),
-    rank: prospects.length + 1,
-    points: {}, spent: {}, signedBy: null, committedWeek: null,
-  });
 }

@@ -29,6 +29,7 @@ import { BoxScoreSheet } from './Schedule.js';
 import { seasonDate } from '../format.js';
 import { NeedsYou, useNeeds } from '../Needs.js';
 import { seriesStake } from '../../engine/world.js';
+import { teamReads } from '../../engine/tendencies.js';
 import { SectionHeading } from '../components/Kit.js';
 import { Crest } from '../Crest.js';
 import type {Arm, Pitcher } from '../../engine/types.js';
@@ -72,7 +73,6 @@ export function Today() {
   const playPostseason = useDynasty((s) => s.playPostseason);
   const lastPostseason = useDynasty((s) => s.lastPostseason);
   const openOffseason = useDynasty((s) => s.openOffseason);
-  const setScreen = useDynasty((s) => s.setScreen);
   const go = useDynasty((s) => s.go);
   const busy = useDynasty((s) => s.busy);
   const progress = useDynasty((s) => s.progress);
@@ -80,6 +80,12 @@ export function Today() {
   const pendingGame = useDynasty((s) => s.pendingGame);
   const resumeGame = useDynasty((s) => s.resumeGame);
   const rivalry = useDynasty((s) => s.rivalry);
+  const boardAsk = useDynasty((s) => s.boardAsk);
+  const coach = useDynasty((s) => s.coach);
+  const economy = useDynasty((s) => s.economy);
+  const setProgramSheet = useDynasty((s) => s.setProgramSheet);
+  const setPlaybookFocus = useDynasty((s) => s.setPlaybookFocus);
+  const openPlayer = useDynasty((s) => s.openPlayer);
   /*
     The desk does not advance past a decision only you can make.
 
@@ -138,6 +144,11 @@ export function Today() {
     ? season.teams[todayGame.home === team.index ? todayGame.away : todayGame.home]
     : null;
   const atHome = todayGame?.home === team.index;
+  const formerAssistant = opponent?.coach
+    ? (economy.tree ?? []).find((branch) => branch.name === opponent.coach?.name)
+    : undefined;
+  const activePlaybook = opponent ? season.playbooks?.[opponent.def.abbr] : undefined;
+  const prepRead = opponent && activePlaybook ? teamReads(opponent.team)[0] : undefined;
 
   // Tonight's probable arms, exactly the way the engine will pick them: the
   // scheduled rotation slot on both sides.
@@ -147,17 +158,16 @@ export function Today() {
     ? opponent.team.rotation[slot] ?? opponent.team.rotation[0]
     : null;
   /*
-    "N. Prewitt · 3.42" — the probable arm, sized for half a narrow phone.
-    The ERA rides along once he has three innings to his name; before that the
-    number would be noise wearing decimals.
+    Probable starters get their own row now. The old half-row had to fit a
+    crest, record and name in the same ~130px and inevitably hid the arm on
+    smaller phones. With a dedicated half-width line we can show the actual
+    name and still ellipsize safely when somebody has a very long one.
   */
   const armShort = (p: Arm | null | undefined): string => {
     if (!p) return '—';
     const line = season.pitching.get(p.id);
     const e = line && line.outs >= 9 ? ` · ${era(line).toFixed(2)}` : '';
-    const parts = p.name.split(' ');
-    const name = parts.length > 1 ? `${parts[0]![0]}. ${parts.slice(1).join(' ')}` : p.name;
-    return `${name}${e}`;
+    return `${p.name}${e}`;
   };
 
   // Where the series stands, when tonight is part of one. The schedule plays
@@ -253,7 +263,6 @@ export function Today() {
             >
               <span>
                 {atHome ? 'TONIGHT VS' : 'TONIGHT AT'} {opponent.def.school.toUpperCase()}
-                {season?.playbooks?.[opponent.def.abbr] ? ' · THEIR BOOK IS ON' : ''}
               </span>
               <b>{day?.kind === 'series' ? seriesTag : 'MIDWEEK'}</b>
             </button>
@@ -273,20 +282,22 @@ export function Today() {
               Galvan · 3.42" has to fit half a 320-wide phone.
             */}
             <div className="matchup">
-              <button type="button" onClick={() => openTeam(team.index)}>
-                <span className="matchup-side">
-                  <small className="matchup-arm">{armShort(ourArm)}</small>
-                  <small className="matchup-record">{team.w}-{team.l}</small>
-                </span>
-                <Crest abbr={team.def.abbr} size={52} />
+              <button className="match-team" type="button" onClick={() => openTeam(team.index)}>
+                <Crest abbr={team.def.abbr} size={48} />
+                <span className="matchup-record">{team.w}-{team.l}</span>
               </button>
               <span className="versus">{atHome ? 'VS' : 'AT'}</span>
-              <button type="button" onClick={() => openTeam(opponent.index)}>
-                <Crest abbr={opponent.def.abbr} size={52} />
-                <span className="matchup-side">
-                  <small className="matchup-arm">{armShort(theirArm)}</small>
-                  <small className="matchup-record">{opponent.w}-{opponent.l}</small>
-                </span>
+              <button className="match-team" type="button" onClick={() => openTeam(opponent.index)}>
+                <Crest abbr={opponent.def.abbr} size={48} />
+                <span className="matchup-record">{opponent.w}-{opponent.l}</span>
+              </button>
+            </div>
+            <div className="probable-arms" aria-label="Probable pitchers">
+              <button type="button" onClick={() => ourArm && openPlayer(ourArm.id, 'stats')}>
+                <small>YOUR PROBABLE</small><strong>{armShort(ourArm)}</strong>
+              </button>
+              <button type="button" onClick={() => theirArm && openPlayer(theirArm.id, 'stats')}>
+                <small>THEIR PROBABLE</small><strong>{armShort(theirArm)}</strong>
               </button>
             </div>
             {stake && (
@@ -300,7 +311,7 @@ export function Today() {
               is a warning rather than a fact now shares the one band, and the
               band only exists on a night that has one.
             */}
-            {(opponent.def.abbr === team.def.rival || held) && (
+            {(opponent.def.abbr === team.def.rival || held || formerAssistant) && (
               <div className="match-warnings">
                 {opponent.def.abbr === team.def.rival && (
                   <p>
@@ -312,6 +323,12 @@ export function Today() {
                       : 'The first chapter under your watch.'}
                   </p>
                 )}
+                {formerAssistant && (
+                  <p>
+                    <StarFilledIcon /> Coaching tree. {opponent.coach?.name} spent {formerAssistant.yearsWithYou}{' '}
+                    {formerAssistant.yearsWithYou === 1 ? 'year' : 'years'} on your staff before taking his own path.
+                  </p>
+                )}
                 {held && (
                   <p>
                     <SewingPinIcon /> Nothing moves until
@@ -320,8 +337,29 @@ export function Today() {
                 )}
               </div>
             )}
+            <button
+              className={`match-prep tap${activePlaybook ? ' is-active' : ''}`}
+              type="button"
+              onClick={() => {
+                if (activePlaybook) {
+                  setPlaybookFocus(opponent.def.abbr);
+                  go('program', 'strategy');
+                } else {
+                  openTeam(opponent.index);
+                }
+              }}
+            >
+              <span>
+                <small>PREPARATION</small>
+                <strong>{activePlaybook ? 'Opponent playbook active' : 'No opponent playbook'}</strong>
+                <em>{activePlaybook
+                  ? prepRead ? `${prepRead.title}. Open the plan to adjust your counters.` : 'Your custom plan applies automatically tonight.'
+                  : 'Open their profile for a scouting brief before you spend.'}</em>
+              </span>
+              <span className="match-prep-cta">{activePlaybook ? 'OPEN PLAN' : 'SCOUT'} ›</span>
+            </button>
             <div className="match-actions">
-              <button type="button" onClick={() => { go('team'); setScreen('lineup'); }}>
+              <button type="button" onClick={() => go('team', 'lineup')}>
                 Set lineup
               </button>
               <button
@@ -378,18 +416,23 @@ export function Today() {
           </section>
         )}
 
+
+
         {/*
-          The year at one press, kept while the game is still being tested.
-          Scheduled to leave before v1.0 — a dynasty player should live the
-          season, but a tester needs to reach June before lunch.
+          TESTING ONLY. A full regular season in one press so UI/offseason
+          work can be inspected without playing fifty-plus dates first.
+          Remove together with the Pascagoula Tech test roster before release.
         */}
         {!done && (
-          <button
-            className="secondary-command"
-            type="button"
-            disabled={busy || !!live || held || thinking !== null}
-            onClick={() => void playSeason()}
-          >SIM THE SEASON</button>
+          <section className="test-shortcuts" aria-label="Testing shortcuts">
+            <span><small>TEST BUILD</small><strong>Skip to June</strong></span>
+            <button
+              className="secondary-command"
+              type="button"
+              disabled={busy || !!live || held || thinking !== null}
+              onClick={() => void playSeason()}
+            >SIM THE SEASON</button>
+          </section>
         )}
 
         {done && !lastPostseason && (
@@ -451,16 +494,28 @@ export function Today() {
         */}
         <NeedsYou />
 
+        {boardAsk && (
+          <button
+            className="today-board-card tap"
+            type="button"
+            onClick={() => { setProgramSheet('board'); go('program', 'records'); }}
+          >
+            <span><small>BOARD</small><strong>{boardAsk.summary}</strong></span>
+            <em>{coach.security} security · {coach.contractYears}y contract</em>
+            <span aria-hidden>›</span>
+          </button>
+        )}
+
         {/* Below the needs, by request: "needs you is more important than the
             other." The pulse is reference; the needs are work. */}
         <SectionHeading
           kicker="CLUB PULSE"
           title="This week"
           action="Schedule"
-          onAction={() => { go('season'); setScreen('sched'); }}
+          onAction={() => { go('season', 'sched'); }}
         />
         <section className="pulse-grid">
-          <button type="button" onClick={() => { go('team'); setScreen('stats'); }}>
+          <button type="button" onClick={() => { go('team', 'stats'); }}>
             {/*
               One card, one side of the ball.
 
@@ -477,7 +532,7 @@ export function Today() {
               ? (team.gp === 0 ? 'no games yet' : 'not enough at-bats yet')
               : `${team.rs} run${team.rs === 1 ? '' : 's'} scored`}</span>
           </button>
-          <button type="button" onClick={() => { go('season'); setScreen('stand'); }}>
+          <button type="button" onClick={() => { go('season', 'stand'); }}>
             <small>{team.conference.toUpperCase()}</small>
             <strong>{team.cw}-{team.cl}</strong>
             <span>{team.w}-{team.l} overall</span>
@@ -490,7 +545,7 @@ export function Today() {
             a third of itself repeating. Bat, league, arm: three tiles, three
             different questions.
           */}
-          <button type="button" onClick={() => { go('team'); setScreen('stats'); }}>
+          <button type="button" onClick={() => { go('team', 'stats'); }}>
             <small>TEAM ERA</small>
             <strong>{ourEra === null ? '—' : ourEra.toFixed(2)}</strong>
             <span>{ourEra === null

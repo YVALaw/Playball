@@ -21,7 +21,7 @@
 import { useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  CalendarIcon, CheckIcon, Cross1Icon, EnvelopeClosedIcon, MixerHorizontalIcon,
+  CalendarIcon, CheckIcon, Cross1Icon, EnvelopeClosedIcon, DotsHorizontalIcon,
   ReloadIcon, StopwatchIcon,
 } from '@radix-ui/react-icons';
 import { useDynasty } from '../../state/store.js';
@@ -34,10 +34,7 @@ import { isHurt, prognosis } from '../../engine/injury.js';
 import { legWeariness } from '../../engine/workload.js';
 import { mood, promiseOf, squadRanks } from '../../engine/morale.js';
 import { FieldNote } from '../components/Kit.js';
-import { Segmented } from '../components/Kit.js';
 import type { Hitter, Player as AnyPlayer, Position } from '../../engine/types.js';
-
-type Area = 'room' | 'school' | 'field' | 'season';
 
 const SCHOOL_WORDS: Record<'fine' | 'watch' | 'trouble', { label: string; line: string }> = {
   fine: { label: 'IN GOOD STANDING', line: 'Nothing to do here.' },
@@ -53,9 +50,9 @@ const SCHOOL_WORDS: Record<'fine' | 'watch' | 'trouble', { label: string; line: 
 
 /** One thing a coach can do, as the proposal draws it. */
 function ActionCard(
-  { icon, title, detail, onClick, selected = false, disabled = false, glow = false }:
+  { icon, eyebrow, title, detail, meta, onClick, selected = false, disabled = false, glow = false }:
   {
-    icon: ReactNode; title: string; detail: string;
+    icon: ReactNode; eyebrow: string; title: string; detail: string; meta?: string;
     onClick?: () => void; selected?: boolean; disabled?: boolean;
     /** Lit as the final step of a guided errand. */
     glow?: boolean;
@@ -63,14 +60,19 @@ function ActionCard(
 ) {
   return (
     <button
-      className={`action-card${selected ? ' selected' : ''}${glow ? ' guide-glow' : ''}`}
+      className={`command-action-card${selected ? ' selected' : ''}${glow ? ' guide-glow' : ''}`}
       type="button"
       disabled={disabled}
       onClick={onClick}
     >
-      <span className="action-card-icon">{icon}</span>
-      <span><strong>{title}</strong><small>{detail}</small></span>
-      {selected ? <CheckIcon /> : <span />}
+      <span className="command-action-icon">{icon}</span>
+      <span className="command-action-copy">
+        <small>{eyebrow}</small>
+        <strong>{title}</strong>
+        <p>{detail}</p>
+        {meta && <em>{meta}</em>}
+      </span>
+      {selected ? <CheckIcon /> : <span className="command-action-state" />}
     </button>
   );
 }
@@ -112,7 +114,6 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
       setPhase((p) => (p === 'closing' ? 'closed' : p));
     }, 200);
   };
-  const [area, setArea] = useState<Area>('room');
   const [target, setTarget] = useState<Position | null>(null);
   void version;
 
@@ -180,174 +181,106 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
           onClick={requestClose}
         />
       )}
-    <aside className={`player-actions-fab${open ? ' open' : ''}${phase === 'closing' ? ' closing' : ''}`}>
-      <div className="player-actions-popover" aria-hidden={!open}>
-        <div className="player-actions-popover-heading">
-          <small>PLAYER ACTIONS</small>
+    <aside className={`profile-actions-shell player-profile-actions${open ? ' open' : ''}${phase === 'closing' ? ' closing' : ''}`}>
+      <div className="profile-command-sheet" aria-hidden={!open}>
+        <div className="command-sheet-handle" />
+        <header className="profile-command-header">
+          <small>PLAYER DECISIONS</small>
           <strong>{p.name}</strong>
-          <span>
-            {hurtNow ? prognosis(p, clock)
-              : sitting ? 'Redshirted. This season does not count against him.'
-                : `${feeling.toUpperCase()} · he ${promiseOf(p, rank)}.`}
-          </span>
-        </div>
+          <p>{hurtNow ? prognosis(p, clock) : sitting ? 'Redshirted for this season.' : `${feeling.toUpperCase()} · he ${promiseOf(p, rank)}.`}</p>
+        </header>
 
-        <Segmented
-          label="Player action area"
-          value={area}
-          glow={guiding && open && area !== 'school' ? 'school' : undefined}
-          onChange={setArea}
-          options={[
-            { value: 'room', label: 'Room' },
-            { value: 'school', label: 'School' },
-            ...(p.type === 'hitter' ? [{ value: 'field' as const, label: 'Field' }] : []),
-            { value: 'season', label: 'Season' },
-          ]}
-        />
+        <section className="command-status-grid">
+          <span><small>MOOD</small><strong>{feeling.toUpperCase()}</strong><em>{promiseOf(p, rank)}</em></span>
+          <span className={tired > 0.35 ? 'is-alert' : ''}><small>WORKLOAD</small><strong>{hurtNow ? 'HURT' : `${Math.round(tired * 100)}%`}</strong><em>{hurtNow ? prognosis(p, clock) : tired > 0.35 ? 'Could use a breather' : 'Fresh enough'}</em></span>
+          <span className={school !== 'fine' ? 'is-alert' : ''}><small>ACADEMICS</small><strong>{SCHOOL_WORDS[school].label.replace('IN ', '')}</strong><em>{suspended ? 'Missing this week' : SCHOOL_WORDS[school].line}</em></span>
+          <span><small>ELIGIBILITY</small><strong>{sitting ? 'REDSHIRT' : p.classYear}</strong><em>{preseason ? `${redshirtCount(team)}/${MAX_REDSHIRTS} redshirts used` : 'Season is active'}</em></span>
+        </section>
 
-        {area === 'room' && (
-          <div className="action-popover-group">
-            <small>THE CLUBHOUSE</small>
-            <div className="action-list">
-              <ActionCard
-                icon={<StopwatchIcon />}
-                title={resting ? 'He is already sitting' : 'Give him three days'}
-                detail={hurtNow
-                  ? prognosis(p, clock)
-                  : tired > 0.35
-                    ? 'Take the miles out of his legs.'
-                    : 'Rest is for a man who needs it. His legs are fine.'}
-                selected={resting}
-                disabled={hurtNow || resting || tired <= 0.35 || !mine}
-                onClick={() => restMan(p.id, 3)}
-              />
-            </div>
-            {/*
-              Why there is nothing to press. Reported: 'opened the action
-              button in the room, but it didn't give me an option to rest the
-              player' -- he was hurt, and a hurt man cannot be rested into
-              health. The card above was also unreadable at the time, so the
-              reason was invisible; now it is readable AND said outright.
-            */}
-            {hurtNow && (
-              <FieldNote
-                title="The trainer owns this one"
-                text="Rest will not speed it up."
-              />
-            )}
-            {!mine && !hurtNow && (
-              <FieldNote
-                title="Your staff handles this"
-                text="Rest and redshirts are theirs; the lineup is still yours."
-              />
-            )}
+        <section className="command-section">
+          <header><small>RIGHT NOW</small><h2>Manage the week</h2></header>
+          <div className="command-action-grid">
+            <ActionCard
+              icon={<StopwatchIcon />}
+              eyebrow="RECOVERY"
+              title={resting ? 'Already resting' : 'Rest three days'}
+              detail={hurtNow ? 'Injury recovery is controlled by the trainer.' : tired > 0.35 ? 'Sit him now to take wear out of his legs.' : 'His workload is healthy; there is little to gain from sitting him.'}
+              meta={resting ? 'Currently unavailable' : tired > 0.35 ? `Workload ${Math.round(tired * 100)}%` : 'No action needed'}
+              selected={resting}
+              disabled={hurtNow || resting || tired <= 0.35 || !mine}
+              onClick={() => restMan(p.id, 3)}
+            />
+            <ActionCard
+              icon={<EnvelopeClosedIcon />}
+              eyebrow="ACADEMICS"
+              title={school === 'fine' ? 'Nothing to address' : wordsLeft > 0 ? 'Have a word' : 'No conversations left'}
+              detail={school === 'fine' ? 'He is in good standing.' : SCHOOL_WORDS[school].line}
+              meta={`${wordsLeft} of ${WORDS_A_SEASON} conversations left`}
+              disabled={school === 'fine' || wordsLeft <= 0}
+              glow={guiding && school !== 'fine' && wordsLeft > 0}
+              onClick={() => {
+                wordWith(p.id);
+                if (guiding) {
+                  markTutorialSeen('guide:word');
+                  clearGuide();
+                }
+              }}
+            />
           </div>
-        )}
+          {hurtNow && <FieldNote title="Trainer decision" text="Rest does not shorten an injury timetable." />}
+          {!mine && !hurtNow && <FieldNote title="Staff controlled" text="Rest and redshirt decisions are delegated in your current control settings." />}
+        </section>
 
-        {area === 'school' && (
-          <div className="action-popover-group">
-            <small>THE CLASSROOM</small>
-            <div className="action-list">
-              <ActionCard
-                icon={<EnvelopeClosedIcon />}
-                title={wordsLeft > 0 ? 'Have a word' : 'No words left this season'}
-                detail={school === 'fine'
-                  ? SCHOOL_WORDS.fine.line
-                  : `${SCHOOL_WORDS[school].line} ${wordsLeft} of ${WORDS_A_SEASON} conversations left.`}
-                disabled={school === 'fine' || wordsLeft <= 0}
-                glow={guiding && school !== 'fine' && wordsLeft > 0}
-                onClick={() => {
-                  wordWith(p.id);
-                  if (guiding) {
-                    markTutorialSeen('guide:word');
-                    clearGuide();
-                  }
-                }}
-              />
-            </div>
-            {suspended && (
-              <FieldNote
-                title={SCHOOL_WORDS[school].label}
-                text="He is sitting out this week."
-              />
+        <section className="command-section">
+          <header><small>ROSTER PLANNING</small><h2>Shape next season</h2></header>
+          <div className="command-action-grid">
+            {p.type === 'hitter' && (
+              <div className="command-action-stack">
+                <ActionCard
+                  icon={<ReloadIcon />}
+                  eyebrow="POSITION"
+                  title={target ? `${p.pos} → ${target}` : 'Retrain position'}
+                  detail={!winter ? 'Position changes happen over the offseason.' : alsoPlays.length === 0 ? 'There is no realistic secondary spot to train.' : target ? `This permanently changes his listed position to ${target}.` : 'Choose a realistic secondary position below.'}
+                  meta={winter ? 'Permanent move · adjustment period next year' : 'Offseason only'}
+                  selected={target !== null}
+                  disabled={!winter || target === null}
+                  onClick={() => { changePosition(p.id, target as Position); setTarget(null); }}
+                />
+                {winter && alsoPlays.length > 0 && (
+                  <div className="position-picker command-position-picker">
+                    <small>NEW POSITION</small>
+                    {alsoPlays.map((spot) => (
+                      <button className={target === spot ? 'active' : ''} key={spot} type="button" onClick={() => setTarget(target === spot ? null : spot as Position)}>{spot}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
+            <ActionCard
+              icon={<CalendarIcon />}
+              eyebrow="ELIGIBILITY"
+              title={sitting ? 'Return to active roster' : 'Redshirt season'}
+              detail={sitting ? 'Undo the preseason decision and make him available.' : preseason ? 'Preserve this year of eligibility before he appears.' : 'The season has already been used.'}
+              meta={preseason ? `${redshirtCount(team)} of ${MAX_REDSHIRTS} used` : 'Preseason decision'}
+              selected={sitting}
+              disabled={!canSit && !sitting}
+              onClick={() => setRedshirt(p.id, !sitting)}
+            />
           </div>
-        )}
-
-        {area === 'field' && p.type === 'hitter' && (
-          <div className="action-popover-group">
-            <small>WHERE ELSE HE PLAYS</small>
-            <div className="action-list">
-              <ActionCard
-                icon={<ReloadIcon />}
-                title={!winter ? 'Change his position'
-                  : target ? `List him at ${target}` : 'Change his position'}
-                detail={!winter
-                  ? 'A new spot is learned over a winter, not a Tuesday. Come back in the offseason.'
-                  : alsoPlays.length === 0
-                    ? 'There is nowhere else he can stand.'
-                    : target
-                      ? `${p.pos} to ${target}, for good. He opens next season there, a step behind for a while.`
-                      : 'Pick a spot below. This is permanent, not a lineup change.'}
-                selected={target !== null}
-                disabled={!winter || target === null}
-                onClick={() => { changePosition(p.id, target as Position); setTarget(null); }}
-              />
-              {winter && alsoPlays.length > 0 && (
-                <div className="position-picker">
-                  <small>LIST HIM AT</small>
-                  {alsoPlays.map((spot) => (
-                    <button
-                      className={target === spot ? 'active' : ''}
-                      key={spot}
-                      type="button"
-                      onClick={() => setTarget(target === spot ? null : spot as Position)}
-                    >{spot}</button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {area === 'season' && (
-          <div className="action-popover-group">
-            <small>ELIGIBILITY</small>
-            <div className="action-list">
-              <ActionCard
-                icon={<CalendarIcon />}
-                title={sitting ? 'Play him after all' : 'Redshirt him'}
-                detail={sitting
-                  ? 'Undo the preseason eligibility decision.'
-                  : preseason
-                    ? `Preseason only. One appearance burns the season. ${redshirtCount(team)} of ${MAX_REDSHIRTS} used.`
-                    : 'Redshirts are set before the first pitch of the season, and it has been thrown.'}
-                selected={sitting}
-                disabled={!canSit && !sitting}
-                onClick={() => setRedshirt(p.id, !sitting)}
-              />
-            </div>
-            {!preseason && !sitting && (
-              <FieldNote
-                title="February only"
-                text="After the first pitch of the year, the season is spent whether
-                  he plays again or not."
-              />
-            )}
-          </div>
-        )}
+        </section>
       </div>
 
       <button
-        className={`player-actions-trigger${guiding && !open ? ' guide-glow' : ''}`}
+        className={`profile-actions-launcher${guiding && !open ? ' guide-glow' : ''}`}
         type="button"
-        aria-label={open ? 'Close player actions' : 'Player actions'}
+        aria-label={open ? 'Close player management' : 'Manage player'}
         aria-expanded={open}
         onClick={() => (open ? requestClose() : setPhase('open'))}
       >
-        {open ? <Cross1Icon /> : <MixerHorizontalIcon />}
+        {open ? <Cross1Icon /> : <DotsHorizontalIcon />}
+        <span>{open ? 'Close' : 'Manage'}</span>
       </button>
-      <span className="player-actions-status" aria-hidden="true">{statusLabel}</span>
+      {!open && <span className="profile-actions-status" aria-hidden="true">{statusLabel}</span>}
     </aside>
     </>,
     host,

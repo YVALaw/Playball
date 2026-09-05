@@ -230,6 +230,49 @@ function Rim({ of, r }: { of: string; r: number }) {
     </mesh>
   );
 }
+
+/**
+ * A field-readable footing for every man. Uniform colours belong to the team,
+ * so they cannot also be responsible for separating the player from grass and
+ * dirt. Two neutral rings — cream inside, ink outside — guarantee one edge is
+ * visible whatever colour sits underneath. It is a ground halo, not a selected
+ * state, and moves with the same mesh as the player.
+ */
+function PlayerHalo({ r }: { r: number }) {
+  return (
+    <group position={[0, -r + 0.025, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={-2}>
+      <mesh>
+        <ringGeometry args={[r * 1.04, r * 1.72, 28]} />
+        <meshBasicMaterial color="#0f1416" transparent opacity={0.68} depthWrite={false} />
+      </mesh>
+      <mesh position={[0, 0, 0.001]}>
+        <ringGeometry args={[r * 1.08, r * 1.44, 28]} />
+        <meshBasicMaterial color="#f4efe2" transparent opacity={0.92} depthWrite={false} />
+      </mesh>
+      <mesh position={[0, 0, 0.002]}>
+        <circleGeometry args={[r * 0.72, 22]} />
+        <meshBasicMaterial color="#0b1011" transparent opacity={0.12} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
+/**
+ * A light cap on top of every marker.
+ *
+ * The ground halo solves edge separation, but some teams still disappear into
+ * outfield grass once the eye leaves the ring itself. A small cream cap keeps a
+ * neutral read above every club colour, so the player remains visible even when
+ * jersey and turf sit on the same side of the palette.
+ */
+function PlayerCap({ r }: { r: number }) {
+  return (
+    <mesh position={[0, r * 0.56, r * 0.02]} renderOrder={1}>
+      <sphereGeometry args={[r * 0.33, 10, 8]} />
+      <meshBasicMaterial color="#f4efe2" />
+    </mesh>
+  );
+}
 /** What the ball flashes on arrival: an out, and a man aboard. */
 const OUT_RED = '#c4382a';
 const HIT_BLUE = '#2f6fb0';
@@ -382,6 +425,8 @@ function RunnerDot(
       <sphereGeometry args={[0.34, 12, 10]} />
       <meshBasicMaterial color={colour} />
       <Rim of={colour} r={0.34} />
+      <PlayerHalo r={0.34} />
+      <PlayerCap r={0.34} />
     </mesh>
   );
 }
@@ -433,6 +478,8 @@ function ScoringRunner(
       <sphereGeometry args={[0.34, 12, 10]} />
       <meshBasicMaterial color={colour ?? CLAY} transparent opacity={1} />
       <Rim of={colour ?? CLAY} r={0.34} />
+      <PlayerHalo r={0.34} />
+      <PlayerCap r={0.34} />
     </mesh>
   );
 }
@@ -990,6 +1037,8 @@ function Defense(
           <sphereGeometry args={[0.28, 10, 8]} />
           <meshBasicMaterial color={colour ?? FIELDER} />
           <Rim of={colour ?? FIELDER} r={0.28} />
+          <PlayerHalo r={0.28} />
+          <PlayerCap r={0.28} />
         </mesh>
       ))}
     </group>

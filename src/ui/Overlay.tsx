@@ -18,7 +18,7 @@ import { createPortal } from 'react-dom';
 import { ArrowLeftIcon } from '@radix-ui/react-icons';
 
 export function Overlay(
-  { eyebrow, title, onClose, children, floating }:
+  { eyebrow, title, onClose, children, floating, className }:
   {
     eyebrow: string;
     title: string;
@@ -29,10 +29,12 @@ export function Overlay(
      * scrolled away from the thing it acts on.
      */
     floating?: ReactNode;
+    /** Optional motion/surface variant for a specific overlay kind. */
+    className?: string;
   },
 ) {
   return (
-    <section className="full-overlay">
+    <section className={`full-overlay${className ? ` ${className}` : ''}`}>
       <header>
         <button className="tap" type="button" aria-label="Back" onClick={onClose}>
           <ArrowLeftIcon />

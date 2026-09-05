@@ -7,9 +7,11 @@
 // notes below are the real trade the engine implements, not flavour — an
 // aggressive running game does take more bases and does run into more outs.
 
+import { useEffect, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { ReloadIcon } from '@radix-ui/react-icons';
-import { FieldNote, ModuleIntro, Segmented } from '../components/Kit.js';
+import { FieldNote, ModuleIntro } from '../components/Kit.js';
+import { InFrame } from '../Overlay.js';
+import { teamReads } from '../../engine/tendencies.js';
 import type { Strategy } from '../../engine/strategy.js';
 
 interface Group<K extends keyof Strategy> {
@@ -111,6 +113,16 @@ const NEUTRAL: Partial<Record<keyof Strategy, Strategy[keyof Strategy]>> = {
   shift: 'none',
 };
 
+const STRATEGY_SECTIONS: ReadonlyArray<{
+  kicker: string;
+  title: string;
+  keys: ReadonlyArray<keyof Strategy>;
+}> = [
+  { kicker: 'WITH THE BAT', title: 'Pressure', keys: ['running', 'steals', 'bunt'] },
+  { kicker: 'ON THE MOUND', title: 'Pitching decisions', keys: ['hook'] },
+  { kicker: 'WITHOUT THE BALL', title: 'Positioning', keys: ['alignment', 'infield', 'outfield', 'shift'] },
+];
+
 export function StrategyScreen() {
   const setStrategy = useDynasty((s) => s.setStrategy);
   const setPlaybook = useDynasty((s) => s.setPlaybook);
@@ -120,14 +132,22 @@ export function StrategyScreen() {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [autoConfirmed, setAutoConfirmed] = useState<string | null>(null);
   void version;
+
+  useEffect(() => {
+    if (!autoConfirmed) return undefined;
+    const id = window.setTimeout(() => setAutoConfirmed(null), 1700);
+    return () => window.clearTimeout(id);
+  }, [autoConfirmed]);
 
   if (!team) return null;
   /*
-    Stage 22: the default book and the opponent books, one screen. The
-    standing strategy is the DEFAULT playbook; every scouted club adds a
-    tab, and the book under a tab is applied by itself whenever that club
-    is across the field.
+    The standing plan remains one fixed destination. Opponent-specific plans
+    live in a library instead of becoming an ever-growing tab strip; selecting
+    one keeps the matchup context on the board while the top-level navigation
+    stays stable no matter how many clubs have been scouted.
   */
   const books = Object.keys(season?.playbooks ?? {}).sort();
   const open = focus && books.includes(focus) ? focus : null;
@@ -141,11 +161,13 @@ export function StrategyScreen() {
   const oppName = open
     ? season?.teams.find((t) => t.def.abbr === open)?.def.school ?? open
     : null;
+  const opponent = open ? season?.teams.find((t) => t.def.abbr === open) ?? null : null;
+  const reads = opponent ? teamReads(opponent.team).slice(0, 4) : [];
 
   return (
     <main className="module-workspace">
       <ModuleIntro
-        kicker={open ? `THE BOOK · ${open}` : 'TEAM IDENTITY'}
+        kicker={open ? `OPPONENT PLAYBOOK · ${open}` : 'TEAM IDENTITY'}
         title={open ? `Against ${oppName}` : 'Standing strategy'}
         text={open
           ? 'Applied by itself whenever they are across the field.'
@@ -153,25 +175,93 @@ export function StrategyScreen() {
       />
 
       {books.length > 0 && (
-        <Segmented
-          label="Which playbook"
-          value={open ?? 'DEFAULT'}
-          onChange={(v: string) => setFocus(v === 'DEFAULT' ? null : v)}
-          options={[
-            { value: 'DEFAULT', label: 'DEFAULT' },
-            ...books.map((b) => ({ value: b, label: b })),
-          ]}
-        />
+        <section className="playbook-picker-bar" aria-label="Strategy plan">
+          <button
+            className={!open ? 'active tap' : 'tap'}
+            type="button"
+            onClick={() => setFocus(null)}
+          >
+            <small>STANDING PLAN</small>
+            <strong>Default strategy</strong>
+          </button>
+          <button
+            className={open ? 'active tap' : 'tap'}
+            type="button"
+            onClick={() => setLibraryOpen(true)}
+          >
+            <small>OPPONENT PLANS · {books.length}</small>
+            <strong>{open ? oppName : 'Choose a matchup'}</strong>
+          </button>
+        </section>
+      )}
+
+      {libraryOpen && (
+        <InFrame>
+        <div className="playbook-library-layer" role="presentation">
+          <button
+            className="playbook-library-scrim"
+            type="button"
+            aria-label="Close opponent plans"
+            onClick={() => setLibraryOpen(false)}
+          />
+          <section className="playbook-library-sheet" role="dialog" aria-modal="true" aria-label="Opponent plans">
+            <header>
+              <span><small>OPPONENT PLANS</small><strong>Choose a matchup</strong></span>
+              <button className="tap" type="button" onClick={() => setLibraryOpen(false)}>CLOSE</button>
+            </header>
+            <div className="playbook-library-grid">
+              {books.map((abbr) => {
+                const rival = season?.teams.find((t) => t.def.abbr === abbr);
+                const selected = abbr === open;
+                return (
+                  <button
+                    className={selected ? 'selected tap' : 'tap'}
+                    type="button"
+                    key={abbr}
+                    onClick={() => { setFocus(abbr); setLibraryOpen(false); }}
+                  >
+                    <span><small>{rival?.conference ?? 'SCOUTED'}</small><strong>{rival?.def.school ?? abbr}</strong></span>
+                    <span><b>{rival ? `${rival.w}-${rival.l}` : '—'}</b><small>{selected ? 'OPEN' : 'PLAN'}</small></span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+        </InFrame>
       )}
 
       {open && (
-        <button
-          className="secondary-command tap"
-          type="button"
-          onClick={() => autoSet(open)}
-        >
-          AUTO SET FROM THE BOOK
-        </button>
+        <section className="playbook-intel-card">
+          <header>
+            <span>
+              <small>SCOUTING REPORT</small>
+              <strong>{oppName}</strong>
+            </span>
+            {opponent && <b>{opponent.w}-{opponent.l}</b>}
+          </header>
+          <div className="playbook-intel-reads">
+            {reads.map((read) => (
+              <article key={`${read.slot}-${read.title}`}>
+                <strong>{read.title}</strong>
+                <p>{read.text}</p>
+              </article>
+            ))}
+          </div>
+          <button
+            className={`playbook-auto-command tap${autoConfirmed === open ? ' confirmed' : ''}`}
+            type="button"
+            onClick={() => { if (autoSet(open)) setAutoConfirmed(open); }}
+          >
+            <span>
+              <strong>{autoConfirmed === open ? 'Counters built' : 'Build counters from report'}</strong>
+              <small>{autoConfirmed === open
+                ? 'Defensive positioning updated from the scouting report.'
+                : 'Sets defensive positioning from what your scouts found. Your offensive identity stays yours.'}</small>
+            </span>
+            <b>{autoConfirmed === open ? '✓ DONE' : 'AUTO'}</b>
+          </button>
+        </section>
       )}
 
       {/*
@@ -185,37 +275,46 @@ export function StrategyScreen() {
         and the cost line under the value updates the moment it changes, which
         keeps the trade visible -- the reason the strip existed at all.
       */}
-      {GROUPS.map((g) => {
-        const held = current[g.key] ?? NEUTRAL[g.key];
-        const i = g.options.findIndex((o) => o.value === held);
-        const chosen = g.options[i];
-        const next = g.options[(i + 1) % g.options.length]!;
-        return (
-          <section className="strategy-board" key={g.key}>
-            <button
-              className="tap"
-              type="button"
-              aria-label={`${g.title}: ${chosen?.label ?? ''}. Tap for ${next.label}`}
-              onClick={() => write(g.key, next.value)}
-            >
-              <span>{g.title}</span>
-              <strong>{chosen?.label ?? '—'}</strong>
-              <small>{chosen?.cost ?? g.note}</small>
-              <ReloadIcon />
-            </button>
-          </section>
-        );
-      })}
+      {STRATEGY_SECTIONS.map((section) => (
+        <section className="strategy-section" key={section.kicker}>
+          <header>
+            <small>{section.kicker}</small>
+            <h2>{section.title}</h2>
+          </header>
+          <div className="strategy-card-grid">
+            {section.keys.map((key) => {
+              const g = GROUPS.find((group) => group.key === key)!;
+              const held = current[g.key] ?? NEUTRAL[g.key];
+              const chosen = g.options.find((o) => o.value === held) ?? g.options[0];
+              return (
+                <article className="strategy-control-card" key={g.key}>
+                  <div className="strategy-control-head">
+                    <span><small>{g.title}</small><strong>{chosen?.label ?? '—'}</strong></span>
+                    <p>{g.note}</p>
+                  </div>
+                  <div className="strategy-choice-row" role="group" aria-label={g.title}>
+                    {g.options.map((option) => (
+                      <button
+                        className={option.value === held ? 'active tap' : 'tap'}
+                        type="button"
+                        key={String(option.value)}
+                        aria-pressed={option.value === held}
+                        onClick={() => write(g.key, option.value)}
+                      >{option.label}</button>
+                    ))}
+                  </div>
+                  <p className="strategy-tradeoff">{chosen?.cost}</p>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ))}
 
-      <FieldNote
-        title="Nothing here is free"
-        text="The notes on each row are the trade the engine actually makes."
-      />
       {books.length === 0 && (
         <FieldNote
           title="Opponent playbooks"
-          text="Scout a club and its book appears here, applied by itself
-            whenever you meet them."
+          text="Scout a program to unlock a dedicated plan that applies automatically whenever you face them."
         />
       )}
     </main>

@@ -153,7 +153,7 @@ export function Segmented<T extends string>(
   { value, options, onChange, label, glow }:
   {
     value: T;
-    options: ReadonlyArray<{ value: T; label: string }>;
+    options: ReadonlyArray<{ value: T; label: string; alert?: boolean }>;
     onChange: (value: T) => void;
     label: string;
     /** One option lit as the next step of a guided errand. See store `guide`. */
@@ -176,7 +176,7 @@ export function Segmented<T extends string>(
           role="tab"
           aria-selected={value === option.value}
           onClick={() => onChange(option.value)}
-        >{option.label}</button>
+        >{option.label}{option.alert && <i className="segmented-alert" />}</button>
       ))}
     </div>
   );

@@ -200,6 +200,24 @@ describe('a managed game', () => {
   });
 });
 
+
+
+describe('managed-game replay capture', () => {
+  it('keeps the real play-event stream through the final', () => {
+    const { rng, bats: homeTeam, field: awayTeam } = twoTeams(8801);
+    const live = createLiveGame(homeTeam, awayTeam, rng, { managing: 'home' });
+    let guard = 0;
+    while (!live.over && guard++ < 900) {
+      const decision = live.pending;
+      if (!decision) { live.finish(); break; }
+      live.submit(decision.side === 'offense' ? 'swing' : 'pitch');
+    }
+    expect(live.over).toBe(true);
+    expect(live.result.log.length).toBeGreaterThan(0);
+    expect(live.result.playEvents.length).toBeGreaterThan(0);
+  });
+});
+
 describe('the bullpen', () => {
   it('spends only the arm chosen, and never offers a used arm again', () => {
     const { rng, bats: homeTeam, field: awayTeam } = twoTeams(42);

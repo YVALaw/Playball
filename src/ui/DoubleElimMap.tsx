@@ -11,6 +11,7 @@
 // Draws either a live `DoubleElim` or the slots kept on a finished result —
 // the two carry the same `DESlot` arrays, which is the point of keeping them.
 
+import type { CSSProperties } from 'react';
 import type { DESlot } from '../engine/doubleElim.js';
 import { teamColour } from './Avatar.js';
 
@@ -95,41 +96,26 @@ export function DoubleElimMap(
     the system to stop moving things.
   */
   return (
-    <div
-      key={view}
-      className="card-in"
-      style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}
-    >
-      {/*
-        Organised as a bracket rather than as stacked lists — reported from
-        the phone in two words: "organize the bracket." Two rules do it: the
-        round labels live in their own row so they align across the map
-        instead of shoving their column's boxes down, and each round's cards
-        spread across the column's full height, which seats a semifinal
-        midway between the two games that feed it — the shape a bracket is
-        recognised by.
-      */}
-      <div style={{
-        display: 'flex', gap: 10, padding: '4px 14px 8px', minWidth: 'min-content',
-        alignItems: 'stretch',
-      }}>
+    <div key={view} className="card-in bracket-map-scroll">
+      <div className="bracket-map-track">
         {columns.map((col, ci) => (
-          <div key={ci} style={{
-            display: 'flex', flexDirection: 'column', minWidth: 104,
-          }}>
-            <div className="label" style={{ textAlign: 'center', marginBottom: 6 }}>
-              {col.title}
-            </div>
-            <div style={{
-              flex: 1, display: 'flex', flexDirection: 'column',
-              justifyContent: 'space-around', gap: 8,
-            }}>
-              {col.slots.map((s) => (
-                <SlotCard key={`${s.side}${s.round}${s.slot}`}
-                  s={s} abbr={abbr} userTeam={userTeam} onOpen={onOpen} />
+          <section className="bracket-map-column" key={`${view}-${ci}`}>
+            <header className="bracket-column-head">
+              <small>{view === 'winners' ? 'WINNERS ROAD' : 'ELIMINATION ROAD'}</small>
+              <strong>{col.title}</strong>
+            </header>
+            <div className="bracket-column-slots">
+              {col.slots.map((slot) => (
+                <SlotCard
+                  key={`${slot.side}${slot.round}${slot.slot}`}
+                  s={slot}
+                  abbr={abbr}
+                  userTeam={userTeam}
+                  onOpen={onOpen}
+                />
               ))}
             </div>
-          </div>
+          </section>
         ))}
       </div>
     </div>
@@ -171,24 +157,20 @@ function SlotCard(
       role={open ? 'button' : undefined}
       tabIndex={open ? 0 : undefined}
       onKeyDown={open ? (e) => { if (e.key === 'Enter' || e.key === ' ') open(); } : undefined}
-      className={open ? 'tap' : undefined}
-      style={{
-      border: mine ? '1.5px solid var(--you)' : '1px solid var(--faint)',
-      background: 'var(--paper)',
-      boxShadow: mine ? '0 1px 0 rgba(47,79,122,.25)' : 'none',
-      cursor: open ? 'pointer' : 'default',
-    }}>
-      <Row team={s.a} seed={s.aSeed} s={s} abbr={abbr} userTeam={userTeam} top />
+      className={`bracket-slot-card${mine ? ' is-yours' : ''}${open ? ' tap' : ''}${s.winner !== null ? ' is-final' : ' is-live'}`}
+    >
+      <Row team={s.a} seed={s.aSeed} s={s} abbr={abbr} userTeam={userTeam} />
       <Row team={s.b} seed={s.bSeed} s={s} abbr={abbr} userTeam={userTeam} />
+      {mine && <span className="bracket-you-tag">YOU</span>}
     </div>
   );
 }
 
 function Row(
-  { team, seed, s, abbr, userTeam, top }:
+  { team, seed, s, abbr, userTeam }:
   {
     team: number | null; seed: number; s: DESlot;
-    abbr: (i: number) => string; userTeam: number; top?: boolean;
+    abbr: (i: number) => string; userTeam: number;
   },
 ) {
   const won = team !== null && s.winner === team;
@@ -198,30 +180,16 @@ function Row(
     : null;
   const tint = team !== null ? teamColour(abbr(team)) : 'var(--faint)';
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 5,
-      padding: '4px 6px',
-      borderBottom: top ? '1px solid var(--hairline)' : 'none',
-      borderLeft: `3px solid ${tint}`,
-      opacity: lost ? 0.5 : 1,
-      background: won ? `${tint}1c` : 'transparent',
-    }}>
-      <span style={{
-        font: "600 calc(8px * var(--ts)) var(--mono)", color: 'var(--dim)', minWidth: 10,
-      }}>{seed > 0 ? seed : ''}</span>
-      <span style={{
-        flex: 1, font: `${won ? 700 : 500} calc(10.5px * var(--ts)) var(--mono)`,
-        letterSpacing: '.04em',
-        color: team === null ? 'rgba(var(--ink-rgb), .3)' : tint,
-        whiteSpace: 'nowrap',
-      }}>
+    <div
+      className={`bracket-team-line${won ? ' is-winner' : ''}${lost ? ' is-loser' : ''}${team === userTeam ? ' is-user' : ''}`}
+      style={{ '--team-accent': tint } as CSSProperties}
+    >
+      <span className="bracket-seed">{seed > 0 ? seed : ''}</span>
+      <span className="bracket-team-name">
         {team === null ? 'TBD' : abbr(team)}
         {team === userTeam ? ' ★' : ''}
       </span>
-      <span style={{
-        font: `${won ? 700 : 400} calc(10px * var(--ts)) var(--mono)`,
-        color: won ? 'var(--ink)' : 'var(--dim)',
-      }}>{runs !== null ? runs : ''}</span>
+      <span className="bracket-score">{runs !== null ? runs : ''}</span>
     </div>
   );
 }

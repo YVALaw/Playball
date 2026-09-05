@@ -414,3 +414,50 @@ describe('positions are yours to break, and the game remembers home', () => {
     for (let i = 1; i < ovr.length; i++) expect(ovr[i - 1]!).toBeGreaterThanOrEqual(ovr[i]!);
   });
 });
+
+describe('pitching staff swaps preserve the arm\'s real role', () => {
+  it('an RP who borrows a rotation slot comes back to the bullpen as an RP', () => {
+    useDynasty.getState().start(4242, 0);
+    const state = useDynasty.getState();
+    const club = state.season!.teams[state.userTeam]!.team;
+    const rp = club.bullpen.find((p) => p.role === 'RP');
+    const starter = club.rotation[0];
+    expect(rp).toBeDefined();
+    expect(starter).toBeDefined();
+    if (!rp || !starter) return;
+
+    expect(state.promoteArm(rp.id, 0)).toBe(true);
+    expect(club.rotation[0]!.id).toBe(rp.id);
+    expect(club.rotation[0]!.role).toBe('SP');
+    expect(club.rotation[0]!.homeRole).toBe('RP');
+
+    // The displaced starter is now the bullpen selection. Swapping him back
+    // must restore the promoted reliever's original role rather than preserve
+    // the temporary SP label he wore while starting.
+    expect(useDynasty.getState().promoteArm(starter.id, 0)).toBe(true);
+    const returned = club.bullpen.find((p) => p.id === rp.id);
+    expect(returned).toBeDefined();
+    expect(returned!.role).toBe('RP');
+    expect(returned!.homeRole).toBe('RP');
+  });
+
+  it('repairs the legacy-save shape where a bullpen arm was stranded as SP', () => {
+    useDynasty.getState().start(4242, 0);
+    const state = useDynasty.getState();
+    const club = state.season!.teams[state.userTeam]!.team;
+    const arm = club.bullpen.find((p) => p.role === 'RP');
+    expect(arm).toBeDefined();
+    if (!arm) return;
+
+    // Recreate what an older save could contain after the former swap bug.
+    arm.role = 'SP';
+    delete arm.homeRole;
+    const starter = club.rotation[0]!;
+
+    expect(state.promoteArm(arm.id, 0)).toBe(true);
+    expect(useDynasty.getState().promoteArm(starter.id, 0)).toBe(true);
+    const healed = club.bullpen.find((p) => p.id === arm.id)!;
+    expect(healed.role).toBe('RP');
+    expect(healed.homeRole).toBe('RP');
+  });
+});

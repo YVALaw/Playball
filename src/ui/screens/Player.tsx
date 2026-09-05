@@ -7,7 +7,7 @@
 // has four seasons and thirty box scores behind him — the ratings you opened
 // the card for end up two screens above the thing you scrolled to.
 //
-// So the card is now a header that never moves and five tabs under it. Who he
+// So the card is now a header that never moves and four tabs under it. Who he
 // is stays on screen; what you happen to be asking about changes. The header
 // keeps the two numbers that are true on every tab — overall and potential —
 // because those are the ones you are comparing against whatever the tab says.
@@ -19,7 +19,7 @@
 // bar, so a freshman with room to grow reads differently from a finished senior
 // at a glance.
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { RosterMoves } from './RosterMoves.js';
 import { seasonAwards } from '../../engine/postseason.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
@@ -34,20 +34,24 @@ import {
   tendencyLabel, watchProgress, type TendencyId,
 } from '../../engine/tendencies.js';
 import { draftEligible } from '../../engine/draft.js';
+import { draftChance } from '../../engine/progression.js';
+import { expectationOf, flightRisk, mood, promiseOf, squadRanks } from '../../engine/morale.js';
+import { available } from '../../engine/depthChart.js';
+import { isHurt } from '../../engine/injury.js';
 import { overallOf, platoonSplit, naturalPos } from '../../engine/ratings.js';
 import { secondaryPositions } from '../../engine/positions.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { SewingPinIcon } from '@radix-ui/react-icons';
 import { captainOf } from '../../engine/captains.js';
 import { handles } from '../../state/depth.js';
-import { proCareer, type Moment } from '../../engine/legacy.js';
+import { proCareer, type AlumnusNote, type Moment } from '../../engine/legacy.js';
 import {
   CaptainC, DataTable, FieldNote, Metric, ModuleIntro, SectionHeading, Segmented,
 } from '../components/Kit.js';
 import {
   battingAverage, onBase, slugging, era, whip, inningsPitched,
   fieldingPct, playsAboveExpected, fieldingContext, careerName, liveCareerYear,
-  seasonComplete,
+  seasonComplete, injuryClock,
 } from '../../engine/season.js';
 import type { BoxScore, CareerYear, SeasonState } from '../../engine/season.js';
 import type { Departure } from '../../engine/progression.js';
@@ -145,7 +149,7 @@ const CLASS_NAME: Record<ClassYear, string> = {
   FR: 'Freshman', SO: 'Sophomore', JR: 'Junior', SR: 'Senior',
 };
 
-type Sheet = 'overview' | 'ratings' | 'stats' | 'games' | 'history';
+type Sheet = 'overview' | 'ratings' | 'stats' | 'legacy';
 
 const SHEET_LABEL: Record<Sheet, string> = {
   overview: 'OVERVIEW',
@@ -154,11 +158,10 @@ const SHEET_LABEL: Record<Sheet, string> = {
   // labels have to hold on a 360 pixel phone without shrinking below the size
   // the rest of the app uses for a tab.
   stats: 'STATS',
-  games: 'GAMES',
-  history: 'HISTORY',
+  legacy: 'LEGACY',
 };
 
-const LIVE_SHEETS: Sheet[] = ['overview', 'ratings', 'stats', 'games', 'history'];
+const LIVE_SHEETS: Sheet[] = ['overview', 'ratings', 'stats', 'legacy'];
 
 /**
  * A man who has left, with no ratings to show.
@@ -167,7 +170,7 @@ const LIVE_SHEETS: Sheet[] = ['overview', 'ratings', 'stats', 'games', 'history'
  * to read and no current season to have a line in. What survives him is the
  * record book.
  */
-const ALUMNI_SHEETS: Sheet[] = ['overview', 'history'];
+const ALUMNI_SHEETS: Sheet[] = ['overview', 'legacy'];
 
 // ---------------------------------------------------------------------------
 
@@ -242,12 +245,18 @@ export function gameLogFor(
 export function Player() {
   const season = useDynasty((s) => s.season);
   const selected = useDynasty((s) => s.selectedPlayer);
+  const playerCardSection = useDynasty((s) => s.playerCardSection);
   const report = useDynasty((s) => s.lastOffseason);
+  const alumni = useDynasty((s) => s.alumni);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
-  const [sheet, setSheet] = useState<Sheet>('overview');
+  const [sheet, setSheet] = useState<Sheet>(playerCardSection);
   const [half, setHalf] = useState<'bat' | 'arm'>('bat');
   void version;
+
+  useEffect(() => {
+    setSheet(playerCardSection);
+  }, [selected, playerCardSection]);
 
   if (!season || !team || !selected) return <Nobody />;
 
@@ -278,8 +287,9 @@ export function Player() {
     const gone = [...(report?.graduated ?? []), ...(report?.drafted ?? [])]
       .find((d) => d.id === selected);
     const career = season.careers?.[selected] ?? [];
-    if (!gone && career.length === 0) return <Nobody />;
-    return <Alumnus id={selected} gone={gone} career={career} sheet={sheet} onSheet={setSheet} />;
+    const note = alumni[selected];
+    if (!gone && career.length === 0 && !note) return <Nobody />;
+    return <Alumnus id={selected} gone={gone} note={note} career={career} sheet={sheet} onSheet={setSheet} />;
   }
 
   /**
@@ -311,7 +321,7 @@ export function Player() {
         slot={slot}
         dhToday={dhToday}
       />
-      <Segmented
+      <Segmented<Sheet>
         label="Player card section"
         value={active}
         onChange={setSheet}
@@ -323,8 +333,8 @@ export function Player() {
           year stats and instead put them in overview; in stats we will only
           keep the season by season, and one season by season as well but to
           record the june stats." */}
-      {isTwoWay(p) && (active === 'stats' || active === 'games') && (
-        <Segmented
+      {isTwoWay(p) && active === 'stats' && (
+        <Segmented<'bat' | 'arm'>
           label="Which half of his game"
           value={half}
           onChange={setHalf}
@@ -338,17 +348,15 @@ export function Player() {
         <>
           <SeasonsUnder p={p} owner={owner} isOurs={isOurs} half={half} />
           <JuneByYear p={p} owner={owner} isOurs={isOurs} half={half} />
+          <Games
+            id={p.id}
+            owner={owner}
+            isOurs={isOurs}
+            half={isTwoWay(p) ? half : undefined}
+          />
         </>
       )}
-      {active === 'games' && (
-        <Games
-          id={p.id}
-          owner={owner}
-          isOurs={isOurs}
-          half={isTwoWay(p) ? half : undefined}
-        />
-      )}
-      {active === 'history' && (
+      {active === 'legacy' && (
         <Career id={p.id} owner={owner} isPitcher={isPitcher} isOurs={isOurs} />
       )}
 
@@ -426,10 +434,11 @@ function PlayerHero(
  * more than enough to be worth opening.
  */
 function Alumnus(
-  { id, gone, career, sheet, onSheet }:
+  { id, gone, note, career, sheet, onSheet }:
   {
     id: PlayerId;
     gone: Departure | undefined;
+    note: AlumnusNote | undefined;
     career: CareerYear[];
     sheet: Sheet;
     onSheet: (s: Sheet) => void;
@@ -442,14 +451,14 @@ function Alumnus(
   // has written since ids stopped being names; before that it did not have to,
   // because the id it is filed under was the name. Both are read here, newest
   // mechanism first, and only a man with no notice and no seasons is nameless.
-  const name = gone?.name ?? (career.length > 0 ? careerName(id, career) : 'Former player');
-  const abbr = gone?.teamAbbr ?? last?.team ?? '';
-  const classYear = gone?.classYear ?? last?.classYear ?? '—';
-  const drafted = gone?.reason === 'drafted';
+  const name = gone?.name ?? note?.name ?? (career.length > 0 ? careerName(id, career) : 'Former player');
+  const abbr = gone?.teamAbbr ?? note?.teamAbbr ?? last?.team ?? '';
+  const classYear = gone?.classYear ?? note?.classYear ?? last?.classYear ?? '—';
+  const drafted = (gone?.reason ?? note?.reason) === 'drafted';
   // A walk-on did not graduate and was not drafted — his one season was up.
   // Saying "Graduated" over a freshman who was on the roster for a year is the
   // kind of small lie that makes a player distrust every other line on a card.
-  const walkedOn = gone?.reason === 'walk-on';
+  const walkedOn = (gone?.reason ?? note?.reason) === 'walk-on';
 
   // The record book knows what he was without knowing what position he played:
   // a career line carries at bats or innings, so the shape of his years is the
@@ -475,7 +484,7 @@ function Alumnus(
       />
       {active === 'overview' && (
         <Panel>
-          <Stat k="STATUS" v={gone
+          <Stat k="STATUS" v={(gone || note)
             ? (drafted ? 'Drafted' : walkedOn ? 'Walk-on, year up' : 'Graduated')
             : 'Departed'} />
           <Stat k="LAST CLASS" v={classYear in CLASS_NAME
@@ -484,10 +493,12 @@ function Alumnus(
               the departure notice survives — one offseason. */}
           {gone?.age !== undefined && <Stat k="AGE WHEN HE LEFT" v={String(gone.age)} />}
           {abbr && <Stat k="PROGRAM" v={abbr} />}
-          {drafted && gone?.round !== undefined && (
-            <Stat k="DRAFT ROUND" v={`Round ${gone.round}`} />
+          {drafted && (gone?.round ?? note?.round) !== undefined && (
+            <Stat k="DRAFT ROUND" v={`Round ${gone?.round ?? note?.round}`} />
           )}
-          {gone && <Stat k="OVERALL WHEN HE LEFT" v={String(gone.overall)} />}
+          {(gone?.overall ?? note?.overall) !== undefined && (
+            <Stat k="OVERALL WHEN HE LEFT" v={String(gone?.overall ?? note?.overall)} />
+          )}
           <Stat k="SEASONS ON RECORD" v={String(career.length)} last />
         </Panel>
       )}
@@ -497,7 +508,7 @@ function Alumnus(
           are the only thing left of him. `Career` is passed his archive
           directly: he is on nobody's roster, so there is no live row and no
           owner to look one up against. */}
-      {active === 'history' && (
+      {active === 'legacy' && (
         <AlumnusYears years={career} isPitcher={wasPitcher} />
       )}
     </main>
@@ -573,76 +584,92 @@ function ProYears({ id }: { id: string }) {
  * and become the shape a card actually reads in.
  */
 function Overview({ p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: boolean }) {
+  const season = useDynasty((s) => s.season);
   const isPitcher = p.type === 'pitcher';
-  const eligible = p.classYear !== 'SR'
-    && draftEligible({ classYear: p.classYear, age: p.age + 1 });
+  const inJune = { classYear: p.classYear, age: p.age + 1 };
+  const eligible = p.classYear !== 'SR' && draftEligible(inJune);
+  const odds = eligible ? draftChance(overallOf(p)) : null;
+  const draftWord = p.classYear === 'SR' ? 'Graduating'
+    : odds === null ? 'Not eligible'
+      : odds >= 0.7 ? 'Likely gone'
+        : odds >= 0.35 ? 'At risk'
+          : odds >= 0.12 ? 'Outside shot' : 'Safe';
+
+  const day = season ? injuryClock(season) : 0;
+  const redshirt = Boolean((p as AnyPlayer & { redshirt?: boolean }).redshirt);
+  const why = (p as AnyPlayer & { why?: string }).why;
+  const health = redshirt ? 'Redshirted'
+    : available(p, day) ? 'Available'
+      : isHurt(p, day) ? 'Injured'
+        : why === 'academic' ? 'Academic hold' : 'Resting';
+
+  const ranks = squadRanks(owner.team);
+  const rank = ranks.get(p.id) ?? 20;
+  const feeling = mood(p);
+  const expectation = promiseOf(p, rank)
+    .replace('expects to ', '')
+    .replace('is here to ', '');
+  const starts = (p as AnyPlayer & { starts?: number }).starts ?? 0;
+  const expectedShare = expectationOf(p, rank);
+  const actualShare = owner.gp > 0 ? starts / owner.gp : 0;
+  const buried = Math.max(0, expectedShare - actualShare);
+  const moodRisk = flightRisk(p);
+  const portalWord = p.classYear === 'SR' ? 'Not eligible'
+    : moodRisk >= 0.4 || buried >= 0.4 ? 'High'
+      : moodRisk > 0 || buried >= 0.25 ? 'Watch' : 'Low';
+
+  const secondaries = !isPitcher ? secondaryPositions(p as Hitter).slice(0, 3) : [];
 
   return (
     <>
-      <section className="profile-bio">
-        {/* The paragraph that used to open this card was the tiles below it
-            read aloud — class, role, school, bats and throws are all on the
-            hero, and age, overall, potential and velocity are in the strip.
-            Only these two facts were nowhere else. */}
-        {(eligible || p.classYear === 'SR') && (
-          <p>
-            {eligible
-              ? 'Draft eligible in June.'
-              : 'This is his last year.'}
-          </p>
-        )}
-        <div>
-          <span><b>{p.age}</b><small>AGE</small></span>
-          <span><b>{overallOf(p)}</b><small>OVERALL</small></span>
-          <span>
-            <b>{isOurs ? potentialGrade(p.potential) : '—'}</b>
-            <small>POTENTIAL</small>
-          </span>
-        </div>
-      </section>
+      {isOurs ? (
+        <section className="player-status-grid" aria-label="Current player status">
+          <div>
+            <small>AVAILABILITY</small>
+            <strong>{health}</strong>
+            <span>{redshirt ? 'Season preserved' : available(p, day) ? 'Ready to play' : 'Needs attention'}</span>
+          </div>
+          <div>
+            <small>MOOD</small>
+            <strong>{feeling.charAt(0).toUpperCase() + feeling.slice(1)}</strong>
+            <span>{expectation}</span>
+          </div>
+          <div>
+            <small>DRAFT WATCH</small>
+            <strong>{draftWord}</strong>
+            <span>{eligible ? 'June eligibility' : p.classYear === 'SR' ? 'Final college season' : 'No exposure this June'}</span>
+          </div>
+          <div className={portalWord === 'High' ? 'is-alert' : ''}>
+            <small>PORTAL RISK</small>
+            <strong>{portalWord}</strong>
+            <span>{p.classYear === 'SR' ? 'Graduates instead' : buried >= 0.25 ? 'Playing time matters' : 'No warning signs'}</span>
+          </div>
+        </section>
+      ) : (
+        <section className="player-status-grid compact" aria-label="Public player status">
+          <div>
+            <small>DRAFT WATCH</small>
+            <strong>{draftWord}</strong>
+            <span>{eligible ? 'Eligible this June' : 'Not exposed this June'}</span>
+          </div>
+          <div>
+            <small>{isPitcher ? 'FASTBALL' : 'BATS'}</small>
+            <strong>{isPitcher ? `${(p as Pitcher).velocity} mph` : p.bats === 'S' ? 'Switch' : p.bats === 'L' ? 'Left' : 'Right'}</strong>
+            <span>Public scouting info</span>
+          </div>
+        </section>
+      )}
+
+      {secondaries.length > 0 && (
+        <p className="player-secondary-line"><b>ALSO PLAYS</b> {secondaries.join(' · ')}</p>
+      )}
 
       {isOurs ? <BadgeChips p={p} /> : (
         <Note>
-          What he has done is public. What he might still become is your
-          rival&apos;s problem to know.
+          Production is public. Potential, mood and role promises stay inside his program.
         </Note>
       )}
 
-      <section className="player-quick-facts">
-        <div>
-          <small>{isPitcher ? 'ROLE' : 'POSITION'}</small>
-          <strong>
-            {isPitcher
-              ? ((p as Pitcher).role === 'SP' ? 'Starter' : 'Reliever')
-              : naturalPos(p as Hitter)}
-          </strong>
-          {/* Where else he can stand — asked for with the depth chart's
-              removal: "we also have to add secondary positions to the
-              player's profile info." The hardest three, same edit the action
-              button's FIELD area makes, because the easy ones tell you
-              nothing you had not guessed. */}
-          {!isPitcher && secondaryPositions(p as Hitter).length > 0 && (
-            <span className="also-plays">
-              also {secondaryPositions(p as Hitter).slice(0, 3).join(' · ')}
-            </span>
-          )}
-        </div>
-        <div>
-          <small>CONFERENCE</small>
-          <strong>{owner.conference}</strong>
-        </div>
-        <div>
-          <small>{isPitcher ? 'FASTBALL' : 'BATS'}</small>
-          <strong>
-            {isPitcher
-              ? `${(p as Pitcher).velocity} mph`
-              : p.bats === 'S' ? 'Switch' : p.bats === 'L' ? 'Left' : 'Right'}
-          </strong>
-        </div>
-      </section>
-
-      {/* The year in progress, moved here from STATS — the overview is where
-          a card is read at a glance, and the glance wants the current line. */}
       <ThisSeason p={p} />
     </>
   );
@@ -731,7 +758,7 @@ function Ratings(
 
   return (
     <>
-      <Segmented
+      <Segmented<RatingsView>
         label="Ratings detail"
         value={view}
         onChange={setView}
@@ -959,7 +986,7 @@ function Tendencies(
             <div key={slot}>
               <span>{SLOT_WORD[slot]}</span>
               <strong className={known && label ? 'read' : 'unread'}>
-                {known ? (label ?? 'Nothing unusual') : isOurs ? 'Still watching' : 'No book'}
+                {known ? (label ?? 'Nothing unusual') : isOurs ? 'Still watching' : 'No report'}
                 <em>
                   {known && label
                     ? ((tendenciesOf(p)[slot] ?? 0) > 0 ? spec.plusNote : spec.minusNote)
@@ -967,7 +994,7 @@ function Tendencies(
                       ? 'He does the ordinary thing.'
                       : isOurs
                         ? `${Math.round(progress * 100)}% of the way to a reading.`
-                        : 'The desk has not been paid for one.'}
+                        : 'No scouting report yet.'}
                 </em>
               </strong>
             </div>
@@ -976,10 +1003,10 @@ function Tendencies(
       </section>
       {!isOurs && (
         <FieldNote
-          title={scouted ? 'You are reading a rival' : 'Nobody has scouted them'}
+          title={scouted ? 'Scouting report active' : 'No scouting report'}
           text={scouted
-            ? 'Bought and paid for, good for the next stretch of games.'
-            : 'SCOUT THEM on their college page buys the whole roster\u2019s book.'}
+            ? 'Their tendencies are available for the next stretch of games.'
+            : 'Scout this program from its profile to reveal player tendencies and build an opponent playbook.'}
         />
       )}
     </>
@@ -1303,7 +1330,7 @@ function Games(
       <FieldNote
         title="This season only"
         text="Box scores last the season. What survives the roll of the year is
-          the record book, on HISTORY."
+          the record book, on LEGACY."
       />
     </>
   );
@@ -1469,7 +1496,7 @@ function AwardCase({ id }: { id: PlayerId }) {
     <>
       <SectionHeading
         kicker="THE CABINET"
-        title={won.length === 1 ? 'One honour' : `${won.length} honours`}
+        title={won.length === 1 ? 'One honor' : `${won.length} honors`}
       />
       <section className="award-list">
         {won.sort((a, b) => b.year - a.year).map((w) => (

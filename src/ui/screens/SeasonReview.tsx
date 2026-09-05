@@ -162,220 +162,98 @@ export function SeasonReview() {
 
   return (
     <FixedHeader
-      header={
-        <ModuleIntro kicker={`${team.def.school} · ${year}`} title="The season" />
-      }
+      header={<ModuleIntro kicker={`${team.def.school} · ${year}`} title="Season report" />}
       action={<FloatingAction label="CONTINUE" onClick={() => void next('review')} />}
     >
-    <FirstVisit id="review" />
-    <main className="module-workspace">
-      {/*
-        What the year made you, said once.
-
-        Above the banner on purpose. A badge is the rarer thing -- most seasons
-        do not produce one -- and it is about the man rather than the record, so
-        it should not be read as a footnote to a win total.
-
-        The counters behind it are never shown and never will be. Somebody who
-        can see he is four mound visits away stops going to the mound because he
-        wants to and starts going because he is four away, which is the
-        difference between a coach and a checklist.
-      */}
-      {earned.length > 0 && (
-        <>
-          {earned.map((b) => (
-            <section className="award-feature rise-in" key={b.id}>
-              <StarIcon />
-              <small>THEY HAVE STARTED SAYING</small>
-              <h2>{b.name}</h2>
-              <p>{b.line}</p>
-            </section>
-          ))}
-        </>
-      )}
-      {/*
-        The banner, and only when the season earned one.
-
-        A dark slab reading "MISSED THE TOURNAMENT" every June is a slab nobody
-        reads; silence is the honest treatment of a year that went nowhere. When
-        there *is* something to say it is the first thing on the screen, because
-        it is the answer to the only question the screen exists to answer.
-      */}
-      {banner && (
-        <section className="season-verdict rise-in">
-          <small>FINISHED</small>
-          <strong>{banner.title}</strong>
-          <p>{banner.note}</p>
+      <FirstVisit id="review" />
+      <main className="module-workspace offseason-review season-report-workspace">
+        <section className={`season-report-hero${post?.champion === team.index ? ' champion' : ''}`}>
+          <div className="season-report-hero-copy">
+            <small>{banner ? 'HOW THE YEAR ENDED' : 'FINAL REPORT'}</small>
+            <h2>{banner?.title ?? (finish ? FINISH_LABEL[finish] : `${played.w}-${played.l}`)}</h2>
+            <p>{banner?.note ?? `${team.def.school} close ${year} at ${played.w}-${played.l}.`}</p>
+          </div>
+          <div className="season-report-record">
+            <strong>{played.w}-{played.l}</strong>
+            <span>FINAL RECORD</span>
+          </div>
+          <div className="season-report-rankings">
+            <button type="button" onClick={() => openOverlay('rankings')}>
+              <small>NATIONAL</small><strong>{nationalRank > 0 ? `#${nationalRank}` : '—'}</strong>
+            </button>
+            <button type="button" onClick={() => openOverlay('standings')}>
+              <small>{team.conference}</small><strong>{confRank > 0 ? `#${confRank}` : '—'}</strong>
+            </button>
+            <button type="button" onClick={() => openOverlay('schedule')}>
+              <small>POSTSEASON</small><strong>{finish ? FINISH_LABEL[finish] : '—'}</strong>
+            </button>
+          </div>
         </section>
-      )}
 
-      <div style={{
-        display: 'flex', marginTop: 14,
-        border: '1px solid var(--faint)', background: 'var(--paper)',
-      }}>
-        {/*
-          Every number here is a door.
-          
-          A verdict screen that only states its conclusions is a screen you read
-          once; the record is a season of games, the national rank is a table you
-          are somewhere in, and the MVP is a player. Making them tap through is
-          what turns the summary into a way into the season rather than the end
-          of it.
-        */}
-        <Tile k="RECORD" v={`${played.w}-${played.l}`} onClick={() => openOverlay('schedule')} />
-        <Tile
-          k="NATIONAL"
-          v={nationalRank > 0 ? `#${nationalRank}` : '—'}
-          onClick={() => openOverlay('rankings')}
-        />
-        <Tile
-          k={team.conference}
-          v={confRank > 0 ? `#${confRank}` : '—'}
-          onClick={() => openOverlay('standings')}
-          last
-        />
-      </div>
-
-      {/*
-        The finish stripe only when the banner did not already say it. A June
-        that earned the big slab does not need the same fact repeated two
-        inches lower in a smaller voice.
-      */}
-      {finish && !banner && (
-        <div style={{
-          marginTop: 10, padding: '11px 12px',
-          background: 'var(--paper)', borderLeft: '3px solid var(--clay)',
-          font: "400 calc(12.5px * var(--ts))/1.5 var(--body)",
-        }}>
-          <strong>{FINISH_LABEL[finish]}</strong>
-        </div>
-      )}
-
-      {/*
-        What the board asked in February, box by box — the same stamped
-        checklist the program page showed all season (see `boardAsk`), settled
-        here where the year is judged. Part of the "expand the review" pass:
-        the screen stated conclusions and skipped the terms they were reached
-        on.
-      */}
-      {ask && outcome && (
-        <>
-          <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>
-            WHAT THE BOARD ASKED · {ask.mandate.toUpperCase()}
-          </div>
-          <div style={{
-            padding: '4px 12px', border: '1px solid var(--faint)', background: 'var(--paper)',
-          }}>
-            {ask.objectives.map((o, i) => {
-              const met = objectiveMet(o, outcome);
-              return (
-                <div
-                  key={o.key}
-                  style={{
-                    display: 'flex', justifyContent: 'space-between', gap: 10,
-                    alignItems: 'baseline', padding: '9px 0',
-                    borderBottom: i < ask.objectives.length - 1 ? '1px solid var(--hairline)' : 'none',
-                  }}
-                >
-                  <span style={{ font: "400 calc(12.5px * var(--ts))/1.4 var(--body)" }}>
-                    {o.label}
-                    {!o.required && (
-                      <span style={{ color: 'var(--dim)', font: "400 calc(10px * var(--ts)) var(--body)" }}>
-                        {' '}· stretch
-                      </span>
-                    )}
-                  </span>
-                  <b style={{
-                    flex: 'none',
-                    font: "800 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-                    color: met ? 'var(--win)' : 'var(--alert)',
-                  }}>{met ? 'MET' : 'MISSED'}</b>
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-
-      {/* The men behind the record — the top of each book, every name a door.
-          Same expansion pass: an MVP alone said who carried it and nothing
-          about who else showed up. */}
-      {leaders.length > 0 && (
-        <>
-          <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>SEASON LEADERS</div>
-          <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-            {leaders.map((l, i) => (
-              <button
-                key={l.id}
-                onClick={() => openPlayer(l.id)}
-                style={{
-                  width: '100%', display: 'flex', gap: 10, alignItems: 'center',
-                  textAlign: 'left', padding: '9px 12px', background: 'transparent',
-                  borderBottom: i < leaders.length - 1 ? '1px solid var(--hairline)' : 'none',
-                }}
-              >
-                <Avatar id={l.id} team={team.def.abbr} size={30} />
-                <span style={{ minWidth: 0, flex: 1 }}>
-                  <span style={{ display: 'block', font: "700 calc(12.5px * var(--ts))/1.2 var(--body)" }}>{l.name}</span>
-                  <span style={{ display: 'block', font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>{l.line}</span>
-                </span>
-                <span className="label" style={{ flex: 'none' }}>{l.k}</span>
-              </button>
+        {earned.length > 0 && (
+          <section className="season-report-badges">
+            {earned.map((b) => (
+              <article key={b.id}>
+                <StarIcon />
+                <span><small>COACH IDENTITY EARNED</small><strong>{b.name}</strong><p>{b.line}</p></span>
+              </article>
             ))}
-          </div>
-        </>
-      )}
+          </section>
+        )}
 
-      {mvp && (
-        <>
-          <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>TEAM MVP</div>
-          <button
-            onClick={() => openPlayer(mvp.id)}
-            style={{
-              width: '100%', textAlign: 'left', display: 'flex', gap: 12, alignItems: 'center',
-              padding: '12px', border: '1px solid var(--faint)', background: 'var(--paper)',
-            }}
-          >
-            <Avatar id={mvp.id} team={team.def.abbr} size={46} />
-            <span>
-              <span style={{
-                display: 'block', font: "700 calc(18px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
-              }}>{mvp.name}</span>
-              <span style={{
-                display: 'block', marginTop: 4, font: "400 calc(11.5px * var(--ts)) var(--mono)", color: 'var(--dim)',
-              }}>{mvp.line}</span>
-            </span>
-          </button>
-        </>
-      )}
-
-      {review && (
-        <>
-          <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>
-            PROGRAM PRESTIGE
-          </div>
-          <div style={{
-            padding: '14px 12px', border: '1px solid var(--faint)', background: 'var(--paper)',
-          }}>
-            <div style={{
-              display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-            }}>
-              <Step k="WAS" v={String(review.prestigeBefore)} />
-              <Step
-                k="THE SEASON"
-                v={`${delta > 0 ? '+' : ''}${delta}`}
-                tone={delta > 0 ? 'var(--win)' : delta < 0 ? 'var(--clay)' : 'var(--dim)'}
-              />
-              <Step k="NOW" v={String(review.prestigeAfter)} accent />
+        {ask && outcome && (
+          <section className="season-report-section">
+            <header><span><small>THE BOARD</small><strong>{ask.mandate.toUpperCase()} YEAR</strong></span><em>{ask.objectives.filter((o) => objectiveMet(o, outcome)).length}/{ask.objectives.length} met</em></header>
+            <div className="season-objective-grid">
+              {ask.objectives.map((o) => {
+                const met = objectiveMet(o, outcome);
+                return (
+                  <article key={o.key} className={met ? 'met' : 'missed'}>
+                    <small>{o.required ? 'REQUIRED' : 'STRETCH'}</small>
+                    <strong>{o.label}</strong>
+                    <b>{met ? '✓ MET' : 'MISSED'}</b>
+                  </article>
+                );
+              })}
             </div>
-            <div style={{
-              marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--hairline)',
-              font: "400 calc(12px * var(--ts))/1.55 var(--body)",
-            }}>{review.message}</div>
-          </div>
-        </>
-      )}
-    </main>
+          </section>
+        )}
+
+        {leaders.length > 0 && (
+          <section className="season-report-section">
+            <header><span><small>THE MEN</small><strong>Season leaders</strong></span></header>
+            <div className="season-leader-grid">
+              {leaders.map((l) => (
+                <button key={`${l.id}-${l.k}`} className="season-leader-card tap" type="button" onClick={() => openPlayer(l.id)}>
+                  <Avatar id={l.id} team={team.def.abbr} size={36} />
+                  <span><small>{l.k}</small><strong>{l.name}</strong><em>{l.line}</em></span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {mvp && (
+          <button className="season-mvp-feature tap" type="button" onClick={() => openPlayer(mvp.id)}>
+            <span className="season-mvp-avatar"><Avatar id={mvp.id} team={team.def.abbr} size={58} /></span>
+            <span><small>TEAM MVP</small><strong>{mvp.name}</strong><em>{mvp.line}</em></span>
+            <b>OPEN CARD ›</b>
+          </button>
+        )}
+
+        {review && (
+          <section className="prestige-journey">
+            <header><small>PROGRAM PRESTIGE</small><strong>What the season moved</strong></header>
+            <div className="prestige-journey-line">
+              <span><small>FEBRUARY</small><strong>{review.prestigeBefore}</strong></span>
+              <i><b style={{ width: `${Math.max(8, Math.min(100, review.prestigeAfter))}%` }} /></i>
+              <span className="change"><small>CHANGE</small><strong>{delta > 0 ? '+' : ''}{delta}</strong></span>
+              <span><small>NOW</small><strong>{review.prestigeAfter}</strong></span>
+            </div>
+            <p>{review.message}</p>
+          </section>
+        )}
+      </main>
     </FixedHeader>
   );
 }

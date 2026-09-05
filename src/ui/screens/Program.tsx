@@ -1,26 +1,10 @@
 // Program.tsx
-// Where you stand: the board, the coach, and the men who played for him.
+// The program hub.
 //
-// This was one column — the school, the mandate, the checklist, the seat meter
-// and a career summary stacked — which is one page answering four different
-// questions. On a phone that means the thing you opened the screen for is
-// usually two thumb-drags from where it put you. So: three tabs, because there
-// are three questions.
-//
-//   BOARD  what is being asked of you this year, and how safe you are.
-//   COACH  who you are, what you have done, and how your teams play.
-//   HALL   who you did it with.
-//
-// There is deliberately no season-by-season tab. That list already exists as
-// HISTORY, the screen immediately beside this one in the same nav group, and two
-// record books one tap apart is two record books that eventually disagree.
-//
-// The three numbers on the BOARD tab are shown apart on purpose. Program
-// prestige is the school's and survives you; coach prestige is yours and
-// travels; job security is how the board feels this minute. Blending them into
-// one "reputation" bar would hide the only interesting case — a good coach doing
-// well at a bad job.
-
+// Overview is intentionally a dashboard rather than another tab strip: Board,
+// Budget, Watchlist, and Hall are destinations, not four more pieces of chrome
+// to learn. The coach profile remains a focused subpage, while season-by-season
+// history stays in the adjacent History screen so there is only one record book.
 import { useEffect, useState, type ReactNode } from 'react';
 import { ACHIEVEMENTS, ACHIEVEMENT_IDS } from '../../engine/achievements.js';
 import {
@@ -49,8 +33,9 @@ import {
 } from '../components/Kit.js';
 import {
   annualBudget, dollars, marketFor, remaining, wageBill,
-  FACILITIES, MAX_FACILITY, SCOUT_COST, SEATS, SEAT_LABEL, SEAT_NOTE,
-  BUILDINGS, winterCraft, nightCraft, shapeOf, fitFactor, type Assistant, type StaffSeat,
+  FACILITIES, MAX_FACILITY, SCOUT_COST, SCOUT_DAYS, SEATS, SEAT_LABEL, SEAT_NOTE,
+  BUILDINGS, winterCraft, nightCraft, shapeOf, fitFactor, facilityLevel, facilityUpgradeCost, facilityEffectAt,
+  FACILITY_MAX_LEVEL, pipelineStrength, pipelineLabel, type Assistant, type StaffSeat, type Building,
 } from '../../engine/economy.js';
 import { handles } from '../../state/depth.js';
 import { FirstVisit } from '../Tutorial.js';
@@ -60,21 +45,13 @@ import { pct } from '../format.js';
 /** The record for one program, as the season carries it. */
 type Owner = SeasonState['teams'][number];
 
-type Sheet = 'board' | 'money' | 'watchlist' | 'coach' | 'hall';
+type Sheet = 'overview' | 'board' | 'money' | 'watchlist' | 'coach' | 'hall';
 
-/**
- * COACH is not on the strip. The portrait in the top bar is the door to the
- * coach now — it is on every screen, so a second door here was a duplicate —
- * and when the sheet does open on 'coach' the whole frame changes shape below.
- */
-const SHEETS: Sheet[] = ['board', 'hall'];
-
-const SHEET_LABEL: Record<Sheet, string> = {
-  board: 'BOARD',
-  money: 'BUDGET',
-  watchlist: 'WATCHLIST',
-  coach: 'COACH',
-  hall: 'HALL OF FAME',
+const PROGRAM_LABEL: Record<Exclude<Sheet, 'coach' | 'overview'>, string> = {
+  board: 'Board',
+  money: 'Budget',
+  watchlist: 'Watchlist',
+  hall: 'Hall of Fame',
 };
 
 export function Program() {
@@ -84,96 +61,84 @@ export function Program() {
   const year = useDynasty((s) => s.year);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
-  // In the store rather than in a `useState`, because the page is addressed
-  // from outside now: an inbox card about the board opens the board, and one
-  // about an achievement opens the cabinet. A component that owns its own tab
-  // cannot be told which tab to be on.
   const sheet = useDynasty((s) => s.programSheet);
   const clearUnseenTrophies = useDynasty((s) => s.clearUnseenTrophies);
-  // The cabinet read clears the door's dot — same contract as the inbox
-  // and its envelope.
+  const unseenTrophies = useDynasty((s) => s.unseenTrophies.length);
+  const watch = useDynasty((s) => s.watch);
+  const setSheet = useDynasty((s) => s.setProgramSheet);
+  const economy = useDynasty((s) => s.economy);
+  const coach = useDynasty((s) => s.coach);
+  const boardAsk = useDynasty((s) => s.boardAsk);
+  void version;
+
   useEffect(() => {
     if (sheet === 'coach') clearUnseenTrophies();
   }, [sheet, clearUnseenTrophies]);
-  const watch = useDynasty((s) => s.watch);
-  const setSheet = useDynasty((s) => s.setProgramSheet);
-  void version;
 
   if (!season || !team) return null;
 
-  /*
-    The coach's page stands alone. Reported from testing: "in the coach
-    information should only be coach information" — the school masthead and the
-    BOARD and HALL tabs are the program's furniture, and the man's card kept
-    wearing them. Opened from the portrait, the sheet now carries a slim kicker
-    and nothing else; the program's own frame comes back the moment the sheet
-    does not say 'coach'.
-  */
-  /*
-    The way out, which this sheet did not have.
-
-    Reported from play: "the program stopped showing the college overview but
-    instead started showing the coach information", and only wiping the save
-    fixed it. `programSheet` is store state, so an inbox card that deep-links
-    here -- an achievement post does exactly that -- leaves it on 'coach' after
-    the overlay is dismissed. The overlay had the navy back bar above it and the
-    PROGRAM *tab* has nothing, so the next visit to the tab landed on a page
-    with no tabs, no bar and no exit. It was not a rendering fault; it was a
-    one-way door.
-  */
   if (sheet === 'coach') {
     return (
       <main className="module-workspace">
-        {/* The way out, which this sheet did not have.
-
-            Reported from play: "the program stopped showing the college
-            overview but instead started showing the coach information", and
-            only wiping the save fixed it. `programSheet` is store state, so an
-            inbox card that deep-links here leaves it on 'coach' after the
-            overlay is dismissed — and the tab has no back bar of its own. It
-            was not a rendering fault; it was a one-way door. */}
-        {/* No inner back button. Reported: "in the coach profile there are
-            two back buttons." The overlay's own bar steps back to the board
-            first — the same deference settings pages get — so one control
-            does the job the two were splitting. */}
         <CoachSheet team={team} />
       </main>
     );
   }
 
-  /*
-    The school stays in the pinned header rather than riding one of the tabs.
-
-    Both tabs here are about the same job at the same place — even the hall,
-    which is the men who played for you at it — so the name of the school is
-    the one line that is true on both.
-  */
   const waiting = review !== null || offers.length > 0;
+  const budgetLeft = Math.max(0, remaining(economy, team.prestige));
+  const staffCount = SEATS.filter((seat) => economy.staff[seat]).length;
+  const facilities = economy.built?.length ?? economy.facilities;
+  const books = Object.values(economy.scouted).length;
+  const hallCount = season.hall?.length ?? 0;
+  const fallbackAsk = expectationFor(
+    team.prestige,
+    rosterStrength(team.team),
+    seasonLength(season.config),
+  );
+  const ask = boardAsk ?? fallbackAsk;
+  const security = coach.security >= 75 ? 'Very secure'
+    : coach.security >= 55 ? 'Secure'
+      : coach.security >= 35 ? 'Under review' : 'In danger';
+
+  if (sheet !== 'overview') {
+    return (
+      <main className="module-workspace">
+        <button
+          className="program-subpage-back tap"
+          type="button"
+          onClick={() => setSheet('overview')}
+        >
+          <ArrowLeftIcon /> Program overview
+        </button>
+        <ModuleIntro
+          kicker={`${team.def.abbr} · ${year}`}
+          title={PROGRAM_LABEL[sheet]}
+        />
+        {sheet === 'board' && <BoardSheet team={team} />}
+        {sheet === 'money' && <MoneySheet team={team} />}
+        {sheet === 'watchlist' && <WatchlistSheet />}
+        {sheet === 'hall' && <HallSheet />}
+      </main>
+    );
+  }
 
   return (
     <main className="module-workspace">
       <ModuleIntro
         kicker={`${team.conference} · ${year}`}
         title={team.def.school}
-        text="The school, and what it thinks of you."
+        text="Your job at a glance. Open a card when something needs a closer look."
       />
 
-      {/* The board is talking to you and you are one tab away from hearing it.
-          A review sitting unread behind an inactive tab is the whole reason
-          this screen used to open on the meeting. */}
-      <Segmented
-        label="Program view"
-        value={sheet}
-        onChange={setSheet}
-        options={[
-          { value: 'board', label: waiting ? 'Board ·' : 'Board' },
-          { value: 'money', label: 'Budget' },
-          { value: 'watchlist', label: watch.programs.length > 0 ? `Watch ${watch.programs.length}` : 'Watch' },
-          { value: 'hall', label: 'Hall' },
-        ]}
-      />
+      {unseenTrophies > 0 && (
+        <button className="program-new-alert tap" type="button" onClick={() => setSheet('coach')}>
+          <span><small>NEW IN YOUR CAREER</small><strong>{unseenTrophies === 1 ? 'Coach achievement unlocked' : `${unseenTrophies} coach achievements unlocked`}</strong></span>
+          <em>Open your coach profile</em>
+          <ChevronRightIcon />
+        </button>
+      )}
 
-      {/* The two headline numbers, in the proposal's own dark score panel. */}
       <section className="program-score">
         <div>
           <small>PRESTIGE</small>
@@ -187,30 +152,36 @@ export function Program() {
         </div>
       </section>
 
-      {sheet === 'board' && <BoardSheet team={team} />}
-      {sheet === 'money' && <MoneySheet team={team} />}
-      {sheet === 'watchlist' && <WatchlistSheet />}
-      {sheet === 'hall' && <HallSheet />}
-    </main>
-  );
-}
+      <section className="program-dashboard-grid" aria-label="Program overview">
+        <button className={`program-dashboard-card tap${waiting ? ' is-live' : ''}`} type="button" onClick={() => setSheet('board')}>
+          <span><small>BOARD</small><strong>{waiting ? 'Something is waiting' : security}</strong></span>
+          <p>{ask.summary}</p>
+          <em>{coach.contractYears}y contract · {coach.security} security</em>
+          <ChevronRightIcon />
+        </button>
 
-/** The tabs, in the same clothes the player card and the recruiting sheet wear. */
-function TabStrip(
-  { at, onGo, waiting }:
-  { at: Sheet; onGo: (s: Sheet) => void; waiting: boolean },
-) {
-  return (
-    <Segmented
-      label="Program view"
-      value={at}
-      onChange={onGo}
-      options={SHEETS.map((s) => ({
-        value: s,
-        // The board is talking to you and you are one tab away from hearing it.
-        label: `${SHEET_LABEL[s].charAt(0)}${SHEET_LABEL[s].slice(1).toLowerCase()}${s === 'board' && waiting ? ' ·' : ''}`,
-      }))}
-    />
+        <button className="program-dashboard-card tap" type="button" onClick={() => setSheet('money')}>
+          <span><small>BUDGET</small><strong>{dollars(budgetLeft)} left</strong></span>
+          <p>{staffCount}/3 staff · {facilities} facilities · {books} scouting {books === 1 ? 'report' : 'reports'}</p>
+          <em>{dollars(annualBudget(team.prestige))} annual budget</em>
+          <ChevronRightIcon />
+        </button>
+
+        <button className="program-dashboard-card tap" type="button" onClick={() => setSheet('watchlist')}>
+          <span><small>WATCHLIST</small><strong>{watch.programs.length === 0 ? 'Nothing tracked' : `${watch.programs.length} tracked`}</strong></span>
+          <p>{watch.programs.length === 0 ? 'Follow programs you care about from their profiles.' : 'Programs you want close to your career.'}</p>
+          <em>{watch.jobs.length} job {watch.jobs.length === 1 ? 'path' : 'paths'} tracked</em>
+          <ChevronRightIcon />
+        </button>
+
+        <button className="program-dashboard-card tap" type="button" onClick={() => setSheet('hall')}>
+          <span><small>HALL</small><strong>{hallCount === 0 ? 'No inductees yet' : `${hallCount} inducted`}</strong></span>
+          <p>The players who became part of the program's history.</p>
+          <em>Career leaders live here too</em>
+          <ChevronRightIcon />
+        </button>
+      </section>
+    </main>
   );
 }
 
@@ -252,6 +223,16 @@ function fitLine(
     : `Your own ${seat === 'hitting' ? 'OFFENSE' : 'DEFENSE'} is ${own}.`;
 }
 
+function facilityImpactLine(which: Building, level: number): string {
+  const fx = facilityEffectAt(which, level);
+  const parts: string[] = [];
+  if (fx.bat >= 1) parts.push(`+${Math.round(fx.bat)} bat development`);
+  if (fx.arm >= 1) parts.push(`+${Math.round(fx.arm)} arm development`);
+  if (fx.guard < 0.995) parts.push(`${Math.round((1 - fx.guard) * 100)}% less arm strain`);
+  if (fx.pitch >= 0.01) parts.push(`+${Math.round(fx.pitch * 100)}% development pitch`);
+  return parts.join(' · ');
+}
+
 function MoneySheet({ team }: { team: Owner }) {
   const economy = useDynasty((s) => s.economy);
   const coachSkills = useDynasty((s) => s.coach.skills);
@@ -260,160 +241,346 @@ function MoneySheet({ team }: { team: Owner }) {
   const hireAssistant = useDynasty((s) => s.hireAssistant);
   const fireAssistant = useDynasty((s) => s.fireAssistant);
   const build = useDynasty((s) => s.build);
+  const upgradeFacility = useDynasty((s) => s.upgradeFacility);
   const runsStaff = useDynasty((s) => handles(s.depth, 'assistants'));
   const runsFacilities = useDynasty((s) => handles(s.depth, 'facilities'));
+  const [view, setView] = useState<'plan' | 'staff' | 'facilities' | 'network'>('plan');
+  const [staffSeat, setStaffSeat] = useState<StaffSeat>('hitting');
+  const [facilityFocus, setFacilityFocus] = useState<Building>('cage');
 
   const budget = annualBudget(team.prestige);
   const wages = wageBill(economy.staff);
   const left = remaining(economy, team.prestige);
-  const level = FACILITIES[economy.facilities];
-  // How much of each side of the club is still being made — the fact the
-  // fit line reports about a teacher.
+  const committed = wages + economy.spent;
+  const staffCount = SEATS.filter((seat) => economy.staff[seat]).length;
+  const facilityCount = BUILDINGS.filter((b) => facilityLevel(economy, b.key) > 0).length;
   const youngBats = team.team.lineup.concat(team.team.bench)
     .filter((q) => q.classYear === 'FR' || q.classYear === 'SO').length;
   const youngArms = team.team.rotation.concat(team.team.bullpen)
     .filter((q) => q.classYear === 'FR' || q.classYear === 'SO').length;
-  const next = FACILITIES[economy.facilities + 1];
-  const books = Object.values(economy.scouted).length;
+  const day = season?.dayIndex ?? 0;
+  const books = Object.values(economy.scouted).filter((until) => until >= day).length;
   const worldKey = String(season?.seed ?? 0);
+  const pipelineStates = new Set<string>([
+    team.def.state,
+    ...Object.keys(economy.pipelines ?? {}),
+    ...(economy.staff.recruiting?.pipelineState ? [economy.staff.recruiting.pipelineState] : []),
+  ]);
+  const pipelines = [...pipelineStates]
+    .map((state) => ({
+      state,
+      strength: pipelineStrength(economy, state, team.def.state),
+      signings: economy.pipelines?.[state]?.signings ?? 0,
+      source: economy.staff.recruiting?.pipelineState === state ? 'COORDINATOR' : state === team.def.state ? 'HOME' : 'BUILT',
+    }))
+    .filter((pipe) => pipe.strength >= 20)
+    .sort((a, b) => b.strength - a.strength || a.state.localeCompare(b.state));
+  const nextFacility = BUILDINGS
+    .map((b) => {
+      const level = facilityLevel(economy, b.key);
+      const next = Math.min(FACILITY_MAX_LEVEL, level + 1);
+      return { ...b, level, next, cost: facilityUpgradeCost(b.key, next) };
+    })
+    .filter((b) => b.level < FACILITY_MAX_LEVEL)
+    .sort((a, b) => a.cost - b.cost)[0] ?? null;
 
   return (
     <>
-      <MetricStrip>
-        <Metric label="THIS YEAR" value={dollars(budget)} note={`AT ${team.prestige} PRESTIGE`} />
-        <Metric label="WAGES" value={dollars(wages)} note="THE STAFF" />
-        <Metric label="LEFT" value={dollars(Math.max(0, left))} note="TO SPEND" />
-      </MetricStrip>
-
-      <BudgetBar
-        label={`THE ${year} LEDGER`}
-        value={`${dollars(Math.max(0, left))} left`}
-        fraction={Math.min(1, (wages + economy.spent) / Math.max(1, budget))}
-      />
-
-      <SectionHeading kicker="THE STAFF" title="Three seats" />
-      {!runsStaff && (
-        <FieldNote
-          title="Your athletic director runs the staff"
-          text="Seats are kept filled with the best man the budget carries. Take
-            it back from Settings any time."
-        />
-      )}
-      {SEATS.map((seat) => {
-        const man = economy.staff[seat];
-        return (
-          <div key={seat}>
-            <div className="flow-section-title" style={{ marginTop: 12 }}>
-              <span className="label">{SEAT_LABEL[seat].toUpperCase()}</span>
-              <b>{man ? `${dollars(man.wage)} A YEAR` : 'VACANT'}</b>
-            </div>
-            {man ? (
-              <section className="staff-card">
-                <div>
-                  <strong>{man.name}</strong>
-                  <small>age {man.age} · rated {man.rating}</small>
-                  <p>{SEAT_NOTE[seat]}</p>
-                </div>
-                {runsStaff && (
-                  <button
-                    className="tap"
-                    type="button"
-                    onClick={() => fireAssistant(seat)}
-                  >LET HIM GO</button>
-                )}
-              </section>
-            ) : (
-              <section className="hire-market">
-                {marketFor(worldKey, year, seat).map((m, slot) => {
-                  const w = winterCraft(m);
-                  const n = nightCraft(m);
-                  const top = Math.max(w, n, 1);
-                  return (
-                    <article className="hire-card" key={m.id}>
-                      <header>
-                        <span>
-                          <strong>{m.name}</strong>
-                          <small>{shapeOf(m)} · age {m.age}</small>
-                        </span>
-                        <b>{dollars(m.wage)}</b>
-                      </header>
-                      {/* The two halves of the man, side by side, because
-                          comparing them across cards IS the decision. */}
-                      <div className="hire-split">
-                        <span>
-                          <small>WINTER</small>
-                          <i style={{ width: `${Math.round((w / top) * 100)}%` }} />
-                          <b>{w}</b>
-                        </span>
-                        <span>
-                          <small>THE NIGHT</small>
-                          <i style={{ width: `${Math.round((n / top) * 100)}%` }} />
-                          <b>{n}</b>
-                        </span>
-                      </div>
-                      <p className="hire-fit">{fitLine(
-                        seat, m,
-                        seat === 'hitting' ? coachSkills.offense
-                          : seat === 'pitching' ? coachSkills.defense
-                            : coachSkills.recruiting,
-                        seat === 'pitching' ? youngArms : youngBats,
-                      )}</p>
-                      <button
-                        className="tap"
-                        type="button"
-                        disabled={!runsStaff || left < m.wage}
-                        onClick={() => hireAssistant(seat, slot)}
-                      >{left < m.wage ? 'Beyond the budget' : 'Hire him'}</button>
-                    </article>
-                  );
-                })}
-              </section>
-            )}
-          </div>
-        );
-      })}
-
-      <SectionHeading
-        kicker="THE PLANT"
-        title={(economy.built?.length ?? economy.facilities) === 0
-          ? 'Bare ground'
-          : `${economy.built?.length ?? economy.facilities} of ${BUILDINGS.length} up`}
-      />
-      {!runsFacilities && (
-        <FieldNote
-          title="Your athletic director spends the budget"
-          text="He puts up whichever building the money reaches first."
-        />
-      )}
-      <section className="build-market">
-        {BUILDINGS.map((b) => {
-          const up = (economy.built ?? []).includes(b.key);
-          return (
-            <article className={`build-card${up ? ' is-up' : ''}`} key={b.key}>
-              <header>
-                <strong>{b.label}</strong>
-                <b>{up ? 'UP' : dollars(b.cost)}</b>
-              </header>
-              <p>{b.blurb}</p>
-              {!up && runsFacilities && (
-                <button
-                  className="tap"
-                  type="button"
-                  disabled={left < b.cost}
-                  onClick={() => build(b.key)}
-                >{left < b.cost ? 'Beyond the budget' : 'Break ground'}</button>
-              )}
-            </article>
-          );
-        })}
+      <section className="money-command-center">
+        <div className="money-available">
+          <small>AVAILABLE TO DEPLOY</small>
+          <strong>{dollars(Math.max(0, left))}</strong>
+          <p>{dollars(committed)} committed of {dollars(budget)} this year.</p>
+        </div>
+        <div className="money-ledger-track" aria-label={`${dollars(committed)} committed of ${dollars(budget)}`}>
+          <i><b style={{ width: `${Math.round(Math.min(1, committed / Math.max(1, budget)) * 100)}%` }} /></i>
+          <span><small>COMMITTED</small><b>{Math.round(Math.min(1, committed / Math.max(1, budget)) * 100)}%</b></span>
+        </div>
+        <div className="money-allocation-strip">
+          <span><small>STAFF</small><strong>{dollars(wages)}</strong></span>
+          <span><small>PROJECTS + SCOUTING</small><strong>{dollars(economy.spent)}</strong></span>
+          <span><small>ROOM</small><strong>{dollars(Math.max(0, left))}</strong></span>
+        </div>
       </section>
 
-      <SectionHeading kicker="THE SCOUTING DESK" title={books === 0 ? 'No books bought' : `${books} ${books === 1 ? 'book' : 'books'} this year`} />
-      <FieldNote
-        title={`A report is ${dollars(SCOUT_COST)}`}
-        text="Bought from PROGRAM ACTIONS on any college page. One book reads a
-          whole roster for a stretch of games — a habit no budget survives."
+      <Segmented<'plan' | 'staff' | 'facilities' | 'network'>
+        label="Budget workspace"
+        value={view}
+        onChange={setView}
+        options={[
+          { value: 'plan', label: 'Plan' },
+          { value: 'staff', label: 'Staff' },
+          { value: 'facilities', label: 'Facilities' },
+          { value: 'network', label: 'Network' },
+        ]}
       />
+
+      {view === 'plan' && (
+        <section className="money-plan-grid">
+          <button className="money-plan-card tap" type="button" onClick={() => setView('staff')}>
+            <span><small>STAFF</small><strong>{staffCount}/3 seats filled</strong></span>
+            <p>{dollars(wages)} in annual wages. {staffCount < 3 ? `${3 - staffCount} seat${3 - staffCount === 1 ? '' : 's'} still open.` : 'The room is staffed.'}</p>
+            <em>{staffCount < 3 ? 'Hiring changes the fixed cost of every decision after it.' : 'Review strengths, networks, and replacements.'}</em>
+            <ChevronRightIcon />
+          </button>
+
+          <button className="money-plan-card tap" type="button" onClick={() => setView('facilities')}>
+            <span><small>FACILITIES</small><strong>{facilityCount}/3 specialties built</strong></span>
+            <p>{nextFacility ? `${nextFacility.label} can move to level ${nextFacility.next} for ${dollars(nextFacility.cost)}.` : 'Every facility is fully developed.'}</p>
+            <em>{nextFacility && left < nextFacility.cost ? `${dollars(nextFacility.cost - left)} short of the cheapest next project.` : 'Development and recruiting live here.'}</em>
+            <ChevronRightIcon />
+          </button>
+
+          <button className="money-plan-card tap" type="button" onClick={() => setView('network')}>
+            <span><small>NETWORK</small><strong>{pipelines.length} market{pipelines.length === 1 ? '' : 's'} · {books} live report{books === 1 ? '' : 's'}</strong></span>
+            <p>{pipelines[0] ? `${pipelines[0].state} is your strongest relationship at ${pipelines[0].strength}/100.` : 'Your recruiting map is still open ground.'}</p>
+            <em>Scouting reports cost {dollars(SCOUT_COST)} and turn opponent information into playbooks.</em>
+            <ChevronRightIcon />
+          </button>
+        </section>
+      )}
+
+      {view === 'staff' && (
+        <>
+          <section className="money-section-lead compact">
+            <small>FIXED COST</small>
+            <h2>Build the room one seat at a time</h2>
+            <p>Choose a seat, read the fit, then swipe candidates. You should never have to compare three jobs and nine people in one vertical wall.</p>
+          </section>
+          {!runsStaff && (
+            <div className="delegation-banner" role="status">
+              <span><small>DELEGATED</small><strong>Athletic director controls staffing</strong></span>
+              <p>You can still inspect every seat, candidate, cost, and network effect.</p>
+            </div>
+          )}
+
+          <nav className="staff-seat-switcher" aria-label="Coaching staff seats">
+            {SEATS.map((seat) => {
+              const man = economy.staff[seat];
+              return (
+                <button
+                  className={`tap${staffSeat === seat ? ' active' : ''}`}
+                  type="button"
+                  key={seat}
+                  aria-current={staffSeat === seat ? 'page' : undefined}
+                  onClick={() => setStaffSeat(seat)}
+                >
+                  <small>{SEAT_LABEL[seat].toUpperCase()}</small>
+                  <strong>{man?.name ?? 'Open seat'}</strong>
+                  <span>{man ? dollars(man.wage) : 'VACANT'}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          {(() => {
+            const man = economy.staff[staffSeat];
+            const market = marketFor(worldKey, year, staffSeat);
+            return (
+              <>
+                <article className={`staff-focus-card${man ? ' is-filled' : ' is-open'}`}>
+                  <header>
+                    <span>
+                      <small>{SEAT_LABEL[staffSeat].toUpperCase()}</small>
+                      <strong>{man ? man.name : 'This seat is open'}</strong>
+                    </span>
+                    <b>{man ? dollars(man.wage) : 'NO WAGE'}</b>
+                  </header>
+                  {man ? (
+                    <>
+                      <div className="staff-focus-stats">
+                        <span><small>DEVELOPMENT</small><strong>{winterCraft(man)}</strong></span>
+                        <span><small>GAME</small><strong>{nightCraft(man)}</strong></span>
+                        <span><small>YEAR</small><strong>{Math.max(1, year - (man.joinedYear ?? year) + 1)}</strong></span>
+                      </div>
+                      <p>{SEAT_NOTE[staffSeat]}</p>
+                      {staffSeat === 'recruiting' && man.pipelineState && (
+                        <em>Network carried with him: <b>{man.pipelineState}</b></em>
+                      )}
+                      {runsStaff && (
+                        <button className="staff-release tap" type="button" onClick={() => fireAssistant(staffSeat)}>
+                          Let him go
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <div className="staff-vacancy-copy">
+                      <p>{SEAT_NOTE[staffSeat]}</p>
+                      <strong>{market.length} candidates are available this cycle.</strong>
+                    </div>
+                  )}
+                </article>
+
+                <div className="decision-deck-head">
+                  <span><small>MARKET</small><strong>{man ? 'Compare replacements' : 'Choose who gets the seat'}</strong></span>
+                  <em>SWIPE →</em>
+                </div>
+                <section className="candidate-swipe-deck" aria-label={`${SEAT_LABEL[staffSeat]} candidates`}>
+                  {market.map((m, slot) => {
+                    const w = winterCraft(m);
+                    const n = nightCraft(m);
+                    const top = Math.max(w, n, 1);
+                    const affordable = left >= m.wage;
+                    return (
+                      <article className="hire-card candidate-swipe-card" key={m.id}>
+                        <header>
+                          <span>
+                            <strong>{m.name}</strong>
+                            <small>{shapeOf(m)} · age {m.age}{m.pipelineState ? ` · ${m.pipelineState} network` : ''}</small>
+                          </span>
+                          <b>{dollars(m.wage)}</b>
+                        </header>
+                        <div className="hire-split">
+                          <span><small>DEVELOPMENT</small><i style={{ width: `${Math.round((w / top) * 100)}%` }} /><b>{w}</b></span>
+                          <span><small>GAME MANAGEMENT</small><i style={{ width: `${Math.round((n / top) * 100)}%` }} /><b>{n}</b></span>
+                        </div>
+                        <p className="hire-fit">{fitLine(
+                          staffSeat, m,
+                          staffSeat === 'hitting' ? coachSkills.offense : staffSeat === 'pitching' ? coachSkills.defense : coachSkills.recruiting,
+                          staffSeat === 'pitching' ? youngArms : youngBats,
+                        )}</p>
+                        <div className="candidate-cost-preview">
+                          <span><small>AFTER HIRE</small><strong>{affordable ? dollars(left - m.wage) : 'OVER BUDGET'}</strong></span>
+                          {m.pipelineState && <span><small>NETWORK</small><strong>{m.pipelineState}</strong></span>}
+                        </div>
+                        <button className="candidate-hire-cta tap" type="button" disabled={!runsStaff || !affordable} onClick={() => hireAssistant(staffSeat, slot)}>
+                          {!runsStaff ? 'AD controls this seat' : !affordable ? `Need ${dollars(m.wage - left)} more` : man ? `Replace · ${dollars(m.wage)}` : `Hire · ${dollars(m.wage)}`}
+                        </button>
+                      </article>
+                    );
+                  })}
+                </section>
+              </>
+            );
+          })()}
+        </>
+      )}
+
+      {view === 'facilities' && (
+        <>
+          <section className="money-section-lead compact">
+            <small>PROGRAM IDENTITY</small>
+            <h2>Choose the edge you are building</h2>
+            <p>One specialty gets the room. Pick it above, then decide whether the next level is worth what it takes away from the rest of the budget.</p>
+          </section>
+          {!runsFacilities && (
+            <div className="delegation-banner" role="status">
+              <span><small>DELEGATED</small><strong>Athletic director controls projects</strong></span>
+              <p>You can still inspect every specialty, upgrade effect, and budget consequence.</p>
+            </div>
+          )}
+
+          <nav className="facility-specialty-switcher" aria-label="Facility specialties">
+            {BUILDINGS.map((b) => {
+              const level = facilityLevel(economy, b.key);
+              const active = facilityFocus === b.key;
+              return (
+                <button
+                  key={b.key}
+                  type="button"
+                  className={`facility-specialty-tile tap${active ? ' active' : ''}`}
+                  aria-current={active ? 'page' : undefined}
+                  onClick={() => setFacilityFocus(b.key)}
+                >
+                  <span className="facility-specialty-mark" aria-hidden>{b.key === 'cage' ? 'BAT' : b.key === 'pen' ? 'ARM' : 'CLUB'}</span>
+                  <strong>{b.label}</strong>
+                  <small>{level > 0 ? `LEVEL ${level}` : 'NOT BUILT'}</small>
+                  <i>{Array.from({ length: FACILITY_MAX_LEVEL }, (_, i) => <em key={i} className={i < level ? 'on' : ''} />)}</i>
+                </button>
+              );
+            })}
+          </nav>
+
+          {(() => {
+            const b = BUILDINGS.find((item) => item.key === facilityFocus) ?? BUILDINGS[0]!;
+            const level = facilityLevel(economy, b.key);
+            const nextLevel = Math.min(FACILITY_MAX_LEVEL, level + 1);
+            const maxed = level >= FACILITY_MAX_LEVEL;
+            const cost = maxed ? 0 : facilityUpgradeCost(b.key, nextLevel);
+            const affordable = maxed || left >= cost;
+            return (
+              <section className="facility-blueprint">
+                <header>
+                  <span><small>{level > 0 ? `LEVEL ${level} OF ${FACILITY_MAX_LEVEL}` : 'NEW PROJECT'}</small><strong>{b.label}</strong><p>{b.blurb}</p></span>
+                  <b>{maxed ? 'MAX' : dollars(cost)}</b>
+                </header>
+
+                <div className="facility-blueprint-levels" aria-label={`${b.label} progression`}>
+                  {Array.from({ length: FACILITY_MAX_LEVEL }, (_, i) => {
+                    const step = i + 1;
+                    const reached = step <= level;
+                    const next = step === nextLevel && !maxed;
+                    return (
+                      <article key={step} className={`${reached ? ' reached' : ''}${next ? ' next' : ''}`}>
+                        <span><small>LEVEL {step}</small><strong>{reached ? 'ACTIVE' : next ? 'NEXT' : 'LOCKED'}</strong></span>
+                        <p>{facilityImpactLine(b.key, step)}</p>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                <div className="facility-budget-decision">
+                  <span>
+                    <small>{maxed ? 'STATUS' : 'AFTER PROJECT'}</small>
+                    <strong>{maxed ? 'Fully developed' : affordable ? `${dollars(left - cost)} left` : `${dollars(cost - left)} short`}</strong>
+                    <em>{maxed ? 'This specialty has reached its ceiling.' : 'Staff, scouting, and other projects all draw from the same annual room.'}</em>
+                  </span>
+                  {runsFacilities && !maxed && (
+                    <button
+                      className="facility-invest-cta tap"
+                      type="button"
+                      disabled={!affordable}
+                      onClick={() => level === 0 ? build(b.key) : upgradeFacility(b.key)}
+                    >
+                      {affordable ? (level === 0 ? `Build ${b.label}` : `Upgrade to level ${nextLevel}`) : 'Not enough room'}
+                      <small>{dollars(cost)}</small>
+                    </button>
+                  )}
+                </div>
+              </section>
+            );
+          })()}
+        </>
+      )}
+
+      {view === 'network' && (
+        <>
+          <section className="money-section-lead">
+            <small>INFORMATION + ACCESS</small>
+            <h2>Own markets. Know opponents.</h2>
+            <p>Your recruiting network compounds over years; scouting is a short-term spend that turns information into a matchup plan.</p>
+          </section>
+          <section className="network-command-grid">
+            <article className="network-panel">
+              <header><span><small>RECRUITING NETWORK</small><strong>{pipelines.length === 0 ? 'No established markets' : `${pipelines.length} active market${pipelines.length === 1 ? '' : 's'}`}</strong></span></header>
+              {pipelines.length === 0 ? (
+                <p>Repeated signings strengthen a state. Established pipelines improve the local pitch and can extend your recruiting reach.</p>
+              ) : (
+                <div className="pipeline-card-grid">
+                  {pipelines.slice(0, 8).map((pipe) => (
+                    <article className="pipeline-card" key={pipe.state}>
+                      <span><small>{pipe.source}</small><strong>{pipe.state}</strong></span>
+                      <b>{pipelineLabel(pipe.strength)}</b>
+                      <i><em style={{ width: `${pipe.strength}%` }} /></i>
+                      <small>{pipe.strength}/100{pipe.signings > 0 ? ` · ${pipe.signings} signed` : ''}</small>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </article>
+
+            <article className="network-panel scouting-desk-panel">
+              <header><span><small>SCOUTING DESK</small><strong>{books === 0 ? 'No live reports' : `${books} live report${books === 1 ? '' : 's'}`}</strong></span><b>{dollars(SCOUT_COST)} each</b></header>
+              <p>A report reveals team habits and individual tendencies for {SCOUT_DAYS} days, then unlocks an opponent-specific playbook.</p>
+              <div className="scouting-value-grid">
+                <span><small>1</small><strong>Buy the report</strong><em>From a program profile.</em></span>
+                <span><small>2</small><strong>Read the matchup</strong><em>Team habits + player tendencies.</em></span>
+                <span><small>3</small><strong>Build counters</strong><em>The playbook applies automatically.</em></span>
+              </div>
+            </article>
+          </section>
+        </>
+      )}
     </>
   );
 }
@@ -440,22 +607,18 @@ function WatchlistSheet() {
 
   return (
     <>
-      <section className="watchlist-summary">
-        <small>CAREER WATCHLIST</small>
-        <strong>
-          {rows.length === 0 ? 'No programs saved yet'
-            : rows.length === 1 ? '1 program worth tracking'
-              : `${rows.length} programs worth tracking`}
-        </strong>
-        {rows.length === 0 && (
-          <p>PROGRAM ACTIONS on any college page files it here.</p>
-        )}
-      </section>
+      {rows.length > 0 && (
+        <section className="watchlist-summary">
+          <small>CAREER WATCHLIST</small>
+          <strong>{rows.length === 1 ? '1 program tracked' : `${rows.length} programs tracked`}</strong>
+          <p>The Wire gives these programs extra weight.</p>
+        </section>
+      )}
       {rows.length === 0 ? (
         <section className="watchlist-empty">
           <StarIcon />
-          <strong>The board is clean</strong>
-          <p>PROGRAM ACTIONS on any college page files it here.</p>
+          <strong>Nothing tracked yet</strong>
+          <p>Track a program from its profile to follow its biggest stories.</p>
         </section>
       ) : (
         <section className="retention-list">
@@ -750,6 +913,8 @@ const SKILL_NOTE: Record<string, string> = {
 function CoachSheet({ team }: { team: Owner }) {
   const coach = useDynasty((s) => s.coach);
   const history = useDynasty((s) => s.history);
+  const tree = useDynasty((s) => s.economy.tree ?? []);
+  const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   const [view, setView] = useState<CoachView>('overview');
   void version;
@@ -794,26 +959,16 @@ function CoachSheet({ team }: { team: Owner }) {
         on the dark ground, the name across the bottom, and the two numbers that
         are true on every tab boxed in the corner.
       */}
-      <section className="player-hero">
-        <div className="player-hero-face">
-          <CoachPortrait look={coach.look} size={150} />
-        </div>
-        <div className="hero-wash" />
-        <div className="player-identity">
+      <section className="coach-profile-hero">
+        <div className="coach-profile-portrait"><CoachPortrait look={coach.look} size={148} /></div>
+        <div className="coach-profile-copy">
           <small>{team.def.school.toUpperCase()} · {team.conference}</small>
-          <h2>{coach.name.split(' ').map((part, i) => <span key={`${part}-${i}`}>{part}</span>)}</h2>
-          <p>
-            HEAD COACH · {standing.title.toUpperCase()}
-            {standing.lifer ? ' · LIFER' : ''}
-          </p>
+          <h2>{coach.name}</h2>
+          <p>HEAD COACH · {standing.title.toUpperCase()}{standing.lifer ? ' · LIFER' : ''}</p>
         </div>
-        <div className="player-ovr">
-          <small>CAREER</small>
-          <strong>{careerSeasons}</strong>
-        </div>
-        <div className="player-ovr player-pot">
-          <small>HERE</small>
-          <strong>{coach.tenure}</strong>
+        <div className="coach-profile-metrics">
+          <article><small>CAREER</small><strong>{careerSeasons}</strong><span>SEASONS</span></article>
+          <article><small>HERE</small><strong>{coach.tenure}</strong><span>SEASONS</span></article>
         </div>
       </section>
 
@@ -826,7 +981,7 @@ function CoachSheet({ team }: { team: Owner }) {
           option below, and a JobsView beside CareerView reading `jobOffers`
           (engine/program.ts) with an application flow on top. An empty tab
           promising interviews that do not exist would be worse than no tab. */}
-      <Segmented
+      <Segmented<CoachView>
         label="Coach profile section"
         value={view}
         onChange={setView}
@@ -837,176 +992,130 @@ function CoachSheet({ team }: { team: Owner }) {
       />
 
       {view === 'overview' && (
-        <>
-          <Head>INFORMATION</Head>
-          <Panel>
-            <Stat k="AGE" v={String(coach.age)} />
-            <Stat k="FROM" v={region ? `${coach.homeState} · ${region}` : coach.homeState} />
-            <Stat k="CAREER EXPERIENCE" v={seasonWord(careerSeasons)} />
-            <Stat k="AT THIS SCHOOL" v={seasonWord(coach.tenure)} />
-            <Stat
-              k="CONTRACT"
-              v={coach.contractYears > 0
-                ? `${coach.contractYears} of ${coach.contractLength} years left`
-                : 'Final year'}
-            />
-            <Stat k="PHILOSOPHY" v={philosophy.name} />
-            <Meter
-              k="COACH PRESTIGE"
-              v={String(coach.prestige)}
-              value={coach.prestige}
-              note="What the country thinks of you — it decides whose call you get. The school's prestige stays with the school."
-              last
-            />
-          </Panel>
+        <div className="coach-profile-section">
+          <section className="coach-profile-facts">
+            <article><small>AGE / HOME</small><strong>{coach.age}</strong><span>{region ? `${coach.homeState} · ${region}` : coach.homeState}</span></article>
+            <article><small>PHILOSOPHY</small><strong>{philosophy.name}</strong><span>{standing.title}</span></article>
+            <article><small>CONTRACT</small><strong>{coach.contractYears > 0 ? `${coach.contractYears} left` : 'Final year'}</strong><span>{coach.contractLength}-year deal</span></article>
+            <article className="coach-prestige-fact"><small>COACH PRESTIGE</small><strong>{coach.prestige}</strong><span>National reputation</span><i><em style={{ width: `${Math.min(100, coach.prestige)}%` }} /></i></article>
+          </section>
 
-          <div style={{ marginTop: 14 }}>
-            <Head>THE RECORD</Head>
-            <Panel>
-              <Stat k="CAREER" v={`${coach.careerWins}-${coach.careerLosses}`} />
-              <Stat k="WIN PCT" v={games > 0 ? pct(coach.careerWins / games) : '—'} />
-              <Stat k="THIS SEASON" v={`${team.w}-${team.l}`} />
-              <Stat k="TOURNAMENT BIDS" v={String(coach.tournaments)} />
-              <Stat k="CONFERENCE TITLES" v={String(coach.conferenceTitles)} />
-              {/* One row per thing there is to win, in the order the pyramid is
-                  climbed. The regional row is what B6 added; the trip to Omaha
-                  beside it is the same event under the name the player knows it
-                  by, which is exactly why they print the same number. */}
-              <Stat k="REGIONAL TITLES" v={String(coach.regionalTitles)} />
-              <Stat k="TRIPS TO OMAHA" v={String(omaha)} />
-              <Stat k="NATIONAL TITLES" v={String(coach.titles)} last />
-            </Panel>
-          </div>
-
-        </>
+          <section className="coach-record-command">
+            <header><small>THE RECORD</small><strong>{coach.careerWins}-{coach.careerLosses}</strong><span>{games > 0 ? pct(coach.careerWins / games) : '—'} WIN PCT</span></header>
+            <div className="coach-record-grid">
+              <article><small>THIS YEAR</small><strong>{team.w}-{team.l}</strong></article>
+              <article><small>BIDS</small><strong>{coach.tournaments}</strong></article>
+              <article><small>CONF TITLES</small><strong>{coach.conferenceTitles}</strong></article>
+              <article><small>REGIONALS</small><strong>{coach.regionalTitles}</strong></article>
+              <article><small>OMAHA</small><strong>{omaha}</strong></article>
+              <article className={coach.titles > 0 ? 'earned' : ''}><small>NATIONAL</small><strong>{coach.titles}</strong></article>
+            </div>
+          </section>
+        </div>
       )}
 
       {view === 'skills' && (
-        <>
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-          }}>
-            <Head>FOUR SKILLS</Head>
-            {coach.skillPoints > 0 && (
-              <span style={{
-                font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: 'var(--clay)',
-              }}>{coach.skillPoints} POINT{coach.skillPoints === 1 ? '' : 'S'} UNSPENT</span>
-            )}
+        <div className="coach-profile-section">
+          <section className="coach-skills-head">
+            <span><small>COACHING PROFILE</small><strong>Four skills</strong></span>
+            <b>{coach.skillPoints > 0 ? `${coach.skillPoints} UNSPENT` : 'SET'}</b>
+          </section>
+          <div className="coach-skill-grid">
+            {SKILLS.map((k) => (
+              <article className="coach-skill-card" key={k}>
+                <header><small>{SKILL_LABEL[k]}</small><strong>{coach.skills[k]}</strong></header>
+                <i><em style={{ width: `${Math.min(100, coach.skills[k])}%` }} /></i>
+                <p>{SKILL_NOTE[k]}</p>
+              </article>
+            ))}
           </div>
-          {/* Values and what each one buys. The +1 controls live on the coach
-              step of the offseason — the one moment spending is valid — so this
-              page reports rather than pretending to a button that would refuse. */}
-          {SKILLS.map((k) => (
-            <div key={k} style={{
-              marginTop: 8, padding: '11px 12px 6px',
-              border: '1px solid var(--faint)', background: 'var(--paper)',
-            }}>
-              <Bar label={SKILL_LABEL[k]} value={coach.skills[k]} />
-              <div style={{
-                margin: '2px 0 6px', font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
-              }}>{SKILL_NOTE[k]}</div>
-            </div>
-          ))}
-          <Note>
+          <p className="coach-profile-note">
             {coach.skillPoints > 0
-              ? 'Spent on the coach step of the offseason.'
-              : 'Three arrive each June, more for silverware — spent on the coach step.'}
-          </Note>
+              ? 'Unspent points can be assigned during the coach step of the offseason.'
+              : 'Three points arrive each June, with additional growth for major accomplishments.'}
+          </p>
+        </div>
+      )}
+
+      {view === 'career' && (
+        <>
+          <CareerView history={history} coach={coach} />
+          {tree.length > 0 && (
+            <>
+              <Head>COACHING TREE</Head>
+              <section className="coach-tree-list coach-tree-career">
+                {tree.map((branch) => {
+                  const chair = season?.teams.find((t) => t.coach?.name === branch.name);
+                  const c = chair?.coach;
+                  return (
+                    <article className="coach-tree-row" key={branch.id}>
+                      <span>
+                        <strong>{branch.name}</strong>
+                        <small>{SEAT_LABEL[branch.seat]} · {branch.yearsWithYou} {branch.yearsWithYou === 1 ? 'year' : 'years'} on your staff</small>
+                      </span>
+                      <span>
+                        <b>{chair ? chair.def.school : branch.lastSchool ?? 'Not currently coaching'}</b>
+                        <small>{c
+                          ? `${c.careerWins}-${c.careerLosses}${c.titles ? ` · ${c.titles} title${c.titles === 1 ? '' : 's'}` : ''}`
+                          : branch.careerWins !== undefined
+                            ? `${branch.careerWins}-${branch.careerLosses ?? 0}${branch.titles ? ` · ${branch.titles} title${branch.titles === 1 ? '' : 's'}` : ''} · inactive`
+                            : `left ${branch.leftYear}`}</small>
+                      </span>
+                    </article>
+                  );
+                })}
+              </section>
+            </>
+          )}
         </>
       )}
 
-      {view === 'career' && <CareerView history={history} coach={coach} />}
-
       {view === 'trophies' && (
-        <>
-          <Head>TROPHY CASE</Head>
-          {/* The three shelves always hang, zeros included. A banner reading 0
-              says what there is to win here; a paragraph saying the case was
-              empty said the same thing in more room and less baseball. */}
+        <div className="coach-profile-section">
           {(() => {
             const titles = history.filter((r) => r.finish === 'champion');
             const omahaYears = history.filter((r) =>
               r.finish === 'omaha' || r.finish === 'runner-up' || r.finish === 'champion');
             const confYears = history.filter((r) => r.wonConference);
             const shelves = [
-              { k: 'NATIONAL TITLES', n: coach.titles, years: titles, tone: 'var(--clay)' },
-              { k: 'TRIPS TO OMAHA', n: omaha, years: omahaYears, tone: 'var(--navy)' },
-              { k: 'CONFERENCE TITLES', n: coach.conferenceTitles, years: confYears, tone: 'var(--win)' },
+              { k: 'NATIONAL TITLES', n: coach.titles, years: titles, tone: 'national' },
+              { k: 'TRIPS TO OMAHA', n: omaha, years: omahaYears, tone: 'omaha' },
+              { k: 'CONFERENCE TITLES', n: coach.conferenceTitles, years: confYears, tone: 'conference' },
             ];
             return (
-              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                {shelves.map((s) => (
-                  <div key={s.k} style={{
-                    flex: 1, padding: '10px 8px 12px', textAlign: 'center',
-                    background: 'var(--paper)', border: '1px solid var(--faint)',
-                    borderTop: `3px solid ${s.tone}`,
-                  }}>
-                    <div className="label">{s.k}</div>
-                    <div style={{
-                      marginTop: 4, font: "800 calc(26px * var(--ts))/1 var(--display)",
-                      color: s.n > 0 ? s.tone : 'var(--faint)',
-                    }}>{s.n}</div>
-                    <div style={{
-                      marginTop: 3, font: "400 calc(8.5px * var(--ts)) var(--mono)", color: 'var(--dim)',
-                    }}>
-                      {s.years.slice(0, 3).map((r) => r.year).join(' · ') || '—'}
-                      {s.years.length > 3 ? ' …' : ''}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <section className="coach-trophy-case">
+                <header><small>CAREER CABINET</small><strong>Trophy case</strong></header>
+                <div className="coach-trophy-grid">
+                  {shelves.map((shelf) => (
+                    <article className={`coach-trophy-card tone-${shelf.tone}`} key={shelf.k}>
+                      <small>{shelf.k}</small>
+                      <strong>{shelf.n}</strong>
+                      <span>{shelf.years.slice(0, 3).map((r) => r.year).join(' · ') || '—'}{shelf.years.length > 3 ? ' …' : ''}</span>
+                    </article>
+                  ))}
+                </div>
+              </section>
             );
           })()}
 
-          {/*
-            The cabinet.
-
-            Only what he has actually done, and deliberately no greyed-out rows
-            for the rest. An achievement is one-time and permanent, so a list of
-            the ten with eight crossed off is a checklist, and a checklist on
-            this page would be a set of instructions about how to play a game
-            that is supposed to be about running a program. What is unearned is
-            simply absent.
-          */}
           {cabinet.length > 0 && (
-            <div style={{ marginTop: 14 }}>
-              <Head>ACHIEVEMENTS</Head>
-              <Panel>
-                {cabinet.map((id, i) => {
+            <section className="coach-achievement-case">
+              <header><small>CAREER MILESTONES</small><strong>Achievements</strong></header>
+              <div className="coach-achievement-grid">
+                {cabinet.map((id) => {
                   const row = coach.achievements[id];
                   return (
-                    <div
-                      key={id}
-                      style={{
-                        padding: '9px 12px',
-                        borderBottom: i === cabinet.length - 1
-                          ? 'none' : '1px solid var(--hairline)',
-                      }}
-                    >
-                      <div style={{
-                        display: 'flex', justifyContent: 'space-between',
-                        alignItems: 'baseline', gap: 8,
-                      }}>
-                        <span style={{
-                          font: "800 calc(14px * var(--ts))/1.1 var(--display)", textTransform: 'uppercase',
-                        }}>{ACHIEVEMENTS[id].name}</span>
-                        <span style={{
-                          font: "600 calc(10px * var(--ts)) var(--mono)", color: 'var(--clay)', whiteSpace: 'nowrap',
-                        }}>{row?.team} {row?.year}</span>
-                      </div>
-                      <div style={{
-                        marginTop: 3, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
-                      }}>{row?.detail ?? ACHIEVEMENTS[id].note}</div>
-                    </div>
+                    <article key={id}>
+                      <span><strong>{ACHIEVEMENTS[id].name}</strong><small>{row?.team} {row?.year}</small></span>
+                      <p>{row?.detail ?? ACHIEVEMENTS[id].note}</p>
+                    </article>
                   );
                 })}
-              </Panel>
-              <Note>
-                Earned once and kept for ever, wherever you coach next.
-              </Note>
-            </div>
+              </div>
+              <p className="coach-profile-note">Earned once and kept wherever the career goes next.</p>
+            </section>
           )}
-        </>
+        </div>
       )}
       <FirstVisit id="coach" />
     </>
@@ -1024,74 +1133,49 @@ function CoachSheet({ team }: { team: Owner }) {
 function CareerView({ history, coach }: { history: SeasonRecord[]; coach: CoachState }) {
   if (history.length === 0) {
     return (
-      <>
-        <Head>YEAR BY YEAR</Head>
-        <Panel>
-          <div style={{
-            padding: '16px 12px', textAlign: 'center',
-            font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
-          }}>
-            The first line goes in at the June board meeting.
-          </div>
-        </Panel>
-      </>
+      <section className="coach-career-empty">
+        <small>YEAR BY YEAR</small>
+        <strong>The book starts in June</strong>
+        <p>Your first completed season is written at the board meeting.</p>
+      </section>
     );
   }
 
-  // Grouped by school, in the order the career visited them.
-  const spans: { school: string; rows: SeasonRecord[] }[] = [];
-  for (const r of history) {
-    const school = r.school ?? 'Unknown';
+  const spans: Array<{ school: string; rows: SeasonRecord[] }> = [];
+  for (const row of history) {
     const last = spans[spans.length - 1];
-    if (last && last.school === school) last.rows.push(r);
-    else spans.push({ school, rows: [r] });
+    const school = row.school ?? 'Previous program';
+    if (last && last.school === school) last.rows.push(row);
+    else spans.push({ school, rows: [row] });
   }
 
   return (
-    <>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-      }}>
-        <Head>YEAR BY YEAR</Head>
-        <span style={{ font: "600 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
-          {coach.careerWins}-{coach.careerLosses} CAREER
-        </span>
+    <div className="coach-career-view">
+      <header className="coach-career-head">
+        <span><small>YEAR BY YEAR</small><strong>Career path</strong></span>
+        <b>{coach.careerWins}-{coach.careerLosses}</b>
+      </header>
+      <div className="coach-career-spans">
+        {spans.map((span, si) => (
+          <section className="coach-career-school" key={`${span.school}-${si}`}>
+            <header style={{ borderTopColor: teamColour(abbrOfSchool(span.school)) }}>
+              <span><small>PROGRAM</small><strong>{span.school}</strong></span>
+              <b>{seasonWord(span.rows.length)}</b>
+            </header>
+            <div className="coach-career-years">
+              {span.rows.map((row) => (
+                <article className={row.finish === 'champion' ? 'champion' : ''} key={row.year}>
+                  <strong>{row.year}</strong>
+                  <b>{row.w}-{row.l}</b>
+                  <span>{FINISH_WORD[row.finish] ?? row.finish}{row.wonConference ? ' · conference champions' : ''}</span>
+                  <em>{row.finish === 'champion' ? 'TITLE' : ''}</em>
+                </article>
+              ))}
+            </div>
+          </section>
+        ))}
       </div>
-      {spans.map((span, si) => (
-        <div key={`${span.school}-${si}`} style={{ marginTop: si === 0 ? 8 : 12 }}>
-          <div style={{
-            font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-            color: teamColour(
-              span.rows[0]?.school !== undefined ? abbrOfSchool(span.school) : '',
-            ),
-            marginBottom: 4,
-          }}>{span.school.toUpperCase()} · {seasonWord(span.rows.length)}</div>
-          <Panel>
-            {span.rows.map((r, i) => (
-              <div key={r.year} style={{
-                display: 'grid', gridTemplateColumns: '40px 56px 1fr auto',
-                gap: 8, alignItems: 'baseline', padding: '8px 12px',
-                borderBottom: i === span.rows.length - 1 ? 'none' : '1px solid var(--hairline)',
-              }}>
-                <span style={{ font: "700 calc(13px * var(--ts)) var(--display)" }}>{r.year}</span>
-                <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)" }}>{r.w}-{r.l}</span>
-                <span style={{
-                  font: "400 calc(11px * var(--ts)) var(--body)", color: 'var(--dim)',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>{FINISH_WORD[r.finish] ?? r.finish}{r.wonConference ? ' · conference champions' : ''}</span>
-                <span style={{
-                  font: "700 calc(11px * var(--ts)) var(--mono)",
-                  color: r.finish === 'champion' ? 'var(--clay)' : 'transparent',
-                }}>◆</span>
-              </div>
-            ))}
-          </Panel>
-        </div>
-      ))}
-      <Note>
-        Your career, wherever it was coached.
-      </Note>
-    </>
+    </div>
   );
 }
 

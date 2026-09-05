@@ -77,7 +77,7 @@ export function Rankings() {
         text="Who is beating whom, weighted by whom they beat."
       />
 
-      <Segmented
+      <Segmented<Depth>
         label="Ranking depth"
         value={depth}
         onChange={setDepth}

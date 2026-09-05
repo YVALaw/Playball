@@ -36,6 +36,7 @@ import {
 import { makeRng } from '../src/engine/rng.js';
 import { restoreInbox, unreadCount } from '../src/engine/inbox.js';
 import { buildCase } from '../src/engine/hall.js';
+import { freshEconomy, marketFor } from '../src/engine/economy.js';
 
 // Saving touches IndexedDB, which node does not have. The store already treats
 // a failed save as a surfaced error rather than a crash, so the tests simply
@@ -434,6 +435,51 @@ describe('a coaching philosophy reaches the field', () => {
     // a bench that belonged to somebody who no longer works there.
     expect(teams?.[0]?.strategy).toEqual(strategyFor(0));
   });
+
+  it('leaves program assets behind when the coach takes a new chair', async () => {
+    useDynasty.getState().start(4242, 0);
+    const eco = freshEconomy();
+    const coordinator = marketFor('move-test', 2030, 'recruiting')[0]!;
+    eco.staff.recruiting = coordinator;
+    eco.tree = [{
+      id: 'tree-1', name: 'Former Assistant', seat: 'hitting', joinedYear: 2026,
+      leftYear: 2029, yearsWithYou: 3, lastSchool: 'Old State',
+      careerWins: 10, careerLosses: 8, titles: 0, active: true,
+    }];
+    eco.built = ['cage'];
+    eco.facilityLevels = { cage: 2 };
+    eco.facilities = 1;
+    eco.pipelines = { TX: { state: 'TX', strength: 72, signings: 4, lastSignedYear: 2029 } };
+    eco.spent = 155;
+    eco.scouted = { 7: 12 };
+    useDynasty.setState({
+      economy: eco,
+      offers: [{ team: 5, school: 'Somewhere State', conference: 'GULF', prestige: 50, pitch: 'Come coach here.' }],
+    });
+
+    await useDynasty.getState().acceptOffer(5);
+    const moved = useDynasty.getState().economy;
+    expect(moved.staff.recruiting?.id).toBe(coordinator.id);
+    expect(moved.tree?.[0]?.name).toBe('Former Assistant');
+    expect(moved.built).toEqual([]);
+    expect(moved.facilityLevels).toEqual({});
+    expect(moved.facilities).toBe(0);
+    expect(moved.pipelines).toEqual({});
+    expect(moved.scouted).toEqual({});
+    expect(moved.spent).toBe(0);
+  });
+
+  it('can mint a staff-prepared opponent playbook even without a paid report', () => {
+    useDynasty.getState().start(4242, 0);
+    const season = useDynasty.getState().season!;
+    const opponent = season.teams.find((t) => t.index !== useDynasty.getState().userTeam)!;
+    season.playbooks = {};
+
+    useDynasty.getState().autoSetPlaybook(opponent.def.abbr);
+
+    expect(season.playbooks?.[opponent.def.abbr]).toBeDefined();
+  });
+
 });
 
 describe('a postseason survives being put down and picked up', () => {

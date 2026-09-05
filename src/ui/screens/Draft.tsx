@@ -119,7 +119,7 @@ export function Draft() {
         <Metric label="BUDGET LEFT" value={String(left)} note={`OF ${pool}`} />
       </MetricStrip>
 
-      <Segmented
+      <Segmented<View>
         label="Draft section"
         value={view}
         onChange={setView}
@@ -141,7 +141,7 @@ export function Draft() {
   )}
     >
     <FirstVisit id="draftphase" />
-    <div style={{ padding: '10px 14px 22px' }}>
+    <div className="offseason-draft" style={{ padding: '10px 14px 22px' }}>
       {view === 'keep' && (
         <KeepList men={board?.men ?? []} left={left} pool={pool} abbr={team.def.abbr} />
       )}
@@ -160,11 +160,11 @@ export function Draft() {
           {holes.length > 0 && (
             <>
               <div className="label" style={{ marginBottom: 7 }}>THE HOLES THIS LEAVES</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+              <div className="draft-holes-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
                 {holes.map((h, i) => (
                   <div
                     key={h.pos}
-                    className="card-in"
+                    className="card-in draft-hole-card"
                     style={{
                       padding: '7px 10px',
                       border: '1px solid var(--clay)',
@@ -298,177 +298,86 @@ function KeepSheet(
   const hints = pullHints(p);
   const done = man.outcome !== 'pending';
   const stayed = man.outcome === 'stayed';
-  const set = (n: number) => setOffer(Math.max(0, Math.min(left, Math.round(n))));
 
   return (
     <InFrame>
-    <div
-      className="sheet-scrim retention-scrim fade-in"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Talking to ${p.name}`}
-    >
-      {/*
-        The retention call, on the proposal's own sheet anatomy: the man at the
-        top of it as a row you can open, the reason under him, and the pitches as
-        cards. It was the last sheet in the app still drawing its own header.
-      */}
-      <section className="retention-sheet sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="retention-head">
-          <button className="portal-player tap" type="button" onClick={() => openPlayer(p.id)}>
-            <span className="portal-avatar"><Avatar id={p.id} team={abbr} size={38} /></span>
-            <span>
-              <strong>{p.name}</strong>
-              <small>
-                {slotOf(p)} · {p.classYear} · {overallOf(p)} OVR · round {man.round} pick
-              </small>
-            </span>
-          </button>
-          <button
-            className="header-icon tap"
-            type="button"
-            aria-label="Close"
-            onClick={onClose}
-          ><Cross1Icon /></button>
-        </div>
+      <div className="sheet-scrim retention-scrim fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Talking to ${p.name}`}>
+        <section className="retention-sheet retention-call-modern rise-in" onClick={(e) => e.stopPropagation()}>
+          <header className="retention-call-hero">
+            <button className="retention-call-player tap" type="button" onClick={() => openPlayer(p.id)}>
+              <Avatar id={p.id} team={abbr} size={50} />
+              <span><small>ROUND {man.round} · {slotOf(p)} · {p.classYear}</small><strong>{p.name}</strong><em>{overallOf(p)} OVR</em></span>
+            </button>
+            <button className="retention-call-close tap" type="button" onClick={onClose}>CLOSE</button>
+          </header>
 
-        <div className="retention-body">
-          {/* The prospect profile's own quote anatomy, so a retention call
-              reads like every other conversation in the game. Reported: "you
-              are still using the old conversation design." */}
-          <section className="scout-note">
-            <small>WHAT HIS PEOPLE SAY</small>
-            <p>&ldquo;{hints[0]}&rdquo; &ldquo;{hints[1]}&rdquo;</p>
-          </section>
+          {!done ? (
+            <div className="retention-call-body">
+              <section className="retention-call-read">
+                <small>WHAT HIS CAMP IS SAYING</small>
+                <div><p>“{hints[0]}”</p><p>“{hints[1]}”</p></div>
+              </section>
 
-          {!done && (
-            <>
-              <div className="flow-section-title" style={{ marginTop: 12 }}>
-                <span className="label">WHAT A ROUND {man.round} MAN WANTS</span>
-                <b style={{ font: "700 calc(15px * var(--ts)) var(--display)" }}>{needs}</b>
-              </div>
+              <section className="retention-call-target">
+                <span><small>ROUND {man.round} MARKET</small><strong>{needs}</strong><em>what it usually takes</em></span>
+                <span><small>YOU HAVE</small><strong>{left}</strong><em>retention points</em></span>
+              </section>
 
-              <div style={{
-                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginTop: 8,
-              }}>
+              <section className="retention-pitch-grid">
                 {KEEP_PITCHES.map((k) => (
-                  <button
-                    key={k}
-                    onClick={() => setPitch(k)}
-                    className="tap"
-                    style={{
-                      padding: '9px 4px', minHeight: 36,
-                      background: k === pitch ? 'var(--ink)' : 'var(--paper)',
-                      border: k === pitch ? '1px solid var(--ink)' : '1px solid rgba(var(--ink-rgb), .28)',
-                      color: k === pitch ? 'var(--cream)' : 'var(--ink)',
-                      font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.07em',
-                    }}
-                  >{KEEP_LABEL[k]}</button>
+                  <button key={k} type="button" className={`retention-pitch-card tap${pitch === k ? ' selected' : ''}`} onClick={() => setPitch(k)}>
+                    <small>{pitch === k ? 'YOUR PITCH' : 'ANGLE'}</small>
+                    <strong>{KEEP_LABEL[k]}</strong>
+                    <p>{KEEP_RESTS_ON[k]}</p>
+                  </button>
                 ))}
-              </div>
+              </section>
 
-              {pitch && (
-                <>
-                  <section className="scout-note" style={{ marginTop: 9 }}>
-                    <small>YOUR CASE</small>
-                    <p>&ldquo;{KEEP_CASE[pitch]}&rdquo;</p>
-                    <p style={{
-                      marginTop: 5, font: "400 calc(10px * var(--ts))/1.4 var(--mono)", color: 'var(--dim)',
-                    }}>{KEEP_RESTS_ON[pitch]}</p>
-                  </section>
-
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 6, marginTop: 10,
-                  }}>
-                    <span style={{
-                      font: "800 calc(26px * var(--ts))/1 var(--display)",
-                      color: offer > 0 ? 'var(--clay)' : 'var(--dim)',
-                      minWidth: 44, textAlign: 'right',
-                    }}>{offer}</span>
-                    <Step label="−10" onClick={() => set(offer - 10)} off={offer === 0} />
-                    <Step label="−1" onClick={() => set(offer - 1)} off={offer === 0} />
-                    <Step label="+1" onClick={() => set(offer + 1)} off={offer >= left} />
-                    <Step label="+10" onClick={() => set(offer + 10)} off={offer >= left} />
-                    <Step label="ALL" onClick={() => set(left)} off={offer >= left} wide />
+              {pitch ? (
+                <section className="retention-offer-board">
+                  <header><small>THE CASE YOU MAKE</small><strong>“{KEEP_CASE[pitch]}”</strong></header>
+                  <div className="retention-investment">
+                    <span><small>COMMIT</small><strong>{offer}</strong></span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={Math.max(0, left)}
+                      value={offer}
+                      onChange={(e) => setOffer(Number(e.target.value))}
+                      aria-label="Retention points to offer"
+                    />
+                    <span><small>LEFT AFTER</small><strong>{Math.max(0, left - offer)}</strong></span>
                   </div>
-
-                  <button
-                    className="primary-command"
-                    onClick={() => keepPlayer(p.id, pitch, offer)}
-                    disabled={offer <= 0}
-                    style={{ marginTop: 10 }}
-                  >MAKE THE CASE</button>
-                </>
+                  <div className="retention-quick-picks">
+                    {[Math.min(left, 10), Math.min(left, Math.max(1, Math.round(needs * .75))), Math.min(left, needs), left]
+                      .filter((n, i, a) => n > 0 && a.indexOf(n) === i)
+                      .map((n) => <button type="button" className="tap" key={n} onClick={() => setOffer(n)}>{n === left ? 'ALL' : n}</button>)}
+                  </div>
+                  <button className="primary-command tap" type="button" disabled={offer <= 0} onClick={() => keepPlayer(p.id, pitch, offer)}>
+                    MAKE THE CASE · {offer}
+                  </button>
+                </section>
+              ) : (
+                <p className="retention-pick-prompt">Choose the argument you want to make before you put points behind it.</p>
               )}
 
-              <button
-                onClick={() => releasePlayer(p.id)}
-                style={{
-                  width: '100%', marginTop: 6, padding: '9px 10px',
-                  background: 'transparent', border: '1px solid rgba(var(--ink-rgb), .22)',
-                  color: 'var(--dim)', font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-                }}
-              >SHAKE HIS HAND AND LET HIM GO</button>
-            </>
-          )}
-
-          {done && (
-            <div style={{ marginTop: 12 }}>
-              <div style={{
-                font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-                color: stayed ? 'var(--win)' : 'var(--dim)',
-              }}>{stayed ? 'HE IS COMING BACK' : 'HE SIGNED'}</div>
-              <div style={{
-                marginTop: 5, font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-              }}>
-                {man.pitch === null
-                  ? 'You did not make a case, and he did not need one to make up his mind.'
-                  : (
-                    <>
-                      You made the case on <strong style={{ color: 'var(--ink)' }}>
-                        {KEEP_LABEL[man.pitch].toLowerCase()}
-                      </strong> and put <strong style={{ color: 'var(--ink)' }}>
-                        {man.offered}
-                      </strong> behind it. It was worth {Math.round(man.made)} against
-                      the {man.needed} a round {man.round} man wanted.
-                      {stayed
-                        ? ' He comes back a year older, a year better, and with no leverage at all next June.'
-                        : ' Not enough, and the money is spent.'}
-                    </>
-                  )}
-              </div>
-              <button
-                onClick={onClose}
-                className="primary-command"
-                style={{ marginTop: 10 }}
-              >BACK TO THE LIST</button>
+              <button className="retention-let-go tap" type="button" onClick={() => releasePlayer(p.id)}>
+                SHAKE HIS HAND AND LET HIM GO
+              </button>
             </div>
+          ) : (
+            <section className={`retention-result ${stayed ? 'stayed' : 'gone'}`}>
+              <small>{stayed ? 'HE BOUGHT IT' : 'HE SIGNED'}</small>
+              <strong>{stayed ? `${p.name} is coming back.` : `${p.name} is going pro.`}</strong>
+              <p>{man.pitch === null
+                ? 'You let the decision stand without making a case.'
+                : `You sold ${KEEP_LABEL[man.pitch].toLowerCase()} and committed ${man.offered}. It was worth ${Math.round(man.made)} against the ${man.needed} he needed.`}</p>
+              <button className="primary-command tap" type="button" onClick={onClose}>BACK TO DRAFT RESULTS</button>
+            </section>
           )}
-        </div>
-      </section>
-    </div>
+        </section>
+      </div>
     </InFrame>
-  );
-}
-
-function Step(
-  { label, onClick, off, wide }:
-  { label: string; onClick: () => void; off?: boolean; wide?: boolean },
-) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={off}
-      className="tap"
-      style={{
-        flex: wide ? '0 0 40px' : 1, padding: '9px 0',
-        background: 'transparent',
-        border: '1px solid rgba(var(--ink-rgb), .22)',
-        color: off ? 'rgba(var(--ink-rgb), .22)' : 'var(--ink)',
-        font: "700 calc(10px * var(--ts)) var(--mono)",
-      }}
-    >{label}</button>
   );
 }
 

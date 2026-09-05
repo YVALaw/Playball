@@ -1,5 +1,5 @@
 // Awards.tsx
-// End of season honours, plus the All-Conference first team.
+// End of season honors, plus the All-Conference first team.
 //
 // Two rooms in one file. On the offseason night itself this is a CEREMONY —
 // every award face-down, flipped one tap at a time, with the room throwing
@@ -213,13 +213,13 @@ export function Awards() {
 
   return (
     <FixedHeader
-      header={<ModuleIntro kicker={`${year} HONOURS`} title="Awards night" />}
+      header={<ModuleIntro kicker={`${year} HONORS`} title="Awards night" />}
       action={phase !== null && (
         <FloatingAction label="SEASON REVIEW" onClick={() => void nextPhase('awards')} />
       )}
     >
     <FirstVisit id="awards" />
-    <main className="module-workspace">
+    <main className="module-workspace offseason-awards">
       {/*
         The tallies would spoil the envelopes. On the ceremony night the strip
         waits until the last card has turned; on a revisit there is nothing
@@ -231,7 +231,7 @@ export function Awards() {
             label="YOUR PROGRAM"
             value={String(awards.filter((a) => a.team === team.def.abbr).length
               + (coach?.team === team.index ? 1 : 0))}
-            note="HONOURS"
+            note="HONORS"
           />
           <Metric
             label="FIRST TEAM"
@@ -251,7 +251,7 @@ export function Awards() {
         </button>
       )}
 
-      <SectionHeading kicker="THE WINNERS" title="Who took what" />
+      <SectionHeading kicker="MAJOR AWARDS" title="National honors" />
       <section className="award-list">
         {awards.map((a) => {
           const id = `a:${a.title}`;
@@ -267,7 +267,7 @@ export function Awards() {
         })}
       </section>
 
-      <SectionHeading kicker="ALL-CONFERENCE" title="The first team" />
+      <SectionHeading kicker="ALL-CONFERENCE" title="First Team" />
       {ceremony
         ? (
           <FlipCard
@@ -290,7 +290,7 @@ export function Awards() {
         The engine picks whichever was loudest this season and writes the
         headline stat itself; the card just renders it.
       */}
-      {coach && <SectionHeading kicker="THE HEADLINER" title="Coach of the Year" />}
+      {coach && <SectionHeading kicker="COACH OF THE YEAR" title="The season’s top coach" />}
       {coach && (ceremony
         ? (
           <FlipCard

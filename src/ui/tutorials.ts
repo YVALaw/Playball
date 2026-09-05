@@ -45,8 +45,7 @@ export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
   lineup: [
     {
       title: 'The lineup card',
-      body: 'This card counts; the engine reads it straight tonight. AUTO '
-        + 'hands the pencil to the bench coach.',
+      body: 'This card counts; the engine reads it straight tonight. Tap two men to move them; hold any player to open his stats without leaving the decision.',
     },
     {
       title: 'The staff',

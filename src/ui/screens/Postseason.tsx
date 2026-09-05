@@ -20,7 +20,7 @@ import { useDynasty, useUserTeam, type NationalProgress } from '../../state/stor
 import { FloatingAction } from '../Sticky.js';
 import { Modal } from '../Modal.js';
 import { IdCardIcon } from '@radix-ui/react-icons';
-import { ModuleIntro, Segmented } from '../components/Kit.js';
+import { ModuleIntro } from '../components/Kit.js';
 import { Lineup } from './Lineup.js';
 import { Crest } from '../Crest.js';
 import { era, injuryClock } from '../../engine/season.js';
@@ -774,11 +774,11 @@ export function Postseason() {
       )}
 
       {showLineup && (
-        <div style={{
+        <div className="postseason-lineup-overlay screen-in" style={{
           position: 'absolute', inset: 0, zIndex: 30,
           background: 'var(--field)', display: 'flex', flexDirection: 'column',
         }}>
-          <div style={{
+          <div className="postseason-lineup-head" style={{
             flex: 'none', display: 'flex', justifyContent: 'space-between',
             alignItems: 'center', padding: '10px 14px',
             borderBottom: '2px solid var(--ink)', background: 'var(--field)',
@@ -968,7 +968,7 @@ export function Postseason() {
             */}
             {(reviewing !== null || iAmOut || juneTab === 'bracket') && (
             <div
-              className="swap-back"
+              className="bracket-view-transition"
               key={`${shown}:${lookingAt}`}
             >
             {shown === 0 && (
@@ -1052,25 +1052,28 @@ function StageRail(
   const STAGES: Array<[string, string]> = [
     ['Conference', 'Double elimination · top four advance'],
     ['Regionals', 'Best of three · sixteen sites'],
-    ['National', 'Two brackets · a championship series'],
+    ['National', 'Two brackets · championship series'],
   ];
   return (
     <section className="postseason-stage-rail" aria-label="Postseason stages">
       {STAGES.map(([name, note], i) => {
-        // A tournament already played can be gone back to; one that has not
-        // happened yet cannot, because there is nothing behind it.
         const reachable = i <= at;
+        const current = i === at;
+        const viewing = i === shown;
         return (
           <button
-            className={`${i === shown ? 'active' : ''} ${i < at ? 'done' : ''}`}
+            className={`${viewing ? 'active' : ''}${i < at ? ' done' : ''}${current ? ' current' : ''}`}
             key={name}
             type="button"
             disabled={!reachable}
             onClick={() => onGo(i)}
           >
-            <span>{i + 1}</span>
-            <strong>{name}</strong>
-            <small>{note}</small>
+            <i>{i < at ? '✓' : i + 1}</i>
+            <span>
+              <small>{current ? 'CURRENT STAGE' : i < at ? 'COMPLETED' : 'UP NEXT'}</small>
+              <strong>{name}</strong>
+              <em>{note}</em>
+            </span>
           </button>
         );
       })}
@@ -1084,16 +1087,20 @@ function SubToggle(
   { options: [string, string][]; at: string; onGo: (v: string) => void },
 ) {
   return (
-    <div className="postseason-view-toggle">
-      <Segmented
-        label="Bracket half"
-        value={at}
-        onChange={onGo}
-        options={options.map(([v, label]) => ({
-          value: v,
-          label: label.charAt(0) + label.slice(1).toLowerCase(),
-        }))}
-      />
+    <div className="postseason-view-toggle" role="tablist" aria-label="Postseason view">
+      {options.map(([v, label]) => (
+        <button
+          key={v}
+          type="button"
+          role="tab"
+          aria-selected={at === v}
+          className={at === v ? 'active' : ''}
+          onClick={() => onGo(v)}
+        >
+          <small>{v === 'next' ? 'YOUR PATH' : 'THE FIELD'}</small>
+          <strong>{label}</strong>
+        </button>
+      ))}
     </div>
   );
 }
@@ -1204,10 +1211,17 @@ function PregameShow(
           <span>{formatLabel || 'JUNE'}</span>
         </div>
         {side !== null && (
-          <div className={`june-standing${deLosses === 0 ? ' unbeaten' : ''}`}>
-            <strong>{deWins}&ndash;{deLosses}</strong>
-            <span>{side}</span>
-          </div>
+          <section className={`june-standing-modern${deLosses === 0 ? ' unbeaten' : ' danger'}`}>
+            <div className="june-standing-seal">{deLosses === 0 ? '✓' : '!'}</div>
+            <div className="june-standing-copy">
+              <small>{deLosses === 0 ? 'UNBEATEN ROUTE' : 'ELIMINATION ROUTE'}</small>
+              <strong>{side}</strong>
+              <p>{deLosses === 0
+                ? 'You still own a second life if the next one gets away.'
+                : 'The safety net is gone. One more loss ends June.'}</p>
+            </div>
+            <div className="june-standing-record"><small>BRACKET</small><strong>{deWins}-{deLosses}</strong></div>
+          </section>
         )}
         <div className="pregame-match">
           <div className="pregame-side">
@@ -1270,7 +1284,18 @@ function PregameShow(
 
       {sub && <p className="pregame-sub">{sub}</p>}
       {stake && (
-        <p className={`pregame-stake tone-${stake.tone}`}>{stake.line}</p>
+        <section className={`june-stake-card tone-${stake.tone}`}>
+          <div className="june-stake-seal" aria-hidden>{stake.tone === 'win' ? '✓' : stake.tone === 'alert' ? '!' : '↘'}</div>
+          <div className="june-stake-copy">
+            <small>{stake.tone === 'win' ? 'ADVANTAGE' : stake.tone === 'alert' ? 'SEASON ON THE LINE' : 'BRACKET STATUS'}</small>
+            <strong>{stake.line}</strong>
+            <span>{stake.tone === 'win'
+              ? 'You have the leverage. Finish the job.'
+              : stake.tone === 'alert'
+                ? 'There is no room for a quiet result here.'
+                : 'The bracket gives you one more route if this slips.'}</span>
+          </div>
+        </section>
       )}
       {season.playbooks?.[abbr(opp)] && (
         <p className="pregame-sub">Playing the {abbr(opp)} book.</p>
@@ -1773,60 +1798,23 @@ function CrownCard(
   { crown, mine, school, abbr }:
   { crown: Crown; mine: boolean; school: string; abbr: string },
 ) {
-  const big = crown.rung === 2;
-  const mid = crown.rung === 1;
-  /*
-    A trophy per trophy.
-
-    Every championship card used to be the same muted green, and it was
-    reported reading as a *loss* -- which is fair, because the green is the
-    quiet one in this palette and nothing about it says "you won the thing".
-    Worse, all three tournaments looked identical, so the card could not tell
-    you what you had won without being read.
-
-    Bronze, silver, gold. It is the one colour language nobody has to be
-    taught, it escalates in exactly the direction the tournaments do, and all
-    three are far enough from clay that none of them can be mistaken for the
-    colour this app uses for a loss. Rivals stay navy: somebody else's trophy
-    is news, not a trophy.
-  */
-  const ground = mine
-    ? (big ? 'var(--gold)' : mid ? 'var(--silver)' : 'var(--bronze)')
-    : 'var(--navy)';
+  const level = crown.rung === 2 ? 'NATIONAL' : crown.rung === 1 ? 'REGIONAL' : 'CONFERENCE';
   return (
-    <div
-      className="rise-in"
-      style={{
-        border: `1px solid ${ground}`,
-        borderLeft: `${big ? 7 : mid ? 5 : 4}px solid ${ground}`,
-        background: 'var(--paper)',
-      }}
-    >
-      <div style={{ padding: '5px 11px', background: ground }}>
-        <span style={{
-          font: `600 calc(${big ? 9 : 8.5}px * var(--ts)) var(--mono)`,
-          letterSpacing: '.18em', color: 'var(--cream)',
-        }}>{crown.kicker}</span>
+    <section className={`champion-banner rung-${crown.rung}${mine ? ' is-mine' : ''}`}>
+      <div className="champion-banner-glow" />
+      <header>
+        <span className="champion-banner-crest"><Crest abbr={abbr} size={62} /></span>
+        <span><small>{level} CHAMPIONS</small><strong>{school}</strong><em>{crown.kicker}</em></span>
+        <b>{crown.rung === 2 ? 'III' : crown.rung === 1 ? 'II' : 'I'}</b>
+      </header>
+      <div className="champion-banner-body">
+        <span className="champion-seal">★</span>
+        <div><small>BANNER EARNED</small><strong>{crown.title}</strong><p>{crown.line}</p></div>
       </div>
-      <div style={{ padding: big ? '14px 12px 15px' : '10px 12px 11px' }}>
-        <div style={{
-          font: `800 calc(${big ? 30 : mid ? 22 : 18}px * var(--ts))/0.95 var(--display)`,
-          textTransform: 'uppercase', color: ground,
-        }}>{school}</div>
-        <div style={{
-          marginTop: big ? 5 : 3,
-          font: `700 calc(${big ? 13 : 11}px * var(--ts))/1.2 var(--display)`,
-          letterSpacing: '.04em', textTransform: 'uppercase',
-        }}>{crown.title}</div>
-        <div style={{
-          marginTop: 4, font: "400 calc(11px * var(--ts))/1.4 var(--body)",
-          color: 'var(--dim)',
-        }}>{crown.line}</div>
-        <div style={{
-          marginTop: 7, font: "500 calc(9px * var(--ts)) var(--mono)",
-          letterSpacing: '.16em', color: 'var(--faint)',
-        }}>{abbr}</div>
-      </div>
-    </div>
+      <footer>
+        <span>{mine ? 'YOUR PROGRAM' : 'JUNE CHAMPION'}</span>
+        <b>{abbr}</b>
+      </footer>
+    </section>
   );
 }

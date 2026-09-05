@@ -13,17 +13,12 @@
 // Two of the proposal's details are deliberately not here, and both were
 // settled by playtesting before the port started.
 //
-// The drag handle is gone. The row's tap is how you move the batting order —
-// pick one, pick another, they swap — and a second meaning on the same target
-// makes both unreliable. Reported from testing: "in lineup the players should
-// not open their profile since we have to tap one and tap another to actually
-// move the lineup around." The chevron into the player card went with it, for
-// the same reason.
-//
-// So the row keeps the proposal's anatomy — order number, portrait, name, three
-// rating meters — and loses the two controls that would fight the gesture. The
-// `.drag` cell stays in the grid as the selection mark, which is the one thing
-// a two-tap swap genuinely needs and the proposal had nowhere to put.
+// Tap belongs to lineup movement: pick one man, pick another, and they swap.
+// Player inspection therefore lives on hold rather than competing for the same
+// tap. A hold jumps straight to Stats because that is the information the coach
+// needs while setting the card; the normal profile path remains available
+// everywhere else. The `.drag` cell stays in the grid as the selection mark,
+// which is the one thing a two-tap swap genuinely needs.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CheckIcon, ReloadIcon, SewingPinIcon } from '@radix-ui/react-icons';
@@ -90,6 +85,11 @@ export function Lineup() {
   // Hold a row to read the man. See useLongPress for why it is not a
   // second tap and not a double tap.
   const { hold, consumed } = useHold();
+  const [holdingId, setHoldingId] = useState<PlayerId | null>(null);
+  const holdStats = (id: PlayerId) => hold(
+    () => { setHoldingId(null); openPlayer(id, 'stats'); },
+    (active) => setHoldingId(active ? id : null),
+  );
   const [pickedBench, setPickedBench] = useState<PlayerId | null>(null);
   const [dealt, setDealt] = useState(false);
   /** Bumped on every auto-deal, so the list re-keys and animates in. */
@@ -380,7 +380,6 @@ export function Lineup() {
         <ModuleIntro
           kicker="TEAM · LINEUP"
           title="Starting nine"
-          text="Tonight's card."
         />
 
         <section className="editor-toolbar">
@@ -430,11 +429,10 @@ export function Lineup() {
           the one switch that changes it.
         */}
         {!mine && (
-          <FieldNote
-            title="Your bench coach writes the card"
-            text="The staff set the nine. Settings, then What you handle, hands
-              it back."
-          />
+          <div className="delegation-banner lineup-delegation" role="status">
+            <span><small>AUTO-MANAGED</small><strong>Your bench coach owns tonight’s card</strong></span>
+            <p>You can inspect the card and player stats without changing who has final control.</p>
+          </div>
         )}
 
         {/*
@@ -455,7 +453,7 @@ export function Lineup() {
             const marked = i === atSpot;
             return (
               <button
-                className={`player-row card-in${on || marked ? ' is-selected' : ''}`
+                className={`player-row card-in${on || marked ? ' is-selected' : ''}${holdingId === p.id ? ' is-holding' : ''}`
                   + (p.id === flaggedId ? ' is-flagged' : '')}
                 ref={(el) => {
                   if (el) rowEls.current.set(String(p.id), el);
@@ -465,7 +463,8 @@ export function Lineup() {
                 key={p.id}
                 type="button"
                 aria-pressed={on}
-                onClick={() => tap(i)}
+                {...holdStats(p.id)}
+                onClick={() => { if (consumed()) return; tap(i); }}
               >
                 {/* Where the proposal's drag handle sat. It is the swap mark
                     now: the first tap lights it, the second completes. */}
@@ -523,7 +522,7 @@ export function Lineup() {
         </aside>
         </div>
 
-        <SectionHeading kicker="THE BENCH" title="Everyone else" />
+        <SectionHeading kicker="BENCH" title={`${team.team.bench.length} available`} />
         {/* The healed-return hold's other answer. Swapping him in settles the
             question by itself; this button is how the coach says "the cover
             keeps the spot" — and until one of the two happens, NEEDS YOU
@@ -547,12 +546,13 @@ export function Lineup() {
               <button
                 key={p.id}
                 type="button"
-                className={`player-row${on ? ' is-selected' : ''}`
+                className={`player-row${on ? ' is-selected' : ''}${hurt ? ' is-unavailable' : ''}${holdingId === p.id ? ' is-holding' : ''}`
                   + (p.id === flaggedId ? ' is-flagged' : '')}
                 ref={p.id === flaggedId ? flagged : undefined}
-                disabled={hurt}
+                aria-disabled={hurt}
                 aria-pressed={on}
-                onClick={() => tapBench(p.id)}
+                {...holdStats(p.id)}
+                onClick={() => { if (consumed()) return; if (!hurt) tapBench(p.id); }}
               >
                 <span className="drag">{on ? <SewingPinIcon /> : null}</span>
                 <span className="portrait">
@@ -579,18 +579,18 @@ export function Lineup() {
           })}
         </section>
 
-        <SectionHeading kicker="ROTATION" title="Who takes the ball" />
+        <SectionHeading kicker="ROTATION" title={`${team.team.rotation.length} starters`} />
         <section className="rotation-list">
           {team.team.rotation.map((p, i) => {
             const line = season.pitching.get(p.id);
             const on = pickedArm === i;
             return (
               <button
-                className={on ? 'is-selected' : pickedPen !== null ? 'is-live' : ''}
+                className={`${on ? 'is-selected' : pickedPen !== null ? 'is-live' : ''}${holdingId === p.id ? ' is-holding' : ''}`.trim()}
                 key={p.id}
                 type="button"
                 aria-pressed={on}
-                {...hold(() => openPlayer(p.id))}
+                {...holdStats(p.id)}
                 onClick={() => { if (consumed()) return; tapArm(i); }}
               >
                 <span>{SLOTS[i]}</span>
@@ -633,9 +633,9 @@ export function Lineup() {
               <button
                 key={p.id}
                 type="button"
-                className={pickedPen === p.id ? 'is-selected' : canTake ? 'is-live' : ''}
+                className={`${pickedPen === p.id ? 'is-selected' : canTake ? 'is-live' : ''}${holdingId === p.id ? ' is-holding' : ''}`.trim()}
                 aria-pressed={pickedPen === p.id}
-                {...hold(() => openPlayer(p.id))}
+                {...holdStats(p.id)}
                 onClick={() => { if (consumed()) return; tapPen(p.id); }}
               >
                 <span>{p.role}</span>

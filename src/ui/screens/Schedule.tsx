@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 // Schedule.tsx
 // The 33 game calendar. Played games carry their result; the rest is what is
 // coming. Weekend series are grouped, because that is how a college season is
@@ -9,7 +9,7 @@ import { teamColour } from '../Avatar.js';
 import { ChevronRightIcon } from '@radix-ui/react-icons';
 import { useOpenTeam } from './TeamCard.js';
 import {
-  FieldNote, Metric, MetricStrip, ModuleIntro, SectionHeading,
+  FieldNote, Metric, MetricStrip, ModuleIntro, SectionHeading, Segmented,
 } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
 import { InFrame } from '../Overlay.js';
@@ -17,6 +17,7 @@ import { LineScore } from '../LineScore.js';
 import { regularRecord } from '../../engine/season.js';
 import type { BoxScore, BoxLine, SeasonState } from '../../engine/season.js';
 import { seasonDate } from '../format.js';
+import { buildFrames } from '../replay.js';
 
 export function Schedule() {
   const [openDay, setOpenDay] = useState<number | null>(null);
@@ -109,7 +110,7 @@ export function Schedule() {
           <Metric label="RUN DIFF" value={`${diff > 0 ? '+' : ''}${diff}`} note={`${team.rs} FOR`} />
         </MetricStrip>
 
-        <SectionHeading kicker="SERIES VIEW" title={`${year} schedule`} />
+        <SectionHeading kicker="SERIES BY SERIES" title="Full schedule" />
         <section className="series-list">
           {rows.map(({ day, home, opponent, result }, i) => {
             const won = result
@@ -148,11 +149,6 @@ export function Schedule() {
           })}
         </section>
 
-        <FieldNote
-          title="Every played game keeps its book"
-          text="Tap a final for the full box score; a date still to come opens the
-            opponent."
-        />
       </main>
 
       {/*
@@ -187,6 +183,31 @@ export function BoxScoreSheet(
   const openPlayer = useDynasty((s) => s.openPlayer);
   const home = season.teams[box.home];
   const away = season.teams[box.away];
+  const frames = useMemo(() => box.replay ? buildFrames(box.replay) : [], [box.replay]);
+  const hasReplay = frames.length > 1;
+  const [view, setView] = useState<'box' | 'replay'>('box');
+  const [frameIndex, setFrameIndex] = useState(0);
+  const [playing, setPlaying] = useState(false);
+
+  useEffect(() => {
+    if (!playing || view !== 'replay' || frames.length < 2) return;
+    const id = window.setInterval(() => {
+      setFrameIndex((current) => {
+        if (current >= frames.length - 1) {
+          setPlaying(false);
+          return current;
+        }
+        return current + 1;
+      });
+    }, 850);
+    return () => window.clearInterval(id);
+  }, [playing, view, frames.length]);
+
+  useEffect(() => {
+    if (view !== 'replay') setPlaying(false);
+  }, [view]);
+
+  const current = frames[Math.min(frameIndex, Math.max(0, frames.length - 1))];
 
   const Side = (
     { label, abbr, runs, batting, pitching }:
@@ -228,6 +249,18 @@ export function BoxScoreSheet(
     </div>
   );
 
+  const seekScore = (dir: -1 | 1) => {
+    let i = frameIndex + dir;
+    while (i >= 0 && i < frames.length) {
+      if (frames[i]?.scored) {
+        setFrameIndex(i);
+        setPlaying(false);
+        return;
+      }
+      i += dir;
+    }
+  };
+
   return (
     <InFrame>
     <div
@@ -251,51 +284,123 @@ export function BoxScoreSheet(
         }}>
           <span style={{
             font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
-          }}>BOX SCORE · {box.innings} INNINGS</span>
+          }}>{view === 'replay' ? 'GAME REPLAY' : `BOX SCORE · ${box.innings} INNINGS`}</span>
           <button onClick={onClose} style={{
             font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(var(--cream-rgb), .8)',
           }}>CLOSE</button>
         </div>
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px' }}>
-          {/*
-            The linescore, when the save has one. Boxes stored before it existed
-            have no lines to show, and the sheet must still open for them. The
-            home line is one inning short when the bottom of the last was never
-            needed, which is what the 'X' says.
-          */}
-          {box.awayLine && box.homeLine && (
-            <div style={{
-              marginBottom: 14, padding: '6px 8px',
-              border: '1px solid var(--faint)', background: 'var(--paper)',
-            }}>
-              <LineScore
-                innings={Math.max(box.awayLine.length, box.homeLine.length)}
-                rows={[
-                  {
-                    abbr: away?.def.abbr ?? 'AWY',
-                    cells: box.awayLine.map((n) => n),
-                    r: box.awayRuns, h: box.awayHits ?? 0, e: box.awayErrors ?? 0,
-                  },
-                  {
-                    abbr: home?.def.abbr ?? 'HOM',
-                    cells: [
-                      ...box.homeLine,
-                      ...(box.homeLine.length < box.awayLine.length ? ['X'] : []),
-                    ],
-                    r: box.homeRuns, h: box.homeHits ?? 0, e: box.homeErrors ?? 0,
-                  },
+          {hasReplay && (
+            <div style={{ marginBottom: 12 }}>
+              <Segmented<'box' | 'replay'>
+                label="Game view"
+                value={view}
+                options={[
+                  { value: 'box' as const, label: 'Box score' },
+                  { value: 'replay' as const, label: 'Replay' },
                 ]}
+                onChange={setView}
               />
             </div>
           )}
-          <Side
-            label={away?.def.school ?? 'Away'} abbr={away?.def.abbr ?? ''}
-            runs={box.awayRuns} batting={box.awayBatting} pitching={box.awayPitching}
-          />
-          <Side
-            label={home?.def.school ?? 'Home'} abbr={home?.def.abbr ?? ''}
-            runs={box.homeRuns} batting={box.homeBatting} pitching={box.homePitching}
-          />
+
+          {view === 'replay' && current ? (
+            <section className="game-replay" aria-label="Game replay">
+              <div className="replay-scoreboard">
+                <div>
+                  <small>{away?.def.abbr ?? 'AWY'}</small>
+                  <strong>{current.awayRuns}</strong>
+                </div>
+                <span>
+                  <b>{current.half === 'top' ? '▲' : '▼'} {current.inning}</b>
+                  <small>{Math.min(3, current.outs)} OUT{current.outs === 1 ? '' : 'S'}</small>
+                </span>
+                <div>
+                  <small>{home?.def.abbr ?? 'HOM'}</small>
+                  <strong>{current.homeRuns}</strong>
+                </div>
+              </div>
+
+              <div className="replay-diamond" aria-label={`${current.bases.filter(Boolean).length} runners on base`}>
+                <i className={current.bases[1] ? 'on second' : 'second'} />
+                <i className={current.bases[2] ? 'on third' : 'third'} />
+                <i className={current.bases[0] ? 'on first' : 'first'} />
+              </div>
+
+              <div className={current.scored ? 'replay-call scored' : 'replay-call'}>
+                <small>PLAY {frameIndex + 1} OF {frames.length}</small>
+                <p>{current.text || 'Game underway.'}</p>
+              </div>
+
+              <input
+                className="replay-scrubber"
+                aria-label="Replay position"
+                type="range"
+                min={0}
+                max={frames.length - 1}
+                value={frameIndex}
+                onChange={(e) => {
+                  setPlaying(false);
+                  setFrameIndex(Number(e.target.value));
+                }}
+              />
+
+              <div className="replay-controls">
+                <button type="button" onClick={() => seekScore(-1)}>PREV RUN</button>
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={() => {
+                    if (frameIndex >= frames.length - 1) setFrameIndex(0);
+                    setPlaying((v) => !v);
+                  }}
+                >{playing ? 'PAUSE' : 'PLAY'}</button>
+                <button type="button" onClick={() => seekScore(1)}>NEXT RUN</button>
+              </div>
+              <div className="replay-step-controls">
+                <button type="button" onClick={() => { setPlaying(false); setFrameIndex(0); }}>START</button>
+                <button type="button" onClick={() => { setPlaying(false); setFrameIndex((i) => Math.max(0, i - 1)); }}>‹</button>
+                <button type="button" onClick={() => { setPlaying(false); setFrameIndex((i) => Math.min(frames.length - 1, i + 1)); }}>›</button>
+                <button type="button" onClick={() => { setPlaying(false); setFrameIndex(frames.length - 1); }}>END</button>
+              </div>
+            </section>
+          ) : (
+            <>
+              {box.awayLine && box.homeLine && (
+                <div style={{
+                  marginBottom: 14, padding: '6px 8px',
+                  border: '1px solid var(--faint)', background: 'var(--paper)',
+                }}>
+                  <LineScore
+                    innings={Math.max(box.awayLine.length, box.homeLine.length)}
+                    rows={[
+                      {
+                        abbr: away?.def.abbr ?? 'AWY',
+                        cells: box.awayLine.map((n) => n),
+                        r: box.awayRuns, h: box.awayHits ?? 0, e: box.awayErrors ?? 0,
+                      },
+                      {
+                        abbr: home?.def.abbr ?? 'HOM',
+                        cells: [
+                          ...box.homeLine,
+                          ...(box.homeLine.length < box.awayLine.length ? ['X'] : []),
+                        ],
+                        r: box.homeRuns, h: box.homeHits ?? 0, e: box.homeErrors ?? 0,
+                      },
+                    ]}
+                  />
+                </div>
+              )}
+              <Side
+                label={away?.def.school ?? 'Away'} abbr={away?.def.abbr ?? ''}
+                runs={box.awayRuns} batting={box.awayBatting} pitching={box.awayPitching}
+              />
+              <Side
+                label={home?.def.school ?? 'Home'} abbr={home?.def.abbr ?? ''}
+                runs={box.homeRuns} batting={box.homeBatting} pitching={box.homePitching}
+              />
+            </>
+          )}
         </div>
       </div>
     </div>

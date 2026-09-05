@@ -55,6 +55,7 @@ import {
 import type { PostseasonSummary } from './postseason.js';
 import type { SeasonState, TeamRecord } from './season.js';
 import { CULTURES, cultureFor, driftCulture } from '../data/cultures.js';
+import type { Assistant } from './economy.js';
 
 /**
  * What one of them carries, and nothing else.
@@ -198,6 +199,41 @@ export function newRivalCoach(
     skills: { offense: base, defense: base, training: base, recruiting: base },
     lean: SKILL_ORDER[h % SKILL_ORDER.length] as keyof CoachSkills,
     badRun: 0,
+    careerWins: 0,
+    careerLosses: 0,
+    titles: 0,
+    conferenceTitles: 0,
+    regionalTitles: 0,
+    tournaments: 0,
+  };
+}
+
+/** Turn one of the user's assistants into a real head-coaching candidate. */
+export function coachFromAssistant(a: Assistant, mentorPrestige: number): RivalCoach {
+  const base = Math.max(24, Math.min(72, Math.round(a.rating * 0.72)));
+  const winter = Math.round(a.rating * a.winter);
+  const night = Math.round(a.rating * (1 - a.winter));
+  const offense = a.seat === 'hitting' ? Math.max(base, night) : base;
+  const defense = a.seat === 'pitching' ? Math.max(base, night) : base;
+  const recruiting = a.seat === 'recruiting' ? Math.max(base, night) : base;
+  const training = Math.max(base, winter);
+  const prestige = Math.max(ROOKIE_PRESTIGE, Math.min(78,
+    Math.round(22 + a.rating * 0.45 + mentorPrestige * 0.12)));
+  const length = contractFor(prestige);
+  return {
+    name: a.name,
+    age: a.age,
+    prestige,
+    security: 62,
+    tenure: 0,
+    contractYears: length,
+    contractLength: length,
+    skills: { offense, defense, training, recruiting },
+    lean: a.seat === 'hitting' ? 'offense' : a.seat === 'pitching' ? 'defense' : 'recruiting',
+    badRun: 0,
+    stints: 0,
+    rebuilds: 0,
+    bestBuild: 0,
     careerWins: 0,
     careerLosses: 0,
     titles: 0,
@@ -597,13 +633,17 @@ export interface RivalYear {
 export function runRivalYear(
   season: SeasonState,
   post: PostseasonSummary | null,
-  opts: { year: number; userTeam: number; games: number; userOpen?: boolean },
+  opts: {
+    year: number; userTeam: number; games: number; userOpen?: boolean;
+    /** Former assistants entering the national market this winter. */
+    extraFreeAgents?: FreeAgent[];
+  },
 ): RivalYear {
   const { year, userTeam, games } = opts;
   const verdicts: Record<Verdict, number> = {
     exceeded: 0, met: 0, missed: 0, failed: 0,
   };
-  const pool: FreeAgent[] = [];
+  const pool: FreeAgent[] = [...(opts.extraFreeAgents ?? [])];
   const moves: CarouselMove[] = [];
 
   // Measured once, off every chair including the user's — he is part of the

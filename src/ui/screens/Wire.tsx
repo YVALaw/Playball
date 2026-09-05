@@ -81,8 +81,22 @@ export function Wire() {
   const year = useDynasty((s) => s.year);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
+  const watch = useDynasty((s) => s.watch);
 
-  const items = useMemo(() => (season ? wire(season) : []), [season, version]);
+  const items = useMemo(() => {
+    if (!season) return [];
+    const watched = new Set(watch.programs);
+    const myConference = season.teams[userTeam]?.conference;
+    const score = (item: WireItem): number => {
+      const teamRow = season.teams[item.team];
+      const againstRow = item.against !== undefined ? season.teams[item.against] : undefined;
+      const mine = item.team === userTeam || item.against === userTeam;
+      const followed = watched.has(teamRow?.def.abbr ?? '') || watched.has(againstRow?.def.abbr ?? '');
+      const conference = teamRow?.conference === myConference || againstRow?.conference === myConference;
+      return item.weight + (mine ? 120 : 0) + (followed ? 32 : 0) + (conference ? 10 : 0);
+    };
+    return [...wire(season)].sort((a, b) => score(b) - score(a));
+  }, [season, version, userTeam, watch.programs.join('|')]);
 
   /*
     That he came and read it.

@@ -120,7 +120,7 @@ export function Stats() {
         title={scopeLabel}
       />
 
-      <Segmented
+      <Segmented<Scope>
         label="Statistics scope"
         value={scope}
         onChange={setScope}

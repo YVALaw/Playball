@@ -31,114 +31,64 @@ export function CoachPoints() {
 
   return (
     <FixedHeader
-      header={
-        <ModuleIntro kicker={`${coach.name} · YEAR ${coach.tenure}`} title="Coach" />
-      }
+      header={<ModuleIntro kicker={`${coach.name} · YEAR ${coach.tenure}`} title="Coach development" />}
       action={<FloatingAction
-    label={left > 0 ? `CONTINUE · ${left} UNSPENT` : 'TO THE DRAFT'}
-    onClick={() => void next('coach')}
-  />}
+        label={left > 0 ? `CONTINUE · ${left} UNSPENT` : 'TO THE DRAFT'}
+        onClick={() => void next('coach')}
+      />}
     >
-    <FirstVisit id="coachpoints" />
-    <div style={{ padding: '12px 14px 24px' }}>
-      <div style={{
-        padding: '12px', background: 'var(--paper)',
-        border: `1px solid ${left > 0 ? 'var(--clay)' : 'var(--faint)'}`,
-        borderLeft: `3px solid ${left > 0 ? 'var(--clay)' : 'var(--faint)'}`,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-          <span style={{
-            font: "800 calc(30px * var(--ts))/1 var(--display)",
-            color: left > 0 ? 'var(--clay)' : 'var(--dim)',
-          }}>{left}</span>
-          <span style={{ font: "400 calc(12px * var(--ts))/1.4 var(--body)", color: 'var(--dim)' }}>
-            {left > 0
-              ? 'points to spend — they keep until you use them.'
-              : 'Nothing left to spend this year.'}
-          </span>
-        </div>
-        {/* Always rendered, so pressing +1 never reflows the cards below —
-            reported from testing: "when placing the coach points the page
-            moves all the time". The line changes what it says, not whether
-            it is there. */}
-        <div style={{
-          marginTop: 8, minHeight: 32,
-          font: "400 calc(11px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
-        }}>
-          {back > 0
-            ? `${back} point${back === 1 ? '' : 's'} come back off until you continue.`
-            : '\u00a0'}
-        </div>
-      </div>
+      <FirstVisit id="coachpoints" />
+      <main className="module-workspace coach-development-workspace offseason-coach">
+        <section className={`coach-points-command${left > 0 ? ' has-points' : ''}`}>
+          <div>
+            <small>AVAILABLE</small>
+            <strong>{left}</strong>
+            <span>{left === 1 ? 'point' : 'points'}</span>
+          </div>
+          <p>{left > 0
+            ? 'Invest in the part of coaching you want to become known for. Unspent points carry forward.'
+            : 'This year’s growth is allocated. Review the shape of your coaching profile before moving on.'}</p>
+          <div className="coach-points-session">
+            <small>THIS SESSION</small>
+            <strong>{back > 0 ? `+${back} allocated` : 'No changes yet'}</strong>
+            <span>{back > 0 ? 'You can undo these until you continue.' : 'Nothing is locked until you move on.'}</span>
+          </div>
+        </section>
 
-      <div style={{ marginTop: 14 }}>
-        {SKILLS.map((k) => {
-          const value = coach.skills[k];
-          const maxed = value >= 99;
-          return (
-            <div
-              key={k}
-              style={{
-                marginBottom: 8, padding: '12px',
-                border: '1px solid var(--faint)', background: 'var(--paper)',
-              }}
-            >
-              <div style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-              }}>
-                <span style={{
-                  font: "700 calc(12px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-                }}>{SKILL_LABEL[k]}</span>
-                <span style={{ font: "700 calc(20px * var(--ts))/1 var(--display)" }}>{value}</span>
-              </div>
-
-              <div style={{ height: 6, background: 'rgba(var(--ink-rgb), .09)', marginTop: 6 }}>
-                <div style={{
-                  width: `${value}%`, height: '100%', background: 'var(--clay)',
-                  transition: 'width 240ms ease',
-                }} />
-              </div>
-
-              <div style={{
-                marginTop: 7, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
-              }}>{SKILL_BLURB[k]}</div>
-
-              <div style={{ display: 'flex', gap: 6, marginTop: 9 }}>
-                {/* The undo sits beside the spend rather than at the bottom of
-                    the screen, because the mistake it answers is made here, on
-                    this card. Always rendered so the +1 button never changes
-                    width under a moving thumb; it merely wakes up once there
-                    is something to take back. */}
-                <button
-                  onClick={() => refund(k)}
-                  className="tap"
-                  disabled={(spentThisStep[k] ?? 0) === 0}
-                  aria-label={`Take a point back off ${SKILL_LABEL[k]}`}
-                  style={{
-                    flex: 'none', padding: '10px 14px',
-                    background: 'transparent',
-                    border: `1px solid ${(spentThisStep[k] ?? 0) > 0 ? 'rgba(var(--ink-rgb), .42)' : 'rgba(var(--ink-rgb), .12)'}`,
-                    color: (spentThisStep[k] ?? 0) > 0 ? 'var(--ink)' : 'rgba(var(--ink-rgb), .22)',
-                    font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-                  }}
-                >−1</button>
-                <button
-                  disabled={left <= 0 || maxed}
-                  onClick={() => spend(k)}
-                  style={{
-                    flex: 1, padding: '10px 0',
-                    background: left > 0 && !maxed ? 'var(--field)' : 'transparent',
-                    border: `1px solid ${left > 0 && !maxed ? 'rgba(var(--ink-rgb), .42)' : 'rgba(var(--ink-rgb), .15)'}`,
-                    color: left > 0 && !maxed ? 'var(--ink)' : 'rgba(var(--ink-rgb), .25)',
-                    font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-                  }}
-                >{maxed ? 'MAXED' : '+1 POINT'}</button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+        <section className="coach-skill-grid" aria-label="Coach skills">
+          {SKILLS.map((k) => {
+            const value = coach.skills[k];
+            const added = spentThisStep[k] ?? 0;
+            const maxed = value >= 99;
+            return (
+              <article className={`coach-skill-card${added > 0 ? ' invested' : ''}${maxed ? ' maxed' : ''}`} key={k}>
+                <header>
+                  <span><small>{SKILL_LABEL[k]}</small><strong>{value}</strong></span>
+                  <em>{maxed ? 'MAX' : added > 0 ? `+${added} THIS YEAR` : `NEXT ${Math.min(99, value + 1)}`}</em>
+                </header>
+                <div className="coach-skill-meter" aria-label={`${SKILL_LABEL[k]} ${value} of 99`}>
+                  <i style={{ width: `${value}%` }} />
+                </div>
+                <p>{SKILL_BLURB[k]}</p>
+                <footer>
+                  <button
+                    className="tap"
+                    type="button"
+                    disabled={added === 0}
+                    onClick={() => refund(k)}
+                  >Undo −1</button>
+                  <button
+                    className="tap primary"
+                    type="button"
+                    disabled={left <= 0 || maxed}
+                    onClick={() => spend(k)}
+                  >{maxed ? 'Maxed' : 'Invest +1'}</button>
+                </footer>
+              </article>
+            );
+          })}
+        </section>
+      </main>
     </FixedHeader>
   );
 }

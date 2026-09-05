@@ -12,13 +12,14 @@
 // are not calling, so the screen answers "where is my career pointed" and not
 // only "who wants me this week".
 
-import { useState } from 'react';
 import { ChevronRightIcon, StarIcon, StarFilledIcon } from '@radix-ui/react-icons';
-import { useDynasty } from '../../state/store.js';
+import { useDynasty, useUserTeam } from '../../state/store.js';
 import { useOpenTeam } from './TeamCard.js';
 import { Crest } from '../Crest.js';
-import { Confirmable, FieldNote, ModuleIntro, SectionHeading } from '../components/Kit.js';
-import { prestigeStars } from '../../engine/program.js';
+import { Confirmable, ModuleIntro, SectionHeading } from '../components/Kit.js';
+import { prestigeStars, rosterStrength } from '../../engine/program.js';
+import { regularRecord } from '../../engine/season.js';
+import { annualBudget, dollars } from '../../engine/economy.js';
 
 export function JobMarket() {
   const season = useDynasty((s) => s.season);
@@ -27,6 +28,7 @@ export function JobMarket() {
   const acceptOffer = useDynasty((s) => s.acceptOffer);
   const fired = useDynasty((s) => s.jobSearch);
   const coach = useDynasty((s) => s.coach);
+  const current = useUserTeam();
   const openTeam = useOpenTeam();
   /*
     Accepting is one of two irreversible acts in the game (the other starts a
@@ -56,7 +58,7 @@ export function JobMarket() {
       <ModuleIntro
         kicker={`${offers.length} OPEN ${offers.length === 1 ? 'CHAIR' : 'CHAIRS'}`}
         title="The market"
-        text="A new chair resets everything around you."
+        text="Compare the program, then decide what is worth leaving behind."
       />
 
       {offers.length === 0 ? (
@@ -70,44 +72,48 @@ export function JobMarket() {
           </p>
         </section>
       ) : (
-        <section className="job-list">
-          {calling.map((o) => (
-            <div key={o.team}>
-              <button type="button" onClick={() => openTeam(o.team)}>
-                <span>
-                  <strong>
-                    {starred.has(abbrOf(o.team)) && <StarFilledIcon className="job-star" />}
-                    {o.school}
-                  </strong>
-                  <small>{o.conference} · {o.pitch}</small>
-                </span>
-                <b>{'★'.repeat(prestigeStars(o.prestige))}</b>
-                <ChevronRightIcon />
-              </button>
-              {/*
-                The same two-press grammar the portal speaks, off the same
-                component — this screen had grown its own copy of it, one state
-                variable and two labels, and the two versions had already
-                drifted: the portal settled into a green "he is in" and this one
-                settled into nothing at all.
+        <section className="job-offer-grid">
+          {calling.map((o) => {
+            const dest = season.teams[o.team];
+            const rec = dest ? regularRecord(dest) : { w: 0, l: 0 };
+            const currentPrestige = current?.prestige ?? coach.prestige;
+            const currentRoster = current ? rosterStrength(current.team) : 0;
+            const destinationRoster = dest ? rosterStrength(dest.team) : 0;
+            const prestigeDelta = o.prestige - currentPrestige;
+            const rosterDelta = destinationRoster - currentRoster;
+            return (
+              <article className="job-offer-card" key={o.team}>
+                <button className="job-offer-head tap" type="button" onClick={() => openTeam(o.team)}>
+                  <span className="job-offer-crest"><Crest abbr={abbrOf(o.team)} size={42} /></span>
+                  <span>
+                    <small>{o.conference.toUpperCase()} · {rec.w}-{rec.l}</small>
+                    <strong>{starred.has(abbrOf(o.team)) && <StarFilledIcon className="job-star" />}{o.school}</strong>
+                    <p>{o.pitch}</p>
+                  </span>
+                  <ChevronRightIcon />
+                </button>
 
-                No `done` state here on purpose, and it is not an omission.
-                Accepting an offer ends the job search outright: the screen it
-                is on goes away in the same tick, so a settled label would be a
-                promise made to a control nobody ever sees again.
+                <div className="job-offer-comparison">
+                  <span><small>PRESTIGE</small><strong>{o.prestige}</strong><em className={prestigeDelta >= 0 ? 'up' : 'down'}>{prestigeDelta === 0 ? 'EVEN' : `${prestigeDelta > 0 ? '+' : ''}${prestigeDelta}`}</em></span>
+                  <span><small>ROSTER</small><strong>{destinationRoster}</strong><em className={rosterDelta >= 0 ? 'up' : 'down'}>{rosterDelta === 0 ? 'EVEN' : `${rosterDelta > 0 ? '+' : ''}${rosterDelta}`}</em></span>
+                  <span><small>ANNUAL BUDGET</small><strong>{dollars(annualBudget(o.prestige))}</strong><em>NEW LEDGER</em></span>
+                </div>
 
-                Keyed on the job, for the reason the portal's is keyed on the
-                man — a reused element would carry an armed state to whichever
-                offer landed in its position next.
-              */}
-              <Confirmable
-                key={o.team}
-                idle="Accept offer"
-                armed="Confirm — leave for good"
-                onConfirm={() => { void acceptOffer(o.team); }}
-              />
-            </div>
-          ))}
+                <div className="job-move-consequence">
+                  <small>WHAT MOVES WITH YOU</small>
+                  <p><b>Comes:</b> your assistants, coaching tree, reputation, and philosophy.</p>
+                  <p><b>Stays:</b> facilities, earned pipelines, scouting reports, and this program's spending.</p>
+                </div>
+
+                <Confirmable
+                  key={o.team}
+                  idle={`Take the ${o.school} job`}
+                  armed="Confirm — leave for good"
+                  onConfirm={() => { void acceptOffer(o.team); }}
+                />
+              </article>
+            );
+          })}
         </section>
       )}
 

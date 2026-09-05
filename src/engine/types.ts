@@ -281,6 +281,16 @@ export interface Pitcher extends PlayerCore, PitcherRatings {
   type: 'pitcher';
   pos: 'P';
   role: PitcherRole;
+  /**
+   * His natural staff role, remembered once he has ever crossed between the
+   * rotation and bullpen.
+   *
+   * A reliever promoted into the weekend rotation is displayed as an SP while
+   * he owns that start, but when he is sent back to the bullpen he becomes an
+   * RP again. It stays recorded after the return so repeated swaps cannot lose
+   * the provenance. Optional so old saves remain valid.
+   */
+  homeRole?: PitcherRole;
   /** Sidearm righties are brutal on righties and vulnerable to lefties. */
   sidearm: boolean;
 }
@@ -310,6 +320,8 @@ export type Player = Hitter | Pitcher;
 export interface TwoWay extends Hitter, PitcherRatings {
   twoWay: true;
   role: PitcherRole;
+  /** Natural staff role while he temporarily occupies another pitching seat. */
+  homeRole?: PitcherRole;
   sidearm: boolean;
   /** The arm's own platoon talent — the bat's rides on the Hitter side. */
   armPlatoon: number;

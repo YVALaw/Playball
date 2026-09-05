@@ -575,12 +575,26 @@ button {
   to   { opacity: 1; transform: none; }
 }
 
+/* Navigation view transitions are scoped to the scrollable page, not the
+   whole application. The global header, context nav and bottom bar stay put. */
+html { view-transition-name: none; }
+::view-transition-old(playball-page) { animation: none; opacity: 1; }
+::view-transition-new(playball-page) {
+  animation: playballPageArrive 170ms cubic-bezier(.2, .8, .3, 1) both;
+}
+@keyframes playballPageArrive {
+  from { opacity: .55; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+
 /* The store already declines to start a transition under reduced motion, so
    this is the belt to that pair of braces: a UA default cross-fade would
    otherwise still run if the check above were ever bypassed. */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(root),
-  ::view-transition-new(root) { animation: none; }
+  ::view-transition-new(root),
+  ::view-transition-old(playball-page),
+  ::view-transition-new(playball-page) { animation: none; }
 }
 
 /* The two transitions worth having everywhere: a bar that grows, and a control

@@ -8,7 +8,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowLeftIcon, ChevronRightIcon, Cross1Icon, MixerHorizontalIcon, PlayIcon,
+  ArrowLeftIcon, ChevronRightIcon, Cross1Icon, DotsHorizontalIcon, PlayIcon,
   StopwatchIcon,
 } from '@radix-ui/react-icons';
 import { PlayerName } from '../PlayerName.js';
@@ -856,9 +856,16 @@ export function Manage() {
       {d && (
         <aside className={`game-manager-fab${tools ? ' open' : ''}${toolsPhase === 'closing' ? ' closing' : ''}`}>
           <section className="game-manager-popover">
-            <div>
-              <small>MANAGER TOOLS</small>
-              <strong>Make the next move</strong>
+            <div className="game-tool-context">
+              <small>DUGOUT · {inning}</small>
+              <strong>{d?.side === 'offense' ? 'Create the next edge' : 'Protect this inning'}</strong>
+              {d && (
+                <div className="game-tool-live-grid">
+                  <article><small>SCORE</small><b>{away?.def.abbr} {awayRuns} · {home?.def.abbr} {homeRuns}</b></article>
+                  <article><small>OUTS</small><b>{d.outs}</b></article>
+                  <article><small>SITUATION</small><b>{baseState(d.bases, d.outs)}</b></article>
+                </div>
+              )}
             </div>
             <div className="game-tool-options">
               {/*
@@ -978,7 +985,7 @@ export function Manage() {
             aria-label={tools ? 'Close manager tools' : 'Open manager tools'}
             aria-expanded={tools}
             onClick={() => setTools(!tools)}
-          >{tools ? <Cross1Icon /> : <MixerHorizontalIcon />}</button>
+          >{tools ? <Cross1Icon /> : <DotsHorizontalIcon />}<span>{tools ? 'Close' : 'Dugout'}</span></button>
         </aside>
       )}
 
@@ -1095,49 +1102,34 @@ function Picker(
 ) {
   return (
     <InFrame>
-    <div
-      onClick={onClose}
-      className="sheet-scrim"
-            style={{
-        position: 'absolute', inset: 0, background: 'rgba(var(--scrim-rgb), .6)',
-        display: 'flex', alignItems: 'flex-end', zIndex: 20,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="sheet"
-        style={{ width: '100%', background: 'var(--field)', maxHeight: '70%', overflowY: 'auto' }}
-      >
-        <div style={{ padding: '9px 14px', background: 'var(--navy)' }}>
-          <span style={{
-            font: "600 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
-          }}>{title}</span>
-        </div>
-        {rows.length === 0 && (
-          <div style={{ padding: 14, font: "400 calc(12px * var(--ts)) var(--body)", color: 'var(--dim)' }}>
-            Nobody left.
+      <div onClick={onClose} className="sheet-scrim game-picker-layer">
+        <section
+          onClick={(e) => e.stopPropagation()}
+          className="game-picker-sheet"
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+        >
+          <header>
+            <span><small>DUGOUT DECISION</small><strong>{title}</strong></span>
+            <button className="tap" type="button" onClick={onClose}>CLOSE</button>
+          </header>
+          <div className="game-picker-list">
+            {rows.length === 0 && (
+              <div className="game-picker-empty">
+                <small>NO OPTION</small>
+                <strong>Nobody available</strong>
+              </div>
+            )}
+            {rows.map((r) => (
+              <button className="game-picker-row tap" key={r.id} type="button" onClick={() => onPick(r.id)}>
+                <span><strong>{r.name}</strong><small>{r.note}</small></span>
+                <b>{r.rating}</b>
+              </button>
+            ))}
           </div>
-        )}
-        {rows.map((r) => (
-          <button
-            key={r.id}
-            onClick={() => onPick(r.id)}
-            style={{
-              width: '100%', textAlign: 'left', padding: '11px 14px',
-              borderBottom: '1px solid var(--hairline)', background: 'var(--paper)',
-            }}
-          >
-            <span style={{ font: "400 calc(13px * var(--ts)) var(--body)" }}>{r.name}</span>
-            <span style={{
-              float: 'right', font: "700 calc(13px * var(--ts)) var(--mono)", marginLeft: 10,
-            }}>{r.rating}</span>
-            <span style={{
-              float: 'right', font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
-            }}>{r.note}</span>
-          </button>
-        ))}
+        </section>
       </div>
-    </div>
     </InFrame>
   );
 }

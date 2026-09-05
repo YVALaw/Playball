@@ -6,13 +6,13 @@ by hand through the store's own actions.
 
 ## Confirmed, must fix before v1.0
 
-- **F1 · The PSC godsquad hack.** `store.ts start()` gives Pascagoula Tech
-  five 99-rated men in every non-vitest dynasty, marked "TESTING ONLY —
-  remove before v1.0, together with the guaranteed PSC offer in NewGame.tsx".
-  Left in place for now (the reporter's phone testing leans on it); it must
-  go in stage 16.
+No open release-fixture blockers from this ledger.
 
 ## Fixed during this audit
+
+- **F1 · PSC/recruiting test fixtures removed.** Normal dynasties no longer
+  force Pascagoula Tech into the starting offers, boost its roster to 99s, or
+  inject named test prospects into every recruiting class.
 
 - **A1 · Program overlay could not scroll** — no sheet on the tab had a
   scroller; the coach profile was the first tall enough to prove it. Fixed

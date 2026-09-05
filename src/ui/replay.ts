@@ -13,13 +13,11 @@
 // no text. They are matched on plate appearances, which are identifiable in the
 // log because the engine prefixes those lines with the count — "[2-1 4p]".
 //
-// No screen renders these frames yet — the managed game shows the raw log, and
-// there is no post-hoc replay view. This module is kept, with its tests, as the
-// working alignment layer that screen will need; the tests are what stop the
-// log format and the event stream drifting apart in the meantime. Deliberate,
-// not forgotten.
+// Finished user games now keep these streams on their box score and the
+// schedule/postseason sheet renders them as a scrub-able replay. The alignment
+// stays here rather than in the screen so replay remains a reporting layer over
+// the actual simulation rather than a second version of baseball logic.
 
-import type { GameResult } from '../engine/game.js';
 import type { PlayEvent, PlayerId } from '../engine/types.js';
 
 export interface Frame {
@@ -87,7 +85,7 @@ function occupancy(diamond: Diamond): [boolean, boolean, boolean] {
   return bases;
 }
 
-export function buildFrames(result: GameResult): Frame[] {
+export function buildFrames(result: { log: readonly string[]; playEvents: readonly PlayEvent[] }): Frame[] {
   const groups = groupByPlateAppearance(result.playEvents);
   const frames: Frame[] = [];
   const diamond: Diamond = new Map();

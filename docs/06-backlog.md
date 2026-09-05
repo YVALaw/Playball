@@ -2130,11 +2130,9 @@ here, it either shipped or was decided against.**
   stable per-man hash stays (if the words moved there would be nothing to
   learn) and the development lines keep their fuzzy bands (making both axes
   decodable would leave nothing to scout).
-- **Remove the test aids.** The loaded Pascagoula Tech roster, and Hans Hood —
-  a 20-overall, 99-potential third baseman injected into every recruiting class
-  and pinned to the foot of the board. Both are marked `TESTING ONLY` in code
-  and must leave together. PSC was measured winning back-to-back national
-  titles in a save the player never touched.
+- **DONE — Remove the test aids.** The forced Pascagoula Tech offer/99-rated
+  roster and the named recruiting fixtures were removed from normal dynasties
+  in the September 4 decision-visibility pass.
 - **Freesound licence verification** before any store release. See
   `public/sfx/CREDITS.md`: CC-BY needs the credit shipped, NC cannot ride with
   paid IAP.

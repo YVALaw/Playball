@@ -28,7 +28,7 @@ function Row(
 ) {
   return (
     <button
-      className="toggle-row tap"
+      className="toggle-row setting-toggle-card tap"
       type="button"
       disabled={disabled}
       onClick={onToggle}
@@ -53,7 +53,7 @@ function Choice<T extends string | number>(
   },
 ) {
   return (
-    <div className="setting-choice" aria-disabled={disabled}>
+    <div className="setting-choice setting-choice-card" aria-disabled={disabled}>
       <strong>{label}</strong>
       <Segmented
         label={label}
@@ -71,7 +71,14 @@ function Choice<T extends string | number>(
 /** The four pages, and the index that lists them. */
 type Page = SettingsPage;
 
-const PAGES: { id: Page | 'saves'; title: string; blurb: string }[] = [
+function SettingIcon({ kind }: { kind: 'display' | 'sound' | 'play' | 'saves' }) {
+  if (kind === 'display') return <svg viewBox="0 0 24 24" aria-hidden><rect x="3" y="4" width="18" height="13" rx="1"/><path d="M8 21h8M12 17v4"/></svg>;
+  if (kind === 'sound') return <svg viewBox="0 0 24 24" aria-hidden><path d="M4 10h4l5-4v12l-5-4H4zM17 9c1.5 1 1.5 5 0 6M19 6c3 3 3 9 0 12"/></svg>;
+  if (kind === 'play') return <svg viewBox="0 0 24 24" aria-hidden><path d="M4 7h16M7 4v6M4 17h16M16 14v6"/></svg>;
+  return <svg viewBox="0 0 24 24" aria-hidden><path d="M5 4h12l2 2v14H5zM8 4v6h8V4M8 16h8"/></svg>;
+}
+
+const PAGES: { id: Exclude<Page, 'index'> | 'saves'; title: string; blurb: string }[] = [
   { id: 'display', title: 'Display', blurb: 'Text size, theme, the field, motion.' },
   { id: 'sound', title: 'Sound', blurb: 'Bat, glove, crowd, haptics.' },
   { id: 'play', title: 'How you play', blurb: 'Full or casual, and what you handle.' },
@@ -116,50 +123,36 @@ export function Settings() {
 
   if (page === 'index') {
     return (
-      <Frame title="Settings" kicker="THIS DEVICE AND THIS CAREER">
-        <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-          {PAGES.map((p, i) => (
+      <Frame title="Settings" kicker="CONTROL ROOM">
+        <section className="settings-command-hero">
+          <small>PLAYBALL</small>
+          <strong>Make the game fit you.</strong>
+          <p>Device preferences stay on this phone. Career control travels with the save.</p>
+        </section>
+        <section className="settings-tile-grid">
+          {PAGES.map((p) => (
             <button
               key={p.id}
-              className="tap"
+              className="settings-tile tap"
               onClick={() => {
-                // Saves is a screen of its own and already reachable from the
-                // overlay system; the index sends you there rather than keeping
-                // a second copy of it in here.
                 if (p.id === 'saves') openOverlay('saves');
                 else setPage(p.id as Page);
               }}
-              style={{
-                width: '100%', textAlign: 'left', padding: '13px 12px',
-                display: 'flex', alignItems: 'center', gap: 10,
-                borderTop: i === 0 ? 'none' : '1px solid var(--hairline)',
-              }}
             >
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{
-                  display: 'block',
-                  font: "600 calc(13px * var(--ts))/1.2 var(--body)", color: 'var(--ink)',
-                }}>{p.title}</span>
-                <span style={{
-                  display: 'block', marginTop: 2,
-                  font: "400 calc(10.5px * var(--ts))/1.35 var(--body)", color: 'var(--dim)',
-                }}>{p.blurb}</span>
-              </span>
-              <span style={{
-                font: "400 calc(15px * var(--ts)) var(--body)", color: 'var(--dim)',
-              }}>&rsaquo;</span>
+              <span className="settings-tile-icon"><SettingIcon kind={p.id} /></span>
+              <span><strong>{p.title}</strong><small>{p.blurb}</small></span>
+              <b>›</b>
             </button>
           ))}
-        </div>
-        <div style={{
-          marginTop: 12, font: "400 calc(10.5px * var(--ts))/1.5 var(--body)",
-          color: 'var(--dim)',
-        }}>
-          Display and sound follow the device; how you play rides the save.
-        </div>
+        </section>
+        <section className="settings-scope-note">
+          <span><small>DEVICE</small><strong>Display · Sound</strong></span>
+          <span><small>CAREER</small><strong>How you play</strong></span>
+        </section>
       </Frame>
     );
   }
+
 
   if (page === 'display') {
     return (
@@ -218,20 +211,12 @@ export function Settings() {
           */}
           {prefs.tutorials && (
           <button
-            className="tap"
+            className="settings-reset-card tap"
             onClick={() => { resetTutorials(); setTaught(true); }}
-            style={{
-              width: '100%', textAlign: 'left', padding: '10px',
-              borderTop: '1px solid var(--hairline)',
-            }}
           >
-            <div style={{ font: "600 calc(11.5px * var(--ts))/1.2 var(--body)" }}>
-              {taught ? 'The screens will teach again' : 'Show the tutorials again'}
-            </div>
-            <div style={{
-              marginTop: 2, font: "400 calc(10px * var(--ts))/1.35 var(--body)",
-              color: 'var(--dim)',
-            }}>On your next visit to each.</div>
+            <span><small>TEACHING RESET</small><strong>{taught ? 'The screens will teach again' : 'Show the tutorials again'}</strong></span>
+            <em>On your next visit to each.</em>
+            <b>↻</b>
           </button>
           )}
         </section>
@@ -271,13 +256,11 @@ export function Settings() {
       kicker="THIS CAREER"
       onBack={() => setPage('index')}
     >
-      <div style={{
-        marginBottom: 4,
-        font: "400 calc(11px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
-      }}>
-        The game always models everything — injuries, development, all
-        ninety-six programs. This decides how much of it you are asked about.
-      </div>
+      <section className="settings-career-note">
+        <small>CAREER CONTROL</small>
+        <strong>The world stays the same. Your desk changes.</strong>
+        <p>The game always models injuries, development and all ninety-six programs. This decides how much lands on you.</p>
+      </section>
 
       <SectionHeading kicker="YOUR CAREER" title={depth.mode === 'full' ? 'Full control' : 'Casual'} />
       <section className="settings-list">
@@ -341,7 +324,7 @@ function Frame(
         </>
       }
     >
-      <main className="module-workspace">{children}</main>
+      <main className="module-workspace settings-workspace">{children}</main>
     </FixedHeader>
   );
 }

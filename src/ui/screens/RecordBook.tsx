@@ -1,17 +1,5 @@
 // RecordBook.tsx
-// The all-time book, and the only screen in the game about somebody else's
-// program.
-//
-// It lives as the second sheet of HISTORY rather than as a nav entry of its own,
-// for the reason Program.tsx already gives about not having a season-by-season
-// tab: two record books one tap apart are two record books that eventually
-// disagree. These two belong together and are the same kind of object seen at
-// two scales — your seasons, and the country's marks — so the tab strip is
-// exactly the right control to put between them.
-//
-// The seeded NCAA marks are what makes the screen worth opening on day one. A
-// record book that starts empty is a page of dashes; a record book that opens
-// with Incaviglia in it is a list of things to go and do.
+// The national record book, grouped like an archive rather than a settings list.
 
 import { useEffect, useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
@@ -19,33 +7,16 @@ import {
   RECORDS, recordsIn, type RecordGroup, type RecordKey, type RecordMark,
 } from '../../engine/records.js';
 import { pct } from '../format.js';
-import { Legend } from '../components/Kit.js';
 import type { PlayerId } from '../../engine/types.js';
+import { ChevronRightIcon } from '@radix-ui/react-icons';
 
-/** The order the book reads in, and what each section is for. */
 const SECTIONS: Array<{ group: RecordGroup; title: string; note: string }> = [
-  // One line apiece, where the first draft ran to paragraphs — "same thing in
-  // the book, waaay too much text." What each line lost lives on in the code
-  // that enforces it (records.ts owns the qualifying minimums and the
-  // no-seeding rule for careers); a screen does not have to recite its rules.
-  { group: 'game', title: 'SINGLE GAME', note: '' },
-  {
-    group: 'feat', title: 'FEATS',
-    note: 'Counts, not records — the name is the last man to do it.',
-  },
-  {
-    group: 'season', title: 'SINGLE SEASON',
-    note: 'Rate marks need the leaderboard minimums.',
-  },
-  {
-    group: 'career', title: 'CAREER',
-    note: 'Four years at most. Rate marks need two qualifying seasons.',
-  },
-  { group: 'team', title: 'TEAM', note: 'Programs, not players.' },
-  {
-    group: 'coach', title: 'COACHING',
-    note: 'Every head coach in the country, yours among them.',
-  },
+  { group: 'game', title: 'Single game', note: 'One-night marks.' },
+  { group: 'feat', title: 'Feats', note: 'Counts, not records — the name is the last man to do it.' },
+  { group: 'season', title: 'Single season', note: 'Rate marks use leaderboard minimums.' },
+  { group: 'career', title: 'Career', note: 'Rate marks require two qualifying seasons.' },
+  { group: 'team', title: 'Team', note: 'Programs, not players.' },
+  { group: 'coach', title: 'Coaching', note: 'Every head coach in the country.' },
 ];
 
 export function RecordBook() {
@@ -53,37 +24,17 @@ export function RecordBook() {
   const openPlayer = useDynasty((s) => s.openPlayer);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
-
-  /*
-    Whose card can actually be opened.
-
-    A mark carries the id of the man who set it, and he may have graduated three
-    Junes ago from a program that is not yours — in which case nothing in the
-    save remembers him and the card would open on an apology. So the tap is
-    offered only where there is something behind it: a current roster anywhere in
-    the country, or your own career book, which is the one archive that outlives
-    a roster.
-  */
-  /*
-    The marks taken since the book was last opened, snapshotted on mount and
-    then cleared — the same contract the inbox dots use, and for the same
-    reason: a dot that vanished as you looked at it would never be seen.
-    Records stopped writing letters at the reporter's ask ("the user will
-    receive a lot of notifications from this"), so this is how a new mark
-    announces itself.
-  */
   const unseenRecords = useDynasty((s) => s.unseenRecords);
   const clearUnseenRecords = useDynasty((s) => s.clearUnseenRecords);
   const [fresh] = useState(() => new Set(unseenRecords));
+  const [room, setRoom] = useState<RecordGroup>('game');
   useEffect(() => { clearUnseenRecords(); }, [clearUnseenRecords]);
 
   const known = useMemo(() => {
     const ids = new Set<string>();
     if (!season) return ids;
     for (const t of season.teams) {
-      for (const p of [
-        ...t.team.lineup, ...t.team.bench, ...t.team.rotation, ...t.team.bullpen,
-      ]) ids.add(p.id);
+      for (const p of [...t.team.lineup, ...t.team.bench, ...t.team.rotation, ...t.team.bullpen]) ids.add(p.id);
     }
     for (const id of Object.keys(season.careers ?? {})) ids.add(id);
     return ids;
@@ -91,33 +42,46 @@ export function RecordBook() {
 
   if (!season || !team) return null;
   const book = season.records ?? {};
-  // No padding of its own: this renders inside a workspace that already has
-  // the gutter, and two of them is a column half the width of the screen.
-  return (
-    <>
-      {/* The five-line introduction and the three-paragraph footer both
-          collapsed into this key — "waaay too much text." Everything a reader
-          needs to decode a row, nothing they need to be told twice. */}
-      <Legend items={[
-        { mark: <Tag />, means: 'a real mark, corrected for this league' },
-        {
-          mark: <i style={{
-            display: 'inline-block', width: 10, height: 10, verticalAlign: 'baseline',
-            borderLeft: '3px solid var(--clay)',
-            background: 'rgba(var(--clay-rgb), .25)',
-          }} aria-hidden />,
-          means: 'held by your program',
-        },
-        { mark: '—', means: 'not set — whoever does it first takes it' },
-        { mark: '=', means: 'equalling a mark leaves it standing' },
-      ]} />
+  const ours = Object.values(book).filter((mark) => mark && !mark.ncaa && mark.team === team.def.abbr).length;
+  const set = Object.values(book).filter(Boolean).length;
 
-      {SECTIONS.map((s) => (
+  return (
+    <section className="record-book-modern">
+      <div className="record-book-summary">
+        <span><small>YOUR PROGRAM HOLDS</small><strong>{ours}</strong><em>all-time mark{ours === 1 ? '' : 's'}</em></span>
+        <span><small>BOOK FILLED</small><strong>{set}</strong><em>records currently set</em></span>
+      </div>
+      <div className="record-book-key" aria-label="Record book legend">
+        <span><i className="record-key-mine" /> YOUR PROGRAM</span>
+        <span><Tag /> NCAA SEED</span>
+        <span><b>NEW</b> SINCE LAST VISIT</span>
+      </div>
+
+      <nav className="record-room-selector" aria-label="Record book rooms">
+        {SECTIONS.map((section) => {
+          const active = room === section.group;
+          const marks = recordsIn(section.group).filter((key) => book[key]).length;
+          return (
+            <button
+              key={section.group}
+              type="button"
+              className={active ? 'active' : ''}
+              onClick={() => setRoom(section.group)}
+            >
+              <small>{section.group === 'game' ? 'ONE NIGHT' : section.group === 'feat' ? 'RARE' : section.group.toUpperCase()}</small>
+              <strong>{section.title}</strong>
+              <span>{marks} set</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {SECTIONS.filter((section) => section.group === room).map((section) => (
         <Section
-          key={s.group}
-          title={s.title}
-          note={s.note}
-          keys={recordsIn(s.group)}
+          key={section.group}
+          title={section.title}
+          note={section.note}
+          keys={recordsIn(section.group)}
           book={book}
           mine={team.def.abbr}
           known={known}
@@ -125,134 +89,57 @@ export function RecordBook() {
           onPick={openPlayer}
         />
       ))}
-
-    </>
+    </section>
   );
 }
 
-function Section(
-  { title, note, keys, book, mine, known, fresh, onPick }:
-  {
-    title: string; note: string; keys: RecordKey[];
-    book: Partial<Record<RecordKey, RecordMark>>;
-    mine: string; known: Set<string>; fresh: Set<string>;
-    onPick: (id: PlayerId) => void;
-  },
-) {
+function Section({ title, note, keys, book, mine, known, fresh, onPick }: {
+  title: string; note: string; keys: RecordKey[];
+  book: Partial<Record<RecordKey, RecordMark>>; mine: string;
+  known: Set<string>; fresh: Set<string>; onPick: (id: PlayerId) => void;
+}) {
   return (
-    <div style={{ marginTop: 16 }}>
-      <div className="label" style={{ marginBottom: 4 }}>{title}</div>
-      <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-        {keys.map((k) => (
-          <Row key={k} rkey={k} mark={book[k]} mine={mine} known={known} fresh={fresh} onPick={onPick} />
-        ))}
+    <section className="record-group-card">
+      <header><span><small>ALL-TIME RECORDS</small><strong>{title}</strong></span><p>{note}</p></header>
+      <div className="record-group-rows">
+        {keys.map((key) => <Row key={key} rkey={key} mark={book[key]} mine={mine} known={known} fresh={fresh} onPick={onPick} />)}
       </div>
-      {note !== '' && (
-        <div style={{
-          marginTop: 5, font: "400 calc(10.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-        }}>{note}</div>
-      )}
-    </div>
+    </section>
   );
 }
 
-function Row(
-  { rkey, mark, mine, known, fresh, onPick }:
-  {
-    rkey: RecordKey; mark: RecordMark | undefined;
-    mine: string; known: Set<string>; fresh: Set<string>;
-    onPick: (id: PlayerId) => void;
-  },
-) {
+function Row({ rkey, mark, mine, known, fresh, onPick }: {
+  rkey: RecordKey; mark: RecordMark | undefined; mine: string;
+  known: Set<string>; fresh: Set<string>; onPick: (id: PlayerId) => void;
+}) {
   const spec = RECORDS[rkey];
   const ours = mark !== undefined && !mark.ncaa && mark.team === mine;
-  // Taken since the book was last opened. The dot survives the visit that
-  // clears it — the set is read once, on mount, exactly as the inbox does.
   const isNew = fresh.has(rkey);
   const tappable = mark?.id !== undefined && known.has(mark.id);
-
+  const className = `record-modern-row${ours ? ' ours' : ''}${isNew ? ' is-new' : ''}${tappable ? ' tappable' : ''}`;
   const body = (
     <>
-      <span className="label" style={{ gridColumn: 1, alignSelf: 'center' }}>
-        {isNew && <i className="unread-dot" />}
-        {spec.label}
+      <span className="record-modern-copy">
+        <small>{isNew && <b>NEW</b>}{spec.label}</small>
+        <strong>{mark?.holder ?? 'Not set'}</strong>
+        {mark && <em>{mark.team} · {mark.year}{mark.ncaa ? ' · NCAA' : ''}</em>}
+        {mark?.detail && <p>{mark.detail}</p>}
+        {spec.frozen && <p>{spec.frozen}</p>}
       </span>
-      <span style={{
-        gridColumn: 2, gridRow: '1 / span 2', alignSelf: 'center', textAlign: 'right',
-        font: `${ours ? 800 : 700} calc(15px * var(--ts)) var(--mono)`,
-        // The dash on an unset row was drawn in --faint, which is the border
-        // token: a fifth of the ink, and on paper that is not quiet, it is gone.
-        // --dim is the token for text that should recede, and it is already what
-        // the sentence beside it uses.
-        color: mark ? (ours ? 'var(--clay)' : 'var(--ink)') : 'var(--dim)',
-      }}>{mark ? format(mark.value, rkey) : '—'}</span>
-
-      <span style={{
-        gridColumn: 1, marginTop: 2,
-        font: `${ours ? 600 : 400} calc(11.5px * var(--ts))/1.35 var(--body)`,
-        color: mark ? (ours ? 'var(--clay)' : 'var(--ink)') : 'var(--dim)',
-        overflow: 'hidden', textOverflow: 'ellipsis',
-      }}>
-        {mark
-          ? (
-            <>
-              {mark.holder}
-              <span style={{ color: 'var(--dim)', font: "400 calc(10px * var(--ts)) var(--mono)" }}>
-                {' '}· {mark.team} · {mark.year}
-              </span>
-              {mark.ncaa && <Tag />}
-              {mark.detail && (
-                <span style={{
-                  display: 'block', font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
-                }}>{mark.detail}</span>
-              )}
-              {spec.frozen && (
-                <span style={{
-                  display: 'block', marginTop: 2,
-                  font: "italic 400 calc(10.5px * var(--ts))/1.4 var(--body)", color: 'var(--dim)',
-                }}>{spec.frozen}</span>
-              )}
-            </>
-          )
-          : 'Not set.'}
+      <span className="record-modern-value">
+        <strong>{mark ? format(mark.value, rkey) : '—'}</strong>
+        {mark?.ncaa && <Tag />}
       </span>
+      {tappable && <ChevronRightIcon />}
     </>
   );
-
-  const style = {
-    width: '100%', textAlign: 'left' as const,
-    display: 'grid', gridTemplateColumns: '1fr 66px', gap: 6,
-    padding: '8px 10px',
-    borderBottom: '1px solid var(--hairline)',
-    borderLeft: ours ? '3px solid var(--clay)' : '3px solid transparent',
-    background: ours ? 'rgba(var(--clay-rgb), .12)' : 'transparent',
-  };
-
-  // A tap that opens nothing is worse than no tap at all, so the row is only a
-  // button when there is a card behind it.
   return tappable
-    ? <button onClick={() => onPick(mark.id as PlayerId)} style={style}>{body}</button>
-    : <div style={style}>{body}</div>;
+    ? <button className={className} type="button" onClick={() => onPick(mark!.id as PlayerId)}>{body}</button>
+    : <div className={className}>{body}</div>;
 }
 
-/** The badge that says a mark was set in the real world and not in this one. */
-function Tag() {
-  return (
-    <span style={{
-      marginLeft: 5, padding: '1px 4px',
-      border: '1px solid var(--clay)', color: 'var(--clay)',
-      font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em', whiteSpace: 'nowrap',
-    }}>NCAA</span>
-  );
-}
+function Tag() { return <span className="ncaa-tag">NCAA</span>; }
 
-/**
- * A value in the units its category is read in.
- *
- * Innings get the scorer's notation rather than a decimal: 96.1 is ninety six
- * and a third, and printing 96.3 for the same quantity would be a different
- * number to anybody who has read a box score.
- */
 function format(v: number, key: RecordKey): string {
   switch (RECORDS[key].shape) {
     case 'avg': return pct(v);

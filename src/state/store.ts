@@ -46,7 +46,7 @@ import {
   type SeasonOutcome, type Expectation,
 } from '../engine/program.js';
 import {
-  runRivalYear, seatCoaches, syncCoachMods, type CarouselMove,
+  runRivalYear, seatCoaches, syncCoachMods, coachFromAssistant, type CarouselMove, type FreeAgent,
 } from '../engine/rivals.js';
 import {
   ACHIEVEMENTS, awardFirstOverall, awardSeason, awardTopRecruit, noFeats,
@@ -58,12 +58,13 @@ import {
 import {
   applyRealignment, headToHead, realignmentFor,
 } from '../engine/world.js';
-import type { AlumnusNote } from '../engine/legacy.js';
+import { proCareer, type AlumnusNote } from '../engine/legacy.js';
 import {
-  annualBudget, freshEconomy, marketFor, poached, remaining, wageBill,
+  annualBudget, freshEconomy, marketFor, poached, developAssistant, remaining, wageBill,
   withStaff, FACILITIES, MAX_FACILITY, SCOUT_COST, SCOUT_DAYS, SEATS,
-  devBonus, armCareFor, buildingSpec, builtBonus,
-  SEAT_LABEL, type Assistant, type Economy, type StaffSeat, type Building,
+  devBonus, armCareFor, buildingSpec, builtBonus, facilityEffects, facilityLevel,
+  facilityUpgradeCost, FACILITY_MAX_LEVEL, pipelineStrength, addPipelineSigning, agePipelines,
+  SEAT_LABEL, BUILDINGS, type Assistant, type Economy, type StaffSeat, type Building,
 } from '../engine/economy.js';
 import {
   readJournal, writeJournal, noteAction, clearJournal, journalMatches,
@@ -96,7 +97,6 @@ import {
   SCHOLARSHIPS, RECRUITING_BUDGET, MAX_PER_RECRUIT, RECRUITING_WEEKS, budgetFor,
   weeklyBudget, windowBudget,
   aiTargets, weeklyPoints, closeWeek, resetWeeklySpend, canPursue, inPipeline,
-  ensureWonderGuy, ensureHoodHans,
   leadersAtWeekStart,
 } from '../engine/recruiting.js';
 import { pitchFor, developmentScore } from '../engine/pitch.js';
@@ -267,7 +267,7 @@ export type Overlay =
   | 'settings' | 'captain' | 'jobs';
 
 /** The three tabs of the program page, which is addressable from the inbox. */
-export type ProgramSheet = 'board' | 'money' | 'watchlist' | 'coach' | 'hall';
+export type ProgramSheet = 'overview' | 'board' | 'money' | 'watchlist' | 'coach' | 'hall';
 
 /**
  * The offseason, as a sequence you are walked through rather than a set of tabs
@@ -1114,7 +1114,9 @@ export interface DynastyStore {
 
   /** Whose card is open. Cleared when you navigate away. */
   selectedPlayer: PlayerId | null;
-  openPlayer: (id: PlayerId) => void;
+  /** The room a contextual shortcut wants the card to open on. */
+  playerCardSection: 'overview' | 'stats';
+  openPlayer: (id: PlayerId, section?: 'overview' | 'stats') => void;
   /** Close the card and return to whatever was underneath it. */
   closePlayer: () => void;
 
@@ -1254,6 +1256,8 @@ export interface DynastyStore {
    * Returns false when it is already up or the money is not there.
    */
   build: (which: Building) => boolean;
+  /** Deepen one facility's specialty from level one to three. */
+  upgradeFacility: (which: Building) => boolean;
   /** Buy the book on one opponent, good for the next stretch of days. */
   scoutTeam: (team: number) => void;
   /**
@@ -1264,7 +1268,7 @@ export interface DynastyStore {
   /** Stage 22: write one control of the playbook against a club. */
   setPlaybook: (abbr: string, key: keyof Strategy, value: Strategy[keyof Strategy]) => void;
   /** Fill the whole book from what the desk knows about them. */
-  autoSetPlaybook: (abbr: string) => void;
+  autoSetPlaybook: (abbr: string) => boolean;
   /** The club whose freshly-bought book is waiting to be set up. */
   playbookInvite: string | null;
   dismissPlaybookInvite: () => void;
@@ -1547,10 +1551,46 @@ function usableEconomy(saved: unknown): Economy {
     const man = (e.staff as Record<string, unknown> | undefined)?.[seat];
     if (seatOk(man)) staff[seat] = man;
   }
+  const buildings: Building[] = ['cage', 'pen', 'clubhouse'];
+  const built = Array.isArray(e.built)
+    ? e.built.filter((x): x is Building => buildings.includes(x as Building))
+    : [];
+  const facilityLevels: Partial<Record<Building, number>> = {};
+  for (const b of buildings) {
+    const raw = (e.facilityLevels as Partial<Record<Building, unknown>> | undefined)?.[b];
+    if (typeof raw === 'number' && raw > 0) facilityLevels[b] = Math.min(FACILITY_MAX_LEVEL, Math.round(raw));
+    else if (built.includes(b)) facilityLevels[b] = 1;
+  }
+  const tree = Array.isArray(e.tree)
+    ? e.tree.filter((x): x is NonNullable<Economy['tree']>[number] => {
+        if (!x || typeof x !== 'object') return false;
+        const t = x as unknown as Record<string, unknown>;
+        return typeof t.id === 'string' && typeof t.name === 'string'
+          && typeof t.leftYear === 'number';
+      })
+    : [];
+  const pipelines: NonNullable<Economy['pipelines']> = {};
+  if (e.pipelines && typeof e.pipelines === 'object') {
+    for (const [state, value] of Object.entries(e.pipelines)) {
+      if (!value || typeof value !== 'object') continue;
+      const q = value as unknown as Record<string, unknown>;
+      if (typeof q.strength !== 'number') continue;
+      pipelines[state] = {
+        state,
+        strength: Math.max(0, Math.min(100, q.strength)),
+        signings: typeof q.signings === 'number' ? Math.max(0, Math.round(q.signings)) : 0,
+        lastSignedYear: typeof q.lastSignedYear === 'number' ? q.lastSignedYear : 0,
+      };
+    }
+  }
   return {
     facilities: Number.isInteger(e.facilities)
-      ? Math.max(0, Math.min(MAX_FACILITY, e.facilities as number)) : 0,
+      ? Math.max(0, Math.min(MAX_FACILITY, e.facilities as number)) : built.length,
+    built,
+    facilityLevels,
     staff,
+    tree,
+    pipelines,
     spent: typeof e.spent === 'number' && e.spent >= 0 ? e.spent : 0,
     scouted: e.scouted && typeof e.scouted === 'object'
       ? Object.fromEntries(Object.entries(e.scouted)
@@ -1692,8 +1732,7 @@ function staffSetsTheCard(season: SeasonState, userTeam: number): void {
  */
 function applyCoachMods(
   season: SeasonState, userTeam: number, coach: CoachState,
-  staff: Economy['staff'] = {},
-  facilities = 0,
+  economy: Economy = freshEconomy(),
 ): void {
   // Every chair, not just yours. It used to clear the field and write one row,
   // which was right when the other ninety five benches were nobody's — now each
@@ -1704,9 +1743,10 @@ function applyCoachMods(
   // The user's row carries his staff as well — stage 11. An assistant is a
   // bonus on the calibrated skills, applied here so every path that dresses
   // the mods prices him the same way.
-  syncCoachMods(season, userTeam, withStaff(coach.skills, staff), {
-    armCare: armCareFor(staff),
-    injuryGuard: FACILITIES[facilities]?.injuryGuard ?? 1,
+  const fx = facilityEffects(economy);
+  syncCoachMods(season, userTeam, withStaff(coach.skills, economy.staff), {
+    armCare: armCareFor(economy.staff),
+    injuryGuard: (FACILITIES[economy.facilities]?.injuryGuard ?? 1) * fx.guard,
   });
 }
 
@@ -2083,20 +2123,17 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // their programs are worth. Without it the entire hiring ladder would be
     // open to whoever won a game first — you included.
     seatCoaches(season, seat, START_YEAR);
-    applyCoachMods(season, seat, coach, get().economy.staff, get().economy.facilities);
+    applyCoachMods(season, seat, coach, get().economy);
     applyPhilosophy(season, seat, coach);
 
     /*
-      TESTING ONLY — remove before v1.0, together with the guaranteed PSC
-      offer in `NewGame.tsx`. Pascagoula Tech opens every dynasty with five
-      men at 99 so a tester can ride one roster to the national title and
-      exercise every June screen on the way. Ratings are assigned, not
-      rolled — no draw is consumed, so the rest of the world is bit-for-bit
-      the world it would have been.
+      TESTING ONLY — remove before release, together with the guaranteed PSC
+      offer in NewGame.tsx. Pascagoula Tech begins with five 99-rated players
+      so a test career can reliably reach and exercise June/offseason screens.
 
-      Not under vitest: five best-in-country players sweep the awards of
-      whatever conference they sit in, and every store test that reads an
-      award off a fresh world would be testing the hack instead of the game.
+      Ratings are assigned after world creation, so no RNG draw is consumed and
+      the rest of the generated world remains unchanged. Vitest stays clean: a
+      loaded roster would otherwise distort award and fresh-world assertions.
     */
     if (typeof process === 'undefined' || !process.env?.['VITEST']) {
       const psc = season.teams.find((t) => t.def.abbr === 'PSC');
@@ -2114,6 +2151,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         }
       }
     }
+
     set({
       season,
       userTeam: seat,
@@ -2127,6 +2165,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       history: [],
       tab: 'home',
       screen: 'today',
+      loadedSlot: null,
       lastOffseason: null,
       lastWeek: null,
       // A new career starts with the school's bare gift: empty seats, level-0
@@ -2237,7 +2276,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // star of reach; see `canPursue`.
     const me = get().season?.teams[userTeam];
     const myStars = me ? prestigeStars(me.prestige) : 1;
-    if (!canPursue(prospect, myStars, inPipeline(prospect, me?.def.state ?? ''))) return;
+    if (!canPursue(
+      prospect, myStars, pipelineStrength(get().economy, prospect.state, me?.def.state ?? ''),
+    )) return;
 
     // A full class cannot sign anybody else, so there is nothing to spend on him.
     const signed = season.recruiting.prospects
@@ -2291,8 +2332,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // in aiTargets compares against nothing and never fires.
     const atWeekStart = leadersAtWeekStart(recruits);
 
-    const effSkills = withStaff(coach.skills, get().economy.staff);
-    const myDevPitch = FACILITIES[get().economy.facilities]?.devPitch ?? 0;
+    const myEconomy = get().economy;
+    const effSkills = withStaff(coach.skills, myEconomy.staff);
+    const fx = facilityEffects(myEconomy);
+    const myDevPitch = (FACILITIES[myEconomy.facilities]?.devPitch ?? 0) + fx.pitch;
     for (const record of season.teams) {
       const mine = record.index === userTeam;
       // Your facilities are part of your pitch: a development lab is the one
@@ -2300,6 +2343,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       const pitch = pitchFor(
         season, record, regionOf(record.index),
         Math.min(1, developmentScore(record) + (mine ? myDevPitch : 0)),
+        mine ? (state) => pipelineStrength(myEconomy, state, record.def.state) : undefined,
       );
 
       const staff = record.coach;
@@ -2673,7 +2717,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         'stayed' *is* the statement that he is still playing here, so it is read
         directly rather than trusted to have already been reflected on a roster.
       */
-      const staying = new Set(
+      const staying = new Set<string>(
         (season.draft?.men ?? [])
           .filter((m) => m.outcome === 'stayed')
           .map((m) => String(m.player.id)),
@@ -2789,19 +2833,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         the one thing in the offseason that only ever moves forward.
       */
       if (get().furthestPhase < PHASES.indexOf('draft')) {
+        const eco = get().economy;
+        const facility = facilityEffects(eco);
+        const baseTraining = get().coach.skills.training
+          + (FACILITIES[eco.facilities]?.trainBump ?? 0);
         const report = departAndDevelop(season, season.rng, {
           userTeam: get().userTeam,
-          // The facilities are the training staff's tools. A level-3 lab is
-          // worth nine points of the skill — see engine/economy.ts.
-          training: get().coach.skills.training
-            + (FACILITIES[get().economy.facilities]?.trainBump ?? 0),
-          // Stage 22: the game-side coaches develop their own side.
-          trainingBat: get().coach.skills.training
-            + (FACILITIES[get().economy.facilities]?.trainBump ?? 0)
-            + devBonus(get().economy.staff).bat,
-          trainingArm: get().coach.skills.training
-            + (FACILITIES[get().economy.facilities]?.trainBump ?? 0)
-            + devBonus(get().economy.staff).arm,
+          training: baseTraining + Math.round((facility.bat + facility.arm) / 4),
+          // Specialized facilities now matter on their own side of the roster.
+          trainingBat: baseTraining + Math.round(facility.bat) + devBonus(eco.staff).bat,
+          trainingArm: baseTraining + Math.round(facility.arm) + devBonus(eco.staff).arm,
         });
         /*
           The alumni book — stage 13. One durable note per man who left YOUR
@@ -2897,7 +2938,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     };
     // The in-game skills live on the team record too; keep the copy current the
     // moment a point lands, or the next game plays at last year's numbers.
-    if (season) applyCoachMods(season, userTeam, next, get().economy.staff, get().economy.facilities);
+    if (season) applyCoachMods(season, userTeam, next, get().economy);
     set({
       coach: next,
       spentThisStep: { ...spentThisStep, [skill]: (spentThisStep[skill] ?? 0) + 1 },
@@ -2921,7 +2962,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       skillPoints: coach.skillPoints + 1,
       skills: { ...coach.skills, [skill]: coach.skills[skill] - 1 },
     };
-    if (season) applyCoachMods(season, userTeam, next, get().economy.staff, get().economy.facilities);
+    if (season) applyCoachMods(season, userTeam, next, get().economy);
     set({
       coach: next,
       spentThisStep: { ...spentThisStep, [skill]: on - 1 },
@@ -3169,17 +3210,28 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       anywhere before B7 — `nextPrestige` was written once and only the user's
       school was ever passed through it.
     */
+    // Assistants who are ready for their own program enter the SAME national
+    // carousel as every other coach. This is the coaching tree becoming part of
+    // the world rather than a trophy list disconnected from it.
+    const staffPoaches = SEATS
+      .map((seat) => ({ seat, man: get().economy.staff[seat] }))
+      .filter((x): x is { seat: StaffSeat; man: Assistant } => !!x.man && poached(x.man, year));
+    const extraFreeAgents: FreeAgent[] = staffPoaches.map(({ man }) => ({
+      coach: coachFromAssistant(man, coach.prestige),
+      from: -1,
+    }));
     const rivals = runRivalYear(season, post, {
       year,
       userTeam,
       games: seasonLength(season.config),
       userOpen: review.fired,
+      extraFreeAgents,
     });
     // Their benches changed hands, so the edge every one of their games is
     // played with has to be restamped before the next season starts.
     syncCoachMods(season, userTeam, withStaff(coach.skills, get().economy.staff), {
       armCare: armCareFor(get().economy.staff),
-      injuryGuard: FACILITIES[get().economy.facilities]?.injuryGuard ?? 1,
+      injuryGuard: (FACILITIES[get().economy.facilities]?.injuryGuard ?? 1) * facilityEffects(get().economy).guard,
     });
 
     /*
@@ -3299,33 +3351,90 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     */
     const eco0 = get().economy;
     const keptStaff: typeof eco0.staff = {};
-    // The first man out the door is the wire's story; see the stamp below.
+    // A "poach" only becomes a departure when the national carousel actually
+    // gives the assistant a chair. Interest without an offer should not make a
+    // paid employee vanish into an off-screen free-agent pool.
     let poachNews: { name: string; seat: StaffSeat } | null = null;
     for (const seat of SEATS) {
       const man = eco0.staff[seat];
       if (!man) continue;
-      if (poached(man, year)) {
+      const landing = poached(man, year)
+        ? season.teams.find((t) => t.coach?.name === man.name)
+        : undefined;
+      if (landing) {
         poachNews ??= { name: man.name, seat };
         get().post({
           kind: 'season', year: year + 1,
-          title: `${man.name} is leaving`,
-          body: `Coach — ${man.name} got his own program. Happy for him, sick `
-            + 'about the seat. The market has names whenever you are ready.',
+          title: `${man.name} gets the ${landing.def.school} job`,
+          body: `Coach — your ${SEAT_LABEL[seat].toLowerCase()} has his own program now. He spent ${Math.max(1, year - (man.joinedYear ?? year) + 1)} years on your staff. The seat is open.`,
+          link: { to: 'team' as const, index: landing.index },
         });
-      } else keptStaff[seat] = man;
+      } else {
+        keptStaff[seat] = developAssistant(man, year + 1);
+      }
     }
-    const rolledEconomy: Economy = {
-      ...eco0, staff: keptStaff, spent: 0, scouted: {},
-    };
+    // Refresh the career line of every branch while he is still in the world.
+    // If he later retires or falls out of the carousel, the last known record
+    // remains in the tree instead of disappearing with the chair.
+    const tree = (eco0.tree ?? []).map((branch) => {
+      const chair = season.teams.find((t) => t.coach?.name === branch.name);
+      const c = chair?.coach;
+      return c && chair ? {
+        ...branch,
+        lastSchool: chair.def.school,
+        careerWins: c.careerWins,
+        careerLosses: c.careerLosses,
+        titles: c.titles,
+        active: true,
+      } : { ...branch, active: false };
+    });
+    for (const seat of SEATS) {
+      const man = eco0.staff[seat];
+      if (!man || !poached(man, year)) continue;
+      const landing = season.teams.find((t) => t.coach?.name === man.name);
+      if (!landing?.coach || tree.some((b) => b.id === man.id)) continue;
+      const joined = man.joinedYear ?? year;
+      tree.push({
+        id: man.id,
+        name: man.name,
+        seat,
+        joinedYear: joined,
+        leftYear: year + 1,
+        yearsWithYou: Math.max(1, year - joined + 1),
+        lastSchool: landing.def.school,
+        careerWins: landing.coach.careerWins,
+        careerLosses: landing.coach.careerLosses,
+        titles: landing.coach.titles,
+        active: true,
+      });
+    }
+    const rolledEconomy: Economy = agePipelines({
+      ...eco0, staff: keptStaff, tree, spent: 0, scouted: {},
+    }, year + 1);
     if (!handles(get().depth, 'facilities')) {
-      // The AD builds when the money is truly there: next rung plus a season
-      // of headroom, so an automated career is never wage-poor in February.
+      // The AD keeps the weakest specialty moving instead of marching through a
+      // generic ladder. One project a winter, with headroom for staff/scouting.
       const me0 = get().season?.teams[get().userTeam];
-      const nextRung = FACILITIES[rolledEconomy.facilities + 1];
-      if (nextRung
-        && remaining(rolledEconomy, me0?.prestige ?? 40) >= nextRung.cost + 300) {
-        rolledEconomy.facilities += 1;
-        rolledEconomy.spent += nextRung.cost;
+      const prestige = me0?.prestige ?? 40;
+      const choices = BUILDINGS
+        .map((b) => {
+          const level = facilityLevel(rolledEconomy, b.key);
+          const nextLevel = level + 1;
+          return { b, level, nextLevel, cost: facilityUpgradeCost(b.key, nextLevel) };
+        })
+        .filter((x) => x.nextLevel <= FACILITY_MAX_LEVEL)
+        .filter((x) => remaining(rolledEconomy, prestige) >= x.cost + 300)
+        .sort((a, b) => a.level - b.level || a.cost - b.cost);
+      const pick = choices[0];
+      if (pick) {
+        const built = rolledEconomy.built ?? [];
+        if (!built.includes(pick.b.key)) rolledEconomy.built = [...built, pick.b.key];
+        rolledEconomy.facilityLevels = {
+          ...(rolledEconomy.facilityLevels ?? {}),
+          [pick.b.key]: pick.nextLevel,
+        };
+        rolledEconomy.facilities = Math.min(MAX_FACILITY, built.length);
+        rolledEconomy.spent += pick.cost;
       }
     }
     if (!handles(get().depth, 'assistants')) {
@@ -3680,6 +3789,29 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           link: { to: 'program', sheet: 'board' },
         });
       }
+
+      // Alumni only interrupt the inbox for the two professional moments a
+      // college coach would actually remember: reaching the top level and
+      // closing a top-level career. The full year-by-year path still lives on
+      // the player's card, so minor-league promotions do not turn the inbox
+      // into a transaction log. `proCareer` is deterministic, and the key makes
+      // re-entering this phase safe.
+      for (const [id, note] of Object.entries(get().alumni as Record<string, AlumnusNote>)) {
+        const pro = proCareer(id, note, year + 1);
+        const now = pro.find((row) => row.year === year + 1);
+        if (!now || now.level !== 'THE SHOW') continue;
+        const debut = now.line.startsWith('Called up');
+        if (!debut && !now.final) continue;
+        get().post({
+          kind: 'season', year: year + 1,
+          key: `alumni-${debut ? 'debut' : 'retire'}-${id}`,
+          title: debut ? `${note.name} reaches The Show` : `${note.name} ends his pro career`,
+          body: debut
+            ? `One of your former players made the highest level. ${now.line}`
+            : now.line,
+          link: { to: 'player', id },
+        });
+      }
       void get().saveNow();
     };
 
@@ -3689,6 +3821,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const filled = fillRosters(season, season.rng, {
       userTeam: get().userTeam,
     });
+    // Pipeline 2.0: a market gets stronger because you actually landed
+    // players from it, not because a toggle says it is a pipeline. The same
+    // relationship follows the staff and cools gradually when ignored.
+    for (const signed of filled.signed) {
+      const updated = addPipelineSigning(rolledEconomy, signed.state, year + 1, signed.stars);
+      rolledEconomy.pipelines = updated.pipelines;
+    }
     // The sting, by name. Rare on purpose -- see takenByPros.
     for (const lost of filled.poached) {
       get().post({
@@ -3779,6 +3918,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     });
   },
   selectedPlayer: null,
+  playerCardSection: 'overview',
   coach: newCoach(),
   lastReview: null,
   offers: [],
@@ -4046,8 +4186,19 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // program rather than the old.
     const displaced = seatCoaches(season, team, year);
     const leaving = season.teams[userTeam];
+    // The staff works for the coach; the physical program does not travel with him.
+    // A move therefore keeps assistants and the coaching tree, while the old
+    // school's facilities, earned recruiting relationships, current scouting
+    // reports, and annual spending ledger stay behind. A coordinator's own
+    // geographic network still comes with that assistant via `pipelineState`.
+    const oldEconomy = get().economy;
+    const nextEconomy: Economy = {
+      ...freshEconomy(),
+      staff: { ...oldEconomy.staff },
+      tree: [...(oldEconomy.tree ?? [])],
+    };
     // The old program loses the in-game edge, the new one gains it.
-    applyCoachMods(season, team, next, get().economy.staff, get().economy.facilities);
+    applyCoachMods(season, team, next, nextEconomy);
     if (displaced) {
       get().post({
         kind: 'carousel', year,
@@ -4089,6 +4240,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       jobSearch: false,
       lastReview: null,
       coach: next,
+      economy: nextEconomy,
       tab: 'home',
       screen: 'today',
       version: get().version + 1,
@@ -4193,14 +4345,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   closeOverlay: () => set({ overlay: null }),
   settingsPage: 'index',
   setSettingsPage: (p) => set({ settingsPage: p }),
-  programSheet: 'board',
+  programSheet: 'overview',
   setProgramSheet: (s) => set({ programSheet: s, version: get().version + 1 }),
 
-  openPlayer: (id) => set({ selectedPlayer: id }),
+  openPlayer: (id, section = 'overview') => set({ selectedPlayer: id, playerCardSection: section }),
 
   // The guide dies with the card: a glow that survived onto some OTHER
   // player's card would be teaching the wrong errand.
-  closePlayer: () => set({ selectedPlayer: null, guide: null }),
+  closePlayer: () => set({ selectedPlayer: null, playerCardSection: 'overview', guide: null }),
 
   playPostseason: async () => {
     const { season, busy, version } = get();
@@ -5397,9 +5549,28 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const down = team.rotation[slot];
     if (!up || !down) return false;
     if (!available(up, injuryClock(season))) return false;
-    // He takes the ball as a starter; the man he bumped keeps his own role
-    // in the pen, the way refill has always slid spare starters down.
+    // Staff role is provenance, not the chair a pitcher happens to occupy.
+    // Snapshot it permanently the first time either arm participates in a
+    // rotation/bullpen swap. The earlier implementation deleted homeRole when
+    // a promoted RP returned to the pen; repeated RP -> rotation -> pen cycles
+    // could then leave the temporary SP label as the only surviving role.
+    // Keeping the natural role makes the swap reversible forever:
+    //
+    //   RP in pen -> borrows SP while starting -> returns as RP
+    //   SP in rotation -> slides to pen -> remains an SP by trade
+    //
+    // This is intentionally independent of which order the two taps happen in.
+    // Old saves can contain the exact corrupted state this gesture used to
+    // create: a pitcher physically in the bullpen, labelled SP, with no
+    // `homeRole` left to tell us what he was before the temporary start. A
+    // generated bullpen arm is never a natural SP without provenance, so heal
+    // that legacy state as an RP the first time he is touched again.
+    const upHome = up.homeRole ?? (up.role === 'SP' ? 'RP' : up.role);
+    const downHome = down.homeRole ?? down.role;
+    up.homeRole = upHome;
     up.role = 'SP';
+    down.homeRole = downHome;
+    down.role = downHome;
     team.rotation[slot] = up;
     team.bullpen = [down, ...team.bullpen.filter((p) => p.id !== penId)];
     set({ version: version + 1 });
@@ -5615,7 +5786,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // Re-dress the mods the games read; the staff stacks on the coach's own.
     syncCoachMods(season, userTeam, withStaff(get().coach.skills, staff), {
       armCare: armCareFor(staff),
-      injuryGuard: FACILITIES[economy.facilities]?.injuryGuard ?? 1,
+      injuryGuard: (FACILITIES[economy.facilities]?.injuryGuard ?? 1) * facilityEffects(economy).guard,
     });
     set({ economy: { ...economy, staff }, version: get().version + 1 });
     void get().saveNow();
@@ -5627,7 +5798,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (!economy.staff[seat]) return;
     const staff = { ...economy.staff };
     delete staff[seat];
-    syncCoachMods(season, userTeam, withStaff(get().coach.skills, staff));
+    syncCoachMods(season, userTeam, withStaff(get().coach.skills, staff), {
+      armCare: armCareFor(staff),
+      injuryGuard: (FACILITIES[economy.facilities]?.injuryGuard ?? 1) * facilityEffects(economy).guard,
+    });
     set({ economy: { ...economy, staff }, version: get().version + 1 });
     void get().saveNow();
   },
@@ -5637,26 +5811,41 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const me = season?.teams[userTeam];
     if (!season || !me) return false;
     const up = economy.built ?? [];
-    if (up.includes(which)) return false;
+    if (facilityLevel(economy, which) > 0) return false;
     const spec = buildingSpec(which);
     if (remaining(economy, me.prestige) < spec.cost) return false;
 
     const built = [...up, which];
-    // The count IS the rung, so the ladder's cumulative effects follow the
-    // buildings without a second source of truth.
-    const level = Math.min(MAX_FACILITY, built.length);
-    const rung = FACILITIES[level];
-    const rec = season.teams[userTeam];
-    if (rec) rec.injuryGuard = (rung?.injuryGuard ?? 1) * builtBonus(built).guard;
-    set({
-      economy: {
-        ...economy,
-        built,
-        facilities: level,
-        spent: economy.spent + spec.cost,
-      },
-      version: get().version + 1,
-    });
+    const facilityLevels = { ...(economy.facilityLevels ?? {}), [which]: 1 };
+    const nextEconomy: Economy = {
+      ...economy,
+      built,
+      facilityLevels,
+      facilities: Math.min(MAX_FACILITY, built.length),
+      spent: economy.spent + spec.cost,
+    };
+    applyCoachMods(season, userTeam, get().coach, nextEconomy);
+    set({ economy: nextEconomy, version: get().version + 1 });
+    void get().saveNow();
+    return true;
+  },
+
+  upgradeFacility: (which) => {
+    const { season, userTeam, economy } = get();
+    const me = season?.teams[userTeam];
+    if (!season || !me) return false;
+    const level = facilityLevel(economy, which);
+    if (level <= 0 || level >= FACILITY_MAX_LEVEL) return false;
+    const nextLevel = level + 1;
+    const cost = facilityUpgradeCost(which, nextLevel);
+    if (remaining(economy, me.prestige) < cost) return false;
+    const nextEconomy: Economy = {
+      ...economy,
+      facilityLevels: { ...(economy.facilityLevels ?? {}), [which]: nextLevel },
+      spent: economy.spent + cost,
+    };
+    applyCoachMods(season, userTeam, get().coach, nextEconomy);
+    set({ economy: nextEconomy, version: get().version + 1 });
     void get().saveNow();
     return true;
   },
@@ -5708,10 +5897,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   autoSetPlaybook: (abbr) => {
-    const { season, version } = get();
+    const { season, version, userTeam } = get();
     const opp = season?.teams.find((t) => t.def.abbr === abbr);
-    const book = season?.playbooks?.[abbr];
-    if (!season || !opp || !book) return;
+    const me = season?.teams[userTeam];
+    if (!season || !opp || !me) return false;
+    // Staff-managed scouting can legitimately know an opponent before a manual
+    // purchase has minted a book. In that case the staff start from the club's
+    // standing strategy, then layer the same report-driven counters on top.
+    const book = season.playbooks?.[abbr] ?? { ...DEFAULT_STRATEGY, ...me.strategy };
     /*
       The desk's counters, from what the purchase legitimately bought: the
       roster in front of everybody and the habits the book covers. A
@@ -5730,6 +5923,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       ...season.playbooks,
       [abbr]: {
         ...book,
+        // AUTO must be visible as well as useful. A balanced opponent still
+        // gets a situational alignment rather than leaving the standing
+        // straight-up default untouched, while a pronounced handedness split
+        // earns the full shift.
+        alignment: Math.abs(righties - lefties) >= 3 ? 'shift' : 'situational',
         shift: righties - lefties >= 3 ? 'left'
           : lefties - righties >= 3 ? 'right' : 'none',
         outfield: power >= 54 ? 'deep'
@@ -5740,6 +5938,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     };
     set({ version: version + 1 });
     void get().saveNow();
+    return true;
   },
 
   lineupGate: 0,
@@ -5877,16 +6076,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // carousel keeps every coach it has hired and fired — the only chair this
     // touches on a modern save is one the market genuinely failed to fill.
     seatCoaches(loaded.season, loaded.userTeam, loaded.year);
-    // TESTING ONLY, with the godsquad: the wonder guy joins a class that was
-    // generated before he existed, so an in-flight save can test him too.
-    ensureWonderGuy(loaded.season.recruiting);
-    // And his two-way mirror — same rule: a loaded save's open class gets
-    // the fixtures a fresh class would have carried.
-    ensureHoodHans(loaded.season.recruiting);
     // Restamped on every load rather than trusted from the save, so a save from
     // before the in-game skills were wired — or one that predates a job change —
     // comes up with the edge on the right program.
-    applyCoachMods(loaded.season, loaded.userTeam, coach, usableEconomy(loaded.economy).staff, usableEconomy(loaded.economy).facilities);
+    applyCoachMods(loaded.season, loaded.userTeam, coach, usableEconomy(loaded.economy));
     /*
       Older saves carry no school annals. The one program whose past such a
       save *does* know is the user's own — his career rows name their school —
@@ -6094,6 +6287,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       seasonOpener: null,
       selectedPlayer: null,
       overlay: null,
+      loadedSlot: null,
       phase: null,
       inbox: [],
       boardAsk: null,
@@ -6138,11 +6332,15 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       && (slot === AUTOSAVE_SLOT || slot === get().loadedSlot);
     try {
       await deleteSave(slot);
+      // Remove it from the visible list immediately. IndexedDB refreshes can
+      // arrive a frame later on mobile; leaving the deleted row on screen made
+      // a successful delete look like it failed.
+      set({ saves: get().saves.filter((s) => s.slot !== slot) });
     } catch (e) {
       failure = e instanceof Error ? e.message : String(e);
     }
     if (failure === null && live) get().backToStart();
-    await get().refreshSaves();
+    else await get().refreshSaves();
     // After the refresh, which clears `savesError` on success — a delete that
     // failed used to have its message wiped by the very refresh that followed
     // it, so the row simply stayed and the screen never said why.

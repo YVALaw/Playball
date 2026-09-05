@@ -17,11 +17,11 @@
 // season is a list of results and cannot be anything more. The RESULTS tab says
 // so rather than showing an empty table and letting it read as "never played".
 
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
   BarChartIcon, CheckIcon, Cross1Icon, EnvelopeClosedIcon, EyeOpenIcon, IdCardIcon,
-  MixerHorizontalIcon, StarIcon,
+  DotsHorizontalIcon, StarIcon,
 } from '@radix-ui/react-icons';
 import { dollars, remaining, SCOUT_COST, SCOUT_DAYS } from '../../engine/economy.js';
 import { handles } from '../../state/depth.js';
@@ -35,7 +35,7 @@ import { Avatar, teamColour } from '../Avatar.js';
 import { Crest } from '../Crest.js';
 import { FixedHeader } from '../Sticky.js';
 import { overallOf } from '../../engine/ratings.js';
-import { prestigeStars } from '../../engine/program.js';
+import { prestigeStars, rosterStrength } from '../../engine/program.js';
 import { teamReads } from '../../engine/tendencies.js';
 import {
   battingAverage, era, inningsPitched, regularRecord, rpiOrder,
@@ -80,6 +80,7 @@ export function TeamCard({ index }: { index: number }) {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   const me = useUserTeam();
+  const rivalry = useDynasty((s) => s.rivalry);
   const [sheet, setSheet] = useState<Sheet>('overview');
   /** The mockup's compare panel, open or not. Local — it is a reading aid. */
   const [comparing, setComparing] = useState(false);
@@ -108,17 +109,20 @@ export function TeamCard({ index }: { index: number }) {
   return (
     <FixedHeader header={
       <>
-        <div className="team-card-head">
-          <section className="team-banner">
-            {/* A crest rather than a face. The avatars elsewhere are portraits
-                of a man, and one at the top of a program's page would read as
-                somebody in particular. The abbreviation in the school's own
-                colour is what the tables already teach you to recognise. */}
-            <div className="team-mark"><Crest abbr={t.def.abbr} size={64} /></div>
-            <div>
+        <div
+          className="team-card-head team-profile-head"
+          style={{ '--program-accent': teamColour(t.def.abbr) } as CSSProperties}
+        >
+          <section className="team-profile-hero">
+            <div className="team-profile-crest"><Crest abbr={t.def.abbr} size={66} /></div>
+            <div className="team-profile-copy">
               <small>{t.conference} · {'★'.repeat(stars)}</small>
-              <h2 style={{ color: teamColour(t.def.abbr) }}>{t.def.school}</h2>
+              <h2>{t.def.school}</h2>
               <p>{t.def.nickname}</p>
+            </div>
+            <div className="team-profile-rank">
+              <small>RPI</small>
+              <strong>{rank > 0 ? `#${rank}` : '—'}</strong>
             </div>
           </section>
 
@@ -131,11 +135,20 @@ export function TeamCard({ index }: { index: number }) {
               note={`${t.rs} FOR`}
             />
           </MetricStrip>
+          {me && me.index !== t.index && t.def.abbr === me.def.rival && (
+            <section className="rivalry-strip">
+              <span><small>RIVALRY</small><strong>{me.def.school} vs {t.def.school}</strong></span>
+              <span>
+                <small>YOUR RECORD</small>
+                <strong>{rivalry.w + rivalry.l > 0 ? `${rivalry.w}-${rivalry.l}` : 'NEW'}</strong>
+              </span>
+            </section>
+          )}
         </div>
         <TabStrip at={sheet} onGo={setSheet} />
       </>
     }>
-      <div style={{ padding: '12px 14px 20px' }}>
+      <div className="team-profile-content">
         {sheet === 'overview' && <Overview t={t} me={me} season={season} />}
         {sheet === 'roster' && <Roster t={t} season={season} />}
         {sheet === 'results' && <Results t={t} me={me} season={season} />}
@@ -144,22 +157,40 @@ export function TeamCard({ index }: { index: number }) {
             we need to add." Everything on it was already in the save and had
             nowhere to be read. */}
         {/* The mockup's compare panel, toggled from Program Actions. */}
-        {sheet === 'overview' && comparing && me && me.index !== t.index && (
-          <section className="college-compare">
-            <small>{me.def.school.toUpperCase()} VS {t.def.school.toUpperCase()}</small>
-            <div>
-              <span><b>{me.prestige}</b> Prestige</span>
-              <strong>vs</strong>
-              <span><b>{t.prestige}</b> Prestige</span>
-            </div>
-            <div>
-              <span><b>{regularRecord(me).w}-{regularRecord(me).l}</b> Record</span>
-              <strong>vs</strong>
-              <span><b>{reg.w}-{reg.l}</b> Record</span>
-            </div>
-            <p>Prestige decides whose calls get answered.</p>
-          </section>
-        )}
+        {sheet === 'overview' && comparing && me && me.index !== t.index && (() => {
+          const ours = regularRecord(me);
+          const rows = [
+            { label: 'PRESTIGE', left: String(me.prestige), right: String(t.prestige), leftN: me.prestige, rightN: t.prestige },
+            { label: 'ROSTER', left: String(rosterStrength(me.team)), right: String(rosterStrength(t.team)), leftN: rosterStrength(me.team), rightN: rosterStrength(t.team) },
+            { label: 'RUN DIFF', left: `${me.rs - me.ra >= 0 ? '+' : ''}${me.rs - me.ra}`, right: `${t.rs - t.ra >= 0 ? '+' : ''}${t.rs - t.ra}`, leftN: me.rs - me.ra, rightN: t.rs - t.ra },
+          ];
+          return (
+            <section className="college-compare comparison-board">
+              <header>
+                <small>PROGRAM COMPARISON</small>
+                <strong>{me.def.school} <i>vs</i> {t.def.school}</strong>
+                <p>Program pull, current talent, and what this season is actually producing.</p>
+              </header>
+              <div className="comparison-record-row">
+                <span><small>YOUR RECORD</small><b>{ours.w}-{ours.l}</b></span>
+                <span><small>THEIR RECORD</small><b>{reg.w}-{reg.l}</b></span>
+              </div>
+              <div className="comparison-bars">
+                {rows.map((row) => {
+                  const edge = row.leftN === row.rightN ? 'even' : row.leftN > row.rightN ? 'left' : 'right';
+                  return (
+                    <div className="comparison-bar-row" key={row.label}>
+                      <b className={edge === 'left' ? 'has-edge' : ''}>{row.left}</b>
+                      <span><small>{row.label}</small><i>{edge === 'even' ? 'EVEN' : edge === 'left' ? 'YOUR EDGE' : 'THEIR EDGE'}</i></span>
+                      <b className={edge === 'right' ? 'has-edge' : ''}>{row.right}</b>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="comparison-note">Roster is current on-field talent. Prestige is long-term program pull. Neither is a win probability.</p>
+            </section>
+          );
+        })()}
         {sheet === 'dossier' && (
           <Dossier t={t} stars={stars} rival={me !== null && me.index !== t.index} />
         )}
@@ -171,6 +202,7 @@ export function TeamCard({ index }: { index: number }) {
           index={t.index}
           comparing={comparing}
           onCompare={() => { setComparing((v) => !v); setSheet('overview'); }}
+          onOpenDossier={() => setSheet('dossier')}
         />
       )}
     </FixedHeader>
@@ -187,10 +219,10 @@ export function TeamCard({ index }: { index: number }) {
  * market stars it when it calls. Same portal as the player FAB, same reason.
  */
 function CollegeActions(
-  { abbr, school, index, comparing, onCompare }:
+  { abbr, school, index, comparing, onCompare, onOpenDossier }:
   {
     abbr: string; school: string; index: number;
-    comparing: boolean; onCompare: () => void;
+    comparing: boolean; onCompare: () => void; onOpenDossier: () => void;
   },
 ) {
   const watch = useDynasty((s) => s.watch);
@@ -201,6 +233,10 @@ function CollegeActions(
   const season = useDynasty((s) => s.season);
   const userTeam = useDynasty((s) => s.userTeam);
   const scoutsHimself = useDynasty((s) => handles(s.depth, 'scouting'));
+  const go = useDynasty((s) => s.go);
+  const setPlaybookFocus = useDynasty((s) => s.setPlaybookFocus);
+  const autoSetPlaybook = useDynasty((s) => s.autoSetPlaybook);
+  const closeOverlay = useDynasty((s) => s.closeOverlay);
   /*
     Three states, not a boolean, because closing is a motion now. Reported:
     "the action button has a nice opening animation but it does not when
@@ -210,6 +246,7 @@ function CollegeActions(
     (which strips the animation) cannot strand the menu mid-state.
   */
   const [phase, setPhase] = useState<'closed' | 'open' | 'closing'>('closed');
+  const [mode, setMode] = useState<'actions' | 'scout'>('actions');
   const open = phase === 'open';
   const requestClose = (): void => {
     setPhase('closing');
@@ -231,9 +268,20 @@ function CollegeActions(
   const tracked = watch.programs.includes(abbr);
   const jobPath = watch.jobs.includes(abbr);
   const day = season?.dayIndex ?? 0;
-  const scouted = (economy.scouted[index] ?? -1) >= day;
+  const scoutedUntil = economy.scouted[index] ?? -1;
+  const scouted = scoutedUntil >= day;
+  const hasPlaybook = !!season?.playbooks?.[abbr];
+  const reportDays = scouted ? Math.max(0, scoutedUntil - day) : 0;
+  const reportTime = scouted ? (reportDays === 0 ? 'Expires today' : `${reportDays} day${reportDays === 1 ? '' : 's'} left`) : '';
   const prestige = season?.teams[userTeam]?.prestige ?? 40;
   const canAfford = remaining(economy, prestige) >= SCOUT_COST;
+  const opponent = season?.teams[index];
+  const reg = opponent ? regularRecord(opponent) : { w: 0, l: 0 };
+  const rank = opponent && season && opponent.gp > 0
+    ? rpiOrder(season).findIndex((row) => row.team.index === opponent.index) + 1
+    : 0;
+  const runDiff = opponent ? opponent.rs - opponent.ra : 0;
+  const reads = opponent && (scouted || !scoutsHimself) ? teamReads(opponent.team).slice(0, 4) : [];
 
   const host = document.querySelector('.full-overlay') ?? document.querySelector('.app-frame');
   if (!host) return null;
@@ -251,95 +299,123 @@ function CollegeActions(
           onClick={requestClose}
         />
       )}
-    <aside className={`college-actions-fab${open ? ' open' : ''}${phase === 'closing' ? ' closing' : ''}`}>
-      <div className="college-actions-popover" aria-hidden={!open}>
-        <div className="player-actions-popover-heading">
-          <small>PROGRAM ACTIONS</small>
-          <strong>{school}</strong>
-          <span>What your desk can do about them.</span>
-        </div>
-        <div className="action-list">
-          <ActionCard
-            icon={<StarIcon />}
-            title={tracked ? 'Program tracked' : 'Track program'}
-            detail={tracked
-              ? 'They are on WATCHLIST, on your program tab. Tap again to drop them.'
-              : 'Files them under WATCHLIST on your program tab.'}
-            selected={tracked}
-            onClick={() => toggleProgramWatch(abbr)}
-          />
-          <ActionCard
-            icon={<BarChartIcon />}
-            title={comparing ? 'Comparison open' : 'Compare with your club'}
-            detail={comparing
-              ? 'The side-by-side is on the OVERVIEW sheet behind this menu.'
-              : 'Puts their profile beside yours, right here on the overview.'}
-            selected={comparing}
-            onClick={() => { onCompare(); requestClose(); }}
-          />
-          {/*
-            The scouting desk — stage 11. One report covers the whole roster's
-            tendencies for the next stretch of games. Casual careers get the
-            book brought by staff, so the card says that instead of a price.
-          */}
-          <ActionCard
-            icon={<EyeOpenIcon />}
-            title={!scoutsHimself ? 'Your staff scouts them'
-              : scouted ? 'Book bought' : `Scout them · ${dollars(SCOUT_COST)}`}
-            detail={!scoutsHimself
-              ? 'Your staff buys these books out of the wage bill; the reads are already on their player cards.'
-              : scouted
-                ? `Bought — on DOSSIER and every man's card for the next ${SCOUT_DAYS} days.`
-                : canAfford
-                  ? `Their habits on DOSSIER and every man's tendencies on his card, for ${SCOUT_DAYS} days.`
-                  : 'The ledger cannot carry it this year.'}
-            selected={scouted || !scoutsHimself}
-            onClick={() => { if (scoutsHimself && !scouted && canAfford) scoutTeam(index); }}
-          />
-          <ActionCard
-            icon={<IdCardIcon />}
-            title={jobPath ? 'Job path tracked' : 'Track job path'}
-            detail={jobPath
-              ? 'Starred at the job market, and the wire writes to your inbox when this chair moves. Tap again to stop.'
-              : 'Quiet interest, no application. Your assistant writes when the chair moves.'}
-            selected={jobPath}
-            onClick={() => toggleJobWatch(abbr)}
-          />
-          <ActionCard
-            icon={<EnvelopeClosedIcon />}
-            title={said !== null ? 'Letter sent'
-              : approaches.interest.includes(index) ? 'They would take the call'
-              : approaches.tried.includes(index) ? 'You wrote to them'
-              : approaches.tried.length >= 3 ? 'Three letters sent'
-              : 'Write to them'}
-            detail={said !== null ? said
-              : approaches.interest.includes(index) ? 'They would take the call — expect them when chairs move. Watch your inbox.'
-              : approaches.tried.includes(index) ? 'Sent this season. Once a school a season is the rule.'
-              : approaches.tried.length >= 3 ? 'Three a season, and you have sent yours. The market reopens with the year.'
-              : 'Asks about the chair, quietly. Three a season, and word can get back to your board.'}
-            selected={said !== null
-              || approaches.interest.includes(index)
-              || approaches.tried.includes(index)}
-            onClick={() => {
-              if (approaches.tried.includes(index) || approaches.tried.length >= 3) return;
-              const out = approach(index);
-              setSaid(
-                out === 'interested' ? 'They would take the call.'
-                : out === 'caught' ? 'Somebody talked. Your own board has heard about it.'
-                : out === 'ignored' ? 'Nothing came back.'
-                : 'Not this season.',
-              );
-            }}
-          />
-        </div>
+    <aside className={`profile-actions-shell program-profile-actions${open ? ' open' : ''}${phase === 'closing' ? ' closing' : ''}`}>
+      <div className="profile-command-sheet program-command-sheet" aria-hidden={!open}>
+        <div className="command-sheet-handle" />
+        {mode === 'actions' ? (
+          <>
+            <header className="profile-command-header">
+              <small>PROGRAM DECISIONS</small>
+              <strong>{school}</strong>
+              <p>{opponent ? `${reg.w}-${reg.l} · ${rank > 0 ? `RPI #${rank}` : 'Unranked'} · ${runDiff >= 0 ? '+' : ''}${runDiff} run differential` : 'Program profile'}</p>
+            </header>
+
+            <section className="command-section first">
+              <header><small>MATCHUP</small><h2>Know them before you play them</h2></header>
+              <div className="command-action-grid program-primary-actions">
+                <ActionCard
+                  icon={<EyeOpenIcon />}
+                  eyebrow="SCOUTING"
+                  title={!scoutsHimself ? 'Report available' : scouted ? 'Report active' : hasPlaybook ? `Refresh report · ${dollars(SCOUT_COST)}` : `Scout · ${dollars(SCOUT_COST)}`}
+                  detail={!scoutsHimself ? 'Your staff has the opponent report ready.' : scouted ? 'Review what your scouts found and the playbook it unlocked.' : hasPlaybook ? 'Your opponent plan still exists, but its detailed reads have gone stale. Refresh the report before the next series.' : 'Open a briefing before you spend. See what is public, what the report unlocks, and what remains in the budget.'}
+                  meta={!scoutsHimself ? 'Staff-managed report' : scouted ? `${reportTime} · playbook unlocked` : hasPlaybook ? 'Playbook retained · reads expired' : `${dollars(Math.max(0, remaining(economy, prestige)))} available`}
+                  selected={scouted || !scoutsHimself}
+                  onClick={() => setMode('scout')}
+                />
+                <ActionCard
+                  icon={<BarChartIcon />}
+                  eyebrow="COMPARISON"
+                  title={comparing ? 'Comparison open' : 'Compare programs'}
+                  detail={comparing ? 'Your side-by-side is already open on Overview.' : 'Put prestige, record, and program context beside your club before you judge the gap.'}
+                  meta="Your club vs this program"
+                  selected={comparing}
+                  onClick={() => { onCompare(); requestClose(); }}
+                />
+              </div>
+            </section>
+
+            <section className="command-section">
+              <header><small>CAREER</small><h2>What this program means to you</h2></header>
+              <div className="command-action-grid">
+                <ActionCard icon={<StarIcon />} eyebrow="WATCHLIST" title={tracked ? 'Following program' : 'Follow program'} detail={tracked ? 'Their biggest stories receive extra weight on The Wire.' : 'Keep this school close across realignment, results, and coaching changes.'} meta="Career-long signal" selected={tracked} onClick={() => toggleProgramWatch(abbr)} />
+                <ActionCard icon={<IdCardIcon />} eyebrow="JOB PATH" title={jobPath ? 'Chair tracked' : 'Track the chair'} detail={jobPath ? 'Your assistant will flag a coaching change here.' : 'Watch this specific job without declaring interest.'} meta="Private watch" selected={jobPath} onClick={() => toggleJobWatch(abbr)} />
+                <ActionCard
+                  icon={<EnvelopeClosedIcon />}
+                  eyebrow="BACK CHANNEL"
+                  title={said !== null ? 'Letter sent' : approaches.interest.includes(index) ? 'They would take the call' : approaches.tried.includes(index) ? 'Already contacted' : approaches.tried.length >= 3 ? 'No letters left' : 'Write quietly'}
+                  detail={said !== null ? said : approaches.interest.includes(index) ? 'There is interest when the chair moves.' : approaches.tried.includes(index) ? 'You only get one approach to a school each season.' : approaches.tried.length >= 3 ? 'You have used all three approaches this season.' : 'Ask about the chair without applying. Word can still get back to your board.'}
+                  meta={`${Math.max(0, 3 - approaches.tried.length)} of 3 approaches left`}
+                  selected={said !== null || approaches.interest.includes(index) || approaches.tried.includes(index)}
+                  disabled={approaches.tried.includes(index) || approaches.tried.length >= 3}
+                  onClick={() => {
+                    const out = approach(index);
+                    setSaid(out === 'interested' ? 'They would take the call.' : out === 'caught' ? 'Somebody talked. Your own board has heard about it.' : out === 'ignored' ? 'Nothing came back.' : 'Not this season.');
+                  }}
+                />
+              </div>
+            </section>
+          </>
+        ) : (
+          <section className="scouting-brief-sheet">
+            <button className="sheet-back tap" type="button" onClick={() => setMode('actions')}>← Actions</button>
+            <header className="profile-command-header">
+              <small>SCOUTING BRIEF</small>
+              <strong>{school}</strong>
+              <p>{scouted || !scoutsHimself ? 'Your report is active.' : hasPlaybook ? 'Your plan is still on file. Refresh the report to update the reads behind it.' : 'Public information first. Spend only if the extra detail is worth it.'}</p>
+            </header>
+            <div className="scout-public-grid">
+              <span><small>RECORD</small><strong>{reg.w}-{reg.l}</strong></span>
+              <span><small>RPI</small><strong>{rank > 0 ? `#${rank}` : '—'}</strong></span>
+              <span><small>RUN DIFF</small><strong>{runDiff >= 0 ? '+' : ''}{runDiff}</strong></span>
+              <span><small>COACH</small><strong>{opponent?.coach?.name ?? '—'}</strong></span>
+            </div>
+
+            {scouted || !scoutsHimself ? (
+              <>
+                <div className="scout-report-reads">
+                  <small>WHAT THE REPORT FOUND</small>
+                  {reads.map((read) => <article key={`${read.slot}-${read.title}`}><strong>{read.title}</strong><p>{read.text}</p></article>)}
+                </div>
+                <div className="scout-brief-actions">
+                  <button className="scout-secondary-command tap" type="button" onClick={() => { onOpenDossier(); requestClose(); }}>Open dossier</button>
+                  <button
+                    className="scout-primary-command tap"
+                    type="button"
+                    onClick={() => {
+                      if (!scoutsHimself && !season?.playbooks?.[abbr]) autoSetPlaybook(abbr);
+                      setPlaybookFocus(abbr);
+                      closeOverlay();
+                      go('program', 'strategy');
+                    }}
+                  >Open playbook</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="scout-unlock-grid">
+                  <span><b>01</b><strong>Team habits</strong><small>3–5 tendencies worth planning around.</small></span>
+                  <span><b>02</b><strong>Player reads</strong><small>Individual tendencies appear on their cards.</small></span>
+                  <span><b>03</b><strong>Opponent playbook</strong><small>{hasPlaybook ? 'Your existing plan stays on file; refreshed reads help you tune it.' : 'A dedicated plan stays for the season and applies automatically against them.'}</small></span>
+                </div>
+                <div className="scout-purchase-row">
+                  <span><small>COST</small><strong>{dollars(SCOUT_COST)}</strong><em>{canAfford ? `${dollars(remaining(economy, prestige) - SCOUT_COST)} remains after purchase` : `Need ${dollars(SCOUT_COST - remaining(economy, prestige))} more`}</em></span>
+                  <button className="tap" type="button" disabled={!canAfford} onClick={() => { scoutTeam(index); requestClose(); }}>{canAfford ? (hasPlaybook ? 'Refresh report' : 'Buy report') : 'Cannot afford'}</button>
+                </div>
+              </>
+            )}
+          </section>
+        )}
       </div>
       <button
-        className="college-actions-trigger"
+        className="profile-actions-launcher"
         type="button"
-        aria-label={open ? 'Close program actions' : 'Program actions'}
+        aria-label={open ? 'Close program decisions' : 'Program decisions'}
         aria-expanded={open}
-        onClick={() => (open ? requestClose() : setPhase('open'))}
-      >{open ? <Cross1Icon /> : <MixerHorizontalIcon />}</button>
+        onClick={() => {
+          if (open) requestClose();
+          else { setMode('actions'); setPhase('open'); }
+        }}
+      >{open ? <Cross1Icon /> : <DotsHorizontalIcon />}<span>{open ? 'Close' : 'Decisions'}</span></button>
     </aside>
     </>,
     host,
@@ -348,18 +424,19 @@ function CollegeActions(
 
 /** One thing you can do about this program, in the player FAB's clothes. */
 function ActionCard(
-  { icon, title, detail, onClick, selected = false }:
-  { icon: ReactNode; title: string; detail: string; onClick: () => void; selected?: boolean },
+  { icon, eyebrow, title, detail, meta, onClick, selected = false, disabled = false }:
+  { icon: ReactNode; eyebrow: string; title: string; detail: string; meta?: string; onClick: () => void; selected?: boolean; disabled?: boolean },
 ) {
   return (
     <button
-      className={`action-card${selected ? ' selected' : ''}`}
+      className={`command-action-card${selected ? ' selected' : ''}`}
       type="button"
+      disabled={disabled}
       onClick={onClick}
     >
-      <span className="action-card-icon">{icon}</span>
-      <span><strong>{title}</strong><small>{detail}</small></span>
-      {selected ? <CheckIcon /> : <span />}
+      <span className="command-action-icon">{icon}</span>
+      <span className="command-action-copy"><small>{eyebrow}</small><strong>{title}</strong><p>{detail}</p>{meta && <em>{meta}</em>}</span>
+      {selected ? <CheckIcon /> : <span className="command-action-state" />}
     </button>
   );
 }
@@ -433,158 +510,90 @@ function Overview(
   const year = useDynasty((s) => s.year);
   const mine = me && me.index === t.index;
   const h2h = me && !mine ? headToHead(season, me.index, t.index) : null;
-
   const culture = cultureFor(t);
+  const games = season.results
+    .filter((r) => r.home === t.index || r.away === t.index)
+    .sort((a, b) => a.day - b.day)
+    .map((r) => {
+      const home = r.home === t.index;
+      const us = home ? r.homeRuns : r.awayRuns;
+      const them = home ? r.awayRuns : r.homeRuns;
+      return { home, won: us > them };
+    });
+  const wl = (gs: { won: boolean }[]): string =>
+    `${gs.filter((g) => g.won).length}-${gs.filter((g) => !g.won).length}`;
+  const streak = t.streak === 0 ? '—' : `${t.streak > 0 ? 'W' : 'L'}${Math.abs(t.streak)}`;
 
   return (
-    <>
-      {/*
-        What the place believes, before anything about this year.
-
-        A programme used to be a name, a colour and two numbers, and the two
-        numbers were both about strength — so every school read as the same
-        school at a different volume. This is the half that says what they
-        actually want, which is what makes taking a job a decision rather than
-        picking the highest number that will have you.
-      */}
+    <div className="college-overview-stack">
       {culture && (
-        <>
-          <PanelHead>WHAT THEY BELIEVE</PanelHead>
-          <Panel>
-            <div style={{ padding: '10px 12px 11px' }}>
-              <div style={{
-                display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
-              }}>
-                <span style={{
-                  font: "800 calc(15px * var(--ts))/1.05 var(--display)",
-                  textTransform: 'uppercase', color: 'var(--ink)',
-                }}>{culture.name}</span>
-                <span style={{
-                  font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.14em',
-                  color: 'var(--clay)',
-                }}>{CULTURE_LABEL[culture.edge]}</span>
-              </div>
-              <div style={{
-                marginTop: 5,
-                font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-              }}>{culture.creed}</div>
-            </div>
-            {/* Deliberately unnumbered. Patience and ambition are opinions,
-                not quantities, and printing "62" invites somebody to compare
-                it with "64" as though the difference meant something. The
-                ends are named instead, which is how a person would describe
-                the place out loud. */}
-            <Meter
-              k="PATIENCE" value={culture.patience}
-              v={culture.patience >= 60 ? 'they will wait'
-                : culture.patience <= 40 ? 'they count fast' : 'somewhere in between'}
-            />
-            <Meter
-              k="AMBITION" value={culture.ambition}
-              v={culture.ambition >= 60 ? 'Omaha or nothing'
-                : culture.ambition <= 40 ? 'a winning season' : 'somewhere in between'}
-            />
-          </Panel>
-        </>
+        <section className="college-identity-card">
+          <header>
+            <span><small>PROGRAM IDENTITY</small><strong>{culture.name}</strong></span>
+            <b>{CULTURE_LABEL[culture.edge]}</b>
+          </header>
+          <p>{culture.creed}</p>
+          <div className="college-value-grid">
+            <article>
+              <small>PATIENCE</small>
+              <strong>{culture.patience >= 60 ? 'Long runway' : culture.patience <= 40 ? 'Results now' : 'Measured'}</strong>
+              <span>{culture.patience >= 60 ? 'The board gives a coach time to build.' : culture.patience <= 40 ? 'Bad seasons get counted quickly.' : 'Progress matters, but so does direction.'}</span>
+            </article>
+            <article>
+              <small>AMBITION</small>
+              <strong>{culture.ambition >= 60 ? 'National stage' : culture.ambition <= 40 ? 'Win consistently' : 'Postseason standard'}</strong>
+              <span>{culture.ambition >= 60 ? 'Omaha is the benchmark.' : culture.ambition <= 40 ? 'A winning program clears the bar.' : 'Tournament baseball is expected.'}</span>
+            </article>
+          </div>
+        </section>
       )}
 
-      <PanelHead>HEAD TO HEAD</PanelHead>
-      {mine ? (
-        <PanelNote>You cannot play yourself.</PanelNote>
-      ) : h2h && (h2h.games.length > 0 ? (
-        <>
-          <Panel>
-            <Stat
-              k="SERIES THIS YEAR"
-              v={`${h2h.w}-${h2h.l}`}
-            />
-            {h2h.games.map((g, i) => (
-              <div key={g.day} style={{
-                display: 'grid', gridTemplateColumns: '1fr 26px 52px',
-                gap: 8, alignItems: 'baseline', padding: '8px 12px',
-                borderBottom: i === h2h.games.length - 1
-                  ? 'none' : '1px solid var(--hairline)',
-              }}>
-                <span style={{ font: "400 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
-                  {seasonDate(year, g.day)} {g.home ? 'vs' : '@'}
-                </span>
-                <span style={{
-                  font: "700 calc(11px * var(--ts)) var(--mono)", textAlign: 'right',
-                  color: g.us > g.them ? 'var(--win)' : 'var(--loss)',
-                }}>{g.us > g.them ? 'W' : 'L'}</span>
-                <span style={{ font: "600 calc(12px * var(--ts)) var(--mono)", textAlign: 'right' }}>
-                  {g.us}-{g.them}
-                </span>
-              </div>
-            ))}
-          </Panel>
-          {h2h.toCome > 0 && (
-            <PanelNote>
-              {h2h.toCome} still to play, the next on{' '}
-              {h2h.next === null ? 'the calendar' : seasonDate(year, h2h.next)}.
-            </PanelNote>
-          )}
-        </>
-      ) : (
-        <PanelNote>
-          You have not played {t.def.school} this season.{' '}
-          {h2h.toCome > 0 && h2h.next !== null
-            ? `You meet them ${h2h.toCome > 1 ? `${h2h.toCome} times, starting ` : ''}on ${seasonDate(year, h2h.next)}.`
-            : 'They are not on your schedule this year.'}
-        </PanelNote>
-      ))}
-
-      {/*
-        The form guide, not the fact sheet.
-
-        Two panels used to follow here — THE PROGRAM (school, nickname,
-        conference, prestige) and THIS SEASON (record, rank, runs) — and every
-        line of both was already printed in the banner and the metric strip a
-        thumb's width above. Reported as "feels outdated and doesn't really
-        follow the whole style of the app", and the redundancy was most of why:
-        a page that says everything twice reads like two designs pasted
-        together. What replaces them is the one thing the header does NOT say —
-        how the season is actually going: the recent stretch, the splits, the
-        streak, computed from the results the save already keeps for everybody.
-      */}
-      {(() => {
-        const games = season.results
-          .filter((r) => r.home === t.index || r.away === t.index)
-          .sort((a, b) => a.day - b.day)
-          .map((r) => {
-            const home = r.home === t.index;
-            const us = home ? r.homeRuns : r.awayRuns;
-            const them = home ? r.awayRuns : r.homeRuns;
-            return { home, won: us > them };
-          });
-        if (games.length === 0) {
-          return (
-            <div style={{ marginTop: 16 }}>
-              <PanelHead>THE SHAPE OF THE SEASON</PanelHead>
-              <PanelNote>No games yet.</PanelNote>
-            </div>
-          );
-        }
-        const wl = (gs: { won: boolean }[]): string =>
-          `${gs.filter((g) => g.won).length}-${gs.filter((g) => !g.won).length}`;
-        const streak = t.streak === 0 ? '—' : `${t.streak > 0 ? 'W' : 'L'}${Math.abs(t.streak)}`;
-        return (
+      <section className="college-matchup-card">
+        <header>
+          <span><small>YOUR HISTORY</small><strong>Head to head</strong></span>
+          {!mine && h2h && h2h.games.length > 0 && <b>{h2h.w}-{h2h.l}</b>}
+        </header>
+        {mine ? (
+          <p className="college-empty-copy">This is your program.</p>
+        ) : h2h && h2h.games.length > 0 ? (
           <>
-            <div style={{ marginTop: 16 }}>
-              <PanelHead>THE SHAPE OF THE SEASON</PanelHead>
+            <div className="college-h2h-grid">
+              {h2h.games.map((g) => (
+                <article key={g.day}>
+                  <span><small>{seasonDate(year, g.day)}</small><strong>{g.home ? 'HOME' : 'ROAD'}</strong></span>
+                  <b className={g.us > g.them ? 'win' : 'loss'}>{g.us > g.them ? 'W' : 'L'} {g.us}-{g.them}</b>
+                </article>
+              ))}
             </div>
-            <Tiles>
-              <Tile k={`LAST ${Math.min(10, games.length)}`} v={wl(games.slice(-10))} />
-              <Tile k="HOME" v={wl(games.filter((g) => g.home))} />
-              <Tile k="ROAD" v={wl(games.filter((g) => !g.home))} />
-              {/* The accent is earned, not decorative: five straight either
-                  way is the line where a run becomes the story of a team. */}
-              <Tile k="STREAK" v={streak} accent={Math.abs(t.streak) >= 5} />
-            </Tiles>
+            <p className="college-card-note">
+              {h2h.toCome > 0
+                ? `${h2h.toCome} still to play${h2h.next === null ? '' : ` · next ${seasonDate(year, h2h.next)}`}.`
+                : 'Season series complete.'}
+            </p>
           </>
-        );
-      })()}
-    </>
+        ) : (
+          <p className="college-empty-copy">
+            {h2h && h2h.toCome > 0 && h2h.next !== null
+              ? `First meeting ${seasonDate(year, h2h.next)}${h2h.toCome > 1 ? ` · ${h2h.toCome} games scheduled` : ''}.`
+              : `You have not played ${t.def.school} this season.`}
+          </p>
+        )}
+      </section>
+
+      <section className="college-form-card">
+        <header><small>SEASON SHAPE</small><strong>How they are playing</strong></header>
+        {games.length === 0 ? (
+          <p className="college-empty-copy">No games yet.</p>
+        ) : (
+          <div className="college-form-grid">
+            <article><small>LAST {Math.min(10, games.length)}</small><strong>{wl(games.slice(-10))}</strong></article>
+            <article><small>HOME</small><strong>{wl(games.filter((g) => g.home))}</strong></article>
+            <article><small>ROAD</small><strong>{wl(games.filter((g) => !g.home))}</strong></article>
+            <article className={Math.abs(t.streak) >= 5 ? 'hot' : ''}><small>STREAK</small><strong>{streak}</strong></article>
+          </div>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -862,130 +871,91 @@ function Results({ t, me, season }: { t: Record_; me: Record_ | null; season: Se
 function Dossier({ t, stars, rival }: { t: Owner; stars: number; rival: boolean }) {
   const culture = cultureOf(t.def.abbr);
   const coach = t.coach;
-  /*
-    The scout's book — stage 16's tendencies screen, exactly where the door
-    put it: a team card on the rival's college profile, filled in once the
-    desk has scouted them. The same purchase that lights the per-man lines
-    (SCOUT THEM on the action button) opens this sheet; a casual career's
-    staff buys the books out of the wage bill, so theirs is always open.
-  */
   const economy = useDynasty((s) => s.economy);
   const season = useDynasty((s) => s.season);
   const scoutsHimself = useDynasty((s) => handles(s.depth, 'scouting'));
   const day = season?.dayIndex ?? 0;
   const booked = rival && ((economy.scouted[t.index] ?? -1) >= day || !scoutsHimself);
   const reads = booked ? teamReads(t.team) : null;
-
-  /** What his points have gone into, loudest first. */
   const strengths = coach
     ? (Object.entries(coach.skills) as Array<[string, number]>)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
+      .slice(0, 4)
     : [];
-
   const seat = coach
     ? coach.security >= 70 ? 'Safe. The board is not counting.'
       : coach.security >= 45 ? 'Settled, but a bad year would be noticed.'
         : coach.security >= 25 ? 'Under pressure. Another one like this and they will look.'
-          : 'On the way out. His name is already on somebody\u2019s list.'
+          : 'On the way out. His name is already on somebody’s list.'
     : null;
 
   return (
-    <>
-      <SectionHeading kicker="THE PROGRAMME" title={culture?.name ?? 'A place with a history'} />
-      {culture && (
-        <FieldNote title={CULTURE_LABEL[culture.edge]} text={culture.creed} />
-      )}
-
-      {rival && (
-        <>
-          <SectionHeading
-            kicker="THE SCOUT'S BOOK"
-            title={reads ? 'How they beat you, and how you beat them' : 'A closed book'}
-          />
-          {reads
-            ? reads.map((r) => <FieldNote key={r.slot + r.title} title={r.title} text={r.text} />)
-            : (
-              <FieldNote
-                title="The desk has not been paid"
-                text="SCOUT THEM on the action button buys their book."
-              />
-            )}
-        </>
-      )}
-
-      <section className="split-grid">
-        <div>
-          <small>PRESTIGE</small>
-          <strong>{t.prestige}</strong>
-          <span>{'\u2605'.repeat(stars)}</span>
-        </div>
-        <div>
-          <small>PATIENCE</small>
-          <strong>{culture?.patience ?? '—'}</strong>
-          <span>BEFORE THEY COUNT</span>
-        </div>
-        <div>
-          <small>AMBITION</small>
-          <strong>{culture?.ambition ?? '—'}</strong>
-          <span>WHAT CLEARS THE BAR</span>
+    <div className="dossier-grid-stack">
+      <section className="dossier-program-card">
+        <header>
+          <span><small>PROGRAM DNA</small><strong>{culture?.name ?? 'Program identity'}</strong></span>
+          {culture && <b>{CULTURE_LABEL[culture.edge]}</b>}
+        </header>
+        {culture && <p>{culture.creed}</p>}
+        <div className="dossier-stat-grid">
+          <article><small>PRESTIGE</small><strong>{t.prestige}</strong><span>{'★'.repeat(stars)}</span></article>
+          <article><small>PATIENCE</small><strong>{culture?.patience ?? '—'}</strong><span>{culture && culture.patience >= 60 ? 'LONG RUNWAY' : 'SHORTER LEASH'}</span></article>
+          <article><small>AMBITION</small><strong>{culture?.ambition ?? '—'}</strong><span>{culture && culture.ambition >= 60 ? 'NATIONAL' : 'PROGRAM'}</span></article>
         </div>
       </section>
 
-      {coach ? (
-        <>
-          <SectionHeading kicker="IN THE CHAIR" title={coach.name} />
-          <section className="tendency-list">
-            <div>
-              <span>TENURE</span>
-              <strong>
-                {coach.tenure === 0 ? 'First season' : `${coach.tenure} seasons here`}
-                <em>{coach.age} years old · {coach.contractYears} left on the deal</em>
-              </strong>
+      {rival && (
+        <section className={`dossier-intel-card${reads ? ' has-report' : ''}`}>
+          <header>
+            <span><small>SCOUTING REPORT</small><strong>{reads ? 'What the report found' : 'No report yet'}</strong></span>
+            <b>{reads ? 'LIVE' : 'LOCKED'}</b>
+          </header>
+          {reads ? (
+            <div className="dossier-read-grid">
+              {reads.slice(0, 6).map((read, i) => (
+                <article key={`${read.slot}-${read.title}`}>
+                  <small>{String(i + 1).padStart(2, '0')}</small>
+                  <strong>{read.title}</strong>
+                  <p>{read.text}</p>
+                </article>
+              ))}
             </div>
-            <div>
-              <span>RECORD</span>
-              <strong>
-                {coach.careerWins}-{coach.careerLosses}
-                <em>
-                  {coach.titles > 0 ? `${coach.titles} national · ` : ''}
-                  {coach.conferenceTitles} conference · {coach.tournaments} tournaments
-                </em>
-              </strong>
+          ) : (
+            <div className="dossier-empty-report">
+              <strong>Public information only</strong>
+              <p>Scout this program to reveal tendencies and unlock an opponent plan.</p>
             </div>
-            <div>
-              <span>THE SEAT</span>
-              <strong>
-                {coach.security >= 45 ? 'Secure' : 'Warm'}
-                <em>{seat}</em>
-              </strong>
-            </div>
-          </section>
-
-          <SectionHeading kicker="WHAT HE IS GOOD AT" title="Where his points went" />
-          <section className="tool-table">
-            {strengths.map(([k, v]) => (
-              <div key={k}>
-                <span>{k.replace(/([A-Z])/g, ' $1').toUpperCase()}</span>
-                <b>{v}</b>
-                <i><em style={{ width: `${Math.min(100, v)}%` }} /></i>
-                <small>{v >= 70 ? 'PLUS' : v >= 50 ? 'SOLID' : 'FAIR'}</small>
-              </div>
-            ))}
-          </section>
-        </>
-      ) : (
-        <FieldNote
-          title="Nobody has been named"
-          text="The chair is empty."
-        />
+          )}
+        </section>
       )}
 
-      <FieldNote
-        title="This is scouting, not a leak"
-        text="Only what the country already publishes. What his players can do
-          stays on their own cards."
-      />
-    </>
+      <section className="dossier-coach-card">
+        <header>
+          <span><small>IN THE CHAIR</small><strong>{coach?.name ?? 'Vacant'}</strong></span>
+          {coach && <b>{coach.security >= 45 ? 'SECURE' : 'PRESSURE'}</b>}
+        </header>
+        {coach ? (
+          <>
+            <div className="dossier-coach-facts">
+              <article><small>TENURE</small><strong>{coach.tenure === 0 ? 'First season' : `${coach.tenure} seasons`}</strong><span>{coach.age} years old</span></article>
+              <article><small>CAREER</small><strong>{coach.careerWins}-{coach.careerLosses}</strong><span>{coach.titles} national · {coach.conferenceTitles} conference</span></article>
+              <article><small>CONTRACT</small><strong>{coach.contractYears} years</strong><span>{seat}</span></article>
+            </div>
+            <div className="dossier-strength-grid">
+              {strengths.map(([k, v]) => (
+                <article key={k}>
+                  <span><small>{k.replace(/([A-Z])/g, ' $1').toUpperCase()}</small><b>{v}</b></span>
+                  <i><em style={{ width: `${Math.min(100, v)}%` }} /></i>
+                </article>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="college-empty-copy">Nobody has been named to the chair.</p>
+        )}
+      </section>
+
+      <p className="dossier-public-note">Player performance is public. Private potential stays on the individual player card.</p>
+    </div>
   );
 }

@@ -40,9 +40,9 @@
 // asking a question he has no information to answer. Here he picks a coach; the
 // policies follow from that and stay editable for ever after.
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import {
-  ArrowLeftIcon, CheckIcon, ChevronRightIcon, Pencil1Icon,
+  ArrowLeftIcon, CheckIcon, Pencil1Icon,
 } from '@radix-ui/react-icons';
 import { ModuleIntro, SectionHeading } from '../components/Kit.js';
 import {
@@ -67,10 +67,9 @@ import {
 } from '../CoachPortrait.js';
 import { createSeason, seasonLength } from '../../engine/season.js';
 import { makeRng } from '../../engine/rng.js';
-import { drawQuestions, settle, ASKED, ASKED_CASUAL } from '../../engine/interviewResult.js';
 import { SKILL_LABEL, type CoachSkills } from '../../engine/program.js';
-import type { InterviewAnswer, InterviewQuestion } from '../../data/interview.js';
-import { cultureOf, CULTURE_LABEL } from '../../data/cultures.js';
+import { cultureOf, CULTURE_LABEL, type CultureEdge } from '../../data/cultures.js';
+import { Crest } from '../Crest.js';
 
 const MANDATE_LABEL: Record<Mandate, string> = {
   develop: 'DEVELOP',
@@ -79,6 +78,67 @@ const MANDATE_LABEL: Record<Mandate, string> = {
   contend: 'CONTEND',
   championship: 'WIN IT ALL',
 };
+
+
+type BackgroundId = 'player' | 'recruiter' | 'hitting' | 'pitching';
+
+interface CoachBackground {
+  id: BackgroundId;
+  title: string;
+  kicker: string;
+  blurb: string;
+  skills: CoachSkills;
+  leans: Partial<Record<CultureEdge, number>>;
+  ambition: number;
+  badges: string[];
+}
+
+/**
+ * Step three is a background, not a personality quiz.
+ *
+ * The old interview asked three situations and then translated the answers into
+ * the same four numbers shown below. That was a lot of reading before the first
+ * pitch for a result the player could not predict. A background is both fiction
+ * and mechanics at once: choose the career the coach had before the dugout and
+ * see exactly which tools he brings into year one.
+ */
+const BACKGROUNDS: readonly CoachBackground[] = [
+  {
+    id: 'player', title: 'Former player', kicker: 'CLUBHOUSE',
+    blurb: 'Played the game, reads people quickly, and starts with a balanced feel for both sides of the ball.',
+    skills: { offense: 23, defense: 23, training: 24, recruiting: 20 },
+    leans: { loyalty: 2, tradition: 1, development: 1 }, ambition: 0,
+    badges: ['players'],
+  },
+  {
+    id: 'recruiter', title: 'Recruiter', kicker: 'THE ROAD',
+    blurb: 'Built his name in living rooms and summer parks. The opening class is where he has the clearest edge.',
+    skills: { offense: 20, defense: 20, training: 22, recruiting: 28 },
+    leans: { recruiting: 3, ambition: 1 }, ambition: 1,
+    badges: ['closer'],
+  },
+  {
+    id: 'hitting', title: 'Hitting guru', kicker: 'THE CAGES',
+    blurb: 'An offensive teacher first. Bats develop faster under his eye, but the mound is not where he made his name.',
+    skills: { offense: 28, defense: 19, training: 23, recruiting: 20 },
+    leans: { power: 3, development: 1 }, ambition: 1,
+    badges: ['slugger'],
+  },
+  {
+    id: 'pitching', title: 'Pitching guru', kicker: 'THE MOUND',
+    blurb: 'Built staffs before he built lineups. Arms and run prevention are his strongest tools from day one.',
+    skills: { offense: 19, defense: 28, training: 23, recruiting: 20 },
+    leans: { pitching: 3, development: 1 }, ambition: 0,
+    badges: ['armsman'],
+  },
+];
+
+function BackgroundIcon({ id }: { id: BackgroundId }) {
+  if (id === 'player') return <svg viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="8" r="3"/><path d="M6 20c.6-4.2 2.6-6.3 6-6.3s5.4 2.1 6 6.3M5 7l4-2M19 7l-4-2"/></svg>;
+  if (id === 'recruiter') return <svg viewBox="0 0 24 24" aria-hidden><circle cx="10" cy="10" r="5"/><path d="M14 14l5 5M8 10h4M10 8v4"/></svg>;
+  if (id === 'hitting') return <svg viewBox="0 0 24 24" aria-hidden><path d="M5 20L16 4l3 2L8 21z"/><circle cx="18" cy="17" r="2"/></svg>;
+  return <svg viewBox="0 0 24 24" aria-hidden><circle cx="8" cy="7" r="3"/><path d="M6 20c.5-4 2.3-6 5-6 2 0 3.6 1 4.5 3M15 5c3 1 4.5 3 4.5 6"/><circle cx="19" cy="12" r="1.5"/></svg>;
+}
 
 /**
  * What kind of program this is, read off the gap between name and roster. This
@@ -122,24 +182,9 @@ export function NewGame() {
   // the store because no dynasty exists yet — it is handed to `start` with the
   // rest of the answers when a job is finally taken.
   const [mode, setMode] = useState<DepthMode>('full');
-  /*
-    The interview, and what it made of him.
-
-    The draw is seeded off the dynasty rather than off `Math.random`, so a
-    career is genuinely one career: reloading creation does not reroll the
-    questions, and the same seed with the same coach is the same five. Casual
-    gets two of them rather than none -- five is a slow start for somebody who
-    chose the shorter game, but zero would put the best-written thing in the
-    game out of reach of the players most likely to bounce off.
-  */
-  const asked = useMemo(
-    () => drawQuestions(
-      makeRng(seed ^ 0x1a7e), mode === 'casual' ? ASKED_CASUAL : ASKED,
-      { age: coach.age, warm: WARM_STATES.has(coach.homeState) },
-    ),
-    [seed, mode, coach.age, coach.homeState],
-  );
-  const [answers, setAnswers] = useState<InterviewAnswer[]>([]);
+  // The coach's pre-dugout background. Unlike the old interview, this is one
+  // visible choice with a visible year-one stat shape.
+  const [backgroundId, setBackgroundId] = useState<BackgroundId>('player');
 
 
   // Build the actual world, not an estimate of it. Generation is deterministic
@@ -200,33 +245,12 @@ export function NewGame() {
   const confNameOf = (school: SchoolDef): string =>
     CONFERENCES.find((c) => c.schools.some((s) => s.abbr === school.abbr))?.name ?? '';
 
-  /**
-   * The programs that actually rang. The old screen printed all ninety six and
-   * let the player discover which would take his call; this is the market as a
-   * rookie really meets it — the handful of genuine offers, chosen by the same
-   * hiring ladder every later job change uses, with at least one guaranteed.
-   */
-  /*
-    What the five answers made of him, and therefore who rings.
-
-    Settled here rather than at the moment a job is taken, because the offers
-    themselves depend on it: the leanings decide which programmes reach for him
-    and which pass, so they have to exist before the desk is drawn.
-  */
-  /*
-    Where a coach starts before he has said anything.
-
-    The same twenty `newCoach` uses. The interview adds to it rather than
-    replacing it, so a man who has answered nothing is exactly the coach this
-    game has always made -- which is what keeps the questions an addition to
-    creation instead of a rewrite of it.
-  */
-  const BASE_SKILLS = { offense: 20, defense: 20, training: 20, recruiting: 20 };
-
-  const outcome = useMemo(
-    () => settle(answers, BASE_SKILLS),
-    [answers],
-  );
+  /** The programs that actually rang, shaped by the background you chose. */
+  const background = BACKGROUNDS.find((b) => b.id === backgroundId) ?? BACKGROUNDS[0]!;
+  const outcome = useMemo(() => ({
+    skills: background.skills, leans: background.leans, ambition: background.ambition,
+    badges: background.badges, grants: [] as string[],
+  }), [background]);
 
   const offers = useMemo(
     () => {
@@ -235,13 +259,12 @@ export function NewGame() {
         ambition: outcome.ambition,
         // Seeded off the career and the answers together, so the wobble is
         // fixed for a given man rather than reshuffling every render.
-        rng: makeRng(seed ^ 0x0ffe4 ^ answers.length),
+        rng: makeRng(seed ^ 0x0ffe4 ^ BACKGROUNDS.findIndex((b) => b.id === backgroundId)),
       });
       /*
-        TESTING ONLY — remove before v1.0, together with the loaded roster in
-        `store.start`. Pascagoula Tech is always on the desk so the loaded
-        team is one tap away every run; it takes the last slot rather than a
-        seventh so the market keeps its shape.
+        TESTING ONLY — keep Pascagoula Tech on the rookie desk while its five
+        99-rated test players are enabled in store.start. It replaces the last
+        generated offer so the opening market keeps the normal five-card shape.
       */
       const psc = world.teams.findIndex((t) => t.def.abbr === 'PSC');
       if (psc >= 0 && !picks.includes(psc)) {
@@ -249,7 +272,7 @@ export function NewGame() {
       }
       return picks.map((i) => world.teams[i]!.def);
     },
-    [world, outcome, seed, answers.length],
+    [world, outcome, seed, backgroundId],
   );
 
   if (step === 0) {
@@ -292,11 +315,10 @@ export function NewGame() {
 
   if (step === 2) {
     return (
-      <InterviewStep
-        questions={asked}
-        answers={answers}
-        onAnswer={(a) => setAnswers((prev) => [...prev, a])}
-        onBack={() => { setAnswers([]); setStep(1); }}
+      <BackgroundStep
+        chosen={backgroundId}
+        onChoose={setBackgroundId}
+        onBack={() => setStep(1)}
         onDone={() => setStep(3)}
       />
     );
@@ -307,7 +329,7 @@ export function NewGame() {
       <PlayStyle
         chosen={coach.philosophy ?? DEFAULT_PHILOSOPHY}
         onChoose={(philosophy) => setCoach({ ...coach, philosophy })}
-        onBack={() => { setAnswers([]); setStep(2); }}
+        onBack={() => setStep(2)}
         onDone={() => setStep(4)}
       />
     );
@@ -352,26 +374,27 @@ export function NewGame() {
 
         {/* Only the chairs that actually rang. The rest of the country starts
             calling once there is a record to point at. */}
-        <section className="career-offers">
+        <section className="career-offers career-offer-deck">
           {offers.map((school) => {
             const o = preview(school);
             const on = picked?.abbr === school.abbr;
             return (
               <button
-                className={on ? 'selected' : ''}
+                className={`career-offer-card tap${on ? ' selected' : ''}`}
                 type="button"
                 key={school.abbr}
-                onClick={() => setPicked(on ? null : school)}
+                onClick={() => setPicked(school)}
               >
-                <span>
+                <span className="career-offer-card-crest"><Crest abbr={school.abbr} size={44} /></span>
+                <span className="career-offer-card-copy">
+                  <small>{confNameOf(school)} · {o.contract} YEAR DEAL</small>
                   <strong>{school.school}</strong>
-                  <small>
-                    {confNameOf(school)} · {'★'.repeat(o.stars)} · roster {o.roster}
-                    {' · '}{o.contract} year deal
-                  </small>
+                  <em>{'★'.repeat(o.stars)} · roster {o.roster}</em>
                 </span>
-                <b>{o.open ? MANDATE_LABEL[o.expectation.mandate] : 'NOT YET'}</b>
-                {on && <CheckIcon />}
+                <span className="career-offer-card-ask">
+                  <small>BOARD</small>
+                  <b>{o.open ? MANDATE_LABEL[o.expectation.mandate] : 'NOT YET'}</b>
+                </span>
               </button>
             );
           })}
@@ -379,103 +402,80 @@ export function NewGame() {
 
         {picked && detail && (
           <InFrame>
-          <div className="modal-scrim" onClick={() => setPicked(null)}>
-            <section
-              className="career-offer-detail offer-modal"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <small>{MANDATE_LABEL[detail.expectation.mandate]} · {confNameOf(picked)}</small>
-              <strong>{picked.school}</strong>
-              <p>
-                {picked.nickname} · {'★'.repeat(detail.stars)}
-                {' · roster '}{detail.roster} · {detail.contract} year deal
-              </p>
+            <div className="modal-scrim fade-in" onClick={() => setPicked(null)}>
+              <section
+                className="career-offer-detail offer-modal offer-decision-modal rise-in"
+                style={{ '--offer-accent': picked.color } as CSSProperties}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <header className="offer-decision-hero">
+                  <span className="offer-decision-crest"><Crest abbr={picked.abbr} size={62} /></span>
+                  <div>
+                    <small>{confNameOf(picked)} · {MANDATE_LABEL[detail.expectation.mandate]}</small>
+                    <h2>{picked.school}</h2>
+                    <p>{picked.nickname}</p>
+                  </div>
+                </header>
 
-              {/* Name against roster is the whole story of a job, so it is
-                  spelled out rather than left to two numbers side by side. */}
-              {detail.tag && (
-                <>
-                  <hr />
-                  <small>THE JOB · {detail.tag}</small>
-                  <p>
-                    {picked.prestige - picked.quality >= 12
-                      ? 'The name is ahead of the roster, and the board counts the name.'
+                <section className="offer-decision-metrics">
+                  <span><small>PRESTIGE</small><strong>{'★'.repeat(detail.stars)}</strong></span>
+                  <span><small>ROSTER</small><strong>{detail.roster}</strong></span>
+                  <span><small>CONTRACT</small><strong>{detail.contract} yr</strong></span>
+                  <span><small>BOARD ASK</small><strong>{detail.expectation.targetWins} W</strong></span>
+                </section>
+
+                <section className="offer-decision-story">
+                  <article>
+                    <small>THE JOB{detail.tag ? ` · ${detail.tag}` : ''}</small>
+                    <p>{picked.prestige - picked.quality >= 12
+                      ? 'The name is ahead of the roster. Expectations arrive before the depth does.'
                       : picked.quality - picked.prestige >= 12
-                        ? 'The roster is ahead of the name. Windows close.'
+                        ? 'The roster is ahead of the name. There is a window here right now.'
                         : picked.prestige >= 60
-                          ? 'Good for a long time, and they intend to stay that way.'
-                          : 'Nothing here yet. Whatever gets built, you build.'}
-                  </p>
-                </>
-              )}
-
-              {/*
-                What they believe, and why they rang. The line above says what
-                the *job* is; this says what the *place* is — which is the thing
-                the interview was for. Five answers decided which programmes
-                reached, and a desk that never explained itself would have made
-                those five answers invisible.
-              */}
-              {culture && (
-                <>
-                  <hr />
-                  <small>THE PLACE · {CULTURE_LABEL[culture.edge]}</small>
-                  <p>{culture.creed}</p>
-                  {record && (
-                    <p>{offerPitch(record, {
-                      leans: outcome.leans, ambition: outcome.ambition,
-                    })}</p>
+                          ? 'A strong program that expects to stay strong.'
+                          : 'A blanker canvas. Whatever this becomes, you build it.'}</p>
+                  </article>
+                  {culture && (
+                    <article>
+                      <small>THE PLACE · {CULTURE_LABEL[culture.edge]}</small>
+                      <p>{culture.creed}</p>
+                      {record && <em>{offerPitch(record, { leans: outcome.leans, ambition: outcome.ambition })}</em>}
+                    </article>
                   )}
-                </>
-              )}
+                </section>
 
-              <hr />
-              <small>THE ASK · {detail.expectation.targetWins} WINS</small>
-              <p>{detail.expectation.summary}</p>
-              {rival && (
-                <p className="offer-aside">
-                  {rival.school} are the rivalry. Three times a year.
-                </p>
-              )}
+                <section className="offer-decision-terms">
+                  <small>YEAR ONE MANDATE</small>
+                  <strong>{detail.expectation.summary}</strong>
+                  {rival && <span>Rivalry: {rival.school} · three times a year</span>}
+                </section>
 
-              {/*
-                The school's colour moved from the letters to an underline.
-                It was the ink — `color: picked.color` — on a `--paper`
-                ground, and in the dark theme paper is near-black, so a navy
-                school's SIGN WITH was navy-on-black: reported as "the buttons
-                are barely visible and the sign with looks like it is grayed
-                out". A raw brand hex can never be trusted as ink on a themed
-                surface (that is the whole argument of accent.ts); as a 3px
-                underline on a fixed cream ground it can be any colour the
-                school likes.
-              */}
-              {detail.open ? (
-                <button
-                  className="career-offer-sign tap"
-                  type="button"
-                  style={{ boxShadow: `inset 0 -3px 0 ${picked.color}` }}
-                  onClick={() => start(seed, indexOf(picked), coach, mode, {
-                    skills: outcome.skills,
-                    badges: outcome.badges,
-                    leans: outcome.leans,
-                  })}
-                >SIGN WITH {picked.abbr}</button>
-              ) : (
-                <div className="career-offer-gate">
-                  <strong>THEY WANT {detail.needs} · YOU ARE {ROOKIE_PRESTIGE}</strong>
-                  {detail.gate}
-                </div>
-              )}
+                {detail.open ? (
+                  <button
+                    className="career-offer-sign offer-sign-primary tap"
+                    type="button"
+                    onClick={() => start(seed, indexOf(picked), coach, mode, {
+                      skills: outcome.skills,
+                      badges: outcome.badges,
+                      leans: outcome.leans,
+                    })}
+                  >TAKE THE {picked.abbr} JOB</button>
+                ) : (
+                  <div className="career-offer-gate offer-gate-modern">
+                    <small>NOT OPEN TO YOU YET</small>
+                    <strong>THEY WANT {detail.needs} · YOU ARE {ROOKIE_PRESTIGE}</strong>
+                    <p>{detail.gate}</p>
+                  </div>
+                )}
 
-              <button
-                className="career-offer-close tap"
-                type="button"
-                onClick={() => setPicked(null)}
-              >Look at other jobs</button>
-            </section>
-          </div>
+                <button className="career-offer-close tap" type="button" onClick={() => setPicked(null)}>
+                  Back to offers
+                </button>
+              </section>
+            </div>
           </InFrame>
         )}
+
       </main>
     </FixedHeader>
   );
@@ -538,7 +538,7 @@ function StepHead(
 }
 
 /** What each step is, so the rail can name them rather than number them. */
-const STEP_NAMES = ['You', 'Desk', 'Interview', 'Plan', 'Offers'] as const;
+const STEP_NAMES = ['Coach', 'Control', 'Background', 'Plan', 'Offers'] as const;
 
 /**
  * Step one. Who the dynasty belongs to, and what he looks like.
@@ -561,46 +561,25 @@ function Identity(
 ) {
   const set = <K extends keyof CoachProfile>(key: K, value: CoachProfile[K]): void =>
     onChange({ ...profile, [key]: value });
-
   const look = profile.look ?? DEFAULT_LOOK;
   const setLook = (part: Partial<CoachLook>): void => set('look', { ...look, ...part });
 
   return (
     <FixedHeader
-      header={<div className="setup-head">
-        <StepHead n={1} title="Your coach" />
-      </div>}
-      action={<FloatingAction
-        label="HOW YOU PLAY"
-        onClick={onDone}
-        secondary={{ label: 'SOMEBODY ELSE', onClick: onShuffle }}
-      />}
+      header={<div className="setup-head"><StepHead n={1} title="Your coach" /></div>}
+      action={<FloatingAction label="CONTINUE" onClick={onDone} />}
     >
-      <main className="module-workspace career-workspace">
-        <ModuleIntro kicker="WHO YOU ARE" title="Meet the coach" />
+      <main className="module-workspace career-workspace coach-builder-workspace">
+        <ModuleIntro kicker="STEP ONE" title="Build the coach" />
 
-        {/*
-          The proposal's coach card: the face, the name, the age, in one panel.
-          Every control below it is only meaningful as a thing that changed the
-          picture — split them across the screen and you are tapping colours and
-          watching nothing happen.
-        */}
-        <section className="career-identity">
-          <span className="career-face">
-            <CoachPortrait look={look} size={72} />
-          </span>
-          <div>
-            <small>COACH NAME</small>
-            {/*
-              The proposal draws this as a button that cycles a name. Ours takes
-              one, because a dynasty is somebody's. The pencil is the same
-              affordance and the field is the same rule underneath it.
-
-              16px is the floor on the input, not a taste: a focused field under
-              16px makes a phone browser zoom the whole page in, and it does not
-              zoom back out when the keyboard leaves.
-            */}
-            <label className="career-name-edit">
+        <section className="coach-builder-stage">
+          <div className="coach-builder-portrait">
+            <span><CoachPortrait look={look} size={122} /></span>
+            <button className="tap" type="button" onClick={onShuffle}>RANDOMIZE</button>
+          </div>
+          <div className="coach-builder-identity">
+            <small>HEAD COACH</small>
+            <label className="coach-builder-name">
               <input
                 value={profile.name}
                 onChange={(e) => set('name', e.target.value)}
@@ -609,96 +588,56 @@ function Identity(
               />
               <Pencil1Icon />
             </label>
-            {/*
-              A stepper rather than a keyboard. The range is 41 wide, every
-              value in it is acceptable, and putting a numeric keypad over half
-              the screen to collect one of them is the slower way round.
-            */}
-            <div className="career-age">
-              <small>AGE · {MIN_COACH_AGE}–{MAX_COACH_AGE}</small>
-              <button
-                type="button"
-                aria-label="Younger"
-                onClick={() => set('age', clampAge(profile.age - 1))}
-              >−</button>
-              <strong>{profile.age}</strong>
-              <button
-                type="button"
-                aria-label="Older"
-                onClick={() => set('age', clampAge(profile.age + 1))}
-              >+</button>
+            <div className="coach-builder-facts">
+              <article>
+                <small>AGE</small>
+                <div>
+                  <button type="button" aria-label="Younger" onClick={() => set('age', clampAge(profile.age - 1))}>−</button>
+                  <strong>{profile.age}</strong>
+                  <button type="button" aria-label="Older" onClick={() => set('age', clampAge(profile.age + 1))}>+</button>
+                </div>
+              </article>
+              <article>
+                <small>HOME STATE</small>
+                <select value={profile.homeState} onChange={(e) => set('homeState', e.target.value)} aria-label="Home state">
+                  {Object.entries(STATES_BY_REGION).map(([region, states]) => (
+                    <optgroup key={region} label={region}>
+                      {states.map((st) => <option key={st} value={st}>{st} · {region}</option>)}
+                    </optgroup>
+                  ))}
+                </select>
+              </article>
             </div>
           </div>
         </section>
 
-        <SectionHeading kicker="THE LOOK" title="How he shows up" />
-
-        {/*
-          Swatches rather than sliders.
-
-          A slider for six skin tones reads as a continuum, which is what a
-          slider means, and the value underneath is one of six — so the thumb
-          snaps and the control lies about what it is. Six swatches fit across a
-          360px phone at a comfortable thumb size, show every option at once
-          instead of one at a time, and cost one tap rather than a drag.
-        */}
-        <section className="career-look">
-          <Row label="SKIN">
-            {COACH_SKIN.map((c, i) => (
-              <Swatch
-                key={c} colour={c} on={look.skin === i}
-                label={`Skin tone ${i + 1} of ${COACH_SKIN.length}`}
-                onClick={() => setLook({ skin: i })}
-              />
-            ))}
-          </Row>
-          <Row label="HAIR COLOR">
-            {COACH_HAIR.map((c, i) => (
-              <Swatch
-                key={c} colour={c} on={look.hair === i}
-                label={`Hair color ${i + 1} of ${COACH_HAIR.length}`}
-                onClick={() => setLook({ hair: i })}
-              />
-            ))}
-          </Row>
-          <Row label="HAIR">
-            {CUT_LABEL.map((word, i) => (
-              <Chip
-                key={word} label={word} on={look.cut === i}
-                onClick={() => setLook({ cut: i })}
-              />
-            ))}
-          </Row>
-          <Row label="FACIAL HAIR">
-            {BEARD_LABEL.map((word, i) => (
-              <Chip
-                key={word} label={word} on={look.beard === i}
-                onClick={() => setLook({ beard: i })}
-              />
-            ))}
-          </Row>
+        <section className="coach-appearance-board">
+          <header><small>APPEARANCE</small><strong>Make him yours</strong></header>
+          <div className="coach-appearance-groups">
+            <Row label="SKIN">
+              {COACH_SKIN.map((c, i) => (
+                <Swatch key={c} colour={c} on={look.skin === i}
+                  label={`Skin tone ${i + 1} of ${COACH_SKIN.length}`} onClick={() => setLook({ skin: i })} />
+              ))}
+            </Row>
+            <Row label="HAIR COLOR">
+              {COACH_HAIR.map((c, i) => (
+                <Swatch key={c} colour={c} on={look.hair === i}
+                  label={`Hair color ${i + 1} of ${COACH_HAIR.length}`} onClick={() => setLook({ hair: i })} />
+              ))}
+            </Row>
+            <Row label="HAIR">
+              {CUT_LABEL.map((word, i) => (
+                <Chip key={word} label={word} on={look.cut === i} onClick={() => setLook({ cut: i })} />
+              ))}
+            </Row>
+            <Row label="FACIAL HAIR">
+              {BEARD_LABEL.map((word, i) => (
+                <Chip key={word} label={word} on={look.beard === i} onClick={() => setLook({ beard: i })} />
+              ))}
+            </Row>
+          </div>
         </section>
-
-        {/*
-          The same two letter codes recruits and programs carry, grouped by the
-          same regions. A free text box would let you be from somewhere this
-          world has never heard of, and the state is the unit the rest of the
-          game already thinks in.
-        */}
-        <div className="career-field">
-          <small>WHERE HE IS FROM</small>
-          <select
-            value={profile.homeState}
-            onChange={(e) => set('homeState', e.target.value)}
-            aria-label="Home state"
-          >
-            {Object.entries(STATES_BY_REGION).map(([region, states]) => (
-              <optgroup key={region} label={region}>
-                {states.map((st) => <option key={st} value={st}>{st} · {region}</option>)}
-              </optgroup>
-            ))}
-          </select>
-        </div>
       </main>
     </FixedHeader>
   );
@@ -779,7 +718,7 @@ function DepthStep(
       />}
     >
       <main className="module-workspace career-workspace">
-        <ModuleIntro kicker="HOW MUCH REACHES YOU" title="Set your desk" />
+        <ModuleIntro kicker="CONTROL" title="Choose what you handle" />
 
         <section className="career-depth-options">
           {cards.map((c) => (
@@ -841,7 +780,7 @@ function PlayStyle(
   return (
     <FixedHeader
       header={<div className="setup-head">
-        <StepHead n={4} title="Set your plan" onBack={onBack} />
+        <StepHead n={4} title="Your approach" onBack={onBack} />
       </div>}
       action={<FloatingAction
         label="FIND A JOB"
@@ -849,7 +788,7 @@ function PlayStyle(
       />}
     >
       <main className="module-workspace career-workspace">
-        <ModuleIntro kicker="THE BENCH YOU RUN" title="Set your plan" />
+        <ModuleIntro kicker="PLAYING IDENTITY" title="Choose how your teams play" />
 
         <section className="career-plan-list">
           {PHILOSOPHIES.map((p) => (
@@ -937,97 +876,52 @@ function Chip(
   );
 }
 
-/** The warm half of the country, for the two questions that ask about heat. */
-const WARM_STATES = new Set([
-  'LA', 'MS', 'AL', 'TX', 'NC', 'SC', 'GA', 'FL', 'VA',
-  'CA', 'AZ', 'NM', 'NV',
-]);
 
-/**
- * Step three: five questions, one at a time.
- *
- * The whole stage rests on this screen not feeling like a form, so it shows one
- * question at a time and nothing else — no progress bar counting down, no
- * summary of what you have picked, and no way back. An interview is a thing you
- * are in, not a thing you are filling out.
- *
- * The effect of an answer *is* shown, which was a deliberate call. A character
- * question whose consequence you cannot read is a guess rather than a choice,
- * and the four skills are the part of a coach a player watches most closely.
- * What is not shown is the badge each answer votes for: that is who he turns out
- * to be, and finding out is better than picking.
- */
-function InterviewStep(
-  { questions, answers, onAnswer, onBack, onDone }: {
-    questions: readonly InterviewQuestion[];
-    answers: readonly InterviewAnswer[];
-    onAnswer: (a: InterviewAnswer) => void;
+function BackgroundStep(
+  { chosen, onChoose, onBack, onDone }: {
+    chosen: BackgroundId;
+    onChoose: (id: BackgroundId) => void;
     onBack: () => void;
     onDone: () => void;
   },
 ) {
-  const i = answers.length;
-  const q = questions[i];
-
-  // Answered them all. The step hands over on the next paint rather than
-  // rendering an empty frame.
-  useEffect(() => { if (!q) onDone(); }, [q, onDone]);
-  if (!q) return null;
-
+  const picked = BACKGROUNDS.find((b) => b.id === chosen) ?? BACKGROUNDS[0]!;
   return (
     <FixedHeader
-      header={<div className="setup-head">
-        <StepHead
-          n={3}
-          title="A few questions"
-          onBack={i === 0 ? onBack : undefined}
-        />
-      </div>}
+      header={<div className="setup-head"><StepHead n={3} title="Your background" onBack={onBack} /></div>}
+      action={<FloatingAction label="CONTINUE" onClick={onDone} />}
     >
-      <main className="module-workspace career-workspace">
-        <ModuleIntro
-          kicker={`QUESTION ${i + 1} OF ${questions.length}`}
-          title="The interview"
-        />
-
-        {/*
-          The situation, in the straight man's voice. Pre-wrapped rather than
-          left to the browser: these are written with their line breaks as part
-          of the rhythm, and a paragraph that reflows on a narrow phone reads as
-          prose instead of as somebody talking.
-        */}
-        <section className="career-question">
-          <small>ATHLETIC DIRECTOR</small>
-          <p>{q.setup}</p>
-          <h2>{q.ask}</h2>
-        </section>
-
-        {/*
-          What each answer costs and buys, on the answer itself.
-
-          A deliberate call: the numbers make this a character sheet rather than
-          a conversation, which is the risk. But an interview whose effects are
-          invisible is five taps that appear to do nothing, and a player who
-          cannot see that the answers matter stops reading them.
-        */}
-        <section className="answer-list">
-          {q.answers.map((a) => (
-            <button className="tap" type="button" key={a.text} onClick={() => onAnswer(a)}>
-              <ChevronRightIcon />
-              <span>
-                {a.text}
-                <em>
-                  {(Object.entries(a.skills) as [keyof CoachSkills & string, number][])
-                    .filter(([, n]) => n !== 0)
-                    .map(([k, n]) => (
-                      <i className={n > 0 ? 'up' : 'down'} key={k}>
-                        {n > 0 ? '+' : ''}{n} {SKILL_LABEL[k]}
-                      </i>
-                    ))}
-                </em>
-              </span>
+      <main className="module-workspace career-workspace background-workspace">
+        <ModuleIntro kicker="BEFORE THE DUGOUT" title="What did you do before this?" />
+        <section className="coach-background-grid">
+          {BACKGROUNDS.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              className={`coach-background-card tap${chosen === b.id ? ' selected' : ''}`}
+              onClick={() => onChoose(b.id)}
+            >
+              <span className="coach-background-icon"><BackgroundIcon id={b.id} /></span>
+              <small>{b.kicker}</small>
+              <strong>{b.title}</strong>
+              <p>{b.blurb}</p>
+              {chosen === b.id && <CheckIcon />}
             </button>
           ))}
+        </section>
+
+        <section className="background-stat-preview">
+          <header><small>YEAR ONE SHAPE</small><strong>{picked.title}</strong></header>
+          <div>
+            {(Object.entries(picked.skills) as [keyof CoachSkills, number][]).map(([k, value]) => (
+              <span key={k}>
+                <small>{SKILL_LABEL[k]}</small>
+                <strong>{value}</strong>
+                <i><b style={{ width: `${Math.min(100, value * 3.2)}%` }} /></i>
+              </span>
+            ))}
+          </div>
+          <p>This is your starting edge, not a permanent class. Coach development can reshape it every offseason.</p>
         </section>
       </main>
     </FixedHeader>

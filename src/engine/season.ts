@@ -46,7 +46,7 @@ import type { Inductee } from './hall.js';
 import type { Finish } from './postseason.js';
 import { uniquePlayers } from './types.js';
 import type {Arm, EngineName, FieldLine, HitLine, Hitter, PitchLine, Pitcher, Player, PlayerId, Rng,
-  Team, TeamId,
+  Team, TeamId, PlayEvent,
 } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -637,6 +637,8 @@ export interface BoxScore {
   homeHits?: number;
   awayErrors?: number;
   homeErrors?: number;
+  /** Post-hoc replay source for games involving the coached program. */
+  replay?: { log: string[]; playEvents: PlayEvent[] };
 }
 
 export interface GameSummary {
@@ -1790,6 +1792,8 @@ export function playGame(
     }
   }
 
+  const keepReplay = opts.capture === true
+    || season.captureBoxFor === homeIndex || season.captureBoxFor === awayIndex;
   const result = simGame(home.team, away.team, season.rng, {
     engine: season.config.engine,
     homeStarter: startableSlot(home.team, opts.homeSlot ?? slot, injuryClock(season)),
@@ -1806,8 +1810,8 @@ export function playGame(
     ...(home.coachMods ? { homeCoachMods: home.coachMods } : {}),
     ...(away.coachMods ? { awayCoachMods: away.coachMods } : {}),
     ...(opts.postseason ? { postseason: true } : {}),
-    verbose: opts.capture ?? false,
-    playEvents: opts.capture ?? false,
+    verbose: keepReplay,
+    playEvents: keepReplay,
   });
   /*
     And a season in the arm, off what the game just recorded rather than off an
@@ -2020,6 +2024,9 @@ export function recordResult(
       homeHits: result.home.hits,
       awayErrors: result.away.errors,
       homeErrors: result.home.errors,
+      ...(result.log.length > 0 && result.playEvents.length > 0
+        ? { replay: { log: [...result.log], playEvents: [...result.playEvents] } }
+        : {}),
     };
   }
   // The day-keyed store stays the user's own, exactly as it was.

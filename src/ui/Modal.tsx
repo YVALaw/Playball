@@ -13,11 +13,13 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 
 export function Modal(
-  { kicker, title, lines, tone = 'ink', action, onClose, cancel }:
+  { kicker, title, lines, body, tone = 'ink', action, onClose, cancel }:
   {
     kicker: string;
     title: string;
     lines: ReactNode[];
+    /** Rich context that belongs between the announcement copy and controls. */
+    body?: ReactNode;
     /** 'win' for something good, 'clay' for the end of a run. */
     tone?: 'ink' | 'win' | 'clay';
     action: string;
@@ -85,6 +87,7 @@ export function Modal(
         <small>{kicker}</small>
         <strong>{title}</strong>
         {lines.map((l, i) => <p key={i}>{l}</p>)}
+        {body}
         {/* The way out sits above the action rather than beside it. Side by
             side, the two are the same size and a thumb aimed at one is a thumb
             that can land on the other; stacked, the destructive one is the one

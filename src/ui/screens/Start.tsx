@@ -55,8 +55,9 @@ export function Start(
   return (
     <div className="start-screen">
       <header>
-        <small>COLLEGE BASEBALL</small>
+        <small>COLLEGE BASEBALL DYNASTY</small>
         <h1>Playball</h1>
+        <p>Build a program, shape the season, and take a dugout all the way to Omaha.</p>
       </header>
 
       <div className="start-doors">
@@ -72,6 +73,7 @@ export function Start(
               <strong>{latest.school}</strong>
               <em>{latest.year} · {latest.record} · {when(latest.savedAt)}</em>
             </span>
+            <b>Resume</b>
           </button>
         )}
 
@@ -99,6 +101,7 @@ export function Start(
           <small>Text size, sound, and how much you are asked.</small>
         </button>
       </div>
+
     </div>
   );
 }

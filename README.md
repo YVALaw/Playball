@@ -52,21 +52,20 @@ the one thing that must never be lost.
 | Onboarding | the guided tutorial — a titled card, then a glow path through doing it (stage 19) |
 | REPLAY | the events are stored and take no draws; it can land any time |
 | The store | the S+ player and Play Billing (stage 17, dead last with 19) |
-| The budget screen | the hiring market has no decision in it yet — a redesign, not a fix |
 | Negotiating the board | arguing a mandate down after a gutted roster (stage 20b) |
-| The creation interview | three questions instead of five, payoffs shown (stage 24) |
 
 Shipped since: the two-way whole and corrected to the rulebook, playbooks,
-the lineup gate, the season opener, and the Android shell — package, launcher
-icon, and a back gesture that peels one layer per press.
+the lineup gate, the season opener, the three-question creation interview, and
+the decision-visibility pass across Program, Player, Today, recruiting and the
+budget. The Android shell is in too — package, launcher icon, and a back gesture
+that peels one layer per press.
 
 **The gesture rule, for anyone touching a list:** tap selects, tap again puts
 down, **hold** reads the man. Never double-tap — allowing it taxes every tap,
 because none can act until the window for a second has passed.
 
-**Two test aids must come out before release** (both marked in code): the
-loaded Pascagoula Tech roster, and Hans Hood — a 20-overall, 99-potential third
-baseman injected into every recruiting class to exercise the development curve.
+**Release fixtures removed.** The forced Pascagoula Tech offer/99-rated roster
+and the named recruiting test prospects no longer run in normal dynasties.
 
 ## Docs
 

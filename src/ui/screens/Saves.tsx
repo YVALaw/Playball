@@ -14,6 +14,7 @@
 // playing it.
 
 import { useEffect, useState } from 'react';
+import { TrashIcon } from '@radix-ui/react-icons';
 import { AUTOSAVE_SLOT, useDynasty, useUserTeam } from '../../state/store.js';
 import type { SaveSummary } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
@@ -94,17 +95,6 @@ export function Saves() {
   const team = useUserTeam();
 
   const [name, setName] = useState('');
-  /**
-   * Delete is behind a mode rather than beside LOAD.
-   *
-   * Two buttons on a row, one of which loses a dynasty for ever, is a mis-tap
-   * waiting to happen on a phone — and the mis-tap is not recoverable. While
-   * this is off there is no delete control anywhere on the screen to hit by
-   * accident; while it is on, the row offers delete *instead of* load, so the
-   * two are never targets at the same time. The confirmation below is the
-   * second gate, not the first.
-   */
-  const [removing, setRemoving] = useState(false);
   const [ask, setAsk] = useState<Ask | null>(null);
   /**
    * Re-read on a timer so "just now" does not still say "just now" an hour
@@ -123,7 +113,6 @@ export function Saves() {
 
   const confirmDelete = (save: SaveSummary): void => {
     setAsk(null);
-    setRemoving(false);
     void deleteSlot(save.slot);
   };
 
@@ -222,24 +211,9 @@ export function Saves() {
             The list.
         */}
         {!blocked && (
-          <div style={{
-            display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-            borderBottom: '1px solid var(--faint)', paddingBottom: 5, marginBottom: 10,
-          }}>
+          <div className="save-list-heading">
             <span className="label">ON THIS DEVICE</span>
-            {saves.length > 0 && (
-              <button
-                onClick={() => setRemoving(!removing)}
-                className="tap"
-                style={{
-                  // Quiet, but not so quiet it is fiddly to hit on purpose.
-                  padding: '7px 11px', background: 'transparent',
-                  border: `1px solid ${removing ? 'var(--clay)' : 'var(--faint)'}`,
-                  color: removing ? 'var(--clay)' : 'var(--dim)',
-                  font: "700 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-                }}
-              >{removing ? 'DONE' : 'DELETE…'}</button>
-            )}
+            <small>Tap the trash on one career to remove only that save.</small>
           </div>
         )}
 
@@ -266,7 +240,6 @@ export function Saves() {
             key={s.slot}
             save={s}
             now={now}
-            removing={removing}
             onLoad={() => { void loadSlot(s.slot); }}
             onDelete={() => setAsk({ kind: 'delete', save: s })}
           />
@@ -307,86 +280,39 @@ export function Saves() {
  * the only thing worth saying about it is which one it is.
  */
 function SaveRow(
-  { save, now, removing, onLoad, onDelete }:
+  { save, now, onLoad, onDelete }:
   {
     save: SaveSummary;
     now: number;
-    removing: boolean;
     onLoad: () => void;
     onDelete: () => void;
   },
 ) {
   const auto = save.slot === AUTOSAVE_SLOT;
-  // The autosave is filed under the school, so printing both would print the
-  // same words twice.
   const meta = save.name.trim().toUpperCase() === save.school.toUpperCase()
     ? `${save.year} · ${save.record}`
     : `${save.school} · ${save.year} · ${save.record}`;
 
   return (
-    <div
-      className="card-in"
-      style={{
-        border: '1px solid var(--faint)',
-        borderLeft: removing ? '3px solid var(--clay)' : '1px solid var(--faint)',
-        background: 'var(--paper)', marginBottom: 8,
-      }}
-    >
-      <div style={{ padding: '10px 12px 9px' }}>
-        {auto && (
-          <div className="label" style={{ color: 'var(--clay)' }}>
-            AUTOSAVE · THE CAREER IN PROGRESS
-          </div>
-        )}
-        <div style={{
-          font: "700 calc(19px * var(--ts))/1.05 var(--display)", marginTop: auto ? 3 : 0,
-          textTransform: 'uppercase',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>{save.name}</div>
-        <div style={{
-          marginTop: 3, font: "400 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.06em',
-          color: 'var(--dim)',
-        }}>{meta}</div>
-        <div style={{
-          marginTop: 2, font: "400 calc(11px * var(--ts)) var(--body)", color: 'var(--dim)',
-        }}>saved {agoLabel(save.savedAt, now)}</div>
-      </div>
-
-      {removing ? (
-        auto ? (
-          // The one row delete mode leaves alone. This slot IS the career
-          // being played — delete it, close the app before the next autosave,
-          // and the career is gone with no copy and no warning that meant it.
-          // Ending a career is NEW DYNASTY's job, below, which says exactly
-          // what it costs.
-          <div style={{
-            width: '100%', padding: '11px 10px', textAlign: 'center',
-            borderTop: '1px solid var(--hairline)',
-            color: 'var(--dim)', font: "400 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.08em',
-          }}>THE CAREER BEING PLAYED · NEW DYNASTY REPLACES IT</div>
-        ) : (
-        <button
-          onClick={onDelete}
-          className="tap"
-          style={{
-            width: '100%', padding: '11px 10px',
-            background: 'transparent', borderTop: '1px solid var(--hairline)',
-            color: 'var(--clay)', font: "700 calc(10.5px * var(--ts)) var(--mono)", letterSpacing: '.14em',
-          }}
-        >DELETE…</button>
-        )
-      ) : (
-        <button
-          onClick={onLoad}
-          className="tap"
-          style={{
-            width: '100%', padding: '11px 10px',
-            background: 'transparent', borderTop: '1px solid var(--hairline)',
-            color: 'var(--ink)', font: "700 calc(10.5px * var(--ts)) var(--mono)", letterSpacing: '.14em',
-          }}
-        >LOAD</button>
-      )}
-    </div>
+    <article className="save-file-card card-in">
+      <button className="save-file-open tap" type="button" onClick={onLoad}>
+        <span className="save-file-mark">{auto ? 'AUTO' : 'SAVE'}</span>
+        <span className="save-file-copy">
+          {auto && <small>AUTOSAVE · CAREER IN PROGRESS</small>}
+          <strong>{save.name}</strong>
+          <em>{meta}</em>
+          <span>Saved {agoLabel(save.savedAt, now)}</span>
+        </span>
+        <b>LOAD</b>
+      </button>
+      <button
+        className="save-file-trash tap"
+        type="button"
+        aria-label={`Delete ${save.name}`}
+        title={`Delete ${save.name}`}
+        onClick={onDelete}
+      ><TrashIcon /></button>
+    </article>
   );
 }
 

@@ -97,6 +97,10 @@ export interface Assistant {
   /** $k a year, owed every roll he is still on the staff. */
   wage: number;
   seat: StaffSeat;
+  /** First year on this coach's staff. Sparse on older saves. */
+  joinedYear?: number;
+  /** A recruiting coordinator's strongest geographic relationship. */
+  pipelineState?: string;
 }
 
 /** What he builds between seasons: rating spent on the winter half. */
@@ -136,6 +140,11 @@ export function wageFor(rating: number): number {
  * One derived assistant. The id carries everything that makes him: the world,
  * the year he came on the market, the seat and his slot in it.
  */
+const PIPELINE_STATES = [
+  'AL','AZ','CA','CO','CT','FL','GA','IA','ID','IL','IN','KS','LA','MA','ME','MI','MO','MS',
+  'NC','NE','NH','NJ','NM','NV','NY','OH','OK','OR','PA','RI','SC','TN','TX','UT','VA','VT','WA','WI','WV','WY',
+] as const;
+
 function candidate(worldKey: string, year: number, seat: StaffSeat, slot: number): Assistant {
   const id = `${worldKey}:${year}:${seat}:${slot}`;
   const h = hash(id);
@@ -166,6 +175,10 @@ function candidate(worldKey: string, year: number, seat: StaffSeat, slot: number
     winter,
     wage: wageFor(rating),
     seat,
+    joinedYear: year,
+    ...(seat === 'recruiting'
+      ? { pipelineState: PIPELINE_STATES[hash(id + ':state') % PIPELINE_STATES.length] }
+      : {}),
   };
 }
 
@@ -177,6 +190,25 @@ function candidate(worldKey: string, year: number, seat: StaffSeat, slot: number
  */
 export function marketFor(worldKey: string, year: number, seat: StaffSeat): Assistant[] {
   return [0, 1, 2].map((slot) => candidate(worldKey, year, seat, slot));
+}
+
+/**
+ * One winter of staff growth. Assistants improve slowly and deterministically,
+ * so keeping a good teacher can create value instead of every offseason being
+ * a fresh auction. Strong winter coaches learn a little faster; nobody grows
+ * forever, and wages drift toward market value rather than jumping in one year.
+ */
+export function developAssistant(a: Assistant, year: number): Assistant {
+  const roll = hash(`${a.id}:develop:${year}`) % 100;
+  const ceiling = 84;
+  const chance = Math.round(30 + a.winter * 35 + Math.max(0, 70 - a.rating) * 0.35);
+  let gain = 0;
+  if (a.rating < ceiling && roll < chance) gain = 1;
+  if (a.rating < 72 && roll < Math.max(8, chance / 4)) gain = 2;
+  const rating = Math.min(ceiling, a.rating + gain);
+  const market = wageFor(rating);
+  const wage = Math.round((a.wage * 0.78 + market * 0.22) / 5) * 5;
+  return { ...a, age: a.age + 1, rating, wage };
 }
 
 /**
@@ -284,6 +316,89 @@ export function poached(a: Assistant, year: number): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Career networks
+// ---------------------------------------------------------------------------
+
+/** A former assistant who left this coach's staff for the head-coach market. */
+export interface CoachingTreeEntry {
+  id: string;
+  name: string;
+  seat: StaffSeat;
+  joinedYear: number;
+  leftYear: number;
+  yearsWithYou: number;
+  /** Last known head-coaching line, kept even after he leaves the carousel. */
+  lastSchool?: string;
+  careerWins?: number;
+  careerLosses?: number;
+  titles?: number;
+  active?: boolean;
+}
+
+/** A recruiting relationship the coach/staff have built in one state. */
+export interface PipelineEntry {
+  state: string;
+  /** 0-100. Stronger means a better local pitch; 60+ also extends reach. */
+  strength: number;
+  signings: number;
+  lastSignedYear: number;
+}
+
+/** The label the UI uses. */
+export function pipelineLabel(strength: number): string {
+  if (strength >= 80) return 'STRONG';
+  if (strength >= 60) return 'ESTABLISHED';
+  if (strength >= 35) return 'EMERGING';
+  return 'COLD';
+}
+
+/**
+ * The effective network in one state. Home territory always has a floor and a
+ * recruiting coordinator can bring one additional market with him.
+ */
+export function pipelineStrength(
+  eco: Economy, state: string, homeState: string,
+): number {
+  const stored = eco.pipelines?.[state]?.strength ?? 0;
+  // Preserve the original home-state reach advantage: 60+ is the threshold
+  // that lets a network stretch one prestige tier beyond normal reach.
+  const home = state === homeState ? 60 : 0;
+  const coordinator = eco.staff.recruiting?.pipelineState === state
+    ? Math.max(60, Math.round((eco.staff.recruiting?.rating ?? 0) * 0.82))
+    : 0;
+  return Math.max(stored, home, coordinator);
+}
+
+/** A signed player strengthens the relationship that produced him. */
+export function addPipelineSigning(
+  eco: Economy, state: string, year: number, stars = 3,
+): Economy {
+  const pipelines = { ...(eco.pipelines ?? {}) };
+  const current = pipelines[state] ?? { state, strength: 0, signings: 0, lastSignedYear: year };
+  const gain = 8 + Math.max(0, stars - 1) * 3;
+  pipelines[state] = {
+    state,
+    strength: Math.min(100, current.strength + gain),
+    signings: current.signings + 1,
+    lastSignedYear: year,
+  };
+  return { ...eco, pipelines };
+}
+
+/** Relationships cool when a staff stops signing from them. */
+export function agePipelines(eco: Economy, year: number): Economy {
+  const entries = Object.values(eco.pipelines ?? {});
+  if (entries.length === 0) return eco;
+  const pipelines: Record<string, PipelineEntry> = {};
+  for (const e of entries) {
+    const idle = Math.max(0, year - e.lastSignedYear);
+    const strength = Math.max(0, e.strength - (idle > 0 ? 4 : 0));
+    if (strength > 8 || e.signings > 0) pipelines[e.state] = { ...e, strength };
+  }
+  return { ...eco, pipelines };
+}
+
+// ---------------------------------------------------------------------------
 // Facilities
 // ---------------------------------------------------------------------------
 
@@ -363,6 +478,55 @@ export const BUILDINGS: readonly BuildingSpec[] = [
 export const buildingSpec = (k: Building): BuildingSpec =>
   BUILDINGS.find((b) => b.key === k) ?? BUILDINGS[0]!;
 
+
+export const FACILITY_MAX_LEVEL = 3;
+const LEVEL_MULT = [0, 1, 1.75, 2.6] as const;
+
+export function facilityLevel(eco: Economy, which: Building): number {
+  const saved = eco.facilityLevels?.[which];
+  if (typeof saved === 'number') return Math.max(0, Math.min(FACILITY_MAX_LEVEL, Math.round(saved)));
+  return (eco.built ?? []).includes(which) ? 1 : 0;
+}
+
+/** Cost of the next specialized upgrade. Level one uses the building's base cost. */
+export function facilityUpgradeCost(which: Building, nextLevel: number): number {
+  const base = buildingSpec(which).cost;
+  if (nextLevel <= 1) return base;
+  return Math.round((base * (nextLevel === 2 ? 0.72 : 0.96)) / 10) * 10;
+}
+
+export function facilityEffectAt(which: Building, level: number): {
+  bat: number; arm: number; guard: number; pitch: number;
+} {
+  const b = buildingSpec(which);
+  const safe = Math.max(0, Math.min(FACILITY_MAX_LEVEL, Math.round(level)));
+  const mult = LEVEL_MULT[safe] ?? 0;
+  return {
+    bat: b.bat * mult,
+    arm: b.arm * mult,
+    guard: Math.max(0.72, 1 - (1 - b.guard) * mult),
+    pitch: b.pitch * mult,
+  };
+}
+
+export function facilityEffects(eco: Economy): {
+  bat: number; arm: number; guard: number; pitch: number;
+} {
+  const out = { bat: 0, arm: 0, guard: 1, pitch: 0 };
+  for (const b of BUILDINGS) {
+    const level = facilityLevel(eco, b.key);
+    if (level <= 0) continue;
+    const mult = LEVEL_MULT[level] ?? LEVEL_MULT[LEVEL_MULT.length - 1] ?? 1;
+    out.bat += b.bat * mult;
+    out.arm += b.arm * mult;
+    // Guard is a multiplier, so scale the distance from 1 rather than multiplying
+    // the raw number three times.
+    out.guard *= Math.max(0.72, 1 - (1 - b.guard) * mult);
+    out.pitch += b.pitch * mult;
+  }
+  return out;
+}
+
 /**
  * What a programme's buildings are worth together.
  *
@@ -411,8 +575,14 @@ export interface Economy {
   facilities: number;
   /** Which buildings are up. Absent on a save from before the branch. */
   built?: Building[];
+  /** Specialized level of each building, 1-3. Old saves infer level one from `built`. */
+  facilityLevels?: Partial<Record<Building, number>>;
   /** Who sits in each seat. Absent means vacant. */
   staff: Partial<Record<StaffSeat, Assistant>>;
+  /** Former assistants who left this coach for head-coaching opportunities. */
+  tree?: CoachingTreeEntry[];
+  /** Recruiting relationships that this staff has deliberately built. */
+  pipelines?: Record<string, PipelineEntry>;
   /** $k spent this year on everything but wages (wages are counted live). */
   spent: number;
   /** Opponent team index → last dayIndex the book on them is good for. */
@@ -421,7 +591,11 @@ export interface Economy {
 
 export const freshEconomy = (): Economy => ({
   facilities: 0,
+  built: [],
+  facilityLevels: {},
   staff: {},
+  tree: [],
+  pipelines: {},
   spent: 0,
   scouted: {},
 });

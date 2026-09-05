@@ -19,7 +19,8 @@ import { useDynasty } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { IdCardIcon, ReloadIcon, StarIcon } from '@radix-ui/react-icons';
 import { Avatar } from '../Avatar.js';
-import { Confirmable, FieldNote, ModuleIntro, Segmented } from '../components/Kit.js';
+import { InFrame } from '../Overlay.js';
+import { Confirmable, FieldNote, Segmented } from '../components/Kit.js';
 import { overallOf } from '../../engine/ratings.js';
 import { prestigeStars } from '../../engine/program.js';
 import { windowBudget } from '../../engine/recruiting.js';
@@ -40,6 +41,7 @@ function keepCost(m: PortalMan): number {
 export function Portal() {
   /** Which half of the window you are looking at. */
   const [view, setView] = useState<'leaving' | 'available'>('leaving');
+  const [signing, setSigning] = useState<string | null>(null);
   /*
     Two-press signing. Reported: "when clicking sign him there is no visual
     indication or confirmation, nothing." First press arms the button on that
@@ -78,9 +80,7 @@ export function Portal() {
 
   return (
     <FixedHeader
-      header={
-        <ModuleIntro kicker={`THE PORTAL · ${left} OF ${budget} LEFT`} title="Both directions" />
-      }
+      header={null}
       /*
         The way out, which this screen shipped without.
 
@@ -104,7 +104,7 @@ export function Portal() {
         />
       )}
     >
-      <main className="module-workspace">
+      <main className="module-workspace offseason-portal">
         {/*
           The command centre: what the window is, what it costs, and what is
           left. The proposal opens the portal with it and it is the right
@@ -143,7 +143,7 @@ export function Portal() {
           </div>
         </section>
 
-        <Segmented
+        <Segmented<'leaving' | 'available'>
           label="Portal mode"
           value={view}
           onChange={setView}
@@ -169,7 +169,7 @@ export function Portal() {
                 ? 'That is what keeping your word looks like.'
                 : runsPortal
                   ? 'The pool is thin this winter. Your points go to the class instead.'
-                  : 'Settings, then What you handle, brings it back to your desk.'}
+                  : 'Your staff is handling the incoming board in this career.'}
             </p>
           </section>
         ) : (
@@ -248,44 +248,28 @@ export function Portal() {
                       position rather than the player — sign the top man, filter
                       the list, and somebody else is wearing his answer.
                     */}
-                    <Confirmable
-                      key={p.id}
-                      disabled={!can}
-                      idle={can
-                        ? (view === 'leaving' ? `Talk him round · ${cost}` : `Sign him · ${cost}`)
-                        : 'Not enough left'}
-                      armed={`Confirm — spend ${cost}`}
-                      /*
-                        No settled label, and this is worth knowing rather than
-                        guessing at: on success the man leaves this board. A kept
-                        man comes off `leaving` and a signed man comes off
-                        `available`, both in the store, so a row that reported
-                        "✓ HE IS IN" would be a row that unmounts on the same
-                        tick. The old hand-rolled version passed one anyway and
-                        it was dead the whole time — checked by signing a man and
-                        watching the list, not by reading it.
-
-                        What confirms the success is the board itself: he is off
-                        it, the points meter drops, and the inbox says so.
-
-                        The failure is the state that needed a label, and only on
-                        the retention half — `keepFromPortal` leaves a man you
-                        lost sitting right where he was. That is the one action
-                        in the game that can cost everything and say nothing.
-                        Signing is guarded by `disabled` instead, so its only
-                        false path is an affordability race, and "He went anyway"
-                        would be the wrong sentence for it.
-                      */
-                      failed={view === 'leaving' ? 'He went anyway' : undefined}
-                      onConfirm={() => {
-                        const ok = view === 'leaving'
-                          ? keepFromPortal(p.id, cost)
-                          : takeFromPortal(p.id);
-                        if (ok) { sfx('clap', { gain: 0.4 }); buzz(20); }
-                        else buzz([30, 40, 30]);
-                        return ok;
-                      }}
-                    />
+                    {view === 'leaving' ? (
+                      <Confirmable
+                        key={p.id}
+                        disabled={!can}
+                        idle={can ? `Talk him round · ${cost}` : 'Not enough left'}
+                        armed={`Confirm — spend ${cost}`}
+                        failed="He went anyway"
+                        onConfirm={() => {
+                          const ok = keepFromPortal(p.id, cost);
+                          if (ok) { sfx('clap', { gain: 0.4 }); buzz(20); }
+                          else buzz([30, 40, 30]);
+                          return ok;
+                        }}
+                      />
+                    ) : (
+                      <button
+                        className="portal-sign-command tap"
+                        type="button"
+                        disabled={!can}
+                        onClick={() => setSigning(p.id)}
+                      >{can ? `REVIEW SIGNING · ${cost}` : 'NOT ENOUGH LEFT'}</button>
+                    )}
                   </div>
                 </article>
               );
@@ -294,6 +278,61 @@ export function Portal() {
         )}
 
       </main>
+      {signing && (() => {
+        const man = portal.available.find((m) => m.player.id === signing);
+        return man ? (
+          <PortalSignSheet
+            man={man}
+            left={left}
+            onClose={() => setSigning(null)}
+            onSign={() => {
+              const ok = takeFromPortal(man.player.id);
+              if (ok) { sfx('clap', { gain: 0.4 }); buzz(20); setSigning(null); }
+              else buzz([30, 40, 30]);
+              return ok;
+            }}
+            onPlayer={() => openPlayer(man.player.id)}
+          />
+        ) : null;
+      })()}
     </FixedHeader>
+  );
+}
+
+function PortalSignSheet(
+  { man, left, onClose, onSign, onPlayer }:
+  { man: PortalMan; left: number; onClose: () => void; onSign: () => boolean; onPlayer: () => void },
+) {
+  const p = man.player;
+  const cost = man.cost;
+  return (
+    <InFrame>
+      <div className="sheet-scrim fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Sign ${p.name}`}>
+        <section className="portal-sign-sheet rise-in" onClick={(e) => e.stopPropagation()}>
+          <header>
+            <small>TRANSFER DECISION</small>
+            <strong>Bring him in?</strong>
+            <button type="button" className="tap" onClick={onClose}>CLOSE</button>
+          </header>
+          <button className="portal-sign-player tap" type="button" onClick={onPlayer}>
+            <Avatar id={p.id} size={48} />
+            <span><small>{p.type === 'pitcher' ? (p as { role: string }).role : p.pos} · {p.classYear}</small><strong>{p.name}</strong><em>From {man.fromName}</em></span>
+            <b>{overallOf(p)}</b>
+          </button>
+          <section className="portal-sign-story">
+            <small>WHY HE IS AVAILABLE</small>
+            <p>{man.reason} Eligible immediately.</p>
+          </section>
+          <section className="portal-sign-money">
+            <span><small>COST</small><strong>{cost}</strong><em>points</em></span>
+            <span><small>YOU HAVE</small><strong>{left}</strong><em>points</em></span>
+            <span><small>AFTER SIGNING</small><strong>{Math.max(0, left - cost)}</strong><em>points</em></span>
+          </section>
+          <p className="portal-sign-warning">Those points come out of the same offseason pool you take into recruiting.</p>
+          <button className="primary-command tap" type="button" disabled={left < cost} onClick={onSign}>SIGN {p.name.toUpperCase()}</button>
+          <button className="secondary-command tap" type="button" onClick={onClose}>KEEP LOOKING</button>
+        </section>
+      </div>
+    </InFrame>
   );
 }

@@ -31,6 +31,8 @@ import { captainOf } from '../../engine/captains.js';
 import { potentialGrade } from '../../engine/scouting.js';
 import { battingAverage, era, inningsPitched, injuryClock } from '../../engine/season.js';
 import { isHurt } from '../../engine/injury.js';
+import { mood } from '../../engine/morale.js';
+import { draftEligible } from '../../engine/draft.js';
 import { available } from '../../engine/depthChart.js';
 import {
   Capacity, CaptainC, DataTable, InlineActions, ModuleIntro, Segmented, type Row,
@@ -98,6 +100,7 @@ export function Roster() {
   */
   const [yearF, setYearF] = useState<string | null>(null);
   const [posF, setPosF] = useState<string | null>(null);
+  const [statusF, setStatusF] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   void version;
 
@@ -106,9 +109,18 @@ export function Roster() {
   const hittersAll = [...team.team.lineup, ...team.team.bench];
   const armsAll = [...team.team.rotation, ...team.team.bullpen];
 
-  const keep = (p: Player): boolean =>
-    (yearF === null || p.classYear === yearF)
-    && (posF === null || slotOf(p) === posF);
+  const keep = (p: Player): boolean => {
+    const feeling = mood(p);
+    const statusOk = statusF === null
+      || (statusF === 'injured' && isHurt(p, injuryClock(season)))
+      || (statusF === 'unhappy' && (feeling === 'unhappy' || feeling === 'restless'))
+      || (statusF === 'draft' && (p.classYear === 'SR' || draftEligible({ classYear: p.classYear, age: p.age + 1 })))
+      || (statusF === 'redshirt' && Boolean((p as Player & { redshirt?: boolean }).redshirt))
+      || (statusF === 'captain' && captainOf(team.team)?.id === p.id);
+    return (yearF === null || p.classYear === yearF)
+      && (posF === null || slotOf(p) === posF)
+      && statusOk;
+  };
 
   const hitters = hittersAll.filter(keep);
   const arms = armsAll.filter(keep);
@@ -122,7 +134,7 @@ export function Roster() {
       return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi) || a.localeCompare(b);
     });
 
-  const filtered = yearF !== null || posF !== null;
+  const filtered = yearF !== null || posF !== null || statusF !== null;
   const squad = hittersAll.length + armsAll.length;
 
   /**
@@ -180,12 +192,11 @@ export function Roster() {
         <ModuleIntro
           kicker={filtered ? `${rows.length} OF ${squad}` : 'ACTIVE ROSTER'}
           title={`${rows.length} ${rows.length === 1 ? 'player' : 'players'}`}
-          text="Everyone in the building."
         />
       </div>
 
       <div className="screen-tools">
-        <Segmented
+        <Segmented<Mode>
           label="Roster group"
           value={mode}
           onChange={setMode}
@@ -210,7 +221,7 @@ export function Roster() {
           <div className="flow-section-title">
             <span className="label">FILTER THE ROSTER</span>
             {filtered && (
-              <button type="button" onClick={() => { setYearF(null); setPosF(null); }}>
+              <button type="button" onClick={() => { setYearF(null); setPosF(null); setStatusF(null); }}>
                 CLEAR
               </button>
             )}
@@ -231,6 +242,19 @@ export function Roster() {
             options={[
               { value: 'all', label: 'Any spot' },
               ...slots.map((s) => ({ value: s, label: s })),
+            ]}
+          />
+          <Segmented
+            label="Player status"
+            value={statusF ?? 'all'}
+            onChange={(v) => setStatusF(v === 'all' ? null : v)}
+            options={[
+              { value: 'all', label: 'Any status' },
+              { value: 'injured', label: 'Injured' },
+              { value: 'unhappy', label: 'Mood issue' },
+              { value: 'draft', label: 'Draft eligible' },
+              { value: 'redshirt', label: 'Redshirt' },
+              { value: 'captain', label: 'Captain' },
             ]}
           />
         </section>

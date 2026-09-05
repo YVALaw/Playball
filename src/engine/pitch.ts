@@ -70,6 +70,7 @@ export function pitchFor(
   record: TeamRecord,
   region: Region,
   development = 0.5,
+  pipelineStrength?: (state: string) => number,
 ): Pitch {
   const played = record.w + record.l;
   const winPct = played > 0 ? record.w / played : 0.5;
@@ -83,6 +84,7 @@ export function pitchFor(
     region,
     state: record.def.state,
     development: unit(development),
+    ...(pipelineStrength ? { pipelineStrength } : {}),
   };
 }
 

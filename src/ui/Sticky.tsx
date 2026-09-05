@@ -28,11 +28,11 @@ import { useRef, type ReactNode } from 'react';
  */
 export function FixedHeader(
   { header, children, action }:
-  { header: ReactNode; children: ReactNode; action?: ReactNode },
+  { header?: ReactNode; children: ReactNode; action?: ReactNode },
 ) {
   return (
     <div className="fixed-header-screen">
-      <div className="fixed-header-bar">{header}</div>
+      {header !== undefined && header !== null && <div className="fixed-header-bar">{header}</div>}
       <div className="screen-scroll fixed-header-body">{children}</div>
       {/*
         The action, outside the scroller.

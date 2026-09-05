@@ -6,8 +6,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   annualBudget, dollars, marketFor, wageFor, wageBill, staffBonus, withStaff,
-  poached, remaining, freshEconomy, FACILITIES, MAX_FACILITY, SEATS, devBonus,
-  SCOUT_COST, type Assistant,
+  poached, developAssistant, remaining, freshEconomy, FACILITIES, MAX_FACILITY, SEATS, devBonus,
+  SCOUT_COST, facilityEffectAt, facilityUpgradeCost, FACILITY_MAX_LEVEL,
+  pipelineStrength, addPipelineSigning, agePipelines, type Assistant,
 } from '../src/engine/economy.js';
 
 describe('the budget', () => {
@@ -164,5 +165,52 @@ describe('facilities and the desk', () => {
     // Thirty-odd series a year at the scout cost outruns what is left after a
     // real staff — the number is sized to make every book a bad plan.
     expect(SCOUT_COST * 30).toBeGreaterThan(annualBudget(25) - wageFor(70) * 3);
+  });
+});
+
+
+describe('career staff, specialized facilities and pipelines', () => {
+  it('lets assistants develop without rerolling them', () => {
+    const man = marketFor('career-world', 2029, 'hitting')[1]!;
+    const a = developAssistant(man, 2030);
+    const b = developAssistant(man, 2030);
+    expect(a).toEqual(b);
+    expect(a.age).toBe(man.age + 1);
+    expect(a.rating).toBeGreaterThanOrEqual(man.rating);
+    expect(a.rating).toBeLessThanOrEqual(84);
+  });
+
+  it('makes building levels true specialties rather than three checkboxes', () => {
+    const pen1 = facilityEffectAt('pen', 1);
+    const pen3 = facilityEffectAt('pen', FACILITY_MAX_LEVEL);
+    const cage3 = facilityEffectAt('cage', FACILITY_MAX_LEVEL);
+    expect(pen3.arm).toBeGreaterThan(pen1.arm);
+    expect(pen3.guard).toBeLessThan(pen1.guard);
+    expect(pen3.bat).toBe(0);
+    expect(cage3.bat).toBeGreaterThan(0);
+    expect(cage3.arm).toBe(0);
+    expect(facilityUpgradeCost('pen', 2)).toBeGreaterThan(0);
+    expect(facilityUpgradeCost('pen', 3)).toBeGreaterThan(facilityUpgradeCost('pen', 2));
+  });
+
+  it('builds recruiting markets from signings and lets them cool when ignored', () => {
+    let eco = freshEconomy();
+    expect(pipelineStrength(eco, 'LA', 'LA')).toBeGreaterThanOrEqual(60);
+    expect(pipelineStrength(eco, 'TX', 'LA')).toBe(0);
+
+    for (let i = 0; i < 5; i++) eco = addPipelineSigning(eco, 'TX', 2030, 3);
+    const built = pipelineStrength(eco, 'TX', 'LA');
+    expect(built).toBeGreaterThanOrEqual(60);
+
+    const cooled = agePipelines(eco, 2031);
+    expect(pipelineStrength(cooled, 'TX', 'LA')).toBeLessThan(built);
+  });
+
+  it('lets a recruiting coordinator carry one established market', () => {
+    const eco = freshEconomy();
+    const coordinator = marketFor('network-world', 2032, 'recruiting')[0]!;
+    expect(coordinator.pipelineState).toBeDefined();
+    eco.staff.recruiting = coordinator;
+    expect(pipelineStrength(eco, coordinator.pipelineState!, 'LA')).toBeGreaterThanOrEqual(60);
   });
 });

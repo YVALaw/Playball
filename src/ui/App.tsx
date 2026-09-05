@@ -10,7 +10,7 @@
 //
 // design/Roster Tabletop/ is the design of record.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Modal } from './Modal.js';
 import { uniquePlayers } from '../engine/types.js';
 import { applyTeamAccent } from './accent.js';
@@ -66,6 +66,7 @@ import { Settings } from './screens/Settings.js';
 import { Start } from './screens/Start.js';
 import { seasonDate } from './format.js';
 import { prestigeStars } from '../engine/program.js';
+import { teamReads } from '../engine/tendencies.js';
 
 /**
  * A face for each of the four areas.
@@ -177,6 +178,7 @@ function AppBody(
   const screen = useDynasty((s) => s.screen);
   const go = useDynasty((s) => s.go);
   const setScreen = useDynasty((s) => s.setScreen);
+  const setProgramSheet = useDynasty((s) => s.setProgramSheet);
   const year = useDynasty((s) => s.year);
   // The chrome prints live numbers now — the record, the date, the roster —
   // and the engine mutates in place, so the version counter is what tells this
@@ -189,7 +191,18 @@ function AppBody(
   const unread = useDynasty((s) => unreadCount(s.inbox));
   // New silverware waiting in the cabinet — the dot that replaced the
   // achievement letters.
-  const trophyDot = useDynasty((s) => s.unseenTrophies.length > 0 || s.unseenRecords.length > 0);
+  const unseenTrophies = useDynasty((s) => s.unseenTrophies.length);
+  const unseenRecords = useDynasty((s) => s.unseenRecords.length);
+  const trophyDot = unseenTrophies > 0 || unseenRecords > 0;
+
+  const chooseSection = (id: string): void => {
+    if (tab === 'program' && id === 'records') setProgramSheet('overview');
+    setScreen(id);
+  };
+  const chooseTab = (id: Tab): void => {
+    if (id === 'program') setProgramSheet('overview');
+    go(id);
+  };
 
   const needsTeam = useDynasty((s) => s.needsTeam);
   const phase = useDynasty((s) => s.phase);
@@ -232,7 +245,9 @@ function AppBody(
    * already scrolled past its own header.
    */
   const mainRef = useRef<HTMLElement>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // Reset before paint. Doing this in a normal effect lets the incoming page
+    // briefly render at the previous screen's scroll position, then jump.
     mainRef.current?.scrollTo(0, 0);
   }, [phase, tab, screen, bracket?.stage, live !== null, selectedPlayer !== null]);
 
@@ -346,9 +361,10 @@ function AppBody(
               background: 'var(--paper)', borderLeft: '3px solid var(--alert)',
               font: "400 calc(12px * var(--ts))/1.55 var(--body)",
             }}>
-              <strong>Your saved dynasty could not be opened.</strong> It was
-              written by a different build. Start a new one — this dynasty stays
-              under PROGRAM · SAVES and opens again in the build that wrote it.
+              <strong>Couldn't open this dynasty.</strong>{' '}
+              {/newer version|schema/i.test(loadError)
+                ? 'This save was created by a newer, incompatible version of Playball. It has not been deleted.'
+                : 'We could not read this save. It has not been deleted; you can try it again from Program · Saves.'}
               <div style={{
                 marginTop: 6, font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
               }}>{loadError}</div>
@@ -488,7 +504,7 @@ function AppBody(
   // played for.
   if (bracket !== null) {
     return (
-      <div className="app-frame" style={{
+      <div className="app-frame postseason-frame" style={{
         display: 'flex', flexDirection: 'column', minHeight: 0,
       }}>
         {/*
@@ -536,9 +552,15 @@ function AppBody(
         {!live && tab !== 'home' && (
           <ContextNav
             label={`${(TABS.find((t) => t.id === tab) ?? TABS[0]!).label} sections`}
-            items={(TABS.find((t) => t.id === tab) ?? TABS[0]!).screens}
+            items={(TABS.find((t) => t.id === tab) ?? TABS[0]!).screens.map((item) => ({
+              ...item,
+              alert: tab === 'program' && (
+                (item.id === 'history' && unseenRecords > 0)
+                || (item.id === 'records' && unseenTrophies > 0)
+              ),
+            }))}
             active={screen}
-            onSelect={setScreen}
+            onSelect={chooseSection}
           />
         )}
         <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
@@ -576,7 +598,7 @@ function AppBody(
                 || (t.id === 'program' && trophyDot),
             }))}
             active={tab}
-            onSelect={(id) => go(id as Tab)}
+            onSelect={(id) => chooseTab(id as Tab)}
           />
         )}
         <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
@@ -611,7 +633,7 @@ function AppBody(
 
   if (phase !== null) {
     return (
-      <div className="app-frame" style={{
+      <div className="app-frame offseason-frame" style={{
         display: 'flex', flexDirection: 'column', minHeight: 0,
       }}>
         <header className="global-header" style={{ gridTemplateColumns: 'minmax(0,1fr) 40px' }}>
@@ -722,17 +744,25 @@ function AppBody(
 
       <ContextNav
         label={`${tabDef.label} sections`}
-        items={tabDef.screens}
+        items={tabDef.screens.map((item) => ({
+          ...item,
+          alert: tab === 'program' && (
+            (item.id === 'history' && unseenRecords > 0)
+            || (item.id === 'records' && unseenTrophies > 0)
+          ),
+        }))}
         active={screen}
-        onSelect={setScreen}
+        onSelect={chooseSection}
       />
 
-      <main ref={mainRef} style={{
+      <main ref={mainRef} className="app-content" style={{
         flex: 1, minHeight: 0, overflow: 'auto', position: 'relative',
         WebkitOverflowScrolling: 'touch', background: 'var(--field)',
       }}>
-        <Screen id={screen} />
-        <div style={{ height: 10 }} />
+        <div className="screen-surface" key={`${tab}:${screen}`}>
+          <Screen id={screen} />
+          <div style={{ height: 10 }} />
+        </div>
       </main>
 
       {/* The dot on HOME is how unread survives being three screens away; the
@@ -744,10 +774,10 @@ function AppBody(
           label: titleCase(t.label),
           meta: navMeta[t.id] ?? '',
           icon: TAB_ICON[t.id],
-          alert: t.id === 'home' && unread > 0,
+          alert: (t.id === 'home' && unread > 0) || (t.id === 'program' && trophyDot),
         }))}
         active={tab}
-        onSelect={(id) => go(id as Tab)}
+        onSelect={(id) => chooseTab(id as Tab)}
       />
       <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
     </div>
@@ -920,7 +950,7 @@ function TableOverlay() {
       the one press.
     */
     else if (overlay === 'program' && programSheet === 'coach') {
-      setProgramSheet('board');
+      setProgramSheet('overview');
       close();
     }
     else close();
@@ -1032,7 +1062,7 @@ function BackBar({ onBack }: { onBack: () => void }) {
         aria-label="Back"
         className="tap"
         style={{
-          width: 42, height: 42, display: 'grid', placeItems: 'center',
+          width: 44, height: 44, display: 'grid', placeItems: 'center',
           border: '1px solid var(--line)', background: 'var(--paper)',
           color: 'var(--clay)',
         }}
@@ -1060,7 +1090,7 @@ function CoachMenuButton() {
   const unread = useDynasty((s) => unreadCount(s.inbox));
   // New silverware waiting in the cabinet — the dot that replaced the
   // achievement letters.
-  const trophyDot = useDynasty((s) => s.unseenTrophies.length > 0 || s.unseenRecords.length > 0);
+  const trophyDot = useDynasty((s) => s.unseenTrophies.length > 0);
   const [open, setOpen] = useState(false);
 
   const go = (run: () => void) => { setOpen(false); run(); };
@@ -1077,13 +1107,20 @@ function CoachMenuButton() {
             onClick={() => setOpen(false)}
           />
           <section className="account-menu card-in" role="menu">
-            <div>
+            <button
+              className={`account-menu-profile${trophyDot ? " has-profile-alert" : ""}`}
+              type="button"
+              role="menuitem"
+              onClick={() => go(() => { setProgramSheet("coach"); openOverlay("program"); })}
+            >
               <span className="initial-avatar"><CoachPortrait look={coach.look} size={40} /></span>
               <span>
                 <strong>{coach.name}</strong>
                 <small>{team ? `Head Coach · ${team.def.school}` : "Between jobs"}</small>
               </span>
-            </div>
+              {trophyDot && <i className="account-profile-alert" aria-label="New coach achievement" />}
+              <ChevronRightIcon />
+            </button>
             {/* The inbox, moved in off the bar.
 
                 It was a 40px square in every header in the game, and a header
@@ -1107,11 +1144,6 @@ function CoachMenuButton() {
               {unread > 0 && <span className="menu-count">{unread}</span>}
               <ChevronRightIcon />
             </button>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => go(() => { setProgramSheet("coach"); openOverlay("program"); })}
-            ><IdCardIcon />Coach profile<ChevronRightIcon /></button>
             {/* Saves used to sit here as a peer. It moved inside settings: one
                 place for everything about you and the app, which also stops the
                 menu growing a row every time a preference is added. */}
@@ -1174,16 +1206,37 @@ function PlaybookInvite() {
   const closeOverlay = useDynasty((s) => s.closeOverlay);
   const season = useDynasty((s) => s.season);
   if (!invite) return null;
-  const school = season?.teams.find((t) => t.def.abbr === invite)?.def.school ?? invite;
+  const opponent = season?.teams.find((t) => t.def.abbr === invite);
+  const school = opponent?.def.school ?? invite;
+  const reads = opponent ? teamReads(opponent.team).slice(0, 3) : [];
+  const runDiff = opponent ? opponent.rs - opponent.ra : 0;
   return (
     <Modal
-      kicker="THE SCOUTING DESK"
-      title="The book is bought"
+      kicker="SCOUTING REPORT READY"
+      title={`${school} report is ready`}
       lines={[
-        `Set up the playbook against ${school}? It applies itself whenever
-        they are across the field.`,
+        'Use the reads below to build an opponent plan now, or keep your standing strategy and return later.',
       ]}
-      action="SET IT UP"
+      body={opponent ? (
+        <section className="scout-invite-body">
+          <div className="scout-invite-snapshot">
+            <span><small>RECORD</small><strong>{opponent.w}-{opponent.l}</strong></span>
+            <span><small>RUN DIFF</small><strong>{runDiff > 0 ? '+' : ''}{runDiff}</strong></span>
+            <span><small>PRESTIGE</small><strong>{'★'.repeat(prestigeStars(opponent.prestige))}</strong></span>
+          </div>
+          <div className="scout-invite-reads">
+            <small>WHAT THE REPORT FOUND</small>
+            {reads.map((read) => (
+              <div key={`${read.slot}-${read.title}`}>
+                <strong>{read.title}</strong>
+                <span>{read.text}</span>
+              </div>
+            ))}
+          </div>
+          <p className="scout-invite-note">Your opponent playbook applies automatically whenever you face them. Auto-set on the next screen can build the defensive counters from this report.</p>
+        </section>
+      ) : undefined}
+      action="BUILD PLAYBOOK"
       onClose={() => {
         dismiss();
         setFocus(invite);
@@ -1280,7 +1333,7 @@ function PlayerOverlay() {
   const close = useDynasty((s) => s.closePlayer);
   const name = usePlayerName(selectedPlayer);
   return (
-    <Overlay eyebrow="PLAYER CARD" title={name} onClose={close}>
+    <Overlay eyebrow="PLAYER CARD" title={name} onClose={close} className="player-card-overlay">
       {/*
         Keyed on the man, so opening a second card is a fresh card.
         The scroll reset in the frame resets the screen *underneath* the

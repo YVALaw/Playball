@@ -1,5 +1,5 @@
 // interviewResult.ts
-// Turning five answers into a coach.
+// Turning a short interview into a coach.
 //
 // Pure, deterministic, and knows nothing about screens. Given a seed and a set
 // of answers it produces the same coach every time, which is what lets the
@@ -8,7 +8,7 @@
 //
 // Two jobs:
 //
-//   `drawQuestions`  picks the five, seeded, so a replay of the same dynasty
+//   `drawQuestions`  picks the questions, seeded, so a replay of the same dynasty
 //                    asks the same things and a new one almost never does.
 //
 //   `settle`         adds the answers up: the four skills, the leanings that
@@ -20,9 +20,8 @@ import type { CoachSkills } from './program.js';
 import type { Rng } from './types.js';
 
 /** How many a coach is asked. */
-export const ASKED = 5;
-/** And in casual, where five questions is a slow start for somebody who
-    chose the shorter game. Two is enough to leave with an identity. */
+export const ASKED = 3;
+/** Casual keeps the interview even shorter. Two answers are enough to leave with an identity. */
 export const ASKED_CASUAL = 2;
 
 export interface InterviewOutcome {
@@ -44,7 +43,7 @@ export interface InterviewOutcome {
  * Seeded rather than random so the draw is part of the world: reloading a save
  * does not reroll the interview, and two dynasties on the same seed with the
  * same coach are genuinely the same career. `context` narrows the pool before
- * the draw, which is what makes the five feel addressed to him rather than
+ * the draw, which is what makes the interview feel addressed to him rather than
  * dealt off the top.
  */
 export function drawQuestions(
@@ -75,12 +74,12 @@ export function drawQuestions(
 }
 
 /**
- * What five answers add up to.
+ * What the answers add up to.
  *
  * The badges are the interesting part: an answer casts a *vote* rather than
  * awarding anything, and the two most-voted are worn. That is what makes the
- * interview describe a man rather than list his purchases — five answers that
- * all lean the same way produce a coach who is obviously one thing, and five
+ * interview describe a man rather than list his purchases — answers that
+ * all lean the same way produce a coach who is obviously one thing, and answers
  * that scatter produce one who is harder to summarise, which is also true of
  * people.
  *
