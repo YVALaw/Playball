@@ -41,8 +41,9 @@ building, and replay off the real event stream. `docs/05-systems-reference.md`
 §50 is the account.
 
 What is missing is **the tail**: the store, the keystore and listing, the
-guided tutorial, the art stage, and the test aids coming out. Testing runs
-on an Android emulator against `npm run apk`.
+guided tutorial, and the test aids coming out. Arguing the board's terms
+and the art are in. Testing runs on an Android emulator against
+`npm run apk`.
 
 The engine is calibrated multi-seed against sourced NCAA D1 rates. **1133 tests
 across 54 files**, including determinism goldens, calibration as a regression
@@ -58,10 +59,9 @@ the one thing that must never be lost.
 |---|---|
 | Onboarding | the guided tutorial — a titled card, then a glow path through doing it (stage 19) |
 | The store | the S+ player and Play Billing (stage 17, dead last with 19) |
-| Negotiating the board | arguing a mandate down after a gutted roster (stage 20b) |
 | The interview's payoff | the answer's consequence revealing after the tap, and a result card (the rest of stage 24) |
-| The art | crests and faces worth looking at, still generated, sized for 26px and 64px alike (stage 25) |
 | The budget's verdict | the reporter's read on the rebuilt Budget screen (stage 26) |
+| The rest of the review | `docs/06-backlog.md` §X after its bugs: focus in the new sheets, the dead CSS, and two measurements (replay's save cost, the home-state recruiting edge) |
 
 Shipped since: the two-way whole and corrected to the rulebook, playbooks,
 the lineup gate, the season opener, the Android shell — package, launcher

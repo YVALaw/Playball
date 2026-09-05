@@ -36,7 +36,10 @@ import {
 import { makeRng } from '../src/engine/rng.js';
 import { restoreInbox, unreadCount } from '../src/engine/inbox.js';
 import { buildCase } from '../src/engine/hall.js';
-import { freshEconomy, marketFor } from '../src/engine/economy.js';
+import {
+  freshEconomy, marketFor, annualBudget, remaining, withStaff, MAX_FACILITY,
+} from '../src/engine/economy.js';
+import { handles } from '../src/state/depth.js';
 
 // Saving touches IndexedDB, which node does not have. The store already treats
 // a failed save as a surfaced error rather than a crash, so the tests simply
@@ -1200,5 +1203,87 @@ describe('how far the offseason got, across a reload', () => {
     expect(file.phase).toBe('coach');
     expect(file.furthestPhase).toBe(PHASES.indexOf('recruiting'));
     expect(file.furthestPhase as number).toBeGreaterThan(PHASES.indexOf('draft'));
+  });
+});
+
+/*
+  The interface pass, read twice — the store side of what the reading found
+  (06 §X). Three fixes no screen walk could reach, pinned here.
+*/
+describe('the interface pass, read twice — the store side', () => {
+  it('replaces a filled seat, judging the candidate against the wage he frees', () => {
+    /*
+      The Staff room offers `Replace · $X` on an occupied seat; the store
+      used to refuse a filled seat outright, so the button was a no-op. Now
+      the incumbent goes first and the new man has to fit what is left PLUS
+      the wage that leaving frees — which is the case this test constructs:
+      the dear man does not fit on what is left alone.
+    */
+    useDynasty.getState().start(4242, 0);
+    const s0 = useDynasty.getState();
+    const worldKey = String(s0.season!.seed ?? 0);
+    const market = marketFor(worldKey, s0.year, 'hitting');
+    const byWage = market.map((m, slot) => ({ m, slot })).sort((a, b) => a.m.wage - b.m.wage);
+    const cheap = byWage[0]!;
+    const dear = byWage[byWage.length - 1]!;
+    expect(dear.m.wage).toBeGreaterThan(cheap.m.wage);
+
+    useDynasty.getState().hireAssistant('hitting', cheap.slot);
+    expect(useDynasty.getState().economy.staff.hitting?.id).toBe(cheap.m.id);
+
+    const prestige = s0.season!.teams[s0.userTeam]!.prestige;
+    const budget = annualBudget(prestige);
+    useDynasty.setState({
+      economy: { ...useDynasty.getState().economy, spent: budget - dear.m.wage },
+    });
+    const eco = useDynasty.getState().economy;
+    expect(remaining(eco, prestige)).toBeLessThan(dear.m.wage);
+    expect(remaining(eco, prestige) + cheap.m.wage).toBeGreaterThanOrEqual(dear.m.wage);
+
+    useDynasty.getState().hireAssistant('hitting', dear.slot);
+    const after = useDynasty.getState().economy;
+    expect(after.staff.hitting?.id).toBe(dear.m.id);
+    // The cheap man's wage stopped; only the dear one is on the bill.
+    expect(remaining(after, prestige)).toBe(0);
+  });
+
+  it("stores the rung the AD's winter build just bought", async () => {
+    /*
+      The count was read off `built` captured BEFORE the push, so the first
+      building the AD put up left `facilities` at zero until the next winter
+      and the old-ladder readers under-applied for a season.
+    */
+    useDynasty.getState().start(4242, 0);
+    // Casual keeps the budget in the coach's hands; handing the plant to the
+    // AD is the explicit override.
+    useDynasty.getState().setDepthSystem('facilities', false);
+    expect(handles(useDynasty.getState().depth, 'facilities')).toBe(false);
+    useDynasty.getState().settleSeason();
+    await useDynasty.getState().rollYear();
+
+    const eco = useDynasty.getState().economy;
+    const built = eco.built ?? [];
+    expect(built.length).toBeGreaterThan(0);
+    expect(eco.facilities).toBe(Math.min(MAX_FACILITY, built.length));
+  });
+
+  it("prices the winter's staff onto the new benches before the season is set", async () => {
+    /*
+      Assistants develop at the roll and the AD hires into vacancies at the
+      roll, all of it landing in the rolled economy — but the mods the games
+      read were synced before any of that, and `nextSeason` carried the old
+      ones forward. A whole season on last year's staff.
+    */
+    useDynasty.getState().start(4242, 0);
+    useDynasty.getState().setDepthMode('casual');
+    useDynasty.getState().settleSeason();
+    await useDynasty.getState().rollYear();
+
+    const s = useDynasty.getState();
+    const me = s.season!.teams[s.userTeam]!;
+    expect(Object.keys(s.economy.staff).length).toBeGreaterThan(0);
+    const staffed = withStaff(s.coach.skills, s.economy.staff);
+    expect(me.coachMods?.offense).toBe(staffed.offense);
+    expect(me.coachMods?.defense).toBe(staffed.defense);
   });
 });

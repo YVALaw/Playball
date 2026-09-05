@@ -3433,7 +3433,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           ...(rolledEconomy.facilityLevels ?? {}),
           [pick.b.key]: pick.nextLevel,
         };
-        rolledEconomy.facilities = Math.min(MAX_FACILITY, built.length);
+        // Off the UPDATED list. Reading `built` here, captured before the
+        // push, left the rung one behind on every new building until the
+        // next winter — the old-ladder readers under-applied for a season.
+        rolledEconomy.facilities = Math.min(MAX_FACILITY, (rolledEconomy.built ?? []).length);
         rolledEconomy.spent += pick.cost;
       }
     }
@@ -3694,6 +3697,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           !wanted.some((w) => w.team === o.team)
           && !flagged.some((f) => f.team === o.team)),
       ];
+
+      /*
+        The winter's staff, priced onto the new season's benches. The sync
+        above ran before the assistants developed, before the AD hired into
+        vacancies and before it built — all of which landed in
+        `rolledEconomy` — and `nextSeason` carries the old mods forward, so
+        without this the games played a whole season on last year's staff
+        until a reload, a hire or a build happened to re-sync.
+      */
+      applyCoachMods(rolled, get().userTeam, coach, rolledEconomy);
 
       set({
         season: rolled,
@@ -5560,12 +5573,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     //   SP in rotation -> slides to pen -> remains an SP by trade
     //
     // This is intentionally independent of which order the two taps happen in.
-    // Old saves can contain the exact corrupted state this gesture used to
-    // create: a pitcher physically in the bullpen, labelled SP, with no
-    // `homeRole` left to tell us what he was before the temporary start. A
-    // generated bullpen arm is never a natural SP without provenance, so heal
-    // that legacy state as an RP the first time he is touched again.
-    const upHome = up.homeRole ?? (up.role === 'SP' ? 'RP' : up.role);
+    // A bullpen arm labelled SP with no `homeRole` is NOT evidence of the old
+    // corruption: `refill` and `regroup` in progression.ts have always parked
+    // surplus starters in the pen exactly that way. The first version of this
+    // "healed" such a man to RP, which demoted every honest sixth starter for
+    // life the first time he was promoted and sent back. The corrupted shape
+    // and the honest one are indistinguishable from the role alone, so the
+    // role IS his home when nothing else says otherwise.
+    const upHome = up.homeRole ?? up.role;
     const downHome = down.homeRole ?? down.role;
     up.homeRole = upHome;
     up.role = 'SP';
@@ -5776,13 +5791,19 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, userTeam, year, economy } = get();
     const me = season?.teams[userTeam];
     if (!season || !me) return;
-    if (economy.staff[seat]) return;
     const man = marketFor(String(season.seed ?? 0), year, seat)[slot];
     if (!man) return;
+    // A filled seat is a REPLACEMENT, not a refusal: the Staff room offers
+    // `Replace · $X` on an occupied seat, and the early return that used to
+    // sit here made that button a no-op. The incumbent goes first (no
+    // severance — his wage simply stops, the same as `fireAssistant`), so the
+    // room the new man has to fit is what is left plus the wage freed.
+    const without = { ...economy.staff };
+    delete without[seat];
     // The wage has to fit what is left this year — a hire the ledger cannot
     // carry would be a negative number the screen has to explain.
-    if (remaining(economy, me.prestige) < man.wage) return;
-    const staff = { ...economy.staff, [seat]: man };
+    if (remaining({ ...economy, staff: without }, me.prestige) < man.wage) return;
+    const staff = { ...without, [seat]: man };
     // Re-dress the mods the games read; the staff stacks on the coach's own.
     syncCoachMods(season, userTeam, withStaff(get().coach.skills, staff), {
       armCare: armCareFor(staff),

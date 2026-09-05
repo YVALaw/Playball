@@ -15,9 +15,11 @@ forward) and the APK report's thirty-eight items, all closed. On September
 5 the whole interface moved onto one interaction language in a single
 merged pass (`05` §50, `docs/INTERACTION_DESIGN.md`), which took stage 24's
 three questions, stage 26's visual pass and both screen-queue items with
-it. What is left: 17 (the store), 19 (ship), 20b (arguing the terms), the
-rest of 24 (the reveal and the result card), 25 (the art), and 26's verdict.
-Testing runs on an Android emulator.**
+it. 20b (arguing the terms) and 25 (the art) were confirmed shipped the
+same evening, and the pass's bugs were fixed. What is left: 17 (the
+store), 19 (ship), the rest of 24 (the reveal and the result card), 26's
+verdict, and the remainder of the `06` §X review. Testing runs on an
+Android emulator.**
 
 **Twenty-six stages now** (nineteen, plus 20–23 booked September 3 from
 the phone report, 24 from the September 4 triage, 25 and 26 booked
@@ -1158,7 +1160,7 @@ in the coach info list.
 
 ## Stage 20 · The opener, reorganized — **BUILT September 4 2026, in review**
 
-**Size:** small–medium · **20b booked, not built** · Decisions taken at the
+**Size:** small–medium · **20b built, in the measured form (see below)** · Decisions taken at the
 door: forced board visit (the modal's one door opens the board; TAKE THE
 SEASON is a strip above the checklist, and the card returns anywhere else
 until the terms are taken) and one card with titled sections. Title pool
@@ -1171,9 +1173,16 @@ differently ("delighted" leaves the title slot). Prestige moves in plain
 form — "School prestige 47 → 57. Yours 31 → 34." And the action opens
 the program board to read and accept the new terms.
 
-**20b — the board across the table.** Negotiating the milestones: a
-gutted roster after a title year should be arguable back to sane asks.
-Needs its own design door — what leverage is, what asking costs.
+**20b — the board across the table — BUILT, confirmed September 5.**
+`argueTerms` in the store, with its button on the Program board: once a
+season, the board hears the case in the only terms that can be checked —
+how many men who would have played left over the winter, graduations and
+the draft both counting. Six or more and it concedes one win per man past
+the bar, never more than a fifth of the ask; fewer and it declines, the
+argument spent. Built to the reporter's own case ("a national championship
+year, then most of our good players leave") rather than as a general
+haggle. What leverage costs is the once-a-season, which is the design door
+answered.
 
 ## Stage 21 · The two-way, whole — **BUILT September 4 2026, in review**
 
@@ -1409,9 +1418,13 @@ like him; the per-answer swings widened with a real minus so the net stays
 about +2; and the quick-start "pick a background" fallback, still on the
 table.
 
-## Stage 25 · The art — crests and faces
+## Stage 25 · The art — crests and faces — **SHIPPED, per the reporter, September 5 2026**
 
-**Size:** medium · **Booked September 5 2026** · **Runs before 19**
+**Size:** medium · **Booked September 5 2026** · **Closed the same day:**
+the crest generator grew a second colour and learned its own size
+(`9eeb962`), and the reporter's word on the rest — "the art / visual is
+already completed" — closes the stage. The brief below stands as the
+record of what was asked.
 
 Asked for directly: "I'm now planning on adding visuals for school crests
 as well as assets for the profile avatar."

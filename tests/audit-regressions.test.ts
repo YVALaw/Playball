@@ -441,7 +441,16 @@ describe('pitching staff swaps preserve the arm\'s real role', () => {
     expect(returned!.homeRole).toBe('RP');
   });
 
-  it('repairs the legacy-save shape where a bullpen arm was stranded as SP', () => {
+  it('keeps a spare starter in the bullpen a starter after a round trip', () => {
+    /*
+      This test used to pin the opposite: a bullpen arm labelled SP with no
+      `homeRole` was "healed" to RP on his first swap, on the theory that the
+      shape could only come from the old corruption. It cannot — `refill` and
+      `regroup` in progression.ts have always parked surplus starters in the
+      pen exactly that way, so the heal demoted every honest sixth starter
+      for life. The two shapes are indistinguishable from the role alone, so
+      the rule is the plain one: with nothing else said, the role IS his home.
+    */
     useDynasty.getState().start(4242, 0);
     const state = useDynasty.getState();
     const club = state.season!.teams[state.userTeam]!.team;
@@ -449,15 +458,17 @@ describe('pitching staff swaps preserve the arm\'s real role', () => {
     expect(arm).toBeDefined();
     if (!arm) return;
 
-    // Recreate what an older save could contain after the former swap bug.
+    // A surplus starter, the way progression files him: SP, in the pen, no
+    // provenance.
     arm.role = 'SP';
     delete arm.homeRole;
     const starter = club.rotation[0]!;
 
     expect(state.promoteArm(arm.id, 0)).toBe(true);
+    expect(club.rotation[0]!.homeRole).toBe('SP');
     expect(useDynasty.getState().promoteArm(starter.id, 0)).toBe(true);
-    const healed = club.bullpen.find((p) => p.id === arm.id)!;
-    expect(healed.role).toBe('RP');
-    expect(healed.homeRole).toBe('RP');
+    const back = club.bullpen.find((p) => p.id === arm.id)!;
+    expect(back.role).toBe('SP');
+    expect(back.homeRole).toBe('SP');
   });
 });

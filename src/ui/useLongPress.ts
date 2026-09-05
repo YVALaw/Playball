@@ -6,6 +6,7 @@
 // instantaneous and the completed hold still consumes the click that follows.
 
 import { useRef } from 'react';
+import { buzz } from './sound.js';
 
 /** Long enough not to fire on a slow tap, short enough not to feel stuck. */
 export const HOLD_MS = 450;
@@ -59,9 +60,10 @@ export function useHold(): {
           from.current = null;
           press.current?.(false);
           press.current = null;
-          // A tiny native haptic where supported makes the threshold obvious
-          // without becoming a sound effect or slowing the navigation.
-          try { navigator.vibrate?.(10); } catch { /* presentation only */ }
+          // A tiny haptic where supported makes the threshold obvious without
+          // becoming a sound effect. Through `buzz`, so the haptics setting
+          // is honoured — a direct `navigator.vibrate` ignored it.
+          buzz(10);
           onLong();
         }, HOLD_MS);
       },

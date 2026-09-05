@@ -89,7 +89,9 @@ export function Program() {
   const budgetLeft = Math.max(0, remaining(economy, team.prestige));
   const staffCount = SEATS.filter((seat) => economy.staff[seat]).length;
   const facilities = economy.built?.length ?? economy.facilities;
-  const books = Object.values(economy.scouted).length;
+  // Live books only, the same count the Network room prints — the card used
+  // to count every report ever bought and disagreed with its own subpage.
+  const books = Object.values(economy.scouted).filter((until) => until >= season.dayIndex).length;
   const hallCount = season.hall?.length ?? 0;
   const fallbackAsk = expectationFor(
     team.prestige,
@@ -420,7 +422,9 @@ function MoneySheet({ team }: { team: Owner }) {
                     const w = winterCraft(m);
                     const n = nightCraft(m);
                     const top = Math.max(w, n, 1);
-                    const affordable = left >= m.wage;
+                    // Replacing a man frees his wage first, so the room a
+                    // candidate has to fit is what is left PLUS the incumbent.
+                    const affordable = left + (man?.wage ?? 0) >= m.wage;
                     return (
                       <article className="hire-card candidate-swipe-card" key={m.id}>
                         <header>

@@ -267,7 +267,10 @@ function PlayerHalo({ r }: { r: number }) {
  */
 function PlayerCap({ r }: { r: number }) {
   return (
-    <mesh position={[0, r * 0.56, r * 0.02]} renderOrder={1}>
+    // Sat on top of the sphere, not inside it: at 0.56r a 0.33r cap reached
+    // 0.89r and was occluded by the player himself — three draw calls a
+    // marker for nothing visible.
+    <mesh position={[0, r * 0.92, r * 0.02]} renderOrder={1}>
       <sphereGeometry args={[r * 0.33, 10, 8]} />
       <meshBasicMaterial color="#f4efe2" />
     </mesh>

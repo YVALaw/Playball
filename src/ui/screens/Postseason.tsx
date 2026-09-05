@@ -774,7 +774,7 @@ export function Postseason() {
       )}
 
       {showLineup && (
-        <div className="postseason-lineup-overlay screen-in" style={{
+        <div className="postseason-lineup-overlay" style={{
           position: 'absolute', inset: 0, zIndex: 30,
           background: 'var(--field)', display: 'flex', flexDirection: 'column',
         }}>

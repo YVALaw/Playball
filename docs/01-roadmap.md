@@ -453,12 +453,14 @@ live in `05-systems-reference.md` §§37–42. In brief:
 | 18 | Sep 4 | **The shell, pulled forward** — manifest, launcher icon, Capacitor, `npm run apk`, the back gesture. Then the APK report's thirty-eight items, closed by Sep 5 (`14-apk-report-triage.md`) |
 | — | Sep 5 | **The interface pass** — every screen onto one interaction language; Program as a dashboard, Budget as a workspace, Decisions sheets, the offseason roadmap, the postseason frame; assistants develop, a coaching tree, pipelines, facility levels, replay. `05` §50, `06` §X |
 
-**What remains, in execution order:** the rest of **24** (the interview's
-reveal and result card) · **25** (the art — crests and faces, generated) ·
-**26**'s verdict from the reporter · **20b** (arguing the board's terms, at
-its design door) · then the tail, dead last: **17** (the store) and **19**
-(ship — the guided tutorial, accessibility, the keystore and listing, and
-the test aids out). The reporter tests on an Android emulator.
+**What remains, in execution order:** the rest of the **`06` §X** review
+batch (its bugs were fixed the same evening; the accessibility trio, the
+dead CSS and the two measurements remain) · the rest of **24** (the
+interview's reveal and result card) · **26**'s verdict from the reporter ·
+then the tail, dead last: **17** (the store) and **19** (ship — the guided
+tutorial, accessibility, the keystore and listing, and the test aids out).
+**20b** (arguing the terms) and **25** (the art) were confirmed shipped on
+September 5. The reporter tests on an Android emulator.
 
 ### The September 1 session, in one paragraph
 
@@ -547,9 +549,9 @@ and which did.
 
 **Done:** P → 20 → 21 → 22 → 23 → 18 → the APK list → **the interface
 pass**.
-**Next:** the review of the pass (`06` §X lists what to change) → the rest
-of 24 → 25 → 20b at its door → 17 → 19. Stage 26 waits on the reporter's
-verdict, not on a build.
+**Next:** the rest of the §X batch (its bugs went the same evening) → the
+rest of 24 → 17 → 19. Stage 26 waits on the reporter's verdict, not on a
+build; 20b and 25 were confirmed shipped on September 5.
 
 **The pass re-opened one thing on purpose:** the test aids are back
 (`docs/TESTING_SHORTCUTS.md`) so the new screens can be played a season at

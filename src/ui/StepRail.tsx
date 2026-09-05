@@ -8,6 +8,7 @@
 
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { CheckIcon } from '@radix-ui/react-icons';
+import { wantsMotion } from './celebrate.js';
 
 export interface Step {
   key: string;
@@ -31,10 +32,10 @@ export function StepRail(
     const el = current.current;
     const rail = track.current;
     if (!el || !rail) return;
-    const reduced = typeof window.matchMedia === 'function'
-      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // The app's own gate, not the OS media query alone: "reduced" chosen in
+    // Settings on a system with no preference set must stop this too.
     const left = el.offsetLeft - (rail.clientWidth - el.offsetWidth) / 2;
-    rail.scrollTo({ left: Math.max(0, left), behavior: reduced ? 'auto' : 'smooth' });
+    rail.scrollTo({ left: Math.max(0, left), behavior: wantsMotion() ? 'smooth' : 'auto' });
   }, [at]);
 
   return (

@@ -2616,6 +2616,28 @@ time anyone read it against the code that was already here. Two reviewers
 read every changed file; every item was verified by reading, not by
 memory. Nothing here is fixed yet — this is the batch, sorted.
 
+### Fixed the same evening — September 5
+
+Eleven of the items below went in one commit after the reporter asked for
+the bugs: **1** (Replace now fires — the incumbent goes first and the
+candidate is judged against what his wage frees), **2** (the AD's rung is
+read off the updated list), **3** (the hold haptic goes through `buzz`),
+**4** (the rail's scroll reads `wantsMotion()`), **5** (the dashboard counts
+live books, the same as the Network room), **6** (the cap sits on top of
+the sphere), **22** (the heal is withdrawn — a bullpen SP with no home role
+is a spare starter, and stays one; the test that pinned the demotion now
+pins the opposite), **23** (the winter's staff is priced onto the new
+season's benches before the set), **26** (the portal's REVIEW SIGNING sheet
+has a positioned scrim and a safe-area pad, and so does the retention
+sheet), **27**'s first half (`pageSoftIn` carries the reduced-motion pair)
+and **28** (the postseason takeover slides sideways again). Also settled
+the same evening, by the reporter: **20b** (arguing the terms) was already
+built — `argueTerms`, once a season, conceding only when the winter took
+six or more — and **25** (the art) is closed. Still open: the two
+measurements (24, 25 below), the accessibility trio (7, 8, 9), the dead
+CSS (29), the duplicate keyframe, the colours, the id matches, and the
+cleanups.
+
 ### Decisions the pass took without a door
 
 Recorded so nobody later mistakes them for accidents.

@@ -52,8 +52,18 @@ through the interface pass (`8d97eb9`) and the docs commit after it.**
 > sheets that declare `role="dialog"` and trap nothing, a hold haptic that
 > ignores the setting, a rail scroll that ignores `wantsMotion()`, the
 > coaching-tree list with no CSS, a screen's worth of dead CSS including the
-> "command card" the pass's notes describe and never built. Nothing in §X
-> is fixed yet; §X ends with the order to take them in.
+> "command card" the pass's notes describe and never built.
+>
+> **Then the bugs were fixed, the same evening** (`06` §X, "Fixed the same
+> evening"): Replace fires, the rung reads the updated list, the heal is
+> withdrawn and its test inverted, the winter's staff is priced onto the
+> new benches before the set, the portal sheet has a floor, and the small
+> ones — the haptic, the rail's motion gate, the book count, the cap, the
+> takeover's slide, the surface's reduced-motion pair. Three store tests
+> pin the three that no screen walk could reach. The reporter also settled
+> two stages: **20b was already built** (`argueTerms`) and **25 is closed**.
+> What is left of §X: the two measurements, the accessibility trio, the
+> dead CSS and the cleanups.
 >
 > **Two things the pass decided on its own, now recorded as decisions:**
 > the plant has three levels per building (the morning's item 32 had
@@ -62,12 +72,11 @@ through the interface pass (`8d97eb9`) and the docs commit after it.**
 > picker, which leaves `interviewResult.ts` with no caller and stage 24's
 > reveal to decide which pool it builds on.
 >
-> **Where the work stands.** Stages 1–16, 18 and 20–23 shipped; the APK
-> list closed the morning of September 5. Left: the §X batch → the rest of
-> 24 (the reveal and the result card) → 25 (the art, generated) → 26's
-> verdict from the reporter → 20b at its design door → 17 → 19. **The test
-> aids are back on purpose** (`docs/TESTING_SHORTCUTS.md`) and leave
-> together in 19.
+> **Where the work stands.** Stages 1–16, 18, 20 (with 20b), 21–23 and 25
+> shipped; the APK list closed the morning of September 5. Left: the rest
+> of §X → the rest of 24 (the reveal and the result card) → 26's verdict
+> from the reporter → 17 → 19. **The test aids are back on purpose**
+> (`docs/TESTING_SHORTCUTS.md`) and leave together in 19.
 
 > **September 4 — the September run, then the app itself.**
 >
