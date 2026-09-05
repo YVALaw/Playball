@@ -6201,9 +6201,8 @@
   border:1px solid var(--line); border-top:4px solid var(--clay); background:var(--paper);
   box-shadow:0 16px 32px rgba(0,0,0,.08); overflow:hidden;
 }
-.coach-builder-portrait { min-width:0; display:grid; align-content:start; gap:8px; }
+.coach-builder-portrait { min-width:0; display:grid; align-content:start; }
 .coach-builder-portrait > span { display:grid; place-items:center; min-height:142px; overflow:hidden; background:var(--panel); border:1px solid rgba(255,255,255,.08); }
-.coach-builder-portrait > button { min-height:34px; border:1px solid var(--line); background:var(--wash); color:var(--ink); font:800 calc(7px * var(--ts)) var(--mono); letter-spacing:.1em; }
 .coach-builder-identity { min-width:0; }
 .coach-builder-identity > small { display:block; color:var(--clay); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.12em; }
 .coach-builder-name { display:grid; grid-template-columns:minmax(0,1fr) 18px; align-items:center; gap:7px; margin-top:5px; padding:8px 9px; border:1px solid var(--line); background:var(--wash); }
@@ -6475,7 +6474,6 @@
 .portal-fixed-mini em { flex:none; color:var(--dim); font:600 calc(7px * var(--ts)) var(--mono); font-style:normal; }
 .portal-sign-command { min-height:40px; border:0; background:var(--clay); color:#fff; font:800 calc(8px * var(--ts)) var(--body); }
 .portal-sign-command:disabled { opacity:.35; }
-.portal-sign-scrim { position:absolute; inset:0; z-index:40; display:grid; place-items:end center; background:rgba(var(--scrim-rgb),.62); }
 .portal-sign-sheet { width:min(386px,calc(100% - 20px)); max-height:90%; overflow:auto; background:var(--paper); border-top:4px solid var(--win); padding-bottom:env(safe-area-inset-bottom); }
 .portal-sign-sheet > header { display:flex; align-items:end; justify-content:space-between; gap:10px; padding:12px; background:var(--panel); color:var(--cream); }
 .portal-sign-sheet > header small { display:block; color:rgba(var(--cream-rgb),.58); font:700 calc(6.5px * var(--ts)) var(--mono); }
@@ -6601,16 +6599,8 @@
    fields never have to fight a 122px portrait for text width. */
 @media (max-width: 420px) {
   .coach-builder-stage { grid-template-columns: 1fr; }
-  .coach-builder-portrait {
-    grid-template-columns: 108px minmax(0,1fr);
-    align-items: stretch;
-  }
-  .coach-builder-portrait > span { min-height: 112px; }
-  .coach-builder-portrait > button {
-    min-width: 0; min-height: 112px; padding: 12px;
-    display:flex; align-items:flex-end; justify-content:flex-start;
-    background:var(--wash); text-align:left;
-  }
+  .coach-builder-portrait { display:block; }
+  .coach-builder-portrait > span { min-height: 132px; }
   .coach-builder-facts { grid-template-columns: 1fr 1.35fr; }
   .coach-builder-facts article { min-width:0; }
   .coach-builder-facts select { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -6778,3 +6768,185 @@
 
 .segmented button { position:relative; }
 .segmented-alert { position:absolute; top:5px; right:6px; width:6px; height:6px; border-radius:50%; background:var(--alert); box-shadow:0 0 0 2px var(--paper); }
+
+
+/* ---------------------------------------------------------------------------
+   September 5 — navigation hardening + recruiting filters.
+   --------------------------------------------------------------------------- */
+
+/* The first creation step is allowed to leave. A main-menu escape is a real
+   navigation action, so the header gives it the same back affordance as every
+   later setup step instead of hiding it in the content. */
+.coach-builder-workspace .module-intro h1 { max-width:100%; overflow-wrap:anywhere; }
+.coach-builder-stage, .coach-builder-identity, .coach-appearance-board { min-width:0; }
+.coach-builder-stage select { max-width:100%; }
+@media (max-width:420px) {
+  .coach-builder-stage { grid-template-columns:1fr; }
+  .coach-builder-portrait > span { min-height:136px; }
+}
+
+/* Portal signings are a centered decision dialog, not an unanchored block at
+   the top-left of the portal scroller. The scrim owns the whole app frame and
+   the card is symmetrically inset on narrow phones. */
+.portal-sign-scrim {
+  position:absolute;
+  inset:0;
+  z-index:70;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px 14px;
+  overflow:hidden;
+  background:rgba(var(--scrim-rgb),.64);
+}
+.portal-sign-sheet {
+  width:min(386px,100%);
+  max-width:386px;
+  max-height:min(82vh,650px);
+  margin:0 auto;
+  border:1px solid var(--line);
+  border-top:4px solid var(--win);
+  box-shadow:0 24px 54px rgba(0,0,0,.36);
+  animation:portalDecisionIn 220ms cubic-bezier(.2,.84,.28,1) both;
+}
+@keyframes portalDecisionIn {
+  from { opacity:0; transform:translateY(12px) scale(.985); }
+  to { opacity:1; transform:none; }
+}
+@media (max-height:640px) {
+  .portal-sign-scrim { align-items:flex-start; padding-top:24px; }
+  .portal-sign-sheet { max-height:calc(100vh - 48px); }
+}
+:root[data-motion="reduced"] .portal-sign-sheet { animation:none; }
+@media (prefers-reduced-motion:reduce) { .portal-sign-sheet { animation:none; } }
+
+/* Recruiting filter room — filtering is a compact scouting command surface,
+   not the old collection of inline chips, switches and browser select styling. */
+.recruit-filter-room {
+  display:grid;
+  gap:10px;
+  margin-top:2px;
+  padding-bottom:8px;
+}
+.recruit-filter-head {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:12px;
+  align-items:start;
+  padding:13px;
+  border:1px solid var(--line);
+  border-top:4px solid var(--clay);
+  background:var(--panel);
+  color:var(--cream);
+}
+.recruit-filter-head span { min-width:0; }
+.recruit-filter-head small {
+  display:block; color:rgba(var(--cream-rgb),.58);
+  font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.13em;
+}
+.recruit-filter-head strong {
+  display:block; margin-top:3px;
+  font:800 calc(22px * var(--ts))/.95 var(--display); text-transform:uppercase;
+}
+.recruit-filter-head p {
+  max-width:34ch; margin:6px 0 0; color:rgba(var(--cream-rgb),.72);
+  font:500 calc(9px * var(--ts))/1.4 var(--body);
+}
+.recruit-filter-head > b {
+  min-width:48px; padding:7px 8px; text-align:center;
+  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12);
+  color:var(--cream); font:800 calc(8px * var(--ts)) var(--mono); letter-spacing:.08em;
+}
+.recruit-filter-section {
+  padding:11px;
+  border:1px solid var(--line);
+  background:var(--paper);
+}
+.recruit-filter-label {
+  display:flex; align-items:flex-end; justify-content:space-between; gap:10px;
+  margin-bottom:9px;
+}
+.recruit-filter-label span { min-width:0; }
+.recruit-filter-label small {
+  display:block; color:var(--clay);
+  font:700 calc(6.5px * var(--ts)) var(--mono); letter-spacing:.11em;
+}
+.recruit-filter-label strong {
+  display:block; max-width:100%; margin-top:2px; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap;
+  font:800 calc(13px * var(--ts)) var(--display); text-transform:uppercase;
+}
+.recruit-filter-label > button {
+  flex:none; min-height:28px; padding:0 7px;
+  border:1px solid var(--line); background:var(--wash); color:var(--dim);
+  font:800 calc(6px * var(--ts)) var(--mono); letter-spacing:.08em;
+}
+.recruit-position-grid {
+  display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px;
+}
+.recruit-position-grid button {
+  min-width:0; min-height:40px; padding:0 3px;
+  border:1px solid var(--line); background:var(--wash); color:var(--ink);
+  font:800 calc(9px * var(--ts)) var(--mono);
+}
+.recruit-position-grid button.active {
+  border-color:var(--clay); background:var(--clay); color:#fff;
+  box-shadow:inset 0 -3px rgba(0,0,0,.14);
+}
+.recruit-star-grid {
+  display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px;
+}
+.recruit-star-grid button {
+  min-width:0; min-height:48px;
+  display:flex; align-items:center; justify-content:center; gap:2px;
+  border:1px solid var(--line); background:var(--wash); color:var(--ink);
+}
+.recruit-star-grid button strong { font:800 calc(16px * var(--ts)) var(--display); }
+.recruit-star-grid button span { color:var(--clay); font-size:calc(10px * var(--ts)); }
+.recruit-star-grid button.active { border-color:var(--clay); background:var(--soft); box-shadow:inset 0 -3px var(--clay); }
+.recruit-location-filter label {
+  display:grid; grid-template-columns:auto minmax(0,1fr); gap:10px; align-items:center;
+  padding:9px 10px; border:1px solid var(--line); background:var(--wash);
+}
+.recruit-location-filter label small {
+  color:var(--dim); font:700 calc(6.5px * var(--ts)) var(--mono); letter-spacing:.1em;
+}
+.recruit-location-filter select {
+  width:100%; min-width:0; border:0; outline:0; appearance:none;
+  background:transparent; color:var(--ink); text-align:right;
+  font:800 calc(10px * var(--ts)) var(--body);
+}
+.recruit-location-filter > p {
+  margin:7px 1px 0; color:var(--dim); font:500 calc(8.5px * var(--ts))/1.4 var(--body);
+}
+.recruit-signal-grid { display:grid; gap:6px; }
+.recruit-filter-toggle {
+  position:relative; min-width:0; min-height:68px; width:100%;
+  padding:9px 52px 9px 10px; text-align:left;
+  border:1px solid var(--line); background:var(--wash); color:var(--ink);
+}
+.recruit-filter-toggle.active { border-color:var(--clay); background:var(--soft); }
+.recruit-filter-toggle span small {
+  display:block; color:var(--dim); font:800 calc(5.5px * var(--ts)) var(--mono); letter-spacing:.12em;
+}
+.recruit-filter-toggle span strong {
+  display:block; margin-top:2px; font:800 calc(11px * var(--ts)) var(--body); letter-spacing:.04em;
+}
+.recruit-filter-toggle p {
+  margin:4px 0 0; color:var(--dim); font:500 calc(8px * var(--ts))/1.35 var(--body);
+}
+.recruit-filter-toggle > i {
+  position:absolute; right:10px; top:50%; width:31px; height:18px;
+  transform:translateY(-50%); border-radius:18px; background:var(--line);
+}
+.recruit-filter-toggle > i b {
+  position:absolute; top:3px; left:3px; width:12px; height:12px;
+  border-radius:50%; background:var(--paper); transition:transform 160ms ease;
+}
+.recruit-filter-toggle.active > i { background:var(--clay); }
+.recruit-filter-toggle.active > i b { transform:translateX(13px); }
+@media (min-width:500px) {
+  .recruit-signal-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .recruit-filter-toggle { padding-right:10px; padding-bottom:34px; }
+  .recruit-filter-toggle > i { top:auto; bottom:9px; transform:none; }
+}

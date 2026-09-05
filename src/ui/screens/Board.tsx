@@ -745,133 +745,122 @@ function FilterPanel({
 }) {
   const set = <K extends keyof Filters>(k: K, v: Filters[K]) =>
     onChange({ ...filters, [k]: v });
-
   const toggleStar = (n: number) =>
     set('stars', filters.stars.includes(n)
       ? filters.stars.filter((s) => s !== n)
       : [...filters.stars, n].sort((a, b) => b - a));
+  const active = [
+    filters.pos, filters.state, filters.stars.length > 0,
+    filters.pipelineOnly, filters.untouchedOnly, filters.reachOnly,
+  ].filter(Boolean).length;
 
   return (
-    <div style={{
-      marginTop: 10, padding: '11px 12px',
-      border: '1px solid var(--clay)', background: 'var(--paper)',
-    }}>
-      <div className="label" style={{ marginBottom: 5 }}>POSITION</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-        {POSITIONS.map((pos) => (
-          <Chip
-            key={pos}
-            on={filters.pos === pos}
-            onClick={() => set('pos', filters.pos === pos ? null : pos)}
-          >{pos}</Chip>
-        ))}
+    <section className="recruit-filter-room">
+      <header className="recruit-filter-head">
+        <span>
+          <small>BOARD FILTERS</small>
+          <strong>Shape the board</strong>
+          <p>Keep the country broad, or narrow it to the players worth a call.</p>
+        </span>
+        <b>{active > 0 ? `${active} ON` : 'ALL'}</b>
+      </header>
+
+      <div className="recruit-filter-section">
+        <div className="recruit-filter-label">
+          <span><small>POSITION</small><strong>{filters.pos ?? 'Any position'}</strong></span>
+          {filters.pos && <button type="button" onClick={() => set('pos', null)}>CLEAR</button>}
+        </div>
+        <div className="recruit-position-grid">
+          {POSITIONS.map((pos) => (
+            <button
+              className={filters.pos === pos ? 'active' : ''}
+              type="button"
+              key={pos}
+              onClick={() => set('pos', filters.pos === pos ? null : pos)}
+            >{pos}</button>
+          ))}
+        </div>
       </div>
 
-      {/*
-        More than one at a time, because "four stars and up" and "the threes and
-        twos I can actually sign" are both real questions and neither is a
-        single grade. The stars are the only quality reading on this board that
-        is not an interval — every other number the screen shows is a window as
-        wide as the coach is bad at this — so they are the only one a filter can
-        be honest about.
-      */}
-      <div className="label" style={{ marginTop: 11, marginBottom: 5 }}>STARS</div>
-      <div style={{ display: 'flex', gap: 4 }}>
-        {[5, 4, 3, 2, 1].map((n) => (
-          <button
-            key={n}
-            onClick={() => toggleStar(n)}
-            style={{
-              flex: 1, padding: '7px 0',
-              background: filters.stars.includes(n) ? 'var(--clay)' : 'var(--field)',
-              border: `1px solid ${filters.stars.includes(n) ? 'var(--clay)' : 'rgba(var(--ink-rgb), .2)'}`,
-              color: filters.stars.includes(n) ? 'var(--cream)' : 'var(--ink)',
-              font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.04em',
-            }}
-          >{n}★</button>
-        ))}
+      <div className="recruit-filter-section">
+        <div className="recruit-filter-label">
+          <span><small>TALENT BAND</small><strong>{filters.stars.length > 0 ? `${filters.stars.join(' / ')} star` : 'Any rating'}</strong></span>
+          {filters.stars.length > 0 && <button type="button" onClick={() => set('stars', [])}>CLEAR</button>}
+        </div>
+        <div className="recruit-star-grid">
+          {[5, 4, 3, 2, 1].map((n) => (
+            <button
+              className={filters.stars.includes(n) ? 'active' : ''}
+              type="button"
+              key={n}
+              onClick={() => toggleStar(n)}
+            ><strong>{n}</strong><span>★</span></button>
+          ))}
+        </div>
       </div>
 
-      <div className="label" style={{ marginTop: 11, marginBottom: 5 }}>HOME STATE</div>
-      <select
-        value={filters.state ?? ''}
-        onChange={(e) => set('state', e.target.value === '' ? null : e.target.value)}
-        style={{
-          width: '100%', padding: '9px 8px',
-          background: 'var(--field)', border: '1px solid rgba(var(--ink-rgb), .28)',
-          color: 'var(--ink)', font: "600 calc(12px * var(--ts)) var(--mono)",
-          borderRadius: 0, appearance: 'none',
-        }}
-      >
-        <option value="">ANYWHERE</option>
-        {ALL_STATES.map((st) => (
-          <option key={st} value={st}>{st}{st === homeState ? ' · yours' : ''}</option>
-        ))}
-      </select>
-
-      <div style={{ marginTop: 11, display: 'grid', gap: 6 }}>
-        <Switch
-          on={filters.pipelineOnly}
-          onClick={() => set('pipelineOnly', !filters.pipelineOnly)}
-          label="IN MY PIPELINES"
-          note="Home territory, staff relationships, and markets you have built."
-        />
-        <Switch
-          on={filters.untouchedOnly}
-          onClick={() => set('untouchedOnly', !filters.untouchedOnly)}
-          label="NOBODY IS ON HIM"
-          note="No program has spent a point on him yet."
-        />
-        <Switch
-          on={filters.reachOnly}
-          onClick={() => set('reachOnly', !filters.reachOnly)}
-          label="WITHIN MY REACH ONLY"
-          note="Hides the men who will not take the call."
-        />
+      <div className="recruit-filter-section recruit-location-filter">
+        <div className="recruit-filter-label">
+          <span><small>GEOGRAPHY</small><strong>{filters.state ?? 'Anywhere'}</strong></span>
+          {filters.state && <button type="button" onClick={() => set('state', null)}>CLEAR</button>}
+        </div>
+        <label>
+          <small>HOME STATE</small>
+          <select
+            value={filters.state ?? ''}
+            onChange={(e) => set('state', e.target.value === '' ? null : e.target.value)}
+          >
+            <option value="">ANYWHERE</option>
+            {ALL_STATES.map((st) => (
+              <option key={st} value={st}>{st}{st === homeState ? ' · YOUR STATE' : ''}</option>
+            ))}
+          </select>
+        </label>
+        <p>Your program currently carries {Math.max(1, myStars)}★ pull. Geography and pipelines can make the difference at the edge of your reach.</p>
       </div>
-    </div>
+
+      <div className="recruit-filter-section">
+        <div className="recruit-filter-label">
+          <span><small>BOARD SIGNALS</small><strong>What matters right now</strong></span>
+        </div>
+        <div className="recruit-signal-grid">
+          <FilterToggle
+            on={filters.pipelineOnly}
+            onClick={() => set('pipelineOnly', !filters.pipelineOnly)}
+            label="PIPELINES"
+            note="Markets where your program already has a relationship."
+          />
+          <FilterToggle
+            on={filters.untouchedOnly}
+            onClick={() => set('untouchedOnly', !filters.untouchedOnly)}
+            label="UNTOUCHED"
+            note="Nobody in the country has spent a point on him yet."
+          />
+          <FilterToggle
+            on={filters.reachOnly}
+            onClick={() => set('reachOnly', !filters.reachOnly)}
+            label="IN REACH"
+            note="Only players who would currently take your call."
+          />
+        </div>
+      </div>
+    </section>
   );
 }
 
-function Chip({ on, onClick, children }: {
-  on: boolean; onClick: () => void; children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '6px 8px',
-        background: on ? 'var(--clay)' : 'var(--field)',
-        border: `1px solid ${on ? 'var(--clay)' : 'rgba(var(--ink-rgb), .2)'}`,
-        color: on ? 'var(--cream)' : 'var(--ink)',
-        font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.06em',
-      }}
-    >{children}</button>
-  );
-}
-
-/** A switch with its own sentence, because none of these explain themselves. */
-function Switch({ on, onClick, label, note }: {
+function FilterToggle({ on, onClick, label, note }: {
   on: boolean; onClick: () => void; label: string; note: string;
 }) {
   return (
     <button
+      type="button"
+      className={`recruit-filter-toggle tap${on ? ' active' : ''}`}
+      aria-pressed={on}
       onClick={onClick}
-      className="tap"
-      style={{
-        width: '100%', textAlign: 'left', padding: '8px 10px',
-        background: on ? 'var(--clay)' : 'var(--field)',
-        border: `1px solid ${on ? 'var(--clay)' : 'rgba(var(--ink-rgb), .28)'}`,
-      }}
     >
-      <span style={{
-        display: 'block', font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-        color: on ? 'var(--cream)' : 'var(--ink)',
-      }}>{label}</span>
-      <span style={{
-        display: 'block', marginTop: 3, font: "400 calc(10.5px * var(--ts))/1.35 var(--body)",
-        color: on ? 'rgba(var(--cream-rgb), .78)' : 'var(--dim)',
-      }}>{note}</span>
+      <span><small>{on ? 'ON' : 'OFF'}</small><strong>{label}</strong></span>
+      <p>{note}</p>
+      <i aria-hidden="true"><b /></i>
     </button>
   );
 }

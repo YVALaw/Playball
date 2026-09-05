@@ -247,6 +247,7 @@ export function Player() {
   const selected = useDynasty((s) => s.selectedPlayer);
   const playerCardSection = useDynasty((s) => s.playerCardSection);
   const report = useDynasty((s) => s.lastOffseason);
+  const portal = useDynasty((s) => s.portal);
   const alumni = useDynasty((s) => s.alumni);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
@@ -271,6 +272,26 @@ export function Player() {
     for (const t of season.teams) {
       const found = rosterOf(t).find((x) => x.id === selected);
       if (found) { p = found; owner = t; break; }
+    }
+  }
+
+  /*
+    Portal entrants are intentionally between rosters during the offseason.
+
+    Their avatar still opens a normal player card. Previously the card only
+    searched active rosters and alumni, so an incoming portal player could be
+    represented by an id that the overlay considered invalid. On a phone, that
+    invalid overlay could coincide with a separate navigation update and make
+    the frame appear to jump somewhere unrelated. Keeping the player attached
+    to his source program while he is in the portal makes the route stable and
+    lets the card show the same ratings/stats context the coach is deciding on.
+  */
+  if (!p && portal) {
+    const portalMan = [...portal.leaving, ...portal.available]
+      .find((m) => m.player.id === selected);
+    if (portalMan) {
+      p = portalMan.player;
+      owner = season.teams[portalMan.from] ?? team;
     }
   }
 

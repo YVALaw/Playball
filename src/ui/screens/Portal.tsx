@@ -307,7 +307,7 @@ function PortalSignSheet(
   const cost = man.cost;
   return (
     <InFrame>
-      <div className="portal-sign-scrim sheet-scrim fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Sign ${p.name}`}>
+      <div className="sheet-scrim portal-sign-scrim fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Sign ${p.name}`}>
         <section className="portal-sign-sheet rise-in" onClick={(e) => e.stopPropagation()}>
           <header>
             <small>TRANSFER DECISION</small>

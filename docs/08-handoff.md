@@ -72,6 +72,16 @@ through the interface pass (`8d97eb9`) and the docs commit after it.**
 > picker, which leaves `interviewResult.ts` with no caller and stage 24's
 > reveal to decide which pool it builds on.
 >
+> **A third folder, later the same evening**, merged file by file since the
+> repo had moved: the creation step loses RANDOMIZE and gains a Main menu
+> back action, the player card resolves a man mid-portal, the portal's
+> signing dialog is centred (his fix and mine landed on the same class
+> name; his rule stays), and recruiting's filters become a room (`05`
+> §50.5a). His History and Today were the pre-fix copies and were left.
+> **Rule confirmed twice now:** classify every file against the merge base
+> before copying — two of six "changed" files were only missing the type
+> fixes.
+>
 > **Where the work stands.** Stages 1–16, 18, 20 (with 20b), 21–23 and 25
 > shipped; the APK list closed the morning of September 5. Left: the rest
 > of §X → the rest of 24 (the reveal and the result card) → 26's verdict

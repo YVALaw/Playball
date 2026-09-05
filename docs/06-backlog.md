@@ -2629,7 +2629,8 @@ is a spare starter, and stays one; the test that pinned the demotion now
 pins the opposite), **23** (the winter's staff is priced onto the new
 season's benches before the set), **26** (the portal's REVIEW SIGNING sheet
 has a positioned scrim and a safe-area pad, and so does the retention
-sheet), **27**'s first half (`pageSoftIn` carries the reduced-motion pair)
+sheet — the reporter's third pass then centred it as a dialog, on the
+same class name, and his rule is the one that stands), **27**'s first half (`pageSoftIn` carries the reduced-motion pair)
 and **28** (the postseason takeover slides sideways again). Also settled
 the same evening, by the reporter: **20b** (arguing the terms) was already
 built — `argueTerms`, once a season, conceding only when the winter took

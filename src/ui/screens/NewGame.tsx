@@ -158,7 +158,7 @@ function archetype(prestige: number, quality: number): string | null {
   return null;
 }
 
-export function NewGame() {
+export function NewGame({ onExit }: { onExit?: () => void } = {}) {
   const start = useDynasty((s) => s.start);
   const [picked, setPicked] = useState<SchoolDef | null>(null);
 
@@ -280,12 +280,7 @@ export function NewGame() {
       <Identity
         profile={coach}
         onChange={setCoach}
-        // The philosophy is left alone. Somebody who comes back a step to try
-        // another face has not asked to be handed a different bench as well.
-        onShuffle={() => setCoach({
-          ...randomProfile(makeRng(careerSeed())),
-          philosophy: coach.philosophy ?? DEFAULT_PHILOSOPHY,
-        })}
+        onExit={onExit}
         onDone={() => {
           // A blank name is not a name. Clearing the field and pressing on
           // used to carry an empty identity to the job board — the summary
@@ -501,13 +496,15 @@ export function NewGame() {
 const STEPS = 5;
 
 function StepHead(
-  { n, title, onBack }: { n: number; title: string; onBack?: () => void },
+  { n, title, onBack, backLabel = 'Back' }: {
+    n: number; title: string; onBack?: () => void; backLabel?: string;
+  },
 ) {
   return (
     <>
       {onBack && (
         <button className="back-link tap" type="button" onClick={onBack}>
-          <ArrowLeftIcon /> Back
+          <ArrowLeftIcon /> {backLabel}
         </button>
       )}
       {/* The road so far, in the proposal's setup rail: done, here, still to
@@ -552,10 +549,10 @@ const STEP_NAMES = ['Coach', 'Control', 'Background', 'Plan', 'Offers'] as const
  * the fiction rather than the simulation — see MIN_COACH_AGE.
  */
 function Identity(
-  { profile, onChange, onShuffle, onDone }: {
+  { profile, onChange, onExit, onDone }: {
     profile: CoachProfile;
     onChange: (p: CoachProfile) => void;
-    onShuffle: () => void;
+    onExit?: () => void;
     onDone: () => void;
   },
 ) {
@@ -566,7 +563,7 @@ function Identity(
 
   return (
     <FixedHeader
-      header={<div className="setup-head"><StepHead n={1} title="Your coach" /></div>}
+      header={<div className="setup-head"><StepHead n={1} title="Your coach" onBack={onExit} backLabel="Main menu" /></div>}
       action={<FloatingAction label="CONTINUE" onClick={onDone} />}
     >
       <main className="module-workspace career-workspace coach-builder-workspace">
@@ -575,7 +572,6 @@ function Identity(
         <section className="coach-builder-stage">
           <div className="coach-builder-portrait">
             <span><CoachPortrait look={look} size={122} /></span>
-            <button className="tap" type="button" onClick={onShuffle}>RANDOMIZE</button>
           </div>
           <div className="coach-builder-identity">
             <small>HEAD COACH</small>

@@ -101,7 +101,7 @@ for good — `ensureHoodHans` no longer exists.
 | [13-phone-report-pending.md](docs/13-phone-report-pending.md), [14-apk-report-triage.md](docs/14-apk-report-triage.md) | The APK report: the screenshots with their marks, and the thirty-eight items, all closed |
 | [INTERACTION_DESIGN.md](docs/INTERACTION_DESIGN.md) | **The interface rulebook.** Three kinds of screen, and what a decision must show before it offers a verb. Read before adding any screen |
 | [TESTING_SHORTCUTS.md](docs/TESTING_SHORTCUTS.md) | The three test aids in the build, and the rule that they leave together |
-| [AUDIT_IMPLEMENTATION.md](AUDIT_IMPLEMENTATION.md), [VISUAL_POLISH_PASS.md](docs/VISUAL_POLISH_PASS.md), [REFINEMENT_PASS_2026-09-05.md](docs/REFINEMENT_PASS_2026-09-05.md), [SEASON_FLOW_REDESIGN_2026-09-05.md](docs/SEASON_FLOW_REDESIGN_2026-09-05.md) | The interface pass's own notes, in the order they were written. `05` §50 is what actually reached the code |
+| [AUDIT_IMPLEMENTATION.md](AUDIT_IMPLEMENTATION.md), [VISUAL_POLISH_PASS.md](docs/VISUAL_POLISH_PASS.md), [REFINEMENT_PASS_2026-09-05.md](docs/REFINEMENT_PASS_2026-09-05.md), [SEASON_FLOW_REDESIGN_2026-09-05.md](docs/SEASON_FLOW_REDESIGN_2026-09-05.md), [PORTAL_CREATION_RECRUITING_FIX_PASS.md](docs/PORTAL_CREATION_RECRUITING_FIX_PASS.md) | The interface pass's own notes, in the order they were written. `05` §50 is what actually reached the code |
 
 ## Run it
 

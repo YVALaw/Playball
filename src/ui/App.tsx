@@ -218,6 +218,7 @@ function AppBody(
   const openOverlay = useDynasty((s) => s.openOverlay);
   const refreshSaves = useDynasty((s) => s.refreshSaves);
   const atStart = useDynasty((s) => s.atStart);
+  const backToStart = useDynasty((s) => s.backToStart);
   const [checked, setChecked] = useState(false);
 
   /**
@@ -370,7 +371,7 @@ function AppBody(
               }}>{loadError}</div>
             </div>
           )}
-          <NewGame />
+          <NewGame onExit={backToStart} />
         </main>
       </div>
     );

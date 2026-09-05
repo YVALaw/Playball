@@ -6749,6 +6749,24 @@ career reach the Inbox (`alumni-debut-` / `alumni-retire-` keys); watchlisted
 programs get priority on The Wire; `ensureHoodHans` and `ensureWonderGuy`
 are gone from recruiting.ts.
 
+### 50.5a The third pass — portal, creation, recruiting (later on September 5)
+
+A smaller folder from the same author, merged file by file rather than
+whole because the repo had moved (`docs/PORTAL_CREATION_RECRUITING_FIX_PASS.md`
+is its note). Coach creation loses the large RANDOMIZE control and gains a
+Main menu back action on step one, with the portrait, name, age, state and
+appearance controls no longer competing for width on a narrow phone. The
+player card resolves a man who is between rosters in the portal, and an
+incoming portal player carries his source program while his card is open —
+the invalid-player overlay that was a plausible cause of the reported
+offseason navigation jump. The portal's REVIEW SIGNING is a centred dialog
+inside the frame with symmetric gutters and a viewport-aware height (the
+same scrim class the §X fix had used; his rule replaces it). Recruiting's
+inline filter form becomes a filter room: position and star grids, a
+program-context card for geography, toggle cards for pipeline, untouched
+and in-reach, and a header that counts the active groups. Two of its files
+(History, Today) were the pre-fix copies and were not taken.
+
 ### 50.6 What the merge found
 
 The pass was built without the npm tree and had only been parsed, never
