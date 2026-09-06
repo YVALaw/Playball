@@ -137,6 +137,7 @@ export function StrategyScreen() {
   const library = useRef<HTMLElement | null>(null);
   useDialogFocus(library, () => setLibraryOpen(false), { active: libraryOpen });
   const [autoConfirmed, setAutoConfirmed] = useState<string | null>(null);
+  const [autoMoved, setAutoMoved] = useState(0);
   void version;
 
   useEffect(() => {
@@ -254,13 +255,19 @@ export function StrategyScreen() {
           <button
             className={`playbook-auto-command tap${autoConfirmed === open ? ' confirmed' : ''}`}
             type="button"
-            onClick={() => { if (autoSet(open)) setAutoConfirmed(open); }}
+            onClick={() => {
+              const moved = autoSet(open);
+              if (moved !== null) { setAutoMoved(moved); setAutoConfirmed(open); }
+            }}
           >
             <span>
-              <strong>{autoConfirmed === open ? 'Counters built' : 'Build counters from report'}</strong>
-              <small>{autoConfirmed === open
-                ? 'Defensive positioning updated from the scouting report.'
-                : 'Sets defensive positioning from what your scouts found. Your offensive identity stays yours.'}</small>
+              <strong>{autoConfirmed !== open ? 'Build counters from report'
+                : autoMoved > 0 ? `Counters built · ${autoMoved} row${autoMoved === 1 ? '' : 's'} moved` : 'An ordinary club'}</strong>
+              <small>{autoConfirmed !== open
+                ? 'Builds the whole plan from what your scouts found: how to attack their staff, how to defend their lineup. Your standing plan stays yours.'
+                : autoMoved > 0
+                  ? 'Built from the scouting report. Every row that moved is one they are unusual in.'
+                  : 'Nothing in the report is far enough from the league to move a row. Your standing plan is the plan against them.'}</small>
             </span>
             <b>{autoConfirmed === open ? '✓ DONE' : 'AUTO'}</b>
           </button>

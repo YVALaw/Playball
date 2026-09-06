@@ -6,9 +6,26 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 6, 2026, late · **Branch:** `main` · **stage 24
-closed as the background picker** (`05` §58), after the interface batch (§57)
-and the light-theme pass (§56).
+**Last session:** September 6, 2026, late · **Branch:** `main` · **four more
+emulator reports, fixed** (`05` §59), after stage 24 closed (§58) and the
+interface batch (§57).
+
+> **September 6, late — four more from the emulator.**
+>
+> *"Hit AUTO, nothing moves."* True: one row of eight, from absolute
+> thresholds a typical lineup never crossed. The desk builds the whole
+> opponent plan now, both sides of the ball, every threshold a distance
+> from this season's league (`engine/counters.ts`, `tests/auto-probe.ts`).
+> *"Show the week on the desk."* The week's dates sit under CLUB PULSE, a
+> played one with its score and the box a tap away. *"The picker only says
+> left or right."* Bullpen and pinch-hit rows carry the season line.
+> *"The pick-up started from the beginning, and Play ball was live."* The
+> desk's Play ball and sim buttons are disabled while a game waits, and
+> the journal is mirrored into IndexedDB with a reconcile on load, because
+> Android drops localStorage's last writes when it kills the process. `05`
+> §59, F5–F8 in `09`.
+>
+> The APK on the emulator is rebuilt from this tree.
 
 > **September 6, late — stage 24 closed as the background picker it already
 > was.**
@@ -709,7 +726,7 @@ exists. Stage 19 removes the three together.
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,167 tests, 59 files)
+npm run check      # typecheck + the whole suite (1,177 tests, 60 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing

@@ -7662,6 +7662,100 @@ out. The store's comments stop describing five answers.
 **Not built, by construction:** the brief's wider per-answer swings. There
 are no answers.
 
+## 59. Four more from the emulator — **FIXED September 6 2026, late**
+
+The second sitting on the Android 16 emulator, and four reports: a button
+that did nothing, a desk that showed no results, a picker that showed no
+numbers, and a game that came back from the beginning. F5 to F8 in `09`.
+
+### 59.1 "Hit AUTO, nothing moves"
+
+*Purchase a scout playbook against a team, go to set up the strategy against
+that team and hit auto: nothing moves, everything stays the same.* True.
+Reproduced on a fresh career: AUTO moved one row of eight, alignment from
+STRAIGHT UP to SITUATIONAL. It set four positioning rows from absolute
+thresholds — a lineup power average of 54, a speed average of 53, three
+more righties than lefties — that a typical lineup never crossed (the
+league's power averages 42.5 with a deviation of 11.6; 54 is a deviation
+above it), and it left the four offensive rows alone on principle: *"your
+offensive identity stays yours."*
+
+A plan against a team is how you play them, not who you are; the standing
+plan keeps the identity. So the desk builds the whole plan now, in
+`src/engine/counters.ts`, from what the report legitimately bought — the
+roster in front of everybody and the habits the book covers — and every
+threshold is a distance from this season's league, half a standard
+deviation, measured on the teams in front of it (`leagueBaselines`):
+
+- **With the bat.** Steals against the catcher's arm and the staff's hold
+  on runners, together; the extra base against the outfield's arms; the
+  bunt against the quality of the staff — manufacture against one you will
+  not out-slug, swing away against one you will.
+- **On the mound.** The hook against the lineup's power.
+- **Without the ball.** Alignment from the pull hitters and the handedness
+  split — a called side only when one hand owns the pull, since the wrong
+  side costs ten percent on every other hitter; outfield depth from power
+  and speed; infield depth from runners, bunters and speed.
+
+Where the opponent is ordinary, the row keeps the standing plan's value.
+`tests/auto-probe.ts` measures the distributions; on one generated league
+86 of 96 clubs move three rows or more against a default standing plan,
+every key moves against a fair share of the league, and
+`tests/counters.test.ts` pins that, the validity of every value, the
+determinism, the standing plan kept where nothing is unusual, and the side
+rule. The button's copy says what it does now.
+
+### 59.2 The week, on the desk
+
+*"Add our games history where it says this week, so when we sim a game we
+can see the outcome, tap on the game and the box score comes up."* The
+CLUB PULSE heading said *This week* over three stat tiles and no games. A
+rail of the week's dates sits under it now, the schedule's own rail: each
+of this program's games in the week in play — the one holding the next
+date still to play — with the opponent, a played date carrying its score
+and opening the box, a date to come carrying *tonight*, *series* or
+*midweek* and opening the other program. The tiles stay under it.
+
+### 59.3 The picker says what he has done
+
+*"In the dugout, when you go to the bullpen or pinch hit, it should show
+the players' stats as well, not just whether they are left or right."*
+The row said `LF` or `RHP` and the overall. It says the hand and the season
+line now — `LF · bats L · .312 · 4 HR · 21 RBI`, `RHP · 2.85 ERA · 31.1 IP
+· 28 K` — and a man with nothing on it yet says so: *no at-bats yet*, *no
+innings yet*.
+
+### 59.4 "It started from the beginning"
+
+*"I had played a few innings, the app closed, and when I went back in it
+had the pick-up thing but it started from the beginning. Also the Play ball
+button was not grayed out."*
+
+Two findings. The second is plain: with a game waiting to be picked up, the
+desk's Play ball, Sim game, Sim week and Advance were live. Starting a
+fresh game over a pending one writes a fresh journal — from the beginning.
+All four are disabled while the offer stands; the offer's two buttons are
+the way through.
+
+The first is the phone. The journal is a list of every call made in the
+game, anchored to the generator's position at the first pitch; a pick-up
+rebuilds the game and replays the calls, and in the browser it works —
+sixteen calls replayed to the bottom of the second, exactly where the
+reload found it. But the journal lived in localStorage alone, which is
+written synchronously and committed to disk on the browser's own
+schedule; when Android kills the process, the writes since the last commit
+are gone, and what survives is the journal written at the first pitch with
+no calls in it — an offer of the game, replaying to its beginning. The
+journal is mirrored into IndexedDB now (`playball-journal`), which commits
+a transaction before it reports it done, every call in order; on load the
+two stores are brought to agreement before the offer is made
+(`reconcileJournal`), and the copy that knows more calls of the same game
+wins — a different game means a newer one, and the synchronous store wins
+that. `tests/resume.test.ts` pins the rule. The loss itself was not
+reproduced here — the emulator was not killed mid-game for this — so the
+mirror is the fix for the class rather than a measured instance; the
+gating is the fix for the case the report describes twice over.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

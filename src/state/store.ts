@@ -68,7 +68,7 @@ import {
   SEAT_LABEL, BUILDINGS, type Assistant, type Economy, type StaffSeat, type Building,
 } from '../engine/economy.js';
 import {
-  readJournal, writeJournal, noteAction, clearJournal, journalMatches,
+  readJournal, writeJournal, noteAction, clearJournal, journalMatches, reconcileJournal,
 } from './liveJournal.js';
 import {
   DEFAULT_DEPTH, normalizeDepth, setMode, setSystem, handles,
@@ -260,6 +260,7 @@ import {
   autoBattingOrder, strategyFor, strategyForPhilosophy,
   DEFAULT_STRATEGY, type Strategy,
 } from '../engine/strategy.js';
+import { opponentPlan } from '../engine/counters.js';
 import { HOME_CONFERENCE, CONFERENCES } from '../data/schools.js';
 import {
   saveDynasty, loadDynasty, listSaves, deleteSave, newSlotId, AUTOSAVE_SLOT,
@@ -1294,7 +1295,8 @@ export interface DynastyStore {
   /** Stage 22: write one control of the playbook against a club. */
   setPlaybook: (abbr: string, key: keyof Strategy, value: Strategy[keyof Strategy]) => void;
   /** Fill the whole book from what the desk knows about them. */
-  autoSetPlaybook: (abbr: string) => boolean;
+  /** Builds the plan against them; returns how many rows moved, or null if there was nobody to plan against. */
+  autoSetPlaybook: (abbr: string) => number | null;
   /** The club whose freshly-bought book is waiting to be set up. */
   playbookInvite: string | null;
   dismissPlaybookInvite: () => void;
@@ -6103,45 +6105,28 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, version, userTeam } = get();
     const opp = season?.teams.find((t) => t.def.abbr === abbr);
     const me = season?.teams[userTeam];
-    if (!season || !opp || !me) return false;
+    if (!season || !opp || !me) return null;
     // Staff-managed scouting can legitimately know an opponent before a manual
     // purchase has minted a book. In that case the staff start from the club's
     // standing strategy, then layer the same report-driven counters on top.
     const book = season.playbooks?.[abbr] ?? { ...DEFAULT_STRATEGY, ...me.strategy };
     /*
-      The desk's counters, from what the purchase legitimately bought: the
-      roster in front of everybody and the habits the book covers. A
-      lineup that leans one way gets the overshift called on that side; a
-      power lineup pushes the outfield back; a running, bunting club
-      brings the corners onto the grass.
+      The desk's opinion of how to play them, both sides of the ball, from
+      what the purchase legitimately bought — see engine/counters.ts. Every
+      threshold is a distance from this season's league, so the rows that
+      move are the ones this club is actually unusual in, and an ordinary
+      club keeps the standing plan's row. It used to set four positioning
+      rows from absolute numbers a typical lineup never crossed, and the
+      report was that AUTO moved nothing.
     */
-    const bats = opp.team.lineup;
-    const righties = bats.filter((h) => h.bats === 'R').length;
-    const lefties = bats.filter((h) => h.bats === 'L').length;
-    const power = bats.reduce((a, h) => a + h.power, 0) / Math.max(1, bats.length);
-    const speed = bats.reduce((a, h) => a + h.speed, 0) / Math.max(1, bats.length);
-    const runs = opp.strategy.steals === 'constant' || opp.strategy.running === 'aggressive';
-    const bunts = opp.strategy.bunt === 'often';
-    season.playbooks = {
-      ...season.playbooks,
-      [abbr]: {
-        ...book,
-        // AUTO must be visible as well as useful. A balanced opponent still
-        // gets a situational alignment rather than leaving the standing
-        // straight-up default untouched, while a pronounced handedness split
-        // earns the full shift.
-        alignment: Math.abs(righties - lefties) >= 3 ? 'shift' : 'situational',
-        shift: righties - lefties >= 3 ? 'left'
-          : lefties - righties >= 3 ? 'right' : 'none',
-        outfield: power >= 54 ? 'deep'
-          : power <= 47 && speed >= 53 ? 'shallow' : 'normal',
-        infield: bunts || (runs && speed >= 52) ? 'in'
-          : power >= 56 ? 'back' : 'normal',
-      },
-    };
+    const plan = opponentPlan(season, opp, book);
+    season.playbooks = { ...season.playbooks, [abbr]: plan };
     set({ version: version + 1 });
     void get().saveNow();
-    return true;
+    // Counted so the screen can say it: an ordinary club moves nothing, and
+    // "nothing moved" has to be told as a finding rather than felt as a fault.
+    return (Object.keys(plan) as (keyof Strategy)[])
+      .filter((k) => (plan[k] ?? null) !== (book[k as keyof typeof book] ?? null)).length;
   },
 
   lineupGate: 0,
@@ -6254,6 +6239,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     let loaded;
     try {
       loaded = await loadDynasty(slot);
+      // The journal's two stores to agreement first, so the offer of an
+      // interrupted game below reads the copy that survived the phone.
+      await reconcileJournal();
     } catch (e) {
       set({
         loadError: e instanceof Error ? e.message : String(e),

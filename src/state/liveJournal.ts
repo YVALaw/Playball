@@ -29,8 +29,42 @@
 // is not the save file.
 
 import type { Tactic } from '../engine/types.js';
+import { openDB, type IDBPDatabase } from 'idb';
 
 const KEY = 'playball.liveGame.v1';
+
+/*
+  The durable copy.
+
+  Reported from the Android 16 emulator, September 6 2026: a few innings in,
+  the app closed, and the pick-up offered on return started the game from
+  the beginning. localStorage is written synchronously but committed to disk
+  on the browser's own schedule, and when Android kills the process the
+  writes since the last commit are gone — the journal that survived was the
+  one written at the first pitch, with no calls in it. IndexedDB commits a
+  transaction before it reports it done, so every call is mirrored there as
+  well, in order, and on load the copy that knows more wins.
+*/
+const DB_NAME = 'playball-journal';
+const DB_STORE = 'journal';
+const DB_ROW = 'live';
+let opening: Promise<IDBPDatabase | null> | null = null;
+function durable(): Promise<IDBPDatabase | null> {
+  if (opening) return opening;
+  opening = typeof indexedDB === 'undefined'
+    ? Promise.resolve(null)
+    : openDB(DB_NAME, 1, { upgrade(d) { d.createObjectStore(DB_STORE); } }).catch(() => null);
+  return opening;
+}
+// One writer, in order: a call written after another lands after it.
+let queue: Promise<void> = Promise.resolve();
+function mirror(op: (d: IDBPDatabase) => Promise<unknown>): void {
+  queue = queue
+    .then(async () => { const d = await durable(); if (d) await op(d); })
+    .catch(() => undefined);
+}
+/** The journal this process last wrote, for a call made while local storage is unavailable. */
+let current: LiveJournal | null = null;
 
 /** One thing the manager did, in the order he did it. */
 export type JournalAction =
@@ -112,27 +146,33 @@ export function readJournal(): LiveJournal | null {
 }
 
 export function writeJournal(j: LiveJournal): void {
+  current = j;
   const s = store();
-  if (!s) return;
-  try {
-    s.setItem(KEY, JSON.stringify(j));
-  } catch {
-    // Quota, most likely. The game carries on unjournalled rather than dying.
+  if (s) {
+    try {
+      s.setItem(KEY, JSON.stringify(j));
+    } catch {
+      // Quota, most likely. The game carries on unjournalled rather than dying.
+    }
   }
+  mirror((d) => d.put(DB_STORE, j, DB_ROW));
 }
 
 /** Append one call and write it down in the same breath. */
 export function noteAction(a: JournalAction): void {
-  const j = readJournal();
+  const j = readJournal() ?? current;
   if (!j) return;
   j.actions.push(a);
   writeJournal(j);
 }
 
 export function clearJournal(): void {
+  current = null;
   const s = store();
-  if (!s) return;
-  try { s.removeItem(KEY); } catch { /* nothing to do about it */ }
+  if (s) {
+    try { s.removeItem(KEY); } catch { /* nothing to do about it */ }
+  }
+  mirror((d) => d.delete(DB_STORE, DB_ROW));
 }
 
 /**
@@ -147,4 +187,50 @@ export function journalMatches(
   j: LiveJournal, slot: string, year: number, rngState: number,
 ): boolean {
   return j.slot === slot && j.year === year && j.rngState === rngState;
+}
+
+/** A journal parsed off any store, or null if it is not one. */
+function asJournal(raw: unknown): LiveJournal | null {
+  const j = raw as Partial<LiveJournal> | null;
+  if (!j || typeof j !== 'object') return null;
+  if (typeof j.rngState !== 'number' || typeof j.home !== 'number'
+    || typeof j.away !== 'number' || !Array.isArray(j.actions)
+    || typeof j.slot !== 'string') return null;
+  return j as LiveJournal;
+}
+
+/**
+ * Of two copies of the journal, the one to trust. The same game — same
+ * anchor — with more calls in it knows more; a different game is a newer
+ * one, and the synchronous store is written first, so it wins that.
+ */
+export function richer(local: LiveJournal | null, kept: LiveJournal | null): LiveJournal | null {
+  if (!local) return kept;
+  if (!kept) return local;
+  const same = local.slot === kept.slot && local.year === kept.year
+    && local.rngState === kept.rngState && local.home === kept.home && local.away === kept.away;
+  if (!same) return local;
+  return kept.actions.length > local.actions.length ? kept : local;
+}
+
+/**
+ * Bring the two stores to agreement before anything reads the journal, and
+ * return what they agree on. Called once on load; the synchronous readers
+ * (readJournal, noteAction) then see the durable copy's calls.
+ */
+export async function reconcileJournal(): Promise<LiveJournal | null> {
+  const local = readJournal();
+  const d = await durable();
+  const kept = d ? asJournal(await d.get(DB_STORE, DB_ROW).catch(() => null)) : null;
+  const best = richer(local, kept);
+  if (best && best !== local) {
+    current = best;
+    const s = store();
+    try { s?.setItem(KEY, JSON.stringify(best)); } catch { /* the durable copy still stands */ }
+  } else if (best && best !== kept) {
+    // The synchronous copy knew more, or the mirror had nothing yet: catch it up.
+    current = best;
+    mirror((d) => d.put(DB_STORE, best, DB_ROW));
+  }
+  return best;
 }

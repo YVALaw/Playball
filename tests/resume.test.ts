@@ -32,7 +32,8 @@ import type { LiveGame } from '../src/engine/liveGame.js';
 import { makeRng, rngFromState } from '../src/engine/rng.js';
 import type { Tactic } from '../src/engine/types.js';
 import {
-  readJournal, writeJournal, noteAction, clearJournal, journalMatches,
+  readJournal, writeJournal, noteAction, clearJournal, journalMatches, richer,
+  type LiveJournal,
 } from '../src/state/liveJournal.js';
 
 /*
@@ -217,5 +218,33 @@ describe('the journal', () => {
     expect(readJournal()).not.toBeNull();
     clearJournal();
     expect(readJournal()).toBeNull();
+  });
+});
+
+describe('the journal kept in two places', () => {
+  const j = (actions: number, over: Partial<LiveJournal> = {}): LiveJournal => ({
+    slot: 'auto', year: 2027, rngState: 7, home: 1, away: 2, day: 3,
+    homeStarter: 0, awayStarter: 0, managing: 'home', postseason: false,
+    actions: Array.from({ length: actions }, () => ({ k: 'tactic', t: 'pitch' as Tactic })),
+    ...over,
+  });
+
+  it('trusts the copy of the same game that knows more calls', () => {
+    // Android can drop the last local-storage writes when it kills the
+    // process; the durable copy then carries the innings that were played.
+    expect(richer(j(0), j(16))!.actions.length).toBe(richer(j(16), j(0))!.actions.length);
+    expect(richer(j(0), j(16))!.actions.length).toBe(16);
+    expect(richer(j(9), j(4))!.actions.length).toBe(9);
+  });
+
+  it('trusts the synchronous copy when the two are different games', () => {
+    const newer = j(1, { rngState: 99 });
+    expect(richer(newer, j(30))).toBe(newer);
+  });
+
+  it('takes whichever copy exists when the other is missing', () => {
+    expect(richer(null, j(3))!.actions.length).toBe(3);
+    expect(richer(j(2), null)!.actions.length).toBe(2);
+    expect(richer(null, null)).toBeNull();
   });
 });

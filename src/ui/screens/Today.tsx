@@ -364,19 +364,19 @@ export function Today() {
               </button>
               <button
                 type="button"
-                disabled={busy || thinking !== null || (held && !live)}
+                disabled={busy || thinking !== null || (held && !live) || pendingGame !== null}
                 onClick={() => void startManagedGame()}
               ><PlayIcon /> {live ? 'Back to the game' : 'Play ball'}</button>
             </div>
             <div className="simulation-row">
               <button
                 type="button"
-                disabled={busy || !!live || held || thinking === 'week'}
+                disabled={busy || !!live || held || pendingGame !== null || thinking === 'week'}
                 onClick={() => think('game', advanceDay)}
               >{thinking === 'game' ? <span className="spinner" /> : 'Sim game'}</button>
               <button
                 type="button"
-                disabled={busy || !!live || held || thinking === 'game'}
+                disabled={busy || !!live || held || pendingGame !== null || thinking === 'game'}
                 onClick={() => think('week', simWeek)}
               >{thinking === 'week' ? <span className="spinner" /> : 'Sim week'}</button>
             </div>
@@ -392,12 +392,12 @@ export function Today() {
             <div className="simulation-row">
               <button
                 type="button"
-                disabled={busy || !!live || held || thinking === 'week'}
+                disabled={busy || !!live || held || pendingGame !== null || thinking === 'week'}
                 onClick={() => think('game', advanceDay)}
               >{thinking === 'game' ? <span className="spinner" /> : 'Advance'}</button>
               <button
                 type="button"
-                disabled={busy || !!live || held || thinking === 'game'}
+                disabled={busy || !!live || held || pendingGame !== null || thinking === 'game'}
                 onClick={() => think('week', simWeek)}
               >{thinking === 'week' ? <span className="spinner" /> : 'Sim week'}</button>
             </div>
@@ -514,6 +514,7 @@ export function Today() {
           action="Schedule"
           onAction={() => { go('season', 'sched'); }}
         />
+        <WeekGames season={season} team={team} year={year} onOpen={setOpenGame} />
         <section className="pulse-grid">
           <button type="button" onClick={() => { go('team', 'stats'); }}>
             {/*
@@ -569,6 +570,62 @@ export function Today() {
         />
       )}
     </>
+  );
+}
+
+/**
+ * The week's games, played or still to come, above the pulse.
+ *
+ * Reported from the emulator: "when we sim a game, we can see the outcome of
+ * that match, we tap on the game and the box score comes up." The schedule
+ * always had it; the desk is where you are standing when the sim finishes.
+ * A played date carries its score and opens the box; one still to come
+ * carries what kind of game it is and opens the other program.
+ */
+function WeekGames(
+  { season, team, year, onOpen }:
+  { season: SeasonState; team: TeamRecord; year: number; onOpen: (g: GameSummary) => void },
+) {
+  const openTeam = useOpenTeam();
+  const mine = season.schedule.flatMap((d) => {
+    const g = d.games.find((x) => x.home === team.index || x.away === team.index);
+    return g ? [{ d, g }] : [];
+  });
+  // The week in play: the one holding the next date still to play, or the
+  // last one once the year is done.
+  const today = season.schedule[season.dayIndex]?.day ?? Number.POSITIVE_INFINITY;
+  const next = mine.find(({ d }) => d.day >= today) ?? mine[mine.length - 1];
+  if (!next) return null;
+  const week = mine.filter(({ d }) => d.week === next.d.week);
+  return (
+    <section className="schedule-rail week-games" aria-label="This week's games">
+      {week.map(({ d, g }) => {
+        const home = g.home === team.index;
+        const opponent = season.teams[home ? g.away : g.home];
+        const result = season.results.find(
+          (r) => r.day === d.day && (r.home === team.index || r.away === team.index),
+        );
+        const us = result ? (home ? result.homeRuns : result.awayRuns) : null;
+        const them = result ? (home ? result.awayRuns : result.homeRuns) : null;
+        const won = result ? us! > them! : null;
+        const box = result !== undefined && d.day in (season.boxScores ?? {});
+        return (
+          <button
+            key={d.day}
+            type="button"
+            onClick={() => (box && result ? onOpen(result) : opponent && openTeam(opponent.index))}
+          >
+            <small>{seasonDate(year, d.day).split(' ').slice(1).join(' ')}</small>
+            <strong>{home ? '' : '@ '}{opponent?.def.abbr ?? '—'}</strong>
+            <i className={won === null ? '' : won ? 'won' : 'lost'}>
+              {won === null
+                ? (d.day === today ? 'tonight' : d.kind === 'series' ? 'series' : 'midweek')
+                : `${won ? 'W' : 'L'} ${us}-${them}`}
+            </i>
+          </button>
+        );
+      })}
+    </section>
   );
 }
 

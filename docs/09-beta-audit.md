@@ -14,6 +14,23 @@ by hand through the store's own actions.
 
 ## Fixed during this audit
 
+- **F5 · "Hit AUTO, nothing moves."** An opponent plan's AUTO set four
+  positioning rows from absolute thresholds a typical lineup never crossed
+  and left the offensive rows alone; against an ordinary club it moved one
+  row. The desk builds the whole plan now, every threshold a distance from
+  the league, in `engine/counters.ts`. `05` §59.1. Fixed September 6.
+- **F6 · "Show the week's games on the desk."** *This week* was three stat
+  tiles and no games. The week's dates sit under the heading, a played
+  one with its score and the box a tap away. `05` §59.2. Built
+  September 6.
+- **F7 · "The picker only says left or right."** Bullpen and pinch-hit
+  rows carry the season line now. `05` §59.3. Fixed September 6.
+- **F8 · "The pick-up started from the beginning, and Play ball was live."**
+  The desk's Play ball and sim buttons are disabled while a game waits;
+  the journal is mirrored into IndexedDB, which Android cannot drop on a
+  process kill the way it drops localStorage's last writes, and the two
+  are reconciled on load. `05` §59.4. Fixed September 6.
+
 - **F2 · "He scored on a walk."** Runner on third alone, a walk, and the
   run. A wild pitch had scored him inside the same tap; the rules were
   right and the telling was wrong. A loose pitch is its own step in a

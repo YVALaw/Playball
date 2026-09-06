@@ -17,6 +17,8 @@ import { teamColour } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
 import { InFrame } from '../Overlay.js';
 import { overallOf } from '../../engine/ratings.js';
+import { era, type BattingSeason, type PitchingSeason } from '../../engine/season.js';
+import type { Arm } from '../../engine/types.js';
 import { battingAverage } from '../../engine/season.js';
 import { pct } from '../format.js';
 import { useDynasty } from '../../state/store.js';
@@ -1008,10 +1010,10 @@ export function Manage() {
           // them are better than others and you choose when to spend them.
           rows={modal === 'pinch'
             ? live.benchAvailable.map((h: Hitter) => ({
-                id: h.id, name: h.name, note: h.pos, rating: overallOf(h),
+                id: h.id, name: h.name, note: batLine(h, season?.batting.get(h.id)), rating: overallOf(h),
               }))
             : live.bullpenAvailable.map((p) => ({
-                id: p.id, name: p.name, note: `${p.throws}HP`, rating: overallOf(p),
+                id: p.id, name: p.name, note: armLine(p, season?.pitching.get(p.id)), rating: overallOf(p),
               }))}
           onPick={(id) => {
             if (modal === 'pinch') {
@@ -1099,6 +1101,25 @@ function batterLine(
 // cards and a column of stacked buttons down the right of the screen. The
 // proposal draws the matchup as two dark articles and puts the dugout tools
 // behind a round button, and both of those are markup rather than components.
+
+/**
+ * What a bench bat or a bullpen arm has done this year, on the picker row.
+ *
+ * Reported from the emulator: "it should show the players' stats as well, not
+ * just whether they are left or right." The hand stays; the season line
+ * joins it, and a man with nothing on it yet says so.
+ */
+function batLine(h: Hitter, s: BattingSeason | undefined): string {
+  const hand = h.bats === 'S' ? 'switch' : `bats ${h.bats}`;
+  if (!s || s.ab === 0) return `${h.pos} · ${hand} · no at-bats yet`;
+  return `${h.pos} · ${hand} · ${(s.h / s.ab).toFixed(3).replace(/^0/, '')} · ${s.hr} HR · ${s.rbi} RBI`;
+}
+
+function armLine(p: Arm, s: PitchingSeason | undefined): string {
+  const hand = `${p.throws}HP`;
+  if (!s || s.outs === 0) return `${hand} · no innings yet`;
+  return `${hand} · ${era(s).toFixed(2)} ERA · ${Math.floor(s.outs / 3)}.${s.outs % 3} IP · ${s.k} K`;
+}
 
 function Picker(
   { title, rows, onPick, onClose }:
