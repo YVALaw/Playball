@@ -2636,7 +2636,7 @@ the same evening, by the reporter: **20b** (arguing the terms) was already
 built — `argueTerms`, once a season, conceding only when the winter took
 six or more — and **25** (the art) is closed. Still open: the two
 measurements (24, 25 below), the accessibility trio (7, 8, 9), the dead
-CSS (29), the duplicate keyframe, the colours, the id matches, and the
+CSS (29), the colours, the id matches, and the
 cleanups.
 
 ### Decisions the pass took without a door
