@@ -3039,9 +3039,10 @@
 
 /* A strip that wraps rather than scrolls — the roster's six statuses and ten
    positions on a 320px phone, where the scroll had no affordance (06 §X 9).
-   The sliding rule follows the active button onto its own row. */
+   Each row keeps the strip's height; without it the rows split the 38px between
+   them. The sliding rule follows the active button onto its own row. */
 .segmented.wrap { flex-wrap: wrap; overflow: visible; }
-.segmented.wrap button { flex: 1 1 auto; margin-top: -1px; border-top: 1px solid var(--line); }
+.segmented.wrap button { flex: 1 1 auto; min-height: 36px; margin-top: -1px; border-top: 1px solid var(--line); }
 .segmented.wrap[data-slide]::before { top: calc(var(--slide-y, 0px) + var(--slide-h, 100%) - 3px); bottom: auto; }
 
 /* Context nav: the 3px underline, keeping its 12px end insets via the hook. */
