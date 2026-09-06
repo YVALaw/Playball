@@ -263,9 +263,9 @@ get sacked and get poached). What genuinely remains part-done:
 
 **This list is now a pointer.** The scope, the platform, the money and the
 depth question were all settled in August 2026, and the route from here is
-the staged plan in **`07-v1-plan.md`** (twenty-three stages after September
-3's additions) — which supersedes the ordering that used to live in this
-section. What follows is the two-minute version.
+the staged plan in **`07-v1-plan.md`** (twenty-nine stages, the last three
+booked September 6 for after the ship) — which supersedes the ordering that
+used to live in this section. What follows is the two-minute version.
 
 The one decision that shapes all of it: **a player chooses how deep a game he
 wants**, at coach creation and changeable after. The engine always models
@@ -468,9 +468,11 @@ and result card (`05` §58) · ~~**26**'s verdict~~ given September 6 (his own
 offseason split is the budget) · then
 **17**, **god mode** — built September 6 on the `god-mode` branch as the
 reporter designed it, a sandbox, held until he approves the push (`05`
-§61) — and **19** (ship). **20b** and **25** were
-confirmed shipped on September 5. The reporter tests on an Android
-emulator.
+§61) — and **19** (ship). After the ship, planned September 6 with the
+money decided: **27**, the rules of the world, free · **28**, the creator
+kit, the second purchase · **29**, the majors, the expansion. **20b** and
+**25** were confirmed shipped on September 5. The reporter tests on an
+Android emulator.
 
 **One project-level decision is now open.** Stage 17 was the monetization
 stage; retiring the S+ player retires the plan's only answer to how the

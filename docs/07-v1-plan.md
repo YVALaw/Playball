@@ -1314,6 +1314,36 @@ carries no per-field provenance today, so an edit is indistinguishable
 from generated data the moment it lands — which is the second argument for
 the flag.
 
+**What remains of 17, planned with the reporter on September 6 and in
+this order.** God mode is the editor, and only the editor: *"god mode is
+for editing basically."* Rules of the world are free (stage 27); packs
+and files are the creator kit (stage 28).
+
+1. **Fork a career into a sandbox.** God mode is chosen at creation, so
+   today a coach cannot take the career he cares about into it without
+   starting over. A fork copies the save into a new god-mode slot; the
+   real one stays honest. The on-ramp for everything below.
+2. **Heal at any point.** A HEAL button on any man, and an iron-man flag
+   that keeps him off the injury roll. The engine's clear path exists
+   (`injury.ts`); the desk just needs the button.
+3. **Conference names.** An override map on the save, read by the six
+   places that name a league today; the creator kit's packs fill it.
+4. **Players, moved.** Any man to any program, cut, or signed straight
+   from the portal; and the facts around him — badges, mood, redshirt and
+   eligibility, the two-way flag, age.
+5. **Recruiting.** A recruit's wants and stars rewritten, recruits added
+   to the class, a commitment on the spot, and the star gate ignored.
+6. **The coach.** Badges granted, a philosophy change at any time,
+   contract years and security, the hidden habit counters.
+7. **Time.** A season or several simulated in a tap; the calendar year
+   set.
+8. **Presets.** Parity (every program at fifty), chaos (prestige drawn
+   again), a superteam.
+
+**Not in 17, by decision:** injuries and the other rules toggles (free,
+stage 27); name, logo and roster packs, career export and import (stage
+28); a records shelf (the reporter's call: a sandbox's records count).
+
 ## Stage 18 · The phone — **PULLED FORWARD September 4**
 
 **Size:** small–medium · **Was: deferred, runs after 23** · **Now: in
@@ -1733,3 +1763,79 @@ wage, and one line of fit about your own side. The three buildings are
 cards priced within eighty thousand of each other. Both were built to stop
 reading as ranked lists, which was the reported fault; whether they read
 as anything better is the open question.
+
+## Stage 27 · The rules of the world — **free, in How you play — PLANNED September 6 2026**
+
+**Size:** small–medium · **After 17's remaining editors** · **Free.**
+Decided September 6 with the money (below): *"injuries on or off, keep it
+free; god mode is for editing."*
+
+A rules panel on the *How you play* sheet, beside the depth preset, for
+the things that are a preference about the world rather than an edit of
+it: **injuries** on or off; **the transfer portal** on or off; **realignment**
+on or off; **rival programs poaching your assistants** on or off; and, at
+creation only because the schedule is built from them, **season length**
+and the **series format**.
+
+It obeys the depth principle from *Decisions locked*: anything that
+touches the league is on for everybody or off for everybody, so a rule is
+a fact about the save (`season.rules`, every save from before normalising
+to all on), never a per-team edge. Each switch is one check where the
+engine rolls the thing today — `injury.ts` for injuries, the portal's
+open in the year roll, `realignmentFor` at the roll, `poached` in the
+carousel — and a settings row that says what turning it off costs, the
+way the depth rows do. The `sim` harness and the calibration goldens run
+with everything on.
+
+## Stage 28 · The creator kit — **the second purchase — PLANNED September 6 2026**
+
+**Size:** medium · **After 27** · **Paid, separately from god mode.** The
+reporter's idea: *"custom real names and conference names and logos,
+importing a file we work on later; local only, so players can create
+these files and upload them themselves."* A different buyer from the
+sandbox's — the modder and the community organiser — which is why it is a
+second product rather than a slice of the first.
+
+- **The pack.** One JSON file: schools keyed by abbreviation with school,
+  nickname and colour; conferences keyed by id with a name. Logos as PNG
+  files named by abbreviation, picked in the same import. Later, a roster
+  pack: per abbreviation, men with position, class and ratings, run
+  through the same author-and-edit path the god-mode desk uses.
+- **Where it lives.** A device library in IndexedDB, its own database like
+  the journal's, so a save stays small. A career applies a pack — at
+  creation or from the god-mode desk — which writes names into the save
+  through the rename path and the conference override (stage 17, item 3),
+  and shows a logo by abbreviation while the pack is installed; the drawn
+  crest returns when it is not.
+- **Careers as files.** Export a career to a file and import one, the
+  first file input the app has. Sharing between players comes after, and
+  only ever between players: the app ships no packs and hosts none. That
+  line goes in the store listing.
+- **What it needs first.** Conference names on the save (17), and the
+  abbreviation staying the key everything hangs from, which the rename
+  already keeps.
+
+## Stage 29 · Called to the majors — **the expansion, after v1.0**
+
+The content lever, and *"the next big thing"* in the reporter's words on
+September 6. `06` already records the idea under *Later, and genuinely
+later*: a second world with its own calendar and roster rules and no
+recruiting, which is a sequel's worth of engine, and the hook — a man you
+signed out of high school turning up on your professional roster — which
+is one lookup against an alumni ledger that is keyed by id since §57. Not
+booked until v1.0 has shipped and the game has players; recorded here so
+the money ladder below has its third rung.
+
+## The money, as decided September 6 2026
+
+Free game, three things to sell, none of them consumables:
+
+1. **God mode** — the sandbox editor, one purchase, permanent (stage 17).
+2. **The creator kit** — packs, logos, careers as files (stage 28).
+3. **Content** — the majors (stage 29), and whatever scenarios follow.
+
+The rules of the world stay free because nobody pays for a checkbox and
+they make the free game better, which is what sells the paid things behind
+it. A paid base price was considered and set aside: on Android it cuts
+installs hard for a niche title, and both purchases are things a player
+wants only after he already cares about his program.

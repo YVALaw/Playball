@@ -18,6 +18,19 @@ been agreed.
 
 ## Decisions locked
 
+### The money — **decided September 6 2026**
+
+Free game, three things to sell, none of them consumables. **God mode** is
+the sandbox editor, one purchase, permanent (`07` stage 17). **The creator
+kit** — name, logo and roster packs, careers as files — is the second
+purchase, to a different buyer (stage 28). **Content** is the third: the
+majors, and scenarios after it (stage 29). The rules of the world —
+injuries, the portal, realignment, poaching, season length — stay **free**,
+on the How-you-play sheet, because nobody pays for a checkbox and they make
+the free game better. A paid base price was considered and set aside: on
+Android it cuts installs hard for a niche title. The reporter's words on
+splitting it this way: *"god mode is for editing basically."*
+
 ### The postseason, expanded — **SHIPPED, in a revised shape (August 2026)**
 
 The principle held — a forty-win team must not be finished by one bad series

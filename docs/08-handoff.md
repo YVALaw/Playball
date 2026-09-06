@@ -23,6 +23,12 @@ rankings per recruit (§60).
 > schedule. `engine/godMode.ts` holds the rules; `tests/god-mode.test.ts`
 > pins them. `05` §61. **On the `god-mode` branch, not on `main`, until the
 > reporter says push.**
+>
+> **Planned the same night, with the money decided** (`06` *Decisions
+> locked*, `07` stages 27–29): god mode stays the editor — its remaining
+> pieces are listed under stage 17, the fork of a career first; the rules
+> of the world are free on How you play; the creator kit (packs, logos,
+> careers as files) is the second purchase; the majors are the expansion.
 
 > **September 6, late — two rankings per recruit, and stage 26 closed.**
 >

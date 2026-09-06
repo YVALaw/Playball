@@ -82,7 +82,9 @@ the one thing that must never be lost.
 |---|---|
 | Onboarding | the guided tutorial — a titled card, then a glow path through doing it (stage 19) |
 | God mode | built September 6 on the `god-mode` branch: a per-career sandbox over players, programs, leagues, the coach, the staff, the money and the schedule; waits on the reporter's approval to land on `main` |
-| The rest of the review | `docs/06-backlog.md` §X after its bugs: focus in the new sheets, the dead CSS, the cleanups. Its two measurements are **answered** in §AA |
+| The rules of the world | injuries, the portal, realignment, poaching and season length as free switches on How you play (stage 27) |
+| The creator kit | name, logo and roster packs a player builds and imports locally, careers as files — the second purchase (stage 28) |
+| The majors | the expansion, after v1.0 (stage 29) |
 
 Shipped since: the two-way whole and corrected to the rulebook, playbooks,
 the lineup gate, the season opener, the Android shell — package, launcher
