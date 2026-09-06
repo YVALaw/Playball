@@ -47,6 +47,18 @@ console.log('\n— building the web bundle —');
 run('npm', ['run', 'build'], ROOT);
 console.log('\n— copying it into the shell —');
 run('npx', ['cap', 'sync', 'android'], ROOT);
+
+// The shell is generated and ignored, and `cap add android` writes a bare
+// MainActivity. The two Java files the app actually needs — the activity that
+// registers the back plugin, and the plugin (stage 18b, `05` §53) — are
+// tracked under native/android and copied in here, the same way this script
+// supplies local.properties: the generated tree is never edited by hand.
+console.log('\n— supplying the shell its native sources —');
+fs.cpSync(
+  path.join(ROOT, 'native', 'android'),
+  path.join(ROOT, 'android', 'app', 'src', 'main', 'java'),
+  { recursive: true },
+);
 console.log(`\n— assembling the ${release ? 'release' : 'debug'} APK —`);
 // By absolute path: with `shell: true` the command goes to cmd.exe, which
 // will not reliably find a batch file sitting in the working directory.

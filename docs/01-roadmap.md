@@ -4,7 +4,7 @@
 the APK report closed · **three outside passes merged September 5** — the
 interface (`05` §50), the engine (§51) and prestige (§52) · 24 part-built,
 26 awaiting a verdict · **17 is god mode now, not the store**, and **18b
-(Android 16) was booked September 6**
+(Android 16) shipped September 6**
 **Supersedes:** v3, which by the end was wrong about most of what it claimed
 **Companion docs:** `05-systems-reference.md` for what the game does today,
 `06-backlog.md` for what it is going to do and why, `02-sim-engine-spec.md` for
@@ -52,7 +52,7 @@ game at a time on a full-screen field with a defense on it, hand out awards,
 spend coaching points, read a recruiting board that is honest about being
 vague, argue the draft out of taking your junior, and start again in February —
 against ninety-five rival programs run by men with careers of their own.
-Fifty-six test files and 1,154 tests cover it, calibration among them, so
+Fifty-seven test files and 1,159 tests cover it, calibration among them, so
 the engine cannot drift without something failing.
 
 The August 2026 interface overhaul and its feedback pass are described in §20
@@ -455,9 +455,9 @@ live in `05-systems-reference.md` §§37–42. In brief:
 | 18 | Sep 4 | **The shell, pulled forward** — manifest, launcher icon, Capacitor, `npm run apk`, the back gesture. Then the APK report's thirty-eight items, closed by Sep 5 (`14-apk-report-triage.md`) |
 | — | Sep 5 | **The interface pass** — every screen onto one interaction language; Program as a dashboard, Budget as a workspace, Decisions sheets, the offseason roadmap, the postseason frame; assistants develop, a coaching tree, pipelines, facility levels, replay. `05` §50, `06` §X |
 
-**What remains, in execution order:** **18b** (Android 16 — the app
-already targets 36, so enforced edge-to-edge and predictive back are live
-rules the shell has not been read against) · the two §X measurements are
+**What remains, in execution order:** ~~**18b**~~ shipped September 6 —
+the emulator showed the back gesture leaving the app from any depth, and
+a native plugin the page arms only at depth fixed it (`05` §53) · the two §X measurements are
 **answered** (`06` §AA: replay costs 1.1 MB a season and wants its pitch
 events dropped; the user's home state recruits at a 15% larger network
 multiplier than any rival's, and that is a balance decision with two

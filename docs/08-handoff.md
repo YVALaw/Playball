@@ -6,9 +6,38 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 6, 2026 · **Branch:** `main` · **the docs read
-against the code; no engine change.** Stage 17 became god mode, 18b was
-booked for Android 16, and the two `06` §X measurements were taken (§AA).
+**Last session:** September 6, 2026, later · **Branch:** `main` · **stage
+18b shipped on an Android 16 emulator** (`05` §53), after the docs pass
+that booked it.
+
+> **September 6, later — stage 18b on a real Android 16 emulator, and the
+> back gesture the shell never had.**
+>
+> Android Studio arrived, an API 36 Pixel 7 AVD was created from the
+> command line, and the debug APK was driven over adb with the framework's
+> own back-navigation log open. **The gesture left the app from any depth.**
+> Not the dead press at HOME the static read predicted — nothing native
+> ever called `goBack()`, the WebView (133 on the image) claimed nothing,
+> and every press was `TYPE_RETURN_TO_HOME`. The stage 18 handler had
+> never run in the APK; it had only ever run in a browser. `05` §53.
+>
+> **Shipped:** `BackPlugin.java`, twenty-five lines, one
+> `OnBackPressedCallback` the page arms only while `hasLayerToClose`
+> (`backNav.ts`) is true, handing the press back as an event; the browser
+> keeps its History sentinel only while there is a layer, and the old exit
+> branch's second `history.back()` is gone. Verified in gesture and
+> three-button modes on the device — Settings opened, callback registered
+> at priority 0, `TYPE_CALLBACK`, Settings closed, callback cleared, next
+> press left with the exit preview — and in the dev server. Edge-to-edge
+> needed nothing; the emulator's WebView is below Capacitor's 140 gate, so
+> it shows the padded branch's window-background band, which real devices
+> do not. **Replay compaction** rode along: one pitch per plate appearance,
+> 323 KB off every autosave, frames pinned identical.
+>
+> **What the emulator work left behind:** the AVD is `playball36`; the
+> helpers used to drive it are in the session scratchpad, not the repo. The
+> commands worth keeping are in *How to work here* below. 1,159 tests, 57
+> files.
 
 > **September 6 — the docs read against the code, two measurements taken,
 > and the store retired.**
@@ -569,13 +598,21 @@ exists. Stage 19 removes the three together.
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,154 tests, 56 files)
+npm run check      # typecheck + the whole suite (1,159 tests, 57 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing
 npm run preview    # serves the frozen dist/ build on :5173
 npm run balance    # calibration probe
 npm run carousel   # coach turnover probe
+# The Android 16 emulator (stage 18b). Android Studio supplies the SDK at
+# %LOCALAPPDATA%AndroidSdk; everything below runs from its cmdline-tools.
+sdkmanager "system-images;android-36;google_apis;x86_64"
+avdmanager create avd -n playball36 -k "system-images;android-36;google_apis;x86_64" -d pixel_7
+emulator -avd playball36 -no-window -no-audio -gpu swiftshader_indirect   # headless
+adb install -r Playball-debug.apk && adb shell am start -n com.playball.dynasty/.MainActivity
+adb logcat -d | grep "BackNavigationInfo{mType|CoreBackPreview.*playball"   # what the gesture did
+adb emu kill
 ```
 
 **The two ports are not interchangeable, and swapping them loses careers.**

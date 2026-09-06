@@ -54,15 +54,17 @@ gets remembered, coach reputation is judged against the mandate he
 accepted, and contracts run seven years at one star (§52).
 
 What is missing is **the tail**: ship (the keystore, the listing, the
-guided tutorial, the test aids coming out) and **Android 16**, which the
-app already targets — edge-to-edge is enforced and predictive back is on
-by default, and the shell's own History-based back gesture has not been
-read against either. Arguing the board's terms and the art are in.
-Testing runs on an Android emulator against `npm run apk`.
+guided tutorial, the test aids coming out). **Android 16 is done** (stage
+18b, September 6): the emulator showed the back gesture leaving the app
+from any depth, because nothing native ever handed it to the page; a
+twenty-five-line plugin the page arms only while it has a layer to close
+fixed it, with the predictive exit preview kept at HOME. Arguing the
+board's terms and the art are in. Testing runs on an Android 16 emulator
+against `npm run apk`.
 
 The engine is calibrated multi-seed to the modern NCAA D1 environment —
 .280 / .384 / .438, a home run a game, 6.73 runs — since the September 5
-engine pass (`docs/05-systems-reference.md` §51). **1154 tests across 56
+engine pass (`docs/05-systems-reference.md` §51). **1159 tests across 57
 files**, including determinism goldens, calibration as a regression test, a
 baseball-correctness suite for the scorer's rules, and a concurrency suite
 pinning the store's double-press guards.
@@ -75,7 +77,6 @@ the one thing that must never be lost.
 
 | Not built yet | |
 |---|---|
-| Android 16 | edge-to-edge is enforced and predictive back is default at the SDK the app already targets; the back gesture and the inset audit (stage 18b) |
 | Onboarding | the guided tutorial — a titled card, then a glow path through doing it (stage 19) |
 | God mode | rename the league, author a player, set a prestige — stage 17, which was the store until September 6 and needs its design pass first |
 | The interview's payoff | the answer's consequence revealing after the tap, and a result card (the rest of stage 24) |

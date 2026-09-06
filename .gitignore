@@ -16,7 +16,11 @@ dist/
 # it and the app can never be updated on a store listing again. It is
 # ignored here so it cannot be committed by accident, and stage 19 owns
 # backing it up somewhere permanent.
-android/
+/android/
+# `native/android/` is NOT generated: the two Java files the shell needs and
+# `cap add android` cannot know about — MainActivity registering the back
+# plugin, and the plugin (stage 18b). `npm run apk` copies them in after
+# `cap sync`. Hence the leading slash above: only the root project is ignored.
 *.keystore
 *.jks
 key.properties

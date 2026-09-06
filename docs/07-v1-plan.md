@@ -9,7 +9,7 @@ the next one picks up, `01-roadmap.md` for the order at a glance, `06-backlog.md
 for what the game does today.
 
 **Where the work stands, September 6 2026: twenty-two of twenty-six
-stages are shipped — 1 through 16, 18, 20 through 23, and 25.** September 5 took the interface onto one
+stages are shipped — 1 through 16, 18 and 18b, 20 through 23, and 25.** September 5 took the interface onto one
 interaction language in a merged pass (`05` §50), then two more outside
 folders: the engine pass, which corrected the scorer's rules and
 recalibrated the league to the modern game (`05` §51), and the prestige
@@ -1338,7 +1338,7 @@ get answered in play rather than waiting for this stage.
   launcher icon landed the same day (`51d404e`), so a phone that never
   sees an APK can still hold the game as an icon.
 
-## Stage 18b · Android 16, and the back gesture it changed
+## Stage 18b · Android 16, and the back gesture it changed — **SHIPPED September 6 2026**
 
 **Size:** small–medium · **Booked September 6 2026** · **Runs before 19**,
 because a store build is what makes it non-negotiable · Paired with 18
@@ -1480,6 +1480,23 @@ second `history.back()` goes away with it. This is the "history mirrors
 the app's depth" design the brief above already argued for, and the
 browser gets a working back button out of it for free. `@capacitor/app`
 and `App.exitApp()` are the alternative and are not needed.
+
+
+### What the device showed, and what shipped — September 6, later
+
+**Worse than H2.** The gesture left the app from *any* depth. Nothing
+native called `goBack()`, the WebView (133 on the emulator image) claimed
+nothing, and the window's only callback was the system default at priority
+−1, so every press was `TYPE_RETURN_TO_HOME`. The stage 18 handler had
+never run in the APK. The candidate fix above was the right shape and is
+what shipped: `BackPlugin.java` owns an `OnBackPressedCallback` the page
+arms only while `hasLayerToClose` is true (`backNav.ts`), and the browser
+keeps its sentinel only while there is a layer. Verified with the
+framework's own back-navigation log in both gesture and three-button
+modes, and in the dev server. Edge-to-edge needed nothing; the emulator's
+WebView is below Capacitor's 140 gate, so it shows the padded branch's
+window-background band, which real devices do not. `05` §53 is the account.
+Replay compaction rode along.
 
 ## Stage 19 · Ship
 

@@ -7095,6 +7095,88 @@ duplicated in the Season Review, Today's verdict card still saying
 and the annals test's premise. The pass's `prestige-progression` suite
 came in as written.
 
+## 53. Android 16 — the back gesture the shell never had — **SHIPPED September 6 2026**
+
+Stage 18b. The app has targeted SDK 36 since Capacitor 8 set it on
+September 4, so Android 16's rules — edge-to-edge enforced, predictive back
+on by default — were already the rules the APK ran under. This is what an
+Android 16 emulator showed when the shell was finally read against them,
+and what changed.
+
+### 53.1 What the device showed
+
+**The back gesture left the app from any depth.** Not the dead press at
+HOME the static read predicted — worse. With Capacitor 8 alone, nothing
+native ever called `goBack()`, the WebView (version 133 on the emulator
+image) did not claim the gesture on its own, and the only callback the
+window ever registered was the system default at priority −1. So the
+framework classified every press as `TYPE_RETURN_TO_HOME`, ran the
+launcher preview, and left — with Settings open, with a card open, from
+anywhere. The History-based handler from stage 18 was unreachable in the
+APK; it had only ever run in a browser. `@capacitor/app` would not have
+been the answer either: its callback is always enabled, so Android would
+never preview an exit, and with nothing to go back to it swallows the press.
+
+**Edge-to-edge needed nothing**, as the static read said. Capacitor 8's
+`SystemBars` plugin takes one of two branches: on a WebView of 140 or newer
+with `viewport-fit=cover` it passes the real insets to the page; on anything
+older it pads the native view itself and hands the page zeros. Playball
+reads `env()` in twenty-nine places and hardcodes no bar-sized pad, so it is
+right either way. The emulator image ships WebView 133, so it took the
+padded branch: the band under the status bar shows the theme's window
+background — light grey over the app's greenish white, dark grey over its
+near-black — a visible but subtle seam, and one that real devices with a
+Play-updated WebView do not have. Both gesture and three-button navigation
+were checked; the content clears the button bar.
+
+### 53.2 The shape that ships
+
+**A native plugin owns the gesture, and the page arms it only while there
+is something to close.** `BackPlugin.java` (twenty-five lines, registered
+in `MainActivity`) holds one `OnBackPressedCallback`, disabled by default.
+Both files live in `native/android/`, tracked, because the `android/`
+project is generated and ignored; `npm run apk` copies them in after
+`cap sync`, the same way it supplies `local.properties`, and the ignore
+rule is anchored to the root so the tracked copy is not caught by it.
+`backNav.ts` asks the handler's own question — is there a layer to peel: a
+blocking card, a player card, a rival's page, an overlay, a tab's second
+screen, a tab other than HOME — and `App.tsx` calls `Back.arm({ armed })`
+every time the answer changes. Armed, the system routes the gesture to the
+plugin, which hands it back to the page as a `back` event, and the same
+handler peels one layer as it always did. Disarmed — the root of HOME — the
+system's own default runs: the predictive return-to-home preview, and the
+exit. That is the whole reason it is a toggle: an *enabled* callback tells
+Android the app will consume the gesture, and Android then never previews
+leaving.
+
+Verified on the emulator with the framework's own log: opening Settings
+registered a priority-0 callback on the window, the gesture was classified
+`TYPE_CALLBACK`, Settings closed, the page disarmed, and the window fell
+back to priority −1; the next gesture returned to home. The same sequence
+holds in three-button navigation with the hardware key.
+
+**The browser keeps the History sentinel, but only while there is a
+layer.** Pushed when the first layer opens, answered by `popstate`, re-armed
+after a pop if anything is still open, and taken down with a suppressed
+`history.back()` when the last layer closes by a tap. So the browser's back
+button works at HOME instead of being trapped, and the old exit branch's
+second `history.back()` — which had nothing behind it to pop — is gone.
+Verified in the dev server: no sentinel at the front door, exactly one with
+Settings open, none after either way of closing it.
+
+`tests/backNav.test.ts` pins the layer question in the handler's order.
+Replay compaction (§50.5, `06` §AA) shipped in the same stage.
+
+### 53.3 What is still owed
+
+The band on WebViews older than 140 is cosmetic and documented, not fixed:
+a `windowBackground` that matched the app's paper would need to follow the
+in-app theme, which the Android theme cannot see. If it ever matters, the
+right fix is the passthrough branch, which only needs the WebView the user
+already has. And the stack was verified two layers deep — an overlay over
+the front door — rather than through a whole career; the order is pinned by
+the unit test, and a played season on the emulator is the remaining check.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

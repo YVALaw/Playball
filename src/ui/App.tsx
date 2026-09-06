@@ -24,6 +24,7 @@ import {
 import {
   PHASES, PHASE_LABEL, TABS, useDynasty, useUserTeam, type Tab,
 } from '../state/store.js';
+import { hasLayerToClose, Back, isNativeShell } from './backNav.js';
 import { StepRail } from './StepRail.js';
 import { Overlay } from './Overlay.js';
 import {
@@ -260,32 +261,36 @@ function AppBody(
   useEffect(() => { setTeamCard(null); }, [phase, tab, screen, setTeamCard]);
 
   /*
-    Android's back button, and the browser's.
+    Android's back gesture, and the browser's back button.
 
-    Stage 18. Wrapped in Capacitor the hardware back gesture is wired to the
-    WebView's history, so an app that never pushes a history entry has
-    exactly one behaviour available to it: quit. A player who opened a
-    card, a table and a rival's page would lose the whole session to one
-    thumb-swipe meant to close the card.
+    Stage 18, rewritten for Android 16 in stage 18b. The handler is one
+    function and peels one layer per press in the order the screen is
+    stacked, which is the order a player thinks in: the card over the table
+    over the tab. What changed is who calls it.
 
-    So the app keeps one sentinel entry on the history stack and answers
-    every pop by peeling exactly one layer — the same order the screen is
-    stacked in, which is the order a player thinks in: the card over the
-    table over the tab. Anything peeled re-arms the sentinel; only the root
-    of HOME with nothing open lets the pop through, and that is the one
-    press that closes the game.
+    In the APK, nothing native ever called goBack() and the WebView did not
+    claim the gesture on its own, so every press was a return-to-home from
+    any depth and this handler never ran — measured on an Android 16
+    emulator, September 6 2026. Now a native plugin (BackPlugin.java) owns
+    an OnBackPressedCallback that the page ARMS only while it has a layer to
+    close, and the plugin hands the press back here as an event. Disarmed —
+    the root of HOME — the system's own default runs: the predictive exit
+    preview, and the exit. That is why it is a toggle and not an always-on
+    handler: an enabled callback tells Android the app will consume the
+    gesture, and Android then never previews leaving.
+
+    In a browser tab and as a home-screen icon there is no shell, so the
+    History API does the job: one sentinel entry, pushed only while there is
+    a layer, answered by popstate, and taken down again when the last layer
+    closes by other means — so the browser's back works at HOME instead of
+    being trapped by a sentinel that was always there. The old shape kept
+    the sentinel pushed at all times and left through a second history.back()
+    that had nothing behind it to pop.
 
     The lineup gate composes with this for free: `go()` refuses while the
     nine is short and raises its own modal, so the back gesture cannot walk
     out of a card the front door will not let you leave either.
-
-    Written against the History API rather than @capacitor/app, so the same
-    handler serves the APK, the browser and the game held as a home-screen
-    icon — where the gesture is the system's back and behaves identically.
   */
-  // Set before the handler that reads it: the press that finds nothing
-  // left to close is the press that leaves.
-  const exiting = useRef(false);
   const backRef = useRef<() => void>(() => {});
   backRef.current = (): void => {
     const s = useDynasty.getState();
@@ -294,25 +299,68 @@ function AppBody(
     // the opener on the board, the big moment by reading it.
     if (s.seasonOpener || s.playbookInvite || s.bigMoment) return;
     if (s.selectedPlayer !== null) { s.closePlayer(); return; }
-    if (teamCard !== null) { setTeamCard(null); return; }
+    if (teamCardRef.current !== null) { setTeamCard(null); return; }
     if (s.overlay !== null) { s.closeOverlay(); return; }
     // Up a level: to the tab's own first screen, then to HOME.
     const first = TABS.find((t) => t.id === s.tab)?.screens[0]?.id;
     if (first && s.screen !== first) { s.go(s.tab, first); return; }
     if (s.tab !== 'home') { s.go('home'); return; }
-    // Nothing left to close. Let the pop stand, and the shell closes.
-    exiting.current = true;
+    // Nothing left to close: nothing claims the press, and the shell leaves.
   };
+  const teamCardRef = useRef(teamCard);
+  teamCardRef.current = teamCard;
+  const overlay = useDynasty((s) => s.overlay);
+  const blocked = useDynasty((s) => Boolean(s.seasonOpener || s.playbookInvite || s.bigMoment));
+  const hasLayer = hasLayerToClose({
+    blocked, playerOpen: selectedPlayer !== null, teamCardOpen: teamCard !== null,
+    overlayOpen: overlay !== null, tab, screen,
+  });
+  /** The same question, asked of the live store — for the moment after a pop. */
+  const layerNow = (): boolean => {
+    const s = useDynasty.getState();
+    return hasLayerToClose({
+      blocked: Boolean(s.seasonOpener || s.playbookInvite || s.bigMoment),
+      playerOpen: s.selectedPlayer !== null, teamCardOpen: teamCardRef.current !== null,
+      overlayOpen: s.overlay !== null, tab: s.tab, screen: s.screen,
+    });
+  };
+
+  // The APK: claim the gesture exactly while there is a layer, and answer it.
   useEffect(() => {
-    const arm = (): void => { history.pushState({ playball: true }, ''); };
-    arm();
+    if (!isNativeShell()) return;
+    void Back.arm({ armed: hasLayer });
+  }, [hasLayer]);
+  useEffect(() => {
+    if (!isNativeShell()) return;
+    let handle: { remove: () => Promise<void> } | null = null;
+    void Back.addListener('back', () => { backRef.current(); }).then((h) => { handle = h; });
+    return () => { void handle?.remove(); };
+  }, []);
+
+  // The browser: the sentinel, only while there is a layer.
+  const armed = useRef(false);
+  const takingDown = useRef(false);
+  useEffect(() => {
+    if (isNativeShell()) return;
+    if (hasLayer && !armed.current) {
+      history.pushState({ playball: true }, '');
+      armed.current = true;
+    } else if (!hasLayer && armed.current) {
+      // The last layer closed by a tap, not by back: take the sentinel down
+      // so the browser's back button leads out, not into a dead press.
+      takingDown.current = true;
+      history.back();
+    }
+  }, [hasLayer]);
+  useEffect(() => {
+    if (isNativeShell()) return;
     const onPop = (): void => {
-      exiting.current = false;
+      if (takingDown.current) { takingDown.current = false; armed.current = false; return; }
+      armed.current = false;              // this pop consumed the sentinel
       backRef.current();
-      // Re-arm unless this press was the one that leaves. Without the
-      // sentinel the next press would land on whatever preceded the app.
-      if (!exiting.current) arm();
-      else history.back();
+      // Still something open — a swallowed card, or a deeper stack — so the
+      // next press must reach us too.
+      if (layerNow()) { history.pushState({ playball: true }, ''); armed.current = true; }
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
