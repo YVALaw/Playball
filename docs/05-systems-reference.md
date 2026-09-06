@@ -7756,6 +7756,84 @@ reproduced here — the emulator was not killed mid-game for this — so the
 mirror is the fix for the class rather than a measured instance; the
 gating is the fix for the case the report describes twice over.
 
+## 60. Two rankings per recruit — **BUILT September 6 2026, late**
+
+*"What the player wants should have its own importance ranking, and what
+we offer should have our own ranking tied to what we have done as an
+organization. Player X wants C-plus facilities but ours are D-minus: offer
+that and he may ignore us. He wants immediate opportunity and we have
+nobody at his position: A-plus. Another player, same want, one man at his
+position: B-plus, and fifth string keeps dropping. But not for starters
+and relievers, because there is always time for them to play."* And the
+finding that prompted it: *"the wants were asking the same exact rank I
+had for everything."* True — the recruiting file printed the program's
+grade beside each of his wants, and he had never had a grade of his own.
+
+### 60.1 What he wants, graded
+
+Each recruit already weighed nine factors; the weights are his importance
+ranking. He now has a **wanted grade** per factor on the same scale as the
+program's (`wantedScore`, recruiting.ts): what he weighs he expects more
+of, and a bigger name expects more of everything — `.16 + weight × 1.4 +
+(stars − 3) × .06`. A three-star's top want is a C; a five-star's a C-plus;
+a factor he barely thinks about wants a D. The file
+prints his grade and ours side by side on every want — *IMMEDIATE
+OPPORTUNITY · wants C+ / You have A+* — and the pitch room's cards carry
+his want under our grade.
+
+### 60.2 A pitch is judged against it
+
+Our grade against his want, in the grade's own bands (`pitchVerdict`): a
+band or more above is **strong** and earns a fifth more; within a band is
+**fair**; one band under is **thin** and earns half; two or more under is
+**hollow** — a pitch he sees through, which *costs* interest scaled by how
+much he cares, and cannot take him below nothing. The hollow card is red
+on the screen with the warning in its title; the staff's planner never
+pitches one and pitches a thin one only when nothing is better. Calibrated
+on a generated league (`tests/wants-probe.ts`), over the pairs the star
+gate allows: his top want reads strong 19%, fair 11%, thin 44%, hollow
+26%; across all nine factors hollow is 10%. A quarter of the time, then,
+the pitch he most wants to hear is one this program should not make, and
+the screen says so before it is made. The old pricing test's line that
+"even the wrong pitch is a conversation" still holds for the wrong pitch —
+the one he does not care about — because a want he barely has is easy to
+beat; what it no longer holds for is the pitch he sees through.
+
+### 60.3 Playing time is the men ahead of him
+
+`playingTimeAt` (pitch.ts) used to grade a recruit against the single best
+man in his way, so a second and a fifth man of the same quality changed
+nothing, and the mound was one pool graded against its best arm. It
+counts bodies now, the way a coach reads his own depth chart: every man at
+his position within twenty-five points or better, a senior counting
+fifteen percent and a junior sixty. **At a fielding spot** the ladder is
+nobody A-plus, one man B-plus, and a band a man — five ahead is D-minus.
+**On the mound** the ladder is half as steep and floors at a B-minus: a
+starter competes with the rotation, everybody else with the pen, and
+there is always a night for another arm. The reach is twenty-five points
+because the class rates above the country's rosters — a recruit's median
+is eleven points over a roster hitter's — and anything tighter found nobody
+ahead of anybody and graded every position A-plus. Measured across a
+class and twenty-four programs: hitters average B-plus with a tenth at B
+and a tenth at A-plus, starters B, relievers B-minus.
+
+### 60.4 What the model moved
+
+Programs now chase by their own depth chart, so the seeded board's picks
+spread across more recruits and one-star coverage at the seed sits near
+.98 rather than under .95; `tests/recruiting.test.ts` notes the move.
+The climb probe was rerun (§60.5). `tests/recruiting-wants.test.ts` pins
+the grade's shape, that it is not ours, the hollow cost and the strong
+premium, the staff never pitching a hollow card, and both ladders.
+
+### 60.5 The board keeps its filters
+
+*"If we use one of the toggles they are kept until we clear the filter or
+till the stage ends."* The board unmounted its filter state on every
+navigation. The last set lives outside the screen now, keyed to the year,
+so it survives a trip to a recruit's file or another tab and clears when
+the class changes or CLEAR EVERY FILTER is tapped.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

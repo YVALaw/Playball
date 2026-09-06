@@ -6,9 +6,24 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 6, 2026, late · **Branch:** `main` · **four more
-emulator reports, fixed** (`05` §59), after stage 24 closed (§58) and the
-interface batch (§57).
+**Last session:** September 6, 2026, late · **Branch:** `main` · **two rankings
+per recruit, and stage 26 closed** (`05` §60), after four emulator reports (§59)
+and stage 24 (§58).
+
+> **September 6, late — two rankings per recruit, and stage 26 closed.**
+>
+> The recruiting file printed our grade beside each of his wants, so his
+> wants read as a copy of ours. He has a wanted grade of his own now
+> (`wantedScore`), a pitch is judged against it (`pitchVerdict`: strong,
+> fair, thin, hollow — a hollow card costs interest and the staff never
+> plays one), and playing time counts the men at his position on a ladder
+> — nobody A-plus, one man B-plus, a band a man — with the mound half as
+> steep and floored at B-minus. Calibrated on a generated league
+> (`tests/wants-probe.ts`); the board keeps its filters across visits until
+> the class changes. `05` §60. Stage 26 is closed: the reporter's own
+> offseason split is the budget's verdict.
+>
+> The APK on the emulator is rebuilt from this tree.
 
 > **September 6, late — four more from the emulator.**
 >
@@ -726,7 +741,7 @@ exists. Stage 19 removes the three together.
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,177 tests, 60 files)
+npm run check      # typecheck + the whole suite (1,185 tests, 61 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing

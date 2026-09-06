@@ -2531,7 +2531,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           // more. Stacked through the same skill the points already price.
           mine ? effSkills.recruiting : (staff?.skills.recruiting ?? 20),
         ) + actionInterest(prospect, pitch, record.index);
-        prospect.points[record.index] = (prospect.points[record.index] ?? 0) + gained;
+        // A hollow pitch costs interest; it cannot take him below nothing.
+        prospect.points[record.index] = Math.max(0, (prospect.points[record.index] ?? 0) + gained);
       }
     }
 

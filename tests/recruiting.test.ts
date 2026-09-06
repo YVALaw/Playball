@@ -414,7 +414,10 @@ describe('the seeded board the player walks into', () => {
     // gap at the bottom is deliberate: an unchased one star is Tuesday.
     expect(covered(4)).toBeGreaterThanOrEqual(covered(2));
     expect(covered(2)).toBeGreaterThan(covered(1));
-    expect(covered(1)).toBeLessThan(0.95);
+    // 0.95 until September 6 2026. Playing time is a ladder of the men at
+    // his position now, so programs chase by their own depth chart and the
+    // picks spread across more recruits; one-star coverage sits near 0.98.
+    expect(covered(1)).toBeLessThan(0.99);
 
     // Nobody in the national top fifty is sitting by a silent phone.
     const top = [...prospects].sort((a, b) => a.rank - b.rank).slice(0, 50);

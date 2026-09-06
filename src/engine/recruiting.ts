@@ -1244,6 +1244,40 @@ export function factorGrade(v: number): string {
   return 'D-';
 }
 
+/**
+ * What he expects of a program on one factor, on the program grade's scale.
+ *
+ * Reported from the emulator, September 6 2026: the recruiting file printed
+ * the program's grade beside each of his wants, so his wants read as a copy
+ * of ours — he had never had a grade of his own. This is it. What he weighs
+ * he expects more of, and a bigger name expects more of everything: a
+ * three-star who cares about facilities above all wants an A; a two-star who
+ * barely thinks about them is content with a C-minus.
+ */
+export function wantedScore(prospect: Prospect, factor: RecruitingFactor): number {
+  const w = recruitingPrioritiesOf(prospect)[factor];
+  return Math.max(0, Math.min(1, 0.16 + w * 1.4 + (prospect.stars - 3) * 0.06));
+}
+
+export type PitchVerdict = 'strong' | 'fair' | 'thin' | 'hollow';
+
+/**
+ * Our grade against what he wants, in the grade's own bands (0.07 wide).
+ * Above what he wants is a strong card; within a band is fair; one band
+ * under is a thin case; two or more under is hollow — a pitch he sees
+ * through, and holds against the program that made it.
+ */
+export function pitchVerdict(prospect: Prospect, pitch: Pitch, factor: RecruitingFactor): PitchVerdict {
+  const gap = factorScore(prospect, pitch, factor) - wantedScore(prospect, factor);
+  if (gap >= 0.07) return 'strong';
+  if (gap >= -0.07) return 'fair';
+  if (gap >= -0.16) return 'thin';
+  return 'hollow';
+}
+
+/** What a pitch or a hard sell is worth under each verdict, against its raw rate. */
+export const VERDICT_RATE: Record<PitchVerdict, number> = { strong: 1.2, fair: 1, thin: 0.5, hollow: -0.6 };
+
 export function fit(prospect: Prospect, pitch: Pitch): number {
   const w = recruitingPrioritiesOf(prospect);
   let base = 0;
@@ -1299,16 +1333,23 @@ export function actionInterest(prospect: Prospect, pitch: Pitch, team: number): 
   // One ninth is an average weight; a named factor at three times that is a
   // man who has told you what he wants.
   const matters = (f: RecruitingFactor): number => 0.55 + priorities[f] * 4.5;
+  /*
+    A case is worth what it is true of, against what he wants of it. A card
+    above his want earns a premium; a band under earns half; two bands under
+    is hollow, and costs interest scaled by how much he cares — pitching
+    D-minus facilities to a man who wants a C-plus is how you get ignored.
+  */
+  const worth = (cost: number, f: RecruitingFactor, care: number): number => {
+    const verdict = pitchVerdict(prospect, pitch, f);
+    if (verdict === 'hollow') return -cost * RAW_RATE * 0.6 * care;
+    return cost * RAW_RATE * factorScore(prospect, pitch, f) * care * VERDICT_RATE[verdict];
+  };
   let bonus = 0;
-  if (action.pitch) {
-    const f = action.pitch;
-    bonus += PITCH_COST * RAW_RATE * factorScore(prospect, pitch, f) * matters(f);
-  }
+  if (action.pitch) bonus += worth(PITCH_COST, action.pitch, matters(action.pitch));
   const major = action.major;
   if (!major) return bonus;
   if (major.kind === 'hardSell') {
-    bonus += HARD_SELL_COST * RAW_RATE * factorScore(prospect, pitch, major.factor)
-      * (0.6 + priorities[major.factor] * 5);
+    bonus += worth(HARD_SELL_COST, major.factor, 0.6 + priorities[major.factor] * 5);
   } else if (major.kind === 'visit') {
     // The whole place, so the whole fit — with a premium, because a visit is
     // the one action a recruit remembers.
@@ -1361,10 +1402,16 @@ export function planAiRecruitActions(
   for (const { prospect } of spends) {
     if (left < PITCH_COST) break;
     const weights = recruitingPrioritiesOf(prospect);
+    // The staff read the man the way the screen lets a coach read him: a
+    // hollow card is never pitched, a thin one only when nothing is better.
     const ranked = RECRUITING_FACTORS
-      .map((factor) => ({ factor, score: weights[factor] * (0.55 + factorScore(prospect, pitch, factor)) }))
+      .map((factor) => {
+        const verdict = pitchVerdict(prospect, pitch, factor);
+        const rate = verdict === 'hollow' ? 0 : VERDICT_RATE[verdict];
+        return { factor, score: weights[factor] * (0.55 + factorScore(prospect, pitch, factor)) * rate };
+      })
       .sort((a, b) => b.score - a.score);
-    const factor = ranked[0]?.factor;
+    const factor = ranked[0] && ranked[0].score > 0 ? ranked[0].factor : undefined;
     if (!factor) continue;
     (prospect.weekActions ??= {})[team] = { pitch: factor };
     left -= PITCH_COST;

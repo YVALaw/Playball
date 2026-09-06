@@ -67,7 +67,7 @@ an Android 16 emulator against `npm run apk`.
 
 The engine is calibrated multi-seed to the modern NCAA D1 environment —
 .280 / .384 / .438, a home run a game, 6.73 runs — since the September 5
-engine pass (`docs/05-systems-reference.md` §51). **1177 tests across 60
+engine pass (`docs/05-systems-reference.md` §51). **1185 tests across 61
 files**, including determinism goldens, calibration as a regression test, a
 baseball-correctness suite for the scorer's rules, and a concurrency suite
 pinning the store's double-press guards.
@@ -82,7 +82,6 @@ the one thing that must never be lost.
 |---|---|
 | Onboarding | the guided tutorial — a titled card, then a glow path through doing it (stage 19) |
 | God mode | rename the league, author a player, set a prestige — stage 17, which was the store until September 6 and needs its design pass first |
-| The budget's verdict | the reporter's read on the rebuilt Budget screen (stage 26) |
 | The rest of the review | `docs/06-backlog.md` §X after its bugs: focus in the new sheets, the dead CSS, the cleanups. Its two measurements are **answered** in §AA |
 
 Shipped since: the two-way whole and corrected to the rulebook, playbooks,

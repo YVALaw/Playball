@@ -30,31 +30,54 @@ const unit = (v: number): number => Math.max(0, Math.min(1, v));
  * player, so it has to be real. If it were a flat number per program it would
  * just be prestige again, wearing a different label.
  */
+/**
+ * The ladder the grade climbs down as men stand ahead of him at a fielding
+ * spot: nobody is an A-plus, one man is a B-plus, and each further man is a
+ * band, so a fifth-string third baseman reads D-minus.
+ */
+const ladder = (ahead: number): number =>
+  ahead <= 0 ? 1 : Math.max(0.15, 0.89 - 0.14 * ahead);
+
+/**
+ * The mound's ladder is half as steep and floors at a B-minus: a rotation
+ * has four or five nights and a bullpen seven jobs, so depth there is never
+ * the wall it is at shortstop — there is always a night for another arm.
+ */
+const ladderMound = (ahead: number): number =>
+  ahead <= 0 ? 1 : Math.max(0.58, 0.96 - 0.07 * ahead);
+
+/**
+ * A man counts as ahead of him unless he is hopeless: within twenty-five
+ * points, or better. The count is bodies, the way a coach reads his own
+ * depth chart, not only the men who would beat him out.
+ * The class rates above the country's rosters — a recruit's median is
+ * eleven points over a roster hitter's — so anything tighter found nobody
+ * ahead of anybody and graded every position A-plus.
+ */
+const REACH = 25;
+
 function playingTimeAt(record: TeamRecord, prospect: Prospect): number {
   const p = prospect.player;
-  const roster: Player[] = p.type === 'pitcher'
-    ? [...record.team.rotation, ...record.team.bullpen]
-    : [...record.team.lineup, ...record.team.bench];
+  // A man on his way out barely blocks: a senior is fifteen percent of a
+  // man ahead, a junior sixty.
+  const staying = (r: Player): number => r.classYear === 'SR' ? 0.15 : r.classYear === 'JR' ? 0.6 : 1;
 
-  const here = p.type === 'pitcher'
-    ? roster
-    : roster.filter((r) => r.pos === p.pos);
-
-  const rivals = (here.length > 0 ? here : roster)
-    .filter((r): r is Player => r !== undefined);
-  if (rivals.length === 0) return 1;
-
-  // The best man in his way, discounted by how soon that man is gone.
-  let blocked = 0;
-  for (const r of rivals) {
-    const leaving = r.classYear === 'SR' ? 0.15 : r.classYear === 'JR' ? 0.6 : 1;
-    // In the arm pool a two-way man blocks with his arm, not his bat.
-    const worth = p.type === 'pitcher' ? armValue(r as import('./types.js').Arm) : overallOf(r);
-    blocked = Math.max(blocked, worth * leaving);
+  if (p.type === 'pitcher') {
+    // Starters compete for the rotation, everybody else for the pen; in the
+    // arm pool a two-way man blocks with his arm, not his bat.
+    const role = p.role === 'SP' ? 'SP' : 'RP';
+    const pool = role === 'SP' ? record.team.rotation : record.team.bullpen;
+    const mine = armValue(p as import('./types.js').Arm);
+    let ahead = 0;
+    for (const r of pool) if (armValue(r) >= mine - REACH) ahead += staying(r);
+    return unit(ladderMound(ahead));
   }
 
-  // Level with the man ahead of him is a real chance to play; well behind is not.
-  return unit(0.5 + (overallOf(p) - blocked) / 40);
+  const here: Player[] = [...record.team.lineup, ...record.team.bench].filter((r) => r.pos === p.pos);
+  const mine = overallOf(p);
+  let ahead = 0;
+  for (const r of here) if (overallOf(r) >= mine - REACH) ahead += staying(r);
+  return unit(ladder(ahead));
 }
 
 /** Conference reputation is dynamic: mostly the programs in it, partly what they won. */

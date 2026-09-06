@@ -56,6 +56,14 @@
 .recruit-factor-grid small { display:block; min-height:20px; color:var(--dim); font-size:calc(6px * var(--ts)); font-weight:800; line-height:1.2; }
 .recruit-factor-grid strong { display:block; margin-top:3px; color:var(--clay); font:800 calc(20px * var(--ts))/.9 var(--display); }
 .recruit-factor-grid span { display:block; margin-top:4px; color:var(--dim); font-size:calc(6px * var(--ts)); }
+/* His grade beside ours (05 §60). A hollow card reads as the warning it is;
+   a strong one as the card to play. */
+.recruit-factor-grid button.verdict-hollow strong { color:var(--alert); }
+.recruit-factor-grid button.verdict-thin strong { color:var(--dim); }
+.recruit-factor-grid button.verdict-strong strong { color:var(--win); }
+.prospect-wants em { display:block; margin-top:2px; color:var(--dim); font:700 calc(7px * var(--ts))/1.3 var(--body); font-style:normal; }
+.prospect-wants em.verdict-hollow { color:var(--alert); }
+.prospect-wants em.verdict-strong { color:var(--win); }
 .recruit-major-room { margin-top:12px; padding-top:10px; border-top:1px solid var(--line); }
 .recruit-major-lock { margin:7px 0 0; color:var(--dim); font-size:calc(9px * var(--ts)); line-height:1.45; }
 .recruit-major-buttons, .recruit-promise-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; }

@@ -1692,7 +1692,14 @@ and it is the last thing that still reads as a prototype.
 screenshots, and the store listing is the one place the game is judged on
 how it looks before anybody plays it.
 
-## Stage 26 · The budget screen, visually — **A PASS SHIPPED September 5 2026, verdict owed**
+## Stage 26 · The budget screen, visually — **CLOSED September 6 2026, the reporter's verdict given**
+
+**The verdict, September 6:** the reporter reworked the budget himself —
+the offseason pool is a protected recruiting reserve and a flexible fund
+the Draft and the Portal share (`05` §54.2) — and said so: *"we don't have
+to work on the budget, it was taken care of already."* That is the read
+this stage was waiting on. The screen stands as the interface pass built
+it, with the split printed on both June screens.
 
 **Size:** small–medium · **Booked September 5 2026** · **The interface
 pass built it the same day, without the mockup.** Budget is now a money

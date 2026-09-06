@@ -26,7 +26,7 @@ import { boardBudget, useDynasty, useUserTeam } from '../../state/store.js';
 import {
   fit, weeklyPoints, actionInterest, canPursue, inPipeline, byRank,
   RECRUITING_FACTORS, RECRUITING_FACTOR_LABEL, RECRUITING_FACTOR_BLURB,
-  recruitingPrioritiesOf, factorScore, factorGrade, weekActionCost, totalWeekSpend,
+  recruitingPrioritiesOf, factorScore, factorGrade, wantedScore, pitchVerdict, weekActionCost, totalWeekSpend,
   hasRecruitingRelationship, PITCH_COST, HARD_SELL_COST, SWAY_COST, VISIT_COST,
   PROMISE_COST, PROMISE_LABEL,
   SCHOLARSHIPS, MAX_PER_RECRUIT, RECRUITING_WEEKS,
@@ -94,6 +94,9 @@ export interface Filters {
   /** Hide the men who will not take the call. */
   reachOnly: boolean;
 }
+
+/** The board's last filters, kept while the class is the same one. See the screen. */
+const keptFilters: { year: number; filters: Filters } = { year: -1, filters: null as unknown as Filters };
 
 export const NO_FILTERS: Filters = {
   pos: null, state: null, stars: [], pipelineOnly: false,
@@ -255,7 +258,21 @@ export function Board() {
 
   const [view, setView] = useState<View>('recruits');
   const [openId, setOpenId] = useState<string | null>(null);
-  const [filters, setFilters] = useState<Filters>(NO_FILTERS);
+  /*
+    Kept across visits. Reported: "if we use one of the toggles they are kept
+    until we clear the filter or till the stage ends." The screen unmounts on
+    every navigation, so the last set lives outside it, keyed to the year; a
+    new class starts clean, and CLEAR EVERY FILTER still clears.
+  */
+  const year = useDynasty((s) => s.year);
+  const [filters, setFiltersState] = useState<Filters>(
+    () => (keptFilters.year === year ? keptFilters.filters : NO_FILTERS),
+  );
+  const setFilters = (next: Filters): void => {
+    keptFilters.year = year;
+    keptFilters.filters = next;
+    setFiltersState(next);
+  };
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [warnHoles, setWarnHoles] = useState(false);
@@ -1209,15 +1226,26 @@ function Overview({
         <div className="flow-section-title">
           <span className="label">WHAT HE WANTS</span>
         </div>
-        {wants.map((k, i) => (
-          <div key={k}>
-            <span>{i + 1}</span>
-            <p>
-              <strong>{RECRUITING_FACTOR_LABEL[k]} · {factorGrade(factorScore(prospect, pitch, k))}</strong>
-              <small>{RECRUITING_FACTOR_BLURB[k]}</small>
-            </p>
-          </div>
-        ))}
+        {/* His grade and ours, side by side. The list used to print our grade
+            alone, and read as though his wants were a copy of ours. */}
+        {wants.map((k, i) => {
+          const verdict = pitchVerdict(prospect, pitch, k);
+          return (
+            <div key={k}>
+              <span>{i + 1}</span>
+              <p>
+                <strong>{RECRUITING_FACTOR_LABEL[k]} · wants {factorGrade(wantedScore(prospect, k))}</strong>
+                <em className={`verdict-${verdict}`}>
+                  You have {factorGrade(factorScore(prospect, pitch, k))}
+                  {verdict === 'hollow' ? ' — he would see through a pitch on it'
+                    : verdict === 'thin' ? ' — a thin case'
+                      : verdict === 'strong' ? ' — more than he asks' : ''}
+                </em>
+                <small>{RECRUITING_FACTOR_BLURB[k]}</small>
+              </p>
+            </div>
+          );
+        })}
       </section>
 
       {reachable && live && !full && (
@@ -1229,15 +1257,17 @@ function Overview({
           <div className="recruit-factor-grid">
             {RECRUITING_FACTORS.map((factor) => {
               const selected = weekAction?.pitch === factor;
+              const verdict = pitchVerdict(prospect, pitch, factor);
               return (
                 <button
                   type="button" key={factor}
-                  className={`tap${selected ? ' active' : ''}`}
+                  className={`tap verdict-${verdict}${selected ? ' active' : ''}`}
                   onClick={() => onPitch(selected ? null : factor)}
+                  title={verdict === 'hollow' ? 'He wants more than you have here. A pitch on it costs you.' : undefined}
                 >
                   <small>{RECRUITING_FACTOR_LABEL[factor]}</small>
                   <strong>{factorGrade(factorScore(prospect, pitch, factor))}</strong>
-                  <span>{Math.max(1, Math.round(priorities[factor] * 20))}× FIT · {PITCH_COST} PT</span>
+                  <span>WANTS {factorGrade(wantedScore(prospect, factor))} · {Math.max(1, Math.round(priorities[factor] * 20))}× FIT</span>
                 </button>
               );
             })}
