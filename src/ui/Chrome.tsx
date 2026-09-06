@@ -11,7 +11,7 @@
 // offseason, the postseason and the job search each drew their own header out
 // of the same handful of ideas, and two of the four had already drifted.
 
-import type { ReactNode } from 'react';
+import { useEffect, useLayoutEffect, type ReactNode } from 'react';
 import { ChevronDownIcon } from '@radix-ui/react-icons';
 import { CoachPortrait } from './CoachPortrait.js';
 import { useSlide } from './slide.js';
@@ -129,6 +129,12 @@ export function CoachAvatar(
 }
 
 /** The sub-nav: a green underline, and a row that scrolls rather than squeezes. */
+/** Whether the bar has sections past its right edge; written as `data-more`. */
+function moreToTheRight(el: HTMLElement): void {
+  const more = el.scrollWidth - el.clientWidth - el.scrollLeft > 2;
+  if (more) el.dataset.more = 'right'; else delete el.dataset.more;
+}
+
 export function ContextNav<T extends string>(
   { label, items, active, onSelect }:
   {
@@ -141,6 +147,32 @@ export function ContextNav<T extends string>(
   // The underline slides between tabs; 12 keeps the inset the static
   // underline always had. See slide.ts.
   const ref = useSlide<HTMLElement>(12);
+  // Five sections do not fit a 375px phone, and a bar that scrolls with its
+  // scrollbar hidden looks finished at its edge — the reporter could not find
+  // GOD MODE at all. So the bar says when there is more: `data-more` draws a
+  // fade and a chevron at the right edge until it has been scrolled there.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = (): void => moreToTheRight(el);
+    measure();
+    el.addEventListener('scroll', measure, { passive: true });
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    return () => { el.removeEventListener('scroll', measure); ro?.disconnect(); };
+  }, [ref, items.length]);
+  // Arriving at a section from elsewhere — the coach menu, a card — brings
+  // its tab into view, so the bar agrees with the screen under it.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const on = el?.querySelector<HTMLElement>('button.active');
+    if (!el || !on) return;
+    const left = on.offsetLeft;
+    const right = left + on.offsetWidth;
+    if (left < el.scrollLeft) el.scrollLeft = left;
+    else if (right > el.scrollLeft + el.clientWidth) el.scrollLeft = right - el.clientWidth;
+    moreToTheRight(el);
+  }, [ref, active]);
   return (
     <nav ref={ref} className="context-nav" aria-label={label}>
       {items.map((item) => (

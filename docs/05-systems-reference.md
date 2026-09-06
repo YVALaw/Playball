@@ -7962,8 +7962,11 @@ is new, and `tests/god-mode-2.test.ts` pins them.
 - **The coach.** His badges from the creation list, granted or removed,
   past the game's five; his philosophy at any time, which resets the
   standing strategy as creation does; security, years left, contract
-  length, seasons here; and the ten hidden habit counters the earned
-  badges read, so a badge can be walked up to its bar.
+  length, seasons here; the ten hidden habit counters the earned badges
+  read, so a badge can be walked up to its bar; and — the reporter's ask
+  from the iPhone — the man himself and his record: name, age, career
+  wins and losses, national, conference and regional titles, tournaments,
+  which the coach profile and the job market read.
 - **Time.** SIM THE SEASON from the desk, the same run to June the test
   shortcut makes. What it does not do is in 61.3.
 - **Presets.** PARITY puts every program at fifty; CHAOS redraws every
@@ -7974,6 +7977,17 @@ is new, and `tests/god-mode-2.test.ts` pins them.
 Every one of these is a god action on the store: refused unless the
 save's flag is on, a version bump, an autosave. The sliders show whole
 numbers over ratings the generator drew fractional.
+
+**Finding the desk.** The reporter's first report from the iPhone was
+*"god mode is on but nothing lets me change anything"*: the desk is the
+fifth section of the Program bar, and five sections do not fit a 375px
+phone. The bar scrolls with its scrollbar hidden, so it looked finished
+at STRATEGY. Three doors and a hint answer it. A GOD MODE card leads the
+Program overview in a sandbox; the coach menu has a God mode row between
+Inbox and Settings; Settings → God mode has OPEN. And the context bar
+now says when there is more (`data-more`, a fade and a chevron at its
+right edge, measured on scroll and resize), and brings the active
+section into view when a screen is reached from elsewhere.
 
 ## Appendix A: stale comments and vestigial code found while writing this
 

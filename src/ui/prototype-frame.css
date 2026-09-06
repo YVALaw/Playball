@@ -7213,3 +7213,5 @@
 .god-actions button.god-danger { border-color:var(--loss); color:var(--loss); }
 .god-actions span em { display:block; margin-top:2px; font-style:normal; }
 .god-editor .dashboard-heading { margin-top:14px; }
+.context-nav[data-more]::after { content:"›"; position:sticky; right:0; flex:none; width:34px; margin-left:-34px; height:100%; padding-right:6px; box-sizing:border-box; pointer-events:none; text-align:right; line-height:42px; color:var(--clay); font-size:calc(16px * var(--ts)); font-weight:800; background:linear-gradient(to right, transparent, var(--paper) 60%); }
+.program-dashboard-card.is-god { border-color:var(--clay); box-shadow:inset 3px 0 var(--clay); }

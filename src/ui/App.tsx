@@ -19,7 +19,7 @@ import { audioReady, preloadSfx, unlockAudio } from './sound.js';
 import { BigMomentCard } from './BigMoment.js';
 import { teamColour } from './Avatar.js';
 import {
-  ArchiveIcon, ArrowLeftIcon, CalendarIcon, ChevronRightIcon, EnvelopeClosedIcon, GearIcon,
+  ArchiveIcon, ArrowLeftIcon, CalendarIcon, ChevronRightIcon, EnvelopeClosedIcon, GearIcon, LightningBoltIcon,
   HomeIcon, IdCardIcon, StarIcon,
 } from '@radix-ui/react-icons';
 import {
@@ -1142,6 +1142,10 @@ function CoachMenuButton() {
   // New silverware waiting in the cabinet — the dot that replaced the
   // achievement letters.
   const trophyDot = useDynasty((s) => s.unseenTrophies.length > 0);
+  // A sandbox gets its own row: the desk is the last section of the Program
+  // bar, which a phone cannot show without a swipe.
+  const godMode = useDynasty((s) => s.godMode);
+  const goTo = useDynasty((s) => s.go);
   const [open, setOpen] = useState(false);
 
   const go = (run: () => void) => { setOpen(false); run(); };
@@ -1195,6 +1199,13 @@ function CoachMenuButton() {
               {unread > 0 && <span className="menu-count">{unread}</span>}
               <ChevronRightIcon />
             </button>
+            {godMode && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => go(() => goTo('program', 'god'))}
+              ><LightningBoltIcon />God mode<ChevronRightIcon /></button>
+            )}
             {/* Saves used to sit here as a peer. It moved inside settings: one
                 place for everything about you and the app, which also stops the
                 menu growing a row every time a preference is added. */}

@@ -27,6 +27,15 @@ off `main` at `2a13703` · **god mode finished, held for approval** (`05` §61,
 > Checked in the browser: a rename of GULF to SEC reached the header, the
 > chip and the desk at once. **Still on the `god-mode` branch, unpushed,
 > until the reporter says push.**
+>
+> **Then, from the iPhone:** *"god mode is on but nothing lets me change
+> anything."* The desk was the fifth section of a Program bar that
+> scrolls with its scrollbar hidden, so at 375px it looked finished at
+> STRATEGY. Three doors now — a GOD MODE card first on the Program
+> overview, a row in the coach menu, OPEN on Settings → God mode — and
+> the context bar draws a fade and a chevron when there is more to the
+> right (`Chrome.tsx`). His second ask, the coach's own stats: name, age
+> and the career record are editable on the desk.
 
 > **September 6, late — god mode, built on a branch and held for approval.**
 >

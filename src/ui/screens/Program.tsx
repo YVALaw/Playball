@@ -66,6 +66,8 @@ export function Program() {
   const setSheet = useDynasty((s) => s.setProgramSheet);
   const economy = useDynasty((s) => s.economy);
   const coach = useDynasty((s) => s.coach);
+  const godMode = useDynasty((s) => s.godMode);
+  const setScreen = useDynasty((s) => s.setScreen);
   const boardAsk = useDynasty((s) => s.boardAsk);
   useEffect(() => {
     if (sheet === 'coach') clearUnseenTrophies();
@@ -151,6 +153,14 @@ export function Program() {
       </section>
 
       <section className="program-dashboard-grid" aria-label="Program overview">
+        {godMode && (
+          <button className="program-dashboard-card tap is-god" type="button" onClick={() => setScreen('god')}>
+            <span><small>GOD MODE</small><strong>The sandbox</strong></span>
+            <p>Edit any player, any program, the leagues, your coach, the money, the schedule.</p>
+            <em>Also the last section in the bar above</em>
+            <ChevronRightIcon />
+          </button>
+        )}
         <button className={`program-dashboard-card tap${waiting ? ' is-live' : ''}`} type="button" onClick={() => setSheet('board')}>
           <span><small>BOARD</small><strong>{waiting ? 'Something is waiting' : security}</strong></span>
           <p>{ask.summary}</p>

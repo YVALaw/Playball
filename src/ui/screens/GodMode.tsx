@@ -90,8 +90,8 @@ function Slider(
 
 /** A line of text. Commits on Enter or when focus leaves. */
 function Field(
-  { label, value, onCommit, placeholder }:
-  { label: string; value: string; onCommit: (v: string) => void; placeholder?: string },
+  { label, value, onCommit, placeholder, numeric = false }:
+  { label: string; value: string; onCommit: (v: string) => void; placeholder?: string; numeric?: boolean },
 ) {
   const [draft, setDraft] = useState<string | null>(null);
   const commit = (): void => {
@@ -103,6 +103,7 @@ function Field(
       <small>{label}</small>
       <input
         type="text"
+        inputMode={numeric ? 'numeric' : undefined}
         value={draft ?? value}
         placeholder={placeholder}
         onChange={(e) => setDraft(e.target.value)}
@@ -327,6 +328,28 @@ export function GodMode() {
             <Slider label="YEARS LEFT" value={coach.contractYears} min={0} max={10} onCommit={(v) => setCoachMore({ contractYears: v })} />
             <Slider label="CONTRACT LENGTH" value={coach.contractLength} min={1} max={10} onCommit={(v) => setCoachMore({ contractLength: v })} />
             <Slider label="SEASONS HERE" value={coach.tenure} min={0} max={40} onCommit={(v) => setCoachMore({ tenure: v })} />
+          </section>
+
+          <SectionHeading kicker="YOUR CHAIR" title="The man and his record" />
+          <section className="god-card">
+            <Field label="NAME" value={coach.name} onCommit={(v) => setCoachMore({ name: v })} />
+            <Slider label="AGE" value={coach.age} min={22} max={80} onCommit={(v) => setCoachMore({ age: v })} />
+            <div className="god-selects">
+              {([
+                ['CAREER WINS', 'careerWins'], ['CAREER LOSSES', 'careerLosses'],
+                ['NATIONAL TITLES', 'titles'], ['CONFERENCE TITLES', 'conferenceTitles'],
+                ['REGIONALS WON', 'regionalTitles'], ['TOURNAMENTS', 'tournaments'],
+              ] as const).map(([label, key]) => (
+                <Field
+                  key={key}
+                  label={label}
+                  numeric
+                  value={String(coach[key])}
+                  onCommit={(v) => { const n = Number(v); if (Number.isFinite(n)) setCoachMore({ [key]: n }); }}
+                />
+              ))}
+            </div>
+            <p className="god-note">The record the job market and the coach profile read. Wins and losses are the career line; the titles count what the shelf shows.</p>
           </section>
 
           <SectionHeading kicker="YOUR CHAIR" title="What you are known for" />

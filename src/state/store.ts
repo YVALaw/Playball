@@ -1362,7 +1362,13 @@ export interface DynastyStore {
   godSetRecruitStars: (id: PlayerId, stars: number) => void;
   godSetRecruitWants: (id: PlayerId, weights: Partial<RecruitingPriorities>) => void;
   godCommitRecruit: (id: PlayerId) => void;
-  godSetCoachMore: (patch: { badges?: string[]; philosophy?: PhilosophyId; contractYears?: number; contractLength?: number; security?: number; tenure?: number; habits?: Record<string, number> }) => void;
+  godSetCoachMore: (patch: {
+    badges?: string[]; philosophy?: PhilosophyId; contractYears?: number; contractLength?: number;
+    security?: number; tenure?: number; habits?: Record<string, number>;
+    /** The man himself and his record — the reporter's ask, September 6. */
+    name?: string; age?: number; careerWins?: number; careerLosses?: number; titles?: number;
+    conferenceTitles?: number; regionalTitles?: number; tournaments?: number;
+  }) => void;
   godPreset: (kind: 'parity' | 'chaos' | 'superteam') => void;
   /** Copy the career into a new sandbox slot and load it; the original keeps a snapshot. */
   godForkToSandbox: () => Promise<boolean>;
@@ -6484,14 +6490,25 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, Math.round(v)));
     const habits: Record<string, number> = { ...(coach.habits ?? {}) };
     for (const [k, v] of Object.entries(patch.habits ?? {})) if (typeof v === 'number') habits[k] = clamp(v, 0, 9999);
+    const count = (v: number | undefined, key: keyof CoachState): Record<string, number> =>
+      v !== undefined && Number.isFinite(v) ? { [key]: clamp(v, 0, 9999) } : {};
+    const name = patch.name?.trim().slice(0, 40);
     const next: CoachState = {
       ...coach,
+      ...(name ? { name } : {}),
+      ...(patch.age !== undefined ? { age: clamp(patch.age, 22, 80) } : {}),
       ...(patch.badges ? { badges: patch.badges } : {}),
       ...(patch.philosophy ? { philosophy: patch.philosophy } : {}),
       ...(patch.contractYears !== undefined ? { contractYears: clamp(patch.contractYears, 0, 10) } : {}),
       ...(patch.contractLength !== undefined ? { contractLength: clamp(patch.contractLength, 1, 10) } : {}),
       ...(patch.security !== undefined ? { security: clamp(patch.security, 0, 100) } : {}),
       ...(patch.tenure !== undefined ? { tenure: clamp(patch.tenure, 0, 40) } : {}),
+      ...count(patch.careerWins, 'careerWins'),
+      ...count(patch.careerLosses, 'careerLosses'),
+      ...count(patch.titles, 'titles'),
+      ...count(patch.conferenceTitles, 'conferenceTitles'),
+      ...count(patch.regionalTitles, 'regionalTitles'),
+      ...count(patch.tournaments, 'tournaments'),
       ...(patch.habits ? { habits } : {}),
     };
     // A philosophy change is a standing-strategy change too, as creation makes it.
