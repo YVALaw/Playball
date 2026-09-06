@@ -93,6 +93,7 @@ export interface BadgeEvidence {
   bat?: {
     g: number; ab: number; h: number; d: number; t: number; hr: number;
     bb: number; k: number; sb: number; cs: number; rbi: number; r: number; hbp: number;
+    sf?: number; sh?: number;
   };
   /** Pitching. */
   pit?: {
@@ -161,7 +162,7 @@ export const BADGES: Record<BadgeId, BadgeSpec> = {
     // He got on. That is the whole job, and on-base is how it is measured.
     earned: (e) => {
       if (!e.bat || e.bat.ab < 110) return false;
-      const pa = e.bat.ab + e.bat.bb + e.bat.hbp;
+      const pa = e.bat.ab + e.bat.bb + e.bat.hbp + (e.bat.sf ?? 0) + (e.bat.sh ?? 0);
       return (e.bat.h + e.bat.bb + e.bat.hbp) / pa >= 0.430;
     },
   },
@@ -233,7 +234,7 @@ export const BADGES: Record<BadgeId, BadgeSpec> = {
     eligible: hitters, size: STEADY, innate: 1.0,
     earned: (e) => {
       if (!e.bat || e.bat.ab < 110) return false;
-      const pa = e.bat.ab + e.bat.bb + e.bat.hbp;
+      const pa = e.bat.ab + e.bat.bb + e.bat.hbp + (e.bat.sf ?? 0) + (e.bat.sh ?? 0);
       return e.bat.k / pa <= 0.095;
     },
   },

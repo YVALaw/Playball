@@ -48,13 +48,21 @@ const arm = (
   outs: number, w: number, l: number, er: number, k: number,
 ): CareerYear => ({ year, classYear, team: 'HOM', name: 'An Arm', outs, w, l, er, k });
 
+/*
+  The fixtures are written in the league's own terms, so they moved with the
+  September 2026 recalibration: the country hits .280 with a home run a game
+  now, not .270 with half of one, and a line that was enormous in the old
+  environment is merely very good in this one. Replacement level rose with
+  the league, which is exactly why a fixed line scores lower than it did.
+*/
+
 /** A season a good everyday player has. Nowhere near a plaque, on purpose. */
 const ORDINARY = (year: number, cls: string): CareerYear =>
-  bat(year, cls, 170, 48, 9, 1, 5, 27, 18);
+  bat(year, cls, 170, 52, 11, 1, 8, 32, 20);
 
 /** A season the country notices. */
 const HUGE = (year: number, cls: string): CareerYear =>
-  bat(year, cls, 180, 72, 18, 2, 15, 65, 30);
+  bat(year, cls, 180, 72, 18, 2, 24, 78, 34);
 
 const caseOf = (rows: CareerYear[], honours: string[] = []) =>
   buildCase(id('p1'), rows, honours);
@@ -130,10 +138,10 @@ describe('a real career goes in', () => {
 
   it('leaves the good but not great outside', () => {
     const solid = caseOf([
-      bat(2027, 'FR', 170, 55, 12, 1, 8, 38, 22),
-      bat(2028, 'SO', 175, 58, 13, 1, 9, 41, 24),
-      bat(2029, 'JR', 178, 60, 14, 2, 10, 44, 25),
-      bat(2030, 'SR', 180, 61, 14, 1, 11, 46, 26),
+      bat(2027, 'FR', 170, 58, 12, 1, 11, 42, 23),
+      bat(2028, 'SO', 175, 61, 13, 1, 12, 45, 25),
+      bat(2029, 'JR', 178, 63, 14, 2, 13, 48, 26),
+      bat(2030, 'SR', 180, 64, 14, 1, 14, 50, 27),
     ]);
     expect(solid.score).toBeGreaterThan(0);
     expect(electable(solid)).toBe(false);
@@ -167,10 +175,10 @@ describe('the two year star against the four year man', () => {
     // half. The career halves of the two scores match; the peak halves do not,
     // and that is the entire adjustment for an early departure.
     const spread = caseOf([
-      bat(2027, 'FR', 90, 36, 9, 1, 7, 32, 15),
-      bat(2028, 'SO', 90, 36, 9, 1, 8, 33, 15),
-      bat(2029, 'JR', 90, 36, 9, 1, 8, 33, 15),
-      bat(2030, 'SR', 90, 36, 9, 1, 7, 32, 15),
+      bat(2027, 'FR', 90, 36, 9, 1, 12, 39, 17),
+      bat(2028, 'SO', 90, 36, 9, 1, 12, 39, 17),
+      bat(2029, 'JR', 90, 36, 9, 1, 12, 39, 17),
+      bat(2030, 'SR', 90, 36, 9, 1, 12, 39, 17),
     ]);
     expect(spread.career).toBeCloseTo(star2.career, 0);
     expect(star2.peak).toBeGreaterThan(spread.peak);

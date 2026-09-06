@@ -110,12 +110,14 @@ export const BUNT: Record<BuntPolicy, number> = {
   is a bitmask: 1 = first occupied, 2 = second, 4 = third. RE is what an
   average inning yields from here to its end; SCORE_P is the chance at
   least one run scores, which is the number that matters when one run wins
-  the game. RE is scaled to this league's measured run environment (5.30
-  per team per nine, about 11% over the source era); SCORE_P is used raw,
-  because the bunt call compares two entries of the same table and the
-  level cancels.
+  the game. RE is scaled to this league's measured run environment (6.73
+  per team per nine against the source era's 4.77, so 1.41; it was 1.11 at
+  the old 5.30 target). The scale matters because the RE edge is weighed
+  against a batter-quality term in absolute runs below. SCORE_P is used
+  raw, because the one-run call compares two entries of the same table and
+  the level cancels.
 */
-const RE_SCALE = 1.11;
+const RE_SCALE = 1.41;
 const RE24: readonly (readonly number[])[] = [
   [0.481, 0.859, 1.100, 1.437, 1.350, 1.784, 1.964, 2.292],
   [0.254, 0.509, 0.664, 0.884, 0.950, 1.130, 1.376, 1.541],

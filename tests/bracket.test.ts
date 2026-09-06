@@ -25,7 +25,9 @@ import {
   startDoubleElim, stepDoubleElim, runDoubleElim, resultOfDE, placings,
   liveSlotFor, readySlots, gamesOf, slotName,
 } from '../src/engine/doubleElim.js';
-import { createSeason, simSeason, currentDay, restedFirst } from '../src/engine/season.js';
+import {
+  createSeason, simSeason, currentDay, restedFirst, pitcherReady, injuryClock,
+} from '../src/engine/season.js';
 import { makeRng } from '../src/engine/rng.js';
 import { simGame } from '../src/engine/game.js';
 
@@ -236,8 +238,26 @@ describe('rotations in a bracket', () => {
         // `appearances` counts this game, so a turn back is one fewer.
         const turn = (t: number): number =>
           (((b.appearances.get(t) ?? 1) - 1) % 3 + 3) % 3;
-        expect(homeStarter).toBe(turn(box.home));
-        expect(awayStarter).toBe(turn(box.away));
+        // Since September 2026 the rotation is walked forward past men on
+        // short rest (`pitcherReady`, by pitches thrown last time out), so
+        // the starter is the turn's own arm or the first ready man after
+        // him — and every arm passed over was still on recovery the day the
+        // game was played. The day is read off the starter's own workload
+        // entry, which the game just wrote.
+        const startedOwnTurn = (team: number, slot: number, starterName: string): void => {
+          const rot = s.teams[team]!.team.rotation;
+          const starter = rot.find((p) => p.name === starterName)!;
+          const day = s.pitcherWorkload?.get(starter.id)?.day;
+          expect(day).toBeDefined();
+          let at = turn(team);
+          for (let walked = 0; at !== slot && walked < rot.length; walked++) {
+            expect(pitcherReady(s, rot[at]!, day!, injuryClock(s)), `${rot[at]!.name} skipped while ready`).toBe(false);
+            at = (at + 1) % rot.length;
+          }
+          expect(at).toBe(slot);
+        };
+        startedOwnTurn(box.home, homeStarter, box.homePitching[0]?.name ?? '');
+        startedOwnTurn(box.away, awayStarter, box.awayPitching[0]?.name ?? '');
         // And at least once the two dugouts must be at different points in
         // their week, which is the thing a single shared count made impossible.
         if (homeStarter !== awayStarter) checked += 1;

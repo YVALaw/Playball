@@ -11,7 +11,10 @@
 // implementation of what a plate appearance does, and both this and the fast
 // simulation drive it. The only thing that differs is who decides when to step.
 
-import { createHalfInning, TeamState, RULES, type SimOptions, moundVisit } from './game.js';
+import {
+  createHalfInning, TeamState, RULES, type SimOptions, moundVisit,
+  winningPitcherFor, savingPitcherFor,
+} from './game.js';
 import { pitchBudget, CONFIDENCE } from './ratings.js';
 import type { GameResult } from './game.js';
 import { ENGINES } from './engines.js';
@@ -245,12 +248,12 @@ export function createLiveGame(
   let leadHolder: TeamState | null = null;
   let creditTo: Arm | null = null;
   let blameTo: Arm | null = null;
-  const onScore = (bat: TeamState, fld: TeamState): void => {
+  const onScore = (bat: TeamState, fld: TeamState, goAheadPitcher?: Arm): void => {
     if (bat.runs <= fld.runs) return;
     if (leadHolder === bat) return;
     leadHolder = bat;
     creditTo = bat.pitcher;
-    blameTo = fld.pitcher;
+    blameTo = goAheadPitcher ?? fld.pitcher;
   };
 
   // The field layer animates from these. A managed game emits them for one plate
@@ -361,10 +364,12 @@ export function createLiveGame(
     get result(): GameResult {
       const homeWon = home.runs > away.runs;
       const winnerIs = homeWon ? home : away;
+      const winner = winningPitcherFor(winnerIs, leadHolder === winnerIs ? creditTo : null);
       return {
         home, away, innings: inning, log, playEvents: [...allEvents],
-        winningPitcher: leadHolder === winnerIs ? creditTo : null,
+        winningPitcher: winner,
         losingPitcher: leadHolder === winnerIs ? blameTo : null,
+        savingPitcher: savingPitcherFor(winnerIs, winner),
       };
     },
     // Availability is per game, tracked on the TeamState. The season's roster
@@ -423,11 +428,16 @@ export function createLiveGame(
       if (arm === mine.pitcher || mine.usedPen.includes(arm)) return false;
       mine.usedPen.push(arm);
       mine.pitcher = arm;
+      mine.noteReliefEntry(
+        arm,
+        mine.runs - bat().runs,
+        current?.bases.filter(Boolean).length ?? 0,
+      );
       mine.coverPitcher(arm);
       mine.pitcherPitches = 0;
-      // A new man, a new outing: his own confidence and his own visit.
+      // A new man, a new outing. Defensive conferences are a team resource and
+      // therefore do not reset with a pitching change.
       mine.pitcherConfidence = CONFIDENCE.relief;
-      mine.visitUsed = false;
       say(`   Pitching change: ${arm.name} (${arm.throws}HP) enters.`);
       return true;
     },

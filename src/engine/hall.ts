@@ -38,10 +38,10 @@ import type { PlayerId } from './types.js';
  *
  * Measured off the engine rather than assumed — a full season of ninety six
  * programs, basic Runs Created summed and divided by plate appearances, comes
- * out at .126. It agrees with the calibration targets to two places: basic RC
- * over a .347/.374 profile is on-base times slugging, which is .130.
+ * out near .165. It agrees with the modern calibration target: basic RC over a
+ * .384/.438 profile is on-base times slugging, roughly .168.
  */
-const LEAGUE_RC_PER_PA = 0.126;
+const LEAGUE_RC_PER_PA = 0.165;
 
 /**
  * What the man who would play instead is worth.
@@ -56,14 +56,29 @@ const REPLACEMENT_SHARE = 0.72;
 
 const REPLACEMENT_RC_PER_PA = LEAGUE_RC_PER_PA * REPLACEMENT_SHARE;
 
+/** The calibrated environment, runs per team per game (calibration.ts TARGETS). */
+const LEAGUE_RUNS_PER_GAME = 6.73;
+
 /**
  * The earned run average a program could get out of whoever was left.
  *
  * The same idea from the other side, and it has to be *worse* than league
- * average by roughly the same margin: 5.30 runs a game over nine innings is the
- * calibrated environment, and a replacement arm gives up a quarter more of them.
+ * average by roughly the same margin: the modern calibrated environment is about
+ * 6.73 runs a game, and a replacement arm gives up a quarter more of them.
  */
-const REPLACEMENT_ERA = 5.30 * 1.25;
+const REPLACEMENT_ERA = LEAGUE_RUNS_PER_GAME * 1.25;
+
+/**
+ * Scores are kept in the runs of the environment `HALL_BAR` was measured in.
+ *
+ * Runs above replacement scale with the league: the same dominance is worth
+ * more runs when everybody scores more, on both sides of the ball. The bar
+ * below was measured at 5.30 runs a game, so a case is priced back onto that
+ * scale rather than the bar and its table being re-derived every time the
+ * calibration moves. Dividing runs by runs, so honours — priced as fixed
+ * runs — are left alone.
+ */
+const SCORE_ENV = 5.30 / LEAGUE_RUNS_PER_GAME;
 
 /**
  * How much of a career the peak window is.
@@ -86,27 +101,49 @@ export const PEAK_SEASONS = 2;
 export const MIN_SEASONS = 2;
 
 /**
- * What it takes, and it was measured rather than chosen.
+ * What it takes, and it was measured rather than chosen — twice.
  *
- * `tests/hall-probe.ts` plays twenty seasons of the whole country and scores
+ * `tests/hall-probe.ts` plays whole seasons of the whole country and scores
  * every finished career at three programs — the strongest in the world it
  * generates, the median, and the weakest. What each candidate bar would have
- * admitted, per program, over those twenty years:
+ * admitted, per program, in the environment the bar is priced in (see
+ * `SCORE_ENV`).
+ *
+ * The first measurement, twenty seasons at the old .270 / 5.30-run calibration:
  *
  * | bar | blue blood | median | cellar |
  * |---|---|---|---|
  * | 100 | 30 | 7 | 0 |
  * | 110 | 19 | 3 | 0 |
  * | 120 | 14 | 2 | 0 |
- * | **130** | **10** | **1** | **0** |
+ * | 130 | 10 | 1 | 0 |
  * | 140 | 8 | 0 | 0 |
+ *
+ * The second, twenty-four seasons at the September 2026 calibration (.280,
+ * a home run a game, 6.73 runs), with every case priced back onto the old
+ * scale:
+ *
+ * | bar | blue blood | median | cellar |
+ * |---|---|---|---|
+ * | 100 | 35 | 1 | 4 |
+ * | 110 | 25 | 1 | 2 |
+ * | **120** | **21** | **1** | **1** |
+ * | 130 | 20 | 0 | 1 |
+ * | 150 | 18 | 0 | 0 |
+ * | 170 | 10 | 0 | 0 |
  *
  * The two failure modes were named in the brief: a hall that admits somebody
  * every year is a roster, and one that admits nobody in twenty is a locked room.
- * At 110 the best program in the country inducts almost every season, which is
- * the first. At 140 nothing outside the elite ever inducts anybody, which is the
- * second. **130 is the last row where a great program is honouring its best man
- * about every second year and the rest of the country is not shut out.**
+ * The modern environment pulled the columns apart. Runs created is convex in
+ * on-base and slugging, so a .440 hitter with sixty home runs over four
+ * years — which the strongest program now produces — is worth far more above
+ * replacement than the best man a median program sees, and no single bar can
+ * put the blue blood on every second year without locking everybody else
+ * out: at 170 it still honours a man every other season and the rest of the
+ * country inducts nobody in a generation. **120 is the last row where the rest
+ * of the country is not shut out**, and between 120 and 150 the blue blood
+ * barely moves. It was 130 before the recalibration, where the old table put
+ * the same reading.
  *
  * Read the middle column as a floor rather than as the user's experience. Every
  * program in that measurement is run by the machine, and a rival coach spends his
@@ -121,7 +158,7 @@ export const MIN_SEASONS = 2;
  * the coach built; this one says a great deal, because at a bad program it stays
  * nearly empty and filling it is the achievement.
  */
-export const HALL_BAR = 130;
+export const HALL_BAR = 120;
 
 /** What the ballot is allowed to look at, for one man. */
 export interface CareerCase {
@@ -206,7 +243,7 @@ export function seasonRuns(y: CareerYear): number {
     runs += ((REPLACEMENT_ERA - era) * innings) / 9;
   }
 
-  return runs;
+  return runs * SCORE_ENV;
 }
 
 /**

@@ -2862,3 +2862,52 @@ lags, a starter demoted for life, a winter the games never see, a sheet
 with no floor. Then 25 measured, and 24 measured, before either is
 decided. Then the accessibility trio (7, 8, 9) together, since they are
 one hook and two labels. The rest ride the next play batch.
+
+
+## Y. The engine pass — September 5 2026, night
+
+`05` §51 is the account. What it left open, sorted.
+
+### Decisions taken at the merge
+
+- **The modern environment.** The calibration now aims at the middle of
+  current Division I — .280 / .384 / .438, 6.73 runs, a home run a game —
+  rather than the BBCOR era `02-sim-engine-spec.md` argued for. Accepted:
+  it is the game the reporter wants to model, and the goldens hold. The
+  per-figure sourcing §9.6 carried is gone with it; the reporter's source
+  is a 2025 conference table. Re-establish provenance before the next
+  tuning pass, not during it.
+- **The hall bar is 120**, priced on the old scale (`SCORE_ENV`). The
+  probe rerun shows the modern environment pulling the programmes apart
+  — no bar puts the blue blood on every second year without locking the
+  median out — and 120 is the last row where the rest of the country
+  still inducts anybody. Both tables are in hall.ts.
+- **`RE_SCALE` is 1.41.** The pass had left it at 1.11 and rewritten the
+  comment to say the level does not matter; it does, because the edge is
+  weighed against a batter-quality term in runs.
+- **The relief win** goes to the most effective reliever when the starter
+  falls short of five innings and the lead was never lost. That is the
+  scorer's rule; the pitcher-of-record rule applies only when the lead
+  changed hands, and the engine already credits that man.
+
+### Booked
+
+- **Regional repeats, pair by pair.** The scheduler picks its five repeat
+  weeks as whole round-robin rounds, so coast-to-coast pairs still meet
+  twice while neighbours meet once. Build the five extra perfect matchings
+  greedily from the shortest pairs instead, and keep the no-duplicate and
+  twelve-distinct-opponents guarantees the current build has (`05` §51.4
+  has the numbers to hold).
+- **The earned-run reconstruction's two approximations** (`05` §51.5): a
+  run on an error play is earned unless past the virtual third out, and a
+  passed ball unearns only the run it lets in. Real scorers reconstruct
+  the whole inning. Measure how many ER a season this moves before
+  deciding whether it is worth the code.
+- **Rerun the arm-injury count.** Pitchers now roll for injury after
+  every outing of twenty pitches or more, scaled by the outing and the
+  club's arm care. The pregame roll's numbers were measured over thirty
+  seasons (§16); this channel has not been. Run the soak and compare
+  pitcher days lost to the hitters' before the next play batch.
+- **The starter's five innings in a seven-inning game.** The book asks four
+  when the game is called short; the engine asks fifteen outs regardless.
+  Rare — only the run rule produces one — and small.

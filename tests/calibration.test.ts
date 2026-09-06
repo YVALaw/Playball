@@ -118,20 +118,20 @@ import type { Hitter, Pitcher } from '../src/engine/types.js';
  * philosophy.
  */
 const GOLDEN: Record<string, number> = {
-  'Runs per team per game': 5.425625,
-  'PA per team per game': 40.03854166666667,
-  'Batting average': 0.26825472056921845,
-  'On base percentage': 0.34724354137940006,
-  'Home runs per team per game': 0.47479166666666667,
-  'Strikeouts per team per game': 6.512708333333333,
-  'Walks per team per game': 3.7352083333333335,
-  'Pitches per plate appearance': 3.631818300075448,
-  'Slugging': 0.3727011544695467,
+  'Runs per team per game': 6.873333333333333,
+  'PA per team per game': 41.9625,
+  'Batting average': 0.2810445655546254,
+  'On base percentage': 0.38415674183843457,
+  'Home runs per team per game': 1.025,
+  'Strikeouts per team per game': 7.950208333333333,
+  'Walks per team per game': 4.706041666666667,
+  'Pitches per plate appearance': 3.7016681560917486,
+  'Slugging': 0.43960263892710166,
 };
 
-const GOLDEN_SLUGGING = 0.3727011544695467;
-const GOLDEN_ERRORS = 1.0741666666666667;
-const GOLDEN_SB_PCT = 0.7148054413160392;
+const GOLDEN_SLUGGING = 0.43960263892710166;
+const GOLDEN_ERRORS = 1.084375;
+const GOLDEN_SB_PCT = 0.7156965434685022;
 
 /**
  * Metrics still outside the 10% bar. The list is now empty, and keeping the
@@ -218,10 +218,10 @@ describe('calibration against NCAA Division I', () => {
   }
 
   it('produces a believable slugging percentage', () => {
-    // BBCOR college, not MLB: the sourced D1 figure is .374, well under the
-    // .399 the majors slug. Metal bats built to behave like wood.
-    expect(single.slugging).toBeGreaterThan(0.340);
-    expect(single.slugging).toBeLessThan(0.420);
+    // Modern D-I sits around the low-.440s overall, with large conference spread.
+    // Keep enough room for roster-lottery noise without sliding back to the old era.
+    expect(single.slugging).toBeGreaterThan(0.400);
+    expect(single.slugging).toBeLessThan(0.480);
   });
 
   it('produces college-level error rates, not pro ones', () => {

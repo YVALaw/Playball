@@ -211,7 +211,7 @@ function stagedGame(
   build(home, away);
   return {
     home, away, innings: 9, log: [], playEvents: [],
-    winningPitcher: null, losingPitcher: null,
+    winningPitcher: null, losingPitcher: null, savingPitcher: null,
   };
 }
 

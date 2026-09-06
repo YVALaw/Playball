@@ -77,14 +77,14 @@ const EXTRA_INNINGS_TIEBREAK = 10;
  * sourced target, and the college rate would spend that whole margin on one
  * play. Raise it only alongside a recalibration, never on its own.
  */
-const PASSED_BALL_RATE = 0.030;
+const LOOSE_PITCH_RATE = 0.030;
 
 const ORD = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th','12th','13th','14th','15th'];
 
 const blankHit = (): HitLine =>
-  ({ ab: 0, r: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, hbp: 0, sb: 0, cs: 0 });
+  ({ ab: 0, r: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, hbp: 0, sb: 0, cs: 0, sf: 0, sh: 0 });
 const blankPit = (): PitchLine =>
-  ({ outs: 0, h: 0, r: 0, er: 0, bb: 0, k: 0, hr: 0, pitches: 0, bf: 0 });
+  ({ outs: 0, h: 0, r: 0, er: 0, bb: 0, k: 0, hr: 0, pitches: 0, bf: 0, wp: 0 });
 const blankFld = (): FieldLine =>
   ({ chances: 0, plays: 0, expected: 0, errors: 0, throwing: 0, pb: 0, sba: 0, cs: 0 });
 
@@ -166,6 +166,8 @@ export interface GameResult {
    */
   winningPitcher: Arm | null;
   losingPitcher: Arm | null;
+  /** Null when the win did not finish in a save situation. */
+  savingPitcher: Arm | null;
 }
 
 type Say = (s: string) => void;
@@ -203,8 +205,14 @@ export class TeamState {
    * together on a pitching change, for the same reason.
    */
   pitcherConfidence: number = CONFIDENCE.start;
-  /** Whether the one mound visit this man is allowed has been used. */
-  visitUsed = false;
+  /** Team defensive conferences used in regulation. NCAA-style, not per pitcher. */
+  moundVisitsUsed = 0;
+  /** Extra innings grant one additional defensive conference per inning. */
+  readonly extraMoundVisitInnings = new Set<number>();
+  /** Current inning, kept so a manual mound visit can apply the same limit. */
+  currentInning = 1;
+  /** Compatibility surface for the manager UI: true means no visit is available now. */
+  get visitUsed(): boolean { return !canMoundVisit(this); }
   /*
     Keyed by PLAYER ID, not by name.
 
@@ -220,9 +228,9 @@ export class TeamState {
   readonly pitching = new Map<PlayerId, PitchingLine>();
   readonly fielding = new Map<PlayerId, FieldingLine>();
   readonly timesThrough = new Map<PlayerId, number>();
-  readonly defense: number;
+  defense = 50;
   /** Average outfield arm, for runners testing it. */
-  readonly arm: number;
+  arm = 50;
   /**
    * The man behind the plate. Steals were resolved off runner speed and the
    * pitcher's hold rating alone — the throw was never made by anybody. In real
@@ -232,7 +240,7 @@ export class TeamState {
    * Falls back to the weakest defensive spot on the field if a lineup somehow
    * has no catcher, so a malformed roster costs runs rather than throwing.
    */
-  readonly catcher: Hitter;
+  catcher: Hitter;
   /**
    * The nine men on the field, by where they stand. This is what lets a batted
    * ball be fielded by a *person* — so range, hands and the play log can stop
@@ -253,6 +261,8 @@ export class TeamState {
    * be offered again.
    */
   readonly usedPen: Arm[] = [];
+  /** Situation each reliever inherited when he entered, used for save scoring. */
+  readonly reliefEntry = new Map<PlayerId, { lead: number; runners: number }>();
   /** How this coach plays. See engine/strategy.ts. */
   readonly strategy: Strategy;
   /**
@@ -285,7 +295,7 @@ export class TeamState {
    * it. One for an outfield nobody has hung a badge on, which is nearly all of
    * them.
    */
-  readonly holdEdge: number;
+  holdEdge = 1;
   /**
    * A bracket game. Set by `simGame` from its options; false for a friendly,
    * a replay and every regular season night. Only BIG STAGE reads it.
@@ -317,7 +327,9 @@ export class TeamState {
     if (!starter) throw new Error(`${team.name} has no starting pitcher`);
     this.pitcher = starter;
     this.starter = starter;
-    this.relief = relief.length > 0 ? relief : team.bullpen;
+    // An explicitly empty list means nobody is available tonight. Falling back
+    // to the full bullpen resurrected exhausted/injured arms in season play.
+    this.relief = relief;
     /*
       Where each man actually stands, and what his glove is worth THERE.
 
@@ -392,60 +404,35 @@ export class TeamState {
     // reporter named for a man doing both jobs in one night.
     if (moundBound >= 0) this.playedAt.set(String(starter.id), 'PH');
 
-    /** The nine as they are actually standing, for every average below. */
-    const afield: Hitter[] = [...this.byPosition.values()];
+    this.catcher = this.byPosition.get('C') ?? (this.order[0] as Hitter);
+    this.recalculateDefense();
+  }
 
-    // Averaged over the men who actually take the field, and weighted by how
-    // often each of them gets a ball.
-    //
-    // Two corrections, both of which otherwise biased the baseline downward and
-    // so made the average fielder look above average. The DH is generated ten
-    // points light on range precisely because he does not field, and including
-    // him is simply wrong. And balls are not hit evenly around the diamond: the
-    // shortstop, second baseman and centre fielder see far more of them than the
-    // corners, and those are exactly the positions the defensive spectrum gives
-    // a range premium to. An unweighted mean therefore sits below the range of
-    // the man who actually fields the ball, and `edge` came out positive on
-    // average — turning what should be a redistribution between fielders into a
-    // league-wide defensive upgrade worth about 1% of scoring.
-    const gloves: Player[] = afield.filter((p) => p.pos !== 'DH');
-    // The man on the mound belongs in this average now that comebackers reach
-    // him. Leaving him out would put a 48-range fielder on roughly a twentieth of
-    // the balls in play while the baseline `edge` is measured against pretended
-    // he was not there — which is the same silent league-wide offense change the
-    // DH correction above was written to stop, in the other direction. The
-    // starter stands in for whoever is pitching at the time; a reliever moves
-    // this by a fraction of a rating point.
-    gloves.push(starter);
+  /** Recompute every team-level defensive input from who is standing there now. */
+  private recalculateDefense(): void {
+    const afield = [...this.byPosition.entries()]
+      .filter(([spot]) => spot !== 'DH')
+      .map(([, man]) => man);
+    const gloves: Player[] = [...afield, this.pitcher];
     let weighted = 0, weight = 0;
     for (const p of gloves) {
-      // The starter's share is the mound's whatever his pos field says — a
-      // two-way man's pos is his BAT's slot, and while he is out there
-      // fielding comebackers he is standing sixty feet six inches away.
-      const w = p === starter ? (FIELDING_SHARE['P'] ?? 0.11) : (FIELDING_SHARE[p.pos] ?? 0.11);
+      const w = p === this.pitcher ? (FIELDING_SHARE['P'] ?? 0.11) : (FIELDING_SHARE[p.pos] ?? 0.11);
       weighted += p.range * w;
       weight += w;
     }
     this.defense = weight > 0
       ? weighted / weight
-      : team.lineup.reduce((a, p) => a + p.range, 0) / team.lineup.length;
-    // Actually the outfield's arm, as the field above always claimed. Averaging
-    // all nine let a strong-armed catcher and third baseman cover for corner
-    // outfielders who cannot throw, which is exactly backwards: it is the man in
-    // left field a runner is testing.
-    const outfield = afield.filter((p) => p.pos === 'LF' || p.pos === 'CF' || p.pos === 'RF');
+      : this.team.lineup.reduce((a, p) => a + p.range, 0) / Math.max(1, this.team.lineup.length);
+
+    const outfield = [...this.byPosition.entries()]
+      .filter(([spot]) => spot === 'LF' || spot === 'CF' || spot === 'RF')
+      .map(([, man]) => man);
     this.arm = outfield.length > 0
       ? outfield.reduce((a, p) => a + p.arm, 0) / outfield.length
-      : team.lineup.reduce((a, p) => a + p.arm, 0) / team.lineup.length;
-    // A badge is not a rating, so this does not raise anyone's arm — it lowers
-    // how often a runner takes the chance, which is what an arm is actually
-    // worth. Divided by three because a runner tests the outfielder the ball was
-    // hit to and not the other two.
+      : this.team.lineup.reduce((a, p) => a + p.arm, 0) / Math.max(1, this.team.lineup.length);
     let hold = 1;
     for (const p of outfield) hold *= 1 - (1 - holdBonus(p)) / 3;
     this.holdEdge = hold;
-    // The man assigned the plate, at what his glove is worth behind it — a
-    // left fielder catching pays the catcher tax for the night.
     this.catcher = this.byPosition.get('C') ?? (this.order[0] as Hitter);
   }
 
@@ -493,8 +480,12 @@ export class TeamState {
       } else {
         this.byPosition.delete(spot);
       }
+      this.recalculateDefense();
       return;
     }
+    // Ordinary reliever: the fielders did not move, but the pitcher is part of
+    // the defensive baseline because he fields comebackers and covers first.
+    this.recalculateDefense();
   }
 
   /**
@@ -531,12 +522,30 @@ export class TeamState {
     return line;
   }
 
+  noteReliefEntry(p: Arm, lead: number, runners: number): void {
+    this.reliefEntry.set(p.id, { lead, runners });
+  }
+
   /** Send a bench bat up in place of whoever is due. */
   pinchHit(spot: number, sub: Hitter): Hitter | null {
     const out = this.order[spot];
     if (!out) return null;
     this.order[spot] = sub;
     this.usedBench.push(sub);
+
+    // A pinch hitter replaces the player in the game, not only his batting-order
+    // cell. Find where the outgoing player was actually standing and put the
+    // substitute there (with the normal out-of-position penalty). Without this
+    // the removed player kept fielding invisibly for the rest of the game.
+    for (const [position, fielder] of this.byPosition) {
+      if (String(fielder.id) !== String(out.id)) continue;
+      this.byPosition.set(position, fieldingAt(sub, position));
+      this.playedAt.set(String(sub.id), position);
+      // The man who left keeps his entry: the box score labels him by where
+      // he actually stood tonight, not by his roster position.
+      break;
+    }
+    this.recalculateDefense();
     return out;
   }
 
@@ -564,10 +573,57 @@ export const RULES = {
   ): boolean => {
     if (half === 'top' && inning >= 9 && home.runs > away.runs) return true;
     if (half === 'bottom' && inning >= 9 && home.runs !== away.runs) return true;
-    if (runRule && inning >= 7 && Math.abs(home.runs - away.runs) >= 10) return true;
+    if (runRule && inning >= 7) {
+      // The visitor cannot invoke the run rule after its half and deny the home
+      // club the matching half-inning. The home club may stop the game after the
+      // top because it is already ahead and does not need to bat; after the
+      // bottom, either club can have established the ten-run margin.
+      if (half === 'top' && home.runs - away.runs >= 10) return true;
+      if (half === 'bottom' && Math.abs(home.runs - away.runs) >= 10) return true;
+    }
     return false;
   },
 };
+
+/** Apply the official five-inning starter-win gate to the pitcher of record. */
+export function winningPitcherFor(side: TeamState, candidate: Arm | null): Arm | null {
+  if (!candidate) return null;
+  if (candidate !== side.starter) return candidate;
+  const starter = side.pitching.get(side.starter.id);
+  if ((starter?.outs ?? 0) >= 15) return candidate;
+
+  // NCAA leaves the relief win to the scorer when the starter is ineligible.
+  // Pick the most effective reliever rather than blindly the first man used:
+  // outs carry the most weight, with earned runs breaking close calls.
+  let best: PitchingLine | null = null;
+  for (const line of side.pitching.values()) {
+    if (line.player === side.starter || line.outs <= 0) continue;
+    if (!best
+      || line.outs - line.er * 3 > best.outs - best.er * 3
+      || (line.outs - line.er * 3 === best.outs - best.er * 3 && line.outs > best.outs)) {
+      best = line;
+    }
+  }
+  return best?.player ?? null;
+}
+
+/** The finishing reliever qualifies under the ordinary NCAA save situations. */
+export function savingPitcherFor(side: TeamState, winner: Arm | null): Arm | null {
+  const finisher = side.pitcher;
+  if (finisher === side.starter || finisher === winner) return null;
+  const line = side.pitching.get(finisher.id);
+  if (!line || line.outs <= 0) return null;
+  const entry = side.reliefEntry.get(finisher.id);
+
+  // Three or more effective innings always qualifies. Otherwise he must have
+  // entered with the lead and either work at least an inning with a lead of
+  // three or fewer, or inherit a tying-run threat on base/at bat/on deck.
+  if (line.outs >= 9) return finisher;
+  if (!entry || entry.lead <= 0) return null;
+  if (entry.lead <= 3 && line.outs >= 3) return finisher;
+  if (entry.lead <= entry.runners + 2) return finisher;
+  return null;
+}
 
 export function simGame(
   homeTeam: Team,
@@ -596,12 +652,14 @@ export function simGame(
   let leadHolder: TeamState | null = null;
   let creditTo: Arm | null = null;
   let blameTo: Arm | null = null;
-  const onScore = (bat: TeamState, fld: TeamState): void => {
+  const onScore = (bat: TeamState, fld: TeamState, goAheadPitcher?: Arm): void => {
     if (bat.runs <= fld.runs) return;          // scored but did not take the lead
     if (leadHolder === bat) return;            // already ahead; not a lead change
     leadHolder = bat;
     creditTo = bat.pitcher;                    // his team went ahead while he was in
-    blameTo = fld.pitcher;                     // he gave it up
+    // If the go-ahead run was inherited, the loss belongs to the pitcher who
+    // put that runner on, not necessarily the reliever watching him score.
+    blameTo = goAheadPitcher ?? fld.pitcher;
   };
 
   let inning = 1;
@@ -631,6 +689,8 @@ export function simGame(
 
   const homeWon = home.runs > away.runs;
   const winnerIs = homeWon ? home : away;
+  const rawWinner = leadHolder === winnerIs ? creditTo : null;
+  const winner = winningPitcherFor(winnerIs, rawWinner);
   return {
     home,
     away,
@@ -638,8 +698,9 @@ export function simGame(
     log,
     playEvents: playEvents ?? [],
     // leadHolder is the side that led last, which is the side that won.
-    winningPitcher: leadHolder === winnerIs ? creditTo : null,
+    winningPitcher: winner,
     losingPitcher: leadHolder === winnerIs ? blameTo : null,
+    savingPitcher: savingPitcherFor(winnerIs, winner),
   };
 }
 
@@ -671,7 +732,7 @@ export function createHalfInning(
   say: Say,
   canWalkOff = false,
   events: PlayEvent[] | null = null,
-  onScore?: (bat: TeamState, fld: TeamState) => void,
+  onScore?: (bat: TeamState, fld: TeamState, goAheadPitcher?: Arm) => void,
   /**
    * True when a human is managing that side, so the engine keeps its hands off
    * its calls. Split per side because a managed game has one human dugout and
@@ -681,9 +742,15 @@ export function createHalfInning(
   manualOffense = false,
   manualDefense = false,
 ): HalfInning {
+  bat.currentInning = inning;
+  fld.currentInning = inning;
   let outs = 0;
+  // The scorer's reconstruction of the inning without errors. Once this reaches
+  // three, every later run is unearned even if the actual inning continues.
+  let virtualOuts = 0;
   const bases: Bases = [null, null, null];
-  const blame = new Map<Hitter, Pitcher>();   // runner -> pitcher who allowed him on
+  const blame = new Map<Hitter, Arm>();   // runner -> pitcher who allowed him on
+  const earnedRunner = new Map<Hitter, boolean>();
 
   // The college tiebreaker: from the tenth, each half starts with a runner on
   // second — the player who made the last out, as the rule specifies. Without it
@@ -692,10 +759,20 @@ export function createHalfInning(
   // the league was recalibrated to a lower scoring environment.
   if (inning >= EXTRA_INNINGS_TIEBREAK) {
     const placed = bat.order[(bat.spot + 8) % 9];
-    if (placed) bases[1] = placed;
+    if (placed) {
+      bases[1] = placed;
+      // The automatic runner is charged as a run if he scores, but never as an
+      // earned run because the pitcher did not put him on base.
+      earnedRunner.set(placed, false);
+      blame.set(placed, fld.pitcher);
+    }
   }
 
-  const addOuts = (n: number): void => { outs += n; fld.pitchLine(fld.pitcher).outs += n; };
+  const addOuts = (n: number): void => {
+    outs += n;
+    virtualOuts += n;
+    fld.pitchLine(fld.pitcher).outs += n;
+  };
 
   /**
    * Runs cross the plate in three separate places in here — the walk that forces
@@ -704,15 +781,25 @@ export function createHalfInning(
    * They did not: the intentional walk threw its list of scorers away unread, so
    * a bases-loaded free pass erased the man on third instead of scoring him.
    */
-  const bringHome = (runners: readonly Hitter[], pitcher: Arm, earned: boolean): void => {
-    for (const runner of runners) {
+  const bringHome = (
+    runners: readonly Hitter[], pitcher: Arm, earnedOverride?: boolean,
+  ): Arm | null => {
+    const neededForLead = bat.runs <= fld.runs ? fld.runs - bat.runs + 1 : null;
+    let goAheadPitcher: Arm | null = null;
+    for (let i = 0; i < runners.length; i++) {
+      const runner = runners[i] as Hitter;
       bat.hitLine(runner).r++;
       const guilty = blame.get(runner) ?? pitcher;
+      if (neededForLead === i + 1) goAheadPitcher = guilty;
       const gl = fld.pitchLine(guilty);
       gl.r++;
+      const earned = earnedOverride ?? ((earnedRunner.get(runner) ?? true) && virtualOuts < 3);
       if (earned) gl.er++;
+      earnedRunner.delete(runner);
+      blame.delete(runner);
     }
     bat.runs += runners.length;
+    return goAheadPitcher;
   };
 
   let finished = false;
@@ -747,22 +834,34 @@ export function createHalfInning(
    * Not an out and not a plate appearance: everybody moves up and the same man
    * is still standing at the plate, so it resolves out here beside the steal
    * rather than inside the at-bat. It is also not an error, by rule — a passed
-   * ball is its own line in the book and the runs it lets in stay earned, which
-   * is why nothing here touches the fielding line's error column.
+   * ball is its own line in the book. A passed ball is removed when the scorer
+   * reconstructs earned runs; a wild pitch remains a pitching event. Neither is
+   * a fielding error, so this never touches the error column.
    *
    * Returns true when the run it let in ended the game.
    */
-  const resolvePassedBall = (): boolean => {
+  const resolveLoosePitch = (): boolean => {
     if (!bases[0] && !bases[1] && !bases[2]) return false;
     const catcher = fld.catcher;
     // The catcher's job first and the pitcher's second. A ball in the dirt is
     // half the pitcher's doing, which is the one other place `control` earns
     // its keep beyond the walk column.
     const chance = clamp(
-      PASSED_BALL_RATE * mult(catcher.blocking, -0.55) * mult(fld.pitcher.control, -0.25),
+      LOOSE_PITCH_RATE * mult(catcher.blocking, -0.45) * mult(fld.pitcher.control, -0.35),
       0, 0.25,
     );
-    if (rng() >= chance) return false;
+    const roll = rng();
+    if (roll >= chance) return false;
+
+    // Same event from the runner's perspective, different scorer's decision.
+    // Poor control shifts it toward a wild pitch; poor blocking shifts it toward
+    // a passed ball. Reuse the event roll so adding the distinction does not
+    // consume another random number and perturb every later play in a replay.
+    const wildShare = clamp(
+      0.70 + (50 - fld.pitcher.control) * 0.006 - (50 - catcher.blocking) * 0.004,
+      0.30, 0.92,
+    );
+    const wild = roll < chance * wildShare;
 
     const before: Bases = [bases[0], bases[1], bases[2]];
     const home: Hitter[] = [];
@@ -772,16 +871,21 @@ export function createHalfInning(
     if (bases[1]) { bases[2] = bases[1]; bases[1] = null; }
     if (bases[0]) { bases[1] = bases[0]; bases[0] = null; }
 
-    fld.fieldLine(catcher).pb++;
-    say(`   The pitch gets by ${catcher.name}.`);
+    if (wild) fld.pitchLine(fld.pitcher).wp = (fld.pitchLine(fld.pitcher).wp ?? 0) + 1;
+    else fld.fieldLine(catcher).pb++;
+    say(wild
+      ? `   Wild pitch by ${fld.pitcher.name}.`
+      : `   Passed ball charged to ${catcher.name}.`);
     for (const r of home) say(`   ${r.name} scores from third.`);
-    bringHome(home, fld.pitcher, true);
+    // A passed ball is removed from the earned-run reconstruction; a wild
+    // pitch is a pitching event and can still produce an earned run.
+    const leadArm = bringHome(home, fld.pitcher, wild ? undefined : false);
     if (events) {
       const moves = runnerMoves(before, bases, home);
       if (moves.length > 0) events.push({ kind: 'advance', runners: moves });
       if (home.length > 0) events.push({ kind: 'score', runs: home.length });
     }
-    if (home.length > 0) onScore?.(bat, fld);
+    if (home.length > 0) onScore?.(bat, fld, leadArm ?? fld.pitcher);
     return canWalkOff && bat.runs > fld.runs;
   };
 
@@ -804,7 +908,7 @@ export function createHalfInning(
     // The automatic game. Under manual management each of these is the coach's
     // call, and having the engine quietly make it too would steal with his
     // runners and burn his bench and bullpen out from under him.
-    if (!manualDefense) maybeChangePitcher(fld, say);
+    if (!manualDefense) maybeChangePitcher(fld, bat, bases, say);
     // The visit goes before the hook on purpose: a bench that has a settled man
     // available should try talking to him before it burns a reliever.
     if (!manualDefense) maybeMoundVisit(fld, bases.some(Boolean), say);
@@ -814,7 +918,7 @@ export function createHalfInning(
     // Nobody calls for this one. It runs in a managed game exactly as it does in
     // a simulated one, because a ball off the catcher's shin guard is not a
     // decision anybody made.
-    if (resolvePassedBall()) {
+    if (resolveLoosePitch()) {
       say(`   ${bat.team.name} win it.`);
       finished = true;
       return true;
@@ -843,19 +947,20 @@ export function createHalfInning(
       bLine.bb++; pLine.bb++; pLine.bf++;
       const forced: Hitter[] = [];
       forceAdvance(bases, batter, forced, blame, pitcher);
+      earnedRunner.set(batter, virtualOuts < 3);
       say(`[intentional] ${batter.name} is walked on purpose.`);
       // With the bases loaded the free pass is not free: the man on third walks
       // in. He used to be dropped on the floor instead — no run, no out, and one
       // fewer runner than the inning started with.
       for (const runner of forced) say(`   ${runner.name} is forced home.`);
-      bringHome(forced, pitcher, true);
+      const leadArm = bringHome(forced, pitcher);
       bLine.rbi += forced.length;
       if (events) {
         const moves = runnerMoves(basesBefore, bases, forced);
         if (moves.length > 0) events.push({ kind: 'advance', runners: moves });
         if (forced.length > 0) events.push({ kind: 'score', runs: forced.length });
       }
-      if (forced.length > 0) onScore?.(bat, fld);
+      if (forced.length > 0) onScore?.(bat, fld, leadArm ?? pitcher);
       if (canWalkOff && bat.runs > fld.runs) {
         // Stage 13: the man who ended it, written down at the only moment
         // anybody knows. A walk-off walk still belongs to the man who took it.
@@ -875,6 +980,7 @@ export function createHalfInning(
       const buntOuts = outs;
       const res = sacrifice(bases, batter, outs, rng, bLine, pLine, blame, pitcher, note, defense.buntBeat);
       addOuts(res.outs);
+      if (res.reached) earnedRunner.set(batter, virtualOuts < 3);
       // A beaten-out bunt is a hit everywhere a hit is counted. The batting and
       // pitching lines already took it inside `sacrifice`; the team counter —
       // the H column of the line score — did not, so the box score's team hits
@@ -934,9 +1040,9 @@ export function createHalfInning(
         if (outs > buntOuts) events.push({ kind: 'out', outs: outs - buntOuts });
         if (res.scored.length > 0) events.push({ kind: 'score', runs: res.scored.length });
       }
-      bringHome(res.scored, pitcher, true);
+      const leadArm = bringHome(res.scored, pitcher);
       bLine.rbi += res.scored.length;
-      if (res.scored.length > 0) onScore?.(bat, fld);
+      if (res.scored.length > 0) onScore?.(bat, fld, leadArm ?? pitcher);
       if (canWalkOff && bat.runs > fld.runs) {
         bat.walkOffBy = batter.id;
         say(`   ${bat.team.name} win it.`);
@@ -1081,6 +1187,7 @@ export function createHalfInning(
       case 'walk':
         bLine.bb++; pLine.bb++;
         forceAdvance(bases, batter, scored, blame, pitcher);
+        earnedRunner.set(batter, virtualOuts < 3);
         say(`${cnt} ${batter.name} walks. (${hand})`);
         // The only run in the game nobody swung at. With the bases loaded the
         // scoreboard moved and the log never said whose run it was.
@@ -1089,13 +1196,17 @@ export function createHalfInning(
       case 'hbp':
         bLine.hbp++;
         forceAdvance(bases, batter, scored, blame, pitcher);
+        earnedRunner.set(batter, virtualOuts < 3);
         say(`${cnt} ${batter.name} is hit by the pitch.`);
         for (const r of scored) note(`   ${r.name} is forced home.`);
         break;
       case 'error':
         bLine.ab++;
         if (fielder) fld.fieldLine(fielder).errors++;
+        earnedRunner.set(batter, false);
         addOuts(advanceOnHit(bases, batter, 1, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note, 0, fld.holdEdge));
+        // In the reconstructed inning this ball was converted into an out.
+        virtualOuts += 1;
         say(`${cnt} ${batter.name} reaches on an error by ${fielder?.name ?? 'the defense'}.`);
         break;
       case 'throwing':
@@ -1104,30 +1215,36 @@ export function createHalfInning(
           const fl = fld.fieldLine(fielder);
           fl.errors++; fl.throwing++;
         }
+        earnedRunner.set(batter, false);
         // The extra base is the entire difference between this and a booted
         // ball. Nobody is thrown out on it either — the ball is loose and there
         // is no throw left to make, which is why `advanceOnHit` skips its own
         // risk check when the bonus is on.
         addOuts(advanceOnHit(bases, batter, 1, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note, 1, fld.holdEdge));
+        virtualOuts += 1;
         say(`${cnt} ${batter.name} reaches on a throwing error by ${fielder?.name ?? 'the defense'}; the ball gets away.`);
         break;
       case 'single':
         bLine.ab++; bLine.h++; bat.hits++; pLine.h++;
+        earnedRunner.set(batter, virtualOuts < 3);
         addOuts(advanceOnHit(bases, batter, 1, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note, 0, fld.holdEdge));
         say(`${cnt} ${batter.name} singles${scored.length ? `, ${scored.length} in` : ''}. (${hand})`);
         break;
       case 'double':
         bLine.ab++; bLine.h++; bLine.d++; bat.hits++; pLine.h++;
+        earnedRunner.set(batter, virtualOuts < 3);
         addOuts(advanceOnHit(bases, batter, 2, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note, 0, fld.holdEdge));
         say(`${cnt} ${batter.name} doubles${scored.length ? `, ${scored.length} in` : ''}. (${hand})`);
         break;
       case 'triple':
         bLine.ab++; bLine.h++; bLine.t++; bat.hits++; pLine.h++;
+        earnedRunner.set(batter, virtualOuts < 3);
         addOuts(advanceOnHit(bases, batter, 3, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note, 0, fld.holdEdge));
         say(`${cnt} ${batter.name} triples into the gap${scored.length ? `, ${scored.length} in` : ''}.`);
         break;
       case 'homerun':
         bLine.ab++; bLine.h++; bLine.hr++; bat.hits++; pLine.h++; pLine.hr++;
+        earnedRunner.set(batter, virtualOuts < 3);
         addOuts(advanceOnHit(bases, batter, 4, rng, scored, blame, pitcher, RUNNING[bat.strategy.running], fld.arm, note, 0, fld.holdEdge));
         {
           // Where it actually left the yard — the spray model already chose
@@ -1138,8 +1255,8 @@ export function createHalfInning(
         }
         break;
       default: {
-        bLine.ab++;
         if (pa.kind === 'strikeout') {
+          bLine.ab++;
           bLine.k++; pLine.k++;
           addOuts(1);
           const looking = pa.pitches[pa.pitches.length - 1] === 'called';
@@ -1147,6 +1264,9 @@ export function createHalfInning(
         } else {
           const res = resolveOut(bases, batter, pa.kind, outs, rng, scored, blame, pitcher, called, fielder, note, defense);
           addOuts(res.outs);
+          if (res.sacrificeFly) bLine.sf = (bLine.sf ?? 0) + 1;
+          else bLine.ab++;
+          if (res.reached) earnedRunner.set(batter, virtualOuts < 3);
           say(`${cnt} ${batter.name} ${res.text}`);
         }
       }
@@ -1165,9 +1285,9 @@ export function createHalfInning(
 
     // Credit runs to the runners who scored and to the pitchers responsible.
     // `scored` is ordered lead runner first, which is the order they cross.
-    bringHome(scored.slice(0, counted), pitcher, !errored);
+    const leadArm = bringHome(scored.slice(0, counted), pitcher);
     bLine.rbi += errored ? 0 : counted;
-    if (counted > 0) onScore?.(bat, fld);
+    if (counted > 0) onScore?.(bat, fld, leadArm ?? pitcher);
 
     if (events) {
       for (const p of pa.pitches) events.push({ kind: 'pitch', pitch: p });
@@ -1199,7 +1319,7 @@ export function createHalfInning(
     */
     fld.pitcherConfidence = clamp(
       fld.pitcherConfidence + confidenceShift({
-        homeRun: event === 'homer',
+        homeRun: event === 'homerun',
         walk: event === 'walk' || event === 'hbp',
         strikeout: pa.kind === 'strikeout',
         hit: event === 'single' || event === 'double' || event === 'triple',
@@ -1813,8 +1933,13 @@ export const KIND_ERROR_RISK: Partial<Record<PAKind, number>> = {
  * a .965 fielding percentage puts it; adding a second error path on top of the
  * first would have put it near one and a half. GLOVE was 0.055 and carried
  * everything.
+ *
+ * Both bases rose nine percent with the September 2026 recalibration: the
+ * modern environment strikes out and walks more, so fewer balls reach a
+ * glove, and the same per-chance rate had slid the league to 0.99 errors a
+ * game from the 1.07 it was tuned at.
  */
-const GLOVE_ERROR_BASE = 0.0376;
+const GLOVE_ERROR_BASE = 0.0410;
 
 /**
  * Charged only where the engine actually knows a throw was made: a ground ball
@@ -1827,7 +1952,7 @@ const GLOVE_ERROR_BASE = 0.0376;
  * Higher per chance than the glove rate because it applies to under half as
  * many balls.
  */
-const THROW_ERROR_BASE = 0.0408;
+const THROW_ERROR_BASE = 0.0445;
 
 /**
  * Share of ground balls to the first baseman that become a throw at all.
@@ -1884,14 +2009,14 @@ const OUT_TEXT: Partial<Record<PAKind, string>> = {
   popup: 'pops out.',
 };
 
-function resolveOut(
+export function resolveOut(
   bases: Bases, batter: Hitter, kind: PAKind, outs: number, rng: Rng,
   scored: Hitter[], blame: Map<Hitter, Arm>, pitcher: Arm,
   called?: TacticMods,
   fielder?: Player | null,
   note?: Say,
   defense?: { fromThird: number; sacFly: number },
-): { outs: number; text: string } {
+): { outs: number; text: string; sacrificeFly?: boolean; reached?: boolean } {
   // A call can raise the double play risk or make a sacrifice fly likelier.
   const dpRate = BASERUNNING.doublePlayRate * ((called?.doublePlay ?? BASERUNNING.doublePlayRate) / BASERUNNING.doublePlayRate);
   const sacFly = (called?.sacFly ?? BASERUNNING.sacFlyOnFly) * (defense?.sacFly ?? 1);
@@ -1899,27 +2024,61 @@ function resolveOut(
     * (defense?.fromThird ?? 1);
   if (kind === 'ground' && bases[0] && outs < 2) {
     if (rng() < clamp(dpRate * mult(batter.speed, -0.40), 0.08, 0.62)) {
-      if (bases[2] && rng() < BASERUNNING.scoreFromThirdOnDoublePlay) {
-        note?.(`   ${bases[2].name} scores from third.`);
-        scored.push(bases[2]); bases[2] = null;
-      }
-      note?.(`   ${bases[0].name} is forced at second.`);
+      const fromFirst = bases[0];
+      const fromSecond = bases[1];
+      const fromThird = bases[2];
+      note?.(`   ${fromFirst.name} is forced at second.`);
+      // 6-4-3 style double play: the runner from first and batter are the two
+      // outs. With one out already, the batter-runner is the third out at first,
+      // so no run can score — and the other runners are simply stranded where
+      // they stand. Clearing them too made a man vanish without an out or a
+      // run, which the conservation sweep in tests/liveGame.test.ts catches.
+      // With nobody out, lead runners may advance while the play is completed.
       bases[0] = null;
-      if (bases[1] && !bases[2]) { bases[2] = bases[1]; bases[1] = null; }
+      if (outs === 0) {
+        bases[1] = null; bases[2] = null;
+        if (fromThird && rng() < BASERUNNING.scoreFromThirdOnDoublePlay) {
+          note?.(`   ${fromThird.name} scores from third.`);
+          scored.push(fromThird);
+        } else if (fromThird) {
+          bases[2] = fromThird;
+        }
+        if (fromSecond) {
+          if (!bases[2]) {
+            bases[2] = fromSecond;
+            note?.(`   ${fromSecond.name} moves to third.`);
+          } else {
+            bases[1] = fromSecond;
+          }
+        }
+      }
       return { outs: 2, text: 'grounds into a double play.' };
     }
     if (rng() < BASERUNNING.fieldersChoiceRate) {
-      note?.(`   ${bases[0].name} is forced at second.`);
+      const fromFirst = bases[0];
+      const fromSecond = bases[1];
+      const fromThird = bases[2];
+      note?.(`   ${fromFirst.name} is forced at second.`);
+      // Resolve the whole moving chain instead of replacing first base in
+      // isolation. On a bases-loaded force at second the other two runners are
+      // already advancing: third scores and second reaches third.
+      if (fromThird) {
+        scored.push(fromThird);
+        note?.(`   ${fromThird.name} scores from third.`);
+      }
+      bases[2] = fromSecond;
+      if (fromSecond) note?.(`   ${fromSecond.name} moves to third.`);
+      bases[1] = null;
       bases[0] = batter;
       blame.set(batter, pitcher);
-      return { outs: 1, text: "reaches on a fielder's choice." };
+      return { outs: 1, text: "reaches on a fielder's choice.", reached: true };
     }
   }
   if ((kind === 'fly' || kind === 'line') && bases[2] && outs < 2) {
     if (rng() < (kind === 'fly' ? sacFly : BASERUNNING.sacFlyOnLine)) {
       note?.(`   ${bases[2].name} tags and scores.`);
       scored.push(bases[2]); bases[2] = null;
-      return { outs: 1, text: 'lifts a sacrifice fly, run scores.' };
+      return { outs: 1, text: 'lifts a sacrifice fly, run scores.', sacrificeFly: true };
     }
   }
   // The RBI groundout. Infield plays back, takes the out at first, concedes the
@@ -1969,12 +2128,12 @@ function sacrifice(
   note?: Say,
   /** The infield's depth, as a multiplier on beating the bunt out. */
   buntBeat = 1,
-): { outs: number; text: string; scored: Hitter[]; hit?: boolean } {
+): { outs: number; text: string; scored: Hitter[]; hit?: boolean; reached?: boolean; sacrifice?: boolean } {
   const scored: Hitter[] = [];
   const leadIndex = bases[2] ? 2 : bases[1] ? 1 : bases[0] ? 0 : -1;
   if (leadIndex < 0) {
     // Nobody to move. It is just an out.
-    bLine.ab++; pLine.outs++;
+    bLine.ab++;
     return { outs: 1, text: 'bunts into an out.', scored };
   }
 
@@ -1992,7 +2151,7 @@ function sacrifice(
     );
     // Flagged so the caller can credit the *team* hit column too — the batting
     // and pitching lines above are per-man books and do not reach it.
-    return { outs: retired, text: 'beats out a bunt single!', scored, hit: true };
+    return { outs: retired, text: 'beats out a bunt single!', scored, hit: true, reached: true };
   }
 
   // Botched: the lead runner is forced, which is the disaster case.
@@ -2015,7 +2174,7 @@ function sacrifice(
     bases[0] = batter;
     blame.set(batter, pitcher);
     bLine.ab++;
-    return { outs: 1, text: 'bunts the lead runner into a force out.', scored };
+    return { outs: 1, text: 'bunts the lead runner into a force out.', scored, reached: true };
   }
 
   // The routine sacrifice: everyone up one, batter retired, no time at bat.
@@ -2026,7 +2185,8 @@ function sacrifice(
     if (i === 2) { note?.(`   ${runner.name} scores from third.`); scored.push(runner); }
     else { note?.(`   ${runner.name} to ${BASE_WORD[i + 1] ?? 'third'}.`); bases[i + 1] = runner; }
   }
-  return { outs: 1, text: 'lays down a sacrifice.', scored };
+  bLine.sh = (bLine.sh ?? 0) + 1;
+  return { outs: 1, text: 'lays down a sacrifice.', scored, sacrifice: true };
 }
 
 /**
@@ -2272,15 +2432,20 @@ function maybePinchHit(
  * The manager's version and the bench coach's both land here, which is the
  * point: every one of the ninety-six programs settles a wobbling arm the same
  * way, so nothing about this is an advantage a human has and the league does
- * not. One per pitcher per outing; a pitching change resets it because a new
- * man has his own.
+ * not. The allowance belongs to the team, so a pitching change never resets it.
  *
  * Confidence only, never fatigue. A conversation does not put pitches back in
  * an arm, and letting it would collapse the two channels into one.
  */
+export function canMoundVisit(fld: TeamState): boolean {
+  if (fld.currentInning <= 9) return fld.moundVisitsUsed < 6;
+  return !fld.extraMoundVisitInnings.has(fld.currentInning);
+}
+
 export function moundVisit(fld: TeamState, say?: Say): boolean {
-  if (fld.visitUsed) return false;
-  fld.visitUsed = true;
+  if (!canMoundVisit(fld)) return false;
+  if (fld.currentInning <= 9) fld.moundVisitsUsed += 1;
+  else fld.extraMoundVisitInnings.add(fld.currentInning);
   fld.pitcherConfidence = clamp(
     fld.pitcherConfidence + CONFIDENCE.visit, CONFIDENCE.floor, CONFIDENCE.ceiling,
   );
@@ -2297,14 +2462,14 @@ export function moundVisit(fld: TeamState, say?: Say): boolean {
  * inning would be spending the thing that is supposed to be scarce.
  */
 function maybeMoundVisit(fld: TeamState, runnersOn: boolean, say: Say): void {
-  if (fld.visitUsed || !runnersOn) return;
+  if (!canMoundVisit(fld) || !runnersOn) return;
   // Half gone. On the old centred scale this read 0.3; confidence starts full
   // now, so the same "he has come apart" moment sits here instead.
   if (fld.pitcherConfidence > 0.5) return;
   moundVisit(fld, say);
 }
 
-function maybeChangePitcher(fld: TeamState, say: Say): void {
+function maybeChangePitcher(fld: TeamState, bat: TeamState, bases: Bases, say: Say): void {
   const p = fld.pitcher;
   const budget = 30 + p.stamina * 0.85;
   const line = fld.pitchLine(p);
@@ -2341,12 +2506,12 @@ function maybeChangePitcher(fld: TeamState, say: Say): void {
   if (!next) return;
   fld.usedPen.push(next);
   fld.pitcher = next;
+  fld.noteReliefEntry(next, fld.runs - bat.runs, bases.filter(Boolean).length);
   fld.coverPitcher(next);
   fld.pitcherPitches = 0;
   // A new man is a new outing in every sense: his own budget, his own
-  // confidence, and his own visit still to spend.
+  // confidence. Team mound-visit usage does not reset with a new pitcher.
   fld.pitcherConfidence = CONFIDENCE.relief;
-  fld.visitUsed = false;
   say(`   Pitching change: ${next.name} (${next.throws}HP) enters.`);
 }
 
@@ -2364,14 +2529,14 @@ export function boxScore(result: GameResult): string {
   for (const side of [away, home]) {
     out.push('');
     out.push(`${side.team.name} batting`);
-    out.push(`${pad('', 26)}${num('AB',3)}${num('R',3)}${num('H',3)}${num('RBI',5)}${num('BB',4)}${num('K',3)}`);
+    out.push(`${pad('', 26)}${num('AB',3)}${num('R',3)}${num('H',3)}${num('RBI',5)}${num('BB',4)}${num('K',3)}${num('SF',4)}${num('SH',4)}`);
     for (const r of side.batting.values()) {
-      out.push(`${pad(`${r.player.name} ${r.player.pos} (${r.player.bats})`, 26)}${num(r.ab,3)}${num(r.r,3)}${num(r.h,3)}${num(r.rbi,5)}${num(r.bb,4)}${num(r.k,3)}`);
+      out.push(`${pad(`${r.player.name} ${r.player.pos} (${r.player.bats})`, 26)}${num(r.ab,3)}${num(r.r,3)}${num(r.h,3)}${num(r.rbi,5)}${num(r.bb,4)}${num(r.k,3)}${num(r.sf ?? 0,4)}${num(r.sh ?? 0,4)}`);
     }
     out.push(`${side.team.name} pitching`);
-    out.push(`${pad('', 26)}${num('IP',5)}${num('H',3)}${num('R',3)}${num('ER',4)}${num('BB',4)}${num('K',3)}${num('P',5)}`);
+    out.push(`${pad('', 26)}${num('IP',5)}${num('H',3)}${num('R',3)}${num('ER',4)}${num('BB',4)}${num('K',3)}${num('WP',4)}${num('P',5)}`);
     for (const r of side.pitching.values()) {
-      out.push(`${pad(`${r.player.name} (${r.player.throws}HP)`, 26)}${num(`${Math.floor(r.outs/3)}.${r.outs%3}`,5)}${num(r.h,3)}${num(r.r,3)}${num(r.er,4)}${num(r.bb,4)}${num(r.k,3)}${num(r.pitches,5)}`);
+      out.push(`${pad(`${r.player.name} (${r.player.throws}HP)`, 26)}${num(`${Math.floor(r.outs/3)}.${r.outs%3}`,5)}${num(r.h,3)}${num(r.r,3)}${num(r.er,4)}${num(r.bb,4)}${num(r.k,3)}${num(r.wp ?? 0,4)}${num(r.pitches,5)}`);
     }
   }
   return out.join('\n');

@@ -26,7 +26,7 @@ import { overallOf } from './ratings.js';
 import { prioritiesFor, starsFor, PRIORITIES } from './recruiting.js';
 import { scoutNoise } from './scouting.js';
 import {
-  era, inningsPitched, onBase, slugging,
+  era, inningsPitched, onBase, slugging, plateAppearances,
   type SeasonState,
 } from './season.js';
 import { CLASS_ORDER } from './types.js';
@@ -148,7 +148,7 @@ export function seasonForm(p: Player, season: SeasonState, ctx: DraftContext): n
   if (p.type === 'hitter') {
     const line = season.batting.get(p.id);
     if (!line || line.ab === 0) return 50;
-    const pa = line.ab + line.bb + line.hbp;
+    const pa = plateAppearances(line);
     const z = (onBase(line) + slugging(line) - ctx.opsMean) / ctx.opsSd;
     return 50 + 13 * z * (pa / (pa + 110));
   }

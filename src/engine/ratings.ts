@@ -7,28 +7,20 @@ import type {Arm, BattedBall, EventVector, FieldingRatings, Hitter, HitterRating
   PAEvent, Pitcher, PitcherRatings, Position, Rng,
 } from './types.js';
 
-// League baseline, per plate appearance, calibrated to NCAA Division I.
-// These seven must sum to exactly 1.
+// League baseline, per plate appearance, calibrated to the middle of the
+// modern NCAA Division I environment. These seven sum to exactly 1.
 //
-// Solved from sourced D1 rates rather than guessed: a .270 batting average and a
-// .374 slugging percentage, with a 9.1% walk rate and 1.5% hit by pitch, fixes
-// at-bats at 89.4% of plate appearances and total bases at .3346 per plate
-// appearance. Splitting the hits at roughly 74% singles, 19% doubles, 2% triples
-// and 5% home runs is the only mix that satisfies both.
-//
-// That implies about half a home run per team per game — a BBCOR profile. The
-// previous 0.90 target came from a different era than the .374 slugging figure,
-// and the two cannot both be true. If the modern, livelier college game is what
-// you want, raise slugging first and re-solve this table; do not just add home
-// runs, or batting average and slugging stop agreeing.
+// Playball intentionally targets a broad D-I middle rather than the most
+// explosive power conferences. Sacrifice flies/bunts are resolved after the
+// PA event model and therefore remain part of the out bucket here.
 export const LEAGUE: EventVector = {
-  single: 0.1782,
-  double: 0.0459,
-  triple: 0.0050,
-  homerun: 0.0124,
-  walk: 0.0910,
-  hbp: 0.0150,
-  out: 0.6525,
+  single: 0.1590,
+  double: 0.0520,
+  triple: 0.0045,
+  homerun: 0.0250,
+  walk: 0.1082,
+  hbp: 0.0330,
+  out: 0.6183,
 };
 
 export const EVENTS: readonly PAEvent[] =
@@ -36,14 +28,11 @@ export const EVENTS: readonly PAEvent[] =
 
 // Share of plate appearances that end in a strikeout. Sits inside 'out'.
 //
-// SOURCED: D1 hitters strike out 16.4 percent of the time (Frey, D1 play by play).
-//
-// This was 0.180 and the harness targeted 8.5 per team per game, which over 41
-// plate appearances is 20.7 percent. That 8.5 was MLB's number — the majors
-// struck out 8.47 times per team per game in 2024, in three fewer plate
-// appearances. Aiming at it was dragging the engine toward the professional
-// strikeout environment the spec is most insistent about avoiding.
-export const LEAGUE_K_RATE = 0.164;
+// The modern D-I calibration target is roughly 19.2% K/PA across conferences.
+// Because player ratings are applied through convex multipliers, JENSEN_K below
+// keeps the realized population rate near that target rather than assuming an
+// average-rating matchup represents the whole league.
+export const LEAGUE_K_RATE = 0.1900;
 
 // Batted ball type distribution on balls in play.
 export const LEAGUE_BIP: Record<BattedBall, number> =
@@ -93,9 +82,9 @@ export const BASERUNNING = {
   // firstToThirdOnSingle is anchored to real data. The other two are inferred:
   // MLB splits for them are not published in any source found, so treat them as
   // the softest numbers in this file.
-  scoreFromSecondOnSingle: 0.720,     // MLB ~0.59, inferred
-  firstToThirdOnSingle: 0.355,        // MLB 0.28, sourced
-  scoreFromFirstOnDouble: 0.630,      // MLB ~0.45, inferred
+  scoreFromSecondOnSingle: 0.600,     // MLB ~0.59, inferred
+  firstToThirdOnSingle: 0.290,        // MLB 0.28, sourced
+  scoreFromFirstOnDouble: 0.490,      // MLB ~0.45, inferred
   sacFlyOnFly: 0.62,
   sacFlyOnLine: 0.18,
   scoreFromThirdOnGroundOut: 0.45,    // infield back, trade the out for the run
@@ -110,7 +99,7 @@ export const BASERUNNING = {
   // six percent of its scoring. Real clubs lose roughly 0.15 to 0.20 runners a
   // game taking an extra base; the risk has to be real enough that aggression
   // costs something without quietly deflating the whole run environment.
-  thrownOutAdvancing: 0.026,
+  thrownOutAdvancing: 0.033,
   doublePlayRate: 0.36,
   fieldersChoiceRate: 0.45,
 };
@@ -453,10 +442,11 @@ export function platoonSplit(p: Hitter | Pitcher): PlatoonSplit {
  * exactly 1 for an average player, so the formula looks like it lands on
  * `LEAGUE_K_RATE` by construction — but averaged over a *population* with real
  * spread, E[exp(x)] > exp(E[x]), so both terms average above 1 and the realized
- * rate sits above the configured one. Measured across eight independent seeds
- * the league struck out 17.4% of the time against a sourced D1 figure of 16.4%.
+ * rate sits above the configured one. The current constant is fitted against
+ * the modern D-I calibration harness so the realized population stays close to
+ * the roughly 19.2% strikeout target.
  *
- * This is the correction that puts the realized rate back on the sourced one. It
+ * This is the correction that puts the realized rate back on the target. It
  * is empirical rather than derived because the spread it corrects for depends on
  * the generator's rating distributions, which are themselves tuned.
  *

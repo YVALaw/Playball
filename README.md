@@ -45,9 +45,12 @@ guided tutorial, and the test aids coming out. Arguing the board's terms
 and the art are in. Testing runs on an Android emulator against
 `npm run apk`.
 
-The engine is calibrated multi-seed against sourced NCAA D1 rates. **1133 tests
-across 54 files**, including determinism goldens, calibration as a regression
-test, and a concurrency suite pinning the store's double-press guards.
+The engine is calibrated multi-seed to the modern NCAA D1 environment —
+.280 / .384 / .438, a home run a game, 6.73 runs — since the September 5
+engine pass (`docs/05-systems-reference.md` §51). **1148 tests across 55
+files**, including determinism goldens, calibration as a regression test, a
+baseball-correctness suite for the scorer's rules, and a concurrency suite
+pinning the store's double-press guards.
 
 **It installs.** `npm run apk` builds a real Android package — Capacitor over
 the same bundle the browser runs, no server, offline. The toolchain lives

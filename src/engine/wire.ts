@@ -308,14 +308,17 @@ export function wire(season: SeasonState, limit = 24): WireItem[] {
   const out: WireItem[] = [];
 
   for (const item of items) {
-    if (seenTeams.has(item.team)) continue;
-    if (item.against !== undefined && seenTeams.has(item.against)) continue;
+    // A record chase is about a man, not about a game his club played, so it
+    // neither yields to nor spends the one-appearance-per-team rule.
+    const aboutGame = item.kind !== 'chase';
+    if (aboutGame && seenTeams.has(item.team)) continue;
+    if (aboutGame && item.against !== undefined && seenTeams.has(item.against)) continue;
 
     const used = perKind.get(item.kind) ?? 0;
     if (used >= kindCap) continue;
 
-    seenTeams.add(item.team);
-    if (item.against !== undefined) seenTeams.add(item.against);
+    if (aboutGame) seenTeams.add(item.team);
+    if (aboutGame && item.against !== undefined) seenTeams.add(item.against);
     perKind.set(item.kind, used + 1);
     out.push(item);
     if (out.length >= limit) break;

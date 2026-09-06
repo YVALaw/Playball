@@ -7,7 +7,7 @@
 
 import {
   playGame, recordResult, onBase, slugging, era, inningsPitched, standings, rpiOrder,
-  advancePostseasonDay, seedTeams, regularRecord, rollHurtsFor,
+  advancePostseasonDay, seedTeams, regularRecord, rollHurtsFor, plateAppearances,
 } from './season.js';
 import type {
   BattingSeason, GameSummary, PitchingSeason, SeasonState, TeamRecord,
@@ -1318,7 +1318,7 @@ export function seasonAwards(season: SeasonState): Award[] {
   };
 
   const hitters = [...season.batting.entries()]
-    .filter(([id, s]) => s.ab + s.bb + s.hbp >= minPA && !roster.get(id)?.isPitcher);
+    .filter(([id, s]) => plateAppearances(s) >= minPA && !roster.get(id)?.isPitcher);
   const pitchers = [...season.pitching.entries()]
     .filter(([, s]) => inningsPitched(s) >= minIP);
 
@@ -1383,7 +1383,7 @@ export function allConference(season: SeasonState): AllConferencePick[] {
     for (const [id, s] of season.batting) {
       const who = roster.get(id);
       if (!who || who.pos !== pos) continue;
-      if (s.ab + s.bb + s.hbp < minPA) continue;
+      if (plateAppearances(s) < minPA) continue;
       if (!bestLine || ops(s) > ops(bestLine)) { bestId = id; bestLine = s; }
     }
     if (bestId && bestLine) {

@@ -2106,9 +2106,13 @@ calibrated against that.
 | Substitution | Once out, out for good, both for pinch hitters and the bullpen. Availability is per game on `TeamState`; the season roster is never touched |
 | Pinch hitting | From the seventh only, at most two a game; 14% when the margin is ≥ 7, 5% when a bench bat beats the man due by more than 4% in *this* matchup, otherwise never |
 | Pitching change (AI) | `pitches > 30 + stamina × 0.85 + 12 + HOOK[policy]`, or 6 earned runs after 35 pitches |
-| Passed balls / wild pitches | 3.0% base with a man on, scaled by `mult(catcher.blocking, −0.55) × mult(pitcher.control, −0.25)`, clamped to 0.25. Not an error by rule; the runs stay earned |
+| Passed balls / wild pitches | 3.0% base with a man on, scaled by `mult(catcher.blocking, −0.45) × mult(pitcher.control, −0.35)`, clamped to 0.25, then split into a wild pitch or a passed ball by the same roll (§51.1). Not an error by rule; a passed ball's run is unearned, a wild pitch's is not |
 
 ### 9.6 Calibration targets
+
+**Superseded September 5 2026 (night) — the engine is calibrated to the
+modern game now; §51.2 has the current targets and what moved with them.
+This table is kept as the record of the previous era and its sourcing.**
 
 `TARGETS` in `engine/calibration.ts`. Rate figures come from a Division I
 play-by-play study (Robert Frey, "More About Counts in D1 Baseball"); per-game
@@ -6782,6 +6786,189 @@ errors. The Android build was not re-run.
 **Restored for testing, and owed to stage 19:** SIM THE SEASON, the
 guaranteed Pascagoula Tech offer and its five 99s
 (`docs/TESTING_SHORTCUTS.md`).
+
+## 51. The engine pass — **MERGED September 5 2026, night**
+
+A second outside folder from the reporter, this one engine-only, authored
+against a copy of the tree taken at the interface-pass merge (`8d97eb9`)
+and handed over the same night. It was classified file by file against the
+merge base before anything was copied — the rule §50.5a set — and that
+sorting is the first thing to know about it: **fifteen files were the pass**
+(ten engine files, `types.ts`, `seasonCodec.ts`, two test edits and a new
+suite), and **everything else in the folder was older than the repo** —
+every doc, the README, `store.ts` bar one hunk, and seven interface files
+that were the pre-merge copies, two of them still carrying the type errors
+§50.6 fixed. None of that was taken. The pass's own account is the
+reporter's message; this section is what reached the code, checked against
+it, and what the merge changed.
+
+### 51.1 The rules, corrected
+
+Each of these was a scorer's or a rulebook error, and each is pinned in
+`tests/baseball-correctness.test.ts`.
+
+- **The force chain moves whole.** A bases-loaded fielder's choice at
+  second scores the man from third and sends the man from second to third;
+  he used to stay put, with two men occupying the same base. A ground-ball
+  double play with nobody out lets the lead runners advance; with one out
+  it ends the inning and **the other runners are stranded where they
+  stand** — the pass's first cut cleared every base, so a man on second
+  vanished with neither an out nor a run, and the conservation sweep in
+  `tests/liveGame.test.ts` caught it at seed 95.
+- **The ten-run rule owes the home side its half.** After the top of the
+  seventh a visitor ahead by ten no longer ends the game; only the home
+  club can, because it is already ahead and need not bat.
+- **A pinch hitter replaces the man in the field**, not just his line in
+  the order. The substitute takes the departed man's spot at the usual
+  out-of-position cost; the ghost who kept fielding for the rest of the
+  game is gone. The departed man keeps his `playedAt` entry, so the box
+  still labels him by where he stood.
+- **Defence is recomputed** when anyone moves — a pinch hitter, a two-way
+  reliever's cover, an ordinary pitching change (the man on the mound is
+  part of the range average). `defense`, `arm`, `holdEdge` and `catcher`
+  on `TeamState` are live now.
+- **Sacrifice flies and bunts** are their own columns (`sf`, `sh`) and are
+  not at-bats. **OBP** divides by `AB + BB + HBP + SF`; plate appearances
+  add `SH` on top. Every qualifier and leaderboard reads
+  `plateAppearances()`; the two badges that computed a PA by hand now
+  count the sacrifices too.
+- **Earned runs are reconstructed**, not tagged. Each half-inning keeps a
+  count of *virtual* outs — real outs plus one for every error that
+  should have been one — and a per-runner earned flag. A man who reaches
+  on an error, or after the virtual third out, never scores earned; a
+  passed ball's run is unearned, a wild pitch's is not; the extra-innings
+  placed runner is charged but never earned. The old rule was one bit per
+  play.
+- **Wild pitch and passed ball are two events.** Same roll, one line: poor
+  control pushes the call toward the pitcher (`wp` on the pitching line),
+  poor blocking toward the catcher (`pb` on the fielding line). The base
+  rate is unchanged; the blocking and control exponents moved from −0.55
+  / −0.25 to −0.45 / −0.35.
+- **The win and the save follow the book.** A starter needs fifteen outs;
+  short of that the win goes to the most effective reliever by outs and
+  earned runs, which is the scorer's rule when the lead was never lost.
+  The loss goes to the man who put the go-ahead runner on, not the man
+  watching him score. A save needs the finisher to be neither starter nor
+  winner and to have entered with a lead of three or fewer for an inning,
+  or with the tying run on base, at bat or on deck, or to have pitched
+  three innings — `reliefEntry` on `TeamState` remembers the situation.
+  `GameResult.savingPitcher` carries it and `foldSide` books it.
+- **Mound visits belong to the team**: six in regulation, one more per
+  extra inning, never reset by a pitching change. `visitUsed` survives as
+  a getter for the dugout.
+- **One bunt, one out.** A bunt into an out with nobody on charged the
+  pitcher twice.
+- **The home-run confidence swing fires.** It was keyed on `'homer'`
+  against an event named `'homerun'` and had never once run.
+
+### 51.2 The environment — the modern game, and what had to move with it
+
+The pass re-aimed the calibration at the middle of modern Division I
+rather than the BBCOR era §9.6 was sourced from. `TARGETS` are now:
+
+| Metric | Was | Now |
+|---|---|---|
+| Runs per team per game | 5.30 | 6.73 |
+| Batting average / OBP / SLG | .270 / .347 / .374 | .280 / .384 / .438 |
+| Home runs per team per game | 0.51 | 1.03 |
+| Strikeouts / walks per team per game | 6.72 / 3.73 | 8.01 / 4.70 |
+| PA per team per game | 41.0 | 41.7 |
+
+`LEAGUE` in ratings.ts was re-solved to match (singles .159, doubles .052,
+triples .0045, homers .025, walks .108, hit batsmen .033), `LEAGUE_K_RATE`
+is .190, and the four inferred baserunning rates were pulled back toward
+the sourced MLB splits (second-to-home on a single .72 → .60, first-to-third
+.355 → .29, first-to-home on a double .63 → .49, thrown out advancing
+.026 → .033). The 2,400-game golden now reads 6.87 runs, .281 / .384 /
+.440, 1.03 homers, 7.95 strikeouts and 4.71 walks; every row is inside the
+harness's bar. The reporter's stated source is a 2025 conference-by-
+conference table; the per-figure provenance §9.6 carried has not been
+re-established, and §9.6's table stands as the record of the previous era.
+
+Three things that were priced in the old environment had to be re-priced
+at the merge, and the pass had not touched them:
+
+- **Errors per game** had slid to 0.99 from the 1.07 the league was tuned
+  at, because more strikeouts and walks mean fewer balls reach a glove.
+  Both error bases rose nine percent (`GLOVE_ERROR_BASE` .0376 → .0410,
+  `THROW_ERROR_BASE` .0408 → .0445); the golden reads 1.08.
+- **`RE_SCALE`** in strategy.ts scales the run-expectancy table to the
+  league and is weighed against a batter-quality term in absolute runs,
+  so the level does not cancel. It is 1.41 now (6.73 over the source
+  era's 4.77), not the 1.11 that belonged to 5.30.
+- **The hall of fame** prices careers in runs above replacement, and both
+  sides of that scale with the league. `LEAGUE_RC_PER_PA` is .165 and
+  `REPLACEMENT_ERA` 6.73 × 1.25; every case is then priced back onto the
+  5.30 scale the bar was measured in (`SCORE_ENV`), and `tests/hall-probe.ts`
+  was rerun for twenty-four seasons. The modern environment pulls the
+  programmes apart — runs created is convex, and the strongest programme
+  now produces .440 hitters with sixty home runs — so no bar puts the blue
+  blood on every second year without locking everybody else out. **The
+  bar is 120**, the last row where the median and cellar programmes are
+  not shut out; both probe tables are in hall.ts. The fixtures in
+  `tests/hall.test.ts` were rewritten in the new league's terms.
+
+### 51.3 Arms — recovery by volume, and the two clocks
+
+`SeasonState.pitcherWorkload` remembers each arm's last outing — day,
+pitches, outs — beside `lastPitched`, and `recoveryGap` turns pitches into
+calendar days: over 90 → 5, over 65 → 4, over 40 → 3, over 20 → 2,
+otherwise 1. `pitcherReady` gates both the rotation walk (`startableSlot`)
+and the pen (`restedFirst`); a twelve-pitch cameo yesterday and a hundred
+pitches yesterday are no longer the same thing. If nobody in the rotation
+is ready the longest-rested healthy arm starts; if nobody in the pen is
+ready the fallback is every healthy arm, tired — the pass shipped the
+rotation fallback and an empty pen, which would have left a starter nobody
+could lift. `TeamState` no longer substitutes the full bullpen for an
+empty relief list.
+
+**The two clocks.** The season keeps a calendar (`currentDay`, the scale
+the workload ledger and `lastPitched` are written in) and a schedule index
+(`injuryClock`, the trainer's scale, where a weekend is three games not
+three days). The pass compared a workload day against the injury clock,
+which reads every starter as owed rest for the rest of the year; the
+rotation only kept working because the fallback happens to pick the
+longest-rested man. `pitcherReady` now takes both, `startableSlot` passes
+both, and the post-game injury roll for pitchers — new in the pass, so a
+pure pitcher finally has an exposure channel, scaled by the outing and
+the club's arm care — runs on the injury clock like every other `hurt`.
+Pinned in `baseball-correctness` and in the bracket rotation test, which
+now asserts that every arm passed over on a tournament day was on
+recovery.
+
+### 51.4 The schedule
+
+The non-conference half of the week is no longer a bare circle. Seven
+weeks make every conference pair once; the five repeats are the five
+round-robin rounds with the least total distance on a coarse map of the
+eight conferences (`CONFERENCE_COORD`). Rebuilt over six rotations: 96
+teams, 45 games each, 33 conference and 12 non-conference against 12
+distinct opponents, 2,160 games, no duplicate fixture, and no
+non-conference opponent repeated from one rotation to the next. The
+regional lean is real but weak — a round is chosen whole, so coast-to-coast
+pairs like NEC–PAC still meet twice while neighbours DES–HRT meet once;
+choosing the repeats pair by pair is the obvious next step and is booked
+in `06` §Y.
+
+### 51.5 What the merge found, and left
+
+Six of 1,142 tests failed in the folder as handed over, none of them in
+the suite it shipped with. Two were the pass's bugs (the stranded runners
+above; the two clocks). Two were re-pricings it had not done (errors, the
+hall). Two were the tests' own premises: the fielding trial keyed passed
+balls by roster position, which a pinch-hitting catcher now breaks, so it
+keys by `playedAt`; and the record-chase brief was being deduplicated out
+of a busier feed because its club had already appeared, so a chase — a
+story about a man, not a game — is exempt from the one-club rule in
+`wire.ts`.
+
+Not changed, and worth knowing: a run that scores on a play the batter
+reaches on by error is earned unless it is past the virtual third out
+(real scorers ask whether he would have scored anyway); a passed ball
+unearns only the run it lets in, not the runner it moved up; a managed
+game journalled mid-play before this commit replays on a different random
+stream. The pass's `endManagedGame` hunk was not taken — `recordResult`
+already writes the ledger for a managed game.
 
 ## Appendix A: stale comments and vestigial code found while writing this
 

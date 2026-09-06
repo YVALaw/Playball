@@ -328,7 +328,7 @@ function juneSplit(
 ): { june: NonNullable<CareerYear['june']> } | null {
   const bat = season.postBatting?.get(id);
   const pit = season.postPitching?.get(id);
-  const batted = bat && (bat.ab > 0 || bat.bb > 0 || bat.hbp > 0);
+  const batted = bat && (bat.ab > 0 || bat.bb > 0 || bat.hbp > 0 || (bat.sf ?? 0) > 0 || (bat.sh ?? 0) > 0);
   const pitched = pit && pit.outs > 0;
   if (!batted && !pitched) return null;
   return {
@@ -674,6 +674,15 @@ export function appliedStrategy(
   return season.playbooks?.[opp.def.abbr] ?? rec.strategy;
 }
 
+export interface PitcherWorkload {
+  /** Schedule/postseason day of the outing. */
+  day: number;
+  /** Actual pitch count in that outing. */
+  pitches: number;
+  /** Outs recorded in that outing. */
+  outs: number;
+}
+
 export interface SeasonState {
   config: SeasonConfig;
   rng: Rng;
@@ -710,6 +719,11 @@ export interface SeasonState {
    * innings while the first threw ninety.
    */
   lastPitched: Map<PlayerId, number>;
+  /**
+   * Last-outing workload. Optional only for save compatibility: old dynasties
+   * know when an arm last pitched but not how hard he worked.
+   */
+  pitcherWorkload?: Map<PlayerId, PitcherWorkload>;
   batting: Map<PlayerId, BattingSeason>;
   pitching: Map<PlayerId, PitchingSeason>;
   /**
@@ -1112,6 +1126,38 @@ export function worldFromTeams(
 }
 
 /**
+ * A rough map of the fictional conferences, used only to decide which league
+ * relationships deserve the extra repeat when twelve midweeks cannot be spread
+ * evenly over the twenty-eight possible conference pairs. Every pair still
+ * meets once; the five repeats lean regional. This is matchmaking geography,
+ * not a travel simulator, so the coordinates are intentionally coarse.
+ */
+const CONFERENCE_COORD: Record<string, readonly [number, number]> = {
+  PAC: [-3, 1], DES: [-2, -1], MTN: [-1, 2], HRT: [0, 1],
+  GLK: [1, 2], NEC: [3, 2], ATL: [2, -1], GULF: [0, -2],
+};
+
+function nonConferencePairs(world: WorldShape, week: number): Array<[number, number]> {
+  const n = world.conferences.length;
+  if (n % 2 !== 0) throw new Error('non-conference play needs an even number of conferences');
+  const rounds = Array.from({ length: Math.max(1, n - 1) }, (_, r) => r);
+  const mapped = world.conferences.every((c) => CONFERENCE_COORD[c.id]);
+  if (!mapped || n !== 8) return roundPairs(week, n);
+
+  const distance = (round: number): number => roundPairs(round, n).reduce((sum, [a, b]) => {
+    const ca = CONFERENCE_COORD[world.conferences[a]!.id]!;
+    const cb = CONFERENCE_COORD[world.conferences[b]!.id]!;
+    return sum + (ca[0] - cb[0]) ** 2 + (ca[1] - cb[1]) ** 2;
+  }, 0);
+  const regional = [...rounds].sort((a, b) => distance(a) - distance(b) || a - b);
+  // Seven weeks make every conference pair once. The remaining five repeat the
+  // five most regional perfect matchings, while the team-to-team offset below
+  // still changes every season.
+  const cycle = [...rounds, ...regional.slice(0, 5)];
+  return roundPairs(cycle[week % cycle.length] ?? week, n);
+}
+
+/**
  * A week is seven days: a non-conference game on Tuesday, a conference series
  * Friday through Sunday.
  *
@@ -1137,7 +1183,7 @@ export function buildSchedule(
 
     if (week < config.nonConferenceGames) {
       if (confCount % 2 !== 0) throw new Error('non-conference play needs an even number of conferences');
-      for (const [ca, cb] of roundPairs(week, confCount)) {
+      for (const [ca, cb] of nonConferencePairs(world, week)) {
         const a = world.conferences[ca];
         const b = world.conferences[cb];
         if (!a || !b) continue;
@@ -1247,6 +1293,7 @@ export function createSeason(
     dayIndex: 0,
     scheduleRotation: 0,
     lastPitched: new Map(),
+    pitcherWorkload: new Map(),
     batting: new Map(),
     pitching: new Map(),
     postBatting: new Map(),
@@ -1341,6 +1388,7 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
     dayIndex: 0,
     scheduleRotation: rotation,
     lastPitched: new Map(),
+    pitcherWorkload: new Map(),
     batting: new Map(),
     pitching: new Map(),
     postBatting: new Map(),
@@ -1393,7 +1441,7 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
 function battingFor(season: SeasonState, id: PlayerId): BattingSeason {
   let line = season.batting.get(id);
   if (!line) {
-    line = { g: 0, ab: 0, r: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, hbp: 0, sb: 0, cs: 0 };
+    line = { g: 0, ab: 0, r: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, hbp: 0, sb: 0, cs: 0, sf: 0, sh: 0 };
     season.batting.set(id, line);
   }
   return line;
@@ -1410,7 +1458,7 @@ function postBattingFor(season: SeasonState, id: PlayerId): BattingSeason {
   if (!season.postBatting) season.postBatting = new Map();
   let line = season.postBatting.get(id);
   if (!line) {
-    line = { g: 0, ab: 0, r: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, hbp: 0, sb: 0, cs: 0 };
+    line = { g: 0, ab: 0, r: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, hbp: 0, sb: 0, cs: 0, sf: 0, sh: 0 };
     season.postBatting.set(id, line);
   }
   return line;
@@ -1420,7 +1468,7 @@ function postPitchingFor(season: SeasonState, id: PlayerId): PitchingSeason {
   if (!season.postPitching) season.postPitching = new Map();
   let line = season.postPitching.get(id);
   if (!line) {
-    line = { g: 0, gs: 0, w: 0, l: 0, sv: 0, outs: 0, h: 0, r: 0, er: 0, bb: 0, k: 0, hr: 0, pitches: 0, bf: 0 };
+    line = { g: 0, gs: 0, w: 0, l: 0, sv: 0, outs: 0, h: 0, r: 0, er: 0, bb: 0, k: 0, hr: 0, pitches: 0, bf: 0, wp: 0 };
     season.postPitching.set(id, line);
   }
   return line;
@@ -1429,7 +1477,7 @@ function postPitchingFor(season: SeasonState, id: PlayerId): PitchingSeason {
 function pitchingFor(season: SeasonState, id: PlayerId): PitchingSeason {
   let line = season.pitching.get(id);
   if (!line) {
-    line = { g: 0, gs: 0, w: 0, l: 0, sv: 0, outs: 0, h: 0, r: 0, er: 0, bb: 0, k: 0, hr: 0, pitches: 0, bf: 0 };
+    line = { g: 0, gs: 0, w: 0, l: 0, sv: 0, outs: 0, h: 0, r: 0, er: 0, bb: 0, k: 0, hr: 0, pitches: 0, bf: 0, wp: 0 };
     season.pitching.set(id, line);
   }
   return line;
@@ -1467,6 +1515,7 @@ export function fieldingFor(season: SeasonState, id: PlayerId): FieldingSeason {
 interface Decision {
   winner: Arm | null;
   loser: Arm | null;
+  saver: Arm | null;
 }
 
 function foldSide(
@@ -1483,6 +1532,7 @@ function foldSide(
     s.ab += line.ab; s.r += line.r; s.h += line.h; s.d += line.d; s.t += line.t;
     s.hr += line.hr; s.rbi += line.rbi; s.bb += line.bb; s.k += line.k;
     s.hbp += line.hbp; s.sb += line.sb; s.cs += line.cs;
+    s.sf = (s.sf ?? 0) + (line.sf ?? 0); s.sh = (s.sh ?? 0) + (line.sh ?? 0);
     // The same game a second time, in its own book. Season totals include
     // tournament play — that is the NCAA convention and this game has always
     // followed it — so June is counted twice on purpose rather than moved.
@@ -1492,6 +1542,7 @@ function foldSide(
       j.ab += line.ab; j.r += line.r; j.h += line.h; j.d += line.d; j.t += line.t;
       j.hr += line.hr; j.rbi += line.rbi; j.bb += line.bb; j.k += line.k;
       j.hbp += line.hbp; j.sb += line.sb; j.cs += line.cs;
+      j.sf = (j.sf ?? 0) + (line.sf ?? 0); j.sh = (j.sh ?? 0) + (line.sh ?? 0);
     }
   }
 
@@ -1501,6 +1552,7 @@ function foldSide(
     s.outs += line.outs; s.h += line.h; s.r += line.r; s.er += line.er;
     s.bb += line.bb; s.k += line.k; s.hr += line.hr;
     s.pitches += line.pitches; s.bf += line.bf;
+    s.wp = (s.wp ?? 0) + (line.wp ?? 0);
     if (line.player === side.starter) s.gs += 1;
     if (june) {
       const j = postPitchingFor(season, line.player.id);
@@ -1508,6 +1560,7 @@ function foldSide(
       j.outs += line.outs; j.h += line.h; j.r += line.r; j.er += line.er;
       j.bb += line.bb; j.k += line.k; j.hr += line.hr;
       j.pitches += line.pitches; j.bf += line.bf;
+      j.wp = (j.wp ?? 0) + (line.wp ?? 0);
       if (line.player === side.starter) j.gs += 1;
     }
   }
@@ -1537,10 +1590,9 @@ function foldSide(
     if (won) j.w += 1; else j.l += 1;
   }
 
-  // A save needs a reliever who finished a close win he did not win himself.
-  if (won && side.pitcher !== side.starter && side.pitcher !== credited && margin <= 3) {
-    pitchingFor(season, side.pitcher.id).sv += 1;
-    if (june) postPitchingFor(season, side.pitcher.id).sv += 1;
+  if (won && decision.saver) {
+    pitchingFor(season, decision.saver.id).sv += 1;
+    if (june) postPitchingFor(season, decision.saver.id).sv += 1;
   }
 }
 
@@ -1671,27 +1723,81 @@ export function rollHurtsFor(season: SeasonState, teamIndex: number): void {
  * arm who can pitch — and hands the original back when nobody can, since the
  * engine has to be given somebody.
  */
-function startableSlot(team: Team, slot: number, day: number): number {
+/** Minimum calendar gap before an arm is considered ready again. */
+export function recoveryGap(pitches: number): number {
+  if (pitches > 90) return 5;
+  if (pitches > 65) return 4;
+  if (pitches > 40) return 3;
+  if (pitches > 20) return 2;
+  return 1;
+}
+
+/**
+ * The previous outing matters by volume, not merely by whether it happened.
+ *
+ * Two clocks, on purpose, because the season keeps two. `day` is the calendar
+ * — `currentDay`, the scale `pitcherWorkload` and `lastPitched` are written
+ * in, where a weekend is three consecutive numbers and the week is seven.
+ * `clock` is `injuryClock`, the schedule *index* the trainer's room runs on,
+ * where a weekend is three games. Comparing a workload day against the
+ * injury clock read every arm as owed rest for ever, since the calendar
+ * outruns the index by nearly two to one; that is the bug this signature
+ * exists to prevent.
+ */
+export function pitcherReady(
+  season: SeasonState, arm: Arm,
+  day = currentDay(season), clock = injuryClock(season),
+): boolean {
+  if (!available(arm, clock)) return false;
+  const last = season.pitcherWorkload?.get(arm.id);
+  if (!last) return true;
+  return day - last.day >= recoveryGap(last.pitches);
+}
+
+function startableSlot(
+  season: SeasonState, team: Team, slot: number, day: number, clock: number,
+): number {
   const rot = team.rotation;
   if (rot.length === 0) return slot;
   for (let i = 0; i < rot.length; i++) {
     const at = (slot + i) % rot.length;
     const arm = rot[at];
-    if (arm && available(arm, day)) return at;
+    if (arm && pitcherReady(season, arm, day, clock)) return at;
   }
-  return slot;
+  // A schedule must still have a starter. If every listed arm is on recovery,
+  // choose the longest-rested available rotation arm rather than resurrecting
+  // an injured/suspended one. The game can then treat him as an emergency start.
+  let best = slot;
+  let bestRest = -Infinity;
+  for (let i = 0; i < rot.length; i++) {
+    const arm = rot[i];
+    if (!arm || !available(arm, clock)) continue;
+    const rest = day - (season.pitcherWorkload?.get(arm.id)?.day ?? -999);
+    if (rest > bestRest) { bestRest = rest; best = i; }
+  }
+  return best;
 }
 
 export function restedFirst(season: SeasonState, team: TeamRecord): Arm[] {
   const day = currentDay(season);
-  // A suspended or redshirted arm is not in tonight's pen. Availability was
-  // never asked here, so the classroom could send a man out to warm up.
-  return [...team.team.bullpen].filter((p) => available(p, day)).sort((a, b) => {
-    const restA = day - (season.lastPitched.get(a.id) ?? -99);
-    const restB = day - (season.lastPitched.get(b.id) ?? -99);
+  const clock = injuryClock(season);
+  const ready = [...team.team.bullpen].filter((p) => pitcherReady(season, p, day, clock));
+  // A pen with nobody on his full rest still has to answer the phone. The
+  // fallback is every healthy, eligible arm — the same rule `startableSlot`
+  // applies to the rotation — so a Sunday after a long weekend costs the
+  // club tired relievers rather than a starter nobody can lift.
+  const pen = ready.length > 0
+    ? ready
+    : [...team.team.bullpen].filter((p) => available(p, clock));
+  return pen.sort((a, b) => {
+    const wa = season.pitcherWorkload?.get(a.id);
+    const wb = season.pitcherWorkload?.get(b.id);
+    const restA = day - (wa?.day ?? season.lastPitched.get(a.id) ?? -99);
+    const restB = day - (wb?.day ?? season.lastPitched.get(b.id) ?? -99);
     if (restA !== restB) return restB - restA;
-    // armValue, not overallOf: a two-way man in the pen is ranked on his
-    // arm here, whatever his bat is worth.
+    const pitchesA = wa?.pitches ?? 0;
+    const pitchesB = wb?.pitches ?? 0;
+    if (pitchesA !== pitchesB) return pitchesA - pitchesB;
     return armValue(b) - armValue(a);
   });
 }
@@ -1796,8 +1902,8 @@ export function playGame(
     || season.captureBoxFor === homeIndex || season.captureBoxFor === awayIndex;
   const result = simGame(home.team, away.team, season.rng, {
     engine: season.config.engine,
-    homeStarter: startableSlot(home.team, opts.homeSlot ?? slot, injuryClock(season)),
-    awayStarter: startableSlot(away.team, opts.awaySlot ?? slot, injuryClock(season)),
+    homeStarter: startableSlot(season, home.team, opts.homeSlot ?? slot, currentDay(season), injuryClock(season)),
+    awayStarter: startableSlot(season, away.team, opts.awaySlot ?? slot, currentDay(season), injuryClock(season)),
     ...(homeLineup ? { homeLineup } : {}),
     ...(awayLineup ? { awayLineup } : {}),
     homeStrategy: appliedStrategy(season, home, away),
@@ -1855,6 +1961,8 @@ function battingLines(side: GameResult['home']): BoxLine[] {
     if (l.bb) extras.push(`${l.bb} BB`);
     if (l.k) extras.push(`${l.k} K`);
     if (l.sb) extras.push(`${l.sb} SB`);
+    if (l.sf) extras.push(`${l.sf} SF`);
+    if (l.sh) extras.push(`${l.sh} SH`);
     out.push({
       id: l.player.id, name: l.player.name,
       // The two-way man's batting row wears PH — pitcher-hitter, the DH's
@@ -1894,7 +2002,7 @@ function pitchingLines(side: GameResult['home']): BoxLine[] {
     const ip = `${Math.floor(l.outs / 3)}.${l.outs % 3}`;
     out.push({
       id: l.player.id, name: l.player.name, slot: l.player.role,
-      line: `${ip} IP, ${l.h} H, ${l.r} R, ${l.er} ER, ${l.bb} BB, ${l.k} K`,
+      line: `${ip} IP, ${l.h} H, ${l.r} R, ${l.er} ER, ${l.bb} BB, ${l.k} K${(l.wp ?? 0) ? `, ${l.wp} WP` : ''}`,
     });
   }
   return out;
@@ -1924,7 +2032,7 @@ function noteWatch(season: SeasonState, side: TeamState): void {
     return w;
   };
   for (const l of side.batting.values()) {
-    const pa = l.ab + l.bb + l.hbp;
+    const pa = l.ab + l.bb + l.hbp + (l.sf ?? 0) + (l.sh ?? 0);
     if (pa === 0) continue;
     const w = of(l.player.id);
     w.pa += pa;
@@ -1951,13 +2059,44 @@ export function recordResult(
   if (!home || !away) throw new Error('unknown team index');
   const conference = opts.conference ?? true;
   const today = opts.day ?? currentDay(season);
+  const clock = injuryClock(season);
 
   // Whoever threw is unavailable for a while. Recorded here rather than in
   // `playGame` so a game the manager played himself carries the same cost as a
   // simulated one — it arrives through this door and no other.
-  for (const side of [result.home, result.away]) {
+  for (const [rec, side] of [[home, result.home], [away, result.away]] as const) {
     for (const line of side.pitching.values()) {
-      if (line.outs > 0 || line.bf > 0) season.lastPitched.set(line.player.id, today);
+      if (line.outs > 0 || line.bf > 0) {
+        season.lastPitched.set(line.player.id, today);
+        (season.pitcherWorkload ??= new Map()).set(line.player.id, {
+          day: today, pitches: line.pitches, outs: line.outs,
+        });
+
+        // Pitchers need their own exposure channel. A pure pitcher is not on the
+        // batting lineup, so the ordinary pregame appearance roll never sees
+        // him. The chance scales gently with the actual outing: a seven-pitch
+        // cameo is not treated like a 105-pitch start. Deterministic through
+        // hurtsToday, so reloading cannot reroll an elbow. On the trainer's
+        // clock, not the calendar — `injuryClock` is the scale every other
+        // `hurt` and `available` in this file reads.
+        if (line.pitches >= 20 && available(line.player, clock)) {
+          const workloadStrain = 1 + Math.max(0, line.pitches - 20) / 55;
+          const going = hurtsToday(
+            line.player, clock, season.seed ?? 0,
+            workloadStrain * (rec.injuryGuard ?? 1) * (rec.armCare ?? 1),
+            season.year ?? 0,
+          );
+          if (going) {
+            hurt(line.player, clock, going.what, going.days);
+            if (rec.index === season.captureBoxFor) {
+              (season.trainer ??= []).push({
+                id: line.player.id, name: line.player.name, what: going.what,
+                days: going.days, day: clock,
+              });
+            }
+          }
+        }
+      }
     }
   }
 
@@ -2076,6 +2215,7 @@ export function recordResult(
   const decision: Decision = {
     winner: result.winningPitcher,
     loser: result.losingPitcher,
+    saver: result.savingPitcher,
   };
   const june = opts.postseason === true;
   foldSide(season, result.home, homeWon, margin, decision, june);
@@ -2449,9 +2589,11 @@ export interface LeaderRow {
 }
 
 export const battingAverage = (s: BattingSeason): number => (s.ab === 0 ? 0 : s.h / s.ab);
+export const plateAppearances = (s: Pick<BattingSeason, 'ab' | 'bb' | 'hbp' | 'sf' | 'sh'>): number =>
+  s.ab + s.bb + s.hbp + (s.sf ?? 0) + (s.sh ?? 0);
 export const onBase = (s: BattingSeason): number => {
-  const pa = s.ab + s.bb + s.hbp;
-  return pa === 0 ? 0 : (s.h + s.bb + s.hbp) / pa;
+  const denom = s.ab + s.bb + s.hbp + (s.sf ?? 0);
+  return denom === 0 ? 0 : (s.h + s.bb + s.hbp) / denom;
 };
 export const slugging = (s: BattingSeason): number => {
   if (s.ab === 0) return 0;
@@ -2758,7 +2900,7 @@ export function leaders(season: SeasonState, opts: LeaderOptions = {}): Leaderbo
   const fld = [...(season.fielding ?? new Map<PlayerId, FieldingSeason>()).entries()]
     .filter(([id]) => onTeam(id));
 
-  const qualifiedBat = bat.filter(([, s]) => s.ab + s.bb + s.hbp >= minPA);
+  const qualifiedBat = bat.filter(([, s]) => plateAppearances(s) >= minPA);
   const qualifiedPit = pit.filter(([, s]) => inningsPitched(s) >= minIP);
   const qualifiedFld = fld.filter(([, s]) => s.chances >= minChances);
 
@@ -2845,7 +2987,7 @@ export function recordSeasonMarks(season: SeasonState, year: number): void {
     if (tb > 0) offer(book, 'seasonTB', { ...who, value: tb, detail: `${s.ab} AB` });
 
     // The rates, behind the same bar the national leaderboards use.
-    if (s.ab + s.bb + s.hbp < minPA) continue;
+    if (plateAppearances(s) < minPA) continue;
     offer(book, 'seasonAvg', {
       ...who, value: battingAverage(s), detail: `${s.h}-for-${s.ab}`,
     });

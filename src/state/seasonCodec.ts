@@ -89,6 +89,10 @@ export function fromPortable(p: Portable): SeasonState {
   p.season.postBatting ??= new Map();
   p.season.postPitching ??= new Map();
 
+  // Saves written before outing-volume recovery only know the last day an arm
+  // appeared. Start the richer ledger empty; lastPitched remains the fallback.
+  p.season.pitcherWorkload ??= new Map();
+
   // And one that only exists for the width of an offseason: a save written
   // between the draft phase and signing day carries a board, and a board from
   // before the other ninety five programs could keep anybody has no ledger of

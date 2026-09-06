@@ -6,8 +6,43 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 5, 2026 · **Branch:** `main` · **pushed
-through the interface pass (`8d97eb9`) and the docs commit after it.**
+**Last session:** September 5, 2026, night · **Branch:** `main` · **the
+engine pass merged and repaired on top of the interface pass** (`05` §51).
+
+> **September 5, night — the engine pass, classified, merged and repaired.**
+>
+> A second outside folder, engine-only, built on a copy of the tree taken
+> at `8d97eb9`. Classified file by file against the merge base first:
+> fifteen files were the pass, and the rest — every doc, `store.ts` bar
+> one hunk, seven interface files still carrying the pre-merge type errors
+> — were older than the repo and were left. `05` §51 is the account.
+>
+> **What it brought:** the force chain moving whole, the ten-run rule
+> owing the home half, pinch hitters who replace the fielder, defence
+> recomputed on every move, SF and SH as their own columns with the right
+> OBP, earned runs reconstructed through virtual outs, wild pitch split
+> from passed ball, the win and the save by the book, team mound visits,
+> pitcher recovery by pitches thrown, pitchers exposed to injury by
+> workload, a regional lean in the non-conference schedule, and a
+> recalibration to the modern game — .280 / .384 / .438, 6.73 runs, a
+> home run a game.
+>
+> **What the merge found:** six failures in the full suite the folder had
+> not run. Two real bugs — an inning-ending double play cleared the
+> stranded runners (the conservation sweep caught it at seed 95), and
+> starter readiness compared a calendar day against the injury clock, so
+> every rotation arm read as owed rest for ever. Two re-pricings the pass
+> had skipped — errors per game (bases up nine percent), and the hall of
+> fame, which now prices cases back onto the scale its bar was measured in
+> and sits at 120 after a rerun of the probe. Two test premises — passed
+> balls keyed by roster position, a record chase deduplicated out of the
+> feed. Also fixed on the way: `RE_SCALE` to 1.41, an empty-pen fallback,
+> and a lifted starter keeping his box-score position.
+>
+> **The rule, confirmed a third time:** classify every file against the
+> merge base before copying, and nothing from outside is done until
+> `npm run check` says so here — the folder's own suite was green while
+> the full one was not.
 
 > **September 5 — the interface pass, merged and read.**
 >
@@ -447,7 +482,7 @@ exists. Stage 19 removes the three together.
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,133 tests, 54 files)
+npm run check      # typecheck + the whole suite (1,148 tests, 55 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing

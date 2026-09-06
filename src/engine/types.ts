@@ -494,11 +494,15 @@ export type EngineFn = (
 export interface HitLine {
   ab: number; r: number; h: number; d: number; t: number; hr: number;
   rbi: number; bb: number; k: number; hbp: number; sb: number; cs: number;
+  /** Sacrifice flies/bunts. Optional so saves from before the scorer kept them still load. */
+  sf?: number; sh?: number;
 }
 
 export interface PitchLine {
   outs: number; h: number; r: number; er: number; bb: number;
   k: number; hr: number; pitches: number; bf: number;
+  /** Wild pitches. Optional for backwards-compatible season/save lines. */
+  wp?: number;
 }
 
 /**

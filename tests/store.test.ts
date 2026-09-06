@@ -832,9 +832,12 @@ describe('the hall of fame meets when the draft settles', () => {
    * ballot runs at the one moment every departure is settled, that it announces
    * itself, and that it does not touch a man who is still on a roster.
    */
+  // The HUGE season of tests/hall.test.ts, in the modern league's terms: a
+  // line that was enormous at .270 and half a homer a game is merely very
+  // good at .280 and a homer a game, and the hall prices against the league.
   const greatYear = (year: number, classYear: string, abbr: string, name: string) => ({
     year, classYear, team: abbr, name,
-    ab: 180, h: 72, d: 18, t: 2, hr: 15, rbi: 65, bb: 30, sb: 4,
+    ab: 180, h: 72, d: 18, t: 2, hr: 24, rbi: 78, bb: 34, sb: 4,
   });
 
   it('inducts a finished career, says so, and leaves a man still playing alone', async () => {
