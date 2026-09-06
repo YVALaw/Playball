@@ -1,8 +1,10 @@
 # Roadmap
 
-**Last updated:** September 5, 2026 · stages 1–16, 18 and 20–23 shipped ·
-the APK report closed · **the interface pass merged September 5** (`05` §50)
-· 24 part-built, 25 and 26 booked, 17 and 19 the tail
+**Last updated:** September 6, 2026 · stages 1–16, 18, 20–23 and 25 shipped ·
+the APK report closed · **three outside passes merged September 5** — the
+interface (`05` §50), the engine (§51) and prestige (§52) · 24 part-built,
+26 awaiting a verdict · **17 is god mode now, not the store**, and **18b
+(Android 16) was booked September 6**
 **Supersedes:** v3, which by the end was wrong about most of what it claimed
 **Companion docs:** `05-systems-reference.md` for what the game does today,
 `06-backlog.md` for what it is going to do and why, `02-sim-engine-spec.md` for
@@ -413,11 +415,8 @@ drafted players at all.
 
 ## Debt
 
-- Four UI files — `Avatar.tsx`, `Player.tsx`, `Standings.tsx`, `TeamCard.tsx` —
-  still carry a comment describing a **sixty-four program** world. It has
-  ninety-six. The engine, the store, the world builder and the school data were
-  swept; all that is left is comments, none of it reaches the player, which
-  makes it cheap to fix and easy to keep forgetting
+- ~~Four UI files still carry a comment describing a **sixty-four program**
+  world.~~ Checked September 6: gone from all four. Closed
 - `sim.ts parity` still prints a verdict off a thirty-point rating gap the shipped
   world never produces, and the verdict is wrong. The curve it should be read
   against is in `tests/parity-sweep.ts` (T1 in the implementation plan)
@@ -428,8 +427,11 @@ drafted players at all.
 
 ## Where the stages stand
 
-**Sixteen of twenty-three shipped, through September 3 2026** — four stages
-were added September 3 from the phone report. The order, and what
+**Twenty-two of twenty-six shipped, through September 6 2026** — 1–16, 18,
+20–23 and 25. Four stages were added September 3 from the phone report, 24
+on September 4, 25 and 26 on September 5, and the half-stage 18b on
+September 6. The three outside passes of September 5 were not stages: they
+cut across the plan rather than following it. The order, and what
 each one actually turned out to be, lives in `07-v1-plan.md`; the mechanisms
 live in `05-systems-reference.md` §§37–42. In brief:
 
@@ -453,14 +455,25 @@ live in `05-systems-reference.md` §§37–42. In brief:
 | 18 | Sep 4 | **The shell, pulled forward** — manifest, launcher icon, Capacitor, `npm run apk`, the back gesture. Then the APK report's thirty-eight items, closed by Sep 5 (`14-apk-report-triage.md`) |
 | — | Sep 5 | **The interface pass** — every screen onto one interaction language; Program as a dashboard, Budget as a workspace, Decisions sheets, the offseason roadmap, the postseason frame; assistants develop, a coaching tree, pipelines, facility levels, replay. `05` §50, `06` §X |
 
-**What remains, in execution order:** the rest of the **`06` §X** review
-batch (its bugs were fixed the same evening; the accessibility trio, the
-dead CSS and the two measurements remain) · the rest of **24** (the
-interview's reveal and result card) · **26**'s verdict from the reporter ·
-then the tail, dead last: **17** (the store) and **19** (ship — the guided
-tutorial, accessibility, the keystore and listing, and the test aids out).
-**20b** (arguing the terms) and **25** (the art) were confirmed shipped on
-September 5. The reporter tests on an Android emulator.
+**What remains, in execution order:** **18b** (Android 16 — the app
+already targets 36, so enforced edge-to-edge and predictive back are live
+rules the shell has not been read against) · the two §X measurements are
+**answered** (`06` §AA: replay costs 1.1 MB a season and wants its pitch
+events dropped; the user's home state recruits at a 15% larger network
+multiplier than any rival's, and that is a balance decision with two
+honest answers) · the rest of the **`06` §X** batch (the accessibility
+trio, the dead CSS, the cleanups) · the rest of **24** (the interview's
+reveal and result card) · **26**'s verdict from the reporter · then
+**17**, which is **god mode** since September 6 rather than the store and
+needs its design pass first, and **19** (ship). **20b** and **25** were
+confirmed shipped on September 5. The reporter tests on an Android
+emulator.
+
+**One project-level decision is now open.** Stage 17 was the monetization
+stage; retiring the S+ player retires the plan's only answer to how the
+game makes money. God mode as a one-off paid unlock is the obvious
+replacement, but it has to be settled before the store listing is written.
+`07-v1-plan.md` stage 17 has the four doors.
 
 ### The September 1 session, in one paragraph
 

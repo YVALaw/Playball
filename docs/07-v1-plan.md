@@ -8,22 +8,29 @@ the next one picks up, `01-roadmap.md` for the order at a glance, `06-backlog.md
 §H for the feature set and §I for the August 27 pass, `05-systems-reference.md`
 for what the game does today.
 
-**Where the work stands, September 5 2026: stages 1 through 16 shipped,
-then the September run — batch P, the opener (20), the two-way (21),
-playbooks (22) and the lineup gate (23) — then the shell (18, pulled
-forward) and the APK report's thirty-eight items, all closed. On September
-5 the whole interface moved onto one interaction language in a single
-merged pass (`05` §50, `docs/INTERACTION_DESIGN.md`), which took stage 24's
-three questions, stage 26's visual pass and both screen-queue items with
-it. 20b (arguing the terms) and 25 (the art) were confirmed shipped the
-same evening, and the pass's bugs were fixed. What is left: 17 (the
-store), 19 (ship), the rest of 24 (the reveal and the result card), 26's
-verdict, and the remainder of the `06` §X review. Testing runs on an
+**Where the work stands, September 6 2026: twenty-two of twenty-six
+stages are shipped — 1 through 16, 18, 20 through 23, and 25.** September 5 took the interface onto one
+interaction language in a merged pass (`05` §50), then two more outside
+folders: the engine pass, which corrected the scorer's rules and
+recalibrated the league to the modern game (`05` §51), and the prestige
+pass, which gave the ladder floors so a rebuild that does its job actually
+moves (`05` §52). Both were repaired at the merge — §51 for a stranded
+runner and a clock mismatch, §52 for a floor that stopped any program in
+the league from losing a point.
+
+**What is left is the tail and two doors.** The tail: **19** (ship), and
+**18b**, booked September 6, because the app already targets Android 16
+and both edge-to-edge and predictive back changed under it. The doors:
+**17**, which stopped being the store on September 6 and is now god mode,
+and needs its design pass before anything is built; the rest of **24**
+(the interview's reveal and result card); **26**'s verdict from the
+reporter; and the remainder of the `06` §X review. Testing runs on an
 Android emulator.**
 
-**Twenty-six stages now** (nineteen, plus 20–23 booked September 3 from
-the phone report, 24 from the September 4 triage, 25 and 26 booked
-September 5).
+**Twenty-six stages and one half-stage** (nineteen, plus 20–23 booked
+September 3 from the phone report, 24 from the September 4 triage, 25 and
+26 booked September 5, and 18b booked September 6). Stage 17 was the store
+until September 6 and is god mode now.
 
 ---
 
@@ -1234,19 +1241,67 @@ lineup screen; leaving is refused while the diamond is short, and the
 one allowed excursion is a player card via the second-tap grammar, which
 returns in place.
 
-## Stage 17 · The store
+## Stage 17 · God mode — the league as you want it
 
-**Size:** medium–large · **Needs:** the Console record · **Runs after
-stage 23** — the September 3 re-affirmation: store, phone and ship are
-the last three stages, taken when the game is near final.
+**Size:** medium–large · **Replaces the store player, September 6 2026** ·
+**Runs with 19** · Its own design pass before any of it is built.
 
-The S+ player himself, and Play Billing with purchase, restore, receipt
-validation and the offline case.
+Asked for directly, and it retires the stage that stood here for a month:
+*"I'm actually thinking on removing the s+ player and add god mode allowing
+the user to customize the league with names they want, create player
+however they like, extend prestige however they like, basically god
+mode."*
 
-**Decisions, and these are the important ones:** what the purchase grants — one
-player per dynasty, one per save, a recruit who appears in your class, or a
-create-a-player; consumable or permanent; and what happens to a dynasty already
-in progress. Its own design pass before any billing code.
+**What it is.** An editor over the world the generator produced. Rename a
+school, a conference, a coach, a player. Build a player to any shape you
+like and put him on a roster. Set a program's prestige. The generated
+world stops being the only world, and a coach who wants his own conference
+of his own schools with his own son at shortstop can have it.
+
+**What it costs to remove the store player.** The S+ machinery already
+exists and was built for him: `PotentialGrade` carries `'S+'`, ordinary
+generation is capped deliberately short of it (`players.ts`,
+`scouting.ts`), the recruiting pool reserves an S+ tier, and the badge
+budget exempts the grade. None of that is wasted — **a god-mode player is
+the man S+ was reserved for**, so the cap keeps its meaning: the grade
+still cannot be reached by playing, only by authoring. What goes is Play
+Billing, the purchase and restore flow, receipt validation and the offline
+purchase case, which is most of the stage's old size.
+
+**The four doors, and none of them is obvious.**
+
+1. **What funds the app.** This was the monetization stage. If the S+
+   player goes, either god mode is itself the paid unlock — one purchase,
+   permanent, no consumables, which is the cleanest fit for a game with no
+   other currency — or v1.0 ships paid-up-front, or it ships free and the
+   money question moves to a stage that does not exist yet. **Decide this
+   first**; the rest of the stage does not depend on it, but the store
+   listing does.
+2. **What a touched league is allowed to claim.** A record book, a hall of
+   fame and a thirty-season pecking order are only worth anything because
+   nobody could reach in. A league where prestige is typed in and a 99 was
+   authored cannot share a book with an honest one. The likely answer is a
+   flag on the save, set the first time anything is edited and never
+   cleared, that marks its records as its own — not a punishment, a
+   separate shelf. `records.ts`, `hall.ts` and the annals all read from
+   the season, so the flag has to be decided before any of them is asked.
+3. **When it can be opened.** At creation only, which keeps a career
+   honest once it starts, or at any time, which is what "god mode"
+   normally means. Mid-career editing is the one that makes the flag above
+   load-bearing rather than decorative.
+4. **How far the editing goes.** Names alone are a text field and a save
+   migration. Ratings, prestige and a create-a-player are a real editor
+   with validation, and every one of them can produce a world the engine
+   was never calibrated against — a league of 99s is not a league. The
+   engine should not defend itself against this; the flag should.
+
+**What it must not break.** Realignment renames and moves programs on its
+own about one winter in three; an edited name has to survive that. The
+crest generator draws from the school's own identity, so a renamed school
+needs a decision about whether its crest follows. And the save format
+carries no per-field provenance today, so an edit is indistinguishable
+from generated data the moment it lands — which is the second argument for
+the flag.
 
 ## Stage 18 · The phone — **PULLED FORWARD September 4**
 
@@ -1281,6 +1336,77 @@ get answered in play rather than waiting for this stage.
 - **Web install still matters.** The manifest and the code-drawn
   launcher icon landed the same day (`51d404e`), so a phone that never
   sees an APK can still hold the game as an icon.
+
+## Stage 18b · Android 16, and the back gesture it changed
+
+**Size:** small–medium · **Booked September 6 2026** · **Runs before 19**,
+because a store build is what makes it non-negotiable · Paired with 18
+rather than numbered after it: it is the same shell, under a platform that
+moved.
+
+**The app already targets it.** `android/variables.gradle` reads
+`targetSdkVersion = 36` and `compileSdkVersion = 36`, which Capacitor 8
+set. So these are not future behaviours to prepare for — **they are the
+rules the APK on the emulator is already playing under**, and stage 18
+shipped before anybody read them.
+
+Two behaviours change at 36, and Playball meets each with something it
+built itself.
+
+### Edge-to-edge, now enforced
+
+An app targeting 36 draws behind the status and navigation bars and cannot
+opt out; the flag that used to allow it is gone at this level.
+
+**Mostly in hand, and that is worth saying before the work is booked.**
+`index.html` already sets `viewport-fit=cover`, which is what makes
+`env(safe-area-inset-*)` report real numbers, and the frame stylesheet
+uses those insets in twenty places — the tab bar, the bottom sheets, the
+launcher footprint. The stage is therefore an **audit** rather than a
+rebuild: every screen and every sheet, top and bottom, on a device with
+gesture navigation and again with three-button, which are different insets.
+The places to distrust are the ones that hardcode a bottom pad instead of
+adding the inset to it, and the full-bleed surfaces — the ballpark, the
+postseason takeover, the walk-off card — where the content is supposed to
+reach the edge and only the controls are not.
+
+### Predictive back, now on by default
+
+At target 36 the system runs the back gesture through
+`OnBackInvokedCallback` and animates a preview of where the gesture will
+land *before* it commits. The legacy `onBackPressed()` path is not called.
+
+**This is the item with real work in it, and the reason is Playball's own
+design.** The back handler in `App.tsx` is written against the History API
+rather than `@capacitor/app` — deliberately, so that one handler serves the
+APK, the browser and the home-screen icon — and it works by keeping a
+**sentinel history entry** always pushed: every `popstate` runs the app's
+own back logic and then immediately re-arms by pushing another entry. Only
+when nothing is left to close does it set `exiting` and call
+`history.back()` for real.
+
+Under predictive back that pattern is at odds with the platform in a
+specific way: because a history entry always exists, the system has
+something to go back to at every moment, so the preview it animates during
+the gesture is a within-app one right up until the press that leaves —
+and the leave itself happens in a *second*, programmatic navigation after
+the gesture has already committed, which is precisely the moment the
+predictive animation is over. The likely symptoms are a wrong or absent
+exit preview and, where the two navigations race, a double pop.
+
+**This is reasoned from the code, not measured.** Nobody has yet run the
+gesture on an Android 16 emulator and watched it, and that is the first
+task of the stage, before a line is changed: install the debug APK, use
+the gesture at every depth — a sheet, a player card, a tab's second
+screen, HOME — and record what the preview actually shows. It is possible
+the WebView's own history integration already handles it and the only work
+is the edge-to-edge audit. It is also possible the sentinel has to go, and
+the handler be rewritten so the history stack genuinely mirrors the app's
+depth — which is a better design regardless, and the browser gets a real
+back button out of it.
+
+**Not to be confused with the gesture rule.** "Tap selects, hold reads" is
+about lists and is unrelated; this is the system's own back.
 
 ## Stage 19 · Ship
 

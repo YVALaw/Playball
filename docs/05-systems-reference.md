@@ -4672,7 +4672,16 @@ one annals row per program per year. Thirty Junes, no structural faults.
 
 It measures two things besides: the save grows about 12 KB a year (15 KB → 371
 KB at year thirty), and the format produces **ten distinct champions in thirty
-years against a real-world sixteen**. The second is a balance question, not a
+years against a real-world sixteen**.
+
+**Read that first figure narrowly.** The soak sums `careers`, `records`,
+`hall` and the annals — the things that accumulate — and reports their
+growth. It never encodes the whole save. Measured properly on September 6
+by encoding `toPortable` at every year of a twenty-season career, the real
+save is **about 1.9 MB from its first winter and grows roughly 3 KB a
+year**: ninety-six full rosters and their staffs are the cost, and history
+is the cheap part. Mid-season it peaks near **3.7 MB** because replay rides
+the boxes. `06-backlog.md` §AA has the table and what to trim. The second is a balance question, not a
 bug, and it is open — `06-backlog.md` §F carries the argument. The soak fails
 below `years / 3` champions, so the number is watched from here.
 

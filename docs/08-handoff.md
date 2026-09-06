@@ -6,8 +6,71 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 5, 2026, late · **Branch:** `main` · **the
-prestige pass merged and remeasured** (`05` §52), after the engine pass (§51).
+**Last session:** September 6, 2026 · **Branch:** `main` · **the docs read
+against the code; no engine change.** Stage 17 became god mode, 18b was
+booked for Android 16, and the two `06` §X measurements were taken (§AA).
+
+> **September 6 — the docs read against the code, two measurements taken,
+> and the store retired.**
+>
+> No engine change. A pass over the README, the roadmap and the backlog to
+> find what was actually left, checking every open item against the code
+> rather than trusting the entry. `06` §AA is the account.
+>
+> **The route is shorter than it read.** Only ship (19) and the new 18b are
+> genuinely unbuilt; 24 owes its reveal and result card, 26 owes nothing but
+> a verdict, and the §X batch is down to the accessibility trio, the dead
+> CSS and the cleanups. Two entries were already closed and are now struck:
+> the dead portal lookup, and the four "sixty-four program" comments the
+> roadmap's debt list still named.
+>
+> **The two §X measurements are answered.** *Replay* costs **1,136 KB a
+> season — 92% of the boxes**, at 25.3 KB a captured game. It does not
+> accumulate (`nextSeason` empties the boxes every February), so the cost is
+> the write rather than the disk: a 1.2 MB blob re-encoded on every autosave.
+> Dropping `'pitch'` events saves 439 KB and costs a replay viewer nothing
+> the scrubber uses. *The home-state recruiting edge* is real and is one
+> argument: `pitchFor` gets the `pipelineStrength` callback only when the
+> program is the user's, so his home state scales recruiting fit by **1.15**
+> and all ninety-five rivals scale theirs by **1.00**. Not fixed — it is a
+> balance decision with two honest answers, and the climb probes want
+> rerunning either way.
+>
+> **And the save was measured properly, because it was asked.** A twenty-year
+> career is **1.9 MB between seasons and grows about 3 KB a year** — the
+> ninety-six rosters are the cost, history is the cheap part, and a long
+> dynasty is not a problem. Mid-season it peaks near **3.7 MB** because
+> replay rides the boxes. The soak's "12 KB a year" was never wrong, it was
+> narrower than it read: it sums only the things that accumulate. `05` §29
+> is annotated.
+>
+> **Stage 17 is god mode now.** Asked for directly: rename the league, author
+> a player, set a prestige. The S+ machinery stays and becomes the definition
+> of an authored man — the cap keeps its meaning, since S+ still cannot be
+> reached by playing. What goes is Play Billing, **which was the plan's only
+> answer to how the game makes money**; that decision is open and belongs
+> before the store listing, not after. The second door is the one that gets
+> expensive if it is skipped: a league whose prestige was typed in cannot
+> share a record book with one that was played, and a save flag is cheap only
+> while the format is still being decided.
+>
+> **Stage 18b was booked, and it is not optional.** `variables.gradle` reads
+> `targetSdkVersion = 36`, which Capacitor 8 set — so **the Android 16 rules
+> are already live on the emulator**, not something to prepare for.
+> Edge-to-edge is mostly in hand (`viewport-fit=cover` is set and the
+> stylesheet uses safe-area insets in twenty places), so that half is an
+> audit. Predictive back is the real work: the back handler keeps a
+> **sentinel history entry** always pushed, so the system always has
+> somewhere to go back to and will preview a within-app move right up until
+> the press that leaves — and the leaving happens in a second, programmatic
+> `history.back()` after the gesture has committed. **Reasoned from the code,
+> not measured.** The stage's first task is to run the gesture on an Android
+> 16 emulator and watch it before changing a line.
+>
+> **Recorded, not booked:** a DLC where the coach is called to the majors and
+> meets his old players again. `legacy.ts` already plays out professional
+> careers and the alumni mail already announces a debut, so the *hook* is one
+> lookup; the major league itself is a sequel's worth of engine. `06` §AA.
 
 > **September 5, late — the prestige pass, merged, one bug found, remeasured.**
 >
@@ -266,7 +329,7 @@ prestige pass merged and remeasured** (`05` §52), after the engine pass (§51).
 
 | File | What it is |
 |---|---|
-| `07-v1-plan.md` | **The route.** Twenty-six stages to v1.0. Twenty-one are done; the §X review batch, then 24, 25, 20b, 17 and 19 remain. |
+| `07-v1-plan.md` | **The route.** Twenty-six stages and one half-stage to v1.0. Twenty-three are done; 18b (Android 16), the rest of the §X batch, 24, 26's verdict, 17 (god mode) and 19 remain. |
 | `INTERACTION_DESIGN.md` | **The interface rulebook**, since September 5. Three kinds of screen and what a decision must show before it offers a verb. Read before adding any screen. |
 | `06-backlog.md` | The decisions and the argument behind each. §H is the agreed feature set, §I the pass that produced stages 3 and 4; *Decisions locked* holds the rules that bind every feature. |
 | `05-systems-reference.md` | What the game does **today**, including the hidden-mechanics index. A feature that shipped moves in here on the same commit. |

@@ -2939,3 +2939,144 @@ one hook and two labels. The rest ride the next play batch.
 - **The pass's own balance table** was measured on the no-fall bug and is
   superseded by §52.4. Its claim that five-star programs fell from 23 to
   17 was the bug's flattening of the top, not the ladder.
+
+
+## AA. The September 6 review — two measurements answered, and the store retired
+
+A read of the README, the roadmap and this file against the code, to find
+what was actually left. Three things came out of it: the two §X items that
+said **measure before deciding** now have their numbers, the platform
+moved under the shell without anybody noticing, and stage 17 changed
+identity.
+
+### The save, measured properly — and the old figure was measuring a subset
+
+Asked directly: how big does a twenty-year career get? Measured by
+encoding the real portable save (`toPortable`) at every year of a
+twenty-season run, seed 4242, with a coached program so replay is
+captured:
+
+| | |
+|---|---|
+| Between seasons, year 1 | 1,888 KB |
+| Between seasons, year 20 | 1,947 KB |
+| Growth over twenty years | **59 KB, about 3 KB a year** |
+| Mid-season peak | **3.7 MB**, of which boxes are ~1.5 MB |
+
+**A career does not grow, and that is the headline.** The save is about
+1.9 MB from its first winter and stays there: ninety-six full rosters,
+their coaches, their staffs and their annals are the cost, and twenty
+years of history adds three kilobytes a season on top. Nobody needs to
+worry about a long dynasty.
+
+The mid-season figure is the one to look at, and it is **replay** (see
+below). Between February and June the save nearly doubles, and the whole
+of it is re-serialised to IndexedDB on every autosave — there are a dozen
+`saveNow` call sites, several of them per game day.
+
+**The 12 KB a year in `05` §29 and the soak is not wrong, it is narrower
+than it reads.** `tests/season-soak.ts` sums `careers`, `records`, `hall`
+and the annals — the things that accumulate — and reports their growth. It
+never encoded the whole save. Both numbers are true and they answer
+different questions: 3–12 KB a year is what *history* costs, 1.9 MB is
+what the *world* costs.
+
+### §X item 25 — what replay costs. **Measured; it needs trimming.**
+
+One season, seed 4242, boxes with replay against the same boxes without:
+
+| | |
+|---|---|
+| Whole `boxScores` | 1,239 KB |
+| Without replay | 103 KB |
+| **Replay's share** | **1,136 KB — 92%** |
+| Per captured game | 25.3 KB |
+| Dropping `'pitch'` events saves | 439 KB (13,588 of 20,304 events) |
+| Dropping the verbose log saves | 257 KB (5,930 lines) |
+
+It does **not** accumulate across careers — `nextSeason` starts
+`boxScores` empty every February, so this is a per-season cost, not a
+growing one. The problem is not the disk, it is the write: a 1.2 MB blob
+re-encoded and stored on every autosave, on a phone.
+
+**The recommendation, and it is cheap.** Drop `'pitch'` events at save
+time and keep the play-level stream. Replay's scrubber, its inning and
+half, the bases, the call and the scoring-play jumps are all driven by the
+play events; the pitch stream is only the pitch-by-pitch texture inside a
+plate appearance. That is 439 KB for nothing anybody watching a replay
+would miss. If more is wanted after that, capping retained replays to the
+last ten games costs 253 KB and reads as "recent games keep their film",
+which is honest. Dropping the verbose log too would take the season under
+550 KB.
+
+### §X item 24 — the home-state recruiting edge. **Measured; it is real and it is one line.**
+
+Still exactly as the September 5 reading described, and confirmed in the
+code rather than from the note:
+
+- `pitchFor` is handed a `pipelineStrength` callback **only when the
+  program is the user's** (`store.ts`, the `mine ?` ternary in the
+  recruiting week).
+- With the callback, the user's home state floors at **60**
+  (`economy.ts`), and `recruiting.ts` turns that into
+  `networkScale = 0.55 + 0.60 = 1.15`.
+- Without it, every one of the ninety-five rivals falls to the literal
+  **45** in the `??` branch, giving `networkScale = 1.00`.
+
+So the user recruits his own state with a **15% larger network multiplier
+than any rival gets in his**. It is undocumented, it arrived with the
+interface pass's pipelines, and the low-star climb was measured before it
+existed.
+
+**Not fixed here, because it is a balance decision and it has two honest
+answers.** Either give the AI the same callback — one argument, and the
+climb probes rerun — or keep the 60 floor for *reach* only and read the
+home *fit* off 45 for everybody, which restores the pre-pass behaviour
+exactly. The first is fairer and slightly inflates recruiting everywhere;
+the second is a strict revert. Rerun `tests/climb-probe.ts` either way:
+a 15% thumb is exactly the size of edge the low-star climb was tuned
+without.
+
+### Stage 17 is god mode now, not the store
+
+Asked for on September 6. The brief and its four design doors are in
+`07-v1-plan.md`; the important one is repeated here because it is a
+project decision rather than a feature decision: **the store was the
+monetization stage, and removing it removes the plan's only answer to how
+the game makes money.** God mode as the paid unlock is the obvious
+replacement and the cleanest fit — one purchase, permanent, no
+consumables, no second currency — but it is a decision that has to be
+taken before the listing is written, not after.
+
+The second door is the one that will bite later if it is skipped: **a
+league whose prestige was typed in cannot share a record book with one
+that was played.** A flag on the save, set on first edit and never
+cleared, is the cheap version. It has to be decided before `records.ts`,
+`hall.ts` or the annals are asked to read it, because retrofitting
+provenance into a save format that has none is the expensive version.
+
+The S+ machinery is **kept**, not deleted: the grade, the generation cap
+short of it, the reserved recruiting tier and the badge-budget exemption
+all become the definition of an authored player. The cap keeps its
+meaning — S+ still cannot be reached by playing.
+
+### Later, and genuinely later: the call to the majors
+
+Recorded so it is not lost, and explicitly **not booked**: *"a dlc type of
+content where we as coach can be called to the majors and we can even
+reunite with some of our college players."*
+
+It is a real idea and the game is already most of the way to being able to
+tell it. `legacy.ts` plays out an alumnus's professional career year by
+year and ends it; the alumni mail already announces a first arrival at The
+Show; the coaching carousel already models being hired away. A major
+league layer would be a second world with its own calendar, its own roster
+rules and no recruiting at all — which is a sequel's worth of engine, not
+a stage — but the *hook*, a man you signed out of high school turning up
+on your professional roster, is one lookup against a ledger that already
+exists.
+
+**Do not build toward it yet.** The one thing worth doing now is cheap:
+keep the alumni ledger honest and keyed by id, which §X item 31 already
+asks for on other grounds. Everything else waits until v1.0 has shipped
+and the game has players.

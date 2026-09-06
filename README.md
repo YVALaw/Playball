@@ -7,8 +7,10 @@ Mobile first, shipping to Android.
 
 ## Status
 
-**Twenty-one of twenty-six stages shipped, through September 5 2026, and
-the interface rebuilt whole the same day.** Ninety-six
+**Twenty-two of twenty-six stages shipped, through September 6 2026, and
+the interface rebuilt whole on September 5.** Stages 1–16, 18, 20–23 and
+25; 24 is part-built, 26 has had its pass and awaits a verdict, and 17 and
+19 are the tail. Ninety-six
 programs in eight conferences of twelve, a forty-five game regular season, and
 the whole loop runs: pick a job through an interview that shapes who rings you,
 play or simulate a season, manage games at bat by at bat, go through the
@@ -40,10 +42,23 @@ a coaching tree, recruiting pipelines as program assets, three levels per
 building, and replay off the real event stream. `docs/05-systems-reference.md`
 §50 is the account.
 
-What is missing is **the tail**: the store, the keystore and listing, the
-guided tutorial, and the test aids coming out. Arguing the board's terms
-and the art are in. Testing runs on an Android emulator against
-`npm run apk`.
+**The engine and the ladder both moved on September 5**, in two more
+outside passes merged the same night. The engine pass corrected the
+scorer's rules — the force chain, earned runs reconstructed through
+virtual outs, wild pitch split from passed ball, the win and the save by
+the book, team mound visits, recovery by pitches thrown — and recalibrated
+the league to the modern game (§51). The prestige pass gave the ladder
+floors, so a small program that does its job actually climbs: a cleared
+board is worth a point, a conference tournament berth is a milestone that
+gets remembered, coach reputation is judged against the mandate he
+accepted, and contracts run seven years at one star (§52).
+
+What is missing is **the tail**: ship (the keystore, the listing, the
+guided tutorial, the test aids coming out) and **Android 16**, which the
+app already targets — edge-to-edge is enforced and predictive back is on
+by default, and the shell's own History-based back gesture has not been
+read against either. Arguing the board's terms and the art are in.
+Testing runs on an Android emulator against `npm run apk`.
 
 The engine is calibrated multi-seed to the modern NCAA D1 environment —
 .280 / .384 / .438, a home run a game, 6.73 runs — since the September 5
@@ -60,11 +75,12 @@ the one thing that must never be lost.
 
 | Not built yet | |
 |---|---|
+| Android 16 | edge-to-edge is enforced and predictive back is default at the SDK the app already targets; the back gesture and the inset audit (stage 18b) |
 | Onboarding | the guided tutorial — a titled card, then a glow path through doing it (stage 19) |
-| The store | the S+ player and Play Billing (stage 17, dead last with 19) |
+| God mode | rename the league, author a player, set a prestige — stage 17, which was the store until September 6 and needs its design pass first |
 | The interview's payoff | the answer's consequence revealing after the tap, and a result card (the rest of stage 24) |
 | The budget's verdict | the reporter's read on the rebuilt Budget screen (stage 26) |
-| The rest of the review | `docs/06-backlog.md` §X after its bugs: focus in the new sheets, the dead CSS, and two measurements (replay's save cost, the home-state recruiting edge) |
+| The rest of the review | `docs/06-backlog.md` §X after its bugs: focus in the new sheets, the dead CSS, the cleanups. Its two measurements are **answered** in §AA |
 
 Shipped since: the two-way whole and corrected to the rulebook, playbooks,
 the lineup gate, the season opener, the Android shell — package, launcher
