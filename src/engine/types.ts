@@ -97,6 +97,29 @@ export type Priority = 'prestige' | 'playingTime' | 'winning' | 'proximity' | 'd
 /** How much he weighs each of them. Sums to 1. */
 export type Priorities = Record<Priority, number>;
 
+
+/** A binding promise made during high-school recruiting. */
+export type RecruitPromiseKind =
+  | 'immediateRole'
+  | 'noRedshirt'
+  | 'keepPosition'
+  | 'twoWayOpportunity';
+
+/** What follows the player to campus when a recruiting promise wins his signature. */
+export interface RecruitPromise {
+  kind: RecruitPromiseKind;
+  /** `season.recruiting.year` when it was made — the class counter, not a calendar year. */
+  madeYear: number;
+  /** Position he was recruited to play, for the keep-position promise. */
+  promisedPos?: Position;
+  /**
+   * How many year rolls have judged it. A promise is about the first season
+   * (two for keeping a position); after that it has been kept or broken and
+   * is taken off the man — see `promiseHorizon` in morale.ts.
+   */
+  judged?: number;
+}
+
 // ---------------------------------------------------------------------------
 // Players
 // ---------------------------------------------------------------------------
@@ -224,6 +247,12 @@ interface PlayerCore {
    * of the id for those, which is stable and costs the generator nothing.
    */
   priorities?: Priorities;
+  /**
+   * A promise this coach used to sign him. It stays with the player because the
+   * consequence belongs to the roster/portal seasons that follow, not to the
+   * recruiting board that disappears on signing day.
+   */
+  recruitPromise?: RecruitPromise;
   bats: Bats;
   throws: Hand;
   /** Hidden. Full platoon split size as a share of production. Never shown. */

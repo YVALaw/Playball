@@ -19,7 +19,7 @@ import { adoptSpot } from './depthChart.js';
 import { prestigeStars } from './program.js';
 import { GENERATED_POTENTIAL_CAP } from './scouting.js';
 import { armValue, overallOf, clamp } from './ratings.js';
-import { windowBudget } from './recruiting.js';
+import { flexibleOffseasonBudget } from './recruiting.js';
 import type { Prospect } from './recruiting.js';
 import { gauss, makeRng } from './rng.js';
 import { cultureFor } from '../data/cultures.js';
@@ -967,7 +967,7 @@ export function departAndDevelop(
       // same window its recruiting board is about to be paid from. `aiTargets`
       // reads what is left of it, three weeks running, exactly as the user's
       // header does.
-      const allowance = Math.floor(windowBudget(stars) * AI_KEEP_SHARE);
+      const allowance = Math.floor(flexibleOffseasonBudget(stars) * AI_KEEP_SHARE);
       // The man in the chair, where there is one. Two of the four cases a staff
       // can make are about *him* — the development a coach can promise and the
       // word he can give — so a program run by somebody with a name and eleven
@@ -1019,6 +1019,20 @@ export function departAndDevelop(
         if (man.outcome === 'stayed') row.returned = true;
       }
     }
+
+    // A recruit can now ask whether this program actually sends players on.
+    // Keep only a five-year rolling proof trail and overwrite the same year on
+    // an idempotent offseason revisit.
+    const draftedThisYear = report.drafted.filter((r) => r.team === record.index);
+    const proRow = {
+      year: board.year,
+      drafted: draftedThisYear.length,
+      early: draftedThisYear.filter((r) => (r.round ?? 99) <= 3).length,
+    };
+    record.proPipeline = [
+      ...(record.proPipeline ?? []).filter((r) => r.year !== board.year),
+      proRow,
+    ].sort((a, b) => a.year - b.year).slice(-5);
   }
 
   // Best first inside each round, so the national board reads like one.
@@ -1165,6 +1179,14 @@ export function fillRosters(
         });
       }
       continue;
+    }
+    const promise = prospect.promiseBy?.[prospect.signedBy];
+    if (promise) {
+      prospect.player.recruitPromise = {
+        kind: promise,
+        madeYear: season.recruiting.year,
+        ...(promise === 'keepPosition' ? { promisedPos: prospect.player.pos } : {}),
+      };
     }
     const list = classFor.get(prospect.signedBy) ?? [];
     list.push(prospect.player);

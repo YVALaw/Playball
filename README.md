@@ -59,12 +59,15 @@ guided tutorial, the test aids coming out). **Android 16 is done** (stage
 from any depth, because nothing native ever handed it to the page; a
 twenty-five-line plugin the page arms only while it has a layer to close
 fixed it, with the predictive exit preview kept at HOME. Arguing the
-board's terms and the art are in. Testing runs on an Android 16 emulator
-against `npm run apk`.
+board's terms and the art are in. **Recruiting 1.0** landed the same day
+(§54): nine things a recruit weighs, a pitch and a major move a week,
+binding promises that follow him onto the roster, and one offseason
+economy with a protected reserve for the freshman class. Testing runs on
+an Android 16 emulator against `npm run apk`.
 
 The engine is calibrated multi-seed to the modern NCAA D1 environment —
 .280 / .384 / .438, a home run a game, 6.73 runs — since the September 5
-engine pass (`docs/05-systems-reference.md` §51). **1159 tests across 57
+engine pass (`docs/05-systems-reference.md` §51). **1173 tests across 58
 files**, including determinism goldens, calibration as a regression test, a
 baseball-correctness suite for the scorer's rules, and a concurrency suite
 pinning the store's double-press guards.

@@ -23,7 +23,7 @@ import { InFrame } from '../Overlay.js';
 import { Confirmable, FieldNote, Segmented } from '../components/Kit.js';
 import { overallOf } from '../../engine/ratings.js';
 import { prestigeStars } from '../../engine/program.js';
-import { windowBudget } from '../../engine/recruiting.js';
+import { flexibleOffseasonBudget, protectedRecruitingBudget, recruitingWindowBudget, windowBudget } from '../../engine/recruiting.js';
 import { mood } from '../../engine/morale.js';
 import type { PortalMan } from '../../engine/portal.js';
 
@@ -74,9 +74,16 @@ export function Portal() {
 
   // The same pool the draft already drew from and the recruiting weeks
   // draw from next — the screen shows what is genuinely left of it.
-  const budget = windowBudget(prestigeStars(rec.prestige))
-    - (season?.draft?.spent ?? 0);
+  const stars = prestigeStars(rec.prestige);
+  const flexStart = flexibleOffseasonBudget(stars);
+  const reserve = protectedRecruitingBudget(stars);
+  const offseasonTotal = windowBudget(stars);
+  const draftSpent = season?.draft?.spent ?? 0;
+  const budget = flexStart - draftSpent;
   const left = budget - portal.spent;
+  const spentBeforeRecruiting = draftSpent + portal.spent;
+  const recruitWindowIfLeave = recruitingWindowBudget(stars, spentBeforeRecruiting);
+  const recruitWeekIfLeave = Math.floor(recruitWindowIfLeave / 3);
 
   return (
     <FixedHeader
@@ -117,8 +124,8 @@ export function Portal() {
               <small>TRANSFER PORTAL · {portal.leaving.length + portal.available.length} NAMES</small>
               <h1>Transfer room</h1>
               <p>
-                Keep the promises that matter — whatever is left here goes into
-                recruiting with you.
+                Use the flexible fund for immediate help — whatever is left rolls into
+                recruiting on top of its protected reserve.
               </p>
             </div>
             <div className="portal-command-mark">
@@ -129,16 +136,21 @@ export function Portal() {
           </div>
           <div className="portal-budget-card">
             <div>
-              <small>POINTS LEFT</small>
+              <small>FLEXIBLE POINTS LEFT</small>
               <strong>{left}</strong>
-              <span>of {budget} for the whole window</span>
+              <span>{flexStart} started · {draftSpent} Draft · {portal.spent} Portal</span>
             </div>
             <div className="portal-budget-meter">
-              <i style={{ width: `${Math.round((left / Math.max(1, budget)) * 100)}%` }} />
+              <i style={{ width: `${Math.round((left / Math.max(1, flexStart)) * 100)}%` }} />
+            </div>
+            <div className="portal-budget-breakdown">
+              <span><small>OFFSEASON TOTAL</small><b>{offseasonTotal}</b></span>
+              <span><small>RECRUITING RESERVED</small><b>{reserve}</b></span>
+              <span><small>IF YOU LEAVE NOW</small><b>{recruitWeekIfLeave}/WK</b></span>
             </div>
             <small>
-              Keeping a man costs more than taking one. That is the price of a
-              promise you did not keep.
+              Draft and Portal share only the flexible fund. Recruiting keeps {reserve} protected points,
+              then receives whatever flexible points are still left when you move on.
             </small>
           </div>
         </section>

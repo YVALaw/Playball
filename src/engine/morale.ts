@@ -29,6 +29,7 @@
 // Everything here is derived or sparse. A save from before stage 9 has nobody
 // unhappy, rather than everybody at zero.
 
+import type { RecruitPromise } from './types.js';
 import type { Player, PlayerId, Team } from './types.js';
 import { overallOf } from './ratings.js';
 
@@ -77,7 +78,10 @@ export function expectationOf(p: Player, squadRank: number): number {
       : p.classYear === 'FR' ? -0.14 : 0;
   // A walk-on was told nothing at all, and knows it.
   const walkOn = (p as Player & { walkOn?: boolean }).walkOn ? -0.2 : 0;
-  return Math.max(0, Math.min(0.95, base + seniority + walkOn));
+  const ordinary = Math.max(0, Math.min(0.95, base + seniority + walkOn));
+  // A recruiting promise is explicit. It outranks the expectation inferred
+  // from his current squad rank because that was the bargain used to sign him.
+  return p.recruitPromise?.kind === 'immediateRole' ? Math.max(0.62, ordinary) : ordinary;
 }
 
 /** In words, for the card, since a share of games is not how anybody thinks. */
@@ -87,6 +91,33 @@ export function promiseOf(p: Player, squadRank: number): string {
   if (e >= 0.3) return 'expects to play a good deal';
   if (e >= 0.12) return 'expects to be in the mix';
   return 'is here to earn it';
+}
+
+/**
+ * How many seasons a promise binds. An immediate role, no redshirt and a
+ * two-way chance are all about the first year on campus; keeping a man at
+ * his position is a two-year word. After its last judgement the promise comes
+ * off him at the following roll — kept or broken, it has been answered.
+ */
+export const promiseHorizon = (kind: RecruitPromise['kind']): number =>
+  kind === 'keepPosition' ? 2 : 1;
+
+/** True once every season the promise covered has been judged. */
+export const promiseSpent = (promise: RecruitPromise | undefined): boolean =>
+  promise !== undefined && (promise.judged ?? 0) >= promiseHorizon(promise.kind);
+
+/** Whether a promise can already be judged from the player's state. */
+export function explicitRecruitPromiseBroken(
+  p: Player, opts: { battingGames?: number; pitchingGames?: number } = {},
+): boolean {
+  const promise = p.recruitPromise;
+  if (!promise) return false;
+  if (promise.kind === 'keepPosition') return promise.promisedPos !== undefined && p.pos !== promise.promisedPos;
+  if (promise.kind === 'noRedshirt') return (p as Player & { redshirt?: boolean }).redshirt === true;
+  if (promise.kind === 'twoWayOpportunity') {
+    return (opts.battingGames ?? 0) < 8 || (opts.pitchingGames ?? 0) < 3;
+  }
+  return false;
 }
 
 /**
@@ -105,6 +136,8 @@ export function settleMood(
     winPct: number;
     /** True if the coach moved him off his position and he did not ask. */
     movedUnwillingly?: boolean;
+    /** A specific recruiting promise (position/redshirt/two-way role) was broken. */
+    promiseBroken?: boolean;
     /** A captain in the room damps everything. See `captains.ts`. */
     damped?: boolean;
   },
@@ -132,8 +165,9 @@ export function settleMood(
   // Being moved off your position without asking. Small, and it is the reason
   // stage 8's position change is *proposed* rather than ordered.
   const moved = opts.movedUnwillingly ? -7 : 0;
+  const broken = opts.promiseBroken ? -13 : 0;
 
-  const raw = before + promise + winning + moved;
+  const raw = before + promise + winning + moved + broken;
   /*
     A captain does not make anybody happy. He stops a room swinging, which is a
     different and more truthful thing -- so this pulls the *change* back toward

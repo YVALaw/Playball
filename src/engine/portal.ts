@@ -45,7 +45,7 @@ import { isTwoWay, uniquePlayers } from './types.js';
  * portal per five or six seasons.
  */
 const STAR_WANDER = 0.012;
-import { flightRisk, moodOf, expectationOf, squadRanks, UNHAPPY } from './morale.js';
+import { flightRisk, moodOf, expectationOf, squadRanks, UNHAPPY, explicitRecruitPromiseBroken } from './morale.js';
 
 /** What the portal writes on a man. Sparse, so an older save has none. */
 export interface Portable {
@@ -141,6 +141,7 @@ export function entersPortal(
   const got = opts.games > 0 ? opts.starts / opts.games : 0;
   const buried = Math.max(0, expected - got);
   const market = portalMarket(opts.year, opts.seed);
+  const brokenPromise = explicitRecruitPromiseBroken(p);
 
   /*
     Two contributions, and neither on its own should empty a roster.
@@ -161,9 +162,10 @@ export function entersPortal(
     is priced against the developed league's census in the carousel probe,
     not the seeded one: a fresh league holds nobody above eighty-two.
   */
+  const promiseRisk = brokenPromise ? 0.28 : 0;
   const chance = overallOf(p) >= STAR_LINE
-    ? Math.min(0.85, Math.max(risk * 0.55, STAR_WANDER) * market)
-    : Math.min(0.85, (risk * 0.55 + buried * 0.4) * market);
+    ? Math.min(0.9, (Math.max(risk * 0.55, STAR_WANDER) + promiseRisk) * market)
+    : Math.min(0.9, (risk * 0.55 + buried * 0.4 + promiseRisk) * market);
   if (chance <= 0) return false;
 
   let h = ((opts.year * 2654435761) ^ (opts.seed * 40503)) >>> 0;
@@ -178,6 +180,16 @@ export function reasonFor(
 ): string {
   const expected = expectationOf(p, opts.squadRank);
   const got = opts.games > 0 ? opts.starts / opts.games : 0;
+  const promise = p.recruitPromise;
+  if (promise?.kind === 'keepPosition' && promise.promisedPos !== undefined && p.pos !== promise.promisedPos) {
+    return 'He was promised he could stay at his position.';
+  }
+  if (promise?.kind === 'noRedshirt' && (p as Player & { redshirt?: boolean }).redshirt === true) {
+    return 'He was promised he would not redshirt.';
+  }
+  if (promise?.kind === 'immediateRole' && expected - got > 0.18) {
+    return 'He was promised an immediate role.';
+  }
   if (expected - got > 0.25) return 'He was told he would play.';
   if (moodOf(p) < UNHAPPY) return 'He was not happy here.';
   return 'He wants a fresh start.';

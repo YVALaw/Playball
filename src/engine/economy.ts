@@ -527,6 +527,22 @@ export function facilityEffects(eco: Economy): {
   return out;
 }
 
+
+/**
+ * A recruit-facing facilities grade on the same 0..1 scale as a recruiting
+ * pitch. Unlike the old generic facility rung, this reads the specialized
+ * building levels too, so investing in the Hitting Barn/Pitching Lab/Clubhouse
+ * becomes something the recruiting screen can honestly sell.
+ */
+export function recruitingFacilityScore(eco: Economy): number {
+  const levels = BUILDINGS.reduce((sum, b) => sum + facilityLevel(eco, b.key), 0);
+  const levelShare = levels / (BUILDINGS.length * FACILITY_MAX_LEVEL);
+  const effects = facilityEffects(eco);
+  // A bare athletic department still has something to show; a fully built
+  // complex reaches A/A+ territory without needing an invented school rating.
+  return Math.max(0, Math.min(1, 0.22 + levelShare * 0.68 + Math.min(0.10, effects.pitch * 0.16)));
+}
+
 /**
  * What a programme's buildings are worth together.
  *

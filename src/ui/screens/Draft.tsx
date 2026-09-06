@@ -8,8 +8,8 @@
 // say to him in the next minute decides whether he is in your lineup in
 // February.
 //
-// The money is recruiting budget, out of the pool the board opens with in about
-// ninety seconds. That is the whole design: keep the ace or sign the class.
+// The money comes from the flexible offseason fund. Recruiting keeps a protected
+// reserve, so keeping the ace is a real trade without deleting the freshman class.
 //
 // Four views because the draft is a national event with a local consequence.
 // KEEP is the decision; DEPARTING is what it cost you; the BOARD is the
@@ -20,7 +20,7 @@ import { useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { ChevronRightIcon, Cross1Icon } from '@radix-ui/react-icons';
-import { Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
+import { FieldNote, Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
 import { InFrame } from '../Overlay.js';
 import { draftChance } from '../../engine/progression.js';
@@ -31,7 +31,7 @@ import {
   type DraftedMan, type KeepPitch,
 } from '../../engine/draft.js';
 import { prestigeStars } from '../../engine/program.js';
-import { windowBudget } from '../../engine/recruiting.js';
+import { flexibleOffseasonBudget, protectedRecruitingBudget, windowBudget } from '../../engine/recruiting.js';
 import { overallOf } from '../../engine/ratings.js';
 import { isTwoWay } from '../../engine/types.js';
 import type { Pitcher, Player } from '../../engine/types.js';
@@ -96,7 +96,9 @@ export function Draft() {
 
   const holes = report?.holes ?? [];
   const stars = prestigeStars(team.prestige);
-  const pool = windowBudget(stars);
+  const pool = flexibleOffseasonBudget(stars);
+  const reserve = protectedRecruitingBudget(stars);
+  const offseasonTotal = windowBudget(stars);
   const left = pool - (board?.spent ?? 0);
 
   return (
@@ -116,8 +118,13 @@ export function Draft() {
           note={`${mineDrafted} DRAFTED · ${mineLost - mineDrafted} GRADUATED`}
         />
         <Metric label="TALKED ROUND" value={String(kept)} note="STAYING" />
-        <Metric label="BUDGET LEFT" value={String(left)} note={`OF ${pool}`} />
+        <Metric label="FLEX LEFT" value={String(left)} note={`OF ${pool}`} />
       </MetricStrip>
+
+      <FieldNote
+        title="HOW THE OFFSEASON BUDGET IS SPLIT"
+        text={`${offseasonTotal} total points · ${reserve} are protected for high-school recruiting · ${pool} are flexible for Draft + Portal. Any flexible points you do not spend roll into recruiting.`}
+      />
 
       <Segmented<View>
         label="Draft section"

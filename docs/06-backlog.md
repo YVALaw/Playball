@@ -3140,3 +3140,34 @@ exists.
 keep the alumni ledger honest and keyed by id, which §X item 31 already
 asks for on other grounds. Everything else waits until v1.0 has shipped
 and the game has players.
+
+
+## AB. Recruiting 1.0 — September 6 2026, what it left to measure
+
+`05` §54 is the account. Open, in order of what could bite.
+
+- **The climb, rerun.** The nine factors now redistribute the old
+  prestige weight rather than tripling it (`05` §54.4), but coach
+  reputation still leans on the name, and the nine-factor fit, the halved
+  AI head start and the AI's forced fifth on actions all change who signs
+  where, for all ninety-six programs. The action yields were repriced at the merge so
+  the AI is not handicapped by its own actions, but nobody has rerun
+  `tests/climb-probe.ts` or the local-board retention figures in §16.4
+  since. Do that before the next balance decision; a two-star program's
+  median Omaha year is the number to compare against §AA's six.
+- **Keep-position judges any move.** `movedFrom` is set by every position
+  change, willing or not, and the keep-position promise reads
+  `p.pos !== promisedPos`, so a man who *agreed* to move still counts as
+  promised-and-broken. The morale roll already approximates "moved
+  unwillingly" the same way, so this is consistent with what exists; it is
+  still wrong, and the fix is a flag on the proposal the player accepts.
+- **A sway spends a season draw.** `recruitMajor` rolls the sway off
+  `season.rng` at the tap, so the stream's position depends on what the
+  coach clicked. Recruiting is offseason and the day loop is unaffected;
+  but if the seed-replays-the-season guarantee is ever extended across a
+  roll, this is one of the places it breaks.
+- **Promise horizon is the first cut.** One season for three of the four,
+  two for keeping a position, judged by counting rolls. Reasonable;
+  unplayed. A recruit who redshirts his first year under a no-redshirt
+  promise is judged broken at that roll, which is right; one whose
+  two-way chance was blocked by injury is judged broken too, which is not.

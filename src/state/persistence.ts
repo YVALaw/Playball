@@ -26,8 +26,13 @@ import type { SeasonState } from '../engine/season.js';
  *     every conference series was against the same opponent and every
  *     non-conference opponent was blank. Nothing threw; it just quietly stopped
  *     being a schedule.
+ * 5 — recruiting expanded from raw weekly points to persistent recruit
+ *     priorities, pitch/major-action ledgers, pro-pipeline history and binding
+ *     promises on signed players. Every new field is optional/backfilled, so
+ *     migration is structural rather than destructive; stamping the new schema
+ *     still keeps old builds from claiming they understand a newer dynasty.
  */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 const DB_NAME = 'playball';
 const STORE = 'dynasties';

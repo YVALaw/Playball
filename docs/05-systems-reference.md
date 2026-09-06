@@ -7177,6 +7177,153 @@ already has. And the stack was verified two layers deep — an overlay over
 the front door — rather than through a whole career; the order is pinned by
 the unit test, and a played season on the emulator is the remaining check.
 
+## 54. Recruiting 1.0, the board room, and one offseason economy — **MERGED September 6 2026**
+
+Two updates in one outside folder, taken at `3b639dc` — three commits
+behind, so its docs, README, `App.tsx`, `.gitignore` and the APK script
+were stale and stayed out, and `season.ts` needed a three-way merge (clean)
+to keep replay compaction. Twenty files were the pass. This is what
+reached the code, and what the merge changed.
+
+### 54.1 The case, not just the points
+
+A recruit used to weigh five things — prestige, playing time, winning,
+proximity, development — and a program's whole courtship was a number of
+raw points a week. He weighs **nine** now (`RecruitingFactor`,
+recruiting.ts): program tradition, coach reputation, conference prestige,
+immediate opportunity, winning, development, facilities, proximity, and
+path to the pros. The four new ones are grounded in live program state
+rather than invented: coach reputation is the coach's own standing;
+conference prestige is the members' mean prestige weighted with their
+record (`conferencePrestigeScore`, pitch.ts); facilities read the three
+buildings' levels (`recruitingFacilityScore`, economy.ts); path to the pros
+is a rolling five-year ledger of men the program actually sent to the draft
+(`TeamRecord.proPipeline`, written at the draft in progression.ts), and
+until the save has drafted anybody it reads off the name only faintly —
+prestige 100 is .58, 20 is .26 — because it is meant to be a strength a
+program *earns* at the draft, not prestige under another label (§54.4).
+The nine are **derived from the five on every read** (`recruitingPrioritiesOf`), deterministically off the id, so
+the generator's five and the room's nine can never disagree; only a sway
+writes them.
+
+**Actions.** Each recruit, each week, takes one *pitch* (3 points, one of
+the nine, and worth more the more he cares about it) and one *major move*:
+a hard sell (5), a program visit (8), a sway (6, week 2 only — an attempt
+to change what matters to him, rolled against your standing and your
+recruiting skill), or a **promise** (8–12, binding). Major moves need a
+relationship — a week of banked interest — first. The AI runs the same
+actions on the same budget rules (`planAiRecruitActions`), reserving 18%
+of its week for them, and its opening head start is halved. The Needs
+view counts active targets against each hole, and ending week one with a
+hole uncovered raises a warning first.
+
+**Promises follow him.** Immediate role, no redshirt, stay at your
+position, two-way opportunity. Signed, the promise lands on the player
+(`recruitPromise`), and the seasons after Signing Day judge it: an
+immediate-role promise raises his playing-time expectation to a floor of
+.62; a broken one costs thirteen points of mood at the roll, adds .28 to
+his portal chance and gives the portal a specific reason ("He was promised
+he could stay at his position"). A promise binds for **one season** (two
+for keeping a position); the roll judges it once per season it covers,
+the portal that follows in the same offseason still sees the break, and
+the *next* roll takes it off the man before judging anything, so a
+first-year word is not held against a junior.
+
+### 54.2 One offseason economy, with a floor
+
+Draft retention and the portal used to draw on the whole recruiting window
+— keep the ace, and the freshman class could be zeroed. The window is one
+pool now with a **protected reserve**: 60% is high-school recruiting and
+cannot be touched in June; 40% is the flexible fund Draft and Portal share
+(`OFFSEASON_FLEX_SHARE`, `flexibleOffseasonBudget`,
+`protectedRecruitingBudget`). Whatever flexible money is left when
+recruiting opens rolls into it, so a program that spends nothing in June
+walks in with exactly the weekly budget it always had. Both June screens
+print the split. The AI's retention allowance draws on the same flexible
+fund.
+
+| Program | Total | Reserve | Draft + Portal |
+|---|---|---|---|
+| ★ | 168 | 101 | 67 |
+| ★★ | 183 | 110 | 73 |
+| ★★★ | 198 | 119 | 79 |
+| ★★★★ | 213 | 128 | 85 |
+| ★★★★★ | 228 | 137 | 91 |
+
+### 54.3 The board room, and the screens that got faster
+
+Program → Board is a board room: confidence as a band with a word
+(SECURE · STABLE · UNDER PRESSURE · HOT SEAT), the mandate as a card with
+required and bonus objectives in a grid and a met count, program stars,
+win target and contract in a strip. The end-of-year review is the same
+language, with the three deltas and the contract line. Both heroes sit on
+`--panel`, the surface built to carry cream copy in both themes, after the
+first cut used `--ink`, which flips light in dark mode.
+
+`setScreen` — every secondary navigation in the app — is synchronous now;
+only `go()` between the four primary tabs keeps the view transition, so
+Colleges → History no longer waits on a page snapshot. `setProgramSheet`
+stopped bumping the global engine version, which had re-rendered every
+subscriber for a subpage tap. Long directory tables use
+`content-visibility`, and History no longer scans the alumni archive to
+title a tab that is not open.
+
+Also: the three positioning controls — infield depth, outfield depth,
+overshift — work on an older save (`setStrategy` validated keys against
+the saved object, which did not have them; it validates against
+`DEFAULT_STRATEGY`, and the codec backfills them on load). Schema is 5:
+every new field is optional, nothing is migrated destructively, and the
+IndexedDB upgrade path skips the store rebuild for a version-4 save.
+
+### 54.4 What the merge found
+
+**Every action was a worse use of a point than raw effort.** The interest
+they paid was a flat bonus — a visit bought 3.9 on eight points where
+eight raw points bought 11.5 — so the room the pass built was a trap, and
+the AI, made to reserve a fifth of its week for it, was handicapped by
+about an eighth. Priced per point against the raw rate now
+(`actionInterest`): an action on an average factor is worth about what raw
+effort is, one that names what the recruit cares about is worth more, a
+visit and a promise carry a premium. Pinned.
+
+**A sway could be rolled for free, and stacked.** Its success moved the
+recruit's priorities the moment it was rolled; withdrawing it refunded the
+six points and left the shift in place; applying it again rolled again on
+the moved priorities, ×1.6 a time, for as long as the budget held. The
+attempt is the move now: rolled, it stands for the week, and the buttons
+say so.
+
+**Promises never expired.** `madeYear` was stored and never read, so an
+immediate-role promise bound a senior. The horizon in §54.1 is the fix;
+`madeYear` is the class counter (`season.recruiting.year`, from zero), not
+a calendar year, and the type says so.
+
+**The nine were cached at generation.** Anything that later moved the five
+— the old tests do, and so would any future system — was invisible to fit.
+Derived on read now, and the five copied factors keep no floor: flooring
+proximity at 1.5% had given a five-star program a home-state edge the
+whole pipeline design says it must not have. And Signing Day still
+labelled a man's top want from the legacy five while the board sold him on
+the nine.
+
+**The nine added to the name instead of redistributing it.** Tradition,
+conference and path to the pros were each derived from most of the old
+prestige weight, so a recruit who cared about the name a little came out
+caring about it three times over — for all ninety-six programs — and the
+first place it showed was the hall's twelve-season test, where the
+strongest program in a two-conference world inducted a man every single
+year, the hall's named failure mode. (A first attempt to fix the day-one
+path-to-the-pros reading by raising it made this worse, which is what
+found it.) The three prestige shares are .55, .30 and .15 now, which sum
+to what prestige alone had: three name-flavoured things to pitch, and no
+more name than before.
+
+**Not measured.** Coach reputation still leans on the name (big programs
+hire big names), and the halved AI head start changes who signs where for
+the whole country; neither has been run through the climb probe or the
+§16.4 measurements. The suite's recruiting-balance assertions hold; the
+probes are owed (`06` §AB).
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

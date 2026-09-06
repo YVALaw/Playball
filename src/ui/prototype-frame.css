@@ -6960,3 +6960,54 @@
   .recruit-filter-toggle { padding-right:10px; padding-bottom:34px; }
   .recruit-filter-toggle > i { top:auto; bottom:9px; transform:none; }
 }
+
+/* Release-candidate Board contrast.
+   `--ink` is text ink and intentionally flips light in dark mode, so it can
+   never be used as a supposedly dark hero surface. `--panel` is the stable
+   dark/tinted surface token built to carry cream copy in both themes. */
+.board-room-hero { background: var(--panel); color: var(--cream); }
+.board-room-hero > header small,
+.board-room-security small,
+.board-room-security p,
+.board-room-command-strip small,
+.board-room-command-strip span { color: var(--cream-dim); }
+.board-review-card > header { background: var(--panel); color: var(--cream); }
+.board-review-card > header small { color: var(--cream-dim); opacity: 1; }
+
+/* Make the flexible/reserved offseason split legible at the Portal decision.
+   This is intentionally compact: the player needs to understand the three
+   buckets before signing a transfer, not read another tutorial card. */
+.portal-budget-breakdown {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin-top: 9px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.18);
+}
+.portal-budget-breakdown > span {
+  min-width: 0;
+  padding: 7px 6px;
+  background: rgba(0,0,0,.12);
+}
+.portal-budget-breakdown small {
+  display: block;
+  color: var(--cream-dim) !important;
+  font-size: calc(5.8px * var(--ts)) !important;
+  line-height: 1.25;
+}
+.portal-budget-breakdown b {
+  display: block;
+  margin-top: 3px;
+  color: var(--cream);
+  font: 800 calc(12px * var(--ts))/.95 var(--display);
+  white-space: nowrap;
+}
+
+/* Long directory/leaderboard tables should not pay layout + paint for rows
+   hundreds of pixels below the viewport. Modern Android WebView supports
+   content-visibility; browsers that do not simply ignore these declarations. */
+.data-table > button {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 58px;
+}

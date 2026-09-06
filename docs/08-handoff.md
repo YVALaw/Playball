@@ -6,9 +6,39 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 6, 2026, later · **Branch:** `main` · **stage
-18b shipped on an Android 16 emulator** (`05` §53), after the docs pass
-that booked it.
+**Last session:** September 6, 2026, latest · **Branch:** `main` ·
+**Recruiting 1.0 merged from a stale base and repaired** (`05` §54), after
+stage 18b (§53).
+
+> **September 6, latest — Recruiting 1.0, merged from a stale base and
+> repaired in four places.**
+>
+> A fourth outside folder, taken at `3b639dc` — three commits behind, so
+> its docs, README, `App.tsx`, `.gitignore` and the APK script would have
+> reverted stage 18b and were left out; `season.ts` was three-way merged
+> to keep replay compaction. Twenty files were the pass: nine recruiting
+> factors grounded in program state, a pitch and a major move per recruit
+> per week, binding promises that follow a man onto the roster, one
+> offseason economy with a protected 60% reserve, a board room, faster
+> secondary navigation, and the positioning controls working on old saves.
+> `05` §54.
+>
+> **What the merge found:** every action paid less interest per point than
+> raw effort, so the room was a trap and the AI's forced fifth a handicap
+> — repriced per point against the raw rate; a rolled sway could be
+> withdrawn for a refund with its priority shift kept, then rolled again
+> — final for the week now; promises never expired — one season, two for
+> position; the nine factors were cached at generation and floored, which
+> hid changes to the five and gave a five-star program a home-state edge
+> — derived on read, no floor on the copied five; the nine ADDED to the
+> name instead of redistributing it, three factors each carrying most of
+> the old prestige weight, and the hall's twelve-season test crossed its
+> every-year bound on it — .55/.30/.15 now, summing to what prestige had;
+> Signing Day labelled wants from the legacy five. Six failures in
+> the folder's own suite, four the cache, two the reserve's premise.
+>
+> **Not measured:** the climb, after the nine-factor fit and the halved AI
+> head start. `06` §AB. 1,173 tests, 58 files.
 
 > **September 6, later — stage 18b on a real Android 16 emulator, and the
 > back gesture the shell never had.**
@@ -598,7 +628,7 @@ exists. Stage 19 removes the three together.
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,159 tests, 57 files)
+npm run check      # typecheck + the whole suite (1,173 tests, 58 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing

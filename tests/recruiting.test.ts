@@ -16,6 +16,7 @@ import {
   leadersAtWeekStart, byRank,
   PRIORITIES, RECRUITING_WEEKS, SCHOLARSHIPS, RECRUITING_BUDGET, MAX_PER_RECRUIT,
   commitPointsFor, budgetFor, weeklyBudget, windowBudget,
+  flexibleOffseasonBudget, protectedRecruitingBudget,
   reportWidth, reportGradeSteps, reportedOverall, reportedPotential, reportedTool,
   hintsFor, ceilingLinesFor, developmentLinesFor, rawnessOf,
   CEILING_LINES, DEVELOPMENT_LINES,
@@ -817,8 +818,21 @@ describe('the AI works off the same week the user does', () => {
       .toBeGreaterThanOrEqual(windowBudget(5) - june - RECRUITING_WEEKS);
   });
 
-  it('leaves a program that spent its whole window with nothing to work with', () => {
-    expect(total(weekFor(3, windowBudget(3)))).toBe(0);
+  it('cannot spend the freshman class on June, whatever it spent there', () => {
+    // Since the September 6 recruiting pass the offseason is one pool with a
+    // protected floor: Draft and Portal draw only on the flexible share, and
+    // what they take comes off the recruiting weeks — but a program that
+    // spent every flexible point still walks into the window with the
+    // reserve, a third a week. Spending past the flexible fund cannot dip
+    // into it either, because the store refuses the spend; the arithmetic
+    // here is what the board header prints.
+    const floor = Math.floor(protectedRecruitingBudget(3) / RECRUITING_WEEKS);
+    expect(floor).toBeGreaterThan(0);
+    expect(weeklyBudget(3, flexibleOffseasonBudget(3))).toBe(floor);
+    expect(weeklyBudget(3, windowBudget(3))).toBe(floor);
+    const week = total(weekFor(3, windowBudget(3)));
+    expect(week).toBeGreaterThan(0);
+    expect(week).toBeLessThanOrEqual(floor);
   });
 });
 

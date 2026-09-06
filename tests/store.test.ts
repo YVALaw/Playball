@@ -10,7 +10,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { useDynasty, PHASES, boardBudget } from '../src/state/store.js';
-import { windowBudget } from '../src/engine/recruiting.js';
+import { windowBudget, flexibleOffseasonBudget, RECRUITING_WEEKS, protectedRecruitingBudget } from '../src/engine/recruiting.js';
 import { prestigeStars } from '../src/engine/program.js';
 import type { DraftBoard } from '../src/engine/draft.js';
 import { createSeason, simSeason, seasonComplete } from '../src/engine/season.js';
@@ -369,6 +369,51 @@ describe('the coach profile survives the disk', () => {
   });
 });
 
+describe('release-candidate UI state regressions', () => {
+  it('switching Program subpages does not invalidate the whole engine tree', () => {
+    useDynasty.getState().start(4242, 0);
+    const before = useDynasty.getState().version;
+    useDynasty.getState().setProgramSheet('money');
+    expect(useDynasty.getState().programSheet).toBe('money');
+    expect(useDynasty.getState().version).toBe(before);
+    useDynasty.getState().setProgramSheet('overview');
+    expect(useDynasty.getState().version).toBe(before);
+  });
+
+  it('switches adjacent context-nav screens synchronously without touching engine state', () => {
+    useDynasty.getState().start(4243, 0);
+    useDynasty.getState().go('program', 'colleges');
+    const before = useDynasty.getState().version;
+    useDynasty.getState().setScreen('history');
+    expect(useDynasty.getState().screen).toBe('history');
+    expect(useDynasty.getState().version).toBe(before);
+    useDynasty.getState().setScreen('strategy');
+    expect(useDynasty.getState().screen).toBe('strategy');
+    expect(useDynasty.getState().version).toBe(before);
+  });
+
+  it('writes positioning fields even when an older save did not carry them', () => {
+    useDynasty.getState().start(4242, 0);
+    const me = useDynasty.getState().season?.teams[0];
+    if (!me) throw new Error('no team');
+    // Reproduce the old-save shape that caused Alignment to work while the
+    // three newer positioning controls silently refused to move.
+    const old = { ...me.strategy } as typeof me.strategy;
+    delete old.infield;
+    delete old.outfield;
+    delete old.shift;
+    me.strategy = old;
+
+    useDynasty.getState().setStrategy('infield', 'in');
+    useDynasty.getState().setStrategy('outfield', 'deep');
+    useDynasty.getState().setStrategy('shift', 'left');
+
+    expect(me.strategy.infield).toBe('in');
+    expect(me.strategy.outfield).toBe('deep');
+    expect(me.strategy.shift).toBe('left');
+  });
+});
+
 describe('a coaching philosophy reaches the field', () => {
   // The failure this exists to catch is the dead menu: a creation screen that
   // collects an answer nothing downstream reads. A philosophy is worth having
@@ -694,7 +739,7 @@ describe('talking a drafted player out of professional baseball', () => {
   };
 
   const window = (season: SeasonState): number =>
-    windowBudget(prestigeStars((season.teams[0] as TeamRecord).prestige));
+    flexibleOffseasonBudget(prestigeStars((season.teams[0] as TeamRecord).prestige));
 
   it('offers your own men with eligibility left, and nobody else', async () => {
     const season = await intoTheDraft(6161);
@@ -721,7 +766,11 @@ describe('talking a drafted player out of professional baseball', () => {
     // Everything, twice over, on one man.
     useDynasty.getState().keepPlayer(man.player.id, 'ring', 9999);
     expect(board.spent).toBe(window(season));
-    expect(boardBudget(season, 0)).toBe(0);
+    // Not zero any more: since the September 6 recruiting pass the flexible
+    // fund is all June can touch, and the protected reserve — a third a week —
+    // is still there for the freshman class. What the board header prints.
+    const stars = prestigeStars((season.teams[0] as TeamRecord).prestige);
+    expect(boardBudget(season, 0)).toBe(Math.floor(protectedRecruitingBudget(stars) / RECRUITING_WEEKS));
 
     // And a second man cannot spend money that is gone.
     const next = board.men[1];

@@ -562,6 +562,12 @@ export interface TeamRecord {
    * rows only accumulate from the first June the save plays through.
    */
   annals?: SchoolSeason[];
+  /**
+   * Recent players this program sent to professional baseball, recorded at the
+   * draft before recruiting opens. Kept to five years so Path to the Pros is a
+   * living program strength rather than prestige copied under another label.
+   */
+  proPipeline?: { year: number; drafted: number; early: number }[];
 }
 
 /**

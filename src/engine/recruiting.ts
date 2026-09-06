@@ -30,7 +30,7 @@ import {
   GRADE_LADDER, TOP_GENERATED_GRADE, potentialGrade, scoutNoise, type PotentialGrade,
 } from './scouting.js';
 import type {
-  Player, PlayerId, Position, Priorities, Priority, Rng,
+  Player, PlayerId, Position, Priorities, Priority, RecruitPromiseKind, Rng,
 } from './types.js';
 import { STATES_BY_REGION, type Region } from '../data/schools.js';
 
@@ -69,6 +69,77 @@ export const PRIORITY_BLURB: Record<Priority, string> = {
   winning: 'your record is the pitch',
   proximity: 'the home-state call lands first',
   development: 'he is buying a road to the draft',
+};
+
+
+/** The fuller set of things the recruiting room can actively sell. */
+export type RecruitingFactor =
+  | 'tradition' | 'coach' | 'conference' | 'playingTime' | 'winning'
+  | 'development' | 'facilities' | 'proximity' | 'proPipeline';
+
+export type RecruitingPriorities = Record<RecruitingFactor, number>;
+
+export const RECRUITING_FACTORS: readonly RecruitingFactor[] = [
+  'tradition', 'coach', 'conference', 'playingTime', 'winning',
+  'development', 'facilities', 'proximity', 'proPipeline',
+];
+
+export const RECRUITING_FACTOR_LABEL: Record<RecruitingFactor, string> = {
+  tradition: 'PROGRAM TRADITION',
+  coach: 'COACH REPUTATION',
+  conference: 'CONFERENCE PRESTIGE',
+  playingTime: 'IMMEDIATE OPPORTUNITY',
+  winning: 'WINNING NOW',
+  development: 'PLAYER DEVELOPMENT',
+  facilities: 'FACILITIES',
+  proximity: 'STAY CLOSE TO HOME',
+  proPipeline: 'PATH TO THE PROS',
+};
+
+export const RECRUITING_FACTOR_BLURB: Record<RecruitingFactor, string> = {
+  tradition: 'the weight of the program name',
+  coach: 'who he believes will lead him',
+  conference: 'the stage he will play on',
+  playingTime: 'how quickly the depth chart opens',
+  winning: 'whether meaningful games are waiting',
+  development: 'how well players improve here',
+  facilities: 'what he will train in every day',
+  proximity: 'how close home stays',
+  proPipeline: 'recent proof that players get drafted',
+};
+
+export type RecruitMajorAction =
+  | { kind: 'hardSell'; factor: RecruitingFactor }
+  | { kind: 'visit' }
+  | { kind: 'sway'; factor: RecruitingFactor; success: boolean }
+  | { kind: 'promise'; promise: RecruitPromiseKind };
+export type RecruitMajorInput =
+  | { kind: 'hardSell'; factor: RecruitingFactor }
+  | { kind: 'visit' }
+  | { kind: 'sway'; factor: RecruitingFactor }
+  | { kind: 'promise'; promise: RecruitPromiseKind };
+
+export interface RecruitWeekAction {
+  pitch?: RecruitingFactor;
+  major?: RecruitMajorAction;
+}
+
+export const PITCH_COST = 3;
+export const HARD_SELL_COST = 5;
+export const SWAY_COST = 6;
+export const VISIT_COST = 8;
+export const PROMISE_COST: Record<RecruitPromiseKind, number> = {
+  immediateRole: 12,
+  noRedshirt: 8,
+  keepPosition: 9,
+  twoWayOpportunity: 11,
+};
+
+export const PROMISE_LABEL: Record<RecruitPromiseKind, string> = {
+  immediateRole: 'IMMEDIATE ROLE',
+  noRedshirt: 'NO REDSHIRT',
+  keepPosition: 'STAY AT YOUR POSITION',
+  twoWayOpportunity: 'TWO-WAY OPPORTUNITY',
 };
 
 export interface Prospect {
@@ -112,8 +183,18 @@ export interface Prospect {
    * IndexedDB and across the worker boundary without a codec entry.
    */
   points: Record<number, number>;
-  /** Actions each program has spent on him this week, by team index. */
+  /** Raw recruiting effort each program has spent on him this week. */
   spent: Record<number, number>;
+  /**
+   * The nine-factor personality, present only once a sway has moved it. Until
+   * then it is derived from `priorities` on every read, so the five the
+   * generator wrote and the nine the room sells never drift apart.
+   */
+  recruitingPriorities?: RecruitingPriorities;
+  /** The pitch + one major move each program is using this week. */
+  weekActions?: Record<number, RecruitWeekAction>;
+  /** A binding promise survives the weekly action reset and follows him if he signs. */
+  promiseBy?: Record<number, RecruitPromiseKind>;
   /** Team index once he has committed. */
   signedBy: number | null;
   /** Which week of the window he committed in. */
@@ -200,10 +281,22 @@ export function budgetFor(stars: number): number {
 export const windowBudget = (stars: number): number =>
   budgetFor(stars) * RECRUITING_WEEKS;
 
-export const weeklyBudget = (stars: number, spentOnTheDraft: number): number =>
-  Math.max(0, Math.floor(
-    (windowBudget(stars) - Math.max(0, spentOnTheDraft)) / RECRUITING_WEEKS,
-  ));
+/**
+ * The offseason is one economy with a protected floor. Draft and Portal may
+ * spend only the flexible share; the freshman class can never be zeroed out by
+ * one expensive veteran decision. Unused flex automatically rolls forward.
+ */
+export const OFFSEASON_FLEX_SHARE = 0.40;
+export const flexibleOffseasonBudget = (stars: number): number =>
+  Math.round(windowBudget(stars) * OFFSEASON_FLEX_SHARE);
+export const protectedRecruitingBudget = (stars: number): number =>
+  windowBudget(stars) - flexibleOffseasonBudget(stars);
+export const recruitingWindowBudget = (stars: number, spentBeforeRecruiting: number): number =>
+  protectedRecruitingBudget(stars)
+    + Math.max(0, flexibleOffseasonBudget(stars) - Math.max(0, spentBeforeRecruiting));
+
+export const weeklyBudget = (stars: number, spentBeforeRecruiting: number): number =>
+  Math.max(0, Math.floor(recruitingWindowBudget(stars, spentBeforeRecruiting) / RECRUITING_WEEKS));
 
 /** The most that can go on one recruit in one week. Nobody signs on money alone. */
 export const MAX_PER_RECRUIT = 12;
@@ -519,6 +612,12 @@ export function generateClass(year: number, teams: number, rng: Rng): RecruitCla
       rank: 0,
       points: {},
       spent: {},
+      // No `recruitingPriorities` here on purpose: the nine factors are
+      // derived from the five whenever they are read (`recruitingPrioritiesOf`),
+      // deterministically off the id, so the two never disagree. The field is
+      // written only by a sway, which is the one thing that moves them.
+      weekActions: {},
+      promiseBy: {},
       signedBy: null,
       committedWeek: null,
     });
@@ -1013,6 +1112,11 @@ export interface Pitch {
   winning: number;
   region: Region;
   development: number;
+  /** Expanded pitch grades, all 0..1 and grounded in live program state. */
+  coachReputation?: number;
+  conferencePrestige?: number;
+  facilities?: number;
+  proPipeline?: number;
   /** Optional staff network, 0-100 by recruit state. Home-state logic is the fallback. */
   pipelineStrength?: (state: string) => number;
 }
@@ -1062,30 +1166,238 @@ const pipelineEdge = (stars: number): number =>
  * are yours, and neither alone decides anything. A blue blood scores near 1 with
  * a recruit who wants the name and barely half that with one who wants to play.
  */
+export function expandedPrioritiesFor(
+  id: string, stars: number, legacy?: Priorities,
+): RecruitingPriorities {
+  // Preserve the five personality facts older saves already carry, then give
+  // the four new factors stable per-player variation without consuming RNG.
+  const old = legacy ?? prioritiesFor(id, stars);
+  // The nine REDISTRIBUTE the five; they do not add to them. The first cut
+  // derived tradition, conference and path-to-the-pros each from most of the
+  // old prestige weight, so a recruit who cared about the name a little came
+  // out caring about it three times over, for all ninety-six programs — and
+  // the hall's twelve-season test crossed its every-year bound on it. The
+  // prestige shares below (.55 + .30 + .15) sum to what prestige alone had.
+  const raw: RecruitingPriorities = {
+    tradition: old.prestige * 0.55 * (0.82 + scoutNoise(id, 8101) * 0.45),
+    coach: (0.07 + 0.05 * stars) * (0.65 + scoutNoise(id, 8113) * 0.9),
+    conference: (old.prestige * 0.30 + old.winning * 0.35) * (0.7 + scoutNoise(id, 8129) * 0.65),
+    playingTime: old.playingTime,
+    winning: old.winning,
+    development: old.development,
+    facilities: (old.development * 0.72 + 0.05) * (0.7 + scoutNoise(id, 8147) * 0.7),
+    proximity: old.proximity,
+    proPipeline: (old.development * 0.5 + old.prestige * 0.15 + 0.04) * (0.7 + scoutNoise(id, 8161) * 0.7),
+  };
+  // The four synthesized factors keep a floor so a pitch on any of them is
+  // never worth exactly nothing. The five copied from the generator do not:
+  // a legacy weight of zero is a statement about the man — he does not care
+  // where home is — and flooring it gave a five-star program a home-state
+  // edge the whole pipeline design says it must not have.
+  const synthesized: readonly RecruitingFactor[] = ['coach', 'conference', 'facilities', 'proPipeline'];
+  let total = 0;
+  for (const k of RECRUITING_FACTORS) {
+    if (synthesized.includes(k)) raw[k] = Math.max(0.015, raw[k]);
+    total += raw[k];
+  }
+  for (const k of RECRUITING_FACTORS) raw[k] /= total;
+  return raw;
+}
+
+export function recruitingPrioritiesOf(prospect: Prospect): RecruitingPriorities {
+  return prospect.recruitingPriorities
+    ?? expandedPrioritiesFor(prospect.id, prospect.stars, prospect.priorities);
+}
+
+export function factorScore(
+  prospect: Prospect, pitch: Pitch, factor: RecruitingFactor,
+): number {
+  switch (factor) {
+    case 'tradition': return pitch.prestige;
+    case 'coach': return pitch.coachReputation ?? pitch.prestige;
+    case 'conference': return pitch.conferencePrestige ?? pitch.prestige;
+    case 'playingTime': return pitch.playingTime(prospect);
+    case 'winning': return pitch.winning;
+    case 'development': return pitch.development;
+    case 'facilities': return pitch.facilities ?? Math.min(1, 0.25 + pitch.prestige * 0.65);
+    case 'proximity':
+      return pitch.state === prospect.state ? 1 : pitch.region === prospect.hometown ? 0.55 : 0.15;
+    // A pitch without the live figure reads it off the name, the way the
+    // no-history case in `proPipelineScore` does: a blue blood has been sending
+    // men to the draft for longer than the save has existed.
+    case 'proPipeline': return pitch.proPipeline ?? Math.min(1, 0.15 + pitch.prestige * 0.65);
+  }
+}
+
+export function factorGrade(v: number): string {
+  if (v >= 0.93) return 'A+';
+  if (v >= 0.86) return 'A';
+  if (v >= 0.79) return 'A-';
+  if (v >= 0.72) return 'B+';
+  if (v >= 0.65) return 'B';
+  if (v >= 0.58) return 'B-';
+  if (v >= 0.51) return 'C+';
+  if (v >= 0.44) return 'C';
+  if (v >= 0.37) return 'C-';
+  if (v >= 0.30) return 'D+';
+  if (v >= 0.23) return 'D';
+  return 'D-';
+}
+
 export function fit(prospect: Prospect, pitch: Pitch): number {
-  const w = prospect.priorities;
-  // Three steps, not two. Home state is the pipeline and the real prize; the
-  // same corner of the country still counts for something; anywhere else is a
-  // plane ride. Collapsing the first two into one "region" made a Louisiana kid
-  // treat a school in his own town exactly like one four states away.
-  const proximity =
-    pitch.state === prospect.state ? 1
-    : pitch.region === prospect.hometown ? 0.55
-    : 0.15;
-  const base =
-    w.prestige * pitch.prestige
-    + w.playingTime * pitch.playingTime(prospect)
-    + w.winning * pitch.winning
-    + w.proximity * proximity
-    + w.development * pitch.development;
+  const w = recruitingPrioritiesOf(prospect);
+  let base = 0;
+  for (const factor of RECRUITING_FACTORS) base += w[factor] * factorScore(prospect, pitch, factor);
   const network = pitch.pipelineStrength?.(prospect.state)
     ?? (pitch.state === prospect.state ? 45 : 0);
   if (network <= 0) return base;
-  // A real relationship can now exist outside the home state. At the old
-  // home-state floor (45) this stays close to the previous bonus; a staff that
-  // repeatedly signs a market can turn it into a genuine competitive edge.
   const networkScale = 0.55 + Math.min(1, network / 100);
   return Math.min(1, base * (1 + pipelineEdge(pitch.stars) * networkScale));
+}
+
+
+export function majorActionCost(action?: RecruitMajorAction): number {
+  if (!action) return 0;
+  if (action.kind === 'hardSell') return HARD_SELL_COST;
+  if (action.kind === 'sway') return SWAY_COST;
+  if (action.kind === 'visit') return VISIT_COST;
+  return PROMISE_COST[action.promise];
+}
+
+export function weekActionCost(prospect: Prospect, team: number): number {
+  const action = prospect.weekActions?.[team];
+  return (action?.pitch ? PITCH_COST : 0) + majorActionCost(action?.major);
+}
+
+export function totalWeekSpend(prospects: readonly Prospect[], team: number): number {
+  return prospects.reduce((sum, p) => sum + (p.spent[team] ?? 0) + weekActionCost(p, team), 0);
+}
+
+export const hasRecruitingRelationship = (prospect: Prospect, team: number): boolean =>
+  (prospect.points[team] ?? 0) > 0;
+
+/**
+ * What a point spent on an action is worth, against what the same point
+ * spent as raw effort would have bought.
+ *
+ * `weeklyPoints` pays about `2.6 · fit` of interest per raw action. The first
+ * cut of these paid a flat bonus per action — a visit was worth 3.9 on eight
+ * points where eight raw points bought 11.5 — so every action was a strictly
+ * worse use of the same budget, and the AI, which is made to reserve 18% of
+ * its week for them, was simply handicapped. Priced here per point instead:
+ * an action on an *average* factor is worth about what raw effort is, and
+ * one that names what the recruit actually cares about is worth more. That
+ * premium is the skill in it — reading the man — and the whole reason the
+ * room exists.
+ */
+const RAW_RATE = 2.6;
+
+export function actionInterest(prospect: Prospect, pitch: Pitch, team: number): number {
+  const action = prospect.weekActions?.[team];
+  if (!action) return 0;
+  const priorities = recruitingPrioritiesOf(prospect);
+  // One ninth is an average weight; a named factor at three times that is a
+  // man who has told you what he wants.
+  const matters = (f: RecruitingFactor): number => 0.55 + priorities[f] * 4.5;
+  let bonus = 0;
+  if (action.pitch) {
+    const f = action.pitch;
+    bonus += PITCH_COST * RAW_RATE * factorScore(prospect, pitch, f) * matters(f);
+  }
+  const major = action.major;
+  if (!major) return bonus;
+  if (major.kind === 'hardSell') {
+    bonus += HARD_SELL_COST * RAW_RATE * factorScore(prospect, pitch, major.factor)
+      * (0.6 + priorities[major.factor] * 5);
+  } else if (major.kind === 'visit') {
+    // The whole place, so the whole fit — with a premium, because a visit is
+    // the one action a recruit remembers.
+    bonus += VISIT_COST * RAW_RATE * (0.25 + fit(prospect, pitch) * 0.85);
+  } else if (major.kind === 'sway') {
+    // The payoff of a sway is the priority it moved; the interest is the
+    // conversation itself, and a failed one still was one.
+    bonus += SWAY_COST * RAW_RATE * (major.success ? 0.5 : 0.15);
+  } else if (major.kind === 'promise') {
+    const factor: RecruitingFactor = major.promise === 'immediateRole' ? 'playingTime'
+      : major.promise === 'twoWayOpportunity' ? 'development'
+        : major.promise === 'keepPosition' ? 'development' : 'coach';
+    // Priced above raw on purpose: the real cost is the season after Signing
+    // Day, when it has to be kept.
+    bonus += PROMISE_COST[major.promise] * RAW_RATE * (0.4 + priorities[factor] * 4);
+  }
+  return bonus;
+}
+
+/** Attempt to change what matters to him. The attempt itself is the one Week-2 major move. */
+export function swayRecruit(
+  prospect: Prospect, factor: RecruitingFactor, pitch: Pitch,
+  coachPrestige: number, recruitingSkill: number, rng: Rng,
+): boolean {
+  const grade = factorScore(prospect, pitch, factor);
+  const chance = Math.max(0.08, Math.min(0.82,
+    0.18 + grade * 0.35 + (coachPrestige - 40) / 220 + (recruitingSkill - 20) / 260,
+  ));
+  const success = rng() < chance;
+  if (!success) return false;
+  const next = { ...recruitingPrioritiesOf(prospect) };
+  next[factor] *= 1.6;
+  let total = 0;
+  for (const k of RECRUITING_FACTORS) total += next[k];
+  for (const k of RECRUITING_FACTORS) next[k] /= total;
+  prospect.recruitingPriorities = next;
+  return true;
+}
+
+/**
+ * Spend the AI's reserved slice on the same actions the player can use.
+ * Mutates only this week's action ledger (and a successful sway's priorities).
+ */
+export function planAiRecruitActions(
+  team: number, pitch: Pitch,
+  spends: readonly { prospect: Prospect; actions: number }[],
+  weeklyCap: number, weekNo: number, coachPrestige: number, recruitingSkill: number, rng: Rng,
+): void {
+  let left = Math.max(0, weeklyCap - spends.reduce((sum, s) => sum + s.actions, 0));
+  for (const { prospect } of spends) {
+    if (left < PITCH_COST) break;
+    const weights = recruitingPrioritiesOf(prospect);
+    const ranked = RECRUITING_FACTORS
+      .map((factor) => ({ factor, score: weights[factor] * (0.55 + factorScore(prospect, pitch, factor)) }))
+      .sort((a, b) => b.score - a.score);
+    const factor = ranked[0]?.factor;
+    if (!factor) continue;
+    (prospect.weekActions ??= {})[team] = { pitch: factor };
+    left -= PITCH_COST;
+
+    if (weekNo < 2 || !hasRecruitingRelationship(prospect, team) || left < HARD_SELL_COST) continue;
+    const roll = rng();
+    let major: RecruitMajorAction | undefined;
+    if (weekNo === 2 && roll < 0.13 && left >= SWAY_COST) {
+      const success = swayRecruit(prospect, factor, pitch, coachPrestige, recruitingSkill, rng);
+      major = { kind: 'sway', factor, success };
+    } else if (roll < 0.34 && left >= VISIT_COST) {
+      major = { kind: 'visit' };
+    } else if (roll < 0.82 && left >= HARD_SELL_COST) {
+      major = { kind: 'hardSell', factor };
+    } else if (!prospect.promiseBy?.[team]) {
+      // Promises are intentionally uncommon AI behavior: they are powerful but
+      // create future transfer risk, and should feel like a real commitment.
+      // One promise follows the relationship across weeks; the AI cannot stack
+      // a new bargain after the weekly action ledger resets either.
+      const options: RecruitPromiseKind[] = ['immediateRole', 'noRedshirt', 'keepPosition'];
+      if ((prospect.player as Player & { twoWay?: true }).twoWay === true) options.push('twoWayOpportunity');
+      const promise = options[Math.floor(rng() * options.length)] as RecruitPromiseKind;
+      if (left >= PROMISE_COST[promise]) major = { kind: 'promise', promise };
+    }
+    if (!major) continue;
+    const cost = majorActionCost(major);
+    if (cost > left) continue;
+    const action = (prospect.weekActions ??= {})[team] ?? {};
+    action.major = major;
+    prospect.weekActions![team] = action;
+    if (major.kind === 'promise') (prospect.promiseBy ??= {})[team] = major.promise;
+    left -= cost;
+  }
 }
 
 /**
@@ -1162,6 +1474,7 @@ export function aiTargets(
   prospects: readonly Prospect[], need: number, rng: Rng,
   atWeekStart: Record<string, number> = {},
   spentOnTheDraft = 0,
+  weekNo = 0,
 ): { prospect: Prospect; actions: number }[] {
   void coachPrestige;
 
@@ -1303,12 +1616,15 @@ export function aiTargets(
   // makes for the user, deliberately, because two formulas for one week is how
   // an asymmetry gets back in.
   const week = weeklyBudget(pitch.stars, spentOnTheDraft);
+  // Reserve part of the same budget for the expanded recruiting actions. The
+  // AI pays for its pitches/visits too rather than receiving them for free.
+  const rawWeek = Math.max(1, Math.floor(week * (weekNo >= 1 ? 0.82 : 1)));
 
   const out: { prospect: Prospect; actions: number }[] = [];
-  let left = week;
+  let left = rawWeek;
   picks.forEach((prospect, i) => {
     if (left <= 0) return;
-    const want = Math.round((weights[i] as number) / totalWeight * week);
+    const want = Math.round((weights[i] as number) / totalWeight * rawWeek);
     const actions = Math.max(1, Math.min(MAX_PER_RECRUIT, Math.min(want, left)));
     left -= actions;
     out.push({ prospect, actions });
@@ -1445,5 +1761,5 @@ export function leadersAtWeekStart(recruits: RecruitClass): Record<string, numbe
 
 /** Clear the per-week action spend. Points banked already are permanent. */
 export function resetWeeklySpend(recruits: RecruitClass): void {
-  for (const p of recruits.prospects) p.spent = {};
+  for (const p of recruits.prospects) { p.spent = {}; p.weekActions = {}; }
 }

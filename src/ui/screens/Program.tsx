@@ -59,7 +59,6 @@ export function Program() {
   const review = useDynasty((s) => s.lastReview);
   const offers = useDynasty((s) => s.offers);
   const year = useDynasty((s) => s.year);
-  const version = useDynasty((s) => s.version);
   const team = useUserTeam();
   const sheet = useDynasty((s) => s.programSheet);
   const clearUnseenTrophies = useDynasty((s) => s.clearUnseenTrophies);
@@ -69,8 +68,6 @@ export function Program() {
   const economy = useDynasty((s) => s.economy);
   const coach = useDynasty((s) => s.coach);
   const boardAsk = useDynasty((s) => s.boardAsk);
-  void version;
-
   useEffect(() => {
     if (sheet === 'coach') clearUnseenTrophies();
   }, [sheet, clearUnseenTrophies]);
@@ -775,57 +772,31 @@ function BoardSheet({ team }: { team: Owner }) {
       )}
       {/* The board meeting takes precedence over everything else on this tab. */}
       {review && (
-        <div style={{
-          marginBottom: 16,
-          border: `1px solid ${review.fired ? 'var(--clay)' : 'var(--faint)'}`,
-          background: 'var(--paper)',
-        }}>
-          <div style={{
-            padding: '6px 10px',
-            background: review.fired ? 'var(--clay)' : 'var(--ink)',
-          }}>
-            <span style={{
-              font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
-            }}>{review.fired ? 'DISMISSED' : 'BOARD REVIEW'}</span>
+        <section className={`board-review-card${review.fired ? ' is-fired' : ''}`}>
+          <header>
+            <span><small>{review.fired ? 'BOARD DECISION' : 'END-OF-YEAR REVIEW'}</small><strong>{review.fired ? 'DISMISSED' : verdictWord(review.verdict)}</strong></span>
+            <b>{review.fired ? 'OUT' : review.securityAfter}</b>
+          </header>
+          <p>{review.message}</p>
+          <div className="board-review-deltas">
+            <Delta k="PROGRAM PRESTIGE" from={review.prestigeBefore} to={review.prestigeAfter} />
+            <Delta k="COACH PRESTIGE" from={review.coachPrestigeBefore} to={review.coachPrestigeAfter} />
+            <Delta k="SECURITY" from={review.securityBefore} to={review.securityAfter} />
           </div>
-          <div style={{ padding: '12px' }}>
-            <div style={{
-              font: "800 calc(22px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
-              color: review.fired ? 'var(--clay)' : 'var(--ink)',
-            }}>{verdictWord(review.verdict)}</div>
-            <div style={{
-              marginTop: 7, font: "400 calc(12px * var(--ts))/1.55 var(--body)",
-            }}>{review.message}</div>
-            <div style={{
-              marginTop: 10, display: 'flex', gap: 14, flexWrap: 'wrap',
-            }}>
-              <Delta k="PROGRAM PRESTIGE" from={review.prestigeBefore} to={review.prestigeAfter} />
-              <Delta k="COACH PRESTIGE" from={review.coachPrestigeBefore} to={review.coachPrestigeAfter} />
-              <Delta k="SECURITY" from={review.securityBefore} to={review.securityAfter} />
+          {!review.fired && (
+            <div className="board-review-contract">
+              <small>CONTRACT</small>
+              <strong>{review.renewed
+                ? `Renewed · ${review.contractYears} year${review.contractYears === 1 ? '' : 's'}`
+                : review.extended
+                  ? `Extended · ${review.contractYears} year${review.contractYears === 1 ? '' : 's'} remain`
+                  : `${review.contractYears} year${review.contractYears === 1 ? '' : 's'} remaining`}</strong>
             </div>
-            {!review.fired && (
-              <div style={{
-                marginTop: 9, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
-              }}>
-                {review.renewed
-                  ? `Renewed — ${review.contractYears} year${review.contractYears === 1 ? '' : 's'} on the new deal.`
-                  : review.extended
-                    ? `Extended — ${review.contractYears} year${review.contractYears === 1 ? '' : 's'} remain.`
-                    : `${review.contractYears} year${review.contractYears === 1 ? '' : 's'} left on your contract.`}
-              </div>
-            )}
-            {!review.fired && (
-              <button
-                onClick={clearReview}
-                style={{
-                  marginTop: 12, padding: '8px 14px', background: 'var(--field)',
-                  border: '1px solid rgba(var(--ink-rgb), .42)',
-                  font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-                }}
-              >GOT IT</button>
-            )}
-          </div>
-        </div>
+          )}
+          {!review.fired && (
+            <button className="primary-command tap" type="button" onClick={clearReview}>CONTINUE</button>
+          )}
+        </section>
       )}
 
       {/* One card, not the list. The offers live on the job market screen
@@ -848,46 +819,48 @@ function BoardSheet({ team }: { team: Owner }) {
         </section>
       )}
 
-      <div className="program-tiles">
-        <Tile k="PROGRAM PRESTIGE" v={'★'.repeat(stars) + '☆'.repeat(5 - stars)} accent />
-        <Tile k="ROSTER OVR" v={String(roster)} />
-        <Tile k="CONTRACT" v={`${coach.contractYears}y`} accent={coach.contractYears <= 1} last />
-      </div>
-
-      <div style={{ marginTop: 14 }}>
-        <div className="label" style={{ marginBottom: 5 }}>
-          THE MANDATE · {expectation.mandate.toUpperCase()}
-        </div>
-        <div style={{
-          padding: '11px 12px', border: '1px solid var(--faint)', background: 'var(--paper)',
-        }}>
-          <div style={{ font: "400 calc(13px * var(--ts))/1.5 var(--body)" }}>{expectation.summary}</div>
-
-          {/*
-            The list, not a sentence. A mandate you can only read is atmosphere —
-            you nod at it and forget it. A list you can check against tells you at
-            any point in the season exactly which boxes are still open, and at the
-            end it is the same list the board grades you on.
-          */}
-          <div style={{ marginTop: 10 }}>
-            {expectation.objectives.map((o) => (
-              <Box key={o.key} objective={o} met={objectiveMet(o, live)}
-                settled={settledFor(o.key)} wins={played.w} />
-            ))}
+      <section className="board-room-hero">
+        <header>
+          <span><small>PROGRAM · BOARD ROOM</small><strong>{expectation.mandate.toUpperCase()} YEAR</strong></span>
+          <b>{coach.security}</b>
+        </header>
+        <div className="board-room-security">
+          <div>
+            <small>BOARD CONFIDENCE</small>
+            <strong>{coach.security >= 70 ? 'SECURE' : coach.security >= 45 ? 'STABLE' : coach.security >= 25 ? 'UNDER PRESSURE' : 'HOT SEAT'}</strong>
+            <p>{coach.security >= 70 ? 'They believe the program is moving in the right direction.'
+              : coach.security >= 45 ? 'The room is with you, but the mandate still matters.'
+                : coach.security >= 25 ? 'Results are being watched closely.'
+                  : 'The next review may decide the job.'}</p>
           </div>
-
-          <div style={{
-            marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--hairline)',
-            font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
-          }}>
-            Year {coach.tenure + 1} at the job.{' '}
-            {coach.contractYears > 0
-              ? `${coach.contractYears} season${coach.contractYears === 1 ? '' : 's'} left on your deal.`
-              : 'You are coaching out the final year of your contract.'}
-          </div>
-          <Seat security={coach.security} />
+          <i><em style={{ width: `${Math.max(2, coach.security)}%` }} /></i>
         </div>
-      </div>
+        <div className="board-room-command-strip">
+          <article><small>PROGRAM</small><strong>{'★'.repeat(stars)}{'☆'.repeat(5 - stars)}</strong><span>{team.prestige} PRESTIGE</span></article>
+          <article><small>WIN TARGET</small><strong>{expectation.targetWins}</strong><span>{played.w} WON</span></article>
+          <article><small>CONTRACT</small><strong>{coach.contractYears}Y</strong><span>{coach.contractLength}-YEAR DEAL</span></article>
+        </div>
+      </section>
+
+      <section className="board-mandate-card">
+        <header>
+          <span><small>THIS YEAR'S MANDATE</small><strong>{expectation.summary}</strong></span>
+          <b>{expectation.objectives.filter((o) => objectiveMet(o, live)).length}/{expectation.objectives.length}</b>
+        </header>
+        <p>{expectation.detail}</p>
+        <div className="board-objective-grid">
+          {expectation.objectives.map((o) => (
+            <Box key={o.key} objective={o} met={objectiveMet(o, live)}
+              settled={settledFor(o.key)} wins={played.w} />
+          ))}
+        </div>
+        <footer>
+          <span>Year {coach.tenure + 1} at {team.def.school}</span>
+          <strong>{coach.contractYears > 0
+            ? `${coach.contractYears} season${coach.contractYears === 1 ? '' : 's'} left`
+            : 'Contract decision due'}</strong>
+        </footer>
+      </section>
       <FirstVisit id="program" />
     </>
   );
@@ -1564,7 +1537,6 @@ const verdictWord = (v: string): string =>
 function Box({
   objective, met, settled, wins,
 }: { objective: Objective; met: boolean; settled: boolean; wins: number }) {
-  const open = !settled && !met;
   const mark = met ? '✓' : settled ? '✕' : '○';
   const tone = met ? 'var(--win)' : settled ? 'var(--clay)' : 'rgba(var(--ink-rgb), .34)';
 
@@ -1573,53 +1545,14 @@ function Box({
   const progress = counts && !met ? `${wins} / ${objective.target}` : null;
 
   return (
-    <div style={{
-      display: 'flex', alignItems: 'baseline', gap: 8, padding: '4px 0',
-    }}>
-      <span style={{ font: "700 calc(11px * var(--ts)) var(--mono)", color: tone, width: 12 }}>{mark}</span>
-      <span style={{
-        flex: 1, font: `${met ? 600 : 400} calc(12px * var(--ts))/1.4 var(--body)`,
-        color: open ? 'var(--ink)' : met ? 'var(--ink)' : 'var(--dim)',
-      }}>
-        {objective.label}
-        {!objective.required && (
-          <span style={{
-            marginLeft: 6, font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-            color: 'var(--dim)',
-          }}>BONUS</span>
-        )}
+    <article className={`board-objective${met ? ' is-met' : settled ? ' is-missed' : ' is-open'}`}>
+      <span className="board-objective-mark" style={{ color: tone }}>{mark}</span>
+      <span className="board-objective-copy">
+        <small>{objective.required ? 'REQUIRED' : 'BONUS'}</small>
+        <strong>{objective.label}</strong>
       </span>
-      {progress && (
-        <span style={{ font: "600 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>{progress}</span>
-      )}
-    </div>
-  );
-}
-
-function Seat({ security }: { security: number }) {
-  const label = security >= 70 ? 'SECURE'
-    : security >= 45 ? 'STABLE'
-    : security >= 25 ? 'WARM'
-    : 'HOT SEAT';
-  const tone = security >= 45 ? 'var(--ink)' : 'var(--clay)';
-  return (
-    <div style={{ marginTop: 10 }}>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between',
-        alignItems: 'baseline', marginBottom: 4,
-      }}>
-        <span className="label">YOUR SEAT</span>
-        <span style={{
-          font: "700 calc(10px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: tone,
-        }}>{label}</span>
-      </div>
-      <div style={{ height: 6, background: 'rgba(var(--ink-rgb), .09)' }}>
-        <div style={{
-          width: `${Math.max(2, security)}%`, height: '100%', background: tone,
-          transition: 'width 400ms ease',
-        }} />
-      </div>
-    </div>
+      {progress && <b>{progress}</b>}
+    </article>
   );
 }
 
@@ -1634,16 +1567,6 @@ function Delta({ k, from, to }: { k: string; from: number; to: number }) {
           color: flat ? 'var(--dim)' : up ? 'var(--win)' : 'var(--clay)',
         }}>{flat ? '→' : up ? '↑' : '↓'} {to}</span>
       </div>
-    </div>
-  );
-}
-
-function Tile({ k, v, accent, last }: { k: string; v: string; accent?: boolean; last?: boolean }) {
-  void last;
-  return (
-    <div className={`program-tile${accent ? ' accent' : ''}`}>
-      <div className="label">{k}</div>
-      <strong>{v}</strong>
     </div>
   );
 }

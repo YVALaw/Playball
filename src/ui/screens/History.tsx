@@ -6,7 +6,7 @@
 // table; The Book owns its own grouped record cards; Alumni surfaces the pro
 // career system that used to exist only if you remembered to reopen a player.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
 import { RecordBook } from './RecordBook.js';
@@ -34,19 +34,28 @@ export function History() {
   const alumni = useDynasty((s) => s.alumni);
   const unseenRecords = useDynasty((s) => s.unseenRecords.length);
   const [sheet, setSheet] = useState<Sheet>('seasons');
-  void version;
+  const teamAbbr = team?.def.abbr ?? '';
+  // Alumni can grow into the hundreds over a long dynasty. The default History
+  // landing page is Seasons, so do not scan the entire alumni archive merely to
+  // render a title the player is not looking at. This used to happen on every
+  // HISTORY mount and compounded the context-nav snapshot cost on older saves.
+  const programAlumniCount = useMemo(() => {
+    if (sheet !== 'alumni' || !teamAbbr) return 0;
+    let count = 0;
+    for (const note of Object.values(alumni)) if (note.teamAbbr === teamAbbr) count += 1;
+    return count;
+  }, [sheet, alumni, teamAbbr, version]);
 
   if (!team) return null;
 
   const annals = team.annals ?? [];
   const wins = annals.reduce((a, s) => a + s.w, 0);
   const losses = annals.reduce((a, s) => a + s.l, 0);
-  const programAlumni = Object.values(alumni).filter((a) => a.teamAbbr === team.def.abbr);
 
   const title = sheet === 'seasons'
     ? (annals.length > 0 ? `${wins}-${losses}` : 'History')
     : sheet === 'book' ? 'The Book'
-      : programAlumni.length > 0 ? `${programAlumni.length} alumni` : 'Alumni';
+      : programAlumniCount > 0 ? `${programAlumniCount} alumni` : 'Alumni';
   const text = sheet === 'seasons'
     ? `Every finished ${team.def.school} season.`
     : sheet === 'book'

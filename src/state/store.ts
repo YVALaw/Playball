@@ -64,6 +64,7 @@ import {
   withStaff, FACILITIES, MAX_FACILITY, SCOUT_COST, SCOUT_DAYS, SEATS,
   devBonus, armCareFor, buildingSpec, builtBonus, facilityEffects, facilityLevel,
   facilityUpgradeCost, FACILITY_MAX_LEVEL, pipelineStrength, addPipelineSigning, agePipelines,
+  recruitingFacilityScore,
   SEAT_LABEL, BUILDINGS, type Assistant, type Economy, type StaffSeat, type Building,
 } from '../engine/economy.js';
 import {
@@ -94,10 +95,12 @@ import {
   type DoubleElim, type DoubleElimResult, type DESlot,
 } from '../engine/doubleElim.js';
 import {
-  SCHOLARSHIPS, RECRUITING_BUDGET, MAX_PER_RECRUIT, RECRUITING_WEEKS, budgetFor,
-  weeklyBudget, windowBudget,
-  aiTargets, weeklyPoints, closeWeek, resetWeeklySpend, canPursue, inPipeline,
-  leadersAtWeekStart,
+  SCHOLARSHIPS, RECRUITING_BUDGET, MAX_PER_RECRUIT, RECRUITING_WEEKS, budgetFor, PITCH_COST,
+  weeklyBudget, flexibleOffseasonBudget,
+  aiTargets, weeklyPoints, actionInterest, closeWeek, resetWeeklySpend, canPursue, inPipeline,
+  leadersAtWeekStart, totalWeekSpend, weekActionCost, majorActionCost,
+  hasRecruitingRelationship, swayRecruit, planAiRecruitActions,
+  type RecruitingFactor, type RecruitMajorAction, type RecruitMajorInput,
 } from '../engine/recruiting.js';
 import { pitchFor, developmentScore } from '../engine/pitch.js';
 
@@ -120,7 +123,7 @@ export function seedRivalInterest(season: SeasonState, userTeam: number): void {
   // first pass's leaders and spreads to whoever is still uncovered. Its points
   // land at half weight: coverage comes from target selection, not point size,
   // and full weight would double the AI's head start over the player.
-  for (const scale of [1, 0.5]) {
+  for (const scale of [0.5, 0.25]) {
     const snapshot = leadersAtWeekStart(season.recruiting);
     for (const record of season.teams) {
       if (record.index === userTeam) continue;
@@ -164,6 +167,24 @@ export function boardBudget(season: SeasonState | null, userTeam: number): numbe
     prestigeStars(season?.teams[userTeam]?.prestige ?? 50),
     (season?.draft?.spent ?? 0)
       + (season?.portalSpend?.[userTeam] ?? 0),
+  );
+}
+
+
+/** Build the user's expanded recruiting pitch from live program state. */
+function userRecruitingPitch(
+  season: SeasonState, userTeam: number, coach: CoachState, eco: Economy,
+) {
+  const record = season.teams[userTeam];
+  const conf = CONFERENCES.find((c) => c.id === record?.conference);
+  if (!record) return null;
+  const fx = facilityEffects(eco);
+  const dev = (FACILITIES[eco.facilities]?.devPitch ?? 0) + fx.pitch;
+  return pitchFor(
+    season, record, conf?.region ?? 'Gulf',
+    Math.min(1, developmentScore(record) + dev),
+    (state) => pipelineStrength(eco, state, record.def.state),
+    { coachPrestige: coach.prestige, facilities: recruitingFacilityScore(eco) },
   );
 }
 
@@ -230,6 +251,7 @@ import { healUp, isHurt, prognosis } from '../engine/injury.js';
 import { resetWorkload, legWeariness } from '../engine/workload.js';
 import {
   settleMood, setMood, squadRanks, mood, moodOf, promiseOf, flightRisk,
+  explicitRecruitPromiseBroken, promiseSpent,
 } from '../engine/morale.js';
 import { captainOf, candidates, roomsChoice, appoint, standDown, canLead } from '../engine/captains.js';
 import { MAX_BADGES, badgeOf } from '../data/badges.js';
@@ -1120,10 +1142,14 @@ export interface DynastyStore {
   /** Close the card and return to whatever was underneath it. */
   closePlayer: () => void;
 
-  /** Change one of your five coaching policies. Takes effect on the next pitch. */
+  /** Change one of your coaching policies. Takes effect on the next pitch. */
   setStrategy: <K extends keyof Strategy>(key: K, value: Strategy[K]) => void;
-  /** Put actions on a recruit this week, or take them off. */
+  /** Put raw recruiting effort on a recruit this week, or take it off. */
   recruit: (prospectId: PlayerId, actions: number) => void;
+  /** One honest program strength can be emphasized each week. */
+  recruitPitch: (prospectId: PlayerId, factor: RecruitingFactor | null) => boolean;
+  /** One escalation per recruit/week: hard sell, visit, sway, or binding promise. */
+  recruitMajor: (prospectId: PlayerId, action: RecruitMajorInput | null) => boolean;
   /** Bank the week, let recruits commit, and move to the next one. */
   advanceRecruitingWeek: () => void;
   /**
@@ -2258,9 +2284,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   // Navigating any other way drops the mark: it belongs to the errand that set
   // it, and an errand you walked away from is over.
-  setScreen: (screen) => crossfade(() => set({
+  // Context/sub-navigation should be immediate. `crossfade` deliberately waits
+  // for a view-transition snapshot and two animation frames; that is pleasant
+  // when moving between the four primary rooms, but it made adjacent sections
+  // such as PROGRAM · COLLEGES -> HISTORY feel as though the tap had stalled.
+  // Every context nav in the app comes through `setScreen`, so keeping this
+  // path synchronous removes the artificial delay globally while primary-tab
+  // moves through `go()` retain the broader transition.
+  setScreen: (screen) => set({
     selectedPlayer: null, focusPlayer: null, screen,
-  })),
+  }),
 
   recruit: (prospectId, actions) => {
     const { season, userTeam, version } = get();
@@ -2288,9 +2321,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (signed >= SCHOLARSHIPS) return;
 
     const wanted = Math.max(0, Math.min(MAX_PER_RECRUIT, Math.round(actions)));
-    const spentElsewhere = season.recruiting.prospects.reduce(
-      (a, p) => a + (p.id === prospectId ? 0 : (p.spent[userTeam] ?? 0)), 0,
-    );
+    const spentElsewhere = totalWeekSpend(season.recruiting.prospects, userTeam)
+      - (prospect.spent[userTeam] ?? 0);
 
     // The weekly budget is the only cap on *chasing*. There is deliberately no
     // limit on how many recruits may be on the board: having more irons in the
@@ -2301,12 +2333,108 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // Less whatever the draft phase already took to keep somebody, which is the
     // sequencing the whole retention mechanic hangs on.
     const budget = boardBudget(get().season, userTeam);
-    const allowed = Math.min(wanted, budget - spentElsewhere);
+    const allowed = Math.min(wanted, budget - spentElsewhere - weekActionCost(prospect, userTeam));
     if (allowed <= 0) delete prospect.spent[userTeam];
     else prospect.spent[userTeam] = allowed;
 
     set({ version: version + 1 });
     void get().saveNow();
+  },
+
+  recruitPitch: (prospectId, factor) => {
+    const { season, userTeam, version } = get();
+    if (!season || get().busy) return false;
+    const week = season.recruiting.week;
+    if (week < 1 || week > RECRUITING_WEEKS) return false;
+    const prospect = season.recruiting.prospects.find((p) => p.id === prospectId);
+    if (!prospect || prospect.signedBy !== null) return false;
+    const me = season.teams[userTeam];
+    if (!me || !canPursue(
+      prospect, prestigeStars(me.prestige),
+      pipelineStrength(get().economy, prospect.state, me.def.state),
+    )) return false;
+
+    const current = prospect.weekActions?.[userTeam] ?? {};
+    const next = { ...current };
+    if (factor === null) delete next.pitch; else next.pitch = factor;
+    const oldCost = weekActionCost(prospect, userTeam);
+    const raw = prospect.spent[userTeam] ?? 0;
+    const nextCost = (next.pitch ? PITCH_COST : 0) + majorActionCost(next.major);
+    const usedWithout = totalWeekSpend(season.recruiting.prospects, userTeam) - oldCost - raw;
+    if (usedWithout + raw + nextCost > boardBudget(season, userTeam)) return false;
+    (prospect.weekActions ??= {})[userTeam] = next;
+    set({ version: version + 1 });
+    void get().saveNow();
+    return true;
+  },
+
+  recruitMajor: (prospectId, input) => {
+    const { season, userTeam, coach, version } = get();
+    if (!season || get().busy) return false;
+    const week = season.recruiting.week;
+    if (week < 1 || week > RECRUITING_WEEKS) return false;
+    const prospect = season.recruiting.prospects.find((p) => p.id === prospectId);
+    const me = season.teams[userTeam];
+    if (!prospect || !me || prospect.signedBy !== null) return false;
+    if (!canPursue(
+      prospect, prestigeStars(me.prestige),
+      pipelineStrength(get().economy, prospect.state, me.def.state),
+    )) return false;
+
+    const current = prospect.weekActions?.[userTeam] ?? {};
+    // A sway that has been rolled is final for the week. Its success moved the
+    // recruit's priorities the moment it was rolled, so letting it be withdrawn
+    // refunded the cost and left the shift in place — and re-applying rolled
+    // again on the already-moved priorities, ×1.6 a time, for as long as the
+    // budget held. The attempt is the move; it cannot be taken back.
+    if (current.major?.kind === 'sway') return false;
+    // Major moves are relationship actions, never cold-call shortcuts. Week 2+
+    // only, and Sway is specifically the middle-week attempt to change the case.
+    if (input && (week < 2 || !hasRecruitingRelationship(prospect, userTeam))) return false;
+    if (input?.kind === 'sway' && week !== 2) return false;
+    if (input?.kind === 'promise' && input.promise === 'twoWayOpportunity'
+      && (prospect.player as Player & { twoWay?: true }).twoWay !== true) return false;
+    // A promise is a binding recruitment commitment, not a coupon that resets
+    // with the weekly action ledger. It can be changed/withdrawn during the same
+    // week it is made, but once that week is banked the promise on file is final.
+    const promiseOnFile = prospect.promiseBy?.[userTeam];
+    if (input?.kind === 'promise' && promiseOnFile && current.major?.kind !== 'promise') return false;
+
+    // Check affordability before a Sway is rolled, because a failed budget
+    // check must not be able to change a recruit's priorities for free.
+    const pricedMajor: RecruitMajorAction | undefined = input
+      ? input.kind === 'sway'
+        ? { kind: 'sway', factor: input.factor, success: false }
+        : input
+      : undefined;
+    const pricedNext = { ...current };
+    if (!pricedMajor) delete pricedNext.major; else pricedNext.major = pricedMajor;
+    const oldCost = weekActionCost(prospect, userTeam);
+    const raw = prospect.spent[userTeam] ?? 0;
+    const nextCost = (pricedNext.pitch ? PITCH_COST : 0) + majorActionCost(pricedNext.major);
+    const usedWithout = totalWeekSpend(season.recruiting.prospects, userTeam) - oldCost - raw;
+    if (usedWithout + raw + nextCost > boardBudget(season, userTeam)) return false;
+
+    let major: RecruitMajorAction | undefined = pricedMajor;
+    if (input?.kind === 'sway') {
+      const pitch = userRecruitingPitch(season, userTeam, coach, get().economy);
+      if (!pitch) return false;
+      const skills = withStaff(coach.skills, get().economy.staff);
+      const success = swayRecruit(
+        prospect, input.factor, pitch, coach.prestige, skills.recruiting, season.rng,
+      );
+      major = { kind: 'sway', factor: input.factor, success };
+    }
+    const next = { ...current };
+    if (!major) delete next.major; else next.major = major;
+
+    // Replacing a promise withdraws the old one before recording a new bargain.
+    if (current.major?.kind === 'promise') delete prospect.promiseBy?.[userTeam];
+    (prospect.weekActions ??= {})[userTeam] = next;
+    if (major?.kind === 'promise') (prospect.promiseBy ??= {})[userTeam] = major.promise;
+    set({ version: version + 1 });
+    void get().saveNow();
+    return true;
   },
 
   /**
@@ -2342,25 +2470,36 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       const mine = record.index === userTeam;
       // Your facilities are part of your pitch: a development lab is the one
       // thing on the tour a recruit's father asks about.
+      const staff = record.coach;
       const pitch = pitchFor(
         season, record, regionOf(record.index),
         Math.min(1, developmentScore(record) + (mine ? myDevPitch : 0)),
         mine ? (state) => pipelineStrength(myEconomy, state, record.def.state) : undefined,
+        {
+          coachPrestige: mine ? coach.prestige : (staff?.prestige ?? 45),
+          ...(mine ? { facilities: recruitingFacilityScore(myEconomy) } : {}),
+        },
       );
 
-      const staff = record.coach;
+      const priorSpend = mine
+        ? (season.draft?.spent ?? 0) + (season.portalSpend?.[userTeam] ?? 0)
+        : (season.draft?.rivalSpend[record.index] ?? 0)
+          + (season.portalSpend?.[record.index] ?? 0);
       const spends: { prospect: typeof recruits.prospects[number]; actions: number }[] = mine
         ? recruits.prospects
-            .filter((p) => (p.spent[userTeam] ?? 0) > 0)
-            .map((p) => ({ prospect: p, actions: p.spent[userTeam] as number }))
+            .filter((p) => (p.spent[userTeam] ?? 0) > 0 || weekActionCost(p, userTeam) > 0)
+            .map((p) => ({ prospect: p, actions: p.spent[userTeam] ?? 0 }))
         : aiTargets(
-            // Whatever this program spent in June comes off its week, the same
-            // way `boardBudget` takes the user's draft spend off his.
             record.index, pitch, staff?.prestige ?? 45, recruits.prospects,
-            holesFor(record), season.rng, atWeekStart,
-            (season.draft?.rivalSpend[record.index] ?? 0)
-              + (season.portalSpend?.[record.index] ?? 0),
+            holesFor(record), season.rng, atWeekStart, priorSpend, recruits.week,
           );
+      if (!mine) {
+        planAiRecruitActions(
+          record.index, pitch, spends,
+          weeklyBudget(pitch.stars, priorSpend), recruits.week,
+          staff?.prestige ?? 45, staff?.skills.recruiting ?? 20, season.rng,
+        );
+      }
 
       for (const { prospect, actions } of spends) {
         // Every pitch carries the reputation and the recruiting skill of the man
@@ -2375,7 +2514,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           // The coordinator's whole job: every hour on a recruit counts for
           // more. Stacked through the same skill the points already price.
           mine ? effSkills.recruiting : (staff?.skills.recruiting ?? 20),
-        );
+        ) + actionInterest(prospect, pitch, record.index);
         prospect.points[record.index] = (prospect.points[record.index] ?? 0) + gained;
       }
     }
@@ -2421,7 +2560,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (!man || man.outcome !== 'pending') return;
 
     const stars = prestigeStars(season.teams[userTeam]?.prestige ?? 50);
-    const left = windowBudget(stars) - board.spent;
+    const left = flexibleOffseasonBudget(stars) - board.spent;
     const scene = sceneFor(season, userTeam, coach, man.player, man.round);
     const { spent, kept } = makeTheCase(man, pitch, offer, scene, left);
     board.spent += spent;
@@ -2556,7 +2695,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       if (rec && !handles(get().depth, 'portal')) {
         // Your staff, out of sight. It still costs the same budget, so a
         // casual career is not quietly richer than a full one.
-        const budget = windowBudget(prestigeStars(rec.prestige))
+        const budget = flexibleOffseasonBudget(prestigeStars(rec.prestige))
           - (season.draft?.spent ?? 0);
         const took = staffWorksPortal(rec.team, theirs, budget);
         for (const m of took) {
@@ -2617,7 +2756,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           if (other.index === get().userTeam) continue;
           const going = stillOut.filter((m) => !taken.has(m.player.id) && m.from !== other.index);
           if (going.length === 0) break;
-          const budget = windowBudget(prestigeStars(other.prestige))
+          const budget = flexibleOffseasonBudget(prestigeStars(other.prestige))
             - (season.draft?.rivalSpend[other.index] ?? 0);
           for (const m of staffWorksPortal(other.team, going, budget)) {
             taken.add(m.player.id);
@@ -3598,14 +3737,24 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         const leader = captainOf(mineNow.team);
 
         for (const p of men) {
+          // A promise that has been judged for every season it covered comes
+          // off him now, BEFORE this roll judges anything — so the portal,
+          // which runs later in the same offseason, still saw a first-season
+          // break, and a one-year word is not held against a junior.
+          if (promiseSpent(p.recruitPromise)) delete p.recruitPromise;
           setMood(p, settleMood(p, {
             starts: (p as Player & { starts?: number }).starts ?? 0,
             games: played,
             squadRank: ranks.get(p.id) ?? 20,
             winPct,
             movedUnwillingly: (p as Player & { movedFrom?: string }).movedFrom !== undefined,
+            promiseBroken: explicitRecruitPromiseBroken(p, {
+              battingGames: get().season?.batting.get(p.id)?.g ?? 0,
+              pitchingGames: get().season?.pitching.get(p.id)?.g ?? 0,
+            }),
             damped: leader !== null,
           }));
+          if (p.recruitPromise) p.recruitPromise.judged = (p.recruitPromise.judged ?? 0) + 1;
           delete (p as Player & { starts?: number }).starts;
 
           driftGrades(p, get().year + 1);
@@ -3954,7 +4103,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const stars = prestigeStars(rec.prestige);
     // One pool, three claims: June's draft spending comes off the portal's
     // window exactly as both come off the recruiting weeks.
-    const left = windowBudget(stars) - (season.draft?.spent ?? 0) - portal.spent;
+    const left = flexibleOffseasonBudget(stars) - (season.draft?.spent ?? 0) - portal.spent;
     const { spent, stayed } = portalCase(man, offer, left);
     (season.portalSpend ??= {})[userTeam] =
       (season.portalSpend[userTeam] ?? 0) + spent;
@@ -3985,7 +4134,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const man = portal.available.find((m) => m.player.id === id);
     if (!man) return false;
     const stars = prestigeStars(rec.prestige);
-    if ((season.draft?.spent ?? 0) + portal.spent + man.cost > windowBudget(stars)) {
+    if ((season.draft?.spent ?? 0) + portal.spent + man.cost > flexibleOffseasonBudget(stars)) {
       return false;
     }
 
@@ -4363,7 +4512,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   settingsPage: 'index',
   setSettingsPage: (p) => set({ settingsPage: p }),
   programSheet: 'overview',
-  setProgramSheet: (s) => set({ programSheet: s, version: get().version + 1 }),
+  // Program subpages are local UI navigation. Bumping the global engine version
+  // here forced every version subscriber in the app to re-render just because the
+  // coach opened Budget or returned to Overview, which was especially visible on
+  // phones. The Program screen already subscribes to `programSheet`, so this is
+  // the only state that needs to move.
+  setProgramSheet: (s) => set({ programSheet: s }),
 
   openPlayer: (id, section = 'overview') => set({ selectedPlayer: id, playerCardSection: section }),
 
@@ -5438,9 +5592,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const me = season?.teams[userTeam];
     if (!me || get().busy) return;
     // The signature is typed, but an untyped caller (a console, a future bug)
-    // could still write a junk key straight into the save. Refuse anything the
-    // strategy does not already carry.
-    if (!(key in me.strategy)) return;
+    // could still write a junk key straight into the save. Optional positioning
+    // fields are absent from older saves, so validate against
+    // the canonical strategy shape rather than the saved object itself; otherwise
+    // Alignment works while Infield/Outfield/Overshift silently refuse to write.
+    if (!(key in DEFAULT_STRATEGY)) return;
     // Mutated in place: the engine reads TeamRecord.strategy when it builds each
     // game, so this is live from the next pitch onward.
     me.strategy = { ...me.strategy, [key]: value };

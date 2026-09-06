@@ -21,8 +21,8 @@ import { ChevronRightIcon } from '@radix-ui/react-icons';
 import { withStaff } from '../../engine/economy.js';
 import { FieldNote, Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
 import {
-  PRIORITY_LABEL, PRIORITIES, byRank, reportedOverall, reportedPotential,
-  type Prospect, type Priority,
+  RECRUITING_FACTORS, RECRUITING_FACTOR_LABEL, recruitingPrioritiesOf, byRank, reportedOverall, reportedPotential,
+  type Prospect, type RecruitingFactor,
 } from '../../engine/recruiting.js';
 import { highSchoolLine, potentialGrade, GRADE_LADDER } from '../../engine/scouting.js';
 import { enrolling, takenByPros, walkOnClass, walkOnSeed } from '../../engine/progression.js';
@@ -51,8 +51,12 @@ const slotOf = (p: Prospect): string =>
   isTwoWay(p.player) ? 'TWO-WAY'
     : p.player.type === 'pitcher' ? (p.player as Pitcher).role : p.player.pos;
 
-const topPriority = (p: Prospect): Priority =>
-  [...PRIORITIES].sort((a, b) => p.priorities[b] - p.priorities[a])[0] as Priority;
+// The nine factors the Board sells, so a man's "WANTED" reads the same here
+// as it did on the board that signed him.
+const topPriority = (p: Prospect): RecruitingFactor => {
+  const w = recruitingPrioritiesOf(p);
+  return [...RECRUITING_FACTORS].sort((a, b) => w[b] - w[a])[0] as RecruitingFactor;
+};
 
 /**
  * How the truth landed against the report you were working from.
@@ -511,7 +515,7 @@ function RecruitSheet({
           <MetricStrip>
             <Metric label="OVERALL" value={String(overallOf(p))} note="TODAY" />
             <Metric label="CEILING" value={potentialGrade(p.potential)} note="POTENTIAL" />
-            <Metric label="WANTED" value={PRIORITY_LABEL[topPriority(prospect)]} note="HIS PRIORITY" />
+            <Metric label="WANTED" value={RECRUITING_FACTOR_LABEL[topPriority(prospect)]} note="HIS PRIORITY" />
           </MetricStrip>
 
           {/*

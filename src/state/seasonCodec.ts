@@ -21,7 +21,7 @@ import { noFeats } from '../engine/achievements.js';
 import { ageFor } from '../engine/players.js';
 import { rngFromState } from '../engine/rng.js';
 import { buildSchedule, rebuildNameIndex, worldFromTeams } from '../engine/season.js';
-import { strategyFor } from '../engine/strategy.js';
+import { DEFAULT_STRATEGY, strategyFor } from '../engine/strategy.js';
 import { initialPrestige } from '../engine/program.js';
 import { seededBook } from '../engine/records.js';
 import type { SeasonState } from '../engine/season.js';
@@ -51,6 +51,10 @@ export function fromPortable(p: Portable): SeasonState {
   for (const team of p.season.teams) {
     const t = team as Partial<typeof team>;
     if (!t.strategy) team.strategy = strategyFor(team.index);
+    // Positioning was added after the original five strategy controls and those
+    // keys were optional in older saves. Backfill them on load so the UI and
+    // engine both see a complete strategy before the first edit.
+    team.strategy = { ...DEFAULT_STRATEGY, ...team.strategy };
     if (typeof t.prestige !== 'number') team.prestige = initialPrestige(team.def.prestige);
   }
 

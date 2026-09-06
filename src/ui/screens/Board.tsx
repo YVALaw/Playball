@@ -23,11 +23,14 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { boardBudget, useDynasty, useUserTeam } from '../../state/store.js';
 import {
-  fit, weeklyPoints, canPursue, inPipeline, byRank,
-  PRIORITIES, PRIORITY_LABEL, PRIORITY_BLURB,
+  fit, weeklyPoints, actionInterest, canPursue, inPipeline, byRank,
+  RECRUITING_FACTORS, RECRUITING_FACTOR_LABEL, RECRUITING_FACTOR_BLURB,
+  recruitingPrioritiesOf, factorScore, factorGrade, weekActionCost, totalWeekSpend,
+  hasRecruitingRelationship, PITCH_COST, HARD_SELL_COST, SWAY_COST, VISIT_COST,
+  PROMISE_COST, PROMISE_LABEL,
   SCHOLARSHIPS, MAX_PER_RECRUIT, RECRUITING_WEEKS,
   reportedOverall, reportedPotential, reportedTool, reportWidth, hintsFor,
-  type Prospect, type Priority,
+  type Prospect, type RecruitingFactor, type RecruitMajorInput,
 } from '../../engine/recruiting.js';
 import { enrolling, walkOnShortfall } from '../../engine/progression.js';
 import { pitchFor, developmentScore } from '../../engine/pitch.js';
@@ -40,10 +43,10 @@ import { InFrame } from '../Overlay.js';
 import { FirstVisit } from '../Tutorial.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { MixerHorizontalIcon } from '@radix-ui/react-icons';
-import { withStaff, pipelineStrength, pipelineLabel } from '../../engine/economy.js';
+import { withStaff, pipelineStrength, pipelineLabel, recruitingFacilityScore } from '../../engine/economy.js';
 import { FieldNote, Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
 import { isTwoWay } from '../../engine/types.js';
-import type { Hitter, Pitcher, Player, Position } from '../../engine/types.js';
+import type { Hitter, Pitcher, Player, Position, RecruitPromiseKind } from '../../engine/types.js';
 
 type View = 'recruits' | 'targets' | 'commits' | 'needs' | 'roster';
 type Sheet = 'overview' | 'report' | 'stats' | 'schools';
@@ -221,8 +224,10 @@ function standing(mine: number, best: number, anyone: boolean): { label: string;
   return { label: 'WAY BEHIND', tone: 'var(--clay)' };
 }
 
-const topPriority = (p: Prospect): Priority =>
-  [...PRIORITIES].sort((a, b) => p.priorities[b] - p.priorities[a])[0] as Priority;
+const topPriority = (p: Prospect): RecruitingFactor => {
+  const priorities = recruitingPrioritiesOf(p);
+  return [...RECRUITING_FACTORS].sort((a, b) => priorities[b] - priorities[a])[0] as RecruitingFactor;
+};
 
 const slotOf = (p: Prospect): string =>
   isTwoWay(p.player) ? 'TWO-WAY'
@@ -239,6 +244,8 @@ export function Board() {
   const userTeam = useDynasty((s) => s.userTeam);
   const coach = useDynasty((s) => s.coach);
   const recruitFor = useDynasty((s) => s.recruit);
+  const recruitPitch = useDynasty((s) => s.recruitPitch);
+  const recruitMajor = useDynasty((s) => s.recruitMajor);
   const advanceWeek = useDynasty((s) => s.advanceRecruitingWeek);
   const economy = useDynasty((s) => s.economy);
   const nextPhase = useDynasty((s) => s.nextPhase);
@@ -250,6 +257,7 @@ export function Board() {
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [warnHoles, setWarnHoles] = useState(false);
 
   const lastWeek = useDynasty((s) => s.lastWeek);
 
@@ -259,8 +267,9 @@ export function Board() {
     return pitchFor(
       season, team, conf?.region ?? 'Gulf', developmentScore(team),
       (state) => pipelineStrength(economy, state, team.def.state),
+      { coachPrestige: coach.prestige, facilities: recruitingFacilityScore(economy) },
     );
-  }, [season, team, version, economy]);
+  }, [season, team, version, economy, coach.prestige]);
 
   const myStars = team ? prestigeStars(team.prestige) : 1;
   const homeState = team?.def.state ?? '';
@@ -289,9 +298,9 @@ export function Board() {
     // you never learn who you were beaten by.
     const mine = all.filter(
       (p) => p.signedBy !== userTeam
-        && ((p.spent[userTeam] ?? 0) > 0 || (p.points[userTeam] ?? 0) > 0),
+        && ((p.spent[userTeam] ?? 0) > 0 || weekActionCost(p, userTeam) > 0 || (p.points[userTeam] ?? 0) > 0),
     );
-    const used = all.reduce((a, p) => a + (p.spent[userTeam] ?? 0), 0);
+    const used = totalWeekSpend(all, userTeam);
     const signed = all.filter((p) => p.signedBy === userTeam);
 
     const open = all.filter((p) => p.signedBy === null);
@@ -362,6 +371,13 @@ export function Board() {
   const full = commits.length >= SCHOLARSHIPS;
   const activeFilters = anyFilter(filters);
   const pinned = pinnedAction({ filtersOpen, live, week, matches, shown: list.length });
+  const activeTargetCount = (pos: string): number => targets.filter((p) => {
+    if (p.signedBy !== null) return false;
+    if (pos === 'BENCH') return p.player.type === 'hitter';
+    if (slotOf(p) === pos) return true;
+    return isTwoWay(p.player) && (p.player.pos === pos || (p.player as { role?: string }).role === pos);
+  }).length;
+  const uncoveredBoardNeeds = shortfall.filter((h) => activeTargetCount(h.pos) < h.count);
 
   return (
     /*
@@ -382,6 +398,7 @@ export function Board() {
           onClick={() => {
             if (pinned.kind === 'close-filter') setFiltersOpen(false);
             else if (pinned.kind === 'signing-day') { advanceWeek(); void nextPhase('recruiting'); }
+            else if (pinned.kind === 'end-week' && week === 1 && uncoveredBoardNeeds.length > 0) setWarnHoles(true);
             else advanceWeek();
           }}
           secondary={pinned.kind === 'close-filter' && activeFilters
@@ -523,7 +540,7 @@ export function Board() {
 
 
       {view === 'needs' ? (
-        <NeedsView short={shortfall} covered={covered} onPick={(pos) => {
+        <NeedsView short={shortfall} covered={covered} targeted={activeTargetCount} onPick={(pos) => {
           setFilters({ ...NO_FILTERS, pos });
           setView('recruits');
         }} />
@@ -612,6 +629,21 @@ export function Board() {
         </>
       )}
 
+      {warnHoles && (
+        <InFrame>
+          <div className="prospect-sheet-scrim fade-in" onClick={() => setWarnHoles(false)}>
+            <section className="recruit-week-warning rise-in" onClick={(e) => e.stopPropagation()}>
+              <small>WEEK 1 · BOARD CHECK</small>
+              <h2>Your board still has holes</h2>
+              <p>New chases get harder once other schools bank a week of relationships. You still have uncovered needs at:</p>
+              <div>{uncoveredBoardNeeds.map((h) => <b key={h.pos}>{h.pos} · {h.count - activeTargetCount(h.pos)} OPEN</b>)}</div>
+              <button type="button" className="primary-command tap" onClick={() => { setWarnHoles(false); setView('needs'); }}>GO BACK TO NEEDS</button>
+              <button type="button" className="secondary-command tap" onClick={() => { setWarnHoles(false); advanceWeek(); }}>END WEEK ANYWAY</button>
+            </section>
+          </div>
+        </InFrame>
+      )}
+
       {open && (
         <ProspectSheet
           prospect={open}
@@ -627,7 +659,10 @@ export function Board() {
           live={live}
           full={full && open.signedBy === null}
           left={left}
+          week={week}
           onSet={(n) => recruitFor(open.id, n)}
+          onPitch={(factor) => recruitPitch(open.id, factor)}
+          onMajor={(action) => recruitMajor(open.id, action)}
           onClose={() => setOpenId(null)}
         />
       )}
@@ -671,7 +706,7 @@ function Row({
   p: Prospect; userTeam: number; season: { teams: { def: { abbr: string } }[] };
   onOpen: () => void; signed?: boolean; recruitingSkill: number;
 }) {
-  const spent = p.spent[userTeam] ?? 0;
+  const spent = (p.spent[userTeam] ?? 0) + weekActionCost(p, userTeam);
   const points = Object.values(p.points);
   const best = points.length ? Math.max(...points) : 0;
   const state = signed || p.signedBy === userTeam
@@ -691,7 +726,7 @@ function Row({
       <span className="recruit-card-rank"><small>NAT'L</small><strong>#{p.rank}</strong></span>
       <span className="recruit-card-face"><Avatar id={p.id} team={p.signedBy !== null ? abbr : undefined} size={40} /></span>
       <span className="recruit-card-copy">
-        <small>{listSlotOf(p)} · {p.state} · {PRIORITY_LABEL[topPriority(p)]}</small>
+        <small>{listSlotOf(p)} · {p.state} · {RECRUITING_FACTOR_LABEL[topPriority(p)]}</small>
         <strong>{p.player.name}</strong>
         <em>{'★'.repeat(p.stars)}</em>
       </span>
@@ -881,10 +916,11 @@ function FilterToggle({ on, onClick, label, note }: {
  * there.
  */
 function NeedsView(
-  { short, covered, onPick }:
+  { short, covered, targeted, onPick }:
   {
     short: readonly { pos: string; count: number }[];
     covered: readonly { pos: string; count: number }[];
+    targeted: (pos: string) => number;
     onPick: (pos: string) => void;
   },
 ) {
@@ -922,7 +958,9 @@ function NeedsView(
                 font: "700 calc(13px * var(--ts)) var(--mono)", letterSpacing: '.06em', color: 'var(--clay)',
               }}>{h.pos}</span>
               <span style={{ font: "400 calc(11.5px * var(--ts))/1.4 var(--body)", color: 'var(--dim)' }}>
-                {h.count > 1 ? `${h.count} walk-ons` : 'one walk-on'} unless you sign
+                {targeted(h.pos) >= h.count
+                  ? `${targeted(h.pos)} active target${targeted(h.pos) === 1 ? '' : 's'} · covered on board`
+                  : `${h.count - targeted(h.pos)} spot${h.count - targeted(h.pos) === 1 ? '' : 's'} still uncovered · ${targeted(h.pos)} active`}
               </span>
               <span style={{
                 font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: 'var(--dim)',
@@ -1016,12 +1054,16 @@ function RosterView() {
 
 function ProspectSheet({
   prospect, userTeam, coachPrestige, recruitingSkill, pitch, reachable, pipeline, pipelineStrength,
-  live, full, left, onSet, onClose,
+  live, full, left, week, onSet, onPitch, onMajor, onClose,
 }: {
   prospect: Prospect; userTeam: number; coachPrestige: number; recruitingSkill: number;
   pitch: ReturnType<typeof pitchFor>;
   reachable: boolean; pipeline: boolean; pipelineStrength: number; live: boolean; full: boolean; left: number;
-  onSet: (n: number) => void; onClose: () => void;
+  week: number;
+  onSet: (n: number) => void;
+  onPitch: (factor: RecruitingFactor | null) => boolean;
+  onMajor: (action: RecruitMajorInput | null) => boolean;
+  onClose: () => void;
 }) {
   const [tab, setTab] = useState<Sheet>('overview');
   const p = prospect.player;
@@ -1065,7 +1107,7 @@ function ProspectSheet({
 
           <section className="prospect-sheet-snapshot">
             <span><small>STATUS</small><strong>{prospect.signedBy !== null ? 'SIGNED' : spent > 0 ? 'TARGET' : 'AVAILABLE'}</strong></span>
-            <span><small>YOUR OFFER</small><strong>{spent > 0 ? `${spent}/WK` : '—'}</strong></span>
+            <span><small>YOUR SPEND</small><strong>{spent + weekActionCost(prospect, userTeam) > 0 ? `${spent + weekActionCost(prospect, userTeam)}/WK` : '—'}</strong></span>
             <span><small>PIPELINE</small><strong>{pipeline ? pipelineLabel(pipelineStrength) : 'NO'}</strong></span>
           </section>
 
@@ -1087,7 +1129,8 @@ function ProspectSheet({
                 prospect={prospect} pitch={pitch} reachable={reachable}
                 pipeline={pipeline} pipelineStrength={pipelineStrength} live={live}
                 full={full} spent={spent} left={left} coachPrestige={coachPrestige}
-                recruitingSkill={recruitingSkill} onSet={onSet}
+                recruitingSkill={recruitingSkill} week={week} userTeam={userTeam}
+                onSet={onSet} onPitch={onPitch} onMajor={onMajor}
               />
             )}
             {tab === 'report' && <Report prospect={prospect} recruitingSkill={recruitingSkill} />}
@@ -1103,19 +1146,30 @@ function ProspectSheet({
 
 function Overview({
   prospect, pitch, reachable, pipeline, pipelineStrength, live, full, spent, left,
-  coachPrestige, recruitingSkill, onSet,
+  coachPrestige, recruitingSkill, week, userTeam, onSet, onPitch, onMajor,
 }: {
   prospect: Prospect; pitch: ReturnType<typeof pitchFor>;
   reachable: boolean; pipeline: boolean; pipelineStrength: number; live: boolean; full: boolean;
   spent: number; left: number; coachPrestige: number; recruitingSkill: number;
+  week: number; userTeam: number;
   onSet: (n: number) => void;
+  onPitch: (factor: RecruitingFactor | null) => boolean;
+  onMajor: (action: RecruitMajorInput | null) => boolean;
 }) {
-  const wants = [...PRIORITIES].sort(
-    (a, b) => prospect.priorities[b] - prospect.priorities[a],
-  ).slice(0, 2);
-  // The same call the week close will make, skill included, or the preview
-  // undersells what the spend is actually worth.
-  const gain = weeklyPoints(prospect, pitch, Math.max(spent, 1), coachPrestige, recruitingSkill);
+  const priorities = recruitingPrioritiesOf(prospect);
+  const wants = [...RECRUITING_FACTORS].sort(
+    (a, b) => priorities[b] - priorities[a],
+  ).slice(0, 3);
+  const weekAction = prospect.weekActions?.[userTeam];
+  const boundPromise = prospect.promiseBy?.[userTeam];
+  const promiseLocked = !!boundPromise && weekAction?.major?.kind !== 'promise';
+  const relationship = hasRecruitingRelationship(prospect, userTeam);
+  // A rolled sway is the week's major move, full stop: the store refuses to
+  // change it, so the buttons say so rather than tapping into a wall.
+  const swayRolled = weekAction?.major?.kind === 'sway';
+  // Same arithmetic the week close will use, including the active pitch/move.
+  const gain = weeklyPoints(prospect, pitch, Math.max(spent, 1), coachPrestige, recruitingSkill)
+    + actionInterest(prospect, pitch, userTeam);
   const overall = reportedOverall(prospect, recruitingSkill);
   const ceiling = reportedPotential(prospect, recruitingSkill);
   const hints = hintsFor(prospect);
@@ -1157,12 +1211,95 @@ function Overview({
           <div key={k}>
             <span>{i + 1}</span>
             <p>
-              <strong>{PRIORITY_LABEL[k]}</strong>
-              <small>{PRIORITY_BLURB[k]}</small>
+              <strong>{RECRUITING_FACTOR_LABEL[k]} · {factorGrade(factorScore(prospect, pitch, k))}</strong>
+              <small>{RECRUITING_FACTOR_BLURB[k]}</small>
             </p>
           </div>
         ))}
       </section>
+
+      {reachable && live && !full && (
+        <section className="recruit-pitch-room">
+          <header>
+            <span><small>YOUR CASE</small><strong>Spend on what is actually true here</strong></span>
+            <b>{week === 1 ? 'BUILD THE BOARD' : week === 2 ? 'MAKE YOUR CASE' : 'CLOSE'}</b>
+          </header>
+          <div className="recruit-factor-grid">
+            {RECRUITING_FACTORS.map((factor) => {
+              const selected = weekAction?.pitch === factor;
+              return (
+                <button
+                  type="button" key={factor}
+                  className={`tap${selected ? ' active' : ''}`}
+                  onClick={() => onPitch(selected ? null : factor)}
+                >
+                  <small>{RECRUITING_FACTOR_LABEL[factor]}</small>
+                  <strong>{factorGrade(factorScore(prospect, pitch, factor))}</strong>
+                  <span>{Math.max(1, Math.round(priorities[factor] * 20))}× FIT · {PITCH_COST} PT</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="recruit-major-room">
+            <div className="flow-section-title">
+              <span className="label">MAJOR MOVE</span>
+              <b>ONE PER WEEK</b>
+            </div>
+            {!relationship || week < 2 ? (
+              <p className="recruit-major-lock">Bank one week of interest first. Major moves unlock once there is a real relationship.</p>
+            ) : (
+              <>
+                <div className="recruit-major-buttons">
+                  <button
+                    type="button" disabled={swayRolled} className={`tap${weekAction?.major?.kind === 'hardSell' ? ' active' : ''}`}
+                    onClick={() => {
+                      const factor = weekAction?.pitch ?? wants[0]!;
+                      onMajor(weekAction?.major?.kind === 'hardSell' ? null : { kind: 'hardSell', factor });
+                    }}
+                  ><strong>HARD SELL</strong><small>{HARD_SELL_COST} PT · double down on your pitch</small></button>
+                  <button
+                    type="button" disabled={swayRolled} className={`tap${weekAction?.major?.kind === 'visit' ? ' active' : ''}`}
+                    onClick={() => onMajor(weekAction?.major?.kind === 'visit' ? null : { kind: 'visit' })}
+                  ><strong>PROGRAM VISIT</strong><small>{VISIT_COST} PT · sell the whole place</small></button>
+                  {week === 2 && (
+                    <button
+                      type="button" disabled={swayRolled} className={`tap${swayRolled ? ' active' : ''}`}
+                      onClick={() => {
+                        const factor = weekAction?.pitch ?? wants[0]!;
+                        onMajor({ kind: 'sway', factor });
+                      }}
+                    ><strong>SWAY</strong><small>{SWAY_COST} PT · one attempt, and it stands</small></button>
+                  )}
+                </div>
+                {weekAction?.major?.kind === 'sway' && (
+                  <div className={`recruit-sway-result ${weekAction.major.success ? 'won' : 'lost'}`}>
+                    {weekAction.major.success ? 'SWAY WORKED — his priorities moved.' : 'SWAY MISSED — the conversation did not move him.'}
+                  </div>
+                )}
+
+                {promiseLocked && boundPromise && (
+                  <div className="recruit-promise-file"><small>PROMISE ON FILE</small><strong>{PROMISE_LABEL[boundPromise]}</strong><span>This commitment is already banked and cannot be replaced.</span></div>
+                )}
+
+                <div className="recruit-promise-grid">
+                  {(['immediateRole', 'noRedshirt', 'keepPosition', 'twoWayOpportunity'] as RecruitPromiseKind[]).map((promise) => {
+                    const unavailable = promise === 'twoWayOpportunity' && !isTwoWay(prospect.player);
+                    const active = weekAction?.major?.kind === 'promise' && weekAction.major.promise === promise;
+                    return (
+                      <button
+                        type="button" key={promise} disabled={unavailable || promiseLocked || swayRolled}
+                        className={`tap${active ? ' active' : ''}`}
+                        onClick={() => onMajor(active ? null : { kind: 'promise', promise })}
+                      ><strong>PROMISE · {PROMISE_LABEL[promise]}</strong><small>{PROMISE_COST[promise]} PT · follows him after Signing Day</small></button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+      )}
 
       {!reachable && (
         <section className="recruit-decision-note is-blocked">

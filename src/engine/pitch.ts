@@ -57,6 +57,48 @@ function playingTimeAt(record: TeamRecord, prospect: Prospect): number {
   return unit(0.5 + (overallOf(p) - blocked) / 40);
 }
 
+/** Conference reputation is dynamic: mostly the programs in it, partly what they won. */
+export function conferencePrestigeScore(season: SeasonState, record: TeamRecord): number {
+  const members = season.teams.filter((t) => t.conference === record.conference);
+  if (members.length === 0) return 0.5;
+  const prestige = members.reduce((sum, t) => sum + t.prestige, 0) / members.length / 100;
+  const played = members.reduce((sum, t) => sum + t.w + t.l, 0);
+  const wins = members.reduce((sum, t) => sum + t.w, 0);
+  const winning = played > 0 ? wins / played : 0.5;
+  return unit(prestige * 0.78 + unit((winning - 0.38) / 0.24) * 0.22);
+}
+
+/** Recent drafted alumni: a dynasty can build this pitch through actual results. */
+export function proPipelineScore(record: TeamRecord): number {
+  const rows = record.proPipeline ?? [];
+  // Before the save has drafted anybody, the name stands in for the record —
+  // but faintly, and that is deliberate. Path to the pros is meant to be a
+  // *living* strength a program earns at the draft, not prestige copied under
+  // another label; and four of the nine factors already lean on the name on a
+  // fresh save. Read at .80 or .95 for a blue blood, the strongest program in
+  // the hall test's two-conference world signed enough to induct a man every
+  // single year, which is the hall's named failure mode. Prestige 100 is .58
+  // here and 20 is .26; the five-year ledger takes over from the first June.
+  if (rows.length === 0) return unit(0.18 + record.prestige / 250);
+  let drafted = 0;
+  let early = 0;
+  let weight = 0;
+  rows.slice(-5).forEach((r, i, a) => {
+    const w = 0.55 + (i + 1) / a.length * 0.45;
+    drafted += r.drafted * w;
+    early += r.early * w;
+    weight += w;
+  });
+  const perYear = weight > 0 ? drafted / weight : 0;
+  const earlyPerYear = weight > 0 ? early / weight : 0;
+  return unit(0.12 + perYear / 5.5 + earlyPerYear / 4.5);
+}
+
+export interface PitchExtras {
+  coachPrestige?: number;
+  facilities?: number;
+}
+
 /**
  * A program's pitch, assembled from what is true about it.
  *
@@ -71,6 +113,7 @@ export function pitchFor(
   region: Region,
   development = 0.5,
   pipelineStrength?: (state: string) => number,
+  extras: PitchExtras = {},
 ): Pitch {
   const played = record.w + record.l;
   const winPct = played > 0 ? record.w / played : 0.5;
@@ -84,6 +127,10 @@ export function pitchFor(
     region,
     state: record.def.state,
     development: unit(development),
+    coachReputation: unit((extras.coachPrestige ?? record.coach?.prestige ?? 45) / 100),
+    conferencePrestige: conferencePrestigeScore(season, record),
+    facilities: unit(extras.facilities ?? (0.28 + record.prestige / 170)),
+    proPipeline: proPipelineScore(record),
     ...(pipelineStrength ? { pipelineStrength } : {}),
   };
 }
