@@ -2911,3 +2911,31 @@ one hook and two labels. The rest ride the next play batch.
 - **The starter's five innings in a seven-inning game.** The book asks four
   when the game is called short; the engine asks fifteen outs regardless.
   Rare — only the run rule produces one — and small.
+
+
+## Z. The prestige pass — September 5 2026, late
+
+`05` §52 is the account. What it left to watch.
+
+- **The mean.** The board floors are a small escalator through the middle
+  of the table: +1.4 on the league mean after twelve seasons, three seeds.
+  Run `npm run soak` before the next balance pass and read the thirty-year
+  mean against the September 5 figure; if it is still climbing at year
+  thirty, the three-star MET floor is the first knob (it is the one rung
+  where "hold" would still read as fair).
+- **The drought resets on a berth now**, and eight of twelve make the
+  field, so the climbing shelter (the 0.045 fall for a short drought below
+  48) covers most of the bottom half of every conference most years. It
+  did not show in the probe's bottom five, but it is a wider umbrella than
+  the one that was measured in §16, and the soak's one-star bucket is
+  where it would show.
+- **Coach reputation cannot fall on a MET year**, for rivals too. Poaching
+  went from 0.4 to 0.6 chairs a year in the probe — more coaches worth
+  taking. Watch the carousel's tenure figure over thirty-five seasons.
+- **The rolling extension prints every year** a secure coach sits at two
+  years and meets the board: "Steady work buys another year — 2 years
+  remain." True, and repetitive. A quieter line the second time, or fold
+  it into the board's summary.
+- **The pass's own balance table** was measured on the no-fall bug and is
+  superseded by §52.4. Its claim that five-star programs fell from 23 to
+  17 was the bug's flattening of the top, not the ladder.

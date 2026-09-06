@@ -1683,13 +1683,15 @@ function recordFor(state: DynastyStore): SeasonRecord | null {
     ? season.teams[lastPostseason.champion]?.def.school ?? '—'
     : '—';
 
+  const madeConferenceTournament = conferenceField(season, me.conference).field.includes(me.index);
+
   return {
     year,
     w: me.w, l: me.l, cw: me.cw, cl: me.cl,
     confPlace: table.findIndex((t) => t.index === me.index) + 1,
     rpi: rpi(season, me.index),
     wonConference: champions.includes(me.index),
-    finish: lastPostseason?.finish[me.index] ?? 'missed',
+    finish: lastPostseason?.finish[me.index] ?? (madeConferenceTournament ? 'conference' : 'missed'),
     school: me.def.school,
     nationalChampion: winner,
     awards: mine,
@@ -3062,6 +3064,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       losses: played.l,
       conferenceRank: standings(season, me.conference).findIndex((t) => t.index === me.index) + 1,
       conferenceSize: season.teams.filter((t) => t.conference === me.conference).length,
+      madeConferenceTournament: conferenceField(season, me.conference).field.includes(me.index),
       wonConference: post?.conferenceChampions.includes(me.index) ?? false,
       // A bid is a seat in the twenty-team national field, not a finish
       // string: the finish now records every regional participant, and a
@@ -3081,7 +3084,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     };
 
     // The drought. Same rule as the other ninety five — see `runRivalYear`.
-    me.drought = outcome.madeRegionals ? 0 : (me.drought ?? 0) + 1;
+    me.drought = outcome.madeConferenceTournament ? 0 : (me.drought ?? 0) + 1;
     outcome.drought = me.drought;
     // The title drought too — the summit reads it; see summitDrag.
     me.sinceTitle = outcome.wonTitle ? 0 : (me.sinceTitle ?? 0) + 1;
@@ -3282,6 +3285,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         tenure,
         badRun: review.badRun,
         contractYears: review.contractYears,
+        contractLength: review.contractLength,
         careerWins: coach.careerWins + outcome.wins,
         careerLosses: coach.careerLosses + outcome.losses,
         titles: coach.titles + (outcome.wonTitle ? 1 : 0),
@@ -6124,7 +6128,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           // honestly has no rank rather than a rating dressed up as one.
           confPlace: row.confPlace, rank: 0,
           wonConference: row.wonConference,
-          madeTournament: row.finish !== 'missed', finish: row.finish,
+          madeTournament: ['national', 'omaha', 'runner-up', 'champion'].includes(row.finish), finish: row.finish,
           coach: coach.name,
         });
       }

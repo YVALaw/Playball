@@ -17,7 +17,7 @@
 import { useRef, useState } from 'react';
 import { PlayIcon, SewingPinIcon, StopwatchIcon, StarFilledIcon,
 } from '@radix-ui/react-icons';
-import { FINISH_LABEL } from '../../engine/postseason.js';
+import { FINISH_LABEL, conferenceField } from '../../engine/postseason.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import {
   seasonComplete, rpiOrder, seasonLength, era,
@@ -579,7 +579,12 @@ function PostseasonVerdict() {
   const result = useDynasty((x) => x.lastPostseason);
   if (!season || !result) return null;
 
-  const me = result.finish[userTeam] ?? 'missed';
+  // A club that played its conference tournament and went out there is not
+  // in the postseason summary's finish map; it did not miss the postseason.
+  const conference = season.teams[userTeam]?.conference;
+  const inField = conference !== undefined
+    && conferenceField(season, conference).field.includes(userTeam);
+  const me = result.finish[userTeam] ?? (inField ? 'conference' : 'missed');
   const champion = season.teams[result.champion]?.def.school ?? '—';
   const wonConference = result.conferenceChampions.includes(userTeam);
   const big = me === 'champion';

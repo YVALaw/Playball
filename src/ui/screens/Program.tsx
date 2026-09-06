@@ -807,9 +807,11 @@ function BoardSheet({ team }: { team: Owner }) {
               <div style={{
                 marginTop: 9, font: "400 calc(11.5px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
               }}>
-                {review.extended
-                  ? `Extended — ${review.contractYears} year${review.contractYears === 1 ? '' : 's'} on the new deal.`
-                  : `${review.contractYears} year${review.contractYears === 1 ? '' : 's'} left on your contract.`}
+                {review.renewed
+                  ? `Renewed — ${review.contractYears} year${review.contractYears === 1 ? '' : 's'} on the new deal.`
+                  : review.extended
+                    ? `Extended — ${review.contractYears} year${review.contractYears === 1 ? '' : 's'} remain.`
+                    : `${review.contractYears} year${review.contractYears === 1 ? '' : 's'} left on your contract.`}
               </div>
             )}
             {!review.fired && (

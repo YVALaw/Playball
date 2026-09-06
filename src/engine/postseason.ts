@@ -865,6 +865,9 @@ export function stageNational(
 /**
  * How far a program got. Ordered worst to best.
  *
+ * 'conference' — reached the conference tournament but did not advance to a
+ * regional. It is written into permanent season history; the live postseason
+ * summary still only stores teams that escaped the conference round.
  * 'regional' — finished top four of its conference tournament and played a
  * regional championship series. 'omaha' — reached the national showdown. The
  * last two are the championship series.
@@ -876,7 +879,7 @@ export function stageNational(
  * and a history screen must be able to read them.
  */
 export type Finish =
-  | 'missed' | 'regional' | 'national' | 'omaha' | 'runner-up' | 'champion';
+  | 'missed' | 'conference' | 'regional' | 'national' | 'omaha' | 'runner-up' | 'champion';
 
 export interface PostseasonSummary {
   /** Conference tournament winners, by team index. Eight of them. */
@@ -956,7 +959,8 @@ export function runPostseason(season: SeasonState): PostseasonSummary {
 }
 
 export const FINISH_LABEL: Record<Finish, string> = {
-  missed: 'Missed the tournament',
+  missed: 'Missed the postseason',
+  conference: 'Conference tournament',
   regional: 'Regional',
   national: 'National tournament',
   omaha: 'Omaha',
@@ -1485,6 +1489,7 @@ export function recordSchoolAnnals(
     t.annals ??= [];
     if (t.annals.some((a) => a.year === year)) continue;
     const played = regularRecord(t);
+    const madeConferenceTournament = conferenceField(season, t.conference).field.includes(t.index);
     t.annals.push({
       year,
       w: played.w,
@@ -1498,7 +1503,7 @@ export function recordSchoolAnnals(
       // finish records every regional participant now.
       madeTournament: post?.nationalField?.includes(t.index)
         ?? (post ? post.finish[t.index] !== undefined && post.finish[t.index] !== 'regional' : false),
-      finish: post?.finish[t.index] ?? 'missed',
+      finish: post?.finish[t.index] ?? (madeConferenceTournament ? 'conference' : 'missed'),
       ...(t.index === userTeam
         ? (userCoach ? { coach: userCoach } : {})
         : (t.coach ? { coach: t.coach.name } : {})),

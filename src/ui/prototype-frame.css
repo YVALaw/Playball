@@ -6421,6 +6421,16 @@
 .prestige-journey-line > i b { display:block; height:100%; background:var(--clay); }
 .prestige-journey > p { margin:10px 0 0; padding-top:9px; border-top:1px solid var(--line); color:var(--dim); font:500 calc(9px * var(--ts))/1.4 var(--body); }
 
+.prestige-receipt { margin-top:10px; display:grid; gap:5px; }
+.prestige-receipt > span { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 8px; background:var(--wash); border:1px solid var(--line); }
+.prestige-receipt em { color:var(--dim); font:600 calc(7px * var(--ts))/1.2 var(--mono); font-style:normal; text-transform:uppercase; letter-spacing:.06em; }
+.prestige-receipt b { color:var(--clay); font:800 calc(10px * var(--ts)) var(--mono); }
+.prestige-next-rung { margin-top:8px; padding:8px; display:flex; justify-content:space-between; align-items:end; gap:10px; border:1px solid var(--line); }
+.prestige-next-rung span small { display:block; color:var(--dim); font:700 calc(5.8px * var(--ts)) var(--mono); letter-spacing:.08em; }
+.prestige-next-rung span strong { display:block; margin-top:2px; font:800 calc(11px * var(--ts)) var(--display); text-transform:uppercase; }
+.prestige-next-rung > em { color:var(--clay); font:800 calc(9px * var(--ts)) var(--mono); font-style:normal; white-space:nowrap; }
+
+
 /* Draft retention is a negotiation board, not the old scout-note + steppers. */
 .retention-call-modern { width:min(390px,calc(100% - 20px)); max-height:90%; padding:0 0 env(safe-area-inset-bottom) !important; overflow:auto; background:var(--paper); }
 .retention-call-hero { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; padding:10px; background:var(--panel); color:var(--cream); }

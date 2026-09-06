@@ -42,13 +42,11 @@ export const initialPrestige = (schoolPrestige: number): number =>
   Math.max(5, Math.min(95, Math.round(schoolPrestige)));
 
 /** Five stars, for display. Nobody reads prestige as "62". */
-export const prestigeStars = (prestige: number): number => {
-  if (prestige >= 72) return 5;
-  if (prestige >= 60) return 4;
-  if (prestige >= 48) return 3;
-  if (prestige >= 38) return 2;
-  return 1;
-};
+/** Where each star begins: two at 38, three at 48, four at 60, five at 72. */
+export const STAR_MARKS: readonly number[] = [38, 48, 60, 72];
+
+export const prestigeStars = (prestige: number): number =>
+  1 + STAR_MARKS.filter((mark) => prestige >= mark).length;
 
 // ---------------------------------------------------------------------------
 // Who will hire you
@@ -113,6 +111,8 @@ export interface SeasonOutcome {
   /** Where they finished in their conference, 1 based. */
   conferenceRank: number;
   conferenceSize: number;
+  /** Qualified for and played in the eight-team conference postseason. */
+  madeConferenceTournament?: boolean;
   wonConference: boolean;
   madeTournament: boolean;
   /**
@@ -196,10 +196,10 @@ export function seasonScore(o: SeasonOutcome): number {
 /**
  * Where a program stops climbing and starts defending.
  *
- * The top of the two-star band. Above it a school has something to lose and the
- * numbers below do nothing at all.
+ * The three-star threshold. Rebuild assistance now carries a program all the way
+ * through the two-star band instead of disappearing at 45 and leaving a 45–47 dead zone.
  */
-export const CLIMBING_UNDER = 45;
+export const CLIMBING_UNDER = 48;
 
 /** How long a small program may miss the postseason before it starts to cost. */
 export const DROUGHT_GRACE = 3;
@@ -256,7 +256,7 @@ export function programTarget(current: number, o: SeasonOutcome): number {
  * the arithmetic is worth writing down because it is why a second mechanism
  * exists at all. The ask was in **points of prestige**: *"if 4 star gets 3
  * points of prestige for making it to the post season, 1 and 2 star schools get
- * 5."* `programTarget` is a *target*, and `nextPrestige` moves eighteen percent
+ * 5."* `programTarget` is a *target*, and `nextPrestige` only moves part
  * of the way toward it — so lifting the postseason term from 6 to 8.4 buys
  * 0.43 of an actual prestige point. Measured, not guessed: the lift moved a
  * one-star programme's regional year by exactly one point.
@@ -338,149 +338,134 @@ export function summitDrag(current: number, o: SeasonOutcome): number {
   return base * (0.3 + 0.85 * droughtBite) * height;
 }
 
-export function nextPrestige(
-  current: number, o: SeasonOutcome, boardCleared = false,
-): number {
-  /*
-    Up quickly, down slowly.
+export interface PrestigeReason {
+  label: string;
+  amount: number;
+}
 
-    Reported after a national title: "year four I made the postseason, lost in
-    the conference, minus three -- it should take into account the recent
-    success." It should, and prestige is precisely where recent success is
-    kept, so the fault was that a symmetric drift spent that memory as fast as
-    it built it. A program does not stop being a blue blood the first spring it
-    fails to win a trophy, and this is the whole of that in one number.
+export interface PrestigeChange {
+  after: number;
+  reasons: PrestigeReason[];
+}
 
-    The asymmetry is modest on purpose. Make the fall too slow and nothing ever
-    comes back down, which inflates the league a rung at a time and makes the
-    number mean nothing after twenty years -- so the soak watches the mean.
-  */
-  /*
-    The drag prices the altitude, not the season: it can pull a target down
-    to the summit line, but a season already arguing for less than the summit
-    is left to argue exactly what it argued before -- the ordinary fall is
-    the ordinary fall, and the drag's whole job is to make good-but-not-great
-    years insufficient up where the score's ceiling would otherwise make them
-    read as perfect.
-  */
+type PrestigeBoardResult = false | true | 'met' | 'exceeded' | 'missed' | 'failed';
+
+/**
+ * The prestige calculation with its receipt.
+ *
+ * The old system could tell a rebuilding coach "MET EXPECTATIONS" and then move
+ * the school 0 points because the board only protected against a fall. That made
+ * a cleared mandate function as job-security insurance rather than progression.
+ * The board is now a floor, not a blind bonus: if the baseball itself already
+ * earned more than the floor, nothing extra is stacked on top.
+ */
+export function prestigeChange(
+  current: number, o: SeasonOutcome, boardResult: PrestigeBoardResult = false,
+): PrestigeChange {
+  const verdict = boardResult === true ? 'met' : boardResult || undefined;
+  const boardCleared = verdict === 'met' || verdict === 'exceeded';
+
   const raw = programTarget(current, o);
   const gap = Math.max(raw - summitDrag(current, o), Math.min(raw, SUMMIT_OVER)) - current;
-  /*
-    The slow fall is the top of the table's alone -- and it ends at the
-    summit, where the door asks for the opposite.
 
-    Applied to everybody it raised the league mean seven points and emptied the
-    bottom star bucket entirely -- ninety six programs all drifting up is not a
-    league with a top of it. Confined to programs that have actually built
-    something, it says the true thing and only about the handful of schools the
-    complaint was ever about: a blue blood does not stop being one the first
-    spring it fails to win a trophy.
-  */
+  // Blue bloods keep more memory; above the summit, mediocrity sheds it faster.
   const sticky = current >= 70 && current <= SUMMIT_OVER && gap < 0;
-  /*
-    And above the summit the shelter inverts: "slippage on mediocre years is
-    faster up there." Faster than the base rate, not a cliff -- one bad year
-    costs the crown, the blue-blood shelter below 85 then catches the
-    standing, so a dynasty that stumbles falls off the summit and lands as a
-    blue blood rather than falling through the table.
-  */
   const thinning = current > SUMMIT_OVER && gap < 0;
 
-  /*
-    And the small school's grace, which is the other half of the same report.
-
-    Measured before it was written: a one-star program run competently won ten
-    to twelve of forty five for twenty four straight years, settled at a
-    standing of about twenty two, and reached Omaha none of six times. It was
-    not being beaten down -- it was being held level, which is worse, because a
-    league where the bottom cannot move is a league where the bottom is
-    scenery.
-
-    Asked for directly: *"1 star schools should not be able to shoot for 5 star
-    but at least be able to progressively climb to the point where they can have
-    a shot"*, and then the mechanism: *"what if we make it that they only lose a
-    bit of prestige if they don't make the post season 3 years in a row."*
-
-    So a climbing program that misses May takes a quarter of the fall while the
-    drought is short, and the whole of it once the drought is three. That is the
-    difference between a bad year and a bad era, and only the second one should
-    cost a school what it spent five years building. Note it does not stop the
-    descent the report also asked for -- a program that is genuinely poor for
-    three years running falls at the ordinary rate, from wherever its good years
-    got it to.
-  */
+  // Rebuilds get three springs of grace before a postseason drought fully bites.
   const climbing = current < CLIMBING_UNDER;
   const sheltered = climbing && gap < 0 && (o.drought ?? DROUGHT_GRACE) < DROUGHT_GRACE;
 
-  /*
-    And the cleared board's shelter — the same report as the blue blood's,
-    one rung down. A three-star coach met every box but one and watched the
-    standing slip anyway, because the board asks for what keeps the seat
-    while the drift argues the season in the absolute — and at mid-table,
-    winning percentage clusters near .500 by construction, so an honest
-    "did what was asked" year can still argue a point or two below the
-    name. The board's own grade is the gate: MET or EXCEEDED takes the
-    slow-fall rate the top of the table already gets, so an ordinary year
-    the board approved of holds the line, and falling short is what costs.
-    The summit is exempt on purpose — up there permanence answers to the
-    title drought, not the checklist. Measured on the carousel like every
-    other rate in this function; the mean is the number to watch.
-  */
-  /*
-    Gated on the season having something to show — a May appearance or a
-    winning record — because a develop-mandate cellar board is cleared by
-    sixteen quiet wins, and sheltering those emptied the one-star bucket in
-    the measurement (13 programs to 6): the same "applied to everybody"
-    inflation the blue-blood shelter's own comment warns about. The board's
-    approval defends a season that stood for something; it does not float a
-    program the country never saw.
-  */
-  const showed = o.madeRegionals === true || winPct(o) >= 0.5;
+  // A board-approved season is never allowed to lose program standing below the
+  // blue-blood line. Making the conference field now counts as "showing" too.
+  const showed = o.madeConferenceTournament === true || o.madeRegionals === true || winPct(o) >= 0.5;
   const cleared = boardCleared && showed && gap < 0 && current <= SUMMIT_OVER;
-  /*
-    And the hold, which is a different thing from the shelter above.
-
-    Below the blue-blood band there is no `sticky` and, until this was
-    measured, no protection at all for a season that did what it was told:
-    a cleared board and an uncleared one landed on the same number. That is
-    the reporter's complaint and it was exactly right.
-
-    Deliberately capped at 70 rather than run to the summit. Applied to the
-    whole table it moved the league mean +1.2 and nearly doubled the 90+
-    bucket (1.1 to 2.1 of ninety six) — the top of the table growing is not
-    what "I met the mandate and still lost prestige" was ever about.
-  */
   const hold = boardCleared && gap < 0 && current < 70;
-  const rate = sheltered ? 0.045 : thinning ? 0.22 : (sticky || cleared) ? 0.12 : 0.18;
+
+  // Positive generic drift was the source of league-wide inflation: a program
+  // that won twenty-three of forty-five every spring and never saw May drifted
+  // up at the same rate as one that won its regional. So a *quiet* climb — a
+  // winning record and nothing the country saw — moves at ten percent, while a
+  // season with something to show keeps the full rate. Measured twelve seasons
+  // on the carousel: a flat ten percent on every climb emptied the summit (two
+  // program-seasons at 90+ against thirty-five) and dropped the bottom five two
+  // points, because titles and regionals are climbs too. Downward drift stays
+  // at 18%, with the rebuild, blue-blood and summit exceptions below.
+  const achieved = o.madeRegionals === true || o.wonConference || o.madeTournament
+    || o.wonRegional || o.reachedOmaha || o.wonTitle;
+  // And only from three stars up. Below `CLIMBING_UNDER` the quiet winning
+  // season IS the rebuild — twenty-two wins at a one-star program is the
+  // country noticing — and slowing it there took two points off the bottom
+  // five in the same measurement while the inflation it was aimed at lives
+  // in the middle of the table.
+  const quietClimb = gap > 0 && !achieved && current >= CLIMBING_UNDER;
+  const ordinaryRate = quietClimb ? 0.10 : 0.18;
+  const rate = sheltered ? 0.045 : thinning ? 0.22 : (sticky || cleared) ? 0.12 : ordinaryRate;
   let drift = gap * rate;
-  /*
-    And a cleared board never loses to rounding. At mid-table the sheltered
-    drift lands in the -0.5..-1 band constantly, where Math.round turns "the
-    board is satisfied" into -1 anyway — which is the exact minus one the
-    report was about. A season the board approved of gives ground only when
-    it honestly argued a full point away even at the slow rate.
-  */
-  /*
-    And doing what you were asked never costs you the standing.
-
-    Raised three times, most plainly: "I met 3 of the required mandates and
-    missed 3 bonuses — how is it possible that meeting their expectations
-    makes me lose prestige?" Measured before it was touched, and he was
-    exactly right: a cleared board and an uncleared one landed on the SAME
-    number at every standing (54 → 52 either way), because the shelter asked
-    for a May appearance or a winning record on top — and a develop board is
-    routinely cleared at 20-25. The board's whole job is to say what this
-    program is for; clearing it and still sliding makes the checklist a
-    decoration.
-
-    So a cleared board HOLDS. It does not build — the gentler rate above is
-    still reserved for a season the country saw, and nothing here drifts a
-    quiet program upward — which is what kept the one-star bucket from
-    emptying the last time this was widened.
-  */
   if (cleared && drift > -1) drift = Math.max(0, drift);
   if (hold) drift = Math.max(0, drift);
-  return Math.max(5, Math.min(95, Math.round(current + drift + climbBonus(current, o))));
+
+  const clamp = (n: number): number => Math.max(5, Math.min(95, Math.round(n)));
+  const reasons: PrestigeReason[] = [];
+
+  // First price the season itself.
+  let after = clamp(current + drift);
+  if (after !== current) reasons.push({ label: 'Season performance', amount: after - current });
+
+  // Then bank the existing small-program postseason lift. Kept separate so the
+  // Season Report can explain why a rebuild moved even when generic drift rounded.
+  const lifted = clamp(after + climbBonus(current, o));
+  if (lifted !== after) reasons.push({ label: 'Rebuild achievement lift', amount: lifted - after });
+  after = lifted;
+
+  // Meeting the actual job must create visible progress at programs still being
+  // built. This is a MINIMUM outcome, not +1/+2 stacked onto an already-great year.
+  const stars = prestigeStars(current);
+  const minimum = verdict === 'exceeded'
+    ? (stars <= 2 ? 2 : stars <= 4 ? 1 : 0)
+    : verdict === 'met'
+      ? (stars <= 3 ? 1 : 0)
+      : 0;
+  // The floor exists only where the table above gives one. A missed or failed
+  // board has no floor and the season falls exactly as it argued — the first
+  // cut applied a zero-point floor to every verdict, which clamped every fall
+  // in the league to nothing: no program could lose a point, the twelve-season
+  // probe's mean rose faster than before and the summit emptied (`05` §52).
+  if (minimum > 0) {
+    const boardFloor = Math.min(95, current + minimum);
+    if (after < boardFloor) {
+      reasons.push({
+        label: verdict === 'exceeded' ? 'Exceeded board expectations' : 'Met board expectations',
+        amount: boardFloor - after,
+      });
+      after = boardFloor;
+    }
+  }
+
+  // For a one/two-star program, simply earning May baseball matters — one
+  // tangible point until the three-star threshold, a distinct milestone from
+  // Regionals and the national field. The same rule as the board's: it is a
+  // floor on the year, guaranteeing the point when the season did not already
+  // earn it, not a point stacked onto a year that climbed on its own — and a
+  // board that was missed or failed takes no floor from it either.
+  const berthCounts = o.madeConferenceTournament === true && current < CLIMBING_UNDER
+    && verdict !== 'missed' && verdict !== 'failed';
+  if (berthCounts) {
+    const berthFloor = Math.min(95, current + minimum + 1);
+    if (after < berthFloor) {
+      reasons.push({ label: 'Reached conference tournament', amount: berthFloor - after });
+      after = berthFloor;
+    }
+  }
+
+  after = clamp(after);
+  return { after, reasons: reasons.filter((r) => r.amount !== 0) };
+}
+
+export function nextPrestige(
+  current: number, o: SeasonOutcome, boardResult: PrestigeBoardResult = false,
+): number {
+  return prestigeChange(current, o, boardResult).after;
 }
 
 // ---------------------------------------------------------------------------
@@ -1433,7 +1418,7 @@ export interface CoachState extends CoachProfile {
  * results sooner.
  */
 export const contractFor = (prestige: number): number =>
-  (prestige >= 65 ? 3 : prestige >= 48 ? 4 : 5);
+  (prestige >= 72 ? 4 : prestige >= 48 ? 5 : prestige >= 38 ? 6 : 7);
 
 /**
  * Where every career starts. Low enough that the top of the board is closed and
@@ -1889,20 +1874,40 @@ export function nextCoachPrestige(
   coach: { prestige: number },
   o: SeasonOutcome,
   programPrestige: number,
+  verdict: Verdict,
   badRun = 0,
 ): number {
-  const over = seasonScore(o) - programPrestige;
-  let gain = over * 0.22;
-  if (o.wonConference) gain += 4;
-  if (o.reachedOmaha) gain += 6;
-  if (o.wonTitle) gain += 12;
+  /*
+    Reputation now starts with the job actually accepted, not an absolute season
+    score compared with the logo on the shirt. That fixes the contradiction where
+    a rebuild could satisfy its board and still make its coach less respected.
+  */
+  let gain = verdict === 'exceeded' ? 3
+    : verdict === 'met' ? 1
+      : verdict === 'missed' ? -1.5 : -4;
 
-  // Reputation decays toward the middle when nothing happens, so a coach cannot
-  // coast on one good year for a decade.
-  const inertia = (45 - coach.prestige) * 0.04;
-  return Math.max(5, Math.min(99, Math.round(
+  // Milestones still matter nationally. A conference-tournament berth is a small
+  // story only when it came from a one/two-star rebuild; deeper achievements are
+  // valuable everywhere.
+  if (o.madeConferenceTournament && programPrestige < 48) gain += 0.75;
+  if (o.madeTournament) gain += 2;
+  if (o.wonConference) gain += 3;
+  if (o.wonRegional) gain += 3;
+  if (o.reachedOmaha) gain += 5;
+  if (o.wonTitle) gain += 10;
+
+  // Reputation slowly recentres when a coach is living on old accomplishments.
+  const inertia = (45 - coach.prestige) * 0.035;
+  let next = Math.max(5, Math.min(99, Math.round(
     coach.prestige + gain + inertia - badRunPenalty(badRun),
   )));
+
+  // An accepted season cannot make the coach less respected. Exceeding the job
+  // always moves him at least one point, while a high-profile coach who merely
+  // meets expectations may hold rather than endlessly inflate.
+  if (verdict === 'met') next = Math.max(coach.prestige, next);
+  if (verdict === 'exceeded') next = Math.max(Math.min(99, coach.prestige + 1), next);
+  return next;
 }
 
 /**
@@ -1932,14 +1937,20 @@ export interface Review {
   outcome: SeasonOutcome;
   prestigeBefore: number;
   prestigeAfter: number;
+  /** The exact integer movements shown on the Season Report. */
+  prestigeReasons: PrestigeReason[];
   coachPrestigeBefore: number;
   coachPrestigeAfter: number;
   securityBefore: number;
   securityAfter: number;
   /** Years left after this season is accounted for. */
   contractYears: number;
-  /** The board tore up the old deal and offered a longer one. */
+  /** Length of the active deal after any extension/renewal. */
+  contractLength: number;
+  /** The board added time before the deal expired. */
   extended: boolean;
+  /** The old deal expired and a new one was signed. */
+  renewed: boolean;
   fired: boolean;
   /** Ran out the deal without convincing anyone. Not the same as being sacked. */
   notRenewed: boolean;
@@ -2004,17 +2015,24 @@ export function reviewSeason(
   const bar = (board.sackAt ?? SACK_BAR) + (coach.caughtLooking ? 14 : 0);
   const sacked = securityAfter < bar && coach.tenure >= 1;
 
-  // A good year buys years. Boards extend the people they want to keep rather
-  // than letting a deal run down and inviting somebody else to make an offer.
-  const extended = !sacked && verdict === 'exceeded' && coach.contractYears <= 2;
+  // Contract management is a real cycle now, not a countdown that can stick at
+  // zero. Exceeded years earn an early full extension; steady MET years can keep
+  // a two-year cushion; and an expired deal is either renewed or declined.
   const remaining = Math.max(0, coach.contractYears - 1);
-  const contractYears = extended ? coach.contractLength : remaining;
+  const dealLength = contractFor(programPrestige);
+  const fullExtension = !sacked && verdict === 'exceeded' && coach.contractYears <= 2;
+  const rollingExtension = !sacked && verdict === 'met' && coach.contractYears === 2
+    && securityAfter >= 55;
+  const renewed = !sacked && !fullExtension && !rollingExtension && remaining === 0
+    && securityAfter >= board.renewAt;
+  const extended = fullExtension || rollingExtension;
+  const contractYears = fullExtension ? dealLength
+    : rollingExtension ? Math.min(dealLength, remaining + 1)
+      : renewed ? dealLength : remaining;
+  const contractLength = (fullExtension || renewed) ? dealLength : coach.contractLength;
 
-  // Out of contract and out of favour: they thank you and move on. The bar is
-  // the board's own — twenty five points above the sacking line for the player,
-  // and the sacking line itself for a rival, which is why this never fires for
-  // one. See the seam.
-  const notRenewed = !sacked && !extended && remaining === 0
+  // Out of contract and out of favour: they thank you and move on.
+  const notRenewed = !sacked && !extended && !renewed && remaining === 0
     && securityAfter < board.renewAt;
   const fired = sacked || notRenewed;
 
@@ -2030,30 +2048,37 @@ export function reviewSeason(
     ? 'The board has seen enough. You are relieved of your duties.'
     : notRenewed
       ? 'Your contract expires and the board has chosen not to renew it.'
-      : extended
-        ? `They have torn up your deal — ${coach.contractLength} more years.`
-        : verdict === 'exceeded'
-          ? 'Nobody expected this.'
-          : verdict === 'met'
-            ? 'Do it again.'
-            : verdict === 'missed'
-              ? `${contractYears} year${contractYears === 1 ? '' : 's'} left to convince them.${run}`
-              : `Your seat is warm.${run}`;
+      : renewed
+        ? `The board renews your contract — ${contractYears} more years.`
+        : extended
+          ? fullExtension
+            ? `They have torn up your deal — ${contractYears} more years.`
+            : `Steady work buys another year — ${contractYears} years remain.`
+          : verdict === 'exceeded'
+            ? 'Nobody expected this.'
+            : verdict === 'met'
+              ? 'Do it again.'
+              : verdict === 'missed'
+                ? `${contractYears} year${contractYears === 1 ? '' : 's'} left to convince them.${run}`
+                : `Your seat is warm.${run}`;
+
+  const prestige = prestigeChange(programPrestige, outcome, verdict);
 
   return {
     verdict,
     expectation,
     outcome,
     prestigeBefore: programPrestige,
-    prestigeAfter: nextPrestige(
-      programPrestige, outcome, verdict === 'met' || verdict === 'exceeded',
-    ),
+    prestigeAfter: prestige.after,
+    prestigeReasons: prestige.reasons,
     coachPrestigeBefore: coach.prestige,
-    coachPrestigeAfter: nextCoachPrestige(coach, outcome, programPrestige, badRun),
+    coachPrestigeAfter: nextCoachPrestige(coach, outcome, programPrestige, verdict, badRun),
     securityBefore,
     securityAfter,
     contractYears,
+    contractLength,
     extended,
+    renewed,
     fired,
     notRenewed,
     badRun,

@@ -52,7 +52,7 @@ import {
   rivalBoard, rosterStrength, skillPoints,
   type CoachSkills, type SeasonOutcome, type Verdict,
 } from './program.js';
-import type { PostseasonSummary } from './postseason.js';
+import { conferenceField, type PostseasonSummary } from './postseason.js';
 import type { SeasonState, TeamRecord } from './season.js';
 import { CULTURES, cultureFor, driftCulture } from '../data/cultures.js';
 import type { Assistant } from './economy.js';
@@ -366,6 +366,7 @@ export function rivalOutcome(
     losses: l,
     conferenceRank: better + 1,
     conferenceSize: size,
+    madeConferenceTournament: conferenceField(season, record.conference).field.includes(record.index),
     wonConference: post?.conferenceChampions.includes(record.index) ?? false,
     // The twenty-team field is the tournament; a regional exit is not a bid.
     madeTournament: post?.nationalField?.includes(record.index)
@@ -660,7 +661,7 @@ export function runRivalYear(
     // The drought, kept on the program and read only by `nextPrestige`. Counted
     // for all ninety six so a rival climbing out of the cellar climbs by the
     // same rule the player does.
-    record.drought = outcome.madeRegionals ? 0 : (record.drought ?? 0) + 1;
+    record.drought = outcome.madeConferenceTournament ? 0 : (record.drought ?? 0) + 1;
     outcome.drought = record.drought;
     // The title drought, for the summit's drag. Same shape, same reason.
     record.sinceTitle = outcome.wonTitle ? 0 : (record.sinceTitle ?? 0) + 1;
@@ -737,6 +738,7 @@ export function runRivalYear(
     coach.prestige = review.coachPrestigeAfter;
     coach.security = review.securityAfter;
     coach.contractYears = review.contractYears;
+    coach.contractLength = review.contractLength;
     coach.badRun = review.badRun;
     coach.careerWins += outcome.wins;
     coach.careerLosses += outcome.losses;

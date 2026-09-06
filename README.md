@@ -47,7 +47,7 @@ and the art are in. Testing runs on an Android emulator against
 
 The engine is calibrated multi-seed to the modern NCAA D1 environment —
 .280 / .384 / .438, a home run a game, 6.73 runs — since the September 5
-engine pass (`docs/05-systems-reference.md` §51). **1148 tests across 55
+engine pass (`docs/05-systems-reference.md` §51). **1154 tests across 56
 files**, including determinism goldens, calibration as a regression test, a
 baseball-correctness suite for the scorer's rules, and a concurrency suite
 pinning the store's double-press guards.

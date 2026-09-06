@@ -6970,6 +6970,115 @@ game journalled mid-play before this commit replays on a different random
 stream. The pass's `endManagedGame` hunk was not taken — `recordResult`
 already writes the ledger for a managed game.
 
+## 52. The prestige pass — **MERGED September 5 2026, late**
+
+A third outside folder from the reporter, built on `e1953dd` — the first
+one that was not older than the repo anywhere: ten files, all of them the
+pass. It is about the ladder — what a small program earns for doing its
+job, what a conference tournament berth is worth, how coach reputation is
+judged, and how long a contract runs — and it came with a balance table
+that turned out to have been measured on a bug. §52.4 is the measurement
+that replaced it.
+
+### 52.1 The ladder
+
+`prestigeChange` (program.ts) is `nextPrestige` with a receipt: the same
+drift, then a list of `{ label, amount }` reasons the Season Report prints
+under the prestige tile, with the next star mark and the distance to it
+(`STAR_MARKS` — 38, 48, 60, 72 — is the one place the rungs are written).
+
+- **The board is a floor, not a bonus.** A cleared board used to hold the
+  line and nothing more, so "MET EXPECTATIONS" at a one-star program moved
+  the school zero points. Now a MET year at one to three stars is worth at
+  least one point and an EXCEEDED year at least two (one at three and four
+  stars); four-star MET holds, five-star gets no guarantee. A *minimum*: a
+  season that already climbed three on its own gets three, not four.
+- **A conference tournament berth is a milestone** below three stars —
+  one more point on the same floor rule, so the reporter's own case reads
+  35 → 37 with `+1 Met board expectations · +1 Reached conference
+  tournament`, and the same mandate without May reads 35 → 36. A missed
+  or failed board takes no floor from either.
+- **Rebuild assistance runs to 48** (`CLIMBING_UNDER`), the three-star
+  line, closing the 45–47 dead zone.
+- **The quiet climb is slower.** A winning record with nothing the country
+  saw — no regional, no title, no bid — drifts up at ten percent of the
+  gap instead of eighteen, from three stars up. A season with something
+  to show keeps the full rate, and so does every climb below 48, where a
+  quiet twenty-two wins *is* the rebuild. Falls are unchanged.
+- **The postseason drought resets on the conference tournament**, not on
+  a regional, for all ninety-six.
+
+### 52.2 May, remembered
+
+`Finish` gains `'conference'`: a club that played its conference
+tournament and went out there. `recordSchoolAnnals` writes it into the
+permanent book, the Season Review's banner and POSTSEASON tile read it,
+Today's verdict card reads it, the season-history row derives
+`madeTournament` from the four national finishes rather than from "not
+missed", and `SeasonOutcome.madeConferenceTournament` carries it into the
+board's grade and the coach's. The live `PostseasonSummary` still stores
+only the teams that escaped the conference round; the field is read off
+`conferenceField` where the label is needed.
+
+### 52.3 The coach, and his contract
+
+`nextCoachPrestige` starts from the verdict — exceeded +3, met +1, missed
+−1.5, failed −4 — then the milestones (a berth below three stars, a bid, a
+conference title, a regional, Omaha, the championship), then the slow
+recentre toward 45. A MET year can never lower a coach; an EXCEEDED year
+always moves him at least one. The season score against the logo, which
+made a rebuild that satisfied its board cost its coach standing, is gone.
+
+`contractFor`: seven years at one star, six at two, five at three and
+four, four at five. Contracts are a cycle now: EXCEEDED with two years or
+fewer left tears the deal up for a full one; MET with two left and
+security of 55 keeps the two-year cushion; a deal that runs out is
+renewed at `board.renewAt` or declined below it. The zero-year limbo —
+a coach at 0 years who was neither renewed nor let go, season after
+season — is closed, and an old save carrying it resolves at its next
+review. `SeasonReview` carries `renewed`, `contractLength` and the
+`prestigeReasons`; both the store and `runRivalYear` write
+`contractLength` back.
+
+### 52.4 What the merge found, and measured
+
+**No program could lose a point.** The board floor was applied for every
+verdict, and with nothing cleared the floor was the current standing —
+every fall in the league clamped to zero. Nine tests failed on it (a
+6–39 disaster at 71 stayed 71; the summit never thinned), and the pass's
+balance table — fewer five-stars, a higher bottom, a flat mean — was
+measured with it in place. Fixed: the floor exists only where the table
+gives one. Then the flat ten-percent climb, measured properly, emptied
+the summit (two program-seasons at 90+ in twelve years against
+thirty-five) and dropped the bottom five two points, because a title and
+a regional year are climbs too; hence the achievement gate and the
+three-star line in §52.1. The berth bonus was stacked onto any year;
+it is a floor now, like the board's.
+
+`tests/carousel-probe.ts 12`, three seeds (4242, 7, 99), the previous
+build against this one, means of the three:
+
+| after 12 seasons | before | after |
+|---|---|---|
+| prestige mean / sd | 53.8 / 20.7 | 55.2 / 19.7 |
+| stars 1 / 2 / 3 / 4 / 5 | 27 / 21 / 15 / 10 / 23 | 26 / 14 / 19 / 14 / 23 |
+| top five / bottom five | 90.6 / 26.7 | 90.7 / 27.7 |
+| program-seasons at 90+ | 30 | 25 |
+| chairs a year / poached | 6.1 / 0.4 | 6.4 / 0.6 |
+
+The ladder works where it was meant to: the two-star band thins and the
+three-star band fills, the bottom five sit a point higher, the summit is
+a shade less permanent, and the five-star count is unchanged. The cost is
+the mean, up 1.4 in twelve years — the floors are a small escalator
+through the middle of the table — and that is the number the thirty-season
+soak watches (`06` §Z).
+
+Also at the merge: `contractFor`'s duplicated branch, the star marks
+duplicated in the Season Review, Today's verdict card still saying
+"Missed the postseason" to a club that played its conference tournament,
+and the annals test's premise. The pass's `prestige-progression` suite
+came in as written.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

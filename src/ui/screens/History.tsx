@@ -18,6 +18,7 @@ import { ChevronRightIcon } from '@radix-ui/react-icons';
 
 const FINISH_COLOR: Record<Finish, string> = {
   missed: 'var(--dim)',
+  conference: 'var(--ink)',
   regional: 'var(--ink)',
   national: 'var(--ink)',
   omaha: 'var(--clay)',

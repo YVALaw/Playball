@@ -6,8 +6,32 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 5, 2026, night · **Branch:** `main` · **the
-engine pass merged and repaired on top of the interface pass** (`05` §51).
+**Last session:** September 5, 2026, late · **Branch:** `main` · **the
+prestige pass merged and remeasured** (`05` §52), after the engine pass (§51).
+
+> **September 5, late — the prestige pass, merged, one bug found, remeasured.**
+>
+> A third outside folder, ten files, the first built on the repo as it
+> actually was. The ladder: a cleared board is a floor of +1 (MET) or +2
+> (EXCEEDED) at one to three stars, a conference tournament berth is a
+> milestone below three stars, the quiet climb from three stars up is
+> slower, coach reputation is judged against the mandate, contracts run
+> seven years at one star down to four at five and cycle properly (the
+> zero-year limbo is closed), and the Season Report prints a receipt for
+> every prestige point and the distance to the next star. `05` §52.
+>
+> **The bug:** the board floor was applied on every verdict, so with no
+> cleared board the floor was the current standing and no program in the
+> league could lose a point — nine tests, and the pass's own balance
+> table, measured on it. Fixed; then the flat ten-percent climb was
+> measured properly (it emptied the summit and dropped the bottom five)
+> and gated to quiet seasons at three stars and up. Remeasured on three
+> seeds: bottom five +1, the two-star band thins into three stars,
+> five-stars unchanged, summit a shade less permanent, and the mean +1.4
+> in twelve years — `06` §Z says what to watch.
+>
+> **Rule, fourth time:** the folder's own tests were green; the full
+> suite was not. Nothing is done until `npm run check` says so here.
 
 > **September 5, night — the engine pass, classified, merged and repaired.**
 >
@@ -482,7 +506,7 @@ exists. Stage 19 removes the three together.
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,148 tests, 55 files)
+npm run check      # typecheck + the whole suite (1,154 tests, 56 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing

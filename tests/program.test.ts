@@ -1026,10 +1026,10 @@ describe('the cleared board', () => {
       wins: 23, losses: 22, madeRegionals: true, drought: 0,
     });
     const at = 58;
-    // Cleared, the mild negative drift rounds away; uncleared it is a real
-    // step down. Same season, different grade, and only the fall changes.
+    // Cleared, the three-star board floor now turns an approved year into one
+    // tangible point of progress; uncleared it is still a real step down.
     expect(nextPrestige(at, solid, true)).toBeGreaterThanOrEqual(nextPrestige(at, solid));
-    expect(nextPrestige(at, solid, true)).toBe(at);
+    expect(nextPrestige(at, solid, true)).toBe(at + 1);
     expect(nextPrestige(at, solid)).toBeLessThan(at);
   });
 

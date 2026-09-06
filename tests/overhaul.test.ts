@@ -26,7 +26,9 @@ vi.mock('idb', () => ({
 
 import { useDynasty, TABS } from '../src/state/store.js';
 import { createSeason, simSeason, seasonComplete } from '../src/engine/season.js';
-import { recordSchoolAnnals, summarize, type PostseasonSummary } from '../src/engine/postseason.js';
+import {
+  recordSchoolAnnals, summarize, conferenceField, type PostseasonSummary,
+} from '../src/engine/postseason.js';
 import {
   startingOffers, canBeHired, rosterStrength, ROOKIE_PRESTIGE,
 } from '../src/engine/program.js';
@@ -90,7 +92,11 @@ describe('every school keeps its own book', () => {
     recordSchoolAnnals(season, 2027, post, 0, 'Coach Test');
     expect(season.teams[3]?.annals?.[0]?.finish).toBe('champion');
     expect(season.teams[3]?.annals?.[0]?.wonConference).toBe(true);
-    expect(season.teams[5]?.annals?.[0]?.finish).toBe('missed');
+    // A club outside the summary either played its conference tournament and
+    // went out there, or missed May altogether — the book says which.
+    const five = season.teams[5]!;
+    const inField = conferenceField(season, five.conference).field.includes(5);
+    expect(five.annals?.[0]?.finish).toBe(inField ? 'conference' : 'missed');
   });
 
   it('rides the save, and an old save seeds the chair from the coach history', async () => {

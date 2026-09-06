@@ -22,7 +22,7 @@ import { Avatar } from '../Avatar.js';
 import { rpiOrder, standings, regularRecord } from '../../engine/season.js';
 import { overallOf } from '../../engine/ratings.js';
 import { FINISH_LABEL } from '../../engine/postseason.js';
-import { objectiveMet } from '../../engine/program.js';
+import { objectiveMet, prestigeStars, STAR_MARKS } from '../../engine/program.js';
 import type { Hitter, PlayerId } from '../../engine/types.js';
 
 export function SeasonReview() {
@@ -63,6 +63,7 @@ export function SeasonReview() {
   const conf = standings(season, team.conference);
   const confRank = conf.findIndex((t) => t.index === team.index) + 1;
   const finish = post?.finish[team.index];
+  const displayFinish = finish ?? (outcome?.madeConferenceTournament ? 'conference' : undefined);
 
   // The man who carried the season. Judged on production, not on rating, so it
   // is a report of what happened rather than a second look at the roster page.
@@ -97,6 +98,9 @@ export function SeasonReview() {
   }
 
   const delta = review ? review.prestigeAfter - review.prestigeBefore : 0;
+  const nextPrestigeMark = review
+    ? STAR_MARKS.find((mark) => review.prestigeAfter < mark)
+    : undefined;
 
   /*
     The tops of the books, one man per question. Thirty at-bats and ninety
@@ -141,7 +145,7 @@ export function SeasonReview() {
                 title: `${team.conference} champions`,
                 note: 'Won the conference tournament and the automatic bid that comes with it.',
               }
-            : finish === 'regional'
+            : displayFinish === 'regional'
               /*
                 Reported: "it told me I reached the nationals but I actually
                 didn't, I lost in the regionals and was 22nd."
@@ -153,7 +157,12 @@ export function SeasonReview() {
                 the regionals; twenty come out of them into the national field.
               */
               ? { title: 'Regionals', note: 'Thirty two programs got that far. Your run ended in yours.' }
-              : confRank === 1
+              : displayFinish === 'conference'
+                ? {
+                    title: 'Conference tournament',
+                    note: 'You earned May baseball. The run ended before the regional round, but the season counts as a postseason berth.',
+                  }
+                : confRank === 1
                 ? {
                     title: `${team.conference} regular season`,
                     note: 'Best record in the conference over the games that count for seeding.',
@@ -170,7 +179,7 @@ export function SeasonReview() {
         <section className={`season-report-hero${post?.champion === team.index ? ' champion' : ''}`}>
           <div className="season-report-hero-copy">
             <small>{banner ? 'HOW THE YEAR ENDED' : 'FINAL REPORT'}</small>
-            <h2>{banner?.title ?? (finish ? FINISH_LABEL[finish] : `${played.w}-${played.l}`)}</h2>
+            <h2>{banner?.title ?? (displayFinish ? FINISH_LABEL[displayFinish] : `${played.w}-${played.l}`)}</h2>
             <p>{banner?.note ?? `${team.def.school} close ${year} at ${played.w}-${played.l}.`}</p>
           </div>
           <div className="season-report-record">
@@ -185,7 +194,7 @@ export function SeasonReview() {
               <small>{team.conference}</small><strong>{confRank > 0 ? `#${confRank}` : '—'}</strong>
             </button>
             <button type="button" onClick={() => openOverlay('schedule')}>
-              <small>POSTSEASON</small><strong>{finish ? FINISH_LABEL[finish] : '—'}</strong>
+              <small>POSTSEASON</small><strong>{displayFinish ? FINISH_LABEL[displayFinish] : '—'}</strong>
             </button>
           </div>
         </section>
@@ -250,6 +259,22 @@ export function SeasonReview() {
               <span className="change"><small>CHANGE</small><strong>{delta > 0 ? '+' : ''}{delta}</strong></span>
               <span><small>NOW</small><strong>{review.prestigeAfter}</strong></span>
             </div>
+            {review.prestigeReasons?.length > 0 && (
+              <div className="prestige-receipt">
+                {review.prestigeReasons.map((reason, index) => (
+                  <span key={`${reason.label}-${index}`}>
+                    <em>{reason.label}</em>
+                    <b>{reason.amount > 0 ? '+' : ''}{reason.amount}</b>
+                  </span>
+                ))}
+              </div>
+            )}
+            {nextPrestigeMark !== undefined && (
+              <div className="prestige-next-rung">
+                <span><small>NEXT LEVEL</small><strong>{'★'.repeat(prestigeStars(review.prestigeAfter) + 1)} at {nextPrestigeMark}</strong></span>
+                <em>{review.prestigeAfter} / {nextPrestigeMark}</em>
+              </div>
+            )}
             <p>{review.message}</p>
           </section>
         )}
