@@ -29,6 +29,7 @@ import { useOpenTeam } from './TeamCard.js';
 import { teamColour } from '../Avatar.js';
 import { Crest } from '../Crest.js';
 import { ArrowLeftIcon, ChevronRightIcon, StarIcon } from '@radix-ui/react-icons';
+import { GodBolt } from '../god/GodBolt.js';
 import { ModuleIntro, SectionHeading, Segmented } from '../components/Kit.js';
 import {
   annualBudget, dollars, marketFor, remaining, wageBill,
@@ -66,8 +67,6 @@ export function Program() {
   const setSheet = useDynasty((s) => s.setProgramSheet);
   const economy = useDynasty((s) => s.economy);
   const coach = useDynasty((s) => s.coach);
-  const godMode = useDynasty((s) => s.godMode);
-  const setScreen = useDynasty((s) => s.setScreen);
   const boardAsk = useDynasty((s) => s.boardAsk);
   useEffect(() => {
     if (sheet === 'coach') clearUnseenTrophies();
@@ -153,14 +152,6 @@ export function Program() {
       </section>
 
       <section className="program-dashboard-grid" aria-label="Program overview">
-        {godMode && (
-          <button className="program-dashboard-card tap is-god" type="button" onClick={() => setScreen('god')}>
-            <span><small>GOD MODE</small><strong>The sandbox</strong></span>
-            <p>Edit any player, any program, the leagues, your coach, the money, the schedule.</p>
-            <em>Also the last section in the bar above</em>
-            <ChevronRightIcon />
-          </button>
-        )}
         <button className={`program-dashboard-card tap${waiting ? ' is-live' : ''}`} type="button" onClick={() => setSheet('board')}>
           <span><small>BOARD</small><strong>{waiting ? 'Something is waiting' : security}</strong></span>
           <p>{ask.summary}</p>
@@ -296,6 +287,7 @@ function MoneySheet({ team }: { team: Owner }) {
     <>
       <section className="money-command-center">
         <div className="money-available">
+          <GodBolt target={{ kind: 'money' }} label="Edit the budget and staff in god mode" className="hero-god" />
           <small>AVAILABLE TO DEPLOY</small>
           <strong>{dollars(Math.max(0, left))}</strong>
           <p>{dollars(committed)} committed of {dollars(budget)} this year.</p>
@@ -948,6 +940,7 @@ function CoachSheet({ team }: { team: Owner }) {
         are true on every tab boxed in the corner.
       */}
       <section className="coach-profile-hero">
+        <GodBolt target={{ kind: 'coach' }} label="Edit your coach in god mode" className="hero-god" />
         <div className="coach-profile-portrait"><CoachPortrait look={coach.look} size={148} /></div>
         <div className="coach-profile-copy">
           <small>{team.def.school.toUpperCase()} · {leagueLabel(team.conference)}</small>

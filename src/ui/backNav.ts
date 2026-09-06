@@ -24,6 +24,8 @@ export interface BackState {
   playerOpen: boolean;
   teamCardOpen: boolean;
   overlayOpen: boolean;
+  /** A god-mode sheet is up. */
+  godOpen?: boolean;
   tab: Tab;
   screen: string;
 }
@@ -31,7 +33,7 @@ export interface BackState {
 /** True while a back press has something to do — including swallowing it. */
 export function hasLayerToClose(s: BackState): boolean {
   if (s.blocked) return true;
-  if (s.playerOpen || s.teamCardOpen || s.overlayOpen) return true;
+  if (s.godOpen || s.playerOpen || s.teamCardOpen || s.overlayOpen) return true;
   const first = TABS.find((t) => t.id === s.tab)?.screens[0]?.id;
   if (first && s.screen !== first) return true;
   return s.tab !== 'home';

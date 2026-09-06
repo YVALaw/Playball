@@ -7,8 +7,22 @@ This file is the running answer to two questions: *what was just done* and
 the top of it is always current. Everything older lives in git.
 
 **Last session:** September 6, 2026, later still · **Branch:** `god-mode`, unpushed,
-off `main` at `2a13703` · **god mode finished, held for approval** (`05` §61,
-§61.4), after two rankings per recruit (§60).
+off `main` at `2a13703` · **god mode finished and re-shaped as bolts, held for approval** (`05` §61,
+§61.4, §61.5), after two rankings per recruit (§60).
+
+> **September 6, later still — god mode is not a place.**
+>
+> Found from the iPhone, then judged there: *"good idea, not well
+> executed — all in one singular tab, just like a list, is confusing."*
+> His design, asked directly: an icon on every relevant place, not a tab.
+> So (`05` §61.5): a bolt in the header on every frame opens a short list
+> of doors for the tab you are on; a bolt floats on every player card and
+> college profile; bolts sit on the coach profile, the money sheet, a
+> recruiting file, the transfer room, the roster, the conference table and
+> the schedule. Each opens one editor in one sheet (`ui/god/`), stacked so
+> back steps out the way you came in. The Program-bar section, the
+> overview card and the coach-menu row are gone. Still on the `god-mode`
+> branch, unpushed.
 
 > **September 6, later still — the rest of god mode, on the same branch.**
 >
@@ -788,7 +802,7 @@ exists. Stage 19 removes the three together.
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,212 tests, 63 files)
+npm run check      # typecheck + the whole suite (1,213 tests, 64 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing

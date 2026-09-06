@@ -23,6 +23,7 @@
 import { useState } from 'react';
 import { MixerHorizontalIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../../state/store.js';
+import { GodIntroRow } from '../god/GodBolt.js';
 import { handles } from '../../state/depth.js';
 import { Avatar } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
@@ -189,10 +190,12 @@ export function Roster() {
       <FirstVisit id="roster" />
 
       <div className="screen-title-row">
-        <ModuleIntro
-          kicker={filtered ? `${rows.length} OF ${squad}` : 'ACTIVE ROSTER'}
-          title={`${rows.length} ${rows.length === 1 ? 'player' : 'players'}`}
-        />
+        <GodIntroRow target={{ kind: 'program', team: team.index }} label="Edit the roster in god mode">
+          <ModuleIntro
+            kicker={filtered ? `${rows.length} OF ${squad}` : 'ACTIVE ROSTER'}
+            title={`${rows.length} ${rows.length === 1 ? 'player' : 'players'}`}
+          />
+        </GodIntroRow>
       </div>
 
       <div className="screen-tools">

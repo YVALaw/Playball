@@ -12,6 +12,7 @@ import { useConferenceTable, useDynasty, useUserTeam } from '../../state/store.j
 import { useOpenTeam } from './TeamCard.js';
 import { regularRecord } from '../../engine/season.js';
 import { FieldNote, ModuleIntro } from '../components/Kit.js';
+import { GodIntroRow } from '../god/GodBolt.js';
 // The cut is the engine's, not a number typed into a sentence. See below.
 import { CONF_ADVANCE, CONF_FIELD } from '../../engine/postseason.js';
 import { ChevronRightIcon } from '@radix-ui/react-icons';
@@ -40,10 +41,12 @@ export function Standings() {
 
   return (
     <main className="module-workspace">
-      <ModuleIntro
-        kicker="CONFERENCE"
-        title={`${leagueLabel(team.conference)} race`}
-      />
+      <GodIntroRow target={{ kind: 'leagues' }} label="Edit the leagues in god mode">
+        <ModuleIntro
+          kicker="CONFERENCE"
+          title={`${leagueLabel(team.conference)} race`}
+        />
+      </GodIntroRow>
 
       <section className="standings-table">
         <div className="table-head">

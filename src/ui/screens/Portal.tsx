@@ -16,6 +16,7 @@ import { handles } from '../../state/depth.js';
 import { flightRisk } from '../../engine/morale.js';
 import { sfx, buzz } from '../sound.js';
 
+import { GodBolt } from '../god/GodBolt.js';
 import { useDynasty } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { IdCardIcon, ReloadIcon, StarIcon } from '@radix-ui/react-icons';
@@ -128,6 +129,7 @@ export function Portal() {
                 Use the flexible fund for immediate help — whatever is left rolls into
                 recruiting on top of its protected reserve.
               </p>
+              <GodBolt target={{ kind: 'portal' }} label="Sign from the portal for nothing, in god mode" className="inline-god" />
             </div>
             <div className="portal-command-mark">
               <ReloadIcon />

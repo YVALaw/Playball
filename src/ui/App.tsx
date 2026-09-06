@@ -19,7 +19,7 @@ import { audioReady, preloadSfx, unlockAudio } from './sound.js';
 import { BigMomentCard } from './BigMoment.js';
 import { teamColour } from './Avatar.js';
 import {
-  ArchiveIcon, ArrowLeftIcon, CalendarIcon, ChevronRightIcon, EnvelopeClosedIcon, GearIcon, LightningBoltIcon,
+  ArchiveIcon, ArrowLeftIcon, CalendarIcon, ChevronRightIcon, EnvelopeClosedIcon, GearIcon,
   HomeIcon, IdCardIcon, StarIcon,
 } from '@radix-ui/react-icons';
 import {
@@ -49,7 +49,8 @@ import { NewGame } from './screens/NewGame.js';
 import { StrategyScreen } from './screens/StrategyScreen.js';
 import { Placeholder } from './screens/Placeholder.js';
 import { Board } from './screens/Board.js';
-import { GodMode } from './screens/GodMode.js';
+import { GodOverlay } from './god/GodSheet.js';
+import { GodBolt } from './god/GodBolt.js';
 import { SeasonReview } from './screens/SeasonReview.js';
 import { CoachPoints } from './screens/CoachPoints.js';
 import { SigningDay } from './screens/SigningDay.js';
@@ -300,6 +301,9 @@ function AppBody(
     // swallowed rather than obeyed. These are answered on their own terms —
     // the opener on the board, the big moment by reading it.
     if (s.seasonOpener || s.playbookInvite || s.bigMoment) return;
+    // The god-mode sheet sits over the player card it may have been opened
+    // from, so it goes first.
+    if (s.godStack.length > 0) { s.closeGod(); return; }
     if (s.selectedPlayer !== null) { s.closePlayer(); return; }
     if (teamCardRef.current !== null) { setTeamCard(null); return; }
     if (s.overlay !== null) { s.closeOverlay(); return; }
@@ -313,8 +317,9 @@ function AppBody(
   teamCardRef.current = teamCard;
   const overlay = useDynasty((s) => s.overlay);
   const blocked = useDynasty((s) => Boolean(s.seasonOpener || s.playbookInvite || s.bigMoment));
+  const godOpen = useDynasty((s) => s.godStack.length > 0);
   const hasLayer = hasLayerToClose({
-    blocked, playerOpen: selectedPlayer !== null, teamCardOpen: teamCard !== null,
+    blocked, godOpen, playerOpen: selectedPlayer !== null, teamCardOpen: teamCard !== null,
     overlayOpen: overlay !== null, tab, screen,
   });
   /** The same question, asked of the live store — for the moment after a pop. */
@@ -570,7 +575,7 @@ function AppBody(
         {/* The bar steps aside while a game is being managed — the dugout owns
             the whole screen, the same rule the regular season follows. */}
         {!live && (
-          <header className="global-header" style={{ gridTemplateColumns: 'minmax(0,1fr) 40px' }}>
+          <header className={`global-header${godMode ? ' has-god' : ''}`} style={{ gridTemplateColumns: godMode ? 'minmax(0,1fr) 40px 40px' : 'minmax(0,1fr) 40px' }}>
             <ClubSwitcher abbr={team.def.abbr} kicker="Postseason" name={team.def.school} />
             {/*
               The way to your own settings, in the month you are most likely to
@@ -583,6 +588,7 @@ function AppBody(
               the bracket, which is exactly the moment somebody would go looking
               for it.
             */}
+            <GodBolt target={{ kind: 'tab', tab }} label="God mode for this tab" className="header-god" />
             <CoachMenuButton />
           </header>
         )}
@@ -687,7 +693,7 @@ function AppBody(
       <div className="app-frame offseason-frame" style={{
         display: 'flex', flexDirection: 'column', minHeight: 0,
       }}>
-        <header className="global-header" style={{ gridTemplateColumns: 'minmax(0,1fr) 40px' }}>
+        <header className={`global-header${godMode ? ' has-god' : ''}`} style={{ gridTemplateColumns: godMode ? 'minmax(0,1fr) 40px 40px' : 'minmax(0,1fr) 40px' }}>
           <ClubSwitcher abbr={team.def.abbr} kicker={`${year} Offseason`} name={team.def.school} />
           {/* The bottom nav is gone from here by design, and it took HOME ·
               INBOX with it — during the seven steps that have most to report.
@@ -695,6 +701,7 @@ function AppBody(
               missing nav owes this frame; the season badge that used to fill
               the corner is gone, because the review screen already says what
               the year came to and a header is not a trophy shelf. */}
+          <GodBolt target={{ kind: 'tab', tab }} label="God mode for this tab" className="header-god" />
           <CoachMenuButton />
         </header>
         <SaveAlert />
@@ -781,13 +788,15 @@ function AppBody(
         day was set in the same weight as two that never change. Overall only;
         the conference record is a tap away on the standings.
       */}
-      <header className="global-header">
+      <header className={`global-header${godMode ? ' has-god' : ''}`}>
         <ClubSwitcher
           abbr={team.def.abbr}
           kicker={`${team.def.nickname} · ${leagueLabel(team.conference)}`}
           name={team.def.school}
         />
         <RecordChip label={leagueLabel(team.conference)} value={`${team.w}-${team.l}`} />
+        {/* The sandbox's one fixed door: god mode for the tab you are on. */}
+        <GodBolt target={{ kind: 'tab', tab }} label="God mode for this tab" className="header-god" />
         <CoachMenuButton />
       </header>
 
@@ -795,7 +804,7 @@ function AppBody(
 
       <ContextNav
         label={`${tabDef.label} sections`}
-        items={tabDef.screens.filter((item) => item.id !== 'god' || godMode).map((item) => ({
+        items={tabDef.screens.map((item) => ({
           ...item,
           alert: tab === 'program' && (
             (item.id === 'history' && unseenRecords > 0)
@@ -930,6 +939,8 @@ function Overlays(
       {overlay !== null && <TableOverlay />}
       {teamCard !== null && <TeamOverlay index={teamCard} onBack={onCloseTeam} />}
       {selectedPlayer !== null && <PlayerOverlay />}
+      {/* Over the card it may have been opened from. */}
+      <GodOverlay />
       <SeasonOpener />
       <WeekStopped />
       <PlaybookInvite />
@@ -955,6 +966,7 @@ function TeamOverlay({ index, onBack }: { index: number; onBack: () => void }) {
       eyebrow="COLLEGE PROFILE"
       title={rival?.def.school ?? 'Program'}
       onClose={onBack}
+      floating={<GodBolt target={{ kind: 'program', team: index }} label={`Edit ${rival?.def.school ?? 'this program'} in god mode`} className="floating-god" />}
     >
       <TeamCard key={index} index={index} />
     </Overlay>
@@ -1142,10 +1154,6 @@ function CoachMenuButton() {
   // New silverware waiting in the cabinet — the dot that replaced the
   // achievement letters.
   const trophyDot = useDynasty((s) => s.unseenTrophies.length > 0);
-  // A sandbox gets its own row: the desk is the last section of the Program
-  // bar, which a phone cannot show without a swipe.
-  const godMode = useDynasty((s) => s.godMode);
-  const goTo = useDynasty((s) => s.go);
   const [open, setOpen] = useState(false);
 
   const go = (run: () => void) => { setOpen(false); run(); };
@@ -1199,13 +1207,6 @@ function CoachMenuButton() {
               {unread > 0 && <span className="menu-count">{unread}</span>}
               <ChevronRightIcon />
             </button>
-            {godMode && (
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => go(() => goTo('program', 'god'))}
-              ><LightningBoltIcon />God mode<ChevronRightIcon /></button>
-            )}
             {/* Saves used to sit here as a peer. It moved inside settings: one
                 place for everything about you and the app, which also stops the
                 menu growing a row every time a preference is added. */}
@@ -1395,7 +1396,13 @@ function PlayerOverlay() {
   const close = useDynasty((s) => s.closePlayer);
   const name = usePlayerName(selectedPlayer);
   return (
-    <Overlay eyebrow="PLAYER CARD" title={name} onClose={close} className="player-card-overlay">
+    <Overlay
+      eyebrow="PLAYER CARD"
+      title={name}
+      onClose={close}
+      className="player-card-overlay"
+      floating={selectedPlayer ? <GodBolt target={{ kind: 'player', id: selectedPlayer }} label={`Edit ${name} in god mode`} className="floating-god" /> : null}
+    >
       {/*
         Keyed on the man, so opening a second card is a fresh card.
         The scroll reset in the frame resets the screen *underneath* the
@@ -1446,7 +1453,6 @@ function Screen({ id }: { id: string }) {
     case 'records': return <Program />;
     case 'colleges': return <Colleges />;
     case 'strategy': return <StrategyScreen />;
-    case 'god': return <GodMode />;
     // 'board' and 'draft' are deliberately absent: both are offseason phases
     // now, rendered by the phase frame. Routed here they would mount outside
     // the window they live in — the Board with no pinned action and no way

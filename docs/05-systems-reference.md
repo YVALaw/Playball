@@ -7967,7 +7967,7 @@ is new, and `tests/god-mode-2.test.ts` pins them.
   from the iPhone — the man himself and his record: name, age, career
   wins and losses, national, conference and regional titles, tournaments,
   which the coach profile and the job market read.
-- **Time.** SIM THE SEASON from the desk, the same run to June the test
+- **Time.** SIM THE SEASON from the sheet, the same run to June the test
   shortcut makes. What it does not do is in 61.3.
 - **Presets.** PARITY puts every program at fifty; CHAOS redraws every
   program's prestige from a hash of the generator's position, so a save
@@ -7978,16 +7978,54 @@ Every one of these is a god action on the store: refused unless the
 save's flag is on, a version bump, an autosave. The sliders show whole
 numbers over ratings the generator drew fractional.
 
-**Finding the desk.** The reporter's first report from the iPhone was
-*"god mode is on but nothing lets me change anything"*: the desk is the
-fifth section of the Program bar, and five sections do not fit a 375px
-phone. The bar scrolls with its scrollbar hidden, so it looked finished
-at STRATEGY. Three doors and a hint answer it. A GOD MODE card leads the
-Program overview in a sandbox; the coach menu has a God mode row between
-Inbox and Settings; Settings → God mode has OPEN. And the context bar
-now says when there is more (`data-more`, a fade and a chevron at its
-right edge, measured on scroll and resize), and brings the active
-section into view when a screen is reached from elsewhere.
+### 61.5 Not a place — the bolt beside the thing it edits
+
+The one-screen desk was reported from the iPhone twice in an hour: first
+as invisible (*"god mode is on but nothing lets me change anything"* —
+it was the fifth section of a Program bar that scrolls with its scrollbar
+hidden), then, once found, as *"good idea, not well executed: all in one
+singular tab, just like a list, is confusing; people wouldn't know where
+to do anything."* His answer, asked directly: *"every relevant place has
+an icon that accesses the god mode for that tab — icon, not a god mode
+tab."* So the desk is gone, and god mode is not a place any more.
+
+**The bolt.** In a sandbox career a lightning-bolt button sits beside the
+thing it edits, and nowhere in a career that is not one (`ui/god/GodBolt`
+renders nothing without the flag, so a screen can carry one without
+knowing god mode exists):
+
+- **In the header, on every frame**, beside your face: god mode for the
+  tab you are on. It opens a short list of doors — Home: time and the
+  world, your program, the class, the portal when it is open; Team: your
+  program and roster, the class, the portal, your coach; Season: the
+  leagues, time, your program; Program: your program, your coach, budget
+  and staff, the leagues. A door is one editor, not the whole desk.
+- **Floating on a player card** and on a **college profile**: the man, or
+  the program, you are looking at.
+- **On the coach profile's hero**, **on the money sheet**, **on a
+  recruiting file's toolbar**, **under the transfer room's intro**, and
+  beside the intros of **the roster**, **the conference table** and **the
+  schedule**.
+
+**The sheet.** Every bolt opens the same overlay (`ui/god/GodSheet`), the
+player card's twin: a bar with the back arrow, a scroller, nothing
+underneath unmounts. The store keeps a *stack* of targets
+(`godStack`, `openGod`, `closeGod`, `closeGodAll`): a man opened from his
+program's roster steps back to the roster, not out; the hardware back
+button pops the same stack before it closes the card beneath. The
+editors are one file each under `ui/god/` — the man, the program (with
+its roster as a list of doors), the coach, budget and staff, the leagues
+(names, and a trade between any two programs), the class and a recruit,
+the portal, time and the world — and the four controls they share sit in
+`controls.tsx`. Cutting a man or committing a recruit closes the sheet;
+SIM THE SEASON closes every sheet before it runs.
+
+**What went away.** The GOD MODE section of the Program bar, the card on
+the Program overview, and the row in the coach menu — the three doors of
+the previous hour, all answers to the wrong question. Settings → God mode
+keeps its OPEN, which opens the Program tab's doors. The context bar's
+"more" hint (a fade and a chevron when sections sit past its right edge)
+stays; it was true before god mode and is true after.
 
 ## Appendix A: stale comments and vestigial code found while writing this
 

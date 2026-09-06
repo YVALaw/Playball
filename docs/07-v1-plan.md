@@ -1343,7 +1343,8 @@ of the world are free (stage 27); packs and files are the creator kit
    again), a superteam.
 
 All built September 6, later the same night, but for the second half of
-7. **Not in 17, by decision:** injuries and the other rules toggles (free,
+7; and re-shaped the same night on the reporter's verdict from the phone —
+not a desk but a bolt beside every thing it edits (`05` §61.5). **Not in 17, by decision:** injuries and the other rules toggles (free,
 stage 27); name, logo and roster packs, career export and import (stage
 28); a records shelf (the reporter's call: a sandbox's records count).
 

@@ -118,7 +118,7 @@ export function Settings() {
   const godMode = useDynasty((s) => s.godMode);
   const forkToSandbox = useDynasty((s) => s.godForkToSandbox);
   const closeOverlay = useDynasty((s) => s.closeOverlay);
-  const goTo = useDynasty((s) => s.go);
+  const openGod = useDynasty((s) => s.openGod);
   const put = (patch: Partial<DevicePrefs>): void => {
     const next = { ...prefs, ...patch };
     setPrefs(next);
@@ -287,11 +287,11 @@ export function Settings() {
                 <span>
                   <strong>{godMode ? 'God mode is on for this career' : 'Fork this career'}</strong>
                   <small>{godMode
-                    ? 'The desk is the last section of the Program tab, and a row in the coach menu.'
+                    ? 'The bolt in the header opens it for the tab you are on. Every player card, program page, recruiting file and money sheet carries a bolt of its own.'
                     : 'A copy of this career in its own sandbox slot, loaded now. The original keeps a snapshot and stays honest.'}</small>
                 </span>
                 {godMode ? (
-                  <button type="button" className="tap" onClick={() => { closeOverlay(); goTo('program', 'god'); }}>OPEN</button>
+                  <button type="button" className="tap" onClick={() => { closeOverlay(); openGod({ kind: 'tab', tab: 'program' }); }}>OPEN</button>
                 ) : (
                   <button type="button" className="tap" onClick={() => void forkToSandbox()}>FORK</button>
                 )}

@@ -38,6 +38,7 @@ import {
   type BadgeId, type BadgeTier,
 } from '../engine/godMode.js';
 import { setLeagueNames, usableLeagueNames } from '../engine/leagueNames.js';
+import type { GodTarget } from '../ui/god/target.js';
 import { setStarGateOpen, type RecruitingPriorities } from '../engine/recruiting.js';
 import { createLiveGame, type LiveGame } from '../engine/liveGame.js';
 import {
@@ -513,10 +514,7 @@ export const TABS: readonly TabDef[] = [
     // through a table that happens to mention them; this one is the directory.
     { id: 'colleges', label: 'COLLEGES' },
     { id: 'history', label: 'HISTORY' },
-    { id: 'strategy', label: 'STRATEGY' },
-    // The sandbox. Only a career that turned god mode on sees it; the
-    // context nav filters it out of every other one.
-    { id: 'god', label: 'GOD MODE' }] },
+    { id: 'strategy', label: 'STRATEGY' }] },
 ];
 
 /** How far through the postseason we are, and what has happened so far. */
@@ -1372,6 +1370,14 @@ export interface DynastyStore {
   godPreset: (kind: 'parity' | 'chaos' | 'superteam') => void;
   /** Copy the career into a new sandbox slot and load it; the original keeps a snapshot. */
   godForkToSandbox: () => Promise<boolean>;
+  /**
+   * The god-mode sheets open over the screen, as a stack: a man opened from
+   * his program's roster steps back to the roster, not out (05 §61.5).
+   */
+  godStack: GodTarget[];
+  openGod: (target: GodTarget) => void;
+  closeGod: () => void;
+  closeGodAll: () => void;
   setDepthMode: (mode: DepthMode) => void;
   setDepthSystem: (key: SystemKey, value: boolean) => void;
 
@@ -6530,6 +6536,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     set({ version: version + 1 });
     void get().saveNow();
   },
+
+  godStack: [],
+  openGod: (target) => {
+    if (!get().godMode) return;
+    set({ godStack: [...get().godStack, target] });
+  },
+  closeGod: () => set({ godStack: get().godStack.slice(0, -1) }),
+  closeGodAll: () => set({ godStack: [] }),
 
   godForkToSandbox: async () => {
     const { season, userTeam } = get();

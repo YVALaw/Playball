@@ -41,6 +41,7 @@ import { CONFERENCES, ALL_STATES } from '../../data/schools.js';
 import { prestigeStars } from '../../engine/program.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { InFrame } from '../Overlay.js';
+import { GodBolt, GodIntroRow } from '../god/GodBolt.js';
 import { FirstVisit } from '../Tutorial.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { MixerHorizontalIcon } from '@radix-ui/react-icons';
@@ -429,10 +430,12 @@ export function Board() {
       header={
       <div className="dense-head" style={{ padding: '9px 14px 6px' }}>
       <div className="screen-title-row">
-        <ModuleIntro
-          kicker={`RECRUITING · ${live ? `WEEK ${week} OF ${RECRUITING_WEEKS}` : 'SIGNED'}`}
-          title="The board"
-        />
+        <GodIntroRow target={{ kind: 'recruits' }} label="Edit the class in god mode">
+          <ModuleIntro
+            kicker={`RECRUITING · ${live ? `WEEK ${week} OF ${RECRUITING_WEEKS}` : 'SIGNED'}`}
+            title="The board"
+          />
+        </GodIntroRow>
         {/*
           Filtering is a mode, not a drawer.
 
@@ -1109,6 +1112,7 @@ function ProspectSheet({
         <section className="prospect-sheet-modern rise-in" onClick={(e) => e.stopPropagation()}>
           <header className="prospect-sheet-toolbar">
             <span><small>RECRUITING FILE</small><strong>#{prospect.rank} nationally</strong></span>
+            <GodBolt target={{ kind: 'recruit', id: p.id }} label={`Edit ${p.name} in god mode`} className="toolbar-god" />
             <button className="tap" type="button" onClick={onClose}>CLOSE</button>
           </header>
 

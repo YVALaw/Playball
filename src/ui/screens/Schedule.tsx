@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { leagueLabel } from '../../engine/leagueNames.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
+import { GodIntroRow } from '../god/GodBolt.js';
 import { teamColour } from '../Avatar.js';
 import { ChevronRightIcon } from '@radix-ui/react-icons';
 import { useOpenTeam } from './TeamCard.js';
@@ -64,10 +65,12 @@ export function Schedule() {
         <FirstVisit id="season" />
 
         <div className="screen-title-row">
-          <ModuleIntro
-            kicker={`${year} SEASON`}
-            title={played === rows.length ? 'The year, in full' : 'The road ahead'}
-          />
+          <GodIntroRow target={{ kind: 'time' }} label="Reshuffle or sim the season in god mode">
+            <ModuleIntro
+              kicker={`${year} SEASON`}
+              title={played === rows.length ? 'The year, in full' : 'The road ahead'}
+            />
+          </GodIntroRow>
           <span className="month-button">{reg.w}-{reg.l}</span>
         </div>
 
