@@ -66,10 +66,14 @@
   --cream-rgb: 244, 248, 244;
   --clay-rgb: var(--accent-rgb, 35, 107, 66);
 
-  --dim: rgba(var(--ink-rgb), 0.58);
+  /* Secondary text has to survive the light theme's recessed surfaces too.
+     0.58 fell below readable contrast on recessed light surfaces; 0.70 clears
+     the 4.5:1 body-text threshold while staying secondary to --ink. Dark mode
+     restores the softer cut. */
+  --dim: rgba(var(--ink-rgb), 0.70);
   --faint: rgba(var(--ink-rgb), 0.2);
   --hairline: rgba(var(--ink-rgb), 0.12);
-  --line: #e2e5df;    /* the hairline as a solid, for rules that sit on --field */
+  --line: #ced4cb;    /* visible light-theme edge; still quiet, no longer disappearing into paper */
   --sunk: #edefe8;    /* one step under --field: the sub-nav, the step rail */
   --soft: var(--accent-soft, #e8f1e9); /* the accent at rest: selected rows, filled meters */
   --yellow: #ecb83d;  /* the live game's active call, and nothing else */
@@ -92,7 +96,7 @@
     readable: 3.3 is the floor the contrast test holds it to, which is off
     without being absent.
   */
-  --mute: #888e87;
+  --mute: #646a64;
   --backdrop: #1d201d;
   /* The black bands -- table heads, question cards, the FABs. Black in the
      light theme, and still dark in the dark one, where --ink flips light. */
@@ -145,6 +149,7 @@
   --paper: #1c231d;
   --ink: #e4eae4;
   --ink-rgb: 228, 234, 228;
+  --dim: rgba(var(--ink-rgb), 0.58);
   --clay: var(--accent-dk, #4da97a);
   --clay-rgb: var(--accent-dk-rgb, 77, 169, 122);
   --alert: #e0655e;
@@ -193,6 +198,7 @@
     --paper: #1c231d;
     --ink: #e4eae4;
     --ink-rgb: 228, 234, 228;
+    --dim: rgba(var(--ink-rgb), 0.58);
     --clay: var(--accent-dk, #4da97a);
     --clay-rgb: var(--accent-dk-rgb, 77, 169, 122);
     --alert: #e0655e;
@@ -401,7 +407,7 @@ body {
   font: 500 calc(9px * var(--ts)) var(--mono);
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(var(--ink-rgb), 0.5);
+  color: var(--dim);
 }
 
 button {

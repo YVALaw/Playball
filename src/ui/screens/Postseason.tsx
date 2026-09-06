@@ -37,7 +37,7 @@ import {
   regionOf, REGIONS, CONF_FIELD, CONF_ADVANCE, NATIONAL_BIDS,
 } from '../../engine/postseason.js';
 import type {
-  Series, SeriesBracket, RegionalSeries, ConferenceTournament, TournamentResult,
+  Series, SeriesBracket, RegionalSeries, ConferenceTournament, TournamentResult, BracketGame,
 } from '../../engine/postseason.js';
 import {
   liveSlotFor, slotName, nextRoundName,
@@ -160,13 +160,10 @@ export function Postseason() {
     The follow-the-side effect lived here — losing in the winners bracket
     used to move the VIEW to the losers side for you. The one-map redesign
     made it meaningless: both sides are on screen, stacked, with your drop
-    marked between them. What elimination does move is the tab — a knocked
-    out team has no next game, so the pregame show yields to the bracket.
+    marked between them. What elimination moves now is the tab, and not to
+    the bracket any more: a knocked-out team has no next game, so the
+    pregame show yields to the spotlight — see `spectatorMode` below.
   */
-  const nowOut = myBracket ? myBracket.state.eliminated.includes(userTeam) : false;
-  useEffect(() => {
-    if (nowOut) setJuneTab('bracket');
-  }, [nowOut]);
 
   /*
     Two different questions, and conflating them was half the bug.
@@ -191,6 +188,14 @@ export function Postseason() {
     ? conferenceField(season, team.conference).field.indexOf(userTeam) + 1
     : 0;
   const inTheField = mySeed > 0;
+  // Spectator mode also covers the programs that never made the conference
+  // field. They should never see a dead YOUR NEXT GAME room either.
+  const spectatorMode = iAmOut || (bracket?.stage === 'conference' && !inTheField);
+  useEffect(() => {
+    // Arrive on the useful room once. A reader can still choose BRACKET after
+    // this; the dependency does not change again while he is spectating.
+    if (spectatorMode) setJuneTab('next');
+  }, [spectatorMode]);
   const introKey = `${year}:in:${stageKey}`;
   // No out card for the national final: the runner-up takeover from
   // closeMyBracket already owns that beat, and "select better which one
@@ -309,14 +314,14 @@ export function Postseason() {
     so a rival's game is as readable as your own; the day-keyed store is the
     fallback for a slot from a save written before that.
   */
-  const openSlot = (slot: DESlot): void => {
-    const g = slot.game;
+  const openGame = (g: BracketGame | null | undefined): void => {
     if (!g) return;
     if (g.box) { setOpenBox(g.box); return; }
     const day = g.day;
     if (day === undefined || !season.boxScores?.[day]) return;
     setOpenBox(season.boxScores[day]);
   };
+  const openSlot = (slot: DESlot): void => openGame(slot.game);
 
   const name = (i: number): string => season.teams[i]?.def.school ?? '?';
   const abbr = (i: number): string => season.teams[i]?.def.abbr ?? '?';
@@ -395,7 +400,7 @@ export function Postseason() {
   const lookingAt = `${juneTab}:${natHalf ?? ''}`;
   useLayoutEffect(() => {
     const scroller = scrollerRef.current;
-    if (!scroller) return undefined;
+    if (!scroller || spectatorMode) return undefined;
     let frame = 0;
     {
       /*
@@ -479,7 +484,7 @@ export function Postseason() {
       frame = requestAnimationFrame(step);
     }
     return () => cancelAnimationFrame(frame);
-  }, [lookingAt, shown, version]);
+  }, [lookingAt, shown, version, spectatorMode]);
 
   const stageTitle = rung === 0 ? `${team.conference} tournament`
     : rung === 1 ? 'The regionals' : 'The national tournament';
@@ -660,15 +665,15 @@ export function Postseason() {
             becomes the round and the whole tournament instead.
           */
           label: iAmOut
-            ? (() => {
-                const round = myBracket.format === 'double'
-                  ? nextRoundName(myBracket.state) : null;
-                return round ? `SEE THE ${round.toUpperCase()}` : 'SEE THE NEXT GAMES';
-              })()
+            ? (myBracket.kind === 'conference'
+              ? `SIM TO ${team.conference.toUpperCase()} CHAMPIONSHIP`
+              : myBracket.kind === 'national'
+                ? 'SIM TO BRACKET CHAMPIONSHIP'
+                : 'SIM TO THE CHAMPIONSHIP')
             : 'SIM TO MY NEXT GAME',
-          run: () => sim(iAmOut ? 'round' : 'mine'),
+          run: () => sim(iAmOut ? 'rest' : 'mine'),
           secondary: iAmOut
-            ? { label: 'SIM TO THE END OF THE TOURNAMENT', onClick: () => sim('rest') }
+            ? { label: 'VIEW THE BRACKET', onClick: () => setJuneTab('bracket') }
             : {
                 label: (() => {
                   const round = myBracket.format === 'double'
@@ -823,11 +828,12 @@ export function Postseason() {
           {/* The stage's two rooms. Reviewing an older stage or being out of
               June both mean there is no next game, so the toggle only shows
               while the question it answers exists. */}
-          {reviewing === null && !iAmOut && (
+          {reviewing === null && (
             <SubToggle
-              options={[['next', 'NEXT GAME'], ['bracket', 'BRACKET']]}
+              options={[['next', spectatorMode ? 'IMPORTANT GAMES' : 'NEXT GAME'], ['bracket', 'BRACKET']]}
               at={juneTab}
               onGo={(v) => setJuneTab(v as JuneTab)}
+              spectator={spectatorMode}
             />
           )}
         </div>
@@ -915,7 +921,19 @@ export function Postseason() {
               the stage played means you WON it, so the card says that, and
               points at the same button that moves the June along.
             */}
-            {reviewing === null && !iAmOut && juneTab === 'next'
+            {reviewing === null && spectatorMode && juneTab === 'next' && (
+              <ImportantGames
+                bracket={bracket}
+                myBracket={myBracket}
+                sideShow={sideShow}
+                conference={team.conference}
+                name={name}
+                abbr={abbr}
+                onOpen={openGame}
+              />
+            )}
+
+            {reviewing === null && !spectatorMode && juneTab === 'next'
               && myBracket === null && stagePlayed && (
               <section className="pregame-show is-waiting">
                 <div className="pregame-kicker">
@@ -939,7 +957,7 @@ export function Postseason() {
                 </p>
               </section>
             )}
-            {reviewing === null && !iAmOut && juneTab === 'next'
+            {reviewing === null && !spectatorMode && juneTab === 'next'
               && !(myBracket === null && stagePlayed) && (
               <PregameShow
                 myBracket={myBracket}
@@ -966,7 +984,7 @@ export function Postseason() {
               genuinely changes. Off under `prefers-reduced-motion` with
               everything else.
             */}
-            {(reviewing !== null || iAmOut || juneTab === 'bracket') && (
+            {(reviewing !== null || juneTab === 'bracket') && (
             <div
               className="bracket-view-transition"
               key={`${shown}:${lookingAt}`}
@@ -1083,8 +1101,8 @@ function StageRail(
 
 /** The winners/losers (and opening) toggle, in the app's own clothes. */
 function SubToggle(
-  { options, at, onGo }:
-  { options: [string, string][]; at: string; onGo: (v: string) => void },
+  { options, at, onGo, spectator = false }:
+  { options: [string, string][]; at: string; onGo: (v: string) => void; spectator?: boolean },
 ) {
   return (
     <div className="postseason-view-toggle" role="tablist" aria-label="Postseason view">
@@ -1097,11 +1115,202 @@ function SubToggle(
           className={at === v ? 'active' : ''}
           onClick={() => onGo(v)}
         >
-          <small>{v === 'next' ? 'YOUR PATH' : 'THE FIELD'}</small>
+          <small>{v === 'next' ? (spectator ? 'POSTSEASON SPOTLIGHT' : 'YOUR PATH') : 'THE FIELD'}</small>
           <strong>{label}</strong>
         </button>
       ))}
     </div>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// Spectator room — once our season is over
+// ---------------------------------------------------------------------------
+
+interface SpotlightGame {
+  key: string;
+  kicker: string;
+  title: string;
+  a: number | null;
+  b: number | null;
+  game: BracketGame | null;
+  note: string;
+}
+
+/** Prefer the reset if it exists, otherwise the first championship game. */
+function spotlightFinal(slots: readonly DESlot[] | undefined): DESlot | null {
+  if (!slots || slots.length === 0) return null;
+  // If the first championship forced a reset, the reset is the game that
+  // matters now; only fall back to the latest finished final when nothing is
+  // still waiting to be played.
+  return [...slots].reverse().find(
+    (slot) => slot.game === null && slot.a !== null && slot.b !== null,
+  ) ?? [...slots].reverse().find((slot) => slot.game !== null)
+    ?? [...slots].reverse().find((slot) => slot.a !== null || slot.b !== null)
+    ?? slots[0] ?? null;
+}
+
+function gameSpotlight(
+  key: string, kicker: string, title: string,
+  a: number | null, b: number | null, game: BracketGame | null, note: string,
+): SpotlightGame {
+  return { key, kicker, title, a, b, game, note };
+}
+
+/**
+ * When the coached team is done, June becomes a spectator experience rather
+ * than a dead bracket. The important games are deliberately few: the
+ * championship of the room currently being played, then the national title as
+ * soon as its finalists exist. The full bracket remains one tap away.
+ */
+function ImportantGames(
+  { bracket, myBracket, sideShow, conference, name, abbr, onOpen }:
+  {
+    bracket: NonNullable<ReturnType<typeof useDynasty.getState>['bracket']>;
+    myBracket: ReturnType<typeof useDynasty.getState>['myBracket'];
+    sideShow: ReturnType<typeof useDynasty.getState>['sideShow'];
+    conference: string;
+    name: (i: number) => string;
+    abbr: (i: number) => string;
+    onOpen: (g: BracketGame | null | undefined) => void;
+  },
+) {
+  const games: SpotlightGame[] = [];
+
+  if (bracket.stage === 'conference') {
+    const cup = bracket.cups.find((c) => c.conference === conference);
+    const live = myBracket?.kind === 'conference' && myBracket.format === 'double'
+      ? spotlightFinal(myBracket.state.final) : null;
+    const settled = spotlightFinal(cup?.de?.final);
+    const slot = live ?? settled;
+    games.push(gameSpotlight(
+      'conference-title', `${conference.toUpperCase()} · CHAMPIONSHIP`,
+      `${conference} championship`, slot?.a ?? null, slot?.b ?? null,
+      slot?.game ?? null,
+      slot?.game
+        ? `${name(slot.game.winner)} took the championship game.`
+        : slot?.a !== null && slot?.a !== undefined && slot?.b !== null && slot?.b !== undefined
+          ? 'The title game is set.'
+          : 'The bracket is still deciding who reaches the championship.',
+    ));
+  } else if (bracket.stage === 'regional') {
+    const region = regionOf(conference);
+    const local = bracket.regionals.filter((r) => r.region === region);
+    const pool = local.length > 0 ? local : bracket.regionals;
+    for (const r of pool.slice(-3)) {
+      const last = r.games[r.games.length - 1] ?? null;
+      games.push(gameSpotlight(
+        `regional-${r.region}-${r.seeds.join('-')}`,
+        `${r.name.toUpperCase()} · REGIONAL CHAMPIONSHIP`,
+        `${name(r.seeds[0] ?? -1)} vs ${name(r.seeds[1] ?? -1)}`,
+        r.seeds[0] ?? null, r.seeds[1] ?? null, last,
+        last ? `${name(r.champion)} won the regional and moves on.`
+          : 'A regional championship series is still being decided.',
+      ));
+    }
+    if (games.length === 0) {
+      games.push(gameSpotlight(
+        'regional-forming', 'REGIONALS · CHAMPIONSHIP SERIES',
+        'Regional championships', null, null, null,
+        'The conference tournaments are feeding the regional field now.',
+      ));
+    }
+  } else {
+    const nat = bracket.national;
+    const final = nat?.final ?? null;
+    if (final) {
+      const last = final.games[final.games.length - 1] ?? null;
+      games.push(gameSpotlight(
+        'national-title', 'NATIONAL CHAMPIONSHIP', 'Championship series',
+        final.seeds[0] ?? null, final.seeds[1] ?? null, last,
+        `National champions: ${name(final.champion)}.`,
+      ));
+    } else {
+      const champA = nat?.bracketA?.champion ?? null;
+      const champB = nat?.bracketB?.champion ?? null;
+      if (champA !== null && champB !== null) {
+        games.push(gameSpotlight(
+          'national-title-forming', 'NATIONAL CHAMPIONSHIP',
+          `${name(champA)} vs ${name(champB)}`, champA, champB, null,
+          'The two showdown winners are set. The championship series is next.',
+        ));
+      }
+
+      const half = (which: 'A' | 'B'): SpotlightGame | null => {
+        const result = which === 'A' ? nat?.bracketA : nat?.bracketB;
+        if (result) {
+          const slot = spotlightFinal(result.final);
+          return gameSpotlight(
+            `national-${which}`, `SHOWDOWN ${which} · CHAMPIONSHIP`,
+            `Bracket ${which} championship`, slot?.a ?? result.placings?.[0] ?? null,
+            slot?.b ?? result.placings?.[1] ?? null, slot?.game ?? null,
+            `Bracket ${which} winner: ${name(result.champion)}.`,
+          );
+        }
+        const state = myBracket?.kind === 'national' && myBracket.format === 'double'
+          && myBracket.half === which ? myBracket.state
+          : sideShow?.half === which ? sideShow.state : null;
+        if (!state) return null;
+        const slot = spotlightFinal(state.final);
+        return gameSpotlight(
+          `national-${which}`, `SHOWDOWN ${which} · CHAMPIONSHIP`,
+          `Bracket ${which} championship`, slot?.a ?? null, slot?.b ?? null,
+          slot?.game ?? null,
+          slot?.game ? `${name(slot.game.winner)} won this championship game.`
+            : slot?.a !== null && slot?.a !== undefined && slot?.b !== null && slot?.b !== undefined
+              ? 'The bracket championship is set.'
+              : 'The showdown is still deciding its finalists.',
+        );
+      };
+
+      for (const which of ['A', 'B'] as const) {
+        const item = half(which);
+        if (item && !games.some((g) => g.key === item.key)) games.push(item);
+      }
+    }
+  }
+
+  return (
+    <section className="postseason-spotlight">
+      <header>
+        <small>YOUR RUN IS OVER · JUNE CONTINUES</small>
+        <strong>The games that matter now</strong>
+        <p>Follow the championships here. The full bracket is still available beside this tab.</p>
+      </header>
+      <div className="postseason-spotlight-list">
+        {games.slice(0, 3).map((item) => {
+          const away = item.game?.away ?? item.a;
+          const home = item.game?.home ?? item.b;
+          return (
+            <article className="postseason-spotlight-game" key={item.key}>
+              <div className="postseason-spotlight-title">
+                <span><small>{item.kicker}</small><strong>{item.title}</strong></span>
+                <b>{item.game ? 'FINAL' : away !== null && home !== null ? 'SET' : 'FORMING'}</b>
+              </div>
+              <div className="postseason-spotlight-matchup">
+                <span>
+                  {away !== null ? <Crest abbr={abbr(away)} size={31} /> : <i className="spotlight-tbd">?</i>}
+                  <b>{away !== null ? name(away) : 'TBD'}</b>
+                  {item.game && <strong>{item.game.awayRuns}</strong>}
+                </span>
+                <span>
+                  {home !== null ? <Crest abbr={abbr(home)} size={31} /> : <i className="spotlight-tbd">?</i>}
+                  <b>{home !== null ? name(home) : 'TBD'}</b>
+                  {item.game && <strong>{item.game.homeRuns}</strong>}
+                </span>
+              </div>
+              <p>{item.note}</p>
+              {item.game && (
+                <button type="button" className="tap" onClick={() => onOpen(item.game)}>
+                  VIEW GAME
+                </button>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

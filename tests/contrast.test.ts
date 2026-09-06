@@ -52,7 +52,7 @@ export function contrast(a: string, b: string): number {
 // small lesson: a contrast test is only as true as its inputs.
 const LIGHT = {
   paper: '#ffffff', wash: '#f5f7f2', field: '#fffefa', band: '#1d201d',
-  ink: '#1d201d', cream: '#f4f8f4', mute: '#888e87',
+  ink: '#1d201d', cream: '#f4f8f4', mute: '#646a64',
   alert: '#c9362f', win: '#236b42', alertInk: '#f4f8f4',
 };
 
@@ -106,6 +106,20 @@ const PAIRS: readonly { text: string; on: string; large?: boolean; what: string 
   { text: 'win', on: 'paper', what: 'a settled action on a card' },
 ];
 
+
+/** Composite an rgba text token over its real surface, for secondary copy. */
+function composite(hex: string, over: string, alpha: number): string {
+  const read = (v: string): [number, number, number] => {
+    const n = parseInt(v.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  };
+  const [fr, fg, fb] = read(hex);
+  const [br, bg, bb] = read(over);
+  const ch = (f: number, b: number): string =>
+    Math.round(f * alpha + b * (1 - alpha)).toString(16).padStart(2, '0');
+  return `#${ch(fr, br)}${ch(fg, bg)}${ch(fb, bb)}`;
+}
+
 describe('the palette carries its own text', () => {
   it('holds in the light theme', () => {
     for (const p of PAIRS) {
@@ -113,6 +127,17 @@ describe('the palette carries its own text', () => {
         LIGHT[p.text as keyof typeof LIGHT], LIGHT[p.on as keyof typeof LIGHT],
       );
       expect(r, `${p.what} (${p.text} on ${p.on})`).toBeGreaterThanOrEqual(p.large ? 3 : 4.5);
+    }
+  });
+
+  it('keeps live secondary text readable on every light surface', () => {
+    // --dim is used for real labels and explanatory copy, not disabled text.
+    // The old .58 alpha measured 3.53:1 on --sunk, which is the washed-out
+    // state visible in light-mode tab strips. The token now clears AA on the
+    // three surfaces it actually sits on.
+    for (const surface of [LIGHT.paper, LIGHT.wash, '#edefe8']) {
+      const dim = composite(LIGHT.ink, surface, 0.70);
+      expect(contrast(dim, surface)).toBeGreaterThanOrEqual(4.5);
     }
   });
 
@@ -129,6 +154,7 @@ describe('the palette carries its own text', () => {
     // Not by brightness — the surfaces are deliberately close, because
     // lifting a card on a dark ground reads as washed-out grey. The border
     // is what draws the edge, so the border is what has to be visible.
+    expect(contrast('#ced4cb', LIGHT.paper), 'the light line against a card').toBeGreaterThanOrEqual(1.5);
     expect(contrast('#3a463c', DARK.paper), 'the line against a card').toBeGreaterThan(1.5);
     expect(contrast('#3a463c', DARK.field), 'the line against the chrome').toBeGreaterThan(1.5);
   });

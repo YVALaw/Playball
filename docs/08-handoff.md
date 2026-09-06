@@ -6,9 +6,29 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 6, 2026, night · **Branch:** `main` · **three
-dugout reports from the emulator, fixed** (`05` §55), after Recruiting 1.0
-(§54) and stage 18b (§53).
+**Last session:** September 6, 2026, late · **Branch:** `main` · **the light
+theme made legible and a June for the spectator, merged** (`05` §56), after
+three dugout reports (§55) and Recruiting 1.0 (§54).
+
+> **September 6, late — a fifth folder: the light theme made legible, and
+> a June for the spectator.**
+>
+> Taken at `23d00b5`, two commits behind, so its engine, dugout screen,
+> tests and docs would have reverted §55 and stayed out; five files came,
+> none of them touched on `main` since. Light secondary text was ink at
+> 58% — 4.09 against paper, under the 4.5 body text needs — and is 70%
+> now, 6.06; the card edge and the mute go the same way, and the dark
+> theme keeps its own values explicitly. Once you were out of June the
+> screen parked you on the bracket with a dead NEXT GAME tab; it opens
+> IMPORTANT GAMES now — the championship of the room being played, then
+> the national title as its finalists appear — with the bracket a tap
+> away and a primary button that sims the rest. `05` §56.
+>
+> **What the merge found:** a dead `nowOut` under a comment describing the
+> old tab switch; the bracket transition defined three times, the two
+> slides shadowed by the pass's settle, removed; the contrast test's table
+> of light surfaces still listing the old mute. The APK on the emulator is
+> rebuilt from this tree.
 
 > **September 6, night — three reports from the emulator, all true, none the
 > rule it looked like.**
@@ -653,7 +673,7 @@ exists. Stage 19 removes the three together.
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,178 tests, 58 files)
+npm run check      # typecheck + the whole suite (1,179 tests, 58 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing

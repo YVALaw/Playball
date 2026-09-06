@@ -2801,9 +2801,9 @@ and it found the four items that matter most in the whole list.
     and `.portal-sign-sheet` are both bottom sheets without one, where
     `.playbook-library-sheet` and `.profile-command-sheet` have it.
 27. **The screen surface's `pageSoftIn` has no reduced-motion guard**, the
-    one new keyframe without the pair every other one carries. And
-    `.bracket-view-transition` with `bracketRoomIn` is defined twice at
-    different timings; the second wins silently.
+    one new keyframe without the pair every other one carries. (The
+    `.bracket-view-transition` that was defined twice at different timings
+    is one rule now, a 180ms settle; `05` §56.)
 28. **The postseason lineup takeover slides vertically under full
     motion**, not horizontally as designed: it carries both `screen-in` and
     its own class, and the higher-specificity `[data-motion="full"]

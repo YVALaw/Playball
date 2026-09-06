@@ -1302,7 +1302,7 @@
 
 .award-list small {
   display: block;
-  color: rgba(var(--ink-rgb), .62);
+  color: var(--dim);
   font-size: calc(7.5px * var(--ts));
   font-weight: 800;
   letter-spacing: .08em;
@@ -2928,10 +2928,13 @@
   pointer-events: none;
 }
 
-/* Segmented: the clay fill is the indicator, behind the labels. */
-.segmented[data-slide]::before { top: 0; bottom: 0; }
+/* Segmented: a stable selected tile plus a sliding 3px rule.
+   The old full-height pseudo-element could peek around/behind buttons as the
+   measured width changed, leaving the odd leftover shape reported in light
+   mode. A rule keeps the motion without painting a second button underneath. */
+.segmented[data-slide]::before { top: auto; bottom: 0; height: 3px; z-index: 2; }
 .segmented[data-slide] button { position: relative; z-index: 1; }
-.segmented[data-slide] button.active { background: transparent; }
+.segmented[data-slide] button.active { background: var(--paper); color: var(--ink); box-shadow: none; }
 
 /* Context nav: the 3px underline, keeping its 12px end insets via the hook. */
 .context-nav[data-slide]::before { bottom: 0; height: 3px; }
@@ -5554,6 +5557,13 @@
   background: var(--paper);
   box-shadow: inset 0 -3px var(--clay), 0 2px 7px rgba(0,0,0,.06);
 }
+
+.offseason-frame .segmented[data-slide] button.active,
+.offseason-frame .segmented[data-slide] button[aria-selected="true"] {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 2px 7px rgba(0,0,0,.06);
+}
 .offseason-frame .flow-section-title {
   margin-top: 15px;
   padding: 8px 10px;
@@ -6569,10 +6579,6 @@
 .june-standing.unbeaten { border-left-color:var(--win); }
 .june-standing strong { color:var(--ink) !important; }
 .june-standing span { color:var(--dim) !important; }
-.bracket-view-transition { animation:bracketRoomIn 300ms cubic-bezier(.2,.82,.25,1) both; transform-origin:50% 24%; }
-@keyframes bracketRoomIn { from { opacity:0; transform:translateX(18px) scale(.995); } to { opacity:1; transform:none; } }
-:root[data-motion="reduced"] .bracket-view-transition { animation:none; }
-@media (prefers-reduced-motion:reduce) { .bracket-view-transition { animation:none; } }
 .champion-banner { position:relative; overflow:hidden; margin:8px 0 12px; border:1px solid var(--line); background:var(--paper); box-shadow:0 16px 32px rgba(0,0,0,.10); }
 .champion-banner-glow { position:absolute; right:-45px; top:-55px; width:160px; height:160px; border-radius:50%; background:rgba(var(--clay-rgb),.08); pointer-events:none; }
 .champion-banner.rung-0 { --banner-metal:var(--bronze); }
@@ -6772,9 +6778,6 @@
 .june-standing-record small { display:block; color:var(--dim); font:700 calc(5px * var(--ts)) var(--mono); }
 .june-standing-record strong { display:block; margin-top:2px; font:800 calc(16px * var(--ts)) var(--display); }
 
-/* Bracket/stage switches get a real slide rather than a cut. */
-.bracket-view-transition { animation:bracketRoomIn 330ms cubic-bezier(.16,.84,.24,1) both; }
-@keyframes bracketRoomIn { from { opacity:.15; transform:translateX(24px) scale(.992); } to { opacity:1; transform:none; } }
 
 .segmented button { position:relative; }
 .segmented-alert { position:absolute; top:5px; right:6px; width:6px; height:6px; border-radius:50%; background:var(--alert); box-shadow:0 0 0 2px var(--paper); }
@@ -7010,4 +7013,143 @@
 .data-table > button {
   content-visibility: auto;
   contain-intrinsic-size: auto 58px;
+}
+
+/* ---------------------------------------------------------------------------
+   September 6 — light-theme legibility + postseason spectator flow.
+   --------------------------------------------------------------------------- */
+
+/* The postseason scroller is moved explicitly by the bracket-centering code.
+   A second CSS smooth-scroll on the same element made successive June updates
+   feel as though the screen were catching up with itself. */
+.postseason-scroll { scroll-behavior: auto; }
+
+/* When a room genuinely changes, settle it quickly. Round-by-round simulation
+   no longer replays a large sideways entrance. */
+.bracket-view-transition {
+  animation: bracketRoomSettle 180ms cubic-bezier(.2,.82,.28,1) both;
+}
+@keyframes bracketRoomSettle {
+  from { opacity:.55; transform:translateY(4px); }
+  to { opacity:1; transform:none; }
+}
+:root[data-motion="reduced"] .bracket-view-transition { animation:none; }
+@media (prefers-reduced-motion:reduce) { .bracket-view-transition { animation:none; } }
+
+.postseason-spotlight {
+  margin: 2px 14px 12px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  box-shadow: 0 12px 26px rgba(0,0,0,.055);
+}
+.postseason-spotlight > header {
+  padding: 12px 12px 11px;
+  border-bottom: 1px solid var(--line);
+  border-top: 4px solid var(--alert);
+  background: var(--wash);
+}
+.postseason-spotlight > header small {
+  display:block;
+  color:var(--alert);
+  font:800 calc(6.5px * var(--ts)) var(--mono);
+  letter-spacing:.1em;
+}
+.postseason-spotlight > header strong {
+  display:block;
+  margin-top:4px;
+  font:800 calc(20px * var(--ts))/.95 var(--display);
+  text-transform:uppercase;
+}
+.postseason-spotlight > header p {
+  margin:5px 0 0;
+  color:var(--dim);
+  font:500 calc(8.5px * var(--ts))/1.4 var(--body);
+}
+.postseason-spotlight-list { display:grid; gap:9px; padding:10px; }
+.postseason-spotlight-game {
+  overflow:hidden;
+  border:1px solid var(--line);
+  background:var(--paper);
+}
+.postseason-spotlight-title {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  padding:9px 10px;
+  border-bottom:1px solid var(--line);
+  background:var(--wash);
+}
+.postseason-spotlight-title span { min-width:0; }
+.postseason-spotlight-title small,
+.postseason-spotlight-title strong { display:block; }
+.postseason-spotlight-title small {
+  color:var(--dim);
+  font:800 calc(5.8px * var(--ts)) var(--mono);
+  letter-spacing:.09em;
+}
+.postseason-spotlight-title strong {
+  margin-top:3px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font:800 calc(12px * var(--ts))/1 var(--body);
+}
+.postseason-spotlight-title > b {
+  flex:none;
+  padding:4px 6px;
+  border:1px solid var(--line);
+  color:var(--clay);
+  background:var(--paper);
+  font:800 calc(5.8px * var(--ts)) var(--mono);
+  letter-spacing:.08em;
+}
+.postseason-spotlight-matchup { display:grid; }
+.postseason-spotlight-matchup > span {
+  display:grid;
+  grid-template-columns:38px minmax(0,1fr) auto;
+  gap:8px;
+  align-items:center;
+  min-height:50px;
+  padding:6px 10px;
+}
+.postseason-spotlight-matchup > span + span { border-top:1px solid var(--line); }
+.postseason-spotlight-matchup b {
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font:800 calc(11px * var(--ts)) var(--body);
+}
+.postseason-spotlight-matchup strong {
+  color:var(--ink);
+  font:800 calc(22px * var(--ts))/.9 var(--display);
+  font-variant-numeric:tabular-nums;
+}
+.spotlight-tbd {
+  display:grid;
+  place-items:center;
+  width:31px;
+  height:35px;
+  border:1px dashed var(--line);
+  color:var(--dim);
+  background:var(--wash);
+  font:800 calc(12px * var(--ts)) var(--display);
+  font-style:normal;
+}
+.postseason-spotlight-game > p {
+  margin:0;
+  padding:8px 10px;
+  border-top:1px solid var(--line);
+  color:var(--dim);
+  font:500 calc(8px * var(--ts))/1.35 var(--body);
+}
+.postseason-spotlight-game > button {
+  width:100%;
+  min-height:36px;
+  border-top:1px solid var(--line);
+  background:var(--soft);
+  color:var(--navy);
+  font:800 calc(7px * var(--ts)) var(--mono);
+  letter-spacing:.08em;
 }

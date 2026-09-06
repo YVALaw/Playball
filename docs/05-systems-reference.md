@@ -7425,6 +7425,95 @@ second kind. It is a refinement, not a rule, and it moves the run
 environment, so it waits for a calibration pass rather than riding a
 report about the picture.
 
+## 56. The light theme made legible, and a June for the spectator — **MERGED September 6 2026, late**
+
+A fifth outside folder, taken at `23d00b5` — two commits behind, so its
+engine, dugout screen, tests and docs would have reverted §55 and were left
+out. Five files were the pass: the three stylesheets, the postseason
+screen, and the contrast test. None of the five had moved on `main` since
+the folder's base, so nothing was three-way merged; the review is §56.4.
+
+### 56.1 Secondary text in daylight
+
+The light theme's secondary text — `--dim`, the colour of every kicker,
+caption and small line — was ink at 58% over the surface. Composited, that
+is **4.09** against paper, **4.02** against the wash and **3.92** against the
+card surface, all under the 4.5 that body-sized text needs. It is 70% now:
+**6.06 / 5.82 / 5.67.** Two neighbours went the same way. `--line`, the card
+edge, was `#e2e5df`, a 1.27 against paper that disappeared in sunlight; it
+is `#ced4cb`, 1.51, still quiet. `--mute` was `#888e87`, 3.35; it is
+`#646a64`, 5.54. And one label rule that painted ink at 50% on its own
+(3.22) reads the token instead. The dark theme keeps 58% in both of its
+blocks, written out explicitly so the light change cannot cascade into it:
+brighter ink on a dark ground never had the problem.
+
+The segmented control follows: its active button is paper and ink with an
+inset clay underline rather than a filled tab, and the sliding indicator is
+a 3px bar along the bottom edge under the label, on the offseason frame as
+well. `tests/contrast.test.ts` now composites the dim alpha over each light
+surface and asserts 4.5, and asserts the edge at 1.5, so the next person to
+lighten a token is told.
+
+### 56.2 The spectator's June
+
+Once your run was over — knocked out, or never in the conference field —
+the postseason screen switched you to the bracket and left you there: a
+NEXT GAME tab dead behind you, a primary button about a game you did not
+have, the centering scroll hunting for a path that no longer existed.
+
+`spectatorMode` is `iAmOut`, or the conference stage with your program
+outside the field. In it the first tab is **IMPORTANT GAMES** under a
+POSTSEASON SPOTLIGHT kicker, with BRACKET one tap away, and the room lists
+at most three cards:
+
+- **Conference stage:** the championship game of your conference's cup —
+  read from your own double elimination while it is still being played,
+  from the settled cup afterwards, preferring the reset when the first
+  championship game forced one.
+- **Regional stage:** the deciding game of up to three regional series in
+  your region. The other regionals are simulated and recorded when yours
+  begins and yours joins them when it closes, so a spectator sees finished
+  series; the card says so when none has.
+- **National stage:** the championship series once it exists; before that
+  the two showdown winners as a forming card, and each showdown's
+  championship slot read from your bracket or the side show.
+
+Each card carries FINAL, SET or FORMING, both crests, the score once the
+game is played, and VIEW GAME, which opens the box. The primary action
+while you are out is SIM TO *conference* CHAMPIONSHIP, SIM TO BRACKET
+CHAMPIONSHIP or SIM TO THE CHAMPIONSHIP: it plays the rest of the
+tournament, championship included, and the card reads FINAL when it
+returns. VIEW THE BRACKET is the secondary. The centering effect stands
+down in spectator mode, and the tab lands on the spotlight once, when the
+mode turns on; a reader who then chooses BRACKET is left there.
+
+### 56.3 One transition, and a scroller that stops fighting itself
+
+`.bracket-view-transition` was defined twice before this pass, at 300ms and
+330ms (`06` §X item 27), and the pass added a third: a 180ms settle. The
+cascade takes the last, so the settle was already the rule and the two
+slides were dead; they are gone with their keyframes, the reduced-motion
+guards kept once. The wrapper that carries it now mounts only when the
+bracket is on screen, so a round simulated from the spotlight does not
+replay an entrance. And `.postseason-scroll` is `scroll-behavior: auto`:
+the centering code moves that scroller explicitly, and a CSS smooth scroll
+on the same element made successive June updates feel as though the screen
+were catching up with itself.
+
+### 56.4 What the merge found
+
+- **`nowOut` outlived its effect.** The pass removed the effect that moved
+  the tab to the bracket on elimination but left the flag it read, under a
+  comment describing the old behaviour. Removed; the comment now points at
+  `spectatorMode`.
+- **Two shadowed transition rules**, §56.3, removed.
+- **The contrast test's table of light surfaces** still listed `mute` at
+  `#888e87`. No assertion read it, which is why nothing failed; it says
+  `#646a64` now, because a contrast test is only as true as its inputs.
+- **Not changed:** SIM TO … CHAMPIONSHIP plays through the championship
+  rather than stopping in front of it. For a spectator there is nothing to
+  stop for, and the label reads as a destination; it stands.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code
