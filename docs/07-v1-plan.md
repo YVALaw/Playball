@@ -1409,6 +1409,78 @@ back button out of it.
 **Not to be confused with the gesture rule.** "Tap selects, hold reads" is
 about lists and is unrelated; this is the system's own back.
 
+### What the static read found — September 6, before the emulator
+
+Everything below was read out of the shell, the stylesheet and Capacitor
+8's own sources (`node_modules/@capacitor/android`), not observed. It
+narrows the emulator session to two specific things to watch.
+
+**Edge-to-edge needs no change, in either of the two ways it can go.**
+Capacitor 8 ships a native `SystemBars` plugin (default
+`insetsHandling: 'css'`) with a window-insets listener that takes one of
+two branches. If the WebView is major version 140 or newer *and* the page
+declares `viewport-fit=cover` — Playball does — the WebView draws under
+the bars, the page's `env(safe-area-inset-*)` reports real values, and
+matching `--safe-area-inset-*` variables are injected too. Otherwise, on
+Android 15 and up, Capacitor pads the WebView's parent view by the
+system-bar insets itself and hands the page insets of **zero**, so both
+`env()` and the injected variables read 0. Playball reads `env()` in
+twenty-nine places (every header's top, the nav bar, command bars, the
+three FABs, every workspace's bottom, the sheets) and nowhere hardcodes a
+bar-sized pad, so it is correct in both branches: real insets when they
+are passed through, nothing doubled when Capacitor has already padded.
+The stylesheet's absolutely-anchored rules without an inset are scrims
+and decorations that are meant to reach the edge.
+
+Two cosmetic things remain for the device. Which branch fires depends on
+the emulator image's WebView version, and in the padded branch the band
+under the status bar shows the *window* background — `AppTheme.NoActionBar`
+sets `android:background` to `@null`, so that is AppCompat's DayNight
+default, white or near-black — rather than the app's paper, which is
+`#ffffff` light and `#1c231d` dark. Close enough in both modes, but a
+dark app under a light OS (or the reverse) would show a wrong-coloured
+band, and that is the thing to look at. Gesture and three-button
+navigation are different insets; check both.
+
+**Predictive back: Capacitor does not handle it, which means the WebView
+does.** `BridgeActivity` and `Bridge` contain no `onBackPressed`, no
+`OnBackInvokedCallback` and no `goBack()`; `MainActivity` is a bare
+`BridgeActivity`; `@capacitor/app` is not installed. And yet the gesture
+peels one layer per press in the APK today (`14`). The only mechanism
+left is the WebView's own: a modern Chromium WebView registers a back
+callback with the system whenever it `canGoBack()`, and navigates its own
+history when the gesture commits. Playball's sentinel entry keeps
+`canGoBack()` true at every moment, so the WebView always claims the
+gesture, the pop reaches `popstate`, the app closes a layer and re-arms.
+That is why it works — and it is also the whole problem.
+
+Two hypotheses, each a thing to watch for:
+
+- **H1, at depth.** The preview the system animates during the gesture is
+  the WebView's own history navigation, not the app's "close this sheet".
+  It may look like nothing, or like a page slide. Either is acceptable if
+  the layer closes on commit.
+- **H2, at HOME.** With nothing left to close the handler lets the pop
+  stand and calls `history.back()` a second time. But the sentinel was
+  the only entry behind the page, and the first pop already consumed it,
+  so the second `history.back()` has nowhere to go and does nothing —
+  *and* `canGoBack()` is now false, so the WebView stops claiming the
+  gesture. Expected symptom: **one dead press at HOME**, then the next
+  press exits through the system with the proper exit preview. If the
+  WebView instead keeps claiming back, the symptom is that the app
+  cannot be left by the gesture at all.
+
+**The candidate fix, if H2 is what the device shows.** Arm the sentinel
+only while there is something to close — a player card, an overlay, a
+sub-screen, a tab other than HOME — and drop it when the app returns to
+HOME. Then at HOME `canGoBack()` is honestly false, the WebView does not
+claim the gesture, the system previews the exit and finishes the activity
+in one press; at depth the behaviour is unchanged. The exit branch's
+second `history.back()` goes away with it. This is the "history mirrors
+the app's depth" design the brief above already argued for, and the
+browser gets a working back button out of it for free. `@capacitor/app`
+and `App.exitApp()` are the alternative and are not needed.
+
 ## Stage 19 · Ship
 
 **Size:** medium · **Dead last, after 18** · **Grew September 3:** the
