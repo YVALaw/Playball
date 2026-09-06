@@ -7617,6 +7617,51 @@ Item 14 — what the pass dropped on purpose, to be judged after a season of
 play — and the two measurements, 24 and 25, decided in `06` §AA. Everything
 else in the section is done.
 
+## 58. Stage 24 closed as a background picker — **September 6 2026, late**
+
+The plan still owed stage 24 the interview's reveal and result card. The
+interview was already gone: the interface pass of September 5 had put four
+cards in its place, and the reporter confirmed the cut tonight as his own
+decision — *"it felt long and unnecessary so I removed it and added 4
+options which is easier and faster."* The dev server he was looking at
+served the outside folder, and that folder's creation screen is the one on
+`main`. So the step is not a merge; it is the stage's remaining intent
+built on the cards, and the interview's remains taken out.
+
+### 58.1 The reveal, and the coach you made
+
+A tapped background already changed the YEAR ONE SHAPE card under the
+grid; its bars swapped. They move now — a 320ms width transition, off under
+reduced motion — which is the "stat moves animate in" of the brief, on the
+cards instead of the questions.
+
+The offer desk's YOUR COACH card said name, age, state, philosophy and
+prestige. It carries the background now: the four numbers with their bars,
+the kicker and the title, and the badge the background grants — Players'
+coach, The closer, Swing away, Arms man — with the programs that called
+under it. That is the brief's result card: the coach you made, his four
+skills, his badge, and who calls a man like him.
+
+### 58.2 The data, and what went
+
+`BACKGROUNDS` moved out of the screen into `src/data/backgrounds.ts`, where
+the badges and cultures already live, so it can be tested and so god mode
+can reach it. `tests/backgrounds.test.ts` pins the promise the interview
+made and the cards inherit: four ids, the same year-one total of 90 each,
+a different strongest skill on every card, a badge that exists and leans on
+edges that exist.
+
+Deleted: `src/engine/interviewResult.ts`, `src/data/interview.ts` (the pool
+of eighty-one), `tests/interview.test.ts` (sixteen tests). Nothing in the
+app imported the first two since September 5. The badge source that was
+`'interview'` is `'background'`; eleven badges carry it, four are granted,
+and the seven nobody grants — Hard-nosed, Developer, Gambler, Grinder, The
+keeper, Traditionalist, By the book — stay as content for stage 17 to hand
+out. The store's comments stop describing five answers.
+
+**Not built, by construction:** the brief's wider per-answer swings. There
+are no answers.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

@@ -20,8 +20,9 @@
 // Two roads in
 // ---------------------------------------------------------------------------
 //
-// `interview` badges come out of the five creation questions — two of them, from
-// what the answers had in common. `earned` badges come from how a career is
+// `background` badges come with the career a coach had before the dugout — one,
+// from the card he picks at creation (`data/backgrounds.ts`).
+// `earned` badges come from how a career is
 // actually played, on counters the save keeps and thresholds that are seeded per
 // save, so nobody can be told how many mound visits is enough and nobody can
 // farm one in an afternoon.
@@ -42,7 +43,8 @@
 
 import type { CultureEdge } from './cultures.js';
 
-export type BadgeSource = 'interview' | 'earned';
+/** A background grants it at creation (`data/backgrounds.ts`); play earns the rest. */
+export type BadgeSource = 'background' | 'earned';
 
 export interface Badge {
   readonly id: string;
@@ -66,59 +68,59 @@ export interface Badge {
 }
 
 export const BADGES: readonly Badge[] = [
-  // --- Out of the interview -------------------------------------------------
+  // --- Out of a background -------------------------------------------------
   {
-    id: 'players', name: 'Players’ coach', source: 'interview',
+    id: 'players', name: 'Players’ coach', source: 'background',
     line: 'They would run through a wall, and occasionally do.',
     effect: 'Morale swings damp faster.', prized: 'loyalty',
   },
   {
-    id: 'hardnosed', name: 'Hard-nosed', source: 'interview',
+    id: 'hardnosed', name: 'Hard-nosed', source: 'background',
     line: 'Nobody has ever described a practice here as pleasant.',
     effect: 'Teams hold up better in the late innings.', prized: 'defense',
   },
   {
-    id: 'developer', name: 'Developer', source: 'interview',
+    id: 'developer', name: 'Developer', source: 'background',
     line: 'He would rather build one than buy one.',
     effect: 'Returning players develop further.', prized: 'development',
   },
   {
-    id: 'closer', name: 'The closer', source: 'interview',
+    id: 'closer', name: 'The closer', source: 'background',
     line: 'He gets the kid who was going somewhere else.',
     effect: 'Hours on a recruit count for more.', prized: 'recruiting',
   },
   {
-    id: 'gambler', name: 'Gambler', source: 'interview',
+    id: 'gambler', name: 'Gambler', source: 'background',
     line: 'He sends the runner. He has always sent the runner.',
     effect: 'Aggressive calls land more often.', prized: 'ambition',
   },
   {
-    id: 'grinder', name: 'Grinder', source: 'interview',
+    id: 'grinder', name: 'Grinder', source: 'background',
     line: 'His teams are never comfortable and never finished.',
     effect: 'Better in one-run games.', prized: 'defense',
   },
   {
-    id: 'keeper', name: 'The keeper', source: 'interview',
+    id: 'keeper', name: 'The keeper', source: 'background',
     line: 'Men who sign for him tend to graduate for him.',
     effect: 'Fewer men leave early.', prized: 'loyalty',
   },
   {
-    id: 'traditionalist', name: 'Traditionalist', source: 'interview',
+    id: 'traditionalist', name: 'Traditionalist', source: 'background',
     line: 'He knows what the programme did in 1974 and why it mattered.',
     effect: 'Prestige builds faster where history is prized.', prized: 'tradition',
   },
   {
-    id: 'armsman', name: 'Arms man', source: 'interview',
+    id: 'armsman', name: 'Arms man', source: 'background',
     line: 'He will take the pitcher every time, and has.',
     effect: 'Pitchers develop further.', prized: 'pitching',
   },
   {
-    id: 'methodical', name: 'By the book', source: 'interview',
+    id: 'methodical', name: 'By the book', source: 'background',
     line: 'He has a number for everything and does not move off it.',
     effect: 'Arms are worked closer to their limit without going past it.', prized: 'pitching',
   },
   {
-    id: 'slugger', name: 'Swing away', source: 'interview',
+    id: 'slugger', name: 'Swing away', source: 'background',
     line: 'He has never asked a man to shorten up in his life.',
     effect: 'More power out of the same bats.', prized: 'power',
   },
@@ -182,5 +184,5 @@ export const MAX_BADGES = 5;
 export const badgeOf = (id: string): Badge | undefined =>
   BADGES.find((b) => b.id === id);
 
-export const INTERVIEW_BADGES: readonly Badge[] =
-  BADGES.filter((b) => b.source === 'interview');
+export const BACKGROUND_BADGES: readonly Badge[] =
+  BADGES.filter((b) => b.source === 'background');

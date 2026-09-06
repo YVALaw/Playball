@@ -865,7 +865,7 @@ export interface DynastyStore {
    */
   start: (
     seed?: number, team?: number, profile?: CoachProfile, mode?: DepthMode,
-    /** What five answers made of him. See `engine/interviewResult.ts`. */
+    /** What his background made of him. See `BACKGROUNDS` in `data/backgrounds.ts`. */
     made?: { skills: CoachSkills; badges: string[]; leans: Partial<Record<CultureEdge, number>> },
   ) => void;
   /** True before a job has been taken, so the app can show the setup screen. */
@@ -2148,10 +2148,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       The man who walks in, rather than the default one.
 
       `newCoach` builds the coach this game has always built -- twenty in every
-      skill, no badges, no leanings -- and the interview is applied on top. That
-      ordering matters: a career started without answering anything is exactly
-      the career it used to be, so the questions are an addition to creation
-      rather than a rewrite of it, and every save that predates them still
+      skill, no badges, no leanings -- and the background is applied on top.
+      That ordering matters: a career started without choosing one is exactly
+      the career it used to be, so the background is an addition to creation
+      rather than a rewrite of it, and every save that predates it still
       loads as the coach it was written with.
     */
     const fresh = newCoach(profile, contractFor(here));

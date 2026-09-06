@@ -6,9 +6,24 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 6, 2026, latest · **Branch:** `main` · **the
-interface batch closed: the accessibility trio and the cleanups** (`05` §57),
-after the light-theme pass (§56) and three dugout reports (§55).
+**Last session:** September 6, 2026, late · **Branch:** `main` · **stage 24
+closed as the background picker** (`05` §58), after the interface batch (§57)
+and the light-theme pass (§56).
+
+> **September 6, late — stage 24 closed as the background picker it already
+> was.**
+>
+> The plan owed the interview a reveal and a result card; the interview had
+> been gone since the interface pass, and the reporter confirmed the cut as
+> his own. Built on the cards instead: the year-one shape's bars move when
+> a card is tapped, and the offer desk's YOUR COACH card carries the
+> background — four numbers, the badge it grants, and the programs that
+> called under it. `BACKGROUNDS` lives in `data/backgrounds.ts` with a test
+> that pins the interview's one promise (no wrong pick: 90 each, a different
+> strongest skill on every card). The interview engine, its pool of
+> eighty-one and their sixteen tests are deleted. `05` §58, `07` stage 24.
+>
+> The APK on the emulator is rebuilt from this tree.
 
 > **September 6, latest — the interface batch closed: the accessibility
 > trio and the cleanups.**
@@ -694,7 +709,7 @@ exists. Stage 19 removes the three together.
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,182 tests, 59 files)
+npm run check      # typecheck + the whole suite (1,167 tests, 59 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing

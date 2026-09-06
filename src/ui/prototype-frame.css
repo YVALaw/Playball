@@ -1853,6 +1853,19 @@
 .career-workspace .career-summary span,
 .career-workspace .career-summary p { font-size: calc(10.5px * var(--ts)); }
 
+/* The coach you made, on the offer desk (stage 24): the background's four
+   numbers and the badge it grants, so the doors below read as consequences.
+   Scoped under the workspace to outrank the card's own span rule. */
+.career-workspace .career-summary .career-summary-shape { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 11px 0 0; padding-top: 10px; border-top: 1px solid rgba(var(--cream-rgb), .16); }
+.career-workspace .career-summary .career-summary-shape > span { display: block; margin: 0; min-width: 0; font-size: inherit; }
+.career-workspace .career-summary .career-summary-shape small { display: block; margin: 0; color: var(--cream-dim); font: 700 calc(6.5px * var(--ts)) var(--mono); letter-spacing: .08em; }
+.career-workspace .career-summary .career-summary-shape > span > b { display: block; margin-top: 2px; color: var(--cream); font: 800 calc(17px * var(--ts)) var(--display); }
+.career-workspace .career-summary .career-summary-shape i { display: block; height: 3px; margin-top: 5px; background: rgba(var(--cream-rgb), .16); }
+.career-workspace .career-summary .career-summary-shape i b { display: block; height: 100%; background: var(--cream); }
+.career-workspace .career-summary .career-summary-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 9px 0 0; }
+.career-workspace .career-summary .career-summary-badges small { display: inline-block; margin: 0; color: var(--cream-dim); font: 700 calc(7px * var(--ts)) var(--mono); letter-spacing: .1em; }
+.career-workspace .career-summary .career-summary-badges em { display: inline-block; padding: 3px 7px; border: 1px solid rgba(var(--cream-rgb), .3); color: var(--cream); font: 700 calc(7px * var(--ts)) var(--mono); letter-spacing: .08em; text-transform: uppercase; font-style: normal; }
+
 .career-workspace .career-offers strong { font-size: calc(13px * var(--ts)); }
 .career-workspace .career-offers small { font-size: calc(10px * var(--ts)); }
 .career-workspace .career-offers b { font-size: calc(9px * var(--ts)); }
@@ -6243,6 +6256,11 @@
 .background-stat-preview span strong { display:block; margin-top:2px; font:800 calc(20px * var(--ts)) var(--display); }
 .background-stat-preview span i { display:block; height:4px; margin-top:6px; background:var(--wash); }
 .background-stat-preview span i b { display:block; height:100%; background:var(--clay); }
+/* The reveal: a tapped background moves the shape's bars rather than swapping
+   them — stage 24's ask, on the cards instead of the questions. */
+.background-stat-preview span i b { transition: width 320ms cubic-bezier(.2,.82,.28,1); }
+:root[data-motion="reduced"] .background-stat-preview span i b { transition: none; }
+@media (prefers-reduced-motion:reduce) { .background-stat-preview span i b { transition: none; } }
 .background-stat-preview > p { margin:0; padding:9px 11px; color:var(--dim); font:500 calc(8.5px * var(--ts))/1.4 var(--body); }
 
 /* Offer desk and offer decision are one design language. */

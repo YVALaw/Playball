@@ -2677,8 +2677,9 @@ Recorded so nobody later mistakes them for accidents.
 - **The five-question situational interview is gone from the UI** and
   replaced by a four-card background picker. `drawQuestions`, `settle`,
   `ASKED` and `ASKED_CASUAL` in `interviewResult.ts` now have no caller
-  outside their tests. Decide at stage 24's door whether the reveal is
-  built on the old pool (keep the engine) or on the cards (delete it).
+  outside their tests. *Decided September 6, by the reporter: the cards.
+  The engine, its pool of eighty-one and their test are deleted; the reveal
+  and the result card are built on the cards (`05` §58).*
 - **Delete sits beside LOAD on every save, the autosave included.** The
   September 4 front-door commit had already made the autosave deletable
   with its own warning; the pass moved the control from a mode to a peer

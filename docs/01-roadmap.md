@@ -52,7 +52,7 @@ game at a time on a full-screen field with a defense on it, hand out awards,
 spend coaching points, read a recruiting board that is honest about being
 vague, argue the draft out of taking your junior, and start again in February —
 against ninety-five rival programs run by men with careers of their own.
-Fifty-nine test files and 1,182 tests cover it, calibration among them, so
+Fifty-nine test files and 1,167 tests cover it, calibration among them, so
 the engine cannot drift without something failing.
 
 The August 2026 interface overhaul and its feedback pass are described in §20
@@ -462,8 +462,9 @@ a native plugin the page arms only at depth fixed it (`05` §53) · the two §X 
 events dropped; the user's home state recruits at a 15% larger network
 multiplier than any rival's, and that is a balance decision with two
 honest answers) · ~~the rest of the **`06` §X** batch~~ closed September
-6, late (`05` §57; item 14 waits on a season of play) · the rest of **24** (the interview's
-reveal and result card) · **26**'s verdict from the reporter · then
+6, late (`05` §57; item 14 waits on a season of play) · ~~the rest of **24**~~ closed
+September 6 — the background picker is the creation step, with its reveal
+and result card (`05` §58) · **26**'s verdict from the reporter · then
 **17**, which is **god mode** since September 6 rather than the store and
 needs its design pass first, and **19** (ship). **20b** and **25** were
 confirmed shipped on September 5. The reporter tests on an Android

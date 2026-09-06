@@ -1617,22 +1617,27 @@ things to measure before deciding (replay's save cost, a 15% home-state
 recruiting edge only the user gets), and a screen's worth of dead CSS
 including a "command card" its notes describe and it never built.
 
-## Stage 24 · The creation interview, punchier — **PARTLY BUILT September 5 2026**
+## Stage 24 · The creation interview, punchier — **CLOSED September 6 2026, as a background picker**
 
 **Size:** small · **Booked September 4** from the archetype-grid
 conversation; the brief is in `12-test-triage-september.md`.
 
-**Built:** three questions instead of five (`ASKED` = 3 in
-`interviewResult.ts`; Casual still asks two), from the same pool of
-eighty-one, with card-based control, approach and interview choices.
+**What happened instead.** The interface pass of September 5 cut the
+interview from the screen and put four cards in its place — Former player,
+Recruiter, Hitting guru, Pitching guru — each with a kicker, a line, and a
+visible year-one shape. On September 6 the reporter confirmed the cut as
+his own decision: *"it felt long and unnecessary so I removed it and added
+4 options which is easier and faster."* The fallback the brief kept on the
+table turned out to be the whole step.
 
-**Still owed, and the part the reporter actually asked for:** the
-consequence revealing after the tap (stat moves and the badge vote
-animating in, so each answer visibly pays off); the result card at the end
-— the coach you made, his four skills, two badges, and who calls a man
-like him; the per-answer swings widened with a real minus so the net stays
-about +2; and the quick-start "pick a background" fallback, still on the
-table.
+**Closed with it (`05` §58):** the reveal — a tapped card moves the shape's
+bars rather than swapping them; the result card on the offer desk — the
+coach you made, his four numbers, the badge his background grants, and
+the programs that called under it; the four backgrounds moved to
+`data/backgrounds.ts` and tested to sum to the same total, so none is the
+correct pick. The interview engine, its pool of eighty-one and their test
+are deleted. **Not built, by construction:** per-answer swings — there are
+no answers.
 
 ## Stage 25 · The art — crests and faces — **SHIPPED, per the reporter, September 5 2026**
 

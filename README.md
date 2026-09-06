@@ -12,7 +12,7 @@ the interface rebuilt whole on September 5.** Stages 1–16, 18, 20–23 and
 25; 24 is part-built, 26 has had its pass and awaits a verdict, and 17 and
 19 are the tail. Ninety-six
 programs in eight conferences of twelve, a forty-five game regular season, and
-the whole loop runs: pick a job through an interview that shapes who rings you,
+the whole loop runs: pick a job through a background that shapes who rings you,
 play or simulate a season, manage games at bat by at bat, go through the
 postseason a game at a time, sit awards night, spend coaching points, work the
 transfer portal and a recruiting board that is honest about being vague, argue
@@ -67,7 +67,7 @@ an Android 16 emulator against `npm run apk`.
 
 The engine is calibrated multi-seed to the modern NCAA D1 environment —
 .280 / .384 / .438, a home run a game, 6.73 runs — since the September 5
-engine pass (`docs/05-systems-reference.md` §51). **1182 tests across 59
+engine pass (`docs/05-systems-reference.md` §51). **1167 tests across 59
 files**, including determinism goldens, calibration as a regression test, a
 baseball-correctness suite for the scorer's rules, and a concurrency suite
 pinning the store's double-press guards.
@@ -82,15 +82,14 @@ the one thing that must never be lost.
 |---|---|
 | Onboarding | the guided tutorial — a titled card, then a glow path through doing it (stage 19) |
 | God mode | rename the league, author a player, set a prestige — stage 17, which was the store until September 6 and needs its design pass first |
-| The interview's payoff | the answer's consequence revealing after the tap, and a result card (the rest of stage 24) |
 | The budget's verdict | the reporter's read on the rebuilt Budget screen (stage 26) |
 | The rest of the review | `docs/06-backlog.md` §X after its bugs: focus in the new sheets, the dead CSS, the cleanups. Its two measurements are **answered** in §AA |
 
 Shipped since: the two-way whole and corrected to the rulebook, playbooks,
 the lineup gate, the season opener, the Android shell — package, launcher
 icon, and a back gesture that peels one layer per press — the APK report's
-thirty-eight items, and then the interface pass: the three-question
-interview, Program as a dashboard, the Budget workspace, Decisions sheets,
+thirty-eight items, and then the interface pass: the background
+picker that replaced the interview, Program as a dashboard, the Budget workspace, Decisions sheets,
 the offseason roadmap, the postseason frame, hold feedback on the lineup,
 and REPLAY, which the table above used to promise.
 

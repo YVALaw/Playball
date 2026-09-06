@@ -196,6 +196,10 @@ for hardware and get answered as they come up in play.
 
 ## Stage 24 — the creation interview, punchier (booked September 4)
 
+*Superseded September 6: the interview is gone, by the reporter's own call;
+the four-card background picker is the creation step, with the reveal and
+the result card built on the cards. `05` §58.*
+
 The reporter's call after the archetype-grid conversation: the interview
 stays, the boredom goes. Design as discussed, to be talked through more
 before the build: **three questions, not five** (the pool of 81 stays);

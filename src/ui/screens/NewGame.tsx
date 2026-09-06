@@ -68,7 +68,9 @@ import {
 import { createSeason, seasonLength } from '../../engine/season.js';
 import { makeRng } from '../../engine/rng.js';
 import { SKILL_LABEL, type CoachSkills } from '../../engine/program.js';
-import { cultureOf, CULTURE_LABEL, type CultureEdge } from '../../data/cultures.js';
+import { cultureOf, CULTURE_LABEL } from '../../data/cultures.js';
+import { BACKGROUNDS, type BackgroundId } from '../../data/backgrounds.js';
+import { badgeOf } from '../../data/badges.js';
 import { Crest } from '../Crest.js';
 
 const MANDATE_LABEL: Record<Mandate, string> = {
@@ -78,60 +80,6 @@ const MANDATE_LABEL: Record<Mandate, string> = {
   contend: 'CONTEND',
   championship: 'WIN IT ALL',
 };
-
-
-type BackgroundId = 'player' | 'recruiter' | 'hitting' | 'pitching';
-
-interface CoachBackground {
-  id: BackgroundId;
-  title: string;
-  kicker: string;
-  blurb: string;
-  skills: CoachSkills;
-  leans: Partial<Record<CultureEdge, number>>;
-  ambition: number;
-  badges: string[];
-}
-
-/**
- * Step three is a background, not a personality quiz.
- *
- * The old interview asked three situations and then translated the answers into
- * the same four numbers shown below. That was a lot of reading before the first
- * pitch for a result the player could not predict. A background is both fiction
- * and mechanics at once: choose the career the coach had before the dugout and
- * see exactly which tools he brings into year one.
- */
-const BACKGROUNDS: readonly CoachBackground[] = [
-  {
-    id: 'player', title: 'Former player', kicker: 'CLUBHOUSE',
-    blurb: 'Played the game, reads people quickly, and starts with a balanced feel for both sides of the ball.',
-    skills: { offense: 23, defense: 23, training: 24, recruiting: 20 },
-    leans: { loyalty: 2, tradition: 1, development: 1 }, ambition: 0,
-    badges: ['players'],
-  },
-  {
-    id: 'recruiter', title: 'Recruiter', kicker: 'THE ROAD',
-    blurb: 'Built his name in living rooms and summer parks. The opening class is where he has the clearest edge.',
-    skills: { offense: 20, defense: 20, training: 22, recruiting: 28 },
-    leans: { recruiting: 3, ambition: 1 }, ambition: 1,
-    badges: ['closer'],
-  },
-  {
-    id: 'hitting', title: 'Hitting guru', kicker: 'THE CAGES',
-    blurb: 'An offensive teacher first. Bats develop faster under his eye, but the mound is not where he made his name.',
-    skills: { offense: 28, defense: 19, training: 23, recruiting: 20 },
-    leans: { power: 3, development: 1 }, ambition: 1,
-    badges: ['slugger'],
-  },
-  {
-    id: 'pitching', title: 'Pitching guru', kicker: 'THE MOUND',
-    blurb: 'Built staffs before he built lineups. Arms and run prevention are his strongest tools from day one.',
-    skills: { offense: 19, defense: 28, training: 23, recruiting: 20 },
-    leans: { pitching: 3, development: 1 }, ambition: 0,
-    badges: ['armsman'],
-  },
-];
 
 function BackgroundIcon({ id }: { id: BackgroundId }) {
   if (id === 'player') return <svg viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="8" r="3"/><path d="M6 20c.6-4.2 2.6-6.3 6-6.3s5.4 2.1 6 6.3M5 7l4-2M19 7l-4-2"/></svg>;
@@ -185,7 +133,6 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
   // The coach's pre-dugout background. Unlike the old interview, this is one
   // visible choice with a visible year-one stat shape.
   const [backgroundId, setBackgroundId] = useState<BackgroundId>('player');
-
 
   // Build the actual world, not an estimate of it. Generation is deterministic
   // from the seed and costs about 2ms, so the screen can simply read the
@@ -365,6 +312,23 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
             {philosophyOf(coach.philosophy ?? DEFAULT_PHILOSOPHY).name}
           </span>
           <p>COACH PRESTIGE {ROOKIE_PRESTIGE}</p>
+          {/* The coach you made — the background's four numbers and the badge
+              it grants — so the doors below read as consequences of him. */}
+          <span className="career-summary-shape" aria-label={`Year one shape: ${background.title}`}>
+            {(Object.entries(background.skills) as [keyof CoachSkills, number][]).map(([k, value]) => (
+              <span key={k}>
+                <small>{SKILL_LABEL[k]}</small>
+                <b>{value}</b>
+                <i><b style={{ width: `${Math.min(100, value * 3.2)}%` }} /></i>
+              </span>
+            ))}
+          </span>
+          <span className="career-summary-badges">
+            <small>{background.kicker} · {background.title.toUpperCase()}</small>
+            {background.badges.map((id) => badgeOf(id)).map((b) => b && (
+              <em key={b.id}>{b.name}</em>
+            ))}
+          </span>
         </button>
 
         {/* Only the chairs that actually rang. The rest of the country starts
@@ -871,7 +835,6 @@ function Chip(
     >{label}</button>
   );
 }
-
 
 function BackgroundStep(
   { chosen, onChoose, onBack, onDone }: {
