@@ -3028,14 +3028,61 @@ than any rival gets in his**. It is undocumented, it arrived with the
 interface pass's pipelines, and the low-star climb was measured before it
 existed.
 
-**Not fixed here, because it is a balance decision and it has two honest
-answers.** Either give the AI the same callback — one argument, and the
-climb probes rerun — or keep the 60 floor for *reach* only and read the
-home *fit* off 45 for everybody, which restores the pre-pass behaviour
-exactly. The first is fairer and slightly inflates recruiting everywhere;
-the second is a strict revert. Rerun `tests/climb-probe.ts` either way:
-a 15% thumb is exactly the size of edge the low-star climb was tuned
-without.
+**And the 15% is on the wrong quantity, which is worth correcting before
+anybody acts on it.** `networkScale` is multiplied by `pipelineEdge`,
+which is squared and shrinks as the program strengthens
+(`0.25 · ((5 − stars)/4)²`). The advantage in the fit number itself is:
+
+| Program | User | Rival | Edge |
+|---|---|---|---|
+| ★ | 1.288 | 1.250 | 3.0% |
+| ★★ | 1.162 | 1.141 | 1.9% |
+| ★★★ | 1.072 | 1.063 | 0.9% |
+| ★★★★ | 1.018 | 1.016 | 0.2% |
+| ★★★★★ | — | — | none |
+
+About a tenth of what the pipeline system is worth in total, concentrated
+where the climb is measured and gone at the top.
+
+**Reach is not affected and never was.** `canPursue` takes
+`boolean | number`; `aiTargets` passes the boolean `inPipeline(p, state)`
+for a rival's own state and gets the same `PIPELINE_REACH_BONUS` the user
+gets from clearing 60. Only `fit` reads the number.
+
+### The decision — **kept as it is, September 6 2026**
+
+Two changes were on the table and both were declined.
+
+*Give the AI the same callback.* Rejected on cost: `TeamRecord` carries no
+`economy` at all, so this means creating, persisting and rolling
+ninety-five of them, and the system rewards decisions — a coordinator
+hire, repeated signings into one market — that no rival makes. Large
+change, near-zero payoff.
+
+*Read the home fit off 45 for everybody.* The strict revert, and the
+tidier of the two. Declined because it equalises the wrong half. The home
+state is not a decision — every program has one, and there is nothing
+there to reward — but the **earned** pipeline is, and it is a system only
+the user can play. Keeping the whole thing user-side is the same shape as
+the recruiting-skill gap §16.4 already defends openly, and at three
+percent it is not the thumb the phrase "15%" made it sound like.
+
+**So it is intentional now rather than accidental, which was the real
+problem with it.** Written into the hidden-mechanics index as `05` row
+10d, and into `07`'s decision table. The climb probe was rerun on the
+decision so the numbers are not left stale:
+
+| `climb-probe`, two star, 10 × 30 | Reached Omaha | Won it | Never a regional |
+|---|---|---|---|
+| §O's original entry (August 28) | 5/10, median year 13 | 0/10 | 0/10 |
+| September 6, edge kept | **5/10, median year 6** | 0/10 | 0/10 |
+
+The rate is identical and the floor is still a floor: nobody wins. What
+moved is the speed — the median Omaha year halved — and that is not the
+home-state edge, which the probe cannot isolate; it is the September 5
+prestige floors doing at the bottom of the table exactly what §52 said they
+would. Read with §Z's note on the mean: the same escalator, seen from the
+weakest chair. Worth a played career before anyone calls it too fast.
 
 ### Stage 17 is god mode now, not the store
 

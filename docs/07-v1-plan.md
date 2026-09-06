@@ -40,7 +40,8 @@ until September 6 and is god mode now.
 |---|---|
 | Scope | **Everything.** Polish, the parked design passes, the depth systems, and the August feature set. |
 | Platform | **Android first**, iOS when the means exist. |
-| Money | **Free, with the S+ player as an in-app purchase.** |
+| Money | ~~Free, with the S+ player as an in-app purchase.~~ **Reopened September 6** when stage 17 became god mode and Play Billing left with the S+ player. God mode as a one-off unlock is the likely answer; it is not decided, and it blocks the store listing rather than any code. See stage 17. |
+| The home-state recruiting edge | **Kept as it is, September 6 2026.** The user recruits his own state at about 3% better fit than a rival gets in his (one star; nothing at five). Measured, declined, and written down as intentional — `05` row 10d, `06` §AA. |
 | Date | **None.** Ship when it is right. |
 | The phone | **No Android device yet**, so the device work waits until late. |
 | Depth | **Two ways to play**, chosen at creation and changeable after. See below. |
