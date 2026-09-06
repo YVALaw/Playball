@@ -114,6 +114,9 @@ export function Settings() {
   // them, they must not ride a save, and they have to survive with no dynasty
   // loaded at all.
   const [prefs, setPrefs] = useState<DevicePrefs>(() => readPrefs());
+  const season = useDynasty((s) => s.season);
+  const godMode = useDynasty((s) => s.godMode);
+  const forkToSandbox = useDynasty((s) => s.godForkToSandbox);
   const put = (patch: Partial<DevicePrefs>): void => {
     const next = { ...prefs, ...patch };
     setPrefs(next);
@@ -274,6 +277,24 @@ export function Settings() {
             </button>
           </div>
         </section>
+        {prefs.godMode && season && (
+          <>
+            <SectionHeading kicker="THIS CAREER" title={godMode ? 'A sandbox' : 'Take it into the sandbox'} />
+            <section className="settings-list">
+              <div className="settings-god-status">
+                <span>
+                  <strong>{godMode ? 'God mode is on for this career' : 'Fork this career'}</strong>
+                  <small>{godMode
+                    ? 'The GOD MODE section is on the Program tab.'
+                    : 'A copy of this career in its own sandbox slot, loaded now. The original keeps a snapshot and stays honest.'}</small>
+                </span>
+                {!godMode && (
+                  <button type="button" className="tap" onClick={() => void forkToSandbox()}>FORK</button>
+                )}
+              </div>
+            </section>
+          </>
+        )}
       </Frame>
     );
   }

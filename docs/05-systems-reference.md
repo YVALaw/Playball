@@ -7834,7 +7834,7 @@ navigation. The last set lives outside the screen now, keyed to the year,
 so it survives a trip to a recruit's file or another tab and clears when
 the class changes or CLEAR EVERY FILTER is tapped.
 
-## 61. God mode — the sandbox — **BUILT September 6 2026, late, on the `god-mode` branch pending the reporter's approval**
+## 61. God mode — the sandbox — **BUILT September 6 2026, late, and finished later the same night, on the `god-mode` branch pending the reporter's approval**
 
 Stage 17, decided by the reporter tonight rather than by the plan's four
 doors: *"God mode lets you edit players, edit the league itself; don't
@@ -7900,13 +7900,80 @@ its money, the staff edit, and the flag riding the file only when on.
 
 ### 61.3 What it does not do, and why
 
-- **Conference names** are static data, read everywhere by id; renaming
-  them needs an override the whole app consults, and waits.
-- **Injuries** are not healed from the desk yet.
+- **Several seasons at a tap, and the calendar year set by hand.** SIM
+  THE SEASON runs to June from the desk; the offseason that follows is a
+  run of decisions the desk makes for itself — the draft, the portal, the
+  staff market, the board's verdict — and nothing plays those for you
+  yet. A "ten seasons" button needs an assistant that runs your own
+  offseason, which is the carousel's coach AI pointed at your chair; and
+  a year set by hand rewrites every dated row — records, careers,
+  contracts, ages, the schedule rotation. Both wait for the creator kit's
+  careers-as-files (stage 28), where a career is a document and the year
+  is a field in it.
 - **No records shelf.** The reporter's call: a sandbox's records count like
   any other's. The flag is on the save if that is ever revisited.
 - **The purchase** is a Settings button until the store listing; stage 19
   replaces it with Play Billing and its restore flow.
+
+### 61.4 The rest of the sandbox — built later the same night
+
+The eight pieces planned in `07` under *The rest of 17*, in the order they
+were planned. `engine/godMode.ts` grew the rules, `engine/leagueNames.ts`
+is new, and `tests/god-mode-2.test.ts` pins them.
+
+- **A career forked into a sandbox.** Settings → God mode, in a career
+  that is not one: FORK writes the original to a named slot first, then
+  the copy — flagged, named `<school> · sandbox` — to a slot of its own,
+  and loads it (`godForkToSandbox`). The original keeps a snapshot and
+  stays honest; the fork is the on-ramp for everything below without
+  starting over.
+- **Health.** HEAL on any man clears whatever put him on the shelf, at
+  any point in the year (`healPlayer`). IRON MAN is a flag on the man that
+  `hurtsToday` reads before it rolls, so he never gets hurt; off again, he
+  rolls like anyone.
+- **What the leagues are called.** A conference's id is also its label,
+  and the key the regions, the cups and the schedule hang from, so it
+  cannot itself change. A rename is a display map on the save
+  (`leagueNames` in the extras), loaded into a module registry that the
+  thirty-odd places printing a league consult through `leagueLabel` and
+  `leagueName` — the desk header, the standings, the bracket, the wire,
+  the job market, the annals, the strategy library. Cleared, a league goes
+  back to its own name; an older file carries no map and reads as nothing
+  renamed. The creator kit's packs will fill the same map.
+- **Players, moved.** Any man to any program, onto the bench or into the
+  pen there; a starter's spot is filled from the bench behind him and,
+  failing one, the depth chart steps over the hole on game day
+  (`movePlayer`). CUT takes him out of the world, on a second press. A
+  portal man signs for nothing while the window is open
+  (`signPortalMan`), off his old roster first.
+- **The facts around a man.** Age (17–40), mood (0–100), the redshirt
+  flag, a badge at any tier or taken away, and the two-way flag: a bat
+  given an arm draws the pitching half from the generator at the desk's
+  quality and takes a seat in the pen beside his seat in the order; the
+  arm taken back leaves the bat as he was (`makeTwoWayOf`,
+  `unmakeTwoWay`). The roster list shows a two-way man once.
+- **Recruiting.** A recruit's stars rewritten, and the reach floor with
+  them; his nine wants rewritten as shares of a hundred that renormalise
+  to one; a recruit authored into this year's class as a freshman with a
+  home and a state; a commitment on the spot, with the points a
+  commitment would have taken. The star gate is open for the whole
+  session: `canPursue` says yes to anyone while the sandbox flag is set
+  (`setStarGateOpen`), so the board lets you chase anybody.
+- **The coach.** His badges from the creation list, granted or removed,
+  past the game's five; his philosophy at any time, which resets the
+  standing strategy as creation does; security, years left, contract
+  length, seasons here; and the ten hidden habit counters the earned
+  badges read, so a badge can be walked up to its bar.
+- **Time.** SIM THE SEASON from the desk, the same run to June the test
+  shortcut makes. What it does not do is in 61.3.
+- **Presets.** PARITY puts every program at fifty; CHAOS redraws every
+  program's prestige from a hash of the generator's position, so a save
+  agrees with itself; SUPERTEAM makes every man on your roster a 99 with
+  a 99 ceiling. Each asks twice.
+
+Every one of these is a god action on the store: refused unless the
+save's flag is on, a version bump, an autosave. The sliders show whole
+numbers over ratings the generator drew fractional.
 
 ## Appendix A: stale comments and vestigial code found while writing this
 

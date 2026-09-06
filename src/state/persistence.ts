@@ -165,6 +165,8 @@ export interface SaveFile {
   depth?: unknown;
   /** A sandbox career (05 §61). Absent is off. */
   godMode?: boolean;
+  /** A sandbox's league renames, by conference id (05 §61.4). */
+  leagueNames?: Record<string, string>;
 }
 
 export interface SaveSummary {
@@ -377,6 +379,8 @@ export interface SaveExtras {
   depth?: unknown;
   /** A sandbox career (05 §61). Absent is off. */
   godMode?: boolean;
+  /** A sandbox's league renames, by conference id (05 §61.4). */
+  leagueNames?: Record<string, string>;
 }
 
 /**
@@ -473,6 +477,7 @@ export function buildSaveFile(
     // changed. Two keys is a cheap way to never have that conversation.
     ...(extras.depth ? { depth: extras.depth } : {}),
     ...(extras.godMode ? { godMode: true } : {}),
+    ...(extras.leagueNames && Object.keys(extras.leagueNames).length > 0 ? { leagueNames: extras.leagueNames } : {}),
   };
 }
 
@@ -536,6 +541,8 @@ export interface LoadedDynasty {
   depth: unknown;
   /** Whether this career is a sandbox. Off on every save from before god mode. */
   godMode: boolean;
+  /** League renames, empty on every save from before. */
+  leagueNames: unknown;
 }
 
 /**
@@ -605,6 +612,7 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     alumni: file.alumni,
     depth: file.depth ?? null,
     godMode: file.godMode === true,
+    leagueNames: file.leagueNames ?? null,
   };
 }
 

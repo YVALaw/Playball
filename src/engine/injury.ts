@@ -105,6 +105,8 @@ function hash(id: PlayerId, day: number, worldSeed: number, salt: number): numbe
 export function hurtsToday(
   p: Player, day: number, worldSeed: number, strain = 1, year = 0,
 ): { what: string; days: number } | null {
+  // God mode's iron man never rolls (engine/godMode.ts).
+  if ((p as Player & { ironMan?: boolean }).ironMan === true) return null;
   /*
     The year is in the hash, and leaving it out was a real bug.
 

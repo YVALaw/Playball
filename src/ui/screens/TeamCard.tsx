@@ -17,6 +17,7 @@
 // season is a list of results and cannot be anything more. The RESULTS tab says
 // so rather than showing an empty table and letting it read as "never played".
 
+import { leagueLabel } from '../../engine/leagueNames.js';
 import { createContext, useContext, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -116,7 +117,7 @@ export function TeamCard({ index }: { index: number }) {
           <section className="team-profile-hero">
             <div className="team-profile-crest"><Crest abbr={t.def.abbr} size={66} /></div>
             <div className="team-profile-copy">
-              <small>{t.conference} · {'★'.repeat(stars)}</small>
+              <small>{leagueLabel(t.conference)} · {'★'.repeat(stars)}</small>
               <h2>{t.def.school}</h2>
               <p>{t.def.nickname}</p>
             </div>
@@ -128,7 +129,7 @@ export function TeamCard({ index }: { index: number }) {
 
           <MetricStrip>
             <Metric label="OVERALL" value={`${reg.w}-${reg.l}`} note={`RPI ${rank > 0 ? `#${rank}` : '—'}`} />
-            <Metric label={t.conference} value={`${t.cw}-${t.cl}`} note="IN CONFERENCE" />
+            <Metric label={leagueLabel(t.conference)} value={`${t.cw}-${t.cl}`} note="IN CONFERENCE" />
             <Metric
               label="RUN DIFF"
               value={`${t.rs - t.ra > 0 ? '+' : ''}${t.rs - t.ra}`}

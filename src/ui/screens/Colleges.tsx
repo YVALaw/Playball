@@ -12,6 +12,7 @@
 // initial and the strongest programme in a conference is the one you were
 // looking for.
 
+import { leagueLabel } from '../../engine/leagueNames.js';
 import { useState } from 'react';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../../state/store.js';
@@ -49,7 +50,7 @@ export function Colleges() {
     .map(({ t, i }) => ({
       key: String(i),
       title: t.def.school,
-      detail: `${t.def.nickname} · ${t.conference} · ${t.w}-${t.l} · ${'★'.repeat(prestigeStars(t.prestige))}`,
+      detail: `${t.def.nickname} · ${leagueLabel(t.conference)} · ${t.w}-${t.l} · ${'★'.repeat(prestigeStars(t.prestige))}`,
       // The school's letters in its own colour — a school is a mark, not a
       // man. Reported: "the colleges have avatar pictures in the list instead
       // of their school letters." The generated face implied a person nobody

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 // coming. Weekend series are grouped, because that is how a college season is
 // actually experienced — three games against one opponent, then a week.
 
+import { leagueLabel } from '../../engine/leagueNames.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { teamColour } from '../Avatar.js';
 import { ChevronRightIcon } from '@radix-ui/react-icons';
@@ -106,7 +107,7 @@ export function Schedule() {
             numbers live here. */}
         <MetricStrip>
           <Metric label="OVERALL" value={`${team.w}-${team.l}`} note={`${played} PLAYED`} />
-          <Metric label="CONFERENCE" value={`${team.cw}-${team.cl}`} note={team.conference.toUpperCase()} />
+          <Metric label="CONFERENCE" value={`${team.cw}-${team.cl}`} note={leagueLabel(team.conference).toUpperCase()} />
           <Metric label="RUN DIFF" value={`${diff > 0 ? '+' : ''}${diff}`} note={`${team.rs} FOR`} />
         </MetricStrip>
 

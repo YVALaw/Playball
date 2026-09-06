@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useDialogFocus } from '../dialogFocus.js';
+import { leagueLabel } from '../../engine/leagueNames.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FieldNote, ModuleIntro } from '../components/Kit.js';
 import { InFrame } from '../Overlay.js';
@@ -224,7 +225,7 @@ export function StrategyScreen() {
                     key={abbr}
                     onClick={() => { setFocus(abbr); setLibraryOpen(false); }}
                   >
-                    <span><small>{rival?.conference ?? 'SCOUTED'}</small><strong>{rival?.def.school ?? abbr}</strong></span>
+                    <span><small>{rival ? leagueLabel(rival.conference) : 'SCOUTED'}</small><strong>{rival?.def.school ?? abbr}</strong></span>
                     <span><b>{rival ? `${rival.w}-${rival.l}` : '—'}</b><small>{selected ? 'OPEN' : 'PLAN'}</small></span>
                   </button>
                 );

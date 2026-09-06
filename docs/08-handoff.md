@@ -6,9 +6,27 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 6, 2026, late · **Branch:** `god-mode`, unpushed, off
-`main` at `2a13703` · **god mode built, held for approval** (`05` §61), after two
-rankings per recruit (§60).
+**Last session:** September 6, 2026, later still · **Branch:** `god-mode`, unpushed,
+off `main` at `2a13703` · **god mode finished, held for approval** (`05` §61,
+§61.4), after two rankings per recruit (§60).
+
+> **September 6, later still — the rest of god mode, on the same branch.**
+>
+> The eight pieces planned under stage 17 an hour earlier, built (`05`
+> §61.4): a career forked into a sandbox from Settings, the original kept
+> as a snapshot; HEAL at any point and an iron-man flag `hurtsToday`
+> honours; the leagues renamed through a registry (`engine/leagueNames.ts`)
+> that thirty-odd label sites now consult, riding the save as
+> `leagueNames`; any man moved to any program, cut, or signed off the
+> portal for nothing, with his age, mood, redshirt, badges and two-way
+> flag in the editor; recruits rewritten, authored and committed on the
+> spot with the star gate open; the coach's badges, philosophy, contract,
+> security and habit counters; SIM THE SEASON from the desk; and three
+> presets. Several seasons at a tap and a hand-set year wait for the
+> creator kit, with the reasons in §61.3. `tests/god-mode-2.test.ts`.
+> Checked in the browser: a rename of GULF to SEC reached the header, the
+> chip and the desk at once. **Still on the `god-mode` branch, unpushed,
+> until the reporter says push.**
 
 > **September 6, late — god mode, built on a branch and held for approval.**
 >
@@ -761,7 +779,7 @@ exists. Stage 19 removes the three together.
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,200 tests, 62 files)
+npm run check      # typecheck + the whole suite (1,212 tests, 63 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing

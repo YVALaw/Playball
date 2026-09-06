@@ -10,6 +10,7 @@
 //
 // design/Roster Tabletop/ is the design of record.
 
+import { leagueLabel } from '../engine/leagueNames.js';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Modal } from './Modal.js';
 import { uniquePlayers } from '../engine/types.js';
@@ -783,10 +784,10 @@ function AppBody(
       <header className="global-header">
         <ClubSwitcher
           abbr={team.def.abbr}
-          kicker={`${team.def.nickname} · ${team.conference}`}
+          kicker={`${team.def.nickname} · ${leagueLabel(team.conference)}`}
           name={team.def.school}
         />
-        <RecordChip label={team.conference} value={`${team.w}-${team.l}`} />
+        <RecordChip label={leagueLabel(team.conference)} value={`${team.w}-${team.l}`} />
         <CoachMenuButton />
       </header>
 

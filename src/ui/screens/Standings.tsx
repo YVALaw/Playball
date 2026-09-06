@@ -7,6 +7,7 @@
 // four-team mockup did not: the conference record beside the overall, and the
 // run differential, which is what tells you whether a record is real.
 
+import { leagueLabel } from '../../engine/leagueNames.js';
 import { useConferenceTable, useDynasty, useUserTeam } from '../../state/store.js';
 import { useOpenTeam } from './TeamCard.js';
 import { regularRecord } from '../../engine/season.js';
@@ -41,7 +42,7 @@ export function Standings() {
     <main className="module-workspace">
       <ModuleIntro
         kicker="CONFERENCE"
-        title={`${team.conference} race`}
+        title={`${leagueLabel(team.conference)} race`}
       />
 
       <section className="standings-table">

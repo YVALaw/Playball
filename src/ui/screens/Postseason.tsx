@@ -15,6 +15,7 @@
 // its school's colour; and the action button is pinned to the frame so it
 // sits in the same place whatever tab is up.
 
+import { leagueLabel } from '../../engine/leagueNames.js';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useDynasty, useUserTeam, type NationalProgress } from '../../state/store.js';
 import { FloatingAction } from '../Sticky.js';
@@ -240,7 +241,7 @@ export function Postseason() {
       if (!slot || slot.side !== 'F' || slot.a === null || slot.b === null) return null;
       const other = slot.a === userTeam ? slot.b : slot.a;
       const losses = myBracket.state.losses.get(userTeam) ?? 0;
-      const where = bracket.stage === 'conference' ? `${team.conference} championship`
+      const where = bracket.stage === 'conference' ? `${leagueLabel(team.conference)} championship`
         : 'Bracket championship';
       return {
         key: `${year}:title:${stageKey}:${slot.round}`,
@@ -363,7 +364,7 @@ export function Postseason() {
     if (!mineCup) return null;
     return {
       team: userTeam, rung: 0,
-      kicker: `${year} ${mineCup.conference} CHAMPIONS`,
+      kicker: `${year} ${leagueLabel(mineCup.conference)} CHAMPIONS`,
       title: 'Conference champions',
       line: 'The league is yours.',
     };
@@ -486,7 +487,7 @@ export function Postseason() {
     return () => cancelAnimationFrame(frame);
   }, [lookingAt, shown, version, spectatorMode]);
 
-  const stageTitle = rung === 0 ? `${team.conference} tournament`
+  const stageTitle = rung === 0 ? `${leagueLabel(team.conference)} tournament`
     : rung === 1 ? 'The regionals' : 'The national tournament';
 
   const qualified = inTheField
@@ -532,7 +533,7 @@ export function Postseason() {
         good: true,
         title: finished,
         lines: [
-          `${team.def.school} are out of the ${team.conference} tournament.`,
+          `${team.def.school} are out of the ${leagueLabel(team.conference)} tournament.`,
           'But the top four travel. A regional championship series is next.',
         ],
       };
@@ -542,7 +543,7 @@ export function Postseason() {
         good: false,
         title: 'Out in May',
         lines: [
-          `${team.def.school} fall${where} of the ${team.conference} tournament.`,
+          `${team.def.school} fall${where} of the ${leagueLabel(team.conference)} tournament.`,
           'Winter is for getting the bats loud again.',
         ],
       };
@@ -666,7 +667,7 @@ export function Postseason() {
           */
           label: iAmOut
             ? (myBracket.kind === 'conference'
-              ? `SIM TO ${team.conference.toUpperCase()} CHAMPIONSHIP`
+              ? `SIM TO ${leagueLabel(team.conference).toUpperCase()} CHAMPIONSHIP`
               : myBracket.kind === 'national'
                 ? 'SIM TO BRACKET CHAMPIONSHIP'
                 : 'SIM TO THE CHAMPIONSHIP')
@@ -948,7 +949,7 @@ export function Postseason() {
                   {bracket.stage === 'conference'
                     ? (wonConference
                       ? 'The tournament is yours. Sixteen conference winners form the regionals next.'
-                      : `${settledChamp ?? 'The field'} take the ${team.conference}. Your place in June holds.`)
+                      : `${settledChamp ?? 'The field'} take the ${leagueLabel(team.conference)}. Your place in June holds.`)
                     : bracket.stage === 'regional'
                       ? (wonRegional
                         ? 'The regional is yours. The national field forms next.'
@@ -1185,8 +1186,8 @@ function ImportantGames(
     const settled = spotlightFinal(cup?.de?.final);
     const slot = live ?? settled;
     games.push(gameSpotlight(
-      'conference-title', `${conference.toUpperCase()} · CHAMPIONSHIP`,
-      `${conference} championship`, slot?.a ?? null, slot?.b ?? null,
+      'conference-title', `${leagueLabel(conference).toUpperCase()} · CHAMPIONSHIP`,
+      `${leagueLabel(conference)} championship`, slot?.a ?? null, slot?.b ?? null,
       slot?.game ?? null,
       slot?.game
         ? `${name(slot.game.winner)} took the championship game.`
@@ -1619,7 +1620,7 @@ function ConferenceStage(
             display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
           }}>
             <span className="label" style={{ color: r.you ? 'var(--you)' : 'var(--ink)' }}>
-              {r.conference}{r.you ? ' · YOU' : ''}
+              {leagueLabel(r.conference)}{r.you ? ' · YOU' : ''}
             </span>
           </div>
           {/* Your tournament is ONE map — both halves, the drop marked.

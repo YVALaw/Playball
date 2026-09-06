@@ -11,6 +11,7 @@
 // Everything printed is derived from the live season by `engine/wire.ts`.
 // Nothing here invents a fact, and reading the page consumes no dice.
 
+import { leagueLabel } from '../../engine/leagueNames.js';
 import { useEffect, useMemo } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
@@ -135,7 +136,7 @@ export function Wire() {
             font: "500 calc(7.5px * var(--ts)) var(--mono)", letterSpacing: '.18em', color: 'var(--dim)',
           }}>
             <span>VOL. {year - 2026} · THE COUNTRY'S GAME</span>
-            <span>{team.conference} EDITION</span>
+            <span>{leagueLabel(team.conference)} EDITION</span>
           </div>
           <div style={{
             marginTop: 4, borderTop: '3px solid var(--ink)', borderBottom: '1px solid var(--ink)',
@@ -191,7 +192,7 @@ export function Wire() {
           <div style={{
             marginTop: 8, paddingTop: 5, borderTop: '1px solid var(--hairline)',
             font: "500 calc(7.5px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--dim)',
-          }}>BY THE {team.conference} DESK</div>
+          }}>BY THE {leagueLabel(team.conference)} DESK</div>
         </div>
       )}
 

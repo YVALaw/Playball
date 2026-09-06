@@ -10,6 +10,7 @@
 // dynasty is priced in. Recruiting gates on it, jobs gate on it, and a player
 // who only ever sees the final figure never learns what moves it.
 
+import { leagueLabel } from '../../engine/leagueNames.js';
 import { useEffect, useMemo } from 'react';
 
 import { useDynasty, useUserTeam } from '../../state/store.js';
@@ -142,7 +143,7 @@ export function SeasonReview() {
           ? { title: 'The national field', note: 'You reached the national showdown — the last twenty standing out of ninety six.' }
           : wonConference
             ? {
-                title: `${team.conference} champions`,
+                title: `${leagueLabel(team.conference)} champions`,
                 note: 'Won the conference tournament and the automatic bid that comes with it.',
               }
             : displayFinish === 'regional'
@@ -164,7 +165,7 @@ export function SeasonReview() {
                   }
                 : confRank === 1
                 ? {
-                    title: `${team.conference} regular season`,
+                    title: `${leagueLabel(team.conference)} regular season`,
                     note: 'Best record in the conference over the games that count for seeding.',
                   }
                 : null;
@@ -191,7 +192,7 @@ export function SeasonReview() {
               <small>NATIONAL</small><strong>{nationalRank > 0 ? `#${nationalRank}` : '—'}</strong>
             </button>
             <button type="button" onClick={() => openOverlay('standings')}>
-              <small>{team.conference}</small><strong>{confRank > 0 ? `#${confRank}` : '—'}</strong>
+              <small>{leagueLabel(team.conference)}</small><strong>{confRank > 0 ? `#${confRank}` : '—'}</strong>
             </button>
             <button type="button" onClick={() => openOverlay('schedule')}>
               <small>POSTSEASON</small><strong>{displayFinish ? FINISH_LABEL[displayFinish] : '—'}</strong>

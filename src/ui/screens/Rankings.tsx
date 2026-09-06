@@ -6,6 +6,7 @@
 // is arithmetic — RPI — so the switch does the job it can actually do here and
 // chooses between the country and the twenty five deep enough to be a Top 25.
 
+import { leagueLabel } from '../../engine/leagueNames.js';
 import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { rpiOrder, regularRecord } from '../../engine/season.js';
@@ -109,7 +110,7 @@ export function Rankings() {
             onClick={() => openTeam(r.index)}
           >
             <b>{i + 1}</b>
-            <strong>{r.school}<em>{r.conference} · {r.detail}</em></strong>
+            <strong>{r.school}<em>{leagueLabel(r.conference)} · {r.detail}</em></strong>
             <span>{r.record}</span>
             <span>{r.value}</span>
             <ChevronRightIcon />

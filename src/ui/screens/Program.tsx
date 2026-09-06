@@ -5,6 +5,7 @@
 // Budget, Watchlist, and Hall are destinations, not four more pieces of chrome
 // to learn. The coach profile remains a focused subpage, while season-by-season
 // history stays in the adjacent History screen so there is only one record book.
+import { leagueLabel } from '../../engine/leagueNames.js';
 import { useEffect, useState, type ReactNode } from 'react';
 import { ACHIEVEMENTS, ACHIEVEMENT_IDS } from '../../engine/achievements.js';
 import {
@@ -123,7 +124,7 @@ export function Program() {
   return (
     <main className="module-workspace">
       <ModuleIntro
-        kicker={`${team.conference} · ${year}`}
+        kicker={`${leagueLabel(team.conference)} · ${year}`}
         title={team.def.school}
         text="Your job at a glance. Open a card when something needs a closer look."
       />
@@ -626,7 +627,7 @@ function WatchlistSheet() {
               <span className="team-mark small"><Crest abbr={t.def.abbr} size={30} /></span>
               <span>
                 <strong>{t.def.school}</strong>
-                <small>{t.conference} · {t.w}-{t.l} · {'★'.repeat(prestigeStars(t.prestige))}</small>
+                <small>{leagueLabel(t.conference)} · {t.w}-{t.l} · {'★'.repeat(prestigeStars(t.prestige))}</small>
               </span>
               <b>{t.prestige}</b>
               <ChevronRightIcon />
@@ -939,7 +940,7 @@ function CoachSheet({ team }: { team: Owner }) {
       <section className="coach-profile-hero">
         <div className="coach-profile-portrait"><CoachPortrait look={coach.look} size={148} /></div>
         <div className="coach-profile-copy">
-          <small>{team.def.school.toUpperCase()} · {team.conference}</small>
+          <small>{team.def.school.toUpperCase()} · {leagueLabel(team.conference)}</small>
           <h2>{coach.name}</h2>
           <p>HEAD COACH · {standing.title.toUpperCase()}{standing.lifer ? ' · LIFER' : ''}</p>
         </div>

@@ -19,6 +19,7 @@
 // bar, so a freshman with room to grow reads differently from a finished senior
 // at a glance.
 
+import { leagueLabel } from '../../engine/leagueNames.js';
 import { useState, type ReactNode } from 'react';
 import { RosterMoves } from './RosterMoves.js';
 import { seasonAwards } from '../../engine/postseason.js';
@@ -416,7 +417,7 @@ function PlayerHero(
       </div>
       <div className="hero-wash" />
       <div className="player-identity">
-        <small>{owner.def.school.toUpperCase()} · {owner.conference}</small>
+        <small>{owner.def.school.toUpperCase()} · {leagueLabel(owner.conference)}</small>
         <h2>{p.name.split(' ').map((part, i) => <span key={`${part}-${i}`}>{part}</span>)}</h2>
         <p>
           {captainOf(owner.team)?.id === p.id && <CaptainC />}

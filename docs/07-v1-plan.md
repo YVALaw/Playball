@@ -1314,10 +1314,11 @@ carries no per-field provenance today, so an edit is indistinguishable
 from generated data the moment it lands — which is the second argument for
 the flag.
 
-**What remains of 17, planned with the reporter on September 6 and in
-this order.** God mode is the editor, and only the editor: *"god mode is
-for editing basically."* Rules of the world are free (stage 27); packs
-and files are the creator kit (stage 28).
+**The rest of 17, planned with the reporter on September 6 in this
+order and built later the same night (`05` §61.4).** God mode is the
+editor, and only the editor: *"god mode is for editing basically."* Rules
+of the world are free (stage 27); packs and files are the creator kit
+(stage 28).
 
 1. **Fork a career into a sandbox.** God mode is chosen at creation, so
    today a coach cannot take the career he cares about into it without
@@ -1335,12 +1336,14 @@ and files are the creator kit (stage 28).
    to the class, a commitment on the spot, and the star gate ignored.
 6. **The coach.** Badges granted, a philosophy change at any time,
    contract years and security, the hidden habit counters.
-7. **Time.** A season or several simulated in a tap; the calendar year
-   set.
+7. **Time.** A season simulated in a tap from the desk — built. Several
+   at a tap, and the calendar year set by hand, wait for the creator kit;
+   `05` §61.3 has why.
 8. **Presets.** Parity (every program at fifty), chaos (prestige drawn
    again), a superteam.
 
-**Not in 17, by decision:** injuries and the other rules toggles (free,
+All built September 6, later the same night, but for the second half of
+7. **Not in 17, by decision:** injuries and the other rules toggles (free,
 stage 27); name, logo and roster packs, career export and import (stage
 28); a records shelf (the reporter's call: a sandbox's records count).
 

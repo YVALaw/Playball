@@ -12,6 +12,7 @@
 // are not calling, so the screen answers "where is my career pointed" and not
 // only "who wants me this week".
 
+import { leagueLabel } from '../../engine/leagueNames.js';
 import { ChevronRightIcon, StarIcon, StarFilledIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { useOpenTeam } from './TeamCard.js';
@@ -86,7 +87,7 @@ export function JobMarket() {
                 <button className="job-offer-head tap" type="button" onClick={() => openTeam(o.team)}>
                   <span className="job-offer-crest"><Crest abbr={abbrOf(o.team)} size={42} /></span>
                   <span>
-                    <small>{o.conference.toUpperCase()} · {rec.w}-{rec.l}</small>
+                    <small>{leagueLabel(o.conference).toUpperCase()} · {rec.w}-{rec.l}</small>
                     <strong>{starred.has(abbrOf(o.team)) && <StarFilledIcon className="job-star" />}{o.school}</strong>
                     <p>{o.pitch}</p>
                   </span>
@@ -126,7 +127,7 @@ export function JobMarket() {
                 <span className="team-mark small"><Crest abbr={t.def.abbr} size={30} /></span>
                 <span>
                   <strong>{t.def.school}</strong>
-                  <small>{t.conference} · {'★'.repeat(prestigeStars(t.prestige))} · not calling yet</small>
+                  <small>{leagueLabel(t.conference)} · {'★'.repeat(prestigeStars(t.prestige))} · not calling yet</small>
                 </span>
                 <b>{t.prestige}</b>
                 <ChevronRightIcon />

@@ -32,7 +32,13 @@ import type { ClassYear, PitcherRole } from '../engine/types.js';
 import {
   addToTeam, authorPlayer, editPlayer, findPlayer, grantMoney, grantRecruiting, renameProgram,
   reshuffleSchedule, setPrestige, setStaff, swapConferences, type PlayerPatch,
+  healPlayer, setIronMan, movePlayer, cutPlayer, signPortalMan, setRedshirt, setAge,
+  grantBadge, revokeBadge, makeTwoWayOf, unmakeTwoWay, authorProspect, setRecruitStars,
+  setRecruitWants, commitRecruit, presetParity, presetChaos, presetSuperteam, setMood as setMoodOf,
+  type BadgeId, type BadgeTier,
 } from '../engine/godMode.js';
+import { setLeagueNames, usableLeagueNames } from '../engine/leagueNames.js';
+import { setStarGateOpen, type RecruitingPriorities } from '../engine/recruiting.js';
 import { createLiveGame, type LiveGame } from '../engine/liveGame.js';
 import {
   departAndDevelop, fillRosters, holesFor as rosterHoles, reinstate,
@@ -264,7 +270,7 @@ import { MAX_BADGES, badgeOf } from '../data/badges.js';
 import { makeRng } from '../engine/rng.js';
 import {
   autoBattingOrder, strategyFor, strategyForPhilosophy,
-  DEFAULT_STRATEGY, type Strategy,
+  DEFAULT_STRATEGY, type Strategy, type PhilosophyId,
 } from '../engine/strategy.js';
 import { opponentPlan } from '../engine/counters.js';
 import { HOME_CONFERENCE, CONFERENCES } from '../data/schools.js';
@@ -1338,6 +1344,28 @@ export interface DynastyStore {
   godSetStaff: (seat: StaffSeat, patch: { rating?: number; name?: string }) => void;
   godGrant: (kind: 'money' | 'recruiting', amount: number) => void;
   godReshuffleSchedule: () => boolean;
+  /** A sandbox's league renames, by conference id. Empty otherwise. */
+  leagueNames: Record<string, string>;
+  godSetLeagueName: (id: string, name: string) => void;
+  godHeal: (id: PlayerId) => void;
+  godIronMan: (id: PlayerId, on: boolean) => void;
+  godMovePlayer: (id: PlayerId, team: number) => boolean;
+  godCutPlayer: (id: PlayerId) => boolean;
+  godSignPortal: (id: PlayerId) => boolean;
+  godSetMood: (id: PlayerId, mood: number) => void;
+  godSetRedshirt: (id: PlayerId, on: boolean) => void;
+  godSetAge: (id: PlayerId, age: number) => void;
+  godGrantBadge: (id: PlayerId, badge: BadgeId, tier: BadgeTier) => void;
+  godRevokeBadge: (id: PlayerId, badge: BadgeId) => void;
+  godTwoWay: (id: PlayerId, on: boolean) => boolean;
+  godAddRecruit: (kind: 'hitter' | 'pitcher') => PlayerId | null;
+  godSetRecruitStars: (id: PlayerId, stars: number) => void;
+  godSetRecruitWants: (id: PlayerId, weights: Partial<RecruitingPriorities>) => void;
+  godCommitRecruit: (id: PlayerId) => void;
+  godSetCoachMore: (patch: { badges?: string[]; philosophy?: PhilosophyId; contractYears?: number; contractLength?: number; security?: number; tenure?: number; habits?: Record<string, number> }) => void;
+  godPreset: (kind: 'parity' | 'chaos' | 'superteam') => void;
+  /** Copy the career into a new sandbox slot and load it; the original keeps a snapshot. */
+  godForkToSandbox: () => Promise<boolean>;
   setDepthMode: (mode: DepthMode) => void;
   setDepthSystem: (key: SystemKey, value: boolean) => void;
 
@@ -2197,7 +2225,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // open to whoever won a game first — you included.
     seatCoaches(season, seat, START_YEAR);
     applyCoachMods(season, seat, coach, get().economy);
-    set({ godMode });
+    set({ godMode, leagueNames: {} });
+    setLeagueNames({});
+    setStarGateOpen(godMode);
     applyPhilosophy(season, seat, coach);
 
     /*
@@ -6286,6 +6316,219 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     return true;
   },
 
+  leagueNames: {},
+  godSetLeagueName: (id, name) => {
+    if (!get().godMode) return;
+    const next = { ...get().leagueNames };
+    const clean = name.trim().slice(0, 40);
+    if (clean.length > 0) next[id] = clean; else delete next[id];
+    setLeagueNames(next);
+    set({ leagueNames: next, version: get().version + 1 });
+    void get().saveNow();
+  },
+
+  godHeal: (id) => {
+    const { season, version } = get();
+    if (!get().godMode || !season) return;
+    const found = findPlayer(season, id);
+    if (!found) return;
+    healPlayer(found.player);
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  godIronMan: (id, on) => {
+    const { season, version } = get();
+    if (!get().godMode || !season) return;
+    const found = findPlayer(season, id);
+    if (!found) return;
+    setIronMan(found.player, on);
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  godMovePlayer: (id, team) => {
+    const { season, version } = get();
+    if (!get().godMode || !season) return false;
+    if (!movePlayer(season, id, team)) return false;
+    set({ version: version + 1 });
+    void get().saveNow();
+    return true;
+  },
+
+  godCutPlayer: (id) => {
+    const { season, version } = get();
+    if (!get().godMode || !season) return false;
+    if (!cutPlayer(season, id)) return false;
+    set({ version: version + 1, selectedPlayer: null });
+    void get().saveNow();
+    return true;
+  },
+
+  godSignPortal: (id) => {
+    const { season, userTeam, portal, version } = get();
+    if (!get().godMode || !season || !portal) return false;
+    const man = signPortalMan(season, portal.available, userTeam, id);
+    if (!man) return false;
+    set({
+      portal: { ...portal, available: portal.available.filter((m) => m.player.id !== id) },
+      portalArrivals: [...get().portalArrivals, man.player.name],
+      version: version + 1,
+    });
+    void get().saveNow();
+    return true;
+  },
+
+  godSetMood: (id, mood) => {
+    const { season, version } = get();
+    if (!get().godMode || !season) return;
+    const found = findPlayer(season, id);
+    if (!found) return;
+    setMoodOf(found.player, mood);
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  godSetRedshirt: (id, on) => {
+    const { season, version } = get();
+    if (!get().godMode || !season) return;
+    const found = findPlayer(season, id);
+    if (!found) return;
+    setRedshirt(found.player, on);
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  godSetAge: (id, age) => {
+    const { season, version } = get();
+    if (!get().godMode || !season) return;
+    const found = findPlayer(season, id);
+    if (!found) return;
+    setAge(found.player, age);
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  godGrantBadge: (id, badge, tier) => {
+    const { season, version } = get();
+    if (!get().godMode || !season) return;
+    const found = findPlayer(season, id);
+    if (!found) return;
+    grantBadge(found.player, badge, tier);
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  godRevokeBadge: (id, badge) => {
+    const { season, version } = get();
+    if (!get().godMode || !season) return;
+    const found = findPlayer(season, id);
+    if (!found) return;
+    revokeBadge(found.player, badge);
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  godTwoWay: (id, on) => {
+    const { season, version } = get();
+    if (!get().godMode || !season) return false;
+    const found = findPlayer(season, id);
+    if (!found) return false;
+    const done = on ? makeTwoWayOf(found.team, found.player, season.rng) : unmakeTwoWay(found.team, found.player);
+    if (!done) return false;
+    set({ version: version + 1 });
+    void get().saveNow();
+    return true;
+  },
+
+  godAddRecruit: (kind) => {
+    const { season, version } = get();
+    if (!get().godMode || !season) return null;
+    const made = authorProspect(season, kind, 70);
+    if (!made) return null;
+    set({ version: version + 1 });
+    void get().saveNow();
+    return made.id;
+  },
+
+  godSetRecruitStars: (id, stars) => {
+    const { season, version } = get();
+    const p = season?.recruiting?.prospects.find((x) => x.id === id);
+    if (!get().godMode || !season || !p) return;
+    setRecruitStars(p, stars);
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  godSetRecruitWants: (id, weights) => {
+    const { season, version } = get();
+    const p = season?.recruiting?.prospects.find((x) => x.id === id);
+    if (!get().godMode || !season || !p) return;
+    setRecruitWants(p, weights);
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  godCommitRecruit: (id) => {
+    const { season, userTeam, version } = get();
+    const p = season?.recruiting?.prospects.find((x) => x.id === id);
+    if (!get().godMode || !season?.recruiting || !p) return;
+    commitRecruit(season.recruiting, p, userTeam);
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  godSetCoachMore: (patch) => {
+    const { coach, season, userTeam, version } = get();
+    if (!get().godMode) return;
+    const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, Math.round(v)));
+    const habits: Record<string, number> = { ...(coach.habits ?? {}) };
+    for (const [k, v] of Object.entries(patch.habits ?? {})) if (typeof v === 'number') habits[k] = clamp(v, 0, 9999);
+    const next: CoachState = {
+      ...coach,
+      ...(patch.badges ? { badges: patch.badges } : {}),
+      ...(patch.philosophy ? { philosophy: patch.philosophy } : {}),
+      ...(patch.contractYears !== undefined ? { contractYears: clamp(patch.contractYears, 0, 10) } : {}),
+      ...(patch.contractLength !== undefined ? { contractLength: clamp(patch.contractLength, 1, 10) } : {}),
+      ...(patch.security !== undefined ? { security: clamp(patch.security, 0, 100) } : {}),
+      ...(patch.tenure !== undefined ? { tenure: clamp(patch.tenure, 0, 40) } : {}),
+      ...(patch.habits ? { habits } : {}),
+    };
+    // A philosophy change is a standing-strategy change too, as creation makes it.
+    if (patch.philosophy && season) {
+      const me = season.teams[userTeam];
+      if (me) me.strategy = strategyForPhilosophy(patch.philosophy);
+    }
+    if (season) applyCoachMods(season, userTeam, next, get().economy);
+    set({ coach: next, version: version + 1 });
+    void get().saveNow();
+  },
+
+  godPreset: (kind) => {
+    const { season, userTeam, version } = get();
+    if (!get().godMode || !season) return;
+    if (kind === 'parity') presetParity(season);
+    else if (kind === 'chaos') presetChaos(season, ((season.rng.state?.() ?? 0) ^ version) >>> 0);
+    else { const me = season.teams[userTeam]; if (me) presetSuperteam(me); }
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  godForkToSandbox: async () => {
+    const { season, userTeam } = get();
+    if (!season || get().godMode) return false;
+    const school = season.teams[userTeam]?.def.school ?? 'Dynasty';
+    // The original first, as a named snapshot, so the fork can never cost it.
+    await get().saveNow(newSlotId(), school);
+    // Then the copy, flagged, into its own slot — and into the chair.
+    const slot = newSlotId();
+    set({ godMode: true });
+    setStarGateOpen(true);
+    await get().saveNow(slot, `${school} · sandbox`);
+    await get().refreshSaves();
+    return get().loadSlot(slot);
+  },
+
   setDepthMode: (mode) => {
     set({ depth: setMode(get().depth, mode) });
     void get().saveNow();
@@ -6336,6 +6579,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         alumni: get().alumni,
         depth: get().depth,
         godMode: get().godMode,
+        leagueNames: get().leagueNames,
         /*
           How many the room has had this season, and the one still open.
 
@@ -6523,6 +6767,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // which leaves a career in progress exactly as it was being played.
       depth: normalizeDepth(loaded.depth),
       godMode: loaded.godMode,
+      leagueNames: usableLeagueNames(loaded.leagueNames),
       // Unread stays unread across a restart. It is the one thing the inbox
       // knows that nothing else in the save does.
       inbox: restoreInbox(loaded.inbox),

@@ -21,6 +21,17 @@ import type { Economy, StaffSeat } from './economy.js';
 import { makeHitter, makePitcher } from './players.js';
 import type { Rng } from './types.js';
 import { applyRealignment } from './world.js';
+import { healUp, isHurt } from './injury.js';
+import { BADGE_IDS, type BadgeId, type BadgeTier } from './badges.js';
+import {
+  HOME_REGIONS, RECRUITING_FACTORS, commitPointsFor, drawPriorities, reachFloor,
+  recruitingPrioritiesOf, starsFor,
+  type Prospect, type RecruitClass, type RecruitingFactor, type RecruitingPriorities,
+} from './recruiting.js';
+import { STATES_BY_REGION } from '../data/schools.js';
+import { ageFor } from './players.js';
+import { isTwoWay, type Team, type TwoWay } from './types.js';
+import { releaseFrom, signFromPortal, type PortalMan } from './portal.js';
 
 /** The rating scale, and the one clamp every number here goes through. */
 export const clampRating = (v: number): number =>
@@ -223,4 +234,242 @@ export function setStaff(
     ...(name ? { name } : {}),
   };
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// The rest of the sandbox — September 6 2026, later (05 §61.4).
+// ---------------------------------------------------------------------------
+
+
+// --- Health -----------------------------------------------------------------
+
+/** Off the shelf, whatever put him there. */
+export function healPlayer(p: Player): void {
+  healUp(p);
+  const i = p as Player & { outUntil?: number; why?: string; hurt?: string };
+  delete i.outUntil;
+  delete i.why;
+  delete i.hurt;
+}
+
+/** He never rolls for an injury. `hurtsToday` reads it. */
+export function setIronMan(p: Player, on: boolean): void {
+  const x = p as Player & { ironMan?: boolean };
+  if (on) x.ironMan = true; else delete x.ironMan;
+}
+export const isIronMan = (p: Player): boolean =>
+  (p as Player & { ironMan?: boolean }).ironMan === true;
+export { isHurt };
+
+// --- Roster moves -----------------------------------------------------------
+
+/**
+ * A starter leaving the nine: the bench man at his own spot steps in, and
+ * failing one, the hole stands — the depth chart steps over it on game day.
+ */
+function fillHole(team: Team, spot: Position): void {
+  const at = team.bench.find((b) => b.pos === spot);
+  if (!at) return;
+  team.bench = team.bench.filter((b) => b.id !== at.id);
+  team.lineup.push(at);
+}
+
+function place(team: Team, p: Player): void {
+  if (p.type === 'pitcher') { team.bullpen.push(p as Pitcher); return; }
+  team.bench.push(p as Hitter);
+  if (isTwoWay(p)) team.bullpen.push(p as TwoWay);
+}
+
+/** Any man to any program, onto the bench or into the pen there. */
+export function movePlayer(season: SeasonState, id: PlayerId, toTeam: number): boolean {
+  const found = findPlayer(season, id);
+  const to = season.teams[toTeam];
+  if (!found || !to || found.team.index === toTeam) return false;
+  const from = found.team.team;
+  const wasStarter = from.lineup.some((h) => h.id === id);
+  const spot = (found.player as Hitter).pos;
+  releaseFrom(from, id);
+  if (wasStarter && found.player.type !== 'pitcher') fillHole(from, spot);
+  place(to.team, found.player);
+  return true;
+}
+
+/** Gone from the world. */
+export function cutPlayer(season: SeasonState, id: PlayerId): boolean {
+  const found = findPlayer(season, id);
+  if (!found) return false;
+  const from = found.team.team;
+  const wasStarter = from.lineup.some((h) => h.id === id);
+  const spot = (found.player as Hitter).pos;
+  releaseFrom(from, id);
+  if (wasStarter && found.player.type !== 'pitcher') fillHole(from, spot);
+  return true;
+}
+
+/** Straight off the portal onto your roster, for nothing. */
+export function signPortalMan(
+  season: SeasonState, available: readonly PortalMan[], userTeam: number, id: PlayerId,
+): PortalMan | null {
+  const man = available.find((m) => m.player.id === id);
+  const rec = season.teams[userTeam];
+  if (!man || !rec) return null;
+  const from = season.teams[man.from];
+  if (from) releaseFrom(from.team, id);
+  signFromPortal(rec.team, man);
+  return man;
+}
+
+// --- The facts around a man ------------------------------------------------
+
+export function setMood(p: Player, mood: number): void {
+  (p as Player & { mood?: number }).mood = Math.max(0, Math.min(100, Math.round(mood)));
+}
+export const moodValue = (p: Player): number => (p as Player & { mood?: number }).mood ?? 62;
+
+export function setRedshirt(p: Player, on: boolean): void {
+  const x = p as Player & { redshirt?: boolean };
+  if (on) x.redshirt = true; else delete x.redshirt;
+}
+export const isRedshirt = (p: Player): boolean => (p as Player & { redshirt?: boolean }).redshirt === true;
+
+export function setAge(p: Player, age: number): void {
+  p.age = Math.max(17, Math.min(40, Math.round(age)));
+}
+
+export { BADGE_IDS };
+export type { BadgeId, BadgeTier };
+
+export function grantBadge(p: Player, id: BadgeId, tier: BadgeTier): void {
+  p.badges = [...(p.badges ?? []).filter((b) => b.id !== id), { id, tier }];
+}
+export function revokeBadge(p: Player, id: BadgeId): void {
+  const left = (p.badges ?? []).filter((b) => b.id !== id);
+  if (left.length > 0) p.badges = left; else delete p.badges;
+}
+
+const ARM_RATINGS = ['stuff', 'movement', 'control', 'stamina', 'groundBall', 'holdRunners', 'velocity'] as const;
+
+/**
+ * A bat given an arm: the generator's own draw for the pitching half, and a
+ * seat in the pen beside his seat in the order. One body, two stations.
+ */
+export function makeTwoWayOf(record: TeamRecord, p: Player, rng: Rng, quality = 60): boolean {
+  if (p.type === 'pitcher' || isTwoWay(p)) return false;
+  const arm = makePitcher(rng, Math.max(20, Math.min(99, Math.round(quality))));
+  const m = p as unknown as TwoWay;
+  m.twoWay = true;
+  m.role = 'RP';
+  m.homeRole = 'RP';
+  m.sidearm = false;
+  m.armPlatoon = 0;
+  for (const k of ARM_RATINGS) (m as unknown as Record<string, number>)[k] = arm[k];
+  if (!record.team.bullpen.some((a) => a.id === p.id)) record.team.bullpen.push(m);
+  return true;
+}
+
+/** The arm taken back. */
+export function unmakeTwoWay(record: TeamRecord, p: Player): boolean {
+  if (!isTwoWay(p)) return false;
+  record.team.rotation = record.team.rotation.filter((a) => a.id !== p.id);
+  record.team.bullpen = record.team.bullpen.filter((a) => a.id !== p.id);
+  const m = p as unknown as Record<string, unknown>;
+  for (const k of ['twoWay', 'role', 'homeRole', 'sidearm', 'armPlatoon', ...ARM_RATINGS]) delete m[k];
+  return true;
+}
+
+// --- Recruiting -------------------------------------------------------------
+
+/** A recruit made to order, into this year's class, unsigned and unranked. */
+export function authorProspect(
+  season: SeasonState, kind: 'hitter' | 'pitcher', quality: number,
+  opts: { pos?: Position; role?: PitcherRole; stars?: number } = {},
+): Prospect | null {
+  const cls = season.recruiting;
+  if (!cls) return null;
+  const rng = season.rng;
+  const q = Math.max(20, Math.min(99, Math.round(quality)));
+  const player: Player = kind === 'pitcher'
+    ? makePitcher(rng, q, { role: opts.role ?? 'SP', classYear: 'FR' })
+    : makeHitter(rng, q, { pos: opts.pos ?? 'SS', classYear: 'FR' });
+  player.classYear = 'FR';
+  player.age = ageFor(player.id, 'FR');
+  const stars = Math.max(1, Math.min(5, Math.round(opts.stars ?? starsFor(player))));
+  const home = HOME_REGIONS[Math.floor(rng() * HOME_REGIONS.length)]!;
+  const states = STATES_BY_REGION[home];
+  const priorities = drawPriorities(stars, rng);
+  player.priorities = priorities;
+  const prospect: Prospect = {
+    id: player.id,
+    player,
+    stars,
+    hometown: home,
+    state: states[Math.floor(rng() * states.length)] as string,
+    priorities,
+    minProgram: reachFloor(stars),
+    rank: cls.prospects.length + 1,
+    points: {},
+    spent: {},
+    weekActions: {},
+    promiseBy: {},
+    signedBy: null,
+    committedWeek: null,
+  };
+  cls.prospects.push(prospect);
+  return prospect;
+}
+
+export function setRecruitStars(p: Prospect, stars: number): void {
+  p.stars = Math.max(1, Math.min(5, Math.round(stars)));
+  p.minProgram = reachFloor(p.stars);
+}
+
+/** His nine weights rewritten, and normalised to one; what he cares about is the sway's field. */
+export function setRecruitWants(p: Prospect, weights: Partial<RecruitingPriorities>): void {
+  const next: RecruitingPriorities = { ...recruitingPrioritiesOf(p) };
+  for (const f of RECRUITING_FACTORS) {
+    const v = weights[f];
+    if (typeof v === 'number' && Number.isFinite(v)) next[f] = Math.max(0, v);
+  }
+  let total = 0;
+  for (const f of RECRUITING_FACTORS) total += next[f];
+  if (total <= 0) return;
+  for (const f of RECRUITING_FACTORS) next[f] = next[f] / total;
+  p.recruitingPriorities = next;
+}
+
+/** Signed, on the spot, with the points a commitment would have taken. */
+export function commitRecruit(cls: RecruitClass, p: Prospect, team: number): void {
+  p.signedBy = team;
+  p.committedWeek = cls.week;
+  p.points[team] = Math.max(p.points[team] ?? 0, commitPointsFor(p.stars));
+}
+
+export const RECRUIT_FACTOR_KEYS: readonly RecruitingFactor[] = RECRUITING_FACTORS;
+
+// --- Presets ----------------------------------------------------------------
+
+/** Every program at fifty. */
+export function presetParity(season: SeasonState): void {
+  for (const t of season.teams) t.prestige = 50;
+}
+
+/** Every program's prestige drawn again, from the seed, so a save agrees with itself. */
+export function presetChaos(season: SeasonState, seed: number): void {
+  for (const t of season.teams) {
+    let h = (seed ^ (t.index * 2654435761)) >>> 0;
+    h ^= h >>> 15; h = Math.imul(h, 2246822519); h ^= h >>> 13; h = Math.imul(h, 3266489917); h ^= h >>> 16;
+    t.prestige = 20 + ((h >>> 0) % 76);
+  }
+}
+
+/** Everybody on the roster at ninety-nine, ceiling included. */
+export function presetSuperteam(record: TeamRecord): void {
+  const men: Player[] = [
+    ...record.team.lineup, ...record.team.bench, ...record.team.rotation, ...record.team.bullpen,
+  ];
+  for (const p of men) {
+    const rec = p as unknown as Record<string, unknown>;
+    for (const k of ratingsOf(p)) if (typeof rec[k] === 'number') rec[k] = 99;
+    p.potential = 99;
+  }
 }

@@ -81,7 +81,7 @@ the one thing that must never be lost.
 | Not built yet | |
 |---|---|
 | Onboarding | the guided tutorial — a titled card, then a glow path through doing it (stage 19) |
-| God mode | built September 6 on the `god-mode` branch: a per-career sandbox over players, programs, leagues, the coach, the staff, the money and the schedule; waits on the reporter's approval to land on `main` |
+| God mode | built September 6 on the `god-mode` branch: a per-career sandbox over players (health, badges, moves, the two-way flag), programs and what the leagues are called, recruits, the coach, the staff, the money, the schedule and the season, with any career forkable into it; waits on the reporter's approval to land on `main` |
 | The rules of the world | injuries, the portal, realignment, poaching and season length as free switches on How you play (stage 27) |
 | The creator kit | name, logo and roster packs a player builds and imports locally, careers as files — the second purchase (stage 28) |
 | The majors | the expansion, after v1.0 (stage 29) |

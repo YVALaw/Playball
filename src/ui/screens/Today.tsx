@@ -14,6 +14,7 @@
 // dishonest number on the screen. It carries the national rank, which is what a
 // coach actually looks up at that moment.
 
+import { leagueLabel } from '../../engine/leagueNames.js';
 import { useRef, useState } from 'react';
 import { PlayIcon, SewingPinIcon, StopwatchIcon, StarFilledIcon,
 } from '@radix-ui/react-icons';
@@ -227,7 +228,7 @@ export function Today() {
           */}
           <div className="weather-block">
             <strong>{rank ? `#${rank}` : '—'}</strong>
-            <span>RPI<br />{team.conference}</span>
+            <span>RPI<br />{leagueLabel(team.conference)}</span>
           </div>
         </section>
 
@@ -534,7 +535,7 @@ export function Today() {
               : `${team.rs} run${team.rs === 1 ? '' : 's'} scored`}</span>
           </button>
           <button type="button" onClick={() => { go('season', 'stand'); }}>
-            <small>{team.conference.toUpperCase()}</small>
+            <small>{leagueLabel(team.conference).toUpperCase()}</small>
             <strong>{team.cw}-{team.cl}</strong>
             <span>{team.w}-{team.l} overall</span>
           </button>

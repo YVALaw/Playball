@@ -393,7 +393,7 @@ export function starsFor(p: Player): number {
  * program can actually take, and a system without him is a system where the
  * board is just the prestige table sorted twice.
  */
-function drawPriorities(stars: number, rng: Rng): Priorities {
+export function drawPriorities(stars: number, rng: Rng): Priorities {
   return priorityWeights(stars, rng);
 }
 
@@ -502,9 +502,17 @@ export const PIPELINE_REACH_BONUS = 1;
  * from a rule that no longer exists, and a gate that honoured them would run
  * two different games depending on when the save was made.
  */
+/**
+ * God mode opens the star gate for the whole session: a sandbox program
+ * courts anybody. Set by the store with the save; never persisted.
+ */
+let starGateOpen = false;
+export function setStarGateOpen(open: boolean): void { starGateOpen = open; }
+
 export function canPursue(
   prospect: Prospect, programStars: number, inPipeline: boolean | number = false,
 ): boolean {
+  if (starGateOpen) return true;
   // A mature out-of-state pipeline can extend reach too. Boolean callers are
   // the original home-state rule; numeric callers are Pipeline 2.0 strength.
   const hasReachPipeline = typeof inPipeline === 'number' ? inPipeline >= 60 : inPipeline;
@@ -538,7 +546,7 @@ export const byRank = (a: Prospect, b: Prospect): number =>
   || a.player.name.localeCompare(b.player.name);
 
 /** The regions a recruit can be from, in rough proportion to where talent is. */
-const HOME_REGIONS: readonly Region[] = [
+export const HOME_REGIONS: readonly Region[] = [
   'Gulf', 'Gulf', 'Gulf',
   'Atlantic', 'Atlantic', 'Atlantic',
   'Pacific', 'Pacific',
