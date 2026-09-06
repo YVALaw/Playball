@@ -803,6 +803,18 @@ export function createHalfInning(
   };
 
   let finished = false;
+  /*
+    Reported from the dugout: "I had a runner on third, the pitcher walked my
+    batter, and the runner scored — there was no reason for him to score on a
+    walk." He did not: a wild pitch had scored him, resolved in the same tap
+    as the walk, and the card headlined the walk. The rules were right and
+    the telling was wrong. A steal has always been its own step; when a coach
+    is watching, a ball that gets away is one too — the run crosses, the same
+    man is still at the plate, and the next tap plays his at-bat. The
+    simulated game keeps both in one step, so nothing about its draws moves.
+  */
+  let looseThisStep = false;
+  let skipLoose = false;
 
   // A steal, wherever it came from, is an event of its own: the runner moves or
   // he is an out, and a caught runner is an out like any other — for years of
@@ -852,6 +864,7 @@ export function createHalfInning(
     );
     const roll = rng();
     if (roll >= chance) return false;
+    looseThisStep = true;
 
     // Same event from the runner's perspective, different scorer's decision.
     // Poor control shifts it toward a wild pitch; poor blocking shifts it toward
@@ -917,11 +930,21 @@ export function createHalfInning(
 
     // Nobody calls for this one. It runs in a managed game exactly as it does in
     // a simulated one, because a ball off the catcher's shin guard is not a
-    // decision anybody made.
-    if (resolveLoosePitch()) {
-      say(`   ${bat.team.name} win it.`);
-      finished = true;
-      return true;
+    // decision anybody made. The step after a loose pitch that stood on its
+    // own skips the roll: the at-bat it interrupted has not had its pitch yet.
+    if (skipLoose) {
+      skipLoose = false;
+    } else {
+      looseThisStep = false;
+      if (resolveLoosePitch()) {
+        say(`   ${bat.team.name} win it.`);
+        finished = true;
+        return true;
+      }
+      if (looseThisStep && (manualOffense || manualDefense)) {
+        skipLoose = true;
+        return false;
+      }
     }
 
     const pitcher = fld.pitcher;
@@ -1780,7 +1803,7 @@ const POSITION_SPOT: Record<Position, { x: number; y: number }> = {
  * change what happens. The scatter is derived from the fielder and the count
  * instead, which is stable, free, and varies exactly as much as it needs to.
  */
-function landingFor(
+export function landingFor(
   fielder: Player | null, kind: PAKind, event: string, salt: number,
 ): { x: number; y: number } | undefined {
   if (!fielder || !BATTED_KINDS.has(kind)) return undefined;
@@ -1837,9 +1860,19 @@ function landingFor(
   */
   const outfield = fielder.pos === 'LF' || fielder.pos === 'CF' || fielder.pos === 'RF';
   if (event === 'single') {
+    /*
+      Onto the grass, not just past his station. Reported from the emulator:
+      men scoring from second on a ball the park drew inside the diamond,
+      with an infielder picking it up and no error in the log. Measured over
+      2,329 singles: 178 were drawn inside the dirt, some at the mound, and
+      25 of the 344 men who scored from second did so on that picture. The
+      park hands a ball inside 4.9 units (y ≈ .54) to an infielder to chase,
+      so a single off an infielder — a ball THROUGH him, into the outfield —
+      lands at .52 or deeper, where the man who really fields it plays.
+    */
     const y = outfield
       ? clamp(spot.y - 0.12 + jitter() * 0.4, 0.30, 1.0)   // in front of him
-      : clamp(spot.y + 0.14 + jitter() * 0.4, 0.10, 1.0);  // through the hole
+      : clamp(spot.y + 0.26 + jitter() * 0.25, 0.52, 0.80); // through the hole, onto the grass
     // Pushed off his station rather than onto it: a hit is a ball nobody was
     // standing on.
     const away = spot.x === 0 ? jitter() * 3 : spot.x * 1.18;

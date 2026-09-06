@@ -7339,6 +7339,92 @@ climb exactly where §AA measured it. Coach reputation still leans on the
 name (big programs hire big names) and the §16.4 local-board figures have
 not been rerun; `06` §AB.
 
+## 55. Two reports from the emulator — **FIXED September 6 2026**
+
+The first afternoon of play on the Android 16 emulator, and two reports
+within the hour. Both were true, neither was the rule it looked like.
+
+### 55.1 "He scored on a walk"
+
+*Runner on third, nobody else on, the pitcher walked my batter, and the
+runner scored.* He did not score on the walk. A wild pitch had scored him,
+and the dugout resolved the wild pitch and the plate appearance in one
+tap, headlining the walk. Verified by sweeping the exact situation —
+forty worlds, every tactic, both dugouts manual and automatic, twelve
+values of the die: **not one run without a wild pitch, a passed ball, a
+bunt or a steal line in front of it.** `forceAdvance` moves only the
+forced chain; a man on third with first base open is not forced, and the
+engine never moved him.
+
+What changed is the telling. A steal has always been its own step in a
+managed game; a ball that gets away is one now too, when a coach is
+watching: the run crosses, the same man is still at the plate, and the
+next tap plays his at-bat — with no second loose-pitch roll in front of
+it, since the at-bat it interrupted has not had its pitch. The simulated
+game keeps both in one step, so its draws do not move and the goldens
+stand. Pinned three ways in `tests/baseball-correctness.test.ts`: the
+loose pitch stands alone with a coach present, stays folded in without
+one, and a walk with a man on third and nobody else never scores him.
+
+### 55.2 "My colours were fielding"
+
+*I was pitching and got the three outs, stepped out of the game for a
+second, and when I came back my colours were on the fielders while I was
+batting.* Then, without stepping out: *three outs, and my colours kept
+fielding.*
+
+Three things in `Manage.tsx`, all in the one piece of state that decides
+which shirts the park paints. It started at `'top'` on every mount, so a
+screen re-entered in a bottom half painted the home side fielding — and
+the coach was the home side, batting. It followed the game only through
+`pending.half`, which is the *decision* and is null through the other
+side's automatic half, so a third out taken under the bench coach never
+reached it. And it waited for the in-flight ball to clear before turning
+the shirts, but the ball only clears when a later play is not a batted
+one, so a fly-out third out left the gate shut until the next groundout.
+
+The live game exposes its own `half` and `inning` now, whoever is up
+(`liveGame.ts`); the screen initialises from them and follows them; and
+the beat after a chase is a longer wait, not a gate. Pinned in
+`tests/liveGame.test.ts`: the exposed half and inning agree with every
+decision the game offers, through both halves.
+
+### 55.3 "He came all the way round on a ball that never left the diamond"
+
+*Many times a runner has gone from second or first to home on a ball the
+animation kept inside the diamond — caught by an infielder — with no error
+in the play-by-play.*
+
+Two things, and the numbers separate them. Over 2,329 singles from four
+hundred simulated half-innings, **not one runner scored from first on a
+single** — the engine has no such play; the first-to-home cases were the
+wild pitch of §55.1, the man already on second before the hit and the
+whole thing shown in one tap. From second, 344 men scored on singles, and
+**25 of them on a ball the park drew inside the infield dirt**: 178 of the
+singles, one in thirteen, were drawn there, some at the mound. A single
+off an infielder is, in the engine, a ball *through* him into the outfield
+— it was placed past his station, but only fourteen hundredths past it
+with a wide jitter, which reaches the dirt; and the park picks the man who
+chases a ball by where it lands, with everything inside 4.9 units (y ≈
+.54 straightaway) going to an infielder. So the picture was an infielder
+fielding a ball on the dirt while a run scored from second: impossible,
+and drawn 25 times.
+
+It lands on the grass now — .52 to .80, the depth at which an outfielder
+charging the ball actually plays it — for every infield spot and every
+count, and the outfielder chases it. Bunt hits keep their own landing near
+the plate. Re-measured: nine singles inside the dirt, all of them bunts,
+and three men from second on those, which is a real if rare play. No draw
+was touched, so the goldens stand; `tests/baseball-correctness.test.ts`
+pins the depth.
+
+**What was not changed.** A runner on second scores on a single sixty
+percent of the time whether the ball was lined to the wall or bounced
+through the hole to a charging left fielder. Real rates are lower on the
+second kind. It is a refinement, not a rule, and it moves the run
+environment, so it waits for a calibration pass rather than riding a
+report about the picture.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

@@ -14,6 +14,22 @@ by hand through the store's own actions.
 
 ## Fixed during this audit
 
+- **F2 · "He scored on a walk."** Runner on third alone, a walk, and the
+  run. A wild pitch had scored him inside the same tap; the rules were
+  right and the telling was wrong. A loose pitch is its own step in a
+  managed game now. `05` §55.1. Fixed September 6.
+- **F3 · "My colours were fielding."** After a third out, and after
+  stepping out and back in, the fielders wore the coach's colours. The
+  park's displayed half began at 'top' on every mount, followed the game
+  only through the decision, and waited on a ball that never cleared. The
+  live game exposes its half; the screen reads it. `05` §55.2. Fixed
+  September 6.
+- **F4 · "He came round on a ball that never left the diamond."** Singles
+  through the infield were drawn on the dirt, some at the mound, and an
+  infielder chased them while a man scored from second — 25 times in 344.
+  They land on the grass now. Nobody ever scored from first on a single;
+  those were F2. `05` §55.3. Fixed September 6.
+
 - **Hans Hood removed.** `ensureHoodHans` and `ensureWonderGuy` are gone
   from recruiting.ts, so no named prospect rides every class. (PSC came back
   the next day — see F1 above.)

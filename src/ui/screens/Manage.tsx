@@ -105,20 +105,28 @@ export function Manage() {
     Which side is in the field, as the PARK is showing it — which lags the
     scoreboard by however long the last play takes to finish.
   */
-  const [shownHalf, setShownHalf] = useState<'top' | 'bottom'>('top');
+  // Initialised from the game, not from 'top': the screen mounts mid-game
+  // whenever the coach steps out and back, and a bottom half painted as a top
+  // half put his own colours on the nine men fielding against him (`05` §55).
+  const [shownHalf, setShownHalf] = useState<'top' | 'bottom'>(
+    () => useDynasty.getState().live?.half ?? 'top',
+  );
   /*
     Turn the sides over once the play is dead — a beat after, so the men who
     were chasing it have walked back to their stations first. Without the
     wait the third out repainted every shirt mid-chase, which is what "they
     just appear all of a sudden" was.
   */
-  // Read from the store rather than from `d`, which is only in scope past the
-  // early returns below — and a hook cannot live there.
-  const liveHalf = useDynasty((s) => s.live?.pending?.half);
+  // The game's own half, which is always there — `pending.half` is only
+  // there while it is your turn, so a third out you were pitching through
+  // under the bench coach never reached this effect. And the wait for the
+  // chase is a longer beat when a ball is in the air, not a gate on it: the
+  // ball only clears when a later play is NOT batted, so a fly-out third out
+  // left the gate shut and the shirts wrong until the next groundout.
+  const liveHalf = useDynasty((s) => s.live?.half);
   useEffect(() => {
     if (liveHalf === undefined || liveHalf === shownHalf) return undefined;
-    if (ball !== null) return undefined;      // a ball is still in play
-    const t = setTimeout(() => setShownHalf(liveHalf), 700);
+    const t = setTimeout(() => setShownHalf(liveHalf), ball !== null ? 1400 : 700);
     return () => clearTimeout(t);
   }, [liveHalf, shownHalf, ball]);
   const ballTick = useRef(0);

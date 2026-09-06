@@ -97,6 +97,14 @@ export interface LiveGame {
    */
   readonly playSeq: number;
   readonly over: boolean;
+  /**
+   * Where the game actually is, whoever's turn it is. `pending` carries the
+   * half too, but only while there is a decision to make — during the other
+   * side's automatic half it is null, and a screen that read the half off it
+   * could not follow the game (`05` §55).
+   */
+  readonly half: 'top' | 'bottom';
+  readonly inning: number;
   readonly log: readonly string[];
   readonly result: GameResult;
   /** Answer the pending decision and play on to the next one. */
@@ -360,6 +368,8 @@ export function createLiveGame(
     get lastPlay() { return events; },
     get playSeq() { return playSeq; },
     get over() { return over; },
+    get half() { return half; },
+    get inning() { return inning; },
     get log() { return log; },
     get result(): GameResult {
       const homeWon = home.runs > away.runs;

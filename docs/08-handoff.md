@@ -6,9 +6,30 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 6, 2026, latest · **Branch:** `main` ·
-**Recruiting 1.0 merged from a stale base and repaired** (`05` §54), after
-stage 18b (§53).
+**Last session:** September 6, 2026, night · **Branch:** `main` · **three
+dugout reports from the emulator, fixed** (`05` §55), after Recruiting 1.0
+(§54) and stage 18b (§53).
+
+> **September 6, night — three reports from the emulator, all true, none the
+> rule it looked like.**
+>
+> *"He scored on a walk, from third, alone."* A wild pitch had scored him
+> inside the same tap as the walk, and the card headlined the walk. Swept
+> the exact situation across forty worlds, every tactic, both dugouts:
+> not one run without a wild pitch, passed ball, bunt or steal in front of
+> it. A loose pitch is its own step in a managed game now, as a steal
+> always was; the simulated game is untouched. *"My colours were
+> fielding."* The park's half started at 'top' on every mount, followed
+> the game only through the decision — null through the other side's
+> automatic half — and waited on an in-flight ball that only clears on a
+> later non-batted play. The live game exposes its half and inning; the
+> screen reads them. *"He came round on a ball that never left the
+> diamond."* Singles through the infield were drawn as shallow as the
+> mound and chased by infielders; 25 of 344 men who scored from second did
+> it on that picture. They land on the grass now, .52 to .80. `05` §55,
+> and F2–F4 in `09`.
+>
+> The APK on the emulator is rebuilt from this tree.
 
 > **September 6, latest — Recruiting 1.0, merged from a stale base and
 > repaired in four places.**
@@ -632,7 +653,7 @@ exists. Stage 19 removes the three together.
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,173 tests, 58 files)
+npm run check      # typecheck + the whole suite (1,178 tests, 58 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing

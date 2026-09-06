@@ -350,7 +350,11 @@ describe('runners are conserved', () => {
       const onThird = bats.lineup[5]!;
       place(half, 1, onFirst);
       place(half, 3, onThird);
+      // A manual half resolves a ball that gets away as its own step now, with
+      // the same man still up; the single is the step after it.
+      const spot = bat.spot;
       half.step('swing');
+      if (bat.spot === spot) half.step('swing');
 
       // Three men were involved and three are accounted for.
       expect(runnersOn(half.bases) + bat.runs + half.outs).toBe(3);
@@ -653,5 +657,30 @@ describe('when the staff has the pitching', () => {
       expect(live.result.away.runs).toBeGreaterThanOrEqual(0);
       expect(live.result.home.runs).not.toBe(live.result.away.runs);
     }
+  });
+});
+
+describe('where the game is, for the screen that draws it', () => {
+  it('exposes the half and inning whoever is up, and they agree with the decision', () => {
+    // Reported from the emulator: the fielders wore the coach's colours after a
+    // third out, and again after he stepped out and back in. The park read the
+    // half off the pending decision, which is null through the other side's
+    // automatic half — so it never saw the change — and the screen's own copy
+    // started at 'top' on every mount. The game says where it is now.
+    const { rng, bats: homeTeam, field: awayTeam } = twoTeams(2027);
+    const live = createLiveGame(homeTeam, awayTeam, rng, { managing: 'home' });
+    expect(live.half).toBe('top');
+    expect(live.inning).toBe(1);
+    let seenBottom = false;
+    let guard = 0;
+    while (!live.over && guard++ < 400) {
+      const p = live.pending;
+      if (!p) break;
+      expect(p.half).toBe(live.half);
+      expect(p.inning).toBe(live.inning);
+      if (live.half === 'bottom') seenBottom = true;
+      live.submit(p.side === 'offense' ? 'swing' : 'pitch');
+    }
+    expect(seenBottom).toBe(true);
   });
 });

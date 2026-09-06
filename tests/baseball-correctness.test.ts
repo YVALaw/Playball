@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   TeamState, RULES, createHalfInning, moundVisit, canMoundVisit,
-  resolveOut, winningPitcherFor, savingPitcherFor, type Bases,
+  resolveOut, winningPitcherFor, savingPitcherFor, landingFor, type Bases,
 } from '../src/engine/game.js';
 import { makeRng } from '../src/engine/rng.js';
 import {
@@ -219,5 +219,100 @@ describe('what the merge review found', () => {
     expect(pitcherReady(season, arm)).toBe(true);
     season.pitcherWorkload.set(arm.id, { day: day - 1, pitches: 12, outs: 3 });
     expect(pitcherReady(season, arm)).toBe(true);
+  });
+});
+
+describe('a ball that gets away, as the dugout sees it', () => {
+  // Reported: "runner on third, the pitcher walked my batter, and the runner
+  // scored." A wild pitch had scored him inside the same tap as the walk. The
+  // rules were right; the telling was wrong. With a coach watching, the loose
+  // pitch is its own step now, the way a steal always was.
+  const setup = (seed: number, manual: boolean) => {
+    const { batTeam, fldTeam } = clubs(seed);
+    const bat = new TeamState(batTeam, false);
+    const fld = new TeamState(fldTeam, true);
+    const log: string[] = [];
+    const half = createHalfInning(
+      bat, fld, 1, scriptedEngine([pa('walk', 'ground')]),
+      // The first draw is the loose-pitch roll in a manual half; zero fires it.
+      scriptedRng([0], 0), (s) => log.push(s), false, null, undefined, manual, manual,
+    );
+    const runner = bat.order[8]!;
+    (half.bases as Bases)[2] = runner;
+    return { bat, half, runner, log };
+  };
+
+  it('scores the run as its own play and leaves the same man at the plate', () => {
+    const { bat, half, runner, log } = setup(21, true);
+    const spot = bat.spot;
+    expect(half.step()).toBe(false);
+    expect(bat.runs).toBe(1);
+    expect(bat.spot).toBe(spot);
+    expect(half.bases[2]).toBeNull();
+    expect(log.some((l) => /Wild pitch|Passed ball/.test(l))).toBe(true);
+    expect(log.some((l) => l.startsWith('['))).toBe(false);
+
+    // The next tap is the walk, with no second roll for a loose pitch: the
+    // batter reaches, nobody else moves, the run count stands.
+    const batter = bat.order[spot]!;
+    expect(half.step()).toBe(false);
+    expect(bat.runs).toBe(1);
+    expect(half.bases[0]).toBe(batter);
+    expect(half.bases[2]).toBeNull();
+    expect(bat.spot).toBe((spot + 1) % 9);
+    void runner;
+  });
+
+  it('keeps both in one step in the simulated game, so its draws do not move', () => {
+    const { bat, half, log } = setup(21, false);
+    const spot = bat.spot;
+    expect(half.step()).toBe(false);
+    expect(bat.runs).toBe(1);
+    expect(bat.spot).toBe((spot + 1) % 9);
+    expect(log.some((l) => /Wild pitch|Passed ball/.test(l))).toBe(true);
+    expect(log.some((l) => /walks/.test(l))).toBe(true);
+  });
+
+  it('never scores a man from third on a walk by itself', () => {
+    // The sweep behind the report: forty worlds, every tactic, both dugouts,
+    // a walk with a runner on third and nobody else — not one run without a
+    // loose pitch, a bunt or a steal line in front of it. Pinned narrowly.
+    const { batTeam, fldTeam } = clubs(33);
+    for (const manual of [true, false]) {
+      const bat = new TeamState(batTeam, false);
+      const fld = new TeamState(fldTeam, true);
+      const half = createHalfInning(
+        bat, fld, 1, scriptedEngine([pa('walk', 'ground')]),
+        scriptedRng([], 0.999), () => {}, false, null, undefined, manual, manual,
+      );
+      const runner = bat.order[8]!;
+      (half.bases as Bases)[2] = runner;
+      half.step();
+      expect(bat.runs).toBe(0);
+      expect(half.bases[2]).toBe(runner);
+      expect(half.bases[0]).not.toBeNull();
+    }
+  });
+});
+
+describe('where a single lands', () => {
+  it('draws a single off an infielder on the grass, where an outfielder plays it', () => {
+    // Reported from the emulator: a man scoring from second on a ball the
+    // park drew inside the diamond, picked up by an infielder, no error. The
+    // engine had sent the ball through the hole; the picture had it dying on
+    // the dirt. Past the chaser ring (y ≈ .54 straightaway) or close to it,
+    // never at the mound, for every infield spot and every count.
+    const { fldTeam } = clubs(5);
+    for (const pos of ['1B', '2B', 'SS', '3B'] as const) {
+      const man = fldTeam.lineup.find((p) => p.pos === pos)!;
+      for (let salt = 1; salt <= 60; salt++) {
+        const at = landingFor(man, 'ground', 'single', salt)!;
+        expect(at.y, `${pos} salt ${salt}`).toBeGreaterThanOrEqual(0.52);
+        expect(at.y).toBeLessThanOrEqual(0.80);
+      }
+    }
+    // A single dropped in front of an outfielder is still a shallow ball.
+    const cf = fldTeam.lineup.find((p) => p.pos === 'CF')!;
+    expect(landingFor(cf, 'fly', 'single', 3)!.y).toBeLessThan(landingFor(cf, 'fly', 'double', 3)!.y);
   });
 });
