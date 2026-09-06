@@ -52,7 +52,7 @@ game at a time on a full-screen field with a defense on it, hand out awards,
 spend coaching points, read a recruiting board that is honest about being
 vague, argue the draft out of taking your junior, and start again in February —
 against ninety-five rival programs run by men with careers of their own.
-Fifty-eight test files and 1,179 tests cover it, calibration among them, so
+Fifty-nine test files and 1,182 tests cover it, calibration among them, so
 the engine cannot drift without something failing.
 
 The August 2026 interface overhaul and its feedback pass are described in §20
@@ -250,10 +250,10 @@ get sacked and get poached). What genuinely remains part-done:
 - [~] **Android.** Safe-area insets are done and were done early, correctly. The
       hardware back button is not wired, because there is nothing to wire it to
       yet
-- [~] **Accessibility.** Reduced motion is honoured throughout, and the overhaul
-      added dialog semantics, Escape handling and focus restoration to the
-      modals and sheets. Focus states elsewhere and text scaling are not:
-      every size in the app is in pixels
+- [~] **Accessibility.** Reduced motion is honoured throughout; every modal
+      and sheet has dialog semantics, Escape, a focus trap and focus
+      restoration through one hook (`05` §57); the alert dots have names;
+      text scaling lives in Settings. Focus states elsewhere are not done
 - [~] **SIM SEASON.** On the dashboard for testing, scheduled to leave before
       v1.0
 
@@ -461,8 +461,8 @@ a native plugin the page arms only at depth fixed it (`05` §53) · the two §X 
 **answered** (`06` §AA: replay costs 1.1 MB a season and wants its pitch
 events dropped; the user's home state recruits at a 15% larger network
 multiplier than any rival's, and that is a balance decision with two
-honest answers) · the rest of the **`06` §X** batch (the accessibility
-trio, the dead CSS, the cleanups) · the rest of **24** (the interview's
+honest answers) · ~~the rest of the **`06` §X** batch~~ closed September
+6, late (`05` §57; item 14 waits on a season of play) · the rest of **24** (the interview's
 reveal and result card) · **26**'s verdict from the reporter · then
 **17**, which is **god mode** since September 6 rather than the store and
 needs its design pass first, and **19** (ship). **20b** and **25** were

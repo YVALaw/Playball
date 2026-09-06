@@ -81,11 +81,11 @@ export function Wire() {
   const year = useDynasty((s) => s.year);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
-  const watch = useDynasty((s) => s.watch);
+  const programs = useDynasty((s) => s.watch.programs);
 
   const items = useMemo(() => {
     if (!season) return [];
-    const watched = new Set(watch.programs);
+    const watched = new Set(programs);
     const myConference = season.teams[userTeam]?.conference;
     const score = (item: WireItem): number => {
       const teamRow = season.teams[item.team];
@@ -96,7 +96,7 @@ export function Wire() {
       return item.weight + (mine ? 120 : 0) + (followed ? 32 : 0) + (conference ? 10 : 0);
     };
     return [...wire(season)].sort((a, b) => score(b) - score(a));
-  }, [season, version, userTeam, watch.programs.join('|')]);
+  }, [season, version, userTeam, programs]);
 
   /*
     That he came and read it.

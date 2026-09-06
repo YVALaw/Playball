@@ -10,7 +10,8 @@
 // Dismissable by tapping anywhere, because a modal you have to aim at is a
 // modal that has outstayed its welcome.
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
+import { useDialogFocus } from './dialogFocus.js';
 
 export function Modal(
   { kicker, title, lines, body, tone = 'ink', action, onClose, cancel }:
@@ -45,24 +46,13 @@ export function Modal(
     div: no Escape, no role, focus left sitting behind the scrim on whatever
     opened it. Escape follows the scrim's rule — cancel when one exists, never
     the action for a destructive ask. Focus lands on the safest control on
-    open and goes home when the dialog closes.
+    open and goes home when the dialog closes. The contract lives in
+    useDialogFocus now, and every sheet carries it.
   */
   const dismiss = cancel ? cancel.onClick : onClose;
-  const dismissRef = useRef(dismiss);
-  dismissRef.current = dismiss;
   const firstButton = useRef<HTMLButtonElement | null>(null);
-  useEffect(() => {
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    firstButton.current?.focus();
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') { e.stopPropagation(); dismissRef.current(); }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      opener?.focus();
-    };
-  }, []);
+  const card = useRef<HTMLElement | null>(null);
+  useDialogFocus(card, dismiss, { initial: firstButton });
 
   return (
     <div
@@ -81,6 +71,7 @@ export function Modal(
         that is neither.
       */}
       <section
+        ref={card}
         className={`modal-card season-verdict rise-in tone-${tone}`}
         onClick={(e) => e.stopPropagation()}
       >

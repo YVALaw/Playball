@@ -10,7 +10,8 @@
 // One component and one copy table (`tutorials.ts`) serve every screen, so a
 // new tutorial is a new entry, not a new modal system.
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { useDialogFocus } from './dialogFocus.js';
 import { createPortal } from 'react-dom';
 import { readPrefs } from '../state/devicePrefs.js';
 import { useDynasty } from '../state/store.js';
@@ -55,19 +56,8 @@ export function FirstVisit({ id }: { id: string }) {
   const done = useRef(() => { markSeen(id); });
   done.current = () => { markSeen(id); };
   const primary = useRef<HTMLButtonElement | null>(null);
-  useEffect(() => {
-    if (!show) return;
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    primary.current?.focus();
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') { e.stopPropagation(); done.current(); }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      opener?.focus();
-    };
-  }, [show]);
+  const card = useRef<HTMLDivElement | null>(null);
+  useDialogFocus(card, () => done.current(), { initial: primary, active: show });
 
   if (!show) return null;
 
@@ -87,6 +77,7 @@ export function FirstVisit({ id }: { id: string }) {
 
   return createPortal(
     <div
+      ref={card}
       className="tutorial-scrim fade-in"
       role="dialog"
       aria-modal="true"

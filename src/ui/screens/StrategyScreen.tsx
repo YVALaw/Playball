@@ -7,7 +7,8 @@
 // notes below are the real trade the engine implements, not flavour — an
 // aggressive running game does take more bases and does run into more outs.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useDialogFocus } from '../dialogFocus.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FieldNote, ModuleIntro } from '../components/Kit.js';
 import { InFrame } from '../Overlay.js';
@@ -133,6 +134,8 @@ export function StrategyScreen() {
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const library = useRef<HTMLElement | null>(null);
+  useDialogFocus(library, () => setLibraryOpen(false), { active: libraryOpen });
   const [autoConfirmed, setAutoConfirmed] = useState<string | null>(null);
   void version;
 
@@ -204,7 +207,7 @@ export function StrategyScreen() {
             aria-label="Close opponent plans"
             onClick={() => setLibraryOpen(false)}
           />
-          <section className="playbook-library-sheet" role="dialog" aria-modal="true" aria-label="Opponent plans">
+          <section ref={library} className="playbook-library-sheet" role="dialog" aria-modal="true" aria-label="Opponent plans">
             <header>
               <span><small>OPPONENT PLANS</small><strong>Choose a matchup</strong></span>
               <button className="tap" type="button" onClick={() => setLibraryOpen(false)}>CLOSE</button>

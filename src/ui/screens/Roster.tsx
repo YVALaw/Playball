@@ -236,6 +236,7 @@ export function Roster() {
             ]}
           />
           <Segmented
+            wrap
             label="Position"
             value={posF ?? 'all'}
             onChange={(v) => setPosF(v === 'all' ? null : v)}
@@ -245,6 +246,7 @@ export function Roster() {
             ]}
           />
           <Segmented
+            wrap
             label="Player status"
             value={statusF ?? 'all'}
             onChange={(v) => setStatusF(v === 'all' ? null : v)}

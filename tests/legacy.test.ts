@@ -100,6 +100,21 @@ describe('the professional game', () => {
     expect(low).toBeLessThan(60);
   });
 
+  it('marks the year he reaches the show, once, and only that year', () => {
+    // The inbox used to find the debut by reading the prose of the line.
+    let debuts = 0;
+    for (let i = 0; i < 300; i++) {
+      const rows = proCareer(`d-${i}`, note({ round: 1, overall: 84 }), 2045);
+      const flagged = rows.filter((r) => r.debut);
+      const first = rows.findIndex((r) => r.level === 'THE SHOW');
+      if (first < 0) { expect(flagged).toEqual([]); continue; }
+      debuts++;
+      expect(flagged.length).toBe(1);
+      expect(rows[first]!.debut).toBe(true);
+    }
+    expect(debuts).toBeGreaterThan(0);
+  });
+
   it('the undrafted get one honest line', () => {
     const rows = proCareer('g1', note({ reason: 'graduated', round: undefined }), 2035);
     expect(rows).toHaveLength(1);

@@ -24,8 +24,9 @@ import { NATIONAL_BIDS, OMAHA_BERTHS } from '../src/engine/postseason.js';
 import {
   POACH_GAP, SETTLED_TENURE, newRivalCoach, retireAge, rivalName, rivalOutcome,
   runCarousel, runRivalYear, seatCoaches, spendPoints, syncCoachMods,
-  type RivalCoach,
+  coachFromAssistant, type RivalCoach,
 } from '../src/engine/rivals.js';
+import { marketFor } from '../src/engine/economy.js';
 import {
   RECRUITING_WEEKS, aiTargets, closeWeek, leadersAtWeekStart, resetWeeklySpend,
   weeklyPoints,

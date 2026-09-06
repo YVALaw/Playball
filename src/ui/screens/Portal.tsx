@@ -10,7 +10,8 @@
 // and the one you can still do something about. It is also the bill for stage
 // 9: every man on it is a promise somebody broke, and the card says which.
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { useDialogFocus } from '../dialogFocus.js';
 import { handles } from '../../state/depth.js';
 import { flightRisk } from '../../engine/morale.js';
 import { sfx, buzz } from '../sound.js';
@@ -317,9 +318,11 @@ function PortalSignSheet(
 ) {
   const p = man.player;
   const cost = man.cost;
+  const dialog = useRef<HTMLDivElement | null>(null);
+  useDialogFocus(dialog, onClose);
   return (
     <InFrame>
-      <div className="sheet-scrim portal-sign-scrim fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Sign ${p.name}`}>
+      <div ref={dialog} className="sheet-scrim portal-sign-scrim fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Sign ${p.name}`}>
         <section className="portal-sign-sheet rise-in" onClick={(e) => e.stopPropagation()}>
           <header>
             <small>TRANSFER DECISION</small>

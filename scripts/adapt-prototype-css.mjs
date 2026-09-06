@@ -123,5 +123,18 @@ const header = `/* prototype.css — GENERATED. Do not edit.
 
 `;
 
-fs.writeFileSync(OUT, header + css.trimStart());
-console.log(`${OUT}: ${css.split('\n').length} lines, ${sized} sizes put on --ts`);
+const out = header + css.trimStart();
+if (process.argv.includes('--check')) {
+  // The generated file is checked in and two passes have written into it by
+  // hand; the suite runs this so a regeneration can never wipe a rule that
+  // should have lived in prototype-frame.css.
+  const current = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8').split(String.fromCharCode(13)).join('') : '';
+  if (current !== out) {
+    console.error(`${OUT} does not match what ${SRC} generates. Hand rules belong in src/ui/prototype-frame.css; then: node scripts/adapt-prototype-css.mjs`);
+    process.exit(1);
+  }
+  console.log(`${OUT}: matches its source`);
+} else {
+  fs.writeFileSync(OUT, out);
+  console.log(`${OUT}: ${css.split('\n').length} lines, ${sized} sizes put on --ts`);
+}

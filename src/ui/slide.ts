@@ -35,6 +35,9 @@ function measure(el: HTMLElement | null, inset: number): void {
   el.setAttribute('data-slide', 'on');
   el.style.setProperty('--slide-x', `${on.offsetLeft + inset}px`);
   el.style.setProperty('--slide-w', `${Math.max(0, on.offsetWidth - inset * 2)}px`);
+  // A strip that wraps needs the row as well as the column.
+  el.style.setProperty('--slide-y', `${on.offsetTop}px`);
+  el.style.setProperty('--slide-h', `${on.offsetHeight}px`);
 }
 
 /**

@@ -6,7 +6,8 @@
 // the list is allowed to shrink to one word per line; the row owns a min-width
 // zero text column and normal word wrapping explicitly.
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useDialogFocus } from '../dialogFocus.js';
 import { ChevronRightIcon, EnvelopeClosedIcon } from '@radix-ui/react-icons';
 import { useDynasty } from '../../state/store.js';
 import { FixedHeader } from '../Sticky.js';
@@ -157,9 +158,11 @@ function OpenLetter(
     onGo: (l: InboxLink) => void; onClose: () => void;
   },
 ) {
+  const dialog = useRef<HTMLDivElement | null>(null);
+  useDialogFocus(dialog, onClose);
   return (
     <InFrame>
-      <div className="mail-scrim fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={item.title}>
+      <div ref={dialog} className="mail-scrim fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={item.title}>
         <article className="mail-open mail-open-modern rise-in" onClick={(e) => e.stopPropagation()}>
           <header className="mail-open-toolbar">
             <button type="button" className="tap" onClick={onClose}>‹ Inbox</button>

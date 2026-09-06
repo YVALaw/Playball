@@ -40,18 +40,18 @@
 // asking a question he has no information to answer. Here he picks a coach; the
 // policies follow from that and stay editable for ever after.
 
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   ArrowLeftIcon, CheckIcon, Pencil1Icon,
 } from '@radix-ui/react-icons';
-import { ModuleIntro, SectionHeading } from '../components/Kit.js';
+import { ModuleIntro } from '../components/Kit.js';
 import {
   CONFERENCES, STATES_BY_REGION, type SchoolDef,
 } from '../../data/schools.js';
 import {
   prestigeStars, contractFor, leagueShape, playerBoard, requiredCoachPrestige,
   canBeHired, hireGateNote, ROOKIE_PRESTIGE, rosterStrength, startingOffers, offerPitch,
-  randomProfile, clampAge, MIN_COACH_AGE, MAX_COACH_AGE, DEFAULT_LOOK,
+  randomProfile, clampAge, DEFAULT_LOOK,
   type CoachProfile, type CoachLook, type Mandate,
 } from '../../engine/program.js';
 import {

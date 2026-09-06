@@ -28,13 +28,11 @@ import { useOpenTeam } from './TeamCard.js';
 import { teamColour } from '../Avatar.js';
 import { Crest } from '../Crest.js';
 import { ArrowLeftIcon, ChevronRightIcon, StarIcon } from '@radix-ui/react-icons';
-import {
-  BudgetBar, FieldNote, Metric, MetricStrip, ModuleIntro, SectionHeading, Segmented,
-} from '../components/Kit.js';
+import { ModuleIntro, SectionHeading, Segmented } from '../components/Kit.js';
 import {
   annualBudget, dollars, marketFor, remaining, wageBill,
-  FACILITIES, MAX_FACILITY, SCOUT_COST, SCOUT_DAYS, SEATS, SEAT_LABEL, SEAT_NOTE,
-  BUILDINGS, winterCraft, nightCraft, shapeOf, fitFactor, facilityLevel, facilityUpgradeCost, facilityEffectAt,
+  SCOUT_COST, SCOUT_DAYS, SEATS, SEAT_LABEL, SEAT_NOTE,
+  BUILDINGS, winterCraft, nightCraft, shapeOf, facilityLevel, facilityUpgradeCost, facilityEffectAt,
   FACILITY_MAX_LEVEL, pipelineStrength, pipelineLabel, type Assistant, type StaffSeat, type Building,
 } from '../../engine/economy.js';
 import { handles } from '../../state/depth.js';
@@ -1571,26 +1569,10 @@ function Delta({ k, from, to }: { k: string; from: number; to: number }) {
   );
 }
 
-/** One of the two counters either side of the face. */
-function Flank({ k, v, align }: { k: string; v: string; align: 'left' | 'right' }) {
-  return (
-    <div style={{ minWidth: 56, textAlign: align }}>
-      <div className="label">{k}</div>
-      <div style={{
-        marginTop: 1, font: "800 calc(20px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
-      }}>{v}</div>
-    </div>
-  );
-}
-
 function Head({ children }: { children: ReactNode }) {
   return (
     <div className="flow-section-title"><span className="label">{children}</span></div>
   );
-}
-
-function Panel({ children }: { children: ReactNode }) {
-  return <div className="program-panel">{children}</div>;
 }
 
 function Note({ children }: { children: ReactNode }) {
@@ -1601,65 +1583,3 @@ function Empty({ children }: { children: ReactNode }) {
   return <div className="program-empty">{children}</div>;
 }
 
-function Stat({ k, v, last }: { k: string; v: string; last?: boolean }) {
-  void last;
-  return (
-    <div className="program-stat">
-      <span className="label">{k}</span>
-      <b>{v}</b>
-    </div>
-  );
-}
-
-/** A `Stat` that also has to show where the number sits on its scale. */
-function Meter(
-  { k, v, value, note, last }:
-  { k: string; v: string; value: number; note?: string; last?: boolean },
-) {
-  return (
-    <div style={{
-      padding: '8px 12px 11px',
-      borderBottom: last ? 'none' : '1px solid var(--hairline)',
-    }}>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10,
-      }}>
-        <span className="label">{k}</span>
-        <span style={{ font: "600 calc(14px * var(--ts)) var(--mono)" }}>{v}</span>
-      </div>
-      <div style={{ height: 6, background: 'rgba(var(--ink-rgb), .09)', marginTop: 6 }}>
-        <div style={{
-          width: `${Math.max(2, Math.min(100, value))}%`, height: '100%',
-          background: 'var(--clay)', transition: 'width 400ms ease',
-        }} />
-      </div>
-      {note && (
-        <div style={{
-          marginTop: 6, font: "400 calc(10.5px * var(--ts))/1.4 var(--body)", color: 'var(--dim)',
-        }}>{note}</div>
-      )}
-    </div>
-  );
-}
-
-/** A coach rating, drawn against the full scale the skill screen uses. */
-function Bar({ label, value }: { label: string; value: number }) {
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between',
-        alignItems: 'baseline', marginBottom: 4,
-      }}>
-        <span className="label">{label}</span>
-        <span style={{ font: "600 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>{value}</span>
-      </div>
-      <div style={{ height: 6, background: 'rgba(var(--ink-rgb), .09)' }}>
-        <div style={{
-          width: `${Math.max(0, Math.min(100, value))}%`, height: '100%',
-          background: value >= 60 ? 'var(--clay)' : 'var(--ink)',
-          opacity: value >= 60 ? 1 : 0.55,
-        }} />
-      </div>
-    </div>
-  );
-}

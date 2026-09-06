@@ -19,7 +19,7 @@
 // bar, so a freshman with room to grow reads differently from a finished senior
 // at a glance.
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { RosterMoves } from './RosterMoves.js';
 import { seasonAwards } from '../../engine/postseason.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
@@ -254,10 +254,6 @@ export function Player() {
   const [sheet, setSheet] = useState<Sheet>(playerCardSection);
   const [half, setHalf] = useState<'bat' | 'arm'>('bat');
   void version;
-
-  useEffect(() => {
-    setSheet(playerCardSection);
-  }, [selected, playerCardSection]);
 
   if (!season || !team || !selected) return <Nobody />;
 

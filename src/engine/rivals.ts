@@ -87,6 +87,12 @@ import type { Assistant } from './economy.js';
  */
 export interface RivalCoach {
   name: string;
+  /**
+   * The assistant he was, when he came off a staff (`coachFromAssistant`).
+   * The year roll finds where a poached assistant landed by this, never by
+   * name — a rival who happens to share it is not your man.
+   */
+  fromAssistant?: string;
   age: number;
   prestige: number;
   security: number;
@@ -222,6 +228,7 @@ export function coachFromAssistant(a: Assistant, mentorPrestige: number): RivalC
   const length = contractFor(prestige);
   return {
     name: a.name,
+    fromAssistant: a.id,
     age: a.age,
     prestige,
     security: 62,

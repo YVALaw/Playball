@@ -162,7 +162,8 @@ function Seasons({ annals }: { annals: SchoolSeason[] }) {
 function Alumni({ notes, teamAbbr }: { notes: Record<string, AlumnusNote>; teamAbbr: string }) {
   const year = useDynasty((s) => s.year);
   const openPlayer = useDynasty((s) => s.openPlayer);
-  const rows = Object.entries(notes)
+  // proCareer is deterministic and not free; once per book and year, not per render.
+  const rows = useMemo(() => Object.entries(notes)
     .filter(([, note]) => note.teamAbbr === teamAbbr)
     .map(([key, note]) => {
       const id = key as PlayerId;
@@ -176,7 +177,8 @@ function Alumni({ notes, teamAbbr }: { notes: Record<string, AlumnusNote>; teamA
       const last = pro[pro.length - 1];
       return { id, note, pro, showYears, highest, last };
     })
-    .sort((a, b) => (b.showYears.length - a.showYears.length) || (b.note.year - a.note.year));
+    .sort((a, b) => (b.showYears.length - a.showYears.length) || (b.note.year - a.note.year)),
+  [notes, teamAbbr, year]);
 
   if (rows.length === 0) {
     return (

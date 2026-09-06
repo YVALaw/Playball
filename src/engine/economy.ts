@@ -344,11 +344,18 @@ export interface PipelineEntry {
   lastSignedYear: number;
 }
 
+/**
+ * The network strength at which a state counts as a pipeline. The board's
+ * PIPELINE filter and the recruiting file's badge both read it, so it lives
+ * here rather than as a 35 in two places of the screen.
+ */
+export const PIPELINE_MIN = 35;
+
 /** The label the UI uses. */
 export function pipelineLabel(strength: number): string {
   if (strength >= 80) return 'STRONG';
   if (strength >= 60) return 'ESTABLISHED';
-  if (strength >= 35) return 'EMERGING';
+  if (strength >= PIPELINE_MIN) return 'EMERGING';
   return 'COLD';
 }
 

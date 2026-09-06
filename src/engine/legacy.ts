@@ -142,6 +142,8 @@ export interface ProYear {
   line: string;
   /** True on the year the career ends. */
   final?: boolean;
+  /** True on the year he reached the top level — the one promotion a coach's inbox marks. */
+  debut?: boolean;
 }
 
 const LEVELS = ['ROOKIE BALL', 'SINGLE-A', 'DOUBLE-A', 'TRIPLE-A', 'THE SHOW'] as const;
@@ -226,12 +228,14 @@ export function proCareer(id: string, note: AlumnusNote, throughYear: number): P
     const movePct = Math.min(72, 34 + talent);
     if (level < LEVELS.length - 1 && (h >> 8) % 100 < movePct) {
       level++;
+      const called = level === LEVELS.length - 1;
       rows.push({
         year: y,
         level: LEVELS[level]!,
-        line: level === LEVELS.length - 1
+        line: called
           ? 'Called up. Everything before this was the road here.'
           : `Moved up to ${LEVELS[level]!.toLowerCase().replace('-a', '-A')}.`,
+        ...(called ? { debut: true } : {}),
       });
     } else {
       const star = level === LEVELS.length - 1 && (h >> 16) % 100 < 9;

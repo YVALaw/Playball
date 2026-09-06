@@ -150,7 +150,7 @@ export function ContextNav<T extends string>(
           type="button"
           aria-current={item.id === active ? 'page' : undefined}
           onClick={() => onSelect(item.id)}
-        >{item.label}{item.alert && <i className="nav-alert" />}</button>
+        >{item.label}{item.alert && <i className="nav-alert" aria-label="needs attention" />}</button>
       ))}
     </nav>
   );
@@ -187,7 +187,7 @@ export function PrimaryNav<T extends string>(
           onClick={() => onSelect(t.id)}
         >
           {t.icon}
-          <span>{t.label}{t.alert && <i className="nav-alert" />}</span>
+          <span>{t.label}{t.alert && <i className="nav-alert" aria-label="needs attention" />}</span>
           <small>{t.meta}</small>
         </button>
       ))}

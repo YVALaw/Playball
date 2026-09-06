@@ -16,7 +16,8 @@
 // country's story, which is worth reading now that a first round pick is two or
 // three men in a year rather than sixty-four.
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useDialogFocus } from '../dialogFocus.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { ChevronRightIcon, Cross1Icon } from '@radix-ui/react-icons';
@@ -299,6 +300,10 @@ function KeepSheet(
   const openPlayer = useDynasty((s) => s.openPlayer);
   const [pitch, setPitch] = useState<KeepPitch | null>(null);
   const [offer, setOffer] = useState(0);
+  // A sheet a keyboard can leave: CLOSE takes focus, so Enter and Escape both close.
+  const dialog = useRef<HTMLDivElement | null>(null);
+  const closeButton = useRef<HTMLButtonElement | null>(null);
+  useDialogFocus(dialog, onClose, { initial: closeButton });
 
   const p = man.player;
   const needs = keepPoints(man.round);
@@ -308,14 +313,14 @@ function KeepSheet(
 
   return (
     <InFrame>
-      <div className="sheet-scrim retention-scrim fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Talking to ${p.name}`}>
+      <div ref={dialog} className="sheet-scrim retention-scrim fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Talking to ${p.name}`}>
         <section className="retention-sheet retention-call-modern rise-in" onClick={(e) => e.stopPropagation()}>
           <header className="retention-call-hero">
             <button className="retention-call-player tap" type="button" onClick={() => openPlayer(p.id)}>
               <Avatar id={p.id} team={abbr} size={50} />
               <span><small>ROUND {man.round} · {slotOf(p)} · {p.classYear}</small><strong>{p.name}</strong><em>{overallOf(p)} OVR</em></span>
             </button>
-            <button className="retention-call-close tap" type="button" onClick={onClose}>CLOSE</button>
+            <button ref={closeButton} className="retention-call-close tap" type="button" onClick={onClose}>CLOSE</button>
           </header>
 
           {!done ? (

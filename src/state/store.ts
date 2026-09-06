@@ -1562,6 +1562,20 @@ function pendingFromJournal(
 }
 
 /** The economy, from whatever an older save carries. Sparse: absent is fresh. */
+/**
+ * A coaching-tree branch from before September 6 2026 knew its coach only by
+ * name; the chair is matched by the assistant's id now. Stamp the id onto a
+ * coach a legacy branch still names, once, so the name never decides again.
+ */
+function stampTreeChairs(season: SeasonState, economy: Economy): void {
+  for (const branch of economy.tree ?? []) {
+    if (season.teams.some((t) => t.coach?.fromAssistant === branch.id)) continue;
+    const chair = season.teams.find((t) =>
+      t.coach !== null && t.coach !== undefined && t.coach.fromAssistant === undefined && t.coach.name === branch.name);
+    if (chair?.coach) chair.coach.fromAssistant = branch.id;
+  }
+}
+
 function usableEconomy(saved: unknown): Economy {
   const fresh = freshEconomy();
   if (!saved || typeof saved !== 'object') return fresh;
@@ -3497,13 +3511,21 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // A "poach" only becomes a departure when the national carousel actually
     // gives the assistant a chair. Interest without an offer should not make a
     // paid employee vanish into an off-screen free-agent pool.
+    // Where each poached assistant landed, resolved once for the letter and
+    // for the tree below — by the id `coachFromAssistant` stamped on his
+    // record, never by name: a rival who happens to share it is not your man.
+    const landings = new Map<StaffSeat, (typeof season.teams)[number]>();
+    for (const seat of SEATS) {
+      const man = eco0.staff[seat];
+      if (!man || !poached(man, year)) continue;
+      const chair = season.teams.find((t) => t.coach?.fromAssistant === man.id);
+      if (chair) landings.set(seat, chair);
+    }
     let poachNews: { name: string; seat: StaffSeat } | null = null;
     for (const seat of SEATS) {
       const man = eco0.staff[seat];
       if (!man) continue;
-      const landing = poached(man, year)
-        ? season.teams.find((t) => t.coach?.name === man.name)
-        : undefined;
+      const landing = landings.get(seat);
       if (landing) {
         poachNews ??= { name: man.name, seat };
         get().post({
@@ -3520,7 +3542,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // If he later retires or falls out of the carousel, the last known record
     // remains in the tree instead of disappearing with the chair.
     const tree = (eco0.tree ?? []).map((branch) => {
-      const chair = season.teams.find((t) => t.coach?.name === branch.name);
+      const chair = season.teams.find((t) => t.coach?.fromAssistant === branch.id);
       const c = chair?.coach;
       return c && chair ? {
         ...branch,
@@ -3533,8 +3555,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     });
     for (const seat of SEATS) {
       const man = eco0.staff[seat];
-      if (!man || !poached(man, year)) continue;
-      const landing = season.teams.find((t) => t.coach?.name === man.name);
+      if (!man) continue;
+      const landing = landings.get(seat);
       if (!landing?.coach || tree.some((b) => b.id === man.id)) continue;
       const joined = man.joinedYear ?? year;
       tree.push({
@@ -3966,7 +3988,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         const pro = proCareer(id, note, year + 1);
         const now = pro.find((row) => row.year === year + 1);
         if (!now || now.level !== 'THE SHOW') continue;
-        const debut = now.line.startsWith('Called up');
+        const debut = now.debut === true;
         if (!debut && !now.final) continue;
         get().post({
           kind: 'season', year: year + 1,
@@ -6257,6 +6279,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // carousel keeps every coach it has hired and fired — the only chair this
     // touches on a modern save is one the market genuinely failed to fill.
     seatCoaches(loaded.season, loaded.userTeam, loaded.year);
+    stampTreeChairs(loaded.season, usableEconomy(loaded.economy));
     // Restamped on every load rather than trusted from the save, so a save from
     // before the in-game skills were wired — or one that predates a job change —
     // comes up with the edge on the right program.

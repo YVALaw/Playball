@@ -6695,9 +6695,9 @@ The **offseason roadmap** replaces the seven small circles: a horizontally
 scrolling rail whose steps read NOW · DONE · REVISIT · LOCKED
 (`StepRail.tsx`), centred on NOW, past steps tappable, future steps visible
 but held. The pass's own note also describes a "current-step command card"
-above the rail; that card was never built — only its CSS shipped
-(`season-flow-current`, with no element emitting it) — and the rail's own
-header comment says it was removed. A step ahead of NOW that has already
+above the rail; that card was never built — only its CSS shipped, and
+that went on September 6 (§57) — and the rail's own header comment says it
+was removed. A step ahead of NOW that has already
 been reached is labelled REVISIT, which reads wrong forward; `06` §X. The seven steps are unchanged — Awards, Season review,
 Coach development, Draft, Portal, Recruiting, Class review · Signing Day
 (the last is now labelled as both). Awards are event cards with the same
@@ -7513,6 +7513,109 @@ were catching up with itself.
 - **Not changed:** SIM TO … CHAMPIONSHIP plays through the championship
   rather than stopping in front of it. For a spectator there is nothing to
   stop for, and the label reads as a destination; it stands.
+
+## 57. The interface batch closed — the accessibility trio and the cleanups — **SHIPPED September 6 2026, late**
+
+What was left of `06` §X after the bugs went on September 5: three
+accessibility items and the cleanups, taken together as the reporter asked.
+Nothing here changes a rule or a draw; the goldens stand untouched.
+
+### 57.1 A sheet a keyboard can leave
+
+`Modal.tsx` had the answer since August — Escape dismisses, focus lands on
+the safest control on open and goes home when the dialog closes — and every
+bottom sheet since was a div that declared `role="dialog"` and did none of
+it. The answer is a hook now, `useDialogFocus` (`src/ui/dialogFocus.ts`),
+and it does one thing the modal never did: Tab and Shift+Tab stay inside
+the dialog. Escape belongs to the topmost dialog only, so a confirm laid
+over a sheet does not close both. Modal and the tutorial use it; so do the
+dugout picker, an open letter, the retention call, the portal signing, the
+opponent library, and both of the board's sheets — the recruiting file and
+the week-one holes warning — which now also carry the role and a name.
+
+Focus lands on CLOSE where a sheet has one and the first control would do
+something (the retention call's first button opens the player), and on the
+first tabbable otherwise. The alert dots on the primary nav, the context
+nav and the segmented strip were bare `<i>` with nothing to read; each says
+"needs attention" now, so a tab with news is announced as one.
+
+### 57.2 A strip that wraps
+
+The roster's status filter has six options and the position filter ten, and
+the segmented strip scrolled them off a 320px phone with nothing to say so.
+`Segmented` takes `wrap` now: the strip wraps onto more rows, and the
+sliding rule follows the active button onto its row — `useSlide` measures
+the row (`--slide-y`, `--slide-h`) as well as the column. The roster's
+position and status filters wear it; the class-year strip, five wide, did
+not need it.
+
+### 57.3 The stylesheet, in four cuts
+
+- **Dead rules, a screen's worth** (item 29). Forty-six rules removed whole
+  and twelve comma groups trimmed, 137 lines: the command card that was
+  never built (`season-flow-current`), the `season-review-*` family, the
+  staff seat card and grid and stats, the facility choice, effect box,
+  level track and swipe deck, the portal mini card, the postseason hero and
+  championship tease, the bracket board, the prospect hero, the dossier
+  rank, the featured player, the section heading, the start-save note. One
+  entry on the list was wrong and stayed: `tone-conference`, `tone-national`
+  and `tone-omaha` are emitted by the coach's trophy shelf, as
+  `tone-${shelf.tone}`, which a search for the literal cannot see. The
+  `staff-seat-switcher` is live too and stayed.
+- **Raw colours onto the tokens** (item 30). Forty-one `#fff` and
+  fifty-eight `rgba(255,255,255,…)` in the frame stylesheet, none of which
+  the dark theme could reach. Light text on a dark fill is `--cream` now,
+  a translucent white is `rgba(var(--cream-rgb), …)`, and text on the
+  alert fill is `--alert-ink`, which flips dark where the alert lightens.
+  The money, scout and staff cards' hand-mixed greens went by the job each
+  did: kickers to `--cream-dim`, copy to cream at .85, edges and tracks to
+  cream at .16. What remains is deliberate: the grass, the linescore's
+  board, the dark inks on the yellow call and the cream sign button, which
+  must stay dark on a fill that stays light, and the warm cream on the
+  team-coloured panels that `tests/contrast.test.ts` pins against every
+  school's deep accent. The same test now refuses a raw white in the frame.
+- **The generated file, un-edited.** `src/ui/prototype.css` is generated
+  from the design source, and two passes had written into it by hand — the
+  Recruiting 1.0 board room, ninety lines, and the light-theme pass's
+  segmented tab and drag handle. A regeneration would have wiped all of it
+  without a word. The rules sit at the top of `prototype-frame.css` now, so
+  they keep the cascade position they had, the file is regenerated
+  byte-for-byte from its source, the generator has a `--check` mode, and
+  `tests/generated-css.test.ts` runs it.
+- **The wrap rules** of §57.2, beside the slide.
+
+### 57.4 The cleanups
+
+- **`PIPELINE_MIN`** is exported from `economy.ts` and read by the board's
+  filter, the recruiting file's badge, and the label that always had it
+  (item 16).
+- **The poach landing, once, by id** (items 18 and 31). `coachFromAssistant`
+  stamps the assistant's id onto the coach as `fromAssistant`; the year roll
+  resolves where each poached assistant landed once, by that id, for the
+  letter and the tree together, and refreshes a tree branch by it. A rival
+  who happens to share a name is not your man any more. A branch from
+  before this knew its coach only by name, so a load stamps the id onto the
+  coach a legacy branch still names — once — and the name never decides
+  again.
+- **The alumni debut** (item 31). `ProYear` carries `debut: true` on the
+  year a man reaches The Show; the inbox reads the flag instead of the
+  prose of the line.
+- **History memoises `proCareer`** per book and year rather than per
+  render (item 19). **Player** drops the sheet-reset effect the parent's
+  `key` already handles (item 20). **Wire** keys its ranking on the watch
+  list itself rather than a joined string of it (item 21). **Board** drops
+  the portal lookup left from the `createPortal` version — `InFrame` does
+  it (item 15). Unused imports out of Program, NewGame, App and Board, five
+  dead helpers out of Program, and the `has-profile-alert` class that had
+  no rule (item 17).
+- **Item 32**, the audit note that contradicts the code, had been annotated
+  at the merge on September 5 and is closed.
+
+### 57.5 What is still open in §X
+
+Item 14 — what the pass dropped on purpose, to be judged after a season of
+play — and the two measurements, 24 and 25, decided in `06` §AA. Everything
+else in the section is done.
 
 ## Appendix A: stale comments and vestigial code found while writing this
 

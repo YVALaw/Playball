@@ -20,7 +20,8 @@
 // quietly discounted, because a button that works and achieves nothing reads as
 // a bug.
 
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useDialogFocus } from '../dialogFocus.js';
 import { boardBudget, useDynasty, useUserTeam } from '../../state/store.js';
 import {
   fit, weeklyPoints, actionInterest, canPursue, inPipeline, byRank,
@@ -29,7 +30,7 @@ import {
   hasRecruitingRelationship, PITCH_COST, HARD_SELL_COST, SWAY_COST, VISIT_COST,
   PROMISE_COST, PROMISE_LABEL,
   SCHOLARSHIPS, MAX_PER_RECRUIT, RECRUITING_WEEKS,
-  reportedOverall, reportedPotential, reportedTool, reportWidth, hintsFor,
+  reportedOverall, reportedPotential, reportedTool, hintsFor,
   type Prospect, type RecruitingFactor, type RecruitMajorInput,
 } from '../../engine/recruiting.js';
 import { enrolling, walkOnShortfall } from '../../engine/progression.js';
@@ -43,7 +44,7 @@ import { InFrame } from '../Overlay.js';
 import { FirstVisit } from '../Tutorial.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { MixerHorizontalIcon } from '@radix-ui/react-icons';
-import { withStaff, pipelineStrength, pipelineLabel, recruitingFacilityScore } from '../../engine/economy.js';
+import { withStaff, pipelineStrength, pipelineLabel, recruitingFacilityScore, PIPELINE_MIN } from '../../engine/economy.js';
 import { FieldNote, Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
 import { isTwoWay } from '../../engine/types.js';
 import type { Hitter, Pitcher, Player, Position, RecruitPromiseKind } from '../../engine/types.js';
@@ -129,7 +130,7 @@ export function matchesFilters(
   }
   if (f.state && p.state !== f.state) return false;
   if (f.stars.length > 0 && !f.stars.includes(p.stars)) return false;
-  if (f.pipelineOnly && network(p) < 35) return false;
+  if (f.pipelineOnly && network(p) < PIPELINE_MIN) return false;
   if (f.untouchedOnly && !untouched(p)) return false;
   if (f.reachOnly && !canPursue(p, programStars, network(p))) return false;
   return true;
@@ -258,6 +259,8 @@ export function Board() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [warnHoles, setWarnHoles] = useState(false);
+  const holesSheet = useRef<HTMLDivElement | null>(null);
+  useDialogFocus(holesSheet, () => setWarnHoles(false), { active: warnHoles });
 
   const lastWeek = useDynasty((s) => s.lastWeek);
 
@@ -631,7 +634,7 @@ export function Board() {
 
       {warnHoles && (
         <InFrame>
-          <div className="prospect-sheet-scrim fade-in" onClick={() => setWarnHoles(false)}>
+          <div ref={holesSheet} className="prospect-sheet-scrim fade-in" onClick={() => setWarnHoles(false)} role="dialog" aria-modal="true" aria-label="Your board still has holes">
             <section className="recruit-week-warning rise-in" onClick={(e) => e.stopPropagation()}>
               <small>WEEK 1 · BOARD CHECK</small>
               <h2>Your board still has holes</h2>
@@ -654,7 +657,7 @@ export function Board() {
           recruitingSkill={recruiterSkill}
           pitch={pitch}
           reachable={canPursue(open, myStars, networkFor(open))}
-          pipeline={networkFor(open) >= 35}
+          pipeline={networkFor(open) >= PIPELINE_MIN}
           pipelineStrength={networkFor(open)}
           live={live}
           full={full && open.signedBy === null}
@@ -1066,6 +1069,8 @@ function ProspectSheet({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<Sheet>('overview');
+  const dialog = useRef<HTMLDivElement | null>(null);
+  useDialogFocus(dialog, onClose);
   const p = prospect.player;
   const spent = prospect.spent[userTeam] ?? 0;
   const points = Object.values(prospect.points);
@@ -1081,12 +1086,9 @@ function ProspectSheet({
     to own — reported as 'the end week button doesn't work after we try to
     scout one player.' The frame is the phone; a sheet covers the phone.
   */
-  const host = document.querySelector('.app-frame');
-  if (!host) return null;
-
   return (
     <InFrame>
-      <div className="prospect-sheet-scrim fade-in" onClick={onClose}>
+      <div ref={dialog} className="prospect-sheet-scrim fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Recruiting file: ${p.name}`}>
         <section className="prospect-sheet-modern rise-in" onClick={(e) => e.stopPropagation()}>
           <header className="prospect-sheet-toolbar">
             <span><small>RECRUITING FILE</small><strong>#{prospect.rank} nationally</strong></span>
@@ -1517,16 +1519,3 @@ function Schools({ prospect, userTeam }: { prospect: Prospect; userTeam: number 
   );
 }
 
-
-function Stat({ k, v, last }: { k: string; v: string; last?: boolean }) {
-  return (
-    <div style={{
-      flex: 1, paddingRight: 10,
-      borderRight: last ? 'none' : '1px solid var(--hairline)',
-      paddingLeft: last ? 10 : 0,
-    }}>
-      <div className="label">{k}</div>
-      <div style={{ font: "700 calc(20px * var(--ts))/1 var(--display)", marginTop: 3 }}>{v}</div>
-    </div>
-  );
-}

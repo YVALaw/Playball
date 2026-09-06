@@ -6,9 +6,30 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 6, 2026, late · **Branch:** `main` · **the light
-theme made legible and a June for the spectator, merged** (`05` §56), after
-three dugout reports (§55) and Recruiting 1.0 (§54).
+**Last session:** September 6, 2026, latest · **Branch:** `main` · **the
+interface batch closed: the accessibility trio and the cleanups** (`05` §57),
+after the light-theme pass (§56) and three dugout reports (§55).
+
+> **September 6, latest — the interface batch closed: the accessibility
+> trio and the cleanups.**
+>
+> Every sheet that declared a dialog role now behaves as one: the contract
+> Modal had since August is a hook, `useDialogFocus`, with a focus trap the
+> modal never had, and eight sheets carry it. The alert dots have a name.
+> The roster's six-status and ten-position strips wrap instead of scrolling
+> off a small phone, and the sliding rule follows the active button onto
+> its row. The frame stylesheet lost 137 lines of rules nothing emits — one
+> entry on the list, the trophy tones, turned out to be emitted by template
+> and stayed — and every raw white went onto the cream tokens, with the
+> alert's own ink on the alert fill. `prototype.css` is regenerated from
+> its source again: two passes had written into it by hand, the rules moved
+> to the top of the frame, and the suite checks the generated file now.
+> The poach landing resolves once, by an id stamped on the coach, never by
+> name; the alumni debut is a flag, not a prefix; `PIPELINE_MIN` is one
+> constant; and the small effects, imports and dead helpers the review
+> listed are gone. `05` §57. Open in §X: item 14, after a season of play.
+>
+> The APK on the emulator is rebuilt from this tree.
 
 > **September 6, late — a fifth folder: the light theme made legible, and
 > a June for the spectator.**
@@ -673,7 +694,7 @@ exists. Stage 19 removes the three together.
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,179 tests, 58 files)
+npm run check      # typecheck + the whole suite (1,182 tests, 59 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing

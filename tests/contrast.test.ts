@@ -17,6 +17,7 @@
 // The rule it enforces is WCAG AA: 4.5 for body text, 3.0 for large or bold.
 
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { accentPalette } from '../src/ui/accent.js';
 import { CONFERENCES } from '../src/data/schools.js';
 
@@ -270,5 +271,13 @@ describe('the announcement panels', () => {
       if (gold < 3.0) failures.push(`${s.abbr} gold ${gold.toFixed(2)}`);
     }
     expect(failures, failures.join(' \u00b7 ')).toEqual([]);
+  });
+});
+
+describe('the frame stylesheet follows the tokens', () => {
+  it('paints light-on-dark text with the cream tokens, never a raw white', () => {
+    // 06 §X item 30: a literal is a colour the dark theme cannot reach.
+    const css = readFileSync(new URL('../src/ui/prototype-frame.css', import.meta.url), 'utf8');
+    expect(css).not.toMatch(/#fff\b|#ffffff\b|rgba\(\s*255\s*,\s*255\s*,\s*255/i);
   });
 });

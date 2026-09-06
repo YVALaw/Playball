@@ -7,6 +7,7 @@
 // with the bases empty, and you cannot put a man on when first is occupied.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDialogFocus } from '../dialogFocus.js';
 import {
   ArrowLeftIcon, ChevronRightIcon, Cross1Icon, DotsHorizontalIcon, PlayIcon,
   StopwatchIcon,
@@ -1108,10 +1109,13 @@ function Picker(
     onClose: () => void;
   },
 ) {
+  const dialog = useRef<HTMLElement | null>(null);
+  useDialogFocus(dialog, onClose);
   return (
     <InFrame>
       <div onClick={onClose} className="sheet-scrim game-picker-layer">
         <section
+          ref={dialog}
           onClick={(e) => e.stopPropagation()}
           className="game-picker-sheet"
           role="dialog"

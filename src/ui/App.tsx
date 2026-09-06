@@ -173,7 +173,6 @@ function AppBody(
   { teamCard, setTeamCard }:
   { teamCard: number | null; setTeamCard: (index: number | null) => void },
 ) {
-  const start = useDynasty((s) => s.start);
   const season = useDynasty((s) => s.season);
   const tab = useDynasty((s) => s.tab);
   const screen = useDynasty((s) => s.screen);
@@ -213,7 +212,6 @@ function AppBody(
   const furthestPhase = useDynasty((s) => s.furthestPhase);
   const goPhase = useDynasty((s) => s.goPhase);
   const jobSearch = useDynasty((s) => s.jobSearch);
-  const loadSlot = useDynasty((s) => s.loadSlot);
   const loadError = useDynasty((s) => s.loadError);
   const newDynasty = useDynasty((s) => s.newDynasty);
   const openOverlay = useDynasty((s) => s.openOverlay);
@@ -1157,7 +1155,7 @@ function CoachMenuButton() {
           />
           <section className="account-menu card-in" role="menu">
             <button
-              className={`account-menu-profile${trophyDot ? " has-profile-alert" : ""}`}
+              className="account-menu-profile"
               type="button"
               role="menuitem"
               onClick={() => go(() => { setProgramSheet("coach"); openOverlay("program"); })}

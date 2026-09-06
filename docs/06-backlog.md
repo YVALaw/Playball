@@ -2634,10 +2634,28 @@ same class name, and his rule is the one that stands), **27**'s first half (`pag
 and **28** (the postseason takeover slides sideways again). Also settled
 the same evening, by the reporter: **20b** (arguing the terms) was already
 built — `argueTerms`, once a season, conceding only when the winter took
-six or more — and **25** (the art) is closed. Still open: the two
-measurements (24, 25 below), the accessibility trio (7, 8, 9), the dead
-CSS (29), the colours, the id matches, and the
-cleanups.
+six or more — and **25** (the art) is closed. Still open after that
+evening: the two measurements, the accessibility trio and the cleanups —
+closed the next night, below.
+
+### Fixed September 6, late
+
+The rest of the section, in one batch (`05` §57): **7** (the dialog
+contract is a hook, `useDialogFocus`, with a focus trap, on Modal, the
+tutorial and every sheet — the board's two sheets gain the role and a name
+with it), **8** (the alert dots say "needs attention"), **9** (the
+segmented strip wraps on request; the roster's status and position filters
+wear it), **15** through **21** (the cleanups: the dead portal lookup,
+`PIPELINE_MIN`, the unused imports, five dead helpers and the rule-less
+class, the poach landing resolved once by id, `proCareer` memoised, the
+redundant sheet reset, the Wire key), **29** (137 lines of dead rules — the
+trophy tones on its list are emitted by template and stayed), **30** (every
+raw white and the hand-mixed greens onto the tokens; a test refuses a raw
+white in the frame now), **31** (the debut flag and the assistant id), and
+**32** (annotated at the merge). Found on the way: the generated
+`prototype.css` had been edited by hand twice; the rules moved to the top
+of the frame and a test checks the regeneration. Still open: **14**, after
+a season of play, and the two measurements, decided in §AA.
 
 ### Decisions the pass took without a door
 
