@@ -8,6 +8,7 @@ import { describe, it, expect } from 'vitest';
 import { makeRng } from '../src/engine/rng.js';
 import { makeTeam, resetNames } from '../src/engine/players.js';
 import { simGame } from '../src/engine/game.js';
+import { compactReplayEvents } from '../src/engine/season.js';
 import { buildFrames } from '../src/ui/replay.js';
 
 function watched(seed: number) {
@@ -20,6 +21,25 @@ function watched(seed: number) {
 
 describe('game replay', () => {
   const seeds = [11, 404, 2027, 90210];
+
+  it('plays back identically from the compacted stream the box actually keeps', () => {
+    // The box stores one pitch per plate appearance (`compactReplayEvents`),
+    // because the replay uses a pitch only as the boundary between two
+    // appearances. Same frames, every seed, or the trim changed the film.
+    for (const seed of seeds) {
+      const result = watched(seed);
+      const compact = compactReplayEvents(result.playEvents);
+      expect(buildFrames({ log: result.log, playEvents: compact }))
+        .toEqual(buildFrames(result));
+      // Strictly smaller, and never two pitches in a row.
+      expect(compact.length).toBeLessThan(result.playEvents.length);
+      for (let i = 1; i < compact.length; i++) {
+        expect(compact[i]!.kind === 'pitch' && compact[i - 1]!.kind === 'pitch').toBe(false);
+      }
+      // And it is idempotent: compacting the compact stream changes nothing.
+      expect(compactReplayEvents(compact)).toEqual(compact);
+    }
+  });
 
   it('produces frames for every logged line', () => {
     for (const seed of seeds) {

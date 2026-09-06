@@ -6756,6 +6756,12 @@ stepping and scoring-play jumps. Older saves keep the box and show no
 replay. Zero random draws, by construction; the pinned reporting rule is
 untouched.
 
+**Compacted at capture since September 6** (`compactReplayEvents`,
+season.ts): the box keeps one pitch event per plate appearance rather than
+every pitch, because the replay reads a pitch only as the boundary between
+two appearances. Frames are identical and pinned; a season's boxes fell
+from 1.24 MB to 0.92 MB. `06` §AA has the measurement.
+
 Also: the **creation interview asks three** (`ASKED` = 3,
 interviewResult.ts; Casual still two) from the same pool of eighty-one;
 **alumni mail** — a first arrival at The Show and the end of a top-level

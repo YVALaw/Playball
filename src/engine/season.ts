@@ -2047,6 +2047,34 @@ function noteWatch(season: SeasonState, side: TeamState): void {
   }
 }
 
+/**
+ * The replay stream as the box keeps it: one pitch per plate appearance.
+ *
+ * Measured September 6 (`06` §AA): replay was 92% of a season's boxes, 1.1 MB,
+ * and two thirds of its events were pitches — 13,588 of 20,304 in one season.
+ * The replay never reads them; `ui/replay.ts` walks outs, scores and advances
+ * per plate appearance and uses a pitch only as the *boundary* between one
+ * appearance and the next ("a new group begins at the first pitch after an
+ * outcome"). So every run of consecutive pitches collapses to its first one:
+ * the boundary survives, the frames are identical, and the count each line
+ * already carries — "[2-1 4p]" — is still the pitch count. The managed
+ * game's field animation reads the live stream, not this, and is untouched.
+ */
+export function compactReplayEvents(events: readonly PlayEvent[]): PlayEvent[] {
+  const out: PlayEvent[] = [];
+  let inPitches = false;
+  for (const e of events) {
+    if (e.kind === 'pitch') {
+      if (inPitches) continue;
+      inPitches = true;
+    } else {
+      inPitches = false;
+    }
+    out.push(e);
+  }
+  return out;
+}
+
 export function recordResult(
   season: SeasonState,
   homeIndex: number,
@@ -2164,7 +2192,7 @@ export function recordResult(
       awayErrors: result.away.errors,
       homeErrors: result.home.errors,
       ...(result.log.length > 0 && result.playEvents.length > 0
-        ? { replay: { log: [...result.log], playEvents: [...result.playEvents] } }
+        ? { replay: { log: [...result.log], playEvents: compactReplayEvents(result.playEvents) } }
         : {}),
     };
   }

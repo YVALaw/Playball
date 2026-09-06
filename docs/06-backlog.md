@@ -2999,15 +2999,28 @@ It does **not** accumulate across careers — `nextSeason` starts
 growing one. The problem is not the disk, it is the write: a 1.2 MB blob
 re-encoded and stored on every autosave, on a phone.
 
-**The recommendation, and it is cheap.** Drop `'pitch'` events at save
-time and keep the play-level stream. Replay's scrubber, its inning and
-half, the bases, the call and the scoring-play jumps are all driven by the
-play events; the pitch stream is only the pitch-by-pitch texture inside a
-plate appearance. That is 439 KB for nothing anybody watching a replay
-would miss. If more is wanted after that, capping retained replays to the
-last ten games costs 253 KB and reads as "recent games keep their film",
-which is honest. Dropping the verbose log too would take the season under
-550 KB.
+**Done, September 6, in stage 18b — and the naive version would have broken
+the film.** The first reading said "drop the pitch events, 439 KB for
+nothing". Reading `ui/replay.ts` before doing it: the replay never reads a
+pitch, but it uses one as the *boundary* between plate appearances — a new
+group starts at the first pitch after an outcome — so stripping them all
+merges every at-bat into one and the log and the events fall out of step.
+`compactReplayEvents` (season.ts) keeps the first pitch of every run and
+drops the rest, which preserves the boundary and therefore every frame;
+`tests/replay.test.ts` pins the compacted stream against the full one,
+frame for frame, on four seeds.
+
+| One season, seed 4242 | Before | After |
+|---|---|---|
+| Whole `boxScores` | 1,239 KB | 916 KB |
+| Pitch events kept | 13,588 | 3,588 |
+| Per captured game | 25.3 KB | 18.1 KB |
+| **Off every autosave** | | **323 KB** |
+
+Still on the table if more is wanted: the verbose log is 257 KB a season
+and the frames are built from it, so it cannot go without a second source
+for the text; capping retained replays to the last ten games would cost
+181 KB now and reads honestly as "recent games keep their film".
 
 ### §X item 24 — the home-state recruiting edge. **Measured; it is real and it is one line.**
 
