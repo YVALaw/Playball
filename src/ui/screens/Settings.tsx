@@ -71,7 +71,8 @@ function Choice<T extends string | number>(
 /** The four pages, and the index that lists them. */
 type Page = SettingsPage;
 
-function SettingIcon({ kind }: { kind: 'display' | 'sound' | 'play' | 'saves' }) {
+function SettingIcon({ kind }: { kind: 'display' | 'sound' | 'play' | 'saves' | 'god' }) {
+  if (kind === 'god') return <svg viewBox="0 0 24 24" aria-hidden><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg>;
   if (kind === 'display') return <svg viewBox="0 0 24 24" aria-hidden><rect x="3" y="4" width="18" height="13" rx="1"/><path d="M8 21h8M12 17v4"/></svg>;
   if (kind === 'sound') return <svg viewBox="0 0 24 24" aria-hidden><path d="M4 10h4l5-4v12l-5-4H4zM17 9c1.5 1 1.5 5 0 6M19 6c3 3 3 9 0 12"/></svg>;
   if (kind === 'play') return <svg viewBox="0 0 24 24" aria-hidden><path d="M4 7h16M7 4v6M4 17h16M16 14v6"/></svg>;
@@ -83,6 +84,7 @@ const PAGES: { id: Exclude<Page, 'index'> | 'saves'; title: string; blurb: strin
   { id: 'sound', title: 'Sound', blurb: 'Bat, glove, crowd, haptics.' },
   { id: 'play', title: 'How you play', blurb: 'Full or casual, and what you handle.' },
   { id: 'saves', title: 'Saved dynasties', blurb: 'Name a save, load a career, start again.' },
+  { id: 'god', title: 'God mode', blurb: 'The sandbox. Unlock it here; turn it on per career at creation.' },
 ];
 
 export function Settings() {
@@ -245,6 +247,32 @@ export function Settings() {
             on={prefs.haptics}
             onToggle={() => put({ haptics: !prefs.haptics })}
           />
+        </section>
+      </Frame>
+    );
+  }
+
+  if (page === 'god') {
+    return (
+      <Frame title="God mode" kicker="THIS DEVICE" onBack={() => setPage('index')}>
+        <section className="settings-career-note">
+          <small>THE SANDBOX</small>
+          <strong>{prefs.godMode ? 'Unlocked on this device.' : 'Not unlocked.'}</strong>
+          <p>Owned once, for every career on this phone. Each new career chooses on the How you want to play step whether it is a sandbox: edit any player, any program, your coach, your staff, the money and the schedule, whenever you like. Records still count.</p>
+        </section>
+        <SectionHeading kicker="UNLOCK" title={prefs.godMode ? 'Yours' : 'One purchase, permanent'} />
+        <section className="settings-list">
+          <div className="settings-god-status">
+            <span>
+              <strong>{prefs.godMode ? 'God mode is on this device' : 'God mode'}</strong>
+              <small>{prefs.godMode
+                ? 'Turn it on per career, at creation.'
+                : 'The store purchase arrives with the listing. Until then this button stands in for it.'}</small>
+            </span>
+            <button type="button" className="tap" onClick={() => put({ godMode: !prefs.godMode })}>
+              {prefs.godMode ? 'REMOVE' : 'UNLOCK'}
+            </button>
+          </div>
         </section>
       </Frame>
     );

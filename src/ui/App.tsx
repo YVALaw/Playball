@@ -48,6 +48,7 @@ import { NewGame } from './screens/NewGame.js';
 import { StrategyScreen } from './screens/StrategyScreen.js';
 import { Placeholder } from './screens/Placeholder.js';
 import { Board } from './screens/Board.js';
+import { GodMode } from './screens/GodMode.js';
 import { SeasonReview } from './screens/SeasonReview.js';
 import { CoachPoints } from './screens/CoachPoints.js';
 import { SigningDay } from './screens/SigningDay.js';
@@ -174,6 +175,8 @@ function AppBody(
   { teamCard: number | null; setTeamCard: (index: number | null) => void },
 ) {
   const season = useDynasty((s) => s.season);
+  // The sandbox's screen exists only in a career that turned it on.
+  const godMode = useDynasty((s) => s.godMode);
   const tab = useDynasty((s) => s.tab);
   const screen = useDynasty((s) => s.screen);
   const go = useDynasty((s) => s.go);
@@ -599,7 +602,7 @@ function AppBody(
         {!live && tab !== 'home' && (
           <ContextNav
             label={`${(TABS.find((t) => t.id === tab) ?? TABS[0]!).label} sections`}
-            items={(TABS.find((t) => t.id === tab) ?? TABS[0]!).screens.map((item) => ({
+            items={(TABS.find((t) => t.id === tab) ?? TABS[0]!).screens.filter((item) => item.id !== 'god' || godMode).map((item) => ({
               ...item,
               alert: tab === 'program' && (
                 (item.id === 'history' && unseenRecords > 0)
@@ -791,7 +794,7 @@ function AppBody(
 
       <ContextNav
         label={`${tabDef.label} sections`}
-        items={tabDef.screens.map((item) => ({
+        items={tabDef.screens.filter((item) => item.id !== 'god' || godMode).map((item) => ({
           ...item,
           alert: tab === 'program' && (
             (item.id === 'history' && unseenRecords > 0)
@@ -1431,6 +1434,7 @@ function Screen({ id }: { id: string }) {
     case 'records': return <Program />;
     case 'colleges': return <Colleges />;
     case 'strategy': return <StrategyScreen />;
+    case 'god': return <GodMode />;
     // 'board' and 'draft' are deliberately absent: both are offseason phases
     // now, rendered by the phase frame. Routed here they would mount outside
     // the window they live in — the Board with no pinned action and no way

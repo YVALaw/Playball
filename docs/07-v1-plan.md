@@ -1242,10 +1242,20 @@ lineup screen; leaving is refused while the diamond is short, and the
 one allowed excursion is a player card via the second-tap grammar, which
 returns in place.
 
-## Stage 17 · God mode — the league as you want it
+## Stage 17 · God mode — the league as you want it — **BUILT September 6 2026, on the `god-mode` branch pending approval**
 
 **Size:** medium–large · **Replaces the store player, September 6 2026** ·
 **Runs with 19** · Its own design pass before any of it is built.
+
+**The four doors, answered by the reporter on September 6 and built the
+same night (`05` §61):** god mode is itself the one-time unlock, owned on
+the device, with a Settings button standing in for the purchase until the
+listing; records are not fenced — *"don't worry about them breaking the
+records, it's god mode"*; it is chosen per career on the How-you-play step
+and then open from the desk whenever; and the editing reaches players, the
+coach, the staff, a program's name, prestige and league, the money and the
+schedule. Held on a branch, not on `main`, until the reporter has tested
+it and said push.
 
 Asked for directly, and it retires the stage that stood here for a month:
 *"I'm actually thinking on removing the s+ player and add god mode allowing

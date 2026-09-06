@@ -6,9 +6,23 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 6, 2026, late · **Branch:** `main` · **two rankings
-per recruit, and stage 26 closed** (`05` §60), after four emulator reports (§59)
-and stage 24 (§58).
+**Last session:** September 6, 2026, late · **Branch:** `god-mode`, unpushed, off
+`main` at `2a13703` · **god mode built, held for approval** (`05` §61), after two
+rankings per recruit (§60).
+
+> **September 6, late — god mode, built on a branch and held for approval.**
+>
+> Stage 17 as the reporter decided it tonight: a sandbox, not a store
+> player. Owned once on the device (`DevicePrefs.godMode`, with a Settings
+> button standing in for the purchase until the listing), chosen per
+> career on the How-you-play step, riding the save, never cleared. A GOD
+> MODE section on the Program tab, only in a career that turned it on:
+> any program's name, prestige and league (a trade, before the first pitch
+> or after the season), the coach, the staff, money and recruiting grants,
+> every man in the country or a new one with S+ his to have, and a redrawn
+> schedule. `engine/godMode.ts` holds the rules; `tests/god-mode.test.ts`
+> pins them. `05` §61. **On the `god-mode` branch, not on `main`, until the
+> reporter says push.**
 
 > **September 6, late — two rankings per recruit, and stage 26 closed.**
 >
@@ -741,7 +755,7 @@ exists. Stage 19 removes the three together.
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,185 tests, 61 files)
+npm run check      # typecheck + the whole suite (1,200 tests, 62 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing

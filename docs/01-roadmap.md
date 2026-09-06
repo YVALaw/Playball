@@ -52,7 +52,7 @@ game at a time on a full-screen field with a defense on it, hand out awards,
 spend coaching points, read a recruiting board that is honest about being
 vague, argue the draft out of taking your junior, and start again in February —
 against ninety-five rival programs run by men with careers of their own.
-Sixty-one test files and 1,185 tests cover it, calibration among them, so
+Sixty-two test files and 1,200 tests cover it, calibration among them, so
 the engine cannot drift without something failing.
 
 The August 2026 interface overhaul and its feedback pass are described in §20
@@ -466,8 +466,9 @@ honest answers) · ~~the rest of the **`06` §X** batch~~ closed September
 September 6 — the background picker is the creation step, with its reveal
 and result card (`05` §58) · ~~**26**'s verdict~~ given September 6 (his own
 offseason split is the budget) · then
-**17**, which is **god mode** since September 6 rather than the store and
-needs its design pass first, and **19** (ship). **20b** and **25** were
+**17**, **god mode** — built September 6 on the `god-mode` branch as the
+reporter designed it, a sandbox, held until he approves the push (`05`
+§61) — and **19** (ship). **20b** and **25** were
 confirmed shipped on September 5. The reporter tests on an Android
 emulator.
 

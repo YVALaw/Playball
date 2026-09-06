@@ -60,6 +60,7 @@ import {
 } from '../../engine/strategy.js';
 import { useDynasty, careerSeed } from '../../state/store.js';
 import { SYSTEMS, type DepthMode } from '../../state/depth.js';
+import { readPrefs } from '../../state/devicePrefs.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { InFrame } from '../Overlay.js';
 import {
@@ -130,6 +131,9 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
   // the store because no dynasty exists yet — it is handed to `start` with the
   // rest of the answers when a job is finally taken.
   const [mode, setMode] = useState<DepthMode>('full');
+  // God mode, for this career. Offered only on a device that owns it.
+  const godOwned = readPrefs().godMode;
+  const [godMode, setGodMode] = useState(false);
   // The coach's pre-dugout background. Unlike the old interview, this is one
   // visible choice with a visible year-one stat shape.
   const [backgroundId, setBackgroundId] = useState<BackgroundId>('player');
@@ -249,6 +253,9 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
       <DepthStep
         chosen={mode}
         onChoose={setMode}
+        godOwned={godOwned}
+        god={godMode}
+        onGod={setGodMode}
         onBack={() => setStep(0)}
         onDone={() => setStep(2)}
       />
@@ -417,7 +424,7 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
                       skills: outcome.skills,
                       badges: outcome.badges,
                       leans: outcome.leans,
-                    })}
+                    }, godMode)}
                   >TAKE THE {picked.abbr} JOB</button>
                 ) : (
                   <div className="career-offer-gate offer-gate-modern">
@@ -640,9 +647,13 @@ const DESK_KEYS: readonly string[] = [
 ];
 
 function DepthStep(
-  { chosen, onChoose, onBack, onDone }: {
+  { chosen, onChoose, godOwned, god, onGod, onBack, onDone }: {
     chosen: DepthMode;
     onChoose: (m: DepthMode) => void;
+    /** The device owns god mode, so the sandbox toggle is offered. */
+    godOwned: boolean;
+    god: boolean;
+    onGod: (on: boolean) => void;
     onBack: () => void;
     onDone: () => void;
   },
@@ -694,6 +705,25 @@ function DepthStep(
             </button>
           ))}
         </section>
+
+        {/* The sandbox, for a device that bought it. Per career, never cleared. */}
+        {godOwned && (
+          <section className="career-god-toggle">
+            <button
+              type="button"
+              className={`tap${god ? ' selected' : ''}`}
+              aria-pressed={god}
+              onClick={() => onGod(!god)}
+            >
+              <span>
+                <small>GOD MODE</small>
+                <strong>{god ? 'On for this career' : 'Off for this career'}</strong>
+                <p>A sandbox. Edit any player, any program, your coach, your staff, the money and the schedule, from the desk, whenever you like. Records still count.</p>
+              </span>
+              <b>{god ? 'ON' : 'OFF'}</b>
+            </button>
+          </section>
+        )}
 
         {/*
           What the chosen card actually moves, split the way the answer splits

@@ -384,7 +384,7 @@ export function Board() {
   // keep somebody. The header prints the honest number, so a coach who talked
   // his shortstop out of professional baseball in June can see the price of it
   // on the board he opens ninety seconds later.
-  const weekly = boardBudget(season, userTeam);
+  const weekly = boardBudget(season, userTeam, economy.recruitingGrant);
   const recruiterSkill = withStaff(coach.skills, economy.staff).recruiting;
   const left = weekly - spent;
   const live = week >= 1 && week <= RECRUITING_WEEKS;

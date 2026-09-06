@@ -610,6 +610,10 @@ export interface Economy {
   spent: number;
   /** Opponent team index → last dayIndex the book on them is good for. */
   scouted: Record<number, number>;
+  /** God mode's money, on top of the annual budget. Absent is none. */
+  grant?: number;
+  /** God mode's recruiting points, on top of every week's board budget. */
+  recruitingGrant?: number;
 }
 
 export const freshEconomy = (): Economy => ({
@@ -625,5 +629,5 @@ export const freshEconomy = (): Economy => ({
 
 /** What is left to spend right now. */
 export function remaining(eco: Economy, prestige: number): number {
-  return annualBudget(prestige) - wageBill(eco.staff) - eco.spent;
+  return annualBudget(prestige) - wageBill(eco.staff) - eco.spent + (eco.grant ?? 0);
 }

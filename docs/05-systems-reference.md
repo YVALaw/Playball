@@ -7834,6 +7834,80 @@ navigation. The last set lives outside the screen now, keyed to the year,
 so it survives a trip to a recruit's file or another tab and clears when
 the class changes or CLEAR EVERY FILTER is tapped.
 
+## 61. God mode — the sandbox — **BUILT September 6 2026, late, on the `god-mode` branch pending the reporter's approval**
+
+Stage 17, decided by the reporter tonight rather than by the plan's four
+doors: *"God mode lets you edit players, edit the league itself; don't
+worry about them breaking the records, it's god mode, so it is just for
+them to experiment — basically a sandbox where they can do whatever they
+want. When god mode is purchased it appears at the coach creation: a toggle
+in How you play to activate god mode for this save. They can edit ratings,
+prestige, conferences, schedule, staff ratings, can add budget points."*
+So, against the four doors of `07`: **funding** — god mode is itself the
+one-time unlock; **records** — not fenced, by choice; **when** — chosen at
+creation, then open from the desk whenever; **how far** — players, the
+coach, the staff, a program's name, prestige and league, the money, the
+schedule.
+
+### 61.1 Owned on the device, chosen per career
+
+`DevicePrefs.godMode` is the entitlement: one purchase, permanent, for
+every career on the phone. Settings has a **God mode** page that shows it
+and, until the store listing exists, an UNLOCK button that stands in for
+the purchase — the seam Play Billing goes into at stage 19, and the reason
+this is on a branch rather than shipped as the paid thing it will be. A
+device that owns it sees a **GOD MODE** toggle on the *How you want to
+play* step of creation; the choice rides the save (`SaveFile.godMode`,
+loaded as `false` on every save from before) and is never cleared. The
+Program tab's context nav grows a **GOD MODE** section only in a career
+that turned it on.
+
+### 61.2 The desk
+
+`src/ui/screens/GodMode.tsx`, thin over `engine/godMode.ts`, saving as it
+goes. Every number rides a rail that commits when the thumb lets go, not on
+every pixel.
+
+- **A program.** Any of the ninety-six, grouped by league. School and
+  nickname (the abbreviation stays: it is the key the standings, the box
+  scores, the playbooks and the crest hang from); prestige 1–100; and a
+  **trade of leagues** with a program from another one — a trade rather
+  than a move, the same one-for-one the world's own realignment makes, so
+  every league keeps the size the scheduler needs. Before the first pitch
+  the schedule is rebuilt on the spot; once the year is over the trade
+  takes effect next spring; in between it is closed, because the games
+  played belong to the leagues they were played in.
+- **Your chair.** Coach prestige, the four skills, skill points.
+- **Your staff.** Each seated assistant's name and rating; an empty seat
+  says to hire first.
+- **The money.** Grants on top of the annual budget (`Economy.grant`, read
+  by `remaining`), and recruiting points on top of every week's board
+  budget (`Economy.recruitingGrant`, read by `boardBudget`).
+- **The roster.** Every man on the chosen program, or a new one — ADD A BAT,
+  ADD AN ARM, the generator's own draw at quality 60, onto the bench or
+  into the pen. The editor: name, class, position (a bat's home moves with
+  it, so the position memory does not read it as a stretch) or role, bats,
+  throws, potential with a MAKE HIM S+ button — the grade play can never
+  reach, which is what the engine kept it for — every rating he carries,
+  and EVERYTHING 99.
+- **The schedule.** Redrawn from the same fixtures, before the first pitch.
+
+`tests/god-mode.test.ts` pins the clamps, the home-position rule, the
+authored man on the roster, the rename keeping the abbreviation, the
+league trade rebuilding the schedule with every league its size and
+refusing mid-season, the reshuffle window, the grants where the desk reads
+its money, the staff edit, and the flag riding the file only when on.
+
+### 61.3 What it does not do, and why
+
+- **Conference names** are static data, read everywhere by id; renaming
+  them needs an override the whole app consults, and waits.
+- **Injuries** are not healed from the desk yet.
+- **No records shelf.** The reporter's call: a sandbox's records count like
+  any other's. The flag is on the save if that is ever revisited.
+- **The purchase** is a Settings button until the store listing; stage 19
+  replaces it with Play Billing and its restore flow.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

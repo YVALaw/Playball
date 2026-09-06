@@ -28,6 +28,11 @@ import type { GameResult } from '../engine/game.js';
 import { playerId } from '../engine/types.js';
 import { isTwoWay, uniquePlayers } from '../engine/types.js';
 import type {Arm, Hitter, Pitcher, Player, PlayerId, Position, Tactic } from '../engine/types.js';
+import type { ClassYear, PitcherRole } from '../engine/types.js';
+import {
+  addToTeam, authorPlayer, editPlayer, findPlayer, grantMoney, grantRecruiting, renameProgram,
+  reshuffleSchedule, setPrestige, setStaff, swapConferences, type PlayerPatch,
+} from '../engine/godMode.js';
 import { createLiveGame, type LiveGame } from '../engine/liveGame.js';
 import {
   departAndDevelop, fillRosters, holesFor as rosterHoles, reinstate,
@@ -160,14 +165,15 @@ export function seedRivalInterest(season: SeasonState, userTeam: number): void {
  * all have to agree about it: the board header prints it, the spend control
  * caps against it, and `recruit` refuses above it.
  */
-export function boardBudget(season: SeasonState | null, userTeam: number): number {
+/** This week's board budget. `extra` is god mode's standing grant, if any. */
+export function boardBudget(season: SeasonState | null, userTeam: number, extra = 0): number {
   // One pool, three claims: June's draft spending and the portal's both
   // come off the same window the class is signed from.
   return weeklyBudget(
     prestigeStars(season?.teams[userTeam]?.prestige ?? 50),
     (season?.draft?.spent ?? 0)
       + (season?.portalSpend?.[userTeam] ?? 0),
-  );
+  ) + Math.max(0, Math.round(extra ?? 0));
 }
 
 
@@ -283,7 +289,7 @@ export type Tab = 'home' | 'team' | 'season' | 'program';
 
 /** A screen laid over whatever frame the game is in. See `overlay` below. */
 /** The settings screen's four pages, plus the list that leads to them. */
-export type SettingsPage = 'index' | 'display' | 'sound' | 'play';
+export type SettingsPage = 'index' | 'display' | 'sound' | 'play' | 'god';
 
 export type Overlay =
   'schedule' | 'standings' | 'rankings' | 'saves' | 'inbox' | 'program' | 'book'
@@ -501,7 +507,10 @@ export const TABS: readonly TabDef[] = [
     // through a table that happens to mention them; this one is the directory.
     { id: 'colleges', label: 'COLLEGES' },
     { id: 'history', label: 'HISTORY' },
-    { id: 'strategy', label: 'STRATEGY' }] },
+    { id: 'strategy', label: 'STRATEGY' },
+    // The sandbox. Only a career that turned god mode on sees it; the
+    // context nav filters it out of every other one.
+    { id: 'god', label: 'GOD MODE' }] },
 ];
 
 /** How far through the postseason we are, and what has happened so far. */
@@ -868,6 +877,8 @@ export interface DynastyStore {
     seed?: number, team?: number, profile?: CoachProfile, mode?: DepthMode,
     /** What his background made of him. See `BACKGROUNDS` in `data/backgrounds.ts`. */
     made?: { skills: CoachSkills; badges: string[]; leans: Partial<Record<CultureEdge, number>> },
+    /** A sandbox career. Chosen on the How-you-play step; never cleared. */
+    godMode?: boolean,
   ) => void;
   /** True before a job has been taken, so the app can show the setup screen. */
   needsTeam: boolean;
@@ -1313,6 +1324,20 @@ export interface DynastyStore {
    * that none of it ever reaches the engine.
    */
   depth: DepthSettings;
+  /**
+   * God mode (05 §61). This career is a sandbox: set at creation, never
+   * cleared. Every god action is a no-op unless it is on.
+   */
+  godMode: boolean;
+  godEditPlayer: (id: PlayerId, patch: PlayerPatch) => boolean;
+  godAddPlayer: (team: number, kind: 'hitter' | 'pitcher', opts?: { classYear?: ClassYear; pos?: Position; role?: PitcherRole }) => PlayerId | null;
+  godSetPrestige: (team: number, prestige: number) => void;
+  godRenameProgram: (team: number, school: string, nickname: string) => void;
+  godSwapConferences: (a: number, b: number) => boolean;
+  godSetCoach: (patch: { skills?: Partial<CoachSkills>; prestige?: number; skillPoints?: number }) => void;
+  godSetStaff: (seat: StaffSeat, patch: { rating?: number; name?: string }) => void;
+  godGrant: (kind: 'money' | 'recruiting', amount: number) => void;
+  godReshuffleSchedule: () => boolean;
   setDepthMode: (mode: DepthMode) => void;
   setDepthSystem: (key: SystemKey, value: boolean) => void;
 
@@ -1634,6 +1659,9 @@ function usableEconomy(saved: unknown): Economy {
     tree,
     pipelines,
     spent: typeof e.spent === 'number' && e.spent >= 0 ? e.spent : 0,
+    ...(typeof e.grant === 'number' && e.grant > 0 ? { grant: Math.round(e.grant) } : {}),
+    ...(typeof e.recruitingGrant === 'number' && e.recruitingGrant > 0
+      ? { recruitingGrant: Math.round(e.recruitingGrant) } : {}),
     scouted: e.scouted && typeof e.scouted === 'object'
       ? Object.fromEntries(Object.entries(e.scouted)
           .filter(([, v]) => typeof v === 'number')) as Record<number, number>
@@ -2130,13 +2158,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   tab: 'home',
   screen: 'today',
   version: 0,
+  godMode: false,
   busy: false,
   progress: null,
   lastOffseason: null,
   lastWeek: null,
   phase: null,
 
-  start: (seed = WORLD_SEED, team?: number, profile?: CoachProfile, mode: DepthMode = 'full', made?: { skills: CoachSkills; badges: string[]; leans: Partial<Record<CultureEdge, number>> }) => {
+  start: (seed = WORLD_SEED, team?: number, profile?: CoachProfile, mode: DepthMode = 'full', made?: { skills: CoachSkills; badges: string[]; leans: Partial<Record<CultureEdge, number>> }, godMode = false) => {
     const season = createSeason(makeRng(seed), undefined, CONFERENCES);
     // Whose games to keep box scores for. A season is built before anybody has
     // taken a job, so the engine cannot know this on its own.
@@ -2168,6 +2197,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // open to whoever won a game first — you included.
     seatCoaches(season, seat, START_YEAR);
     applyCoachMods(season, seat, coach, get().economy);
+    set({ godMode });
     applyPhilosophy(season, seat, coach);
 
     /*
@@ -2348,7 +2378,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // attention, and that is most of what a good job is worth on the board.
     // Less whatever the draft phase already took to keep somebody, which is the
     // sequencing the whole retention mechanic hangs on.
-    const budget = boardBudget(get().season, userTeam);
+    const budget = boardBudget(get().season, userTeam, get().economy.recruitingGrant);
     const allowed = Math.min(wanted, budget - spentElsewhere - weekActionCost(prospect, userTeam));
     if (allowed <= 0) delete prospect.spent[userTeam];
     else prospect.spent[userTeam] = allowed;
@@ -2377,7 +2407,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const raw = prospect.spent[userTeam] ?? 0;
     const nextCost = (next.pitch ? PITCH_COST : 0) + majorActionCost(next.major);
     const usedWithout = totalWeekSpend(season.recruiting.prospects, userTeam) - oldCost - raw;
-    if (usedWithout + raw + nextCost > boardBudget(season, userTeam)) return false;
+    if (usedWithout + raw + nextCost > boardBudget(season, userTeam, get().economy.recruitingGrant)) return false;
     (prospect.weekActions ??= {})[userTeam] = next;
     set({ version: version + 1 });
     void get().saveNow();
@@ -2429,7 +2459,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const raw = prospect.spent[userTeam] ?? 0;
     const nextCost = (pricedNext.pitch ? PITCH_COST : 0) + majorActionCost(pricedNext.major);
     const usedWithout = totalWeekSpend(season.recruiting.prospects, userTeam) - oldCost - raw;
-    if (usedWithout + raw + nextCost > boardBudget(season, userTeam)) return false;
+    if (usedWithout + raw + nextCost > boardBudget(season, userTeam, get().economy.recruitingGrant)) return false;
 
     let major: RecruitMajorAction | undefined = pricedMajor;
     if (input?.kind === 'sway') {
@@ -6152,6 +6182,110 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   depth: { ...DEFAULT_DEPTH, overrides: {} },
 
+  // ---------------------------------------------------------------------------
+  // God mode (05 §61). Thin: the rules live in engine/godMode.ts; every
+  // action here checks the flag, writes, bumps the version and saves.
+  // ---------------------------------------------------------------------------
+  godEditPlayer: (id, patch) => {
+    const { season, version } = get();
+    if (!get().godMode || !season) return false;
+    const found = findPlayer(season, id);
+    if (!found) return false;
+    editPlayer(found.player, patch);
+    set({ version: version + 1 });
+    void get().saveNow();
+    return true;
+  },
+
+  godAddPlayer: (team, kind, opts = {}) => {
+    const { season, version } = get();
+    if (!get().godMode || !season) return null;
+    const record = season.teams[team];
+    if (!record) return null;
+    const made = authorPlayer(season.rng, kind, 60, opts);
+    addToTeam(record, made);
+    set({ version: version + 1 });
+    void get().saveNow();
+    return made.id;
+  },
+
+  godSetPrestige: (team, prestige) => {
+    const { season, version } = get();
+    const record = season?.teams[team];
+    if (!get().godMode || !season || !record) return;
+    setPrestige(record, prestige);
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  godRenameProgram: (team, school, nickname) => {
+    const { season, version } = get();
+    const record = season?.teams[team];
+    if (!get().godMode || !season || !record) return;
+    renameProgram(record, school, nickname);
+    set({ version: version + 1 });
+    void get().saveNow();
+  },
+
+  godSwapConferences: (a, b) => {
+    const { season, version } = get();
+    if (!get().godMode || !season) return false;
+    if (!swapConferences(season, a, b)) return false;
+    set({ version: version + 1 });
+    void get().saveNow();
+    return true;
+  },
+
+  godSetCoach: (patch) => {
+    const { coach, season, userTeam, version } = get();
+    if (!get().godMode) return;
+    const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, Math.round(v)));
+    const skills = { ...coach.skills };
+    for (const [k, v] of Object.entries(patch.skills ?? {})) {
+      if (typeof v === 'number' && k in skills) skills[k as keyof CoachSkills] = clamp(v, 1, 99);
+    }
+    const next = {
+      ...coach,
+      skills,
+      ...(patch.prestige !== undefined ? { prestige: clamp(patch.prestige, 1, 100) } : {}),
+      ...(patch.skillPoints !== undefined ? { skillPoints: clamp(patch.skillPoints, 0, 999) } : {}),
+    };
+    // The in-game skills live on the team record too, as spendSkill notes.
+    if (season) applyCoachMods(season, userTeam, next, get().economy);
+    set({ coach: next, version: version + 1 });
+    void get().saveNow();
+  },
+
+  godSetStaff: (seat, patch) => {
+    const { economy, season, userTeam, coach, version } = get();
+    if (!get().godMode) return;
+    const next: Economy = { ...economy, staff: { ...economy.staff } };
+    if (!setStaff(next, seat, patch)) return;
+    // A rated assistant is a different edge on the field.
+    if (season) applyCoachMods(season, userTeam, coach, next);
+    set({ economy: next, version: version + 1 });
+    void get().saveNow();
+  },
+
+  godGrant: (kind, amount) => {
+    const { economy, version } = get();
+    if (!get().godMode) return;
+    const next: Economy = { ...economy };
+    if (kind === 'money') grantMoney(next, amount);
+    else grantRecruiting(next, amount);
+    set({ economy: next, version: version + 1 });
+    void get().saveNow();
+  },
+
+  godReshuffleSchedule: () => {
+    const { season, version } = get();
+    if (!get().godMode || !season) return false;
+    if (!reshuffleSchedule(season)) return false;
+    set({ version: version + 1 });
+    void get().saveNow();
+    return true;
+  },
+
   setDepthMode: (mode) => {
     set({ depth: setMode(get().depth, mode) });
     void get().saveNow();
@@ -6201,6 +6335,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         rivalry: get().rivalry,
         alumni: get().alumni,
         depth: get().depth,
+        godMode: get().godMode,
         /*
           How many the room has had this season, and the one still open.
 
@@ -6387,6 +6522,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // from before the mode existed carries nothing and normalises to full,
       // which leaves a career in progress exactly as it was being played.
       depth: normalizeDepth(loaded.depth),
+      godMode: loaded.godMode,
       // Unread stays unread across a restart. It is the one thing the inbox
       // knows that nothing else in the save does.
       inbox: restoreInbox(loaded.inbox),

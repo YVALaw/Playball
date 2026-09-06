@@ -163,6 +163,8 @@ export interface SaveFile {
    * be taking something away from a career already in progress.
    */
   depth?: unknown;
+  /** A sandbox career (05 §61). Absent is off. */
+  godMode?: boolean;
 }
 
 export interface SaveSummary {
@@ -373,6 +375,8 @@ export interface SaveExtras {
   alumni?: unknown;
   /** How deep a game this career is. See `SaveFile.depth`. */
   depth?: unknown;
+  /** A sandbox career (05 §61). Absent is off. */
+  godMode?: boolean;
 }
 
 /**
@@ -468,6 +472,7 @@ export function buildSaveFile(
     // which is fine today and would stop being fine the moment the default
     // changed. Two keys is a cheap way to never have that conversation.
     ...(extras.depth ? { depth: extras.depth } : {}),
+    ...(extras.godMode ? { godMode: true } : {}),
   };
 }
 
@@ -529,6 +534,8 @@ export interface LoadedDynasty {
   alumni: unknown;
   /** The depth preset and its overrides. Null on saves that predate the mode. */
   depth: unknown;
+  /** Whether this career is a sandbox. Off on every save from before god mode. */
+  godMode: boolean;
 }
 
 /**
@@ -597,6 +604,7 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     rivalry: file.rivalry,
     alumni: file.alumni,
     depth: file.depth ?? null,
+    godMode: file.godMode === true,
   };
 }
 

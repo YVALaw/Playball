@@ -37,6 +37,13 @@ export interface DevicePrefs {
    */
   tutorials: boolean;
   /**
+   * God mode, owned on this device. One purchase, permanent, for every
+   * career on the phone; each career chooses at creation whether it is a
+   * sandbox. The store purchase sets this at release; until then the
+   * Settings page stands in for it.
+   */
+  godMode: boolean;
+  /**
    * The text scale, multiplied into every font size in the app through the
    * `--ts` custom property. 1 is the design exactly as drawn.
    */
@@ -106,6 +113,7 @@ export const DEFAULT_PREFS: DevicePrefs = {
   // On, because a first-time player is the one who needs it and the one least
   // likely to go looking for a switch.
   tutorials: true,
+  godMode: false,
 };
 
 const KEY = 'playball.prefs.v1';
@@ -164,6 +172,7 @@ export function readPrefs(): DevicePrefs {
     // existed belongs to somebody who was being taught, and silently turning
     // their tutorials off would be a change they never asked for.
     tutorials: o.tutorials !== false,
+    godMode: o.godMode === true,
   };
 }
 
