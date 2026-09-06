@@ -7318,11 +7318,26 @@ found it.) The three prestige shares are .55, .30 and .15 now, which sum
 to what prestige alone had: three name-flavoured things to pitch, and no
 more name than before.
 
-**Not measured.** Coach reputation still leans on the name (big programs
-hire big names), and the halved AI head start changes who signs where for
-the whole country; neither has been run through the climb probe or the
-§16.4 measurements. The suite's recruiting-balance assertions hold; the
-probes are owed (`06` §AB).
+**The climb, measured — and one line had wrecked it.** `tests/climb-probe.ts`,
+ten two-star careers of thirty seasons, before and after:
+
+| | Reached Omaha | Median year |
+|---|---|---|
+| August baseline (`06` §O) | 5/10 | 13 |
+| September 6, prestige floors (§52, `06` §AA) | 5/10 | 6 |
+| Recruiting 1.0 as merged | **2/10** | **28** |
+| … with the AI's retention allowance back on the window | 5/10 | 6 |
+| Shipped: the share on the window, capped at the fund | 5/10 | 6 |
+
+The pass had applied the AI's keep-share to the flexible fund rather than
+to the window, which taxed every AI program twice — the fund is already
+the cap on June, and the share was the AI's own restraint within the
+window — so the country kept sixty percent fewer drafted men and a
+two-star programme could no longer build. Everything else in the pass —
+the nine-factor fit, the halved head start, the actions — leaves the
+climb exactly where §AA measured it. Coach reputation still leans on the
+name (big programs hire big names) and the §16.4 local-board figures have
+not been rerun; `06` §AB.
 
 ## Appendix A: stale comments and vestigial code found while writing this
 

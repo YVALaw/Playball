@@ -19,7 +19,7 @@ import { adoptSpot } from './depthChart.js';
 import { prestigeStars } from './program.js';
 import { GENERATED_POTENTIAL_CAP } from './scouting.js';
 import { armValue, overallOf, clamp } from './ratings.js';
-import { flexibleOffseasonBudget } from './recruiting.js';
+import { flexibleOffseasonBudget, windowBudget } from './recruiting.js';
 import type { Prospect } from './recruiting.js';
 import { gauss, makeRng } from './rng.js';
 import { cultureFor } from '../data/cultures.js';
@@ -967,7 +967,19 @@ export function departAndDevelop(
       // same window its recruiting board is about to be paid from. `aiTargets`
       // reads what is left of it, three weeks running, exactly as the user's
       // header does.
-      const allowance = Math.floor(flexibleOffseasonBudget(stars) * AI_KEEP_SHARE);
+      // The share stays on the WINDOW, capped at the flexible fund. Recruiting
+      // 1.0 applied it to the fund itself, which taxed the AI twice: the fund
+      // is already the cap on what June may spend, and the share was the AI's
+      // own restraint within the window. Measured on the climb probe, September
+      // 6: two-star programs went from reaching Omaha five times in ten (median
+      // year six) to twice (median year twenty-eight), and restoring this one
+      // line brought back five and six exactly. The reserve still holds — the
+      // share is under the fund at every star — so the freshman class is as
+      // protected as the split says, and the country's AI keeps the men it did.
+      const allowance = Math.min(
+        flexibleOffseasonBudget(stars),
+        Math.floor(windowBudget(stars) * AI_KEEP_SHARE),
+      );
       // The man in the chair, where there is one. Two of the four cases a staff
       // can make are about *him* — the development a coach can promise and the
       // word he can give — so a program run by somebody with a name and eleven

@@ -3146,15 +3146,13 @@ and the game has players.
 
 `05` §54 is the account. Open, in order of what could bite.
 
-- **The climb, rerun.** The nine factors now redistribute the old
-  prestige weight rather than tripling it (`05` §54.4), but coach
-  reputation still leans on the name, and the nine-factor fit, the halved
-  AI head start and the AI's forced fifth on actions all change who signs
-  where, for all ninety-six programs. The action yields were repriced at the merge so
-  the AI is not handicapped by its own actions, but nobody has rerun
-  `tests/climb-probe.ts` or the local-board retention figures in §16.4
-  since. Do that before the next balance decision; a two-star program's
-  median Omaha year is the number to compare against §AA's six.
+- **The climb was rerun, and it found the one line that mattered** (`05`
+  §54.4): the AI's keep-share applied to the flexible fund instead of the
+  window took two-star programmes from five Omahas in ten to two. Fixed and
+  remeasured at five and six, §AA's numbers exactly. Still owed: the
+  §16.4 local-board retention figures under the nine-factor fit, and a
+  look at coach reputation, which leans on the name because big programs
+  hire big names.
 - **Keep-position judges any move.** `movedFrom` is set by every position
   change, willing or not, and the keep-position promise reads
   `p.pos !== promisedPos`, so a man who *agreed* to move still counts as

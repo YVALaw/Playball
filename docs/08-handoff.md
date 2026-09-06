@@ -37,8 +37,12 @@ stage 18b (§53).
 > Signing Day labelled wants from the legacy five. Six failures in
 > the folder's own suite, four the cache, two the reserve's premise.
 >
-> **Not measured:** the climb, after the nine-factor fit and the halved AI
-> head start. `06` §AB. 1,173 tests, 58 files.
+> **The climb, measured:** as merged, two-star programmes reached Omaha
+> twice in ten with a median year of twenty-eight, against five and six
+> that morning. One line: the AI's keep-share applied to the flexible fund
+> instead of the window, taxing every AI program twice. Share on the
+> window, capped at the fund — five and six again, exactly. `05` §54.4,
+> `06` §AB. 1,173 tests, 58 files.
 
 > **September 6, later — stage 18b on a real Android 16 emulator, and the
 > back gesture the shell never had.**
