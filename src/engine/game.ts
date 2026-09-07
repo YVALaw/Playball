@@ -129,6 +129,14 @@ export interface SimOptions {
    */
   homeLineup?: readonly Hitter[];
   awayLineup?: readonly Hitter[];
+  /**
+   * The bench for this game only: the men who can actually be sent up. The
+   * game has no clock of its own, so without this a man on the shelf or a
+   * redshirt pinch-hit off the roster's bench -- and a redshirt who bats
+   * once has burned the year the redshirt exists to keep (05 §62.8).
+   */
+  homeBench?: readonly Hitter[];
+  awayBench?: readonly Hitter[];
   /** Each coach's policy. Defaults to a neutral one on both sides. */
   homeStrategy?: Strategy;
   awayStrategy?: Strategy;
@@ -314,12 +322,13 @@ export class TeamState {
     lineup: readonly Hitter[] = team.lineup,
     strategy: Strategy = DEFAULT_STRATEGY,
     coachMods?: { offense: number; defense: number },
+    bench: readonly Hitter[] = team.bench,
   ) {
     this.strategy = strategy;
     this.coachOffMult = 1 + ((coachMods?.offense ?? 20) - 20) * 0.0001;
     this.coachDefMult = 1 - ((coachMods?.defense ?? 20) - 20) * 0.0001;
     this.team = team;
-    this.benchTonight = [...team.bench];
+    this.benchTonight = [...bench];
     this.isHome = isHome;
     this.order = lineup.slice(0, 9);
     // The nine who took the field for the first pitch. `order` is mutated by
@@ -642,11 +651,11 @@ export function simGame(
 
   const home = new TeamState(
     homeTeam, true, opts.homeStarter ?? 0, opts.homeBullpen, opts.homeLineup, opts.homeStrategy,
-    opts.homeCoachMods,
+    opts.homeCoachMods, opts.homeBench,
   );
   const away = new TeamState(
     awayTeam, false, opts.awayStarter ?? 0, opts.awayBullpen, opts.awayLineup, opts.awayStrategy,
-    opts.awayCoachMods,
+    opts.awayCoachMods, opts.awayBench,
   );
   if (opts.postseason) { home.postseason = true; away.postseason = true; }
   const playEvents: PlayEvent[] | null = opts.playEvents ? [] : null;

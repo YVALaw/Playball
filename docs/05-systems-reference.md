@@ -3290,8 +3290,8 @@ program on the AI and a full recruiting window each year:
 
 | | |
 |---|---|
-| exposed to the draft with eligibility left | **1.74** per program per year |
-| talked round | **0.32** per program per year — **18% stay, 82% go** |
+| exposed to the draft with eligibility left | **1.74** per program per year — re-measured September 7 2026 at **2.3–2.6** over ten seasons of a recruited league (§62.8); the mechanic is unchanged, the league holds more talent |
+| talked round | **0.32** per program per year — **18% stay, 82% go** (12–27% stay on the September 7 measurement) |
 | most any one program kept in a year | **3** |
 | program-years with 2+ exposed that kept them all | **3.7%** |
 | mean June spend | **7.8** of a 120–180 window |
@@ -8299,6 +8299,89 @@ recorded here with the number, for the reporter to decide:
 
 Everything else the audit filed is P2 or lower and listed in
 `docs/15-v1-release-audit.md` with the verdict.
+
+### 62.8 The other ninety-five
+
+The last domain read the draft, the portal and the computer's own decisions
+over ten offseasons of a store-faithful loop, and its findings were one
+finding told six ways: a rule the coached program lived by that the
+ninety-five did not. Each fix carries a test in `tests/release-audit.test.ts`.
+
+- **A winter heals every roster.** `hurt` writes `outUntil` on a clock that
+  restarts every February, and only the coached roster was ever healed — in
+  the store, at the year roll. A rival's April hamstring outlived its season
+  and a torn ligament (two hundred days) never expired at all: measured over
+  eight seasons on seed 4242, 149–250 rival men stood unavailable on day
+  zero of each spring, 124–185 of them first-choice, with their arms still
+  carrying last spring's innings. Healing lives in `nextSeason` now, for
+  every program and for every caller that rolls a season — which is also
+  the league every engine-level probe and test measures from here on.
+- **The bench a game may reach for.** `coverFor` guarded the nine and
+  nothing guarded the bench, so a man on the shelf pinch-hit (32 games in
+  200, measured) and a properly redshirted freshman batted twice, burning
+  the year the redshirt exists to keep. `fitBench` filters the bench through
+  `available` for the day sim and all three managed-game paths, carried by
+  the new `homeBench`/`awayBench` game options.
+- **The portal's denominator.** `openPortal` was handed the coached
+  program's game count for the whole country: a coach who reached Omaha read
+  sixty games against a rival's forty-five, and 2–24 men a winter entered
+  the pool as "buried" on that arithmetic alone. Each program is measured
+  against its own `w + l`.
+- **The portal reads a settled mood.** `settleMood` ran at the year roll,
+  after the portal step, so the pool read a mood a full season stale and a
+  fresh career read the untouched default — none of the 88 men in the first
+  winter's pool had a flight risk. `settleTheMoods` runs when the pool
+  opens, for every man in the country; the roll skips the settle when the
+  rail has walked the step (`furthestPhase`), which is what keeps a mood
+  from being judged twice. A career saved on the recruiting or signing step
+  by the previous build gets no settle that one winter, once.
+- **An unsigned man has left.** The coached program's leavers were released
+  unconditionally, a rival's only when signed, so 0–19 men a winter stayed
+  on the roster they were leaving wearing `inPortal` for good; and a `break`
+  where `continue` belonged stopped every program behind the first with
+  nothing to take. Both are one rule for ninety-six programs now.
+- **The staff sits a year.** `staffRedshirts` had no caller: casual's "your
+  staff decides who sits a year" was never kept, and no rival program ever
+  redshirted anybody. It runs at the roll for every program, and for the
+  coached one when the coach asked not to be asked — `state/depth.ts`'s
+  doctrine, applied. A rotation arm is playing whatever his slot; a reliever
+  is measured from the back of the pen.
+- **Coach of the year's weights.** `TYPICAL_SALIENCE` was measured on an
+  engine two revisions old. Wire-to-wire's typical winner read 2.0 against
+  a measured 2.3–2.4 on the old engine and the new, a fifteen percent bonus
+  that took seven Junes in ten after the rules fixes and the healed league
+  (45 of 64 against the test's 70% bound; 36 of 64 before the audit).
+  Re-measured the way the code prescribes — twenty seasons, seed 4242,
+  the median raw score — to 2.7 / 2.55 / 2.3.
+
+Measured in this domain and left for a decision, alongside §62.7:
+
+- **Every pitcher enters through the buried door.** `dayInTheLegs` counts
+  starts for hitters only and `squadRanks` ranks hitters, so an arm reads an
+  expectation near 0.14 and is "buried" by that much for life; all of the
+  18–33 arms in each winter's pool had no mood reason. Stars are exempt
+  above `STAR_LINE`; below it the door is bookkeeping. An arm's own
+  expectation — rotation slot, appearances — is the fix, and it reshapes
+  the pool.
+- **No closer.** `restedFirst` and `maybeChangePitcher` walk the pen
+  forward; the best arm throws 15.9% of relief outs against a flat 16.7%.
+  Acknowledged unbuilt in the code's own comment.
+- **The computer's portal.** `staffWorksPortal` shops cheapest-first and
+  stops at two; there is no rival retention in the portal the way the draft
+  has `rivalKeeps`.
+- **The computer's nine.** Fifty-three of ninety-six programs field less
+  than their best available at their own labels (0.65 a man on average);
+  the order itself is worth −0.2%, so the assignment is the lever, not the
+  card. Eighteen rotations are not the four best arms and eighty-one
+  programs carry a reliever four better than their worst starter; nothing
+  ever converts a role.
+- **A transfer's history.** `archiveSeason` runs for the coached program
+  only, so a man arriving through the portal carries no career rows for his
+  years elsewhere.
+- **§14.7's numbers.** Exposure to the draft runs 2.3–2.6 eligible
+  underclassmen per program per year against the 1.74 measured when the
+  mechanic shipped; rival keeps 12–27% against the stated 18%. The mechanic
+  is unchanged; the league it runs in has more talent in it now.
 
 ## Appendix A: stale comments and vestigial code found while writing this
 

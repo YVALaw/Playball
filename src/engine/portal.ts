@@ -204,7 +204,7 @@ export function reasonFor(
  * else's mismanagement, and next year it is the other way round.
  */
 export function openPortal(
-  teams: readonly TeamRecord[], opts: { year: number; seed: number; games: number },
+  teams: readonly TeamRecord[], opts: { year: number; seed: number; games?: number },
 ): PortalMan[] {
   const out: PortalMan[] = [];
   for (const rec of teams) {
@@ -212,10 +212,20 @@ export function openPortal(
     const men: Player[] = uniquePlayers([
       ...rec.team.lineup, ...rec.team.bench, ...rec.team.rotation, ...rec.team.bullpen,
     ]);
+    /*
+      Each program against its own season. `starts` counts every game the
+      man's program played, June included, so the denominator is that
+      program's own count -- not the coached one's, which the store used to
+      pass for the whole country: a coach who reached Omaha read sixty games
+      against a rival's forty-five, and a quarter of the pool was men whose
+      only sin was playing for a program with a shorter year (05 §62.8). The
+      override remains for a world that has not played.
+    */
+    const games = opts.games ?? (rec.w ?? 0) + (rec.l ?? 0);
     for (const p of men) {
       const starts = (p as Player & { starts?: number }).starts ?? 0;
       const squadRank = ranks.get(p.id) ?? 20;
-      const at = { squadRank, starts, games: opts.games };
+      const at = { squadRank, starts, games };
       if (!entersPortal(p, { ...at, year: opts.year, seed: opts.seed })) continue;
       (p as Player & Portable).inPortal = true;
       out.push({

@@ -1093,7 +1093,15 @@ export interface CoachAwardCandidate {
  * Measured with `coachAwardCandidates` over twenty seasons of the full world
  * (seed 4242), taking the median of each category's raw score:
  *
- *   overachieved  2.6    turnaround  2.5    wireToWire  2.0
+ *   overachieved  2.7    turnaround  2.55   wireToWire  2.3
+ *
+ * Re-measured in the release audit (05 §62.8), on the engine after the rules
+ * fixes, the balanced schedule and the winter that heals every roster. The
+ * first set (2.6 / 2.5 / 2.0) had drifted: wire-to-wire's typical winner was
+ * 2.3 on the old engine too, so the category had been carrying a fifteen
+ * percent bonus for years and took seven Junes in ten. These are the numbers
+ * to re-take whenever the engine changes what a run margin or a roster is
+ * worth -- the test in postseason.test.ts is what notices.
  *
  * The giant-killer is not a measurement and does not get one. It is binary and
  * it fires perhaps one year in five, so it carries a raw score high enough to
@@ -1101,9 +1109,9 @@ export interface CoachAwardCandidate {
  * of that season, full stop.
  */
 const TYPICAL_SALIENCE: Record<CoachAwardReason, number> = {
-  overachieved: 2.6,
-  turnaround: 2.5,
-  wireToWire: 2.0,
+  overachieved: 2.7,
+  turnaround: 2.55,
+  wireToWire: 2.3,
   giantKiller: 1,
 };
 

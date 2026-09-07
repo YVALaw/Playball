@@ -13,7 +13,7 @@
 import { create } from 'zustand';
 import {
   appliedStrategy,
-  injuryClock, currentDay, startableSlot, dayInTheLegs, seasonInTheArm,
+  injuryClock, currentDay, startableSlot, dayInTheLegs, seasonInTheArm, fitBench,
   createSeason, simNextDay, simSeason, seasonComplete, standings, nextSeason, rpi, rpiOrder,
   seasonLength, regularRecord, archiveSeason, recordSeasonMarks,
   recordCareerMarks, recordResult, restedFirst, seedTeams,
@@ -258,7 +258,7 @@ import {
   WORDS_A_SEASON, atRisk,
 } from '../engine/eligibility.js';
 import {
-  canRedshirt, redshirt, unRedshirt, redshirtCount, MAX_REDSHIRTS,
+  canRedshirt, redshirt, unRedshirt, redshirtCount, MAX_REDSHIRTS, staffRedshirts,
 } from '../engine/redshirt.js';
 import { movePosition, settleIn, secondaryPositions } from '../engine/positions.js';
 import { healUp, isHurt, prognosis } from '../engine/injury.js';
@@ -1519,6 +1519,76 @@ type StoredMyBracket = {
  * and a throw inside a day loses the day for the whole country. Returns the
  * reason it refuses, or null.
  */
+/**
+ * What a season did to the men, settled once -- and settled before the
+ * portal reads it.
+ *
+ * The settle used to run at the year roll, which is after the portal step in
+ * the same offseason: the portal read a mood a full season stale, and on a
+ * fresh career it read the untouched default, so the first winter had no
+ * morale door at all -- none of the eighty-odd men in that pool went for a
+ * reason (05 §62.8). It runs here, when the portal opens, on the season that
+ * just finished; the roll skips it when the rail has been through the step.
+ * The coached program's men are read against the promise and the room; the
+ * ninety-five against playing time and winning, the way they always were.
+ */
+function settleTheMoods(season: SeasonState, userTeam: number): void {
+  for (const rec of season.teams) {
+    const played = (rec.w ?? 0) + (rec.l ?? 0);
+    const winPct = played > 0 ? (rec.w ?? 0) / played : 0.5;
+    const ranks = squadRanks(rec.team);
+    const mine = rec.index === userTeam;
+    const leader = mine ? captainOf(rec.team) : null;
+    for (const p of uniquePlayers([...squad(rec.team), ...rec.team.rotation, ...rec.team.bullpen])) {
+      // A promise that has been judged for every season it covered comes off
+      // him before this season is judged, so a one-year word is not held
+      // against a junior.
+      if (mine && promiseSpent(p.recruitPromise)) delete p.recruitPromise;
+      setMood(p, settleMood(p, {
+        starts: (p as Player & { starts?: number }).starts ?? 0,
+        games: played,
+        squadRank: ranks.get(p.id) ?? 20,
+        winPct,
+        ...(mine ? {
+          movedUnwillingly: (p as Player & { movedFrom?: string }).movedFrom !== undefined,
+          promiseBroken: explicitRecruitPromiseBroken(p, {
+            battingGames: season.batting.get(p.id)?.g ?? 0,
+            pitchingGames: season.pitching.get(p.id)?.g ?? 0,
+          }),
+          damped: leader !== null,
+        } : {}),
+      }));
+      if (mine && p.recruitPromise) p.recruitPromise.judged = (p.recruitPromise.judged ?? 0) + 1;
+    }
+  }
+}
+
+/**
+ * Who a staff sits, for the ninety-five and for a coach who asked not to be
+ * asked.
+ *
+ * `staffRedshirts` had no caller: casual's "your staff decides who sits a
+ * year" was never kept, and no rival program ever redshirted anybody, so the
+ * fifth year existed for one program in the country (05 §62.8). The rank is
+ * his place at his own spot on the chart the program actually plays off; a
+ * rotation arm is playing whatever his slot, and a reliever is measured from
+ * the back of the pen, where a real staff finds the freshman it sits.
+ */
+function staffSitsTheFreshmen(season: SeasonState, userTeam: number, userDecides: boolean): void {
+  for (const rec of season.teams) {
+    if (rec.index === userTeam && userDecides) continue;
+    const rank = new Map<PlayerId, number>();
+    const place = (id: PlayerId, at: number): void => {
+      rank.set(id, Math.min(rank.get(id) ?? Infinity, at));
+    };
+    const chart = chartFor(rec.team);
+    for (const spot of SPOTS) (chart[spot] ?? []).forEach((id, i) => place(id, i));
+    for (const p of rec.team.rotation) place(p.id, 0);
+    rec.team.bullpen.forEach((p, i) => place(p.id, Math.max(0, i - 2)));
+    staffRedshirts(rec.team, (p) => rank.get(p.id) ?? 9);
+  }
+}
+
 function assertSeason(season: SeasonState, userTeam: number): string | null {
   if (!Array.isArray(season.teams) || season.teams.length === 0) return 'The save has no programs in it.';
   if (!Number.isInteger(userTeam) || !season.teams[userTeam]) return 'The save does not say which program is yours.';
@@ -2864,10 +2934,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     */
     if (next === 'portal' && get().furthestPhase < PHASES.indexOf('portal')) {
       const rec = season.teams[get().userTeam];
-      const games = (rec?.w ?? 0) + (rec?.l ?? 0);
-      const pool = openPortal(season.teams, {
-        year: get().year, seed: season.seed ?? 0, games,
-      });
+      // The season's verdict on every man, before the portal asks him.
+      settleTheMoods(season, get().userTeam);
+      const pool = openPortal(season.teams, { year: get().year, seed: season.seed ?? 0 });
       const mine = pool.filter((m) => m.from === get().userTeam);
       const theirs = pool
         .filter((m) => m.from !== get().userTeam)
@@ -2958,7 +3027,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         for (const other of season.teams) {
           if (other.index === get().userTeam) continue;
           const going = stillOut.filter((m) => !taken.has(m.player.id) && m.from !== other.index);
-          if (going.length === 0) break;
+          // `continue`, not `break`: a program with nothing left to take is
+          // one program, not the end of the queue behind it.
+          if (going.length === 0) continue;
           const budget = flexibleOffseasonBudget(prestigeStars(other.prestige))
             - (season.draft?.rivalSpend[other.index] ?? 0);
           for (const m of staffWorksPortal(other.team, going, budget)) {
@@ -2970,6 +3041,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
             (season.portalSpend ??= {})[other.index] =
               (season.portalSpend[other.index] ?? 0) + m.cost;
           }
+        }
+        /*
+          Whoever is left has genuinely left college baseball -- from every
+          roster, not only the coached one. A rival's unsigned man used to
+          stay on the roster he was leaving, wearing `inPortal` for good, so
+          the rule read one way for the user and another for the ninety-five
+          (05 §62.8).
+        */
+        for (const m of stillOut) {
+          if (taken.has(m.player.id) || m.from === get().userTeam) continue;
+          const from = season.teams[m.from];
+          if (from) releaseFrom(from.team, m.player.id);
         }
       }
 
@@ -3944,6 +4027,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // Last season's absences, cleared with the season that produced them.
       delete rolled.classroom;
       delete rolled.trainer;
+      /*
+        Settled already, at the portal step, for every man in the country
+        (`settleTheMoods`). The roll only settles a winter the rail never
+        walked through that step -- there is no such winter on the rail
+        today, and this is what keeps a mood from being judged twice.
+      */
+      const settled = get().furthestPhase >= PHASES.indexOf('portal');
       const mineNow = rolled.teams[get().userTeam];
       if (mineNow) {
         // One body once: a two-way man's mood, grades and winter healing
@@ -3969,8 +4059,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           // off him now, BEFORE this roll judges anything — so the portal,
           // which runs later in the same offseason, still saw a first-season
           // break, and a one-year word is not held against a junior.
-          if (promiseSpent(p.recruitPromise)) delete p.recruitPromise;
-          setMood(p, settleMood(p, {
+          if (!settled && promiseSpent(p.recruitPromise)) delete p.recruitPromise;
+          if (!settled) setMood(p, settleMood(p, {
             starts: (p as Player & { starts?: number }).starts ?? 0,
             games: played,
             squadRank: ranks.get(p.id) ?? 20,
@@ -3982,7 +4072,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
             }),
             damped: leader !== null,
           }));
-          if (p.recruitPromise) p.recruitPromise.judged = (p.recruitPromise.judged ?? 0) + 1;
+          if (!settled && p.recruitPromise) p.recruitPromise.judged = (p.recruitPromise.judged ?? 0) + 1;
           delete (p as Player & { starts?: number }).starts;
 
           driftGrades(p, get().year + 1);
@@ -4010,13 +4100,17 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         const winPct = played > 0 ? (rec?.w ?? 0) / played : 0.5;
         const ranks = squadRanks(other.team);
         for (const p of uniquePlayers([...squad(other.team), ...other.team.rotation, ...other.team.bullpen])) {
-          setMood(p, settleMood(p, {
-            starts: (p as Player & { starts?: number }).starts ?? 0,
-            games: played,
-            squadRank: ranks.get(p.id) ?? 20,
-            winPct,
-          }));
+          if (!settled) {
+            setMood(p, settleMood(p, {
+              starts: (p as Player & { starts?: number }).starts ?? 0,
+              games: played,
+              squadRank: ranks.get(p.id) ?? 20,
+              winPct,
+            }));
+          }
           delete (p as Player & { starts?: number }).starts;
+          // The winter's healing is the world's now -- `nextSeason` clears
+          // every roster's shelf and arm mileage, this one included (05 §62.8).
         }
       }
       // A year passes for him too. Purely what the screen prints — nothing in
@@ -4240,6 +4334,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const filled = fillRosters(season, season.rng, {
       userTeam: get().userTeam,
     });
+    // The freshmen nobody will play, sat for the year by the staff -- every
+    // program's, and the coached one's when the coach asked not to be asked.
+    staffSitsTheFreshmen(season, get().userTeam, handles(get().depth, 'redshirts'));
     // Pipeline 2.0: a market gets stronger because you actually landed
     // players from it, not because a toggle says it is a pipeline. The same
     // relationship follows the staff and cools gradually when ignored.
@@ -5168,6 +5265,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const awayStarter = startableSlot(season, away.team, aSlot, season.dayIndex, clock);
     const homeLineup = coverFor(home.team, home.team.lineup, clock);
     const awayLineup = coverFor(away.team, away.team.lineup, clock);
+    const homeBench = fitBench(home.team, clock);
+    const awayBench = fitBench(away.team, clock);
 
     /*
       June anchors the same way April does now.
@@ -5211,6 +5310,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         awayStarter,
         homeLineup,
         awayLineup,
+        homeBench,
+        awayBench,
         // The same wiring the fast path gets: the Strategy screen's settings
         // govern the game you manage, and the pen is offered most rested first.
         homeStrategy: appliedStrategy(season, home, away),
@@ -5609,6 +5710,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       awayStarter: j.awayStarter,
       homeLineup: coverFor(home.team, home.team.lineup, clock),
       awayLineup: coverFor(away.team, away.team.lineup, clock),
+      homeBench: fitBench(home.team, clock),
+      awayBench: fitBench(away.team, clock),
       homeStrategy: appliedStrategy(season, home, away),
       awayStrategy: appliedStrategy(season, away, home),
       homeBullpen: restedFirst(season, home),
@@ -5725,6 +5828,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const awayStarter = startableSlot(season, away.team, g.slot, today, clock);
     const homeLineup = coverFor(home.team, home.team.lineup, clock);
     const awayLineup = coverFor(away.team, away.team.lineup, clock);
+    const homeBench = fitBench(home.team, clock);
+    const awayBench = fitBench(away.team, clock);
     set({ liveStarting: true });
     const rngState = season.rng.state?.() ?? 0;
     await get().saveNow();
@@ -5749,6 +5854,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         awayStarter,
         homeLineup,
         awayLineup,
+        homeBench,
+        awayBench,
         // The same wiring the fast path gets: the Strategy screen's settings
         // govern the game you manage, and the pen is offered most rested first.
         homeStrategy: appliedStrategy(season, home, away),
@@ -7143,8 +7250,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       const season = get().season;
       const rec = season?.teams[get().userTeam];
       if (season && rec) {
-        const games = (rec.w ?? 0) + (rec.l ?? 0);
-        const pool = openPortal(season.teams, { year: get().year, seed: season.seed ?? 0, games });
+        // A save from before the settle moved to this step has not had one.
+        settleTheMoods(season, get().userTeam);
+        const pool = openPortal(season.teams, { year: get().year, seed: season.seed ?? 0 });
         const mine = pool.filter((m) => m.from === get().userTeam);
         const theirs = pool
           .filter((m) => m.from !== get().userTeam)

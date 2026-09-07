@@ -12,9 +12,9 @@ import {
 } from './achievements.js';
 import { coverFor } from './depthChart.js';
 import { atRisk, failsThisWeek, suspend } from './eligibility.js';
-import { hurtsToday, hurt } from './injury.js';
+import { hurtsToday, hurt, healUp } from './injury.js';
 import { started } from './morale.js';
-import { strainMultiplier, played, rested, threw } from './workload.js';
+import { strainMultiplier, played, rested, threw, resetWorkload } from './workload.js';
 import { available } from './depthChart.js';
 import { makeTeam, reserveNames, resetNames } from './players.js';
 import { armValue, overallOf } from './ratings.js';
@@ -1390,6 +1390,27 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
   // The floor follows the programme. See driftQuality.
   for (const t2 of teams) driftQuality(t2);
 
+  /*
+    A winter heals everything, for every program.
+
+    `hurt` writes `outUntil` on a clock that restarts every February, and only
+    the coached roster was ever healed -- in the store, at the year roll. So a
+    rival's April hamstring outlived its season, a torn ligament never expired
+    at all, and two hundred men a year across the league stood permanently on
+    the shelf with their arms still carrying last spring's innings, which is
+    also the league every engine-level probe and test was measuring. A year
+    passing is a fact about the world, so it lives here, where every caller
+    that rolls a season gets it (05 §62.8). A suspension ends with the season
+    that gave it, the way the store's own roll already let the coached men out.
+  */
+  for (const t2 of teams) {
+    for (const p of [...t2.team.lineup, ...t2.team.bench, ...t2.team.rotation, ...t2.team.bullpen]) {
+      healUp(p);
+      resetWorkload(p);
+      delete (p as Player & { outUntil?: number }).outUntil;
+    }
+  }
+
   const world: WorldShape = { conferences: [] };
   for (const t of teams) {
     let conf = world.conferences.find((c) => c.id === t.conference);
@@ -1786,6 +1807,18 @@ export function pitcherReady(
  * coach sat in used to cost its men nothing: the coached program's starts,
  * leg weariness and injury strain stayed at zero all year (05 §62.1).
  */
+/**
+ * The bench a game may actually reach for: the roster's, less the men on the
+ * shelf and the men sitting the year. `coverFor` guards the nine; nothing
+ * guarded the bench, so a redshirt pinch-hit and burned the season he was
+ * keeping, and a man out for the year batted in June (05 §62.8). Shared by
+ * the day sim and the managed game, like the card.
+ */
+export function fitBench(team: Team, clock: number): readonly Hitter[] {
+  const fit = team.bench.filter((h) => available(h, clock));
+  return fit.length === team.bench.length ? team.bench : fit;
+}
+
 export function dayInTheLegs(rec: TeamRecord, card: readonly Hitter[]): void {
   const playing = new Set(card.map((p) => p.id));
   for (const p of [...rec.team.lineup, ...rec.team.bench]) {
@@ -1957,6 +1990,8 @@ export function playGame(
     awayStarter: startableSlot(season, away.team, opts.awaySlot ?? slot, currentDay(season), injuryClock(season)),
     ...(homeLineup ? { homeLineup } : {}),
     ...(awayLineup ? { awayLineup } : {}),
+    homeBench: fitBench(home.team, injuryClock(season)),
+    awayBench: fitBench(away.team, injuryClock(season)),
     homeStrategy: appliedStrategy(season, home, away),
     awayStrategy: appliedStrategy(season, away, home),
     homeBullpen: restedFirst(season, home),

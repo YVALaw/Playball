@@ -243,11 +243,11 @@ export function createLiveGame(
   // odds rather than the decisions.
   const home = new TeamState(
     homeTeam, true, opts.homeStarter ?? 0, opts.homeBullpen, opts.homeLineup, opts.homeStrategy,
-    opts.homeCoachMods,
+    opts.homeCoachMods, opts.homeBench,
   );
   const away = new TeamState(
     awayTeam, false, opts.awayStarter ?? 0, opts.awayBullpen, opts.awayLineup, opts.awayStrategy,
-    opts.awayCoachMods,
+    opts.awayCoachMods, opts.awayBench,
   );
   const mine = opts.managing === 'home' ? home : away;
   // June, stamped the way simGame stamps it, so the badge layer's BIG STAGE

@@ -27,8 +27,14 @@ import { newTeams } from '../src/engine/calibration.js';
 import { makeRng } from '../src/engine/rng.js';
 import { CONFERENCES } from '../src/data/schools.js';
 import {
-  createSeason, simSeason, nextSeason, rpiOrder,
+  createSeason, simSeason, nextSeason, rpiOrder, playGame,
 } from '../src/engine/season.js';
+import { hurt, isHurt } from '../src/engine/injury.js';
+import { threw, armMileage } from '../src/engine/workload.js';
+import { available } from '../src/engine/depthChart.js';
+import { redshirt, redshirtCount } from '../src/engine/redshirt.js';
+import { openPortal } from '../src/engine/portal.js';
+import { moodOf, SETTLED } from '../src/engine/morale.js';
 import { freezeRegularSeason, allConferenceTournaments, protectedTopFour } from '../src/engine/postseason.js';
 import { jobOffers } from '../src/engine/program.js';
 import { cutPlayer } from '../src/engine/godMode.js';
@@ -402,5 +408,157 @@ describe('the calendar', () => {
     const { seasonDate } = await import('../src/ui/format.js');
     expect(seasonDate(Number.NaN, 0)).toMatch(/^MON /);
     expect(seasonDate(2027, 3)).toMatch(/^THU /);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §62.8 The other ninety-five
+// ---------------------------------------------------------------------------
+
+const everyone = (season: ReturnType<typeof fresh>): Player[] =>
+  season.teams.flatMap((t) => [...t.team.lineup, ...t.team.bench, ...t.team.rotation, ...t.team.bullpen]);
+
+describe('a winter heals every roster', () => {
+  it('a rival\'s April hamstring and his ace\'s innings do not follow him into February', () => {
+    const season = fresh(9);
+    const rival = season.teams[5]!;
+    const leg = rival.team.lineup[0]!;
+    const arm = rival.team.rotation[0]!;
+    hurt(leg, 10, 'hamstring', 30);
+    threw(arm, 60);
+    expect(isHurt(leg, 20)).toBe(true);
+    expect(armMileage(arm)).toBeGreaterThan(0);
+
+    const next = nextSeason(season);
+    // The same men, on the same team object, healed by the roll itself.
+    expect(next.teams[5]!.team.lineup[0]).toBe(leg);
+    expect(isHurt(leg, 0)).toBe(false);
+    expect(available(leg, 0)).toBe(true);
+    expect(armMileage(arm)).toBe(0);
+  });
+});
+
+describe('the bench a game may reach for', () => {
+  it('a man on the shelf never pinch-hits, and a redshirt keeps his year', () => {
+    const season = fresh(7);
+    const me = season.teams[0]!.team;
+    const shelved = me.bench[0]!;
+    hurt(shelved, 0, 'knee', 200);
+    const sitting = me.bench.find((h) => h !== shelved && (h.classYear === 'FR' || h.classYear === 'SO'))!;
+    expect(sitting).toBeDefined();
+    expect(redshirt(me, sitting)).toBe(true);
+
+    for (let g = 0; g < 30; g++) {
+      if (g % 2 === 0) playGame(season, 0, 1); else playGame(season, 1, 0);
+    }
+    expect(season.batting.get(shelved.id)?.g ?? 0).toBe(0);
+    expect(season.batting.get(sitting.id)?.g ?? 0).toBe(0);
+    // Somebody off that bench did play, so this is the filter and not a
+    // season with no substitutions in it.
+    const benchGames = me.bench.reduce((n, h) => n + (season.batting.get(h.id)?.g ?? 0), 0);
+    expect(benchGames).toBeGreaterThan(0);
+
+    // And the managed game is handed the same bench.
+    const { a, b } = newTeams(11);
+    const out = a.bench[0]!;
+    const live = createLiveGame(a, b, makeRng(11), {
+      managing: 'home', homeBench: a.bench.filter((h) => h !== out),
+    });
+    expect(live.benchAvailable).not.toContain(out);
+    expect(live.benchAvailable.length).toBe(a.bench.length - 1);
+  });
+});
+
+describe('the portal measures each program against its own season', () => {
+  it('a shorter year is a smaller denominator, for that program alone', () => {
+    const season = fresh(8);
+    for (const t of season.teams) { t.w = 30; t.l = 30; }
+    const mine = season.teams[3]!;
+    for (const p of [...mine.team.lineup, ...mine.team.bench]) (p as Player & { starts?: number }).starts = 10;
+    const ids = (pool: { player: Player; from: number }[]) => ({
+      mine: new Set(pool.filter((m) => m.from === 3).map((m) => m.player.id)),
+      others: new Set(pool.filter((m) => m.from !== 3).map((m) => m.player.id)),
+    });
+    const sixty = ids(openPortal(season.teams, { year: 2027, seed: 4242 }));
+    for (const p of everyone(season)) delete (p as Player & { inPortal?: boolean }).inPortal;
+    mine.w = 15; mine.l = 15;
+    const thirty = ids(openPortal(season.teams, { year: 2027, seed: 4242 }));
+    // Ten starts in thirty games is a man who played; in sixty he was buried.
+    expect(thirty.mine.size).toBeLessThan(sixty.mine.size);
+    for (const id of thirty.mine) expect(sixty.mine.has(id)).toBe(true);
+    // And nobody else's answer moved.
+    expect([...thirty.others].sort()).toEqual([...sixty.others].sort());
+  });
+});
+
+describe('the portal reads the season that just ended', () => {
+  it('every man\'s mood is settled when the pool opens, and not again at the roll', async () => {
+    useDynasty.getState().start(4242, 0);
+    simSeason(useDynasty.getState().season!);
+    const before = everyone(useDynasty.getState().season!).filter((p) => moodOf(p) !== SETTLED).length;
+    useDynasty.setState({ phase: 'draft', furthestPhase: PHASES.indexOf('draft') });
+    await useDynasty.getState().nextPhase();
+    expect(useDynasty.getState().phase).toBe('portal');
+    const season = useDynasty.getState().season!;
+    const men = everyone(season);
+    const settled = men.filter((p) => moodOf(p) !== SETTLED).length;
+    expect(settled).toBeGreaterThan(before);
+    expect(settled).toBeGreaterThan(men.length / 2);
+
+    // A rival regular who is going nowhere: his mood after the roll is the
+    // mood the portal read, because the roll knows the step was walked.
+    const pool = new Set([...useDynasty.getState().portal!.available, ...useDynasty.getState().portal!.leaving].map((m) => m.player.id));
+    const stayer = season.teams[7]!.team.lineup.find((p) => !pool.has(p.id) && p.classYear !== 'SR')!;
+    const read = moodOf(stayer);
+    for (let guard = 0; guard < 6 && useDynasty.getState().phase !== null; guard++) {
+      await useDynasty.getState().nextPhase();
+    }
+    expect(useDynasty.getState().phase).toBeNull();
+    const after = everyone(useDynasty.getState().season!).find((p) => p.id === stayer.id);
+    expect(after).toBeDefined();
+    expect(moodOf(after!)).toBe(read);
+  });
+});
+
+describe('an unsigned portal man has left college baseball', () => {
+  it('from a rival\'s roster as surely as from the coached one', async () => {
+    useDynasty.getState().start(4242, 0);
+    simSeason(useDynasty.getState().season!);
+    useDynasty.setState({ phase: 'draft', furthestPhase: PHASES.indexOf('draft') });
+    await useDynasty.getState().nextPhase();
+    const portal = useDynasty.getState().portal!;
+    expect(portal.available.length).toBeGreaterThan(0);
+    // Priced out of every program's budget, so nobody signs and everybody leaves.
+    for (const m of portal.available) m.cost = 100_000;
+    const gone = portal.available.map((m) => ({ id: m.player.id, from: m.from }));
+    await useDynasty.getState().nextPhase();
+    expect(useDynasty.getState().phase).toBe('recruiting');
+    const season = useDynasty.getState().season!;
+    for (const m of gone) {
+      const roster = season.teams[m.from]!.team;
+      const still = [...roster.lineup, ...roster.bench, ...roster.rotation, ...roster.bullpen]
+        .some((p) => p.id === m.id);
+      expect(still, `${m.id} is still on program ${m.from}`).toBe(false);
+    }
+  });
+});
+
+describe('the staff decides who sits a year', () => {
+  it('for the ninety-five always, and for the coached program when the coach asked not to be asked', async () => {
+    useDynasty.getState().start(4242, 0, undefined, 'casual');
+    useDynasty.getState().settleSeason();
+    await useDynasty.getState().rollYear();
+    const casual = useDynasty.getState().season!;
+    const league = casual.teams.reduce((n, t) => n + redshirtCount(t.team), 0);
+    expect(league).toBeGreaterThan(20);
+    expect(casual.teams.every((t) => redshirtCount(t.team) <= 3)).toBe(true);
+
+    useDynasty.getState().newDynasty();
+    useDynasty.getState().start(4242, 0);
+    useDynasty.getState().settleSeason();
+    await useDynasty.getState().rollYear();
+    const full = useDynasty.getState().season!;
+    expect(redshirtCount(full.teams[0]!.team)).toBe(0);
+    expect(full.teams.slice(1).reduce((n, t) => n + redshirtCount(t.team), 0)).toBeGreaterThan(20);
   });
 });

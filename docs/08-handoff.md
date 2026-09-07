@@ -38,7 +38,14 @@ the balance decisions set down for the reporter (`05` §62,
 > the APK version is pinned. Measured and left for the reporter: batting
 > orders nobody deals, the .520 batting leader, the unseeded board, the
 > pitch that dodges the ramp, the sequential June, the roster cap
-> (`05` §62.7).
+> (`05` §62.7). The last domain, the other ninety-five (`05` §62.8): a
+> winter heals every roster now, not only the coached one (two hundred
+> rival men a year had stood permanently on the shelf); the bench a game
+> may reach for is filtered like the nine, so a redshirt never bats; the
+> portal measures each program against its own season and reads a mood
+> settled when the pool opens; an unsigned man leaves every roster; the
+> staff sits a freshman for the ninety-five and for a casual career; and
+> coach of the year's weights are re-measured on the engine as it is.
 
 
 > **September 6, evening — god mode shipped.** Built, finished and re-shaped
@@ -838,7 +845,7 @@ exists. Stage 19 removes the three together.
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,232 tests, 66 files)
+npm run check      # typecheck + the whole suite (1,241 tests, 66 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing
