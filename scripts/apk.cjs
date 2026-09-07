@@ -71,6 +71,16 @@ run('npm', ['run', 'build'], ROOT);
 console.log('\n— copying it into the shell —');
 run('npx', ['cap', 'sync', 'android'], ROOT);
 
+// The launcher icon and the splash, regenerated from assets/ every build.
+// The shell is generated and ignored (.gitignore), so its res/ came back as
+// the default Capacitor placeholder — the blue X — on every clean build, and
+// the store bundle wore it. The brand sources (the green ball, `assets/`)
+// ARE tracked, and capacitor-assets rewrites the whole density ladder from
+// them here, the same way this script supplies local.properties and the
+// native Java: the generated tree is never edited by hand.
+console.log('\n— painting the launcher icon and splash —');
+run('npx', ['capacitor-assets', 'generate', '--android'], ROOT);
+
 // The shell is generated and ignored, and `cap add android` writes a bare
 // MainActivity. The two Java files the app actually needs — the activity that
 // registers the back plugin, and the plugin (stage 18b, `05` §53) — are
