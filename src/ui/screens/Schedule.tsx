@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 // Schedule.tsx
 // The 33 game calendar. Played games carry their result; the rest is what is
 // coming. Weekend series are grouped, because that is how a college season is
@@ -15,6 +15,7 @@ import {
 } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
 import { InFrame } from '../Overlay.js';
+import { useDialogFocus } from '../dialogFocus.js';
 import { LineScore } from '../LineScore.js';
 import { regularRecord } from '../../engine/season.js';
 import type { BoxScore, BoxLine, SeasonState } from '../../engine/season.js';
@@ -192,6 +193,9 @@ export function BoxScoreSheet(
   const [view, setView] = useState<'box' | 'replay'>('box');
   const [frameIndex, setFrameIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
+  // The same contract every other sheet carries: focus in, Tab kept, Escape out.
+  const card = useRef<HTMLDivElement>(null);
+  useDialogFocus(card, onClose);
 
   useEffect(() => {
     if (!playing || view !== 'replay' || frames.length < 2) return;
@@ -275,6 +279,10 @@ export function BoxScoreSheet(
       }}
     >
       <div
+        ref={card}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Box score"
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%', height: '80%',

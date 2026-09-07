@@ -146,7 +146,9 @@ export function Roster() {
    * where it is the first thing read rather than the last column reached.
    */
   const rowFor = (p: Player): Row => {
-    const out = outTag(p, season.dayIndex);
+    // The trainer's clock, not the schedule's: `dayIndex` freezes at the last
+    // regular-season date, so a man healed in June read HURT all postseason.
+    const out = outTag(p, injuryClock(season));
     const pot = potentialGrade(p.potential);
     return {
       key: p.id,

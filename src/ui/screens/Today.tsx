@@ -16,7 +16,7 @@
 
 import { leagueLabel } from '../../engine/leagueNames.js';
 import { TEST_SHORTCUTS } from '../../state/testBuild.js';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PlayIcon, SewingPinIcon, StopwatchIcon, StarFilledIcon,
 } from '@radix-ui/react-icons';
 import { FINISH_LABEL, conferenceField } from '../../engine/postseason.js';
@@ -124,6 +124,8 @@ export function Today() {
       run();
     }, 800);
   };
+  // A beat must not land on a screen that has gone.
+  useEffect(() => () => { if (thinkTimer.current) clearTimeout(thinkTimer.current); }, []);
 
   /** A finished game, opened off the results strip. */
   const [openGame, setOpenGame] = useState<GameSummary | null>(null);

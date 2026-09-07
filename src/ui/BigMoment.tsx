@@ -14,6 +14,7 @@ import { Crest, shade } from './Crest.js';
 import { teamColour } from './Avatar.js';
 import { burstConfetti } from './celebrate.js';
 import { sfx, buzz } from './sound.js';
+import { useDialogFocus } from './dialogFocus.js';
 
 const KICKER: Record<string, string> = {
   walkoff: 'WALK-OFF',
@@ -50,6 +51,9 @@ export function BigMomentCard() {
   const loss = moment?.kind === 'walkoff-against' || moment?.kind === 'runner-up';
   const abbr = moment ? season?.teams[moment.team]?.def.abbr ?? '' : '';
   const school = moment ? season?.teams[moment.team]?.def.school ?? '' : '';
+  // A blocking card is a dialog: focus lands on its one button, Escape
+  // dismisses it, and nothing behind it can be tabbed to (05 §62.6).
+  useDialogFocus(host, clear, { active: moment !== null });
 
   /*
     The celebration happens exactly once, on mount. Confetti in the school's
@@ -71,6 +75,9 @@ export function BigMomentCard() {
     <InFrame>
       <div
         ref={host}
+        role="dialog"
+        aria-modal="true"
+        aria-label={KICKER[moment.kind] ?? 'A big moment'}
         className={`big-moment${loss ? ' loss' : ''}`}
         style={loss ? undefined : {
           background: `linear-gradient(168deg, ${shade(colour, 0.52)} 0%, #14160f 78%)`,

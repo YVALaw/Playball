@@ -209,7 +209,11 @@ export function useNeeds(): Need[] {
       we don't forget." Every route back into the nine settles it silently
       (see settleReturn); KEEP THE COVER on the lineup is the other answer.
     */
-    for (const man of squad(team.team)) {
+    // The second answer (KEEP THE COVER) lives on the lineup screen, which only
+    // a coach who writes the card has; a chart-only coach's staff writes the
+    // nine and settles the return itself, so holding his day on it was a
+    // decision he could not make.
+    for (const man of handles(depth, 'lineups') ? squad(team.team) : []) {
       if (nineIds.has(man.id) || !returnPending(man, day)) continue;
       needs.push({
         id: `back-${man.id}`,

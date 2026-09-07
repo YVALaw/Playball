@@ -190,8 +190,12 @@ export function Postseason() {
     : 0;
   const inTheField = mySeed > 0;
   // Spectator mode also covers the programs that never made the conference
-  // field. They should never see a dead YOUR NEXT GAME room either.
-  const spectatorMode = iAmOut || (bracket?.stage === 'conference' && !inTheField);
+  // field. They should never see a dead YOUR NEXT GAME room either -- at any
+  // stage: a program with no tournament of its own (`myBracket` null) used to
+  // be shown a live "another loss ends the run" card once June moved on to
+  // the national stage.
+  const spectatorMode = iAmOut
+    || (!inTheField && (bracket?.stage === 'conference' || myBracket === null));
   useEffect(() => {
     // Arrive on the useful room once. A reader can still choose BRACKET after
     // this; the dependency does not change again while he is spectating.

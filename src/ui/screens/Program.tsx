@@ -30,7 +30,7 @@ import { teamColour } from '../Avatar.js';
 import { Crest } from '../Crest.js';
 import { ArrowLeftIcon, ChevronRightIcon, StarIcon } from '@radix-ui/react-icons';
 import { GodBolt } from '../god/GodBolt.js';
-import { ModuleIntro, SectionHeading, Segmented } from '../components/Kit.js';
+import { ModuleIntro, SectionHeading, Segmented, Confirmable } from '../components/Kit.js';
 import {
   annualBudget, dollars, marketFor, remaining, wageBill,
   SCOUT_COST, SCOUT_DAYS, SEATS, SEAT_LABEL, SEAT_NOTE,
@@ -398,9 +398,14 @@ function MoneySheet({ team }: { team: Owner }) {
                         <em>Network carried with him: <b>{man.pipelineState}</b></em>
                       )}
                       {runsStaff && (
-                        <button className="staff-release tap" type="button" onClick={() => fireAssistant(staffSeat)}>
-                          Let him go
-                        </button>
+                        // Asked twice, like every other irreversible act in the
+                        // app: this was the one that fired a man on a single tap.
+                        <Confirmable
+                          className="staff-release tap"
+                          idle="Let him go"
+                          armed={`Confirm — release ${man.name}`}
+                          onConfirm={() => { fireAssistant(staffSeat); }}
+                        />
                       )}
                     </>
                   ) : (

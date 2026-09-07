@@ -452,6 +452,8 @@ export function Board() {
         <button
           className={`filter-button tap${filtersOpen || activeFilters ? ' active' : ''}`}
           type="button"
+          aria-label={activeFilters ? 'Filter recruits, filters on' : 'Filter recruits'}
+          aria-expanded={filtersOpen}
           onClick={() => {
             setOpenId(null);
             // Filters only shape the recruits list, so opening them from the

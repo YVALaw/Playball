@@ -41,6 +41,7 @@ import { cutPlayer } from '../src/engine/godMode.js';
 import { canPursue } from '../src/engine/recruiting.js';
 import { leagueLabel } from '../src/engine/leagueNames.js';
 import { useDynasty, PHASES } from '../src/state/store.js';
+import { listSaves } from '../src/state/persistence.js';
 import type { Hitter, Player } from '../src/engine/types.js';
 
 const fresh = (seed = 3) => createSeason(makeRng(seed), undefined, CONFERENCES);
@@ -400,6 +401,20 @@ describe('a save the engine could not play', () => {
     expect(await useDynasty.getState().loadSlot(slot)).toBe(false);
     expect(useDynasty.getState().loadError).toMatch(/no starting pitcher/);
     expect(useDynasty.getState().season).toBeNull();
+  });
+});
+
+describe('the save list', () => {
+  it('shows one unreadable row for a malformed file instead of no list at all', async () => {
+    useDynasty.getState().start(4242, 0);
+    await useDynasty.getState().saveNow();
+    disk.set('broken', { slot: 'broken', name: 'Corrupt', savedAt: 5, year: 2027 });
+    const rows = await listSaves();
+    expect(rows).toHaveLength(2);
+    const bad = rows.find((r) => r.slot === 'broken')!;
+    expect(bad).toBeDefined();
+    expect(bad.school).toMatch(/cannot be read/);
+    expect(rows.find((r) => r.slot !== 'broken')!.record).toMatch(/^\d+-\d+$/);
   });
 });
 

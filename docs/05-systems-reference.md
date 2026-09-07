@@ -8250,6 +8250,26 @@ The same class of gap, closed the same way:
   started. `nationalOrder` in the engine is the one table both read; the
   chip says PROJ until the country has a fortnight behind it.
 
+**The ninth wave — the hands.** Eight P2 findings a player meets with his
+thumb, fixed after the verdict rather than left as its condition: "Let him
+go" fired an assistant on one tap and is a `Confirmable`; a browser back
+press escaped the app over a god sheet (`layerNow` forgot `godOpen`); one
+malformed save blanked the whole list (`listSaves` emits an unreadable
+row); the live journal was cleared before the post-game save in both
+`endManagedGame` branches, so a kill in that window lost the game with no
+resume offer — the save comes first now, and a bracket game saves too, the
+comment that forbade it having outlived the codec it described; the
+box-score sheet and the big-moment card carry the dialog contract; roster
+rows read HURT off the frozen schedule index through June; NEEDS YOU held
+a chart-only coach's day on a return decision only the lineup screen could
+answer; a program with no tournament of its own saw a live YOUR NEXT GAME
+card at the national stage. With them: the recruiting filter button has a
+name, `--you` has a dark cut (7.4:1, pinned), `color-scheme` is declared,
+and the desk's SIM beat is cleared on unmount. The strategy wiring audit's
+findings — every control reaches the field; the positioning defaults are
+not zero-sum; AUTO calls INFIELD IN against fifty-one of ninety-six — are
+`docs/15` §L.
+
 ### 62.7 Measured, documented, and left for a decision
 
 Balance changes are not audit fixes. Each of these is real, measured, and
@@ -8352,7 +8372,9 @@ ninety-five did not. Each fix carries a test in `tests/release-audit.test.ts`.
   that took seven Junes in ten after the rules fixes and the healed league
   (45 of 64 against the test's 70% bound; 36 of 64 before the audit).
   Re-measured the way the code prescribes — twenty seasons, seed 4242,
-  the median raw score — to 2.7 / 2.55 / 2.3.
+  the median raw score — to 2.7 / 2.55 / 2.3. Over the test's sixty-four
+  Junes the award now reads wire-to-wire 26, overachieved 19, turnaround
+  16, giant-killer 3.
 
 Measured in this domain and left for a decision, alongside §62.7:
 

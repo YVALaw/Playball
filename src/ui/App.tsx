@@ -327,6 +327,7 @@ function AppBody(
     const s = useDynasty.getState();
     return hasLayerToClose({
       blocked: Boolean(s.seasonOpener || s.playbookInvite || s.bigMoment),
+      godOpen: s.godStack.length > 0,
       playerOpen: s.selectedPlayer !== null, teamCardOpen: teamCardRef.current !== null,
       overlayOpen: s.overlay !== null, tab: s.tab, screen: s.screen,
     });

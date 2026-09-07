@@ -46,6 +46,15 @@ the balance decisions set down for the reporter (`05` §62,
 > settled when the pool opens; an unsigned man leaves every roster; the
 > staff sits a freshman for the ninety-five and for a casual career; and
 > coach of the year's weights are re-measured on the engine as it is.
+> A ninth wave took the eight P2s a thumb meets — "Let him go" asks
+> twice, the journal outlives the game until the save is written, a
+> malformed save is one unreadable row, two more dialogs carry the
+> contract, HURT reads the trainer's clock, the return hold belongs to
+> the coach who writes the card, spectator mode holds at every stage —
+> and the verdict in `docs/15` is READY, for the release process. The
+> strategy wiring audit (`docs/15` §L) found every control reaches the
+> field and the positioning defaults are not zero-sum; that is the
+> reporter's to weigh.
 
 
 > **September 6, evening — god mode shipped.** Built, finished and re-shaped
@@ -845,7 +854,7 @@ exists. Stage 19 removes the three together.
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,241 tests, 66 files)
+npm run check      # typecheck + the whole suite (1,242 tests, 66 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing

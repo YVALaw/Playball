@@ -57,6 +57,7 @@ const LIGHT = {
   alert: '#c9362f', win: '#236b42', alertInk: '#f4f8f4',
   command: '#236b42', panel: '#1d201d',
   bronze: '#6f4a2a', silver: '#4a5866', gold: '#8a6b16',
+  you: '#2f4f7a',
 };
 
 const DARK = {
@@ -65,6 +66,7 @@ const DARK = {
   alert: '#e0655e', win: '#4da97a', alertInk: '#121711',
   command: '#2f7a52', panel: '#26312a',
   bronze: '#d29a6a', silver: '#bcc7d1', gold: '#e3bb4f',
+  you: '#8db3e0',
 };
 
 /**
@@ -83,6 +85,8 @@ const PAIRS: readonly { text: string; on: string; large?: boolean; what: string 
   { text: 'bronze', on: 'paper', large: true, what: 'a bronze banner eyebrow' },
   { text: 'silver', on: 'paper', large: true, what: 'a silver banner eyebrow' },
   { text: 'gold', on: 'paper', large: true, what: 'a gold banner eyebrow' },
+  // Your own slot in the bracket is outlined in --you; it had no dark cut.
+  { text: 'you', on: 'paper', large: true, what: 'your own slot in the bracket' },
   { text: 'ink', on: 'wash', what: 'body copy on a quiet fill' },
   { text: 'ink', on: 'field', what: 'body copy on the chrome' },
   /*

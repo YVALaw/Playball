@@ -5991,18 +5991,23 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         // And the other half of the showdown plays its night too.
         get().stepSideShow();
       }
-      clearJournal();
       set({ live: null, liveMeta: null, version: version + 1 });
       // The postseason screen is not mounted right now — it is behind this
       // game — so a loss it could have noticed has to be recorded for it.
       get().noteKnockout();
-      // Saved only when the tournament ends, by `closeMyBracket`.
-      //
-      // A save taken mid-bracket would write a season carrying games the saved
-      // `bracket` has no record of — the live sub-bracket is not serialisable —
-      // so a reload would resume at the top of the stage and play them again on
-      // top of themselves. Stage boundaries are the only consistent moments.
+      /*
+        The save, then the journal -- in that order. The comment that stood
+        here said a mid-bracket save was impossible; it stopped being true
+        when `portableMyBracket` learned to carry the live tournament, and
+        `manageBracketGame` has anchored before the first pitch since the
+        audit. Clearing the journal first left a window in which a kill lost
+        the game with no resume offer, because the file on disk was still the
+        pre-game anchor (05 §62.6). `closeMyBracket` saves when the
+        tournament is over; otherwise this does.
+      */
       if (mb && mb.state.done) get().closeMyBracket();
+      else await get().saveNow();
+      clearJournal();
       return;
     }
 
@@ -6026,10 +6031,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       day: liveMeta.day,
     });
 
-    clearJournal();
     set({ live: null, liveMeta: null, version: version + 1, screen: 'today' });
     get().noteSeasonNews();
+    // The save first, then the journal: the other way round left a window in
+    // which a kill lost the game with no resume offer (05 §62.6).
     await get().saveNow();
+    clearJournal();
   },
 
   setStrategy: (key, value) => {

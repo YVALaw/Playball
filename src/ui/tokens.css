@@ -12,6 +12,9 @@
  */
 
 :root {
+  /* Declared, so the browser paints what it owns (scrollbars, native
+     control internals, the form chrome) in the theme's own scheme. */
+  color-scheme: light;
   --field: #fffefa;   /* screen background, the paper */
   --paper: #ffffff;   /* cards, panels, table surfaces */
   --ink: #1d201d;     /* primary text */
@@ -145,6 +148,7 @@
    cannot read the attribute and the attribute cannot read the media query.
    --------------------------------------------------------------------------- */
 :root[data-theme='dark'] {
+  color-scheme: dark;
   --field: #121711;
   --paper: #1c231d;
   --ink: #e4eae4;
@@ -200,6 +204,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
+    color-scheme: dark;
     --field: #121711;
     --paper: #1c231d;
     --ink: #e4eae4;
@@ -700,3 +705,9 @@ html { view-transition-name: none; }
 :root {
   --you: #2f4f7a;
 }
+/* The dark cut: the light blue measured 1.93 against the dark card it
+   outlines in the bracket. 7.4 on --paper now (tests/contrast.test.ts). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) { --you: #8db3e0; }
+}
+:root[data-theme='dark'] { --you: #8db3e0; }

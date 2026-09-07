@@ -645,16 +645,31 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
 export async function listSaves(): Promise<SaveSummary[]> {
   const files = await (await db()).getAll(STORE);
   return files
-    .map((f) => {
-      const team = f.season.teams[f.userTeam];
-      return {
-        slot: f.slot,
-        name: f.name,
-        savedAt: f.savedAt,
-        year: f.year,
-        record: team ? `${team.w}-${team.l}` : '—',
-        school: team ? team.def.school : '—',
-      };
+    .map((f): SaveSummary => {
+      try {
+        const team = f.season.teams[f.userTeam];
+        return {
+          slot: f.slot,
+          name: f.name,
+          savedAt: f.savedAt,
+          year: f.year,
+          record: team ? `${team.w}-${team.l}` : '—',
+          school: team ? team.def.school : '—',
+        };
+      } catch {
+        // One file that cannot be read is one row that says so, not an empty
+        // list: a single malformed record used to throw the whole listing
+        // out, and every other career with it (05 §62.3).
+        const raw = f as Partial<SaveFile> | null | undefined;
+        return {
+          slot: String(raw?.slot ?? ''),
+          name: String(raw?.name ?? 'Unreadable save'),
+          savedAt: Number(raw?.savedAt) || 0,
+          year: Number(raw?.year) || 0,
+          record: '—',
+          school: 'This save cannot be read',
+        };
+      }
     })
     .sort((a, b) => b.savedAt - a.savedAt);
 }
