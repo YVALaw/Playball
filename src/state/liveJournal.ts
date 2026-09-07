@@ -109,6 +109,12 @@ export interface LiveJournal {
   autoPitching?: boolean;
   /** Bracket games rebuild through a different door. */
   postseason: boolean;
+  /**
+   * Whether the game counts in the conference race. Absent on a journal
+   * written before it was recorded — a resumed game was folded as
+   * non-conference for want of it (05 §62.1).
+   */
+  conference?: boolean;
   actions: JournalAction[];
 }
 

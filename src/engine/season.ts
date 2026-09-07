@@ -18,7 +18,7 @@ import { strainMultiplier, played, rested, threw } from './workload.js';
 import { available } from './depthChart.js';
 import { makeTeam, reserveNames, resetNames } from './players.js';
 import { armValue, overallOf } from './ratings.js';
-import { initialPrestige } from './program.js';
+import { initialPrestige, rosterStrength } from './program.js';
 import { strategyFor, type Strategy } from './strategy.js';
 import { generateClass, type RecruitClass } from './recruiting.js';
 // Type only, and it has to stay that way: draft.ts reads this file's rate
@@ -1036,47 +1036,62 @@ interface Fixture {
  */
 type Placed = Fixture & { home: number; away: number };
 
-const fixtureWeight = (f: Fixture): number => (f.kind === 'series' ? 3 : 1);
+function assignHosts(fixtures: readonly Fixture[], teamCount: number, rotation = 0): Placed[] {
+  /*
+    Balanced one kind of fixture at a time.
 
-function assignHosts(fixtures: readonly Fixture[], teamCount: number): Placed[] {
-  const hosted = new Array<number>(teamCount).fill(0);
+    This used to equalise one weighted total — a weekend series worth three, a
+    midweek one — so three home midweeks bought a home conference series, and
+    the greedy pass's tiebreak (array order) handed the first-listed school of
+    every conference the surplus. The data file lists each league in prestige
+    order, so its best program hosted a permanent extra series or two every
+    year, forever: measured at +11 to +27 net home conference series over
+    eleven rotations, worth about three points of conference winning
+    percentage (05 §62.5). Series and midweeks are balanced separately now,
+    which keeps the total even (it is the sum of two even halves) and removes
+    the trade; and the tie alternates with the rotation rather than favouring
+    whichever team the fixture happened to list first.
+  */
+  const placed: Placed[] = fixtures.map((f) => ({ ...f, home: f.a, away: f.b }));
+  for (const series of [true, false]) {
+    const mine = placed.filter((f) => (f.kind === 'series') === series);
+    if (mine.length === 0) continue;
+    const hosted = new Array<number>(teamCount).fill(0);
 
-  // First pass, greedy in date order: whoever has hosted less takes the venue.
-  const placed: Placed[] = fixtures.map((f) => {
-    const w = fixtureWeight(f);
-    const [home, away] = (hosted[f.b] ?? 0) < (hosted[f.a] ?? 0) ? [f.b, f.a] : [f.a, f.b];
-    hosted[home] = (hosted[home] ?? 0) + w;
-    return { ...f, home, away };
-  });
-
-  // Greedy alone gets stuck: by late season the teams that could fix an
-  // imbalance are not the ones still playing each other, and one team ends up
-  // four games light on home dates. So repair it — walk the fixtures and flip
-  // any venue where flipping moves both teams closer to an even split. Squared
-  // deviation, so a big imbalance outweighs several small ones. Deterministic,
-  // and it converges in a handful of sweeps.
-  const totalGames = hosted.reduce((a, b) => a + b, 0);
-  const target = totalGames / teamCount;
-  const cost = (n: number): number => (n - target) ** 2;
-
-  for (let sweep = 0; sweep < 50; sweep++) {
-    let improved = false;
-    for (const f of placed) {
-      const w = fixtureWeight(f);
-      const h = hosted[f.home] ?? 0;
-      const a = hosted[f.away] ?? 0;
-      if (cost(h - w) + cost(a + w) < cost(h) + cost(a)) {
-        hosted[f.home] = h - w;
-        hosted[f.away] = a + w;
-        const swap = f.home;
-        f.home = f.away;
-        f.away = swap;
-        improved = true;
-      }
+    // First pass, greedy in date order: whoever has hosted less takes the venue.
+    for (const f of mine) {
+      const ha = hosted[f.a] ?? 0;
+      const hb = hosted[f.b] ?? 0;
+      const flip = hb < ha || (hb === ha && (f.a + f.b + rotation) % 2 === 1);
+      f.home = flip ? f.b : f.a;
+      f.away = flip ? f.a : f.b;
+      hosted[f.home] = (hosted[f.home] ?? 0) + 1;
     }
-    if (!improved) break;
-  }
 
+    // Greedy alone gets stuck: by late season the teams that could fix an
+    // imbalance are not the ones still playing each other. So repair it — walk
+    // the fixtures and flip any venue where flipping moves both teams closer to
+    // an even split. Squared deviation, so a big imbalance outweighs several
+    // small ones. Deterministic, and it converges in a handful of sweeps.
+    const target = mine.length / teamCount;
+    const cost = (n: number): number => (n - target) ** 2;
+    for (let sweep = 0; sweep < 50; sweep++) {
+      let improved = false;
+      for (const f of mine) {
+        const h = hosted[f.home] ?? 0;
+        const a = hosted[f.away] ?? 0;
+        if (cost(h - 1) + cost(a + 1) < cost(h) + cost(a)) {
+          hosted[f.home] = h - 1;
+          hosted[f.away] = a + 1;
+          const swapHome = f.home;
+          f.home = f.away;
+          f.away = swapHome;
+          improved = true;
+        }
+      }
+      if (!improved) break;
+    }
+  }
   return placed;
 }
 
@@ -1224,7 +1239,7 @@ export function buildSchedule(
   fixtures.sort((x, y) => x.day - y.day);
 
   const teamCount = world.conferences.reduce((n, c) => n + c.teams.length, 0);
-  const placed = assignHosts(fixtures, teamCount);
+  const placed = assignHosts(fixtures, teamCount, rotation);
 
   const byDay = new Map<number, GameDay>();
   const dayFor = (day: number, week: number, kind: GameDay['kind'], label: string): GameDay => {
@@ -1760,7 +1775,44 @@ export function pitcherReady(
   return day - last.day >= recoveryGap(last.pitches);
 }
 
-function startableSlot(
+/**
+ * A day in the legs, for the men who played and the men who did not.
+ *
+ * A fact about the season rather than about the nine innings: a man who
+ * started is a day further into his spring whatever he did in it. Two
+ * different counts, both needed — `played` is the run of consecutive days
+ * that tires him, `started` the season total the promise is measured against
+ * in June. Shared by the day sim and the managed game, because a game the
+ * coach sat in used to cost its men nothing: the coached program's starts,
+ * leg weariness and injury strain stayed at zero all year (05 §62.1).
+ */
+export function dayInTheLegs(rec: TeamRecord, card: readonly Hitter[]): void {
+  const playing = new Set(card.map((p) => p.id));
+  for (const p of [...rec.team.lineup, ...rec.team.bench]) {
+    if (playing.has(p.id)) { played(p); started(p); } else rested(p);
+  }
+}
+
+/**
+ * A season in the arm, off what the game just recorded rather than off an
+ * estimate. `fatigueMultiplier` is what a man spends inside one outing; this
+ * is what he carries into the next one. The same one pass for a simulated
+ * game and a managed one.
+ */
+export function seasonInTheArm(
+  rec: TeamRecord, side: { pitching: ReadonlyMap<PlayerId, { player: Arm; outs: number }> },
+): void {
+  for (const line of side.pitching.values()) {
+    threw(line.player, line.outs, rec.armCare ?? 1);
+  }
+}
+
+/**
+ * The rotation slot that actually takes the ball: the scheduled one, walked
+ * forward past any arm on short rest or on the shelf. Exported so the managed
+ * game and the probable-pitcher cards start the same man the day sim would.
+ */
+export function startableSlot(
   season: SeasonState, team: Team, slot: number, day: number, clock: number,
 ): number {
   const rot = team.rotation;
@@ -1894,15 +1946,8 @@ export function playGame(
     draw, and is what makes the injury roll above respond to a coach running
     somebody into the ground.
   */
-  for (const [rec, card] of [[home, homeLineup], [away, awayLineup]] as const) {
-    const playing = new Set(card.map((p) => p.id));
-    for (const p of [...rec.team.lineup, ...rec.team.bench]) {
-      // Two different counts, both needed: `played` is the run of consecutive
-      // days that tires him, `started` is the season total the promise is
-      // measured against in June.
-      if (playing.has(p.id)) { played(p); started(p); } else rested(p);
-    }
-  }
+  dayInTheLegs(home, homeLineup);
+  dayInTheLegs(away, awayLineup);
 
   const keepReplay = opts.capture === true
     || season.captureBoxFor === homeIndex || season.captureBoxFor === awayIndex;
@@ -1930,13 +1975,8 @@ export function playGame(
     estimate. `fatigueMultiplier` is what a man spends inside one outing;
     this is what he carries into the next one.
   */
-  for (const [rec, side] of [[home, result.home], [away, result.away]] as const) {
-    // Keyed by name, which is how `TeamState` keeps them; the line carries the
-    // player itself, so the name is only the key and never the identity.
-    for (const line of side.pitching.values()) {
-      threw(line.player, line.outs, rec.armCare ?? 1);
-    }
-  }
+  seasonInTheArm(home, result.home);
+  seasonInTheArm(away, result.away);
 
   if (opts.capture) opts.onCapture?.(result);
 
@@ -2580,13 +2620,39 @@ export function rpi(season: SeasonState, index: number): number {
   const team = season.teams[index];
   if (!team) return 0;
 
-  const owp = average(team.opponents.map((o) => winPct(season.teams[o] as TeamRecord)));
-  const oowp = average(team.opponents.map((o) => {
+  /*
+    The regular season only. Once June starts the records are frozen (`rw`,
+    `rl`) but `w`, `l` and `opponents` keep moving with every bracket game,
+    so the table that protection and the at-large bids are read from drifted
+    while the bracket it seeded was still being played — the protected four
+    had changed in three Junes out of four (05 §62.5). `headToHead` already
+    stops at the last regular-season day; this now does too.
+  */
+  const frozen = typeof team.rw === 'number';
+  const record = (t: TeamRecord): number => (frozen ? pct(t.rw ?? t.w, t.rl ?? t.l) : winPct(t));
+  const regular = frozen ? regularOpponents(season) : null;
+  const opponentsOf = (t: TeamRecord): readonly number[] =>
+    (regular ? regular.get(t.index) ?? [] : t.opponents);
+
+  const owp = average(opponentsOf(team).map((o) => record(season.teams[o] as TeamRecord)));
+  const oowp = average(opponentsOf(team).map((o) => {
     const opp = season.teams[o] as TeamRecord;
-    return average(opp.opponents.map((oo) => winPct(season.teams[oo] as TeamRecord)));
+    return average(opponentsOf(opp).map((oo) => record(season.teams[oo] as TeamRecord)));
   }));
 
-  return 0.25 * winPct(team) + 0.50 * owp + 0.25 * oowp;
+  return 0.25 * record(team) + 0.50 * owp + 0.25 * oowp;
+}
+
+/** Every program's regular-season opponents, off the results up to the last scheduled day. */
+function regularOpponents(season: SeasonState): Map<number, number[]> {
+  const lastDay = season.schedule[season.schedule.length - 1]?.day ?? Infinity;
+  const out = new Map<number, number[]>();
+  for (const g of season.results) {
+    if (g.day > lastDay) continue;
+    (out.get(g.home) ?? out.set(g.home, []).get(g.home)!).push(g.away);
+    (out.get(g.away) ?? out.set(g.away, []).get(g.away)!).push(g.home);
+  }
+  return out;
 }
 
 function average(xs: readonly number[]): number {
@@ -2608,6 +2674,56 @@ export function rpiOrder(season: SeasonState): Array<{ team: TeamRecord; rpi: nu
   );
   return seedTeams(season, season.teams, (t) => value.get(t.index) ?? 0)
     .map((team) => ({ team, rpi: value.get(team.index) ?? 0 }));
+}
+
+/**
+ * The national table, in the one order every screen must agree on.
+ *
+ * RPI is arithmetic over games, and over one game it is a coin: every program
+ * that has won once shares a perfect number, so the raw order hands "#1 in the
+ * country" to whoever the tiebreak happens to like. The rankings screen already
+ * knew that and drew a projection for the opening fortnight — but the desk chip
+ * on Today read `rpiOrder` directly, so a two-star program was told it was
+ * first in the nation on the same day the rankings screen said the poll had not
+ * started. One helper now, read by both: a table that disagrees with itself is
+ * worse than either version of it.
+ *
+ * The projection is the same one the polls run on in February: what the rosters
+ * are worth, with a thumb of prestige for the benefit of the doubt a name brand
+ * actually gets. It gives way the moment the results mean something.
+ */
+export const POLL_GAMES_PER_TEAM = 2;
+
+/** Whether the national table is still a projection rather than a record. */
+export const pollIsProjected = (season: SeasonState): boolean =>
+  season.results.length < season.teams.length * POLL_GAMES_PER_TEAM;
+
+export interface PollRow {
+  team: TeamRecord;
+  /** The number the table is sorted on: the projection, or RPI. */
+  value: number;
+  projected: boolean;
+}
+
+/** Every program, best first, by whichever measure is honest today. */
+export function nationalOrder(season: SeasonState): PollRow[] {
+  const projected = pollIsProjected(season);
+  if (!projected) {
+    return rpiOrder(season).map((r) => ({ team: r.team, value: r.rpi, projected }));
+  }
+  return season.teams
+    .map((team) => ({
+      team,
+      value: rosterStrength(team.team) * 0.75 + team.prestige * 0.25,
+      projected,
+    }))
+    .sort((a, b) => b.value - a.value || a.team.def.abbr.localeCompare(b.team.def.abbr));
+}
+
+/** Where one program sits nationally, 1 for the best. 0 before anything is known. */
+export function nationalRank(season: SeasonState, teamIndex: number): number {
+  const at = nationalOrder(season).findIndex((r) => r.team.index === teamIndex);
+  return at < 0 ? 0 : at + 1;
 }
 
 // ---------------------------------------------------------------------------

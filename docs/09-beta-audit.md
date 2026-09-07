@@ -170,18 +170,15 @@ follows is what they remembered, what it turned out to be, and what is left.
 
 ## Open, and deliberately not fixed yet
 
-- **Prestige runs away to the mid-90s** for a handful of programmes over 30
-  seasons. Measured with the quality drift switched OFF and it is unchanged,
-  so it is a property of nextPrestige, not of the September 1 pass. Worth a
-  decision: is a 94-prestige tier too easy to reach?
-- **The sim ignores position fit entirely.** positionPenalty is computed for
-  the depth chart UI and never read by game.ts, so a catcher at short costs
-  nothing. This is the real depth behind "players playing the same position"
-  and it needs its own measured pass — it will move calibration.
+- ~~**Prestige runs away to the mid-90s**~~ — closed by the prestige pass
+  (`05` §52): the ladder has floors and a ceiling now.
+- ~~**The sim ignores position fit entirely.**~~ — closed: `positionPenalty`
+  reaches the game through the fielding model (`05` §51, stage 21).
 - **The other tabs.** The reporter played many seasons "just pressing the
   same buttons". The loop is Today → play → Today. Wire, Program, Season and
   the record book are all reference; none of them ever ASKS for anything.
 - **The inbox** carries too much that does not matter (reporter deferred it).
-- **University overview styling** still reads as the pre-port design.
-- **Position changes from the player profile** — agreed, not built.
-- The PSC godsquad and Hans Hood both ship out before v1.0.
+- ~~**University overview styling**~~ — closed by the interface pass (`05` §50).
+- ~~**Position changes from the player profile**~~ — built (RosterMoves, `05` §50).
+- The PSC godsquad is behind the build flag (`docs/TESTING_SHORTCUTS.md`);
+  Hans Hood is gone.

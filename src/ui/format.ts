@@ -17,8 +17,11 @@ const DAYS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
  * opens.
  */
 function openingDay(year: number): Date {
-  const d = new Date(year, 1, 1);
-  while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
+  // A non-finite year makes an invalid Date, whose getDay() is NaN — and NaN
+  // is never Monday, so the loop below never ended and the tab locked solid
+  // (05 §62.6). Bounded, and a bad year falls back to a real one.
+  const d = new Date(Number.isFinite(year) ? year : 2025, 1, 1);
+  for (let i = 0; i < 7 && d.getDay() !== 1; i++) d.setDate(d.getDate() + 1);
   return d;
 }
 

@@ -43,7 +43,10 @@ fs.writeFileSync(
   `sdk.dir=${ANDROID_HOME.replace(/\\/g, '\\\\')}\n`,
 );
 
-console.log('\n— building the web bundle —');
+// `--test` builds the APK with the testing shortcuts in it (state/testBuild.ts);
+// a plain `npm run apk` is the store build and carries none.
+if (process.argv.includes('--test')) env.VITE_TEST_SHORTCUTS = '1';
+console.log(`\n— building the web bundle${env.VITE_TEST_SHORTCUTS === '1' ? ' (test shortcuts in)' : ''} —`);
 run('npm', ['run', 'build'], ROOT);
 console.log('\n— copying it into the shell —');
 run('npx', ['cap', 'sync', 'android'], ROOT);
@@ -59,10 +62,31 @@ fs.cpSync(
   path.join(ROOT, 'android', 'app', 'src', 'main', 'java'),
   { recursive: true },
 );
-console.log(`\n— assembling the ${release ? 'release' : 'debug'} APK —`);
 // By absolute path: with `shell: true` the command goes to cmd.exe, which
 // will not reliably find a batch file sitting in the working directory.
 const android = path.join(ROOT, 'android');
+/*
+  The Android version, pinned from package.json. The shell is generated and
+  ignored, so its build.gradle came back as versionCode 1 / versionName "1.0"
+  on every clean build and nothing tracked ever set them — a store cannot
+  accept two uploads with the same versionCode (05 §62.3). Major.minor.patch
+  becomes a monotonic code: 1.0.0 → 10000, 1.0.1 → 10001, 1.1.0 → 10100.
+*/
+{
+  const version = String(require(path.join(ROOT, 'package.json')).version ?? '0.0.0');
+  const [major = 0, minor = 0, patch = 0] = version.split('.').map((n) => parseInt(n, 10) || 0);
+  const versionCode = major * 10000 + minor * 100 + patch;
+  const gradle = path.join(android, 'app', 'build.gradle');
+  if (fs.existsSync(gradle)) {
+    const before = fs.readFileSync(gradle, 'utf8');
+    const after = before
+      .replace(/versionCode\s+\d+/, `versionCode ${versionCode}`)
+      .replace(/versionName\s+"[^"]*"/, `versionName "${version}"`);
+    fs.writeFileSync(gradle, after);
+    console.log(`\n— version ${version} (code ${versionCode}) written to the shell —`);
+  }
+}
+console.log(`\n— assembling the ${release ? 'release' : 'debug'} APK —`);
 run(`"${path.join(android, 'gradlew.bat')}"`,
   [release ? 'assembleRelease' : 'assembleDebug'], android);
 

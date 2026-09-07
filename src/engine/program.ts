@@ -2140,6 +2140,22 @@ export function jobOffers(
     .sort((a, b) => b.prestige - a.prestige)
     .slice(0, limit);
 
+  /*
+    Never none — the rule the opening desk already keeps. A sacked coach whose
+    prestige has fallen to the world's floor cleared nobody: every rival sits
+    at his program's prestige, so no chair was open to him, the job screen
+    drew an empty list, and the career dead-ended with no June to reach
+    (05 §62.3). The single cheapest seat in the country still calls; a game
+    that cannot be continued is a bug and not a difficulty setting.
+  */
+  if (candidates.length === 0) {
+    const cheapest = teams
+      .filter((t) => t.index !== currentTeam)
+      .map((t) => ({ t, prestige: prestigeOf(t) }))
+      .sort((a, b) => a.prestige - b.prestige || a.t.def.abbr.localeCompare(b.t.def.abbr))[0];
+    if (cheapest) candidates.push(cheapest);
+  }
+
   return candidates.map(({ t, prestige }) => ({
     team: t.index,
     school: t.def.school,

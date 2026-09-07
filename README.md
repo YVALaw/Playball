@@ -7,10 +7,11 @@ Mobile first, shipping to Android.
 
 ## Status
 
-**Twenty-two of twenty-six stages shipped, through September 6 2026, and
-the interface rebuilt whole on September 5.** Stages 1–16, 18, 20–23 and
-25; 24 is part-built, 26 has had its pass and awaits a verdict, and 17 and
-19 are the tail. Ninety-six
+**Twenty-five of twenty-six stages shipped, through September 6 2026, the
+interface rebuilt whole on September 5, and the build through its release
+audit on September 7** (`docs/05-systems-reference.md` §62,
+`docs/15-v1-release-audit.md`). Stages 1–17, 18, 18b and 20–26; 19 (ship)
+is what is left. Ninety-six
 programs in eight conferences of twelve, a forty-five game regular season, and
 the whole loop runs: pick a job through a background that shapes who rings you,
 play or simulate a season, manage games at bat by at bat, go through the
@@ -67,8 +68,9 @@ an Android 16 emulator against `npm run apk`.
 
 The engine is calibrated multi-seed to the modern NCAA D1 environment —
 .280 / .384 / .438, a home run a game, 6.73 runs — since the September 5
-engine pass (`docs/05-systems-reference.md` §51). **1200 tests across 62
-files**, including determinism goldens, calibration as a regression test, a
+engine pass (`docs/05-systems-reference.md` §51) and re-fitted after the
+release audit's rules fixes (§62.2). **1,232 tests across 66 files**, including
+determinism goldens, calibration as a regression test, a
 baseball-correctness suite for the scorer's rules, and a concurrency suite
 pinning the store's double-press guards.
 
@@ -81,12 +83,14 @@ the one thing that must never be lost.
 | Not built yet | |
 |---|---|
 | Onboarding | the guided tutorial — a titled card, then a glow path through doing it (stage 19) |
-| God mode | shipped to `main` September 6, the reporter's approval given after a day on the phone: a per-career sandbox reached by a bolt beside whatever it edits — players (health, badges, moves, the two-way flag), programs and what the leagues are called, recruits, the coach, the staff, the money, the schedule and the season — with any career forkable into it |
 | The rules of the world | injuries, the portal, realignment, poaching and season length as free switches on How you play (stage 27) |
 | The creator kit | name, logo and roster packs a player builds and imports locally, careers as files — the second purchase (stage 28) |
 | The majors | the expansion, after v1.0 (stage 29) |
 
-Shipped since: the two-way whole and corrected to the rulebook, playbooks,
+Shipped since: god mode (September 6 — a per-career sandbox reached by a
+bolt beside whatever it edits: players, programs, the leagues' names,
+recruits, the coach, the staff, the money, the schedule and the season, with
+any career forkable into it), the two-way whole and corrected to the rulebook, playbooks,
 the lineup gate, the season opener, the Android shell — package, launcher
 icon, and a back gesture that peels one layer per press — the APK report's
 thirty-eight items, and then the interface pass: the background
@@ -98,10 +102,10 @@ and REPLAY, which the table above used to promise.
 down, **hold** reads the man. Never double-tap — allowing it taxes every tap,
 because none can act until the window for a second has passed.
 
-**Test aids in the build, and they must leave together before a store build**
-(`docs/TESTING_SHORTCUTS.md`): SIM THE SEASON on Today, the guaranteed
-Pascagoula Tech offer, and its five 99-rated starters. They were taken out in
-the September 4 audit pass and put back on September 5 for rapid UI testing.
+**Test aids are behind a build flag** (`docs/TESTING_SHORTCUTS.md`):
+`npm run dev` and `npm run apk:test` carry SIM THE SEASON on Today, the
+guaranteed Pascagoula Tech offer and its five 99-rated starters; `npm run
+build` and `npm run apk` drop them as dead code, and Vitest never sees them.
 Hans Hood, the 99-potential third baseman injected into every class, is gone
 for good — `ensureHoodHans` no longer exists.
 

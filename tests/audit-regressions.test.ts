@@ -217,7 +217,7 @@ describe('loading a save clears the game being played', () => {
     // What an older build wrote: the flag with nothing beside it.
     await useDynasty.getState().saveNow();
 
-    const ok = await useDynasty.getState().loadSlot();
+    const ok = await useDynasty.getState().loadSlot(useDynasty.getState().loadedSlot!);
     expect(ok).toBe(true);
     const s = useDynasty.getState();
     expect(s.jobSearch).toBe(true);

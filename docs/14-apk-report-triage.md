@@ -240,7 +240,17 @@ AUTO, and the bail-out that made it "a few plays" is gone · `playedAt` on
 TeamState · rims with `depthWrite={false}` · FLIP measuring `offsetTop` ·
 the start screen · a bracket slot's own box.
 
-### Verified ABSENT, and still owed
+### Verified ABSENT, and still owed — **as of September 4; most has since landed**
+
+The list below is the September 4 state. Since then: the three-outs
+changeover (the delayed side swap in `Manage.tsx`), the captain
+confirmation (`Captain.tsx`), refusing the board (`argueTerms`, stage 20b),
+sim-week stopping on an injury (`weekStoppedBy`), records leaving the inbox
+(the trophy dot), the letter about a man already spoken to, the draft's
+dead space, the budget screen (§54), the offer card and the saves screen
+all shipped in the interface pass (`05` §50) and after. Still genuinely
+owed: the sac-bunt animation, and the layout items a device has to judge
+(the clipped draft tile, the recruiting density, the Ratings hero clip).
 
 The sac-bunt animation · the three-outs changeover · a confirmation on the
 captain screen · a way to refuse the board (the only "refuse" in App.tsx is

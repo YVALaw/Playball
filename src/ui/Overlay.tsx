@@ -13,9 +13,10 @@
 // underneath survive: a roster keeps its tab and its scroll position, and a step
 // in the offseason is still the step you were on when the card closes.
 
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeftIcon } from '@radix-ui/react-icons';
+import { useDialogFocus } from './dialogFocus.js';
 
 export function Overlay(
   { eyebrow, title, onClose, children, floating, className }:
@@ -33,8 +34,20 @@ export function Overlay(
     className?: string;
   },
 ) {
+  // The dialog contract every sheet carries — focus trapped inside, Escape
+  // closes, focus returns to what opened it. A full-frame overlay is an
+  // opaque page over a still-tabbable screen; without the hook the keyboard
+  // walked straight out into the screen underneath (05 §62.6).
+  const ref = useRef<HTMLElement | null>(null);
+  useDialogFocus(ref, onClose);
   return (
-    <section className={`full-overlay${className ? ` ${className}` : ''}`}>
+    <section
+      ref={ref}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      className={`full-overlay${className ? ` ${className}` : ''}`}
+    >
       <header>
         <button className="tap" type="button" aria-label="Back" onClick={onClose}>
           <ArrowLeftIcon />

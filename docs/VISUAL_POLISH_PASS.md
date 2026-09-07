@@ -1,5 +1,11 @@
 # Visual and interaction polish pass
 
+> **Read this first (added September 7 2026).** This is a one-off pass's own
+> account, kept as written. Its Strategy claim that AUTO "eliminates common
+> no-op cases" was wrong on contact with the emulator — `05` §59.1 is what
+> actually shipped (a plan is built off z-scores and AUTO says how many rows
+> moved, or that the club is ordinary).
+
 This pass brings the remaining older Playball surfaces into the same interaction language as the newer management screens.
 
 ## Lineup

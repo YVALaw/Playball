@@ -55,12 +55,16 @@ const LIGHT = {
   paper: '#ffffff', wash: '#f5f7f2', field: '#fffefa', band: '#1d201d',
   ink: '#1d201d', cream: '#f4f8f4', mute: '#646a64',
   alert: '#c9362f', win: '#236b42', alertInk: '#f4f8f4',
+  command: '#236b42', panel: '#1d201d',
+  bronze: '#6f4a2a', silver: '#4a5866', gold: '#8a6b16',
 };
 
 const DARK = {
   paper: '#1c231d', wash: '#161c17', field: '#121711', band: '#26312a',
   ink: '#e4eae4', cream: '#f4f8f4', mute: '#93a094',
   alert: '#e0655e', win: '#4da97a', alertInk: '#121711',
+  command: '#2f7a52', panel: '#26312a',
+  bronze: '#d29a6a', silver: '#bcc7d1', gold: '#e3bb4f',
 };
 
 /**
@@ -72,6 +76,13 @@ const DARK = {
  */
 const PAIRS: readonly { text: string; on: string; large?: boolean; what: string }[] = [
   { text: 'ink', on: 'paper', what: 'body copy on a card' },
+  // The filled commands sit on --command, never --clay: the dark --clay is the
+  // cut built to carry text, and cream on it measured 1.7-3.2 (05 §62.6).
+  { text: 'cream', on: 'command', large: true, what: 'a primary command' },
+  // The trophy metals are worn as ink on the banner and the seal.
+  { text: 'bronze', on: 'paper', large: true, what: 'a bronze banner eyebrow' },
+  { text: 'silver', on: 'paper', large: true, what: 'a silver banner eyebrow' },
+  { text: 'gold', on: 'paper', large: true, what: 'a gold banner eyebrow' },
   { text: 'ink', on: 'wash', what: 'body copy on a quiet fill' },
   { text: 'ink', on: 'field', what: 'body copy on the chrome' },
   /*

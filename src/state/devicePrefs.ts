@@ -66,10 +66,9 @@ export interface DevicePrefs {
    */
   theme: ThemePref;
   /**
-   * Sound and haptics. Neither exists yet — the game is completely silent and
-   * always has been — so these are stored, defaulted off, and shown disabled
-   * until the broadcast stage builds them. Kept here rather than added later so
-   * that turning them on is a one-line change rather than a migration.
+   * Sound and haptics. Real since stage 14 (`ui/sound.ts`): default on, the
+   * mute in Settings; `bcast` marks prefs written before that so an older
+   * device is not switched on behind its owner's back.
    */
   sound: boolean;
   haptics: boolean;

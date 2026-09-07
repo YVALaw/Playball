@@ -45,6 +45,7 @@ import {
   ArrowLeftIcon, CheckIcon, Pencil1Icon,
 } from '@radix-ui/react-icons';
 import { ModuleIntro } from '../components/Kit.js';
+import { TEST_SHORTCUTS } from '../../state/testBuild.js';
 import {
   CONFERENCES, STATES_BY_REGION, type SchoolDef,
 } from '../../data/schools.js';
@@ -216,10 +217,13 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
         TESTING ONLY — keep Pascagoula Tech on the rookie desk while its five
         99-rated test players are enabled in store.start. It replaces the last
         generated offer so the opening market keeps the normal five-card shape.
+        Only in a build that carries the shortcuts (state/testBuild.ts).
       */
-      const psc = world.teams.findIndex((t) => t.def.abbr === 'PSC');
-      if (psc >= 0 && !picks.includes(psc)) {
-        picks.splice(Math.max(0, picks.length - 1), 1, psc);
+      if (TEST_SHORTCUTS) {
+        const psc = world.teams.findIndex((t) => t.def.abbr === 'PSC');
+        if (psc >= 0 && !picks.includes(psc)) {
+          picks.splice(Math.max(0, picks.length - 1), 1, psc);
+        }
       }
       return picks.map((i) => world.teams[i]!.def);
     },

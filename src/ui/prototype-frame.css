@@ -3880,9 +3880,16 @@
   opacity: 0;
   transform: translateY(18px) scale(.985);
   pointer-events: none;
-  transition: opacity 180ms ease, transform 180ms cubic-bezier(.22,.85,.28,1);
+  /* Hidden for real while closed: opacity alone left six to eleven buttons
+     focusable inside an aria-hidden subtree, and Enter still fired them
+     (05 §62.6). Visibility waits for the fade on the way out, not on the way in. */
+  visibility: hidden;
+  transition: opacity 180ms ease, transform 180ms cubic-bezier(.22,.85,.28,1), visibility 0s linear 180ms;
 }
-.profile-actions-shell.open .profile-command-sheet { opacity: 1; transform: none; pointer-events: auto; }
+.profile-actions-shell.open .profile-command-sheet {
+  opacity: 1; transform: none; pointer-events: auto; visibility: visible;
+  transition: opacity 180ms ease, transform 180ms cubic-bezier(.22,.85,.28,1), visibility 0s;
+}
 .profile-actions-shell.closing .profile-command-sheet { opacity: 0; transform: translateY(18px) scale(.985); pointer-events: none; }
 .command-sheet-handle { width: 42px; height: 4px; margin: 0 auto 10px; border-radius: 999px; background: var(--line); }
 .profile-command-header { padding: 0 2px 11px; border-bottom: 1px solid var(--line); }
@@ -3953,7 +3960,7 @@
 .command-action-card.selected { border-color: var(--clay); background: var(--soft); }
 .command-action-card:disabled { opacity: .58; cursor: default; }
 .command-action-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--soft); color: var(--clay); }
-.command-action-card.selected .command-action-icon { background: var(--clay); color: var(--cream); }
+.command-action-card.selected .command-action-icon { background: var(--command); color: var(--cream); }
 .command-action-copy { min-width: 0; }
 .command-action-copy > small { display: block; color: var(--clay); font: 700 calc(7px * var(--ts)) var(--mono); letter-spacing: .08em; }
 .command-action-copy > strong { display: block; margin-top: 3px; font: 800 calc(12px * var(--ts))/1.1 var(--body); }
@@ -4024,7 +4031,7 @@
 .strategy-control-head p { min-height: 30px; margin: 5px 0 0; color: var(--dim); font: 400 calc(8px * var(--ts))/1.3 var(--body); }
 .strategy-choice-row { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 3px; margin-top: 8px; }
 .strategy-choice-row button { min-width: 0; min-height: 35px; padding: 4px 3px; border: 1px solid var(--line); background: var(--wash); color: var(--dim); font: 800 calc(6.8px * var(--ts))/1.1 var(--body); overflow: hidden; text-overflow: ellipsis; }
-.strategy-choice-row button.active { border-color: var(--clay); background: var(--clay); color: var(--cream); }
+.strategy-choice-row button.active { border-color: var(--clay); background: var(--command); color: var(--cream); }
 .strategy-tradeoff { min-height: 38px; margin: 7px 0 0; padding-top: 7px; border-top: 1px solid var(--line); color: var(--dim); font: 400 calc(8px * var(--ts))/1.35 var(--body); }
 
 @media (max-width: 370px) {
@@ -4180,7 +4187,7 @@
 .coach-skill-card > header small { display: block; color: var(--dim); font: 700 calc(7px * var(--ts)) var(--mono); letter-spacing: .08em; }
 .coach-skill-card > header strong { display: block; margin-top: 2px; font: 800 calc(25px * var(--ts))/.9 var(--display); }
 .coach-skill-card > header em { flex: none; padding: 4px 5px; background: var(--wash); color: var(--dim); font: 800 calc(6.5px * var(--ts)) var(--body); font-style: normal; }
-.coach-skill-card.invested > header em { background: var(--clay); color: var(--cream); }
+.coach-skill-card.invested > header em { background: var(--command); color: var(--cream); }
 .coach-skill-meter { height: 5px; margin-top: 8px; background: var(--wash); overflow: hidden; }
 .coach-skill-meter i { display: block; height: 100%; background: var(--clay); transition: width 220ms ease; }
 .coach-skill-card > p { min-height: 52px; margin: 8px 0 0; color: var(--dim); font: 400 calc(9px * var(--ts))/1.4 var(--body); }
@@ -4858,7 +4865,7 @@
 .candidate-hire-cta {
   width: 100%; min-height: 46px; margin-top: 12px; padding: 0 13px;
   border: 1px solid var(--clay); border-radius: 10px;
-  background: var(--clay); color: var(--cream);
+  background: var(--command); color: var(--cream);
   font: 800 calc(10px * var(--ts)) var(--body); letter-spacing: .02em;
   box-shadow: 0 7px 16px rgba(var(--clay-rgb), .18);
 }
@@ -4949,7 +4956,7 @@
 .facility-budget-decision > span em { display: block; margin-top: 4px; color: var(--dim); font: 400 calc(7.8px * var(--ts))/1.35 var(--body); font-style: normal; }
 .facility-invest-cta {
   min-width: 0; min-height: 58px; padding: 9px 10px;
-  border: 1px solid var(--clay); border-radius: 11px; background: var(--clay); color: var(--cream);
+  border: 1px solid var(--clay); border-radius: 11px; background: var(--command); color: var(--cream);
   text-align: left; font: 800 calc(9.5px * var(--ts))/1.15 var(--body);
 }
 .facility-invest-cta small { display: block; margin-top: 4px; color: rgba(var(--cream-rgb), .76); font: 700 calc(7px * var(--ts)) var(--mono); }
@@ -5978,7 +5985,7 @@
   font-style: normal;
 }
 .postseason-stage-rail button.active > i { border-color: var(--alert); background: var(--alert); color: var(--alert-ink); }
-.postseason-stage-rail button.done > i { border-color: var(--clay); background: var(--clay); color: var(--cream); }
+.postseason-stage-rail button.done > i { border-color: var(--clay); background: var(--command); color: var(--cream); }
 .postseason-stage-rail button > span { min-width: 0; }
 .postseason-stage-rail button small {
   display: block;
@@ -6496,7 +6503,7 @@
 .retention-result small { color:var(--clay); font:700 calc(7px * var(--ts)) var(--mono); }
 .retention-result strong { display:block; margin-top:4px; font:800 calc(23px * var(--ts)) var(--display); }
 .retention-result p { margin:7px 0 0; color:var(--dim); font:500 calc(9px * var(--ts))/1.5 var(--body); }
-.portal-sign-command { min-height:40px; border:0; background:var(--clay); color:var(--cream); font:800 calc(8px * var(--ts)) var(--body); }
+.portal-sign-command { min-height:40px; border:0; background:var(--command); color:var(--cream); font:800 calc(8px * var(--ts)) var(--body); }
 .portal-sign-command:disabled { opacity:.35; }
 .portal-sign-sheet { width:min(386px,calc(100% - 20px)); max-height:90%; overflow:auto; background:var(--paper); border-top:4px solid var(--win); padding-bottom:env(safe-area-inset-bottom); }
 .portal-sign-sheet > header { display:flex; align-items:end; justify-content:space-between; gap:10px; padding:12px; background:var(--panel); color:var(--cream); }
@@ -6907,7 +6914,7 @@
   font:800 calc(9px * var(--ts)) var(--mono);
 }
 .recruit-position-grid button.active {
-  border-color:var(--clay); background:var(--clay); color:var(--cream);
+  border-color:var(--clay); background:var(--command); color:var(--cream);
   box-shadow:inset 0 -3px rgba(0,0,0,.14);
 }
 .recruit-star-grid {
@@ -7196,12 +7203,12 @@
 .career-god-toggle strong { display:block; margin-top:2px; font:800 calc(13px * var(--ts)) var(--display); }
 .career-god-toggle p { margin:4px 0 0; color:var(--dim); font:500 calc(8.5px * var(--ts))/1.35 var(--body); }
 .career-god-toggle b { flex:none; padding:5px 9px; border:1px solid var(--clay); color:var(--clay); font:800 calc(7px * var(--ts)) var(--mono); }
-.career-god-toggle button.selected b { background:var(--clay); color:var(--cream); }
+.career-god-toggle button.selected b { background:var(--command); color:var(--cream); }
 .settings-god-status { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; }
 .settings-god-status span { flex:1; min-width:0; }
 .settings-god-status strong { display:block; font:800 calc(10px * var(--ts)) var(--body); }
 .settings-god-status small { display:block; margin-top:2px; color:var(--dim); font:500 calc(8px * var(--ts))/1.35 var(--body); }
-.settings-god-status button { flex:none; min-height:38px; padding:0 12px; border:1px solid var(--clay); background:var(--clay); color:var(--cream); font:800 calc(8px * var(--ts)) var(--body); letter-spacing:.06em; }
+.settings-god-status button { flex:none; min-height:38px; padding:0 12px; border:1px solid var(--clay); background:var(--command); color:var(--cream); font:800 calc(8px * var(--ts)) var(--body); letter-spacing:.06em; }
 .god-badges { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin:0 0 10px; }
 .god-badges button { min-height:36px; padding:0 8px; border:1px solid var(--line); background:var(--wash); color:var(--ink); font:800 calc(7.5px * var(--ts)) var(--body); letter-spacing:.04em; }
 .god-badges button.active { border-color:var(--clay); background:var(--soft); color:var(--clay); }
@@ -7209,7 +7216,7 @@
 .god-badges label.active { border-color:var(--clay); background:var(--soft); }
 .god-badges label small { display:block; color:var(--dim); font:700 calc(6.5px * var(--ts)) var(--mono); letter-spacing:.08em; }
 .god-badges label select { display:block; width:100%; min-height:34px; margin-top:3px; padding:0 6px; border:1px solid var(--line); background:var(--paper); color:var(--ink); font:700 calc(9px * var(--ts)) var(--body); }
-.god-actions button.active { background:var(--clay); color:var(--cream); }
+.god-actions button.active { background:var(--command); color:var(--cream); }
 .god-actions button.god-danger { border-color:var(--loss); color:var(--loss); }
 .god-actions span em { display:block; margin-top:2px; font-style:normal; }
 .god-editor .dashboard-heading { margin-top:14px; }
@@ -7224,7 +7231,7 @@
 .coach-profile-hero, .money-available, .portal-command-center { position:relative; }
 .money-available .hero-god { border-color:var(--clay); background:var(--paper); color:var(--clay); }
 .inline-god { width:34px; height:34px; margin-top:8px; border-color:rgba(var(--cream-rgb), .55); background:rgba(0,0,0,.25); color:var(--cream); }
-.floating-god { position:absolute; z-index:3; right:14px; bottom:calc(env(safe-area-inset-bottom) + 14px); width:48px; height:48px; box-shadow:0 4px 14px rgba(0,0,0,.28); background:var(--clay); color:var(--cream); border-color:var(--clay); }
+.floating-god { position:absolute; z-index:3; right:14px; bottom:calc(env(safe-area-inset-bottom) + 14px); width:48px; height:48px; box-shadow:0 4px 14px rgba(0,0,0,.28); background:var(--command); color:var(--cream); border-color:var(--clay); }
 .floating-god svg { width:22px; height:22px; }
 .toolbar-god { width:34px; height:34px; margin-left:auto; border-color:rgba(var(--cream-rgb), .55); background:transparent; color:var(--cream); }
 .god-intro-row { display:grid; grid-template-columns:minmax(0,1fr) 40px; gap:10px; align-items:start; }
@@ -7240,3 +7247,27 @@
 .god-ovr { display:block; margin-top:2px; color:var(--dim); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.08em; }
 .god-editor > header { display:block; }
 .god-editor > header strong { display:block; font:800 calc(17px * var(--ts)) var(--display); }
+
+/* The front door's storage notice (05 §62.3). */
+.start-storage-error { display:grid; gap:6px; margin:0 0 12px; padding:12px; border:1px solid var(--loss); border-left-width:3px; background:var(--paper); color:var(--ink); }
+.start-storage-error strong { font:800 calc(11px * var(--ts)) var(--body); }
+.start-storage-error small { color:var(--dim); font:500 calc(8.5px * var(--ts))/1.4 var(--body); }
+.start-storage-error button { justify-self:start; min-height:36px; padding:0 12px; border:1px solid var(--clay); background:var(--paper); color:var(--clay); font:800 calc(8px * var(--ts)) var(--body); letter-spacing:.06em; }
+
+/* Filled accent grounds sit on --command, not --clay. The dark theme's --clay is
+   the cut tuned to CARRY text on dark ground, and near-white on it measured
+   1.7-3.2:1 across every school palette; --command is the raised cut built for
+   exactly this and, until now, never worn by the buttons (05 §62.6). In the
+   light theme the two tokens are the same colour. */
+.primary-command { background: var(--command); color: var(--cream); }
+.filter-button.active, .position-rail button.active, .position-rail button.active span,
+.position-picker button.active, .match-actions button:last-child,
+.portal-candidate-actions button:last-child { background: var(--command); color: var(--cream); }
+
+/* The fence's fallback (05 §62.6). */
+.app-crash { display:grid; gap:8px; max-width:420px; margin:20vh auto 0; padding:16px; border:1px solid var(--loss); border-left-width:3px; background:var(--paper); color:var(--ink); }
+.app-crash small { color:var(--loss); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.12em; }
+.app-crash strong { font:800 calc(15px * var(--ts)) var(--display); }
+.app-crash p { margin:0; color:var(--dim); font:500 calc(9px * var(--ts))/1.4 var(--body); }
+.app-crash div { display:flex; gap:8px; margin-top:4px; }
+.app-crash button { min-height:38px; padding:0 12px; border:1px solid var(--clay); background:var(--paper); color:var(--clay); font:800 calc(8px * var(--ts)) var(--body); letter-spacing:.06em; }

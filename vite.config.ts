@@ -2,8 +2,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react()],
+  // The testing shortcuts (src/state/testBuild.ts): in the dev server, never
+  // in a production build unless VITE_TEST_SHORTCUTS=1 asks for a test APK.
+  define: {
+    __TEST_SHORTCUTS__: JSON.stringify(command === 'serve' || process.env['VITE_TEST_SHORTCUTS'] === '1'),
+  },
   /**
    * Everything except a second copy of ourselves.
    *
@@ -56,5 +61,8 @@ export default defineConfig({
   },
   // Capacitor loads the build from the filesystem, so assets must be relative.
   base: './',
-  build: { outDir: 'dist', sourcemap: true },
-});
+  // Source maps are for the dev server and for a build that asks for them.
+  // Unconditional, they rode into the APK: 3.3MB of the whole annotated
+  // source, a third of the package (05 §62.3).
+  build: { outDir: 'dist', sourcemap: command === 'serve' || process.env['VITE_SOURCEMAP'] === '1' },
+}));

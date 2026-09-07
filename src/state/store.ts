@@ -13,7 +13,7 @@
 import { create } from 'zustand';
 import {
   appliedStrategy,
-  injuryClock,
+  injuryClock, currentDay, startableSlot, dayInTheLegs, seasonInTheArm,
   createSeason, simNextDay, simSeason, seasonComplete, standings, nextSeason, rpi, rpiOrder,
   seasonLength, regularRecord, archiveSeason, recordSeasonMarks,
   recordCareerMarks, recordResult, restedFirst, seedTeams,
@@ -38,6 +38,7 @@ import {
   type BadgeId, type BadgeTier,
 } from '../engine/godMode.js';
 import { setLeagueNames, usableLeagueNames } from '../engine/leagueNames.js';
+import { TEST_SHORTCUTS } from './testBuild.js';
 import type { GodTarget } from '../ui/god/target.js';
 import { setStarGateOpen, type RecruitingPriorities } from '../engine/recruiting.js';
 import { createLiveGame, type LiveGame } from '../engine/liveGame.js';
@@ -250,7 +251,7 @@ import {
 } from '../engine/portal.js';
 import {
   chartFor, depthAt, reorder, squad, available, promotions, SPOTS, fitTheNine, healPositions,
-  adoptSpot, restoreHome, settleReturn, cardGaps,
+  adoptSpot, restoreHome, settleReturn, cardGaps, coverFor,
 } from '../engine/depthChart.js';
 import {
   gradesOf, standing, failsThisWeek, suspend, haveAWord, driftGrades,
@@ -1375,6 +1376,13 @@ export interface DynastyStore {
    * his program's roster steps back to the roster, not out (05 §61.5).
    */
   godStack: GodTarget[];
+  /**
+   * A managed game is being built. The guard used to be checked before the
+   * one await inside starting a game, so two overlapping taps built two live
+   * games and the second re-anchored the journal on a generator the first
+   * had already moved (05 §62.1). Set before the await, cleared with the game.
+   */
+  liveStarting: boolean;
   openGod: (target: GodTarget) => void;
   closeGod: () => void;
   closeGodAll: () => void;
@@ -1502,6 +1510,102 @@ type StoredMyBracket = {
   state: Omit<SeriesBracket, 'season'> | Omit<DoubleElim, 'season'>;
 };
 
+/**
+ * What a season must look like before the app will play it (05 §62.6).
+ *
+ * The loader validates the schema version and nothing else, and the codec
+ * backfills fields; nothing ever asked whether the shape was one the engine
+ * could run. A team with no starting pitcher throws inside the first game,
+ * and a throw inside a day loses the day for the whole country. Returns the
+ * reason it refuses, or null.
+ */
+function assertSeason(season: SeasonState, userTeam: number): string | null {
+  if (!Array.isArray(season.teams) || season.teams.length === 0) return 'The save has no programs in it.';
+  if (!Number.isInteger(userTeam) || !season.teams[userTeam]) return 'The save does not say which program is yours.';
+  if (!Number.isFinite(season.scheduleRotation)) return 'The save has no schedule rotation.';
+  if (!Number.isInteger(season.dayIndex) || season.dayIndex < 0 || season.dayIndex > season.schedule.length) {
+    return 'The save is on a day the schedule does not have.';
+  }
+  /*
+    The nine and the rotation are only promises while the season is in play.
+    Between the draft step and the year roll the departures have already gone
+    and the refill has not happened yet, so a program can legitimately stand
+    with no starter — a save taken on the portal step showed exactly that.
+  */
+  const inPlay = !seasonComplete(season);
+  const perConference = new Map<string, number>();
+  for (const t of season.teams) {
+    const units: Array<readonly Player[]> = [t.team.lineup, t.team.bench, t.team.rotation, t.team.bullpen];
+    for (const unit of units) {
+      const seen = new Set<string>();
+      for (const p of unit) {
+        if (seen.has(String(p.id))) return `${t.def.school} carries the same man twice.`;
+        seen.add(String(p.id));
+      }
+    }
+    if (inPlay && t.team.lineup.length < 9) return `${t.def.school} has fewer than nine in its lineup.`;
+    if (inPlay && t.team.rotation.length < 1) return `${t.def.school} has no starting pitcher.`;
+    perConference.set(t.conference, (perConference.get(t.conference) ?? 0) + 1);
+  }
+  for (const [id, n] of perConference) {
+    if (n % 2 !== 0) return `The ${id} league has an odd number of programs.`;
+  }
+  return null;
+}
+
+/** The transfer pool, flattened to ids for the file. */
+interface StoredPortalMan { id: string; from: number; fromName: string; cost: number; reason: string }
+interface StoredPortal { leaving: StoredPortalMan[]; available: StoredPortalMan[]; spent: number }
+type PortalPool = { leaving: PortalMan[]; available: PortalMan[]; spent: number };
+
+function portablePortal(portal: PortalPool | null): StoredPortal | null {
+  if (!portal) return null;
+  const flat = (m: PortalMan): StoredPortalMan => ({
+    id: String(m.player.id), from: m.from, fromName: m.fromName, cost: m.cost, reason: m.reason,
+  });
+  return { leaving: portal.leaving.map(flat), available: portal.available.map(flat), spent: portal.spent };
+}
+
+/**
+ * The pool re-linked to the men the loaded season actually holds. A man who
+ * cannot be found (a save from a build this one cannot read) is dropped
+ * rather than invented; the rest of the pool survives.
+ */
+function usablePortal(raw: unknown, season: SeasonState): PortalPool | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const p = raw as Partial<StoredPortal>;
+  if (!Array.isArray(p.leaving) || !Array.isArray(p.available)) return null;
+  const byId = new Map<string, Player>();
+  for (const t of season.teams) {
+    for (const man of [...t.team.lineup, ...t.team.bench, ...t.team.rotation, ...t.team.bullpen]) {
+      byId.set(String(man.id), man);
+    }
+  }
+  const relink = (list: unknown[]): PortalMan[] => {
+    const out: PortalMan[] = [];
+    for (const raw of list) {
+      const m = raw as Partial<StoredPortalMan> | null;
+      if (!m || typeof m.id !== 'string' || typeof m.from !== 'number') continue;
+      const player = byId.get(m.id);
+      if (!player) continue;
+      out.push({
+        player, from: m.from,
+        fromName: typeof m.fromName === 'string' ? m.fromName : (season.teams[m.from]?.def.school ?? ''),
+        cost: typeof m.cost === 'number' ? m.cost : 0,
+        reason: typeof m.reason === 'string' ? m.reason : '',
+      });
+    }
+    return out;
+  };
+  return { leaving: relink(p.leaving), available: relink(p.available), spent: typeof p.spent === 'number' ? p.spent : 0 };
+}
+
+function usableApproaches(raw: unknown): { tried: number[]; interest: number[] } {
+  const a = raw as Partial<{ tried: unknown; interest: unknown }> | null;
+  const nums = (x: unknown): number[] => (Array.isArray(x) ? x.filter((n): n is number => typeof n === 'number') : []);
+  return { tried: nums(a?.tried), interest: nums(a?.interest) };
+}
+
 function portableMyBracket(mine: MyBracket | null): StoredMyBracket | null {
   if (!mine) return null;
   const { season, ...state } = mine.state;
@@ -1610,11 +1714,11 @@ function usableSideShow(
  * hand.
  */
 function pendingFromJournal(
-  season: SeasonState, year: number,
+  season: SeasonState, year: number, slot: string,
 ): { home: number; away: number; line: string } | null {
   const j = readJournal();
   if (!j) return null;
-  if (!journalMatches(j, 'auto', year, season.rng.state?.() ?? -1)) {
+  if (!journalMatches(j, slot, year, season.rng.state?.() ?? -1)) {
     clearJournal();
     return null;
   }
@@ -2243,15 +2347,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     applyPhilosophy(season, seat, coach);
 
     /*
-      TESTING ONLY — remove before release, together with the guaranteed PSC
-      offer in NewGame.tsx. Pascagoula Tech begins with five 99-rated players
-      so a test career can reliably reach and exercise June/offseason screens.
+      TESTING ONLY — together with the guaranteed PSC offer in NewGame.tsx.
+      Pascagoula Tech begins with five 99-rated players so a test career can
+      reliably reach and exercise June/offseason screens. Only in a build that
+      carries the shortcuts (state/testBuild.ts): the dev server and a test
+      APK, never `npm run build`, `npm run apk` or Vitest.
 
       Ratings are assigned after world creation, so no RNG draw is consumed and
-      the rest of the generated world remains unchanged. Vitest stays clean: a
-      loaded roster would otherwise distort award and fresh-world assertions.
+      the rest of the generated world remains unchanged.
     */
-    if (typeof process === 'undefined' || !process.env?.['VITEST']) {
+    if (TEST_SHORTCUTS) {
       const psc = season.teams.find((t) => t.def.abbr === 'PSC');
       if (psc) {
         const bats = psc.team.lineup.slice(0, 3);
@@ -2302,7 +2407,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // Whichever card the staff would write, written before the first day rather
     // than after it, so a casual coach's opening lineup is his coach's lineup.
     if (!handles({ mode, overrides: {} }, 'lineups')) staffSetsTheCard(season, seat);
-    void get().saveNow();
+    /*
+      A file of its own from the first day. This wrote the autosave slot —
+      the one slot every career made before it had also been writing — so
+      creating a career silently replaced the last one before a day had been
+      played, with no question asked (05 §62.3). Older careers already in the
+      autosave slot keep writing there; nothing new ever claims it.
+    */
+    const slot = newSlotId();
+    set({ loadedSlot: slot });
+    void get().saveNow(slot);
   },
 
   go: (tab, screen, focus) => {
@@ -3228,11 +3342,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
     if (!workerAvailable) {
       // No worker: the screen freezes, but the game still works. Better a hang
-      // than a dead button.
-      simSeason(season);
-      set({ version: get().version + 1, busy: false });
-      get().noteSeasonNews();
-      void get().saveNow();
+      // than a dead button. Caught like the worker path is — a throw here
+      // used to pin `busy` for good and the app went dead (05 §62.6).
+      try {
+        simSeason(season);
+        set({ version: get().version + 1, busy: false });
+        get().noteSeasonNews();
+        void get().saveNow();
+      } catch (e) {
+        set({ busy: false, progress: null, simError: e instanceof Error ? e.message : String(e) });
+      }
       return;
     }
 
@@ -3283,6 +3402,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, userTeam, coach, lastPostseason: post } = get();
     const me = season?.teams[userTeam];
     if (!season || !me || get().lastReview) return;
+    // Once per year. The card above is a thing the player dismisses, and the
+    // offseason rail lets him walk back to AWARDS after he has; guarded only
+    // on the card, a second pass doubled his career record and wrote a second
+    // history row for the same season (05 §62.3).
+    if (get().history.some((h) => h.year === get().year)) return;
 
     // The regular season is what the board's win target was written against —
     // bracket wins are counted by their own boxes, not folded into the total.
@@ -3559,6 +3683,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, year, busy } = get();
     if (!season || busy) return;
     set({ busy: true });
+    /*
+      Everything below runs guarded. The one `busy: false` on this path sits
+      inside `finish()` at the very end, so a throw anywhere in the roll —
+      the year's rosters, the carousel, the schedule — froze the app for
+      good with a save on disk that reloaded into the same state (05 §62.6).
+    */
+    try {
     // See pendingGame in the reset below: last year's interrupted game cannot
     // be resumed against next year's season, so the journal dies with the year.
     clearJournal();
@@ -3863,6 +3994,31 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           if (p.type === 'hitter') settleIn(p as Hitter);
         }
       }
+      /*
+        The ninety-five others: their starts cleared and their mood settled
+        too. `started` runs for every program on every game day, but only the
+        coached roster ever had the count wiped or the mood read — so a third
+        of the country carried more starts than the season had games, the
+        portal's "buried" door was pinned shut, and no rival could ever break
+        a promise: flight risk was zero for 95 of 96 programs (05 §62.4).
+        Settled BEFORE the starts are cleared, on the season that just ended.
+      */
+      for (const other of rolled.teams) {
+        if (other.index === get().userTeam) continue;
+        const rec = get().season?.teams[other.index];
+        const played = (rec?.w ?? 0) + (rec?.l ?? 0);
+        const winPct = played > 0 ? (rec?.w ?? 0) / played : 0.5;
+        const ranks = squadRanks(other.team);
+        for (const p of uniquePlayers([...squad(other.team), ...other.team.rotation, ...other.team.bullpen])) {
+          setMood(p, settleMood(p, {
+            starts: (p as Player & { starts?: number }).starts ?? 0,
+            games: played,
+            squadRank: ranks.get(p.id) ?? 20,
+            winPct,
+          }));
+          delete (p as Player & { starts?: number }).starts;
+        }
+      }
       // A year passes for him too. Purely what the screen prints — nothing in
       // the simulation asks how old the coach is, and no year of a career plays
       // differently because of the number.
@@ -4165,6 +4321,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       }
     }
     done(season, report);
+    } catch (e) {
+      set({ busy: false, progress: null, simError: e instanceof Error ? e.message : String(e) });
+    }
   },
 
   history: [],
@@ -4972,7 +5131,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (!season || !myBracket || get().busy) return;
     // A game is already being managed. Building a second LiveGame would consume
     // the season's rng again and silently discard the one in progress.
-    if (get().live) return;
+    if (get().live || get().liveStarting) return;
 
     // The host and the arm are worked out exactly as the tournament would:
     // in a series, home alternates from the better seed; in the double
@@ -4995,7 +5154,20 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const away = season.teams[a];
     if (!home || !away) return;
 
-    const slot = (myBracket.state.appearances.get(h) ?? 0) % 3;
+    /*
+      Each side's rotation slot is its own — a team arriving off a bye and a
+      team that has just played three games in three days are not both on
+      their Friday starter. The bracket sim keeps the two counts apart; this
+      path handed the away dugout the host's slot, so a managed title game
+      faced the losers-bracket team's ace instead of its second arm (05 §62.1).
+    */
+    const clock = injuryClock(season);
+    const hSlot = (myBracket.state.appearances.get(h) ?? 0) % 3;
+    const aSlot = (myBracket.state.appearances.get(a) ?? 0) % 3;
+    const homeStarter = startableSlot(season, home.team, hSlot, season.dayIndex, clock);
+    const awayStarter = startableSlot(season, away.team, aSlot, season.dayIndex, clock);
+    const homeLineup = coverFor(home.team, home.team.lineup, clock);
+    const awayLineup = coverFor(away.team, away.team.lineup, clock);
 
     /*
       June anchors the same way April does now.
@@ -5014,25 +5186,31 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // the journal and the game it anchors can never disagree about it.
     const autoPen = !handles(get().depth, 'bullpen');
     if (!handles(get().depth, 'lineups')) staffSetsTheCard(season, userTeam);
+    set({ liveStarting: true });
     const rngState = season.rng.state?.() ?? 0;
     await get().saveNow();
     writeJournal({
-      slot: 'auto', year: get().year, rngState,
+      slot: get().loadedSlot ?? AUTOSAVE_SLOT, year: get().year, rngState,
       home: h, away: a, day: season.dayIndex,
-      homeStarter: slot, awayStarter: slot,
+      homeStarter, awayStarter,
       managing: h === userTeam ? 'home' : 'away',
       autoPitching: autoPen,
       postseason: true,
+      conference: false,
       actions: [],
     });
 
     set({
+      liveStarting: false,
       live: createLiveGame(home.team, away.team, season.rng, {
         managing: h === userTeam ? 'home' : 'away',
         autoPitching: autoPen,
         engine: season.config.engine,
-        homeStarter: slot,
-        awayStarter: slot,
+        postseason: true,
+        homeStarter,
+        awayStarter,
+        homeLineup,
+        awayLineup,
         // The same wiring the fast path gets: the Strategy screen's settings
         // govern the game you manage, and the pen is offered most rested first.
         homeStrategy: appliedStrategy(season, home, away),
@@ -5171,7 +5349,28 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         finished season, so the answer is available the moment the series is.
       */
       if (myBracket.kind === 'regional') {
-        advanced = protectedTopFour(season).includes(userTeam);
+        /*
+          Decided the way the field is actually decided. Protection is only
+          four of the twenty seats; the rest fill at large off the national
+          table, and the other fifteen regionals are on the books by the time
+          the coached program's own series ends — so the same selection the
+          bracket will run is available now. Read off protection alone, one
+          regional loser in seven was told the season was over and then
+          seeded in the national field (05 §62.5).
+        */
+        const progress = get().bracket;
+        const mine = resultOf(state);
+        const meRec = season.teams[userTeam];
+        const regionId = myBracket.meta?.region ?? (meRec ? regionOf(meRec.conference) : 'SOUTH');
+        const played = progress ? [...progress.regionals, {
+          ...mine, region: regionId,
+          name: myBracket.meta?.name ?? (REGIONS.find((r) => r.id === regionId)?.name ?? regionId),
+          aLabel: myBracket.meta?.aLabel ?? '', bLabel: myBracket.meta?.bLabel ?? '',
+        }] : [];
+        const expected = progress ? regionalPairing(season, progress.cups).length : Infinity;
+        advanced = progress && played.length >= expected
+          ? selectNationalField(season, progress.cups, played).seeds.includes(userTeam)
+          : protectedTopFour(season).includes(userTeam);
       }
     } else {
       const state = myBracket.state;
@@ -5387,7 +5586,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const j = readJournal();
     set({ pendingGame: null });
     if (!season || !j) return;
-    if (!journalMatches(j, 'auto', get().year, season.rng.state?.() ?? -1)) {
+    if (!journalMatches(j, get().loadedSlot ?? AUTOSAVE_SLOT, get().year, season.rng.state?.() ?? -1)) {
       clearJournal();
       return;
     }
@@ -5396,14 +5595,20 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const away = season.teams[j.away];
     if (!home || !away) { clearJournal(); return; }
 
+    // The same covered card the game was started with: the season is back at
+    // the same day with the same men on the shelf, so this is the same nine.
+    const clock = injuryClock(season);
     const live = createLiveGame(home.team, away.team, season.rng, {
       managing: j.managing,
       // Off the journal, not off today's settings: the replay has to rebuild
       // the game that was interrupted, not the one this coach would start now.
       autoPitching: j.autoPitching === true,
       engine: season.config.engine,
+      ...(j.postseason ? { postseason: true } : {}),
       homeStarter: j.homeStarter,
       awayStarter: j.awayStarter,
+      homeLineup: coverFor(home.team, home.team.lineup, clock),
+      awayLineup: coverFor(away.team, away.team.lineup, clock),
       homeStrategy: appliedStrategy(season, home, away),
       awayStrategy: appliedStrategy(season, away, home),
       homeBullpen: restedFirst(season, home),
@@ -5439,7 +5644,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
     const liveMeta = {
       home: j.home, away: j.away, day: j.day,
-      conference: false,
+      // Off the journal. A journal from before the flag was written is a
+      // regular-season game far more often than not; a bracket game never counts.
+      conference: j.conference ?? !j.postseason,
       ...(j.postseason ? { postseason: true } : {}),
     };
 
@@ -5471,6 +5678,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // second game over the top of it. The scorebook left the nav — this button
     // is now the room's only door, so it has to open the room that exists.
     if (get().live) { set({ tab: 'home', screen: 'box' }); return; }
+    if (get().liveStarting) return;
     if (seasonComplete(season)) return;
 
     // Play forward through any days we are not involved in. The world does not
@@ -5505,25 +5713,42 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // the journal and the game it anchors can never disagree about it.
     const autoPen = !handles(get().depth, 'bullpen');
     if (!handles(get().depth, 'lineups')) staffSetsTheCard(season, userTeam);
+    /*
+      The card and the arms, exactly as the day sim would field them: injured
+      and ineligible men covered off both nines, and each rotation slot walked
+      forward past an arm on short rest. Neither takes a draw, so the journal
+      anchor below still holds and the replay rebuilds the same game (05 §62.1).
+    */
+    const clock = injuryClock(season);
+    const today = currentDay(season);
+    const homeStarter = startableSlot(season, home.team, g.slot, today, clock);
+    const awayStarter = startableSlot(season, away.team, g.slot, today, clock);
+    const homeLineup = coverFor(home.team, home.team.lineup, clock);
+    const awayLineup = coverFor(away.team, away.team.lineup, clock);
+    set({ liveStarting: true });
     const rngState = season.rng.state?.() ?? 0;
     await get().saveNow();
     writeJournal({
-      slot: 'auto', year: get().year, rngState,
+      slot: get().loadedSlot ?? AUTOSAVE_SLOT, year: get().year, rngState,
       home: g.home, away: g.away, day: day.day,
-      homeStarter: g.slot, awayStarter: g.slot,
+      homeStarter, awayStarter,
       managing: g.home === userTeam ? 'home' : 'away',
       autoPitching: autoPen,
       postseason: false,
+      conference: g.conference,
       actions: [],
     });
 
     set({
+      liveStarting: false,
       live: createLiveGame(home.team, away.team, season.rng, {
         managing: g.home === userTeam ? 'home' : 'away',
         autoPitching: autoPen,
         engine: season.config.engine,
-        homeStarter: g.slot,
-        awayStarter: g.slot,
+        homeStarter,
+        awayStarter,
+        homeLineup,
+        awayLineup,
         // The same wiring the fast path gets: the Strategy screen's settings
         // govern the game you manage, and the pen is offered most rested first.
         homeStrategy: appliedStrategy(season, home, away),
@@ -5600,6 +5825,22 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   endManagedGame: async () => {
     const { season, live, liveMeta, userTeam, version } = get();
     if (!season || !live || !liveMeta || !live.over) return;
+
+    /*
+      The season's bookkeeping a simulated game gets inside playGame, paid
+      here for a game the coach sat in: a day in the legs for the men who
+      played and the men who did not, a season in the arm for every man who
+      threw. Without it the coached program's starts, leg weariness and arm
+      mileage stayed at zero all year — a third fewer lineup injuries than the
+      rest of the country, a mood settle that read every regular as buried,
+      and a pitching coach whose arm care never applied (05 §62.1).
+    */
+    for (const [index, side] of [[liveMeta.home, live.result.home], [liveMeta.away, live.result.away]] as const) {
+      const rec = season.teams[index];
+      if (!rec) continue;
+      dayInTheLegs(rec, side.starters);
+      seasonInTheArm(rec, side);
+    }
 
     // Whoever threw is unavailable for a while, exactly as playGame records it.
     // Without this, arms used in a managed game counted as fully rested the
@@ -6538,6 +6779,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   godStack: [],
+  liveStarting: false,
   openGod: (target) => {
     if (!get().godMode) return;
     set({ godStack: [...get().godStack, target] });
@@ -6575,14 +6817,22 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   simError: null,
   loadError: null,
 
-  saveNow: async (slot = AUTOSAVE_SLOT, name?: string) => {
+  saveNow: async (slot?: string, name?: string) => {
     const { season, year, userTeam, history, lastPostseason } = get();
     if (!season) return;
+    /*
+      The file this career was opened from, unless a caller names another. It
+      used to default to the autosave slot however the career had been
+      opened, so loading a named save and playing a day overwrote whatever
+      career the autosave held — one tap on a row in the saves menu, and the
+      career that lived only there was gone (05 §62.3).
+    */
+    const target = slot ?? get().loadedSlot ?? AUTOSAVE_SLOT;
     const team = season.teams[userTeam];
     const ticket = ++saveTicket;
     set({ saveState: 'saving', lastSaveError: null });
     try {
-      await saveDynasty(slot, name ?? (team ? team.def.school : 'Dynasty'), season, year, userTeam, {
+      await saveDynasty(target, name ?? (team ? team.def.school : 'Dynasty'), season, year, userTeam, {
         history,
         postseason: lastPostseason,
         bracket: get().bracket,
@@ -6611,6 +6861,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         depth: get().depth,
         godMode: get().godMode,
         leagueNames: get().leagueNames,
+        portal: portablePortal(get().portal),
+        approaches: get().approaches,
         /*
           How many the room has had this season, and the one still open.
 
@@ -6661,6 +6913,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       return false;
     }
     if (!loaded) return false;
+    // A save that would throw on its first game is refused here, where the
+    // player is told and can start again, rather than a day into a career
+    // that cannot move (05 §62.6).
+    const broken = assertSeason(loaded.season, loaded.userTeam);
+    if (broken) {
+      set({ loadError: broken, needsTeam: true });
+      return false;
+    }
     // Saves written before box scores existed carry none, and would otherwise
     // resume capturing for nobody.
     loaded.season.captureBoxFor = loaded.userTeam;
@@ -6799,6 +7059,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       depth: normalizeDepth(loaded.depth),
       godMode: loaded.godMode,
       leagueNames: usableLeagueNames(loaded.leagueNames),
+      portal: usablePortal(loaded.portal, loaded.season),
+      approaches: usableApproaches(loaded.approaches),
+      liveStarting: false,
       // Unread stays unread across a restart. It is the one thing the inbox
       // knows that nothing else in the save does.
       inbox: restoreInbox(loaded.inbox),
@@ -6857,7 +7120,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         on. What survives is not the game; it is the offer of the game, which
         `Today` puts to the player.
       */
-      pendingGame: pendingFromJournal(loaded.season, loaded.year),
+      pendingGame: pendingFromJournal(loaded.season, loaded.year, slot),
       // A sim that was running belonged to the old world too; the generation
       // bump above makes its result unwelcome, and the flags come home.
       busy: false,
@@ -6865,6 +7128,30 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // The skill ledger is a fact about a step of the *old* career's offseason.
       spentThisStep: {},
     });
+    // The two module registries the screens read, synced with the save that
+    // just landed rather than with whichever career was started last: the
+    // league renames were on disk but never applied, and the sandbox's open
+    // star gate leaked into a normal career loaded after it (05 §62.3).
+    setLeagueNames(usableLeagueNames(loaded.leagueNames));
+    setStarGateOpen(loaded.godMode);
+    /*
+      A save taken on the portal step before the pool rode the file comes
+      back without one. Rebuilt from the season, quietly — no wire, no staff
+      pass — so the step has a screen and a way out (05 §62.3).
+    */
+    if (get().phase === 'portal' && get().portal === null) {
+      const season = get().season;
+      const rec = season?.teams[get().userTeam];
+      if (season && rec) {
+        const games = (rec.w ?? 0) + (rec.l ?? 0);
+        const pool = openPortal(season.teams, { year: get().year, seed: season.seed ?? 0, games });
+        const mine = pool.filter((m) => m.from === get().userTeam);
+        const theirs = pool
+          .filter((m) => m.from !== get().userTeam)
+          .sort((a, b) => overallOf(b.player) - overallOf(a.player));
+        set({ portal: { leaving: mine, available: theirs, spent: 0 } });
+      }
+    }
     return true;
   },
 
@@ -6957,10 +7244,15 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // its worker has nothing left to do.
     simGeneration += 1;
     disposeWorker();
+    setLeagueNames({});
+    setStarGateOpen(false);
     set({
     season: null,
     needsTeam: true,
     busy: false,
+    liveStarting: false,
+    approaches: { tried: [], interest: [] },
+    leagueNames: {},
     progress: null,
     spentThisStep: {},
     // The career being left takes all of its furniture with it. `start` clears

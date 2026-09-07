@@ -8,8 +8,9 @@ the next one picks up, `01-roadmap.md` for the order at a glance, `06-backlog.md
 §H for the feature set and §I for the August 27 pass, `05-systems-reference.md`
 for what the game does today.
 
-**Where the work stands, September 6 2026: twenty-two of twenty-six
-stages are shipped — 1 through 16, 18 and 18b, 20 through 23, and 25.** September 5 took the interface onto one
+**Where the work stands, September 7 2026: twenty-five of twenty-six
+stages are shipped — 1 through 17, 18 and 18b, 20 through 26 — and the
+build has been through its release audit (`05` §62).** September 5 took the interface onto one
 interaction language in a merged pass (`05` §50), then two more outside
 folders: the engine pass, which corrected the scorer's rules and
 recalibrated the league to the modern game (`05` §51), and the prestige
@@ -18,14 +19,11 @@ moves (`05` §52). Both were repaired at the merge — §51 for a stranded
 runner and a clock mismatch, §52 for a floor that stopped any program in
 the league from losing a point.
 
-**What is left is the tail and two doors.** The tail: **19** (ship), and
-**18b**, booked September 6, because the app already targets Android 16
-and both edge-to-edge and predictive back changed under it. The doors:
-**17**, which stopped being the store on September 6 and is now god mode,
-and needs its design pass before anything is built; the rest of **24**
-(the interview's reveal and result card); **26**'s verdict from the
-reporter; and the remainder of the `06` §X review. Testing runs on an
-Android emulator.**
+**What is left is 19 alone** (ship), plus the balance decisions the
+release audit measured and set down for the reporter (`05` §62.7) and
+god mode's own deferrals (`05` §61.3). 17, 18b, 24 and 26 all closed on
+September 6; the `06` §X review closed with them. Testing runs on an
+Android emulator and, since the audit, an iPhone over the LAN.**
 
 **Twenty-six stages and one half-stage** (nineteen, plus 20–23 booked
 September 3 from the phone report, 24 from the September 4 triage, 25 and
@@ -75,16 +73,12 @@ mode can be changed mid-career without starting over.
 
 ## Two errands that cost nothing and need no phone
 
-**Create the Play Console record and merchant account.** A web form that starts
-two clocks otherwise sitting at the end of the project: merchant verification
-takes days, and in-app products cannot be tested until an app record exists.
+~~**Create the Play Console record and merchant account.**~~ Done — registration
+and verification are recorded in `06` §R; the listing itself is stage 19.
 
-**Take a throttled performance profile in the browser.** The question the
-deferred phone work leaves open is whether the 3D field holds a frame rate on
-mid-range hardware. A Chrome profile at 4× CPU throttle is not the same
-measurement, but it catches a disaster — and a disaster here changes the design
-rather than the code, which matters because stage 5 rebuilds the dugout around
-a *larger* field.
+~~**Take a throttled performance profile in the browser.**~~ Taken September 3
+(`05` §47) in a desktop browser; the phone measurement is still owed to
+stage 19.
 
 ---
 
@@ -234,7 +228,8 @@ without putting a calibrated simulation at risk in the same pass. What reaches
 briefly folded behind a LINE SCORE button and came straight back out: it is the
 one thing on the screen that answers "where are we" without being asked, and a
 scoreboard you have to press is not a scoreboard. It sits on the bar with
-R/H/E. REPLAY is not built.
+R/H/E. REPLAY was built in stage 15 and rebuilt off the real event stream in the
+interface pass (`05` §50).
 
 **Deferred out of this stage, by request: the park itself.** The field is
 bigger and reads correctly, and the ballpark's *visual* — crowd, stands,
@@ -297,7 +292,7 @@ colours the play-by-play, and what tendencies and scouting are made of.
 
 ## Stage 7 · The coach
 
-**Size:** very large · **SHIPPED — all eight pieces** · **Mostly writing, and the writing is the point**
+**Size:** very large · **SHIPPED — seven of eight pieces; piece 8 (press conferences) was removed September 2 2026** · **Mostly writing, and the writing is the point**
 
 Full write-up in `05-systems-reference.md` §29, including the five faults that
 only a measured distribution could have found, and §29.8 for what two seasons
@@ -1550,11 +1545,17 @@ choosing one — "he keeps a bad week from becoming a bad month" — since
 the Captain screen's own explanation was cut in batch P.
 
 Onboarding for the first ten minutes · accessibility (focus states; text
-scaling now has a home in stage 2's settings sheet) · **remove the test aids**
+scaling now has a home in stage 2's settings sheet) · **build with `npm run apk`, never `apk:test`** — the test aids, the free UNLOCK stand-in and the source maps are behind `TEST_SHORTCUTS` and the dev build and leave on their own
 (SIM THE SEASON, the guaranteed Pascagoula Tech offer and its five 99s —
 `docs/TESTING_SHORTCUTS.md`; Hans Hood is already gone) · keystore generated and backed
 up permanently · signed AAB, listing, screenshots, privacy policy, content
-rating · closed beta, then open.
+rating · closed beta, then open. **The release commit:** bump `package.json`
+to 1.0.0 (`scripts/apk.cjs` writes `versionName` from it and a monotonic
+`versionCode` into the generated shell, so every upload carries a new code)
+· **Play Billing replaces the Settings stand-in** — `DevicePrefs.godMode` is
+set by a purchase and a restore flow, never by a free button (`05` §61.3) ·
+`npm run apk -- release` produces an unsigned APK; the store wants a signed
+AAB (`bundleRelease`), which the script does not yet run.
 
 **Grew September 4 — the guided tutorial, decided from the phone.** The
 card tutorials give way to a guided first stretch: a main card that titles
@@ -1621,10 +1622,11 @@ the phone complained.
 ## What did not make the list
 
 From the feature pass: a human poll alongside RPI, weather and park conditions,
-fan support and attendance, live bracketology, mentorship pairs, defensive
-positioning. From the earlier report: exhibition games, classic-finish
-scenarios, share cards. All stay in `06-backlog.md`; none of them is a reason
-to delay a release.
+fan support and attendance, live bracketology, mentorship pairs. (Defensive
+positioning came off this list — stage 22 shipped it.) From the earlier
+report: exhibition games, classic-finish scenarios, share cards. All stay in
+`06-backlog.md`; none of them is a reason to delay a release. The balance
+decisions the release audit set down are `05` §62.7.
 
 ## How this document stays true
 

@@ -11,12 +11,13 @@ import { useState, type ReactNode } from 'react';
 import { FixedHeader } from '../Sticky.js';
 import { ModuleIntro, SectionHeading, Segmented } from '../components/Kit.js';
 import { useDynasty, type SettingsPage } from '../../state/store.js';
+import { TEST_SHORTCUTS } from '../../state/testBuild.js';
 import {
   SYSTEMS, handles, presetSays, type DepthMode, type SystemKey,
 } from '../../state/depth.js';
 import {
   readPrefs, writePrefs, applyPrefs, TEXT_SCALES,
-  type DevicePrefs, type MotionPref, type ThemePref,
+  type DevicePrefs, type MotionPref, type ThemePref, type FieldMode,
 } from '../../state/devicePrefs.js';
 
 /** A row that reads as a sentence and toggles on the right. */
@@ -182,6 +183,15 @@ export function Settings() {
             ]}
             onPick={(v) => put({ theme: v })}
           />
+          <Choice<FieldMode>
+            label="The field"
+            value={prefs.field}
+            options={[
+              { value: '3d', label: '3D' },
+              { value: '2d', label: '2D' },
+            ]}
+            onPick={(v) => put({ field: v })}
+          />
           <Choice<MotionPref>
             label="Motion"
             value={prefs.motion}
@@ -272,11 +282,21 @@ export function Settings() {
               <strong>{prefs.godMode ? 'God mode is on this device' : 'God mode'}</strong>
               <small>{prefs.godMode
                 ? 'Turn it on per career, at creation.'
-                : 'The store purchase arrives with the listing. Until then this button stands in for it.'}</small>
+                : TEST_SHORTCUTS
+                  ? 'The store purchase arrives with the listing. Until then this button stands in for it.'
+                  : 'Arrives with the store listing.'}</small>
             </span>
-            <button type="button" className="tap" onClick={() => put({ godMode: !prefs.godMode })}>
-              {prefs.godMode ? 'REMOVE' : 'UNLOCK'}
-            </button>
+            {/*
+              The stand-in for the purchase, in a build that carries the
+              testing shortcuts only. A store build shows the state and no
+              way to flip it — the paid entitlement must not be a free button
+              (05 §62.3); stage 19 replaces this with Play Billing.
+            */}
+            {(TEST_SHORTCUTS || prefs.godMode) && (
+              <button type="button" className="tap" onClick={() => put({ godMode: !prefs.godMode })}>
+                {prefs.godMode ? 'REMOVE' : 'UNLOCK'}
+              </button>
+            )}
           </div>
         </section>
         {prefs.godMode && season && (

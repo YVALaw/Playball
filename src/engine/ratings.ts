@@ -132,11 +132,17 @@ export const CONTEXT = {
   // home runs and walks all sat low together, which is the signature of one
   // global suppressor rather than five separate problems.
   //
-  // 1.070 puts runs within 2.1% and every component inside 3%. It is a divisor,
+  // 1.070 put runs within 2.1% and every component inside 3%. It is a divisor,
   // so it moves the whole offensive environment at once: raise it and the league
   // scores less, lower it and everything inflates together. Retune only with the
   // multi-seed sweep in tests/calibration.test.ts, never on one seed.
-  normalizer: 1.070,
+  //
+  // 1.045 since the times-through fix (05 §62.2): a reliever used to inherit the
+  // starter's fourth-pass lift against every hitter, which was baked into the
+  // old divisor. With every new arm starting the order fresh the league fell
+  // 4% cold on every column at once; on the eight-seed sweep 1.045 puts runs
+  // +0.9%, average on the target, on-base -1.4%, slugging +1.0%.
+  normalizer: 1.045,
   runnersOnOffenseBoost: 1.035,  // pitching from the stretch
   timesThroughOrder: [1.0, 1.0, 1.035, 1.075, 1.11] as readonly number[],
   fatigueSlopePerPitch: 0.0022,  // effectiveness lost per pitch past stamina

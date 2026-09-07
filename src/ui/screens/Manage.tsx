@@ -43,6 +43,9 @@ import { appliedStrategy } from '../../engine/season.js';
 
 const Diamond3D = lazy(() =>
   import('../Diamond3D.js').then((m) => ({ default: m.Diamond3D })));
+import { Diamond } from '../Diamond.js';
+import { Boundary } from '../Boundary.js';
+import { readPrefs } from '../../state/devicePrefs.js';
 import type { Hitter, Pitcher, PlayerId } from '../../engine/types.js';
 
 type Modal = 'pinch' | 'pen' | null;
@@ -104,6 +107,8 @@ export function Manage() {
     GRAND SLAM when three men were aboard to score ahead of him.
   */
   const [splash, setSplash] = useState<{ tick: number; text: string } | null>(null);
+  // The 2D diamond, chosen in Settings → Display; read once, on the way in.
+  const [flatField] = useState(() => readPrefs().field === '2d');
   /*
     Which side is in the field, as the PARK is showing it — which lags the
     scoreboard by however long the last play takes to finish.
@@ -448,8 +453,8 @@ export function Manage() {
     a change of scenery: a man in scoring position, a close game gone late, or
     an arm past the budget the bar has been drawing all night.
   */
-  const worthManaging = (): boolean => {
-    const p = live?.pending;
+  const worthManaging = (game: typeof live): boolean => {
+    const p = game?.pending;
     if (!p) return false;
     // Second or third. `bases` is three booleans, not three nullable slots --
     // written as a null check first, which is always true of a boolean, so
@@ -481,6 +486,11 @@ export function Manage() {
     const t = setTimeout(() => {
       const cur = useDynasty.getState().live;
       if (!cur || cur.over) { setAuto(null); return; }
+      // The handover the docs promised and this effect never made: the
+      // dugout comes back the moment something worth managing arrives —
+      // never on the situation AUTO was pressed in, which the coach has
+      // already seen (05 §62.6).
+      if (version !== autoArmedAt.current && worthManaging(cur)) { setAuto(null); return; }
       const pick = cur.pending?.options.find((o) => o.available);
       if (pick) submitTactic(pick.tactic);
       else setAuto(null);
@@ -490,6 +500,8 @@ export function Manage() {
 
   // A finished game hands the dugout back on its own.
   useEffect(() => { if (live?.over) setAuto(null); }, [live?.over]);
+  /** The version AUTO was pressed at, so the first tick never hands back. */
+  const autoArmedAt = useRef(-1);
 
   // Who crossed the plate on the last play. The engine reports it as an advance
   // to base 4, which is the only record of a man scoring — he is off the bases
@@ -689,7 +701,21 @@ export function Manage() {
               {splash.text}
             </div>
           )}
-          {(
+          {flatField ? (
+            /* The 2D diamond, chosen in Settings → Display. Picking it also
+               means three.js is never fetched at all (05 §62.6). */
+            <div style={{ width: '100%', height: 250, position: 'relative', display: 'grid', placeItems: 'center' }}>
+              <Diamond runners={d?.runners ?? runnersHeld.current} scoreTick={scoreTick} size={132} />
+            </div>
+          ) : (
+            /* A chunk that fails to arrive rejects rather than suspends, and
+               Suspense never sees a rejection; the fence falls back to the
+               2D diamond rather than blanking the app mid-game (05 §62.6). */
+            <Boundary fallback={() => (
+              <div style={{ width: '100%', height: 250, position: 'relative', display: 'grid', placeItems: 'center' }}>
+                <Diamond runners={d?.runners ?? runnersHeld.current} scoreTick={scoreTick} size={132} />
+              </div>
+            )}>
             <Suspense fallback={
               <div className="park-loading" style={{ height: 250 }} aria-hidden>
                 <span>THE PARK</span>
@@ -720,6 +746,7 @@ export function Manage() {
                 positioning={positioning}
               />
             </Suspense>
+            </Boundary>
           )}
           {d && (
             <div className="ballpark-situation">
@@ -955,7 +982,7 @@ export function Manage() {
                 <button
                   type="button"
                   disabled={playing}
-                  onClick={() => { setAuto('watch'); setTools(false); }}
+                  onClick={() => { autoArmedAt.current = version; setAuto('watch'); setTools(false); }}
                 >
                   <strong>AUTO</strong>
                   <ChevronRightIcon />

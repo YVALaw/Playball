@@ -109,14 +109,16 @@ describe('a slot id is not a name', () => {
     await useDynasty.getState().saveNow();
     await useDynasty.getState().saveAs('auto');
 
+    // The career's own file and the copy — and neither is keyed 'auto', however
+    // the copy was named.
     expect(disk.size).toBe(2);
-    expect(disk.has(AUTOSAVE_SLOT)).toBe(true);
+    expect(disk.has(AUTOSAVE_SLOT)).toBe(false);
 
     await useDynasty.getState().refreshSaves();
     const { saves } = useDynasty.getState();
     expect(saves).toHaveLength(2);
-    expect(saves.filter((s) => s.slot === AUTOSAVE_SLOT)).toHaveLength(1);
-    expect(saves.some((s) => s.name === 'auto' && s.slot !== AUTOSAVE_SLOT)).toBe(true);
+    expect(saves.every((s) => s.slot !== AUTOSAVE_SLOT)).toBe(true);
+    expect(saves.some((s) => s.name === 'auto')).toBe(true);
   });
 });
 
@@ -322,17 +324,61 @@ describe('delete takes one dynasty and no others', () => {
   });
 });
 
-describe('the autosave keeps working exactly as it did', () => {
-  it('is still where saveNow writes with no arguments', async () => {
+/*
+  A career has a file of its own (05 §62.3).
+
+  Every career used to write the one autosave slot: creating a second career
+  silently replaced the first before a day had been played, and loading a
+  named save then playing a day overwrote whatever the autosave held. Now
+  `start` files the career under a slot of its own, `saveNow` with no
+  arguments writes the file the career was opened from, and the autosave slot
+  is only ever what a career from before this was already in.
+*/
+describe('a career has a file of its own', () => {
+  it('starts in a slot of its own, never the autosave', async () => {
     useDynasty.getState().start(4242, 0);
     await useDynasty.getState().saveNow();
-    expect(disk.has(AUTOSAVE_SLOT)).toBe(true);
     expect(disk.size).toBe(1);
+    expect(disk.has(AUTOSAVE_SLOT)).toBe(false);
+    expect(useDynasty.getState().loadedSlot).toBe([...disk.keys()][0]);
   });
 
-  it('is still where loadSlot reads with no arguments', async () => {
+  it('a second career does not replace the first', async () => {
+    useDynasty.getState().start(4242, 0);
+    await useDynasty.getState().saveNow();
+    const first = useDynasty.getState().loadedSlot!;
+    const before = structuredClone(disk.get(first));
+
+    useDynasty.getState().newDynasty();
+    useDynasty.getState().start(7777, 5);
+    await useDynasty.getState().saveNow();
+
+    expect(disk.size).toBe(2);
+    expect(disk.get(first)).toEqual(before);
+    expect(useDynasty.getState().loadedSlot).not.toBe(first);
+  });
+
+  it('keeps writing to the file it was opened from', async () => {
     useDynasty.getState().start(4242, 3);
     await useDynasty.getState().saveNow();
+    const own = useDynasty.getState().loadedSlot!;
+    await useDynasty.getState().saveAs('Branch');
+    const branch = useDynasty.getState().saves.find((s) => s.slot !== own)!.slot;
+    const ownBefore = structuredClone(disk.get(own));
+
+    // Open the branch and play on: the branch moves, the original does not.
+    expect(await useDynasty.getState().loadSlot(branch)).toBe(true);
+    expect(useDynasty.getState().loadedSlot).toBe(branch);
+    useDynasty.getState().season!.dayIndex += 1;
+    await useDynasty.getState().saveNow();
+
+    expect(disk.get(own)).toEqual(ownBefore);
+    expect(disk.get(branch)).not.toEqual(ownBefore);
+  });
+
+  it('loadSlot with no arguments still opens the autosave a career from before is in', async () => {
+    useDynasty.getState().start(4242, 3);
+    await useDynasty.getState().saveNow(AUTOSAVE_SLOT);
     // Somewhere else entirely, to prove the load is not just finding the only
     // record on the disk.
     await useDynasty.getState().saveAs('A different branch');
@@ -340,20 +386,23 @@ describe('the autosave keeps working exactly as it did', () => {
     useDynasty.setState({ season: null, userTeam: 0, needsTeam: true });
     expect(await useDynasty.getState().loadSlot()).toBe(true);
     expect(useDynasty.getState().userTeam).toBe(3);
+    // And from then on that is the file it writes.
+    expect(useDynasty.getState().loadedSlot).toBe(AUTOSAVE_SLOT);
   });
 
   it('is not disturbed by a copy taken beside it', async () => {
     useDynasty.getState().start(4242, 2);
     await useDynasty.getState().saveNow();
-    const before = structuredClone(disk.get(AUTOSAVE_SLOT));
+    const own = useDynasty.getState().loadedSlot!;
+    const before = structuredClone(disk.get(own));
 
     await useDynasty.getState().saveAs('Branch');
     await useDynasty.getState().deleteSlot(
-      useDynasty.getState().saves.find((s) => s.slot !== AUTOSAVE_SLOT)!.slot,
+      useDynasty.getState().saves.find((s) => s.slot !== own)!.slot,
     );
 
-    expect(disk.get(AUTOSAVE_SLOT)).toEqual(before);
-    expect(useDynasty.getState().saves.map((s) => s.slot)).toEqual([AUTOSAVE_SLOT]);
+    expect(disk.get(own)).toEqual(before);
+    expect(useDynasty.getState().saves.map((s) => s.slot)).toEqual([own]);
   });
 
   it('files a copy under the school when the player names it nothing', async () => {

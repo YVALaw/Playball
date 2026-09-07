@@ -48,7 +48,6 @@ export type SystemKey =
   | 'moundVisits'
   | 'pitchCalling'
   | 'scouting'
-  | 'pressers'
   | 'assistants'
   | 'captains'
   | 'redshirts'
@@ -139,12 +138,6 @@ export const SYSTEMS: readonly SystemDef[] = [
     key: 'scouting', label: 'Scouting reports',
     blurb: 'You spend prep to learn the other side before a series.',
     whenOff: 'Your staff brings you the report.',
-    casual: false,
-  },
-  {
-    key: 'pressers', label: 'Press conferences',
-    blurb: 'You answer for the season, win or lose.',
-    whenOff: 'Your sports information director speaks for you.',
     casual: false,
   },
   {

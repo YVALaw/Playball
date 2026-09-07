@@ -206,11 +206,12 @@ export function PlayerEditor({ id }: { id: PlayerId }) {
             onClick={() => {
               if (!moveTarget) return;
               if (movePlayer(man.id, moveTarget.index)) { setNote(`${man.name} is at ${moveTarget.def.school} now.`); setMoveTo(-1); }
+              else setNote(`Nobody to take ${man.name}'s place. Add a bat or an arm first.`);
             }}
           >MOVE</button>
           <SureButton
             label="CUT"
-            onSure={() => { if (cutPlayer(man.id)) closeGod(); }}
+            onSure={() => { if (cutPlayer(man.id)) closeGod(); else setNote(`Nobody to take ${man.name}'s place. Add a bat or an arm first.`); }}
           />
         </div>
         <p className="god-note">Moved, he lands on the bench or in the pen there; a starter's spot is filled from the bench behind him. Cut, he is gone from the world.</p>

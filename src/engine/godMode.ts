@@ -32,6 +32,7 @@ import { STATES_BY_REGION } from '../data/schools.js';
 import { ageFor } from './players.js';
 import { isTwoWay, type Team, type TwoWay } from './types.js';
 import { releaseFrom, signFromPortal, type PortalMan } from './portal.js';
+import { adoptSpot } from './depthChart.js';
 
 /** The rating scale, and the one clamp every number here goes through. */
 export const clampRating = (v: number): number =>
@@ -264,14 +265,45 @@ export { isHurt };
 // --- Roster moves -----------------------------------------------------------
 
 /**
- * A starter leaving the nine: the bench man at his own spot steps in, and
- * failing one, the hole stands — the depth chart steps over it on game day.
+ * A starter leaving the nine: the bench man at his own spot steps in, failing
+ * one any bench man does, adopting the spot. Fielding eight is not a thing
+ * that happens in baseball — the hole used to stand, and every game from then
+ * on threw on an empty lineup slot, with nothing on any screen able to repair
+ * it (05 §62.3). Returns false when there is nobody at all, so the cut or the
+ * move can refuse instead.
  */
-function fillHole(team: Team, spot: Position): void {
-  const at = team.bench.find((b) => b.pos === spot);
-  if (!at) return;
+function fillHole(team: Team, spot: Position): boolean {
+  const at = team.bench.find((b) => b.pos === spot) ?? team.bench[0];
+  if (!at) return false;
   team.bench = team.bench.filter((b) => b.id !== at.id);
+  if (at.pos !== spot) adoptSpot(at, spot);
   team.lineup.push(at);
+  return true;
+}
+
+/** Whether a starter can leave without the nine going short. */
+function canLeave(team: Team, id: PlayerId): boolean {
+  const starter = team.lineup.some((h) => h.id === id);
+  return !starter || team.bench.length > 0;
+}
+
+/**
+ * Whether an arm can leave without the rotation going empty. A team with no
+ * starting pitcher throws inside the game, and a throw inside a day lost the
+ * rest of the day's games in the whole country (05 §62.6). The last starter
+ * may go only if the pen has a man to step into the rotation.
+ */
+function canLeaveArm(team: Team, id: PlayerId): boolean {
+  const inRotation = team.rotation.some((a) => a.id === id);
+  if (!inRotation) return true;
+  return team.rotation.length > 1 || team.bullpen.some((a) => a.id !== id);
+}
+
+/** The rotation must never be empty: the first man in the pen steps up. */
+function fillRotation(team: Team): void {
+  if (team.rotation.length > 0) return;
+  const up = team.bullpen.shift();
+  if (up) team.rotation.push(up);
 }
 
 function place(team: Team, p: Player): void {
@@ -286,10 +318,13 @@ export function movePlayer(season: SeasonState, id: PlayerId, toTeam: number): b
   const to = season.teams[toTeam];
   if (!found || !to || found.team.index === toTeam) return false;
   const from = found.team.team;
+  if (found.player.type !== 'pitcher' && !canLeave(from, id)) return false;
+  if (found.player.type === 'pitcher' && !canLeaveArm(from, id)) return false;
   const wasStarter = from.lineup.some((h) => h.id === id);
   const spot = (found.player as Hitter).pos;
   releaseFrom(from, id);
   if (wasStarter && found.player.type !== 'pitcher') fillHole(from, spot);
+  fillRotation(from);
   place(to.team, found.player);
   return true;
 }
@@ -299,10 +334,13 @@ export function cutPlayer(season: SeasonState, id: PlayerId): boolean {
   const found = findPlayer(season, id);
   if (!found) return false;
   const from = found.team.team;
+  if (found.player.type !== 'pitcher' && !canLeave(from, id)) return false;
+  if (found.player.type === 'pitcher' && !canLeaveArm(from, id)) return false;
   const wasStarter = from.lineup.some((h) => h.id === id);
   const spot = (found.player as Hitter).pos;
   releaseFrom(from, id);
   if (wasStarter && found.player.type !== 'pitcher') fillHole(from, spot);
+  fillRotation(from);
   return true;
 }
 

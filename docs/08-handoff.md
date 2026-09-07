@@ -6,10 +6,45 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 6, 2026, evening · **Branch:** `main` · **god mode
-shipped** — built, finished and re-shaped as bolts on the `god-mode` branch,
-merged fast-forward on the reporter's *"all good, push it"* (`05` §61, §61.4,
-§61.5), after two rankings per recruit (§60).
+**Last session:** September 7, 2026 · **Branch:** `main` · **the v1.0 release
+audit** — eighteen domain audits, the blocking findings fixed and tested,
+the balance decisions set down for the reporter (`05` §62,
+`docs/15-v1-release-audit.md`).
+
+> **September 7 — the v1.0 release audit.**
+>
+> Eighteen read-only domain audits with executable probes, then every
+> blocking finding verified against the code before anything moved; the
+> whole account is `05` §62 and the verdict, the matrix and what remains is
+> `docs/15-v1-release-audit.md`. Fixed, each with a test in
+> `tests/release-audit.test.ts`: the managed game now pays the season its
+> bookkeeping (starts, legs, arm mileage), fields the covered card, starts
+> each side's own arm in a bracket game, counts in the conference race
+> after a resume, stamps June for BIG STAGE, and cannot be started twice;
+> a two-out bunt is an at-bat, a reliever starts the order fresh, the
+> forced runner moves on a ground out, PITCH FOR GROUND raises the double
+> play; the league re-fitted at normalizer 1.045 on the eight-seed sweep
+> and the goldens re-recorded; the transfer pool and the approaches ledger
+> ride the save, a career has a file of its own, the registries follow the
+> load, a season settles once, a sacked coach always has a chair, the
+> front door reports a blocked store; June carries every survivor, rivals'
+> starts clear and mood settles, a promised position is kept; RPI is
+> frozen for June, the regional card runs the real selection, the schedule
+> balances series and midweeks apart; the overlay is a dialog, hidden
+> sheets are inert, the field clamps its frame delta and has a real WebGL
+> boundary and its 2D setting back, AUTO hands the dugout back, the dark
+> theme's commands sit on `--command`, the metals have a dark cut; the
+> test aids, the free UNLOCK and the source maps are out of the store build,
+> the APK version is pinned. Measured and left for the reporter: batting
+> orders nobody deals, the .520 batting leader, the unseeded board, the
+> pitch that dodges the ramp, the sequential June, the roster cap
+> (`05` §62.7).
+
+
+> **September 6, evening — god mode shipped.** Built, finished and re-shaped
+> as bolts on the `god-mode` branch, merged fast-forward on the reporter's
+> *"all good, push it"* (`05` §61, §61.4, §61.5), after two rankings per
+> recruit (§60).
 
 > **September 6, later still — god mode is not a place.**
 >
@@ -803,7 +838,7 @@ exists. Stage 19 removes the three together.
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,213 tests, 64 files)
+npm run check      # typecheck + the whole suite (1,232 tests, 66 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing

@@ -32,6 +32,8 @@ export function Start(
   { onNew: () => void; onLoad: () => void; onSettings: () => void },
 ) {
   const saves = useDynasty((s) => s.saves);
+  const savesState = useDynasty((s) => s.savesState);
+  const savesError = useDynasty((s) => s.savesError);
   const refreshSaves = useDynasty((s) => s.refreshSaves);
   const loadSlot = useDynasty((s) => s.loadSlot);
   const leaveStart = useDynasty((s) => s.leaveStart);
@@ -61,6 +63,21 @@ export function Start(
       </header>
 
       <div className="start-doors">
+        {/*
+          A save store that will not open must say so here, on the one screen
+          whose empty state reads as "you have no careers" — and beside the
+          door that starts a new one. A blocked open (another tab holding the
+          database, a private window) is recoverable; hiding CONTINUE and the
+          load door without a word made it look like the device was empty
+          (05 §62.3).
+        */}
+        {savesState === 'error' && (
+          <div className="start-storage-error" role="alert">
+            <strong>Your careers could not be read.</strong>
+            <small>{savesError ?? 'The device refused the save store.'} Nothing is lost; try again before starting anything new.</small>
+            <button type="button" className="tap" onClick={() => void refreshSaves()}>TRY AGAIN</button>
+          </div>
+        )}
         {latest && (
           <button
             className="start-continue tap"
@@ -80,7 +97,7 @@ export function Start(
         <button
           className="start-door tap"
           type="button"
-          disabled={busy}
+          disabled={busy || savesState === 'error'}
           onClick={() => { leaveStart(); onNew(); }}
         >
           <strong>New career</strong>

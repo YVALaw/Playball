@@ -42,7 +42,11 @@ export function tacticMods(tactic?: Tactic): TacticMods | undefined {
       // Shorten up: give away power to put it in play and get the run home.
       return { events: { homerun: 0.80, single: 1.04, walk: 0.90 }, sacFly: 0.58 };
     case 'groundball':
-      return { events: { homerun: 0.78, walk: 1.10 }, groundBall: 1.45, doublePlay: 0.20 };
+      // `doublePlay` is the rate the out resolver uses in place of the
+      // default 0.36, not a multiplier: 0.20 here cut the double play the
+      // call promises by a third. 0.55 with the extra grounders lands near
+      // the docstring's "doubles the risk" (05 §62.2).
+      return { events: { homerun: 0.78, walk: 1.10 }, groundBall: 1.45, doublePlay: 0.55 };
     case 'around':
       // Nothing over the plate. He may take his base, and that is fine.
       return { events: { walk: 2.0, homerun: 0.50, double: 0.78, single: 0.82 } };
@@ -2137,6 +2141,25 @@ export function resolveOut(
     bases[2] = bases[1]; bases[1] = null;
     return { outs: 1, text: 'grounds out to the right side, runner moves up.' };
   }
+  /*
+    The out taken at first with a man on: everybody forced ahead of the
+    batter moves up a base where the base ahead is open. The double play and
+    the fielder's choice rolled above and missed, and the man on third had
+    his own roll; what was left kept the runner on first standing on first
+    after the batter was retired — on 29% of ground-ball outs with a man on,
+    a runner the defence had no play on and the game never moved (05 §62.2).
+    With two out the third out ends it and nothing moves.
+  */
+  if (kind === 'ground' && bases[0] && outs < 2) {
+    if (bases[1] && !bases[2]) {
+      note?.(`   ${bases[1].name} to third.`);
+      bases[2] = bases[1]; bases[1] = null;
+    }
+    if (!bases[1]) {
+      note?.(`   ${bases[0].name} to second.`);
+      bases[1] = bases[0]; bases[0] = null;
+    }
+  }
   // "grounds out to short" rather than "grounds out". The spray model already
   // decided who fielded it, so the log may as well say so.
   const base = OUT_TEXT[kind];
@@ -2208,6 +2231,17 @@ function sacrifice(
     blame.set(batter, pitcher);
     bLine.ab++;
     return { outs: 1, text: 'bunts the lead runner into a force out.', scored, reached: true };
+  }
+
+  /*
+    With two out there is no sacrifice to make. The batter retired at first is
+    the third out, so nobody crosses and no runner moves — and the scorer
+    charges the at-bat. This branch ran at every out count and scored the man
+    from third on the play that ended the inning, 88% of the time (05 §62.2).
+  */
+  if (outs >= 2) {
+    bLine.ab++;
+    return { outs: 1, text: 'bunts into the third out.', scored };
   }
 
   // The routine sacrifice: everyone up one, batter retired, no time at bat.
@@ -2543,8 +2577,12 @@ function maybeChangePitcher(fld: TeamState, bat: TeamState, bases: Bases, say: S
   fld.coverPitcher(next);
   fld.pitcherPitches = 0;
   // A new man is a new outing in every sense: his own budget, his own
-  // confidence. Team mound-visit usage does not reset with a new pitcher.
+  // confidence, and the order seen fresh — the times-through count was keyed
+  // on the batter alone, so a reliever's first hitter was hit as if it were
+  // the starter's fourth pass (05 §62.2). Team mound-visit usage does not
+  // reset with a new pitcher.
   fld.pitcherConfidence = CONFIDENCE.relief;
+  fld.timesThrough.clear();
   say(`   Pitching change: ${next.name} (${next.throws}HP) enters.`);
 }
 

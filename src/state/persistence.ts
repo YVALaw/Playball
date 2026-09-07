@@ -165,6 +165,15 @@ export interface SaveFile {
   depth?: unknown;
   /** A sandbox career (05 §61). Absent is off. */
   godMode?: boolean;
+  /**
+   * The transfer pool mid-offseason, as ids. It lived only in the store, so a
+   * save taken on the PORTAL step came back with no pool: a blank screen with
+   * no way forward, and every transfer in the country silently cancelled on
+   * the way out (05 §62.3).
+   */
+  portal?: unknown;
+  /** The three approaches a season allows, and the interest they bought. */
+  approaches?: unknown;
   /** A sandbox's league renames, by conference id (05 §61.4). */
   leagueNames?: Record<string, string>;
 }
@@ -379,6 +388,15 @@ export interface SaveExtras {
   depth?: unknown;
   /** A sandbox career (05 §61). Absent is off. */
   godMode?: boolean;
+  /**
+   * The transfer pool mid-offseason, as ids. It lived only in the store, so a
+   * save taken on the PORTAL step came back with no pool: a blank screen with
+   * no way forward, and every transfer in the country silently cancelled on
+   * the way out (05 §62.3).
+   */
+  portal?: unknown;
+  /** The three approaches a season allows, and the interest they bought. */
+  approaches?: unknown;
   /** A sandbox's league renames, by conference id (05 §61.4). */
   leagueNames?: Record<string, string>;
 }
@@ -477,6 +495,8 @@ export function buildSaveFile(
     // changed. Two keys is a cheap way to never have that conversation.
     ...(extras.depth ? { depth: extras.depth } : {}),
     ...(extras.godMode ? { godMode: true } : {}),
+    ...(extras.portal ? { portal: extras.portal } : {}),
+    ...(extras.approaches ? { approaches: extras.approaches } : {}),
     ...(extras.leagueNames && Object.keys(extras.leagueNames).length > 0 ? { leagueNames: extras.leagueNames } : {}),
   };
 }
@@ -543,6 +563,10 @@ export interface LoadedDynasty {
   godMode: boolean;
   /** League renames, empty on every save from before. */
   leagueNames: unknown;
+  /** The transfer pool, if the save was taken on that step. */
+  portal: unknown;
+  /** The season's approaches, if any were made. */
+  approaches: unknown;
 }
 
 /**
@@ -613,6 +637,8 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     depth: file.depth ?? null,
     godMode: file.godMode === true,
     leagueNames: file.leagueNames ?? null,
+    portal: file.portal ?? null,
+    approaches: file.approaches ?? null,
   };
 }
 

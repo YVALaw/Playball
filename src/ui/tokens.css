@@ -190,6 +190,12 @@
   --navy: var(--accent-dk, #4da97a);
   --panel: var(--accent-soft-dk, #26312a);
   --command: var(--accent-raised-dk, #2f7a52);
+  /* The trophy metals, cut light enough to be ink on the dark surfaces they
+     are worn as — the light-theme values were built as grounds under cream
+     and read at 1.2-3.2:1 as text here (05 §62.6). */
+  --bronze: #d29a6a;
+  --silver: #bcc7d1;
+  --gold:   #e3bb4f;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -255,6 +261,12 @@
     --panel: var(--accent-soft-dk, #26312a);
     --command: var(--accent-raised-dk, #2f7a52);
     --raised: var(--accent-raised-dk, #2f7a52);
+    /* The trophy metals, cut light enough to be ink on the dark surfaces they
+       are worn as — the light-theme values were built as grounds under cream
+       and read at 1.2-3.2:1 as text here (05 §62.6). */
+    --bronze: #d29a6a;
+    --silver: #bcc7d1;
+    --gold:   #e3bb4f;
   }
 }
 

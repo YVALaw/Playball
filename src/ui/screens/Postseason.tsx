@@ -24,7 +24,7 @@ import { IdCardIcon } from '@radix-ui/react-icons';
 import { ModuleIntro } from '../components/Kit.js';
 import { Lineup } from './Lineup.js';
 import { Crest } from '../Crest.js';
-import { era, injuryClock } from '../../engine/season.js';
+import { era, injuryClock, startableSlot } from '../../engine/season.js';
 import type { SeasonState, BoxScore } from '../../engine/season.js';
 import type { Hitter } from '../../engine/types.js';
 import { available } from '../../engine/depthChart.js';
@@ -1455,17 +1455,19 @@ function PregameShow(
     );
   }
 
-  // The probable arms, the way the engine will pick them: appearances mod 3.
+  // The probable arms, the way the engine will pick them: each side's own
+  // appearances mod 3, walked forward past an arm that cannot take the ball.
   const used = (side: number): number =>
     ((myBracket!.state as { appearances?: Map<number, number> }).appearances?.get(side) ?? 0) % 3;
   const armFor = (side: number): string => {
     const rec = season.teams[side];
-    const arm = rec?.team.rotation[used(side)] ?? rec?.team.rotation[0];
+    const at = rec ? startableSlot(season, rec.team, used(side), season.dayIndex, injuryClock(season)) : 0;
+    const arm = rec?.team.rotation[at] ?? rec?.team.rotation[0];
     if (!arm) return '—';
     const line = season.pitching.get(arm.id);
     const e = line && line.outs >= 9 ? ` · ${era(line).toFixed(2)}` : '';
     const parts = arm.name.split(' ');
-    const short = parts.length > 1 ? `${parts[0]![0]}. ${parts.slice(1).join(' ')}` : arm.name;
+    const short = parts.length > 1 ? `${parts[0]?.[0] ?? ''}. ${parts.slice(1).join(' ')}` : arm.name;
     return `${short}${e}`;
   };
 

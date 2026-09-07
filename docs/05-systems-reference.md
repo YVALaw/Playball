@@ -8027,6 +8027,279 @@ keeps its OPEN, which opens the Program tab's doors. The context bar's
 "more" hint (a fade and a chevron when sections sit past its right edge)
 stays; it was true before god mode and is true after.
 
+## 62. The v1.0 release audit — **September 7 2026**
+
+The last gate before the build is called 1.0: every screen, every system,
+the engine, the saves, the docs, read against the standard *"can a player
+start a career, play through many seasons, touch every system, manage and
+simulate games, survive the odd corner, save and reload, understand the
+interface, and feel that this is a cohesive, stable 1.0."* Run as eighteen
+read-only domain audits with executable probes (rules, statistics, the
+managed game against the simulated one, the schedule, the postseason, the
+roster lifecycle, the AI, recruiting, draft and portal, two screen sweeps,
+theme and accessibility, saves, presentation, dead code, the docs, the
+strategy wiring, error handling), each finding filed with a file, a line
+and evidence, then the blocking ones verified against the code a second
+time before anything was changed. What the project's own gates said first:
+the production build clean, the thirty-season soak clean (the save grows
+12 KB a year), the league within 3% of the D1 targets, parity and
+pitch-level checks in range, the full suite green. What the audit found is
+below, by cause rather than by symptom, and every fix carries a test in
+`tests/release-audit.test.ts`.
+
+### 62.1 The managed game against the simulated one
+
+A game the coach sat in was recorded through `recordResult` alone and
+never through `playGame`'s bookkeeping, so it cost its men nothing:
+**`starts`, leg weariness and arm mileage stayed at zero all year** for
+the coached program. Measured over five seasons: the mood settle read
+every regular as buried (−10 against +7 for the same roster simulated),
+the portal door opened for seven times as many of the coach's men, and the
+strain multiplier pinned at 1.0 gave the coached roster a third fewer
+lineup injuries than the rest of the country. Two helpers now live in
+`season.ts` and both paths call them: `dayInTheLegs` (played, started,
+rested) and `seasonInTheArm` (`threw`, with the pitching coach's care).
+
+The same class of gap, closed the same way:
+
+- **The card.** Neither dugout was run through `coverFor`, so injured and
+  academically ineligible men took the field in a managed game — 17.8% of
+  team-games in the country carry at least one unavailable man in
+  `team.lineup`. Both managed entry points and the resume now pass the
+  covered card, computed without a draw so the journal anchor holds.
+- **The arm.** Both dugouts were handed the *host's* rotation slot in a
+  bracket game; the bracket sim keeps each side's own count on purpose.
+  Every eight-team championship put the losers-bracket survivor on its ace
+  instead of its second arm. Each side's slot is its own now, walked
+  forward through `startableSlot` (exported) exactly as the day sim does,
+  and the probable-pitcher cards on Today and the postseason read the same
+  function, so the card and the game name the same man.
+- **The race.** A resumed game rebuilt its `liveMeta` with `conference:
+  false` because the journal never recorded the flag; 73% of games are
+  conference games, so a game the app died in vanished from both clubs'
+  conference records — the thing the conference tournament seeds from. The
+  journal carries `conference` now, with an older journal read as
+  regular-season.
+- **June.** `createLiveGame` never stamped `postseason`, so the BIG STAGE
+  badge — built for exactly this — was inert in the one bracket game a
+  coach ever manages. Stamped as `simGame` stamps it.
+- **Two taps.** PLAY BALL's guard sat before its one await, so two
+  overlapping taps built two live games and the second re-anchored the
+  journal on a generator the first had already moved, silently discarding
+  the game in progress. `liveStarting` is set before the await and cleared
+  with the game; the buttons disable on it.
+- **The park.** With the pen delegated (every casual career), `advance()`
+  played the opponent's whole half into one `lastPlay`, and the field drew
+  ten contacts and seven runs as one play. The stream is cleared per step.
+
+### 62.2 The rules
+
+- **A bunt with two out** ran the routine-sacrifice branch, so the man on
+  third scored on the play that made the third out — 88% of the time in a
+  2,000-call probe — and booked a sacrifice with no at-bat. With two out it
+  is an ordinary at-bat: the batter is retired at first, nobody moves,
+  nobody scores, the at-bat is charged.
+- **Times through the order** was keyed on the batter alone and never
+  reset, so a reliever's first hitter was hit as if it were the starter's
+  fourth pass: relievers saw a mean count of 3.5 against the starters' 1.8,
+  a 9% offensive lift against relief pitching that the spec never asked for.
+  A new arm clears the map, in both engines.
+- **The forced runner** stayed on first on 29% of ground-ball outs with a
+  man on (the double play and fielder's choice rolled and missed, and the
+  fall-through moved nobody): 1.1 plays a game where the log said "grounds
+  out to short" and the man the defence had no play on never left the bag.
+  The chain moves whole where the base ahead is open; with two out the
+  third out ends it.
+- **PITCH FOR GROUND** promised to double the double-play risk and cut it
+  by a third: its figure is an absolute rate, not a multiplier, and 0.20 sat
+  under the 0.36 default. 0.55 now, which with the extra grounders lands
+  near the docstring.
+- **The league, re-fitted.** Clearing the times-through map took the
+  reliever lift out of the environment the divisor had been fitted to, and
+  the league fell 4% cold on every column at once. `CONTEXT.normalizer` is
+  1.045 (was 1.070), re-fitted on the eight-seed sweep rather than on one
+  seed: runs +0.9%, average on the target, on-base −1.4%, slugging +1.0%,
+  home runs +4%, walks −5.5%. The goldens were re-recorded on the recorder's
+  own sweep check.
+
+### 62.3 The save system and the career's integrity
+
+- **The portal step.** The transfer pool lived only in the store. A save
+  taken on the PORTAL step — the offseason autosave writes on entry to
+  every step — came back with no pool: a blank screen with no way forward,
+  and on the way out nobody released and nobody signed, on all ninety-six
+  rosters. The pool rides the file as ids and is re-linked to the loaded
+  season's own men.
+- **One file per career.** Every career wrote the one autosave slot.
+  Creating a second career silently replaced the first before a day had been
+  played; loading a named save and playing a day overwrote whatever career
+  the autosave held. `start` files a career under a slot of its own,
+  `saveNow` writes the slot the career was opened from (`loadedSlot`), and
+  the autosave slot is only ever what a career from before this was already
+  in. The journal is keyed the same way.
+- **What a save carried and a load ignored.** The league renames were on
+  disk and never applied on load, and a rename from one career leaked into
+  the next; the sandbox's open star gate leaked into an ordinary career
+  loaded after it, and was shut in a sandbox reopened cold. `loadSlot` syncs
+  both registries from the file; `newDynasty` clears them. The approaches
+  ledger (three a season, and the interest they buy) was never saved and
+  reset on every reload.
+- **A season graded twice.** `settleSeason` was guarded only by the review
+  card the player dismisses, and the offseason rail lets him walk back to
+  AWARDS; the second pass doubled his career record and wrote a second
+  history row. Guarded on the history itself.
+- **The empty market.** A sacked coach at the world's prestige floor
+  cleared no chair, the job screen drew nothing, and the career dead-ended
+  with no June to reach. The opening desk's rule — never none — applies to
+  the sacking market too: the single cheapest chair in the country calls.
+- **The front door.** A blocked save store (another tab holding the
+  database, a private window) hid CONTINUE and the load door and read as an
+  empty device, beside the button that starts a new career. The Start
+  screen shows the error with a retry, and holds the new-career door while
+  the store is refusing.
+- **Eight men.** God mode's CUT and MOVE filled a starter's hole only from a
+  bench man at his own position; 63 of 96 programs carry no bench catcher,
+  and the hole stood until the next game threw on an empty lineup slot with
+  nothing on any screen able to repair it. Any bench man now adopts the
+  spot, and with nobody at all the edit refuses and says why.
+- **Leftovers.** The three testing aids (SIM THE SEASON, the guaranteed
+  Pascagoula Tech offer, its five 99s) are gated behind `TEST_SHORTCUTS`
+  (`state/testBuild.ts`, a Vite define): the dev server and `npm run
+  apk:test` carry them, `npm run build` and `npm run apk` drop them as
+  dead code, Vitest never sees them. The free UNLOCK button for the paid
+  god-mode entitlement is behind the same flag. Source maps were
+  unconditional and rode into the APK at 3.3 MB — a third of the package,
+  the whole annotated source — and are now dev-only. The Android
+  `versionName`/`versionCode` were regenerated as 1.0/1 on every clean
+  build; `scripts/apk.cjs` pins them from `package.json`. The "Press
+  conferences" depth row, live for a feature removed September 2, is gone.
+
+### 62.4 The roster lifecycle
+
+- **June deleted people.** `refill` rebuilt every roster to the fixed
+  shape and cut the bench to four and the pen to six; every survivor past
+  that — on the roster in May, not drafted, not graduated, not in the
+  portal — ceased to exist, forty to seventy a June once classes were
+  signed, the coached program's men included, with no notice anywhere. A
+  roster carries every survivor now. Rosters already ran to 31 with signed
+  classes appended; they settle near thirty, which is a college roster.
+  The docs' "fixed twenty-three" is a shape, not a cap, and §3 is corrected
+  below.
+- **The other ninety-five.** `starts` was cleared and mood settled for the
+  coached program only, so a third of the country carried more starts than
+  the season had games, the portal's "buried" door was pinned shut, and no
+  rival could ever break a promise — flight risk was zero for 95 programs.
+  Every program settles and clears at the year roll.
+- **A promise the engine broke.** `refill` placed a signed hitter at
+  whatever hole was next and rewrote his position, then the mood settle
+  read a STAY AT YOUR POSITION promise as broken before the coach had made a
+  decision (five of forty-six such men in a probe, −13 mood and 9 points
+  each). A promised man waits for his own spot or the bench.
+
+### 62.5 The postseason and the schedule
+
+- **The table moved while June was played.** `rpi()` read the live record
+  and the live opponent list, both of which every bracket game mutates, so
+  the protected four had changed by the end of the conference tournaments
+  in 75% of seasons and the at-large table in all of them. RPI now reads
+  the frozen regular-season record and the regular-season opponents, the
+  boundary `headToHead` already keeps.
+- **Told out, then seeded.** A regional loser's card was decided by
+  protection alone, but sixteen of twenty seats fill at large: one regional
+  loser in seven was told "the season is over" and then appeared in the
+  national field. The card runs the same selection the bracket will.
+- **The best program's home edge.** `assignHosts` equalised one weighted
+  total (a series three, a midweek one), so three home midweeks bought a
+  home conference series, and the greedy tiebreak handed the surplus to the
+  first-listed school of every league — its best, by the data file's order:
+  +11 to +27 net home conference series over eleven rotations, three points
+  of conference winning percentage, forever. Series and midweeks balance
+  separately now and the tie alternates with the rotation.
+
+### 62.6 The interface
+
+- **Dialogs.** The full-frame overlay (every player card, college profile
+  and god-mode sheet) carried no dialog role, no Escape, no focus trap and
+  no focus restore; the keyboard walked out into the screen underneath.
+  `Overlay` carries `useDialogFocus` like every sheet. The closed action
+  sheets on the player and program profiles kept six to eleven buttons
+  focusable inside `aria-hidden` (opacity alone), and Enter fired them;
+  they are `visibility: hidden` while closed.
+- **Dark theme.** Every primary command and selected chip painted
+  near-white on `--clay`, which in the dark theme is the cut tuned to carry
+  text: 1.7–3.2:1 across all ninety-six palettes. The filled grounds sit on
+  `--command` (the raised cut built for it; the same colour in the light
+  theme), and `tests/contrast.test.ts` pins cream on it. The trophy metals
+  had no dark cut and were worn as ink at 1.2–3.2:1; they have one.
+- **The field.** With the frameloop on demand, R3F read its clock only
+  when a frame ran, so the first frame after a manager thought for twelve
+  seconds carried a twelve-second delta and every animation resolved in one
+  step: no flight, no chase, a runner teleported to the bag. Every
+  `useFrame` clamps its delta to a thirtieth. The WebGL fallback could
+  never fire — `onError` is not a Canvas prop and was spread onto a div — so
+  a device without WebGL rethrew out of the screen; a real boundary catches
+  it. The 2D field the settings copy advertised has its control back
+  (Display → The field), and picking it never fetches three.js.
+- **AUTO.** The handover the docs promised never fired: `worthManaging`
+  was dead code and AUTO played to the last out. It hands the dugout back
+  the moment something worth managing arrives, never on the situation it
+  was pressed in.
+- **The poll.** The desk chip printed a rank off `rpiOrder` the moment a
+  team had a game, so a two-star program was told it was first in the
+  country after one win while the rankings screen said the poll had not
+  started. `nationalOrder` in the engine is the one table both read; the
+  chip says PROJ until the country has a fortnight behind it.
+
+### 62.7 Measured, documented, and left for a decision
+
+Balance changes are not audit fixes. Each of these is real, measured, and
+recorded here with the number, for the reporter to decide:
+
+- **Batting order.** No team in the world ever gets one: `makeTeam` builds
+  every lineup in positional order (C, 1B, 2B, 3B, SS, LF, CF, RF, DH) and
+  nothing reorders an AI nine; a Full-career coach starts the same way until
+  he presses AUTO. Measured over 4,000 games, a dealt order is worth 0.06
+  runs a game and one point of winning percentage — about half a win a
+  season — but it is visible in every box score in the country: the catcher
+  leads off for ninety-five programs, forever. Dealing every AI card at
+  creation and after every roll is a one-line change that moves every seed
+  and the goldens.
+- **The batting-average tail.** The mean is on the target; the top is not.
+  The national leader hits .497–.523 in every season measured (the D1
+  record is .467, modern leaders sit .400–.440), the fifth-best .443–.468,
+  and they are everyday regulars with two hundred plate appearances, not
+  part-timers past a loose bar. Home runs, ERA, strikeouts, wins and steals
+  are all realistic. The spread of contact at the top of the scale, or the
+  model's sensitivity to it, is the lever; it is the model, not the
+  qualification.
+- **The user's board is never seeded.** `seedRivalInterest` skips the
+  coached program by design ("the player arrives at a board that is already
+  contested"); measured, a program run by the AI's own planner but unseeded
+  signs 1.9 a year and finishes ninety-sixth of ninety-six every year, seeded
+  8.0 and seventeenth. A fully engaged coach fills about half his class
+  while the average computer program fills 6.75 of 8. The scales (0.5/0.25)
+  or the exemption are the lever.
+- **The pitch bypasses the anti-spread ramp.** `actionInterest` has no
+  ramp, so a three-point pitch with no effort behind it pays full price and
+  minimum-bid spreading is still the dominant strategy the ramp was added
+  to kill: a board twenty wide at three points each signs 6.3 a year against
+  3.9 for eight targets pushed properly.
+- **June is sequential.** The eight conference tournaments and the sixteen
+  regionals run end to end on one clock: June spans 111 days against a
+  78-day regular season, the first cup played carries nine times the
+  injuries of the last, and the coached program always plays its own
+  tournament last, fully healed. Interleaving the stage a round a night is
+  the design; it changes the postseason clock the soak and the bracket tests
+  pin.
+- **The roster cap.** With survivors carried, rosters settle near thirty.
+  §3's "fixed twenty-three" and the keep-bar reasoning that rests on it
+  ("a man talked into staying is a recruit not signed") describe a shape the
+  code has not enforced since classes were appended; whether to cap at
+  signing day is a design call.
+
+Everything else the audit filed is P2 or lower and listed in
+`docs/15-v1-release-audit.md` with the verdict.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code
@@ -8035,7 +8308,7 @@ does. None of them changes behaviour; all of them will mislead the next reader.
 | Where | The problem |
 |---|---|
 | ~~`engine/postseason.ts`, `FIELD_SIZE`~~ | Deleted, along with the `size` parameter on `runPostseason` that was its only use and that the function body never read. `ui/postseasonGraph.ts` carried a private copy of the same constant, also unread, so the two could not have been found by deleting either one; both are gone. |
-| `ui/Avatar.tsx`, `ui/screens/Player.tsx`, `ui/screens/Standings.tsx`, `ui/screens/TeamCard.tsx` | Comments still say "sixty four programs" / "the other sixty three". The world is 96. The engine, the state layer and the data file have been swept; these four were outside that pass, and all of it is comments. `Program.tsx`'s was screen copy on the HALL tab and went with B12; `Player.tsx`'s *career* comment went with B13, but the one above `gameLogFor` — "two Tyler Johnsons in a sixty four school world" — was not in that pass and is still there. The one occurrence that reached the screen, the Omaha note in `SeasonReview.tsx`, was fixed earlier. `CoachPortrait.tsx` and `Draft.tsx` also say "sixty-four", about a coordinate box and a draft round respectively, and are correct. |
+| ~~`ui/Avatar.tsx`, `ui/screens/Player.tsx`, `ui/screens/Standings.tsx`, `ui/screens/TeamCard.tsx`~~ — closed September 7 2026: no "sixty four" survives in src/ | Comments still said "sixty four programs" / "the other sixty three". The world is 96. The engine, the state layer and the data file have been swept; these four were outside that pass, and all of it is comments. `Program.tsx`'s was screen copy on the HALL tab and went with B12; `Player.tsx`'s *career* comment went with B13, but the one above `gameLogFor` — "two Tyler Johnsons in a sixty four school world" — was not in that pass and is still there. The one occurrence that reached the screen, the Omaha note in `SeasonReview.tsx`, was fixed earlier. `CoachPortrait.tsx` and `Draft.tsx` also say "sixty-four", about a coordinate box and a draft round respectively, and are correct. |
 | ~~`engine/recruiting.ts`, `RECRUITING_BUDGET` docstring~~ | Fixed. It opened "Thirty, spread across as many recruits as you like" over a constant of 40. |
 | `engine/scouting.ts`, `PotentialGrade` | `'?'` is documented as what a screen prints where a ceiling is none of your business. No screen uses it; `ui/screens/Player.tsx` prints an em dash instead. |
 | `engine/recruiting.ts`, `BOARD_SLOTS` | Marked `@deprecated`, still used by `aiTargets` to size a board. `ACTIONS_PER_WEEK` beside it is now genuinely unused — `aiTargets` reads `weeklyBudget` (§14.7) — and is kept only as the record of what the flat week was. |
@@ -8072,7 +8345,7 @@ Things this document could not settle from the code, and must not guess at.
    spent in June. Fixing it was the precondition for letting the other ninety
    five keep drafted players at all: a budget nothing could reduce would have
    made that money free. §14.7.
-6. **How the offseason `coach` phase interacts with unspent points across years.**
+6. ~~**How the offseason `coach` phase interacts with unspent points across years.**~~ Answered September 3 — the copy was loose and was corrected; points carry forward fully (`docs/11`, tier 1).
    The screen says points "do not carry over well"; the data carries them over
    fully. Whether the copy is loose or the intended decay is unbuilt is not
    determinable from the code.

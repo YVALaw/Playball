@@ -20,7 +20,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "goldens": "tsx tests/record-goldens.ts",
-    "apk": "node scripts/apk.cjs"
+    "apk": "node scripts/apk.cjs",
+    "apk:test": "node scripts/apk.cjs --test"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.1",

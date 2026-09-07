@@ -385,10 +385,14 @@ function refill(
 
   const freshHitter = (pos: Position): Hitter => {
     // Somebody you actually recruited who plays here, else the best bat signed,
-    // else a walk-on.
+    // else a walk-on. A man promised his position is never the "best bat
+    // signed" for somebody else's hole: the refill moved him on the day he
+    // arrived and the promise read as broken before the coach had made a
+    // single decision (05 §62.4). He waits for his own spot or the bench.
     const exact = signedHitters.findIndex((h) => h.pos === pos);
     if (exact >= 0) return counted(signedHitters.splice(exact, 1)[0] as Hitter);
-    const any = signedHitters.shift();
+    const free = signedHitters.findIndex((h) => h.recruitPromise?.kind !== 'keepPosition');
+    const any = free >= 0 ? signedHitters.splice(free, 1)[0] : undefined;
     if (any) { any.pos = pos; return counted(any); }
     const p = (spare.get(pos)?.shift() as Hitter | undefined)
       ?? (walkOnHitter(rng, team.quality, pos));
@@ -421,7 +425,9 @@ function refill(
         — only a signed bat consumed for the slot counts.
       */
       const returning = hitters.shift();
-      const best = returning ?? signedHitters.shift();
+      // A signed bat takes the slot only if his position was not promised him.
+      const freeIndex = signedHitters.findIndex((h) => h.recruitPromise?.kind !== 'keepPosition');
+      const best = returning ?? (freeIndex >= 0 ? signedHitters.splice(freeIndex, 1)[0] : undefined);
       if (best) {
         if (!returning) counted(best);
         adoptSpot(best, 'DH');
@@ -438,7 +444,15 @@ function refill(
     else lineup.push(freshHitter(spot));
   }
 
-  const bench: Hitter[] = hitters.splice(0, BENCH_SIZE);
+  /*
+    Every returning bat past the nine stays. The bench was cut to four here
+    and the rest of the survivors — men who were on the roster in May, not
+    drafted, not graduated, not in the portal — silently ceased to exist,
+    forty to seventy of them a June once the classes were signed, the coached
+    program's included (05 §62.4). A roster is allowed to be deep; it is not
+    allowed to lose a man to nothing.
+  */
+  const bench: Hitter[] = hitters.splice(0, hitters.length);
   while (bench.length < BENCH_SIZE) {
     bench.push(freshHitter(LINEUP_SPOTS[bench.length % LINEUP_SPOTS.length] as Position));
   }
@@ -451,7 +465,7 @@ function refill(
 
   // Starters who did not make the rotation slide to the bullpen, exactly as they
   // would in a real program.
-  const bullpen: Arm[] = [...relievers, ...starters].slice(0, BULLPEN_SIZE);
+  const bullpen: Arm[] = [...relievers, ...starters];
   while (bullpen.length < BULLPEN_SIZE) bullpen.push(freshArm('RP'));
 
   // A signed recruit who does not fit anywhere simply does not arrive. He was

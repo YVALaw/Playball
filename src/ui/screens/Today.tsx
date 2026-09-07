@@ -15,13 +15,14 @@
 // coach actually looks up at that moment.
 
 import { leagueLabel } from '../../engine/leagueNames.js';
+import { TEST_SHORTCUTS } from '../../state/testBuild.js';
 import { useRef, useState } from 'react';
 import { PlayIcon, SewingPinIcon, StopwatchIcon, StarFilledIcon,
 } from '@radix-ui/react-icons';
 import { FINISH_LABEL, conferenceField } from '../../engine/postseason.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import {
-  seasonComplete, rpiOrder, seasonLength, era,
+  seasonComplete, nationalRank, pollIsProjected, seasonLength, era, startableSlot, injuryClock, currentDay,
   type SeasonState, type TeamRecord, type GameSummary,
 } from '../../engine/season.js';
 import { FirstVisit } from '../Tutorial.js';
@@ -78,6 +79,7 @@ export function Today() {
   const busy = useDynasty((s) => s.busy);
   const progress = useDynasty((s) => s.progress);
   const live = useDynasty((s) => s.live);
+  const liveStarting = useDynasty((s) => s.liveStarting);
   const pendingGame = useDynasty((s) => s.pendingGame);
   const resumeGame = useDynasty((s) => s.resumeGame);
   const rivalry = useDynasty((s) => s.rivalry);
@@ -131,14 +133,12 @@ export function Today() {
   const done = seasonComplete(season);
   const day = season.schedule[season.dayIndex];
 
-  // Where the program sits nationally. Recomputed rather than cached — 96 teams
-  // is cheap and a stale rank on the hub screen is worse than the work.
-  // RPI needs games. Before any are played every team is 0-0, so the table is
-  // ordered by the tiebreak backstop alone — showing "#1" off that would be
-  // inventing a standing.
-  const ranks = new Map<number, number>();
-  if (team.gp > 0) rpiOrder(season).forEach((r, i) => ranks.set(r.team.index, i + 1));
-  const rank = ranks.get(team.index) ?? 0;
+  // Where the program sits nationally, from the same table the rankings screen
+  // draws (`nationalOrder`): a projection until the country has a fortnight of
+  // results, RPI after that. Read directly rather than cached — 96 teams is
+  // cheap and a stale rank on the hub screen is worse than the work.
+  const rank = nationalRank(season, team.index);
+  const projected = pollIsProjected(season);
 
   const todayGame = day?.games.find((g) => g.home === team.index || g.away === team.index);
   const opponent = todayGame
@@ -152,11 +152,16 @@ export function Today() {
   const prepRead = opponent && activePlaybook ? teamReads(opponent.team)[0] : undefined;
 
   // Tonight's probable arms, exactly the way the engine will pick them: the
-  // scheduled rotation slot on both sides.
+  // scheduled rotation slot on both sides, walked forward past an arm on
+  // short rest or on the shelf — the same `startableSlot` the game uses.
   const slot = todayGame?.slot ?? 0;
-  const ourArm = team.team.rotation[slot] ?? team.team.rotation[0];
+  const clock = injuryClock(season);
+  const today = currentDay(season);
+  const ourArm = team.team.rotation[startableSlot(season, team.team, slot, today, clock)]
+    ?? team.team.rotation[0];
   const theirArm = opponent
-    ? opponent.team.rotation[slot] ?? opponent.team.rotation[0]
+    ? opponent.team.rotation[startableSlot(season, opponent.team, slot, today, clock)]
+      ?? opponent.team.rotation[0]
     : null;
   /*
     Probable starters get their own row now. The old half-row had to fit a
@@ -228,7 +233,7 @@ export function Today() {
           */}
           <div className="weather-block">
             <strong>{rank ? `#${rank}` : '—'}</strong>
-            <span>RPI<br />{leagueLabel(team.conference)}</span>
+            <span>{projected ? 'PROJ' : 'RPI'}<br />{leagueLabel(team.conference)}</span>
           </div>
         </section>
 
@@ -365,7 +370,7 @@ export function Today() {
               </button>
               <button
                 type="button"
-                disabled={busy || thinking !== null || (held && !live) || pendingGame !== null}
+                disabled={busy || liveStarting || thinking !== null || (held && !live) || pendingGame !== null}
                 onClick={() => void startManagedGame()}
               ><PlayIcon /> {live ? 'Back to the game' : 'Play ball'}</button>
             </div>
@@ -421,10 +426,11 @@ export function Today() {
 
         {/*
           TESTING ONLY. A full regular season in one press so UI/offseason
-          work can be inspected without playing fifty-plus dates first.
-          Remove together with the Pascagoula Tech test roster before release.
+          work can be inspected without playing fifty-plus dates first. Only
+          in a build that carries the shortcuts (state/testBuild.ts); a
+          production build drops this branch whole.
         */}
-        {!done && (
+        {TEST_SHORTCUTS && !done && (
           <section className="test-shortcuts" aria-label="Testing shortcuts">
             <span><small>TEST BUILD</small><strong>Skip to June</strong></span>
             <button

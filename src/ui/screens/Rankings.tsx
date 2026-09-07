@@ -9,7 +9,7 @@
 import { leagueLabel } from '../../engine/leagueNames.js';
 import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { rpiOrder, regularRecord } from '../../engine/season.js';
+import { rpiOrder, regularRecord, nationalOrder, pollIsProjected } from '../../engine/season.js';
 import { rosterStrength } from '../../engine/program.js';
 import { useOpenTeam } from './TeamCard.js';
 import { pct } from '../format.js';
@@ -38,20 +38,22 @@ export function Rankings() {
     The moment there are enough results to mean something, the real table takes
     over and the projection is never seen again.
   */
-  const preseason = season.results.length < season.teams.length * 2;
+  // The order itself lives in the engine (`nationalOrder`), because the desk
+  // chip on Today prints a rank off the same table and the two disagreed:
+  // one said #1 in the country while the other said the poll had not started.
+  const preseason = pollIsProjected(season);
 
   const rows = preseason
-    ? season.teams
-      .map((t, i) => ({
-        index: i,
+    ? nationalOrder(season)
+      .map(({ team: t, value }) => ({
+        index: t.index,
         abbr: t.def.abbr,
         school: t.def.school,
         conference: t.conference,
         record: `${t.w}-${t.l}`,
-        value: (rosterStrength(t.team) * 0.75 + t.prestige * 0.25).toFixed(1),
+        value: value.toFixed(1),
         detail: `roster ${rosterStrength(t.team)}`,
       }))
-      .sort((a, b) => Number(b.value) - Number(a.value) || a.abbr.localeCompare(b.abbr))
     : rpiOrder(season).map((r) => {
       const rec = regularRecord(r.team);
       return {

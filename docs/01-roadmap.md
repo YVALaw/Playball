@@ -52,7 +52,7 @@ game at a time on a full-screen field with a defense on it, hand out awards,
 spend coaching points, read a recruiting board that is honest about being
 vague, argue the draft out of taking your junior, and start again in February —
 against ninety-five rival programs run by men with careers of their own.
-Sixty-four test files and 1,213 tests cover it, calibration among them, so
+Sixty-six test files and 1,232 tests cover it, calibration among them, so
 the engine cannot drift without something failing.
 
 The August 2026 interface overhaul and its feedback pass are described in §20
@@ -85,7 +85,7 @@ art, and the test aids coming out.
 | Heavy sim | Web Worker over Comlink |
 | Styling | One token sheet plus inline styles. CSS Modules were planned and never wanted |
 | Testing | Vitest |
-| Mobile | Capacitor, Android only. **Not set up** |
+| Mobile | Capacitor 8, Android only — `npm run apk`; the shell targets SDK 36 |
 
 Three rules underneath it that have not moved and should not.
 
@@ -220,10 +220,12 @@ August passes closed the two items that mattered most; what is left:
       scoreboard
 - [ ] **Instanced markers.** Every runner and fielder is his own mesh. Twelve
       small spheres, so still harmless, and still not what was planned
-- [ ] **Camera easing between three fixed positions.** There is one camera
-      behind the plate and it never moves
-- [ ] **A 2D/3D toggle.** The 2D diamond survives only as the fallback shown
-      while the 3D chunk loads, or when WebGL fails. That is not a setting
+- [x] **A camera that follows the play.** Not three fixed positions —
+      exponential easing toward where the ball dies, honouring reduced motion
+      (`Diamond3D.tsx` CameraRig, stage 15)
+- [x] **A 2D/3D toggle.** Display → The field, since the release audit
+      (`05` §62.6); the 2D diamond is also the fallback behind a real WebGL
+      boundary
 - [ ] **Thirty frames a second on a mid-range Android, measured.** Never measured
       on any phone, because the game has never run on one
 
@@ -245,11 +247,11 @@ get sacked and get poached). What genuinely remains part-done:
       of achievements per rung — and the feedback pass added that titles should
       eventually carry a small gameplay boost, explicitly not before the ladder
       itself is designed
-- [~] **Eligibility.** Graduation and draft eligibility are real; redshirts do
-      not exist anywhere in the codebase
-- [~] **Android.** Safe-area insets are done and were done early, correctly. The
-      hardware back button is not wired, because there is nothing to wire it to
-      yet
+- [x] **Eligibility.** Graduation, draft eligibility, academic eligibility and
+      redshirts are all real — `engine/redshirt.ts`, stage 8 (`05` §30)
+- [x] **Android.** Safe-area insets, edge-to-edge under target 36, and a back
+      gesture that peels one layer per press through a native plugin the page
+      arms only at depth — `ui/backNav.ts`, stage 18b (`05` §53)
 - [~] **Accessibility.** Reduced motion is honoured throughout; every modal
       and sheet has dialog semantics, Escape, a focus trap and focus
       restoration through one hook (`05` §57); the alert dots have names;
@@ -365,13 +367,9 @@ August 2026 and are cheap relative to what they fix; 5 and 6 are the old stage
 
 ## Missing and unscheduled
 
-Now scheduled: the small gameplay gaps that used to sit here — the depth chart,
-facilities, recruits drafted out of high school, the run-expectancy AI — are
-stage 7 above and catalogued in backlog G2. What remains genuinely unslotted:
-
-- **Injuries and season-long fatigue.** Bullpen rest and in-game fatigue are
-  modelled; nothing accumulates across a year. A section C design pass when it
-  comes
+Nothing. Everything that used to sit here is in `07-v1-plan.md` —
+injuries and season-long fatigue included (`engine/injury.ts`,
+`engine/workload.ts`, stage 16).
 
 ## Deferred, and why
 
@@ -379,8 +377,8 @@ stage 7 above and catalogued in backlog G2. What remains genuinely unslotted:
 |---|---|
 | **NIL and revenue sharing — skipped** | The recruiting budget is the only currency and it already does two jobs, signing a class and keeping a drafted player. One currency the player understands beats two he has to learn |
 | **iOS — not now** | Capacitor could do both. iOS needs a Mac and a paid developer account, and neither is worth carrying before the game is finished |
-| **Two-way players** | Still out. Nothing has changed the argument |
-| **The S+ store player** | Deferred to v1.0. The cap that reserves the grade for him is built and tested; he is not |
+| ~~**Two-way players**~~ | Shipped stage 16 (Sep 3) and corrected to the rulebook in stage 21 (Sep 4) |
+| ~~**The S+ store player**~~ | Retired September 6. The grade is now reachable only by authoring, in god mode; the cap keeps its meaning |
 | **The live scorebook cell** | The one idea worth keeping from the old design section, and never built. It is a nice thing rather than a needed thing, and the mockup does not have it |
 
 Backward compatibility is explicitly **not** a constraint. Testing runs from
@@ -476,11 +474,10 @@ kit, the second purchase · **29**, the majors, the expansion. **20b** and
 **25** were confirmed shipped on September 5. The reporter tests on an
 Android emulator.
 
-**One project-level decision is now open.** Stage 17 was the monetization
-stage; retiring the S+ player retires the plan's only answer to how the
-game makes money. God mode as a one-off paid unlock is the obvious
-replacement, but it has to be settled before the store listing is written.
-`07-v1-plan.md` stage 17 has the four doors.
+**The money is decided** (`06` *Decisions locked* — "The money", September
+6): god mode is the one-off unlock, the rules of the world are free, the
+creator kit is the second purchase, the majors the expansion. **The release
+audit** of September 7 is `05` §62 and `docs/15-v1-release-audit.md`.
 
 ### The September 1 session, in one paragraph
 

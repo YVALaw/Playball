@@ -250,6 +250,9 @@ export function createLiveGame(
     opts.awayCoachMods,
   );
   const mine = opts.managing === 'home' ? home : away;
+  // June, stamped the way simGame stamps it, so the badge layer's BIG STAGE
+  // fires in the one bracket game a coach ever manages — his own (05 §62.1).
+  if (opts.postseason) { home.postseason = true; away.postseason = true; }
 
   // Same decision tracking the fast path uses, so a managed game credits the
   // pitcher of record by the same rule.
@@ -316,9 +319,12 @@ export function createLiveGame(
       if (!auto && (bat() === mine || (fld() === mine && !opts.autoPitching))) return;
       if (current) {
         playSeq += 1;
-        const before = events.length;
+        // One play at a time here too. With the pen delegated this loop plays
+        // the opponent's whole half, and the field read the lot as one play —
+        // ten contacts, seven runs crossing, the wrong ball drawn (05 §62.1).
+        events.length = 0;
         const closed = current.step();
-        allEvents.push(...events.slice(before));
+        allEvents.push(...events);
         if (closed) closeHalf();
       }
     }
@@ -445,6 +451,8 @@ export function createLiveGame(
       );
       mine.coverPitcher(arm);
       mine.pitcherPitches = 0;
+      // A new arm starts every hitter at the first look (05 §62.2).
+      mine.timesThrough.clear();
       // A new man, a new outing. Defensive conferences are a team resource and
       // therefore do not reset with a pitching change.
       mine.pitcherConfidence = CONFIDENCE.relief;

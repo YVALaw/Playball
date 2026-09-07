@@ -16,7 +16,7 @@
 // Nothing here invents information. Every runner position comes from the same
 // engine-reported list the 2D diamond used.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { BattedBall, PlayerId } from '../engine/types.js';
@@ -396,7 +396,8 @@ function RunnerDot(
     at.current = base;
   }, [base]);
 
-  useFrame((_, delta) => {
+  useFrame((_, rawDelta) => {
+    const delta = clampDelta(rawDelta);
     const mesh = ref.current;
     if (!mesh) return;
 
@@ -452,7 +453,8 @@ function ScoringRunner(
   const placed = useRef(false);
   const fade = useRef(1);
 
-  useFrame((_, delta) => {
+  useFrame((_, rawDelta) => {
+    const delta = clampDelta(rawDelta);
     const mesh = ref.current;
     if (!mesh) return;
     if (!placed.current) { mesh.position.set(...BAG[from]); placed.current = true; return; }
@@ -494,7 +496,8 @@ function Plate({ tick }: { tick: number }) {
 
   useEffect(() => { if (tick > 0) flash.current = 1; }, [tick]);
 
-  useFrame((_, delta) => {
+  useFrame((_, rawDelta) => {
+    const delta = clampDelta(rawDelta);
     const mesh = ref.current;
     if (!mesh) return;
     flash.current = Math.max(0, flash.current - delta * 1.6);
@@ -804,7 +807,8 @@ function BallInFlight({ hit, plan }: { hit: BallHit; plan: PlayPlan }) {
   // Restart on every play, including a ball hit to the same place twice.
   useEffect(() => { t.current = 0; }, [hit.tick]);
 
-  useFrame((_, delta) => {
+  useFrame((_, rawDelta) => {
+    const delta = clampDelta(rawDelta);
     t.current += delta;
     const now = t.current;
     const b = ball.current;
@@ -960,7 +964,8 @@ function Defense(
       ? best : -1;
   })();
 
-  useFrame((_, delta) => {
+  useFrame((_, rawDelta) => {
+    const delta = clampDelta(rawDelta);
     t.current += delta;
     const now = t.current;
     stations.forEach((station, i) => {
@@ -1074,7 +1079,8 @@ function Volley(
   );
   const DUR = 1.1;
 
-  useFrame((_, delta) => {
+  useFrame((_, rawDelta) => {
+    const delta = clampDelta(rawDelta);
     t.current += delta;
     const g = group.current;
     if (!g) return;
@@ -1488,7 +1494,8 @@ function CameraRig({ plan, tick }: { plan: PlayPlan | null; tick: number }) {
     It rides the same demand-driven frame window as everything else in the
     scene — a still park stays a still park, at zero cost.
   */
-  useFrame((_, delta) => {
+  useFrame((_, rawDelta) => {
+    const delta = clampDelta(rawDelta);
     t.current += delta;
     let desiredAim = new THREE.Vector3(...AIM);
     let desiredEye = new THREE.Vector3(...EYE);
@@ -1518,6 +1525,29 @@ function CameraRig({ plan, tick }: { plan: PlayPlan | null; tick: number }) {
  * it. When the window closes the park simply holds its last frame, which for
  * a static scene is indistinguishable from rendering it again.
  */
+/**
+ * A frame's worth of time, never more than a thirtieth of a second.
+ *
+ * The frameloop is on demand, and R3F reads its clock only when a frame
+ * runs — so the first frame after a manager thought for twelve seconds
+ * carried a twelve-second delta, and every animation in the scene resolved
+ * in one step: no flight, no chase, a runner teleported to the bag (05 §62.6).
+ */
+const clampDelta = (d: number): number => Math.min(d, 1 / 30);
+
+/**
+ * The fence around the canvas. A device that cannot give us WebGL, or a
+ * renderer that fails after the chunk arrived, used to rethrow out of the
+ * screen; the `onError` prop this replaced was never a Canvas prop at all
+ * and was spread onto the wrapper div (05 §62.6).
+ */
+class FieldBoundary extends Component<{ onFail: () => void; children: ReactNode }, { failed: boolean }> {
+  override state = { failed: false };
+  static getDerivedStateFromError(): { failed: boolean } { return { failed: true }; }
+  override componentDidCatch(): void { this.props.onFail(); }
+  override render(): ReactNode { return this.state.failed ? null : this.props.children; }
+}
+
 function DemandDriver({ stamp }: { stamp: string }) {
   const invalidate = useThree((s) => s.invalidate);
   useEffect(() => {
@@ -1608,11 +1638,11 @@ export function Diamond3D({
   return (
     <div style={{ width: '100%', height, position: 'relative' }}>
       {ok && (
+        <FieldBoundary onFail={() => setOk(false)}>
         <Canvas
           gl={{ antialias: false, alpha: true, powerPreference: 'low-power' }}
           dpr={[1, 1.6]}
           camera={{ fov: 42, near: 0.1, far: 60 }}
-          onError={() => setOk(false)}
           style={{ touchAction: 'pan-y' }}
           frameloop="demand"
         >
@@ -1645,6 +1675,7 @@ export function Diamond3D({
             />
           ))}
         </Canvas>
+        </FieldBoundary>
       )}
     </div>
   );

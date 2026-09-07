@@ -118,11 +118,12 @@ puts a once-in-fifteen-to-twenty-years year, and no seeded value exceeds the rea
 one. §13.3 of the systems reference has the arithmetic, the two measurement
 mistakes that hid the problem, and why one era multiplier could not have worked.
 
-### S+ belongs to the store
+### ~~S+ belongs to the store~~ — **superseded September 6 2026**
 
-Already built: generated potential is capped at 94, so no recruiting class,
-walk-on or rival roster can reach the grade. The store player that will hold it
-is deferred to v1.0 and is explicitly exempt from the badge cap.
+The cap stands: generated potential tops out at 94, so no recruiting class,
+walk-on or rival roster reaches the grade. What holds it now is a god-mode
+authored player (`07` stage 17, `05` §61), not a store player; the store
+player was retired with the money decision above.
 
 ### Backward compatibility is not a constraint
 
@@ -1039,11 +1040,14 @@ section purged of the draft and the carousel, and its 3D checklist re-ticked —
 so it can be trusted again. What follows is what is genuinely still missing,
 verified against the source rather than read off any list.
 
-### G1 · Shipping. Nothing of this exists.
+### G1 · Shipping. ~~Nothing of this exists.~~
 
-The whole point of the project is a phone game and **there is no mobile build at
-all** — no Capacitor, no keystore, no store listing. This is the largest silent
-gap in the plan and it is not a small job.
+**Superseded by §R.** Kept for the record; every claim in this section
+predates stages 11–18. Capacitor, the APK, the Android shell and redshirts
+all shipped. What is genuinely still owed is stage 19's list in `07`.
+
+The whole point of the project is a phone game and, when this was written,
+there was no mobile build at all — no Capacitor, no keystore, no store listing.
 
 - Capacitor set up, a first APK running on a real device
 - Android back button handling (safe-area insets are already done)
@@ -1248,7 +1252,7 @@ decision rather than a rating comparison. Reads naturally against the scouting
 bands already in the game: academic risk is another thing a report can be vague
 about.
 
-### H6 · Press conferences — **SHIPPED, stage 7 piece 8**
+### H6 · Press conferences — **SHIPPED, then REMOVED September 2 2026** (`07` stage 7 piece 8, §S; the depth-catalogue row that survived the removal went September 7, `05` §62.3)
 
 Two or three questions after a big win or a bad loss, answered in the coach's
 own voice. Moves prestige, morale and how recruits see you. It is the payoff
@@ -2876,16 +2880,13 @@ The stage cards derive from `bracket.stage` and the rail's gating matches
 `SCHEMA_VERSION` is still 4, and `usableEconomy` sanitises the new economy
 fields. No TODO, FIXME, `console.log` or `debugger` in the added lines.
 
-### The test aids, as code
+### ~~The test aids, as code~~ — **done September 7 2026**
 
-They are linked only by comments today. SIM THE SEASON is
-`Today.tsx` 421–436 plus its CSS, not gated; the PSC offer is
-`NewGame.tsx` 264–272, not gated; the five 99s are `store.start`, gated
-only by `!process.env.VITEST`. Before stage 19, put one
-`TEST_SHORTCUTS = import.meta.env.DEV` flag in a shared module and gate all
-three on it, so removing them is deleting one constant rather than finding
-three comments. `playSeason` itself is a real engine path the worker uses
-and stays.
+One constant, `TEST_SHORTCUTS` in `src/state/testBuild.ts`, defined by
+`vite.config.ts` and read by all three sites; the store build drops the
+branches as dead code and `npm run apk:test` keeps them
+(`docs/TESTING_SHORTCUTS.md`, `05` §62.3). Nothing is deleted before
+release. `playSeason` itself is a real engine path the worker uses and stays.
 
 ### The order to take them in
 
