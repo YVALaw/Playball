@@ -133,6 +133,10 @@ export function Settings() {
     device prefs at that moment so the panel turns over without a reload.
   */
   const billing = useSyncExternalStore(onBilling, billingState, billingState);
+  // A real, purchasable product: the store is reachable and Play returned a
+  // price. Before the product is created in the console (billing deferred),
+  // this is false and no purchase UI is offered (05 §62.3).
+  const canBuy = billing.available && !!billing.price;
   useEffect(() => {
     if (billing.owned && !prefs.godMode) setPrefs(readPrefs());
   }, [billing.owned, prefs.godMode]);
@@ -297,32 +301,32 @@ export function Settings() {
             <strong>{prefs.godMode ? 'Available for every new career' : 'Unlock the sandbox'}</strong>
             <p>{prefs.godMode
               ? 'New careers can enable God Mode on the How you want to play step. Existing honest careers stay unchanged unless you fork one below.'
-              : billing.available
-                ? `One purchase on Google Play${billing.price ? `, ${billing.price}` : ''}. Yours on this account for good — a reinstall or a new phone restores it.`
+              : canBuy
+                ? `One purchase on Google Play, ${billing.price}. Yours on this account for good — a reinstall or a new phone restores it.`
                 : TEST_SHORTCUTS
                   ? 'The store purchase arrives with the listing. Until then this control stands in for the permanent device unlock.'
                   : 'Arrives with the store listing.'}</p>
-            {billing.error && <p className="settings-god-error">{billing.error}</p>}
+            {billing.error && canBuy && <p className="settings-god-error">{billing.error}</p>}
           </div>
           {/*
-            The purchase, through Google Play (state/billing.ts), when the
-            shell can reach it. The free stand-in exists only in a build that
-            carries the testing shortcuts, and only where the store cannot be
-            reached — the paid entitlement must not be a free button (05
-            §62.3). A store build with no Play services shows the state and
-            no way to flip it.
+            The purchase, through Google Play (state/billing.ts), shown only
+            when the store actually offers the product — a price back from
+            Play. Before the product is live (billing deferred) there is no
+            broken button: a test build still lets a tester unlock it free,
+            a store build shows the state and no way to flip it. The paid
+            entitlement is never a free button in a store build (05 §62.3).
           */}
-          {!prefs.godMode && billing.available && (
+          {!prefs.godMode && canBuy && (
             <button
               type="button"
               className="settings-god-command tap"
               disabled={billing.busy}
               onClick={() => void buyGodMode()}
             >
-              {billing.busy ? 'ONE MOMENT' : `UNLOCK GOD MODE${billing.price ? ` · ${billing.price}` : ''}`}
+              {billing.busy ? 'ONE MOMENT' : `UNLOCK GOD MODE · ${billing.price}`}
             </button>
           )}
-          {!prefs.godMode && !billing.available && TEST_SHORTCUTS && (
+          {!prefs.godMode && !canBuy && TEST_SHORTCUTS && (
             <button type="button" className="settings-god-command tap" onClick={() => put({ godMode: true })}>
               UNLOCK GOD MODE
             </button>
@@ -333,7 +337,7 @@ export function Settings() {
             </button>
           )}
         </section>
-        {!prefs.godMode && billing.available && (
+        {!prefs.godMode && canBuy && (
           <button
             type="button"
             className="settings-god-restore tap"
