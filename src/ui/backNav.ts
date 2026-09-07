@@ -26,6 +26,8 @@ export interface BackState {
   overlayOpen: boolean;
   /** A god-mode sheet is up. */
   godOpen?: boolean;
+  /** True when the in-session route trail has a real previous destination. */
+  routeBackAvailable?: boolean;
   tab: Tab;
   screen: string;
 }
@@ -34,6 +36,7 @@ export interface BackState {
 export function hasLayerToClose(s: BackState): boolean {
   if (s.blocked) return true;
   if (s.godOpen || s.playerOpen || s.teamCardOpen || s.overlayOpen) return true;
+  if (s.routeBackAvailable) return true;
   const first = TABS.find((t) => t.id === s.tab)?.screens[0]?.id;
   if (first && s.screen !== first) return true;
   return s.tab !== 'home';
@@ -49,5 +52,5 @@ interface BackPlugin {
 /** The 25-line native side: native/android/com/playball/dynasty/BackPlugin.java, copied into the generated shell by `npm run apk`. */
 export const Back = registerPlugin<BackPlugin>('Back');
 
-/** The APK. False in a browser tab and as a home-screen icon, where History does the job. */
-export const isNativeShell = (): boolean => Capacitor.isNativePlatform();
+/** Android APK only. iOS has no BackPlugin and must use WebKit History for edge-swipe navigation. */
+export const isNativeShell = (): boolean => Capacitor.getPlatform() === 'android';

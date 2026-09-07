@@ -253,6 +253,7 @@ export function Board() {
   const recruitMajor = useDynasty((s) => s.recruitMajor);
   const advanceWeek = useDynasty((s) => s.advanceRecruitingWeek);
   const economy = useDynasty((s) => s.economy);
+  const phase = useDynasty((s) => s.phase);
   const nextPhase = useDynasty((s) => s.nextPhase);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
@@ -389,9 +390,10 @@ export function Board() {
   const recruiterSkill = withStaff(coach.skills, economy.staff).recruiting;
   const left = weekly - spent;
   const live = week >= 1 && week <= RECRUITING_WEEKS;
+  const seasonMode = phase === null;
   const full = commits.length >= SCHOLARSHIPS;
   const activeFilters = anyFilter(filters);
-  const pinned = pinnedAction({ filtersOpen, live, week, matches, shown: list.length });
+  const pinned = pinnedAction({ filtersOpen, live: live && !seasonMode, week, matches, shown: list.length });
   const activeTargetCount = (pos: string): number => targets.filter((p) => {
     if (p.signedBy !== null) return false;
     if (pos === 'BENCH') return p.player.type === 'hitter';
@@ -432,7 +434,7 @@ export function Board() {
       <div className="screen-title-row">
         <GodIntroRow target={{ kind: 'recruits' }} label="Edit the class in god mode">
           <ModuleIntro
-            kicker={`RECRUITING · ${live ? `WEEK ${week} OF ${RECRUITING_WEEKS}` : 'SIGNED'}`}
+            kicker={`RECRUITING · ${live ? `WEEK ${week} OF ${RECRUITING_WEEKS}` : 'CLASS CLOSED'}`}
             title="The board"
           />
         </GodIntroRow>
@@ -475,7 +477,7 @@ export function Board() {
             and the slash read as a division that gave 53. The note names the
             number above it now, which is the only job it has.
           */
-          note={live ? `OF ${weekly} THIS WEEK` : 'CLOSED'}
+          note={live ? `OF ${weekly} RP THIS WEEK` : 'CLOSED'}
         />
         {/* Sized down as well as filled-only. The display face has no star, so
             each ★ came from the fallback font at nearly a square em — five of
@@ -515,6 +517,11 @@ export function Board() {
       </div>
     }>
     {live && <FirstVisit id="recruiting" />}
+    {seasonMode && live && (
+      <div className="recruiting-calendar-note">
+        <b>Weekly RP refreshes with the season calendar.</b> Your choices bank automatically when the schedule moves into the next week. Commits arrive next season.
+      </div>
+    )}
     <div className="offseason-recruiting" style={{ padding: '10px 14px 20px' }}>
       {/* Filtering replaces the body rather than pushing it down. The rest of
           this branch is the board itself; see the note on the FILTER button. */}
@@ -1190,6 +1197,7 @@ function Overview({
   // A rolled sway is the week's major move, full stop: the store refuses to
   // change it, so the buttons say so rather than tapping into a wall.
   const swayRolled = weekAction?.major?.kind === 'sway';
+  const swayUsed = Boolean(prospect.swayedBy?.[userTeam]);
   // Same arithmetic the week close will use, including the active pitch/move.
   const gain = weeklyPoints(prospect, pitch, Math.max(spent, 1), coachPrestige, recruitingSkill)
     + actionInterest(prospect, pitch, userTeam);
@@ -1256,7 +1264,7 @@ function Overview({
         <section className="recruit-pitch-room">
           <header>
             <span><small>YOUR CASE</small><strong>Spend on what is actually true here</strong></span>
-            <b>{week === 1 ? 'BUILD THE BOARD' : week === 2 ? 'MAKE YOUR CASE' : 'CLOSE'}</b>
+            <b>{week === 1 ? 'BUILD THE BOARD' : week >= RECRUITING_WEEKS - 2 ? 'DECISION WINDOW' : 'WORK THE BOARD'}</b>
           </header>
           <div className="recruit-factor-grid">
             {RECRUITING_FACTORS.map((factor) => {
@@ -1298,15 +1306,13 @@ function Overview({
                     type="button" disabled={swayRolled} className={`tap${weekAction?.major?.kind === 'visit' ? ' active' : ''}`}
                     onClick={() => onMajor(weekAction?.major?.kind === 'visit' ? null : { kind: 'visit' })}
                   ><strong>PROGRAM VISIT</strong><small>{VISIT_COST} PT · sell the whole place</small></button>
-                  {week === 2 && (
-                    <button
-                      type="button" disabled={swayRolled} className={`tap${swayRolled ? ' active' : ''}`}
-                      onClick={() => {
-                        const factor = weekAction?.pitch ?? wants[0]!;
-                        onMajor({ kind: 'sway', factor });
-                      }}
-                    ><strong>SWAY</strong><small>{SWAY_COST} PT · one attempt, and it stands</small></button>
-                  )}
+                  <button
+                    type="button" disabled={swayUsed || swayRolled} className={`tap${swayRolled ? ' active' : ''}`}
+                    onClick={() => {
+                      const factor = weekAction?.pitch ?? wants[0]!;
+                      onMajor({ kind: 'sway', factor });
+                    }}
+                  ><strong>{swayUsed && !swayRolled ? 'SWAY USED' : 'SWAY'}</strong><small>{SWAY_COST} PT · one attempt all season</small></button>
                 </div>
                 {weekAction?.major?.kind === 'sway' && (
                   <div className={`recruit-sway-result ${weekAction.major.success ? 'won' : 'lost'}`}>

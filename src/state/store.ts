@@ -39,6 +39,20 @@ import {
 } from '../engine/godMode.js';
 import { setLeagueNames, usableLeagueNames } from '../engine/leagueNames.js';
 import type { GodTarget } from '../ui/god/target.js';
+
+/** One physical tap can arrive twice on touch hardware. Do not make Back reveal
+ * the exact same God editor underneath itself. */
+function sameGodTarget(a: GodTarget | undefined, b: GodTarget): boolean {
+  if (!a || a.kind !== b.kind) return false;
+  switch (a.kind) {
+    case 'tab': return b.kind === 'tab' && a.tab === b.tab;
+    case 'player':
+    case 'recruit': return b.kind === a.kind && a.id === b.id;
+    case 'program': return b.kind === 'program' && a.team === b.team;
+    case 'roster': return b.kind === 'roster' && a.team === b.team;
+    default: return true;
+  }
+}
 import { setStarGateOpen, type RecruitingPriorities } from '../engine/recruiting.js';
 import { createLiveGame, type LiveGame } from '../engine/liveGame.js';
 import {
@@ -76,8 +90,10 @@ import {
   withStaff, FACILITIES, MAX_FACILITY, SCOUT_COST, SCOUT_DAYS, SEATS,
   devBonus, armCareFor, buildingSpec, builtBonus, facilityEffects, facilityLevel,
   facilityUpgradeCost, FACILITY_MAX_LEVEL, pipelineStrength, addPipelineSigning, agePipelines,
-  recruitingFacilityScore,
+  recruitingFacilityScore, DEFAULT_DIRECTIVE, staffPlan, projectFacility,
+  staffProjectWeeks, recruitingDirectiveMultiplier, staffProjectInjuryGuard, PIPELINE_MIN,
   SEAT_LABEL, BUILDINGS, type Assistant, type Economy, type StaffSeat, type Building,
+  type StaffDirective, type StaffProjectKind,
 } from '../engine/economy.js';
 import {
   readJournal, writeJournal, noteAction, clearJournal, journalMatches, reconcileJournal,
@@ -233,6 +249,25 @@ function sceneFor(
   );
 }
 
+/** A healed injured player whose return has not yet been decided. */
+function returnDecisionOpen(man: Player, day: number): boolean {
+  const u = man as Player & { outUntil?: number; why?: string; returnDecided?: number };
+  return u.why === 'injury' && u.outUntil !== undefined && day >= u.outUntil
+    && u.returnDecided !== u.outUntil && day - u.outUntil < 14;
+}
+
+/** A lineup/rotation decision that must be resolved before a full career advances. */
+function unresolvedRosterDecision(season: SeasonState, userTeam: number, depth: DepthSettings): Player | null {
+  if (!handles(depth, 'lineups') && !handles(depth, 'depthChart')) return null;
+  const team = season.teams[userTeam]?.team;
+  if (!team) return null;
+  const day = injuryClock(season);
+  const unavailable = [...team.lineup, ...team.rotation].find((p) => !available(p, day));
+  if (unavailable) return unavailable;
+  const active = new Set([...team.lineup, ...team.rotation].map((p) => String(p.id)));
+  return squad(team).find((p) => !active.has(String(p.id)) && returnDecisionOpen(p, day)) ?? null;
+}
+
 /** Roughly how many bodies a program has to replace, which sizes its board. */
 const holesFor = (record: { team: { lineup: unknown[]; bench: unknown[]; rotation: unknown[]; bullpen: unknown[] } }): number => {
   const roster = [
@@ -360,6 +395,23 @@ export type ProgramSheet = 'overview' | 'board' | 'money' | 'watchlist' | 'coach
  * budget roughly 120–200ms there — still inside a transition nobody is waiting
  * on, and the reason this was safe to add at all.
  */
+/**
+ * Tell the browser shell to create a visual history checkpoint before a
+ * forward UI navigation mutates the SPA. Safari/WebKit builds the edge-swipe
+ * preview from browser history, so pushing only after the route changed showed
+ * HOME during the drag and corrected to the real previous screen after commit.
+ * Android ignores this event and uses the native Back plugin.
+ */
+function browserHistoryCheckpoint(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event('playball:history-checkpoint'));
+}
+
+function browserHistoryConsume(count = 1, route = false): void {
+  if (typeof window === 'undefined' || count <= 0) return;
+  window.dispatchEvent(new CustomEvent('playball:history-consume', { detail: { count, route } }));
+}
+
 function crossfade(run: () => void): void {
   const doc = typeof document === 'undefined' ? null : document;
   const start = (doc as unknown as {
@@ -456,7 +508,7 @@ export type Phase =
   yet found out who walked out cannot know what he is shopping for.
 */
 export const PHASES: readonly Exclude<Phase, null>[] =
-  ['awards', 'review', 'coach', 'draft', 'portal', 'recruiting', 'signing'];
+  ['awards', 'review', 'coach', 'draft', 'portal', 'signing'];
 
 /** What each step is called on the rail across the top. */
 export const PHASE_LABEL: Record<Exclude<Phase, null>, string> = {
@@ -514,6 +566,7 @@ export const TABS: readonly TabDef[] = [
     // through a table that happens to mention them; this one is the directory.
     { id: 'colleges', label: 'COLLEGES' },
     { id: 'history', label: 'HISTORY' },
+    { id: 'recruiting', label: 'RECRUIT' },
     { id: 'strategy', label: 'STRATEGY' }] },
 ];
 
@@ -1168,6 +1221,8 @@ export interface DynastyStore {
   recruitMajor: (prospectId: PlayerId, action: RecruitMajorInput | null) => boolean;
   /** Bank the week, let recruits commit, and move to the next one. */
   advanceRecruitingWeek: () => void;
+  /** Close any recruiting weeks the regular-season calendar has passed. */
+  syncRecruitingCalendar: () => void;
   /**
    * What the week that just closed actually did.
    *
@@ -1289,6 +1344,12 @@ export interface DynastyStore {
   hireAssistant: (seat: StaffSeat, slot: number) => void;
   /** Let him go. No severance — the wage simply stops next roll. */
   fireAssistant: (seat: StaffSeat) => void;
+  /** Set the standing instruction for one assistant. */
+  setStaffDirective: (seat: StaffSeat, directive: StaffDirective) => boolean;
+  /** Start one multi-week staff project. Recruiting projects require a state. */
+  startStaffProject: (seat: StaffSeat, kind: StaffProjectKind, state?: string) => boolean;
+  /** Stop the active project without refunding elapsed weeks. */
+  cancelStaffProject: (seat: StaffSeat) => void;
   /** One rung up, paid once, forever. */
   /**
    * Put one of the three buildings up.
@@ -1386,7 +1447,7 @@ export interface DynastyStore {
    * out, a save is filed under the school, which is what the autosave has
    * always been called.
    */
-  saveNow: (slot?: string, name?: string) => Promise<void>;
+  saveNow: (slot?: string, name?: string) => Promise<boolean>;
   loadSlot: (slot?: string) => Promise<boolean>;
   saveState: 'idle' | 'saving' | 'saved' | 'error';
   lastSaveError: string | null;
@@ -1690,12 +1751,47 @@ function usableEconomy(saved: unknown): Economy {
       };
     }
   }
+  const directiveValues = new Set<string>([
+    'balanced','contact','power','discipline','command','velocity','armCare',
+    'pipeline','stars','sleepers','needs',
+  ]);
+  const projectValues = new Set<string>([
+    'hitting-contact','hitting-power','hitting-discipline',
+    'pitching-command','pitching-velocity','pitching-arm-care',
+    'pipeline-build','pipeline-deepen','pipeline-maintain',
+  ]);
+  const staffPlans: NonNullable<Economy['staffPlans']> = {};
+  for (const seat of SEATS) {
+    const raw = (e.staffPlans as Record<string, unknown> | undefined)?.[seat];
+    if (!raw || typeof raw !== 'object') continue;
+    const q = raw as Record<string, unknown>;
+    const directive = typeof q.directive === 'string' && directiveValues.has(q.directive)
+      ? q.directive as StaffDirective : DEFAULT_DIRECTIVE[seat];
+    const plan: NonNullable<Economy['staffPlans']>[StaffSeat] = { directive };
+    const project = q.project;
+    if (project && typeof project === 'object') {
+      const r = project as Record<string, unknown>;
+      if (typeof r.kind === 'string' && projectValues.has(r.kind)
+        && typeof r.weeksTotal === 'number' && typeof r.weeksLeft === 'number') {
+        plan.project = {
+          kind: r.kind as StaffProjectKind,
+          ...(typeof r.state === 'string' ? { state: r.state } : {}),
+          weeksTotal: Math.max(1, Math.round(r.weeksTotal)),
+          weeksLeft: Math.max(0, Math.round(r.weeksLeft)),
+          startedWeek: typeof r.startedWeek === 'number' ? Math.max(1, Math.round(r.startedWeek)) : 1,
+        };
+      }
+    }
+    staffPlans[seat] = plan;
+  }
+
   return {
     facilities: Number.isInteger(e.facilities)
       ? Math.max(0, Math.min(MAX_FACILITY, e.facilities as number)) : built.length,
     built,
     facilityLevels,
     staff,
+    staffPlans,
     tree,
     pipelines,
     spent: typeof e.spent === 'number' && e.spent >= 0 ? e.spent : 0,
@@ -1858,9 +1954,72 @@ function applyCoachMods(
   const fx = facilityEffects(economy);
   syncCoachMods(season, userTeam, withStaff(coach.skills, economy.staff), {
     armCare: armCareFor(economy.staff),
-    injuryGuard: (FACILITIES[economy.facilities]?.injuryGuard ?? 1) * fx.guard,
+    injuryGuard: (FACILITIES[economy.facilities]?.injuryGuard ?? 1) * fx.guard * staffProjectInjuryGuard(economy),
   });
 }
+
+/** Move one active staff project forward when a recruiting/calendar week closes. */
+function advanceStaffProjects(season: SeasonState, userTeam: number, economy: Economy, year: number): void {
+  const rec = season.teams[userTeam];
+  if (!rec) return;
+  const plans = { ...(economy.staffPlans ?? {}) };
+  let changed = false;
+  const bump = (v: number, by = 1): number => Math.min(99, Math.max(1, v + by));
+
+  for (const seat of SEATS) {
+    const current = plans[seat];
+    const project = current?.project;
+    if (!project) continue;
+    const nextProject = { ...project, weeksLeft: Math.max(0, project.weeksLeft - 1) };
+    plans[seat] = { ...current, project: nextProject };
+    changed = true;
+    if (nextProject.weeksLeft > 0) continue;
+
+    const facility = facilityLevel(economy, projectFacility(seat));
+    const directive = current?.directive ?? DEFAULT_DIRECTIVE[seat];
+    const aligned = (project.kind === 'hitting-contact' && directive === 'contact')
+      || (project.kind === 'hitting-power' && directive === 'power')
+      || (project.kind === 'hitting-discipline' && directive === 'discipline')
+      || (project.kind === 'pitching-command' && directive === 'command')
+      || (project.kind === 'pitching-velocity' && directive === 'velocity')
+      || (project.kind === 'pitching-arm-care' && directive === 'armCare')
+      || (project.kind.startsWith('pipeline-') && directive === 'pipeline');
+    const count = 2 + Math.max(1, facility) + (aligned ? 1 : 0);
+
+    if (seat === 'hitting') {
+      const bats = uniquePlayers([...rec.team.lineup, ...rec.team.bench]);
+      const field = project.kind === 'hitting-power' ? 'power' : project.kind === 'hitting-discipline' ? 'eye' : 'contact';
+      bats.sort((a, b) => (a[field] ?? 0) - (b[field] ?? 0));
+      for (const bat of bats.slice(0, count)) bat[field] = bump(bat[field], aligned ? 2 : 1);
+    } else if (seat === 'pitching') {
+      const arms = uniquePlayers([...rec.team.rotation, ...rec.team.bullpen] as Player[]).filter((q): q is Arm => q.type === 'pitcher' || isTwoWay(q));
+      const field = project.kind === 'pitching-velocity' ? 'stuff' : project.kind === 'pitching-arm-care' ? 'stamina' : 'control';
+      arms.sort((a, b) => a[field] - b[field]);
+      for (const arm of arms.slice(0, count)) arm[field] = bump(arm[field], aligned ? 2 : 1);
+    } else if (project.state) {
+      const pipelines = { ...(economy.pipelines ?? {}) };
+      const old = pipelines[project.state] ?? { state: project.state, strength: 0, signings: 0, lastSignedYear: year };
+      // Start from the relationship the program can actually claim — home-state
+      // familiarity and the coordinator's lead included — so deepening Louisiana
+      // does not write 25/100 underneath a built-in 60/100 home relationship and
+      // appear to do nothing.
+      const current = pipelineStrength(economy, project.state, rec.def.state);
+      const gain = project.kind === 'pipeline-build'
+        ? Math.max(0, PIPELINE_MIN - current) + 8
+        : project.kind === 'pipeline-deepen' ? 14 : 4;
+      pipelines[project.state] = {
+        ...old,
+        strength: Math.min(100, Math.max(old.strength, current) + gain + facility * 2 + (aligned ? 4 : 0)),
+        lastSignedYear: year,
+      };
+      economy.pipelines = pipelines;
+    }
+    plans[seat] = { ...current, project: undefined };
+  }
+  if (changed) economy.staffPlans = plans;
+}
+
+
 
 /**
  * Put the coach's philosophy on the bench of the program he is now running.
@@ -2188,6 +2347,8 @@ let simGeneration = 0;
  * report.
  */
 let saveTicket = 0;
+/** A double tap on FORK must still create one protected original and one sandbox. */
+let godForkInFlight = false;
 
 export const useDynasty = create<DynastyStore>((set, get) => ({
   season: null,
@@ -2241,6 +2402,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     setLeagueNames({});
     setStarGateOpen(godMode);
     applyPhilosophy(season, seat, coach);
+    // Recruiting now runs with the spring. The class opens already contested,
+    // so week one reads like a national market rather than an empty spreadsheet.
+    seedRivalInterest(season, seat);
 
     /*
       TESTING ONLY — remove before release, together with the guaranteed PSC
@@ -2281,6 +2445,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       history: [],
       tab: 'home',
       screen: 'today',
+      godStack: [],
       loadedSlot: null,
       lastOffseason: null,
       lastWeek: null,
@@ -2323,9 +2488,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       }
     }
     const def = TABS.find((t) => t.id === tab);
+    const nextScreen = screen ?? def?.screens[0]?.id ?? 'today';
+    if (get().tab !== tab || get().screen !== nextScreen) browserHistoryCheckpoint();
     crossfade(() => set({
       tab,
-      screen: screen ?? def?.screens[0]?.id ?? 'today',
+      screen: nextScreen,
       selectedPlayer: null,
       focusPlayer: focus ?? null,
       // Every nav tap, counted. June renders the Postseason component in
@@ -2379,9 +2546,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   // Every context nav in the app comes through `setScreen`, so keeping this
   // path synchronous removes the artificial delay globally while primary-tab
   // moves through `go()` retain the broader transition.
-  setScreen: (screen) => set({
-    selectedPlayer: null, focusPlayer: null, screen,
-  }),
+  setScreen: (screen) => {
+    if (get().screen !== screen) browserHistoryCheckpoint();
+    set({ selectedPlayer: null, focusPlayer: null, screen });
+  },
 
   recruit: (prospectId, actions) => {
     const { season, userTeam, version } = get();
@@ -2477,9 +2645,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // budget held. The attempt is the move; it cannot be taken back.
     if (current.major?.kind === 'sway') return false;
     // Major moves are relationship actions, never cold-call shortcuts. Week 2+
-    // only, and Sway is specifically the middle-week attempt to change the case.
+    // only. Sway is a one-time attempt across the full spring relationship.
     if (input && (week < 2 || !hasRecruitingRelationship(prospect, userTeam))) return false;
-    if (input?.kind === 'sway' && week !== 2) return false;
+    if (input?.kind === 'sway' && prospect.swayedBy?.[userTeam]) return false;
     if (input?.kind === 'promise' && input.promise === 'twoWayOpportunity'
       && (prospect.player as Player & { twoWay?: true }).twoWay !== true) return false;
     // A promise is a binding recruitment commitment, not a coupon that resets
@@ -2511,6 +2679,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       const success = swayRecruit(
         prospect, input.factor, pitch, coach.prestige, skills.recruiting, season.rng,
       );
+      (prospect.swayedBy ??= {})[userTeam] = true;
       major = { kind: 'sway', factor: input.factor, success };
     }
     const next = { ...current };
@@ -2596,13 +2765,22 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         // in the country could ever answer. A chair with nobody in it — an
         // unseated world, or a save from before B7 — still works at the flat
         // league-average defaults.
-        const gained = weeklyPoints(
+        const rawGained = weeklyPoints(
           prospect, pitch, actions,
           mine ? coach.prestige : (staff?.prestige ?? 45),
           // The coordinator's whole job: every hour on a recruit counts for
           // more. Stacked through the same skill the points already price.
           mine ? effSkills.recruiting : (staff?.skills.recruiting ?? 20),
         ) + actionInterest(prospect, pitch, record.index);
+        const rosterNeeds = mine ? rosterHoles([
+          ...record.team.lineup, ...record.team.bench, ...record.team.rotation, ...record.team.bullpen,
+        ]) : [];
+        const prospectPos = prospect.player.type === 'pitcher'
+          ? (prospect.player as Arm).role : prospect.player.pos;
+        const fillsNeed = rosterNeeds.some((h) => h.pos === prospectPos && h.count > 0);
+        const gained = rawGained * (mine
+          ? recruitingDirectiveMultiplier(myEconomy, prospect.stars, fillsNeed)
+          : 1);
         // A hollow pitch costs interest; it cannot take him below nothing.
         prospect.points[record.index] = Math.max(0, (prospect.points[record.index] ?? 0) + gained);
       }
@@ -2613,10 +2791,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const commits = closeWeek(recruits, season.rng, finalWeek);
     resetWeeklySpend(recruits);
     recruits.week += 1;
+    advanceStaffProjects(season, userTeam, myEconomy, get().year);
+    const nextEconomy: Economy = {
+      ...myEconomy,
+      staffPlans: { ...(myEconomy.staffPlans ?? {}) },
+      pipelines: { ...(myEconomy.pipelines ?? {}) },
+    };
+    applyCoachMods(season, userTeam, coach, nextEconomy);
 
     const mineThisWeek = commits.filter((c) => c.team === userTeam);
     const yours = mineThisWeek.map((c) => c.prospect.player.name);
     set({
+      economy: nextEconomy,
       version: version + 1,
       lastWeek: { closed, yours, gone: commits.length - yours.length },
     });
@@ -2639,6 +2825,27 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // A closed week is banked points, commitments and a burned third of the
     // window — irreversible, and until now unsaved.
     void get().saveNow();
+  },
+
+  syncRecruitingCalendar: () => {
+    const season = get().season;
+    if (!season || get().phase !== null || get().busy) return;
+    // A recruiting week remains live for the whole baseball week. Close it
+    // only once the schedule has actually crossed into the following week.
+    // The earlier conversion used `<= currentWeek`, which banked Week 1 after
+    // Wednesday's first game and silently stole the Friday/Sunday recruiting
+    // window. At season end, close every remaining week.
+    const currentCalendarWeek = season.schedule[season.dayIndex]?.week ?? (RECRUITING_WEEKS + 1);
+    const target = seasonComplete(season)
+      ? RECRUITING_WEEKS
+      : Math.max(0, currentCalendarWeek - 1);
+    let guard = 0;
+    while (season.recruiting.week >= 1
+      && season.recruiting.week <= RECRUITING_WEEKS
+      && season.recruiting.week <= target
+      && guard++ < RECRUITING_WEEKS + 1) {
+      get().advanceRecruitingWeek();
+    }
   },
 
   keepPlayer: (id, pitch, offer) => {
@@ -2808,7 +3015,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       }
     }
 
-    if (next === 'recruiting') {
+    if (phase === 'portal' && next === 'signing') {
       /*
         Everybody still in the portal has gone.
 
@@ -2988,10 +3195,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         played still banked. First arrival seeds the board and starts the
         clock; a revisit changes neither.
       */
-      if (get().furthestPhase < PHASES.indexOf('recruiting')) {
-        seedRivalInterest(season, get().userTeam);
-        season.recruiting.week = 1;
-      }
       set({
         phase: next,
         furthestPhase: Math.max(get().furthestPhase, PHASES.indexOf(next)),
@@ -3208,11 +3411,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // `live` because tonight's game is still being played and the day it
     // belongs to must not pass underneath it.
     if (!season || busy || get().live || seasonComplete(season)) return;
+    const hold = unresolvedRosterDecision(season, get().userTeam, get().depth);
+    if (hold) {
+      set({ lineupGate: get().lineupGate + 1 });
+      get().go('team', 'lineup', hold.id);
+      return;
+    }
     // A casual coach's card is filled out before the day is played, not after,
     // or the nine names the game used would be yesterday's.
     if (!handles(get().depth, 'lineups')) staffSetsTheCard(season, get().userTeam);
     simNextDay(season);
     set({ version: version + 1 });
+    get().syncRecruitingCalendar();
     get().noteSeasonNews();
     // A day is a game for every team in the country; it was the largest single
     // mutation in the game that never wrote a save.
@@ -3223,6 +3433,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     set({ simError: null });
     const { season, busy } = get();
     if (!season || busy) return;
+    const hold = unresolvedRosterDecision(season, get().userTeam, get().depth);
+    if (hold) { set({ lineupGate: get().lineupGate + 1 }); get().go('team', 'lineup', hold.id); return; }
     set({ busy: true, progress: null });
     const generation = ++simGeneration;
 
@@ -3231,6 +3443,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // than a dead button.
       simSeason(season);
       set({ version: get().version + 1, busy: false });
+      get().syncRecruitingCalendar();
       get().noteSeasonNews();
       void get().saveNow();
       return;
@@ -3462,7 +3675,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // played with has to be restamped before the next season starts.
     syncCoachMods(season, userTeam, withStaff(coach.skills, get().economy.staff), {
       armCare: armCareFor(get().economy.staff),
-      injuryGuard: (FACILITIES[get().economy.facilities]?.injuryGuard ?? 1) * facilityEffects(get().economy).guard,
+      injuryGuard: (FACILITIES[get().economy.facilities]?.injuryGuard ?? 1) * facilityEffects(get().economy).guard * staffProjectInjuryGuard(get().economy),
     });
 
     /*
@@ -3773,6 +3986,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       }
 
       const rolled = nextSeason(next);
+      seedRivalInterest(rolled, get().userTeam);
 
       /*
         The winter, stamped for the paper — stage 14. The inbox already told
@@ -4458,6 +4672,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const nextEconomy: Economy = {
       ...freshEconomy(),
       staff: { ...oldEconomy.staff },
+      staffPlans: { ...(oldEconomy.staffPlans ?? {}) },
       tree: [...(oldEconomy.tree ?? [])],
     };
     // The old program loses the in-game edge, the new one gains it.
@@ -4603,24 +4818,46 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         }
       }
     }
+    if (st.overlay !== o) browserHistoryCheckpoint();
     set(o === 'settings' ? { overlay: o, settingsPage: 'index' } : { overlay: o });
   },
-  closeOverlay: () => set({ overlay: null }),
+  closeOverlay: () => { if (get().overlay !== null) browserHistoryConsume(); set({ overlay: null }); },
   settingsPage: 'index',
-  setSettingsPage: (p) => set({ settingsPage: p }),
+  setSettingsPage: (p) => {
+    const old = get().settingsPage;
+    if (get().overlay === 'settings' && old !== p) {
+      if (p === 'index' && old !== 'index') browserHistoryConsume();
+      else if (p !== 'index') browserHistoryCheckpoint();
+    }
+    set({ settingsPage: p });
+  },
   programSheet: 'overview',
   // Program subpages are local UI navigation. Bumping the global engine version
   // here forced every version subscriber in the app to re-render just because the
   // coach opened Budget or returned to Overview, which was especially visible on
   // phones. The Program screen already subscribes to `programSheet`, so this is
   // the only state that needs to move.
-  setProgramSheet: (s) => set({ programSheet: s }),
+  setProgramSheet: (s) => {
+    const st = get();
+    if (st.programSheet !== s
+      && ((st.tab === 'program' && st.screen === 'records') || st.overlay === 'program')) {
+      if (s === 'overview' && st.programSheet !== 'overview') browserHistoryConsume(1, true);
+      else if (s !== 'overview') browserHistoryCheckpoint();
+    }
+    set({ programSheet: s });
+  },
 
-  openPlayer: (id, section = 'overview') => set({ selectedPlayer: id, playerCardSection: section }),
+  openPlayer: (id, section = 'overview') => {
+    if (get().selectedPlayer !== id) browserHistoryCheckpoint();
+    set({ selectedPlayer: id, playerCardSection: section });
+  },
 
   // The guide dies with the card: a glow that survived onto some OTHER
   // player's card would be teaching the wrong errand.
-  closePlayer: () => set({ selectedPlayer: null, playerCardSection: 'overview', guide: null }),
+  closePlayer: () => {
+    if (get().selectedPlayer !== null) browserHistoryConsume();
+    set({ selectedPlayer: null, playerCardSection: 'overview', guide: null });
+  },
 
   playPostseason: async () => {
     const { season, busy, version } = get();
@@ -4965,11 +5202,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
    * would quietly be a different game from the one simulating it produces.
    */
   manageBracketGame: async () => {
-    // A game taken rather than handed over. Counted here rather than at the
-    // final out, so a game abandoned halfway still counts as one he sat in.
-    get().noteHabit('managed');
     const { season, myBracket, userTeam, version } = get();
     if (!season || !myBracket || get().busy) return;
+    // June honors the same roster decisions as the regular season. An injured
+    // starter or a healed player waiting on a return decision cannot be
+    // bypassed simply because the next game is in a tournament bracket.
+    const hold = unresolvedRosterDecision(season, userTeam, get().depth);
+    if (hold) { set({ lineupGate: get().lineupGate + 1 }); get().go('team', 'lineup', hold.id); return; }
+    // A game taken rather than handed over. Counted only after the roster gate
+    // clears, so opening the card while blocked is not logged as a managed game.
+    get().noteHabit('managed');
     // A game is already being managed. Building a second LiveGame would consume
     // the season's rng again and silently discard the one in progress.
     if (get().live) return;
@@ -5053,8 +5295,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   simBracket: (mode) => {
-    const { myBracket, version } = get();
-    if (!myBracket) return;
+    const { myBracket, version, season, userTeam } = get();
+    if (!myBracket || !season) return;
+    const hold = unresolvedRosterDecision(season, userTeam, get().depth);
+    if (hold) { set({ lineupGate: get().lineupGate + 1 }); get().go('team', 'lineup', hold.id); return; }
     const { state, preplayed } = myBracket;
 
     const step = (): void => {
@@ -5460,9 +5704,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   startManagedGame: async () => {
-    // A game taken rather than handed over. Counted here rather than at the
-    // final out, so a game abandoned halfway still counts as one he sat in.
-    get().noteHabit('managed');
     const { season, userTeam, version } = get();
     // `busy` because the worker owns the season during a sim — a game started
     // against that object would be recorded into whatever world replaces it.
@@ -5472,6 +5713,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // is now the room's only door, so it has to open the room that exists.
     if (get().live) { set({ tab: 'home', screen: 'box' }); return; }
     if (seasonComplete(season)) return;
+    const hold = unresolvedRosterDecision(season, userTeam, get().depth);
+    if (hold) { set({ lineupGate: get().lineupGate + 1 }); get().go('team', 'lineup', hold.id); return; }
+    // A game taken rather than handed over. Counted only after the lineup/rotation gate clears.
+    get().noteHabit('managed');
 
     // Play forward through any days we are not involved in. The world does not
     // wait, but our own game is left untouched for us to manage.
@@ -5481,6 +5726,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       return !!d?.games.some((g) => g.home === userTeam || g.away === userTeam);
     };
     while (!seasonComplete(season) && !hasMine() && guard++ < 60) simNextDay(season);
+    get().syncRecruitingCalendar();
     if (seasonComplete(season)) return;
 
     const day = season.schedule[season.dayIndex];
@@ -5673,6 +5919,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // The rest of the day happens now, with our game held out, then ours is
     // written down through the same path a simulated game takes.
     simNextDay(season, { hold: userTeam });
+    get().syncRecruitingCalendar();
     recordResult(season, liveMeta.home, liveMeta.away, live.result, {
       conference: liveMeta.conference,
       day: liveMeta.day,
@@ -5841,6 +6088,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const downHome = down.homeRole ?? down.role;
     up.homeRole = upHome;
     up.role = 'SP';
+    settleReturn(up);
     down.homeRole = downHome;
     down.role = downHome;
     team.rotation[slot] = up;
@@ -5919,6 +6167,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // Same doors `advanceDay` guards, for the same reasons — plus `live`,
     // because a week cannot pass while tonight's game is still being managed.
     if (!season || get().busy || get().live || seasonComplete(season)) return;
+    const hold = unresolvedRosterDecision(season, get().userTeam, get().depth);
+    if (hold) { set({ lineupGate: get().lineupGate + 1 }); get().go('team', 'lineup', hold.id); return; }
     const start = season.schedule[season.dayIndex]?.week;
     if (start === undefined) return;
     let guard = 0;
@@ -5959,6 +6209,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         break;
       }
     }
+    get().syncRecruitingCalendar();
     if (struck !== null) {
       const man = roster().find((p) => String(p.id) === struck);
       if (man) set({ weekStoppedBy: man.name });
@@ -6061,12 +6312,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // carry would be a negative number the screen has to explain.
     if (remaining({ ...economy, staff: without }, me.prestige) < man.wage) return;
     const staff = { ...without, [seat]: man };
-    // Re-dress the mods the games read; the staff stacks on the coach's own.
-    syncCoachMods(season, userTeam, withStaff(get().coach.skills, staff), {
-      armCare: armCareFor(staff),
-      injuryGuard: (FACILITIES[economy.facilities]?.injuryGuard ?? 1) * facilityEffects(economy).guard,
-    });
-    set({ economy: { ...economy, staff }, version: get().version + 1 });
+    const plans = { ...(economy.staffPlans ?? {}) };
+    plans[seat] = { directive: staffPlan(economy, seat).directive };
+    const nextEconomy: Economy = { ...economy, staff, staffPlans: plans };
+    applyCoachMods(season, userTeam, get().coach, nextEconomy);
+    set({ economy: nextEconomy, version: get().version + 1 });
     void get().saveNow();
   },
 
@@ -6076,11 +6326,80 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (!economy.staff[seat]) return;
     const staff = { ...economy.staff };
     delete staff[seat];
-    syncCoachMods(season, userTeam, withStaff(get().coach.skills, staff), {
-      armCare: armCareFor(staff),
-      injuryGuard: (FACILITIES[economy.facilities]?.injuryGuard ?? 1) * facilityEffects(economy).guard,
-    });
-    set({ economy: { ...economy, staff }, version: get().version + 1 });
+    const plans = { ...(economy.staffPlans ?? {}) };
+    delete plans[seat];
+    const nextEconomy: Economy = { ...economy, staff, staffPlans: plans };
+    applyCoachMods(season, userTeam, get().coach, nextEconomy);
+    set({ economy: nextEconomy, version: get().version + 1 });
+    void get().saveNow();
+  },
+
+
+  setStaffDirective: (seat, directive) => {
+    const { economy } = get();
+    if (!economy.staff[seat]) return false;
+    const allowed: Record<StaffSeat, StaffDirective[]> = {
+      hitting: ['balanced','contact','power','discipline'],
+      pitching: ['balanced','command','velocity','armCare'],
+      recruiting: ['balanced','pipeline','stars','sleepers','needs'],
+    };
+    if (!allowed[seat].includes(directive)) return false;
+    const plan = staffPlan(economy, seat);
+    const next: Economy = {
+      ...economy,
+      staffPlans: { ...(economy.staffPlans ?? {}), [seat]: { ...plan, directive } },
+    };
+    if (get().season) applyCoachMods(get().season!, get().userTeam, get().coach, next);
+    set({ economy: next, version: get().version + 1 });
+    void get().saveNow();
+    return true;
+  },
+
+  startStaffProject: (seat, kind, state) => {
+    const { economy, season } = get();
+    if (!season || !economy.staff[seat]) return false;
+    const facility = projectFacility(seat);
+    if (facilityLevel(economy, facility) < 1) return false;
+    const expectedSeat: StaffSeat = kind.startsWith('hitting-') ? 'hitting'
+      : kind.startsWith('pitching-') ? 'pitching' : 'recruiting';
+    if (expectedSeat !== seat) return false;
+    if (seat === 'recruiting' && (!state || state.trim().length < 2)) return false;
+    const plan = staffPlan(economy, seat);
+    if (plan.project) return false;
+    if (seat === 'recruiting' && state) {
+      const homeState = season.teams[get().userTeam]?.def.state ?? '';
+      const strength = pipelineStrength(economy, state.trim().toUpperCase(), homeState);
+      if (kind === 'pipeline-build' && strength >= PIPELINE_MIN) return false;
+      if ((kind === 'pipeline-deepen' || kind === 'pipeline-maintain') && strength < PIPELINE_MIN) return false;
+    }
+    const weeks = staffProjectWeeks(economy, seat);
+    const project = {
+      kind,
+      ...(state ? { state: state.trim().toUpperCase() } : {}),
+      weeksTotal: weeks,
+      weeksLeft: weeks,
+      startedWeek: Math.max(1, Math.min(RECRUITING_WEEKS, season.recruiting.week)),
+    };
+    const next: Economy = {
+      ...economy,
+      staffPlans: { ...(economy.staffPlans ?? {}), [seat]: { ...plan, project } },
+    };
+    if (season) applyCoachMods(season, get().userTeam, get().coach, next);
+    set({ economy: next, version: get().version + 1 });
+    void get().saveNow();
+    return true;
+  },
+
+  cancelStaffProject: (seat) => {
+    const { economy } = get();
+    const plan = staffPlan(economy, seat);
+    if (!plan.project) return;
+    const next: Economy = {
+      ...economy,
+      staffPlans: { ...(economy.staffPlans ?? {}), [seat]: { ...plan, project: undefined } },
+    };
+    if (get().season) applyCoachMods(get().season!, get().userTeam, get().coach, next);
+    set({ economy: next, version: get().version + 1 });
     void get().saveNow();
   },
 
@@ -6540,24 +6859,47 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   godStack: [],
   openGod: (target) => {
     if (!get().godMode) return;
-    set({ godStack: [...get().godStack, target] });
+    const stack = get().godStack;
+    if (sameGodTarget(stack[stack.length - 1], target)) return;
+    browserHistoryCheckpoint();
+    set({ godStack: [...stack, target] });
   },
-  closeGod: () => set({ godStack: get().godStack.slice(0, -1) }),
-  closeGodAll: () => set({ godStack: [] }),
+  closeGod: () => {
+    if (get().godStack.length > 0) browserHistoryConsume();
+    set({ godStack: get().godStack.slice(0, -1) });
+  },
+  closeGodAll: () => {
+    if (get().godStack.length > 0) browserHistoryConsume(Math.min(1, get().godStack.length));
+    set({ godStack: [] });
+  },
 
   godForkToSandbox: async () => {
     const { season, userTeam } = get();
-    if (!season || get().godMode) return false;
-    const school = season.teams[userTeam]?.def.school ?? 'Dynasty';
-    // The original first, as a named snapshot, so the fork can never cost it.
-    await get().saveNow(newSlotId(), school);
-    // Then the copy, flagged, into its own slot — and into the chair.
-    const slot = newSlotId();
-    set({ godMode: true });
-    setStarGateOpen(true);
-    await get().saveNow(slot, `${school} · sandbox`);
-    await get().refreshSaves();
-    return get().loadSlot(slot);
+    if (!season || get().godMode || godForkInFlight) return false;
+    godForkInFlight = true;
+    try {
+      const school = season.teams[userTeam]?.def.school ?? 'Dynasty';
+      // The original first, as a named snapshot, so the fork can never cost it.
+      // Do not turn the live career into a sandbox unless that protection copy
+      // actually reached storage.
+      const protectedOriginal = await get().saveNow(newSlotId(), school);
+      if (!protectedOriginal) return false;
+
+      // Then the copy, flagged, into its own slot — and into the chair.
+      const slot = newSlotId();
+      set({ godMode: true });
+      setStarGateOpen(true);
+      const sandboxSaved = await get().saveNow(slot, `${school} · sandbox`);
+      if (!sandboxSaved) {
+        set({ godMode: false });
+        setStarGateOpen(false);
+        return false;
+      }
+      await get().refreshSaves();
+      return get().loadSlot(slot);
+    } finally {
+      godForkInFlight = false;
+    }
   },
 
   setDepthMode: (mode) => {
@@ -6577,7 +6919,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   saveNow: async (slot = AUTOSAVE_SLOT, name?: string) => {
     const { season, year, userTeam, history, lastPostseason } = get();
-    if (!season) return;
+    if (!season) return false;
     const team = season.teams[userTeam];
     const ticket = ++saveTicket;
     set({ saveState: 'saving', lastSaveError: null });
@@ -6598,6 +6940,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         offers: get().offers,
         coach: get().coach,
         phase: get().phase,
+        portal: get().portal,
         furthestPhase: get().furthestPhase,
         review: get().lastReview,
         outcome: get().lastOutcome,
@@ -6623,6 +6966,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         wordsUsed: get().wordsUsed,
       });
       if (ticket === saveTicket) set({ saveState: 'saved' });
+      return true;
     } catch (e) {
       // A failed save must say so. Silently losing a dynasty is the worst
       // outcome this app has available to it. Stale requests stay quiet — a
@@ -6630,6 +6974,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       if (ticket === saveTicket) {
         set({ saveState: 'error', lastSaveError: e instanceof Error ? e.message : String(e) });
       }
+      return false;
     }
   },
 
@@ -6723,6 +7068,34 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       dice roll that must be preserved.
     */
     const jobSearch = Boolean(loaded.jobSearch);
+    const loadedLeagueNames = usableLeagueNames(loaded.leagueNames);
+    // These two are module-level readers used by systems outside Zustand.
+    // Restoring only the store fields made God Mode leak across save changes:
+    // a normal career loaded after a sandbox could inherit the open star gate,
+    // while a sandbox loaded fresh could lose it; league renames had the same
+    // cross-save problem. Put the live save back into both modules before the
+    // UI or recruiting board can read the new world.
+    setStarGateOpen(loaded.godMode);
+    setLeagueNames(loadedLeagueNames);
+    // The portal board itself is transient gameplay state, not derivable from
+    // `phase` alone. Older saves could say `phase: 'portal'` while loading a
+    // null board, which rendered an entirely blank offseason step. Modern saves
+    // restore the exact board; older ones rebuild the deterministic pool so the
+    // career always has a way forward.
+    let restoredPortal = (loaded.portal ?? null) as DynastyState['portal'];
+    if ((loaded.phase ?? null) === 'portal' && !restoredPortal) {
+      const rec = loaded.season.teams[loaded.userTeam];
+      const games = (rec?.w ?? 0) + (rec?.l ?? 0);
+      const pool = openPortal(loaded.season.teams, {
+        year: loaded.year, seed: loaded.season.seed ?? 0, games,
+      });
+      const mine = pool.filter((m) => m.from === loaded.userTeam);
+      const theirs = pool.filter((m) => m.from !== loaded.userTeam)
+        .sort((a, b) => overallOf(b.player) - overallOf(a.player));
+      const spent = loaded.season.portalSpend?.[loaded.userTeam] ?? 0;
+      restoredPortal = { leaving: mine, available: theirs, spent };
+    }
+
     const offers = jobSearch
       ? (Array.isArray(loaded.offers) && loaded.offers.length > 0
         ? loaded.offers as JobOffer[]
@@ -6798,14 +7171,15 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // which leaves a career in progress exactly as it was being played.
       depth: normalizeDepth(loaded.depth),
       godMode: loaded.godMode,
-      leagueNames: usableLeagueNames(loaded.leagueNames),
+      leagueNames: loadedLeagueNames,
       // Unread stays unread across a restart. It is the one thing the inbox
       // knows that nothing else in the save does.
       inbox: restoreInbox(loaded.inbox),
       // Back to the step the offseason was on, so a reload mid-sequence resumes
       // rather than stranding the player on the dashboard with a week of
       // recruiting budget already spent and nowhere to spend the rest.
-      phase: (loaded.phase ?? null) as Phase,
+      phase: (loaded.phase === 'recruiting' ? 'signing' : (loaded.phase ?? null)) as Phase,
+      portal: restoredPortal,
       /**
        * And how far he had got, which is a different fact from where he is.
        *
@@ -6825,7 +7199,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
        */
       furthestPhase: typeof loaded.furthestPhase === 'number'
         ? loaded.furthestPhase
-        : Math.max(0, PHASES.indexOf((loaded.phase ?? null) as Exclude<Phase, null>)),
+        : Math.max(0, PHASES.indexOf((loaded.phase === 'recruiting' ? 'signing' : loaded.phase ?? null) as Exclude<Phase, null>)),
       lastReview: (loaded.review ?? null) as Review | null,
       lastOutcome: (loaded.outcome ?? null) as SeasonOutcome | null,
       version: get().version + 1,
@@ -6835,6 +7209,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // down — including the saves menu this was very likely pressed from.
       overlay: null,
       selectedPlayer: null,
+      godStack: [],
       lastOffseason: null,
       // Week recaps are not saved, and a stale one from the previous session
       // would sit over a board it does not describe.
@@ -6881,9 +7256,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     */
     simGeneration += 1;
     disposeWorker();
+    setStarGateOpen(false);
+    setLeagueNames({});
     set({
       atStart: true,
       season: null,
+      godMode: false,
+      leagueNames: {},
       live: null,
       bracket: null,
       needsTeam: false,
@@ -6891,6 +7270,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       progress: null,
       seasonOpener: null,
       selectedPlayer: null,
+      godStack: [],
       overlay: null,
       loadedSlot: null,
       phase: null,
@@ -6957,8 +7337,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // its worker has nothing left to do.
     simGeneration += 1;
     disposeWorker();
+    setStarGateOpen(false);
+    setLeagueNames({});
     set({
     season: null,
+    godMode: false,
+    leagueNames: {},
     needsTeam: true,
     busy: false,
     progress: null,
@@ -6990,6 +7374,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     inbox: [],
     overlay: null,
     selectedPlayer: null,
+    godStack: [],
     loadError: null,
     });
   },

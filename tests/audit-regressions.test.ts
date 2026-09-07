@@ -46,6 +46,16 @@ beforeEach(() => {
   useDynasty.getState().newDynasty();
 });
 
+describe('God Mode touch navigation', () => {
+  it('does not stack the same editor twice on a double tap', () => {
+    useDynasty.getState().start(4242, 0, undefined, 'full', undefined, true);
+    const god = useDynasty.getState();
+    god.openGod({ kind: 'time' });
+    god.openGod({ kind: 'time' });
+    expect(useDynasty.getState().godStack).toHaveLength(1);
+  });
+});
+
 describe('the postseason can only be started once', () => {
   it('ignores a second press instead of replaying June on top of itself', () => {
     useDynasty.getState().start(4242, 0);

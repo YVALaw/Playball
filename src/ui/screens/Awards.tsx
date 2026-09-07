@@ -9,7 +9,7 @@
 // the ceremony already happened, and making somebody re-flip cards to look up
 // a name would be theatre at the expense of the reader.
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { ChevronRightIcon, StarIcon } from '@radix-ui/react-icons';
@@ -142,6 +142,14 @@ export function Awards() {
     ...(coach ? ['coach'] : []),
   ];
   const done = !ceremony || allIds.every((id) => shown.has(id));
+  const summaryRef = useRef<HTMLDivElement>(null);
+  const wasDone = useRef(done);
+  useEffect(() => {
+    if (ceremony && done && !wasDone.current) {
+      requestAnimationFrame(() => summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    }
+    wasDone.current = done;
+  }, [ceremony, done]);
 
   /*
     Each winner wears his school — the BOX, not the letters. Reported from
@@ -226,6 +234,7 @@ export function Awards() {
         left to spoil and it leads, as any results page should.
       */}
       {done && (
+        <div ref={summaryRef} className="awards-summary-reveal">
         <MetricStrip>
           <Metric
             label="YOUR PROGRAM"
@@ -240,6 +249,7 @@ export function Awards() {
           />
           <Metric label="AWARDS" value={String(awards.length)} note="HANDED OUT" />
         </MetricStrip>
+        </div>
       )}
 
       {ceremony && !done && (

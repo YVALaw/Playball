@@ -263,6 +263,10 @@ export function Player() {
   const rosterOf = (t: Owner): AnyPlayer[] =>
     [...t.team.lineup, ...t.team.bench, ...t.team.rotation, ...t.team.bullpen];
 
+  const portalEntry = portal
+    ? [...portal.leaving, ...portal.available].find((m) => m.player.id === selected)
+    : undefined;
+
   let p: AnyPlayer | undefined = rosterOf(team).find((x) => x.id === selected);
   let owner = team;
   if (!p) {
@@ -284,8 +288,7 @@ export function Player() {
     lets the card show the same ratings/stats context the coach is deciding on.
   */
   if (!p && portal) {
-    const portalMan = [...portal.leaving, ...portal.available]
-      .find((m) => m.player.id === selected);
+    const portalMan = portalEntry;
     if (portalMan) {
       p = portalMan.player;
       owner = season.teams[portalMan.from] ?? team;
@@ -339,6 +342,12 @@ export function Player() {
         slot={slot}
         dhToday={dhToday}
       />
+      {portalEntry && (
+        <section className="portal-origin-strip">
+          <span><small>TRANSFER PORTAL</small><strong>From {portalEntry.fromName}</strong></span>
+          <em>{portalEntry.reason}</em>
+        </section>
+      )}
       <Segmented<Sheet>
         label="Player card section"
         value={active}

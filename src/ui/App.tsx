@@ -23,7 +23,7 @@ import {
   HomeIcon, IdCardIcon, StarIcon,
 } from '@radix-ui/react-icons';
 import {
-  PHASES, PHASE_LABEL, TABS, useDynasty, useUserTeam, type Tab,
+  PHASES, PHASE_LABEL, TABS, useDynasty, useUserTeam, type ProgramSheet, type Tab,
 } from '../state/store.js';
 import { hasLayerToClose, Back, isNativeShell } from './backNav.js';
 import { StepRail } from './StepRail.js';
@@ -116,7 +116,14 @@ function titleCase(label: string): string {
  * exactly as much as a card you opened to check somebody's record deserves.
  */
 export function App() {
-  const [teamCard, setTeamCard] = useState<number | null>(null);
+  const [teamCard, setTeamCardRaw] = useState<number | null>(null);
+  const setTeamCard = (next: number | null): void => {
+    if (typeof window !== 'undefined' && next !== teamCard) {
+      window.dispatchEvent(new CustomEvent(next === null ? 'playball:history-consume' : 'playball:history-checkpoint',
+        next === null ? { detail: { count: 1 } } : undefined));
+    }
+    setTeamCardRaw(next);
+  };
 
   /*
     Your school's colours, worn by the whole app.
@@ -184,6 +191,7 @@ function AppBody(
   const go = useDynasty((s) => s.go);
   const setScreen = useDynasty((s) => s.setScreen);
   const setProgramSheet = useDynasty((s) => s.setProgramSheet);
+  const programSheet = useDynasty((s) => s.programSheet);
   const year = useDynasty((s) => s.year);
   // The chrome prints live numbers now — the record, the date, the roster —
   // and the engine mutates in place, so the version counter is what tells this
@@ -222,6 +230,7 @@ function AppBody(
   const openOverlay = useDynasty((s) => s.openOverlay);
   const refreshSaves = useDynasty((s) => s.refreshSaves);
   const atStart = useDynasty((s) => s.atStart);
+  const loadedSlot = useDynasty((s) => s.loadedSlot);
   const backToStart = useDynasty((s) => s.backToStart);
   const [checked, setChecked] = useState(false);
 
@@ -294,8 +303,87 @@ function AppBody(
     nine is short and raises its own modal, so the back gesture cannot walk
     out of a card the front door will not let you leave either.
   */
+  type RouteStop = { tab: Tab; screen: string; programSheet: ProgramSheet };
+  const routeStop = (t: Tab, sc: string, sheet: ProgramSheet): RouteStop => ({
+    tab: t,
+    screen: sc,
+    // Program sheets only exist on PROGRAM · OVERVIEW. Keeping stale sheet
+    // values out of every other route prevents a sheet reset from creating a
+    // fake history entry while the coach is somewhere else.
+    programSheet: t === 'program' && sc === 'records' ? sheet : 'overview',
+  });
+  const routeKey = (r: RouteStop): string => `${r.tab}|${r.screen}|${r.programSheet}`;
+  const routeTrail = useRef<RouteStop[]>([]);
+  // A ref is ideal for the trail itself, but native/browser back arming is
+  // rendered from `hasLayer`. Bump this counter whenever the ref mutates so a
+  // newly visited route immediately arms the edge/back gesture.
+  const [routeTrailVersion, setRouteTrailVersion] = useState(0);
+  void routeTrailVersion;
+  const bumpRouteTrail = (): void => setRouteTrailVersion((v) => v + 1);
+  const currentRoute = useRef<RouteStop>(routeStop(tab, screen, programSheet));
+  const restoringRoute = useRef<string | null>(null);
+  // Set by an on-screen Back control that also consumes a browser history
+  // entry. It lets the route trail peel the matching stop instead of recording
+  // the screen we just left as a new forward visit.
+  const routeConsumePending = useRef(false);
+
+  // Remember the route the coach actually visited, rather than assuming Back
+  // means "first screen in this tab, then HOME". That assumption is what made
+  // PROGRAM · BOARD jump straight to HOME instead of PROGRAM · OVERVIEW.
+  useLayoutEffect(() => {
+    const next = routeStop(tab, screen, programSheet);
+    const nextKey = routeKey(next);
+    if (restoringRoute.current !== null) {
+      currentRoute.current = next;
+      if (restoringRoute.current === nextKey) restoringRoute.current = null;
+      return;
+    }
+    const prev = currentRoute.current;
+    if (routeKey(prev) !== nextKey) {
+      if (routeConsumePending.current) {
+        routeConsumePending.current = false;
+        const last = routeTrail.current.at(-1);
+        if (last && routeKey(last) === nextKey) {
+          routeTrail.current.pop();
+          bumpRouteTrail();
+        }
+        currentRoute.current = next;
+        return;
+      }
+      const last = routeTrail.current.at(-1);
+      if (!last || routeKey(last) !== routeKey(prev)) {
+        routeTrail.current.push(prev);
+        if (routeTrail.current.length > 48) routeTrail.current.splice(0, routeTrail.current.length - 48);
+        bumpRouteTrail();
+      }
+      currentRoute.current = next;
+    }
+  }, [tab, screen, programSheet]);
+
+  // A different career is a different navigation story. Do not let Back walk
+  // from a freshly loaded dynasty into a screen that belonged to the previous
+  // save. The front door likewise starts with an empty trail.
+  const routeCareer = useRef<string | null>(loadedSlot);
+  useEffect(() => {
+    if (atStart || routeCareer.current !== loadedSlot) {
+      if (routeTrail.current.length > 0) {
+        routeTrail.current = [];
+        bumpRouteTrail();
+      }
+      currentRoute.current = routeStop(tab, screen, programSheet);
+      restoringRoute.current = null;
+      routeCareer.current = loadedSlot;
+    }
+  }, [atStart, loadedSlot, tab, screen, programSheet]);
+
   const backRef = useRef<() => void>(() => {});
+  const lastBackCommit = useRef(0);
   backRef.current = (): void => {
+    const now = Date.now();
+    // Edge gestures can be reported twice by a shell/browser bridge during the
+    // same predictive swipe. One physical gesture must peel exactly one layer.
+    if (now - lastBackCommit.current < 350) return;
+    lastBackCommit.current = now;
     const s = useDynasty.getState();
     // A blocking card is the screen while it lasts: the back press is
     // swallowed rather than obeyed. These are answered on their own terms —
@@ -306,8 +394,39 @@ function AppBody(
     if (s.godStack.length > 0) { s.closeGod(); return; }
     if (s.selectedPlayer !== null) { s.closePlayer(); return; }
     if (teamCardRef.current !== null) { setTeamCard(null); return; }
-    if (s.overlay !== null) { s.closeOverlay(); return; }
-    // Up a level: to the tab's own first screen, then to HOME.
+    if (s.overlay !== null) {
+      // The physical gesture follows the same nested-page rule as the visible
+      // Back bar. A Settings detail page goes to Settings first; it does not
+      // throw the whole overlay away.
+      if (s.overlay === 'settings' && s.settingsPage !== 'index') { s.setSettingsPage('index'); return; }
+      if (s.overlay === 'program' && s.programSheet === 'coach') s.setProgramSheet('overview');
+      s.closeOverlay();
+      return;
+    }
+    // True route history comes before hierarchy. PROGRAM · BOARD therefore
+    // returns to PROGRAM · OVERVIEW, and moving between arbitrary tabs/screens
+    // retraces the order the coach actually visited them.
+    const previous = routeTrail.current.pop();
+    if (previous) {
+      bumpRouteTrail();
+      const targetKey = routeKey(previous);
+      restoringRoute.current = targetKey;
+      s.go(previous.tab, previous.screen);
+      const after = useDynasty.getState();
+      // A broken manual lineup is allowed to refuse navigation. If it does,
+      // keep the trail intact so the next Back after fixing the card still
+      // goes to the same real previous place.
+      if (after.tab !== previous.tab || after.screen !== previous.screen) {
+        routeTrail.current.push(previous);
+        bumpRouteTrail();
+        restoringRoute.current = null;
+        return;
+      }
+      if (previous.tab === 'program' && previous.screen === 'records') after.setProgramSheet(previous.programSheet);
+      return;
+    }
+    // Fallback for an old/deep-linked state that did not build a trail in this
+    // session: keep the safe hierarchy instead of making Back a no-op.
     const first = TABS.find((t) => t.id === s.tab)?.screens[0]?.id;
     if (first && s.screen !== first) { s.go(s.tab, first); return; }
     if (s.tab !== 'home') { s.go('home'); return; }
@@ -320,17 +439,9 @@ function AppBody(
   const godOpen = useDynasty((s) => s.godStack.length > 0);
   const hasLayer = hasLayerToClose({
     blocked, godOpen, playerOpen: selectedPlayer !== null, teamCardOpen: teamCard !== null,
-    overlayOpen: overlay !== null, tab, screen,
+    overlayOpen: overlay !== null, routeBackAvailable: !atStart && routeCareer.current === loadedSlot && routeTrail.current.length > 0, tab, screen,
   });
-  /** The same question, asked of the live store — for the moment after a pop. */
-  const layerNow = (): boolean => {
-    const s = useDynasty.getState();
-    return hasLayerToClose({
-      blocked: Boolean(s.seasonOpener || s.playbookInvite || s.bigMoment),
-      playerOpen: s.selectedPlayer !== null, teamCardOpen: teamCardRef.current !== null,
-      overlayOpen: s.overlay !== null, tab: s.tab, screen: s.screen,
-    });
-  };
+
 
   // The APK: claim the gesture exactly while there is a layer, and answer it.
   useEffect(() => {
@@ -344,33 +455,62 @@ function AppBody(
     return () => { void handle?.remove(); };
   }, []);
 
-  // The browser: the sentinel, only while there is a layer.
-  const armed = useRef(false);
-  const takingDown = useRef(false);
+  /*
+    Browser / iOS history is route-by-route now, not one sentinel for the whole
+    app. The old sentinel was the reason an iPhone edge swipe previewed HOME
+    while leaving PROGRAM · BOARD, then snapped to PROGRAM after the gesture
+    committed: WebKit could only preview the single history entry underneath
+    the app, which had been created back on HOME.
+
+    Store navigation emits a checkpoint *before* it mutates the route. That
+    gives Safari a real previous visual entry for every forward navigation.
+    Closing a card with an on-screen control consumes that entry silently; a
+    physical/browser Back pop consumes it itself and `backRef` restores the
+    matching app route without creating another checkpoint. Android keeps using
+    the native Back plugin above.
+  */
+  const browserPopping = useRef(false);
+  const browserSilentPop = useRef(0);
   useEffect(() => {
     if (isNativeShell()) return;
-    if (hasLayer && !armed.current) {
-      history.pushState({ playball: true }, '');
-      armed.current = true;
-    } else if (!hasLayer && armed.current) {
-      // The last layer closed by a tap, not by back: take the sentinel down
-      // so the browser's back button leads out, not into a dead press.
-      takingDown.current = true;
-      history.back();
-    }
-  }, [hasLayer]);
-  useEffect(() => {
-    if (isNativeShell()) return;
-    const onPop = (): void => {
-      if (takingDown.current) { takingDown.current = false; armed.current = false; return; }
-      armed.current = false;              // this pop consumed the sentinel
-      backRef.current();
-      // Still something open — a swallowed card, or a deeper stack — so the
-      // next press must reach us too.
-      if (layerNow()) { history.pushState({ playball: true }, ''); armed.current = true; }
+    try { history.replaceState({ ...(history.state ?? {}), playballRoot: true }, ''); } catch { /* private mode */ }
+
+    const checkpoint = (): void => {
+      if (browserPopping.current) return;
+      try { history.pushState({ playball: true }, ''); } catch { /* private mode */ }
     };
+    const consume = (event: Event): void => {
+      if (browserPopping.current) return;
+      // Only consume entries created by Playball. A deep link / refreshed root
+      // has no synthetic layer beneath it, and calling history.go(-1) there
+      // would leave the app instead of merely closing the current UI.
+      if (!(history.state as { playball?: boolean } | null)?.playball) return;
+      const detail = (event as CustomEvent<{ count?: number; route?: boolean }>).detail;
+      const count = Math.max(1, Number(detail?.count ?? 1));
+      if (detail?.route) routeConsumePending.current = true;
+      // Each UI close peels one real entry. God Mode's CLOSE ALL intentionally
+      // asks for one here; the remaining god stack is an internal modal stack,
+      // not somewhere a browser Back should resurrect after it was closed.
+      browserSilentPop.current += 1;
+      try { history.go(-Math.min(1, count)); } catch { browserSilentPop.current = Math.max(0, browserSilentPop.current - 1); }
+    };
+    const onPop = (): void => {
+      if (browserSilentPop.current > 0) { browserSilentPop.current -= 1; return; }
+      browserPopping.current = true;
+      backRef.current();
+      // Store writes are synchronous. Keep the guard through the microtask so
+      // a nested route setter cannot push a replacement entry mid-pop.
+      queueMicrotask(() => { browserPopping.current = false; });
+    };
+
+    window.addEventListener('playball:history-checkpoint', checkpoint);
+    window.addEventListener('playball:history-consume', consume);
     window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
+    return () => {
+      window.removeEventListener('playball:history-checkpoint', checkpoint);
+      window.removeEventListener('playball:history-consume', consume);
+      window.removeEventListener('popstate', onPop);
+    };
   }, []);
 
 
@@ -1451,12 +1591,11 @@ function Screen({ id }: { id: string }) {
     case 'box': return <Manage />;
     case 'history': return <History />;
     case 'records': return <Program />;
+    case 'recruiting': return <Board />;
     case 'colleges': return <Colleges />;
     case 'strategy': return <StrategyScreen />;
-    // 'board' and 'draft' are deliberately absent: both are offseason phases
-    // now, rendered by the phase frame. Routed here they would mount outside
-    // the window they live in — the Board with no pinned action and no way
-    // forward at all. An unknown id falls through to the placeholder instead.
+    // Draft remains an offseason phase. Recruiting is now a season-long Program
+    // destination; the legacy offseason board route is kept only for old saves.
     case 'wire': return <Wire />;
     case 'inbox': return <Inbox />;
     case 'saves': return <Saves />;

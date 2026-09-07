@@ -64,6 +64,86 @@ export type StaffSeat = 'pitching' | 'hitting' | 'recruiting';
 
 export const SEATS: readonly StaffSeat[] = ['pitching', 'hitting', 'recruiting'];
 
+/** Standing instruction for one assistant. It persists until the coach changes it. */
+export type StaffDirective =
+  | 'balanced'
+  | 'contact' | 'power' | 'discipline'
+  | 'command' | 'velocity' | 'armCare'
+  | 'pipeline' | 'stars' | 'sleepers' | 'needs';
+
+export type StaffProjectKind =
+  | 'hitting-contact' | 'hitting-power' | 'hitting-discipline'
+  | 'pitching-command' | 'pitching-velocity' | 'pitching-arm-care'
+  | 'pipeline-build' | 'pipeline-deepen' | 'pipeline-maintain';
+
+export interface StaffProject {
+  kind: StaffProjectKind;
+  /** Geography for recruiting projects. */
+  state?: string;
+  weeksTotal: number;
+  weeksLeft: number;
+  startedWeek: number;
+}
+
+export interface StaffPlan {
+  directive: StaffDirective;
+  project?: StaffProject;
+}
+
+export const DEFAULT_DIRECTIVE: Record<StaffSeat, StaffDirective> = {
+  hitting: 'balanced', pitching: 'balanced', recruiting: 'balanced',
+};
+
+export const DIRECTIVE_LABEL: Record<StaffDirective, string> = {
+  balanced: 'Balanced', contact: 'Contact', power: 'Power', discipline: 'Plate discipline',
+  command: 'Command', velocity: 'Velocity', armCare: 'Arm care',
+  pipeline: 'Pipeline first', stars: 'Chase stars', sleepers: 'Find sleepers', needs: 'Roster needs',
+};
+
+export const PROJECT_LABEL: Record<StaffProjectKind, string> = {
+  'hitting-contact': 'Contact block', 'hitting-power': 'Power block',
+  'hitting-discipline': 'Approach lab', 'pitching-command': 'Command lab',
+  'pitching-velocity': 'Velocity block', 'pitching-arm-care': 'Arm-care block',
+  'pipeline-build': 'Build pipeline', 'pipeline-deepen': 'Deepen pipeline',
+  'pipeline-maintain': 'Maintain pipeline',
+};
+
+export function staffPlan(eco: Economy, seat: StaffSeat): StaffPlan {
+  return eco.staffPlans?.[seat] ?? { directive: DEFAULT_DIRECTIVE[seat] };
+}
+
+/** What a facility unlocks for the assistant sitting beside it. */
+export function projectFacility(seat: StaffSeat): Building {
+  return seat === 'hitting' ? 'cage' : seat === 'pitching' ? 'pen' : 'clubhouse';
+}
+
+/** Project duration gets shorter as the relevant facility becomes real infrastructure. */
+export function staffProjectWeeks(eco: Economy, seat: StaffSeat): number {
+  const level = facilityLevel(eco, projectFacility(seat));
+  return level >= 3 ? 3 : level >= 2 ? 4 : 5;
+}
+
+/** Recruiting directives change how effectively RP turns into interest. */
+export function recruitingDirectiveMultiplier(
+  eco: Economy, stars: number, need: boolean,
+): number {
+  const directive = staffPlan(eco, 'recruiting').directive;
+  if (directive === 'stars' && stars >= 4) return 1.10;
+  if (directive === 'sleepers' && stars <= 3) return 1.10;
+  if (directive === 'needs' && need) return 1.10;
+  if (directive === 'pipeline') return 1.04;
+  return 1;
+}
+
+/** An active arm-care project protects pitchers while it is actually running. */
+export function staffProjectInjuryGuard(eco: Economy): number {
+  const p = staffPlan(eco, 'pitching').project;
+  if (p?.kind !== 'pitching-arm-care') return 1;
+  const level = facilityLevel(eco, 'pen');
+  return level >= 3 ? 0.88 : level >= 2 ? 0.92 : 0.95;
+}
+
+
 export const SEAT_LABEL: Record<StaffSeat, string> = {
   pitching: 'Pitching coach',
   hitting: 'Hitting coach',
@@ -370,8 +450,11 @@ export function pipelineStrength(
   // Preserve the original home-state reach advantage: 60+ is the threshold
   // that lets a network stretch one prestige tier beyond normal reach.
   const home = state === homeState ? 60 : 0;
+  // A coordinator can bring familiarity with a state, but hiring him no longer
+  // hands the program a finished pipeline. The relationship becomes a real
+  // pipeline only when the coordinator is assigned to build it.
   const coordinator = eco.staff.recruiting?.pipelineState === state
-    ? Math.max(60, Math.round((eco.staff.recruiting?.rating ?? 0) * 0.82))
+    ? Math.min(30, 16 + Math.round((eco.staff.recruiting?.rating ?? 0) * 0.14))
     : 0;
   return Math.max(stored, home, coordinator);
 }
@@ -602,6 +685,8 @@ export interface Economy {
   facilityLevels?: Partial<Record<Building, number>>;
   /** Who sits in each seat. Absent means vacant. */
   staff: Partial<Record<StaffSeat, Assistant>>;
+  /** Standing instructions and multi-week projects for each employed assistant. */
+  staffPlans?: Partial<Record<StaffSeat, StaffPlan>>;
   /** Former assistants who left this coach for head-coaching opportunities. */
   tree?: CoachingTreeEntry[];
   /** Recruiting relationships that this staff has deliberately built. */
@@ -621,6 +706,7 @@ export const freshEconomy = (): Economy => ({
   built: [],
   facilityLevels: {},
   staff: {},
+  staffPlans: {},
   tree: [],
   pipelines: {},
   spent: 0,

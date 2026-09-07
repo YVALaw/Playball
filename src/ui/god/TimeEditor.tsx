@@ -1,13 +1,13 @@
-// god/TimeEditor.tsx — the calendar and the shape of the world.
-//
-// Opened from the header's bolt on the Home and Season tabs and from the
-// bolt on the schedule.
+// god/TimeEditor.tsx — calendar actions and global presets in separate panels.
 
 import { useState } from 'react';
 import { useDynasty } from '../../state/store.js';
-import { SectionHeading } from '../components/Kit.js';
+import { Segmented } from '../components/Kit.js';
 import { seasonComplete } from '../../engine/season.js';
 import { SureButton, Toast } from './controls.js';
+
+type Panel = 'calendar' | 'presets';
+const PANELS = [{ value: 'calendar', label: 'CALENDAR' }, { value: 'presets', label: 'PRESETS' }] as const;
 
 export function TimeEditor() {
   const season = useDynasty((s) => s.season);
@@ -19,6 +19,7 @@ export function TimeEditor() {
   const preset = useDynasty((s) => s.godPreset);
   const playSeason = useDynasty((s) => s.playSeason);
   const closeGodAll = useDynasty((s) => s.closeGodAll);
+  const [panel, setPanel] = useState<Panel>('calendar');
   const [note, setNote] = useState<string | null>(null);
   void version;
   const me = season?.teams[userTeam];
@@ -27,39 +28,29 @@ export function TimeEditor() {
 
   return (
     <main className="module-workspace god-desk">
-      <section className="god-card">
-        <div className="god-actions">
-          <button
-            type="button"
-            className="tap"
-            disabled={season.results.length > 0}
-            onClick={() => { if (reshuffle()) setNote('The schedule was redrawn.'); }}
-          >RESHUFFLE THE SCHEDULE</button>
-          <button
-            type="button"
-            className="tap"
-            disabled={over || busy || !!live}
-            onClick={() => { closeGodAll(); void playSeason(); }}
-          >SIM THE SEASON</button>
-        </div>
-        <p className="god-note">
-          {season.results.length > 0
-            ? 'Games have been played on this schedule; the next season draws a fresh one.'
-            : 'A different draw of the same fixtures, before the first pitch.'}
-          {' '}Sim the season plays every date left to June; the offseason follows as it always does, one step at a time.
-        </p>
+      <section className="god-summary-card world-summary">
+        <div><small>DAY</small><strong>{season.dayIndex + 1}</strong><span>season calendar</span></div>
+        <div><small>PLAYED</small><strong>{season.results.length}</strong><span>games recorded</span></div>
+        <div><small>STATE</small><strong className="god-summary-text">{over ? 'COMPLETE' : 'ACTIVE'}</strong><span>{over ? 'offseason next' : 'season in progress'}</span></div>
       </section>
+      <div className="god-subnav"><Segmented value={panel} options={PANELS} onChange={setPanel} label="World editor section" /></div>
 
-      <SectionHeading kicker="THE WORLD" title="Presets" />
-      <section className="god-card">
+      {panel === 'calendar' && <section className="god-card">
         <div className="god-actions">
-          <SureButton label="PARITY" onSure={() => { preset('parity'); setNote('Every program is a fifty.'); }} />
-          <SureButton label="CHAOS" onSure={() => { preset('chaos'); setNote('Every program drew a new prestige.'); }} />
-          <SureButton label="SUPERTEAM" onSure={() => { preset('superteam'); setNote(`${me.def.school}: everybody is a 99.`); }} />
+          <button type="button" className="tap" disabled={season.results.length > 0} onClick={() => { if (reshuffle()) setNote('The schedule was redrawn.'); }}>RESHUFFLE SCHEDULE</button>
+          <button type="button" className="tap" disabled={over || busy || !!live} onClick={() => { closeGodAll(); void playSeason(); }}>SIM THE SEASON</button>
         </div>
-        <p className="god-note">Parity puts every program at fifty; chaos redraws every program's prestige; superteam makes every man on your roster a 99 with a 99 ceiling. Each asks twice.</p>
-      </section>
+        <p className="god-note">{season.results.length > 0 ? 'The current schedule is locked because games have already been played.' : 'Reshuffle redraws the same fixture structure before the first pitch.'} Sim Season plays every remaining date to June, then returns to the normal offseason flow.</p>
+      </section>}
 
+      {panel === 'presets' && <section className="god-card">
+        <p className="god-panel-lead">Global presets can rewrite many programs or players at once, so each requires a second press.</p>
+        <div className="god-preset-grid">
+          <div><strong>PARITY</strong><p>Every program becomes 50 prestige.</p><SureButton label="APPLY PARITY" onSure={() => { preset('parity'); setNote('Every program is a fifty.'); }} /></div>
+          <div><strong>CHAOS</strong><p>Every program draws a fresh prestige.</p><SureButton label="APPLY CHAOS" onSure={() => { preset('chaos'); setNote('Every program drew a new prestige.'); }} /></div>
+          <div><strong>SUPERTEAM</strong><p>Your roster becomes 99 OVR with a 99 ceiling.</p><SureButton label="MAKE SUPERTEAM" onSure={() => { preset('superteam'); setNote(`${me.def.school}: everybody is a 99.`); }} /></div>
+        </div>
+      </section>}
       <Toast note={note} />
     </main>
   );

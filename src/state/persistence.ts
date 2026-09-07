@@ -68,6 +68,8 @@ export interface SaveFile {
    * before the offseason became a sequence still load.
    */
   phase?: unknown;
+  /** Portal board in progress; required to resume a portal step without a blank screen. */
+  portal?: unknown;
   /**
    * How far into the offseason this career has ever got.
    *
@@ -341,6 +343,8 @@ export interface SaveExtras {
   /** Stage 8: conversations spent this season. */
   wordsUsed?: unknown;
   phase?: unknown;
+  /** Portal board in progress. */
+  portal?: unknown;
   /** The furthest step this career has reached. See `SaveFile`. */
   furthestPhase?: unknown;
   review?: unknown;
@@ -445,6 +449,7 @@ export function buildSaveFile(
     // tested for presence rather than truth.
     ...(extras.wordsUsed !== undefined ? { wordsUsed: extras.wordsUsed } : {}),
     ...(extras.phase ? { phase: extras.phase } : {}),
+    ...(extras.portal ? { portal: extras.portal } : {}),
     // Tested for presence rather than for truth, unlike every line around it.
     // Nought is a real value here — it means the offseason has only ever been
     // as far as its first step — and the truthiness idiom this record is built
@@ -520,6 +525,8 @@ export interface LoadedDynasty {
   offers: unknown;
   /** Where the offseason sequence had got to, and the verdict behind it. */
   phase: unknown;
+  /** Portal board in progress; null on older saves. */
+  portal: unknown;
   furthestPhase: unknown;
   review: unknown;
   outcome: unknown;
@@ -600,6 +607,7 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     pendingPress: file.pendingPress ?? null,
     wordsUsed: file.wordsUsed ?? 0,
     phase: file.phase ?? null,
+    portal: file.portal ?? null,
     furthestPhase: file.furthestPhase ?? null,
     review: file.review ?? null,
     outcome: file.outcome ?? null,

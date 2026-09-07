@@ -152,6 +152,7 @@ export function useNeeds(): Need[] {
     game itself uses, so this cannot disagree with who actually runs out.
   */
   const nineIds = new Set(team.team.lineup.map((p) => p.id));
+  const rotationIds = new Set(team.team.rotation.map((p) => p.id));
   const covered = new Set<string>();
   if (handles(depth, 'lineups') || handles(depth, 'depthChart')) {
     /*
@@ -200,6 +201,20 @@ export function useNeeds(): Need[] {
       });
     }
 
+    for (let i = 0; i < team.team.rotation.length; i++) {
+      const man = team.team.rotation[i]!;
+      if (available(man, day)) continue;
+      covered.add(man.id);
+      needs.push({
+        id: `cover-arm-${man.id}`,
+        title: `${man.name} cannot start`,
+        note: `Rotation slot ${i + 1} — ${whyOut(man, day)}. Replace him before the schedule can move.`,
+        must: true,
+        cta: 'THE LINEUP',
+        go: () => { useDynasty.getState().go('team', 'lineup', man.id); },
+      });
+    }
+
     /*
       And the man walking back in — a HOLD now, not a nudge. The first
       version was a soft three-day card that cleared itself, and the report
@@ -210,12 +225,13 @@ export function useNeeds(): Need[] {
       (see settleReturn); KEEP THE COVER on the lineup is the other answer.
     */
     for (const man of squad(team.team)) {
-      if (nineIds.has(man.id) || !returnPending(man, day)) continue;
+      if (nineIds.has(man.id) || rotationIds.has(man.id) || !returnPending(man, day)) continue;
       needs.push({
         id: `back-${man.id}`,
         title: `${man.name} is fit — decide his return`,
-        note: 'Healed, and the cover still has his spot. Nothing moves until '
-          + 'you put him back in the nine or keep the cover. Settle it on the lineup.',
+        note: man.type === 'pitcher' || (man as Player & { twoWay?: boolean }).twoWay
+          ? 'Healed, and another arm still owns his rotation spot. Nothing moves until you restore him or keep the cover.'
+          : 'Healed, and the cover still has his spot. Nothing moves until you put him back in the nine or keep the cover.',
         must: true,
         cta: 'THE LINEUP',
         go: () => { useDynasty.getState().go('team', 'lineup', man.id); },
@@ -231,7 +247,7 @@ export function useNeeds(): Need[] {
     tour the roster to learn.
   */
   for (const man of squad(team.team)) {
-    if (!isHurt(man, day) || nineIds.has(man.id) || covered.has(man.id)) continue;
+    if (!isHurt(man, day) || nineIds.has(man.id) || rotationIds.has(man.id) || covered.has(man.id)) continue;
     needs.push({
       id: `hurt-${man.id}`,
       title: `${man.name} is hurt`,

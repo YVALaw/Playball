@@ -55,6 +55,8 @@ import type { SeasonState } from '../src/engine/season.js';
 import { makeRng } from '../src/engine/rng.js';
 import { CONFERENCES, type ConferenceDef } from '../src/data/schools.js';
 import { agoLabel } from '../src/ui/screens/Saves.js';
+import { canPursue } from '../src/engine/recruiting.js';
+import { leagueLabel } from '../src/engine/leagueNames.js';
 
 const world = (seed = 4242) => createSeason(makeRng(seed), undefined, CONFERENCES);
 
@@ -319,6 +321,33 @@ describe('delete takes one dynasty and no others', () => {
     const { saves, savesError } = useDynasty.getState();
     expect(savesError).toBeNull();
     expect(saves.map((s) => s.slot).sort()).toEqual([AUTOSAVE_SLOT, 'dyn-a']);
+  });
+});
+
+
+describe('God Mode state follows the loaded career', () => {
+  it('restores the sandbox star gate and league names, then clears them for an honest save', async () => {
+    useDynasty.getState().start(4242, 0, undefined, 'full', undefined, true);
+    useDynasty.getState().godSetLeagueName('GULF', 'Sandbox League');
+    await useDynasty.getState().saveNow('sandbox-slot');
+
+    useDynasty.getState().newDynasty();
+    useDynasty.getState().start(7777, 1, undefined, 'full', undefined, false);
+    await useDynasty.getState().saveNow('honest-slot');
+
+    expect(await useDynasty.getState().loadSlot('sandbox-slot')).toBe(true);
+    let state = useDynasty.getState();
+    let five = state.season!.recruiting.prospects.find((p) => p.stars >= 4)!;
+    expect(state.godMode).toBe(true);
+    expect(leagueLabel('GULF')).toBe('Sandbox League');
+    expect(canPursue(five, 1, false)).toBe(true);
+
+    expect(await useDynasty.getState().loadSlot('honest-slot')).toBe(true);
+    state = useDynasty.getState();
+    five = state.season!.recruiting.prospects.find((p) => p.stars >= 4)!;
+    expect(state.godMode).toBe(false);
+    expect(leagueLabel('GULF')).toBe('GULF');
+    expect(canPursue(five, 1, false)).toBe(false);
   });
 });
 
