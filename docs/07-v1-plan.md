@@ -1242,7 +1242,7 @@ lineup screen; leaving is refused while the diamond is short, and the
 one allowed excursion is a player card via the second-tap grammar, which
 returns in place.
 
-## Stage 17 · God mode — the league as you want it — **BUILT September 6 2026, on the `god-mode` branch pending approval**
+## Stage 17 · God mode — the league as you want it — **SHIPPED September 6 2026, merged on the reporter's approval**
 
 **Size:** medium–large · **Replaces the store player, September 6 2026** ·
 **Runs with 19** · Its own design pass before any of it is built.

@@ -6,9 +6,10 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 6, 2026, later still · **Branch:** `god-mode`, unpushed,
-off `main` at `2a13703` · **god mode finished and re-shaped as bolts, held for approval** (`05` §61,
-§61.4, §61.5), after two rankings per recruit (§60).
+**Last session:** September 6, 2026, evening · **Branch:** `main` · **god mode
+shipped** — built, finished and re-shaped as bolts on the `god-mode` branch,
+merged fast-forward on the reporter's *"all good, push it"* (`05` §61, §61.4,
+§61.5), after two rankings per recruit (§60).
 
 > **September 6, later still — god mode is not a place.**
 >
@@ -21,8 +22,8 @@ off `main` at `2a13703` · **god mode finished and re-shaped as bolts, held for 
 > recruiting file, the transfer room, the roster, the conference table and
 > the schedule. Each opens one editor in one sheet (`ui/god/`), stacked so
 > back steps out the way you came in. The Program-bar section, the
-> overview card and the coach-menu row are gone. Still on the `god-mode`
-> branch, unpushed.
+> overview card and the coach-menu row are gone. Tested on the iPhone and
+> approved: *"all good, push it"* — merged to `main` that evening.
 
 > **September 6, later still — the rest of god mode, on the same branch.**
 >
@@ -39,8 +40,8 @@ off `main` at `2a13703` · **god mode finished and re-shaped as bolts, held for 
 > presets. Several seasons at a tap and a hand-set year wait for the
 > creator kit, with the reasons in §61.3. `tests/god-mode-2.test.ts`.
 > Checked in the browser: a rename of GULF to SEC reached the header, the
-> chip and the desk at once. **Still on the `god-mode` branch, unpushed,
-> until the reporter says push.**
+> chip and the desk at once. Held on the `god-mode` branch until the
+> reporter's approval, which came that evening.
 >
 > **Then, from the iPhone:** *"god mode is on but nothing lets me change
 > anything."* The desk was the fifth section of a Program bar that
@@ -62,8 +63,8 @@ off `main` at `2a13703` · **god mode finished and re-shaped as bolts, held for 
 > or after the season), the coach, the staff, money and recruiting grants,
 > every man in the country or a new one with S+ his to have, and a redrawn
 > schedule. `engine/godMode.ts` holds the rules; `tests/god-mode.test.ts`
-> pins them. `05` §61. **On the `god-mode` branch, not on `main`, until the
-> reporter says push.**
+> pins them. `05` §61. Held on the `god-mode` branch until the reporter
+> said push, which he did that evening.
 >
 > **Planned the same night, with the money decided** (`06` *Decisions
 > locked*, `07` stages 27–29): god mode stays the editor — its remaining

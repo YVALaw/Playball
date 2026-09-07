@@ -467,9 +467,10 @@ September 6 — the background picker is the creation step, with its reveal
 and result card (`05` §58) · ~~**26**'s verdict~~ given September 6 (his own
 offseason split is the budget) · then
 **17**, **god mode** — built September 6 on the `god-mode` branch as the
-reporter designed it, a sandbox, and finished the same night — the fork,
-health, league names, moves, recruits, the coach, presets — held until he
-approves the push (`05` §61) — and **19** (ship). After the ship, planned September 6 with the
+reporter designed it, a sandbox, finished the same night — the fork,
+health, league names, moves, recruits, the coach, presets — re-shaped on
+his verdict from the phone as a bolt beside every thing it edits, and
+merged to `main` on his approval that evening (`05` §61) — and **19** (ship). After the ship, planned September 6 with the
 money decided: **27**, the rules of the world, free · **28**, the creator
 kit, the second purchase · **29**, the majors, the expansion. **20b** and
 **25** were confirmed shipped on September 5. The reporter tests on an

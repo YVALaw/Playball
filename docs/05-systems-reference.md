@@ -7834,7 +7834,7 @@ navigation. The last set lives outside the screen now, keyed to the year,
 so it survives a trip to a recruit's file or another tab and clears when
 the class changes or CLEAR EVERY FILTER is tapped.
 
-## 61. God mode — the sandbox — **BUILT September 6 2026, late, and finished later the same night, on the `god-mode` branch pending the reporter's approval**
+## 61. God mode — the sandbox — **SHIPPED September 6 2026: built late, finished and re-shaped the same night, merged to `main` on the reporter's approval**
 
 Stage 17, decided by the reporter tonight rather than by the plan's four
 doors: *"God mode lets you edit players, edit the league itself; don't
