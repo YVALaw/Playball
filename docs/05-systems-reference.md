@@ -3322,8 +3322,10 @@ the year he just bought.
 
 **What it cost is carried on `DraftBoard.rivalSpend`**, by team index and sparse.
 A rival's June is settled the moment the draft is run — it has no screen and no
-decision waiting on it — but the bill is paid across the three recruiting weeks
-that follow, and the user can close the app in between. It rides on the board
+decision waiting on it — but the bill is paid out of the offseason reserve that
+the draft and the portal share (since the September 7 outside pass the spring
+board's weekly allowance is its own, §63.6), and the user can close the app in
+between. It rides on the board
 rather than on the team records for the reason the board itself does: it belongs
 to this June, and a new season starts with nobody owing anything.
 
@@ -8407,6 +8409,115 @@ Measured in this domain and left for a decision, alongside §62.7:
   underclassmen per program per year against the 1.74 measured when the
   mechanic shipped; rival keeps 12–27% against the stated 18%. The mechanic
   is unchanged; the league it runs in has more talent in it now.
+
+## 63. The September 7 outside pass — **MERGED September 7 2026**
+
+Built by the reporter with another agent on the god-mode base while the
+release audit ran, and merged into `main` the same afternoon as a real
+three-way merge (base `aca8591`, forty files, ten conflicts resolved by
+hand). Everything below is the reporter's design; this section records
+what landed and where, so the reference stays canonical. **None of it was
+inside the release audit's scope** — `docs/15` describes the tree before
+this merge — and the audit's fixes were carried through every conflict.
+
+### 63.1 God mode as a control center
+
+The long list became a control center with five rooms — TEAM / PROGRAM /
+RECRUIT / LEAGUES / WORLD — each editor opening on a summary card before
+its controls (`ui/god/GodSheet.tsx`, `ui/god/target.ts`). Roster is its own
+destination (`ui/god/RosterEditor.tsx`); Program no longer manages the
+roster or league membership, which lives under Leagues → Names / Moves.
+The player editor is Profile / Ratings / Status / Badges / Move, the coach
+editor Profile / Skills / Record / Badges / Hidden, budget and staff apart,
+the recruit editor in sections, the world controls Calendar and Presets.
+Headers carry the name of the thing being edited; a double tap cannot open
+the same editor twice. Fork to sandbox saves the original first and rolls
+back if the copy fails; loading a sandbox restores its recruiting access;
+league names and the star gate follow the loaded career and are cleared
+between careers (the audit's §62.3 fix, met from the other side). Settings'
+god-mode page is a hero and two panels (`.settings-god-*`); the free UNLOCK
+stand-in stays behind `TEST_SHORTCUTS` as §62.3 requires.
+
+### 63.2 Navigation history
+
+Back is an in-session history rather than a hierarchy: Program overview →
+Board → Back returns to the overview, not Home. Nested Program screens,
+player profiles, settings pages, program sheets, team cards and overlays
+all take part; god-mode layers close before the screen beneath backs out;
+one physical back event is processed once; the history resets with the
+career. Browser-history checkpoints let WebKit's predictive swipe preview
+the real previous screen; Android keeps the native plugin
+(`ui/backNav.ts`, `App.tsx`, `browserHistoryConsume` in the store).
+
+### 63.3 The dugout, the desk and the lineup
+
+Defensive shifts are clamped inside the foul lines; on the third out the
+old defence stays until the play's animation ends, the side changes on a
+beat, and the controls and WATCH wait for it (`Manage.tsx`, `Diamond3D.tsx`).
+Club Pulse is a game-night rail — three back, the next one, three ahead —
+that snaps horizontally and no longer traps vertical scrolling. Bench rows
+print AVG / HR / RBI beside identity. A healed pitcher's return is a
+lineup decision with KEEP THE COVER; an injured starting pitcher holds the
+day until the rotation slot is addressed, by name, in June too
+(`Needs.tsx`, `Lineup.tsx`); an active arm-care project adds injury
+protection.
+
+### 63.4 The portal, the postseason, the draft, the awards
+
+A transfer's profile opens above the portal and says where he is from and
+why he is going; the board rides the save (as ids — `portablePortal` —
+after the merge). The postseason's next-game card lost its status cards
+and stake cards and gained TOURNAMENT W–L under each crest, smaller
+crests, tighter stage cards and heading, no recentring on every update,
+and the PLAY/SIM controls in the card itself. The draft screen lost "How
+the offseason budget is split" and its top compressed. Awards scroll to
+the summary once every reveal is done.
+
+### 63.5 Staff, projects, facilities and pipelines
+
+Staff bars are real 0–100 ratings; the market is unranked (a deterministic
+shuffle) and the selection bug that hired the wrong man is fixed; the
+after-hire budget credits the outgoing salary; replacements hide behind
+EXPLORE REPLACEMENTS; firing removes the assistant's plan. Each assistant
+has a standing directive and one multi-week project (`StaffPlan`,
+`StaffProject`, `DEFAULT_DIRECTIVE`, `PROJECT_LABEL` — `engine/economy.ts`;
+`setStaffDirective` / `startStaffProject` / `cancelStaffProject` in the
+store): hitting Balanced / Contact / Power / Plate Discipline with Contact
+Block, Power Block, Approach Lab; pitching Balanced / Command / Velocity /
+Arm Care with Command Lab, Velocity Block, Arm-Care Block; recruiting
+Balanced / Pipeline First / Chase Stars (+10% on 4★–5★) / Find Sleepers
+(+10% on 2★–3★) / Roster Needs (+10% on a projected hole). A project needs
+its facility — cage, pen, clubhouse — and the facility's level sets its
+length (`staffProjectWeeks`, 5 → 4 → 3 weeks); matching directive and
+project improves the result; projects advance with the calendar, show
+progress, and can be cancelled. A recruiter's home state is familiarity,
+not a finished pipeline: Build / Deepen / Maintain Pipeline projects make
+the asset. All of it persists and is sanitised on load.
+
+### 63.6 Season-long recruiting
+
+Recruiting is twelve regular-season weeks (`RECRUITING_WEEKS`), reached
+from Program → Recruit all season, no longer a step on the offseason rail
+(`PHASES` is awards / review / coach / draft / portal / signing). The class
+opens in week one against a board already seeded with rival interest;
+rivals recruit through the same window; weekly Recruitment Points refresh
+as the calendar turns a week and are calibrated to the old window's total
+(`OFFSEASON_POINT_WEEKS` keeps the draft/portal reserve apart), so the
+season does not multiply the old allowance; commitments land through the
+season for next year; the desk carries a recruiting card. Sway is one
+relationship action per recruit across the season, for rivals too.
+
+### 63.7 What the merge decided
+
+Where both passes had fixed the same thing, the audit's version stayed
+where it was tested: the portal rides the save as ids and is re-linked to
+the loaded season's men; the registries are synced once in `loadSlot`;
+`saveNow` returns whether the write landed (theirs) and writes the file the
+career was opened from (ours); "Let him go" is a `Confirmable` inside the
+new staff actions row; the AUTO button honours both the third-out beat and
+the handover mark. Three files the outside tree carried from before stage
+24's close (`data/interview.ts`, `engine/interviewResult.ts`, its test)
+were not brought back. `tests/saves.test.ts` keeps both contracts.
 
 ## Appendix A: stale comments and vestigial code found while writing this
 

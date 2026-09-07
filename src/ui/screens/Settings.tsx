@@ -270,55 +270,70 @@ export function Settings() {
   if (page === 'god') {
     return (
       <Frame title="God mode" kicker="THIS DEVICE" onBack={() => setPage('index')}>
-        <section className="settings-career-note">
-          <small>THE SANDBOX</small>
-          <strong>{prefs.godMode ? 'Unlocked on this device.' : 'Not unlocked.'}</strong>
-          <p>Owned once, for every career on this phone. Each new career chooses on the How you want to play step whether it is a sandbox: edit any player, any program, your coach, your staff, the money and the schedule, whenever you like. Records still count.</p>
-        </section>
-        <SectionHeading kicker="UNLOCK" title={prefs.godMode ? 'Yours' : 'One purchase, permanent'} />
-        <section className="settings-list">
-          <div className="settings-god-status">
-            <span>
-              <strong>{prefs.godMode ? 'God mode is on this device' : 'God mode'}</strong>
-              <small>{prefs.godMode
-                ? 'Turn it on per career, at creation.'
-                : TEST_SHORTCUTS
-                  ? 'The store purchase arrives with the listing. Until then this button stands in for it.'
-                  : 'Arrives with the store listing.'}</small>
-            </span>
-            {/*
-              The stand-in for the purchase, in a build that carries the
-              testing shortcuts only. A store build shows the state and no
-              way to flip it — the paid entitlement must not be a free button
-              (05 §62.3); stage 19 replaces this with Play Billing.
-            */}
-            {(TEST_SHORTCUTS || prefs.godMode) && (
-              <button type="button" className="tap" onClick={() => put({ godMode: !prefs.godMode })}>
-                {prefs.godMode ? 'REMOVE' : 'UNLOCK'}
-              </button>
-            )}
+        <section className="settings-god-hero">
+          <span className="settings-god-hero-mark"><SettingIcon kind="god" /></span>
+          <div>
+            <small>THE SANDBOX</small>
+            <strong>Rewrite the world.</strong>
+            <p>Edit players, programs, leagues, your coach, staff, money, recruiting and the calendar. The save still keeps its records; God Mode simply makes the world yours to author.</p>
           </div>
+          <b className={prefs.godMode ? 'on' : ''}>{prefs.godMode ? 'UNLOCKED' : 'LOCKED'}</b>
         </section>
+
+        <SectionHeading kicker="THIS DEVICE" title={prefs.godMode ? 'God mode is yours' : 'One purchase, permanent'} />
+        <section className="settings-god-panel">
+          <div className="settings-god-copy">
+            <small>DEVICE ACCESS</small>
+            <strong>{prefs.godMode ? 'Available for every new career' : 'Unlock the sandbox'}</strong>
+            <p>{prefs.godMode
+              ? 'New careers can enable God Mode on the How you want to play step. Existing honest careers stay unchanged unless you fork one below.'
+              : TEST_SHORTCUTS
+                ? 'The store purchase arrives with the listing. Until then this control stands in for the permanent device unlock.'
+                : 'Arrives with the store listing.'}</p>
+          </div>
+          {/*
+            The stand-in for the purchase, in a build that carries the testing
+            shortcuts only. A store build shows the state and no way to flip
+            it — the paid entitlement must not be a free button (05 §62.3);
+            stage 19 replaces this with Play Billing.
+          */}
+          {(TEST_SHORTCUTS || prefs.godMode) && (
+            <button
+              type="button"
+              className={`settings-god-command tap${prefs.godMode ? ' secondary' : ''}`}
+              onClick={() => put({ godMode: !prefs.godMode })}
+            >
+              {prefs.godMode ? 'REMOVE ACCESS' : 'UNLOCK GOD MODE'}
+            </button>
+          )}
+        </section>
+
         {prefs.godMode && season && (
           <>
-            <SectionHeading kicker="THIS CAREER" title={godMode ? 'A sandbox' : 'Take it into the sandbox'} />
-            <section className="settings-list">
-              <div className="settings-god-status">
-                <span>
-                  <strong>{godMode ? 'God mode is on for this career' : 'Fork this career'}</strong>
-                  <small>{godMode
-                    ? 'The bolt in the header opens it for the tab you are on. Every player card, program page, recruiting file and money sheet carries a bolt of its own.'
-                    : 'A copy of this career in its own sandbox slot, loaded now. The original keeps a snapshot and stays honest.'}</small>
-                </span>
-                {godMode ? (
-                  <button type="button" className="tap" onClick={() => { closeOverlay(); openGod({ kind: 'tab', tab: 'program' }); }}>OPEN</button>
-                ) : (
-                  <button type="button" className="tap" onClick={() => void forkToSandbox()}>FORK</button>
-                )}
+            <SectionHeading kicker="THIS CAREER" title={godMode ? 'Sandbox active' : 'Keep the original honest'} />
+            <section className={`settings-god-panel career${godMode ? ' active' : ''}`}>
+              <div className="settings-god-copy">
+                <small>{godMode ? 'SANDBOX CAREER' : 'CURRENT CAREER'}</small>
+                <strong>{godMode ? 'God Mode is active here' : 'Fork this career into a sandbox'}</strong>
+                <p>{godMode
+                  ? 'Use the lightning bolt beside the thing you want to edit. The header bolt opens the controls that belong to your current tab.'
+                  : 'Playball first keeps a snapshot of this career, then opens a separate sandbox copy. Your original remains a normal career.'}</p>
               </div>
+              {godMode ? (
+                <button type="button" className="settings-god-command tap" onClick={() => { closeOverlay(); openGod({ kind: 'tab', tab: 'program' }); }}>OPEN GOD MODE</button>
+              ) : (
+                <button type="button" className="settings-god-command tap" onClick={() => void forkToSandbox()}>FORK TO SANDBOX</button>
+              )}
             </section>
           </>
         )}
+
+        <section className="settings-god-footnote">
+          <small>HOW IT WORKS</small>
+          <span><b>1</b><p>Unlock once on this device.</p></span>
+          <span><b>2</b><p>Choose God Mode when creating a career, or fork an existing one.</p></span>
+          <span><b>3</b><p>Use the bolt beside a player, program or system to edit it in context.</p></span>
+        </section>
       </Frame>
     );
   }

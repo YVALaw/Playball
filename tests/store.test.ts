@@ -10,7 +10,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { useDynasty, PHASES, boardBudget } from '../src/state/store.js';
-import { windowBudget, flexibleOffseasonBudget, RECRUITING_WEEKS, protectedRecruitingBudget } from '../src/engine/recruiting.js';
+import { windowBudget, flexibleOffseasonBudget, RECRUITING_WEEKS } from '../src/engine/recruiting.js';
 import { prestigeStars } from '../src/engine/program.js';
 import type { DraftBoard } from '../src/engine/draft.js';
 import { createSeason, simSeason, seasonComplete } from '../src/engine/season.js';
@@ -54,23 +54,19 @@ describe('the week recap does not outlive its window', () => {
     expect(useDynasty.getState().lastWeek).toBeNull();
   });
 
-  it('clears the recap when a new recruiting window opens', async () => {
+  it('clears the recap when a new season opens a new window', async () => {
     useDynasty.getState().start(4242, 0);
     // Last year's final recap is still sitting in the store, exactly as it
     // does across a real offseason.
-    useDynasty.setState({
-      phase: 'draft',
-      furthestPhase: PHASES.indexOf('draft'),
-      lastWeek: STALE_WEEK,
-    });
+    useDynasty.setState({ lastWeek: STALE_WEEK });
 
-    // Stage 10 put the portal between the draft and recruiting, so reaching
-    // recruiting is two steps from the draft rather than one.
-    await useDynasty.getState().nextPhase();
-    await useDynasty.getState().nextPhase();
+    // Recruiting lives in the regular season now (05 §63.6): the window opens
+    // with the year, not with a step on the offseason rail.
+    useDynasty.getState().settleSeason();
+    await useDynasty.getState().rollYear();
 
     const s = useDynasty.getState();
-    expect(s.phase).toBe('recruiting');
+    expect(s.phase).toBeNull();
     expect(s.season?.recruiting.week).toBe(1);
     // The window is live and nothing has closed yet: no banner.
     expect(s.lastWeek).toBeNull();
@@ -766,11 +762,10 @@ describe('talking a drafted player out of professional baseball', () => {
     // Everything, twice over, on one man.
     useDynasty.getState().keepPlayer(man.player.id, 'ring', 9999);
     expect(board.spent).toBe(window(season));
-    // Not zero any more: since the September 6 recruiting pass the flexible
-    // fund is all June can touch, and the protected reserve — a third a week —
-    // is still there for the freshman class. What the board header prints.
+    // The spring board is its own allowance now (05 §63.6): a twelfth of the
+    // window a week, untouched by what June spent from the offseason reserve.
     const stars = prestigeStars((season.teams[0] as TeamRecord).prestige);
-    expect(boardBudget(season, 0)).toBe(Math.floor(protectedRecruitingBudget(stars) / RECRUITING_WEEKS));
+    expect(boardBudget(season, 0)).toBe(Math.max(1, Math.round(windowBudget(stars) / RECRUITING_WEEKS)));
 
     // And a second man cannot spend money that is gone.
     const next = board.men[1];
@@ -781,15 +776,16 @@ describe('talking a drafted player out of professional baseball', () => {
     }
   });
 
-  it('takes what it spends off every week of the board', async () => {
+  it('spends from the offseason reserve, never from the spring board', async () => {
     const season = await intoTheDraft(6161);
     const board = season.draft as DraftBoard;
     const full = boardBudget(season, 0);
     const man = board.men[0] as DraftBoard['men'][number];
     useDynasty.getState().keepPlayer(man.player.id, 'word', 30);
     expect(board.spent).toBe(30);
-    // Thirty out of a three week window is ten a week.
-    expect(boardBudget(season, 0)).toBe(full - 10);
+    // June's spending comes off the offseason reserve; the weekly allowance
+    // of the season-long board does not move (05 §63.6).
+    expect(boardBudget(season, 0)).toBe(full);
   });
 
   it('puts a man who stays back on the roster, as a senior', async () => {
@@ -1081,8 +1077,10 @@ describe('the inbox during a season', () => {
   it('files the same cards however the season was played', async () => {
     // Day by day, the whole way. Nothing here may depend on the live streak
     // counter or on the current record, both of which say something different
-    // at the end of a season than they did in April.
-    useDynasty.getState().start(4242, 0);
+    // at the end of a season than they did in April. A casual career, so an
+    // injured starter is the staff's decision rather than a hold on the day
+    // (05 §63.3) — the walk has to reach June.
+    useDynasty.getState().start(4242, 0, undefined, 'casual');
     useDynasty.setState({ inbox: [] });
     let guard = 0;
     while (!seasonComplete(useDynasty.getState().season as SeasonState) && guard++ < 200) {
@@ -1090,7 +1088,7 @@ describe('the inbox during a season', () => {
     }
     const walked = useDynasty.getState().inbox.map((i) => i.id).sort();
 
-    useDynasty.getState().start(4242, 0);
+    useDynasty.getState().start(4242, 0, undefined, 'casual');
     useDynasty.setState({ inbox: [] });
     await useDynasty.getState().playSeason();
     const simmed = useDynasty.getState().inbox.map((i) => i.id).sort();
@@ -1201,19 +1199,19 @@ describe('how far the offseason got, across a reload', () => {
   it('remembers every step already walked, so the rail is not greyed out', () => {
     useDynasty.getState().start(4242, 0);
     useDynasty.setState({
-      phase: 'recruiting',
-      furthestPhase: PHASES.indexOf('recruiting'),
+      phase: 'signing',
+      furthestPhase: PHASES.indexOf('signing'),
     });
     const { season, coach } = useDynasty.getState();
     if (!season) throw new Error('no season');
 
     const file = buildSaveFile('slot', 'Dynasty', season, 2029, 0, {
       coach,
-      phase: 'recruiting',
-      furthestPhase: PHASES.indexOf('recruiting'),
+      phase: 'signing',
+      furthestPhase: PHASES.indexOf('signing'),
     });
 
-    expect(file.furthestPhase).toBe(PHASES.indexOf('recruiting'));
+    expect(file.furthestPhase).toBe(PHASES.indexOf('signing'));
   });
 
   it('writes a furthest step of nought rather than dropping it', () => {
@@ -1249,11 +1247,11 @@ describe('how far the offseason got, across a reload', () => {
     const file = buildSaveFile('slot', 'Dynasty', season, 2029, 0, {
       coach,
       phase: 'coach',
-      furthestPhase: PHASES.indexOf('recruiting'),
+      furthestPhase: PHASES.indexOf('signing'),
     });
 
     expect(file.phase).toBe('coach');
-    expect(file.furthestPhase).toBe(PHASES.indexOf('recruiting'));
+    expect(file.furthestPhase).toBe(PHASES.indexOf('signing'));
     expect(file.furthestPhase as number).toBeGreaterThan(PHASES.indexOf('draft'));
   });
 });

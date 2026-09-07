@@ -11,6 +11,19 @@ audit** — eighteen domain audits, the blocking findings fixed and tested,
 the balance decisions set down for the reporter (`05` §62,
 `docs/15-v1-release-audit.md`).
 
+> **September 7, afternoon — the outside pass merged.** The reporter built
+> a second tree with another agent while the audit ran (forty files on the
+> god-mode base): god mode as a control center, back as a real navigation
+> history, the third-out beat in the dugout, Club Pulse as a game-night
+> rail, bench stats, the injured-starter hold, the portal profile and
+> board, the postseason's next-game card, the hybrid staff system with
+> directives, projects, facilities and pipelines, and recruiting moved to
+> twelve regular-season weeks off the offseason rail. Merged three-way,
+> ten conflicts by hand, the audit's fixes carried through every one;
+> the resurrected interview files were left out. `05` §63 is the account;
+> `docs/15` describes the tree before this merge and none of §63 was in
+> its scope.
+
 > **September 7 — the v1.0 release audit.**
 >
 > Eighteen read-only domain audits with executable probes, then every
@@ -854,7 +867,7 @@ exists. Stage 19 removes the three together.
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,242 tests, 66 files)
+npm run check      # typecheck + the whole suite (1,244 tests, 66 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing

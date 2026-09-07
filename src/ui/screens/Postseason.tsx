@@ -489,7 +489,7 @@ export function Postseason() {
       frame = requestAnimationFrame(step);
     }
     return () => cancelAnimationFrame(frame);
-  }, [lookingAt, shown, version, spectatorMode]);
+  }, [lookingAt, shown, spectatorMode]);
 
   const stageTitle = rung === 0 ? `${leagueLabel(team.conference)} tournament`
     : rung === 1 ? 'The regionals' : 'The national tournament';
@@ -960,6 +960,8 @@ export function Postseason() {
                         : 'The regional is decided.')
                       : 'The stage is decided.'}
                 </p>
+                <button className="primary-command tap" type="button" onClick={action.run}>{action.label}</button>
+                {action.secondary && <button className="secondary-command tap" type="button" onClick={action.secondary.onClick}>{action.secondary.label}</button>}
               </section>
             )}
             {reviewing === null && !spectatorMode && juneTab === 'next'
@@ -975,6 +977,9 @@ export function Postseason() {
                 onLineup={() => setShowLineup(true)}
                 onPlay={manage}
                 onSim={() => sim('game')}
+                onAdvance={action.run}
+                advanceLabel={action.label}
+                advanceSecondary={action.secondary ?? null}
               />
             )}
 
@@ -1046,7 +1051,7 @@ export function Postseason() {
             the same buttons underneath it is noise. Every other state keeps
             the bar: between rounds it simulates to your next game, out or
             reviewing it advances the tournament. */}
-        {!(reviewing === null && !iAmOut && juneTab === 'next' && due) && (
+        {!(reviewing === null && !spectatorMode && juneTab === 'next') && (
         <div style={{
           flex: 'none', padding: '0 14px',
           background: 'var(--field)', borderTop: '1px solid var(--faint)',
@@ -1332,13 +1337,13 @@ function ImportantGames(
  * importance now that we are in the tournament stages", and then "the full
  * matchup card... PLAY / SIM move onto the card itself." Crests, the probable
  * arms picked exactly the way the engine will pick them (appearances modulo
- * three — the same arithmetic playSeriesGame uses), the stake said in words,
+ * three — the same arithmetic playSeriesGame uses), the tournament record,
  * and the two buttons that act on it. The injury hold moves here with them:
  * a hurt man in the nine turns PLAY into FIX THE LINEUP, same as the pinned
  * bar it inherited the job from.
  */
 function PregameShow(
-  { myBracket, userTeam, season, me, name, abbr, hurtNine, onLineup, onPlay, onSim }:
+  { myBracket, userTeam, season, me, name, abbr, hurtNine, onLineup, onPlay, onSim, onAdvance, advanceLabel, advanceSecondary }:
   {
     myBracket: ReturnType<typeof useDynasty.getState>['myBracket'];
     userTeam: number;
@@ -1350,6 +1355,9 @@ function PregameShow(
     onLineup: () => void;
     onPlay: () => void;
     onSim: () => void;
+    onAdvance: () => void;
+    advanceLabel: string;
+    advanceSecondary: { label: string; onClick: () => void } | null;
   },
 ) {
   // Who tonight is against, and what it is worth — or null between rounds.
@@ -1357,7 +1365,6 @@ function PregameShow(
   let home = false;
   let formatLabel = '';
   let sub: string | null = null;
-  let stake: { line: string; tone: 'win' | 'alert' | 'dim' } | null = null;
 
   if (myBracket && myBracket.format === 'series') {
     formatLabel = 'BEST OF THREE';
@@ -1371,15 +1378,7 @@ function PregameShow(
       const len = myBracket.state.lengths[sr.round] ?? 3;
       const mine = wins(userTeam);
       const theirs = wins(opp);
-      const need = clincher(len);
-      sub = `Game ${sr.games.length + 1} of ${len} · you ${mine}-${theirs} · first to ${need}`;
-      stake = mine === need - 1 && theirs === need - 1
-        ? { line: 'Winner takes the series. Loser goes home.', tone: 'alert' }
-        : mine === need - 1
-          ? { line: 'Win tonight and the series is yours.', tone: 'win' }
-          : theirs === need - 1
-            ? { line: 'Lose tonight and it is over.', tone: 'alert' }
-            : null;
+      sub = `Game ${sr.games.length + 1} of ${len} · you ${mine}-${theirs} · first to ${clincher(len)}`;
     }
   } else if (myBracket) {
     formatLabel = 'DOUBLE ELIMINATION';
@@ -1389,72 +1388,62 @@ function PregameShow(
         : (slot.aSeed <= slot.bSeed ? slot.a : slot.b);
       opp = slot.a === userTeam ? slot.b : slot.a;
       home = host === userTeam;
-      const losses = myBracket.state.losses.get(userTeam) ?? 0;
       if (slot.side === 'F') {
         sub = slot.round === 1 ? 'Championship · the reset' : 'Championship';
-        stake = slot.round === 1
-          ? { line: 'One game, winner take all.', tone: 'alert' }
-          : losses === 0
-            ? { line: 'You arrived unbeaten. Win one and it is yours.', tone: 'win' }
-            : { line: 'You came through the losers bracket. Win this one AND the next.', tone: 'alert' };
       } else {
         sub = slotName(slot);
-        stake = losses === 0
-          ? { line: 'Unbeaten. A loss drops you to the losers bracket, not out.', tone: 'dim' }
-          : { line: 'One loss already. Lose again and the run ends here.', tone: 'alert' };
       }
     }
   }
 
+  const tournamentRecord = (team: number): string => {
+    if (!myBracket) return '0-0';
+    if (myBracket.format === 'series') {
+      const series = liveSeries(myBracket.state, team);
+      if (!series) return '0-0';
+      const wins = series.games.filter((g) => g.winner === team).length;
+      return `${wins}-${series.games.length - wins}`;
+    }
+    const state = myBracket.state;
+    const slots = [...state.winners.flat(), ...state.losers.flat(), ...state.final];
+    let wins = 0;
+    let losses = 0;
+    for (const slot of slots) {
+      if (slot.winner === null || slot.winner === undefined) continue;
+      if (slot.a !== team && slot.b !== team) continue;
+      if (slot.winner === team) wins += 1;
+      else losses += 1;
+    }
+    return `${wins}-${losses}`;
+  };
+
   // Between rounds: nothing to stage yet. The pinned bar below simulates to
   // your next game; the card only has to say the round is still forming.
   if (opp === null) {
-    // The bracket's own arithmetic: what you have won and lost inside it,
-    // and therefore which side you are on.
-    const de = myBracket && 'losers' in myBracket.state ? myBracket.state : null;
-    const deLosses = de?.losses.get(userTeam) ?? 0;
-    const deWins = de === null ? 0 : [...de.winners, ...de.losers, de.final]
-      .flat().filter((sl) => sl.winner === userTeam).length;
-    const side = de === null
-      ? null
-      : deLosses === 0 ? 'WINNERS BRACKET' : 'LOSERS BRACKET';
     return (
       <section className="pregame-show is-waiting">
         <div className="pregame-kicker">
           <small>YOUR NEXT GAME</small>
           <span>{formatLabel || 'JUNE'}</span>
         </div>
-        {side !== null && (
-          <section className={`june-standing-modern${deLosses === 0 ? ' unbeaten' : ' danger'}`}>
-            <div className="june-standing-seal">{deLosses === 0 ? '✓' : '!'}</div>
-            <div className="june-standing-copy">
-              <small>{deLosses === 0 ? 'UNBEATEN ROUTE' : 'ELIMINATION ROUTE'}</small>
-              <strong>{side}</strong>
-              <p>{deLosses === 0
-                ? 'You still own a second life if the next one gets away.'
-                : 'The safety net is gone. One more loss ends June.'}</p>
-            </div>
-            <div className="june-standing-record"><small>BRACKET</small><strong>{deWins}-{deLosses}</strong></div>
-          </section>
-        )}
         <div className="pregame-match">
           <div className="pregame-side">
-            <Crest abbr={me.def.abbr} size={54} />
+            <Crest abbr={me.def.abbr} size={46} />
             <strong style={{ color: teamColour(me.def.abbr) }}>{me.def.school}</strong>
+            <small className="pregame-tournament-record">TOURNAMENT {tournamentRecord(userTeam)}</small>
             <em>&nbsp;</em>
           </div>
           <div className="pregame-vs">VS</div>
           <div className="pregame-side">
             <span className="pregame-tbd" aria-hidden>?</span>
             <strong>TBD</strong>
+            <small className="pregame-tournament-record">TOURNAMENT —</small>
             <em>&nbsp;</em>
           </div>
         </div>
-        <p className="pregame-sub">
-          {de !== null && deLosses === 0
-            ? 'The other side is still playing. A loss would drop you, not end you.'
-            : 'The other side is still playing. Another loss ends the run.'}
-        </p>
+        <p className="pregame-sub">The other side is still playing. Your next opponent will appear here.</p>
+        <button className="primary-command tap" type="button" onClick={onAdvance}>{advanceLabel}</button>
+        {advanceSecondary && <button className="secondary-command tap" type="button" onClick={advanceSecondary.onClick}>{advanceSecondary.label}</button>}
       </section>
     );
   }
@@ -1486,33 +1475,21 @@ function PregameShow(
 
       <div className="pregame-match">
         <div className="pregame-side">
-          <Crest abbr={me.def.abbr} size={54} />
+          <Crest abbr={me.def.abbr} size={46} />
           <strong style={{ color: teamColour(me.def.abbr) }}>{me.def.school}</strong>
+          <small className="pregame-tournament-record">TOURNAMENT {tournamentRecord(userTeam)}</small>
           <em>{armFor(userTeam)}</em>
         </div>
         <div className="pregame-vs">{home ? 'VS' : 'AT'}</div>
         <div className="pregame-side">
-          <Crest abbr={abbr(opp)} size={54} />
+          <Crest abbr={abbr(opp)} size={46} />
           <strong style={{ color: teamColour(abbr(opp)) }}>{name(opp)}</strong>
+          <small className="pregame-tournament-record">TOURNAMENT {tournamentRecord(opp)}</small>
           <em>{armFor(opp)}</em>
         </div>
       </div>
 
       {sub && <p className="pregame-sub">{sub}</p>}
-      {stake && (
-        <section className={`june-stake-card tone-${stake.tone}`}>
-          <div className="june-stake-seal" aria-hidden>{stake.tone === 'win' ? '✓' : stake.tone === 'alert' ? '!' : '↘'}</div>
-          <div className="june-stake-copy">
-            <small>{stake.tone === 'win' ? 'ADVANTAGE' : stake.tone === 'alert' ? 'SEASON ON THE LINE' : 'BRACKET STATUS'}</small>
-            <strong>{stake.line}</strong>
-            <span>{stake.tone === 'win'
-              ? 'You have the leverage. Finish the job.'
-              : stake.tone === 'alert'
-                ? 'There is no room for a quiet result here.'
-                : 'The bracket gives you one more route if this slips.'}</span>
-          </div>
-        </section>
-      )}
       {season.playbooks?.[abbr(opp)] && (
         <p className="pregame-sub">Playing the {abbr(opp)} book.</p>
       )}

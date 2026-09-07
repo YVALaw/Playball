@@ -68,7 +68,7 @@ function program(prestige: number, opts: Partial<Pitch> = {}): Pitch {
   };
 }
 
-/** Run a full three week cycle for a league of programs, and report who signed. */
+/** Run a full season-long recruiting cycle for a league of programs, and report who signed. */
 function runWindow(seed: number, programs: Pitch[]) {
   const rng = makeRng(seed);
   const recruits = generateClass(2027, programs.length, rng);
@@ -358,10 +358,9 @@ describe('the AI recruits inside the same rules', () => {
       expect(board.length).toBeLessThanOrEqual(SCHOLARSHIPS);
       for (const b of board) expect(b.actions).toBeLessThanOrEqual(MAX_PER_RECRUIT);
       const spent = board.reduce((a, b) => a + b.actions, 0);
-      // The program's own week, not the flat forty. `aiTargets` reads
-      // `weeklyBudget` now, so a five star program legitimately has fifty to
-      // spend and the old constant would have failed it for being rich.
-      expect(spent).toBeLessThanOrEqual(budgetFor(pitch.stars) + board.length);
+      // The program's own spring week. Season-long recruiting splits the
+      // former three-week window across twelve calendar weeks.
+      expect(spent).toBeLessThanOrEqual(weeklyBudget(pitch.stars) + board.length);
     }
   });
 
@@ -413,11 +412,14 @@ describe('the seeded board the player walks into', () => {
     // crowds — but whether anybody is on you at all tracks what you are. The
     // gap at the bottom is deliberate: an unchased one star is Tuesday.
     expect(covered(4)).toBeGreaterThanOrEqual(covered(2));
-    expect(covered(2)).toBeGreaterThan(covered(1));
-    // 0.95 until September 6 2026. Playing time is a ladder of the men at
-    // his position now, so programs chase by their own depth chart and the
-    // picks spread across more recruits; one-star coverage sits near 0.98.
-    expect(covered(1)).toBeLessThan(0.99);
+    // A seeded national market (05 §63.6) can cover the one stars too; the
+    // order still has to hold.
+    expect(covered(2)).toBeGreaterThanOrEqual(covered(1));
+    // 0.95 until September 6 2026, then near 0.98 once programs chased by
+    // their own depth chart; since the September 7 outside pass the seeded
+    // national market (05 §63.6) reaches the one stars too, so the bottom of
+    // the class is no longer the place nobody rang.
+    expect(covered(1)).toBeGreaterThan(0.9);
 
     // Nobody in the national top fifty is sitting by a silent phone.
     const top = [...prospects].sort((a, b) => a.rank - b.rank).slice(0, 50);
@@ -807,35 +809,23 @@ describe('the AI works off the same week the user does', () => {
     }
   });
 
-  it('is thinner for three weeks after a program spends in June', () => {
-    // The same rule the user's header prints: what the draft took comes off
-    // every week evenly rather than shutting week one and leaving the rest
-    // untouched, so keeping an ace cannot be recovered by waiting.
-    const june = 60;
+  it('keeps spring weekly RP separate from June Draft and Portal spending', () => {
+    // Recruiting is now a regular-season budget. Draft/Portal still use RP,
+    // but spending that offseason reserve cannot shrink a later spring week.
+    const june = flexibleOffseasonBudget(5);
     const before = total(weekFor(5));
     const after = total(weekFor(5, june));
-    expect(after).toBeLessThan(before);
-    expect(after).toBeLessThanOrEqual(weeklyBudget(5, june));
-    // And it is a third of the bill each week, not the whole bill at once.
-    expect(weeklyBudget(5, june) * RECRUITING_WEEKS)
-      .toBeGreaterThanOrEqual(windowBudget(5) - june - RECRUITING_WEEKS);
+    expect(after).toBe(before);
+    expect(weeklyBudget(5, june)).toBe(weeklyBudget(5, 0));
   });
 
-  it('cannot spend the freshman class on June, whatever it spent there', () => {
-    // Since the September 6 recruiting pass the offseason is one pool with a
-    // protected floor: Draft and Portal draw only on the flexible share, and
-    // what they take comes off the recruiting weeks — but a program that
-    // spent every flexible point still walks into the window with the
-    // reserve, a third a week. Spending past the flexible fund cannot dip
-    // into it either, because the store refuses the spend; the arithmetic
-    // here is what the board header prints.
-    const floor = Math.floor(protectedRecruitingBudget(3) / RECRUITING_WEEKS);
-    expect(floor).toBeGreaterThan(0);
-    expect(weeklyBudget(3, flexibleOffseasonBudget(3))).toBe(floor);
-    expect(weeklyBudget(3, windowBudget(3))).toBe(floor);
-    const week = total(weekFor(3, windowBudget(3)));
-    expect(week).toBeGreaterThan(0);
-    expect(week).toBeLessThanOrEqual(floor);
+  it('spreads roughly the old recruiting window across twelve spring weeks', () => {
+    for (const stars of [1, 2, 3, 4, 5]) {
+      const totalSpring = weeklyBudget(stars) * RECRUITING_WEEKS;
+      expect(totalSpring).toBeGreaterThanOrEqual(windowBudget(stars) - RECRUITING_WEEKS);
+      expect(totalSpring).toBeLessThanOrEqual(windowBudget(stars) + RECRUITING_WEEKS);
+      expect(weeklyBudget(stars, windowBudget(stars))).toBe(weeklyBudget(stars, 0));
+    }
   });
 });
 

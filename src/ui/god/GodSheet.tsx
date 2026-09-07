@@ -1,18 +1,20 @@
-// god/GodSheet.tsx — the sheet a bolt opens, over whatever is underneath.
+// god/GodSheet.tsx — God Mode's control center and focused editors.
 //
-// One overlay for every god-mode editor (05 §61.5). The store keeps a stack
-// of targets; the sheet shows the top one and its back arrow pops it, so an
-// editor reached from inside another — a man from his program's roster —
-// steps back rather than out. A tab target is a short menu of doors rather
-// than every editor at once: the one-screen desk was reported as "a list
-// nobody could find anything in", and this is its replacement.
+// The old God Mode desk was still effectively a long list. This version uses
+// a small top-level control center, then opens one responsibility at a time.
+// Editors can have their own compact sub-tabs without turning the whole feature
+// into a settings dump.
 
-import { ChevronRightIcon } from '@radix-ui/react-icons';
+import { useMemo, useState } from 'react';
+import { ChevronRightIcon, LightningBoltIcon } from '@radix-ui/react-icons';
 import { useDynasty, type Tab } from '../../state/store.js';
+import { findPlayer } from '../../engine/godMode.js';
 import { Overlay } from '../Overlay.js';
+import { Segmented } from '../components/Kit.js';
 import { godTitle, type GodTarget } from './target.js';
 import { PlayerEditor } from './PlayerEditor.js';
 import { ProgramEditor } from './ProgramEditor.js';
+import { RosterEditor } from './RosterEditor.js';
 import { CoachEditor } from './CoachEditor.js';
 import { MoneyEditor } from './MoneyEditor.js';
 import { LeaguesEditor } from './LeaguesEditor.js';
@@ -23,11 +25,18 @@ import { TimeEditor } from './TimeEditor.js';
 export function GodOverlay() {
   const stack = useDynasty((s) => s.godStack);
   const closeGod = useDynasty((s) => s.closeGod);
+  const season = useDynasty((s) => s.season);
+  const coach = useDynasty((s) => s.coach);
   const top = stack[stack.length - 1];
   if (!top) return null;
   const { eyebrow, title } = godTitle(top);
+  const contextTitle = top.kind === 'player' && season ? findPlayer(season, top.id)?.player.name
+    : top.kind === 'program' || top.kind === 'roster' ? season?.teams[top.team]?.def.school
+    : top.kind === 'coach' ? coach.name
+    : top.kind === 'recruit' ? season?.recruiting.prospects.find((p) => p.id === top.id)?.player.name
+    : null;
   return (
-    <Overlay eyebrow={eyebrow} title={title} onClose={closeGod} className="god-sheet">
+    <Overlay eyebrow={eyebrow} title={contextTitle ?? title} onClose={closeGod} className="god-sheet">
       <Editor key={`${stack.length}:${keyOf(top)}`} target={top} />
     </Overlay>
   );
@@ -38,9 +47,10 @@ const keyOf = (t: GodTarget): string =>
 
 function Editor({ target }: { target: GodTarget }) {
   switch (target.kind) {
-    case 'tab': return <TabDoors tab={target.tab} />;
+    case 'tab': return <ControlCenter sourceTab={target.tab} />;
     case 'player': return <PlayerEditor id={target.id} />;
     case 'program': return <ProgramEditor team={target.team} />;
+    case 'roster': return <RosterEditor team={target.team} />;
     case 'coach': return <CoachEditor />;
     case 'money': return <MoneyEditor />;
     case 'leagues': return <LeaguesEditor />;
@@ -51,31 +61,87 @@ function Editor({ target }: { target: GodTarget }) {
   }
 }
 
-/** A door: one tile, one editor. */
-interface Door { target: GodTarget; kicker: string; title: string; blurb: string }
+type Area = 'team' | 'program' | 'recruiting' | 'leagues' | 'world';
 
-function TabDoors({ tab }: { tab: Tab }) {
+const AREA_OPTIONS = [
+  { value: 'team', label: 'TEAM' },
+  { value: 'program', label: 'PROGRAM' },
+  { value: 'recruiting', label: 'RECRUIT' },
+  { value: 'leagues', label: 'LEAGUES' },
+  { value: 'world', label: 'WORLD' },
+] as const;
+
+const START_AREA: Record<Tab, Area> = {
+  home: 'world',
+  team: 'team',
+  season: 'leagues',
+  program: 'program',
+};
+
+interface Door { target: GodTarget; kicker: string; title: string; blurb: string; metric?: string }
+
+function ControlCenter({ sourceTab }: { sourceTab: Tab }) {
   const userTeam = useDynasty((s) => s.userTeam);
+  const season = useDynasty((s) => s.season);
+  const coach = useDynasty((s) => s.coach);
   const portal = useDynasty((s) => s.portal);
   const openGod = useDynasty((s) => s.openGod);
-  const program: Door = { target: { kind: 'program', team: userTeam }, kicker: 'YOUR PROGRAM', title: 'The program and the roster', blurb: 'Name, prestige, league; every man on the roster, or a new one.' };
-  const coach: Door = { target: { kind: 'coach' }, kicker: 'YOUR CHAIR', title: 'Your coach', blurb: 'Skills, the record, the contract, badges, the hidden counters.' };
-  const money: Door = { target: { kind: 'money' }, kicker: 'THE MONEY', title: 'Budget and staff', blurb: 'Money and recruiting points on top; the assistants renamed and rerated.' };
-  const leagues: Door = { target: { kind: 'leagues' }, kicker: 'THE LEAGUES', title: 'The leagues', blurb: 'What each league is called, and which programs play in which.' };
-  const time: Door = { target: { kind: 'time' }, kicker: 'THE CALENDAR', title: 'Time and the world', blurb: 'Reshuffle the schedule, sim the season, parity, chaos, a superteam.' };
-  const recruits: Door = { target: { kind: 'recruits' }, kicker: 'RECRUITING', title: 'The class', blurb: 'Recruits added, rewritten, committed on the spot.' };
-  const portalDoor: Door = { target: { kind: 'portal' }, kicker: 'THE PORTAL', title: 'Sign for nothing', blurb: 'Every man in the portal, yours at no cost.' };
-  const doors: Door[] = tab === 'home' ? [time, program, recruits, ...(portal ? [portalDoor] : [])]
-    : tab === 'team' ? [program, recruits, ...(portal ? [portalDoor] : []), coach]
-    : tab === 'season' ? [leagues, time, program]
-    : [program, coach, money, leagues];
+  const [area, setArea] = useState<Area>(START_AREA[sourceTab]);
+  const me = season?.teams[userTeam];
+
+  const doors = useMemo<Record<Area, Door[]>>(() => ({
+    team: [
+      { target: { kind: 'roster', team: userTeam }, kicker: 'ROSTER', title: 'Players & roster', blurb: 'Add players, find anyone on the roster, then open his own editor.', metric: me ? `${new Set([...me.team.lineup, ...me.team.bench, ...me.team.rotation, ...me.team.bullpen].map((p) => p.id)).size} PLAYERS` : undefined },
+    ],
+    program: [
+      { target: { kind: 'program', team: userTeam }, kicker: 'PROGRAM', title: 'School & prestige', blurb: 'Rename the program and change its prestige. League movement lives under Leagues.', metric: me ? `${Math.round(me.prestige)} PRESTIGE` : undefined },
+      { target: { kind: 'coach' }, kicker: 'COACH', title: 'Coach profile', blurb: 'Identity, skills, contract, record, badges and hidden counters.', metric: `${Math.round(coach.prestige)} PRESTIGE` },
+      { target: { kind: 'money' }, kicker: 'OPERATIONS', title: 'Budget & staff', blurb: 'Grant money or recruiting points and edit the assistant staff.' },
+    ],
+    recruiting: [
+      { target: { kind: 'recruits' }, kicker: 'RECRUITING', title: 'Recruiting class', blurb: 'Add prospects, pick a recruit, edit stars and priorities.', metric: season ? `${season.recruiting.prospects.filter((p) => p.signedBy === null).length} UNSIGNED` : undefined },
+      ...(portal ? [{ target: { kind: 'portal' } as GodTarget, kicker: 'TRANSFER PORTAL', title: 'Portal', blurb: 'Sign an available transfer instantly at no cost.', metric: `${portal.available.length} AVAILABLE` }] : []),
+    ],
+    leagues: [
+      { target: { kind: 'leagues' }, kicker: 'LEAGUE CONTROL', title: 'Names & membership', blurb: 'Rename leagues or move programs between them. These controls are separate from rosters.' },
+    ],
+    world: [
+      { target: { kind: 'time' }, kicker: 'WORLD CONTROL', title: 'Calendar & presets', blurb: 'Reshuffle before play, simulate forward, or apply parity, chaos and superteam presets.' },
+    ],
+  }), [coach.prestige, me, portal, season, userTeam]);
+
+  const areaCopy: Record<Area, { kicker: string; title: string; blurb: string }> = {
+    team: { kicker: 'TEAM CONTROL', title: 'Build the roster.', blurb: 'Roster management and individual player edits live here—nothing about league alignment is mixed into it.' },
+    program: { kicker: 'PROGRAM CONTROL', title: 'Run the program.', blurb: 'School identity, your coach, money and staff are grouped together without burying them in one long form.' },
+    recruiting: { kicker: 'TALENT CONTROL', title: 'Control incoming talent.', blurb: 'Recruiting and the transfer portal are close enough to find together, but each opens as its own tool.' },
+    leagues: { kicker: 'LEAGUE CONTROL', title: 'Rewrite the map.', blurb: 'League names and conference membership belong here—not inside a roster or program profile.' },
+    world: { kicker: 'WORLD CONTROL', title: 'Move the season.', blurb: 'Calendar actions and global presets are isolated because they can change the whole save at once.' },
+  };
+  const copy = areaCopy[area];
+
   return (
-    <main className="module-workspace god-desk">
-      <p className="god-note god-lead">Anything here is yours to rewrite, and it saves as you go. Records still count; it is god mode. Every player card, program page, recruiting file and money sheet carries a bolt of its own.</p>
-      <div className="god-doors">
-        {doors.map((d) => (
-          <button key={d.title} type="button" className="god-door tap" onClick={() => openGod(d.target)}>
-            <span><small>{d.kicker}</small><strong>{d.title}</strong></span>
+    <main className="module-workspace god-desk god-control-center">
+      <section className="god-command-hero compact">
+        <span><LightningBoltIcon /></span>
+        <div>
+          <small>{copy.kicker}</small>
+          <strong>{copy.title}</strong>
+          <p>{copy.blurb}</p>
+        </div>
+      </section>
+
+      <div className="god-area-tabs">
+        <Segmented value={area} options={AREA_OPTIONS} onChange={setArea} label="God Mode category" />
+      </div>
+
+      <div className="god-doors god-control-doors">
+        {doors[area].map((d) => (
+          <button key={`${d.kicker}:${d.title}`} type="button" className="god-door tap" onClick={() => openGod(d.target)}>
+            <span>
+              <small>{d.kicker}</small>
+              <strong>{d.title}</strong>
+              {d.metric && <b>{d.metric}</b>}
+            </span>
             <p>{d.blurb}</p>
             <ChevronRightIcon />
           </button>

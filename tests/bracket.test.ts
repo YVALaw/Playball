@@ -397,6 +397,9 @@ describe('the end of your run', () => {
         preplayed: new Map([[pairKey(me, foe), defeatFor(s, final, me)]]),
       },
       knockout: null, postseasonSeen: [],
+      // A casual career: the staff answers an injured starter, so the new
+      // roster hold (05 §63.3) cannot stop a June this test needs to finish.
+      depth: { mode: 'casual', overrides: {} },
     });
 
     useDynasty.getState().simBracket('rest');
@@ -441,6 +444,9 @@ describe('the end of your run', () => {
         preplayed: new Map([[pairKey(me, foe), defeatFor(s, mine, me)]]),
       },
       knockout: null, postseasonSeen: [],
+      // A casual career: the staff answers an injured starter, so the new
+      // roster hold (05 §63.3) cannot stop a June this test needs to finish.
+      depth: { mode: 'casual', overrides: {} },
     });
 
     // One loss is not a knockout in a double elimination.
@@ -491,6 +497,7 @@ describe('the end of your run', () => {
       bracket: { stage: 'conference', cups: [], regionals: [], national: null },
       myBracket: { kind: 'conference', format: 'double', state, preplayed: new Map() },
       knockout: null, postseasonSeen: [], sideShow: null,
+      depth: { mode: 'casual', overrides: {} },
     });
     useDynasty.getState().simBracket('rest');
 
@@ -535,6 +542,7 @@ describe('the end of your run', () => {
         preplayed: new Map(),
       },
       knockout: null, postseasonSeen: [], sideShow: null,
+      depth: { mode: 'casual', overrides: {} },
     });
     useDynasty.getState().simBracket('rest');
 

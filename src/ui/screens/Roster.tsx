@@ -192,7 +192,7 @@ export function Roster() {
       <FirstVisit id="roster" />
 
       <div className="screen-title-row">
-        <GodIntroRow target={{ kind: 'program', team: team.index }} label="Edit the roster in god mode">
+        <GodIntroRow target={{ kind: 'roster', team: team.index }} label="Edit the roster in god mode">
           <ModuleIntro
             kicker={filtered ? `${rows.length} OF ${squad}` : 'ACTIVE ROSTER'}
             title={`${rows.length} ${rows.length === 1 ? 'player' : 'players'}`}

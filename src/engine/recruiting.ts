@@ -193,6 +193,8 @@ export interface Prospect {
   recruitingPriorities?: RecruitingPriorities;
   /** The pitch + one major move each program is using this week. */
   weekActions?: Record<number, RecruitWeekAction>;
+  /** A sway is a one-time relationship attempt across the whole recruiting season. */
+  swayedBy?: Record<number, boolean>;
   /** A binding promise survives the weekly action reset and follows him if he signs. */
   promiseBy?: Record<number, RecruitPromiseKind>;
   /** Team index once he has committed. */
@@ -203,13 +205,19 @@ export interface Prospect {
 
 export interface RecruitClass {
   year: number;
-  /** 0 before the window opens, then 1 to 3, then closed. */
+  /** 1-based regular-season recruiting week. After the last week, this is RECRUITING_WEEKS + 1. */
   week: number;
   prospects: Prospect[];
 }
 
-/** How many weeks the recruiting window runs. Campus Dynasty uses three. */
-export const RECRUITING_WEEKS = 3;
+/**
+ * Recruiting now runs alongside the regular season instead of appearing as a
+ * three-week June transaction. The schedule is twelve weeks long (eleven
+ * conference series plus the midweek slate), so every calendar week is also a
+ * recruiting week. A class commits during the spring and enrolls at the next
+ * year roll.
+ */
+export const RECRUITING_WEEKS = 12;
 
 /**
  * How many recruits a class may hold.
@@ -278,8 +286,14 @@ export function budgetFor(stars: number): number {
  * would let him keep an ace and lose nothing he could not have recovered by
  * waiting.
  */
+/**
+ * Draft/portal retention still uses Recruitment Points, but it is now a
+ * separate offseason reserve. Season-long recruiting must not become four
+ * times more expensive simply because the board is open for twelve weeks.
+ */
+export const OFFSEASON_POINT_WEEKS = 3;
 export const windowBudget = (stars: number): number =>
-  budgetFor(stars) * RECRUITING_WEEKS;
+  budgetFor(stars) * OFFSEASON_POINT_WEEKS;
 
 /**
  * The offseason is one economy with a protected floor. Draft and Portal may
@@ -295,8 +309,15 @@ export const recruitingWindowBudget = (stars: number, spentBeforeRecruiting: num
   protectedRecruitingBudget(stars)
     + Math.max(0, flexibleOffseasonBudget(stars) - Math.max(0, spentBeforeRecruiting));
 
-export const weeklyBudget = (stars: number, spentBeforeRecruiting: number): number =>
-  Math.max(0, Math.floor(recruitingWindowBudget(stars, spentBeforeRecruiting) / RECRUITING_WEEKS));
+/**
+ * The spring board gets a fresh RP allowance every week. The total attention
+ * available across the twelve-week season stays close to the old three-week
+ * window, so extending the calendar creates more decisions rather than four
+ * times the recruiting power. Draft and portal use the separate offseason
+ * reserve above.
+ */
+export const weeklyBudget = (stars: number, _spentBeforeRecruiting = 0): number =>
+  Math.max(1, Math.round(windowBudget(stars) / RECRUITING_WEEKS));
 
 /** The most that can go on one recruit in one week. Nobody signs on money alone. */
 export const MAX_PER_RECRUIT = 12;
@@ -644,7 +665,7 @@ export function generateClass(year: number, teams: number, rng: Rng): RecruitCla
   prospects.forEach((p, i) => { p.rank = i + 1; });
 
 
-  return { year, week: 0, prospects };
+  return { year, week: 1, prospects };
 }
 
 // ---------------------------------------------------------------------------
@@ -1427,8 +1448,9 @@ export function planAiRecruitActions(
     if (weekNo < 2 || !hasRecruitingRelationship(prospect, team) || left < HARD_SELL_COST) continue;
     const roll = rng();
     let major: RecruitMajorAction | undefined;
-    if (weekNo === 2 && roll < 0.13 && left >= SWAY_COST) {
+    if (!prospect.swayedBy?.[team] && roll < 0.13 && left >= SWAY_COST) {
       const success = swayRecruit(prospect, factor, pitch, coachPrestige, recruitingSkill, rng);
+      (prospect.swayedBy ??= {})[team] = true;
       major = { kind: 'sway', factor, success };
     } else if (roll < 0.34 && left >= VISIT_COST) {
       major = { kind: 'visit' };

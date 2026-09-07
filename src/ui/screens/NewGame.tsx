@@ -722,7 +722,7 @@ function DepthStep(
               <span>
                 <small>GOD MODE</small>
                 <strong>{god ? 'On for this career' : 'Off for this career'}</strong>
-                <p>A sandbox. Edit any player, any program, your coach, your staff, the money and the schedule, from the desk, whenever you like. Records still count.</p>
+                <p>A sandbox. Edit any player, any program, your coach, your staff, the money and the schedule through God Mode bolts wherever you are. Records still count.</p>
               </span>
               <b>{god ? 'ON' : 'OFF'}</b>
             </button>

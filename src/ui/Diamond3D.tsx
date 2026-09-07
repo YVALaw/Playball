@@ -559,6 +559,11 @@ export function stationsFor(p?: FieldPositioning): [number, number, number][] {
   for (const i of [2, 3, 4, 5]) {
     base[i]![0] += dx;
     base[i]![2] += inZ;
+    // A shift can shade a defender toward a foul line, but never station him
+    // in foul territory. On this field the foul lines are x = ±depth; keep a
+    // small visual cushion inside them so the call still reads as baseball.
+    const depth = Math.max(0.8, -base[i]![2]);
+    base[i]![0] = Math.max(-depth * 0.9, Math.min(depth * 0.9, base[i]![0]));
   }
   const scale = outfield === 'shallow' ? 0.87 : outfield === 'deep' ? 1.13 : 1;
   const spin = shift === 'left' ? -0.11 : shift === 'right' ? 0.11 : 0;
@@ -570,6 +575,8 @@ export function stationsFor(p?: FieldPositioning): [number, number, number][] {
     const theta = Math.atan2(x, depth) + spin;
     base[i]![0] = r * Math.sin(theta);
     base[i]![2] = -r * Math.cos(theta);
+    const fairDepth = Math.max(1, -base[i]![2]);
+    base[i]![0] = Math.max(-fairDepth * 0.94, Math.min(fairDepth * 0.94, base[i]![0]));
   }
   return base;
 }

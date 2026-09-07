@@ -46,6 +46,16 @@ beforeEach(() => {
   useDynasty.getState().newDynasty();
 });
 
+describe('God Mode touch navigation', () => {
+  it('does not stack the same editor twice on a double tap', () => {
+    useDynasty.getState().start(4242, 0, undefined, 'full', undefined, true);
+    const god = useDynasty.getState();
+    god.openGod({ kind: 'time' });
+    god.openGod({ kind: 'time' });
+    expect(useDynasty.getState().godStack).toHaveLength(1);
+  });
+});
+
 describe('the postseason can only be started once', () => {
   it('ignores a second press instead of replaying June on top of itself', () => {
     useDynasty.getState().start(4242, 0);
@@ -100,10 +110,11 @@ describe('walking back to the draft step cannot restart recruiting', () => {
     useDynasty.getState().start(4242, 0);
     const s = useDynasty.getState();
     const season = s.season!;
-    // The career has already reached recruiting and played a week of it.
+    // The career has already reached the class step, and the spring board
+    // (recruiting lives in the regular season now — 05 §63.6) is two weeks in.
     useDynasty.setState({
       phase: 'draft',
-      furthestPhase: PHASES.indexOf('recruiting'),
+      furthestPhase: PHASES.indexOf('signing'),
     });
     season.recruiting.week = 2;
     const contested = season.recruiting.prospects.find(
@@ -111,12 +122,12 @@ describe('walking back to the draft step cannot restart recruiting', () => {
     );
     const before = contested ? { ...contested.points } : null;
 
-    // Stage 10 put the portal between the draft and recruiting, so reaching
-    // recruiting is two steps from the draft rather than one.
+    // Stage 10 put the portal between the draft and the class, so reaching
+    // the class is two steps from the draft rather than one.
     await useDynasty.getState().nextPhase();
     await useDynasty.getState().nextPhase();
 
-    expect(useDynasty.getState().phase).toBe('recruiting');
+    expect(useDynasty.getState().phase).toBe('signing');
     // The clock did not rewind and the country did not get a second free
     // pass at the class.
     expect(season.recruiting.week).toBe(2);

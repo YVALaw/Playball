@@ -7274,3 +7274,686 @@
 .app-crash p { margin:0; color:var(--dim); font:500 calc(9px * var(--ts))/1.4 var(--body); }
 .app-crash div { display:flex; gap:8px; margin-top:4px; }
 .app-crash button { min-height:38px; padding:0 12px; border:1px solid var(--clay); background:var(--paper); color:var(--clay); font:800 calc(8px * var(--ts)) var(--body); letter-spacing:.06em; }
+/* ---------------------------------------------------------------------------
+   God Mode audit pass — September 6 2026.
+
+   God Mode used to look like the old utility forms even though the rest of
+   Playball had moved to command heroes, surfaced cards and contextual sheets.
+   This keeps the sandbox inside the same visual system, and deliberately owns
+   button sizing so the broad legacy `.settings-list button` rule can never
+   squeeze a God Mode command into letter-by-letter wrapping again.
+   --------------------------------------------------------------------------- */
+
+/* Settings: entitlement + career state read as one control room, not old rows. */
+.settings-god-hero {
+  display:grid;
+  grid-template-columns:46px minmax(0,1fr) auto;
+  gap:11px;
+  align-items:center;
+  min-width:0;
+  padding:13px;
+  border:1px solid var(--line);
+  border-top:4px solid var(--clay);
+  background:var(--panel);
+  color:var(--cream);
+}
+.settings-god-hero-mark {
+  display:grid;
+  place-items:center;
+  width:46px;
+  height:46px;
+  border:1px solid rgba(var(--cream-rgb),.16);
+  background:rgba(var(--cream-rgb),.06);
+  color:var(--cream);
+}
+.settings-god-hero-mark svg { width:25px; height:25px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+.settings-god-hero > div { min-width:0; }
+.settings-god-hero small { display:block; color:rgba(var(--cream-rgb),.58); font:700 calc(6.5px * var(--ts)) var(--mono); letter-spacing:.12em; }
+.settings-god-hero strong { display:block; margin-top:3px; color:var(--cream); font:800 calc(22px * var(--ts))/.95 var(--display); text-transform:uppercase; }
+.settings-god-hero p { margin:6px 0 0; color:rgba(var(--cream-rgb),.72); font:500 calc(8.5px * var(--ts))/1.42 var(--body); }
+.settings-god-hero > b {
+  align-self:start;
+  padding:6px 8px;
+  border:1px solid rgba(var(--cream-rgb),.22);
+  color:rgba(var(--cream-rgb),.7);
+  font:800 calc(6.5px * var(--ts)) var(--mono);
+  letter-spacing:.08em;
+  white-space:nowrap;
+}
+.settings-god-hero > b.on { border-color:var(--clay); background:var(--clay); color:var(--cream); }
+
+.settings-god-panel {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  min-width:0;
+  padding:12px;
+  border:1px solid var(--line);
+  border-left:4px solid var(--clay);
+  background:var(--paper);
+  box-shadow:0 9px 20px rgba(0,0,0,.04);
+}
+.settings-god-panel.career { border-left-color:var(--line); }
+.settings-god-panel.career.active { border-left-color:var(--win); }
+.settings-god-copy { min-width:0; }
+.settings-god-copy small { display:block; color:var(--clay); font:700 calc(6.3px * var(--ts)) var(--mono); letter-spacing:.1em; }
+.settings-god-copy strong { display:block; margin-top:3px; color:var(--ink); font:800 calc(13px * var(--ts)) var(--body); }
+.settings-god-copy p { margin:5px 0 0; color:var(--dim); font:500 calc(8.5px * var(--ts))/1.4 var(--body); }
+.settings-god-command {
+  display:grid !important;
+  place-items:center;
+  flex:none !important;
+  width:auto !important;
+  min-width:116px;
+  min-height:42px !important;
+  padding:7px 12px !important;
+  border:1px solid var(--clay) !important;
+  background:var(--clay) !important;
+  color:var(--cream) !important;
+  text-align:center !important;
+  font:800 calc(7.5px * var(--ts))/1.15 var(--body) !important;
+  letter-spacing:.05em;
+  white-space:normal;
+  word-break:normal;
+  overflow-wrap:normal;
+}
+.settings-god-command.secondary { background:var(--paper) !important; color:var(--clay) !important; }
+.settings-god-footnote { display:grid; gap:1px; margin-top:12px; border:1px solid var(--line); background:var(--line); }
+.settings-god-footnote > small { padding:8px 10px; background:var(--wash); color:var(--clay); font:800 calc(6.3px * var(--ts)) var(--mono); letter-spacing:.1em; }
+.settings-god-footnote > span { display:grid; grid-template-columns:25px minmax(0,1fr); gap:8px; align-items:center; padding:8px 10px; background:var(--paper); }
+.settings-god-footnote b { display:grid; place-items:center; width:22px; height:22px; border:1px solid var(--clay); color:var(--clay); font:800 calc(7px * var(--ts)) var(--mono); }
+.settings-god-footnote p { margin:0; color:var(--dim); font:500 calc(8px * var(--ts))/1.35 var(--body); }
+
+/* The sandbox opens as one of Playball's modern full overlays. */
+.god-sheet > header {
+  border-top:4px solid var(--clay);
+  border-bottom:0;
+  background:var(--panel);
+  color:var(--cream);
+}
+.god-sheet > header > button { border-color:rgba(var(--cream-rgb),.16); background:transparent; color:var(--cream); }
+.god-sheet > header small { color:rgba(var(--cream-rgb),.58); letter-spacing:.12em; }
+.god-sheet > header h1 { color:var(--cream); text-transform:uppercase; }
+.god-sheet > .overlay-scroll { background:var(--field); }
+.god-desk { padding-top:10px; padding-bottom:calc(env(safe-area-inset-bottom) + 24px); }
+
+.god-command-hero {
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr);
+  gap:10px;
+  align-items:start;
+  margin:0 0 10px;
+  padding:12px;
+  border:1px solid var(--line);
+  border-top:4px solid var(--clay);
+  background:var(--panel);
+  color:var(--cream);
+}
+.god-command-hero > span { display:grid; place-items:center; width:42px; height:42px; border:1px solid rgba(var(--cream-rgb),.16); color:var(--cream); }
+.god-command-hero svg { width:22px; height:22px; }
+.god-command-hero div { min-width:0; }
+.god-command-hero small { display:block; color:rgba(var(--cream-rgb),.58); font:800 calc(6.3px * var(--ts)) var(--mono); letter-spacing:.11em; }
+.god-command-hero strong { display:block; margin-top:3px; color:var(--cream); font:800 calc(18px * var(--ts))/.98 var(--display); text-transform:uppercase; }
+.god-command-hero p { margin:5px 0 0; color:rgba(var(--cream-rgb),.72); font:500 calc(8.3px * var(--ts))/1.4 var(--body); }
+
+/* Context doors now match the app's surfaced action cards. */
+.god-doors { gap:7px; }
+.god-door {
+  min-height:72px;
+  padding:11px 12px;
+  border:1px solid var(--line);
+  border-left:4px solid var(--clay);
+  background:var(--paper);
+  box-shadow:0 7px 17px rgba(0,0,0,.035);
+}
+.god-door small { font-size:calc(6.2px * var(--ts)); }
+.god-door strong { margin-top:3px; font-size:calc(14px * var(--ts)); text-transform:uppercase; }
+.god-door p { margin-top:3px; font-size:calc(8.2px * var(--ts)); }
+.god-door:active { background:var(--soft); }
+
+/* Editor surfaces and inputs use the same hierarchy as recruiting/program. */
+.god-card {
+  margin:0 0 11px;
+  padding:12px;
+  border:1px solid var(--line);
+  border-top:3px solid var(--line);
+  background:var(--paper);
+  box-shadow:0 8px 18px rgba(0,0,0,.035);
+}
+.god-card:has(> .god-actions:first-child),
+.god-card:has(> .god-field:first-child),
+.god-card.god-editor { border-top-color:var(--clay); }
+.god-card.god-editor { overflow:hidden; padding-top:0; }
+.god-editor > header {
+  display:block;
+  margin:0 -12px 12px;
+  padding:11px 12px 10px;
+  background:var(--panel);
+  color:var(--cream);
+}
+.god-editor > header small { display:block; color:rgba(var(--cream-rgb),.58); }
+.god-editor > header strong { display:block; margin-top:3px; color:var(--cream); font:800 calc(19px * var(--ts))/.95 var(--display); text-transform:uppercase; }
+.god-editor .god-ovr { margin-top:4px; color:rgba(var(--cream-rgb),.72); }
+
+.god-field { margin-bottom:10px; }
+.god-field small,.god-slider small,.god-selects small,.god-actions span small { color:var(--dim); }
+.god-field input[type=text],.god-field select,.god-selects select,.god-badges label select {
+  min-height:42px;
+  border-color:var(--line);
+  background:var(--wash);
+  color:var(--ink);
+  outline:none;
+}
+.god-field input[type=text]:focus,.god-field select:focus,.god-selects select:focus,.god-badges label select:focus { border-color:var(--clay); box-shadow:inset 0 0 0 1px var(--clay); }
+.god-slider { grid-template-columns:minmax(96px,118px) minmax(0,1fr); gap:12px; min-height:42px; margin-bottom:8px; padding:5px 0; border-bottom:1px solid var(--line); }
+.god-slider:last-child { border-bottom:0; }
+.god-slider span strong { margin-top:2px; color:var(--ink); font-size:calc(18px * var(--ts)); }
+.god-slider input[type=range] { min-width:0; }
+.god-selects { gap:7px; }
+
+.god-actions { gap:7px; margin-bottom:9px; }
+.god-actions button,.god-field button {
+  width:auto;
+  min-width:64px;
+  min-height:38px;
+  padding:7px 11px;
+  border:1px solid var(--clay);
+  background:var(--paper);
+  color:var(--clay);
+  font:800 calc(7.4px * var(--ts))/1.15 var(--body);
+  letter-spacing:.05em;
+  white-space:normal;
+  word-break:normal;
+  overflow-wrap:normal;
+}
+.god-actions button.active { background:var(--clay); color:var(--cream); }
+.god-actions button.god-danger { border-color:var(--loss); background:color-mix(in srgb,var(--loss) 6%,var(--paper)); color:var(--loss); }
+.god-actions span strong { margin-top:2px; color:var(--ink); }
+.god-note { color:var(--dim); font-size:calc(8.4px * var(--ts)); }
+.god-toast { margin-top:9px; border:1px solid var(--line); border-left:4px solid var(--win); background:var(--paper); }
+
+.god-roster { grid-template-columns:repeat(auto-fit,minmax(142px,1fr)); gap:7px; }
+.god-roster button { min-width:0; min-height:54px; padding:8px 9px; border-left:3px solid var(--line); background:var(--paper); }
+.god-roster button:active,.god-roster button.active { border-left-color:var(--clay); background:var(--soft); }
+.god-roster strong,.god-roster small { overflow:hidden; text-overflow:ellipsis; }
+.god-roster strong { white-space:nowrap; }
+.god-roster small { margin-top:3px; line-height:1.3; }
+.god-staff { padding:11px 0 3px; }
+.god-staff:first-child { padding-top:0; border-top:0; }
+.god-badges { gap:7px; }
+.god-badges button,.god-badges label { min-width:0; }
+.god-badges button { white-space:normal; word-break:normal; overflow-wrap:normal; }
+
+/* Bolt: same command language everywhere, while contextual variants remain. */
+.god-bolt { border-color:var(--clay); background:var(--soft); color:var(--clay); box-shadow:0 4px 10px rgba(0,0,0,.05); }
+.god-bolt:active { background:var(--clay); color:var(--cream); }
+.header-god { background:transparent; border-color:rgba(var(--cream-rgb),.2); color:var(--cream); box-shadow:none; }
+.floating-god { background:var(--clay); color:var(--cream); box-shadow:0 7px 18px rgba(0,0,0,.26); }
+
+@media (max-width:360px) {
+  .settings-god-hero { grid-template-columns:42px minmax(0,1fr); }
+  .settings-god-hero-mark { width:42px; height:42px; }
+  .settings-god-hero > b { grid-column:1 / -1; justify-self:start; }
+  .settings-god-panel { grid-template-columns:1fr; }
+  .settings-god-command { width:100% !important; min-width:0; }
+  .god-selects,.god-badges { grid-template-columns:1fr; }
+  .god-slider { grid-template-columns:minmax(88px,104px) minmax(0,1fr); gap:8px; }
+}
+
+/* Career creation gets the same sandbox identity as the in-career editor. */
+.career-god-toggle button {
+  min-height:92px;
+  padding:12px;
+  border:1px solid var(--line);
+  border-left:4px solid var(--clay);
+  background:var(--paper);
+  box-shadow:0 7px 17px rgba(0,0,0,.035);
+}
+.career-god-toggle button.selected { border-color:var(--clay); background:var(--panel); color:var(--cream); }
+.career-god-toggle button.selected small { color:rgba(var(--cream-rgb),.58); }
+.career-god-toggle button.selected strong { color:var(--cream); }
+.career-god-toggle button.selected p { color:rgba(var(--cream-rgb),.72); }
+.career-god-toggle b { min-width:44px; text-align:center; white-space:nowrap; }
+.career-god-toggle button.selected b { border-color:var(--clay); background:var(--clay); color:var(--cream); }
+
+/* ---------------------------------------------------------------------------
+   God Mode control-center redesign — September 6 2026, pass 2.
+   The first audit improved surfaces but left the information architecture too
+   close to a settings list. This pass makes God Mode a set of focused tools.
+   --------------------------------------------------------------------------- */
+
+/* The bolt must read as an action in LIGHT mode even when the school accent is
+   pale. --raised is intentionally a dark/deep action surface in light mode and
+   becomes the lifted accent in dark mode. */
+.god-bolt {
+  border-color:var(--raised);
+  background:var(--raised);
+  color:var(--cream);
+  box-shadow:0 5px 13px rgba(0,0,0,.17);
+}
+.god-bolt svg { stroke-width:2; }
+.god-bolt:active { transform:translateY(1px) scale(.97); background:var(--clay); border-color:var(--clay); color:var(--cream); }
+.header-god { background:transparent; border-color:rgba(var(--cream-rgb),.34); color:var(--cream); box-shadow:none; }
+.floating-god { background:var(--raised); border-color:var(--raised); color:var(--cream); box-shadow:0 8px 20px rgba(0,0,0,.28); }
+.inline-god,.toolbar-god,.hero-god { isolation:isolate; }
+
+/* No God Mode title is allowed to force the overlay wider than the phone. Long
+   school/player names can use two lines instead of escaping the screen. */
+.god-sheet > header { grid-template-columns:42px minmax(0,1fr); min-width:0; align-items:end; }
+.god-sheet > header > div { min-width:0; overflow:hidden; }
+.god-sheet > header small { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.god-sheet > header h1 {
+  min-width:0;
+  max-width:100%;
+  margin-top:3px;
+  font-size:clamp(calc(20px * var(--ts)),7.2vw,calc(28px * var(--ts)));
+  line-height:.94;
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  overflow-wrap:anywhere;
+  word-break:normal;
+}
+.settings-god-hero strong,.god-command-hero strong,.god-door strong,.god-link-card strong { overflow-wrap:anywhere; word-break:normal; }
+
+.god-control-center { padding-top:10px; }
+.god-command-hero.compact { margin-bottom:8px; }
+.god-command-hero.compact strong { font-size:calc(19px * var(--ts)); }
+.god-area-tabs,.god-subnav {
+  position:sticky;
+  top:0;
+  z-index:5;
+  margin:0 0 9px;
+  padding:7px 0 6px;
+  background:linear-gradient(var(--field) 78%,rgba(var(--ink-rgb),0));
+}
+.god-area-tabs .segmented,.god-subnav .segmented { margin:0; background:var(--sunk); border-color:var(--line); }
+.god-area-tabs .segmented button,.god-subnav .segmented button {
+  min-width:max-content;
+  min-height:37px;
+  padding-inline:11px;
+  font-size:calc(7.2px * var(--ts));
+  letter-spacing:.045em;
+}
+
+/* A category contains only a few destinations, so use the phone width instead
+   of stacking everything into a long single column. */
+.god-control-doors { grid-template-columns:repeat(auto-fit,minmax(164px,1fr)); align-items:stretch; }
+.god-control-doors .god-door { min-height:112px; grid-template-rows:auto 1fr; }
+.god-door > span { min-width:0; }
+.god-door > span b {
+  display:inline-block;
+  margin-top:7px;
+  padding:3px 5px;
+  border:1px solid var(--line);
+  background:var(--wash);
+  color:var(--dim);
+  font:800 calc(6px * var(--ts)) var(--mono);
+  letter-spacing:.07em;
+}
+
+/* Compact at-a-glance context replaces repeated giant editor headers. */
+.god-summary-card {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(88px,1fr));
+  gap:1px;
+  margin:0 0 3px;
+  border:1px solid var(--line);
+  background:var(--line);
+  overflow:hidden;
+}
+.god-summary-card > div {
+  min-width:0;
+  min-height:70px;
+  padding:9px 10px;
+  background:var(--panel);
+  color:var(--cream);
+}
+.god-summary-card small { display:block; color:rgba(var(--cream-rgb),.58); font:800 calc(6px * var(--ts)) var(--mono); letter-spacing:.1em; }
+.god-summary-card strong { display:block; min-width:0; margin-top:4px; color:var(--cream); font:800 calc(20px * var(--ts))/.95 var(--display); overflow:hidden; text-overflow:ellipsis; }
+.god-summary-card span { display:block; min-width:0; margin-top:4px; color:rgba(var(--cream-rgb),.7); font:600 calc(7px * var(--ts))/1.2 var(--body); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.god-summary-card strong.god-summary-text { font-size:calc(13px * var(--ts)); line-height:1.02; white-space:normal; overflow-wrap:anywhere; }
+
+.god-panel-lead { margin:0 0 11px; padding:0 0 9px; border-bottom:1px solid var(--line); color:var(--dim); font:600 calc(8.4px * var(--ts))/1.4 var(--body); }
+.god-quick-actions { border-top-color:var(--clay); }
+.god-roster-card { padding-top:10px; }
+.god-status-line { padding-bottom:6px; border-bottom:1px solid var(--line); }
+
+.god-linked-actions { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:8px; margin-bottom:10px; }
+.god-link-card {
+  display:block;
+  min-width:0;
+  min-height:92px;
+  padding:10px 11px;
+  border:1px solid var(--line);
+  border-left:4px solid var(--clay);
+  background:var(--paper);
+  color:var(--ink);
+  text-align:left;
+  box-shadow:0 7px 17px rgba(0,0,0,.035);
+}
+.god-link-card small { display:block; color:var(--clay); font:800 calc(6.2px * var(--ts)) var(--mono); letter-spacing:.1em; }
+.god-link-card strong { display:block; margin-top:4px; font:800 calc(13px * var(--ts))/1.05 var(--display); text-transform:uppercase; }
+.god-link-card span { display:block; margin-top:5px; color:var(--dim); font:500 calc(8px * var(--ts))/1.35 var(--body); }
+.god-context-note { padding:9px 10px; border:1px solid var(--line); background:var(--wash); }
+
+.god-preset-grid { display:grid; gap:8px; }
+.god-preset-grid > div { min-width:0; padding:10px; border:1px solid var(--line); border-left:3px solid var(--clay); background:var(--wash); }
+.god-preset-grid strong { display:block; font:800 calc(11px * var(--ts)) var(--display); }
+.god-preset-grid p { margin:3px 0 9px; color:var(--dim); font:500 calc(8px * var(--ts))/1.35 var(--body); }
+.god-preset-grid button { min-height:38px; padding:7px 10px; border:1px solid var(--clay); background:var(--paper); color:var(--clay); font:800 calc(7px * var(--ts)) var(--body); }
+
+/* Long commands (for example COMMIT TO A VERY LONG SCHOOL NAME) wrap as words,
+   never as one character per line. */
+.god-actions button,.god-field button,.god-preset-grid button {
+  max-width:100%;
+  overflow-wrap:normal;
+  word-break:normal;
+  hyphens:none;
+}
+.god-actions { min-width:0; }
+.god-actions > button { flex:0 1 auto; }
+
+@media (max-width:360px) {
+  .god-control-doors { grid-template-columns:1fr; }
+  .god-control-doors .god-door { min-height:82px; }
+  .god-summary-card { grid-template-columns:repeat(auto-fit,minmax(82px,1fr)); }
+  .god-summary-card > div { min-height:64px; padding:8px; }
+  .god-summary-card strong { font-size:calc(18px * var(--ts)); }
+  .god-linked-actions { grid-template-columns:1fr; }
+  .god-sheet > header h1 { font-size:calc(22px * var(--ts)); }
+}
+
+/* The budget hero is a light-theme surface and had a more-specific legacy rule
+   that could still turn its bolt into pale accent on white. Own that case too. */
+.money-available .hero-god {
+  border-color:var(--raised);
+  background:var(--raised);
+  color:var(--cream);
+  box-shadow:0 5px 13px rgba(0,0,0,.17);
+}
+
+/* ---------------------------------------------------------------------------
+   God Mode bolt visibility — September 7 2026.
+
+   Light theme needs a fixed high-contrast identity. Several contextual bolt
+   classes (especially .header-god and .toolbar-god) used cream on transparent
+   backgrounds, which disappears against --field/--paper in the light theme.
+   Do not derive this trigger from the school accent: pale school palettes can
+   make an administrative control effectively vanish.
+   --------------------------------------------------------------------------- */
+:root:not([data-theme='dark']) .god-bolt {
+  background:#171a17;
+  border:1px solid #f4f8f4;
+  color:#f4f8f4;
+  box-shadow:0 0 0 1px rgba(23,26,23,.34), 0 5px 14px rgba(0,0,0,.22);
+}
+:root:not([data-theme='dark']) .god-bolt svg {
+  color:inherit;
+  stroke:currentColor;
+  opacity:1;
+  filter:none;
+}
+:root:not([data-theme='dark']) .god-bolt:active {
+  background:var(--clay);
+  border-color:#f4f8f4;
+  color:#f4f8f4;
+}
+
+/* Explicit dark selection: lifted accent surface so the same control does not
+   turn into a black-on-black spot when the user chooses Dark in Settings. */
+:root[data-theme='dark'] .god-bolt {
+  background:var(--raised);
+  border-color:rgba(var(--cream-rgb),.72);
+  color:var(--cream);
+  box-shadow:0 5px 14px rgba(0,0,0,.34);
+}
+:root[data-theme='dark'] .god-bolt svg { color:inherit; stroke:currentColor; opacity:1; filter:none; }
+
+/* System theme follows the same dark treatment unless Light was explicitly
+   selected. This block comes last so contextual variants cannot undo it. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .god-bolt {
+    background:var(--raised);
+    border-color:rgba(var(--cream-rgb),.72);
+    color:var(--cream);
+    box-shadow:0 5px 14px rgba(0,0,0,.34);
+  }
+  :root:not([data-theme='light']) .god-bolt svg { color:inherit; stroke:currentColor; opacity:1; filter:none; }
+}
+
+
+/* September 7 — Club Pulse follows game night: one-card-width swipe rail. */
+.week-games {
+  display:flex; gap:7px; overflow-x:auto; scroll-snap-type:x mandatory;
+  padding:0 14px 7px; margin:0 -14px 16px; border:0; background:transparent;
+  scrollbar-width:none; overscroll-behavior-inline:contain;
+}
+.week-games::-webkit-scrollbar { display:none; }
+.week-games > button {
+  flex:0 0 min(29vw, 104px); min-height:76px; scroll-snap-align:center;
+  border:1px solid var(--line); border-radius:10px; background:var(--paper);
+}
+.week-games > button.is-focus {
+  border-color:var(--clay); background:var(--soft); box-shadow:inset 0 -3px var(--clay);
+}
+.bench-season-stat { min-width:0; text-align:center; }
+.bench-season-stat small { display:block; color:var(--dim); font:700 calc(6px * var(--ts)) var(--mono); }
+.bench-season-stat b { display:block; margin-top:2px; color:var(--ink); font:800 calc(8px * var(--ts)) var(--mono); }
+
+
+/* September 7 — portal cards must open above the offseason sheet they came from. */
+.offseason-frame .player-card-overlay { z-index:80; }
+.portal-origin-strip {
+  display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center;
+  margin:8px 14px 10px; padding:10px 11px; border:1px solid var(--clay);
+  border-left:4px solid var(--clay); border-radius:10px; background:var(--soft);
+}
+.portal-origin-strip small { display:block; color:var(--clay); font:800 calc(6.5px * var(--ts)) var(--mono); letter-spacing:.09em; }
+.portal-origin-strip strong { display:block; margin-top:2px; font:800 calc(11px * var(--ts)) var(--body); }
+.portal-origin-strip em { max-width:150px; color:var(--dim); font:600 calc(7px * var(--ts))/1.3 var(--body); font-style:normal; text-align:right; }
+
+/* Postseason: keep the next-game command card reachable while the bracket scrolls. */
+.postseason-scroll .pregame-show { position:sticky; top:0; z-index:4; box-shadow:0 8px 18px rgba(20,24,20,.10); }
+
+/* Staff bars are absolute 0–100 ratings, not normalized against each candidate's own best tool. */
+.candidate-swipe-card .hire-split i { width:100%; background:var(--line); overflow:hidden; }
+.candidate-swipe-card .hire-split i em { display:block; height:100%; background:var(--clay); border-radius:inherit; }
+@media (max-width:430px) {
+  .portal-origin-strip { grid-template-columns:1fr; }
+  .portal-origin-strip em { max-width:none; text-align:left; }
+}
+
+/* September 7 — compact postseason command area. The useful object is the
+   next-game card, so stage furniture gives it the screen instead of competing
+   with it. */
+.postseason-head { padding: 3px 14px 0 !important; }
+.postseason-head .module-intro {
+  padding: 5px 9px 4px !important;
+  border-left-width: 3px !important;
+}
+.postseason-head .module-intro small { font-size: calc(6px * var(--ts)); }
+.postseason-head .module-intro h1 {
+  margin-top: 2px;
+  font-size: calc(20px * var(--ts));
+  line-height: .95;
+}
+.postseason-stage-rail {
+  gap: 5px !important;
+  margin: 5px 14px 0 !important;
+}
+.postseason-stage-rail button {
+  min-height: 52px !important;
+  grid-template-columns: 18px minmax(0,1fr) !important;
+  gap: 5px !important;
+  padding: 6px !important;
+}
+.postseason-stage-rail button > i { width: 18px !important; height: 18px !important; font-size: calc(6.5px * var(--ts)) !important; }
+.postseason-stage-rail button small { font-size: calc(5px * var(--ts)) !important; }
+.postseason-stage-rail button strong { margin-top: 2px !important; font-size: calc(8.5px * var(--ts)) !important; }
+.postseason-stage-rail button em { display: none !important; }
+.postseason-view-toggle { gap: 5px !important; padding: 5px 14px 1px !important; }
+.postseason-view-toggle button { min-height: 38px !important; padding: 6px 8px !important; }
+.postseason-view-toggle small { font-size: calc(5.2px * var(--ts)) !important; }
+.postseason-view-toggle strong { margin-top: 2px !important; font-size: calc(8.8px * var(--ts)) !important; }
+.postseason-scroll > div { padding-top: 4px !important; }
+.postseason-scroll .pregame-show { top: 0; box-shadow: 0 6px 14px rgba(20,24,20,.08); }
+.pregame-show { margin-top: 2px; padding-bottom: 10px; border-top-width: 3px; }
+.pregame-kicker { padding: 7px 11px 0 !important; }
+.pregame-kicker small { font-size: calc(7.5px * var(--ts)); }
+.pregame-kicker span { font-size: calc(6.8px * var(--ts)); }
+.pregame-match { gap: 6px; padding: 8px 11px 0 !important; }
+.pregame-side { gap: 3px; }
+.pregame-side strong { font-size: calc(11.5px * var(--ts)); }
+.pregame-side em { font-size: calc(7.6px * var(--ts)); }
+.pregame-tournament-record {
+  display: block;
+  color: var(--clay);
+  font: 800 calc(6.5px * var(--ts))/1 var(--mono);
+  letter-spacing: .08em;
+}
+.pregame-vs { padding-top: 10px; font-size: calc(11px * var(--ts)); }
+.pregame-sub { margin: 6px 11px 0; font-size: calc(8.8px * var(--ts)); line-height: 1.3; }
+.pregame-show .primary-command { margin: 8px 11px 0; width: calc(100% - 22px); min-height: 40px; }
+.pregame-show .secondary-command { margin: 6px 11px 0; width: calc(100% - 22px); min-height: 38px; }
+.pregame-lineup { margin: 6px 11px 0; min-height: 32px; padding: 6px 9px; }
+@media (max-width: 360px) {
+  .postseason-stage-rail button { grid-template-columns: 16px minmax(0,1fr) !important; min-height: 50px !important; }
+  .postseason-stage-rail button > i { width: 16px !important; height: 16px !important; }
+}
+
+/* Draft: the offseason rail already tells you where you are. Keep the title,
+   totals and tabs tight against it, and leave budget education to the budget
+   screens instead of spending a quarter-screen on an explanatory note here. */
+.draft-compact-head .module-intro { padding: 1px 0 4px !important; }
+.draft-compact-head .module-intro small { font-size: calc(6px * var(--ts)); }
+.draft-compact-head .module-intro h1 { margin-top: 2px; font-size: calc(21px * var(--ts)); line-height: .95; }
+.draft-compact-head .metric-strip { margin-bottom: 5px !important; }
+.draft-compact-head .metric-strip > div { padding: 6px 7px !important; }
+.draft-compact-head .metric-strip strong { font-size: calc(18px * var(--ts)) !important; }
+.draft-compact-head .segmented { margin-bottom: 0 !important; }
+
+/* An occupied staff seat is a working relationship, not a permanent hiring
+   carousel. The market only appears after an explicit replacement action. */
+.staff-focus-actions { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 7px; margin-top: 11px; }
+.staff-focus-card .staff-market-open,
+.staff-focus-card .staff-release { min-height: 38px; margin-top: 0; padding: 7px 9px; font-weight: 800; }
+.staff-focus-card .staff-market-open { border: 1px solid rgba(var(--cream-rgb),.45); background: rgba(var(--cream-rgb),.08); color: var(--cream); }
+.staff-focus-card .staff-release { width: auto; min-width: 88px; }
+@media (max-width: 390px) {
+  .staff-focus-actions { grid-template-columns: 1fr; }
+  .staff-focus-card .staff-release { width: 100%; }
+}
+
+/* Let a vertical drag that starts on Club Pulse keep scrolling the page. */
+.week-games { touch-action: pan-x pan-y; }
+
+/* September 7 — Staff is a management room now, not a hiring receipt. */
+.staff-management-panel {
+  margin: 10px 0 14px; overflow: hidden;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--paper);
+  box-shadow: 0 8px 20px rgba(var(--ink-rgb), .06);
+}
+.staff-management-head {
+  display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; align-items: center;
+  padding: 11px 12px; background: var(--band); color: var(--cream);
+}
+.staff-management-head small,
+.staff-project-card small,
+.pipeline-state-picker small,
+.facility-staff-unlock small,
+.network-assignment small {
+  display: block; font: 800 calc(6.5px * var(--ts))/1 var(--mono); letter-spacing: .1em;
+}
+.staff-management-head strong { display:block; margin-top:3px; font:800 calc(13px * var(--ts))/1.05 var(--body); }
+.staff-management-head em {
+  padding: 5px 7px; border: 1px solid rgba(var(--cream-rgb),.32); border-radius: 999px;
+  font: 800 calc(6.5px * var(--ts))/1 var(--mono); font-style: normal; letter-spacing:.07em; white-space:nowrap;
+}
+.staff-directive-grid {
+  display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:6px; padding:10px 10px 4px;
+}
+.staff-directive-grid button {
+  min-height: 39px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 9px;
+  background: var(--field); color: var(--ink); font: 750 calc(8px * var(--ts))/1.15 var(--body);
+  text-align:left;
+}
+.staff-directive-grid button.active {
+  border-color: var(--clay); background: var(--soft); box-shadow: inset 3px 0 var(--clay); color: var(--clay);
+}
+.staff-project-card { margin: 6px 10px 10px; padding: 11px; border:1px solid var(--line); border-radius:10px; background:var(--wash); }
+.staff-project-card > span strong { display:block; margin-top:3px; font:800 calc(12px * var(--ts))/1.1 var(--body); }
+.staff-project-card > p { margin:0; color:var(--dim); font:600 calc(9px * var(--ts))/1.45 var(--body); }
+.staff-project-progress { margin-top:9px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; }
+.staff-project-progress i { height:7px; overflow:hidden; border-radius:999px; background:var(--line); }
+.staff-project-progress i b { display:block; height:100%; min-width:2px; border-radius:inherit; background:var(--clay); }
+.staff-project-progress em { color:var(--dim); font:700 calc(7px * var(--ts))/1 var(--mono); font-style:normal; white-space:nowrap; }
+.staff-project-cancel { margin-top:9px; min-height:34px; padding:6px 9px; border:1px solid var(--line); border-radius:8px; background:transparent; color:var(--dim); font-weight:800; }
+.staff-project-options { display:grid; gap:6px; margin-top:8px; }
+.staff-project-options button {
+  display:grid; grid-template-columns:minmax(0,1fr); gap:2px; padding:9px 10px; min-height:50px;
+  border:1px solid var(--line); border-radius:9px; background:var(--paper); color:var(--ink); text-align:left;
+}
+.staff-project-options button strong { font:800 calc(10px * var(--ts))/1.1 var(--body); }
+.staff-project-options button small { color:var(--dim); font:600 calc(7.4px * var(--ts))/1.25 var(--body); letter-spacing:0; }
+.pipeline-state-picker { display:grid; grid-template-columns:minmax(0,1fr); gap:5px; }
+.pipeline-state-picker select,
+.network-assignment select {
+  width:100%; min-height:38px; padding:7px 9px; border:1px solid var(--line); border-radius:8px;
+  background:var(--paper); color:var(--ink); font:700 calc(9px * var(--ts)) var(--body);
+}
+.facility-staff-unlock {
+  margin: 0 11px 10px; padding:10px 11px; border-left:4px solid var(--clay); border-radius:8px;
+  background:var(--soft);
+}
+.facility-staff-unlock strong { display:block; margin-top:3px; font:800 calc(10.5px * var(--ts))/1.15 var(--body); }
+.facility-staff-unlock p { margin:5px 0 0; color:var(--dim); font:600 calc(8px * var(--ts))/1.35 var(--body); }
+.network-assignment {
+  margin: 8px 0 10px; padding:10px; border:1px solid var(--clay); border-radius:10px; background:var(--soft);
+}
+.network-assignment > span strong { display:block; margin-top:3px; font:800 calc(11px * var(--ts)) var(--body); }
+.network-assignment > div { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:7px; margin-top:8px; }
+.network-assignment button { min-height:38px; padding:7px 10px; border:0; border-radius:8px; background:var(--clay); color:var(--cream); font:800 calc(8px * var(--ts)) var(--body); }
+.network-assignment p { margin:7px 0 0; color:var(--dim); font:600 calc(8px * var(--ts))/1.35 var(--body); }
+
+/* The season-long recruiting loop. Today reminds; the Board does the work. */
+.today-recruiting-card {
+  width:calc(100% - 28px); margin:0 14px 12px; padding:11px 12px;
+  display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 9px; align-items:center;
+  border:1px solid var(--clay); border-left:4px solid var(--clay); border-radius:11px;
+  background:var(--paper); color:var(--ink); text-align:left;
+}
+.today-recruiting-card > span:first-child small { display:block; color:var(--clay); font:800 calc(6.5px * var(--ts)) var(--mono); letter-spacing:.09em; }
+.today-recruiting-card > span:first-child strong { display:block; margin-top:3px; font:850 calc(14px * var(--ts))/1 var(--body); }
+.today-recruiting-card > em { grid-column:1; color:var(--dim); font:650 calc(8px * var(--ts))/1.3 var(--body); font-style:normal; }
+.today-recruiting-card > span:last-child { grid-column:2; grid-row:1 / span 2; color:var(--clay); font:800 22px/1 var(--body); }
+.recruiting-calendar-note {
+  margin:8px 14px 0; padding:9px 10px; border:1px solid var(--line); border-radius:9px;
+  background:var(--soft); color:var(--dim); font:600 calc(8px * var(--ts))/1.4 var(--body);
+}
+.recruiting-calendar-note b { color:var(--ink); }
+
+/* Club Pulse must accept a vertical finger drag even when the gesture begins
+   on the horizontal game rail. The generic schedule-rail rule was pan-x only. */
+.week-games { touch-action: pan-x pan-y !important; overscroll-behavior-inline: auto; }
+.week-games > button { touch-action: pan-x pan-y; }
+
+/* Make the bench statistics unmistakably part of every bench row, including
+   narrow phones where the identity column has to yield first. */
+.lineup-bench .bench-season-stat { display:block !important; visibility:visible !important; }
+@media (max-width: 370px) {
+  .lineup-bench .player-row { grid-template-columns: 8px 28px minmax(58px,1fr) 26px 26px 26px 8px; column-gap:4px; }
+  .lineup-bench .player-name small { font-size: calc(7px * var(--ts)); }
+  .bench-season-stat small { font-size: calc(5.5px * var(--ts)); }
+  .bench-season-stat b { font-size: calc(7.5px * var(--ts)); }
+}
+
+.awards-summary-reveal { scroll-margin-top: 10px; }
+
+@media (max-width: 390px) {
+  .staff-management-head { grid-template-columns:1fr; }
+  .staff-management-head em { justify-self:start; }
+  .network-assignment > div { grid-template-columns:1fr; }
+}
+.staff-directive-effect { margin:5px 11px 8px; color:var(--dim); font:600 calc(8px * var(--ts))/1.35 var(--body); }

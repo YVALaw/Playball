@@ -21,7 +21,7 @@ import { useDialogFocus } from '../dialogFocus.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { ChevronRightIcon, Cross1Icon } from '@radix-ui/react-icons';
-import { FieldNote, Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
+import { Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
 import { InFrame } from '../Overlay.js';
 import { draftChance } from '../../engine/progression.js';
@@ -32,7 +32,7 @@ import {
   type DraftedMan, type KeepPitch,
 } from '../../engine/draft.js';
 import { prestigeStars } from '../../engine/program.js';
-import { flexibleOffseasonBudget, protectedRecruitingBudget, windowBudget } from '../../engine/recruiting.js';
+import { flexibleOffseasonBudget } from '../../engine/recruiting.js';
 import { overallOf } from '../../engine/ratings.js';
 import { isTwoWay } from '../../engine/types.js';
 import type { Pitcher, Player } from '../../engine/types.js';
@@ -98,8 +98,6 @@ export function Draft() {
   const holes = report?.holes ?? [];
   const stars = prestigeStars(team.prestige);
   const pool = flexibleOffseasonBudget(stars);
-  const reserve = protectedRecruitingBudget(stars);
-  const offseasonTotal = windowBudget(stars);
   const left = pool - (board?.spent ?? 0);
 
   return (
@@ -107,7 +105,7 @@ export function Draft() {
     // under them. Same reason as the recruiting board: what you are looking at
     // and how many there are should not scroll away from the list itself.
     <FixedHeader header={
-      <div className="dense-head" style={{ padding: '10px 14px 6px' }}>
+      <div className="dense-head draft-compact-head" style={{ padding: '3px 14px 4px' }}>
       <ModuleIntro kicker={`${year} · ${team.def.abbr}`} title="Draft results" />
 
       <MetricStrip>
@@ -121,11 +119,6 @@ export function Draft() {
         <Metric label="TALKED ROUND" value={String(kept)} note="STAYING" />
         <Metric label="FLEX LEFT" value={String(left)} note={`OF ${pool}`} />
       </MetricStrip>
-
-      <FieldNote
-        title="HOW THE OFFSEASON BUDGET IS SPLIT"
-        text={`${offseasonTotal} total points · ${reserve} are protected for high-school recruiting · ${pool} are flexible for Draft + Portal. Any flexible points you do not spend roll into recruiting.`}
-      />
 
       <Segmented<View>
         label="Draft section"

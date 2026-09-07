@@ -211,6 +211,11 @@ describe('career staff, specialized facilities and pipelines', () => {
     const coordinator = marketFor('network-world', 2032, 'recruiting')[0]!;
     expect(coordinator.pipelineState).toBeDefined();
     eco.staff.recruiting = coordinator;
-    expect(pipelineStrength(eco, coordinator.pipelineState!, 'LA')).toBeGreaterThanOrEqual(60);
+    // Familiarity, not a finished stronghold: since the September 7 outside
+    // pass a coordinator's home state is a head start, and the pipeline itself
+    // is built by his projects (05 §63.5).
+    const carried = pipelineStrength(eco, coordinator.pipelineState!, 'LA');
+    expect(carried).toBeGreaterThan(0);
+    expect(carried).toBeLessThan(60);
   });
 });

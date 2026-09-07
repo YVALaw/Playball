@@ -20,7 +20,8 @@ import { useEffect, useRef, useState } from 'react';
 import { PlayIcon, SewingPinIcon, StopwatchIcon, StarFilledIcon,
 } from '@radix-ui/react-icons';
 import { FINISH_LABEL, conferenceField } from '../../engine/postseason.js';
-import { useDynasty, useUserTeam } from '../../state/store.js';
+import { RECRUITING_WEEKS, totalWeekSpend } from '../../engine/recruiting.js';
+import { boardBudget, useDynasty, useUserTeam } from '../../state/store.js';
 import {
   seasonComplete, nationalRank, pollIsProjected, seasonLength, era, startableSlot, injuryClock, currentDay,
   type SeasonState, type TeamRecord, type GameSummary,
@@ -503,6 +504,20 @@ export function Today() {
         */}
         <NeedsYou />
 
+        {!done && season.recruiting.week <= RECRUITING_WEEKS && (() => {
+          const rp = boardBudget(season, team.index, economy.recruitingGrant);
+          const spentRp = totalWeekSpend(season.recruiting.prospects, team.index);
+          const commits = season.recruiting.prospects.filter((p) => p.signedBy === team.index).length;
+          const targets = season.recruiting.prospects.filter((p) => p.signedBy === null && ((p.points[team.index] ?? 0) > 0 || (p.spent[team.index] ?? 0) > 0)).length;
+          return (
+            <button className="today-recruiting-card tap" type="button" onClick={() => go('program', 'recruiting')}>
+              <span><small>RECRUITING · WEEK {season.recruiting.week}</small><strong>{Math.max(0, rp - spentRp)} RP available</strong></span>
+              <em>{targets} active target{targets === 1 ? '' : 's'} · {commits} commit{commits === 1 ? '' : 's'} for next season</em>
+              <span aria-hidden>›</span>
+            </button>
+          );
+        })()}
+
         {boardAsk && (
           <button
             className="today-board-card tap"
@@ -605,10 +620,14 @@ function WeekGames(
   const today = season.schedule[season.dayIndex]?.day ?? Number.POSITIVE_INFINITY;
   const next = mine.find(({ d }) => d.day >= today) ?? mine[mine.length - 1];
   if (!next) return null;
-  const week = mine.filter(({ d }) => d.week === next.d.week);
+  // Club Pulse follows game night rather than a calendar week: the game that
+  // matters is centred, with the three before and three after available by
+  // swipe. That keeps recent form and what is coming next in one gesture.
+  const focusIndex = Math.max(0, mine.indexOf(next));
+  const rail = mine.slice(Math.max(0, focusIndex - 3), Math.min(mine.length, focusIndex + 4));
   return (
-    <section className="schedule-rail week-games" aria-label="This week's games">
-      {week.map(({ d, g }) => {
+    <section className="schedule-rail week-games" aria-label="Games around tonight">
+      {rail.map(({ d, g }) => {
         const home = g.home === team.index;
         const opponent = season.teams[home ? g.away : g.home];
         const result = season.results.find(
@@ -622,6 +641,7 @@ function WeekGames(
           <button
             key={d.day}
             type="button"
+            className={d.day === next.d.day ? 'is-focus' : ''}
             onClick={() => (box && result ? onOpen(result) : opponent && openTeam(opponent.index))}
           >
             <small>{seasonDate(year, d.day).split(' ').slice(1).join(' ')}</small>

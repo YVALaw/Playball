@@ -55,6 +55,8 @@ import type { SeasonState } from '../src/engine/season.js';
 import { makeRng } from '../src/engine/rng.js';
 import { CONFERENCES, type ConferenceDef } from '../src/data/schools.js';
 import { agoLabel } from '../src/ui/screens/Saves.js';
+import { canPursue } from '../src/engine/recruiting.js';
+import { leagueLabel } from '../src/engine/leagueNames.js';
 
 const world = (seed = 4242) => createSeason(makeRng(seed), undefined, CONFERENCES);
 
@@ -334,6 +336,32 @@ describe('delete takes one dynasty and no others', () => {
   arguments writes the file the career was opened from, and the autosave slot
   is only ever what a career from before this was already in.
 */
+describe('God Mode state follows the loaded career', () => {
+  it('restores the sandbox star gate and league names, then clears them for an honest save', async () => {
+    useDynasty.getState().start(4242, 0, undefined, 'full', undefined, true);
+    useDynasty.getState().godSetLeagueName('GULF', 'Sandbox League');
+    await useDynasty.getState().saveNow('sandbox-slot');
+
+    useDynasty.getState().newDynasty();
+    useDynasty.getState().start(7777, 1, undefined, 'full', undefined, false);
+    await useDynasty.getState().saveNow('honest-slot');
+
+    expect(await useDynasty.getState().loadSlot('sandbox-slot')).toBe(true);
+    let state = useDynasty.getState();
+    let five = state.season!.recruiting.prospects.find((p) => p.stars >= 4)!;
+    expect(state.godMode).toBe(true);
+    expect(leagueLabel('GULF')).toBe('Sandbox League');
+    expect(canPursue(five, 1, false)).toBe(true);
+
+    expect(await useDynasty.getState().loadSlot('honest-slot')).toBe(true);
+    state = useDynasty.getState();
+    five = state.season!.recruiting.prospects.find((p) => p.stars >= 4)!;
+    expect(state.godMode).toBe(false);
+    expect(leagueLabel('GULF')).toBe('GULF');
+    expect(canPursue(five, 1, false)).toBe(false);
+  });
+});
+
 describe('a career has a file of its own', () => {
   it('starts in a slot of its own, never the autosave', async () => {
     useDynasty.getState().start(4242, 0);

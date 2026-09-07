@@ -92,10 +92,18 @@ describe('the stations: the men stand where the playbook says', () => {
   const v = (s: [number, number, number]): THREE.Vector3 =>
     new THREE.Vector3(s[0], 0.26, s[2]);
 
-  it('neutral positioning is the chart as it always stood', () => {
-    expect(stationsFor()).toEqual(STATIONS.map((s) => [...s]));
-    expect(stationsFor({ infield: 'normal', outfield: 'normal', shift: 'none' }))
-      .toEqual(STATIONS.map((s) => [...s]));
+  it('neutral positioning is the chart, kept inside the lines', () => {
+    // Since the September 7 outside pass every station is clamped inside the
+    // foul lines (05 §63.3), so the corners no longer stand on the line
+    // itself; neutral is still one chart, however it is asked for.
+    const neutral = stationsFor();
+    expect(stationsFor({ infield: 'normal', outfield: 'normal', shift: 'none' })).toEqual(neutral);
+    for (const i of [2, 3, 4, 5]) {
+      const [x, , z] = neutral[i]!;
+      expect(Math.abs(x)).toBeLessThanOrEqual(Math.max(0.8, -z) * 0.9 + 1e-9);
+      expect(z).toBe(STATIONS[i]![2]);
+    }
+    for (const i of [0, 1, 6, 7, 8]) expect(neutral[i]).toEqual([...STATIONS[i]!]);
   });
 
   it('the infield on the grass steps toward the plate; back steps away', () => {
@@ -118,10 +126,12 @@ describe('the stations: the men stand where the playbook says', () => {
   });
 
   it('a called shift shades the dirt four toward the pull side', () => {
+    const neutral = stationsFor();
     const left = stationsFor({ shift: 'left' });
-    for (const i of [2, 3, 4, 5]) {
-      expect(left[i]![0]).toBeLessThan(STATIONS[i]![0]);
-    }
+    // The first baseman and the middle pair move; the third baseman is already
+    // on the clamp at his line and can shade no further (05 §63.3).
+    for (const i of [2, 3, 4]) expect(left[i]![0]).toBeLessThan(neutral[i]![0]);
+    expect(left[5]![0]).toBeLessThanOrEqual(neutral[5]![0]);
   });
 
   it('the chase follows the stations, and the grass never chases the dirt', () => {

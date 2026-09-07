@@ -52,7 +52,7 @@ game at a time on a full-screen field with a defense on it, hand out awards,
 spend coaching points, read a recruiting board that is honest about being
 vague, argue the draft out of taking your junior, and start again in February —
 against ninety-five rival programs run by men with careers of their own.
-Sixty-six test files and 1,242 tests cover it, calibration among them, so
+Sixty-six test files and 1,244 tests cover it, calibration among them, so
 the engine cannot drift without something failing.
 
 The August 2026 interface overhaul and its feedback pass are described in §20

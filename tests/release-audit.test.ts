@@ -218,7 +218,9 @@ describe('the transfer pool survives a save taken on the portal step', () => {
     for (const m of [...after!.leaving, ...after!.available]) expect(everyone.has(m.player)).toBe(true);
 
     await useDynasty.getState().nextPhase();
-    expect(useDynasty.getState().phase).toBe('recruiting');
+    // Recruiting left the rail for the regular season (the September 7 outside
+    // pass); the step after the portal is the class.
+    expect(useDynasty.getState().phase).toBe('signing');
   });
 });
 
@@ -547,7 +549,9 @@ describe('an unsigned portal man has left college baseball', () => {
     for (const m of portal.available) m.cost = 100_000;
     const gone = portal.available.map((m) => ({ id: m.player.id, from: m.from }));
     await useDynasty.getState().nextPhase();
-    expect(useDynasty.getState().phase).toBe('recruiting');
+    // Recruiting left the rail for the regular season (the September 7 outside
+    // pass); the step after the portal is the class.
+    expect(useDynasty.getState().phase).toBe('signing');
     const season = useDynasty.getState().season!;
     for (const m of gone) {
       const roster = season.teams[m.from]!.team;

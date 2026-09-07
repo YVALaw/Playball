@@ -22,7 +22,7 @@ import {
 import { honoursByPlayer, type Inductee } from '../../engine/hall.js';
 import { RECORDS, type RecordKey } from '../../engine/records.js';
 import { philosophyOf } from '../../engine/strategy.js';
-import { REGION_OF_STATE, CONFERENCES } from '../../data/schools.js';
+import { REGION_OF_STATE, CONFERENCES, ALL_STATES } from '../../data/schools.js';
 import { playerId, type PlayerId } from '../../engine/types.js';
 import { CoachPortrait } from '../CoachPortrait.js';
 import { useOpenTeam } from './TeamCard.js';
@@ -35,7 +35,9 @@ import {
   annualBudget, dollars, marketFor, remaining, wageBill,
   SCOUT_COST, SCOUT_DAYS, SEATS, SEAT_LABEL, SEAT_NOTE,
   BUILDINGS, winterCraft, nightCraft, shapeOf, facilityLevel, facilityUpgradeCost, facilityEffectAt,
-  FACILITY_MAX_LEVEL, pipelineStrength, pipelineLabel, type Assistant, type StaffSeat, type Building,
+  FACILITY_MAX_LEVEL, pipelineStrength, pipelineLabel, staffPlan, projectFacility,
+  DIRECTIVE_LABEL, PROJECT_LABEL, type Assistant, type StaffSeat, type Building,
+  type StaffDirective, type StaffProjectKind,
 } from '../../engine/economy.js';
 import { handles } from '../../state/depth.js';
 import { FirstVisit } from '../Tutorial.js';
@@ -222,6 +224,29 @@ function fitLine(
     : `Your own ${seat === 'hitting' ? 'OFFENSE' : 'DEFENSE'} is ${own}.`;
 }
 
+function staffMarketKey(m: Assistant, year: number, seat: StaffSeat): number {
+  // The market is not a ranking. A deterministic shuffle keeps every reload
+  // stable without teaching the player that card #1 is automatically best.
+  const text = `${m.id}:${year}:${seat}`;
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function directiveEffectLine(seat: StaffSeat, directive: StaffDirective): string {
+  if (directive === 'balanced') return 'Balanced keeps the seat flexible; matching a specialty focus makes that project hit harder.';
+  if (seat === 'recruiting') {
+    if (directive === 'pipeline') return 'Pipeline First improves all recruiting slightly and gives pipeline projects an extra finish bonus.';
+    if (directive === 'stars') return 'Chase Stars makes RP about 10% more effective on 4★ and 5★ prospects.';
+    if (directive === 'sleepers') return 'Find Sleepers makes RP about 10% more effective on 2★ and 3★ prospects.';
+    return 'Roster Needs makes RP about 10% more effective on prospects who fill a projected roster hole.';
+  }
+  return `Matching this ${seat === 'hitting' ? 'hitting' : 'pitching'} focus with the active project expands the group and the development gain.`;
+}
+
 function facilityImpactLine(which: Building, level: number): string {
   const fx = facilityEffectAt(which, level);
   const parts: string[] = [];
@@ -239,13 +264,19 @@ function MoneySheet({ team }: { team: Owner }) {
   const season = useDynasty((s) => s.season);
   const hireAssistant = useDynasty((s) => s.hireAssistant);
   const fireAssistant = useDynasty((s) => s.fireAssistant);
+  const setStaffDirective = useDynasty((s) => s.setStaffDirective);
+  const startStaffProject = useDynasty((s) => s.startStaffProject);
+  const cancelStaffProject = useDynasty((s) => s.cancelStaffProject);
   const build = useDynasty((s) => s.build);
   const upgradeFacility = useDynasty((s) => s.upgradeFacility);
   const runsStaff = useDynasty((s) => handles(s.depth, 'assistants'));
   const runsFacilities = useDynasty((s) => handles(s.depth, 'facilities'));
   const [view, setView] = useState<'plan' | 'staff' | 'facilities' | 'network'>('plan');
   const [staffSeat, setStaffSeat] = useState<StaffSeat>('hitting');
+  const [showReplacements, setShowReplacements] = useState(false);
   const [facilityFocus, setFacilityFocus] = useState<Building>('cage');
+  const [projectState, setProjectState] = useState(team.def.state);
+  useEffect(() => setShowReplacements(false), [staffSeat]);
 
   const budget = annualBudget(team.prestige);
   const wages = wageBill(economy.staff);
@@ -263,14 +294,13 @@ function MoneySheet({ team }: { team: Owner }) {
   const pipelineStates = new Set<string>([
     team.def.state,
     ...Object.keys(economy.pipelines ?? {}),
-    ...(economy.staff.recruiting?.pipelineState ? [economy.staff.recruiting.pipelineState] : []),
   ]);
   const pipelines = [...pipelineStates]
     .map((state) => ({
       state,
       strength: pipelineStrength(economy, state, team.def.state),
       signings: economy.pipelines?.[state]?.signings ?? 0,
-      source: economy.staff.recruiting?.pipelineState === state ? 'COORDINATOR' : state === team.def.state ? 'HOME' : 'BUILT',
+      source: state === team.def.state ? 'HOME' : 'BUILT',
     }))
     .filter((pipe) => pipe.strength >= 20)
     .sort((a, b) => b.strength - a.strength || a.state.localeCompare(b.state));
@@ -375,7 +405,8 @@ function MoneySheet({ team }: { team: Owner }) {
 
           {(() => {
             const man = economy.staff[staffSeat];
-            const market = marketFor(worldKey, year, staffSeat);
+            const rawMarket = marketFor(worldKey, year, staffSeat);
+            const market = rawMarket.slice().sort((a, b) => staffMarketKey(a, year, staffSeat) - staffMarketKey(b, year, staffSeat));
             return (
               <>
                 <article className={`staff-focus-card${man ? ' is-filled' : ' is-open'}`}>
@@ -395,17 +426,25 @@ function MoneySheet({ team }: { team: Owner }) {
                       </div>
                       <p>{SEAT_NOTE[staffSeat]}</p>
                       {staffSeat === 'recruiting' && man.pipelineState && (
-                        <em>Network carried with him: <b>{man.pipelineState}</b></em>
+                        <em>Recruiting lead: <b>{man.pipelineState}</b> · assign a pipeline project to turn familiarity into a real network.</em>
                       )}
                       {runsStaff && (
-                        // Asked twice, like every other irreversible act in the
-                        // app: this was the one that fired a man on a single tap.
-                        <Confirmable
-                          className="staff-release tap"
-                          idle="Let him go"
-                          armed={`Confirm — release ${man.name}`}
-                          onConfirm={() => { fireAssistant(staffSeat); }}
-                        />
+                        <div className="staff-focus-actions">
+                          <button className="staff-market-open tap" type="button" onClick={() => setShowReplacements((open) => !open)}>
+                            {showReplacements ? 'Hide replacement market' : 'Explore replacements'}
+                          </button>
+                          {/*
+                            Asked twice, like every other irreversible act in
+                            the app: this was the one that fired a man on a
+                            single tap (05 §62.6).
+                          */}
+                          <Confirmable
+                            className="staff-release tap"
+                            idle="Let him go"
+                            armed={`Confirm — release ${man.name}`}
+                            onConfirm={() => { setShowReplacements(false); fireAssistant(staffSeat); }}
+                          />
+                        </div>
                       )}
                     </>
                   ) : (
@@ -416,47 +455,119 @@ function MoneySheet({ team }: { team: Owner }) {
                   )}
                 </article>
 
-                <div className="decision-deck-head">
-                  <span><small>MARKET</small><strong>{man ? 'Compare replacements' : 'Choose who gets the seat'}</strong></span>
-                  <em>SWIPE →</em>
-                </div>
-                <section className="candidate-swipe-deck" aria-label={`${SEAT_LABEL[staffSeat]} candidates`}>
-                  {market.map((m, slot) => {
-                    const w = winterCraft(m);
-                    const n = nightCraft(m);
-                    const top = Math.max(w, n, 1);
-                    // Replacing a man frees his wage first, so the room a
-                    // candidate has to fit is what is left PLUS the incumbent.
-                    const affordable = left + (man?.wage ?? 0) >= m.wage;
-                    return (
-                      <article className="hire-card candidate-swipe-card" key={m.id}>
-                        <header>
-                          <span>
-                            <strong>{m.name}</strong>
-                            <small>{shapeOf(m)} · age {m.age}{m.pipelineState ? ` · ${m.pipelineState} network` : ''}</small>
-                          </span>
-                          <b>{dollars(m.wage)}</b>
-                        </header>
-                        <div className="hire-split">
-                          <span><small>DEVELOPMENT</small><i style={{ width: `${Math.round((w / top) * 100)}%` }} /><b>{w}</b></span>
-                          <span><small>GAME MANAGEMENT</small><i style={{ width: `${Math.round((n / top) * 100)}%` }} /><b>{n}</b></span>
-                        </div>
-                        <p className="hire-fit">{fitLine(
-                          staffSeat, m,
-                          staffSeat === 'hitting' ? coachSkills.offense : staffSeat === 'pitching' ? coachSkills.defense : coachSkills.recruiting,
-                          staffSeat === 'pitching' ? youngArms : youngBats,
-                        )}</p>
-                        <div className="candidate-cost-preview">
-                          <span><small>AFTER HIRE</small><strong>{affordable ? dollars(left - m.wage) : 'OVER BUDGET'}</strong></span>
-                          {m.pipelineState && <span><small>NETWORK</small><strong>{m.pipelineState}</strong></span>}
-                        </div>
-                        <button className="candidate-hire-cta tap" type="button" disabled={!runsStaff || !affordable} onClick={() => hireAssistant(staffSeat, slot)}>
-                          {!runsStaff ? 'AD controls this seat' : !affordable ? `Need ${dollars(m.wage - left)} more` : man ? `Replace · ${dollars(m.wage)}` : `Hire · ${dollars(m.wage)}`}
-                        </button>
-                      </article>
-                    );
-                  })}
-                </section>
+                {man && (() => {
+                  const plan = staffPlan(economy, staffSeat);
+                  const facility = projectFacility(staffSeat);
+                  const level = facilityLevel(economy, facility);
+                  const directives: StaffDirective[] = staffSeat === 'hitting'
+                    ? ['balanced','contact','power','discipline']
+                    : staffSeat === 'pitching'
+                      ? ['balanced','command','velocity','armCare']
+                      : ['balanced','pipeline','stars','sleepers','needs'];
+                  const selectedPipeline = pipelineStrength(economy, projectState, team.def.state);
+                  const projects: StaffProjectKind[] = staffSeat === 'hitting'
+                    ? ['hitting-contact','hitting-power','hitting-discipline']
+                    : staffSeat === 'pitching'
+                      ? ['pitching-command','pitching-velocity','pitching-arm-care']
+                      : selectedPipeline >= 35
+                        ? ['pipeline-deepen','pipeline-maintain']
+                        : ['pipeline-build'];
+                  return (
+                    <section className="staff-management-panel">
+                      <div className="staff-management-head">
+                        <span><small>YOUR DIRECTION</small><strong>Give the seat a job</strong></span>
+                        <em>{level > 0 ? `${BUILDINGS.find((b) => b.key === facility)?.label ?? 'Facility'} · L${level}` : 'FACILITY REQUIRED'}</em>
+                      </div>
+                      <div className="staff-directive-grid" aria-label={`${SEAT_LABEL[staffSeat]} standing directive`}>
+                        {directives.map((directive) => (
+                          <button key={directive} type="button" className={`tap${plan.directive === directive ? ' active' : ''}`}
+                            disabled={!runsStaff} onClick={() => setStaffDirective(staffSeat, directive)}>
+                            {DIRECTIVE_LABEL[directive]}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="staff-directive-effect">{directiveEffectLine(staffSeat, plan.directive)}</p>
+                      <div className="staff-project-card">
+                        {plan.project ? (
+                          <>
+                            <span><small>ACTIVE PROJECT</small><strong>{PROJECT_LABEL[plan.project.kind]}{plan.project.state ? ` · ${plan.project.state}` : ''}</strong></span>
+                            <div className="staff-project-progress"><i><b style={{ width: `${Math.round((1 - plan.project.weeksLeft / Math.max(1, plan.project.weeksTotal)) * 100)}%` }} /></i><em>{plan.project.weeksLeft} week{plan.project.weeksLeft === 1 ? '' : 's'} left</em></div>
+                            {runsStaff && <button type="button" className="staff-project-cancel tap" onClick={() => cancelStaffProject(staffSeat)}>Cancel project</button>}
+                          </>
+                        ) : level <= 0 ? (
+                          <p>Build the <b>{BUILDINGS.find((b) => b.key === facility)?.label}</b> to unlock hands-on programs for this assistant.</p>
+                        ) : (
+                          <>
+                            {staffSeat === 'recruiting' && (
+                              <label className="pipeline-state-picker"><small>PIPELINE STATE · {selectedPipeline}/100</small>
+                                <select value={projectState} onChange={(e) => setProjectState(e.currentTarget.value)}>
+                                  {ALL_STATES.map((state) => <option key={state} value={state}>{state}</option>)}
+                                </select>
+                              </label>
+                            )}
+                            <div className="staff-project-options">
+                              {projects.map((kind) => (
+                                <button key={kind} type="button" className="tap" disabled={!runsStaff}
+                                  onClick={() => startStaffProject(staffSeat, kind, staffSeat === 'recruiting' ? projectState : undefined)}>
+                                  <strong>{PROJECT_LABEL[kind]}</strong>
+                                  <small>{staffSeat === 'recruiting'
+                                    ? kind === 'pipeline-build' ? 'Create an emerging relationship' : kind === 'pipeline-deepen' ? 'Push an existing market higher' : 'Refresh a market before it cools'
+                                    : 'Multi-week development block'}</small>
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </section>
+                  );
+                })()}
+
+                {(!man || showReplacements) && (
+                  <>
+                    <div className="decision-deck-head">
+                      <span><small>UNRANKED MARKET</small><strong>{man ? 'Replacement options' : 'Choose who gets the seat'}</strong></span>
+                      <em>SWIPE · PRICE + FIT MATTER →</em>
+                    </div>
+                    <section className="candidate-swipe-deck" aria-label={`${SEAT_LABEL[staffSeat]} candidates`}>
+                      {market.map((m) => {
+                        const slot = rawMarket.findIndex((candidate) => candidate.id === m.id);
+                        const w = winterCraft(m);
+                        const n = nightCraft(m);
+                        // Replacing a man frees his wage first, so the room a
+                        // candidate has to fit is what is left PLUS the incumbent.
+                        const affordable = left + (man?.wage ?? 0) >= m.wage;
+                        return (
+                          <article className="hire-card candidate-swipe-card" key={m.id}>
+                            <header>
+                              <span>
+                                <strong>{m.name}</strong>
+                                <small>{shapeOf(m)} · age {m.age}{m.pipelineState ? ` · ${m.pipelineState} network` : ''}</small>
+                              </span>
+                              <b>{dollars(m.wage)}</b>
+                            </header>
+                            <div className="hire-split">
+                              <span><small>DEVELOPMENT</small><i><em style={{ width: `${Math.max(0, Math.min(100, w))}%` }} /></i><b>{w}</b></span>
+                              <span><small>GAME MANAGEMENT</small><i><em style={{ width: `${Math.max(0, Math.min(100, n))}%` }} /></i><b>{n}</b></span>
+                            </div>
+                            <p className="hire-fit">{fitLine(
+                              staffSeat, m,
+                              staffSeat === 'hitting' ? coachSkills.offense : staffSeat === 'pitching' ? coachSkills.defense : coachSkills.recruiting,
+                              staffSeat === 'pitching' ? youngArms : youngBats,
+                            )}</p>
+                            <div className="candidate-cost-preview">
+                              <span><small>AFTER HIRE</small><strong>{affordable ? dollars(left + (man?.wage ?? 0) - m.wage) : 'OVER BUDGET'}</strong></span>
+                              {m.pipelineState && <span><small>NETWORK</small><strong>{m.pipelineState}</strong></span>}
+                            </div>
+                            <button className="candidate-hire-cta tap" type="button" disabled={!runsStaff || !affordable || slot < 0} onClick={() => { if (slot >= 0) { hireAssistant(staffSeat, slot); setShowReplacements(false); } }}>
+                              {!runsStaff ? 'AD controls this seat' : !affordable ? `Need ${dollars(m.wage - left)} more` : man ? `Replace · ${dollars(m.wage)}` : `Hire · ${dollars(m.wage)}`}
+                            </button>
+                          </article>
+                        );
+                      })}
+                    </section>
+                  </>
+                )}
               </>
             );
           })()}
@@ -512,6 +623,12 @@ function MoneySheet({ team }: { team: Owner }) {
                   <b>{maxed ? 'MAX' : dollars(cost)}</b>
                 </header>
 
+                <div className="facility-staff-unlock">
+                  <small>STAFF CAPABILITY</small>
+                  <strong>{b.key === 'cage' ? 'Hitting development programs' : b.key === 'pen' ? 'Pitching development + arm-care programs' : 'Recruiting coordinator pipeline projects'}</strong>
+                  <p>{level > 0 ? `Level ${level} is active. Higher levels shorten staff projects and expand their impact.` : 'Build this specialty to unlock its assistant projects.'}</p>
+                </div>
+
                 <div className="facility-blueprint-levels" aria-label={`${b.label} progression`}>
                   {Array.from({ length: FACILITY_MAX_LEVEL }, (_, i) => {
                     const step = i + 1;
@@ -555,11 +672,29 @@ function MoneySheet({ team }: { team: Owner }) {
           <section className="money-section-lead">
             <small>INFORMATION + ACCESS</small>
             <h2>Own markets. Know opponents.</h2>
-            <p>Your recruiting network compounds over years; scouting is a short-term spend that turns information into a matchup plan.</p>
+            <p>Your coordinator builds this map deliberately. Strong pipelines make RP more effective locally; scouting remains the short-term opponent desk.</p>
           </section>
           <section className="network-command-grid">
             <article className="network-panel">
               <header><span><small>RECRUITING NETWORK</small><strong>{pipelines.length === 0 ? 'No established markets' : `${pipelines.length} active market${pipelines.length === 1 ? '' : 's'}`}</strong></span></header>
+              {economy.staff.recruiting && (() => {
+                const rp = staffPlan(economy, 'recruiting');
+                const clubhouse = facilityLevel(economy, 'clubhouse');
+                return (
+                  <div className="network-assignment">
+                    <span><small>COORDINATOR ASSIGNMENT</small><strong>{rp.project ? `${PROJECT_LABEL[rp.project.kind]} · ${rp.project.state ?? ''}` : 'Choose a market to work'}</strong></span>
+                    {!rp.project && clubhouse > 0 && (
+                      <div><select value={projectState} onChange={(e) => setProjectState(e.currentTarget.value)}>{ALL_STATES.map((st) => <option key={st} value={st}>{st}</option>)}</select>
+                        <button className="tap" type="button" onClick={() => startStaffProject('recruiting', pipelineStrength(economy, projectState, team.def.state) >= 35 ? 'pipeline-deepen' : 'pipeline-build', projectState)}>
+                          {pipelineStrength(economy, projectState, team.def.state) >= 35 ? 'Deepen pipeline' : 'Build pipeline'}
+                        </button></div>
+                    )}
+                    {!rp.project && clubhouse <= 0 && <p>Build the Clubhouse to unlock pipeline assignments.</p>}
+                    {rp.project && <p>{rp.project.weeksLeft} week{rp.project.weeksLeft === 1 ? '' : 's'} left. Progress moves with the recruiting calendar.</p>}
+                  </div>
+                );
+              })()}
+
               {pipelines.length === 0 ? (
                 <p>Repeated signings strengthen a state. Established pipelines improve the local pitch and can extend your recruiting reach.</p>
               ) : (

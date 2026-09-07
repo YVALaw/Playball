@@ -41,7 +41,8 @@ describe('the protected offseason recruiting budget', () => {
       expect(flexibleOffseasonBudget(stars) + protectedRecruitingBudget(stars))
         .toBe(windowBudget(stars));
       expect(recruitingWindowBudget(stars, 0)).toBe(windowBudget(stars));
-      expect(weeklyBudget(stars, 0)).toBe(budgetFor(stars));
+      expect(weeklyBudget(stars, 0)).toBe(Math.max(1, Math.round(windowBudget(stars) / 12)));
+      expect(weeklyBudget(stars, flexibleOffseasonBudget(stars))).toBe(weeklyBudget(stars, 0));
       expect(recruitingWindowBudget(stars, flexibleOffseasonBudget(stars)))
         .toBe(protectedRecruitingBudget(stars));
     }

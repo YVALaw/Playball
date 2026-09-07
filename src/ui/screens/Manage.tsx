@@ -132,11 +132,16 @@ export function Manage() {
   // ball only clears when a later play is NOT batted, so a fly-out third out
   // left the gate shut and the shirts wrong until the next groundout.
   const liveHalf = useDynasty((s) => s.live?.half);
+  const changingSides = liveHalf !== undefined && liveHalf !== shownHalf;
   useEffect(() => {
     if (liveHalf === undefined || liveHalf === shownHalf) return undefined;
-    const t = setTimeout(() => setShownHalf(liveHalf), ball !== null ? 1400 : 700);
+    // The scoreboard resolves immediately, but the park must finish the play
+    // before the teams trade places. Match the longest batted-ball animation
+    // so shirts, defensive positions and the next set of controls all change
+    // after the third-out picture is dead, never during the catch/chase.
+    const t = setTimeout(() => setShownHalf(liveHalf), ball !== null ? 2050 : 850);
     return () => clearTimeout(t);
-  }, [liveHalf, shownHalf, ball]);
+  }, [liveHalf, shownHalf, ball?.tick]);
   const ballTick = useRef(0);
   const lastRuns = useRef(0);
   const logRef = useRef<HTMLDivElement>(null);
@@ -288,7 +293,7 @@ export function Manage() {
     if (!landing || !battedBall) return undefined;
     setPlaying(true);
     // Roughly the plan's own length: flight, roll, the hold, and the throw.
-    const ms = battedBall === 'ground' ? 1500 : 1900;
+    const ms = battedBall === 'ground' ? 1700 : 2100;
     const timer = setTimeout(() => setPlaying(false), ms);
     return () => clearTimeout(timer);
   }, [played]);
@@ -478,7 +483,7 @@ export function Manage() {
     for.
   */
   useEffect(() => {
-    if (auto === null || !live || live.over || playing) return undefined;
+    if (auto === null || !live || live.over || playing || changingSides) return undefined;
     // Watching stops when there is something to manage. That was a second
     // button for a while and did not need to be: somebody who asked to watch
     // still wants the dugout back when it matters.
@@ -496,7 +501,7 @@ export function Manage() {
       else setAuto(null);
     }, beat);
     return () => clearTimeout(t);
-  }, [auto, playing, version, live?.over]);
+  }, [auto, playing, changingSides, version, live?.over]);
 
   // A finished game hands the dugout back on its own.
   useEffect(() => { if (live?.over) setAuto(null); }, [live?.over]);
@@ -512,7 +517,7 @@ export function Manage() {
   // playbook-aware, so the men on the field stand where the engine says.
   const positioning = useMemo(() => {
     if (!season || !meta) return undefined;
-    const half = live?.pending?.half;
+    const half = shownHalf;
     const fi = half === 'top' ? meta.home : meta.away;
     const oi = half === 'top' ? meta.away : meta.home;
     const f = season.teams[fi];
@@ -521,7 +526,7 @@ export function Manage() {
     const st = appliedStrategy(season, f, o);
     return { infield: st.infield, outfield: st.outfield, shift: st.shift };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [season, meta, live?.pending?.half, version]);
+  }, [season, meta, shownHalf, version]);
 
   const scoredRunners = useMemo(() => {
     const crossed = (live?.lastPlay ?? [])
@@ -837,7 +842,7 @@ export function Manage() {
                 // Off while the play is on the field, and off because the
                 // situation forbids it, are two different greys: one comes back
                 // in a second, the other is telling you why it cannot be done.
-                const ready = o.available && !playing && auto === null;
+                const ready = o.available && !playing && !changingSides && auto === null;
                 return (
                   <button
                     className={o.available ? '' : 'unavailable'}
@@ -933,7 +938,7 @@ export function Manage() {
               {d.side === 'offense' && (
                 <button
                   type="button"
-                  disabled={playing || live.benchAvailable.length === 0}
+                  disabled={playing || changingSides || live.benchAvailable.length === 0}
                   onClick={() => { setModal('pinch'); setTools(false); }}
                 >
                   <strong>
@@ -946,7 +951,7 @@ export function Manage() {
               {d.side === 'defense' && myPen && (
                 <button
                   type="button"
-                  disabled={playing || live.bullpenAvailable.length === 0}
+                  disabled={playing || changingSides || live.bullpenAvailable.length === 0}
                   onClick={() => { setModal('pen'); setTools(false); }}
                 >
                   <strong>
@@ -959,7 +964,7 @@ export function Manage() {
               {d.side === 'defense' && myVisits && (
                 <button
                   type="button"
-                  disabled={playing || auto !== null || d.outing.visitUsed}
+                  disabled={playing || changingSides || auto !== null || d.outing.visitUsed}
                   onClick={() => { void visitMound(); setTools(false); }}
                 >
                   <strong>{d.outing.visitUsed ? 'Visit already used' : 'Visit the mound'}</strong>
@@ -969,7 +974,7 @@ export function Manage() {
               {lastHit.current && (
                 <button
                   type="button"
-                  disabled={playing}
+                  disabled={playing || changingSides}
                   onClick={() => { setTools(false); replay(); }}
                 >
                   <strong>See that again</strong>
@@ -981,7 +986,7 @@ export function Manage() {
               {auto === null ? (
                 <button
                   type="button"
-                  disabled={playing}
+                  disabled={playing || changingSides}
                   onClick={() => { autoArmedAt.current = version; setAuto('watch'); setTools(false); }}
                 >
                   <strong>AUTO</strong>
@@ -995,7 +1000,7 @@ export function Manage() {
               )}
               <button
                 type="button"
-                disabled={playing}
+                disabled={playing || changingSides}
                 onClick={() => { setTools(false); once(autoFinish)(); }}
               >
                 <strong>Sim the rest</strong>

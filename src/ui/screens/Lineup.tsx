@@ -35,8 +35,7 @@ import { handles } from '../../state/depth.js';
 import { available, cardGaps } from '../../engine/depthChart.js';
 import { useHold } from '../useLongPress.js';
 import type { PlayerId, Position } from '../../engine/types.js';
-import { CaptainC, DidButton, FieldNote, ModuleIntro, Rating, SectionHeading } from '../components/Kit.js';
-import type { Hitter } from '../../engine/types.js';
+import { CaptainC, DidButton, FieldNote, ModuleIntro, SectionHeading } from '../components/Kit.js';
 
 /** Friday, Saturday, Sunday, then the midweek arm. */
 const SLOTS = ['FRI', 'SAT', 'SUN', 'MID'];
@@ -494,9 +493,17 @@ export function Lineup() {
                     <small className="row-why">✚ {whyOut(p, injuryClock(season))}</small>
                   )}
                 </span>
-                <Rating label="CON" value={(p as Hitter).contact} />
-                <Rating label="POW" value={(p as Hitter).power} />
-                <Rating label="DEF" value={(p as Hitter).range} />
+                {(() => {
+                  const line = season?.batting.get(p.id);
+                  const avg = line && line.ab > 0 ? battingAverage(line).toFixed(3).replace(/^0/, '') : '—';
+                  return (
+                    <>
+                      <span className="bench-season-stat"><small>AVG</small><b>{avg}</b></span>
+                      <span className="bench-season-stat"><small>HR</small><b>{line?.hr ?? 0}</b></span>
+                      <span className="bench-season-stat"><small>RBI</small><b>{line?.rbi ?? 0}</b></span>
+                    </>
+                  );
+                })()}
                 <span className="row-chevron" />
               </button>
             );
@@ -570,9 +577,17 @@ export function Lineup() {
                     {hurt && <b className="bench-out"> · ✚ {whyOut(p, injuryClock(season))}</b>}
                   </small>
                 </span>
-                <Rating label="CON" value={(p as Hitter).contact} />
-                <Rating label="POW" value={(p as Hitter).power} />
-                <Rating label="DEF" value={(p as Hitter).range} />
+                {(() => {
+                  const line = season.batting.get(p.id);
+                  const avg = line && line.ab > 0 ? battingAverage(line).toFixed(3).replace(/^0/, '') : '—';
+                  return (
+                    <>
+                      <span className="bench-season-stat"><small>AVG</small><b>{avg}</b></span>
+                      <span className="bench-season-stat"><small>HR</small><b>{line?.hr ?? 0}</b></span>
+                      <span className="bench-season-stat"><small>RBI</small><b>{line?.rbi ?? 0}</b></span>
+                    </>
+                  );
+                })()}
                 <span className="row-chevron" />
               </button>
             );
@@ -616,6 +631,18 @@ export function Lineup() {
             manage screen — but staff ROLES are set here: pick a rotation
             slot above, then tap the arm who should take that ball. Reported
             from the phone: a better freshman SP could not be brought up. */}
+        {mine && team.team.bullpen.filter((p) => returnPending(p, injuryClock(season))).map((p) => (
+          <div key={`return-arm-${p.id}`} className="return-strip">
+            <div>
+              <strong>{p.name} is ready to pitch again.</strong>
+              <span>Restore him to the rotation, or keep the current starter in his place.</span>
+            </div>
+            <button type="button" className="tap" onClick={() => keepCover(p.id)}>
+              KEEP THE COVER
+            </button>
+          </div>
+        ))}
+
         <SectionHeading
           kicker="THE BULLPEN"
           title={pickedArm !== null

@@ -14,6 +14,14 @@ that does not do what the game says it does, or does it for one program and
 not the other ninety-five; **P2** — visible, wrong, and survivable; **P3** —
 polish, comments, dead code.
 
+> **Scope note, added the same afternoon.** This report describes the tree
+> at commit `f6ad07f`. The reporter's outside pass — god mode as a control
+> center, navigation history, the hybrid staff system, season-long
+> recruiting and the rest (`05` §63) — was merged after it, three-way, with
+> the audit's fixes carried through every conflict and the suite green
+> again. None of §63 was inside this audit's scope; the verdict below
+> stands for the audited systems and does not vouch for the merged ones.
+
 ## A. Release verdict
 
 **READY** — for the release process. Nothing in the code stands between
