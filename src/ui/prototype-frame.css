@@ -7359,6 +7359,11 @@
   overflow-wrap:normal;
 }
 .settings-god-command.secondary { background:var(--paper) !important; color:var(--clay) !important; }
+.settings-god-command:disabled { background:var(--sunk) !important; color:var(--mute) !important; border-color:var(--line) !important; }
+/* Stage 19: the store's own words when a purchase fails, and the restore line. */
+.settings-god-error { margin:6px 0 0; color:var(--loss); font:600 calc(8px * var(--ts))/1.35 var(--body); }
+.settings-god-restore { display:block; width:100%; margin:8px 0 0; padding:9px 12px; border:1px solid var(--line); background:var(--wash); color:var(--dim); text-align:left; font:600 calc(8px * var(--ts))/1.35 var(--body); }
+.settings-god-restore:disabled { opacity:.6; }
 .settings-god-footnote { display:grid; gap:1px; margin-top:12px; border:1px solid var(--line); background:var(--line); }
 .settings-god-footnote > small { padding:8px 10px; background:var(--wash); color:var(--clay); font:800 calc(6.3px * var(--ts)) var(--mono); letter-spacing:.1em; }
 .settings-god-footnote > span { display:grid; grid-template-columns:25px minmax(0,1fr); gap:8px; align-items:center; padding:8px 10px; background:var(--paper); }

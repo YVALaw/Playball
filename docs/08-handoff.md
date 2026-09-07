@@ -11,6 +11,20 @@ audit** — eighteen domain audits, the blocking findings fixed and tested,
 the balance decisions set down for the reporter (`05` §62,
 `docs/15-v1-release-audit.md`).
 
+> **September 7, evening — stage 19 opens.** The signed bundle:
+> `npm run aab` reads `android/keystore.properties` (the keys stay outside
+> the repo, in the reporter's hands), signs the release and writes
+> `Playball-release.aab`; proven with a throwaway key and thrown away. The
+> purchase: god mode is one non-consumable on Google Play through
+> cordova-plugin-purchase (`state/billing.ts`, seven tests against a fake
+> store), bought and restored from Settings, the entitlement written by the
+> app only when the store says so; the free stand-in survives only in a test
+> build that cannot reach the store. Still the reporter's: the keystore,
+> the `god_mode` product and a licence tester in the Play Console, the
+> listing copy and privacy-policy URL, the seven sample licences. Still
+> mine: the verification pass over §63, the guided first ten minutes, the
+> accessibility subset, the listing assets.
+
 > **September 7, afternoon — the outside pass merged.** The reporter built
 > a second tree with another agent while the audit ran (forty files on the
 > god-mode base): god mode as a control center, back as a real navigation

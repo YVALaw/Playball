@@ -495,10 +495,13 @@ Code and content, from this audit:
 The release process, stage 19 (`07`):
 
 - [ ] Bump `package.json` to 1.0.0 (the release commit).
-- [ ] Play Billing replaces the Settings UNLOCK stand-in
-      (`DevicePrefs.godMode` set by purchase and restore only).
-- [ ] Keystore generated and backed up; `bundleRelease` for a signed AAB
-      (the script stops at an unsigned APK today).
+- [x] Play Billing replaces the Settings UNLOCK stand-in
+      (`DevicePrefs.godMode` set by purchase and restore only) — code and
+      tests in, September 7; the Play Console product and a licence tester
+      are the reporter's.
+- [ ] Keystore generated and backed up (the reporter's); `npm run aab`
+      builds the signed bundle from `android/keystore.properties` — done
+      September 7, proven with a throwaway key.
 - [ ] Listing, screenshots, privacy policy, content rating.
 - [ ] Onboarding for the first ten minutes (the guided first stretch).
 - [ ] The Freesound credits for the seven samples without a stated licence.

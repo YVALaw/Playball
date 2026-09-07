@@ -9,8 +9,27 @@
   way. Point either at somewhere else with JAVA_HOME / ANDROID_HOME in the
   environment and those win.
 
-  Usage:  npm run apk          debug build, installable straight away
-          npm run apk -- release   unsigned release; stage 19 owns signing
+  Usage:  npm run apk              debug build, installable straight away
+          npm run apk:test         the same, with the testing shortcuts in
+          npm run apk -- release   release APK — signed when the keys are present
+          npm run aab              the signed release bundle the store takes
+
+  Signing (stage 19). The keystore is the one thing this script never
+  generates and the repo never holds (.gitignore): it lives wherever the
+  reporter keeps it, and `android/keystore.properties` — ignored too, inside
+  the generated shell — names it, four lines:
+
+      storeFile=C:/Users/you/playball-keys/playball-release.jks
+      storePassword=...
+      keyAlias=playball
+      keyPassword=...
+
+  With that file present a release build is signed and `npm run aab` writes
+  Playball-release.aab; without it the release APK is unsigned, as before,
+  and a bundle is refused, because an unsigned bundle is not a thing Play
+  accepts. The script checks the file exists and names the four keys; Gradle
+  reads the values, and nothing here prints them. KEYSTORE_PROPERTIES in the
+  environment points at a file somewhere else.
 */
 const { execFileSync } = require('child_process');
 const fs = require('fs');
@@ -32,7 +51,8 @@ for (const [label, dir] of [['JDK', JAVA_HOME], ['Android SDK', ANDROID_HOME]]) 
   }
 }
 
-const release = process.argv.includes('release');
+const bundle = process.argv.includes('bundle');
+const release = bundle || process.argv.includes('release');
 const env = { ...process.env, JAVA_HOME, ANDROID_HOME, ANDROID_SDK_ROOT: ANDROID_HOME };
 const run = (cmd, args, cwd) =>
   execFileSync(cmd, args, { cwd, env, stdio: 'inherit', shell: true });
@@ -86,20 +106,63 @@ const android = path.join(ROOT, 'android');
     console.log(`\n— version ${version} (code ${versionCode}) written to the shell —`);
   }
 }
-console.log(`\n— assembling the ${release ? 'release' : 'debug'} APK —`);
-run(`"${path.join(android, 'gradlew.bat')}"`,
-  [release ? 'assembleRelease' : 'assembleDebug'], android);
+/*
+  Signing, when the keys are present — see the header. The generated
+  build.gradle gets a `signingConfigs.release` that reads the properties file
+  at build time, and the release build type is pointed at it. Patched the way
+  the version is: the shell is regenerated freely and never edited by hand.
+*/
+const keystoreProps = process.env.KEYSTORE_PROPERTIES ?? path.join(android, 'keystore.properties');
+const signed = release && fs.existsSync(keystoreProps) && (() => {
+  const text = fs.readFileSync(keystoreProps, 'utf8');
+  return ['storeFile', 'storePassword', 'keyAlias', 'keyPassword']
+    .every((k) => new RegExp(`^\\s*${k}\\s*=`, 'm').test(text));
+})();
+if (release) {
+  const gradle = path.join(android, 'app', 'build.gradle');
+  if (signed && fs.existsSync(gradle)) {
+    let text = fs.readFileSync(gradle, 'utf8');
+    if (!text.includes('signingConfigs {')) {
+      const props = keystoreProps.replace(/\\/g, '/');
+      text = text.replace(/    buildTypes \{/, `    signingConfigs {
+        release {
+            def keystore = new Properties()
+            file('${props}').withInputStream { keystore.load(it) }
+            storeFile file(keystore['storeFile'])
+            storePassword keystore['storePassword']
+            keyAlias keystore['keyAlias']
+            keyPassword keystore['keyPassword']
+        }
+    }
+    buildTypes {`);
+      text = text.replace(/(buildTypes \{\s*\n\s*release \{)/, '$1\n            signingConfig signingConfigs.release');
+      fs.writeFileSync(gradle, text);
+    }
+    console.log(`\n— signing the release with the keys named in ${keystoreProps} —`);
+  } else if (bundle) {
+    console.error(`\nA bundle has to be signed, and there is no usable ${keystoreProps}. See the header of this script.`);
+    process.exit(1);
+  } else {
+    console.log('\n— no keystore.properties: the release APK will be unsigned —');
+  }
+}
 
-const out = path.join(
-  ROOT, 'android', 'app', 'build', 'outputs', 'apk',
-  release ? 'release' : 'debug',
-  release ? 'app-release-unsigned.apk' : 'app-debug.apk',
-);
+const task = bundle ? 'bundleRelease' : release ? 'assembleRelease' : 'assembleDebug';
+console.log(`\n— ${bundle ? 'building the signed release bundle' : `assembling the ${release ? 'release' : 'debug'} APK`} —`);
+run(`"${path.join(android, 'gradlew.bat')}"`, [task], android);
+
+const artifact = bundle
+  ? ['bundle', 'release', 'app-release.aab']
+  : ['apk', release ? 'release' : 'debug',
+    release ? (signed ? 'app-release.apk' : 'app-release-unsigned.apk') : 'app-debug.apk'];
+const out = path.join(ROOT, 'android', 'app', 'build', 'outputs', ...artifact);
 if (!fs.existsSync(out)) {
-  console.error('\nGradle finished but no APK landed at ' + out);
+  console.error(`\nGradle finished but nothing landed at ${out}`);
   process.exit(1);
 }
 // Somewhere a person can actually find it.
-const dest = path.join(ROOT, `Playball-${release ? 'release-unsigned' : 'debug'}.apk`);
+const dest = path.join(ROOT, bundle
+  ? 'Playball-release.aab'
+  : `Playball-${release ? (signed ? 'release' : 'release-unsigned') : 'debug'}.apk`);
 fs.copyFileSync(out, dest);
 console.log(`\n${dest}  (${(fs.statSync(dest).size / 1024 / 1024).toFixed(1)} MB)`);

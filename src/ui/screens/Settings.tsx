@@ -7,7 +7,8 @@
 // your text, and starting a new one must not turn the sound back on. The index
 // says which is which in a line, so nobody has to be told twice.
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { billingState, onBilling, buyGodMode, restorePurchases } from '../../state/billing.js';
 import { FixedHeader } from '../Sticky.js';
 import { ModuleIntro, SectionHeading, Segmented } from '../components/Kit.js';
 import { useDynasty, type SettingsPage } from '../../state/store.js';
@@ -126,6 +127,15 @@ export function Settings() {
     writePrefs(next);
     applyPrefs(next);
   };
+  /*
+    The store's side of god mode (stage 19). `App` writes the entitlement
+    when Google Play says the product is owned; this screen re-reads the
+    device prefs at that moment so the panel turns over without a reload.
+  */
+  const billing = useSyncExternalStore(onBilling, billingState, billingState);
+  useEffect(() => {
+    if (billing.owned && !prefs.godMode) setPrefs(readPrefs());
+  }, [billing.owned, prefs.godMode]);
 
   const [taught, setTaught] = useState(false);
 
@@ -287,26 +297,52 @@ export function Settings() {
             <strong>{prefs.godMode ? 'Available for every new career' : 'Unlock the sandbox'}</strong>
             <p>{prefs.godMode
               ? 'New careers can enable God Mode on the How you want to play step. Existing honest careers stay unchanged unless you fork one below.'
-              : TEST_SHORTCUTS
-                ? 'The store purchase arrives with the listing. Until then this control stands in for the permanent device unlock.'
-                : 'Arrives with the store listing.'}</p>
+              : billing.available
+                ? `One purchase on Google Play${billing.price ? `, ${billing.price}` : ''}. Yours on this account for good — a reinstall or a new phone restores it.`
+                : TEST_SHORTCUTS
+                  ? 'The store purchase arrives with the listing. Until then this control stands in for the permanent device unlock.'
+                  : 'Arrives with the store listing.'}</p>
+            {billing.error && <p className="settings-god-error">{billing.error}</p>}
           </div>
           {/*
-            The stand-in for the purchase, in a build that carries the testing
-            shortcuts only. A store build shows the state and no way to flip
-            it — the paid entitlement must not be a free button (05 §62.3);
-            stage 19 replaces this with Play Billing.
+            The purchase, through Google Play (state/billing.ts), when the
+            shell can reach it. The free stand-in exists only in a build that
+            carries the testing shortcuts, and only where the store cannot be
+            reached — the paid entitlement must not be a free button (05
+            §62.3). A store build with no Play services shows the state and
+            no way to flip it.
           */}
-          {(TEST_SHORTCUTS || prefs.godMode) && (
+          {!prefs.godMode && billing.available && (
             <button
               type="button"
-              className={`settings-god-command tap${prefs.godMode ? ' secondary' : ''}`}
-              onClick={() => put({ godMode: !prefs.godMode })}
+              className="settings-god-command tap"
+              disabled={billing.busy}
+              onClick={() => void buyGodMode()}
             >
-              {prefs.godMode ? 'REMOVE ACCESS' : 'UNLOCK GOD MODE'}
+              {billing.busy ? 'ONE MOMENT' : `UNLOCK GOD MODE${billing.price ? ` · ${billing.price}` : ''}`}
+            </button>
+          )}
+          {!prefs.godMode && !billing.available && TEST_SHORTCUTS && (
+            <button type="button" className="settings-god-command tap" onClick={() => put({ godMode: true })}>
+              UNLOCK GOD MODE
+            </button>
+          )}
+          {prefs.godMode && TEST_SHORTCUTS && (
+            <button type="button" className="settings-god-command tap secondary" onClick={() => put({ godMode: false })}>
+              REMOVE ACCESS
             </button>
           )}
         </section>
+        {!prefs.godMode && billing.available && (
+          <button
+            type="button"
+            className="settings-god-restore tap"
+            disabled={billing.busy}
+            onClick={() => void restorePurchases()}
+          >
+            Already bought it on this account? Restore the purchase.
+          </button>
+        )}
 
         {prefs.godMode && season && (
           <>

@@ -1552,10 +1552,14 @@ up permanently · signed AAB, listing, screenshots, privacy policy, content
 rating · closed beta, then open. **The release commit:** bump `package.json`
 to 1.0.0 (`scripts/apk.cjs` writes `versionName` from it and a monotonic
 `versionCode` into the generated shell, so every upload carries a new code)
-· **Play Billing replaces the Settings stand-in** — `DevicePrefs.godMode` is
-set by a purchase and a restore flow, never by a free button (`05` §61.3) ·
-`npm run apk -- release` produces an unsigned APK; the store wants a signed
-AAB (`bundleRelease`), which the script does not yet run.
+· ~~**Play Billing replaces the Settings stand-in**~~ **code in, September 7**
+— `DevicePrefs.godMode` is set by a purchase and a restore flow
+(`state/billing.ts`), never by a free button (`05` §61.3); the product
+`god_mode` in the Play Console and a licence tester are the reporter's
+part · ~~`npm run apk -- release` produces an unsigned APK; the store wants a
+signed AAB~~ **done September 7**: `npm run aab` builds the signed bundle
+from the keys named in `android/keystore.properties`, and the release APK
+is signed the same way when the file is present (`scripts/apk.cjs`).
 
 **Grew September 4 — the guided tutorial, decided from the phone.** The
 card tutorials give way to a guided first stretch: a main card that titles

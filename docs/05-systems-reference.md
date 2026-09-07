@@ -7855,9 +7855,13 @@ schedule.
 
 `DevicePrefs.godMode` is the entitlement: one purchase, permanent, for
 every career on the phone. Settings has a **God mode** page that shows it
-and, until the store listing exists, an UNLOCK button that stands in for
-the purchase — the seam Play Billing goes into at stage 19, and the reason
-this is on a branch rather than shipped as the paid thing it will be. A
+and — since stage 19 opened, September 7 — buys it: one non-consumable
+product on Google Play (`GOD_MODE_PRODUCT`, `state/billing.ts`), bought
+through cordova-plugin-purchase and restored by the store's own word at
+every launch, so a reinstall or a second phone gets the sandbox back
+without a button. Only the store or the test build's stand-in may set the
+flag; a store build with no Play services shows the state and no way to
+flip it (§62.3). A
 device that owns it sees a **GOD MODE** toggle on the *How you want to
 play* step of creation; the choice rides the save (`SaveFile.godMode`,
 loaded as `false` on every save from before) and is never cleared. The
@@ -7914,8 +7918,11 @@ its money, the staff edit, and the flag riding the file only when on.
   is a field in it.
 - **No records shelf.** The reporter's call: a sandbox's records count like
   any other's. The flag is on the save if that is ever revisited.
-- **The purchase** is a Settings button until the store listing; stage 19
-  replaces it with Play Billing and its restore flow.
+- **The purchase** is Play Billing with a restore flow since September 7
+  (`state/billing.ts`, `tests/billing.test.ts`); the Settings stand-in
+  remains only in a test build where the store cannot be reached. What is
+  still the reporter's: the product `god_mode` created in the Play Console,
+  its price, and a licence tester to buy it for nothing.
 
 ### 61.4 The rest of the sandbox — built later the same night
 

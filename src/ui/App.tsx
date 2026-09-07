@@ -26,6 +26,8 @@ import {
   PHASES, PHASE_LABEL, TABS, useDynasty, useUserTeam, type ProgramSheet, type Tab,
 } from '../state/store.js';
 import { hasLayerToClose, Back, isNativeShell } from './backNav.js';
+import { initBilling } from '../state/billing.js';
+import { readPrefs, writePrefs, applyPrefs } from '../state/devicePrefs.js';
 import { StepRail } from './StepRail.js';
 import { Overlay } from './Overlay.js';
 import {
@@ -443,6 +445,26 @@ function AppBody(
   });
 
 
+
+  /*
+    Stage 19: the store's word on god mode, at launch and on every restore.
+    The entitlement lives on the device (`DevicePrefs.godMode`) and only the
+    store — or the test build's stand-in — may set it (05 §61.3, §62.3). In
+    the browser and in a shell without Play services `initBilling` records
+    "not available" and nothing else happens.
+  */
+  useEffect(() => {
+    if (!isNativeShell()) return;
+    void initBilling({
+      owned: () => {
+        const prefs = readPrefs();
+        if (prefs.godMode) return;
+        const next = { ...prefs, godMode: true };
+        writePrefs(next);
+        applyPrefs(next);
+      },
+    });
+  }, []);
 
   // The APK: claim the gesture exactly while there is a layer, and answer it.
   useEffect(() => {
