@@ -8265,7 +8265,10 @@ a chart-only coach's day on a return decision only the lineup screen could
 answer; a program with no tournament of its own saw a live YOUR NEXT GAME
 card at the national stage. With them: the recruiting filter button has a
 name, `--you` has a dark cut (7.4:1, pinned), `color-scheme` is declared,
-and the desk's SIM beat is cleared on unmount. The strategy wiring audit's
+the desk's SIM beat is cleared on unmount, and the God mode settings row
+no longer stretches its button across the card (the generated
+stylesheet's `.settings-list button { width:100% }` reached it). The
+strategy wiring audit's
 findings — every control reaches the field; the positioning defaults are
 not zero-sum; AUTO calls INFIELD IN against fifty-one of ninety-six — are
 `docs/15` §L.

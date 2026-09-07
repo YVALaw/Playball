@@ -171,7 +171,10 @@ wave rather than left as the verdict's condition:
 
 With them, the recruiting filter button has an accessible name, `--you`
 has a dark cut (7.4:1, pinned in the contrast test), `color-scheme` is
-declared for both themes, and the desk's SIM timer is cleared on unmount.
+declared for both themes, the desk's SIM timer is cleared on unmount, and
+the God mode settings row no longer stretches UNLOCK/REMOVE across the
+card with its caption crushed to a word a line (found in the browser on
+the final pass; a generic full-width rule from the generated stylesheet).
 
 ## D. P2 polish
 
@@ -430,7 +433,7 @@ severity (the fix is in §C or §D).
 | Start | new career, load, blocked store, boundary | FIXED | reports a refused store; New career disabled on error |
 | New game (coach, school, how you play) | both modes, god toggle, PSC aid | FIXED | test aid gated behind `TEST_SHORTCUTS` |
 | Saves | list, rename, load, delete | FIXED · P3 | a malformed record is one unreadable row; rename field unlabelled (P3) |
-| Settings | theme, text size, sound, field, god mode | FIXED · P3 | UNLOCK gated; field 2D/3D reads; radios announced as tabs; dead `onBack` |
+| Settings | theme, text size, sound, field, god mode | FIXED · P3 | UNLOCK gated; field 2D/3D reads; the God mode row's button no longer crushes its caption; radios announced as tabs; dead `onBack` |
 | Today (desk) | day, week, season sims; PLAY BALL; PROJ chip | FIXED · P3 | double-tap closed; PROJ/RPI honest; off-day held reason missing; sim timer not cleared on unmount |
 | Manage (the dugout) | managed game, resume, AUTO, boundary, 2D | FIXED · P2 | AUTO handover; frame clamp; boundary; splash/unlock timing; tooltip-only notes; no live region |
 | Lineup | order, bench, AUTO, gate | P2 | controls live when the staff writes; gate walked around by sub-nav |
