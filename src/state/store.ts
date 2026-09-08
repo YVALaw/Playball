@@ -257,15 +257,44 @@ function returnDecisionOpen(man: Player, day: number): boolean {
     && u.returnDecided !== u.outUntil && day - u.outUntil < 14;
 }
 
-/** A lineup/rotation decision that must be resolved before a full career advances. */
+/**
+ * A lineup/rotation decision that must be resolved before a full career advances.
+ *
+ * The hold stops the calendar, so it may only ever name a man the coach can
+ * actually do something about. Every route out of it — `swapStarter`,
+ * `assignPosition`, `promoteArm` — refuses an unavailable body, so a program
+ * with nobody fit to come in was held for ever: a bench of four with two
+ * redshirts and two men in the classroom, plus one hurt starter, and the
+ * career could not reach tomorrow (05 §63.3). When there is genuinely nobody,
+ * `coverFor` fields the man honestly and the day is allowed to pass, which is
+ * the engine's own answer to the same question.
+ */
 function unresolvedRosterDecision(season: SeasonState, userTeam: number, depth: DepthSettings): Player | null {
-  if (!handles(depth, 'lineups') && !handles(depth, 'depthChart')) return null;
+  const writesCard = handles(depth, 'lineups');
+  if (!writesCard && !handles(depth, 'depthChart')) return null;
   const team = season.teams[userTeam]?.team;
   if (!team) return null;
   const day = injuryClock(season);
-  const unavailable = [...team.lineup, ...team.rotation].find((p) => !available(p, day));
-  if (unavailable) return unavailable;
   const active = new Set([...team.lineup, ...team.rotation].map((p) => String(p.id)));
+  const spare = (pool: readonly Player[]): boolean =>
+    pool.some((p) => !active.has(String(p.id)) && available(p, day));
+
+  const unavailable = [...team.lineup, ...team.rotation].find((p) => {
+    if (available(p, day)) return false;
+    // A bat is covered from the bench, an arm from the pen. No cover, no ask.
+    return team.lineup.includes(p as never)
+      ? spare(squad(team))
+      : spare(team.bullpen);
+  });
+  if (unavailable) return unavailable;
+
+  /*
+    And the man walking back in. Only for a coach who writes the card: the
+    Needs card and both KEEP THE COVER strips are on the lineup screen, which
+    a chart-only coach does not have, so holding him here stopped the day on
+    a decision with no button (05 §63.3).
+  */
+  if (!writesCard) return null;
   return squad(team).find((p) => !active.has(String(p.id)) && returnDecisionOpen(p, day)) ?? null;
 }
 
@@ -2714,7 +2743,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, userTeam, version } = get();
     const team = season?.teams[userTeam]?.team;
     if (!team) return;
-    const man = team.bench.find((p) => p.id === id);
+    // The bench AND the pen: the lineup screen offers KEEP THE COVER on a
+    // returning bullpen arm too, and searching the bench alone left that
+    // strip on screen for ever, pressed and unanswered (05 §63.3).
+    const man = [...team.bench, ...team.bullpen].find((p) => p.id === id);
     if (!man) return;
     settleReturn(man);
     set({ version: version + 1 });
@@ -3666,6 +3698,20 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         busy: false,
         progress: null,
       });
+      /*
+        The recruiting calendar, banked the way every other path banks it.
+
+        Recruiting runs alongside the schedule now (05 §63.6) and the weeks
+        close when the season crosses them. The no-worker branch above syncs;
+        this one did not — and `workerAvailable` is true in every browser, so
+        the branch that shipped was the branch nobody tested. One press of SIM
+        THE SEASON left `recruiting.week` at 1, closed nothing, and signed
+        nobody: the whole country's class was voided and all ninety-six
+        rosters refilled from walk-ons. Nothing downstream recovers it —
+        `syncRecruitingCalendar` refuses once a phase is open, and no
+        offseason step banks a week.
+      */
+      get().syncRecruitingCalendar();
       // A whole year arriving at once is still a year of things that happened
       // to you, and the scan is written so that a season simmed in one press
       // files the same cards as one walked through a day at a time.
@@ -7217,6 +7263,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (!get().godMode) return;
     const stack = get().godStack;
     if (sameGodTarget(stack[stack.length - 1], target)) return;
+    /*
+      A sheet already open anywhere in the stack is raised rather than opened
+      twice, and the stack is capped. Only the top was checked before, so
+      bouncing between two editors grew the stack without bound — and every
+      push spends a browser history entry (05 §63.1).
+    */
+    if (stack.some((t) => sameGodTarget(t, target)) || stack.length >= 8) return;
     browserHistoryCheckpoint();
     set({ godStack: [...stack, target] });
   },
@@ -7225,7 +7278,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     set({ godStack: get().godStack.slice(0, -1) });
   },
   closeGodAll: () => {
-    if (get().godStack.length > 0) browserHistoryConsume(Math.min(1, get().godStack.length));
+    // One entry per sheet, because `openGod` pushed one per sheet.
+    if (get().godStack.length > 0) browserHistoryConsume(get().godStack.length);
     set({ godStack: [] });
   },
 

@@ -25,7 +25,7 @@ import { InFrame } from '../Overlay.js';
 import { Confirmable, FieldNote, Segmented } from '../components/Kit.js';
 import { overallOf } from '../../engine/ratings.js';
 import { prestigeStars } from '../../engine/program.js';
-import { flexibleOffseasonBudget, protectedRecruitingBudget, recruitingWindowBudget, windowBudget } from '../../engine/recruiting.js';
+import { flexibleOffseasonBudget, weeklyBudget, windowBudget } from '../../engine/recruiting.js';
 import { mood } from '../../engine/morale.js';
 import type { PortalMan } from '../../engine/portal.js';
 
@@ -78,14 +78,13 @@ export function Portal() {
   // draw from next — the screen shows what is genuinely left of it.
   const stars = prestigeStars(rec.prestige);
   const flexStart = flexibleOffseasonBudget(stars);
-  const reserve = protectedRecruitingBudget(stars);
   const offseasonTotal = windowBudget(stars);
   const draftSpent = season?.draft?.spent ?? 0;
   const budget = flexStart - draftSpent;
   const left = budget - portal.spent;
-  const spentBeforeRecruiting = draftSpent + portal.spent;
-  const recruitWindowIfLeave = recruitingWindowBudget(stars, spentBeforeRecruiting);
-  const recruitWeekIfLeave = Math.floor(recruitWindowIfLeave / 3);
+  // What the spring board actually hands out in a week, which is the number
+  // the board's own header prints.
+  const recruitWeekPerWeek = weeklyBudget(stars);
 
   return (
     <FixedHeader
@@ -126,8 +125,8 @@ export function Portal() {
               <small>TRANSFER PORTAL · {portal.leaving.length + portal.available.length} NAMES</small>
               <h1>Transfer room</h1>
               <p>
-                Use the flexible fund for immediate help — whatever is left rolls into
-                recruiting on top of its protected reserve.
+                Use the flexible fund for immediate help. Recruiting runs on its own weekly
+                allowance across the season and is not touched by what you spend here.
               </p>
               <GodBolt target={{ kind: 'portal' }} label="Sign from the portal for nothing, in god mode" className="inline-god" />
             </div>
@@ -148,12 +147,17 @@ export function Portal() {
             </div>
             <div className="portal-budget-breakdown">
               <span><small>OFFSEASON TOTAL</small><b>{offseasonTotal}</b></span>
-              <span><small>RECRUITING RESERVED</small><b>{reserve}</b></span>
-              <span><small>IF YOU LEAVE NOW</small><b>{recruitWeekIfLeave}/WK</b></span>
+              <span><small>THE SPRING BOARD</small><b>{recruitWeekPerWeek}/WK</b></span>
             </div>
+            {/*
+              Two pools, and they no longer touch. This used to print the old
+              window's reserve and an "if you leave now" week worth four times
+              the real one — 66 a week against the 17 the board actually gives
+              (05 §63.6).
+            */}
             <small>
-              Draft and Portal share only the flexible fund. Recruiting keeps {reserve} protected points,
-              then receives whatever flexible points are still left when you move on.
+              Draft and Portal share this flexible fund and nothing else. Recruiting runs across the
+              season on its own weekly allowance, which what you spend here does not touch.
             </small>
           </div>
         </section>

@@ -8534,6 +8534,85 @@ the handover mark. Three files the outside tree carried from before stage
 24's close (`data/interview.ts`, `engine/interviewResult.ts`, its test)
 were not brought back. `tests/saves.test.ts` keeps both contracts.
 
+### 63.8 The verification pass — **September 7 2026, the same night**
+
+The outside pass arrived with no tests of its own, so its four new systems
+were read and measured the way §62 read the rest. Every fix below carries a
+regression test in `tests/merged-audit.test.ts` or `tests/staff-projects.test.ts`
+(thirteen for the staff system, which had none).
+
+**Two that stopped a career.**
+
+- **One press of SIM THE SEASON voided the whole country's recruiting
+  class.** `playSeason` has two branches; the no-worker fallback banked the
+  recruiting calendar and the worker branch did not — and `workerAvailable`
+  is true in every browser, so the branch that shipped was the one no test
+  ran. Measured on seed 4242: day-by-day and SIM WEEK both end at week 13
+  with ~646 prospects signed; the worker branch ended at week 1 with **0
+  signed**, and all ninety-six rosters refilled from walk-ons. Nothing
+  downstream recovers it — `syncRecruitingCalendar` refuses once a phase is
+  open. It syncs now.
+- **The roster hold could stop the calendar for good.** Every route out of
+  it — `swapStarter`, `assignPosition`, `promoteArm` — refuses an
+  unavailable body, but `unresolvedRosterDecision` asked regardless. A bench
+  of four with nobody fit, plus one hurt starter, and the career could not
+  reach tomorrow. It now names a man only when a cover exists: a bat from
+  the bench, an arm from the pen. With nobody, `coverFor` fields the hurt man
+  and the day passes, which is the engine's own answer. Across twenty-five
+  careers the auditor measured 81 holds and 0 unresolvable ones *before* the
+  fix — it is rare, not impossible, which is the worst kind.
+
+**Three the player would meet.**
+
+- **The return hold asked a chart-only coach a question with no button.**
+  The Needs card and both KEEP THE COVER strips live on the lineup screen,
+  which he does not have. The hold's return branch is `lineups` only now.
+- **KEEP THE COVER on a returning bullpen arm was a dead button**:
+  `keepCover` searched the bench alone, so the strip never went away. It
+  searches the pen too.
+- **The portal printed a recruiting budget four times the real one** — 66 a
+  week against the 17 the board gives — and a "reserved" pool nothing spends.
+  The two pools no longer touch, and the screen says so.
+
+**Two in the back gesture, browser and iOS only.**
+
+- **A swallowed press still spent a history entry.** The 350 ms guard exists
+  for the native shell's double-report; on the browser path `popstate` has
+  already consumed an entry before the guard runs, so a fast double press
+  threw the entry away and peeled nothing. Measured: four presses over three
+  open layers left two open and the app gone. The guard is now the native
+  path's alone.
+- **CLOSE ALL leaked one entry per extra sheet.** `openGod` pushes a
+  checkpoint per sheet; the close asked for one. After closing four, the next
+  three browser Back presses walked the screen underneath backwards.
+  `browserHistoryConsume` honours its count, and the god stack is capped at
+  eight and refuses a target already open anywhere in it.
+
+**Verified and left alone.** Season-long recruiting is genuinely calibrated:
+`weeklyBudget × 12` against the old window is 168/168, 180/183, 204/198,
+216/213, 228/228 — a ratio of 1.00, not the 4.0 the change could have been.
+The two pools are separate and neither can spend the other's money. A week
+stays open the whole baseball week and banks on the crossing, never on the
+first game. Commitments are for next season: 639 of 643 signed men appear on
+next spring's rosters, the missing four taken by the pros. The board is
+contested from week one, 717 of 720 prospects carrying rival interest. Staff
+directives, projects and facilities all do what §63.5 says, measured: a
+five-week block at one facility level, four at two, three at three; an
+aligned block moves eight points of contact against three unaligned; a built
+pipeline clears the established bar from nothing; arm care protects only
+while it runs.
+
+**Measured and left for the reporter**, because it is balance rather than a
+defect: **rival programs can afford one pitch a week and nothing else.**
+`aiTargets` spends 82% of a rival's week before `planAiRecruitActions` sees
+it, leaving 3–6 points against a pitch at 3, a hard sell at 5 and a sway at
+6. Measured across ninety-six programs in one week: 97 pitches, **0 majors,
+0 sways**, and over a whole season **0** sways league-wide. §63.6's "Sway is
+one relationship action per recruit, for rivals too" is a guard that never
+fires. Lowering the 0.82 to about 0.55 would give a rival 6–9 points for
+actions; it changes what every AI class looks like, so it is the reporter's
+call, not the audit's.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

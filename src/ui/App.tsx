@@ -378,13 +378,21 @@ function AppBody(
     }
   }, [atStart, loadedSlot, tab, screen, programSheet]);
 
-  const backRef = useRef<() => void>(() => {});
+  const backRef = useRef<(guarded?: boolean) => void>(() => {});
   const lastBackCommit = useRef(0);
-  backRef.current = (): void => {
+  backRef.current = (guarded = true): void => {
     const now = Date.now();
-    // Edge gestures can be reported twice by a shell/browser bridge during the
-    // same predictive swipe. One physical gesture must peel exactly one layer.
-    if (now - lastBackCommit.current < 350) return;
+    /*
+      Edge gestures can be reported twice by the native shell during the same
+      predictive swipe. One physical gesture must peel exactly one layer.
+
+      Only on the native path. A browser `popstate` has ALREADY spent a real
+      history entry by the time this runs, so swallowing the press there threw
+      the entry away and peeled nothing: four quick presses over three open
+      layers left two of them open and the app gone (05 §63.2). The browser
+      reports one popstate per press and needs no guard.
+    */
+    if (guarded && now - lastBackCommit.current < 350) return;
     lastBackCommit.current = now;
     const s = useDynasty.getState();
     // A blocking card is the screen while it lasts: the back press is
@@ -511,16 +519,23 @@ function AppBody(
       const detail = (event as CustomEvent<{ count?: number; route?: boolean }>).detail;
       const count = Math.max(1, Number(detail?.count ?? 1));
       if (detail?.route) routeConsumePending.current = true;
-      // Each UI close peels one real entry. God Mode's CLOSE ALL intentionally
-      // asks for one here; the remaining god stack is an internal modal stack,
-      // not somewhere a browser Back should resurrect after it was closed.
-      browserSilentPop.current += 1;
-      try { history.go(-Math.min(1, count)); } catch { browserSilentPop.current = Math.max(0, browserSilentPop.current - 1); }
+      /*
+        Every layer that pushed a checkpoint peels its own entry.
+
+        This used to clamp to one however many were asked for, which meant
+        God Mode's CLOSE ALL left one orphan entry per extra sheet: after
+        closing four, the next three browser Back presses walked the screen
+        underneath backwards, three navigations nobody asked for (05 §63.2).
+        The count is the caller's, and `browserSilentPop` counts the pops it
+        will cause so the handler below ignores exactly those.
+      */
+      browserSilentPop.current += count;
+      try { history.go(-count); } catch { browserSilentPop.current = Math.max(0, browserSilentPop.current - count); }
     };
     const onPop = (): void => {
       if (browserSilentPop.current > 0) { browserSilentPop.current -= 1; return; }
       browserPopping.current = true;
-      backRef.current();
+      backRef.current(false);
       // Store writes are synchronous. Keep the guard through the microtask so
       // a nested route setter cannot push a replacement entry mid-pop.
       queueMicrotask(() => { browserPopping.current = false; });

@@ -11,6 +11,20 @@ audit** — eighteen domain audits, the blocking findings fixed and tested,
 the balance decisions set down for the reporter (`05` §62,
 `docs/15-v1-release-audit.md`).
 
+> **September 7, night — the merged systems verified.** The outside pass
+> shipped with no tests, so its four systems were read and measured
+> (`05` §63.8). Two stopped a career: one press of SIM THE SEASON voided
+> the whole country's recruiting class, because `playSeason`'s worker
+> branch — the only branch a browser takes — never banked a week; and the
+> roster hold could name a man nobody could replace, which stopped the
+> calendar for good. Three the player would meet: the return hold asked a
+> chart-only coach a question with no button, KEEP THE COVER on a bullpen
+> arm was dead, and the portal printed a recruiting week four times the
+> real one. Two in the back gesture: a swallowed press still spent a
+> history entry, and CLOSE ALL leaked one per extra sheet. Twenty-two new
+> tests. Left for the reporter, measured: a rival can afford one pitch a
+> week and never a sway, which is balance, not a defect.
+
 > **September 7, night — the listing, and what the emulator found.** The
 > keystore is the reporter's, made and backed up; `Playball-release.aab`
 > is signed with it. The phone icon and the splash were still Capacitor's
@@ -895,7 +909,7 @@ exists. Stage 19 removes the three together.
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,244 tests, 66 files)
+npm run check      # typecheck + the whole suite (1,274 tests, 69 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing
