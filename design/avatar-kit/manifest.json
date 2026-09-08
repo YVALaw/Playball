@@ -1,15 +1,15 @@
 {
   "size": 128,
-  "ink": "#152238",
+  "ink": "#1a2333",
   "parts": {
     "skin": [
       {
         "name": "skin-01",
-        "color": "#ffe0c4"
+        "color": "#ffe3c8"
       },
       {
         "name": "skin-02",
-        "color": "#f6cfa8"
+        "color": "#f7d0ad"
       },
       {
         "name": "skin-03",
@@ -68,18 +68,18 @@
     ],
     "eyeStyles": [
       "dots",
-      "wide",
-      "narrow",
-      "round",
-      "close",
-      "tall"
+      "small",
+      "large",
+      "highlight",
+      "iris",
+      "oval"
     ],
     "facialHair": [
-      "goatee",
-      "mustacheThin",
-      "mustacheThick",
-      "chinstrap",
       "full",
+      "handlebar",
+      "pencil",
+      "goatee",
+      "thick",
       "long"
     ],
     "hair": [
@@ -105,10 +105,10 @@
       },
       {
         "name": "blonde-curls",
-        "color": "#e0b95e"
+        "color": "#e3bd62"
       },
       {
-        "name": "wavy-mid",
+        "name": "bob",
         "color": "#4a3121"
       },
       {
@@ -120,12 +120,12 @@
         "color": "#1c1410"
       },
       {
-        "name": "mop",
-        "color": "#6b4a2a"
+        "name": "crop",
+        "color": "#2e1f16"
       },
       {
         "name": "curls-loose",
-        "color": "#4a3121"
+        "color": "#1c1410"
       },
       {
         "name": "ponytail",
@@ -137,21 +137,21 @@
       "red",
       "white-blue",
       "black-gold",
-      "green-white",
-      "red-white",
-      "purple",
-      "orange",
-      "grey",
+      "white-green",
+      "white-red",
+      "white-purple",
+      "orange-blue",
+      "grey-black",
       "camo",
-      "white",
-      "snapback"
+      "white-navy",
+      "snapback-back"
     ],
     "jerseys": [
       "pinstripe-navy",
       "white-red",
       "grey",
       "navy",
-      "cream-gold",
+      "cream-green",
       "black-gold",
       "red",
       "green",

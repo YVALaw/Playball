@@ -19,27 +19,28 @@ individual parts can never drift apart.
 
 ## Layout contract
 
-Every part is drawn on the same 128×128 canvas against one shared head geometry
-(`HEAD`, `EYE_Y`, `EAR_Y` in the generator). That is what lets any hair stack
-onto any skin tone onto any jersey by simply drawing them at 0,0 in this order:
+Every part is drawn on the same 128×128 canvas against one shared head: the top
+half is a true ellipse (`HEAD_CY`, `RX`, `RY` in the generator) so hairlines can
+be computed against it, the bottom half is a jaw. That is what lets any hair
+stack onto any skin tone onto any jersey by drawing them at 0,0 in this order:
 
-    jersey → hair-back → head → eyes → brows → mouth → facial hair → hat
+    jersey → hair-back → head → eyes → mouth → facial hair → hair-front → hat
 
-Two rules the geometry enforces, both learned the hard way:
-
-- the cap assembly stays entirely above `EYE_Y`, or the bill reads as a welding mask;
-- hair is authored twice — `free` for a bare head, `under` for the sides and back
-  that still show once a cap is on.
+Hair is two layers: `back` goes behind the head (volume, strands, the ponytail),
+`front` goes over it (the hairline and anything framing the face). A cap simply
+draws on top of both; whatever it does not cover is what shows. Like the
+reference, the faces are dots and a mouth — no brows.
 
 ## Parts
 
 | Folder | Contents |
 | --- | --- |
 | `parts/skin` | 10 tone swatches |
+| `parts/heads` | the bare head in each of the 10 tones |
 | `parts/eyes` | 5 iris colours, 6 `style-*` eye shapes |
 | `parts/facial-hair` | 6 |
-| `parts/hair` | 12 on a head, plus `-alone` layers |
-| `parts/hair-hat` | 12 `-under` layers for wear with a cap |
+| `parts/hair` | 12 on a head, plus `-back` and `-front` layers of each |
+| `parts/hair-hat` | the 12 cuts `-capped`, as the reference's second hair row |
 | `parts/hats` | 12 |
 | `parts/jerseys` | 12 garments, plus `-shoulders` for portraits |
 | `parts/examples` | 12 composed portraits |

@@ -22,10 +22,11 @@ local SIZE = 128
 -- land over the mouth it covers, so this order is not cosmetic.
 local GROUPS = {
   { name = "jersey",      folder = "jerseys",     suffix = "-shoulders" },
-  { name = "hair-back",   folder = "hair-hat",    suffix = "-under" },
-  { name = "hair",        folder = "hair",        suffix = "-alone" },
+  { name = "hair-back",   folder = "hair",        suffix = "-back" },
+  { name = "head",        folder = "heads" },
   { name = "eyes",        folder = "eyes",        prefix = "style-" },
   { name = "facial-hair", folder = "facial-hair" },
+  { name = "hair-front",  folder = "hair",        suffix = "-front" },
   { name = "hat",         folder = "hats" },
 }
 
@@ -38,7 +39,7 @@ local function listPngs(folder, prefix, suffix)
       if prefix and not base:find("^" .. prefix) then ok = false end
       if suffix and not base:find(suffix .. "$") then ok = false end
       -- Without an explicit suffix, skip the variants that carry one.
-      if not suffix and (base:find("%-alone$") or base:find("%-under$")
+      if not suffix and (base:find("%-back$") or base:find("%-front$")
                          or base:find("%-shoulders$")) then ok = false end
       if not prefix and folder == "eyes" and base:find("^style%-") then ok = false end
       if ok then table.insert(out, f) end
