@@ -1546,7 +1546,8 @@ the Captain screen's own explanation was cut in batch P.
 
 Onboarding for the first ten minutes · accessibility (focus states; text
 scaling now has a home in stage 2's settings sheet) · **build with `npm run apk`, never `apk:test`** — the test aids, the free UNLOCK stand-in and the source maps are behind `TEST_SHORTCUTS` and the dev build and leave on their own
-(SIM THE SEASON, the guaranteed Pascagoula Tech offer and its five 99s —
+(SIM THE SEASON, the guaranteed Pascagoula Tech offer and its five 99s were
+deleted outright on September 8, so only the UNLOCK stand-in is left behind the flag —
 `docs/TESTING_SHORTCUTS.md`; Hans Hood is already gone) · keystore generated and backed
 up permanently · signed AAB, listing, screenshots, privacy policy, content
 rating · closed beta, then open. **The release commit:** bump `package.json`

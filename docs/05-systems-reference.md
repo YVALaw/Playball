@@ -8174,7 +8174,9 @@ The same class of gap, closed the same way:
   and the hole stood until the next game threw on an empty lineup slot with
   nothing on any screen able to repair it. Any bench man now adopts the
   spot, and with nobody at all the edit refuses and says why.
-- **Leftovers.** The three testing aids (SIM THE SEASON, the guaranteed
+- **Leftovers.** *(September 8: the three aids named here were deleted
+  outright — see `docs/TESTING_SHORTCUTS.md`. The gate survives for the
+  UNLOCK stand-in alone.)* The three testing aids (SIM THE SEASON, the guaranteed
   Pascagoula Tech offer, its five 99s) are gated behind `TEST_SHORTCUTS`
   (`state/testBuild.ts`, a Vite define): the dev server and `npm run
   apk:test` carry them, `npm run build` and `npm run apk` drop them as

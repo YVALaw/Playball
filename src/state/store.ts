@@ -38,7 +38,6 @@ import {
   type BadgeId, type BadgeTier,
 } from '../engine/godMode.js';
 import { setLeagueNames, usableLeagueNames } from '../engine/leagueNames.js';
-import { TEST_SHORTCUTS } from './testBuild.js';
 import type { GodTarget } from '../ui/god/target.js';
 
 /** One physical tap can arrive twice on touch hardware. Do not make Back reveal
@@ -2608,33 +2607,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // Recruiting now runs with the spring. The class opens already contested,
     // so week one reads like a national market rather than an empty spreadsheet.
     seedRivalInterest(season, seat);
-
-    /*
-      TESTING ONLY — together with the guaranteed PSC offer in NewGame.tsx.
-      Pascagoula Tech begins with five 99-rated players so a test career can
-      reliably reach and exercise June/offseason screens. Only in a build that
-      carries the shortcuts (state/testBuild.ts): the dev server and a test
-      APK, never `npm run build`, `npm run apk` or Vitest.
-
-      Ratings are assigned after world creation, so no RNG draw is consumed and
-      the rest of the generated world remains unchanged.
-    */
-    if (TEST_SHORTCUTS) {
-      const psc = season.teams.find((t) => t.def.abbr === 'PSC');
-      if (psc) {
-        const bats = psc.team.lineup.slice(0, 3);
-        const arms = psc.team.rotation.slice(0, 2);
-        for (const h of bats) {
-          h.contact = 99; h.power = 99; h.eye = 99; h.speed = 99;
-          h.range = 99; h.hands = 99; h.arm = 99; h.armAccuracy = 99;
-          h.potential = 99;
-        }
-        for (const a of arms) {
-          a.stuff = 99; a.movement = 99; a.control = 99; a.stamina = 99;
-          a.potential = 99;
-        }
-      }
-    }
 
     set({
       season,

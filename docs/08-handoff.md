@@ -893,18 +893,17 @@ emulator pass can be pulled forward at any time.
 - **The Play Console record and merchant account.** Still the only unpredictable
   wait in the plan and it needs no phone.
 
-## Test aids currently in the build — remove before v1.0
+## Test aids — gone, September 8
 
-Three, all marked `TESTING ONLY` in code, all listed in
-`docs/TESTING_SHORTCUTS.md`, removed September 4 and put back September 5
-so the new interface could be played a season at a time:
+All three are out of the source, not merely gated out of the build: SIM THE
+SEASON on Today (`Today.tsx` and its `.test-shortcuts` strip), the guaranteed
+Pascagoula Tech offer (`NewGame.tsx`) and PSC's five 99-rated men
+(`store.start`). Hans Hood went in the September 4 pass.
 
-- **SIM THE SEASON** on Today (`Today.tsx`, the TEST BUILD strip).
-- **The guaranteed Pascagoula Tech offer** (`NewGame.tsx`).
-- **PSC's five 99s** (`store.start`). Gated out of vitest.
-
-Hans Hood, the fourth, is gone for good — `ensureHoodHans` no longer
-exists. Stage 19 removes the three together.
+`TEST_SHORTCUTS` stays, with one reader left: the Settings UNLOCK button that
+stands in for the god-mode purchase on a test build. SIM THE SEASON also lives
+in god mode's calendar sheet — a paid power, not a test aid, and it ships. See
+`docs/TESTING_SHORTCUTS.md`.
 
 ## How to work here
 

@@ -152,7 +152,7 @@ describe('the god-mode stack', () => {
     useDynasty.getState().start(4242, 0, undefined, 'full', undefined, true);
     const s = () => useDynasty.getState();
     for (let i = 0; i < 40; i++) {
-      s().openGod({ kind: 'player', id: `p${i}` });
+      s().openGod({ kind: 'player', id: `p${i}` as unknown as Player['id'] });
     }
     expect(s().godStack.length).toBeLessThanOrEqual(8);
   });

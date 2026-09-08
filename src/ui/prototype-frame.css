@@ -6144,43 +6144,6 @@
 }
 
 
-/* Testing shortcut restored for fast postseason/offseason visual QA. */
-.test-shortcuts {
-  display: grid;
-  grid-template-columns: minmax(0,1fr) auto;
-  align-items: center;
-  gap: 10px;
-  margin: 10px 0 18px;
-  padding: 10px 11px;
-  border: 1px dashed color-mix(in srgb, var(--clay) 58%, var(--line));
-  background: color-mix(in srgb, var(--clay) 7%, var(--paper));
-}
-.test-shortcuts span { min-width: 0; }
-.test-shortcuts small {
-  display: block;
-  color: var(--clay);
-  font: 800 calc(7px * var(--ts)) var(--mono);
-  letter-spacing: .14em;
-}
-.test-shortcuts strong {
-  display: block;
-  margin-top: 3px;
-  color: var(--ink);
-  font: 800 calc(13px * var(--ts))/1 var(--display);
-  text-transform: uppercase;
-}
-.test-shortcuts .secondary-command {
-  width: auto;
-  min-height: 40px;
-  margin: 0;
-  padding: 0 11px;
-  white-space: nowrap;
-}
-@media (max-width: 350px) {
-  .test-shortcuts { grid-template-columns: 1fr; }
-  .test-shortcuts .secondary-command { width: 100%; }
-}
-
 /* ===========================================================================
    September 5 — deep interaction pass
    Saves, coach creation, inbox, settings, postseason and offseason surfaces.

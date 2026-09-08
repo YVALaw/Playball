@@ -15,7 +15,6 @@
 // coach actually looks up at that moment.
 
 import { leagueLabel } from '../../engine/leagueNames.js';
-import { TEST_SHORTCUTS } from '../../state/testBuild.js';
 import { useEffect, useRef, useState } from 'react';
 import { PlayIcon, SewingPinIcon, StopwatchIcon, StarFilledIcon,
 } from '@radix-ui/react-icons';
@@ -71,7 +70,6 @@ export function Today() {
   const year = useDynasty((s) => s.year);
   const advanceDay = useDynasty((s) => s.advanceDay);
   const simWeek = useDynasty((s) => s.simWeek);
-  const playSeason = useDynasty((s) => s.playSeason);
   const startManagedGame = useDynasty((s) => s.startManagedGame);
   const playPostseason = useDynasty((s) => s.playPostseason);
   const lastPostseason = useDynasty((s) => s.lastPostseason);
@@ -426,24 +424,6 @@ export function Today() {
         )}
 
 
-
-        {/*
-          TESTING ONLY. A full regular season in one press so UI/offseason
-          work can be inspected without playing fifty-plus dates first. Only
-          in a build that carries the shortcuts (state/testBuild.ts); a
-          production build drops this branch whole.
-        */}
-        {TEST_SHORTCUTS && !done && (
-          <section className="test-shortcuts" aria-label="Testing shortcuts">
-            <span><small>TEST BUILD</small><strong>Skip to June</strong></span>
-            <button
-              className="secondary-command"
-              type="button"
-              disabled={busy || !!live || held || thinking !== null}
-              onClick={() => void playSeason()}
-            >SIM THE SEASON</button>
-          </section>
-        )}
 
         {done && !lastPostseason && (
           /*
