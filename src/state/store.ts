@@ -7613,6 +7613,35 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       back without one. Rebuilt from the season, quietly — no wire, no staff
       pass — so the step has a screen and a way out (05 §62.3).
     */
+    /*
+      A save from before recruiting moved into the regular season (05 §63.6)
+      carries `recruiting.week` 0 — the old offseason window, not yet open —
+      and a class nobody was seeded against. Left alone, the board read
+      CLASS CLOSED for the whole spring while the desk still promised points,
+      and every recruit read NOBODY ON HIM. Opened here the way a new season
+      opens it: seeded once (the seeding is additive, so only a board with no
+      interest on it), week one, and then the calendar banks whatever weeks
+      the schedule has already crossed. A season already over is closed out
+      week by week, so the ninety-five still sign their classes.
+    */
+    {
+      const s = get().season;
+      if (s && s.recruiting.week === 0 && s.recruiting.prospects.length > 0) {
+        const untouched = !s.recruiting.prospects
+          .some((p) => Object.values(p.points).some((v) => v > 0));
+        if (untouched) seedRivalInterest(s, get().userTeam);
+        s.recruiting.week = 1;
+        if (get().phase === null) {
+          get().syncRecruitingCalendar();
+        } else if (seasonComplete(s)) {
+          let guard = 0;
+          while (s.recruiting.week <= RECRUITING_WEEKS && guard++ <= RECRUITING_WEEKS) {
+            get().advanceRecruitingWeek();
+          }
+        }
+        set({ version: get().version + 1 });
+      }
+    }
     if (get().phase === 'portal' && get().portal === null) {
       const season = get().season;
       const rec = season?.teams[get().userTeam];

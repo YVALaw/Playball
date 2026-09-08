@@ -420,6 +420,23 @@ describe('the save list', () => {
   });
 });
 
+describe('a save from before season-long recruiting', () => {
+  it('opens the class at load: seeded, week one, live on the board', async () => {
+    useDynasty.getState().start(4242, 0);
+    const season = useDynasty.getState().season!;
+    // The shape an older build wrote: the window not yet open, nobody seeded.
+    season.recruiting.week = 0;
+    for (const p of season.recruiting.prospects) p.points = {};
+    await useDynasty.getState().saveNow();
+    const slot = useDynasty.getState().loadedSlot!;
+    useDynasty.getState().newDynasty();
+    expect(await useDynasty.getState().loadSlot(slot)).toBe(true);
+    const s = useDynasty.getState().season!;
+    expect(s.recruiting.week).toBeGreaterThanOrEqual(1);
+    expect(s.recruiting.prospects.some((p) => Object.values(p.points).some((v) => v > 0))).toBe(true);
+  });
+});
+
 describe('the calendar', () => {
   it('never loops forever on a year that is not a number', async () => {
     const { seasonDate } = await import('../src/ui/format.js');

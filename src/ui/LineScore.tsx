@@ -26,9 +26,12 @@ const RULE = (tone: Tone): string =>
   (tone === 'navy' ? 'rgba(var(--cream-rgb), .22)' : 'var(--hairline)');
 
 /** Row heights differ per tone only because navy has to fit a scoreboard. */
+// `total` is the R/H/E column: wider than an inning cell, because a 12-run,
+// 16-hit night is a real night and two digits at the runs size overran the
+// hits column beside it (found on the emulator, stage 19).
 const geom = (tone: Tone) => (tone === 'navy'
-  ? { head: 11, row: 18, cell: 17, runs: 13 }
-  : { head: 15, row: 15, cell: 18, runs: 10 });
+  ? { head: 11, row: 18, cell: 17, total: 23, runs: 13 }
+  : { head: 15, row: 15, cell: 18, total: 22, runs: 10 });
 
 function Strip(
   {
@@ -122,11 +125,11 @@ export function LineScore(
       <div style={{
         flex: 'none', marginLeft: 8, borderLeft: `1px solid ${RULE(tone)}`, paddingLeft: 6,
       }}>
-        <Strip cells={['R', 'H', 'E']} dim tone={tone} height={g.head} width={g.cell} />
+        <Strip cells={['R', 'H', 'E']} dim tone={tone} height={g.head} width={g.total} />
         {rows.map((row) => (
           <Strip
             key={row.abbr} cells={[row.r, row.h, row.e]} tone={tone}
-            height={g.row} width={g.cell} sizes={totalSizes}
+            height={g.row} width={g.total} sizes={totalSizes}
           />
         ))}
       </div>
