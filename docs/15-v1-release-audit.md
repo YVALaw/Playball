@@ -273,11 +273,13 @@ audit's working notes and in §62's Appendix A; none of it reaches a player.
 
 ## E. Post-1.0 backlog
 
-**Booked as stages** (`07` stages 27–29): the rules of the world (injuries,
+**Booked as stages** (`07` stages 27–30): the rules of the world (injuries,
 portal, realignment, poaching on/off; season length and series format at
 creation), free; the creator kit (school and conference packs, logos,
 careers as files), the second purchase; called to the majors, the
-expansion. **Cut outright**: pitch-by-pitch calling — the engine settles a
+expansion; and — added by the reporter on September 7 — an account and a
+record book every player is in, free, which is the project's first server
+and rewrites the privacy policy and the Data Safety form when it ships. **Cut outright**: pitch-by-pitch calling — the engine settles a
 plate appearance and sequences pitches to land on it. **What did not make
 the list**: a human poll beside RPI, weather and park conditions, fan
 support and attendance, live bracketology, mentorship pairs, exhibition

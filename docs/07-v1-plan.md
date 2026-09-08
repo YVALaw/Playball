@@ -1836,6 +1836,57 @@ is one lookup against an alumni ledger that is keyed by id since §57. Not
 booked until v1.0 has shipped and the game has players; recorded here so
 the money ladder below has its third rung.
 
+## Stage 30 · An account, and a record book everybody is in — **the reporter's, September 7 2026**
+
+His words: *"add logins so we can keep records and make the book an all
+users thing where their players make records and get listed there along
+their username."* The record book stops being a thing each phone keeps to
+itself and becomes the one place every player's programme is measured
+against every other's — a man's name, his line, and the coach who signed
+him, on a national board.
+
+It is the largest architectural change left in the project, because it is
+the **first server**. Everything shipped to date runs offline on the
+device by design, and four things follow from adding one:
+
+- **A back end that did not exist.** Accounts, a database of submitted
+  marks, and an endpoint the app posts to. Small — a mark is a few dozen
+  bytes — but it is hosting, a bill, uptime, and a thing that can be down
+  while the game must still play. The rule that keeps that honest: the
+  career stays local and complete. The account is a **publishing** step on
+  top of a game that still runs with the plane in flight mode.
+- **The privacy policy and the Data Safety form both change.** Both
+  currently say, truthfully, that Playball collects nothing and has no
+  accounts (`docs/privacy.md`, `docs/16-store-listing.md`). An account
+  means an email or a provider identity, a username shown publicly, and
+  submitted gameplay data — all of it declarable in Play's Data Safety
+  section, with account deletion offered in-app and by URL, which Play
+  requires. Ship the doc changes in the same release as the feature, never
+  after.
+- **God mode is the hard problem, and it is a design decision, not a bug.**
+  §61.3 decided that *a sandbox's records count like any other's*, which is
+  right for a book kept on one phone and wrong the moment the book is
+  shared: a coach can author a 99/S+ player in the editor. The flag is
+  already on the save (`godMode`, `persistence.ts`), so the cheap answer is
+  that a sandbox career may play forever and never publish. The better
+  answer, later, uses what the engine already is — deterministic and
+  seeded — and submits the seed and the ledger of decisions so the server
+  can replay a claim rather than trust it. Decide this **before** the
+  first mark is posted; a leaderboard that has to be wiped is worse than
+  one that shipped late.
+- **What the book already gives us.** `engine/records.ts` and the three
+  writers in `season.ts` (`recordSeasonMarks`, `recordCareerMarks`,
+  `recordCoachMarks`) already produce exactly the rows this needs, keyed
+  and dated, and already run for every programme in the country rather
+  than the coached one. The submission is those rows plus a username; the
+  national board is the same screen the HALL and RECORD BOOK tabs render,
+  reading a fetched list instead of the save.
+
+Free, not a purchase: it is the thing that makes the game social, and a
+paywalled leaderboard has nobody on it. Booked after 27–29 unless the
+reporter moves it up; if it moves up, it moves ahead of the majors,
+because a shared book gives a solo game a reason to open tomorrow.
+
 ## The money, as decided September 6 2026
 
 Free game, three things to sell, none of them consumables:

@@ -60,3 +60,16 @@ change would only ever add clarity, not new data collection.
 ## Contact
 
 Questions about this policy: hanssmell2@gmail.com
+
+<!--
+  MAINTAINER'S NOTE, not shown as policy text above.
+
+  Every claim in this document is true of v1.0, which has no accounts and
+  no server. Stage 30 (`docs/07-v1-plan.md`) adds a login and a shared
+  record book, and the day that ships this file and the Play Data Safety
+  declaration must both change in the SAME release: an account identity,
+  a public username, submitted gameplay marks, and an in-app and web route
+  to delete the account, which Play requires. Do not ship the feature
+  against this text.
+-->
+

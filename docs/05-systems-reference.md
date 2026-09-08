@@ -7917,7 +7917,10 @@ its money, the staff edit, and the flag riding the file only when on.
   careers-as-files (stage 28), where a career is a document and the year
   is a field in it.
 - **No records shelf.** The reporter's call: a sandbox's records count like
-  any other's. The flag is on the save if that is ever revisited.
+  any other's. The flag is on the save if that is ever revisited — and
+  stage 30 revisits it: the moment the book is shared between players
+  (`07` stage 30, September 7), a career that can author a 99/S+ man
+  cannot post to it unchallenged. Locally the decision stands.
 - **The purchase** is Play Billing with a restore flow since September 7
   (`state/billing.ts`, `tests/billing.test.ts`); the Settings stand-in
   remains only in a test build where the store cannot be reached. What is
