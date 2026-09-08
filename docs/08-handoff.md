@@ -11,6 +11,20 @@ audit** — eighteen domain audits, the blocking findings fixed and tested,
 the balance decisions set down for the reporter (`05` §62,
 `docs/15-v1-release-audit.md`).
 
+> **September 7, night — the listing, and what the emulator found.** The
+> keystore is the reporter's, made and backed up; `Playball-release.aab`
+> is signed with it. The phone icon and the splash were still Capacitor's
+> blue X — the shell is generated — so `assets/` holds the brand sources
+> and `apk.cjs` repaints the density ladder every build. `store/` holds
+> the 512 icon, the feature graphic and seven 9:16 screenshots taken on
+> the emulator; `docs/16-store-listing.md` the copy and every App-content
+> answer; `docs/privacy.md` the policy, waiting on GitHub Pages for its
+> URL. Billing and the payments profile are deferred until the reporter's
+> documents arrive; with no live product the settings page offers no
+> button. Two bugs from the screenshot walk: an old save's class never
+> opened (week 0, unseeded — CLASS CLOSED all spring), fixed at load and
+> pinned; the line score's totals overran at two digits, fixed.
+
 > **September 7, evening — stage 19 opens.** The signed bundle:
 > `npm run aab` reads `android/keystore.properties` (the keys stay outside
 > the repo, in the reporter's hands), signs the release and writes

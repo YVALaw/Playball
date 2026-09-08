@@ -8512,7 +8512,12 @@ as the calendar turns a week and are calibrated to the old window's total
 (`OFFSEASON_POINT_WEEKS` keeps the draft/portal reserve apart), so the
 season does not multiply the old allowance; commitments land through the
 season for next year; the desk carries a recruiting card. Sway is one
-relationship action per recruit across the season, for rivals too.
+relationship action per recruit across the season, for rivals too. A save
+from before this carries week 0 and an unseeded class; `loadSlot` seeds it
+once, sets week one and lets the calendar bank the weeks already crossed
+(a finished season is closed out so the ninety-five still sign) — found
+on the emulator the same night, when an old career's board read CLASS
+CLOSED all spring.
 
 ### 63.7 What the merge decided
 
