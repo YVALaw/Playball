@@ -1,0 +1,178 @@
+{
+  "size": 128,
+  "ink": "#152238",
+  "parts": {
+    "skin": [
+      {
+        "name": "skin-01",
+        "color": "#ffe0c4"
+      },
+      {
+        "name": "skin-02",
+        "color": "#f6cfa8"
+      },
+      {
+        "name": "skin-03",
+        "color": "#f0c9a6"
+      },
+      {
+        "name": "skin-04",
+        "color": "#e0ab82"
+      },
+      {
+        "name": "skin-05",
+        "color": "#c68a5e"
+      },
+      {
+        "name": "skin-06",
+        "color": "#b07a4e"
+      },
+      {
+        "name": "skin-07",
+        "color": "#a26b43"
+      },
+      {
+        "name": "skin-08",
+        "color": "#8a5a37"
+      },
+      {
+        "name": "skin-09",
+        "color": "#7a4e2d"
+      },
+      {
+        "name": "skin-10",
+        "color": "#5a3720"
+      }
+    ],
+    "eyes": [
+      {
+        "name": "eye-color-1",
+        "color": "#4a3121"
+      },
+      {
+        "name": "eye-color-2",
+        "color": "#c68a5e"
+      },
+      {
+        "name": "eye-color-3",
+        "color": "#236b42"
+      },
+      {
+        "name": "eye-color-4",
+        "color": "#1f5fd0"
+      },
+      {
+        "name": "eye-color-5",
+        "color": "#9aa7b4"
+      }
+    ],
+    "eyeStyles": [
+      "dots",
+      "wide",
+      "narrow",
+      "round",
+      "close",
+      "tall"
+    ],
+    "facialHair": [
+      "goatee",
+      "mustacheThin",
+      "mustacheThick",
+      "chinstrap",
+      "full",
+      "long"
+    ],
+    "hair": [
+      {
+        "name": "afro",
+        "color": "#1c1410"
+      },
+      {
+        "name": "buzz",
+        "color": "#6b4a2a"
+      },
+      {
+        "name": "curls-tight",
+        "color": "#4a3121"
+      },
+      {
+        "name": "spiky",
+        "color": "#1c1410"
+      },
+      {
+        "name": "side-part",
+        "color": "#6b4a2a"
+      },
+      {
+        "name": "blonde-curls",
+        "color": "#e0b95e"
+      },
+      {
+        "name": "wavy-mid",
+        "color": "#4a3121"
+      },
+      {
+        "name": "dreads",
+        "color": "#1c1410"
+      },
+      {
+        "name": "bald",
+        "color": "#1c1410"
+      },
+      {
+        "name": "mop",
+        "color": "#6b4a2a"
+      },
+      {
+        "name": "curls-loose",
+        "color": "#4a3121"
+      },
+      {
+        "name": "ponytail",
+        "color": "#4a3121"
+      }
+    ],
+    "hats": [
+      "navy",
+      "red",
+      "white-blue",
+      "black-gold",
+      "green-white",
+      "red-white",
+      "purple",
+      "orange",
+      "grey",
+      "camo",
+      "white",
+      "snapback"
+    ],
+    "jerseys": [
+      "pinstripe-navy",
+      "white-red",
+      "grey",
+      "navy",
+      "cream-gold",
+      "black-gold",
+      "red",
+      "green",
+      "purple",
+      "orange",
+      "light-blue",
+      "catcher"
+    ],
+    "examples": [
+      "example-01",
+      "example-02",
+      "example-03",
+      "example-04",
+      "example-05",
+      "example-06",
+      "example-07",
+      "example-08",
+      "example-09",
+      "example-10",
+      "example-11",
+      "example-12"
+    ]
+  }
+}
