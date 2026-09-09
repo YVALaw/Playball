@@ -56,8 +56,29 @@ Aseprite.exe -b --script-param dir=<abs path to design/avatar-kit> --script desi
 **This needs a licensed Aseprite.** The trial disables `--script` and refuses
 every save. Until then the PNGs in `parts/` open in the trial as-is.
 
-## Relationship to `src/ui/Avatar.tsx`
+## In the game
 
-None yet. The app still draws its avatars with the id-derived SVG renderer in
-`src/ui/Avatar.tsx`. Whether and how this artwork replaces that is a separate
-decision.
+The sheet's parts are pictures of parts, not parts that fit together — the heads
+carry one skin tone and no neck, the jerseys have nothing to sit under, there is
+no mouth. `scripts/avatar-compose.mjs` derives a set that does fit and writes it
+to `public/avatars/`:
+
+```bash
+node scripts/avatar-compose.mjs
+```
+
+- every layer on one 144×216 canvas, anchored on the chin, so the app stacks
+  PNGs at 0,0;
+- each head split into a **skin mask** and the rest; each capped head into skin,
+  **crown** and **brim** masks and the rest — skin tone and the program's cap
+  colours are CSS backgrounds behind those masks, so 97 PNGs serve every tone
+  and all 96 programs;
+- a neck and a mouth drawn in the sheet's own style;
+- eyes and facial hair scaled to the heads; jerseys seated under the neck.
+
+`compose-check.png` is the proof: 24 portraits composed from those layers.
+`src/ui/Avatar.tsx` renders them; `src/ui/avatar-atlas.ts` (generated) carries
+the geometry and part names. Change the artwork → re-run both scripts.
+
+Not used yet: the `hats/` row (the capped heads carry their own cap) and the
+`avatars/` busts (they were the layout reference).

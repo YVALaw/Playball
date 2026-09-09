@@ -303,4 +303,4 @@ async function portrait({ hair, skin, cap, crown, brim, eyes, beard, jersey }) {
 }
 
 const n = atlas.hair.length * 6 + 2 + 1 + atlas.eyes.length + atlas.beards.length + atlas.jerseys.length;
-console.log(`wrote ${n} layers to ${OUT}, atlas.json, and design/avatar-kit/compose-check.png`);
+console.log(`wrote ${n} layers to ${OUT}, src/ui/avatar-atlas.ts, and design/avatar-kit/compose-check.png`);
