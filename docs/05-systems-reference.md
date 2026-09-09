@@ -8615,6 +8615,90 @@ fires. Lowering the 0.82 to about 0.55 would give a rival 6–9 points for
 actions; it changes what every AI class looks like, so it is the reporter's
 call, not the audit's.
 
+## 64. The guided first stretch — **September 9 2026**
+
+The onboarding stage 19 owed, designed from the phone in the reporter's
+words: "welcome the player and let them know they are in the dashboard,
+then have them play a game — just play one inning and then show them the
+dugout button and sim the rest — then guide them to program/budget ... then
+team/roster, 'meet the team', then lineup ... then the coach profile ... the
+rest can be explained in the regular cards." And the one rule for how it
+looks: "it should obscure the whole screen except the button they are
+supposed to tap."
+
+### 64.1 Shape
+
+Two files. `ui/guide.ts` is pure: the step table and the derivation.
+`ui/GuidedStretch.tsx` draws it, mounted once in `App` beside the body so it
+follows the player across screens. A screen's whole contribution is a
+`data-guide` name on the control a step lights (`play-ball`, `dugout`,
+`sim-rest`, `tab-*` on the bottom nav, `screen-*` on the section strip,
+`budget`, `coach-menu`, `coach-profile`, `need-must` on a red need).
+
+Each step is a card and then a light. The card is the screen tutorials'
+own scrim and card, so the tour is the same voice — the assistant's — and
+SHOW ME replaces GOT IT when there is something to tap. The light is four
+dark sheets around a hole cut to the control's rectangle, measured every
+animation frame so a control that moves keeps its hole, the failing-man
+`guide-glow` ring on the hole's edge, a caption under (or above) it, and a
+SKIP TOUR chip. The hole is where no sheet is: the tap goes straight
+through to the real control and the real handler. The tour presses nothing
+on the player's behalf.
+
+A step's `target` is a list of names in order of preference, and the first
+one present, visible and enabled wins. That is how a step follows a tap
+into the thing it opened — the dugout trigger until the tools are out, then
+SIM THE REST; the portrait until the menu is open, then the profile row —
+and how the welcome copes with a red need: PLAY BALL is disabled while the
+day is held, so the light falls back to the need itself, and clearing it
+brings the light back to the button. No target resolving is no sheets at
+all: a dark screen with nothing to tap would be a trap, and the control
+that is not there yet (SIM THE REST mid-pitch) will be in a moment.
+
+### 64.2 The steps
+
+| id | where | lights | over when |
+|---|---|---|---|
+| welcome | TODAY | PLAY BALL, or the red need holding it | a game is live |
+| dugout | the field, from the top of the 2nd | the dugout trigger, then SIM THE REST | the game is over (not merely interrupted) |
+| program | anywhere but PROGRAM | the PROGRAM tab | tab is program |
+| money | PROGRAM | the BUDGET card | the money sheet is open |
+| team | anywhere but TEAM | the TEAM tab | tab is team |
+| roster | TEAM, not on LINEUP | the LINEUP section | screen is lineup |
+| lineup | LINEUP | — | GOT IT |
+| coach | any in-season screen | the portrait, then the profile row | the coach sheet is open |
+| done | the coach sheet | — | GOT IT |
+
+The money card carries the budget lesson the plan owed since September 2:
+three staff seats, three facilities, one annual budget, and the scout's
+reports out of the same pot.
+
+### 64.3 State
+
+No new field rides the save. A step is over when `seenTutorials` holds
+`guide:<id>`, stamped the moment its `done` holds — wherever the player is
+looking — or on GOT IT for a card-only step. A step interrupted (a reload,
+a wander) restarts from its card, which is the honest place to restart.
+SKIP stamps every step and every screen card a step stood in for (`today`,
+`manage`, `program`, `roster`, `lineup`, `coach`); finishing a step stamps
+its own covers, so the screens the tour walked through never introduce
+themselves a second time, and the screens it never reached still do, once,
+the first time they are visited afterwards. `FirstVisit` renders nothing
+while the tour is on.
+
+The tour runs only in a career's first season (`history` empty, no
+offseason phase) with the tutorials preference on, and never for a save
+whose `today` card was seen before `guide:welcome` — that save met the
+desk before the tour existed and belongs to somebody who knows where it
+is. `tests/guide.test.ts` pins the derivation; the DOM half was walked in
+the pane.
+
+The inning is polled four times a second while a game is live: the live
+game is a mutable object the store holds by reference, so nothing about
+its inning reaches a selector. The mask sits at z-index 46, over the
+dugout's round trigger (45), which is one of the things it lights; the
+card keeps the tutorials' 38.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

@@ -3146,6 +3146,52 @@
 :root[data-motion="reduced"] .guide-glow { animation: none; }
 @media (prefers-reduced-motion: reduce) { .guide-glow { animation: none; } }
 
+/* ---------------------------------------------------------------------------
+   The guided first stretch's spotlight (GuidedStretch.tsx).
+
+   Asked for from the phone, September 9: "it should obscure the whole screen
+   except the button they are supposed to tap." Four sheets around a hole —
+   the hole is where no sheet is, so the tap goes straight through to the
+   control — and the failing-man ring on the hole's edge, so the light is the
+   same light the errand already taught. The mask itself lets pointers
+   through; only the sheets and SKIP take them.
+   --------------------------------------------------------------------------- */
+/* 46: over the dugout's round trigger (45), which is one of the things it lights. */
+.guide-mask { position: absolute; inset: 0; z-index: 46; pointer-events: none; }
+.guide-mask-part {
+  position: absolute;
+  background: rgba(var(--scrim-rgb), .62);
+  pointer-events: auto;
+  touch-action: none;
+}
+.guide-hole { position: absolute; border-radius: 6px; pointer-events: none; }
+.guide-caption {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font: 700 calc(11px * var(--ts))/1.4 var(--body);
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+  pointer-events: none;
+}
+.guide-skip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--dim);
+  font: 800 calc(8px * var(--ts)) var(--body);
+  letter-spacing: .05em;
+  pointer-events: auto;
+}
+
 /* Where else he can stand, under the position on the player card's info —
    the one fact the removed depth chart screen held that was worth keeping. */
 .player-quick-facts .also-plays {

@@ -1000,6 +1000,7 @@ export function Manage() {
               )}
               <button
                 type="button"
+                data-guide="sim-rest"
                 disabled={playing || changingSides}
                 onClick={() => { setTools(false); once(autoFinish)(); }}
               >
@@ -1025,6 +1026,7 @@ export function Manage() {
           <button
             className="game-manager-trigger"
             type="button"
+            data-guide="dugout"
             aria-label={tools ? 'Close manager tools' : 'Open manager tools'}
             aria-expanded={tools}
             onClick={() => setTools(!tools)}

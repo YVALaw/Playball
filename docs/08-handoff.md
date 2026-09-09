@@ -25,6 +25,25 @@ the balance decisions set down for the reporter (`05` §62,
 > tests. Left for the reporter, measured: a rival can afford one pitch a
 > week and never a sway, which is balance, not a defect.
 
+> **September 9 — the tour, and the Console's true state.** The guided
+> first stretch ships (`05` §64): nine steps, each a card in the assistant's
+> voice and then the screen dark but for the one control the step is about,
+> the player's own tap through the hole moving it on — welcome, one inning
+> and the dugout's SIM THE REST, the front office and the budget, the roster
+> and the lineup card, the coach's own card. Derived from `seenTutorials`
+> stamps, first season only, never for a save that met TODAY before it
+> existed. Three phone reports fixed first: the college profile closed
+> itself the instant it opened (SCOUT, the crests, every colleges row — an
+> unmemoised setter in an effect's dependencies); the recruiting card now
+> wears the board strip's shape; the club mark fits its square at every
+> text size. And the Console, read directly: the listing is "ready to send
+> for review" (the app is **Playball Baseball Dynasty** there), every
+> App-content declaration is complete, the one bundle is 704 / 0.7.4 on no
+> track, the payments profile is broken and `god_mode` does not exist yet
+> (parked by the reporter), and — the schedule item nobody's clock has
+> started — a personal account must run a closed test with **12 opted-in
+> testers for 14 days** before it may request production.
+
 > **September 7, night — the listing, and what the emulator found.** The
 > keystore is the reporter's, made and backed up; `Playball-release.aab`
 > is signed with it. The phone icon and the splash were still Capacitor's
@@ -908,7 +927,7 @@ in god mode's calendar sheet — a paid power, not a test aid, and it ships. See
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,274 tests, 69 files)
+npm run check      # typecheck + the whole suite (1,281 tests, 70 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing

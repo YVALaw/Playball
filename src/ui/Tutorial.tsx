@@ -16,6 +16,7 @@ import { createPortal } from 'react-dom';
 import { readPrefs } from '../state/devicePrefs.js';
 import { useDynasty } from '../state/store.js';
 import { TUTORIALS } from './tutorials.js';
+import { activeGuideStep } from './guide.js';
 import { assistantFor } from '../engine/program.js';
 
 /** "Leonardo Townsend" is the masthead's business; a card just says Townsend. */
@@ -49,7 +50,16 @@ export function FirstVisit({ id }: { id: string }) {
     mounted when it is flipped. Cheap enough to read on every render -- it is a
     JSON parse of five keys from localStorage, done once per screen visit.
   */
-  const show = !!pages && pages.length > 0 && !seen.includes(id) && readPrefs().tutorials;
+  /*
+    And not while the tour is on. The guided first stretch stands in for the
+    cards of the screens it walks through — it stamps them as it goes — and a
+    screen introducing itself over the tour's own card would be two voices
+    saying the same thing. Screens the tour never reaches get their card the
+    first time they are visited after it.
+  */
+  const firstSeason = useDynasty((s) => s.season !== null && s.phase === null && s.history.length === 0);
+  const touring = activeGuideStep(seen, firstSeason, readPrefs().tutorials) !== null;
+  const show = !!pages && pages.length > 0 && !seen.includes(id) && readPrefs().tutorials && !touring;
 
   // A dialog a keyboard can leave. Same contract as Modal: Escape dismisses,
   // focus starts on the safe control and goes home afterwards.

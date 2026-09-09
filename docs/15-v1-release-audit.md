@@ -501,12 +501,24 @@ The release process, stage 19 (`07`):
       (`DevicePrefs.godMode` set by purchase and restore only) — code and
       tests in, September 7; the Play Console product and a licence tester
       are the reporter's.
-- [ ] Keystore generated and backed up (the reporter's); `npm run aab`
-      builds the signed bundle from `android/keystore.properties` — done
-      September 7, proven with a throwaway key.
-- [ ] Listing, screenshots, privacy policy, content rating.
-- [ ] Onboarding for the first ten minutes (the guided first stretch).
+- [x] Keystore generated and backed up (the reporter's, September 7 night);
+      `npm run aab` builds the signed bundle from
+      `android/keystore.properties`.
+- [x] Listing, screenshots, privacy policy, content rating — in the Console
+      September 8, the store listing "ready to send for review"; the app is
+      **"Playball Baseball Dynasty"** there, not this file's working title.
+      Every App-content declaration complete September 9, the Advertising
+      ID last.
+- [x] Onboarding for the first ten minutes (the guided first stretch) —
+      September 9, `05` §64.
 - [ ] The Freesound credits for the seven samples without a stated licence.
+- [ ] The payments profile ("there is a problem with your payments profile"
+      on the one-time products page) and the `god_mode` product itself —
+      neither exists yet; parked September 9 by the reporter.
+- [ ] The closed test the account type requires: a personal developer
+      account may only request production after **12 testers have opted in
+      and the test has run 14 days**. Not started; the only bundle in the
+      Console is 704 / 0.7.4, on no track.
 - [ ] Closed beta, then open.
 
 ## L. The strategy wiring audit

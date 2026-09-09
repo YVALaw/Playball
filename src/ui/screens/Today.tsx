@@ -371,6 +371,7 @@ export function Today() {
               </button>
               <button
                 type="button"
+                data-guide="play-ball"
                 disabled={busy || liveStarting || thinking !== null || (held && !live) || pendingGame !== null}
                 onClick={() => void startManagedGame()}
               ><PlayIcon /> {live ? 'Back to the game' : 'Play ball'}</button>

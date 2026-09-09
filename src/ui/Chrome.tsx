@@ -117,6 +117,7 @@ export function CoachAvatar(
       <button
         className="coach-avatar tap"
         type="button"
+        data-guide="coach-menu"
         aria-label={count > 0 ? `Coach menu, ${count} unread` : 'Coach menu'}
         aria-haspopup="menu"
         onClick={onClick}
@@ -180,6 +181,7 @@ export function ContextNav<T extends string>(
           className={item.id === active ? 'active' : ''}
           key={item.id}
           type="button"
+          data-guide={`screen-${item.id}`}
           aria-current={item.id === active ? 'page' : undefined}
           onClick={() => onSelect(item.id)}
         >{item.label}{item.alert && <i className="nav-alert" aria-label="needs attention" />}</button>
@@ -215,6 +217,7 @@ export function PrimaryNav<T extends string>(
           className={t.id === active ? 'active' : ''}
           key={t.id}
           type="button"
+          data-guide={`tab-${t.id}`}
           aria-current={t.id === active ? 'page' : undefined}
           onClick={() => onSelect(t.id)}
         >

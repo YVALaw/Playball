@@ -66,6 +66,7 @@ import { RecordBook } from './screens/RecordBook.js';
 import { unreadCount } from '../engine/inbox.js';
 import { Saves } from './screens/Saves.js';
 import { OpenTeam, TeamCard } from './screens/TeamCard.js';
+import { GuidedStretch } from './GuidedStretch.js';
 import { Colleges } from './screens/Colleges.js';
 import { CoachPortrait } from './CoachPortrait.js';
 import { Settings } from './screens/Settings.js';
@@ -188,6 +189,9 @@ export function App() {
   return (
     <OpenTeam.Provider value={setTeamCard}>
       <AppBody teamCard={teamCard} setTeamCard={setTeamCard} />
+      {/* The first season's tour. Beside the body rather than inside a
+          screen, because it follows the player from screen to screen. */}
+      <GuidedStretch />
     </OpenTeam.Provider>
   );
 }
@@ -1363,6 +1367,7 @@ function CoachMenuButton() {
               className="account-menu-profile"
               type="button"
               role="menuitem"
+              data-guide="coach-profile"
               onClick={() => go(() => { setProgramSheet("coach"); openOverlay("program"); })}
             >
               <span className="initial-avatar"><CoachPortrait look={coach.look} size={40} /></span>

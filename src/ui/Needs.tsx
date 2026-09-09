@@ -365,7 +365,7 @@ export function NeedsYou() {
       </section>
       <section className="decision-stack">
         {needs.map((n, i) => (
-          <button key={n.id} type="button" onClick={n.go}>
+          <button key={n.id} type="button" data-guide={n.must ? 'need-must' : undefined} onClick={n.go}>
             {/*
               The number is the proposal's mark, and it earns the red it is
               already painted in: these are ordered, the ones that must be dealt

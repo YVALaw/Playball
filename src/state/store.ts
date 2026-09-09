@@ -1409,6 +1409,8 @@ export interface DynastyStore {
   playbookFocus: string | null;
   setPlaybookFocus: (abbr: string | null) => void;
   markTutorialSeen: (id: string) => void;
+  /** Several at once — a tour step and the cards it stood in for — under one save. */
+  markTutorialsSeen: (ids: readonly string[]) => void;
   /** Forget every tutorial, so the next visit to each screen teaches again. */
   resetTutorials: () => void;
 
@@ -6906,6 +6908,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     set({ seenTutorials: [...seen, id] });
     // Written through, or a reload re-teaches whatever was learned since the
     // last game ended.
+    void get().saveNow();
+  },
+
+  markTutorialsSeen: (ids) => {
+    const seen = get().seenTutorials;
+    const add = ids.filter((id, i) => !seen.includes(id) && ids.indexOf(id) === i);
+    if (add.length === 0) return;
+    set({ seenTutorials: [...seen, ...add] });
     void get().saveNow();
   },
 

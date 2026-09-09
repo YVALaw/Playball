@@ -1544,7 +1544,8 @@ guided tutorial teaches the captain in simple words at the moment of
 choosing one — "he keeps a bad week from becoming a bad month" — since
 the Captain screen's own explanation was cut in batch P.
 
-Onboarding for the first ten minutes · accessibility (focus states; text
+~~Onboarding for the first ten minutes~~ (**done September 9** — the guided
+first stretch, `05` §64) · accessibility (focus states; text
 scaling now has a home in stage 2's settings sheet) · **build with `npm run apk`, never `apk:test`** — the test aids, the free UNLOCK stand-in and the source maps are behind `TEST_SHORTCUTS` and the dev build and leave on their own
 (SIM THE SEASON, the guaranteed Pascagoula Tech offer and its five 99s were
 deleted outright on September 8, so only the UNLOCK stand-in is left behind the flag —
@@ -1562,7 +1563,9 @@ signed AAB~~ **done September 7**: `npm run aab` builds the signed bundle
 from the keys named in `android/keystore.properties`, and the release APK
 is signed the same way when the file is present (`scripts/apk.cjs`).
 
-**Grew September 4 — the guided tutorial, decided from the phone.** The
+**Grew September 4, shipped September 9 — the guided tutorial, decided
+from the phone.** Built as `05` §64 describes: nine steps from the welcome
+to the coach's own card, each a card and then a light. The
 card tutorials give way to a guided first stretch: a main card that titles
 the errand ("Set your nine", "Play your first game", "Read the mail",
 "Spend a coach point") and then the glow-path grammar — the one the

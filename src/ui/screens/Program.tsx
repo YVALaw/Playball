@@ -161,7 +161,7 @@ export function Program() {
           <ChevronRightIcon />
         </button>
 
-        <button className="program-dashboard-card tap" type="button" onClick={() => setSheet('money')}>
+        <button className="program-dashboard-card tap" type="button" data-guide="budget" onClick={() => setSheet('money')}>
           <span><small>BUDGET</small><strong>{dollars(budgetLeft)} left</strong></span>
           <p>{staffCount}/3 staff · {facilities} facilities · {books} scouting {books === 1 ? 'report' : 'reports'}</p>
           <em>{dollars(annualBudget(team.prestige))} annual budget</em>
