@@ -422,7 +422,7 @@ function PlayerHero(
   return (
     <section className="player-hero">
       <div className="player-hero-face">
-        <Avatar id={p.id} team={owner.def.abbr} size={168} />
+        <Avatar id={p.id} team={owner.def.abbr} size={168} fit="bust" />
       </div>
       <div className="hero-wash" />
       <div className="player-identity">

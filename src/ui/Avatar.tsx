@@ -7,11 +7,16 @@
 // whole point — a face that shuffles on every render is worse than no face,
 // because it stops being *his*.
 //
-// Deliberately flat vector shapes rather than anything rendered. It costs a few
-// dozen SVG nodes, matches the app's palette, scales to any size without assets,
-// and adds nothing to the bundle.
+// The face is a stack of PNG layers from public/avatars, all on one 144x216
+// canvas so they line up at 0,0: neck, jersey, head, eyes, mouth, cap, outlines,
+// facial hair. Skin tone and the program's cap colours are not baked into the
+// PNGs — they are CSS backgrounds showing through mask layers — so one set of
+// images serves every skin tone and all ninety-six programs. The layers are
+// generated from the reference sheet by scripts/avatar-compose.mjs.
 
+/// <reference types="vite/client" />
 import { CONFERENCES } from '../data/schools.js';
+import { ATLAS } from './avatar-atlas.js';
 
 /** A stable value in [0,1) from an id and a salt. Same input, same face. */
 function hash(seed: string, salt: number): number {
@@ -24,104 +29,120 @@ function hash(seed: string, salt: number): number {
 const pick = <T,>(list: readonly T[], seed: string, salt: number): T =>
   list[Math.floor(hash(seed, salt) * list.length)] as T;
 
-/**
- * Skin tones, spread across the range college baseball actually draws from.
- *
- * Ordered light to dark and sampled uniformly, so a roster looks like a roster
- * rather than one tone with occasional exceptions.
- */
-const SKIN = ['#f0c9a6', '#e0ab82', '#c68a5e', '#a26b43', '#7a4e2d', '#5a3720'] as const;
-const HAIR = ['#1c1410', '#2e1f16', '#4a3121', '#6b4a2a', '#9a6b3a', '#c9a05c'] as const;
+const BASE = `${import.meta.env.BASE_URL}avatars/`;
 
-/** Cap, short, curly, long. Enough that a lineup does not look cloned. */
-type Cut = 'cap' | 'short' | 'curls' | 'long' | 'bald';
-const CUTS: readonly Cut[] = ['cap', 'short', 'curls', 'long', 'cap', 'short', 'bald'];
+/**
+ * The circle fit shows this window of the canvas: from just above the cap to
+ * the collar, a square 144 canvas units tall. Above it is only the crown of the
+ * tallest hair; below it, more shirt than a 34px row has room for.
+ */
+const CIRCLE_TOP = 24;
 
 interface Props {
-  /** The player's id. Everything is derived from it. */
+  /** The player's id. Everything about the face is derived from it. */
   id: string;
-  /** Team abbreviation, for the jersey colour. Falls back to the app's clay. */
+  /**
+   * Team abbreviation. With one he wears the program's cap, in its colours,
+   * with its letter; without one he is a recruit — no cap, plain grey shirt.
+   */
   team?: string;
-  /** Shirt number. Two digits look right; anything works. */
-  number?: number;
+  /** Pixels: the side of the square for `circle`, the height for `bust`. */
   size?: number;
+  /** `circle` for rows and discs; `bust` shows the whole 2:3 portrait. */
+  fit?: 'circle' | 'bust';
 }
 
-export function Avatar({ id, team, number, size = 40 }: Props) {
-  const skin = pick(SKIN, id, 1);
-  const hair = pick(HAIR, id, 2);
-  const cut = pick(CUTS, id, 3);
-  const beard = hash(id, 4) > 0.78;
+export function Avatar({ id, team, size = 40, fit = 'circle' }: Props) {
+  const skin = pick(ATLAS.skins, id, 1);
+  const hair = pick(ATLAS.hair, id, 3);
+  const eyes = pick(ATLAS.eyes, id, 6);
+  const beard = hash(id, 4) > 0.78 ? pick(ATLAS.beards, id, 7) : null;
 
-  // The jersey takes the program's own colour, which is what makes a roster read
-  // as a team rather than a set of individuals.
-  const jersey = teamColour(team);
-  const shirt = number ?? Math.floor(hash(id, 5) * 89) + 1;
+  const colour = team ? teamColour(team) : null;
+  const cap = colour ? capColours(colour) : null;
+  const jersey = colour ? nearestJersey(colour) : 'grey';
+  const dir = cap ? 'cap' : 'head';
+
+  // The canvas is always 2:3. The circle fit slides it up inside a square box
+  // so the face, not the shirt, is what the circle holds.
+  const width = fit === 'bust' ? size * (ATLAS.width / ATLAS.height) : size;
+  const canvasH = width * (ATLAS.height / ATLAS.width);
+  const top = fit === 'bust' ? 0 : -(CIRCLE_TOP / ATLAS.width) * size;
+  const mark = ATLAS.crown[hair];
 
   return (
-    <svg
-      viewBox="0 0 64 64"
-      width={size}
-      height={size}
-      // The disc is a class rather than an inline style so a caller can turn it
-      // off — the player card runs this face two hundred pixels tall on a dark
-      // hero, where a tinted plate behind his head is exactly wrong.
-      className="avatar"
-      aria-hidden="true"
-    >
-      {/* Shoulders and jersey. Drawn first so the head sits over the collar. */}
-      <path d="M8 64 C8 50 20 44 32 44 C44 44 56 50 56 64 Z" fill={jersey} />
-      <path d="M26 45 L32 54 L38 45 L34 44 L32 47 L30 44 Z" fill="var(--cream)" />
-      <text
-        x="32" y="61"
-        textAnchor="middle"
-        style={{ font: "700 calc(9px * var(--ts)) var(--mono)", fill: 'var(--cream)', opacity: 0.9 }}
-      >{shirt}</text>
-
-      {/* Neck, then the head. */}
-      <rect x="27" y="36" width="10" height="9" rx="3" fill={skin} />
-      <ellipse cx="32" cy="26" rx="13" ry="14.5" fill={skin} />
-
-      {/* Ears, tucked behind whatever the hair does. */}
-      <ellipse cx="19" cy="27" rx="2.4" ry="3.2" fill={skin} />
-      <ellipse cx="45" cy="27" rx="2.4" ry="3.2" fill={skin} />
-
-      {cut === 'short' && (
-        <path d="M19 22 C20 13 26 11 32 11 C38 11 44 13 45 22 C42 17 36 15 32 15 C28 15 22 17 19 22 Z" fill={hair} />
-      )}
-      {cut === 'curls' && (
-        <g fill={hair}>
-          <circle cx="23" cy="16" r="6" />
-          <circle cx="32" cy="13" r="6.5" />
-          <circle cx="41" cy="16" r="6" />
-          <circle cx="19" cy="22" r="4.5" />
-          <circle cx="45" cy="22" r="4.5" />
-        </g>
-      )}
-      {cut === 'long' && (
-        <path d="M18 24 C17 12 25 10 32 10 C39 10 47 12 46 24 L46 36 L42 36 L42 20 C38 16 26 16 22 20 L22 36 L18 36 Z" fill={hair} />
-      )}
-      {cut === 'cap' && (
-        <>
-          <path d="M18 22 C18 12 25 9 32 9 C39 9 46 12 46 22 Z" fill={jersey} />
-          <path d="M17 22 L52 22 C52 25 48 26 44 26 L17 26 Z" fill={jersey} opacity="0.85" />
-          <circle cx="32" cy="12" r="1.8" fill="var(--cream)" opacity="0.7" />
-        </>
-      )}
-
-      {/* Eyes and brows. Two dots read as a face at 28 pixels; anything more
-          becomes noise at the sizes this is actually used. */}
-      <circle cx="27" cy="26" r="1.7" fill="#1d201d" />
-      <circle cx="37" cy="26" r="1.7" fill="#1d201d" />
-      <path d="M24 22 L30 21" stroke="#1d201d" strokeWidth="1.4" strokeLinecap="round" opacity="0.75" />
-      <path d="M34 21 L40 22" stroke="#1d201d" strokeWidth="1.4" strokeLinecap="round" opacity="0.75" />
-
-      {beard && (
-        <path d="M21 29 C21 39 26 43 32 43 C38 43 43 39 43 29 C40 36 36 38 32 38 C28 38 24 36 21 29 Z" fill={hair} opacity="0.85" />
-      )}
-      <path d="M29 33 Q32 35.5 35 33" stroke="#1d201d" strokeWidth="1.3" fill="none" strokeLinecap="round" opacity="0.7" />
-    </svg>
+    <span className="avatar pt" style={{ width, height: size }} aria-hidden="true">
+      <span className="pt-canvas" style={{ top, height: canvasH }}>
+        <Tint src="neck.skin.png" colour={skin} />
+        <Layer src="neck.rest.png" />
+        <Layer src={`jersey/${jersey}.png`} />
+        <Tint src={`${dir}/${hair}.skin.png`} colour={skin} />
+        <Layer src={`eyes/${eyes}.png`} />
+        <Layer src="mouth.png" />
+        {cap && <Tint src={`cap/${hair}.crown.png`} colour={cap.crown} />}
+        {cap && <Tint src={`cap/${hair}.brim.png`} colour={cap.brim} />}
+        {/* Outlines go over every tint, and the beard over the jaw line. */}
+        <Layer src={`${dir}/${hair}.rest.png`} />
+        {beard && <Layer src={`beard/${beard}.png`} />}
+        {cap && team && (
+          <span
+            className="pt-letter"
+            style={{
+              left: `${(mark.x / ATLAS.width) * 100}%`,
+              top: `${(mark.y / ATLAS.height) * 100}%`,
+              fontSize: canvasH * 0.115,
+              color: cap.letter,
+            }}
+          >{team[0]}</span>
+        )}
+      </span>
+    </span>
   );
+}
+
+/** A flat colour showing through a mask: skin, or a cap panel. */
+function Tint({ src, colour }: { src: string; colour: string }) {
+  const mask = `url("${BASE}${src}")`;
+  return <span className="pt-l" style={{ backgroundColor: colour, WebkitMaskImage: mask, maskImage: mask }} />;
+}
+
+/** A layer drawn as-is: outlines, hair, eyes, a shirt. */
+function Layer({ src }: { src: string }) {
+  return <img className="pt-l" src={`${BASE}${src}`} alt="" draggable={false} />;
+}
+
+/* ------------------------------------------------------------- colours -- */
+
+function rgb(hex: string): [number, number, number] {
+  const h = hex.replace('#', '');
+  const v = parseInt(h.length === 3 ? h.replace(/./g, (c) => c + c) : h, 16);
+  return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+}
+const luminance = (hex: string) => { const [r, g, b] = rgb(hex); return (0.299 * r + 0.587 * g + 0.114 * b) / 255; };
+
+/**
+ * How a program's one colour becomes a cap.
+ *
+ * The reference does two things: a dark crown carries its own colour on the
+ * brim and a pale letter; a light crown takes a dark brim and a dark letter.
+ */
+function capColours(colour: string): { crown: string; brim: string; letter: string } {
+  return luminance(colour) < 0.55
+    ? { crown: colour, brim: colour, letter: '#f6f1e6' }
+    : { crown: colour, brim: '#1b2a52', letter: '#1b2a52' };
+}
+
+/** The sheet's jersey whose body colour is closest to the program's. */
+function nearestJersey(colour: string): string {
+  const [r, g, b] = rgb(colour);
+  let best = 'grey', bestD = Infinity;
+  for (const j of ATLAS.jerseys) {
+    if (j.name === 'catcher') continue;
+    const [jr, jg, jb] = rgb(j.body);
+    const d = (r - jr) ** 2 + (g - jg) ** 2 + (b - jb) ** 2;
+    if (d < bestD) { bestD = d; best = j.name; }
+  }
+  return best;
 }
 
 /**
