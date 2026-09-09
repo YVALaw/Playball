@@ -11,7 +11,7 @@
 // design/Roster Tabletop/ is the design of record.
 
 import { leagueLabel } from '../engine/leagueNames.js';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Modal } from './Modal.js';
 import { uniquePlayers } from '../engine/types.js';
 import { applyTeamAccent } from './accent.js';
@@ -119,13 +119,24 @@ function titleCase(label: string): string {
  */
 export function App() {
   const [teamCard, setTeamCardRaw] = useState<number | null>(null);
-  const setTeamCard = (next: number | null): void => {
-    if (typeof window !== 'undefined' && next !== teamCard) {
+  /*
+    Stable on purpose. AppBody closes the card whenever `setTeamCard` changes
+    identity, and a version of this closure that captured `teamCard` was a new
+    function on every render — so opening a card re-rendered the app, which
+    minted a new setter, which fired that effect, which closed the card it had
+    just opened. Reported as "tap SCOUT and it just flashes the screen"; the
+    Tonight matchup and every Colleges row went the same way. The current
+    value lives in a ref so the setter never has to be rebuilt.
+  */
+  const teamCardNow = useRef<number | null>(null);
+  teamCardNow.current = teamCard;
+  const setTeamCard = useCallback((next: number | null): void => {
+    if (typeof window !== 'undefined' && next !== teamCardNow.current) {
       window.dispatchEvent(new CustomEvent(next === null ? 'playball:history-consume' : 'playball:history-checkpoint',
         next === null ? { detail: { count: 1 } } : undefined));
     }
     setTeamCardRaw(next);
-  };
+  }, []);
 
   /*
     Your school's colours, worn by the whole app.
