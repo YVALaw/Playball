@@ -2767,8 +2767,20 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (signed >= SCHOLARSHIPS) return;
 
     const wanted = Math.max(0, Math.min(MAX_PER_RECRUIT, Math.round(actions)));
+    /*
+      Everybody else's week, plus this recruit's own actions; his points are
+      the one thing being set, so they are the one thing not already spent.
+
+      This was `totalWeekSpend minus his points`, and then his action cost was
+      taken off again below — but totalWeekSpend already carries his action
+      cost, so a pitched recruit was clamped three points short of the truth.
+      Reported: "when you have less than 4 budget points you cannot allocate
+      them to an offer." With a pitch on him, four was the first number that
+      left anything at all.
+    */
+    const ownActions = weekActionCost(prospect, userTeam);
     const spentElsewhere = totalWeekSpend(season.recruiting.prospects, userTeam)
-      - (prospect.spent[userTeam] ?? 0);
+      - (prospect.spent[userTeam] ?? 0) - ownActions;
 
     // The weekly budget is the only cap on *chasing*. There is deliberately no
     // limit on how many recruits may be on the board: having more irons in the
@@ -2779,7 +2791,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // Less whatever the draft phase already took to keep somebody, which is the
     // sequencing the whole retention mechanic hangs on.
     const budget = boardBudget(get().season, userTeam, get().economy.recruitingGrant);
-    const allowed = Math.min(wanted, budget - spentElsewhere - weekActionCost(prospect, userTeam));
+    const allowed = Math.min(wanted, budget - spentElsewhere - ownActions);
     if (allowed <= 0) delete prospect.spent[userTeam];
     else prospect.spent[userTeam] = allowed;
 

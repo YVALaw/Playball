@@ -10,7 +10,10 @@
 
 import { describe, it, expect } from 'vitest';
 import { useDynasty, PHASES, boardBudget } from '../src/state/store.js';
-import { windowBudget, flexibleOffseasonBudget, RECRUITING_WEEKS } from '../src/engine/recruiting.js';
+import {
+  windowBudget, flexibleOffseasonBudget, RECRUITING_WEEKS, RECRUITING_FACTORS, PITCH_COST, canPursue,
+} from '../src/engine/recruiting.js';
+import { pipelineStrength } from '../src/engine/economy.js';
 import { prestigeStars } from '../src/engine/program.js';
 import type { DraftBoard } from '../src/engine/draft.js';
 import { createSeason, simSeason, seasonComplete } from '../src/engine/season.js';
@@ -1335,5 +1338,41 @@ describe('the interface pass, read twice — the store side', () => {
     const staffed = withStaff(s.coach.skills, s.economy.staff);
     expect(me.coachMods?.offense).toBe(staffed.offense);
     expect(me.coachMods?.defense).toBe(staffed.defense);
+  });
+});
+
+describe("the week's points go where the coach puts them", () => {
+  /*
+    Reported: "when you have less than 4 budget points you cannot allocate
+    them to an offer." `recruit` took everybody else's spend as the week's
+    total minus this recruit's points, then subtracted his week-action cost
+    again — and the total already carried it. A pitched recruit was clamped
+    three points short, so under four left the offer rounded to nothing.
+  */
+  it('lets a pitched recruit take every point that is actually left', () => {
+    useDynasty.getState().start(4242, 0);
+    const s = useDynasty.getState();
+    const season = s.season;
+    if (!season) throw new Error('no season');
+    season.recruiting.week = 1;
+    const me = season.teams[s.userTeam];
+    if (!me) throw new Error('no team');
+    const [target, other, another] = season.recruiting.prospects.filter((p) => p.signedBy === null
+      && canPursue(p, prestigeStars(me.prestige), pipelineStrength(s.economy, p.state, me.def.state)));
+    if (!target || !other || !another) throw new Error('fewer than three reachable recruits');
+
+    const budget = boardBudget(season, s.userTeam, s.economy.recruitingGrant);
+    // A pitch on him, then the rest of the week spent elsewhere until three
+    // points are left — the situation in the report.
+    expect(useDynasty.getState().recruitPitch(target.id, RECRUITING_FACTORS[0]!)).toBe(true);
+    useDynasty.getState().recruit(other.id, 12);
+    useDynasty.getState().recruit(another.id, budget - PITCH_COST - 12 - 3);
+    const left = budget - PITCH_COST - (other.spent[s.userTeam] ?? 0) - (another.spent[s.userTeam] ?? 0);
+    expect(left).toBe(3);
+
+    // Three left means three can go on him. The double-counted clamp gave
+    // him nothing at all here.
+    useDynasty.getState().recruit(target.id, 12);
+    expect(target.spent[s.userTeam]).toBe(3);
   });
 });

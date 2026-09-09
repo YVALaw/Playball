@@ -3256,6 +3256,16 @@ for the user. A one-star program works with 40 a week and a blue blood with 60,
 and what June took comes off all three weeks evenly rather than shutting week one.
 `ACTIONS_PER_WEEK` is now used by nothing.
 
+**September 9 — the user's own clamp counted his pitch twice.** `store.recruit`
+took "everybody else's spend" as `totalWeekSpend` minus the recruit's points,
+then subtracted his week-action cost again — but `totalWeekSpend` already
+carries every recruit's action cost, his included. A pitched recruit was
+therefore clamped three points short of the truth, and with fewer than four
+left the offer rounded to nothing: "when you have less than 4 budget points
+you cannot allocate them to an offer." `recruitPitch` had the subtraction
+right all along; `recruit` now matches it, and `tests/store.test.ts` holds a
+pitched recruit to `budget − PITCH_COST`.
+
 **A rival's June runs inside `departAndDevelop`**, immediately after `regroup`
 closes the roster — because half of what a case rests on is who is coming back,
 and a man cannot be told there is a job open on a depth chart that has not been
