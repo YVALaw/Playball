@@ -14,8 +14,9 @@
 // whole system — a steal and a bust look identical while you are bidding, and
 // only ever become visible here.
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
+import { useDialogFocus } from '../dialogFocus.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { ChevronRightIcon } from '@radix-ui/react-icons';
 import { withStaff } from '../../engine/economy.js';
@@ -446,54 +447,45 @@ function RecruitSheet({
   const band = reportedOverall(prospect, recruitingSkill);
   const ceiling = reportedPotential(prospect, recruitingSkill);
   const call = verdict(prospect, recruitingSkill);
+  const dialog = useRef<HTMLDivElement | null>(null);
+  useDialogFocus(dialog, onClose);
 
+  /*
+    The recruiting board's sheet, exactly — its scrim, its surface, its
+    toolbar, its identity row, its scroller — rather than a hand-styled
+    look-alike. Reported from the phone, September 9: "when you tap one of
+    the players, the content there moves around crazily and it's
+    overflowing... it should follow the design of the app where content does
+    not move around and it's only scrollable up and down." The look-alike
+    had no dialog focus, no arrival, and none of the touch rules the app's
+    real scrollers carry. One sheet for every file is one set of rules.
+  */
   return (
     <InFrame>
-    <div
-      onClick={onClose}
-      style={{
-        position: 'absolute', inset: 0, background: 'rgba(var(--scrim-rgb), .6)',
-        display: 'flex', alignItems: 'flex-end', zIndex: 20,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          // Fixed, for the same reason the recruiting sheet is: a panel that
-          // resizes to its contents jumps under the thumb.
-          width: '100%', height: '72%',
-          display: 'flex', flexDirection: 'column',
-          background: 'var(--paper)', borderTop: '3px solid var(--clay)',
-        }}
-      >
-        <div style={{
-          flex: 'none', padding: '7px 12px', background: 'var(--clay)',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}>
-          <span style={{
-            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
-          }}>{'★'.repeat(prospect.stars)} · {prospect.state}</span>
-          <button onClick={onClose} style={{
-            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(var(--cream-rgb), .8)',
-          }}>CLOSE</button>
-        </div>
+      <div ref={dialog} className="prospect-sheet-scrim fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Signing file: ${p.name}`}>
+        <section className="prospect-sheet-modern rise-in" onClick={(e) => e.stopPropagation()}>
+          <header className="prospect-sheet-toolbar">
+            <span><small>SIGNING FILE</small><strong>{'★'.repeat(prospect.stars)} · {prospect.state}</strong></span>
+            <button className="tap" type="button" onClick={onClose}>CLOSE</button>
+          </header>
 
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '13px 12px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Avatar id={p.id} team={to?.def.abbr} size={54} />
-            <div style={{ minWidth: 0 }}>
-              <div style={{ font: "800 calc(22px * var(--ts))/1 var(--display)", textTransform: 'uppercase' }}>
-                {p.name}
-              </div>
-              <div style={{ marginTop: 3, font: "400 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
-                {/* Age, because a class is not all one age. A freshman who
-                    arrives at twenty is draft eligible after one season, and
-                    the day you sign him is the day to know it. */}
-                {slotOf(prospect)} &middot; age {p.age} &middot; bats {p.bats}
-                {' '}&middot; throws {p.throws}
-              </div>
-            </div>
-          </div>
+          <section className="prospect-sheet-identity">
+            <span className="prospect-sheet-avatar"><Avatar id={p.id} team={to?.def.abbr} size={68} /></span>
+            <span className="prospect-sheet-name">
+              {/* Age, because a class is not all one age. A freshman who
+                  arrives at twenty is draft eligible after one season, and
+                  the day you sign him is the day to know it. */}
+              <small>{slotOf(prospect)} · age {p.age}</small>
+              <h2>{p.name}</h2>
+              <p>bats {p.bats} · throws {p.throws}</p>
+            </span>
+            <span className="prospect-sheet-standing" style={{ color: mine ? 'var(--clay)' : 'var(--dim)' }}>
+              <small>SIGNED</small>
+              <strong>{to?.def.abbr ?? '—'}</strong>
+            </span>
+          </section>
+
+          <div className="prospect-sheet-body">
 
           <div style={{
             marginTop: 12, padding: '11px 12px',
@@ -515,7 +507,11 @@ function RecruitSheet({
           <MetricStrip>
             <Metric label="OVERALL" value={String(overallOf(p))} note="TODAY" />
             <Metric label="CEILING" value={potentialGrade(p.potential)} note="POTENTIAL" />
-            <Metric label="WANTED" value={RECRUITING_FACTOR_LABEL[topPriority(prospect)]} note="HIS PRIORITY" />
+            {/* A phrase, not a number — "Playing time" at the metric's display
+                size could not shrink, and pushed the whole sheet sideways by
+                the width it lacked. Handed in sized, the way the board hands
+                in its stars. */}
+            <Metric label="WANTED" value={<span className="metric-phrase">{RECRUITING_FACTOR_LABEL[topPriority(prospect)]}</span>} note="HIS PRIORITY" />
           </MetricStrip>
 
           {/*
@@ -590,9 +586,9 @@ function RecruitSheet({
               })}
             </>
           )}
-        </div>
+          </div>
+        </section>
       </div>
-    </div>
     </InFrame>
   );
 }
@@ -612,48 +608,32 @@ function WalkOnSheet(
   { man, school, abbr, onClose }:
   { man: Player; school: string; abbr: string; onClose: () => void },
 ) {
+  const dialog = useRef<HTMLDivElement | null>(null);
+  useDialogFocus(dialog, onClose);
+  // The same sheet as the recruit's, for the same reason — see RecruitSheet.
   return (
     <InFrame>
-    <div
-      onClick={onClose}
-      style={{
-        position: 'absolute', inset: 0, background: 'rgba(var(--scrim-rgb), .6)',
-        display: 'flex', alignItems: 'flex-end', zIndex: 20,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: '100%', height: '72%',
-          display: 'flex', flexDirection: 'column',
-          background: 'var(--paper)', borderTop: '3px solid var(--dim)',
-        }}
-      >
-        <div style={{
-          flex: 'none', padding: '7px 12px', background: 'var(--band)',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}>
-          <span style={{
-            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
-          }}>WALK-ON &middot; ONE YEAR</span>
-          <button onClick={onClose} style={{
-            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(var(--cream-rgb), .8)',
-          }}>CLOSE</button>
-        </div>
+      <div ref={dialog} className="prospect-sheet-scrim fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Walk-on: ${man.name}`}>
+        <section className="prospect-sheet-modern rise-in" onClick={(e) => e.stopPropagation()}>
+          <header className="prospect-sheet-toolbar">
+            <span><small>WALK-ON</small><strong>One year</strong></span>
+            <button className="tap" type="button" onClick={onClose}>CLOSE</button>
+          </header>
 
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '13px 12px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Avatar id={man.id} team={abbr} size={54} />
-            <div style={{ minWidth: 0 }}>
-              <div style={{ font: "800 calc(22px * var(--ts))/1 var(--display)", textTransform: 'uppercase' }}>
-                {man.name}
-              </div>
-              <div style={{ marginTop: 3, font: "400 calc(11px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
-                {slotFor(man)} &middot; age {man.age} &middot; bats {man.bats}
-                {' '}&middot; throws {man.throws}
-              </div>
-            </div>
-          </div>
+          <section className="prospect-sheet-identity">
+            <span className="prospect-sheet-avatar"><Avatar id={man.id} team={abbr} size={68} /></span>
+            <span className="prospect-sheet-name">
+              <small>{slotFor(man)} · age {man.age}</small>
+              <h2>{man.name}</h2>
+              <p>bats {man.bats} · throws {man.throws}</p>
+            </span>
+            <span className="prospect-sheet-standing" style={{ color: 'var(--dim)' }}>
+              <small>TURNED UP</small>
+              <strong>{abbr}</strong>
+            </span>
+          </section>
+
+          <div className="prospect-sheet-body">
 
           <div style={{
             marginTop: 12, padding: '11px 12px', background: 'var(--field)',
@@ -689,9 +669,9 @@ function WalkOnSheet(
               </div>
             ))}
           </section>
-        </div>
+          </div>
+        </section>
       </div>
-    </div>
     </InFrame>
   );
 }

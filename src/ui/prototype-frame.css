@@ -2760,12 +2760,29 @@
    to, and nothing inside them is allowed to argue. */
 .playball-app > main,
 .offseason-app > main,
-.postseason-scroll {
+.postseason-scroll,
+/* And the file sheets' own scroller — a sheet over a momentum scroller is
+   the case iOS handles worst, and the signing-day sheet was reported
+   moving "crazily" under a thumb: what moved was the class list beneath it,
+   reached through the sheet. Contained, and vertical only. */
+.prospect-sheet-body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
   touch-action: pan-y;
 }
+/* The scrim takes no pan at all: a drag that starts on it goes nowhere,
+   rather than into the page underneath. */
+.prospect-sheet-scrim { touch-action: none; }
+/* Nothing inside a sheet may be wider than the sheet. A metric strip's
+   three columns were `1fr`, whose floor is the content's own width, so a
+   phrase in one cell ("Playing time") made the strip wider than the sheet
+   and the sheet scroll sideways — the "overflowing" in the report. */
+.prospect-sheet-body .metric-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.prospect-sheet-body .metric { min-width: 0; }
+/* A metric whose value is a phrase rather than a number: body size, allowed
+   to wrap, so the cell never has to be wider than a third of the strip. */
+.metric-phrase { display: block; font: 800 calc(11px * var(--ts))/1.15 var(--body); white-space: normal; }
 
 /* ---------------------------------------------------------------------------
    The one vocabulary for "are you sure" and "that happened".

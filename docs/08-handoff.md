@@ -53,6 +53,14 @@ the balance decisions set down for the reporter (`05` §62,
 > of sliced PNGs), the compose and slice scripts — at the reporter's word
 > after a download came in at 23 MB: the app never read it (the portraits
 > are drawn, `Avatar.tsx`), and the game's own build is 3.2 MB of `dist/`.
+> And the CLASS stage's two sheets — a recruit's file, a walk-on's — were
+> hand-styled look-alikes of the recruiting board's sheet; on the phone
+> "the content there moves around crazily and it's overflowing". They are
+> the board's sheet now (`prospect-sheet-*`, dialog focus, the arrival),
+> and that sheet's scroller carries the same iOS belt as the app's main
+> scrollers (`overscroll-behavior-y: contain; touch-action: pan-y`), with
+> the scrim taking no pan at all — so nothing beneath a sheet can be
+> reached through it.
 
 > **September 9 — the tour, and the Console's true state.** The guided
 
