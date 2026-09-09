@@ -7925,24 +7925,3 @@
   .network-assignment > div { grid-template-columns:1fr; }
 }
 .staff-directive-effect { margin:5px 11px 8px; color:var(--dim); font:600 calc(8px * var(--ts))/1.35 var(--body); }
-
-/* Layered portraits.
- *
- * A portrait is a stack of PNG layers on one 144x216 canvas (see Avatar.tsx and
- * scripts/avatar-compose.mjs). Skin and cap colours are CSS backgrounds behind
- * mask layers, so one set of PNGs serves every skin tone and every program. The
- * outer element keeps the .avatar class so the existing disc-and-circle rules
- * still apply to it. */
-.pt { position: relative; overflow: hidden; }
-.pt-canvas { position: absolute; left: 0; width: 100%; aspect-ratio: 144 / 216; }
-.pt-l {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
-  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
-  pointer-events: none; user-select: none;
-}
-.pt-letter {
-  position: absolute; transform: translate(-50%, -50%);
-  font-family: Georgia, 'Times New Roman', serif; font-weight: 700; line-height: 1;
-  pointer-events: none; user-select: none;
-}
