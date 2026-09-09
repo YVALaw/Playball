@@ -2273,9 +2273,28 @@ export function startingOffers(
     || b.t.prestige - a.t.prestige
     || a.t.def.abbr.localeCompare(b.t.def.abbr));
 
+  /*
+    And the third kind: the rebuild.
+
+    Both orders above run prestige-descending, so between them the desk was
+    always the TOP of the band a rookie can reach — two-star programmes with
+    a chair to fill — and the one-star jobs at the bottom of the ladder never
+    rang at all. Reported from the phone, September 9: "most of the times we
+    are given 2 star colleges or up, barely we get bottom of the barrel teams
+    when we are working in actually rebuilding that type of teams." One seat
+    on every desk is now the programme with the least standing that would
+    have him — the job where the whole point is what he builds — and among
+    the bottom, the one that wants him most.
+  */
+  const byNeed = [...eligible].sort((a, b) =>
+    (a.t.prestige + a.wobble) - (b.t.prestige + b.wobble)
+    || b.fit - a.fit
+    || a.t.def.abbr.localeCompare(b.t.def.abbr));
+
   // Rather more than half want you specifically. A desk that was mostly "the
   // best job available" is the desk this replaced.
   const wantedSlots = Math.max(1, Math.round(limit * 0.6));
+  const rebuildSlots = limit >= 3 ? 1 : 0;
   const hireable: typeof eligible = [];
   const seen = new Set<number>();
   const perConference = new Map<string, number>();
@@ -2291,6 +2310,11 @@ export function startingOffers(
   for (const row of byWanting) {
     if (hireable.length >= wantedSlots) break;
     take(row);
+  }
+  let rebuilds = 0;
+  for (const row of byNeed) {
+    if (rebuilds >= rebuildSlots || hireable.length >= limit) break;
+    if (take(row)) rebuilds += 1;
   }
   for (const row of byStanding) {
     if (hireable.length >= limit) break;

@@ -3195,6 +3195,13 @@
    over the dugout's trigger — reported on the field: "the dugout and the
    show me button are one on top of the other." */
 .guide-scrim { z-index: 46; place-items: center; }
+/* And the way it leaves: the fade and the rise, run backwards, before the
+   light comes on. "It just does a clean cut instead of a disappearing card
+   animation." Reduced motion never adds the class. */
+@keyframes guide-scrim-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes guide-card-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(14px); } }
+.guide-scrim.leaving { animation: guide-scrim-out 200ms ease-in both; pointer-events: none; }
+.guide-scrim.leaving .tutorial-card { animation: guide-card-out 200ms ease-in both; }
 .guide-caption {
   position: absolute;
   left: 16px;

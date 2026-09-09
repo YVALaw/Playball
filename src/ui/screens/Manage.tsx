@@ -6,7 +6,7 @@
 // happened. The buttons change with the situation — a sacrifice is not offered
 // with the bases empty, and you cannot put a man on when first is occupied.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDialogFocus } from '../dialogFocus.js';
 import {
   ArrowLeftIcon, ChevronRightIcon, Cross1Icon, DotsHorizontalIcon, PlayIcon,
@@ -84,6 +84,34 @@ export function Manage() {
       it arrives — reported here too, "a nice animation when opening but not
       when closing, it simply disappears." */
   const [toolsPhase, setToolsPhase] = useState<'closed' | 'open' | 'closing'>('closed');
+  /*
+    Where the dugout button sits: just above the call grid, whatever height
+    the grid is tonight. It used to sit in the corner of the screen, over the
+    grid's last cell — reported: "where it is right now, it hides a control
+    button." Measured rather than styled, because the grid is two rows or
+    three by situation and the button's containing block is the whole
+    screen. The observer's first report lands after every ref is attached,
+    which is why nothing here minds that the button mounts after the grid.
+  */
+  const fabRef = useRef<HTMLElement | null>(null);
+  const callWatch = useRef<ResizeObserver | null>(null);
+  const [fabBottom, setFabBottom] = useState<number | null>(null);
+  const watchCall = useCallback((el: HTMLElement | null): void => {
+    callWatch.current?.disconnect();
+    callWatch.current = null;
+    if (!el) { setFabBottom(null); return; }
+    const measure = (): void => {
+      const parent = fabRef.current?.offsetParent as HTMLElement | null | undefined;
+      if (!parent) return;
+      const gap = parent.getBoundingClientRect().bottom - el.getBoundingClientRect().top;
+      setFabBottom(Math.max(0, Math.round(gap)) + 10);
+    };
+    measure();
+    if (typeof ResizeObserver === 'function') {
+      callWatch.current = new ResizeObserver(measure);
+      callWatch.current.observe(el);
+    }
+  }, []);
   const tools = toolsPhase === 'open';
   const closeTools = (): void => {
     setToolsPhase('closing');
@@ -825,7 +853,7 @@ export function Manage() {
         </section>
 
         {d ? (
-          <section className="ballpark-call">
+          <section className="ballpark-call" ref={watchCall}>
             {/*
               One line, not four.
 
@@ -900,7 +928,11 @@ export function Manage() {
         />
       )}
       {d && (
-        <aside className={`game-manager-fab${tools ? ' open' : ''}${toolsPhase === 'closing' ? ' closing' : ''}`}>
+        <aside
+          ref={fabRef}
+          className={`game-manager-fab${tools ? ' open' : ''}${toolsPhase === 'closing' ? ' closing' : ''}`}
+          style={fabBottom !== null ? { bottom: fabBottom } : undefined}
+        >
           <section className="game-manager-popover">
             <div className="game-tool-context">
               <small>DUGOUT · {inning}</small>

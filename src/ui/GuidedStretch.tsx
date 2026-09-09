@@ -14,7 +14,7 @@
 // components, so no screen has to know it is being taught — a screen's whole
 // contribution is a `data-guide` name on the control the tour lights.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { assistantFor } from '../engine/program.js';
 import { facilityLevel, staffPlan } from '../engine/economy.js';
@@ -193,6 +193,29 @@ export function GuidedStretch() {
   const [lit, setLit] = useState<Snapshot | null>(null);
 
   /*
+    The card leaves before the light arrives. Reported: "when we hit SHOW ME
+    it just does a clean cut instead of a disappearing card animation." Two
+    hundred milliseconds of fade-and-sink, then whatever the press asked for;
+    reduced motion skips straight to it, the way every other leave here does.
+  */
+  const [leaving, setLeaving] = useState(false);
+  const leaveTimer = useRef<number | null>(null);
+  useEffect(() => () => { if (leaveTimer.current !== null) window.clearTimeout(leaveTimer.current); }, []);
+  const dismiss = (then: () => void): void => {
+    const root = document.documentElement.dataset.motion;
+    const still = root === 'reduced'
+      || (root !== 'full' && typeof window.matchMedia === 'function'
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if (still || leaving) { then(); return; }
+    setLeaving(true);
+    leaveTimer.current = window.setTimeout(() => {
+      leaveTimer.current = null;
+      setLeaving(false);
+      then();
+    }, 200);
+  };
+
+  /*
     A heartbeat while the tour is on. Several steps end on something only
     the DOM knows — the money sheet's view is Program's own state, the
     dugout tools are Manage's — and nothing in the store changes when they
@@ -246,21 +269,21 @@ export function GuidedStretch() {
   const step = visibleGuideStep(seen, current, view);
   if (!step) return null;
 
-  const skip = (): void => stamp(guideSkipStamps());
+  const skipNow = (): void => stamp(guideSkipStamps());
   const card = guideCard(step, view);
 
   if (lit?.id !== step.id) {
     return createPortal(
       <div
-        className="tutorial-scrim guide-scrim fade-in"
+        className={`tutorial-scrim guide-scrim${leaving ? ' leaving' : ' fade-in'}`}
         role="dialog"
         aria-modal="true"
         aria-label={`The tour: ${card.title}`}
       >
-        <section className="tutorial-card rise-in">
+        <section className={`tutorial-card${leaving ? '' : ' rise-in'}`}>
           <div className="flow-section-title">
             <span className="label">{lastName(assistant).toUpperCase()} SHOWS YOU AROUND</span>
-            <button className="tap" type="button" onClick={skip}>SKIP</button>
+            <button className="tap" type="button" onClick={() => dismiss(skipNow)}>SKIP</button>
           </div>
           <h2>{card.title}</h2>
           <p>{card.body}</p>
@@ -269,10 +292,10 @@ export function GuidedStretch() {
               className="primary-command tap"
               type="button"
               autoFocus
-              onClick={() => {
+              onClick={() => dismiss(() => {
                 if (step.target) setLit({ id: step.id, plays: field.plays, lineup: lineupSig, positions: positionsSig });
                 else stamp([`guide:${step.id}`, ...(step.covers ?? [])]);
-              }}
+              })}
             >{step.target ? 'SHOW ME' : 'GOT IT'}</button>
           </footer>
         </section>
@@ -282,5 +305,5 @@ export function GuidedStretch() {
   }
 
   if (!step.target) return null;
-  return createPortal(<Spotlight frame={frame} step={step} onSkip={skip} />, frame);
+  return createPortal(<Spotlight frame={frame} step={step} onSkip={skipNow} />, frame);
 }

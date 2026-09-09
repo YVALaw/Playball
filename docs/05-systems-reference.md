@@ -5274,6 +5274,16 @@ is how a default creeps in. And the ambition match was written as
 positively, the *least* ambitious scored highest, and one of them appeared on
 every desk.
 
+**September 9 — the third half: a rebuild.** Reported from the phone:
+"most of the times we are given 2 star colleges or up, barely we get bottom
+of the barrel teams." True by construction — both orders the desk was
+built from ran prestige-descending, so the desk was always the *top* of
+the band a rookie can reach and the one-star jobs never rang. One seat on
+every desk (`rebuildSlots`, one when the desk has three or more) is now the
+programme with the least standing that would have him, ties to the one
+that wants him most; `tests/offers.test.ts` holds the desk's floor within
+a rung of the country's.
+
 ### 29.4 Titles: thirteen shapes, twice measured
 
 The old ladder measured how much a man had won on six rungs, and "Journeyman"
@@ -8740,6 +8750,13 @@ the budget lesson told rather than did (staff, hire, task, facilities,
 build); the lineup lesson likewise (lineup-swap, lineup-spot); and the
 card sat on the dugout button. Also from the run: the recruiting screen's
 card still said "three weeks in November" — it now says twelve, in season.
+
+Later the same night: the card leaves before the light arrives (200ms of
+fade-and-sink, `guide-scrim.leaving`; reduced motion cuts) — "it just does
+a clean cut" — and the dugout button no longer sits in the screen's corner
+over the call grid's last cell: `Manage` measures the grid with a
+ResizeObserver and holds the button ten pixels above it, at the foot of the
+play-by-play, whatever the grid's height tonight.
 
 ## Appendix A: stale comments and vestigial code found while writing this
 

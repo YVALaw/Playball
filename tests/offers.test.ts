@@ -103,6 +103,25 @@ describe('the desk reads the interview', () => {
       .toBe(true);
   });
 
+  it('always has one rebuild on it', () => {
+    /*
+      Reported from the phone: the desk was always two-star programmes and
+      up, never the bottom of the barrel — because both orders it was built
+      from ran prestige-descending, so it was the top of the band a rookie
+      could reach, every time. One seat is the least-standing programme that
+      would have him.
+    */
+    for (const [leans, seed] of [
+      [{ development: 4 }, 7], [{ pitching: 6, defense: 2 }, 11], [{ recruiting: 6 }, 3], [{}, 1],
+    ] as const) {
+      const picks = startingOffers(world.teams, 5, { leans, rng: makeRng(seed) });
+      const floor = Math.min(...world.teams.map((t) => t.prestige));
+      const lowest = Math.min(...picks.map((i) => world.teams[i]!.prestige));
+      // Within a rung of the country's floor, wobble allowed for.
+      expect(lowest, `desk ${picks.join(',')} has no rebuild on it`).toBeLessThanOrEqual(floor + 8);
+    }
+  });
+
   it('still works for a man who answered nothing', () => {
     // Casual asks two questions, and a save from before this existed has no
     // leanings at all. Neither may produce an empty desk.
