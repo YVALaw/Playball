@@ -3,11 +3,12 @@
 //
 // `guide.ts` decides which step is live and what it points at; this component
 // draws it. Two phases per step. First the card — the same scrim and card the
-// screen tutorials use, so the tour reads as the same voice — and then the
-// spotlight: the frame goes dark except for a hole cut around the control the
-// step is about, and the control is tapped through the hole. The tap is the
-// real one. The tour never presses anything on the player's behalf; it only
-// takes the other choices away for a moment.
+// screen tutorials use, so the tour reads as the same voice, raised to the
+// middle of the frame so it never sits on the control it is about to light —
+// and then the spotlight: the frame goes dark except for a hole cut around
+// the control the step is about, and the control is tapped through the hole.
+// The tap is the real one. The tour never presses anything on the player's
+// behalf; it only takes the other choices away for a moment.
 //
 // Mounted once, in App, beside the body. It reads the store, not the screen
 // components, so no screen has to know it is being taught — a screen's whole
@@ -16,9 +17,13 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { assistantFor } from '../engine/program.js';
+import { facilityLevel, staffPlan } from '../engine/economy.js';
 import { readPrefs } from '../state/devicePrefs.js';
-import { useDynasty } from '../state/store.js';
-import { activeGuideStep, guideSkipStamps, guideStamp, type GuideStep, type GuideView } from './guide.js';
+import { useDynasty, useUserTeam } from '../state/store.js';
+import {
+  activeGuideStep, dueGuideStamps, guideCard, guideSkipStamps, visibleGuideStep,
+  type GuideStep, type GuideView,
+} from './guide.js';
 
 /** "Leonardo Townsend" is the masthead's business; a card just says Townsend. */
 const lastName = (full: string): string => full.split(' ').pop() ?? full;
@@ -116,7 +121,7 @@ function Spotlight(
           <div className="guide-mask-part" style={{ top: box.y - PAD, left: 0, width: Math.max(0, box.x - PAD), height: box.h + PAD * 2 }} onClick={swallow} onPointerDown={swallow} />
           <div className="guide-mask-part" style={{ top: box.y - PAD, left: box.x + box.w + PAD, right: 0, height: box.h + PAD * 2 }} onClick={swallow} onPointerDown={swallow} />
           <div
-            className="guide-hole guide-glow"
+            className="guide-hole"
             style={{ top: box.y - PAD, left: box.x - PAD, width: box.w + PAD * 2, height: box.h + PAD * 2 }}
           />
           {caption && (
@@ -134,6 +139,9 @@ function Spotlight(
   );
 }
 
+/** What the world looked like when a step's light came on. */
+type Snapshot = { id: string; plays: number; lineup: string; positions: string };
+
 export function GuidedStretch() {
   const seen = useDynasty((s) => s.seenTutorials);
   const stamp = useDynasty((s) => s.markTutorialsSeen);
@@ -144,55 +152,107 @@ export function GuidedStretch() {
   const overlay = useDynasty((s) => s.overlay);
   const programSheet = useDynasty((s) => s.programSheet);
   const live = useDynasty((s) => s.live !== null);
+  const userHome = useDynasty((s) => s.liveMeta !== null && s.liveMeta.home === s.userTeam);
   const pending = useDynasty((s) => s.pendingGame !== null);
+  const playerOpen = useDynasty((s) => s.selectedPlayer !== null);
+  const wordGuide = useDynasty((s) => s.guide === 'word');
+  const hittingHired = useDynasty((s) => Boolean(s.economy.staff.hitting));
+  const hittingDirective = useDynasty((s) => staffPlan(s.economy, 'hitting').directive);
+  const cageLevel = useDynasty((s) => facilityLevel(s.economy, 'cage'));
   // A modal the tour must not talk over: the season's opener, a big moment,
-  // the resume prompt, a player's card.
-  const blocked = useDynasty((s) => Boolean(
-    s.seasonOpener || s.playbookInvite || s.bigMoment || s.pendingGame || s.selectedPlayer !== null,
-  ));
+  // the resume prompt. A player's card is not one — the word errand is
+  // taught on it.
+  const blocked = useDynasty((s) => Boolean(s.seasonOpener || s.playbookInvite || s.bigMoment || s.pendingGame));
+  const user = useUserTeam();
+  const version = useDynasty((s) => s.version);
 
   /*
-    The inning, polled. The live game is a running object the store holds by
-    reference and never re-sets, so nothing about its inning reaches a
-    selector; four times a second is plenty for "has the second started".
+    The field, polled. The live game is a running object the store holds by
+    reference and never re-sets, so nothing about its inning, its half or
+    its play count reaches a selector; four times a second is plenty for
+    "has the second started" and "was a call made".
   */
-  const [inning, setInning] = useState(0);
+  const [field, setField] = useState({ inning: 0, half: 'top' as 'top' | 'bottom', over: false, plays: 0 });
   useEffect(() => {
-    if (!live) { setInning(0); return; }
+    if (!live) { setField({ inning: 0, half: 'top', over: false, plays: 0 }); return; }
     const read = (): void => {
       const l = useDynasty.getState().live;
-      setInning(l ? l.inning : 0);
+      if (!l) return;
+      setField((prev) => (
+        prev.inning === l.inning && prev.half === l.half && prev.over === l.over && prev.plays === l.playSeq
+          ? prev
+          : { inning: l.inning, half: l.half, over: l.over, plays: l.playSeq }
+      ));
     };
     read();
     const t = window.setInterval(read, 250);
     return () => window.clearInterval(t);
   }, [live]);
 
-  /** The step whose card has been read, so the light is showing. */
-  const [lit, setLit] = useState<string | null>(null);
+  /** The step whose card has been read, and the world as it was then. */
+  const [lit, setLit] = useState<Snapshot | null>(null);
 
-  const step = activeGuideStep(seen, firstSeason, readPrefs().tutorials);
-  const view: GuideView = { tab, screen, overlay, programSheet, live, inning, pending };
-
-  // A step that finished by being done — the game started, the tab changed —
-  // is stamped the moment it is, wherever the player is looking.
-  const finished = step !== null && step.done !== null && step.done(view);
+  /*
+    A heartbeat while the tour is on. Several steps end on something only
+    the DOM knows — the money sheet's view is Program's own state, the
+    dugout tools are Manage's — and nothing in the store changes when they
+    do, so nothing would re-run `has()`. Three times a second is plenty, and
+    the render is a handful of querySelectors.
+  */
+  const touring = activeGuideStep(seen, firstSeason, readPrefs().tutorials) !== null;
+  const [, bump] = useState(0);
   useEffect(() => {
-    if (!step || !finished) return;
-    stamp([guideStamp(step.id), ...(step.covers ?? [])]);
-  }, [step, finished, stamp]);
+    if (!touring) return;
+    const t = window.setInterval(() => bump((n) => n + 1), 300);
+    return () => window.clearInterval(t);
+  }, [touring]);
 
-  if (!step || finished || blocked || !step.where(view)) return null;
-  const frame = document.querySelector<HTMLElement>('.app-frame');
-  if (!frame) return null;
+  const lineupSig = user ? user.team.lineup.map((p) => p.id).join(',') : '';
+  const positionsSig = user ? user.team.lineup.map((p) => p.pos).join(',') : '';
+  void version;
+
+  const frame = typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('.app-frame');
+  const has = (name: string): boolean => frame !== null && frame.querySelector(`[data-guide="${name}"]`) !== null;
+
+  const current = activeGuideStep(seen, firstSeason, readPrefs().tutorials);
+  /*
+    "Since the light came on" means THIS step's light. Measured against the
+    previous step's snapshot, the batting card was over the instant it became
+    current — plays had happened since the pitching card's light — and it
+    never showed. A step that has not been lit has had nothing happen since.
+  */
+  const since = lit !== null && current !== null && lit.id === current.id ? lit : null;
+
+  const view: GuideView = {
+    tab, screen, overlay, programSheet,
+    live, inning: field.inning, half: field.half, over: field.over,
+    batting: live && (userHome ? field.half === 'bottom' : field.half === 'top'),
+    pending, playerOpen, wordGuide,
+    wordSeen: seen.includes('guide:word'),
+    hittingHired, hittingDirective, cageLevel,
+    playedSinceLit: since !== null && field.plays > since.plays,
+    lineupChanged: since !== null && lineupSig !== since.lineup,
+    positionsChanged: since !== null && positionsSig !== since.positions,
+    has,
+  };
+  const due = current ? dueGuideStamps(seen, current, view) : [];
+  const dueKey = due.join('|');
+  useEffect(() => {
+    if (due.length > 0) stamp(due);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dueKey, stamp]);
+
+  if (!current || due.length > 0 || blocked || !frame) return null;
+  const step = visibleGuideStep(seen, current, view);
+  if (!step) return null;
 
   const skip = (): void => stamp(guideSkipStamps());
-  const card = step.card;
+  const card = guideCard(step, view);
 
-  if (card && lit !== step.id) {
+  if (lit?.id !== step.id) {
     return createPortal(
       <div
-        className="tutorial-scrim fade-in"
+        className="tutorial-scrim guide-scrim fade-in"
         role="dialog"
         aria-modal="true"
         aria-label={`The tour: ${card.title}`}
@@ -210,8 +270,8 @@ export function GuidedStretch() {
               type="button"
               autoFocus
               onClick={() => {
-                if (step.target) setLit(step.id);
-                else stamp([guideStamp(step.id), ...(step.covers ?? [])]);
+                if (step.target) setLit({ id: step.id, plays: field.plays, lineup: lineupSig, positions: positionsSig });
+                else stamp([`guide:${step.id}`, ...(step.covers ?? [])]);
               }}
             >{step.target ? 'SHOW ME' : 'GOT IT'}</button>
           </footer>

@@ -8660,18 +8660,47 @@ that is not there yet (SIM THE REST mid-pitch) will be in a moment.
 | id | where | lights | over when |
 |---|---|---|---|
 | welcome | TODAY | PLAY BALL, or the red need holding it | a game is live |
-| dugout | the field, from the top of the 2nd | the dugout trigger, then SIM THE REST | the game is over (not merely interrupted) |
+| word · aside | a failing man's card, errand lit | MANAGE, then HAVE A WORD | the word is had (the errand's own stamp) |
+| word-back · aside | the same card, word had | BACK | the card is closed |
+| field-1 | the field, top of the 1st, a call pending | the ordinary call (SWING AWAY / PITCH) | a play was made since the light |
+| field-2 | the field, bottom of the 1st, a call pending | the ordinary call | a play was made since the light |
+| dugout | the field, from the top of the 2nd | the dugout trigger, then SIM THE REST | the game is over |
+| record | the field, final | RECORD THE GAME | the game is filed (not merely interrupted) |
 | program | anywhere but PROGRAM | the PROGRAM tab | tab is program |
 | money | PROGRAM | the BUDGET card | the money sheet is open |
+| staff | the money sheet | the STAFF card, or the STAFF segment | the hitting seat is on screen |
+| hire | the staff view | the best-fit candidate's HIRE, or the hitting seat | the seat is filled — or hiring is blocked or delegated |
+| task | the staff view, seat filled | a directive that is not the standing one | the directive is not `balanced` — or delegated |
+| facilities | the money sheet | the FACILITIES card, or segment | the cage's build button is on screen (or blocked, or delegated) |
+| build | the facilities view | BUILD, or the hitting barn's tile | the barn stands — or building is blocked or delegated |
 | team | anywhere but TEAM | the TEAM tab | tab is team |
 | roster | TEAM, not on LINEUP | the LINEUP section | screen is lineup |
-| lineup | LINEUP | — | GOT IT |
+| lineup-swap | LINEUP | the leadoff man, then the man behind him | the order changed since the light |
+| lineup-spot | LINEUP | the CF square, then a man who does not play there | a position changed since the light |
 | coach | any in-season screen | the portrait, then the profile row | the coach sheet is open |
 | done | the coach sheet | — | GOT IT |
 
 The money card carries the budget lesson the plan owed since September 2:
 three staff seats, three facilities, one annual budget, and the scout's
-reports out of the same pot.
+reports out of the same pot. The steps after it do the lesson rather than
+tell it: the hitting coach is hired, given a directive, and his barn built
+— each with a way out (`hire-blocked`, `facility-blocked`, the delegation
+banners) so a career that cannot afford the thing, or has handed it to the
+AD, is not held forever on a light that never comes.
+
+**Asides.** The word errand is not a main step: a career whose first day is
+not held never sees it, and the tour must not wait on it. An aside shows
+whenever its `where` holds and it is unstamped, over whatever the current
+step is, and is stamped by its own `done`. `word` reuses the errand's own
+stamp (`guide:word`), so the two guides agree on when the word was had.
+
+**Since the light came on.** Three of the doing-steps end on a change rather
+than a state — a play made, the order moved, a position changed — so the
+component snapshots the play count, the lineup and the positions when SHOW
+ME is pressed, and the view carries `playedSinceLit`, `lineupChanged`,
+`positionsChanged`. The field steps also read the DOM for whether a call is
+pending (`has('call-default')`), because the pitching staff can run itself
+and a half with no call in it has nothing to teach.
 
 ### 64.3 State
 
@@ -8693,11 +8722,24 @@ desk before the tour existed and belongs to somebody who knows where it
 is. `tests/guide.test.ts` pins the derivation; the DOM half was walked in
 the pane.
 
-The inning is polled four times a second while a game is live: the live
-game is a mutable object the store holds by reference, so nothing about
-its inning reaches a selector. The mask sits at z-index 46, over the
-dugout's round trigger (45), which is one of the things it lights; the
-card keeps the tutorials' 38.
+The field is polled four times a second while a game is live — inning,
+half, over, play count: the live game is a mutable object the store holds
+by reference, so nothing about it reaches a selector. The mask and the
+tour's card both sit at z-index 46, over the dugout's round trigger (45),
+and the card is centred in the frame rather than pinned to the bottom —
+the first phone run found SHOW ME under the dugout button. The light is a
+3px ring with a breathing blaze around it (`guide-blaze`), at the
+reporter's request: "the red should be glowing intensively."
+
+### 64.4 The first phone run — September 9, night
+
+Six findings, all built the same night: the word errand ran with no mask
+and no explanation (asides); the field gave no guidance between PLAY BALL
+and the dugout (field-1, field-2); RECORD THE GAME was not lit (record);
+the budget lesson told rather than did (staff, hire, task, facilities,
+build); the lineup lesson likewise (lineup-swap, lineup-spot); and the
+card sat on the dugout button. Also from the run: the recruiting screen's
+card still said "three weeks in November" — it now says twelve, in season.
 
 ## Appendix A: stale comments and vestigial code found while writing this
 

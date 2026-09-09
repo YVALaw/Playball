@@ -3164,7 +3164,37 @@
   pointer-events: auto;
   touch-action: none;
 }
-.guide-hole { position: absolute; border-radius: 6px; pointer-events: none; }
+/* The light itself. From the first phone run: "when the buttons are
+   highlighted in red, the red should be glowing intensively so they know
+   they are supposed to tap there." A hard ring and a blaze around it, both
+   breathing; reduced motion keeps the ring and the blaze and drops the
+   breathing. */
+@keyframes guide-blaze {
+  0%, 100% { box-shadow: 0 0 0 3px var(--alert), 0 0 0 7px rgba(224, 101, 94, .45), 0 0 26px 10px rgba(224, 101, 94, .85); }
+  50%      { box-shadow: 0 0 0 3px var(--alert), 0 0 0 16px rgba(224, 101, 94, 0), 0 0 44px 18px rgba(224, 101, 94, .65); }
+}
+.guide-hole {
+  position: absolute;
+  border-radius: 6px;
+  pointer-events: none;
+  outline: 3px solid var(--alert);
+  /* The resting state is the blaze itself, so a paused animation — a hidden
+     frame, a reduced-motion device — still shows the light, not a bare ring. */
+  box-shadow: 0 0 0 3px var(--alert), 0 0 0 7px rgba(224, 101, 94, .45), 0 0 26px 10px rgba(224, 101, 94, .85);
+  animation: guide-blaze .9s ease-in-out infinite;
+}
+:root[data-motion="reduced"] .guide-hole,
+.guide-hole.still {
+  animation: none;
+  box-shadow: 0 0 0 3px var(--alert), 0 0 26px 10px rgba(224, 101, 94, .85);
+}
+@media (prefers-reduced-motion: reduce) {
+  .guide-hole { animation: none; box-shadow: 0 0 0 3px var(--alert), 0 0 26px 10px rgba(224, 101, 94, .85); }
+}
+/* The tour's card: the tutorials' card, raised to the middle of the frame and
+   over the dugout's trigger — reported on the field: "the dugout and the
+   show me button are one on top of the other." */
+.guide-scrim { z-index: 46; place-items: center; }
 .guide-caption {
   position: absolute;
   left: 16px;

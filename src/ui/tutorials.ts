@@ -139,10 +139,10 @@ export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
   ],
   recruiting: [
     {
-      title: 'Three weeks in November',
-      body: 'Interest builds over the three weeks, and unspent points vanish '
-        + 'at the bell. The clock only moves when you end the week, so shop '
-        + 'around first.',
+      title: 'Twelve weeks, in season',
+      body: 'Recruiting runs alongside the schedule, twelve regular-season '
+        + 'weeks of it, and points you have not spent by the bell are gone. '
+        + 'The week turns with the calendar, so shop around before it does.',
     },
   ],
   signing: [

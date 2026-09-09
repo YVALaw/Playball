@@ -838,7 +838,7 @@ export function Manage() {
             */}
             <div><small>YOUR CALL</small></div>
             <div>
-              {d.options.map((o) => {
+              {d.options.map((o, i) => {
                 // Off while the play is on the field, and off because the
                 // situation forbids it, are two different greys: one comes back
                 // in a second, the other is telling you why it cannot be done.
@@ -848,6 +848,9 @@ export function Manage() {
                     className={o.available ? '' : 'unavailable'}
                     key={o.tactic}
                     type="button"
+                    // The first option is the ordinary call — SWING AWAY, PITCH
+                    // — which is the one the first season's tour lights.
+                    data-guide={i === 0 ? 'call-default' : undefined}
                     disabled={!ready}
                     title={o.note}
                     onClick={once(() => ready && submitTactic(o.tactic))}
@@ -864,7 +867,7 @@ export function Manage() {
               <span>That is the ballgame.</span>
             </div>
             <div>
-              <button className="selected" type="button" onClick={() => void endManagedGame()}>
+              <button className="selected" type="button" data-guide="record-game" onClick={() => void endManagedGame()}>
                 Record the game
               </button>
             </div>

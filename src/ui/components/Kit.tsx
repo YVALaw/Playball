@@ -176,6 +176,7 @@ export function Segmented<T extends string>(
           key={option.value}
           type="button"
           role="tab"
+          data-guide={`seg-${String(option.value)}`}
           aria-selected={value === option.value}
           onClick={() => onChange(option.value)}
         >{option.label}{option.alert && <i className="segmented-alert" aria-label="needs attention" />}</button>

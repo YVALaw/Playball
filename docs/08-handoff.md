@@ -32,7 +32,13 @@ the balance decisions set down for the reporter (`05` §62,
 > and the dugout's SIM THE REST, the front office and the budget, the roster
 > and the lineup card, the coach's own card. Derived from `seenTutorials`
 > stamps, first season only, never for a save that met TODAY before it
-> existed. Three phone reports fixed first: the college profile closed
+> existed. Revised the same night from the first phone run — "you have to
+> be very detailed with the tutorial and go along with every decision":
+> twenty steps now, the word errand walked under the mask, the field's
+> calls taught before the inning, RECORD THE GAME lit, the hitting coach
+> hired, tasked and his barn built, the lineup swapped and re-positioned by
+> hand, the card centred off the dugout button, the glow made fierce
+> (`05` §64.4). Three phone reports fixed first: the college profile closed
 > itself the instant it opened (SCOUT, the crests, every colleges row — an
 > unmemoised setter in an effect's dependencies); the recruiting card now
 > wears the board strip's shape; the club mark fits its square at every
@@ -927,7 +933,7 @@ in god mode's calendar sheet — a paid power, not a test aid, and it ships. See
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,281 tests, 70 files)
+npm run check      # typecheck + the whole suite (1,286 tests, 70 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing

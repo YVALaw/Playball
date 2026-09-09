@@ -49,7 +49,7 @@ export function Overlay(
       className={`full-overlay${className ? ` ${className}` : ''}`}
     >
       <header>
-        <button className="tap" type="button" aria-label="Back" onClick={onClose}>
+        <button className="tap" type="button" aria-label="Back" data-guide="overlay-back" onClick={onClose}>
           <ArrowLeftIcon />
         </button>
         <div>

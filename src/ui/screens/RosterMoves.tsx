@@ -50,18 +50,21 @@ const SCHOOL_WORDS: Record<'fine' | 'watch' | 'trouble', { label: string; line: 
 
 /** One thing a coach can do, as the proposal draws it. */
 function ActionCard(
-  { icon, eyebrow, title, detail, meta, onClick, selected = false, disabled = false, glow = false }:
+  { icon, eyebrow, title, detail, meta, onClick, selected = false, disabled = false, glow = false, guide }:
   {
     icon: ReactNode; eyebrow: string; title: string; detail: string; meta?: string;
     onClick?: () => void; selected?: boolean; disabled?: boolean;
     /** Lit as the final step of a guided errand. */
     glow?: boolean;
+    /** The tour's name for this card, when the first season lights it. */
+    guide?: string;
   },
 ) {
   return (
     <button
       className={`command-action-card${selected ? ' selected' : ''}${glow ? ' guide-glow' : ''}`}
       type="button"
+      data-guide={guide}
       disabled={disabled}
       onClick={onClick}
     >
@@ -218,6 +221,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
               meta={`${wordsLeft} of ${WORDS_A_SEASON} conversations left`}
               disabled={school === 'fine' || wordsLeft <= 0}
               glow={guiding && school !== 'fine' && wordsLeft > 0}
+              guide={school !== 'fine' && wordsLeft > 0 ? 'have-a-word' : undefined}
               onClick={() => {
                 wordWith(p.id);
                 if (guiding) {
@@ -273,6 +277,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
       <button
         className={`profile-actions-launcher${guiding && !open ? ' guide-glow' : ''}`}
         type="button"
+        data-guide="player-actions"
         aria-label={open ? 'Close player management' : 'Manage player'}
         aria-expanded={open}
         onClick={() => (open ? requestClose() : setPhase('open'))}

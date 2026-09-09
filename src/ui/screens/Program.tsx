@@ -347,14 +347,14 @@ function MoneySheet({ team }: { team: Owner }) {
 
       {view === 'plan' && (
         <section className="money-plan-grid">
-          <button className="money-plan-card tap" type="button" onClick={() => setView('staff')}>
+          <button className="money-plan-card tap" type="button" data-guide="money-staff" onClick={() => setView('staff')}>
             <span><small>STAFF</small><strong>{staffCount}/3 seats filled</strong></span>
             <p>{dollars(wages)} in annual wages. {staffCount < 3 ? `${3 - staffCount} seat${3 - staffCount === 1 ? '' : 's'} still open.` : 'The room is staffed.'}</p>
             <em>{staffCount < 3 ? 'Hiring changes the fixed cost of every decision after it.' : 'Review strengths, networks, and replacements.'}</em>
             <ChevronRightIcon />
           </button>
 
-          <button className="money-plan-card tap" type="button" onClick={() => setView('facilities')}>
+          <button className="money-plan-card tap" type="button" data-guide="money-facilities" onClick={() => setView('facilities')}>
             <span><small>FACILITIES</small><strong>{facilityCount}/3 specialties built</strong></span>
             <p>{nextFacility ? `${nextFacility.label} can move to level ${nextFacility.next} for ${dollars(nextFacility.cost)}.` : 'Every facility is fully developed.'}</p>
             <em>{nextFacility && left < nextFacility.cost ? `${dollars(nextFacility.cost - left)} short of the cheapest next project.` : 'Development and recruiting live here.'}</em>
@@ -378,7 +378,7 @@ function MoneySheet({ team }: { team: Owner }) {
             <p>Choose a seat, read the fit, then swipe candidates. You should never have to compare three jobs and nine people in one vertical wall.</p>
           </section>
           {!runsStaff && (
-            <div className="delegation-banner" role="status">
+            <div className="delegation-banner" role="status" data-guide="staff-delegated">
               <span><small>DELEGATED</small><strong>Athletic director controls staffing</strong></span>
               <p>You can still inspect every seat, candidate, cost, and network effect.</p>
             </div>
@@ -392,6 +392,7 @@ function MoneySheet({ team }: { team: Owner }) {
                   className={`tap${staffSeat === seat ? ' active' : ''}`}
                   type="button"
                   key={seat}
+                  data-guide={seat === 'hitting' ? 'seat-hitting' : undefined}
                   aria-current={staffSeat === seat ? 'page' : undefined}
                   onClick={() => setStaffSeat(seat)}
                 >
@@ -481,6 +482,7 @@ function MoneySheet({ team }: { team: Owner }) {
                       <div className="staff-directive-grid" aria-label={`${SEAT_LABEL[staffSeat]} standing directive`}>
                         {directives.map((directive) => (
                           <button key={directive} type="button" className={`tap${plan.directive === directive ? ' active' : ''}`}
+                            data-guide={staffSeat === 'hitting' && runsStaff && directive !== 'balanced' && plan.directive !== directive ? 'directive' : undefined}
                             disabled={!runsStaff} onClick={() => setStaffDirective(staffSeat, directive)}>
                             {DIRECTIVE_LABEL[directive]}
                           </button>
@@ -559,7 +561,18 @@ function MoneySheet({ team }: { team: Owner }) {
                               <span><small>AFTER HIRE</small><strong>{affordable ? dollars(left + (man?.wage ?? 0) - m.wage) : 'OVER BUDGET'}</strong></span>
                               {m.pipelineState && <span><small>NETWORK</small><strong>{m.pipelineState}</strong></span>}
                             </div>
-                            <button className="candidate-hire-cta tap" type="button" disabled={!runsStaff || !affordable || slot < 0} onClick={() => { if (slot >= 0) { hireAssistant(staffSeat, slot); setShowReplacements(false); } }}>
+                            <button
+                              className="candidate-hire-cta tap"
+                              type="button"
+                              // The tour lights the best fit for the open hitting
+                              // seat — or names the reason it cannot be hired, so
+                              // the tour can move on rather than wait forever.
+                              data-guide={staffSeat === 'hitting' && !man && market[0]?.id === m.id
+                                ? (runsStaff && affordable && slot >= 0 ? 'hire-cta' : 'hire-blocked')
+                                : undefined}
+                              disabled={!runsStaff || !affordable || slot < 0}
+                              onClick={() => { if (slot >= 0) { hireAssistant(staffSeat, slot); setShowReplacements(false); } }}
+                            >
                               {!runsStaff ? 'AD controls this seat' : !affordable ? `Need ${dollars(m.wage - left)} more` : man ? `Replace · ${dollars(m.wage)}` : `Hire · ${dollars(m.wage)}`}
                             </button>
                           </article>
@@ -582,7 +595,7 @@ function MoneySheet({ team }: { team: Owner }) {
             <p>One specialty gets the room. Pick it above, then decide whether the next level is worth what it takes away from the rest of the budget.</p>
           </section>
           {!runsFacilities && (
-            <div className="delegation-banner" role="status">
+            <div className="delegation-banner" role="status" data-guide="facility-delegated">
               <span><small>DELEGATED</small><strong>Athletic director controls projects</strong></span>
               <p>You can still inspect every specialty, upgrade effect, and budget consequence.</p>
             </div>
@@ -596,6 +609,7 @@ function MoneySheet({ team }: { team: Owner }) {
                 <button
                   key={b.key}
                   type="button"
+                  data-guide={b.key === 'cage' && !active ? 'facility-cage' : undefined}
                   className={`facility-specialty-tile tap${active ? ' active' : ''}`}
                   aria-current={active ? 'page' : undefined}
                   onClick={() => setFacilityFocus(b.key)}
@@ -653,6 +667,7 @@ function MoneySheet({ team }: { team: Owner }) {
                     <button
                       className="facility-invest-cta tap"
                       type="button"
+                      data-guide={b.key === 'cage' ? (affordable ? 'facility-cta' : 'facility-blocked') : undefined}
                       disabled={!affordable}
                       onClick={() => level === 0 ? build(b.key) : upgradeFacility(b.key)}
                     >

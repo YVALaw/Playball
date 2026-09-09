@@ -450,10 +450,19 @@ export function Lineup() {
             const line = season.batting.get(p.id);
             const on = picked === i;
             const marked = i === atSpot;
+            // The first season's tour, teaching the two-tap grammar by hand:
+            // the leadoff man, then the man behind him; and, with a square
+            // armed, the first man who does not already play there.
+            const guide = spot !== null
+              ? (p.pos !== spot ? 'lineup-assign' : undefined)
+              : picked === null
+                ? (i === 0 ? 'lineup-first' : undefined)
+                : (i === (picked === 0 ? 1 : 0) ? 'lineup-second' : undefined);
             return (
               <button
                 className={`player-row card-in${on || marked ? ' is-selected' : ''}${holdingId === p.id ? ' is-holding' : ''}`
                   + (p.id === flaggedId ? ' is-flagged' : '')}
+                data-guide={guide}
                 ref={(el) => {
                   if (el) rowEls.current.set(String(p.id), el);
                   else rowEls.current.delete(String(p.id));
@@ -521,6 +530,7 @@ export function Lineup() {
               className={spot === item ? 'active' : ''}
               key={item}
               type="button"
+              data-guide={spot === null && item === 'CF' ? 'lineup-spot' : undefined}
               aria-pressed={spot === item}
               aria-label={`Show who is at ${item}`}
               onClick={() => setSpot(spot === item ? null : item)}
