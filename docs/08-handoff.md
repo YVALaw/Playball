@@ -48,7 +48,13 @@ the balance decisions set down for the reporter (`05` §62,
 > track, the payments profile is broken and `god_mode` does not exist yet
 > (parked by the reporter), and — the schedule item nobody's clock has
 > started — a personal account must run a closed test with **12 opted-in
-> testers for 14 days** before it may request production.
+> testers for 14 days** before it may request production. Later that
+> night the avatar kit left the repository — `design/avatar-kit` (6.8 MB
+> of sliced PNGs), the compose and slice scripts — at the reporter's word
+> after a download came in at 23 MB: the app never read it (the portraits
+> are drawn, `Avatar.tsx`), and the game's own build is 3.2 MB of `dist/`.
+
+> **September 9 — the tour, and the Console's true state.** The guided
 
 > **September 7, night — the listing, and what the emulator found.** The
 > keystore is the reporter's, made and backed up; `Playball-release.aab`
