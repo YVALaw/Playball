@@ -6583,12 +6583,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // the ask — a board that concedes the season is not a board.
     const give = Math.min(lost - HEAVY + 1, Math.max(1, Math.round(boardAsk.targetWins * 0.2)));
     const target = Math.max(1, boardAsk.targetWins - give);
+    // The opener carries its own copy of the number — the modal's "They want
+    // N wins" and the strip the case is put from — and it kept the old one
+    // after the board had come down. Reported 2026-09-10: "they accepted to
+    // do less and still the board kept 18." One number, in both places.
+    const opener = get().seasonOpener;
     set({
       boardAsk: {
         ...boardAsk,
         targetWins: target,
         objectives: objectivesFor(boardAsk.mandate, target),
       },
+      ...(opener ? { seasonOpener: { ...opener, targetWins: target } } : {}),
       version: get().version + 1,
     });
     void get().saveNow();
@@ -7297,6 +7303,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         inbox: get().inbox,
         tutorials: get().seenTutorials,
         boardAsk: get().boardAsk,
+        // Whether the case was already put to the board this season. Without
+        // it a reload offered the button again, and a second concession.
+        arguedTerms: get().arguedTerms,
         watch: get().watch,
         economy: get().economy,
         rivalry: get().rivalry,
@@ -7467,6 +7476,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       */
       boardAsk: (loaded.boardAsk as Expectation | null | undefined)
         ?? boardAskFor(loaded.season, loaded.userTeam),
+      arguedTerms: loaded.arguedTerms === true,
       needsTeam: false,
       // Through the front door and into the career. Remembering WHICH file it
       // came from is what lets a delete of that file take the career with it,

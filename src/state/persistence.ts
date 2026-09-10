@@ -145,6 +145,8 @@ export interface SaveFile {
    * older saves, which recompute it once at load — mildly drifted, then frozen.
    */
   boardAsk?: unknown;
+  /** Whether the case was already put to the board this season. Absent is no. */
+  arguedTerms?: boolean;
   /** The watchlists — programs followed and chairs the career points at. */
   watch?: unknown;
   /** The staff, the facilities and the year's spending. */
@@ -378,6 +380,8 @@ export interface SaveExtras {
   tutorials?: unknown;
   /** The board's ask for the season in progress, frozen at its opening. */
   boardAsk?: unknown;
+  /** Whether the case was already put to the board this season. Absent is no. */
+  arguedTerms?: boolean;
   /** The program and job-path watchlists, by school abbreviation. */
   watch?: unknown;
   /** The program's money: staff, facilities, the year's ledger. Stage 11. */
@@ -485,6 +489,7 @@ export function buildSaveFile(
       ? { tutorials: extras.tutorials }
       : {}),
     ...(extras.boardAsk ? { boardAsk: extras.boardAsk } : {}),
+    ...(extras.arguedTerms === true ? { arguedTerms: true } : {}),
     ...(extras.watch ? { watch: extras.watch } : {}),
     ...(extras.economy ? { economy: extras.economy } : {}),
     ...(extras.rivalry ? { rivalry: extras.rivalry } : {}),
@@ -551,6 +556,8 @@ export interface LoadedDynasty {
   tutorials: unknown;
   /** The board's frozen ask, or undefined before it was stamped. */
   boardAsk: unknown;
+  /** Whether the case was put to the board this season; false on older saves. */
+  arguedTerms: boolean;
   /** The watchlists, or undefined on saves that predate them. */
   watch: unknown;
   /** The economy, or undefined on saves that predate stage 11. */
@@ -635,6 +642,7 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     inbox: file.inbox ?? [],
     tutorials: file.tutorials ?? [],
     boardAsk: file.boardAsk,
+    arguedTerms: file.arguedTerms === true,
     watch: file.watch,
     economy: file.economy,
     rivalry: file.rivalry,

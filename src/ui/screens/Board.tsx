@@ -24,7 +24,7 @@ import { recruitingPlan, programRecruitingPitch } from '../../engine/recruitingP
 
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useDialogFocus } from '../dialogFocus.js';
-import { boardBudget, useDynasty, useUserTeam } from '../../state/store.js';
+import { boardBudget, PHASES, useDynasty, useUserTeam } from '../../state/store.js';
 import {
   fit, canPursue, inPipeline, byRank,
   RECRUITING_FACTORS, RECRUITING_FACTOR_LABEL, RECRUITING_FACTOR_BLURB,
@@ -295,7 +295,7 @@ export function Board() {
   const networkFor = (p: Prospect): number => pipelineStrength(economy, p.state, homeState);
 
   const {
-    list, matches, targets, commits, spent, locked, shortfall, covered,
+    list, matches, targets, commits, spent, locked, shortfall, covered, leaving,
   } = useMemo(() => {
     const all = season?.recruiting.prospects ?? [];
     // One gate, asked the same way everywhere on this screen: the program's
@@ -336,10 +336,25 @@ export function Board() {
     const roster: Player[] = team
       ? [...team.team.lineup, ...team.team.bench, ...team.team.rotation, ...team.team.bullpen]
       : [];
+    /*
+      Who will still be here when the class arrives.
+
+      Recruiting runs through the season now, and the roster in front of you
+      in March is full — so this tab read "every spot covered" all spring,
+      with a class of nobody, while the seniors were three months from
+      leaving. Reported 2026-09-10: "the needs sub tab isn't working, it is
+      not telling me the team's needs." Until the draft step runs the
+      departures, the seniors are counted as gone: they are the one certain
+      departure, and the men the draft takes cannot be known in March. From
+      the draft step on the roster standing here is already the survivors.
+    */
+    const departed = phase !== null && PHASES.indexOf(phase) >= PHASES.indexOf('draft');
+    const survivors = departed ? roster : roster.filter((p) => p.classYear !== 'SR');
+    const leaving = roster.length - survivors.length;
     // Every signed man: the July high-school draft went on 2026-09-10, so
     // the class the year roll receives is exactly the class on this screen.
     const classPlayers = signed.map((p) => p.player);
-    const still = walkOnShortfall(roster, classPlayers);
+    const still = walkOnShortfall(survivors, classPlayers);
 
     const list = showAll ? ranked : ranked.slice(0, ROW_CAP);
 
@@ -364,9 +379,10 @@ export function Board() {
       locked: filters.reachOnly ? [] : shown.filter((p) => !reaches(p))
         .sort((a, b) => b.stars - a.stars).slice(0, 5),
       shortfall: still,
-      covered: coveredSince(walkOnShortfall(roster, []), still),
+      covered: coveredSince(walkOnShortfall(survivors, []), still),
+      leaving,
     };
-  }, [season, team, userTeam, version, pitch, myStars, homeState, filters, showAll]);
+  }, [season, team, userTeam, version, pitch, myStars, homeState, filters, showAll, phase]);
 
   if (!season || !team || !pitch) return null;
 
@@ -567,7 +583,7 @@ export function Board() {
 
 
       {view === 'needs' ? (
-        <NeedsView short={shortfall} covered={covered} targeted={activeTargetCount} onPick={(pos) => {
+        <NeedsView short={shortfall} covered={covered} leaving={leaving} targeted={activeTargetCount} onPick={(pos) => {
           setFilters({ ...NO_FILTERS, pos });
           setView('recruits');
         }} />
@@ -943,15 +959,20 @@ function FilterToggle({ on, onClick, label, note }: {
  * there.
  */
 function NeedsView(
-  { short, covered, targeted, onPick }:
+  { short, covered, leaving, targeted, onPick }:
   {
     short: readonly { pos: string; count: number }[];
     covered: readonly { pos: string; count: number }[];
+    /** Seniors counted as gone in June, while the season is still on. */
+    leaving: number;
     targeted: (pos: string) => number;
     onPick: (pos: string) => void;
   },
 ) {
   const total = short.reduce((a, r) => a + r.count, 0);
+  const seniors = leaving > 0
+    ? ` Your ${leaving} senior${leaving === 1 ? ' is' : 's are'} counted as gone in June.`
+    : '';
 
   return (
     <div style={{ marginTop: 10 }}>
@@ -960,10 +981,10 @@ function NeedsView(
         borderLeft: `3px solid ${total === 0 ? 'var(--win)' : 'var(--clay)'}`,
         font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--ink)',
       }}>
-        {total === 0
+        {(total === 0
           ? 'Every spot covered. The whole roster is men you went and got.'
           : `${total} walk-on${total === 1 ? '' : 's'} as it stands. Whoever turns `
-            + 'up is well below your level, and gone in a year.'}
+            + 'up is well below your level, and gone in a year.') + seniors}
       </div>
 
       {short.length > 0 && (
