@@ -12,6 +12,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   positionPenalty, secondaryPositions, retrainablePositions, fieldingAt, penaltyLabel, coverTier,
+  retrainOdds, movePosition, settleIn, RETRAIN_RESIDUAL,
 } from '../src/engine/positions.js';
 import { overallOf } from '../src/engine/ratings.js';
 import { createSeason } from '../src/engine/season.js';
@@ -146,6 +147,36 @@ describe('secondary positions', () => {
     // A shortstop covers the whole dirt and the grass, and has no stretches.
     expect(secondaryPositions(at('SS'))).toEqual(['2B', 'CF', '3B', 'RF', 'LF', '1B']);
     expect(retrainablePositions(at('SS'))).toEqual(secondaryPositions(at('SS')));
+  });
+});
+
+describe('retraining', () => {
+  it('is likelier where he covers than where he stretches, and hopeless behind the plate', () => {
+    const ss = at('SS');
+    const first = at('1B');
+    const lf = at('LF');
+    expect(retrainOdds(ss, '2B')).toBeGreaterThan(retrainOdds(first, '3B'));
+    expect(retrainOdds(first, '3B')).toBeGreaterThan(retrainOdds(lf, 'SS'));
+    expect(retrainOdds(lf, 'C')).toBeLessThanOrEqual(0.05);
+    expect(retrainOdds(ss, 'SS')).toBe(1);
+  });
+
+  it('takes at about the rate it printed, and leaves a rung behind when it does not', () => {
+    const took = (from: Position, to: Position): number => {
+      const men = everyone.filter((p) => p.pos === from).slice(0, 80);
+      let n = 0;
+      for (const m of men) {
+        const copy = { ...m } as Hitter;
+        movePosition(copy, to);
+        for (let season = 0; season < 8; season++) settleIn(copy);
+        const s = copy as Hitter & { settling?: number; stuck?: boolean };
+        if (s.stuck) expect(s.settling).toBe(RETRAIN_RESIDUAL);
+        else { expect(s.settling).toBeUndefined(); n += 1; }
+      }
+      return n / men.length;
+    };
+    expect(took('SS', '2B')).toBeGreaterThan(0.65);
+    expect(took('LF', 'SS')).toBeLessThan(0.4);
   });
 });
 

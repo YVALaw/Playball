@@ -29,7 +29,9 @@ import { useDynasty } from '../../state/store.js';
 import { handles } from '../../state/depth.js';
 import { standing, WORDS_A_SEASON } from '../../engine/eligibility.js';
 import { canRedshirt, MAX_REDSHIRTS, redshirtCount } from '../../engine/redshirt.js';
-import { retrainablePositions } from '../../engine/positions.js';
+import { retrainablePositions, retrainOdds, coverTier, fieldingAt } from '../../engine/positions.js';
+import { overallOf } from '../../engine/ratings.js';
+import { Modal } from '../Modal.js';
 import { injuryClock } from '../../engine/season.js';
 import { isHurt, prognosis } from '../../engine/injury.js';
 import { legWeariness } from '../../engine/workload.js';
@@ -118,7 +120,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
       setPhase((p) => (p === 'closing' ? 'closed' : p));
     }, 200);
   };
-  const [target, setTarget] = useState<Position | null>(null);
+  const [retrainOpen, setRetrainOpen] = useState(false);
   void version;
 
   // Everything below is a thing a coach does to his own player. A leaderboard
@@ -129,7 +131,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
 
   const school = standing(p);
   const promise = !promiseSpent(p.recruitPromise) ? p.recruitPromise : undefined;
-  const positionConflict = promise?.kind === 'keepPosition' && target !== null && target !== promise.promisedPos;
+  const promisedPos = promise?.kind === 'keepPosition' ? promise.promisedPos : undefined;
   const redshirtConflict = promise?.kind === 'noRedshirt';
   const sitting = (p as AnyPlayer & { redshirt?: boolean }).redshirt === true;
   const outUntil = (p as AnyPlayer & { outUntil?: number }).outUntil;
@@ -157,7 +159,9 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
     `secondaryPositions` already sorts hardest first, so the top of that list is
     the half worth printing: what he can do that is *not* obvious.
   */
-  const alsoPlays = (p.type === 'hitter' ? retrainablePositions(p as Hitter) : []).slice(0, 3);
+  // Every spot a winter could teach him, covers first and then stretches —
+  // the modal prints them all, with the odds each one takes.
+  const alsoPlays = p.type === 'hitter' ? retrainablePositions(p as Hitter) : [];
 
   /** The word under the trigger, so the button says something before it opens. */
   const statusLabel = hurtNow ? 'HURT'
@@ -244,23 +248,56 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
           <div className="command-action-grid">
             {p.type === 'hitter' && (
               <div className="command-action-stack">
+                {/* Always open, by request — "leave it open all the time, and
+                    when we tap it a modal with the positions he can be
+                    retrained to and the % he actually gets good there." The
+                    move itself still waits for the winter. */}
                 <ActionCard
                   icon={<ReloadIcon />}
                   eyebrow="POSITION"
-                  title={target ? `${p.pos} → ${target}${positionConflict ? ' · breaks promise' : ''}` : 'Retrain position'}
-                  detail={!winter ? 'Position changes happen over the offseason.' : alsoPlays.length === 0 ? 'There is no realistic secondary spot to train.' : target ? `This permanently changes his listed position to ${target}.` : 'Choose a realistic secondary position below.'}
-                  meta={positionConflict ? 'You promised to keep his position. This move can lower mood and increase transfer risk.' : winter ? 'Permanent move · adjustment period next year' : 'Offseason only'}
-                  selected={target !== null}
-                  disabled={!winter || target === null}
-                  onClick={() => { changePosition(p.id, target as Position); setTarget(null); }}
+                  title="Retrain position"
+                  detail={alsoPlays.length === 0
+                    ? 'There is no realistic spot to train him for.'
+                    : `${alsoPlays.length} spot${alsoPlays.length === 1 ? '' : 's'} he could learn, and the odds each one takes.`}
+                  meta={winter ? 'Permanent move · a step behind until it takes' : 'Moves happen over the offseason · look any time'}
+                  selected={false}
+                  disabled={alsoPlays.length === 0}
+                  onClick={() => setRetrainOpen(true)}
                 />
-                {winter && alsoPlays.length > 0 && (
-                  <div className="position-picker command-position-picker">
-                    <small>NEW POSITION</small>
-                    {alsoPlays.map((spot) => (
-                      <button className={target === spot ? 'active' : ''} key={spot} type="button" onClick={() => setTarget(target === spot ? null : spot as Position)}>{spot}</button>
-                    ))}
-                  </div>
+                {retrainOpen && p.type === 'hitter' && (
+                  <Modal
+                    kicker="RETRAIN POSITION"
+                    title={`${p.name} · ${p.pos}`}
+                    lines={[winter
+                      ? 'A move is permanent. He spends the winter learning the spot and opens next season there, a step behind until it takes.'
+                      : 'Moves happen over the offseason. This is what a winter could make of him.']}
+                    body={(
+                      <div className="retrain-list">
+                        {alsoPlays.map((spot) => {
+                          const man = p as Hitter;
+                          const odds = retrainOdds(man, spot);
+                          const tier = coverTier(man, spot);
+                          const plays = overallOf(fieldingAt(man, spot));
+                          const breaks = promisedPos !== undefined && spot !== promisedPos;
+                          return (
+                            <div key={spot} className={`retrain-row${tier >= 2 ? ' is-stretch' : ''}`}>
+                              <span>
+                                <b>{spot}</b>
+                                <small>{tier === 1 ? 'natural cover' : 'a stretch'} · plays as {plays} today</small>
+                              </span>
+                              <strong>{Math.round(odds * 100)}%</strong>
+                              <button
+                                type="button" className="tap" disabled={!winter}
+                                onClick={() => { changePosition(p.id, spot); setRetrainOpen(false); }}
+                              >{breaks ? 'MOVE · BREAKS PROMISE' : 'MOVE'}</button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    action="CLOSE"
+                    onClose={() => setRetrainOpen(false)}
+                  />
                 )}
               </div>
             )}

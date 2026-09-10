@@ -459,6 +459,16 @@ export function Lineup() {
               : picked === null
                 ? (i === 0 ? 'lineup-first' : undefined)
                 : (i === (picked === 0 ? 1 : 0) ? 'lineup-second' : undefined);
+            // Where he stands against what he is, for the row's tag and the
+            // colour of his overall — asked for 2026-09-10: "something like
+            // OUT OF POSITION, and the overall changes to red if it goes down."
+            const home = (p as typeof p & { homePos?: Position }).homePos ?? p.pos;
+            const asHome = home === p.pos ? p : { ...p, pos: home };
+            const tier = coverTier(asHome, p.pos);
+            const stuck = (p as typeof p & { stuck?: boolean }).stuck === true;
+            const settling = tier === 0 && positionPenalty(p, p.pos) > 0;
+            const plays = overallOf(fieldingAt(asHome, p.pos));
+            const ovr = overallOf(asHome);
             return (
               <button
                 className={`player-row card-in${on || marked ? ' is-selected' : ''}${holdingId === p.id ? ' is-holding' : ''}`
@@ -488,7 +498,7 @@ export function Lineup() {
                     {captainOf(team.team)?.id === p.id && <CaptainC />}
                   </strong>
                   <small>
-                    {p.pos}{isTwoWay(p) ? ` · ${(p as unknown as { role: string }).role}` : ''} · Bats {p.bats} · {overallOf(p)} OVR
+                    {p.pos}{isTwoWay(p) ? ` · ${(p as unknown as { role: string }).role}` : ''} · Bats {p.bats} · <b className={plays < ovr ? 'ovr-down' : plays > ovr ? 'ovr-up' : undefined}>{plays} OVR</b>
                     {line && line.ab > 0
                       ? ` · ${battingAverage(line).toFixed(3).replace(/^0/, '')}`
                       : ''}
@@ -502,27 +512,13 @@ export function Lineup() {
                   {!available(p, injuryClock(season)) && (
                     <small className="row-why">✚ {whyOut(p, injuryClock(season))}</small>
                   )}
-                  {/* Where he stands against what he is, and what he plays at
-                      there — asked for 2026-09-10: "how do we know visually
-                      when a player isn't in the right position? we should
-                      make it visible so they know he will not be performing
-                      at his best." His own spot says nothing; a natural
-                      cover is noted; a stretch or the deep end is in the
-                      alert ink, with the overall the glove tax leaves him. */}
-                  {(() => {
-                    const home = (p as typeof p & { homePos?: Position }).homePos ?? p.pos;
-                    const asHome = home === p.pos ? p : { ...p, pos: home };
-                    const tier = coverTier(asHome, p.pos);
-                    const settling = tier === 0 && positionPenalty(p, p.pos) > 0;
-                    if (tier === 0 && !settling) return null;
-                    const plays = overallOf(fieldingAt(asHome, p.pos));
-                    const word = settling ? 'SETTLING IN' : tier === 1 ? 'COVERS' : tier === 2 ? 'A STRETCH' : 'OUT OF HIS DEPTH';
-                    return (
-                      <small className={`row-fit${tier >= 2 ? ' is-bad' : ''}`}>
-                        ▲ {word} — {settling ? `new to ${p.pos}` : `a ${home} at ${p.pos}`} · plays as {plays} here
-                      </small>
-                    );
-                  })()}
+                  {/* The tag is short by request; the overall above carries
+                      the damage in its colour. His own spot says nothing. */}
+                  {(tier > 0 || settling) && (
+                    <small className={`row-fit${tier >= 2 || stuck ? ' is-bad' : ''}`}>
+                      {stuck ? `NEVER TOOK TO ${p.pos}` : settling ? 'SETTLING IN' : 'OUT OF POSITION'}
+                    </small>
+                  )}
                 </span>
                 {(() => {
                   const line = season?.batting.get(p.id);

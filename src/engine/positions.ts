@@ -235,6 +235,8 @@ export interface Settling {
   settling?: number;
   /** Where he used to play, so a card can say what happened to him. */
   movedFrom?: Position;
+  /** The retraining never took: the residual stays, and the card says so. */
+  stuck?: boolean;
 }
 
 /** What a move costs on the day it happens, before any of it decays. */
@@ -268,11 +270,59 @@ export function movePosition(p: Hitter, to: Position): boolean {
   return true;
 }
 
-/** A season of getting used to it. */
+/** What a retraining that never took leaves on his glove, for good. */
+export const RETRAIN_RESIDUAL = 4.5;
+
+/** The same stable string hash the rest of the engine derives with. */
+function stableHash(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619) >>> 0;
+  return h >>> 0;
+}
+
+/**
+ * How likely a winter of retraining makes him a natural at a spot.
+ *
+ * The tier sets the base — a natural cover takes almost always, a stretch
+ * about half the time, the deep end rarely, the plate never for a man who is
+ * not a catcher — and the tool the spot lives on moves it either way: range
+ * up the middle and in centre, the arm at third and in right, hands at first.
+ * Printed in the retrain modal and rolled by `settleIn`, so what the coach
+ * was told is what happens. Asked for 2026-09-10: "a modal with the
+ * positions the player can be retrained to, showing the % of how likely
+ * they are to actually get to be good in that position."
+ */
+export function retrainOdds(p: Hitter, to: Position): number {
+  const tier = coverTier(p, to);
+  if (tier === 0) return 1;
+  if (to === 'C') return 0.05;
+  const base = tier === 1 ? 0.85 : tier === 2 ? 0.5 : 0.15;
+  const tool = to === 'SS' || to === '2B' || to === 'CF' ? p.range
+    : to === '3B' || to === 'RF' ? p.arm
+      : to === '1B' ? p.hands
+        : (p.range + p.arm) / 2;
+  const swing = ((tool - 50) / 50) * 0.2;
+  return Math.max(0.05, Math.min(0.95, base + swing));
+}
+
+/**
+ * A season of getting used to it.
+ *
+ * The winter the settling runs out is the winter it either took or did not.
+ * Rolled off the man and the move rather than drawn, so a reload cannot
+ * re-roll it and the odds the retrain modal printed were the odds. A move
+ * that took leaves nothing behind; one that did not leaves a rung of glove
+ * for good, and the lineup row says he never took to it.
+ */
 export function settleIn(p: Hitter): void {
   const s = p as Hitter & Settling;
-  if (s.settling === undefined) return;
+  if (s.settling === undefined || s.stuck) return;
   const left = s.settling - SETTLING_DECAY;
-  if (left <= 0) { delete s.settling; delete s.movedFrom; return; }
-  s.settling = left;
+  if (left > 0) { s.settling = left; return; }
+  const from = s.movedFrom;
+  const odds = from ? retrainOdds({ ...p, pos: from }, p.pos) : 1;
+  const roll = (stableHash(`${p.id}:${from ?? '-'}:${p.pos}:retrain`) % 1000) / 1000;
+  if (roll < odds) { delete s.settling; delete s.movedFrom; return; }
+  s.settling = RETRAIN_RESIDUAL;
+  s.stuck = true;
 }

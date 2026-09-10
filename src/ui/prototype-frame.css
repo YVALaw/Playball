@@ -2981,6 +2981,18 @@
   font-weight: 800;
 }
 .player-name .row-fit.is-bad { color: var(--alert); }
+.player-name .ovr-down { color: var(--alert); }
+.player-name .ovr-up { color: var(--win); }
+
+/* The retrain modal: one row per spot he could learn, and the odds it takes. */
+.retrain-list { display: grid; gap: 6px; margin: 10px 0 4px; text-align: left; }
+.retrain-row { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
+.retrain-row > span b { display: block; font: 800 calc(14px * var(--ts)) var(--display); }
+.retrain-row > span small { display: block; color: var(--dim); font-size: calc(8px * var(--ts)); }
+.retrain-row > strong { font: 800 calc(18px * var(--ts))/1 var(--display); color: var(--win); }
+.retrain-row.is-stretch > strong { color: var(--alert); }
+.retrain-row > button { min-height: 36px; padding: 6px 10px; border: 1px solid var(--clay); background: var(--wash); color: var(--clay); font: 800 calc(8px * var(--ts)) var(--mono); letter-spacing: .06em; }
+.retrain-row > button:disabled { opacity: .45; }
 
 /* ---------------------------------------------------------------------------
    The action menus leave the way they arrive.
