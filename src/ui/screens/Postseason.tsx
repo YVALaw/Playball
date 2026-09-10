@@ -796,13 +796,12 @@ export function Postseason() {
                 <small>YOUR NATIONAL BID</small><p>{NATIONAL_BID_DETAIL[nationalBid]}</p>
               </section>
             )}
-            {reviewing === null && knockout && (!stillIn || iAmOut) && (
-              <section className="postseason-outcome" aria-label="Your postseason status">
-                <small>{howFar.good ? 'TOURNAMENT FINISHED · SEASON CONTINUES' : 'YOUR SEASON IS OVER'}</small>
-                <strong>{howFar.title}</strong>
-                <p>{howFar.lines.join(' ')}</p>
-              </section>
-            )}
+            {/*
+              The exit used to be restated here as a standing card, above the
+              next game — asked off on 2026-09-10: "there's a big text when we
+              are eliminated on top of the next game card. Remove it." The
+              announcement modal still says it once; the bracket says the rest.
+            */}
             {/*
               Who won, at the top, where it cannot be missed.
 
