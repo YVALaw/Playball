@@ -52,6 +52,36 @@ describe('the best nine', () => {
     expect(weak.homePos).toBeUndefined();
   });
 
+  it('leaves two corner outfielders where they are rather than swapping them', () => {
+    // Reported: AUTO sent the RF to LF and the LF to RF, both a rung worse.
+    const team = fresh();
+    const lf = team.lineup.find((p) => p.pos === 'LF')!;
+    const rf = team.lineup.find((p) => p.pos === 'RF')!;
+    // Make the left fielder the slightly better bat, the way it was found.
+    rate(lf, 52);
+    rate(rf, 50);
+    const { lineup } = bestNine(team, 0);
+    expect(lineup.find((p) => p.id === lf.id)!.pos).toBe('LF');
+    expect(lineup.find((p) => p.id === rf.id)!.pos).toBe('RF');
+  });
+
+  it('still moves a cover in when he is clearly the better man', () => {
+    const team = fresh();
+    const weak2b = team.lineup.find((p) => p.pos === '2B')!;
+    // A bench third baseman — a natural cover at second — far better than
+    // the man standing there. Third itself stays with its own man.
+    const third = team.bench[0]!;
+    third.pos = '3B';
+    delete third.homePos;
+    rate(third, 70);
+    rate(weak2b, 30);
+    const { lineup } = bestNine(team, 0);
+    expect(lineup.find((p) => p.id === third.id)?.pos).toBe('2B');
+    // The passenger loses second. On a roster this thin he may still be the
+    // best bat left for the DH, which is the DH's job — but not second.
+    expect(lineup.find((p) => p.id === weak2b.id)?.pos).not.toBe('2B');
+  });
+
   it('does not put a big bat behind the plate', () => {
     const team = fresh();
     const catcher = team.lineup.find((p) => p.pos === 'C')!;

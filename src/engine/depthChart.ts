@@ -386,10 +386,23 @@ export function bestNine(
   // Judged from home: a man covering catcher this week is still the first
   // baseman he is when the card is rebuilt.
   const home = (m: Hitter): Hitter => (m.homePos ? { ...m, pos: m.homePos } : m);
-  const merit = (m: Hitter, spot: Position): number => overallOf(fieldingAt(home(m), spot));
+  /*
+    Merit at the spot, and a real edge for the man whose spot it is.
+
+    The glove tax on a natural cover is a rung, and the glove is a small
+    share of overall, so on merit alone a left fielder with a slightly
+    better bat took right field off the right fielder — who then took left,
+    both men a rung worse than they were. Reported 2026-09-10: "the RF goes
+    to LF and LF to RF, which does not make sense if they are going to be
+    performing worse." A cover has to be clearly better than the man in
+    place to move him: three points of overall, which is more than the tax
+    costs and less than any upgrade worth making.
+  */
+  const OWN_SPOT_EDGE = 3;
+  const merit = (m: Hitter, spot: Position): number =>
+    overallOf(fieldingAt(home(m), spot)) + (home(m).pos === spot ? OWN_SPOT_EDGE : 0);
   const rank = (spot: Position) => (a: Hitter, b: Hitter): number =>
     merit(b, spot) - merit(a, spot)
-    || Number(home(b).pos === spot) - Number(home(a).pos === spot)
     || Number(inNine.has(b.id)) - Number(inNine.has(a.id))
     || a.name.localeCompare(b.name);
 
