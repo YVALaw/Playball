@@ -35,7 +35,7 @@ import { GodBolt } from '../god/GodBolt.js';
 import { ModuleIntro, SectionHeading, Segmented, Confirmable } from '../components/Kit.js';
 import {
   annualBudget, dollars, marketFor, remaining, wageBill,
-  SCOUT_COST, SCOUT_DAYS, SEATS, SEAT_LABEL, SEAT_NOTE,
+  SCOUT_COST, SCOUT_DAYS, SEATS, SEAT_LABEL,
   BUILDINGS, shapeOf, facilityLevel, facilityUpgradeCost, facilityEffectAt,
   FACILITY_MAX_LEVEL, staffProjectWeeks, PIPELINE_MIN, pipelineStrength, pipelineLabel, staffPlan, projectFacility,
   DIRECTIVE_LABEL, PROJECT_LABEL, type Assistant, type StaffSeat, type Building,
@@ -365,21 +365,19 @@ function MoneySheet({ team }: { team: Owner }) {
           <button className="money-plan-card tap" type="button" data-guide="money-staff" onClick={() => setView('staff')}>
             <span><small>STAFF</small><strong>{staffCount}/3 seats filled</strong></span>
             <p>{dollars(wages)} in annual wages. {staffCount < 3 ? `${3 - staffCount} seat${3 - staffCount === 1 ? '' : 's'} still open.` : 'The room is staffed.'}</p>
-            <em>{staffCount < 3 ? 'Hiring changes the fixed cost of every decision after it.' : 'Review strengths, networks, and replacements.'}</em>
             <ChevronRightIcon />
           </button>
 
           <button className="money-plan-card tap" type="button" data-guide="money-facilities" onClick={() => setView('facilities')}>
             <span><small>FACILITIES</small><strong>{facilityCount}/3 specialties built</strong></span>
             <p>{nextFacility ? `${nextFacility.label} can move to level ${nextFacility.next} for ${dollars(nextFacility.cost)}.` : 'Every facility is fully developed.'}</p>
-            <em>{nextFacility && left < nextFacility.cost ? `${dollars(nextFacility.cost - left)} short of the cheapest next project.` : 'Development and recruiting live here.'}</em>
+            {nextFacility && left < nextFacility.cost && <em>{dollars(nextFacility.cost - left)} short of the next project.</em>}
             <ChevronRightIcon />
           </button>
 
           <button className="money-plan-card tap" type="button" onClick={() => setView('network')}>
             <span><small>NETWORK</small><strong>{pipelines.length} market{pipelines.length === 1 ? '' : 's'} · {books} live report{books === 1 ? '' : 's'}</strong></span>
             <p>{pipelines[0] ? `${pipelines[0].state} is your strongest relationship at ${pipelines[0].strength}/100.` : 'Your recruiting map is still open ground.'}</p>
-            <em>Scouting reports cost {dollars(SCOUT_COST)} and turn opponent information into playbooks.</em>
             <ChevronRightIcon />
           </button>
         </section>
@@ -387,11 +385,6 @@ function MoneySheet({ team }: { team: Owner }) {
 
       {view === 'staff' && (
         <>
-          <section className="money-section-lead compact">
-            <small>FIXED COST</small>
-            <h2>Build your coaching staff</h2>
-            <p>Choose a role, then tap a candidate to compare strengths and cost.</p>
-          </section>
           {!runsStaff && (
             <div className="delegation-banner" role="status" data-guide="staff-delegated">
               <span><small>DELEGATED</small><strong>Athletic director controls staffing</strong></span>
@@ -436,11 +429,13 @@ function MoneySheet({ team }: { team: Owner }) {
                   {man ? (
                     <>
                       <StaffRatings coach={man} />
-                      <p className="staff-tenure">{man.rating} OVR · Year {Math.max(1, year - (man.joinedYear ?? year) + 1)} on your staff · signed through {man.until ?? year + 1}{man.until !== undefined && man.until <= year ? ' · CONTRACT UP' : ''}</p>
-                      <p>{SEAT_NOTE[staffSeat]}</p>
-                      {staffSeat === 'recruiting' && man.pipelineState && (
-                        <em>Recruiting lead: <b>{man.pipelineState}</b> · assign a pipeline project to turn familiarity into a real network.</em>
-                      )}
+                      <p className="staff-tenure">
+                        <span>{man.rating} OVR</span>
+                        <span>YEAR {Math.max(1, year - (man.joinedYear ?? year) + 1)}</span>
+                        <span>THROUGH {man.until ?? year + 1}</span>
+                        {man.until !== undefined && man.until <= year && <b className="up">CONTRACT UP</b>}
+                        {staffSeat === 'recruiting' && man.pipelineState && <span>{man.pipelineState} NETWORK</span>}
+                      </p>
                       {runsStaff && (
                         <div className="staff-focus-actions">
                           <button className="staff-market-open tap" type="button" onClick={() => setShowReplacements((open) => !open)}>
@@ -467,8 +462,7 @@ function MoneySheet({ team }: { team: Owner }) {
                     </>
                   ) : (
                     <div className="staff-vacancy-copy">
-                      <p>{SEAT_NOTE[staffSeat]}</p>
-                      <strong>{market.length} candidates are available this cycle.</strong>
+                      <strong>{market.length} candidates this cycle.</strong>
                     </div>
                   )}
                 </article>
@@ -494,7 +488,7 @@ function MoneySheet({ team }: { team: Owner }) {
                     <section className="staff-management-panel">
                       <div className="staff-management-head">
                         <span><small>YOUR DIRECTION</small><strong>Set the coach’s focus</strong></span>
-                        <em>{level > 0 ? `${BUILDINGS.find((b) => b.key === facility)?.label ?? 'Facility'} · L${level}` : 'FACILITY REQUIRED'}</em>
+                        <em>{level > 0 ? `${BUILDINGS.find((b) => b.key === facility)?.label ?? 'Facility'} · L${level} · ${weeksAvailable} WKS LEFT` : 'FACILITY REQUIRED'}</em>
                       </div>
                       <div className="staff-directive-grid" data-guide={staffSeat === 'hitting' && runsStaff ? 'directive' : undefined} aria-label={`${SEAT_LABEL[staffSeat]} standing directive`}>
                         {directives.map((directive) => (
@@ -505,7 +499,6 @@ function MoneySheet({ team }: { team: Owner }) {
                         ))}
                       </div>
                       <p className="staff-directive-effect">{directiveEffectLine(staffSeat, plan.directive)}</p>
-                      <p className="staff-project-detail">{weeksAvailable} recruiting weeks remain. Projects use your assistant’s time and require no extra cash or RP. New work must finish within this calendar.</p>
                       <div className="staff-project-card">
                         {plan.project ? (
                           <>
@@ -519,7 +512,7 @@ function MoneySheet({ team }: { team: Owner }) {
                             {runsStaff && <button type="button" className="staff-project-cancel tap" onClick={() => cancelStaffProject(staffSeat)}>Cancel project</button>}
                           </>
                         ) : level <= 0 ? (
-                          <p>Build the <b>{BUILDINGS.find((b) => b.key === facility)?.label}</b> to unlock hands-on programs for this assistant.</p>
+                          <p>Build <b>{BUILDINGS.find((b) => b.key === facility)?.label}</b> to unlock hands-on programs for this assistant.</p>
                         ) : (
                           <>
                             {staffSeat === 'recruiting' && (
@@ -575,7 +568,6 @@ function MoneySheet({ team }: { team: Owner }) {
                   <>
                     <div className="staff-market-heading">
                       <h3>{man ? 'Available replacements' : 'Available coaches'}</h3>
-                      <p>Tap a coach for skills, cost, and fit.</p>
                     </div>
                     {runsStaff && !man && market.every((candidate) => candidate.wage > left) &&
                       <p className="staff-market-notice" data-guide={staffSeat === 'hitting' ? 'hire-blocked' : undefined}>No candidates fit your budget. Free up funds or return later.</p>}
@@ -624,11 +616,6 @@ function MoneySheet({ team }: { team: Owner }) {
 
       {view === 'facilities' && (
         <>
-          <section className="money-section-lead compact">
-            <small>PROGRAM IDENTITY</small>
-            <h2>Choose the edge you are building</h2>
-            <p>One specialty gets the room. Pick it above, then decide whether the next level is worth what it takes away from the rest of the budget.</p>
-          </section>
           {!runsFacilities && (
             <div className="delegation-banner" role="status" data-guide="facility-delegated">
               <span><small>DELEGATED</small><strong>Athletic director controls projects</strong></span>
@@ -678,7 +665,7 @@ function MoneySheet({ team }: { team: Owner }) {
                   <p>{(() => {
                     const seat = b.key === 'cage' ? 'hitting' : b.key === 'pen' ? 'pitching' : 'recruiting';
                     const upgraded = { ...economy, facilityLevels: { ...economy.facilityLevels, [b.key]: nextLevel } };
-                    return `${economy.staff[seat] ? economy.staff[seat]!.name + ' can run these projects.' : `Hire a ${SEAT_LABEL[seat].toLowerCase()} to use these projects.`} ${maxed ? `${staffProjectWeeks(economy, seat)} weeks per standard project.` : level > 0 ? `New projects: ${staffProjectWeeks(economy, seat)} → ${staffProjectWeeks(upgraded, seat)} weeks after upgrading.` : `Unlocks ${staffProjectWeeks(upgraded, seat)}-week projects.`}`;
+                    return `${economy.staff[seat]?.name ?? `No ${SEAT_LABEL[seat].toLowerCase()} yet`} · ${maxed ? `${staffProjectWeeks(economy, seat)}-week projects` : level > 0 ? `${staffProjectWeeks(economy, seat)} → ${staffProjectWeeks(upgraded, seat)}-week projects` : `${staffProjectWeeks(upgraded, seat)}-week projects`}`;
                   })()}</p>
                 </div>
 
@@ -700,7 +687,7 @@ function MoneySheet({ team }: { team: Owner }) {
                   <span>
                     <small>{maxed ? 'STATUS' : 'AFTER PROJECT'}</small>
                     <strong>{maxed ? 'Fully developed' : affordable ? `${dollars(left - cost)} left` : `${dollars(cost - left)} short`}</strong>
-                    <em>{maxed ? 'This specialty has reached its ceiling.' : 'Staff, scouting, and other projects all draw from the same annual room.'}</em>
+                    {maxed && <em>This specialty has reached its ceiling.</em>}
                   </span>
                   {runsFacilities && !maxed && (
                     <button
@@ -723,11 +710,6 @@ function MoneySheet({ team }: { team: Owner }) {
 
       {view === 'network' && (
         <>
-          <section className="money-section-lead">
-            <small>INFORMATION + ACCESS</small>
-            <h2>Your recruiting network</h2>
-            <p>Choose a state to check your relationships or assign a coordinator project.</p>
-          </section>
           <section className="network-command-grid">
             <article className="network-panel">
               <header><span><small>RECRUITING NETWORK</small><strong>{pipelines.length === 0 ? 'No established markets' : `${pipelines.filter((p) => p.strength >= PIPELINE_MIN).length} pipelines · ${pipelines.length} known markets`}</strong></span></header>
@@ -747,8 +729,8 @@ function MoneySheet({ team }: { team: Owner }) {
                           onClick={() => startStaffProject('recruiting', 'pipeline-maintain', projectState)}>Maintain · {staffProjectWeeks(economy, 'recruiting', 'pipeline-maintain')} weeks</button>}
                       </div>
                     )}
-                    {!runsStaff && <p>Staff management is delegated. Change control settings to assign projects yourself.</p>}
-                    {!rp.project && clubhouse > 0 && <p>{weeksAvailable} weeks available. Build or deepen: {staffProjectWeeks(economy, 'recruiting')} weeks. Maintenance takes less time for a smaller gain. See Staff for target strength and focus bonuses.</p>}
+                    {!runsStaff && <p>Delegated to the athletic director.</p>}
+                    {!rp.project && clubhouse > 0 && <p>{weeksAvailable} weeks left · build or deepen {staffProjectWeeks(economy, 'recruiting')} wks · maintain {staffProjectWeeks(economy, 'recruiting', 'pipeline-maintain')} wks</p>}
                     {!rp.project && clubhouse <= 0 && <p>Build the Clubhouse to unlock pipeline assignments.</p>}
                     {rp.project && <p>{clubhouse < 1 ? 'Paused: build the Clubhouse to resume.' : weeksAvailable === 0 ? 'Paused until next season’s recruiting calendar opens.' : `${rp.project.weeksLeft} weeks left. Progress advances at the end of a recruiting week.`}</p>}
                   </div>
@@ -761,9 +743,9 @@ function MoneySheet({ team }: { team: Owner }) {
                   {[...pipelineStates].sort().map((state) => <option key={state} value={state}>{state}</option>)}
                 </select>
               </label>
-              <p>35 strength creates a pipeline; 60 extends recruiting reach. Earned strength loses 4 at each year change when the relationship’s last signing or project was in an earlier year. Home and coordinator familiarity set minimums.</p>
+              <div className="network-legend" aria-label="How strength reads"><span>35 · PIPELINE</span><span>60 · REACH</span><span>−4 A YEAR IDLE</span></div>
               {pipelines.length === 0 ? (
-                <p>Repeated signings strengthen a state. Established pipelines improve the local pitch and can extend your recruiting reach.</p>
+                <p>No relationships yet. Sign from a state, or put the coordinator on one.</p>
               ) : (
                 <div className="pipeline-card-grid">
                   {visiblePipelines.map((pipe) => (
@@ -784,10 +766,9 @@ function MoneySheet({ team }: { team: Owner }) {
 
             <article className="network-panel scouting-desk-panel">
               <header><span><small>SCOUTING DESK</small><strong>{books === 0 ? 'No live reports' : `${books} live report${books === 1 ? '' : 's'}`}</strong></span><b>{dollars(SCOUT_COST)} each</b></header>
-              <p>A report reveals team habits and individual tendencies for {SCOUT_DAYS} days, then unlocks an opponent-specific playbook.</p>
               <div className="scouting-value-grid">
                 <span><small>1</small><strong>Buy the report</strong><em>From a program profile.</em></span>
-                <span><small>2</small><strong>Read the matchup</strong><em>Team habits + player tendencies.</em></span>
+                <span><small>2</small><strong>Read the matchup</strong><em>Habits and tendencies · {SCOUT_DAYS} days.</em></span>
                 <span><small>3</small><strong>Build counters</strong><em>The playbook applies automatically.</em></span>
               </div>
             </article>
@@ -1470,101 +1451,114 @@ function HallSheet() {
   const openPlayer = useDynasty((s) => s.openPlayer);
   const version = useDynasty((s) => s.version);
   void version;
+  const [leaders, setLeaders] = useState<'bats' | 'arms'>('bats');
+  const [openYears, setOpenYears] = useState<Record<number, boolean>>({});
 
   if (!season) return null;
 
   const honours = honoursByPlayer(history);
   const rows = hallRows(season.careers ?? {}, honours);
   const inducted = [...(season.hall ?? [])].sort((a, b) => b.year - a.year || b.score - a.score);
+  /*
+    Folded by the June they went in, newest open — the same fold the alumni
+    archive wears. Reported 2026-09-10: "the hall of fame tab is a mess once
+    it starts filling." A plaque a class, not a wall of them.
+  */
+  const byYear = new Map<number, Inductee[]>();
+  for (const m of inducted) byYear.set(m.year, [...(byYear.get(m.year) ?? []), m]);
+  const classes = [...byYear.entries()];
 
-  // Twelve is what fits before a leaderboard stops being a leaderboard. The rest
+  // Ten is what fits before a leaderboard stops being a leaderboard. The rest
   // are still reachable — every one of these men has a card of his own.
-  const bats = rows.filter((r) => !r.pitcher).sort((a, b) => b.h - a.h).slice(0, 12);
-  const arms = rows.filter((r) => r.pitcher).sort((a, b) => b.k - a.k).slice(0, 12);
+  const bats = rows.filter((r) => !r.pitcher).sort((a, b) => b.h - a.h).slice(0, 10);
+  const arms = rows.filter((r) => r.pitcher).sort((a, b) => b.k - a.k).slice(0, 10);
 
   return (
     <>
-      <SectionHeading
-        kicker="THE HALL"
-        title={inducted.length === 0
-          ? 'Nobody in it yet'
-          : `${inducted.length} inducted`}
+      <section className="hall-summary">
+        <span><small>THE HALL</small><strong>{inducted.length}</strong><em>inducted</em></span>
+        <span><small>CLASSES</small><strong>{classes.length}</strong><em>{classes.length === 1 ? 'year' : 'years'}</em></span>
+        <span><small>CAREERS</small><strong>{rows.length}</strong><em>on file</em></span>
+      </section>
+
+      {inducted.length === 0 ? (
+        <section className="hall-empty">
+          <small>NOBODY IN IT YET</small>
+          <strong>The ballot meets in June.</strong>
+          <p>A career, not a season. Your best men go in when their playing days here are done.</p>
+        </section>
+      ) : (
+        <div className="hall-classes">
+          {classes.map(([year, men], i) => {
+            const on = openYears[year] ?? i === 0;
+            return (
+              <section className={`hall-class${on ? ' is-open' : ''}`} key={year}>
+                <button
+                  type="button" className="hall-class-head tap" aria-expanded={on}
+                  onClick={() => setOpenYears({ ...openYears, [year]: !on })}
+                >
+                  <span><small>CLASS OF {year}</small><strong>{men.length} {men.length === 1 ? 'man' : 'men'}</strong></span>
+                  <b aria-hidden="true">{on ? '−' : '+'}</b>
+                </button>
+                {on && men.map((m) => (
+                  <Plaque
+                    key={m.id}
+                    man={m}
+                    honours={honours.get(m.id) ?? []}
+                    marks={marksHeldBy(season, m.id)}
+                    onOpen={() => openPlayer(m.id)}
+                  />
+                ))}
+              </section>
+            );
+          })}
+        </div>
+      )}
+
+      {/*
+        Named apart from the plaques, because the two were once read as one
+        list: after one season the plaques are empty and these tables hold two
+        dozen ordinary freshmen, under a tab called HALL OF FAME. One table at
+        a time, with a switch, and a kicker that says whose rosters these are.
+      */}
+      <SectionHeading kicker="CAREER LEADERS · YOUR ROSTERS" title="Record men" />
+      <Segmented<'bats' | 'arms'>
+        label="Career leaders"
+        value={leaders}
+        onChange={setLeaders}
+        options={[{ value: 'bats', label: 'Batting · hits' }, { value: 'arms', label: 'Pitching · strikeouts' }]}
       />
-      {/*
-        Reported: "the hall in program still has a shit ton of text that eats
-        the whole screen." It did — eight lines of rules where a heading should
-        have been. The rules have not changed and they are still worth knowing,
-        so they are a field note rather than a paragraph: three lines that say
-        what the hall wants and when it meets, and the reason the tables under
-        it are not the hall.
-      */}
-      {inducted.length === 0
-        ? null
-        : inducted.map((m) => (
-          <Plaque
-            key={m.id}
-            man={m}
-            honours={honours.get(m.id) ?? []}
-            marks={marksHeldBy(season, m.id)}
-            onOpen={() => openPlayer(m.id)}
-          />
-        ))}
-
-      {/*
-        Named apart from the plaques above, and now separated from them, because
-        the two were read as one list. Reported as "the hall of fame inducts
-        after one season and inducts nobody remarkable": after one season the
-        plaques are empty and these two tables hold two dozen ordinary freshmen,
-        under a tab called HALL OF FAME. Nobody was inducted — the ballot is
-        right and refuses anybody with one season — but the screen was saying
-        otherwise, which comes to the same thing.
-
-        So the section gets a rule of its own and a heading that says what it is
-        not. Two different questions, one screen, and the screen has to say which
-        is which loudly enough to survive being skimmed.
-      */}
-      <SectionHeading kicker="CAREER LEADERS" title="Your record men" />
-      <Head>BATTING · BY CAREER HITS</Head>
-      <Table cols={BAT_COLS} head={['PLAYER', 'H', 'AVG', 'HR']}>
-        {bats.length === 0
-          ? <Empty>No hitter has finished a season for you yet.</Empty>
-          : bats.map((r) => (
-            <HallRowView
-              key={r.id}
-              row={r}
-              cols={BAT_COLS}
-              values={[
-                String(r.h),
-                r.ab > 0 ? pct(r.h / r.ab) : '—',
-                String(r.hr),
-              ]}
-              onClick={() => openPlayer(r.id)}
-            />
-          ))}
-      </Table>
-
-      <div style={{ marginTop: 14 }}>
-        <Head>PITCHING · BY STRIKEOUTS</Head>
-        <Table cols={ARM_COLS} head={['PLAYER', 'K', 'W-L', 'ERA']}>
-          {arms.length === 0
-            ? <Empty>No pitcher has finished a season for you yet.</Empty>
-            : arms.map((r) => (
+      {leaders === 'bats' ? (
+        <Table cols={BAT_COLS} head={['', 'PLAYER', 'H', 'AVG', 'HR']}>
+          {bats.length === 0
+            ? <Empty>No hitter has finished a season for you yet.</Empty>
+            : bats.map((r, i) => (
               <HallRowView
                 key={r.id}
+                rank={i + 1}
                 row={r}
-                cols={ARM_COLS}
-                values={[
-                  String(r.k),
-                  `${r.w}-${r.l}`,
-                  r.outs > 0 ? (r.er * 27 / r.outs).toFixed(2) : '—',
-                ]}
+                cols={BAT_COLS}
+                values={[String(r.h), r.ab > 0 ? pct(r.h / r.ab) : '—', String(r.hr)]}
                 onClick={() => openPlayer(r.id)}
               />
             ))}
         </Table>
-      </div>
-
-      <Note>Your own rosters only. The country's records live in the record book.</Note>
+      ) : (
+        <Table cols={ARM_COLS} head={['', 'PLAYER', 'K', 'W-L', 'ERA']}>
+          {arms.length === 0
+            ? <Empty>No pitcher has finished a season for you yet.</Empty>
+            : arms.map((r, i) => (
+              <HallRowView
+                key={r.id}
+                rank={i + 1}
+                row={r}
+                cols={ARM_COLS}
+                values={[String(r.k), `${r.w}-${r.l}`, r.outs > 0 ? (r.er * 27 / r.outs).toFixed(2) : '—']}
+                onClick={() => openPlayer(r.id)}
+              />
+            ))}
+        </Table>
+      )}
     </>
   );
 }
@@ -1595,87 +1589,41 @@ function marksHeldBy(season: SeasonState, id: PlayerId): string[] {
   return out;
 }
 
-/**
- * One man, in.
- *
- * Drawn in the same clothes the record book gives a mark of yours — a clay rule
- * down the left edge and a warm ground — because it is the same statement in a
- * different place: this one is ours.
- */
+/** One man, in: a seal, his name, his years, his line, and what he still holds. */
 function Plaque(
   { man, honours, marks, onOpen }:
   { man: Inductee; honours: string[]; marks: string[]; onOpen: () => void },
 ) {
   const span = man.first === man.last ? `${man.first}` : `${man.first}–${man.last}`;
   return (
-    <button
-      onClick={onOpen}
-      style={{
-        width: '100%', textAlign: 'left', display: 'block',
-        marginTop: 8, padding: '10px 12px',
-        background: 'rgba(var(--clay-rgb), .07)',
-        border: '1px solid var(--faint)', borderLeft: '3px solid var(--clay)',
-      }}
-    >
-      <div style={{
-        display: 'flex', justifyContent: 'space-between',
-        alignItems: 'baseline', gap: 8,
-      }}>
-        <span className="label" style={{ color: 'var(--clay)' }}>
-          INDUCTED {man.year}
-        </span>
-        <span style={{ font: "400 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
-          {span} · {man.teams.join(' · ')}
-        </span>
-      </div>
-      <div style={{
-        font: "800 calc(19px * var(--ts))/1.05 var(--display)", textTransform: 'uppercase', marginTop: 3,
-      }}>{man.name}</div>
-      <div style={{ marginTop: 3, font: "500 calc(11px * var(--ts)) var(--mono)", color: 'var(--ink)' }}>
-        {man.line}
-      </div>
-      {honours.length > 0 && (
-        <div style={{
-          marginTop: 5, display: 'flex', flexWrap: 'wrap', gap: '2px 8px',
-        }}>
-          {honours.map((t) => (
-            <span key={t} style={{
-              font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.08em', color: 'var(--clay)',
-            }}>{t.toUpperCase()}</span>
-          ))}
-        </div>
-      )}
-      {marks.length > 0 && (
-        <div style={{
-          marginTop: 5, paddingTop: 5, borderTop: '1px solid var(--hairline)',
-          font: "400 calc(9.5px * var(--ts))/1.5 var(--mono)", color: 'var(--dim)',
-        }}>
-          STILL HOLDS · {marks.join(' · ')}
-        </div>
-      )}
+    <button className="hall-plaque tap" type="button" onClick={onOpen}>
+      <span className="hall-plaque-seal" aria-hidden="true">{man.pitcher ? 'P' : 'H'}</span>
+      <span className="hall-plaque-body">
+        <strong>{man.name}</strong>
+        <small>{span} · {man.teams.join(' · ')}</small>
+        <em>{man.line}</em>
+        {honours.length > 0 && (
+          <span className="hall-chips">
+            {honours.slice(0, 4).map((t) => <i key={t}>{t.toUpperCase()}</i>)}
+            {honours.length > 4 && <i className="more">+{honours.length - 4}</i>}
+          </span>
+        )}
+        {marks.length > 0 && <span className="hall-marks">STILL HOLDS · {marks.join(' · ')}</span>}
+      </span>
     </button>
   );
 }
 
-const BAT_COLS = '1fr 30px 38px 26px';
-const ARM_COLS = '1fr 30px 40px 40px';
+const BAT_COLS = '22px 1fr 30px 38px 26px';
+const ARM_COLS = '22px 1fr 30px 40px 40px';
 
 function Table(
   { cols, head, children }: { cols: string; head: string[]; children: ReactNode },
 ) {
   return (
-    <div style={{
-      marginTop: 8, border: '1px solid var(--faint)', background: 'var(--paper)',
-    }}>
-      <div style={{
-        display: 'grid', gridTemplateColumns: cols, gap: 6,
-        padding: '6px 10px', borderBottom: '1px solid var(--hairline)',
-      }}>
-        {head.map((c, i) => (
-          <span key={c} className="label" style={{ textAlign: i === 0 ? 'left' : 'right' }}>
-            {c}
-          </span>
-        ))}
+    <div className="hall-table">
+      <div className="hall-table-head" style={{ gridTemplateColumns: cols }}>
+        {head.map((c, i) => <span key={`${c}-${i}`} className="label">{c}</span>)}
       </div>
       {children}
     </div>
@@ -1683,47 +1631,25 @@ function Table(
 }
 
 function HallRowView(
-  { row, cols, values, onClick }:
-  { row: HallRow; cols: string; values: string[]; onClick: () => void },
+  { rank, row, cols, values, onClick }:
+  { rank: number; row: HallRow; cols: string; values: string[]; onClick: () => void },
 ) {
   const span = row.first === row.last ? `${row.first}` : `${row.first}–${row.last}`;
   return (
     <button
+      className={`hall-row tap${row.honours.length > 0 ? ' has-honours' : ''}`}
+      type="button"
+      style={{ gridTemplateColumns: cols }}
       onClick={onClick}
-      style={{
-        width: '100%', textAlign: 'left',
-        display: 'grid', gridTemplateColumns: cols, gap: 6, alignItems: 'baseline',
-        padding: '8px 10px', borderBottom: '1px solid var(--hairline)',
-        background: row.honours.length > 0 ? 'rgba(var(--clay-rgb), .05)' : 'transparent',
-      }}
     >
-      <span style={{
-        font: "400 calc(12px * var(--ts)) var(--body)",
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        borderBottom: '1px dotted rgba(var(--ink-rgb), .35)',
-      }}>{row.name}</span>
-      {values.map((v, i) => (
-        <span key={i} style={{ font: "500 calc(11px * var(--ts)) var(--mono)", textAlign: 'right' }}>{v}</span>
-      ))}
-      <span style={{
-        gridColumn: '1 / -1', marginTop: 2,
-        font: "400 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)',
-      }}>{span} · {row.teams.join(' · ')}</span>
+      <span className="rank">{rank}</span>
+      <span className="name">{row.name}</span>
+      {values.map((v, i) => <span key={i} className="val">{v}</span>)}
+      <span className="meta">{span} · {row.teams.join(' · ')}</span>
       {row.honours.length > 0 && (
-        <span style={{
-          gridColumn: '1 / -1', marginTop: 2,
-          display: 'flex', flexWrap: 'wrap', gap: '2px 8px',
-        }}>
-          {row.honours.slice(0, 3).map((t) => (
-            <span key={t} style={{
-              font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.08em', color: 'var(--clay)',
-            }}>{t.toUpperCase()}</span>
-          ))}
-          {row.honours.length > 3 && (
-            <span style={{
-              font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.08em', color: 'var(--dim)',
-            }}>+{row.honours.length - 3}</span>
-          )}
+        <span className="hall-chips">
+          {row.honours.slice(0, 3).map((t) => <i key={t}>{t.toUpperCase()}</i>)}
+          {row.honours.length > 3 && <i className="more">+{row.honours.length - 3}</i>}
         </span>
       )}
     </button>
