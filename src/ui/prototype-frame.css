@@ -5252,6 +5252,17 @@
 
 .alumni-archive { padding-top: 10px; }
 .alumni-grid { display: grid; gap: 9px; margin-top: 12px; }
+/* The archive folds by the June they left; a year opens on a tap, the
+   latest by default. */
+.alumni-years { display: grid; gap: 10px; margin-top: 12px; }
+.alumni-year { border: 1px solid var(--line); background: var(--paper); }
+.alumni-year-head { display: grid; grid-template-columns: minmax(0,1fr) auto 18px; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 10px 11px; border: 0; background: var(--wash); color: var(--ink); text-align: left; }
+.alumni-year.is-open > .alumni-year-head { border-bottom: 1px solid var(--line); }
+.alumni-year-head small { display: block; color: var(--clay); font: 700 calc(6.5px * var(--ts)) var(--mono); letter-spacing: .08em; }
+.alumni-year-head strong { display: block; margin-top: 3px; font: 800 calc(15px * var(--ts)) var(--display); }
+.alumni-year-head em { color: var(--dim); font: 700 calc(7px * var(--ts))/1.3 var(--mono); font-style: normal; text-align: right; }
+.alumni-year-head b { color: var(--clay); font: 800 calc(16px * var(--ts))/1 var(--display); text-align: center; }
+.alumni-year > .alumni-grid { margin: 0; padding: 9px; }
 .alumni-card {
   position: relative; width: 100%; min-width: 0; padding: 0; overflow: hidden;
   border: 1px solid var(--line); border-radius: 13px; background: var(--paper);

@@ -194,6 +194,19 @@ function Alumni({ notes, teamAbbr }: { notes: Record<string, AlumnusNote>; teamA
   const reached = rows.filter((r) => r.showYears.length > 0).length;
   const active = rows.filter((r) => r.last && !r.last.final).length;
 
+  /*
+    Folded by the June they left, newest first, the latest year open. Asked
+    for on 2026-09-10: "right now it just shows all drafted alumni, it would
+    be better if we fold them per year and expand when we tap on it." The
+    order inside a year is the archive's own — The Show first.
+  */
+  const years = useMemo(() => {
+    const by = new Map<number, typeof rows>();
+    for (const r of rows) by.set(r.note.year, [...(by.get(r.note.year) ?? []), r]);
+    return [...by.entries()].sort((a, b) => b[0] - a[0]);
+  }, [rows]);
+  const [opened, setOpened] = useState<Record<number, boolean>>({});
+
   return (
     <section className="alumni-archive">
       <MetricStrip>
@@ -201,27 +214,51 @@ function Alumni({ notes, teamAbbr }: { notes: Record<string, AlumnusNote>; teamA
         <Metric label="THE SHOW" value={String(reached)} note="REACHED" />
         <Metric label="ACTIVE" value={String(active)} note="PRO CAREERS" />
       </MetricStrip>
-      <div className="alumni-grid">
-        {rows.map(({ id, note, pro, showYears, highest, last }) => (
-          <button
-            className={`alumni-card tap${showYears.length > 0 ? ' reached-show' : ''}`}
-            key={id}
-            type="button"
-            onClick={() => openPlayer(id)}
-          >
-            <header>
-              <span><small>{note.reason === 'drafted' ? `DRAFTED · ROUND ${note.round ?? '?'}` : note.reason.toUpperCase()}</small><strong>{note.name}</strong></span>
-              <b>{note.year}</b>
-            </header>
-            <div className="alumni-status-grid">
-              <span><small>HIGHEST LEVEL</small><strong>{highest}</strong></span>
-              <span><small>PRO YEARS</small><strong>{pro.length}</strong></span>
-            </div>
-            <p>{last?.line ?? (note.reason === 'drafted' ? 'His professional career begins next season.' : 'His playing career ended in June.')}</p>
-            {showYears.length > 0 && <em>{showYears.length} season{showYears.length === 1 ? '' : 's'} in The Show</em>}
-            <ChevronRightIcon />
-          </button>
-        ))}
+      <div className="alumni-years">
+        {years.map(([left, list], i) => {
+          const on = opened[left] ?? i === 0;
+          const draftedThen = list.filter((r) => r.note.reason === 'drafted').length;
+          const showThen = list.filter((r) => r.showYears.length > 0).length;
+          return (
+            <section className={`alumni-year${on ? ' is-open' : ''}`} key={left}>
+              <button
+                type="button" className="alumni-year-head tap" aria-expanded={on}
+                onClick={() => setOpened({ ...opened, [left]: !on })}
+              >
+                <span>
+                  <small>LEFT IN {left}</small>
+                  <strong>{list.length} {list.length === 1 ? 'man' : 'men'}</strong>
+                </span>
+                <em>{draftedThen} drafted{showThen > 0 ? ` · ${showThen} reached The Show` : ''}</em>
+                <b aria-hidden="true">{on ? '−' : '+'}</b>
+              </button>
+              {on && (
+                <div className="alumni-grid">
+                  {list.map(({ id, note, pro, showYears, highest, last }) => (
+                    <button
+                      className={`alumni-card tap${showYears.length > 0 ? ' reached-show' : ''}`}
+                      key={id}
+                      type="button"
+                      onClick={() => openPlayer(id)}
+                    >
+                      <header>
+                        <span><small>{note.reason === 'drafted' ? `DRAFTED · ROUND ${note.round ?? '?'}` : note.reason.toUpperCase()}</small><strong>{note.name}</strong></span>
+                        <b>{note.classYear}</b>
+                      </header>
+                      <div className="alumni-status-grid">
+                        <span><small>HIGHEST LEVEL</small><strong>{highest}</strong></span>
+                        <span><small>PRO YEARS</small><strong>{pro.length}</strong></span>
+                      </div>
+                      <p>{last?.line ?? (note.reason === 'drafted' ? 'His professional career begins next season.' : 'His playing career ended in June.')}</p>
+                      {showYears.length > 0 && <em>{showYears.length} season{showYears.length === 1 ? '' : 's'} in The Show</em>}
+                      <ChevronRightIcon />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+          );
+        })}
       </div>
     </section>
   );

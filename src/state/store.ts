@@ -2038,6 +2038,28 @@ function usableAlumni(saved: unknown): Record<string, AlumnusNote> {
   return out;
 }
 
+/**
+ * A man standing on your roster is not an alumnus, whatever the book says.
+ *
+ * The book is written on the way into the draft step, before the coach has
+ * talked anybody round, and until 2026-09-10 keeping a man left his note
+ * standing — so a save from before that opened with two men in the alumni
+ * archive who were also in the lineup. `keepPlayer` tears the note up now;
+ * this heals the files written before it did, on the way in.
+ */
+function withoutRosterMen(
+  notes: Record<string, AlumnusNote>, season: SeasonState | null | undefined, userTeam: number,
+): Record<string, AlumnusNote> {
+  const team = season?.teams[userTeam]?.team;
+  if (!team) return notes;
+  const here = new Set(
+    [...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen].map((p) => String(p.id)),
+  );
+  const out: Record<string, AlumnusNote> = {};
+  for (const [id, note] of Object.entries(notes)) if (!here.has(id)) out[id] = note;
+  return out;
+}
+
 /** The rivalry ledger, from whatever an older save carries. */
 function usableRivalry(saved: unknown): { w: number; l: number } {
   const r = (saved ?? {}) as Partial<{ w: unknown; l: unknown }>;
@@ -3028,6 +3050,19 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
             ...record.team.rotation, ...record.team.bullpen,
           ]);
         }
+      }
+      /*
+        And he is not an alumnus. The book is written on the way into the
+        draft step, one note per man the clubs took, before the coach has had
+        his say — and the note stood after he was talked round. Reported
+        2026-09-10: "there are 2 players I talked into returning and when the
+        season started I went to alumni and they were there but also in my
+        roster." Torn up here; `withoutRosterMen` heals the saves from before.
+      */
+      if (String(id) in get().alumni) {
+        const notes = { ...get().alumni };
+        delete notes[String(id)];
+        set({ alumni: notes });
       }
     }
     set({ version: version + 1 });
@@ -7517,7 +7552,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       watch: usableWatch(loaded.watch),
       economy: usableEconomy(loaded.economy),
       rivalry: usableRivalry(loaded.rivalry),
-      alumni: usableAlumni(loaded.alumni),
+      alumni: withoutRosterMen(usableAlumni(loaded.alumni), loaded.season, loaded.userTeam),
       seenTutorials: [...new Set([
         ...get().seenTutorials,
         ...(Array.isArray(loaded.tutorials)
