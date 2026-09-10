@@ -516,7 +516,15 @@ function MoneySheet({ team }: { team: Owner }) {
                             {runsStaff && <button type="button" className="staff-project-cancel tap" onClick={() => cancelStaffProject(staffSeat)}>Cancel project</button>}
                           </>
                         ) : level <= 0 ? (
-                          <p>Build <b>{BUILDINGS.find((b) => b.key === facility)?.label}</b> to unlock hands-on programs for this assistant.</p>
+                          <>{/* The gate is a door, not a sentence. Reported 2026-09-10 on a
+                              fresh pitching hire: "I don't see the option to assign a
+                              project, it's the same screen." Projects run out of the
+                              building, and the way there is one tap. */}
+                          <button type="button" className="staff-project-gate tap" onClick={() => { setFacilityFocus(facility); setView('facilities'); }}>
+                            <small>FACILITY REQUIRED</small>
+                            <strong>Build {BUILDINGS.find((b) => b.key === facility)?.label} · {dollars(facilityUpgradeCost(facility, 1))}</strong>
+                            <em>His projects run out of the building. Tap to go there.</em>
+                          </button></>
                         ) : (
                           <>
                             {staffSeat === 'recruiting' && (

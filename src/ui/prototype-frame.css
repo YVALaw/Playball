@@ -6908,6 +6908,11 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .staff-tenure { display:flex; flex-wrap:wrap; gap:4px; margin:8px 0 0; }
 .staff-tenure span, .staff-tenure b { padding:3px 7px; border:1px solid var(--line); background:var(--paper); color:var(--dim); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.06em; }
 .staff-tenure b.up { border-color:var(--alert); color:var(--alert); }
+/* A project with no building yet: the card is the way to the building. */
+.staff-project-gate { display:block; width:100%; padding:10px 11px; border:1px solid var(--clay); border-left:4px solid var(--clay); background:var(--wash); color:var(--ink); text-align:left; }
+.staff-project-gate small { display:block; color:var(--clay); font:700 calc(6.5px * var(--ts)) var(--mono); letter-spacing:.08em; }
+.staff-project-gate strong { display:block; margin-top:3px; font:800 calc(14px * var(--ts))/1.1 var(--display); }
+.staff-project-gate em { display:block; margin-top:3px; color:var(--dim); font:400 calc(8.5px * var(--ts))/1.4 var(--body); font-style:normal; }
 .network-legend { display:flex; flex-wrap:wrap; gap:4px; margin:8px 0 0; }
 .network-legend span { padding:3px 7px; border:1px solid var(--line); background:var(--paper); color:var(--dim); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.06em; }
 
