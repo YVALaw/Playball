@@ -1390,6 +1390,8 @@ export interface DynastyStore {
   hireAssistant: (seat: StaffSeat, slot: number) => void;
   /** Let him go. No severance — the wage simply stops next roll. */
   fireAssistant: (seat: StaffSeat) => void;
+  /** Two more years for a man whose contract is up, in the offseason only. */
+  renewAssistant: (seat: StaffSeat) => boolean;
   /** Set the standing instruction for one assistant. */
   setStaffDirective: (seat: StaffSeat, directive: StaffDirective) => boolean;
   /** Start one multi-week staff project. Recruiting projects require a state. */
@@ -4072,8 +4074,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           body: `Coach — your ${SEAT_LABEL[seat].toLowerCase()} has his own program now. He spent ${Math.max(1, year - (man.joinedYear ?? year) + 1)} years on your staff. The seat is open.`,
           link: { to: 'team' as const, index: landing.index },
         });
+      } else if (man.until !== undefined && man.until <= year) {
+        // His contract ran out and nobody renewed it in the winter: the seat
+        // opens with the year, and the letter says so by name.
+        get().post({
+          kind: 'season', year: year + 1,
+          title: `${man.name}'s contract ends`,
+          body: `Coach — your ${SEAT_LABEL[seat].toLowerCase()} was signed through ${man.until} and was not renewed. The seat is open.`,
+        });
       } else {
-        keptStaff[seat] = developAssistant(man, year + 1);
+        // A man from a save before contracts is stamped one here, two more
+        // seasons, so nothing expires without the winter to see it coming.
+        keptStaff[seat] = developAssistant({ ...man, until: man.until ?? year + 2 }, year + 1);
       }
     }
     // Refresh the career line of every branch while he is still in the world.
@@ -6713,7 +6725,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // The wage has to fit what is left this year — a hire the ledger cannot
     // carry would be a negative number the screen has to explain.
     if (remaining({ ...economy, staff: without }, me.prestige) < man.wage) return;
-    const staff = { ...without, [seat]: man };
+    // A contract, not a standing arrangement (2026-09-10: "staff we hire
+    // should have an expiring contract, right now it is easy to forget they
+    // are even there"). The dear man signs for three years, the rest for two;
+    // the offseason before it runs out is when he is renewed or let go.
+    const signed: Assistant = { ...man, joinedYear: year, until: year + (slot === 0 ? 3 : 2) };
+    const staff = { ...without, [seat]: signed };
     const plans = { ...(economy.staffPlans ?? {}) };
     plans[seat] = { directive: staffPlan(economy, seat).directive };
     const nextEconomy: Economy = { ...economy, staff, staffPlans: plans };
@@ -6736,6 +6753,24 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     void get().saveNow();
   },
 
+
+  renewAssistant: (seat) => {
+    const { economy, year, phase } = get();
+    const man = economy.staff[seat];
+    // The offseason only, and only a contract that is up: renewing early
+    // would be a way to lock a wage the market is about to move.
+    if (!man || phase === null || (man.until ?? Infinity) > year) return false;
+    const renewed: Assistant = { ...man, until: year + 2, wage: Math.round(man.wage * 1.08) };
+    const nextEconomy: Economy = { ...economy, staff: { ...economy.staff, [seat]: renewed } };
+    set({ economy: nextEconomy, version: get().version + 1 });
+    get().post({
+      kind: 'season', year,
+      title: `${man.name} signs on through ${year + 2}`,
+      body: `Coach — your ${SEAT_LABEL[seat].toLowerCase()} stays two more seasons, at a little more than before.`,
+    });
+    void get().saveNow();
+    return true;
+  },
 
   setStaffDirective: (seat, directive) => {
     const { economy } = get();

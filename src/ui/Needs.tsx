@@ -55,6 +55,7 @@ import { injuryClock } from '../engine/season.js';
 import { standing, WORDS_A_SEASON } from '../engine/eligibility.js';
 import { isHurt, prognosis } from '../engine/injury.js';
 import { captainOf, candidates } from '../engine/captains.js';
+import { SEATS, SEAT_LABEL } from '../engine/economy.js';
 import type { Player, Position } from '../engine/types.js';
 
 /** One thing waiting on the coach. */
@@ -124,6 +125,9 @@ export function useNeeds(): Need[] {
   const openOverlay = useDynasty((s) => s.openOverlay);
   const openPlayer = useDynasty((s) => s.openPlayer);
   const wordsUsed = useDynasty((s) => s.wordsUsed);
+  const economy = useDynasty((s) => s.economy);
+  const phase = useDynasty((s) => s.phase);
+  const year = useDynasty((s) => s.year);
   const depth = useDynasty((s) => s.depth);
   // Subscribed to deliberately: every one of these is read off mutable engine
   // objects, which do not change identity when they change. Without it the list
@@ -294,6 +298,26 @@ export function useNeeds(): Need[] {
         must: false,
         cta: 'NAME ONE',
         go: () => openOverlay('captain'),
+      });
+    }
+  }
+
+  /*
+    A contract up, in the winter. Staff contracts, 2026-09-10: "right now it
+    is easy to forget they are even there." Two or three years on a hire,
+    and the offseason is when the seat is renewed or left to open in June.
+  */
+  if (phase !== null && handles(depth, 'assistants')) {
+    for (const seat of SEATS) {
+      const man = economy.staff[seat];
+      if (!man || (man.until ?? Infinity) > year) continue;
+      needs.push({
+        id: `contract-${seat}`,
+        title: `${man.name}'s contract is up`,
+        note: `Your ${SEAT_LABEL[seat].toLowerCase()} was signed through ${man.until}. Renew him before the new season, or the seat opens in June.`,
+        must: true,
+        cta: 'THE STAFF',
+        go: () => { const st = useDynasty.getState(); st.setProgramSheet('money'); st.go('program', 'records'); },
       });
     }
   }

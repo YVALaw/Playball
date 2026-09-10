@@ -198,6 +198,8 @@ export interface Assistant {
   seat: StaffSeat;
   /** First year on this coach's staff. Sparse on older saves. */
   joinedYear?: number;
+  /** The last season he is signed through. Absent on a save from before contracts; the year roll stamps one. */
+  until?: number;
   /** A recruiting coordinator's strongest geographic relationship. */
   pipelineState?: string;
 }

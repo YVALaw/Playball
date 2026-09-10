@@ -276,6 +276,8 @@ function MoneySheet({ team }: { team: Owner }) {
   const runsStaff = useDynasty((s) => handles(s.depth, 'assistants'));
   const runsFacilities = useDynasty((s) => handles(s.depth, 'facilities'));
   const [view, setView] = useState<'plan' | 'staff' | 'facilities' | 'network'>('plan');
+  const phase = useDynasty((s) => s.phase);
+  const renewAssistant = useDynasty((s) => s.renewAssistant);
   const [staffSeat, setStaffSeat] = useState<StaffSeat>('hitting');
   const [showReplacements, setShowReplacements] = useState(false);
   const [candidateId, setCandidateId] = useState<string | null>(null);
@@ -434,7 +436,7 @@ function MoneySheet({ team }: { team: Owner }) {
                   {man ? (
                     <>
                       <StaffRatings coach={man} />
-                      <p className="staff-tenure">{man.rating} OVR · Year {Math.max(1, year - (man.joinedYear ?? year) + 1)} on your staff</p>
+                      <p className="staff-tenure">{man.rating} OVR · Year {Math.max(1, year - (man.joinedYear ?? year) + 1)} on your staff · signed through {man.until ?? year + 1}{man.until !== undefined && man.until <= year ? ' · CONTRACT UP' : ''}</p>
                       <p>{SEAT_NOTE[staffSeat]}</p>
                       {staffSeat === 'recruiting' && man.pipelineState && (
                         <em>Recruiting lead: <b>{man.pipelineState}</b> · assign a pipeline project to turn familiarity into a real network.</em>
@@ -449,6 +451,11 @@ function MoneySheet({ team }: { team: Owner }) {
                             the app: this was the one that fired a man on a
                             single tap (05 §62.6).
                           */}
+                          {phase !== null && man.until !== undefined && man.until <= year && (
+                            <button className="staff-market-open tap" type="button" onClick={() => renewAssistant(staffSeat)}>
+                              Renew through {year + 2}
+                            </button>
+                          )}
                           <Confirmable
                             className="staff-release tap"
                             idle="Let him go"
