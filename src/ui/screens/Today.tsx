@@ -474,9 +474,11 @@ export function Today() {
         })()}
 
         {/* Below the needs, by request: "needs you is more important than the
-            other." The pulse is reference; the needs are work. */}
+            other." The pulse is reference; the needs are work. The CLUB PULSE
+            kicker went and the title shrank on 2026-09-10, so the week's games
+            and the needs share a small screen. */}
         <SectionHeading
-          kicker="CLUB PULSE"
+          compact
           title="This week"
           action="Schedule"
           onAction={() => { go('season', 'sched'); }}

@@ -8070,6 +8070,14 @@
 .today-date-row > span { color:var(--dim); font:700 calc(8px * var(--ts))/1.4 var(--mono); }
 .dashboard-workspace .today-date-row + .next-game { margin-top:8px; }
 
+/* "This week" sits close under the recruiting card, smaller and without its
+   kicker — "not tight tight but closer" — so the week's games are on screen
+   with the needs on a small phone. The card's own margin sets the gap. */
+.dashboard-workspace .today-recruiting-card { margin-bottom:10px; }
+.dashboard-heading.is-compact { margin:14px 0 6px; }
+.today-recruiting-card + .dashboard-heading.is-compact { margin-top:0; }
+.dashboard-heading.is-compact h2 { margin-top:0; font-size:calc(16px * var(--ts)); line-height:1; }
+
 /* Staff candidates are visible together; hiring happens in the detail dialog. */
 .staff-market-heading { margin:18px 0 10px; }
 .staff-market-heading h3 { margin:0; font:800 calc(20px * var(--ts))/1.15 var(--display); }

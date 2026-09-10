@@ -94,14 +94,20 @@ export function ModuleIntro(
   );
 }
 
-/** The rule between sections, with an optional way out on the right. */
+/**
+ * The rule between sections, with an optional way out on the right.
+ *
+ * `compact` is the Home screen's week heading: no kicker, a smaller title,
+ * and less air above it, so the week's games fit under the recruiting card
+ * on a small phone. Asked for on 2026-09-10.
+ */
 export function SectionHeading(
-  { kicker, title, action, onAction }:
-  { kicker: string; title: string; action?: string; onAction?: () => void },
+  { kicker, title, action, onAction, compact }:
+  { kicker?: string; title: string; action?: string; onAction?: () => void; compact?: boolean },
 ) {
   return (
-    <section className="dashboard-heading">
-      <div><small>{kicker}</small><h2>{title}</h2></div>
+    <section className={`dashboard-heading${compact ? ' is-compact' : ''}`}>
+      <div>{kicker && <small>{kicker}</small>}<h2>{title}</h2></div>
       {action && (
         <button type="button" onClick={onAction}>{action} <ChevronRightIcon /></button>
       )}
