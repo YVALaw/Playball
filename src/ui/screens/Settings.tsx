@@ -95,6 +95,7 @@ export function Settings() {
   const setDepthSystem = useDynasty((s) => s.setDepthSystem);
   const resetTutorials = useDynasty((s) => s.resetTutorials);
   const openOverlay = useDynasty((s) => s.openOverlay);
+  const atStart = useDynasty((s) => s.atStart);
 
   /*
     One page at a time.
@@ -167,6 +168,25 @@ export function Settings() {
             </button>
           ))}
         </section>
+        {/* The way back to the front door, asked for 2026-09-10: "in settings
+            we should have a button to go back to the main menu in case a
+            player wants to start a new career." It saves first. */}
+        {!atStart && (
+          <section className="settings-list">
+            <button
+              type="button"
+              className="settings-reset-card tap"
+              onClick={() => {
+                const st = useDynasty.getState();
+                void st.saveNow().then(() => useDynasty.getState().backToStart());
+              }}
+            >
+              <span><small>MAIN MENU</small><strong>Leave this career</strong></span>
+              <em>Saves first. Start another career or load one from the front door.</em>
+              <b>›</b>
+            </button>
+          </section>
+        )}
       </Frame>
     );
   }
