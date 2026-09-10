@@ -734,6 +734,19 @@ export interface NationalField {
   atLarge: number[];
 }
 
+export type NationalBidReason = 'regionalChampion' | 'protected' | 'atLarge';
+export const NATIONAL_BID_DETAIL: Record<NationalBidReason, string> = {
+  regionalChampion: 'You won a regional championship and earned an automatic national bid.',
+  protected: 'Your top-four regular-season ranking guarantees a national bid, even after a regional loss.',
+  atLarge: 'Your final regular-season ranking earned an at-large place after regional champions and protected teams qualified.',
+};
+export function nationalBidReason(field: NationalField, team: number): NationalBidReason | null {
+  if (!field.seeds.includes(team)) return null;
+  if (field.regionalChampions?.includes(team)) return 'regionalChampion';
+  if (field.protectedTeams?.includes(team)) return 'protected';
+  return field.atLarge?.includes(team) ? 'atLarge' : null;
+}
+
 /**
  * Twenty unique teams: sixteen regional champions, every protected team that
  * did not win its regional, and at-large bids off the national table until

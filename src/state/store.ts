@@ -1,3 +1,5 @@
+import { newStaffProject, progressStaffProjects, projectResultText, PROJECT_FOCUS } from '../engine/staffProjects.js';
+import { recruitingPlan, programRecruitingPitch } from '../engine/recruitingPlan.js';
 // store.ts
 // The app's state. Thin on purpose: the engine owns the simulation, this owns
 // what the player is currently looking at.
@@ -79,7 +81,7 @@ import {
   type AchievementId,
 } from '../engine/achievements.js';
 import {
-  markAllRead, newItem, push, restoreInbox, unreadCount, type InboxItem,
+  markAllRead, markRead, newItem, push, restoreInbox, unreadCount, type InboxItem,
 } from '../engine/inbox.js';
 import {
   applyRealignment, headToHead, realignmentFor,
@@ -91,9 +93,9 @@ import {
   devBonus, armCareFor, buildingSpec, builtBonus, facilityEffects, facilityLevel,
   facilityUpgradeCost, FACILITY_MAX_LEVEL, pipelineStrength, addPipelineSigning, agePipelines,
   recruitingFacilityScore, DEFAULT_DIRECTIVE, staffPlan, projectFacility,
-  staffProjectWeeks, recruitingDirectiveMultiplier, staffProjectInjuryGuard, PIPELINE_MIN,
+  staffProjectWeeks, staffProjectInjuryGuard, PIPELINE_MIN,
   SEAT_LABEL, BUILDINGS, type Assistant, type Economy, type StaffSeat, type Building,
-  type StaffDirective, type StaffProjectKind,
+  PROJECT_LABEL, type StaffDirective, type StaffProjectKind,
 } from '../engine/economy.js';
 import {
   readJournal, writeJournal, noteAction, clearJournal, journalMatches, reconcileJournal,
@@ -125,9 +127,9 @@ import {
 import {
   SCHOLARSHIPS, RECRUITING_BUDGET, MAX_PER_RECRUIT, RECRUITING_WEEKS, budgetFor, PITCH_COST,
   weeklyBudget, flexibleOffseasonBudget,
-  aiTargets, weeklyPoints, actionInterest, closeWeek, resetWeeklySpend, canPursue, inPipeline,
+  aiTargets, weeklyPoints, closeWeek, resetWeeklySpend, canPursue, inPipeline,
   leadersAtWeekStart, totalWeekSpend, weekActionCost, majorActionCost,
-  hasRecruitingRelationship, swayRecruit, planAiRecruitActions,
+  hasRecruitingRelationship, swayRecruit, planAiRecruitActions, availableRecruitPromises,
   type RecruitingFactor, type RecruitMajorAction, type RecruitMajorInput,
 } from '../engine/recruiting.js';
 import { pitchFor, developmentScore } from '../engine/pitch.js';
@@ -890,7 +892,8 @@ export interface DynastyStore {
    * again every time the calendar moves.
    */
   post: (item: Omit<InboxItem, 'id' | 'read'> & { key?: string }) => void;
-  /** What opening the screen does. Nothing else clears the badge. */
+  /** Explicit bulk action. Opening a message marks only that message. */
+  markInboxRead: (id: string) => void;
   readInbox: () => void;
   /**
    * What has happened to you since the last time the calendar moved.
@@ -1624,6 +1627,7 @@ type StoredMyBracket = {
  * ninety-five against playing time and winning, the way they always were.
  */
 function settleTheMoods(season: SeasonState, userTeam: number): void {
+  if (season.moraleSettled === true) return;
   for (const rec of season.teams) {
     const played = (rec.w ?? 0) + (rec.l ?? 0);
     const winPct = played > 0 ? (rec.w ?? 0) / played : 0.5;
@@ -1652,6 +1656,7 @@ function settleTheMoods(season: SeasonState, userTeam: number): void {
       if (mine && p.recruitPromise) p.recruitPromise.judged = (p.recruitPromise.judged ?? 0) + 1;
     }
   }
+  season.moraleSettled = true;
 }
 
 /**
@@ -1952,6 +1957,7 @@ function usableEconomy(saved: unknown): Economy {
         strength: Math.max(0, Math.min(100, q.strength)),
         signings: typeof q.signings === 'number' ? Math.max(0, Math.round(q.signings)) : 0,
         lastSignedYear: typeof q.lastSignedYear === 'number' ? q.lastSignedYear : 0,
+        ...(typeof q.lastWorkedYear === 'number' ? { lastWorkedYear: q.lastWorkedYear } : {}),
       };
     }
   }
@@ -1979,6 +1985,9 @@ function usableEconomy(saved: unknown): Economy {
         && typeof r.weeksTotal === 'number' && typeof r.weeksLeft === 'number') {
         plan.project = {
           kind: r.kind as StaffProjectKind,
+          ...(typeof r.targetCount === 'number' ? { targetCount: Math.max(1, Math.min(9, Math.round(r.targetCount))) } : {}),
+          ...(Array.isArray(r.targetIds) ? { targetIds: r.targetIds.filter((id): id is string => typeof id === 'string').slice(0, 10) } : {}),
+          ...(typeof r.alignedWeeks === 'number' ? { alignedWeeks: Math.max(0, Math.min(r.weeksTotal, r.alignedWeeks)) } : {}),
           ...(typeof r.state === 'string' ? { state: r.state } : {}),
           weeksTotal: Math.max(1, Math.round(r.weeksTotal)),
           weeksLeft: Math.max(0, Math.round(r.weeksLeft)),
@@ -1996,6 +2005,10 @@ function usableEconomy(saved: unknown): Economy {
     facilityLevels,
     staff,
     staffPlans,
+    projectHistory: Array.isArray(e.projectHistory) ? e.projectHistory.filter((r) => r && typeof r === 'object'
+      && r.kind in PROJECT_FOCUS && SEATS.includes(r.seat) && typeof r.year === 'number' && typeof r.week === 'number'
+      && Array.isArray(r.changes) && r.changes.every((c) => c && typeof c.name === 'string' && typeof c.attribute === 'string'
+        && Number.isFinite(c.before) && Number.isFinite(c.after))).slice(0, 9) : [],
     tree,
     pipelines,
     spent: typeof e.spent === 'number' && e.spent >= 0 ? e.spent : 0,
@@ -2158,72 +2171,9 @@ function applyCoachMods(
   const fx = facilityEffects(economy);
   syncCoachMods(season, userTeam, withStaff(coach.skills, economy.staff), {
     armCare: armCareFor(economy.staff),
-    injuryGuard: (FACILITIES[economy.facilities]?.injuryGuard ?? 1) * fx.guard * staffProjectInjuryGuard(economy),
+    injuryGuard: (FACILITIES[economy.facilities]?.injuryGuard ?? 1) * fx.guard * staffProjectInjuryGuard(economy, season.recruiting.week <= RECRUITING_WEEKS),
   });
 }
-
-/** Move one active staff project forward when a recruiting/calendar week closes. */
-function advanceStaffProjects(season: SeasonState, userTeam: number, economy: Economy, year: number): void {
-  const rec = season.teams[userTeam];
-  if (!rec) return;
-  const plans = { ...(economy.staffPlans ?? {}) };
-  let changed = false;
-  const bump = (v: number, by = 1): number => Math.min(99, Math.max(1, v + by));
-
-  for (const seat of SEATS) {
-    const current = plans[seat];
-    const project = current?.project;
-    if (!project) continue;
-    const nextProject = { ...project, weeksLeft: Math.max(0, project.weeksLeft - 1) };
-    plans[seat] = { ...current, project: nextProject };
-    changed = true;
-    if (nextProject.weeksLeft > 0) continue;
-
-    const facility = facilityLevel(economy, projectFacility(seat));
-    const directive = current?.directive ?? DEFAULT_DIRECTIVE[seat];
-    const aligned = (project.kind === 'hitting-contact' && directive === 'contact')
-      || (project.kind === 'hitting-power' && directive === 'power')
-      || (project.kind === 'hitting-discipline' && directive === 'discipline')
-      || (project.kind === 'pitching-command' && directive === 'command')
-      || (project.kind === 'pitching-velocity' && directive === 'velocity')
-      || (project.kind === 'pitching-arm-care' && directive === 'armCare')
-      || (project.kind.startsWith('pipeline-') && directive === 'pipeline');
-    const count = 2 + Math.max(1, facility) + (aligned ? 1 : 0);
-
-    if (seat === 'hitting') {
-      const bats = uniquePlayers([...rec.team.lineup, ...rec.team.bench]);
-      const field = project.kind === 'hitting-power' ? 'power' : project.kind === 'hitting-discipline' ? 'eye' : 'contact';
-      bats.sort((a, b) => (a[field] ?? 0) - (b[field] ?? 0));
-      for (const bat of bats.slice(0, count)) bat[field] = bump(bat[field], aligned ? 2 : 1);
-    } else if (seat === 'pitching') {
-      const arms = uniquePlayers([...rec.team.rotation, ...rec.team.bullpen] as Player[]).filter((q): q is Arm => q.type === 'pitcher' || isTwoWay(q));
-      const field = project.kind === 'pitching-velocity' ? 'stuff' : project.kind === 'pitching-arm-care' ? 'stamina' : 'control';
-      arms.sort((a, b) => a[field] - b[field]);
-      for (const arm of arms.slice(0, count)) arm[field] = bump(arm[field], aligned ? 2 : 1);
-    } else if (project.state) {
-      const pipelines = { ...(economy.pipelines ?? {}) };
-      const old = pipelines[project.state] ?? { state: project.state, strength: 0, signings: 0, lastSignedYear: year };
-      // Start from the relationship the program can actually claim — home-state
-      // familiarity and the coordinator's lead included — so deepening Louisiana
-      // does not write 25/100 underneath a built-in 60/100 home relationship and
-      // appear to do nothing.
-      const current = pipelineStrength(economy, project.state, rec.def.state);
-      const gain = project.kind === 'pipeline-build'
-        ? Math.max(0, PIPELINE_MIN - current) + 8
-        : project.kind === 'pipeline-deepen' ? 14 : 4;
-      pipelines[project.state] = {
-        ...old,
-        strength: Math.min(100, Math.max(old.strength, current) + gain + facility * 2 + (aligned ? 4 : 0)),
-        lastSignedYear: year,
-      };
-      economy.pipelines = pipelines;
-    }
-    plans[seat] = { ...current, project: undefined };
-  }
-  if (changed) economy.staffPlans = plans;
-}
-
-
 
 /**
  * Put the coach's philosophy on the bench of the program he is now running.
@@ -2850,8 +2800,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // only. Sway is a one-time attempt across the full spring relationship.
     if (input && (week < 2 || !hasRecruitingRelationship(prospect, userTeam))) return false;
     if (input?.kind === 'sway' && prospect.swayedBy?.[userTeam]) return false;
-    if (input?.kind === 'promise' && input.promise === 'twoWayOpportunity'
-      && (prospect.player as Player & { twoWay?: true }).twoWay !== true) return false;
+    if (input?.kind === 'promise' && !availableRecruitPromises(prospect.player).includes(input.promise)) return false;
     // A promise is a binding recruitment commitment, not a coupon that resets
     // with the weekly action ledger. It can be changed/withdrawn during the same
     // week it is made, but once that week is banked the promise on file is final.
@@ -2923,22 +2872,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
     const myEconomy = get().economy;
     const effSkills = withStaff(coach.skills, myEconomy.staff);
-    const fx = facilityEffects(myEconomy);
-    const myDevPitch = (FACILITIES[myEconomy.facilities]?.devPitch ?? 0) + fx.pitch;
     for (const record of season.teams) {
       const mine = record.index === userTeam;
       // Your facilities are part of your pitch: a development lab is the one
       // thing on the tour a recruit's father asks about.
       const staff = record.coach;
-      const pitch = pitchFor(
-        season, record, regionOf(record.index),
-        Math.min(1, developmentScore(record) + (mine ? myDevPitch : 0)),
-        mine ? (state) => pipelineStrength(myEconomy, state, record.def.state) : undefined,
-        {
-          coachPrestige: mine ? coach.prestige : (staff?.prestige ?? 45),
-          ...(mine ? { facilities: recruitingFacilityScore(myEconomy) } : {}),
-        },
-      );
+      const pitch = programRecruitingPitch(season, record, regionOf(record.index),
+        mine ? coach.prestige : (staff?.prestige ?? 45), mine ? myEconomy : undefined);
 
       const priorSpend = mine
         ? (season.draft?.spent ?? 0) + (season.portalSpend?.[userTeam] ?? 0)
@@ -2967,22 +2907,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         // in the country could ever answer. A chair with nobody in it — an
         // unseated world, or a save from before B7 — still works at the flat
         // league-average defaults.
-        const rawGained = weeklyPoints(
-          prospect, pitch, actions,
-          mine ? coach.prestige : (staff?.prestige ?? 45),
-          // The coordinator's whole job: every hour on a recruit counts for
-          // more. Stacked through the same skill the points already price.
-          mine ? effSkills.recruiting : (staff?.skills.recruiting ?? 20),
-        ) + actionInterest(prospect, pitch, record.index);
-        const rosterNeeds = mine ? rosterHoles([
-          ...record.team.lineup, ...record.team.bench, ...record.team.rotation, ...record.team.bullpen,
-        ]) : [];
-        const prospectPos = prospect.player.type === 'pitcher'
-          ? (prospect.player as Arm).role : prospect.player.pos;
-        const fillsNeed = rosterNeeds.some((h) => h.pos === prospectPos && h.count > 0);
-        const gained = rawGained * (mine
-          ? recruitingDirectiveMultiplier(myEconomy, prospect.stars, fillsNeed)
-          : 1);
+        const { gain: gained } = recruitingPlan(prospect, pitch, {
+          team: record.index, actions,
+          prestige: mine ? coach.prestige : (staff?.prestige ?? 45),
+          skill: mine ? effSkills.recruiting : (staff?.skills.recruiting ?? 20),
+          ...(mine ? { economy: myEconomy, roster: [
+            ...record.team.lineup, ...record.team.bench, ...record.team.rotation, ...record.team.bullpen,
+          ] } : {}),
+        });
         // A hollow pitch costs interest; it cannot take him below nothing.
         prospect.points[record.index] = Math.max(0, (prospect.points[record.index] ?? 0) + gained);
       }
@@ -2993,7 +2925,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const commits = closeWeek(recruits, season.rng, finalWeek);
     resetWeeklySpend(recruits);
     recruits.week += 1;
-    advanceStaffProjects(season, userTeam, myEconomy, get().year);
+    const projectResults = progressStaffProjects(myEconomy, season.teams[userTeam]!.team, season.teams[userTeam]!.def.state, get().year, closed);
     const nextEconomy: Economy = {
       ...myEconomy,
       staffPlans: { ...(myEconomy.staffPlans ?? {}) },
@@ -3007,6 +2939,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       economy: nextEconomy,
       version: version + 1,
       lastWeek: { closed, yours, gone: commits.length - yours.length },
+      inbox: projectResults.reduce((inbox, result) => push(inbox, newItem({
+        year: result.year, kind: 'season', title: `${PROJECT_LABEL[result.kind]} complete`,
+        body: projectResultText(result),
+      })), get().inbox),
     });
 
     // The number one recruit in the country, at the moment he commits. Read
@@ -3161,7 +3097,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       const rec = season.teams[get().userTeam];
       // The season's verdict on every man, before the portal asks him.
       settleTheMoods(season, get().userTeam);
-      const pool = openPortal(season.teams, { year: get().year, seed: season.seed ?? 0 });
+      const pool = openPortal(season.teams, { year: get().year, seed: season.seed ?? 0, batting: season.batting, pitching: season.pitching });
       const mine = pool.filter((m) => m.from === get().userTeam);
       const theirs = pool
         .filter((m) => m.from !== get().userTeam)
@@ -3914,7 +3850,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // played with has to be restamped before the next season starts.
     syncCoachMods(season, userTeam, withStaff(coach.skills, get().economy.staff), {
       armCare: armCareFor(get().economy.staff),
-      injuryGuard: (FACILITIES[get().economy.facilities]?.injuryGuard ?? 1) * facilityEffects(get().economy).guard * staffProjectInjuryGuard(get().economy),
+      injuryGuard: (FACILITIES[get().economy.facilities]?.injuryGuard ?? 1) * facilityEffects(get().economy).guard * staffProjectInjuryGuard(get().economy, season.recruiting.week <= RECRUITING_WEEKS),
     });
 
     /*
@@ -4109,6 +4045,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     }
     const rolledEconomy: Economy = agePipelines({
       ...eco0, staff: keptStaff, tree, spent: 0, scouted: {},
+      staffPlans: Object.fromEntries(SEATS.filter((seat) => keptStaff[seat]?.id === eco0.staff[seat]?.id && keptStaff[seat]).map((seat) => [seat, staffPlan(eco0, seat)])),
     }, year + 1);
     if (!handles(get().depth, 'facilities')) {
       // The AD keeps the weakest specialty moving instead of marching through a
@@ -4279,7 +4216,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         walked through that step -- there is no such winter on the rail
         today, and this is what keeps a mood from being judged twice.
       */
-      const settled = get().furthestPhase >= PHASES.indexOf('portal');
+      const settled = season.moraleSettled === true || get().furthestPhase >= PHASES.indexOf('portal');
       const mineNow = rolled.teams[get().userTeam];
       if (mineNow) {
         // One body once: a two-way man's mood, grades and winter healing
@@ -4319,6 +4256,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
             damped: leader !== null,
           }));
           if (!settled && p.recruitPromise) p.recruitPromise.judged = (p.recruitPromise.judged ?? 0) + 1;
+          // The portal has already seen the verdict. Completed obligations
+          // now expire before the player starts another season.
+          if (promiseSpent(p.recruitPromise)) delete p.recruitPromise;
           delete (p as Player & { starts?: number }).starts;
 
           driftGrades(p, get().year + 1);
@@ -4921,6 +4861,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // for its own reasons and a scan that finds nothing must not add a frame.
     if (get().inbox !== before) set({ version: get().version + 1 });
   },
+  markInboxRead: (id) => {
+    const inbox = get().inbox;
+    if (!inbox.some((i) => i.id === id && !i.read)) return;
+    set({ inbox: markRead(inbox, id), version: get().version + 1 });
+    void get().saveNow();
+  },
   readInbox: () => {
     const inbox = get().inbox;
     if (unreadCount(inbox) === 0) return;
@@ -4960,7 +4906,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const nextEconomy: Economy = {
       ...freshEconomy(),
       staff: { ...oldEconomy.staff },
-      staffPlans: { ...(oldEconomy.staffPlans ?? {}) },
+      staffPlans: Object.fromEntries(SEATS.map((seat) => [seat, { directive: staffPlan(oldEconomy, seat).directive }])),
       tree: [...(oldEconomy.tree ?? [])],
     };
     // The old program loses the in-game edge, the new one gains it.
@@ -6724,7 +6670,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   setStaffDirective: (seat, directive) => {
     const { economy } = get();
-    if (!economy.staff[seat]) return false;
+    if (!handles(get().depth, 'assistants') || !economy.staff[seat]) return false;
     const allowed: Record<StaffSeat, StaffDirective[]> = {
       hitting: ['balanced','contact','power','discipline'],
       pitching: ['balanced','command','velocity','armCare'],
@@ -6744,7 +6690,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   startStaffProject: (seat, kind, state) => {
     const { economy, season } = get();
-    if (!season || !economy.staff[seat]) return false;
+    if (!season || !handles(get().depth, 'assistants') || !economy.staff[seat]) return false;
     const facility = projectFacility(seat);
     if (facilityLevel(economy, facility) < 1) return false;
     const expectedSeat: StaffSeat = kind.startsWith('hitting-') ? 'hitting'
@@ -6759,14 +6705,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       if (kind === 'pipeline-build' && strength >= PIPELINE_MIN) return false;
       if ((kind === 'pipeline-deepen' || kind === 'pipeline-maintain') && strength < PIPELINE_MIN) return false;
     }
-    const weeks = staffProjectWeeks(economy, seat);
-    const project = {
-      kind,
-      ...(state ? { state: state.trim().toUpperCase() } : {}),
-      weeksTotal: weeks,
-      weeksLeft: weeks,
-      startedWeek: Math.max(1, Math.min(RECRUITING_WEEKS, season.recruiting.week)),
-    };
+    const weeks = staffProjectWeeks(economy, seat, kind);
+    if (season.recruiting.week < 1 || season.recruiting.week + weeks - 1 > RECRUITING_WEEKS) return false;
+    const project = newStaffProject(economy, season.teams[get().userTeam]!.team, seat, kind,
+      season.recruiting.week, state?.trim().toUpperCase());
     const next: Economy = {
       ...economy,
       staffPlans: { ...(economy.staffPlans ?? {}), [seat]: { ...plan, project } },
@@ -6778,6 +6720,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   cancelStaffProject: (seat) => {
+    if (!handles(get().depth, 'assistants')) return;
     const { economy } = get();
     const plan = staffPlan(economy, seat);
     if (!plan.project) return;
@@ -7696,7 +7639,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       if (season && rec) {
         // A save from before the settle moved to this step has not had one.
         settleTheMoods(season, get().userTeam);
-        const pool = openPortal(season.teams, { year: get().year, seed: season.seed ?? 0 });
+        const pool = openPortal(season.teams, { year: get().year, seed: season.seed ?? 0, batting: season.batting, pitching: season.pitching });
         const mine = pool.filter((m) => m.from === get().userTeam);
         const theirs = pool
           .filter((m) => m.from !== get().userTeam)

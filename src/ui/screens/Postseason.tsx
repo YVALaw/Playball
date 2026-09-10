@@ -35,7 +35,7 @@ import { BoxScoreSheet } from './Schedule.js';
 import { teamColour } from '../Avatar.js';
 import {
   conferenceField, liveSeries, nextGameFor, hostOfGame, roundName, clincher,
-  regionOf, REGIONS, CONF_FIELD, CONF_ADVANCE, NATIONAL_BIDS,
+  regionOf, REGIONS, CONF_FIELD, CONF_ADVANCE, NATIONAL_BIDS, protectedTopFour, splitShowdown, nationalBidReason, NATIONAL_BID_DETAIL,
 } from '../../engine/postseason.js';
 import type {
   Series, SeriesBracket, RegionalSeries, ConferenceTournament, TournamentResult, BracketGame,
@@ -112,6 +112,8 @@ export function Postseason() {
     Null means "follow the tournament", so the common case needs no state and a
     stage advancing under you still moves the screen with it.
   */
+  const [findTeam, setFindTeam] = useState(0);
+  const [followTeam, setFollowTeam] = useState(true);
   const [reviewing, setReviewing] = useState<number | null>(null);
   const [juneTab, setJuneTab0] = useState<JuneTab>(juneTabMemo);
   const setJuneTab = (v: JuneTab): void => { juneTabMemo = v; setJuneTab0(v); };
@@ -302,6 +304,52 @@ export function Postseason() {
   }, [bracket, stageKey, outKey, introKey, seen, markSeen, stillIn, inTheField,
     titleGame]);
 
+  const rung = bracket?.stage === 'conference' ? 0
+    : bracket?.stage === 'regional' ? 1 : 2;
+  const shown = reviewing ?? rung;
+
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const lookingAt = `${juneTab}:${natHalf ?? ''}`;
+  const activeSlot = myBracket?.format === 'double' ? liveSlotFor(myBracket.state, userTeam) : null;
+  const activeSeries = myBracket?.format === 'series' ? liveSeries(myBracket.state, userTeam) : null;
+  const matchupKey = activeSlot ? `${activeSlot.side}:${activeSlot.round}:${activeSlot.slot}:${activeSlot.a}:${activeSlot.b}`
+    : activeSeries ? `${activeSeries.round}:${activeSeries.a}:${activeSeries.b}:${activeSeries.games.length}` : 'settled';
+  useLayoutEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller || !followTeam) return;
+    const all = scroller.querySelectorAll<HTMLElement>('[data-you]');
+    const you = scroller.querySelector<HTMLElement>('[data-you-live]') ?? all[all.length - 1];
+    if (!you) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const sr = scroller.getBoundingClientRect();
+    const yr = you.getBoundingClientRect();
+    const moves: { el: HTMLElement; axis: 'scrollTop' | 'scrollLeft'; from: number; to: number }[] = [];
+    if (yr.top < sr.top || yr.bottom > sr.bottom) {
+      const to = scroller.scrollTop + yr.top + yr.height / 2 - sr.top - sr.height / 2;
+      moves.push({ el: scroller, axis: 'scrollTop', from: scroller.scrollTop, to: Math.max(0, Math.min(scroller.scrollHeight - scroller.clientHeight, to)) });
+    }
+    const map = you.closest<HTMLElement>('.bracket-map-scroll');
+    if (map) {
+      const mr = map.getBoundingClientRect();
+      if (yr.left < mr.left || yr.right > mr.right) {
+        const to = map.scrollLeft + yr.left + yr.width / 2 - mr.left - mr.width / 2;
+        moves.push({ el: map, axis: 'scrollLeft', from: map.scrollLeft, to: Math.max(0, Math.min(map.scrollWidth - map.clientWidth, to)) });
+      }
+    }
+    if (!moves.length) return;
+    if (reduce || document.hidden) { moves.forEach((m) => { m.el[m.axis] = m.to; }); return; }
+    const start = performance.now();
+    let frame = 0;
+    const tick = (now: number): void => {
+      const t = Math.min(1, (now - start) / 260);
+      const eased = 1 - (1 - t) ** 3;
+      moves.forEach((m) => { m.el[m.axis] = m.from + (m.to - m.from) * eased; });
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [lookingAt, shown, matchupKey, findTeam, followTeam]);
+
   if (!season || !team || !bracket) return null;
 
   /*
@@ -374,125 +422,9 @@ export function Postseason() {
     };
   })();
 
-  const rung = bracket.stage === 'conference' ? 0
-    : bracket.stage === 'regional' ? 1 : 2;
-  const shown = reviewing ?? rung;
-
-  /*
-    keepYouCentred: after the map is swapped, put your own team back under the
-    reader's eyes.
-
-    Reported twice. The first answer was a fade, and it was still wrong -- "it
-    just disappears and appears somewhere else" -- because the animation was
-    never the whole problem. The winners map and the losers map are different
-    heights and your team sits at a different depth in each, so a swap that
-    keeps the scroll offset lands you at whatever happens to be at that pixel.
-    Fading it in only made the wrong place arrive politely.
-
-    So the box carrying your team is marked in the DOM (see DoubleElimMap's
-    `youAnchor`) and the scroller is nudged until it is in the middle. Measured
-    with rects rather than `offsetTop`, which is relative to whichever ancestor
-    happens to be positioned, and scrolled with `scrollBy` on the scroller
-    itself so no ancestor is dragged along with it.
-
-    Runs on the side you are *looking at* rather than the side you are playing
-    on, because a reader who taps the toggle deliberately wants centring just as
-    much as one the bracket moved by itself.
-  */
-  const scrollerRef = useRef<HTMLDivElement | null>(null);
-  // The stage on the screen, not the stage the tournament is on -- the rail
-  // lets you walk back to a finished one, and centring is just as owed there.
-  const lookingAt = `${juneTab}:${natHalf ?? ''}`;
-  useLayoutEffect(() => {
-    const scroller = scrollerRef.current;
-    if (!scroller || spectatorMode) return undefined;
-    let frame = 0;
-    {
-      /*
-        Measured in a layout effect, which is the whole reason this is not a
-        `useEffect` with a `requestAnimationFrame` inside it.
-
-        That is what it was, and it could not run: rAF does not fire in a tab
-        that is not compositing, so the measurement never happened and the map
-        stayed where it was. Layout is already committed by the time this runs,
-        so the rects are correct without waiting for a frame -- rAF is now only
-        used to *animate*, which is the one job it is allowed to fail at.
-      */
-      /*
-        Which of your boxes, which is the whole question.
-
-        Reported after the first version landed: "it didn't take me to where my
-        team was in the bracket, which is the main thing." Correct -- and the
-        centring was working. You appear in a slot for *every round you play*,
-        so `querySelector` was faithfully finding the first one and centring on
-        the game you played on Tuesday.
-
-        Where you *are* is the game that has not been decided yet. Failing that
-        -- your run is over, or the half on screen is one you have finished --
-        the last box you appear in is the furthest you got, which is the thing
-        worth looking at.
-      */
-      const live = scroller.querySelector('[data-you-live]');
-      const all = scroller.querySelectorAll('[data-you]');
-      const you = live ?? all[all.length - 1] ?? null;
-      if (!you) return undefined;
-      const sr = scroller.getBoundingClientRect();
-      const yr = you.getBoundingClientRect();
-      /*
-        Leave it alone if you can already see it.
-
-        This started as "move if the box is more than a nudge off centre", which
-        is the wrong question twice over. It fights a reader who has deliberately
-        scrolled somewhere -- the box is off centre, so it drags the page back --
-        and it also means the only time the view follows you is when the toggle
-        moves, so simulating a round and watching your live game shift down the
-        map left you looking at the wrong part of the bracket.
-
-        Asking whether the box is *visible* fixes both. Off screen, you get
-        taken to it; on screen, nothing happens however far off centre it sits.
-        That makes it safe to run on every bracket change rather than only on a
-        view swap.
-      */
-      if (yr.top >= sr.top && yr.bottom <= sr.bottom) return undefined;
-      const delta = (yr.top + yr.height / 2) - (sr.top + sr.height / 2);
-
-      const reduce = typeof window.matchMedia === 'function'
-        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const from = scroller.scrollTop;
-      const to = Math.max(0, Math.min(scroller.scrollHeight - scroller.clientHeight, from + delta));
-      // Nobody is watching a hidden tab, and its rAF will not fire anyway.
-      if (reduce || document.hidden) { scroller.scrollTop = to; return undefined; }
-
-      /*
-        Tweened here rather than handed to `behavior: 'smooth'`.
-
-        Measured in the preview browser: `scrollBy({ top, behavior: 'smooth' })`
-        moved nothing at all, while the same call without `behavior` moved
-        exactly as asked -- so the smooth path fails *silently*, which is the
-        worst way for a scroll to fail. Any device that does not implement it
-        would land back on the original report, a map that "just disappears and
-        appears somewhere else", with nothing in the code looking wrong.
-
-        Two hundred and sixty milliseconds, to match the swap animation running
-        over the top of it, on the same curve.
-      */
-      const START = performance.now();
-      const DUR = 260;
-      const ease = (t: number): number => (t < 0.5
-        ? 4 * t * t * t
-        : 1 - ((-2 * t + 2) ** 3) / 2);
-      const step = (now: number): void => {
-        const t = Math.min(1, (now - START) / DUR);
-        scroller.scrollTop = from + (to - from) * ease(t);
-        if (t < 1) frame = requestAnimationFrame(step);
-      };
-      frame = requestAnimationFrame(step);
-    }
-    return () => cancelAnimationFrame(frame);
-  }, [lookingAt, shown, spectatorMode]);
-
-  const stageTitle = rung === 0 ? `${leagueLabel(team.conference)} tournament`
-    : rung === 1 ? 'The regionals' : 'The national tournament';
+  const nationalBid = nat ? nationalBidReason(nat.field, userTeam) : null;
+  const stageTitle = shown === 0 ? `${leagueLabel(team.conference)} tournament`
+    : shown === 1 ? 'Regionals' : 'National tournament';
 
   const qualified = inTheField
     ? {
@@ -538,7 +470,7 @@ export function Postseason() {
         title: finished,
         lines: [
           `${team.def.school} are out of the ${leagueLabel(team.conference)} tournament.`,
-          'But the top four travel. A regional championship series is next.',
+          `The top ${CONF_ADVANCE} finishers advance. Your next stage is a best-of-three regional series.`,
         ],
       };
     }
@@ -548,17 +480,19 @@ export function Postseason() {
         title: 'Out in May',
         lines: [
           `${team.def.school} fall${where} of the ${leagueLabel(team.conference)} tournament.`,
-          'Winter is for getting the bats loud again.',
+          'Your postseason is over. Follow the remaining tournaments, then prepare for next season.',
         ],
       };
     }
     if (kind === 'regional' && knockout?.advanced) {
       return {
         good: true,
-        title: 'Protected',
+        title: protectedTopFour(season).includes(userTeam) ? 'Protected national bid' : 'At-large national bid',
         lines: [
           `${team.def.school} lose the regional championship series.`,
-          'The regular season already bought the national field. You travel anyway.',
+          protectedTopFour(season).includes(userTeam)
+            ? 'Your top-four regular-season ranking guarantees a place in the national tournament.'
+            : 'Your final regular-season ranking earns one of the remaining national places after regional champions and protected teams qualify.',
         ],
       };
     }
@@ -568,7 +502,7 @@ export function Postseason() {
         title: 'Out at the regional',
         lines: [
           `${team.def.school} lose the regional championship series.`,
-          'One series from the national field. Close enough to sting.',
+          'You did not receive a national bid. Follow the remaining games, then prepare for next season.',
         ],
       };
     }
@@ -823,7 +757,7 @@ export function Postseason() {
         <div style={{ flex: 'none', background: 'var(--field)' }}>
           <div className="postseason-head">
             <ModuleIntro
-              kicker={`${year} POSTSEASON · STAGE ${rung + 1} OF 3`}
+              kicker={`${year} POSTSEASON · STAGE ${shown + 1} OF 3${reviewing !== null ? ' · REVIEWING' : ''}`}
               title={stageTitle}
             />
           </div>
@@ -843,8 +777,32 @@ export function Postseason() {
           )}
         </div>
 
-        <div ref={scrollerRef} className="postseason-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+        {(reviewing !== null || juneTab === 'bracket') && (
+          <div className="postseason-map-tools">
+            {reviewing !== null && <button type="button" onClick={() => setReviewing(null)}>Return to current stage</button>}
+            <button type="button" onClick={() => {
+              const halves = splitShowdown(nat?.field.seeds ?? []);
+              const half = halves.bracketA.includes(userTeam) ? 'A' : halves.bracketB.includes(userTeam) ? 'B' : null;
+              if (shown === 2 && half) setNatHalf(half);
+              setFollowTeam(true); setFindTeam((n) => n + 1);
+            }}>Find my team</button>
+            {!followTeam && <small>Following paused while you browse</small>}
+          </div>
+        )}
+        <div ref={scrollerRef} onWheel={() => setFollowTeam(false)} onTouchMove={() => setFollowTeam(false)} className="postseason-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <div style={{ padding: '8px 0 10px' }}>
+            {reviewing === null && shown === 2 && nationalBid && !knockedOut && (
+              <section className="postseason-outcome" aria-label="National qualification">
+                <small>YOUR NATIONAL BID</small><p>{NATIONAL_BID_DETAIL[nationalBid]}</p>
+              </section>
+            )}
+            {reviewing === null && knockout && (!stillIn || iAmOut) && (
+              <section className="postseason-outcome" aria-label="Your postseason status">
+                <small>{howFar.good ? 'TOURNAMENT FINISHED · SEASON CONTINUES' : 'YOUR SEASON IS OVER'}</small>
+                <strong>{howFar.title}</strong>
+                <p>{howFar.lines.join(' ')}</p>
+              </section>
+            )}
             {/*
               Who won, at the top, where it cannot be missed.
 

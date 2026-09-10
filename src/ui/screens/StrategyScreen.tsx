@@ -83,7 +83,7 @@ const GROUPS: Array<Group<keyof Strategy>> = [
     options: [
       { value: 'in', label: 'ON THE GRASS', cost: 'Kills the run at the plate and the bunt; ground balls find the outfield' },
       { value: 'normal', label: 'STANDARD', cost: 'The book depth' },
-      { value: 'back', label: 'BACK', cost: 'Outs everywhere — and the run from third scores' },
+      { value: 'back', label: 'BACK', cost: 'More room to field grounders; gives up the play at home' },
     ],
   },
   {
@@ -93,7 +93,7 @@ const GROUPS: Array<Group<keyof Strategy>> = [
     options: [
       { value: 'shallow', label: 'SHALLOW', cost: 'Singles die in front; the ball over their heads runs for ever' },
       { value: 'normal', label: 'STANDARD', cost: 'The book depth' },
-      { value: 'deep', label: 'DEEP', cost: 'Nothing lands behind them; everything lands in front' },
+      { value: 'deep', label: 'DEEP', cost: 'Fewer balls over their heads; more room for short hits' },
     ],
   },
   {

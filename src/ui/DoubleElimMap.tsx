@@ -156,7 +156,7 @@ function SlotCard(
       onClick={open}
       role={open ? 'button' : undefined}
       tabIndex={open ? 0 : undefined}
-      onKeyDown={open ? (e) => { if (e.key === 'Enter' || e.key === ' ') open(); } : undefined}
+      onKeyDown={open ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } } : undefined}
       className={`bracket-slot-card${mine ? ' is-yours' : ''}${open ? ' tap' : ''}${s.winner !== null ? ' is-final' : ' is-live'}`}
     >
       <Row team={s.a} seed={s.aSeed} s={s} abbr={abbr} userTeam={userTeam} />

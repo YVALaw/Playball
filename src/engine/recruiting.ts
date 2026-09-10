@@ -29,6 +29,7 @@ import { overallOf } from './ratings.js';
 import {
   GRADE_LADDER, TOP_GENERATED_GRADE, potentialGrade, scoutNoise, type PotentialGrade,
 } from './scouting.js';
+import { isTwoWay } from './types.js';
 import type {
   Player, PlayerId, Position, Priorities, Priority, RecruitPromiseKind, Rng,
 } from './types.js';
@@ -141,6 +142,13 @@ export const PROMISE_LABEL: Record<RecruitPromiseKind, string> = {
   keepPosition: 'STAY AT YOUR POSITION',
   twoWayOpportunity: 'TWO-WAY OPPORTUNITY',
 };
+
+/** Promise choices shared by the recruiting screen, store validation, and rivals. */
+export function availableRecruitPromises(player: Player): RecruitPromiseKind[] {
+  const promises: RecruitPromiseKind[] = ['immediateRole', 'noRedshirt', 'keepPosition'];
+  if (isTwoWay(player)) promises.push('twoWayOpportunity');
+  return promises;
+}
 
 export interface Prospect {
   readonly id: PlayerId;
@@ -1461,8 +1469,7 @@ export function planAiRecruitActions(
       // create future transfer risk, and should feel like a real commitment.
       // One promise follows the relationship across weeks; the AI cannot stack
       // a new bargain after the weekly action ledger resets either.
-      const options: RecruitPromiseKind[] = ['immediateRole', 'noRedshirt', 'keepPosition'];
-      if ((prospect.player as Player & { twoWay?: true }).twoWay === true) options.push('twoWayOpportunity');
+      const options = availableRecruitPromises(prospect.player);
       const promise = options[Math.floor(rng() * options.length)] as RecruitPromiseKind;
       if (left >= PROMISE_COST[promise]) major = { kind: 'promise', promise };
     }

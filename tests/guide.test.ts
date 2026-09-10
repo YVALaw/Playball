@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   GUIDE_STEPS, activeGuideStep, dueGuideStamps, guideCard, guideSkipStamps, guideStamp,
-  visibleGuideStep, type GuideView,
+  visibleGuideStep, guideStepStamps, type GuideView,
 } from '../src/ui/guide.js';
 
 const at = (over: Partial<GuideView> = {}, present: string[] = []): GuideView => ({
@@ -138,5 +138,57 @@ describe('the guided first stretch', () => {
       if (s.id === 'done') continue;
       expect(s.where(at({ overlay: 'inbox' }))).toBe(false);
     }
+  });
+
+  it('continues from the dugout when a resumed game has passed the first inning', () => {
+    const seen = [guideStamp('welcome')];
+    const view = at({ live: true, screen: 'box', inning: 4 }, ['call-default']);
+    for (const id of ['field-1', 'field-2']) {
+      const step = activeGuideStep(seen, true, true)!;
+      expect(step.id).toBe(id);
+      seen.push(...dueGuideStamps(seen, step, view));
+    }
+    const next = activeGuideStep(seen, true, true)!;
+    expect(next.id).toBe('dugout');
+    expect(visibleGuideStep(seen, next, view)?.id).toBe('dugout');
+  });
+
+  it('still teaches the bottom half when only the top-half lesson was missed', () => {
+    const view = at({ live: true, screen: 'box', inning: 1, half: 'bottom' }, ['call-default']);
+    expect(dueGuideStamps([], by['field-1']!, view)).toContain(guideStamp('field-1'));
+    expect(dueGuideStamps([], by['field-2']!, view)).not.toContain(guideStamp('field-2'));
+    expect(by['field-2']!.where(view)).toBe(true);
+  });
+
+  it('does not strand the tour after the first game was already recorded', () => {
+    const view = at({ gamesPlayed: 1 });
+    for (const id of ['field-1', 'field-2', 'dugout', 'record']) {
+      expect(dueGuideStamps([], by[id]!, view)).toContain(guideStamp(id));
+    }
+    // A new career and an interrupted game still need their game lessons.
+    expect(by['field-1']!.done!(at())).toBe(false);
+    expect(by['field-1']!.done!(at({ gamesPlayed: 1, pending: true }))).toBe(false);
+  });
+
+  it('does not skip a new live game merely because older games exist', () => {
+    const view = at({ live: true, screen: 'box', gamesPlayed: 7, inning: 1, half: 'top' }, ['call-default']);
+    expect(by['field-1']!.done!(view)).toBe(false);
+    expect(by['field-1']!.where(view)).toBe(true);
+  });
+
+  it('moves past the directive lesson when no coach was hired', () => {
+    const seen = mains.slice(0, mains.findIndex((s) => s.id === 'hire')).map((s) => guideStamp(s.id));
+    seen.push(...guideStepStamps(by.hire!));
+    const current = activeGuideStep(seen, true, true)!;
+    expect(current.id).toBe('task');
+    seen.push(...dueGuideStamps(seen, current, at({ hittingHired: false })));
+    expect(activeGuideStep(seen, true, true)?.id).toBe('facilities');
+  });
+
+  it('skips only one lineup exercise and keeps the next lesson available', () => {
+    const seen = mains.slice(0, mains.findIndex((s) => s.id === 'lineup-swap')).map((s) => guideStamp(s.id));
+    seen.push(...guideStepStamps(by['lineup-swap']!));
+    expect(activeGuideStep(seen, true, true)?.id).toBe('lineup-spot');
+    expect(seen).not.toContain(guideStamp('done'));
   });
 });

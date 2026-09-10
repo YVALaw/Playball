@@ -32,7 +32,9 @@ import type { SeasonState } from '../engine/season.js';
  *     migration is structural rather than destructive; stamping the new schema
  *     still keeps old builds from claiming they understand a newer dynasty.
  */
-export const SCHEMA_VERSION = 5;
+// 6 — season morale settlement is idempotent; project targets, weekly focus
+// and completion reports persist. The store backfills older staff plans.
+export const SCHEMA_VERSION = 6;
 
 const DB_NAME = 'playball';
 const STORE = 'dynasties';
@@ -577,6 +579,9 @@ export interface LoadedDynasty {
  * still loads even if the browser never ran the upgrade path.
  */
 function migrateFile(file: SaveFile): SaveFile {
+  // A schema-5 cached portal was generated after morale was settled. Do not
+  // judge its promises again if the pool later needs to be rebuilt.
+  if (file.schemaVersion === 5 && file.portal) file.season.moraleSettled = true;
   if (!Number.isFinite(file.season.scheduleRotation)) {
     // A version 1 save. Rotation 0 is the schedule it was actually played on.
     file.season.scheduleRotation = 0;

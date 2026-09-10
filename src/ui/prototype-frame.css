@@ -748,61 +748,80 @@
   inset: 0;
   z-index: 38;
   display: grid;
+  min-height: 0;
   place-items: end center;
-  padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
-  background: rgba(var(--scrim-rgb), .6);
+  padding: 16px 16px calc(20px + env(safe-area-inset-bottom));
+  background: rgba(var(--scrim-rgb), .65);
 }
-
 .tutorial-card {
   width: 100%;
-  max-width: 360px;
-  padding: 13px 14px 14px;
-  border: 1px solid var(--ink);
-  background: var(--paper);
-  box-shadow: 0 14px 40px rgba(0, 0, 0, .35);
-}
-
-.tutorial-card .flow-section-title button {
-  padding: 5px 8px;
+  max-width: 380px;
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
   border: 1px solid var(--line);
-  color: var(--dim);
+  border-top: 3px solid var(--clay);
+  border-radius: 12px;
+  background: var(--paper);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, .4);
 }
-
+.tutorial-card .flow-section-title { gap: 8px; align-items: center; }
+.tutorial-card .flow-section-title .label { min-width: 0; line-height: 1.4; }
+.tutorial-card .flow-section-title button,
+.tutorial-back {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--paper);
+  font-size: calc(12px * var(--ts));
+}
 .tutorial-card h2 {
-  margin: 4px 0 0;
-  font: 800 calc(26px * var(--ts))/.92 var(--display);
+  margin: 12px 0 0;
+  font: 800 calc(26px * var(--ts))/1.08 var(--display);
+  overflow-wrap: anywhere;
 }
-
 .tutorial-card p {
-  margin: 8px 0 0;
-  color: var(--dim);
-  font-size: calc(11px * var(--ts));
-  line-height: 1.5;
+  margin: 12px 0 0;
+  color: var(--ink);
+  font-size: calc(13px * var(--ts));
+  line-height: 1.55;
 }
-
+.tutorial-action {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--clay);
+  background: rgba(var(--clay-rgb), .07);
+  border-radius: 0 6px 6px 0;
+}
+.tutorial-action p { margin: 0; font-weight: 700; }
+.tutorial-card .tutorial-byline { margin-top: 12px; color: var(--dim); font-size: calc(11px * var(--ts)); }
 .tutorial-card footer {
+  position: sticky;
+  bottom: -16px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 5px;
-  margin-top: 14px;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 10px 0 2px;
+  background: var(--paper);
 }
-
-/* The page marks are the proposal's diamonds, which is the shape a base is. */
-.tutorial-card footer > span {
-  width: 7px;
-  height: 7px;
-  transform: rotate(45deg);
-  background: var(--line);
-}
-
-.tutorial-card footer > span.on { background: var(--clay); }
-
 .tutorial-card footer .primary-command {
+  flex: 1;
   width: auto;
   min-width: 108px;
+  min-height: 44px;
   margin: 0 0 0 auto;
-  padding: 0 18px;
+  padding: 8px 14px;
 }
+.tutorial-progress { height: 4px; margin-top: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.tutorial-progress > span { display: block; height: 100%; background: var(--clay); }
+.tutorial-card button:focus-visible,
+.guide-controls button:focus-visible { outline: 3px solid var(--clay); outline-offset: 3px; }
 
 /* ---------------------------------------------------------------------------
    The announcement dialog.
@@ -3177,73 +3196,59 @@
 .guide-mask { position: absolute; inset: 0; z-index: 46; pointer-events: none; }
 .guide-mask-part {
   position: absolute;
-  background: rgba(var(--scrim-rgb), .62);
+  background: rgba(6, 9, 14, .72);
   pointer-events: auto;
   touch-action: none;
 }
-/* The light itself. From the first phone run: "when the buttons are
-   highlighted in red, the red should be glowing intensively so they know
-   they are supposed to tap there." A hard ring and a blaze around it, both
-   breathing; reduced motion keeps the ring and the blaze and drops the
-   breathing. */
+/* Keep a stable, visible border while the outer glow breathes gently. */
 @keyframes guide-blaze {
-  0%, 100% { box-shadow: 0 0 0 3px var(--alert), 0 0 0 7px rgba(224, 101, 94, .45), 0 0 26px 10px rgba(224, 101, 94, .85); }
-  50%      { box-shadow: 0 0 0 3px var(--alert), 0 0 0 16px rgba(224, 101, 94, 0), 0 0 44px 18px rgba(224, 101, 94, .65); }
+  0%, 100% { box-shadow: 0 0 0 4px rgba(255, 125, 114, .18), 0 0 18px 5px rgba(255, 125, 114, .4); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 125, 114, .26), 0 0 24px 7px rgba(255, 125, 114, .5); }
 }
 .guide-hole {
   position: absolute;
-  border-radius: 6px;
+  border-radius: 8px;
   pointer-events: none;
-  outline: 3px solid var(--alert);
-  /* The resting state is the blaze itself, so a paused animation — a hidden
-     frame, a reduced-motion device — still shows the light, not a bare ring. */
-  box-shadow: 0 0 0 3px var(--alert), 0 0 0 7px rgba(224, 101, 94, .45), 0 0 26px 10px rgba(224, 101, 94, .85);
-  animation: guide-blaze .9s ease-in-out infinite;
+  outline: 2px solid #ff8b80;
+  box-shadow: 0 0 0 4px rgba(255, 125, 114, .2), 0 0 18px 5px rgba(255, 125, 114, .4);
+  animation: guide-blaze 1.8s ease-in-out infinite;
 }
 :root[data-motion="reduced"] .guide-hole,
-.guide-hole.still {
-  animation: none;
-  box-shadow: 0 0 0 3px var(--alert), 0 0 26px 10px rgba(224, 101, 94, .85);
-}
-@media (prefers-reduced-motion: reduce) {
-  .guide-hole { animation: none; box-shadow: 0 0 0 3px var(--alert), 0 0 26px 10px rgba(224, 101, 94, .85); }
-}
-/* The tour's card: the tutorials' card, raised to the middle of the frame and
-   over the dugout's trigger — reported on the field: "the dugout and the
-   show me button are one on top of the other." */
-.guide-scrim { z-index: 46; place-items: center; }
-/* And the way it leaves: the fade and the rise, run backwards, before the
-   light comes on. "It just does a clean cut instead of a disappearing card
-   animation." Reduced motion never adds the class. */
+.guide-hole.still { animation: none; }
+@media (prefers-reduced-motion: reduce) { .guide-hole { animation: none; } }
+.guide-scrim { z-index: 46; place-items: center; background: rgba(6, 9, 14, .72); }
 @keyframes guide-scrim-out { from { opacity: 1; } to { opacity: 0; } }
-@keyframes guide-card-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(14px); } }
+@keyframes guide-card-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(10px); } }
 .guide-scrim.leaving { animation: guide-scrim-out 200ms ease-in both; pointer-events: none; }
 .guide-scrim.leaving .tutorial-card { animation: guide-card-out 200ms ease-in both; }
 .guide-caption {
   position: absolute;
-  left: 16px;
-  right: 16px;
+  left: 12px;
+  right: 12px;
   margin: 0;
-  padding: 8px 10px;
-  border: 1px solid var(--ink);
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
   background: var(--paper);
   color: var(--ink);
-  font: 700 calc(11px * var(--ts))/1.4 var(--body);
-  text-align: center;
+  font: 600 calc(13px * var(--ts))/1.45 var(--body);
   box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
-  pointer-events: none;
-}
-.guide-skip {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  padding: 5px 8px;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--dim);
-  font: 800 calc(8px * var(--ts)) var(--body);
-  letter-spacing: .05em;
   pointer-events: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.guide-caption > small { color: var(--dim); font: 700 calc(10px * var(--ts))/1.3 var(--body); letter-spacing: .06em; }
+.guide-caption > p { margin: 6px 0 10px; }
+.guide-controls { display: flex; flex-wrap: wrap; gap: 6px; }
+.guide-controls button {
+  flex: 1 0 auto;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 700 calc(11px * var(--ts))/1.3 var(--body);
 }
 
 /* Where else he can stand, under the position on the player card's info —
@@ -6438,10 +6443,6 @@
 .settings-tile strong { display:block; font:800 calc(12px * var(--ts)) var(--body); }
 .settings-tile small { display:block; margin-top:4px; color:var(--dim); font:500 calc(8px * var(--ts))/1.35 var(--body); }
 .settings-tile > b { color:var(--clay); font-size:18px; }
-.settings-scope-note { display:grid; grid-template-columns:1fr 1fr; gap:1px; margin-top:9px; background:var(--line); border:1px solid var(--line); }
-.settings-scope-note span { padding:9px; background:var(--wash); }
-.settings-scope-note small { display:block; color:var(--dim); font:700 calc(6.5px * var(--ts)) var(--mono); }
-.settings-scope-note strong { display:block; margin-top:3px; font:700 calc(9px * var(--ts)) var(--body); }
 .setting-toggle-card,.setting-choice-card { border:0 !important; border-bottom:1px solid var(--line) !important; }
 .settings-list { border:1px solid var(--line); background:var(--paper); box-shadow:0 10px 24px rgba(0,0,0,.05); }
 .setting-choice-card { padding:11px !important; }
@@ -8036,3 +8037,91 @@
   .network-assignment > div { grid-template-columns:1fr; }
 }
 .staff-directive-effect { margin:5px 11px 8px; color:var(--dim); font:600 calc(8px * var(--ts))/1.35 var(--body); }
+/* Follow-up clarity: readable outcomes and controls that fit narrow screens. */
+.postseason-map-tools { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:8px 12px; border-bottom:1px solid var(--line); }
+.postseason-map-tools button, .mailbox-mark-all { min-height:44px; padding:8px 12px; border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink); font:700 calc(12px * var(--ts))/1.3 var(--body); }
+.postseason-map-tools small { color:var(--dim); font:500 calc(11px * var(--ts))/1.4 var(--body); }
+.postseason-outcome { margin:8px 12px 14px; padding:12px; border:1px solid var(--line); border-left:4px solid var(--clay); background:var(--paper); border-radius:8px; }
+.postseason-outcome small, .staff-result-card > small { display:block; color:var(--dim); font:700 calc(10px * var(--ts))/1.4 var(--mono); }
+.postseason-outcome strong, .staff-result-card > strong { display:block; margin-top:4px; color:var(--ink); font:800 calc(15px * var(--ts))/1.3 var(--body); }
+.postseason-outcome p, .recruit-plan-summary { margin:6px 0 0; color:var(--ink); font:500 calc(12px * var(--ts))/1.5 var(--body); overflow-wrap:anywhere; }
+.mailbox-mark-all { margin:8px 12px 12px; }
+.staff-project-option { min-width:0; padding:12px; border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink); }
+.staff-project-option > strong { display:block; font:800 calc(14px * var(--ts))/1.3 var(--body); }
+.staff-project-option p, .staff-management-panel .staff-project-detail, .staff-result-card p { margin:8px 0; color:var(--ink); font:500 calc(12px * var(--ts))/1.5 var(--body); overflow-wrap:anywhere; }
+.staff-management-panel > .staff-project-detail { padding:0 10px; }
+.staff-project-option summary { cursor:pointer; padding:10px 0; min-height:44px; font:700 calc(12px * var(--ts))/1.4 var(--body); }
+.staff-project-options .staff-project-option button { width:100%; min-height:44px; margin-top:8px; font:700 calc(12px * var(--ts))/1.4 var(--body); }
+.staff-result-card { padding:12px; margin:10px 0; border:1px solid var(--line); border-radius:10px; background:var(--paper); }
+.staff-result-card > div { display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:7px 0; border-top:1px solid var(--line); color:var(--ink); font:500 calc(12px * var(--ts))/1.4 var(--body); }
+.staff-result-card > div span { min-width:0; overflow-wrap:anywhere; }
+.staff-result-card > div b { flex:none; font-family:var(--mono); }
+.network-state-filter { display:grid; gap:6px; margin:12px 0; color:var(--ink); font:700 calc(12px * var(--ts))/1.4 var(--body); }
+.network-state-filter select { min-height:44px; width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink); font:inherit; }
+.network-panel .network-assignment > div { grid-template-columns:minmax(0,1fr); }
+.network-panel .network-assignment button, .network-panel .network-assignment select { min-height:44px; white-space:normal; font-size:calc(12px * var(--ts)); }
+.network-panel .network-assignment button:disabled, .staff-project-option button:disabled { opacity:.55; cursor:default; }
+.pipeline-card > small { white-space:normal; overflow-wrap:anywhere; }
+.staff-project-option :focus-visible, .postseason-map-tools button:focus-visible, .mailbox-mark-all:focus-visible { outline:2px solid var(--clay); outline-offset:3px; }
+
+/* Compact Home masthead keeps the next game and decisions close together. */
+.today-date-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px 12px; padding:0 0 4px; }
+.today-date-row p { margin:0; color:var(--clay); font:800 calc(9px * var(--ts))/1.4 var(--mono); }
+.today-date-row > span { color:var(--dim); font:700 calc(8px * var(--ts))/1.4 var(--mono); }
+.dashboard-workspace .today-date-row + .next-game { margin-top:8px; }
+
+/* Staff candidates are visible together; hiring happens in the detail dialog. */
+.staff-market-heading { margin:18px 0 10px; }
+.staff-market-heading h3 { margin:0; font:800 calc(20px * var(--ts))/1.15 var(--display); }
+.staff-market-heading p, .staff-market-notice { margin:5px 0; color:var(--dim); font:500 calc(12px * var(--ts))/1.45 var(--body); }
+.staff-candidate-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.staff-candidate-tile { display:flex; flex-direction:column; min-width:0; gap:7px; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--paper); color:var(--ink); text-align:left; }
+.staff-candidate-tile:hover { border-color:var(--clay); }
+.staff-candidate-tile:focus-visible, .staff-candidate-dialog button:focus-visible { outline:3px solid var(--clay); outline-offset:3px; }
+.staff-candidate-top { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.staff-candidate-initials { display:grid; place-items:center; flex-shrink:0; width:36px; height:36px; border-radius:50%; background:var(--wash); color:var(--clay); font:800 calc(14px * var(--ts))/1 var(--display); }
+.staff-candidate-top > b { font:800 calc(26px * var(--ts))/1 var(--display); text-align:right; }
+.staff-candidate-top > b > small { display:block; margin-top:3px; color:var(--dim); font:700 calc(8px * var(--ts))/1 var(--mono); }
+.staff-candidate-tile > strong { font:800 calc(17px * var(--ts))/1.1 var(--display); overflow-wrap:anywhere; }
+.staff-candidate-specialty, .staff-candidate-state { color:var(--dim); font:600 calc(10px * var(--ts))/1.4 var(--body); }
+.staff-ratings { display:grid; width:100%; gap:10px; margin:10px 0; }
+.staff-ratings > span { display:grid; gap:5px; }
+.staff-ratings > span > span { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.staff-ratings small { color:var(--dim); font:700 calc(11px * var(--ts))/1.3 var(--body); }
+.staff-ratings b { color:var(--ink); font:800 calc(15px * var(--ts))/1 var(--mono); }
+.staff-ratings i { display:block; height:5px; border-radius:4px; overflow:hidden; background:var(--line); }
+.staff-ratings em { display:block; height:100%; background:var(--clay); border-radius:inherit; }
+.staff-ratings > span:nth-child(2) em { background:var(--ink); }
+.staff-candidate-tile .staff-ratings { margin:5px 0; }
+.staff-candidate-tile .staff-ratings small { font-size:calc(10px * var(--ts)); }
+.staff-candidate-price { display:grid; gap:5px; margin-top:auto; padding-top:9px; border-top:1px solid var(--line); }
+.staff-candidate-price > b { font:800 calc(14px * var(--ts))/1.25 var(--mono); }
+.staff-candidate-price small { color:var(--dim); font:600 calc(10px * var(--ts))/1.3 var(--body); }
+.staff-candidate-price > b > small { margin-left:2px; }
+.staff-candidate-scrim { padding:16px; }
+.staff-candidate-dialog { width:100%; max-width:440px; max-height:100%; overflow-y:auto; overscroll-behavior:contain; padding:16px; border:1px solid var(--line); border-radius:14px; background:var(--paper); color:var(--ink); box-shadow:0 12px 36px rgba(0,0,0,.25); }
+.staff-candidate-dialog > header { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.staff-candidate-dialog > header > small { color:var(--clay); font:800 calc(11px * var(--ts))/1.4 var(--body); }
+.staff-candidate-dialog > header > button { min-height:44px; padding:8px 12px; border:1px solid var(--line); border-radius:6px; background:var(--wash); color:var(--ink); font:700 calc(12px * var(--ts))/1 var(--body); }
+.staff-candidate-dialog h2 { margin:8px 0 4px; font:800 calc(27px * var(--ts))/1.05 var(--display); overflow-wrap:anywhere; }
+.staff-candidate-meta, .staff-replacement-note { margin:6px 0 12px; color:var(--dim); font:500 calc(12px * var(--ts))/1.5 var(--body); }
+.staff-candidate-effects { padding:12px 0; border-block:1px solid var(--line); }
+.staff-candidate-effects h3 { margin:0 0 7px; font:800 calc(14px * var(--ts))/1.3 var(--body); }
+.staff-candidate-effects p { margin:6px 0 0; color:var(--ink); font:500 calc(12px * var(--ts))/1.5 var(--body); }
+.staff-candidate-effects .staff-candidate-fit { margin-top:10px; color:var(--dim); }
+.staff-candidate-budget { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:14px 0; }
+.staff-candidate-budget > span { color:var(--dim); font:600 calc(11px * var(--ts))/1.4 var(--body); }
+.staff-candidate-budget strong { display:block; margin-top:4px; color:var(--ink); font:800 calc(22px * var(--ts))/1.1 var(--display); }
+.staff-candidate-dialog > footer { position:sticky; bottom:-16px; margin:0 -2px -2px; padding:10px 2px 2px; background:var(--paper); }
+.staff-candidate-dialog > footer > button { width:100%; min-height:44px; margin:0; white-space:normal; }
+.app-frame:has(.guide-mask[data-lit="hire-detail"]) .staff-candidate-scrim { padding-bottom:146px; }
+@media (max-width:350px) {
+  .staff-candidate-grid { gap:8px; }
+  .staff-candidate-tile { padding:9px; }
+}
+
+.staff-focus-card.is-filled .staff-ratings small { color:var(--cream-dim); }
+.staff-focus-card.is-filled .staff-ratings b { color:var(--cream); }
+.staff-focus-card.is-filled .staff-ratings i { background:rgba(var(--cream-rgb),.18); }
+.staff-focus-card.is-filled .staff-ratings em { background:var(--cream); }
+.staff-focus-card.is-filled .staff-ratings > span:nth-child(2) em { background:var(--cream-dim); }

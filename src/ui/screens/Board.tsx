@@ -1,3 +1,5 @@
+import { PROMISE_DETAIL } from '../../engine/morale.js';
+import { recruitingPlan, programRecruitingPitch } from '../../engine/recruitingPlan.js';
 // Board.tsx
 // Recruiting, over three weeks.
 //
@@ -24,17 +26,17 @@ import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useDialogFocus } from '../dialogFocus.js';
 import { boardBudget, useDynasty, useUserTeam } from '../../state/store.js';
 import {
-  fit, weeklyPoints, actionInterest, canPursue, inPipeline, byRank,
+  fit, canPursue, inPipeline, byRank,
   RECRUITING_FACTORS, RECRUITING_FACTOR_LABEL, RECRUITING_FACTOR_BLURB,
   recruitingPrioritiesOf, factorScore, factorGrade, wantedScore, pitchVerdict, weekActionCost, totalWeekSpend,
   hasRecruitingRelationship, PITCH_COST, HARD_SELL_COST, SWAY_COST, VISIT_COST,
-  PROMISE_COST, PROMISE_LABEL,
+  PROMISE_COST, PROMISE_LABEL, availableRecruitPromises,
   SCHOLARSHIPS, MAX_PER_RECRUIT, RECRUITING_WEEKS,
   reportedOverall, reportedPotential, reportedTool, hintsFor,
   type Prospect, type RecruitingFactor, type RecruitMajorInput,
 } from '../../engine/recruiting.js';
 import { enrolling, walkOnShortfall } from '../../engine/progression.js';
-import { pitchFor, developmentScore } from '../../engine/pitch.js';
+import { pitchFor } from '../../engine/pitch.js';
 import { overallOf } from '../../engine/ratings.js';
 import { highSchoolLine } from '../../engine/scouting.js';
 import { CONFERENCES, ALL_STATES } from '../../data/schools.js';
@@ -45,10 +47,10 @@ import { GodBolt, GodIntroRow } from '../god/GodBolt.js';
 import { FirstVisit } from '../Tutorial.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { MixerHorizontalIcon } from '@radix-ui/react-icons';
-import { withStaff, pipelineStrength, pipelineLabel, recruitingFacilityScore, PIPELINE_MIN } from '../../engine/economy.js';
+import { withStaff, pipelineStrength, pipelineLabel, PIPELINE_MIN } from '../../engine/economy.js';
 import { FieldNote, Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
 import { isTwoWay } from '../../engine/types.js';
-import type { Hitter, Pitcher, Player, Position, RecruitPromiseKind } from '../../engine/types.js';
+import type { Hitter, Pitcher, Player, Position } from '../../engine/types.js';
 
 type View = 'recruits' | 'targets' | 'commits' | 'needs' | 'roster';
 type Sheet = 'overview' | 'report' | 'stats' | 'schools';
@@ -286,12 +288,7 @@ export function Board() {
   const pitch = useMemo(() => {
     if (!season || !team) return null;
     const conf = CONFERENCES.find((c) => c.id === team.conference);
-    return pitchFor(
-      season, team, conf?.region ?? 'Gulf', developmentScore(team),
-      (state) => pipelineStrength(economy, state, team.def.state),
-      { coachPrestige: coach.prestige, facilities: recruitingFacilityScore(economy) },
-    );
-  }, [season, team, version, economy, coach.prestige]);
+    return programRecruitingPitch(season, team, conf?.region ?? 'Gulf', coach.prestige, economy);  }, [season, team, version, economy, coach.prestige]);
 
   const myStars = team ? prestigeStars(team.prestige) : 1;
   const homeState = team?.def.state ?? '';
@@ -1201,8 +1198,12 @@ function Overview({
   const swayRolled = weekAction?.major?.kind === 'sway';
   const swayUsed = Boolean(prospect.swayedBy?.[userTeam]);
   // Same arithmetic the week close will use, including the active pitch/move.
-  const gain = weeklyPoints(prospect, pitch, Math.max(spent, 1), coachPrestige, recruitingSkill)
-    + actionInterest(prospect, pitch, userTeam);
+  const economy = useDynasty((s) => s.economy);
+  const team = useDynasty((s) => s.season?.teams[userTeam]?.team);
+  const plan = recruitingPlan(prospect, pitch, {
+    team: userTeam, actions: spent, prestige: coachPrestige, skill: recruitingSkill, economy,
+    roster: team ? [...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen] : [],
+  });
   const overall = reportedOverall(prospect, recruitingSkill);
   const ceiling = reportedPotential(prospect, recruitingSkill);
   const hints = hintsFor(prospect);
@@ -1323,19 +1324,18 @@ function Overview({
                 )}
 
                 {promiseLocked && boundPromise && (
-                  <div className="recruit-promise-file"><small>PROMISE ON FILE</small><strong>{PROMISE_LABEL[boundPromise]}</strong><span>This commitment is already banked and cannot be replaced.</span></div>
+                  <div className="recruit-promise-file"><small>PROMISE ON FILE</small><strong>{PROMISE_LABEL[boundPromise]}</strong><span>{PROMISE_DETAIL[boundPromise]} This promise has been recorded and cannot be replaced.</span></div>
                 )}
 
                 <div className="recruit-promise-grid">
-                  {(['immediateRole', 'noRedshirt', 'keepPosition', 'twoWayOpportunity'] as RecruitPromiseKind[]).map((promise) => {
-                    const unavailable = promise === 'twoWayOpportunity' && !isTwoWay(prospect.player);
+                  {availableRecruitPromises(prospect.player).map((promise) => {
                     const active = weekAction?.major?.kind === 'promise' && weekAction.major.promise === promise;
                     return (
                       <button
-                        type="button" key={promise} disabled={unavailable || promiseLocked || swayRolled}
+                        type="button" key={promise} disabled={promiseLocked || swayRolled}
                         className={`tap${active ? ' active' : ''}`}
                         onClick={() => onMajor(active ? null : { kind: 'promise', promise })}
-                      ><strong>PROMISE · {PROMISE_LABEL[promise]}</strong><small>{PROMISE_COST[promise]} PT · follows him after Signing Day</small></button>
+                      ><strong>PROMISE · {PROMISE_LABEL[promise]}</strong><small>{PROMISE_COST[promise]} RP · {PROMISE_DETAIL[promise]}</small></button>
                     );
                   })}
                 </div>
@@ -1372,7 +1372,7 @@ function Overview({
       {reachable && full && (
         <section className="recruit-decision-note is-full">
           <small>CLASS FULL</small><strong>No scholarship room left.</strong>
-          <p>Clear a target or finish the class before adding another name.</p>
+          <p>All scholarships for this class are committed. Clearing a target does not reopen a scholarship; your commits join next season.</p>
         </section>
       )}
 
@@ -1380,11 +1380,17 @@ function Overview({
         <section className="prospect-offer">
           <div className="prospect-offer-head">
             <span>
-              <small>YOUR WEEKLY OFFER</small>
+              <small>EFFORT THIS WEEK</small>
               <strong>{spent} {spent === 1 ? 'POINT' : 'POINTS'}</strong>
             </span>
-            <b>+{Math.round(gain)} interest</b>
+            <b>{plan.gain >= 0 ? '+' : ''}{Math.round(plan.gain)} interest</b>
           </div>
+          <p className="recruit-plan-summary" aria-live="polite">
+            Total plan: {plan.rp} RP · Interest: {Math.round(plan.current)} → {Math.round(plan.projected)}.
+            {plan.multiplier > 1 ? ` Includes a ${Math.round((plan.multiplier - 1) * 100)}% coordinator focus bonus.` : ''}
+            {week >= RECRUITING_WEEKS ? ' Signing Day follows this week.' : ` ${RECRUITING_WEEKS - week} weeks remain after this one.`}
+            {' '}Other schools also act when the week ends. Interest does not guarantee a commitment.
+          </p>
           {/*
             Pips, not a track. A range input on a phone is a drag that has to
             beat the scroller for the gesture — "the bar works fine to add

@@ -1,3 +1,4 @@
+import { promiseSpent } from '../../engine/morale.js';
 // RosterMoves.tsx
 // Everything a coach does to one of his own men, behind one button.
 //
@@ -127,6 +128,9 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   if (!team) return null;
 
   const school = standing(p);
+  const promise = !promiseSpent(p.recruitPromise) ? p.recruitPromise : undefined;
+  const positionConflict = promise?.kind === 'keepPosition' && target !== null && target !== promise.promisedPos;
+  const redshirtConflict = promise?.kind === 'noRedshirt';
   const sitting = (p as AnyPlayer & { redshirt?: boolean }).redshirt === true;
   const outUntil = (p as AnyPlayer & { outUntil?: number }).outUntil;
   const clock = injuryClock(season);
@@ -243,9 +247,9 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
                 <ActionCard
                   icon={<ReloadIcon />}
                   eyebrow="POSITION"
-                  title={target ? `${p.pos} → ${target}` : 'Retrain position'}
+                  title={target ? `${p.pos} → ${target}${positionConflict ? ' · breaks promise' : ''}` : 'Retrain position'}
                   detail={!winter ? 'Position changes happen over the offseason.' : alsoPlays.length === 0 ? 'There is no realistic secondary spot to train.' : target ? `This permanently changes his listed position to ${target}.` : 'Choose a realistic secondary position below.'}
-                  meta={winter ? 'Permanent move · adjustment period next year' : 'Offseason only'}
+                  meta={positionConflict ? 'You promised to keep his position. This move can lower mood and increase transfer risk.' : winter ? 'Permanent move · adjustment period next year' : 'Offseason only'}
                   selected={target !== null}
                   disabled={!winter || target === null}
                   onClick={() => { changePosition(p.id, target as Position); setTarget(null); }}
@@ -263,9 +267,9 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
             <ActionCard
               icon={<CalendarIcon />}
               eyebrow="ELIGIBILITY"
-              title={sitting ? 'Return to active roster' : 'Redshirt season'}
+              title={sitting ? 'Return to active roster' : redshirtConflict ? 'Redshirt · breaks promise' : 'Redshirt season'}
               detail={sitting ? 'Undo the preseason decision and make him available.' : preseason ? 'Preserve this year of eligibility before he appears.' : 'The season has already been used.'}
-              meta={preseason ? `${redshirtCount(team)} of ${MAX_REDSHIRTS} used` : 'Preseason decision'}
+              meta={redshirtConflict && !sitting ? 'You promised no redshirt. This can lower mood and increase transfer risk.' : preseason ? `${redshirtCount(team)} of ${MAX_REDSHIRTS} used` : 'Preseason decision'}
               selected={sitting}
               disabled={!canSit && !sitting}
               onClick={() => setRedshirt(p.id, !sitting)}

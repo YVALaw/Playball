@@ -83,6 +83,21 @@ export interface StaffProject {
   weeksTotal: number;
   weeksLeft: number;
   startedWeek: number;
+  /** Players selected when work starts; never silently retarget at completion. */
+  targetIds?: string[];
+  targetCount?: number;
+  /** Weeks whose standing focus matched this project. */
+  alignedWeeks?: number;
+}
+
+export interface StaffProjectResult {
+  kind: StaffProjectKind;
+  seat: StaffSeat;
+  year: number;
+  week: number;
+  state?: string;
+  focused: boolean;
+  changes: { id?: string; name: string; attribute: string; before: number; after: number }[];
 }
 
 export interface StaffPlan {
@@ -118,15 +133,17 @@ export function projectFacility(seat: StaffSeat): Building {
 }
 
 /** Project duration gets shorter as the relevant facility becomes real infrastructure. */
-export function staffProjectWeeks(eco: Economy, seat: StaffSeat): number {
+export function staffProjectWeeks(eco: Economy, seat: StaffSeat, kind?: StaffProjectKind): number {
   const level = facilityLevel(eco, projectFacility(seat));
-  return level >= 3 ? 3 : level >= 2 ? 4 : 5;
+  const weeks = level >= 3 ? 3 : level >= 2 ? 4 : 5;
+  return kind === 'pipeline-maintain' ? Math.ceil(weeks / 2) : weeks;
 }
 
 /** Recruiting directives change how effectively RP turns into interest. */
 export function recruitingDirectiveMultiplier(
   eco: Economy, stars: number, need: boolean,
 ): number {
+  if (!eco.staff.recruiting) return 1;
   const directive = staffPlan(eco, 'recruiting').directive;
   if (directive === 'stars' && stars >= 4) return 1.10;
   if (directive === 'sleepers' && stars <= 3) return 1.10;
@@ -136,10 +153,11 @@ export function recruitingDirectiveMultiplier(
 }
 
 /** An active arm-care project protects pitchers while it is actually running. */
-export function staffProjectInjuryGuard(eco: Economy): number {
+export function staffProjectInjuryGuard(eco: Economy, calendarActive = true): number {
   const p = staffPlan(eco, 'pitching').project;
-  if (p?.kind !== 'pitching-arm-care') return 1;
+  if (!calendarActive || !eco.staff.pitching || p?.kind !== 'pitching-arm-care' || p.weeksLeft <= 0) return 1;
   const level = facilityLevel(eco, 'pen');
+  if (level < 1) return 1;
   return level >= 3 ? 0.88 : level >= 2 ? 0.92 : 0.95;
 }
 
@@ -152,9 +170,9 @@ export const SEAT_LABEL: Record<StaffSeat, string> = {
 
 /** What each seat actually buys, in the words the screen prints. */
 export const SEAT_NOTE: Record<StaffSeat, string> = {
-  pitching: 'Develops your arms over the winter, and carries their innings through the spring.',
-  hitting: 'Develops your bats over the winter, and sharpens their at-bats a touch.',
-  recruiting: 'Every hour on a recruit counts for more, and your reports run tighter.',
+  pitching: 'Improves pitcher development, pitching support, and arm care.',
+  hitting: 'Improves batter development and game offense.',
+  recruiting: 'Improves recruiting and brings relationships in one state.',
 };
 
 export interface Assistant {
@@ -165,7 +183,8 @@ export interface Assistant {
   /** 25–88. What he is worth in total, across both halves of his craft. */
   rating: number;
   /**
-   * How his craft is split, 0 to 1: how much of him is the WINTER.
+   * How his craft is split, 0 to 1: development vs game support.
+   * For coordinators, this splits state relationships vs recruiting skill.
    *
    * 1 is a pure developer — everything he knows goes into what your men
    * become between seasons. 0 is a pure game-night man, worth his rating
@@ -190,9 +209,22 @@ export const nightCraft = (a: Assistant): number => Math.round(a.rating * (1 - a
 
 /** How the screen names a man's shape, in his own words. */
 export function shapeOf(a: Assistant): string {
-  if (a.winter >= 0.68) return 'A TEACHER';
-  if (a.winter <= 0.32) return 'A GAME-NIGHT MAN';
-  return 'BOTH HALVES';
+  if (a.winter >= 0.68) return a.seat === 'recruiting' ? 'Network builder' : 'Player developer';
+  if (a.winter <= 0.32) return a.seat === 'recruiting' ? 'Recruiting specialist' : 'Game specialist';
+  return 'All-rounder';
+}
+
+/** The coordinator's relationship skill gives a head start, below a full pipeline. */
+export const coordinatorFamiliarity = (a: Assistant): number =>
+  Math.min(30, 16 + Math.round(winterCraft(a) * 0.28));
+
+/** Mix nearby market keys before choosing a specialty; adjacent slots must not look alike. */
+function specialtyHash(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return (h ^ (h >>> 16)) >>> 0;
 }
 
 /** The same stable string hash the rivals and the classroom use. */
@@ -227,7 +259,6 @@ const PIPELINE_STATES = [
 
 function candidate(worldKey: string, year: number, seat: StaffSeat, slot: number): Assistant {
   const id = `${worldKey}:${year}:${seat}:${slot}`;
-  const h = hash(id);
   // Hashed separately per field: a multiplicative hash's low bits move far
   // more than its high ones, and one hash shifted three ways handed a market
   // three brothers — Killian, Kieran and Kevin Sinclair, all for hire at once.
@@ -240,13 +271,12 @@ function candidate(worldKey: string, year: number, seat: StaffSeat, slot: number
   */
   const band = slot === 0 ? [62, 26] : slot === 1 ? [44, 22] : [27, 18];
   const rating = (band[0] ?? 44) + hash(id + ':r') % (band[1] ?? 20);
-  /*
-    And his shape, spread across the whole range so a market of three
-    reliably offers a choice rather than three of the same man. Hashed like
-    everything else here: no draw, and the same market every time a career
-    is replayed.
-  */
-  const winter = 0.18 + (hash(id + ':w') % 65) / 100;
+  // Every market has a developer, a game specialist, and an all-rounder.
+  // Rotate the specialties across wage bands, so the expensive hire is not
+  // always the same type. Existing hired coaches keep their saved attributes.
+  const specialty = (slot + specialtyHash(`${worldKey}:${year}:${seat}`) % 3) % 3;
+  const start = specialty === 0 ? 69 : specialty === 1 ? 18 : 43;
+  const winter = (start + specialtyHash(id + ':specialty') % 14) / 100;
   return {
     id,
     name: `${first} ${last}`,
@@ -422,6 +452,7 @@ export interface PipelineEntry {
   strength: number;
   signings: number;
   lastSignedYear: number;
+  lastWorkedYear?: number;
 }
 
 /**
@@ -454,7 +485,7 @@ export function pipelineStrength(
   // hands the program a finished pipeline. The relationship becomes a real
   // pipeline only when the coordinator is assigned to build it.
   const coordinator = eco.staff.recruiting?.pipelineState === state
-    ? Math.min(30, 16 + Math.round((eco.staff.recruiting?.rating ?? 0) * 0.14))
+    ? coordinatorFamiliarity(eco.staff.recruiting)
     : 0;
   return Math.max(stored, home, coordinator);
 }
@@ -481,7 +512,7 @@ export function agePipelines(eco: Economy, year: number): Economy {
   if (entries.length === 0) return eco;
   const pipelines: Record<string, PipelineEntry> = {};
   for (const e of entries) {
-    const idle = Math.max(0, year - e.lastSignedYear);
+    const idle = Math.max(0, year - Math.max(e.lastSignedYear, e.lastWorkedYear ?? 0));
     const strength = Math.max(0, e.strength - (idle > 0 ? 4 : 0));
     if (strength > 8 || e.signings > 0) pipelines[e.state] = { ...e, strength };
   }
@@ -687,6 +718,8 @@ export interface Economy {
   staff: Partial<Record<StaffSeat, Assistant>>;
   /** Standing instructions and multi-week projects for each employed assistant. */
   staffPlans?: Partial<Record<StaffSeat, StaffPlan>>;
+  /** Recent completed work, with its actual outcomes. */
+  projectHistory?: StaffProjectResult[];
   /** Former assistants who left this coach for head-coaching opportunities. */
   tree?: CoachingTreeEntry[];
   /** Recruiting relationships that this staff has deliberately built. */

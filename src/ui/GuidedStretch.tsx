@@ -14,7 +14,9 @@
 // components, so no screen has to know it is being taught — a screen's whole
 // contribution is a `data-guide` name on the control the tour lights.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { useDialogFocus } from './dialogFocus.js';
+import { LessonBody } from './Tutorial.js';
 import { createPortal } from 'react-dom';
 import { assistantFor } from '../engine/program.js';
 import { facilityLevel, staffPlan } from '../engine/economy.js';
@@ -22,7 +24,7 @@ import { readPrefs } from '../state/devicePrefs.js';
 import { useDynasty, useUserTeam } from '../state/store.js';
 import {
   activeGuideStep, dueGuideStamps, guideCard, guideSkipStamps, visibleGuideStep,
-  type GuideStep, type GuideView,
+  guideProgress, guideStepStamps, type GuideCard, type GuideStep, type GuideView,
 } from './guide.js';
 
 /** "Leonardo Townsend" is the masthead's business; a card just says Townsend. */
@@ -36,107 +38,179 @@ const PAD = 6;
  * the frame, visible, and not disabled. Nothing, when none is — and nothing
  * is the honest answer, because a light on a dead button is a dead end.
  */
-function resolveTarget(
-  frame: HTMLElement,
-  names: readonly string[],
-): { el: HTMLElement; name: string } | null {
+function resolveTarget(frame: HTMLElement, names: readonly string[]): { el: HTMLElement; name: string } | null {
   for (const name of names) {
-    const el = frame.querySelector<HTMLElement>(`[data-guide="${name}"]`);
-    if (!el) continue;
-    if ((el as HTMLButtonElement).disabled || el.getAttribute('aria-disabled') === 'true') continue;
-    const r = el.getBoundingClientRect();
-    if (r.width === 0 || r.height === 0) continue;
-    return { el, name };
+    for (const el of frame.querySelectorAll<HTMLElement>(`[data-guide="${name}"]`)) {
+      if ((el as HTMLButtonElement).disabled || el.getAttribute('aria-disabled') === 'true') continue;
+      const r = el.getBoundingClientRect();
+      const css = getComputedStyle(el);
+      if (!r.width || !r.height || css.visibility === 'hidden' || css.display === 'none') continue;
+      return { el, name };
+    }
   }
   return null;
 }
 
-type Box = { x: number; y: number; w: number; h: number; name: string };
+type Box = { x: number; y: number; w: number; h: number; frameH: number; name: string };
+const FOCUSABLE = 'button:not([disabled]), a[href], select:not([disabled]), input:not([disabled]), [tabindex="0"]';
 
-function Spotlight(
-  { frame, step, onSkip }: { frame: HTMLElement; step: GuideStep; onSkip: () => void },
-) {
+function Spotlight({ frame, step, onSkip, onSkipStep, onRead }: {
+  frame: HTMLElement; step: GuideStep; onSkip: () => void; onSkipStep: () => void; onRead: () => void;
+}) {
   const [box, setBox] = useState<Box | null>(null);
+  const panel = useRef<HTMLDivElement | null>(null);
+  const [panelH, setPanelH] = useState(170);
   const names = step.target ?? [];
   const key = names.join('|');
+  const progress = guideProgress(step);
+  const captionId = useId();
+  const callbacks = useRef({ onSkip, onRead });
+  callbacks.current = { onSkip, onRead };
 
-  /*
-    Measured every frame while the light is on. The control can move — a
-    list scrolls, the dugout tools slide out, a tab strip settles — and a
-    hole that lags its control by a tick is a hole around nothing. The
-    measure is one getBoundingClientRect; the state only changes when the
-    numbers do, so React sees a still picture.
-  */
+  useEffect(() => {
+    if (!panel.current) return;
+    const observer = new ResizeObserver(() => setPanelH(panel.current?.scrollHeight ?? 170));
+    observer.observe(panel.current);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     let raf = 0;
     let brought: HTMLElement | null = null;
+    let described: HTMLElement | null = null;
+    let oldDescription: string | null = null;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const restoreDescription = (): void => {
+      if (!described) return;
+      if (oldDescription === null) described.removeAttribute('aria-describedby');
+      else described.setAttribute('aria-describedby', oldDescription);
+    };
     const tick = (): void => {
       const found = resolveTarget(frame, names);
       if (found) {
         if (brought !== found.el) {
+          restoreDescription();
+          described = found.el;
+          oldDescription = found.el.getAttribute('aria-describedby');
+          found.el.setAttribute('aria-describedby', [oldDescription, captionId].filter(Boolean).join(' '));
           found.el.scrollIntoView({ block: 'center', inline: 'nearest' });
+          const focus = found.el.matches(FOCUSABLE) ? found.el : found.el.querySelector<HTMLElement>(FOCUSABLE);
+          focus?.focus({ preventScroll: true });
           brought = found.el;
         }
         const f = frame.getBoundingClientRect();
         const r = found.el.getBoundingClientRect();
+        const x = Math.max(PAD, Math.round(r.left - f.left));
+        const y = Math.max(PAD, Math.round(r.top - f.top));
         const next: Box = {
-          x: Math.round(r.left - f.left), y: Math.round(r.top - f.top),
-          w: Math.round(r.width), h: Math.round(r.height), name: found.name,
+          x, y, w: Math.max(0, Math.min(Math.round(r.right - f.left), f.width - PAD) - x),
+          h: Math.max(0, Math.min(Math.round(r.bottom - f.top), f.height - PAD) - y),
+          frameH: Math.round(f.height), name: found.name,
         };
-        setBox((prev) => (
-          prev && prev.x === next.x && prev.y === next.y && prev.w === next.w
-            && prev.h === next.h && prev.name === next.name ? prev : next
-        ));
+        setBox((prev) => prev && Object.keys(next).every((k) => prev[k as keyof Box] === next[k as keyof Box]) ? prev : next);
       } else {
+        restoreDescription();
+        described = null;
+        brought = null;
         setBox(null);
       }
       raf = requestAnimationFrame(tick);
     };
+    // Keep keyboard users on the same target and tour controls as pointer users.
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); callbacks.current.onRead(); return; }
+      if (event.key !== 'Tab') return;
+      const target = resolveTarget(frame, names)?.el;
+      const items = [
+        ...(target ? (target.matches(FOCUSABLE) ? [target] : Array.from(target.querySelectorAll<HTMLElement>(FOCUSABLE))) : []),
+        ...Array.from(panel.current?.querySelectorAll<HTMLElement>('button') ?? []),
+      ].filter((el) => el.getBoundingClientRect().width > 0 && el.getBoundingClientRect().height > 0);
+      if (!items.length) return;
+      event.preventDefault();
+      const index = items.indexOf(document.activeElement as HTMLElement);
+      const next = index < 0 ? (event.shiftKey ? items.length - 1 : 0) : (index + (event.shiftKey ? -1 : 1) + items.length) % items.length;
+      items[next]?.focus();
+    };
+    document.addEventListener('keydown', onKey, true);
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      document.removeEventListener('keydown', onKey, true);
+      restoreDescription();
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
+    };
+    // The target list is keyed; callbacks are read through a ref.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frame, key]);
+  }, [frame, key, captionId]);
 
   const swallow = (e: React.SyntheticEvent): void => { e.stopPropagation(); e.preventDefault(); };
-  const caption = box ? step.caption?.[box.name] : undefined;
-  const frameH = frame.clientHeight;
-  // The caption sits under the hole unless the hole is near the bottom — a
-  // bottom-nav tab, say — in which case it sits above.
-  const below = box ? box.y + box.h + PAD + 12 : 0;
-  const captionAbove = box ? below + 56 > frameH : false;
+  const caption = box ? step.caption?.[box.name] ?? 'Use the highlighted control to continue.'
+    : 'Control unavailable. Read again or skip this step.';
+  const below = box ? box.y + box.h + PAD + 12 : 12;
+  const aboveSpace = box ? Math.max(0, box.y - PAD - 24) : 0;
+  const belowSpace = box ? Math.max(0, box.frameH - below - 12) : frame.clientHeight - 24;
+  const above = !!box && belowSpace < panelH && aboveSpace > belowSpace;
+  const available = above ? aboveSpace : belowSpace;
+  // A very tall target can fill the frame at large text sizes. Keep the tour
+  // controls reachable inside the frame even when no separate gap is left.
+  const panelStyle = box && available >= 100
+    ? { ...(above ? { bottom: box.frameH - box.y + PAD + 12 } : { top: below }), maxHeight: available }
+    : { bottom: 12, maxHeight: Math.max(88, Math.min(180, frame.clientHeight - 24)) };
 
   return (
-    <div className="guide-mask" data-lit={box ? box.name : undefined}>
-      {/*
-        Four sheets around the hole rather than one sheet with a hole in it:
-        the hole is simply where no sheet is, so the tap through it reaches
-        whatever is under it — the control — with nothing in the way. No
-        target: no sheets either. A dark screen with nothing to tap would be
-        a trap, and the control that is not here yet will be in a moment.
-      */}
-      {box && (
-        <>
-          <div className="guide-mask-part" style={{ top: 0, left: 0, right: 0, height: Math.max(0, box.y - PAD) }} onClick={swallow} onPointerDown={swallow} />
-          <div className="guide-mask-part" style={{ top: box.y + box.h + PAD, left: 0, right: 0, bottom: 0 }} onClick={swallow} onPointerDown={swallow} />
-          <div className="guide-mask-part" style={{ top: box.y - PAD, left: 0, width: Math.max(0, box.x - PAD), height: box.h + PAD * 2 }} onClick={swallow} onPointerDown={swallow} />
-          <div className="guide-mask-part" style={{ top: box.y - PAD, left: box.x + box.w + PAD, right: 0, height: box.h + PAD * 2 }} onClick={swallow} onPointerDown={swallow} />
-          <div
-            className="guide-hole"
-            style={{ top: box.y - PAD, left: box.x - PAD, width: box.w + PAD * 2, height: box.h + PAD * 2 }}
-          />
-          {caption && (
-            <p
-              className="guide-caption"
-              style={captionAbove
-                ? { bottom: frameH - (box.y - PAD) + 10 }
-                : { top: below }}
-            >{caption}</p>
-          )}
-        </>
-      )}
-      <button className="guide-skip tap" type="button" onClick={onSkip}>SKIP TOUR</button>
+    <div className="guide-mask" data-lit={box?.name}>
+      {box && box.w > 0 && box.h > 0 && <>
+        <div className="guide-mask-part" style={{ top: 0, left: 0, right: 0, height: Math.max(0, box.y - PAD) }} onClick={swallow} onPointerDown={swallow} />
+        <div className="guide-mask-part" style={{ top: box.y + box.h + PAD, left: 0, right: 0, bottom: 0 }} onClick={swallow} onPointerDown={swallow} />
+        <div className="guide-mask-part" style={{ top: box.y - PAD, left: 0, width: Math.max(0, box.x - PAD), height: box.h + PAD * 2 }} onClick={swallow} onPointerDown={swallow} />
+        <div className="guide-mask-part" style={{ top: box.y - PAD, left: box.x + box.w + PAD, right: 0, height: box.h + PAD * 2 }} onClick={swallow} onPointerDown={swallow} />
+        <div className="guide-hole" style={{ top: box.y - PAD, left: box.x - PAD, width: box.w + PAD * 2, height: box.h + PAD * 2 }} />
+      </>}
+      <div ref={panel} className="guide-caption" style={panelStyle} aria-label="Tour controls">
+        <small>{step.aside ? 'PLAYER HELP' : `STEP ${progress.current} OF ${progress.total}`}</small>
+        <p id={captionId} role="status">{caption}</p>
+        <div className="guide-controls">
+          <button className="tap" type="button" onClick={onRead}>Read again</button>
+          {!step.aside && <button className="tap" type="button" onClick={onSkipStep}>Skip step</button>}
+          <button className="tap" type="button" onClick={onSkip}>End tour</button>
+        </div>
+      </div>
     </div>
   );
+}
+
+function TourLesson({ step, card, assistant, leaving, onSkip, onSkipStep, onContinue }: {
+  step: GuideStep; card: GuideCard; assistant: string; leaving: boolean;
+  onSkip: () => void; onSkipStep: () => void; onContinue: () => void;
+}) {
+  const dialog = useRef<HTMLDivElement | null>(null);
+  const primary = useRef<HTMLButtonElement | null>(null);
+  const titleId = useId();
+  const bodyId = useId();
+  const progress = guideProgress(step);
+  useDialogFocus(dialog, onSkip, { initial: primary });
+  return <div ref={dialog} className={`tutorial-scrim guide-scrim${leaving ? ' leaving' : ' fade-in'}`}
+    role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={bodyId}>
+    <section className={`tutorial-card${leaving ? '' : ' rise-in'}`}>
+      <div className="flow-section-title">
+        <span className="label">{step.aside ? 'PLAYER HELP' : `STEP ${progress.current} OF ${progress.total}`}</span>
+        <button className="tap" type="button" disabled={leaving} onClick={onSkip}>End tour</button>
+      </div>
+      <div className="tutorial-progress" role="progressbar" aria-label="Tour progress"
+        aria-valuemin={0} aria-valuemax={progress.total} aria-valuenow={progress.current - 1}>
+        <span style={{ width: `${(progress.current - 1) / progress.total * 100}%` }} />
+      </div>
+      <h2 id={titleId}>{card.title}</h2>
+      <div id={bodyId}><LessonBody page={card} /></div>
+      <p className="tutorial-byline">Your assistant, {lastName(assistant)}</p>
+      <footer>
+        {!step.aside && step.target && <button className="tutorial-back tap" type="button" disabled={leaving} onClick={onSkipStep}>Skip step</button>}
+        <button ref={primary} className="primary-command tap" type="button" disabled={leaving} onClick={onContinue}>
+          {step.target ? 'SHOW ME' : 'FINISH TOUR'}
+        </button>
+      </footer>
+    </section>
+  </div>;
 }
 
 /** What the world looked like when a step's light came on. */
@@ -206,7 +280,8 @@ export function GuidedStretch() {
     const still = root === 'reduced'
       || (root !== 'full' && typeof window.matchMedia === 'function'
         && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-    if (still || leaving) { then(); return; }
+    if (leaving) return;
+    if (still) { then(); return; }
     setLeaving(true);
     leaveTimer.current = window.setTimeout(() => {
       leaveTimer.current = null;
@@ -253,6 +328,7 @@ export function GuidedStretch() {
     pending, playerOpen, wordGuide,
     wordSeen: seen.includes('guide:word'),
     hittingHired, hittingDirective, cageLevel,
+    gamesPlayed: user ? user.w + user.l : 0,
     playedSinceLit: since !== null && field.plays > since.plays,
     lineupChanged: since !== null && lineupSig !== since.lineup,
     positionsChanged: since !== null && positionsSig !== since.positions,
@@ -272,38 +348,17 @@ export function GuidedStretch() {
   const skipNow = (): void => stamp(guideSkipStamps());
   const card = guideCard(step, view);
 
+  const skipStep = (): void => { setLit(null); stamp(guideStepStamps(step)); };
   if (lit?.id !== step.id) {
-    return createPortal(
-      <div
-        className={`tutorial-scrim guide-scrim${leaving ? ' leaving' : ' fade-in'}`}
-        role="dialog"
-        aria-modal="true"
-        aria-label={`The tour: ${card.title}`}
-      >
-        <section className={`tutorial-card${leaving ? '' : ' rise-in'}`}>
-          <div className="flow-section-title">
-            <span className="label">{lastName(assistant).toUpperCase()} SHOWS YOU AROUND</span>
-            <button className="tap" type="button" onClick={() => dismiss(skipNow)}>SKIP</button>
-          </div>
-          <h2>{card.title}</h2>
-          <p>{card.body}</p>
-          <footer>
-            <button
-              className="primary-command tap"
-              type="button"
-              autoFocus
-              onClick={() => dismiss(() => {
-                if (step.target) setLit({ id: step.id, plays: field.plays, lineup: lineupSig, positions: positionsSig });
-                else stamp([`guide:${step.id}`, ...(step.covers ?? [])]);
-              })}
-            >{step.target ? 'SHOW ME' : 'GOT IT'}</button>
-          </footer>
-        </section>
-      </div>,
-      frame,
-    );
+    return createPortal(<TourLesson key={step.id} step={step} card={card} assistant={assistant} leaving={leaving}
+      onSkip={() => dismiss(skipNow)} onSkipStep={() => dismiss(skipStep)}
+      onContinue={() => dismiss(() => {
+        if (step.target) setLit({ id: step.id, plays: field.plays, lineup: lineupSig, positions: positionsSig });
+        else stamp(guideStepStamps(step));
+      })} />, frame);
   }
 
   if (!step.target) return null;
-  return createPortal(<Spotlight frame={frame} step={step} onSkip={skipNow} />, frame);
+  return createPortal(<Spotlight key={step.id} frame={frame} step={step} onSkip={skipNow}
+    onSkipStep={skipStep} onRead={() => setLit(null)} />, frame);
 }

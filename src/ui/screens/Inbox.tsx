@@ -6,7 +6,7 @@
 // the list is allowed to shrink to one word per line; the row owns a min-width
 // zero text column and normal word wrapping explicitly.
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useDialogFocus } from '../dialogFocus.js';
 import { ChevronRightIcon, EnvelopeClosedIcon } from '@radix-ui/react-icons';
 import { useDynasty } from '../../state/store.js';
@@ -70,17 +70,12 @@ function initials(name: string): string {
 
 export function Inbox() {
   const inbox = useDynasty((s) => s.inbox);
+  const markInboxRead = useDynasty((s) => s.markInboxRead);
   const readInbox = useDynasty((s) => s.readInbox);
   const coach = useDynasty((s) => s.coach.name);
   const assistant = assistantFor(coach);
   const open = useOpen();
   const [reading, setReading] = useState<InboxItem | null>(null);
-  const [fresh] = useState(() => new Set(
-    useDynasty.getState().inbox.filter((i) => !i.read).map((i) => i.id),
-  ));
-
-  useEffect(() => { readInbox(); }, [readInbox]);
-
   const rows = useMemo(() => [...inbox], [inbox]);
 
   return (
@@ -91,12 +86,13 @@ export function Inbox() {
           <span>
             <small>{assistant.toUpperCase()} · YOUR RIGHT HAND</small>
             <strong>Inbox</strong>
-            <em>{rows.length} message{rows.length === 1 ? '' : 's'}</em>
+            <em>{rows.length} messages · {rows.filter((i) => !i.read).length} unread</em>
           </span>
         </header>
       }
     >
       <main className="mailbox-workspace">
+        {rows.some((i) => !i.read) && <button type="button" className="mailbox-mark-all tap" onClick={readInbox}>Mark all as read</button>}
         {rows.length === 0 ? (
           <section className="mailbox-empty">
             <EnvelopeClosedIcon />
@@ -107,13 +103,13 @@ export function Inbox() {
           <section className="mailbox-list" aria-label="Messages">
             {rows.map((item) => {
               const sender = senderFor(item, assistant);
-              const isFresh = fresh.has(item.id);
+              const isFresh = !item.read;
               return (
                 <button
                   key={item.id}
                   className={`mailbox-row tap${isFresh ? ' unread' : ''}`}
                   type="button"
-                  onClick={() => setReading(item)}
+                  onClick={() => { markInboxRead(item.id); setReading(item); }}
                 >
                   <span className="mailbox-avatar" style={{ '--mail-tone': KIND_TONE[item.kind] } as CSSProperties}>
                     {initials(sender)}

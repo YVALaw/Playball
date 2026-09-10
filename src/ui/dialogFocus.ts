@@ -48,6 +48,9 @@ export function useDialogFocus(
       ?? dialog.current;
     first?.focus();
     const onKey = (e: KeyboardEvent): void => {
+      // A guided spotlight may already have handled navigation between its
+      // target dialog and tour controls. Do not apply a second focus move.
+      if (e.defaultPrevented) return;
       if (open[open.length - 1] !== token) return;
       if (e.key === 'Escape') { e.stopPropagation(); dismissRef.current(); return; }
       if (e.key !== 'Tab') return;

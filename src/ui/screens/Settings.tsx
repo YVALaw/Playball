@@ -149,7 +149,7 @@ export function Settings() {
         <section className="settings-command-hero">
           <small>PLAYBALL</small>
           <strong>Make the game fit you.</strong>
-          <p>Device preferences stay on this phone. Career control travels with the save.</p>
+          <p>Adjust display, sound, and how much you manage.</p>
         </section>
         <section className="settings-tile-grid">
           {PAGES.map((p) => (
@@ -166,10 +166,6 @@ export function Settings() {
               <b>›</b>
             </button>
           ))}
-        </section>
-        <section className="settings-scope-note">
-          <span><small>DEVICE</small><strong>Display · Sound</strong></span>
-          <span><small>CAREER</small><strong>How you play</strong></span>
         </section>
       </Frame>
     );
@@ -220,9 +216,9 @@ export function Settings() {
         <SectionHeading kicker="SETTINGS" title="Teaching" />
         <section className="settings-list">
           <Row
-            label="Explain the screens"
-            blurb="Each screen says what it is for, once."
-            note={prefs.tutorials ? '\u00a0' : 'Nothing explains itself.'}
+            label="Automatic tutorials"
+            blurb="Show the guided tour and first-visit help cards."
+            note={prefs.tutorials ? 'You can skip any lesson.' : 'Turn on to show the tour and first-visit tips.'}
             on={prefs.tutorials}
             onToggle={() => put({ tutorials: !prefs.tutorials })}
           />
@@ -245,8 +241,8 @@ export function Settings() {
             className="settings-reset-card tap"
             onClick={() => { resetTutorials(); setTaught(true); }}
           >
-            <span><small>TEACHING RESET</small><strong>{taught ? 'The screens will teach again' : 'Show the tutorials again'}</strong></span>
-            <em>On your next visit to each.</em>
+            <span><small>REPLAY HELP</small><strong>{taught ? 'Tutorials are ready to replay' : 'Replay tutorials'}</strong></span>
+            <em>Help cards replay on your next visit. In your first season, the guided tour restarts too.</em>
             <b>↻</b>
           </button>
           )}

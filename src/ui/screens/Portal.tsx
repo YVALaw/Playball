@@ -12,6 +12,7 @@
 
 import { useRef, useState } from 'react';
 import { useDialogFocus } from '../dialogFocus.js';
+import { FirstVisit } from '../Tutorial.js';
 import { handles } from '../../state/depth.js';
 import { flightRisk } from '../../engine/morale.js';
 import { sfx, buzz } from '../sound.js';
@@ -113,6 +114,7 @@ export function Portal() {
       )}
     >
       <main className="module-workspace offseason-portal">
+        <FirstVisit id="portal" />
         {/*
           The command centre: what the window is, what it costs, and what is
           left. The proposal opens the portal with it and it is the right
@@ -187,7 +189,7 @@ export function Portal() {
               {view === 'leaving'
                 ? 'That is what keeping your word looks like.'
                 : runsPortal
-                  ? 'The pool is thin this winter. Your points go to the class instead.'
+                  ? 'No available transfers match this view. Clear your filters to check the full pool, or continue the offseason.'
                   : 'Your staff is handling the incoming board in this career.'}
             </p>
           </section>

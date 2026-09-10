@@ -82,10 +82,7 @@ export function Today() {
   const pendingGame = useDynasty((s) => s.pendingGame);
   const resumeGame = useDynasty((s) => s.resumeGame);
   const rivalry = useDynasty((s) => s.rivalry);
-  const boardAsk = useDynasty((s) => s.boardAsk);
-  const coach = useDynasty((s) => s.coach);
   const economy = useDynasty((s) => s.economy);
-  const setProgramSheet = useDynasty((s) => s.setProgramSheet);
   const setPlaybookFocus = useDynasty((s) => s.setPlaybookFocus);
   const openPlayer = useDynasty((s) => s.openPlayer);
   /*
@@ -205,38 +202,15 @@ export function Today() {
   const ourAvg = teamAverage(season, team);
   const ourEra = teamEra(season, team);
 
-  const streakLine = team.streak === 0
-    ? `${team.def.school} is ${team.w}-${team.l}.`
-    : `${team.def.school} has ${team.streak > 0 ? 'won' : 'lost'} ${Math.abs(team.streak)} straight.`;
-
-  const headline = done
-    ? 'The regular season is done.'
-    : live ? 'A game is waiting on you.'
-      : todayGame ? 'First pitch is next.'
-        : 'No game today.';
-
   return (
     <>
-      <main className="dashboard-workspace">
+      <main className="dashboard-workspace" aria-label="Today">
         <FirstVisit id="today" />
 
-        <section className="club-masthead">
-          <div>
-            <p>{done ? `${year} FINAL` : seasonDate(year, day?.day ?? 0).toUpperCase()}</p>
-            <h1>{headline}</h1>
-            <small>{streakLine}</small>
-          </div>
-          {/*
-            The proposal's weather block, carrying the one number a coach would
-            actually glance up for. There is no weather in this sim and there is
-            no plan for one; a painted 72° would be the only invented figure on
-            the screen.
-          */}
-          <div className="weather-block">
-            <strong>{rank ? `#${rank}` : '—'}</strong>
-            <span>{projected ? 'PROJ' : 'RPI'}<br />{leagueLabel(team.conference)}</span>
-          </div>
-        </section>
+        <header className="today-date-row">
+          <p>{done ? `${year} FINAL` : seasonDate(year, day?.day ?? 0).toUpperCase()}</p>
+          <span>{rank ? `#${rank} ${projected ? 'PROJ' : 'RPI'} · ` : ''}{leagueLabel(team.conference)}</span>
+        </header>
 
         {/*
           The game a phone call took away, offered back.
@@ -498,18 +472,6 @@ export function Today() {
             </button>
           );
         })()}
-
-        {boardAsk && (
-          <button
-            className="today-board-card tap"
-            type="button"
-            onClick={() => { setProgramSheet('board'); go('program', 'records'); }}
-          >
-            <span><small>BOARD</small><strong>{boardAsk.summary}</strong></span>
-            <em>{coach.security} security · {coach.contractYears}y contract</em>
-            <span aria-hidden>›</span>
-          </button>
-        )}
 
         {/* Below the needs, by request: "needs you is more important than the
             other." The pulse is reference; the needs are work. */}

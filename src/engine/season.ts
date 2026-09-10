@@ -690,6 +690,8 @@ export interface PitcherWorkload {
 }
 
 export interface SeasonState {
+  /** Morale and recruiting promises have been judged for this season. */
+  moraleSettled?: boolean;
   config: SeasonConfig;
   rng: Rng;
   /**

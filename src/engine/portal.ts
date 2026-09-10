@@ -46,6 +46,7 @@ import { isTwoWay, uniquePlayers } from './types.js';
  */
 const STAR_WANDER = 0.012;
 import { flightRisk, moodOf, expectationOf, squadRanks, UNHAPPY, explicitRecruitPromiseBroken } from './morale.js';
+import type { PromiseParticipation } from './morale.js';
 
 /** What the portal writes on a man. Sparse, so an older save has none. */
 export interface Portable {
@@ -129,7 +130,7 @@ export function portalMarket(year: number, seed: number): number {
  * cannot re-roll who left, and reading the screen costs no draw.
  */
 export function entersPortal(
-  p: Player, opts: { squadRank: number; starts: number; games: number; year: number; seed: number },
+  p: Player, opts: { squadRank: number; starts: number; games: number; year: number; seed: number } & PromiseParticipation,
 ): boolean {
   const port = p as Player & Portable;
   // One move a career, and a senior is graduating rather than transferring.
@@ -141,7 +142,7 @@ export function entersPortal(
   const got = opts.games > 0 ? opts.starts / opts.games : 0;
   const buried = Math.max(0, expected - got);
   const market = portalMarket(opts.year, opts.seed);
-  const brokenPromise = explicitRecruitPromiseBroken(p);
+  const brokenPromise = explicitRecruitPromiseBroken(p, opts);
 
   /*
     Two contributions, and neither on its own should empty a roster.
@@ -176,11 +177,14 @@ export function entersPortal(
 
 /** Why he went, in his own terms rather than in the model's. */
 export function reasonFor(
-  p: Player, opts: { squadRank: number; starts: number; games: number },
+  p: Player, opts: { squadRank: number; starts: number; games: number } & PromiseParticipation,
 ): string {
   const expected = expectationOf(p, opts.squadRank);
   const got = opts.games > 0 ? opts.starts / opts.games : 0;
   const promise = p.recruitPromise;
+  if (promise?.kind === 'twoWayOpportunity' && explicitRecruitPromiseBroken(p, opts)) {
+    return 'He was promised a chance to both hit and pitch, but did not get enough appearances in both roles.';
+  }
   if (promise?.kind === 'keepPosition' && promise.promisedPos !== undefined && p.pos !== promise.promisedPos) {
     return 'He was promised he could stay at his position.';
   }
@@ -204,7 +208,11 @@ export function reasonFor(
  * else's mismanagement, and next year it is the other way round.
  */
 export function openPortal(
-  teams: readonly TeamRecord[], opts: { year: number; seed: number; games?: number },
+  teams: readonly TeamRecord[], opts: {
+    year: number; seed: number; games?: number;
+    batting?: ReadonlyMap<PlayerId, { g: number }>;
+    pitching?: ReadonlyMap<PlayerId, { g: number }>;
+  },
 ): PortalMan[] {
   const out: PortalMan[] = [];
   for (const rec of teams) {
@@ -225,7 +233,11 @@ export function openPortal(
     for (const p of men) {
       const starts = (p as Player & { starts?: number }).starts ?? 0;
       const squadRank = ranks.get(p.id) ?? 20;
-      const at = { squadRank, starts, games };
+      const at = {
+        squadRank, starts, games,
+        battingGames: opts.batting ? opts.batting.get(p.id)?.g ?? 0 : undefined,
+        pitchingGames: opts.pitching ? opts.pitching.get(p.id)?.g ?? 0 : undefined,
+      };
       if (!entersPortal(p, { ...at, year: opts.year, seed: opts.seed })) continue;
       (p as Player & Portable).inPortal = true;
       out.push({

@@ -106,16 +106,53 @@ export const promiseHorizon = (kind: RecruitPromise['kind']): number =>
 export const promiseSpent = (promise: RecruitPromise | undefined): boolean =>
   promise !== undefined && (promise.judged ?? 0) >= promiseHorizon(promise.kind);
 
+export const TWO_WAY_BATTING_GAMES = 8;
+export const TWO_WAY_PITCHING_GAMES = 3;
+export const PROMISE_DETAIL: Record<RecruitPromise['kind'], string> = {
+  immediateRole: 'First season: start at least 62% of games. His squad standing can raise that expectation.',
+  noRedshirt: 'First season: keep him on the active roster instead of redshirting.',
+  keepPosition: 'First two seasons: keep his recruited position.',
+  twoWayOpportunity: `First season: at least ${TWO_WAY_BATTING_GAMES} batting appearances and ${TWO_WAY_PITCHING_GAMES} pitching appearances.`,
+};
+export interface PromiseParticipation { battingGames?: number; pitchingGames?: number }
+
+/** The same requirements used to judge a promise, expressed for the player card. */
+export function recruitPromiseProgress(p: Player, at: PromiseParticipation & { starts: number; games: number }) {
+  const promise = p.recruitPromise;
+  if (!promise) return null;
+  const duration = promiseHorizon(promise.kind);
+  const term = `${duration === 1 ? 'First season' : 'First two seasons'} · ${promise.judged ?? 0}/${duration} seasons reviewed`;
+  if (promise.kind === 'twoWayOpportunity') return {
+    title: 'Two-way opportunity', term,
+    detail: `Batting appearances: ${at.battingGames ?? 0}/${TWO_WAY_BATTING_GAMES}. Pitching appearances: ${at.pitchingGames ?? 0}/${TWO_WAY_PITCHING_GAMES}. Both totals must be met by season end.`,
+  };
+  if (promise.kind === 'keepPosition') return {
+    title: 'Keep position', term,
+    detail: `Promised position: ${promise.promisedPos ?? p.pos}. Current position: ${p.pos}. A permanent position change can break this promise.`,
+  };
+  if (promise.kind === 'noRedshirt') return {
+    title: 'No redshirt', term,
+    detail: (p as Player & { redshirt?: boolean }).redshirt ? 'Currently redshirted. This conflicts with the promise.' : 'Not redshirted. Keep him eligible to play this season.',
+  };
+  return {
+    title: 'Immediate role', term,
+    detail: `${at.starts} starts in ${at.games} team games. He expects to start at least 62% of games; a higher squad standing can raise that expectation.`,
+  };
+}
+
 /** Whether a promise can already be judged from the player's state. */
 export function explicitRecruitPromiseBroken(
-  p: Player, opts: { battingGames?: number; pitchingGames?: number } = {},
+  p: Player, opts: PromiseParticipation = {},
 ): boolean {
   const promise = p.recruitPromise;
   if (!promise) return false;
   if (promise.kind === 'keepPosition') return promise.promisedPos !== undefined && p.pos !== promise.promisedPos;
   if (promise.kind === 'noRedshirt') return (p as Player & { redshirt?: boolean }).redshirt === true;
   if (promise.kind === 'twoWayOpportunity') {
-    return (opts.battingGames ?? 0) < 8 || (opts.pitchingGames ?? 0) < 3;
+    // Unknown participation is not evidence of a broken promise. Season callers
+    // pass explicit zeroes when a player really has no appearances.
+    if (opts.battingGames === undefined || opts.pitchingGames === undefined) return false;
+    return opts.battingGames < TWO_WAY_BATTING_GAMES || opts.pitchingGames < TWO_WAY_PITCHING_GAMES;
   }
   return false;
 }

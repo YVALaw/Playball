@@ -36,7 +36,7 @@ import {
 } from '../../engine/tendencies.js';
 import { draftEligible } from '../../engine/draft.js';
 import { draftChance } from '../../engine/progression.js';
-import { expectationOf, flightRisk, mood, promiseOf, squadRanks } from '../../engine/morale.js';
+import { expectationOf, flightRisk, mood, promiseOf, squadRanks, recruitPromiseProgress } from '../../engine/morale.js';
 import { available } from '../../engine/depthChart.js';
 import { isHurt } from '../../engine/injury.js';
 import { overallOf, platoonSplit, naturalPos } from '../../engine/ratings.js';
@@ -637,6 +637,7 @@ function Overview({ p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: bo
     .replace('expects to ', '')
     .replace('is here to ', '');
   const starts = (p as AnyPlayer & { starts?: number }).starts ?? 0;
+  const promise = recruitPromiseProgress(p, { starts, games: owner.gp, battingGames: season?.batting.get(p.id)?.g ?? 0, pitchingGames: season?.pitching.get(p.id)?.g ?? 0 });
   const expectedShare = expectationOf(p, rank);
   const actualShare = owner.gp > 0 ? starts / owner.gp : 0;
   const buried = Math.max(0, expectedShare - actualShare);
@@ -685,6 +686,10 @@ function Overview({ p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: bo
             <span>Public scouting info</span>
           </div>
         </section>
+      )}
+
+      {isOurs && promise && (
+        <FieldNote title={`Recruiting promise · ${promise.title}`} text={`${promise.detail} ${promise.term}.`} />
       )}
 
       {secondaries.length > 0 && (

@@ -1,3 +1,8 @@
+import { recruitingPlan, programRecruitingPitch } from '../src/engine/recruitingPlan.js';
+import { makeTwoWay } from '../src/engine/players.js';
+import { makeRng } from '../src/engine/rng.js';
+import { entersPortal } from '../src/engine/portal.js';
+import { CONFERENCES } from '../src/data/schools.js';
 // staff-projects.test.ts
 // The hybrid staff system — directives, multi-week projects, the facilities
 // that power them, and pipelines built by work rather than granted at hire.
@@ -21,9 +26,9 @@ vi.mock('idb', () => ({
   }),
 }));
 
-import { useDynasty } from '../src/state/store.js';
+import { useDynasty, PHASES } from '../src/state/store.js';
 import {
-  SEATS, marketFor, staffPlan, staffProjectWeeks, pipelineStrength,
+  SEATS, withStaff, marketFor, staffPlan, staffProjectWeeks, pipelineStrength,
   recruitingDirectiveMultiplier, staffProjectInjuryGuard, PIPELINE_MIN,
 } from '../src/engine/economy.js';
 import { uniquePlayers } from '../src/engine/types.js';
@@ -263,4 +268,146 @@ describe('the plan belongs to the man in the chair', () => {
     expect(after.project?.kind).toBe('pitching-velocity');
     expect(after.project?.weeksLeft).toBe(2);
   });
+});
+
+describe('projects are deliberate and report their outcomes', () => {
+  it('keeps the selected training group even if ratings change mid-project', () => {
+    useDynasty.getState().start(4242, 0); equip();
+    const s = () => useDynasty.getState();
+    s().setStaffDirective('hitting', 'contact');
+    s().startStaffProject('hitting', 'hitting-contact');
+    const project = staffPlan(s().economy, 'hitting').project!;
+    const selected = bats().find((p) => p.id === project.targetIds![0])!;
+    selected.contact = 85;
+    for (let i = 0; i < 5; i++) s().advanceRecruitingWeek();
+    expect(selected.contact).toBe(87);
+    const report = s().economy.projectHistory![0]!;
+    expect(report.changes.some((c) => c.id === selected.id && c.before === 85 && c.after === 87)).toBe(true);
+    expect(s().inbox.some((i) => i.title === 'Contact block complete' && i.body.includes(selected.name))).toBe(true);
+  });
+
+  it('a last-week focus switch does not earn a full-project bonus', () => {
+    useDynasty.getState().start(4242, 0); equip();
+    const s = () => useDynasty.getState();
+    s().startStaffProject('hitting', 'hitting-contact');
+    for (let i = 0; i < 4; i++) s().advanceRecruitingWeek();
+    s().setStaffDirective('hitting', 'contact');
+    s().advanceRecruitingWeek();
+    expect(s().economy.projectHistory![0]!.focused).toBe(false);
+    expect(s().economy.projectHistory![0]!.changes.every((c) => c.after - c.before <= 1)).toBe(true);
+  });
+
+  it('maintenance fits a shorter window and records project activity separately from signings', () => {
+    useDynasty.getState().start(4242, 0); equip(2);
+    const s = () => useDynasty.getState();
+    const home = s().season!.teams[0]!.def.state;
+    s().season!.recruiting.week = 11;
+    expect(s().startStaffProject('recruiting', 'pipeline-deepen', home)).toBe(false);
+    expect(s().startStaffProject('recruiting', 'pipeline-maintain', home)).toBe(true);
+    expect(staffPlan(s().economy, 'recruiting').project!.weeksTotal).toBe(2);
+    s().advanceRecruitingWeek(); s().advanceRecruitingWeek();
+    expect(s().economy.pipelines![home]!.lastWorkedYear).toBe(s().year);
+    expect(s().economy.pipelines![home]!.signings).toBe(0);
+    expect(s().startStaffProject('hitting', 'hitting-contact')).toBe(false);
+  });
+
+  it('missing staff or facilities pauses work and disables arm-care protection', () => {
+    useDynasty.getState().start(4242, 0); equip();
+    const s = () => useDynasty.getState();
+    s().startStaffProject('pitching', 'pitching-arm-care');
+    const eco = s().economy;
+    useDynasty.setState({ economy: { ...eco, staff: { ...eco.staff, pitching: undefined } } });
+    s().advanceRecruitingWeek();
+    expect(staffPlan(s().economy, 'pitching').project!.weeksLeft).toBe(5);
+    expect(staffProjectInjuryGuard(s().economy)).toBe(1);
+    useDynasty.setState({ economy: { ...s().economy, staff: eco.staff, built: [], facilityLevels: {}, facilities: 0 } });
+    s().advanceRecruitingWeek();
+    expect(staffPlan(s().economy, 'pitching').project!.weeksLeft).toBe(5);
+    expect(staffProjectInjuryGuard(s().economy)).toBe(1);
+    expect(staffProjectInjuryGuard(eco, false)).toBe(1);
+  });
+
+  it('respects staff delegation in every project action', () => {
+    useDynasty.getState().start(4242, 0); equip();
+    const s = () => useDynasty.getState();
+    s().startStaffProject('hitting', 'hitting-contact');
+    useDynasty.setState({ depth: { ...s().depth, overrides: { ...s().depth.overrides, assistants: false } } });
+    expect(s().setStaffDirective('hitting', 'power')).toBe(false);
+    expect(s().startStaffProject('pitching', 'pitching-command')).toBe(false);
+    s().cancelStaffProject('hitting');
+    expect(staffPlan(s().economy, 'hitting').project).toBeDefined();
+  });
+
+  it('saves the chosen players, earned focus weeks and completed reports', async () => {
+    useDynasty.getState().start(4242, 0); equip(3);
+    const s = () => useDynasty.getState();
+    s().setStaffDirective('hitting', 'contact');
+    s().startStaffProject('hitting', 'hitting-contact');
+    s().advanceRecruitingWeek();
+    const targets = staffPlan(s().economy, 'hitting').project!.targetIds;
+    await s().saveNow();
+    const slot = s().loadedSlot!;
+    s().newDynasty(); await s().loadSlot(slot);
+    expect(staffPlan(s().economy, 'hitting').project!.targetIds).toEqual(targets);
+    expect(staffPlan(s().economy, 'hitting').project!.alignedWeeks).toBe(1);
+    s().advanceRecruitingWeek(); s().advanceRecruitingWeek();
+    const result = structuredClone(s().economy.projectHistory);
+    await s().saveNow(); s().newDynasty(); await s().loadSlot(slot);
+    expect(s().economy.projectHistory).toEqual(result);
+  });
+});
+
+
+it('the preview equals actual banked interest with staff and facilities', () => {
+  useDynasty.getState().start(4242, 0); equip(3);
+  const s = () => useDynasty.getState();
+  s().setStaffDirective('recruiting', 'pipeline');
+  const season = s().season!;
+  const rec = season.teams[0]!;
+  const p = season.recruiting.prospects.find((p) => p.signedBy === null)!;
+  p.spent[0] = 4; p.points[0] = 20; p.weekActions = { 0: { pitch: 'development' } };
+  const pitch = programRecruitingPitch(season, rec, CONFERENCES.find((c) => c.id === rec.conference)!.region, s().coach.prestige, s().economy);
+  const forecast = recruitingPlan(p, pitch, { team: 0, actions: 4, prestige: s().coach.prestige,
+    skill: withStaff(s().coach.skills, s().economy.staff).recruiting, economy: s().economy,
+    roster: [...rec.team.lineup, ...rec.team.bench, ...rec.team.rotation, ...rec.team.bullpen],
+  });
+  s().advanceRecruitingWeek();
+  expect(p.points[0]).toBeCloseTo(forecast.projected);
+});
+
+it('opening and restoring the offseason portal preserves a fulfilled two-way promise', async () => {
+  useDynasty.getState().start(4242, 0);
+  const s = () => useDynasty.getState();
+  const season = s().season!;
+  const rec = season.teams[0]!;
+  const p = makeTwoWay(makeRng(4242), 55);
+  p.classYear = 'FR'; p.age = 18; p.recruitPromise = { kind: 'twoWayOpportunity', madeYear: 2026, judged: 0 };
+  Object.assign(p, { starts: 45, mood: 62 });
+  rec.team.bench.push(p); rec.team.bullpen.push(p); rec.w = 30; rec.l = 15;
+  // Choose a world where the original false penalty would force him into the pool.
+  const seed = Array.from({ length: 500 }, (_, i) => i).find((seed) => entersPortal(p,
+    { squadRank: 20, starts: 45, games: 45, year: s().year, seed, battingGames: 0, pitchingGames: 0 }))!;
+  expect(seed).toBeDefined(); season.seed = seed;
+  season.batting.set(p.id, { g: 8, ab: 20, r: 2, h: 5, d: 1, t: 0, hr: 0, rbi: 2, bb: 2, k: 4, sb: 0, cs: 0, hbp: 0, sf: 0, sh: 0 });
+  season.pitching.set(p.id, { g: 3, gs: 0, w: 0, l: 0, sv: 0, outs: 12, h: 2, r: 0, er: 0, bb: 1, k: 5, hr: 0, pitches: 45, bf: 15, wp: 0 });
+  useDynasty.setState({ phase: 'draft', furthestPhase: PHASES.indexOf('draft') });
+  await s().nextPhase();
+  expect(p.recruitPromise!.judged).toBe(1);
+  expect(s().portal!.leaving.some((m) => m.player.id === p.id)).toBe(false);
+  // A save with the rail at portal but no cached pool takes the recovery path.
+  const mood = (p as typeof p & { mood?: number }).mood;
+  useDynasty.setState({ portal: null });
+  await s().saveNow(); const slot = s().loadedSlot!;
+  s().newDynasty(); expect(await s().loadSlot(slot)).toBe(true);
+  expect(s().portal!.leaving.some((m) => m.player.id === p.id)).toBe(false);
+  const restored = s().season!.teams[0]!.team.bench.find((m) => m.id === p.id)!;
+  expect(restored.recruitPromise?.judged).toBe(1);
+  expect((restored as typeof restored & { mood?: number }).mood).toBe(mood);
+  await s().rollYear();
+  expect(s().busy).toBe(false);
+  const nextTeam = s().season!.teams[0]!.team;
+  const returning = uniquePlayers([...nextTeam.lineup, ...nextTeam.bench, ...nextTeam.rotation, ...nextTeam.bullpen]).find((m) => m.id === p.id);
+  expect(returning).toBeDefined();
+  expect(returning!.recruitPromise).toBeUndefined();
+  expect(s().season!.moraleSettled).not.toBe(true);
 });

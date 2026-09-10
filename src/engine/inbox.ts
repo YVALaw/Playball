@@ -160,7 +160,11 @@ export function push(inbox: readonly InboxItem[], item: InboxItem): InboxItem[] 
 export const unreadCount = (inbox: readonly InboxItem[]): number =>
   inbox.reduce((n, i) => n + (i.read ? 0 : 1), 0);
 
-/** Everything read. What opening the screen does, and the only way to clear it. */
+/** Mark only the opened message; leave every other unread message alone. */
+export const markRead = (inbox: readonly InboxItem[], id: string): InboxItem[] =>
+  inbox.map((i) => i.id === id && !i.read ? { ...i, read: true } : i);
+
+/** Explicit bulk action. */
 export const markAllRead = (inbox: readonly InboxItem[]): InboxItem[] =>
   (inbox.every((i) => i.read) ? [...inbox] : inbox.map((i) => ({ ...i, read: true })));
 
