@@ -8301,3 +8301,6 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .pipeline-state-picker select, .network-assignment select, .network-state-filter select { border-radius:0; font:700 calc(9px * var(--ts)) var(--body); }
 .network-state-filter { font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--dim); }
 .postseason-outcome, .postseason-map-tools button, .mailbox-mark-all { border-radius:0; }
+/* The coach profile: the seat's panel as a layer over the Budget, padded like a card. */
+.coach-overlay .overlay-scroll { padding: 8px 14px calc(env(safe-area-inset-bottom) + 90px); }
+.coach-overlay .staff-focus-card { margin-top: 4px; }

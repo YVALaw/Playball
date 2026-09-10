@@ -447,6 +447,7 @@ function AppBody(
     // from, so it goes first.
     if (s.godStack.length > 0) { s.closeGod(); return; }
     if (s.selectedPlayer !== null) { s.closePlayer(); return; }
+    if (s.coachSeat !== null) { s.closeCoach(); return; }
     if (teamCardRef.current !== null) { setTeamCard(null); return; }
     if (s.overlay !== null) {
       // The physical gesture follows the same nested-page rule as the visible
@@ -492,10 +493,11 @@ function AppBody(
   const teamCardRef = useRef(teamCard);
   teamCardRef.current = teamCard;
   const overlay = useDynasty((s) => s.overlay);
+  const coachOpen = useDynasty((s) => s.coachSeat !== null);
   const blocked = useDynasty((s) => Boolean(s.seasonOpener || s.playbookInvite || s.bigMoment));
   const godOpen = useDynasty((s) => s.godStack.length > 0);
   const hasLayer = hasLayerToClose({
-    blocked, godOpen, playerOpen: selectedPlayer !== null, teamCardOpen: teamCard !== null,
+    blocked, godOpen, playerOpen: selectedPlayer !== null, coachOpen, teamCardOpen: teamCard !== null,
     overlayOpen: overlay !== null, routeBackAvailable: !atStart && routeCareer.current === loadedSlot && routeTrail.current.length > 0, tab, screen,
   });
 

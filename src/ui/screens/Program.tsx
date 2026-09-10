@@ -44,6 +44,7 @@ import {
 import { handles } from '../../state/depth.js';
 import { FirstVisit } from '../Tutorial.js';
 import { Modal } from '../Modal.js';
+import { Overlay } from '../Overlay.js';
 import { StaffCandidateDialog, StaffRatings } from '../StaffCandidateDialog.js';
 import { pct } from '../format.js';
 
@@ -278,6 +279,9 @@ function MoneySheet({ team }: { team: Owner }) {
   const [view, setView] = useState<'plan' | 'staff' | 'facilities' | 'network'>('plan');
   const phase = useDynasty((s) => s.phase);
   const renewAssistant = useDynasty((s) => s.renewAssistant);
+  const coachSeat = useDynasty((s) => s.coachSeat);
+  const openCoach = useDynasty((s) => s.openCoach);
+  const closeCoach = useDynasty((s) => s.closeCoach);
   const [staffSeat, setStaffSeat] = useState<StaffSeat>('hitting');
   const [showReplacements, setShowReplacements] = useState(false);
   const [candidateId, setCandidateId] = useState<string | null>(null);
@@ -403,7 +407,7 @@ function MoneySheet({ team }: { team: Owner }) {
                   key={seat}
                   data-guide={seat === 'hitting' ? 'seat-hitting' : undefined}
                   aria-current={staffSeat === seat ? 'page' : undefined}
-                  onClick={() => setStaffSeat(seat)}
+                  onClick={() => { setStaffSeat(seat); openCoach(seat); }}
                 >
                   <small>{SEAT_LABEL[seat].toUpperCase()}</small>
                   <strong>{man?.name ?? 'Open seat'}</strong>
@@ -413,12 +417,21 @@ function MoneySheet({ team }: { team: Owner }) {
             })}
           </nav>
 
-          {(() => {
+          {/* The profile: everything about the man in this seat, as a
+              layer over the Budget the way a player card sits over the
+              roster (2026-09-10: "tapping on the coach card opens a profile
+              with the coaching staff information and decisions"). */}
+          {coachSeat !== null && (() => {
             const man = economy.staff[staffSeat];
             const rawMarket = marketFor(worldKey, year, staffSeat);
             const market = rawMarket.filter((candidate) => candidate.id !== man?.id).sort((a, b) => staffMarketKey(a, year, staffSeat) - staffMarketKey(b, year, staffSeat));
             return (
-              <>
+              <Overlay
+                eyebrow={SEAT_LABEL[staffSeat].toUpperCase()}
+                title={man ? man.name : 'Open seat'}
+                onClose={closeCoach}
+                className="coach-overlay"
+              >
                 <article className={`staff-focus-card${man ? ' is-filled' : ' is-open'}`}>
                   <header>
                     <span>
@@ -650,7 +663,7 @@ function MoneySheet({ team }: { team: Owner }) {
                       }
                     }} />;
                 })()}
-              </>
+              </Overlay>
             );
           })()}
         </>

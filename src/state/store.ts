@@ -1257,6 +1257,16 @@ export interface DynastyStore {
   /** Close the card and return to whatever was underneath it. */
   closePlayer: () => void;
 
+  /**
+   * Whose coaching seat is open as a profile — a layer over the Budget's
+   * staff view, the way a player card sits over a roster (2026-09-10: "tapping
+   * on the coach card opens a profile with the coaching staff information and
+   * decisions"). Cleared when you navigate away, and peeled by the back gesture.
+   */
+  coachSeat: StaffSeat | null;
+  openCoach: (seat: StaffSeat) => void;
+  closeCoach: () => void;
+
   /** Change one of your coaching policies. Takes effect on the next pitch. */
   setStrategy: <K extends keyof Strategy>(key: K, value: Strategy[K]) => void;
   /** Put raw recruiting effort on a recruit this week, or take it off. */
@@ -2673,6 +2683,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       tab,
       screen: nextScreen,
       selectedPlayer: null,
+      coachSeat: null,
       focusPlayer: focus ?? null,
       // Every nav tap, counted. June renders the Postseason component in
       // place for the whole month, so its local takeovers (the lineup
@@ -2730,7 +2741,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   // moves through `go()` retain the broader transition.
   setScreen: (screen) => {
     if (get().screen !== screen) browserHistoryCheckpoint();
-    set({ selectedPlayer: null, focusPlayer: null, screen });
+    set({ selectedPlayer: null, coachSeat: null, focusPlayer: null, screen });
   },
 
   recruit: (prospectId, actions) => {
@@ -3140,7 +3151,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // The skill ledger goes with them, and that is the whole of the rule about
     // taking points back: they can come off until the step is left, and leaving
     // it is what commits them.
-    set({ overlay: null, selectedPlayer: null, spentThisStep: {} });
+    set({ overlay: null, selectedPlayer: null, coachSeat: null, spentThisStep: {} });
 
     const at = PHASES.indexOf(phase);
     const next = PHASES[at + 1] ?? null;
@@ -4691,11 +4702,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const at = PHASES.indexOf(phase);
     if (at < 0 || at > get().furthestPhase) return;
     set({
-      phase, overlay: null, selectedPlayer: null, spentThisStep: {},
+      phase, overlay: null, selectedPlayer: null, coachSeat: null, spentThisStep: {},
       version: get().version + 1,
     });
   },
-  selectedPlayer: null,
+  selectedPlayer: null, coachSeat: null,
   playerCardSection: 'overview',
   coach: newCoach(),
   lastReview: null,
@@ -5163,7 +5174,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   // player's card would be teaching the wrong errand.
   closePlayer: () => {
     if (get().selectedPlayer !== null) browserHistoryConsume();
-    set({ selectedPlayer: null, playerCardSection: 'overview', guide: null });
+    set({ selectedPlayer: null, coachSeat: null, playerCardSection: 'overview', guide: null });
+  },
+
+  openCoach: (seat) => {
+    if (get().coachSeat !== seat) browserHistoryCheckpoint();
+    set({ coachSeat: seat });
+  },
+  closeCoach: () => {
+    if (get().coachSeat !== null) browserHistoryConsume();
+    set({ coachSeat: null });
   },
 
   playPostseason: async () => {
@@ -7679,7 +7699,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // Whatever was covering the screen belonged to the dynasty being put
       // down — including the saves menu this was very likely pressed from.
       overlay: null,
-      selectedPlayer: null,
+      selectedPlayer: null, coachSeat: null,
       godStack: [],
       lastOffseason: null,
       // Week recaps are not saved, and a stale one from the previous session
@@ -7791,7 +7811,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       busy: false,
       progress: null,
       seasonOpener: null,
-      selectedPlayer: null,
+      selectedPlayer: null, coachSeat: null,
       godStack: [],
       overlay: null,
       loadedSlot: null,
@@ -7897,7 +7917,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // career and tell him his old board was delighted.
     inbox: [],
     overlay: null,
-    selectedPlayer: null,
+    selectedPlayer: null, coachSeat: null,
     godStack: [],
     loadError: null,
     });

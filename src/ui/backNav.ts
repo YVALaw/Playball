@@ -23,6 +23,8 @@ export interface BackState {
   blocked: boolean;
   playerOpen: boolean;
   teamCardOpen: boolean;
+  /** A coaching seat is open as a profile over the Budget. */
+  coachOpen?: boolean;
   overlayOpen: boolean;
   /** A god-mode sheet is up. */
   godOpen?: boolean;
@@ -35,7 +37,7 @@ export interface BackState {
 /** True while a back press has something to do — including swallowing it. */
 export function hasLayerToClose(s: BackState): boolean {
   if (s.blocked) return true;
-  if (s.godOpen || s.playerOpen || s.teamCardOpen || s.overlayOpen) return true;
+  if (s.godOpen || s.playerOpen || s.coachOpen || s.teamCardOpen || s.overlayOpen) return true;
   if (s.routeBackAvailable) return true;
   const first = TABS.find((t) => t.id === s.tab)?.screens[0]?.id;
   if (first && s.screen !== first) return true;
