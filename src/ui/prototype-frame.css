@@ -6908,6 +6908,14 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .staff-tenure { display:flex; flex-wrap:wrap; gap:4px; margin:8px 0 0; }
 .staff-tenure span, .staff-tenure b { padding:3px 7px; border:1px solid var(--line); background:var(--paper); color:var(--dim); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.06em; }
 .staff-tenure b.up { border-color:var(--alert); color:var(--alert); }
+/* The coach's men, as chips; the one his project is about is lit. */
+.project-man-picker { margin:0 0 8px; }
+.project-man-picker > small { display:block; color:var(--dim); font:700 calc(6.7px * var(--ts)) var(--mono); letter-spacing:.09em; }
+.project-man-picker > div { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:5px; margin-top:5px; }
+.project-man-picker button { min-height:44px; padding:7px 9px; border:1px solid var(--line); background:var(--wash); color:var(--ink); text-align:left; }
+.project-man-picker button.active { border-color:var(--clay); background:var(--soft); box-shadow:inset 3px 0 var(--clay); }
+.project-man-picker button strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:800 calc(9px * var(--ts)) var(--body); }
+.project-man-picker button small { display:block; margin-top:2px; color:var(--dim); font:700 calc(6.5px * var(--ts)) var(--mono); letter-spacing:.05em; }
 /* A project with no building yet: the card is the way to the building. */
 .staff-project-gate { display:block; width:100%; padding:10px 11px; border:1px solid var(--clay); border-left:4px solid var(--clay); background:var(--wash); color:var(--ink); text-align:left; }
 .staff-project-gate small { display:block; color:var(--clay); font:700 calc(6.5px * var(--ts)) var(--mono); letter-spacing:.08em; }

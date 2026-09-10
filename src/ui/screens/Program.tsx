@@ -537,16 +537,28 @@ function MoneySheet({ team }: { team: Owner }) {
                             {staffSeat !== 'recruiting' && (() => {
                               const pool = projectCandidates(team.team, staffSeat, projects[0]!);
                               const chosen = pool.find((p) => String(p.id) === (projectPlayer || String(projectCandidates(team.team, staffSeat, projects[0]!)[0]?.id ?? ""))) ?? pool[0];
+                              // Chips, not a select: on a phone a select reads as a name
+                              // already chosen. Reported 2026-09-10: "it picks it
+                              // automatically." The chosen man is lit; the rest are taps.
                               return pool.length > 0 ? (
-                                <label className="pipeline-state-picker"><small>HIS PROJECT · ONE MAN</small>
-                                  <select value={String(chosen?.id ?? '')} onChange={(e) => setProjectPlayer(e.currentTarget.value)}>
-                                    {pool.map((p) => (
-                                      <option key={String(p.id)} value={String(p.id)}>
-                                        {p.name} · {(p as { role?: string }).role ?? p.pos} · {p.classYear}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </label>
+                                <div className="project-man-picker" role="radiogroup" aria-label="His project">
+                                  <small>HIS PROJECT · PICK ONE MAN</small>
+                                  <div>
+                                    {pool.map((p) => {
+                                      const on = String(p.id) === String(chosen?.id);
+                                      return (
+                                        <button
+                                          key={String(p.id)} type="button" role="radio" aria-checked={on}
+                                          className={`tap${on ? ' active' : ''}`}
+                                          onClick={() => setProjectPlayer(String(p.id))}
+                                        >
+                                          <strong>{p.name}</strong>
+                                          <small>{(p as { role?: string }).role ?? p.pos} · {p.classYear}</small>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
                               ) : null;
                             })()}
                             <div className="staff-project-options">
