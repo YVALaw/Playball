@@ -6590,6 +6590,24 @@ greedy classes (`tests/recruiting-clock-probe.ts`): commits peak in weeks
 six and seven, fifty-two of six hundred land on the deadline, and early
 deciders commit a week and a half before the steady.
 
+**A project is about a man** (`projectOdds`, `newStaffProject`,
+`progressStaffProjects` — staffProjects.ts; 2026-09-10). A hitting or
+pitching project used to take the lowest-rated men in a skill and hand each
+a point, which is why a coach was easy to forget: nothing he did had a name
+on it. The coach now picks one man from a picker of his own (bats for the
+hitting coach, arms for the pitching coach, weakest in the skill first).
+The gain is two points, three with the matching focus held for sixty
+percent of the weeks, and it can fail to take: the odds — the coach's
+winter craft, the man's room to grow, the skill's height — are printed on
+the option and stored on the project when it starts, then rolled once off a
+hash of man, kind, year and week when it ends. While it runs the man's card
+reads "Coach's project · Contact · N more weeks · 59% it takes"; when it
+ends the result stays on his card under the coach's name, took or not, and
+the report says which. A group project from an older save finishes the old
+way. Pipeline projects are still about a state. Staff contracts landed the
+same day: a hire is signed through a year, two or three, renewed or let go
+in the winter.
+
 **The run-expectancy AI** (`buntEdge` — strategy.ts). The RE24 and
 scoring-probability matrices, scaled to the league's 5.30, replace the
 bunt heuristics; the policy knob keeps its meaning (OFTEN takes losing

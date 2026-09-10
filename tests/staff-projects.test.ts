@@ -129,6 +129,10 @@ describe('a finished project develops the men it names', () => {
     const contactBefore = new Map(bats().map((b) => [b.id, b.contact]));
     const powerBefore = new Map(bats().map((b) => [b.id, b.power]));
     expect(useDynasty.getState().startStaffProject('hitting', 'hitting-contact')).toBe(true);
+    const project = staffPlan(useDynasty.getState().economy, 'hitting').project!;
+    expect(project.playerId).toBeDefined();
+    expect(project.odds).toBeGreaterThan(0);
+    project.odds = 1;
 
     // Four weeks in, nothing has landed: the work is the whole block.
     for (let i = 0; i < 4; i++) useDynasty.getState().advanceRecruitingWeek();
@@ -136,10 +140,10 @@ describe('a finished project develops the men it names', () => {
     expect(staffPlan(useDynasty.getState().economy, 'hitting').project?.weeksLeft).toBe(1);
 
     useDynasty.getState().advanceRecruitingWeek();
+    // One man, the one the project named, three points with the matching focus.
     const moved = bats().filter((b) => b.contact !== contactBefore.get(b.id));
-    expect(moved.length).toBeGreaterThanOrEqual(3);
-    expect(moved.length).toBeLessThanOrEqual(6);
-    for (const m of moved) expect(m.contact).toBeGreaterThan(contactBefore.get(m.id)!);
+    expect(moved.map((m) => String(m.id))).toEqual([project.playerId]);
+    expect(moved[0]!.contact).toBe(contactBefore.get(moved[0]!.id)! + 3);
     // The block is spent, and no other rating moved with it.
     expect(staffPlan(useDynasty.getState().economy, 'hitting').project).toBeUndefined();
     expect(bats().every((b) => b.power === powerBefore.get(b.id))).toBe(true);
@@ -151,10 +155,11 @@ describe('a finished project develops the men it names', () => {
     useDynasty.getState().setStaffDirective('pitching', 'velocity');
     const before = new Map(arms().map((a) => [a.id, a.stuff]));
     expect(useDynasty.getState().startStaffProject('pitching', 'pitching-velocity')).toBe(true);
+    staffPlan(useDynasty.getState().economy, 'pitching').project!.odds = 1;
     // Three weeks at a level-three pen.
     for (let i = 0; i < 3; i++) useDynasty.getState().advanceRecruitingWeek();
     const moved = arms().filter((a) => a.stuff !== before.get(a.id));
-    expect(moved.length).toBeGreaterThan(0);
+    expect(moved.length).toBe(1);
     for (const m of moved) expect(m.stuff).toBeGreaterThan(before.get(m.id)!);
   });
 
@@ -166,10 +171,11 @@ describe('a finished project develops the men it names', () => {
       useDynasty.getState().setStaffDirective('hitting', directive);
       const before = new Map(bats().map((b) => [b.id, b.contact]));
       useDynasty.getState().startStaffProject('hitting', 'hitting-contact');
+      staffPlan(useDynasty.getState().economy, 'hitting').project!.odds = 1;
       for (let i = 0; i < 5; i++) useDynasty.getState().advanceRecruitingWeek();
       return bats().reduce((n, b) => n + (b.contact - (before.get(b.id) ?? 0)), 0);
     };
-    // Measured: eight points aligned against three unaligned.
+    // Three points aligned against two unaligned.
     expect(gained('contact')).toBeGreaterThan(gained('power'));
   });
 });
@@ -271,19 +277,71 @@ describe('the plan belongs to the man in the chair', () => {
 });
 
 describe('projects are deliberate and report their outcomes', () => {
-  it('keeps the selected training group even if ratings change mid-project', () => {
+  it('keeps the man it named even if his rating changes mid-project', () => {
     useDynasty.getState().start(4242, 0); equip();
     const s = () => useDynasty.getState();
     s().setStaffDirective('hitting', 'contact');
     s().startStaffProject('hitting', 'hitting-contact');
     const project = staffPlan(s().economy, 'hitting').project!;
-    const selected = bats().find((p) => p.id === project.targetIds![0])!;
+    project.odds = 1;
+    const selected = bats().find((p) => String(p.id) === project.playerId)!;
     selected.contact = 85;
     for (let i = 0; i < 5; i++) s().advanceRecruitingWeek();
-    expect(selected.contact).toBe(87);
+    expect(selected.contact).toBe(88);
     const report = s().economy.projectHistory![0]!;
-    expect(report.changes.some((c) => c.id === selected.id && c.before === 85 && c.after === 87)).toBe(true);
+    expect(report.playerId).toBe(String(selected.id));
+    expect(report.took).toBe(true);
+    expect(report.changes.some((c) => c.id === selected.id && c.before === 85 && c.after === 88)).toBe(true);
     expect(s().inbox.some((i) => i.title === 'Contact block complete' && i.body.includes(selected.name))).toBe(true);
+  });
+
+  it('is the man the coach picked, and only one of his', () => {
+    useDynasty.getState().start(4242, 0); equip();
+    const s = () => useDynasty.getState();
+    const bench = bats().at(-1)!;
+    const arm = arms()[0]!;
+    // A pitcher is not a hitting coach's project.
+    expect(s().startStaffProject('hitting', 'hitting-power', undefined, String(arm.id))).toBe(false);
+    expect(s().startStaffProject('hitting', 'hitting-power', undefined, String(bench.id))).toBe(true);
+    expect(staffPlan(s().economy, 'hitting').project!.playerId).toBe(String(bench.id));
+  });
+
+  it('can fail to take, and says so on the report and the card', () => {
+    useDynasty.getState().start(4242, 0); equip();
+    const s = () => useDynasty.getState();
+    s().startStaffProject('hitting', 'hitting-contact');
+    const project = staffPlan(s().economy, 'hitting').project!;
+    const man = bats().find((p) => String(p.id) === project.playerId)!;
+    const before = man.contact;
+    project.odds = 0;
+    for (let i = 0; i < 5; i++) s().advanceRecruitingWeek();
+    expect(man.contact).toBe(before);
+    const report = s().economy.projectHistory![0]!;
+    expect(report.took).toBe(false);
+    expect(report.changes[0]!.after).toBe(before);
+    expect(s().inbox.some((i) => i.title === 'Contact block complete' && /did not take/.test(i.body))).toBe(true);
+  });
+
+  it('takes at about the odds it printed', () => {
+    useDynasty.getState().start(4242, 0); equip();
+    const s = () => useDynasty.getState();
+    const seat = 'hitting';
+    let took = 0;
+    let odds = 0;
+    const runs = 30;
+    for (let i = 0; i < runs; i++) {
+      s().season!.recruiting.week = 1;
+      const plan = staffPlan(s().economy, seat);
+      useDynasty.setState({ economy: { ...s().economy, staffPlans: { ...(s().economy.staffPlans ?? {}), [seat]: { ...plan, project: undefined } } } });
+      useDynasty.setState({ year: 2030 + i });
+      expect(s().startStaffProject(seat, 'hitting-contact')).toBe(true);
+      odds += staffPlan(s().economy, seat).project!.odds!;
+      for (let w = 0; w < 5; w++) s().advanceRecruitingWeek();
+      if (s().economy.projectHistory![0]!.took) took += 1;
+    }
+    const rate = took / runs;
+    const mean = odds / runs;
+    expect(Math.abs(rate - mean)).toBeLessThan(0.25);
   });
 
   it('a last-week focus switch does not earn a full-project bonus', () => {
@@ -294,7 +352,7 @@ describe('projects are deliberate and report their outcomes', () => {
     s().setStaffDirective('hitting', 'contact');
     s().advanceRecruitingWeek();
     expect(s().economy.projectHistory![0]!.focused).toBe(false);
-    expect(s().economy.projectHistory![0]!.changes.every((c) => c.after - c.before <= 1)).toBe(true);
+    expect(s().economy.projectHistory![0]!.changes.every((c) => c.after - c.before <= 2)).toBe(true);
   });
 
   it('maintenance fits a shorter window and records project activity separately from signings', () => {
@@ -349,6 +407,8 @@ describe('projects are deliberate and report their outcomes', () => {
     const slot = s().loadedSlot!;
     s().newDynasty(); await s().loadSlot(slot);
     expect(staffPlan(s().economy, 'hitting').project!.targetIds).toEqual(targets);
+    expect(staffPlan(s().economy, 'hitting').project!.playerId).toBe(targets![0]);
+    expect(staffPlan(s().economy, 'hitting').project!.odds).toBeGreaterThan(0);
     expect(staffPlan(s().economy, 'hitting').project!.alignedWeeks).toBe(1);
     s().advanceRecruitingWeek(); s().advanceRecruitingWeek();
     const result = structuredClone(s().economy.projectHistory);

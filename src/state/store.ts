@@ -1,4 +1,4 @@
-import { newStaffProject, progressStaffProjects, projectResultText, PROJECT_FOCUS } from '../engine/staffProjects.js';
+import { newStaffProject, progressStaffProjects, projectResultText, projectCandidates, PROJECT_FOCUS } from '../engine/staffProjects.js';
 import { recruitingPlan, programRecruitingPitch } from '../engine/recruitingPlan.js';
 // store.ts
 // The app's state. Thin on purpose: the engine owns the simulation, this owns
@@ -1395,7 +1395,8 @@ export interface DynastyStore {
   /** Set the standing instruction for one assistant. */
   setStaffDirective: (seat: StaffSeat, directive: StaffDirective) => boolean;
   /** Start one multi-week staff project. Recruiting projects require a state. */
-  startStaffProject: (seat: StaffSeat, kind: StaffProjectKind, state?: string) => boolean;
+  /** A pipeline project names a state; a hitting or pitching project names one of your men. */
+  startStaffProject: (seat: StaffSeat, kind: StaffProjectKind, state?: string, playerId?: string) => boolean;
   /** Stop the active project without refunding elapsed weeks. */
   cancelStaffProject: (seat: StaffSeat) => void;
   /** One rung up, paid once, forever. */
@@ -2002,6 +2003,8 @@ function usableEconomy(saved: unknown): Economy {
         plan.project = {
           kind: r.kind as StaffProjectKind,
           ...(typeof r.targetCount === 'number' ? { targetCount: Math.max(1, Math.min(9, Math.round(r.targetCount))) } : {}),
+          ...(typeof r.playerId === 'string' ? { playerId: r.playerId } : {}),
+          ...(typeof r.odds === 'number' ? { odds: Math.max(0, Math.min(1, r.odds)) } : {}),
           ...(Array.isArray(r.targetIds) ? { targetIds: r.targetIds.filter((id): id is string => typeof id === 'string').slice(0, 10) } : {}),
           ...(typeof r.alignedWeeks === 'number' ? { alignedWeeks: Math.max(0, Math.min(r.weeksTotal, r.alignedWeeks)) } : {}),
           ...(typeof r.state === 'string' ? { state: r.state } : {}),
@@ -6792,7 +6795,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     return true;
   },
 
-  startStaffProject: (seat, kind, state) => {
+  startStaffProject: (seat, kind, state, playerId) => {
     const { economy, season } = get();
     if (!season || !handles(get().depth, 'assistants') || !economy.staff[seat]) return false;
     const facility = projectFacility(seat);
@@ -6811,8 +6814,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     }
     const weeks = staffProjectWeeks(economy, seat, kind);
     if (season.recruiting.week < 1 || season.recruiting.week + weeks - 1 > RECRUITING_WEEKS) return false;
-    const project = newStaffProject(economy, season.teams[get().userTeam]!.team, seat, kind,
-      season.recruiting.week, state?.trim().toUpperCase());
+    const club = season.teams[get().userTeam]!.team;
+    // The man has to be one of yours, and one the seat can work with: a
+    // hitting coach's project is a bat, a pitching coach's an arm.
+    if (seat !== 'recruiting' && playerId !== undefined
+      && !projectCandidates(club, seat, kind).some((p) => String(p.id) === playerId)) return false;
+    const project = newStaffProject(economy, club, seat, kind, season.recruiting.week, state?.trim().toUpperCase(), playerId);
     const next: Economy = {
       ...economy,
       staffPlans: { ...(economy.staffPlans ?? {}), [seat]: { ...plan, project } },

@@ -85,6 +85,10 @@ export interface StaffProject {
   startedWeek: number;
   /** Players selected when work starts; never silently retarget at completion. */
   targetIds?: string[];
+  /** The one man this project is about (2026-09-10). Legacy group projects have none. */
+  playerId?: string;
+  /** The odds it takes, fixed when the work starts, so what was printed is what rolls. */
+  odds?: number;
   targetCount?: number;
   /** Weeks whose standing focus matched this project. */
   alignedWeeks?: number;
@@ -92,6 +96,10 @@ export interface StaffProject {
 
 export interface StaffProjectResult {
   kind: StaffProjectKind;
+  /** The man the project was about, when it was about one. */
+  playerId?: string;
+  /** Whether it took. Absent on group and pipeline results. */
+  took?: boolean;
   seat: StaffSeat;
   year: number;
   week: number;

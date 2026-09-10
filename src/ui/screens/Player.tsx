@@ -42,6 +42,8 @@ import { isHurt } from '../../engine/injury.js';
 import { overallOf, platoonSplit, naturalPos } from '../../engine/ratings.js';
 import { secondaryPositions } from '../../engine/positions.js';
 import { RetrainModal } from '../RetrainModal.js';
+import { PROJECT_ATTRIBUTE } from '../../engine/staffProjects.js';
+import { PROJECT_LABEL } from '../../engine/economy.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { SewingPinIcon } from '@radix-ui/react-icons';
 import { captainOf } from '../../engine/captains.js';
@@ -628,6 +630,7 @@ function Overview({ p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: bo
   // natural there. Asked for 2026-09-10: "leave it there but open."
   const [retrainOpen, setRetrainOpen] = useState(false);
   const season = useDynasty((s) => s.season);
+  const economy = useDynasty((s) => s.economy);
   const isPitcher = p.type === 'pitcher';
   const inJune = { classYear: p.classYear, age: p.age + 1 };
   const eligible = p.classYear !== 'SR' && draftEligible(inJune);
@@ -707,6 +710,39 @@ function Overview({ p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: bo
       {isOurs && promise && (
         <FieldNote title={`Recruiting promise · ${promise.title}`} text={`${promise.detail} ${promise.term}.`} />
       )}
+
+      {/* The coach's project, on the man it is about — the whole point of a
+          project being about one man (2026-09-10): the work has a name on it
+          while it runs, and the result stays on his card. */}
+      {isOurs && (() => {
+        const id = String(p.id);
+        const seats = ['hitting', 'pitching'] as const;
+        const live = seats
+          .map((seat) => ({ seat, project: economy.staffPlans?.[seat]?.project }))
+          .find((x) => x.project?.playerId === id);
+        if (live?.project) {
+          const coach = economy.staff[live.seat]?.name ?? 'The staff';
+          const odds = Math.round((live.project.odds ?? 0) * 100);
+          return (
+            <FieldNote
+              title={`Coach's project · ${PROJECT_ATTRIBUTE[live.project.kind]}`}
+              text={`${coach} has him for ${live.project.weeksLeft} more week${live.project.weeksLeft === 1 ? '' : 's'} · ${odds}% it takes.`}
+            />
+          );
+        }
+        const last = (economy.projectHistory ?? []).find((r) => r.playerId === id);
+        const c = last?.changes[0];
+        if (!last || !c) return null;
+        const coach = economy.staff[last.seat]?.name ?? 'the staff';
+        return (
+          <FieldNote
+            title={`Last project · ${c.attribute}`}
+            text={last.took === false
+              ? `Did not take to ${coach}'s ${PROJECT_LABEL[last.kind].toLowerCase()}, ${last.year}.`
+              : `${c.attribute} ${c.before} → ${c.after} under ${coach}, ${last.year}.`}
+          />
+        );
+      })()}
 
       {!isPitcher && (
         <button type="button" className="player-secondary-line tap" onClick={() => setRetrainOpen(true)}>

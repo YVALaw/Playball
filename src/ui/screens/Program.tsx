@@ -1,4 +1,4 @@
-import { projectCandidates, projectCapacity, PROJECT_ATTRIBUTE, PROJECT_FOCUS, pipelineProjectGain } from '../../engine/staffProjects.js';
+import { projectCandidates, projectOdds, PROJECT_ATTRIBUTE, PROJECT_FOCUS, PROJECT_GAIN, PROJECT_FOCUS_GAIN, pipelineProjectGain } from '../../engine/staffProjects.js';
 import { RECRUITING_WEEKS } from '../../engine/recruiting.js';
 // Program.tsx
 // The program hub.
@@ -285,6 +285,7 @@ function MoneySheet({ team }: { team: Owner }) {
   const [showAllPipelines, setShowAllPipelines] = useState(false);
   const [pipelineState, setPipelineState] = useState('');
   const [projectState, setProjectState] = useState(team.def.state);
+  const [projectPlayer, setProjectPlayer] = useState<string>('');
   useEffect(() => { setShowReplacements(false); setCandidateId(null); }, [staffSeat]);
   useEffect(() => setCandidateId(null), [view, year]);
 
@@ -505,9 +506,12 @@ function MoneySheet({ team }: { team: Owner }) {
                             <span><small>{level < 1 || weeksAvailable === 0 ? 'PAUSED PROJECT' : 'ACTIVE PROJECT'}</small><strong>{PROJECT_LABEL[plan.project.kind]}{plan.project.state ? ` · ${plan.project.state}` : ''}</strong></span>
                             <div className="staff-project-progress"><i><b style={{ width: `${Math.round((1 - plan.project.weeksLeft / Math.max(1, plan.project.weeksTotal)) * 100)}%` }} /></i><em>{plan.project.weeksLeft} week{plan.project.weeksLeft === 1 ? '' : 's'} left</em></div>
                             <p className="staff-project-detail">{level < 1 ? 'Build the required facility to resume.' : weeksAvailable === 0 ? 'Resumes when next season’s recruiting calendar opens.' : `Progress advances when a recruiting week ends. ${plan.project.alignedWeeks ?? 0}/${Math.ceil(plan.project.weeksTotal * 0.6)} matching-focus weeks earned.`}</p>
-                            {plan.project.targetIds && plan.project.targetIds.length > 0 && <p className="staff-project-detail">
+                            {plan.project.playerId && <p className="staff-project-detail">
+                              His project: <b>{projectCandidates(team.team, staffSeat, plan.project.kind).find((p) => String(p.id) === plan.project!.playerId)?.name ?? 'a man no longer on the roster'}</b>
+                              {' '}· {Math.round((plan.project.odds ?? 0) * 100)}% it takes.
+                            </p>}
+                            {!plan.project.playerId && plan.project.targetIds && plan.project.targetIds.length > 0 && <p className="staff-project-detail">
                               Training group: {plan.project.targetIds.map((id) => projectCandidates(team.team, staffSeat, plan.project!.kind).find((p) => p.id === id)?.name ?? 'Player no longer on roster').join(', ')}.
-                              {' '}The last player trains only if the focus bonus is earned.
                             </p>}
                             {runsStaff && <button type="button" className="staff-project-cancel tap" onClick={() => cancelStaffProject(staffSeat)}>Cancel project</button>}
                           </>
@@ -522,11 +526,27 @@ function MoneySheet({ team }: { team: Owner }) {
                                 </select>
                               </label>
                             )}
+                            {staffSeat !== 'recruiting' && (() => {
+                              const pool = projectCandidates(team.team, staffSeat, projects[0]!);
+                              const chosen = pool.find((p) => String(p.id) === (projectPlayer || String(projectCandidates(team.team, staffSeat, projects[0]!)[0]?.id ?? ""))) ?? pool[0];
+                              return pool.length > 0 ? (
+                                <label className="pipeline-state-picker"><small>HIS PROJECT · ONE MAN</small>
+                                  <select value={String(chosen?.id ?? '')} onChange={(e) => setProjectPlayer(e.currentTarget.value)}>
+                                    {pool.map((p) => (
+                                      <option key={String(p.id)} value={String(p.id)}>
+                                        {p.name} · {(p as { role?: string }).role ?? p.pos} · {p.classYear}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              ) : null;
+                            })()}
                             <div className="staff-project-options">
                               {projects.map((kind) => {
                                 const weeks = staffProjectWeeks(economy, staffSeat, kind);
-                                const capacity = projectCapacity(economy, staffSeat);
-                                const candidates = projectCandidates(team.team, staffSeat, kind).slice(0, capacity + 1);
+                                const pool = projectCandidates(team.team, staffSeat, kind);
+                                const chosen = pool.find((p) => String(p.id) === (projectPlayer || String(projectCandidates(team.team, staffSeat, projects[0]!)[0]?.id ?? ""))) ?? pool[0];
+                                const odds = chosen ? projectOdds(economy, staffSeat, chosen, kind) : 0;
                                 const gain = pipelineProjectGain(economy, kind, selectedPipeline, false);
                                 const enoughTime = weeks <= weeksAvailable;
                                 return (
@@ -534,14 +554,16 @@ function MoneySheet({ team }: { team: Owner }) {
                                     <strong>{PROJECT_LABEL[kind]}</strong>
                                     <p>{staffSeat === 'recruiting'
                                       ? `${selectedPipeline} → ${selectedPipeline + gain} strength. ${kind === 'pipeline-maintain' ? 'Short upkeep project with a smaller gain.' : 'Longer investment in recruiting reach.'}`
-                                      : `+1 ${PROJECT_ATTRIBUTE[kind]} for ${Math.min(capacity, candidates.length)} players with the lowest rating in that skill.`}</p>
-                                    <details><summary>Targets and bonus</summary><p>
+                                      : chosen
+                                        ? `+${PROJECT_GAIN} ${PROJECT_ATTRIBUTE[kind]} for ${chosen.name} · ${Math.round(odds * 100)}% it takes`
+                                        : 'Nobody on the roster for this seat.'}</p>
+                                    <details><summary>The bonus</summary><p>
                                       {staffSeat === 'recruiting' ? `${projectState}. Matching focus adds up to 4 strength (maximum 100).`
-                                        : `${candidates.slice(0, capacity).map((p) => p.name).join(', ')}. Bonus: +2 instead of +1${candidates[capacity] ? `, plus ${candidates[capacity]!.name}` : ''}.`}
-                                      {' '}Use {DIRECTIVE_LABEL[PROJECT_FOCUS[kind]]} for at least {Math.ceil(weeks * 0.6)} of {weeks} weeks to earn the bonus.
+                                        : `+${PROJECT_FOCUS_GAIN} instead of +${PROJECT_GAIN} with the matching focus.`}
+                                      {' '}Use {DIRECTIVE_LABEL[PROJECT_FOCUS[kind]]} for at least {Math.ceil(weeks * 0.6)} of {weeks} weeks to earn it.
                                     </p></details>
-                                    <button type="button" className="tap" disabled={!runsStaff || !enoughTime}
-                                      onClick={() => startStaffProject(staffSeat, kind, staffSeat === 'recruiting' ? projectState : undefined)}>
+                                    <button type="button" className="tap" disabled={!runsStaff || !enoughTime || (staffSeat !== 'recruiting' && !chosen)}
+                                      onClick={() => startStaffProject(staffSeat, kind, staffSeat === 'recruiting' ? projectState : undefined, staffSeat === 'recruiting' ? undefined : String(chosen?.id ?? ''))}>
                                       {!runsStaff ? 'Staff management delegated' : !enoughTime ? `Needs ${weeks} weeks · ${weeksAvailable} left` : `Start · ${weeks} weeks`}
                                     </button>
                                   </div>
@@ -559,9 +581,9 @@ function MoneySheet({ team }: { team: Owner }) {
                   <section className="staff-result-card" key={`${result.year}:${result.week}:${i}`}>
                     <small>COMPLETED · {result.year} · WEEK {result.week}</small>
                     <strong>{PROJECT_LABEL[result.kind]}{result.state ? ` · ${result.state}` : ''}</strong>
-                    <p>{result.focused ? 'Focus bonus earned.' : 'Standard project completed.'}</p>
+                    <p>{result.took === false ? 'He did not take to it.' : result.focused ? 'Focus bonus earned.' : 'Project completed.'}</p>
                     {result.changes.map((c, j) => <div key={j}><span>{c.name} · {c.attribute}</span><b>{c.before} → {c.after}</b></div>)}
-                    {!result.changes.length && <p>No selected players remained on the roster.</p>}
+                    {!result.changes.length && <p>The man it was about is no longer on the roster.</p>}
                   </section>
                 ))}
                 {(!man || showReplacements) && (
