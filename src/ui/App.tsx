@@ -23,7 +23,7 @@ import {
   HomeIcon, IdCardIcon, StarIcon,
 } from '@radix-ui/react-icons';
 import {
-  PHASES, PHASE_LABEL, TABS, useDynasty, useUserTeam, type ProgramSheet, type Tab,
+  PHASES, PHASE_LABEL, TABS, useDynasty, useUserTeam, nextNavInstant, type ProgramSheet, type Tab,
 } from '../state/store.js';
 import { hasLayerToClose, Back, isNativeShell } from './backNav.js';
 import { initBilling } from '../state/billing.js';
@@ -276,11 +276,8 @@ function AppBody(
    * already scrolled past its own header.
    */
   const mainRef = useRef<HTMLElement>(null);
-  useLayoutEffect(() => {
-    // Reset before paint. Doing this in a normal effect lets the incoming page
-    // briefly render at the previous screen's scroll position, then jump.
-    mainRef.current?.scrollTo(0, 0);
-  }, [phase, tab, screen, bracket?.stage, live !== null, selectedPlayer !== null]);
+  // The reset itself lives with the route trail below, because a back
+  // gesture returns to where the screen was left rather than to the top.
 
   /**
    * Going somewhere closes the rival's page, exactly as `go()` clears the
@@ -343,6 +340,38 @@ function AppBody(
   // entry. It lets the route trail peel the matching stop instead of recording
   // the screen we just left as a new forward visit.
   const routeConsumePending = useRef(false);
+
+  /*
+    Where each screen was left, so the back gesture returns to it.
+
+    Reported 2026-09-10: "when dragging the screen to go back, once it goes
+    back the screen resets and starts from the top instead of going back to
+    the same place it was at." Every route change remembers the scroll of
+    the screen being left — read in the store subscription, which fires
+    before React swaps the screen, so the old scroller is still there — and
+    a back restore puts the returning screen at that height before paint. A
+    forward navigation still opens at the top, which is what stopped the
+    season review's CONTINUE opening recruiting already scrolled past its
+    own header. Opening or closing a player card no longer resets the page
+    under it: the card is a layer over the screen, not a new screen.
+  */
+  const scrollMemory = useRef(new Map<string, number>());
+  useEffect(() => useDynasty.subscribe((s, prev) => {
+    if (s.tab === prev.tab && s.screen === prev.screen && s.programSheet === prev.programSheet) return;
+    const el = mainRef.current;
+    if (el) scrollMemory.current.set(routeKey(routeStop(prev.tab, prev.screen, prev.programSheet)), el.scrollTop);
+  }), []);
+  useLayoutEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const back = restoringRoute.current !== null;
+    const y = back ? (scrollMemory.current.get(routeKey(routeStop(tab, screen, programSheet))) ?? 0) : 0;
+    // Before paint, so the arriving page never shows at the wrong height and
+    // then jumps; and once more on the next frame for a screen whose rows
+    // arrive a beat after its frame does.
+    el.scrollTo(0, y);
+    if (y > 0) requestAnimationFrame(() => { if (mainRef.current === el) el.scrollTo(0, y); });
+  }, [phase, tab, screen, programSheet, bracket?.stage, live !== null]);
 
   // Remember the route the coach actually visited, rather than assuming Back
   // means "first screen in this tab, then HOME". That assumption is what made
@@ -436,6 +465,9 @@ function AppBody(
       bumpRouteTrail();
       const targetKey = routeKey(previous);
       restoringRoute.current = targetKey;
+      // The gesture already animated the swipe; the swap is instant, and the
+      // screen comes back where it was left (see the scroll memory below).
+      nextNavInstant();
       s.go(previous.tab, previous.screen);
       const after = useDynasty.getState();
       // A broken manual lineup is allowed to refuse navigation. If it does,
@@ -1598,12 +1630,11 @@ function PlayerOverlay() {
       floating={selectedPlayer ? <GodBolt target={{ kind: 'player', id: selectedPlayer }} label={`Edit ${name} in god mode`} className="floating-god" /> : null}
     >
       {/*
-        Keyed on the man, so opening a second card is a fresh card.
-        The scroll reset in the frame resets the screen *underneath* the
-        overlay, which it must — but it leaves the card itself on whatever tab
-        and scroll position the last player was read at. Tapping a name in a box
-        score and landing halfway down someone else's game log is the same bug
-        the reset exists to prevent, one layer up.
+        Keyed on the man, so opening a second card is a fresh card, on its
+        first tab and at the top. Tapping a name in a box score and landing
+        halfway down someone else's game log is the bug the key prevents. The
+        screen underneath is left exactly where it was — since 2026-09-10 the
+        frame no longer resets it when a card opens or closes.
       */}
       <Player key={selectedPlayer ?? ''} />
     </Overlay>

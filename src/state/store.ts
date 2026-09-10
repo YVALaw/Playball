@@ -444,7 +444,20 @@ function browserHistoryConsume(count = 1, route = false): void {
   window.dispatchEvent(new CustomEvent('playball:history-consume', { detail: { count, route } }));
 }
 
+/**
+ * The next navigation swaps screens instantly, with no view transition.
+ *
+ * Set by the back gesture (App.tsx) before it restores the previous route:
+ * the platform has already animated the swipe, the snapshot a view transition
+ * takes of a heavy screen is where the gesture "janks from time to time"
+ * (reported 2026-09-10), and a transition fighting the scroll restore under
+ * it is how the screen "resets and starts from the top".
+ */
+let navInstant = false;
+export function nextNavInstant(): void { navInstant = true; }
+
 function crossfade(run: () => void): void {
+  if (navInstant) { navInstant = false; run(); return; }
   const doc = typeof document === 'undefined' ? null : document;
   const start = (doc as unknown as {
     startViewTransition?: (cb: () => Promise<void> | void) => unknown;
