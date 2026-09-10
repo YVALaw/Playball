@@ -6890,6 +6890,9 @@
 
 .segmented button { position:relative; }
 .segmented-alert { position:absolute; top:5px; right:6px; width:6px; height:6px; border-radius:50%; background:var(--alert); box-shadow:0 0 0 2px var(--paper); }
+/* The record book's rooms wear the same dot while one holds a mark not yet looked at. */
+.record-room-selector button.has-news { position:relative; }
+.record-room-selector button .room-dot { position:absolute; top:6px; right:6px; width:7px; height:7px; border-radius:50%; background:var(--alert); box-shadow:0 0 0 2px var(--paper); }
 
 
 /* ---------------------------------------------------------------------------

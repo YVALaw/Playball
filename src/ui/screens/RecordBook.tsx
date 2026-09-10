@@ -27,7 +27,12 @@ export function RecordBook() {
   const unseenRecords = useDynasty((s) => s.unseenRecords);
   const clearUnseenRecords = useDynasty((s) => s.clearUnseenRecords);
   const [fresh] = useState(() => new Set(unseenRecords));
-  const [room, setRoom] = useState<RecordGroup>('game');
+  // The dot leads all the way down: the room with a new mark opens first, and
+  // wears the dot until it is looked at — asked for 2026-09-10: "if it was a
+  // rare feat, then rare feat gets a red dot."
+  const [room, setRoom] = useState<RecordGroup>(() =>
+    SECTIONS.find((s) => recordsIn(s.group).some((key) => fresh.has(key)))?.group ?? 'game');
+  const [seenRooms, setSeenRooms] = useState<Set<RecordGroup>>(() => new Set([room]));
   useEffect(() => { clearUnseenRecords(); }, [clearUnseenRecords]);
 
   const known = useMemo(() => {
@@ -61,13 +66,15 @@ export function RecordBook() {
         {SECTIONS.map((section) => {
           const active = room === section.group;
           const marks = recordsIn(section.group).filter((key) => book[key]).length;
+          const news = !seenRooms.has(section.group) && recordsIn(section.group).some((key) => fresh.has(key));
           return (
             <button
               key={section.group}
               type="button"
-              className={active ? 'active' : ''}
-              onClick={() => setRoom(section.group)}
+              className={`${active ? 'active' : ''}${news ? ' has-news' : ''}`}
+              onClick={() => { setRoom(section.group); setSeenRooms((s) => new Set([...s, section.group])); }}
             >
+              {news && <i className="room-dot" aria-label="New record" />}
               <small>{section.group === 'game' ? 'ONE NIGHT' : section.group === 'feat' ? 'RARE' : section.group.toUpperCase()}</small>
               <strong>{section.title}</strong>
               <span>{marks} set</span>
