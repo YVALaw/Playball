@@ -31,6 +31,7 @@ import {
   recruitingPrioritiesOf, factorScore, factorGrade, wantedScore, pitchVerdict, weekActionCost, totalWeekSpend,
   hasRecruitingRelationship, PITCH_COST, HARD_SELL_COST, SWAY_COST, VISIT_COST,
   PROMISE_COST, PROMISE_LABEL, availableRecruitPromises,
+  ASK_COST, ASK_COOLDOWN, askBlocked, decisionStyle, DECISION_LABEL,
   SCHOLARSHIPS, MAX_PER_RECRUIT, RECRUITING_WEEKS,
   reportedOverall, reportedPotential, reportedTool, hintsFor,
   type Prospect, type RecruitingFactor, type RecruitMajorInput,
@@ -1182,7 +1183,7 @@ function ProspectSheet({
       <div ref={dialog} className="prospect-sheet-scrim fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Recruiting file: ${p.name}`}>
         <section className="prospect-sheet-modern rise-in" onClick={(e) => e.stopPropagation()}>
           <header className="prospect-sheet-toolbar">
-            <span><small>RECRUITING FILE</small><strong>#{prospect.rank} nationally</strong></span>
+            <span><small>RECRUITING FILE</small><strong>#{prospect.rank} nationally{DECISION_LABEL[decisionStyle(prospect)] ? ` · ${DECISION_LABEL[decisionStyle(prospect)]}` : ''}</strong></span>
             <GodBolt target={{ kind: 'recruit', id: p.id }} label={`Edit ${p.name} in god mode`} className="toolbar-god" />
             <button className="tap" type="button" onClick={onClose}>CLOSE</button>
           </header>
@@ -1262,6 +1263,10 @@ function Overview({
   // change it, so the buttons say so rather than tapping into a wall.
   const swayRolled = weekAction?.major?.kind === 'sway';
   const swayUsed = Boolean(prospect.swayedBy?.[userTeam]);
+  // The closing action. Why it is shut is the store's own rule, so the
+  // button says the reason rather than tapping into a wall.
+  const askRolled = weekAction?.major?.kind === 'ask';
+  const askReason = askRolled ? null : askBlocked(prospect, userTeam, week, full);
   // Same arithmetic the week close will use, including the active pitch/move.
   const economy = useDynasty((s) => s.economy);
   const team = useDynasty((s) => s.season?.teams[userTeam]?.team);
@@ -1364,24 +1369,35 @@ function Overview({
               <>
                 <div className="recruit-major-buttons">
                   <button
-                    type="button" disabled={swayRolled} className={`tap${weekAction?.major?.kind === 'hardSell' ? ' active' : ''}`}
+                    type="button" disabled={swayRolled || askRolled} className={`tap${weekAction?.major?.kind === 'hardSell' ? ' active' : ''}`}
                     onClick={() => {
                       const factor = weekAction?.pitch ?? wants[0]!;
                       onMajor(weekAction?.major?.kind === 'hardSell' ? null : { kind: 'hardSell', factor });
                     }}
                   ><strong>HARD SELL</strong><small>{HARD_SELL_COST} PT · double down on your pitch</small></button>
                   <button
-                    type="button" disabled={swayRolled} className={`tap${weekAction?.major?.kind === 'visit' ? ' active' : ''}`}
+                    type="button" disabled={swayRolled || askRolled} className={`tap${weekAction?.major?.kind === 'visit' ? ' active' : ''}`}
                     onClick={() => onMajor(weekAction?.major?.kind === 'visit' ? null : { kind: 'visit' })}
                   ><strong>PROGRAM VISIT</strong><small>{VISIT_COST} PT · sell the whole place</small></button>
                   <button
-                    type="button" disabled={swayUsed || swayRolled} className={`tap${swayRolled ? ' active' : ''}`}
+                    type="button" disabled={swayUsed || swayRolled || askRolled} className={`tap${swayRolled ? ' active' : ''}`}
                     onClick={() => {
                       const factor = weekAction?.pitch ?? wants[0]!;
                       onMajor({ kind: 'sway', factor });
                     }}
                   ><strong>{swayUsed && !swayRolled ? 'SWAY USED' : 'SWAY'}</strong><small>{SWAY_COST} PT · one attempt all season</small></button>
+                  <button
+                    type="button" disabled={swayRolled || askRolled || askReason !== null} className={`tap${askRolled ? ' active' : ''}`}
+                    onClick={() => onMajor({ kind: 'ask' })}
+                  ><strong>ASK HIM TO COMMIT</strong><small>{ASK_COST} PT · {askReason ?? 'he answers now'}</small></button>
                 </div>
+                {weekAction?.major?.kind === 'ask' && (
+                  <div className={`recruit-sway-result ${weekAction.major.success ? 'won' : 'lost'}`}>
+                    {weekAction.major.success
+                      ? 'HE SAID YES — he commits when the week banks.'
+                      : `HE SAID NO — he doubts your ${weekAction.major.doubt ? RECRUITING_FACTOR_LABEL[weekAction.major.doubt].toLowerCase() : 'case'}. Ask again in week ${week + ASK_COOLDOWN}.`}
+                  </div>
+                )}
                 {weekAction?.major?.kind === 'sway' && (
                   <div className={`recruit-sway-result ${weekAction.major.success ? 'won' : 'lost'}`}>
                     {weekAction.major.success ? 'SWAY WORKED — his priorities moved.' : 'SWAY MISSED — the conversation did not move him.'}
@@ -1397,7 +1413,7 @@ function Overview({
                     const active = weekAction?.major?.kind === 'promise' && weekAction.major.promise === promise;
                     return (
                       <button
-                        type="button" key={promise} disabled={promiseLocked || swayRolled}
+                        type="button" key={promise} disabled={promiseLocked || swayRolled || askRolled}
                         className={`tap${active ? ' active' : ''}`}
                         onClick={() => onMajor(active ? null : { kind: 'promise', promise })}
                       ><strong>PROMISE · {PROMISE_LABEL[promise]}</strong><small>{PROMISE_COST[promise]} RP · {PROMISE_DETAIL[promise]}</small></button>

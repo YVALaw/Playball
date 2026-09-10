@@ -6569,6 +6569,27 @@ signing-day row no longer wears DRAFTED BY THE PROS, the two "never arrives"
 letters are gone, and the season opener's stings list stays empty until the
 winter grows another surprise.
 
+**How a recruit decides** (`decisionStyle`, `commitPriceFor`, `askBlocked`,
+`askForCommitment`, `chaseCut` — recruiting.ts; 2026-09-10). Reported:
+"recruits who simply take too long to decide or never do, not enough instant
+commits, chasing a high profile recruit is a nightmare." Four changes. A
+decision style, hashed off the id: about a fifth of the class decides early
+(a third of the top sixty), settles on sixty percent of his grade's price and
+says so the week it happens; about a sixth waits for the season and commits
+to nobody before week six unless asked. A readiness clock in `closeWeek`
+replaces the flat 45% roll: a settled man commits at 45%, then 70%, then
+certainly, so nobody who has made up his mind waits past three weeks. The
+closing action: once a coach leads him with his price banked, ASK HIM TO
+COMMIT (6 RP) is answered on the spot off a hash of man, program, year and
+week — odds from the lead and the fit — and a yes is the commitment at the
+week close whatever the margin; a no names the want he doubts and shuts the
+door for two weeks. And the rivals' chase cut tightens from 40% behind the
+leader to 33% by week four, 25% by six and 15% from nine, so a midseason
+leader is contested only by a program genuinely close. Measured on five
+greedy classes (`tests/recruiting-clock-probe.ts`): commits peak in weeks
+six and seven, fifty-two of six hundred land on the deadline, and early
+deciders commit a week and a half before the steady.
+
 **The run-expectancy AI** (`buntEdge` — strategy.ts). The RE24 and
 scoring-probability matrices, scaled to the league's 5.30, replace the
 bunt heuristics; the policy knob keeps its meaning (OFTEN takes losing

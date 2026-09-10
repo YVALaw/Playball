@@ -130,6 +130,7 @@ import {
   aiTargets, weeklyPoints, closeWeek, resetWeeklySpend, canPursue, inPipeline,
   leadersAtWeekStart, totalWeekSpend, weekActionCost, majorActionCost,
   hasRecruitingRelationship, swayRecruit, planAiRecruitActions, availableRecruitPromises,
+  askBlocked, askForCommitment,
   type RecruitingFactor, type RecruitMajorAction, type RecruitMajorInput,
 } from '../engine/recruiting.js';
 import { pitchFor, developmentScore } from '../engine/pitch.js';
@@ -2819,10 +2820,17 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // again on the already-moved priorities, ×1.6 a time, for as long as the
     // budget held. The attempt is the move; it cannot be taken back.
     if (current.major?.kind === 'sway') return false;
+    // An ask is answered the moment it is made and, like a sway, is the
+    // week's move: it cannot be withdrawn or repeated.
+    if (current.major?.kind === 'ask') return false;
     // Major moves are relationship actions, never cold-call shortcuts. Week 2+
     // only. Sway is a one-time attempt across the full spring relationship.
     if (input && (week < 2 || !hasRecruitingRelationship(prospect, userTeam))) return false;
     if (input?.kind === 'sway' && prospect.swayedBy?.[userTeam]) return false;
+    if (input?.kind === 'ask') {
+      const full = season.recruiting.prospects.filter((p) => p.signedBy === userTeam).length >= SCHOLARSHIPS;
+      if (askBlocked(prospect, userTeam, week, full) !== null) return false;
+    }
     if (input?.kind === 'promise' && !availableRecruitPromises(prospect.player).includes(input.promise)) return false;
     // A promise is a binding recruitment commitment, not a coupon that resets
     // with the weekly action ledger. It can be changed/withdrawn during the same
@@ -2835,7 +2843,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const pricedMajor: RecruitMajorAction | undefined = input
       ? input.kind === 'sway'
         ? { kind: 'sway', factor: input.factor, success: false }
-        : input
+        : input.kind === 'ask'
+          ? { kind: 'ask', success: false }
+          : input
       : undefined;
     const pricedNext = { ...current };
     if (!pricedMajor) delete pricedNext.major; else pricedNext.major = pricedMajor;
@@ -2855,6 +2865,15 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       );
       (prospect.swayedBy ??= {})[userTeam] = true;
       major = { kind: 'sway', factor: input.factor, success };
+    }
+    if (input?.kind === 'ask') {
+      const pitch = userRecruitingPitch(season, userTeam, coach, get().economy);
+      if (!pitch) return false;
+      // Answered here, deterministically, and written on him: the week close
+      // reads a yes as the commitment, and a no shuts the door for a while.
+      const answer = askForCommitment(prospect, userTeam, pitch, get().year, week);
+      (prospect.askedBy ??= {})[userTeam] = { week, ...answer };
+      major = { kind: 'ask', ...answer };
     }
     const next = { ...current };
     if (!major) delete next.major; else next.major = major;

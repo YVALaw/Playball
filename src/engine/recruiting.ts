@@ -113,12 +113,14 @@ export type RecruitMajorAction =
   | { kind: 'hardSell'; factor: RecruitingFactor }
   | { kind: 'visit' }
   | { kind: 'sway'; factor: RecruitingFactor; success: boolean }
-  | { kind: 'promise'; promise: RecruitPromiseKind };
+  | { kind: 'promise'; promise: RecruitPromiseKind }
+  | { kind: 'ask'; success: boolean; doubt?: RecruitingFactor };
 export type RecruitMajorInput =
   | { kind: 'hardSell'; factor: RecruitingFactor }
   | { kind: 'visit' }
   | { kind: 'sway'; factor: RecruitingFactor }
-  | { kind: 'promise'; promise: RecruitPromiseKind };
+  | { kind: 'promise'; promise: RecruitPromiseKind }
+  | { kind: 'ask' };
 
 export interface RecruitWeekAction {
   pitch?: RecruitingFactor;
@@ -129,6 +131,8 @@ export const PITCH_COST = 3;
 export const HARD_SELL_COST = 5;
 export const SWAY_COST = 6;
 export const VISIT_COST = 8;
+/** Asking for his commitment: the closing action. See `askForCommitment`. */
+export const ASK_COST = 6;
 export const PROMISE_COST: Record<RecruitPromiseKind, number> = {
   immediateRole: 12,
   noRedshirt: 8,
@@ -203,6 +207,10 @@ export interface Prospect {
   weekActions?: Record<number, RecruitWeekAction>;
   /** A sway is a one-time relationship attempt across the whole recruiting season. */
   swayedBy?: Record<number, boolean>;
+  /** The last time each program asked him to commit, and his answer. */
+  askedBy?: Record<number, { week: number; success: boolean; doubt?: RecruitingFactor }>;
+  /** The week a clear leader first met his price — his readiness clock. */
+  settledSince?: number;
   /** A binding promise survives the weekly action reset and follows him if he signs. */
   promiseBy?: Record<number, RecruitPromiseKind>;
   /** Team index once he has committed. */
@@ -1332,6 +1340,7 @@ export function majorActionCost(action?: RecruitMajorAction): number {
   if (action.kind === 'hardSell') return HARD_SELL_COST;
   if (action.kind === 'sway') return SWAY_COST;
   if (action.kind === 'visit') return VISIT_COST;
+  if (action.kind === 'ask') return ASK_COST;
   return PROMISE_COST[action.promise];
 }
 
@@ -1395,6 +1404,10 @@ export function actionInterest(prospect: Prospect, pitch: Pitch, team: number): 
     // The payoff of a sway is the priority it moved; the interest is the
     // conversation itself, and a failed one still was one.
     bonus += SWAY_COST * RAW_RATE * (major.success ? 0.5 : 0.15);
+  } else if (major.kind === 'ask') {
+    // Asking is a conversation too: a yes is banked on the way to the
+    // commitment, a no still had him in the room.
+    bonus += ASK_COST * RAW_RATE * (major.success ? 0.5 : 0.15);
   } else if (major.kind === 'promise') {
     const factor: RecruitingFactor = major.promise === 'immediateRole' ? 'playingTime'
       : major.promise === 'twoWayOpportunity' ? 'development'
@@ -1553,6 +1566,15 @@ export function weeklyPoints(
  * highest prestige programs in the league ran last and signed **nobody at all**,
  * every year, while everyone ahead of them signed a full class.
  */
+/**
+ * How far behind the leader a rival will still chase, by week of the window:
+ * forty percent early, a third by week four, a quarter by six, fifteen
+ * percent from nine.
+ */
+export function chaseCut(week: number): number {
+  return week >= 9 ? 0.15 : week >= 6 ? 0.25 : week >= 4 ? 0.33 : 0.4;
+}
+
 export function aiTargets(
   team: number, pitch: Pitch, coachPrestige: number,
   prospects: readonly Prospect[], need: number, rng: Rng,
@@ -1578,8 +1600,10 @@ export function aiTargets(
     // Cutting at 40% rather than 60% matters more than it looks: a program that
     // keeps throwing actions at a recruit it is losing signs nobody at all with
     // them. Letting go earlier is what stopped classes ranging from one player
-    // to twelve.
-    return mine >= best || (best - mine) / best < 0.4;
+    // to twelve. And the cut tightens as the window runs (2026-09-10): a
+    // week-six leader is contested only by a program genuinely close, so a
+    // five-star chase has an end rather than a field that never clears.
+    return mine >= best || (best - mine) / best < chaseCut(weekNo);
   });
 
   // Always work a full board. A program short of targets is a program handing
@@ -1716,6 +1740,43 @@ export function aiTargets(
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// How a recruit decides
+// ---------------------------------------------------------------------------
+//
+// Reported 2026-09-10: "there are recruits who simply take too long to decide
+// or never do, there are not enough instant commits, chasing a high profile
+// recruit is a nightmare." Three answers, all here: a man's decision style
+// (some decide early, some wait for the season), a readiness clock so a man
+// who has made up his mind does not sit on it for weeks, and a closing action
+// — the coach can ask for the commitment and get an answer.
+
+/** The same stable string hash the rest of the engine derives with. */
+function stableHash(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619) >>> 0;
+  return h >>> 0;
+}
+
+export type DecisionStyle = 'early' | 'steady' | 'late';
+export const DECISION_LABEL: Record<DecisionStyle, string | null> = {
+  early: 'DECIDES EARLY', steady: null, late: 'WAITS FOR THE SEASON',
+};
+
+/**
+ * How he decides, derived off his id so it costs no draw and the same class
+ * reads the same way on every reload. About a fifth of the country decides
+ * early — more of it at the top of the board, where the offers come earliest
+ * — and about a sixth waits to see the season before committing to anybody.
+ */
+export function decisionStyle(prospect: Pick<Prospect, 'id' | 'rank'>): DecisionStyle {
+  const roll = stableHash(`${prospect.id}:decides`) % 100;
+  const early = prospect.rank <= 60 ? 32 : 18;
+  if (roll < early) return 'early';
+  if (roll < early + 16) return 'late';
+  return 'steady';
+}
+
 /**
  * Points banked before a recruit will commit before the deadline.
  *
@@ -1744,8 +1805,85 @@ const COMMIT_POINTS = 7;
 export const commitPointsFor = (stars: number): number =>
   COMMIT_POINTS * (1 + Math.max(0, stars - 2) * 0.55);
 
+/** What this man wants banked: his grade's price, and less if he decides early. */
+export const commitPriceFor = (prospect: Pick<Prospect, 'id' | 'rank' | 'stars'>): number =>
+  commitPointsFor(prospect.stars) * (decisionStyle(prospect) === 'early' ? 0.6 : 1);
+
 /** How far clear the leader must be before a recruit stops listening. */
 const COMMIT_MARGIN = 0.35;
+
+/**
+ * How likely a settled man is to say so this week, by how long he has been
+ * settled: the week it first happens, the week after, and then certainly.
+ * One roll at 45% forever was the whole complaint — a man you led outright
+ * waited two weeks on average and sometimes six.
+ */
+const READINESS = [0.45, 0.7, 1] as const;
+
+/** A man who waits for the season commits to nobody before this week, unless asked. */
+export const LATE_DECIDER_WEEK = 6;
+
+/** Weeks a refused ask keeps the door shut. */
+export const ASK_COOLDOWN = 2;
+
+/**
+ * Why a coach cannot ask this man for his commitment this week, or null.
+ *
+ * The door: a relationship, his price banked, the lead, room in the class,
+ * and not a refusal inside the cooldown. Read by the store's guard and by the
+ * screen, so the button's reason and the refusal are one rule.
+ */
+export function askBlocked(
+  prospect: Prospect, team: number, week: number, classFull = false,
+): string | null {
+  if (prospect.signedBy !== null) return 'He has committed.';
+  if (classFull) return 'No scholarship left to offer him.';
+  if (week < 2 || !hasRecruitingRelationship(prospect, team)) return 'Bank a week of interest first.';
+  const last = prospect.askedBy?.[team];
+  if (last && !last.success && week < last.week + ASK_COOLDOWN) {
+    return `He said no in week ${last.week}. Ask again in week ${last.week + ASK_COOLDOWN}.`;
+  }
+  const mine = prospect.points[team] ?? 0;
+  const price = commitPriceFor(prospect);
+  if (mine < price) return `Bank ${Math.ceil(price - mine)} more interest first.`;
+  const best = Math.max(0, ...Object.entries(prospect.points)
+    .filter(([t]) => Number(t) !== team).map(([, v]) => v));
+  if (best > mine) return 'Somebody else is ahead of you. Take the lead first.';
+  return null;
+}
+
+/**
+ * Ask him, and get an answer.
+ *
+ * Deterministic off the man, the program, the year and the week, so a reload
+ * cannot re-ask. The odds are the lead and the fit: a man you lead by a
+ * distance at a program that suits him says yes almost every time; a narrow
+ * lead at a thin fit is a coin. A no names the want he still doubts — the
+ * first of his top three the pitch is thin or hollow on, else the weakest —
+ * so the coach knows what to work on before the door reopens.
+ */
+export function askForCommitment(
+  prospect: Prospect, team: number, pitch: Pitch, year: number, week: number,
+): { success: boolean; doubt?: RecruitingFactor } {
+  const mine = prospect.points[team] ?? 0;
+  const second = Math.max(0, ...Object.entries(prospect.points)
+    .filter(([t]) => Number(t) !== team).map(([, v]) => v));
+  const margin = mine > 0 ? (mine - second) / mine : 0;
+  const price = Math.max(1, commitPriceFor(prospect));
+  const surplus = Math.max(0, mine - price) / price;
+  const chance = Math.max(0.15, Math.min(0.95,
+    0.3 + margin * 0.9 + (fit(prospect, pitch) - 0.5) * 0.6 + Math.min(0.2, surplus * 0.2),
+  ));
+  const roll = (stableHash(`${prospect.id}:${team}:${year}:${week}:ask`) % 1000) / 1000;
+  if (roll < chance) return { success: true };
+  const priorities = recruitingPrioritiesOf(prospect);
+  const wants = [...RECRUITING_FACTORS].sort((a, b) => priorities[b] - priorities[a]).slice(0, 3);
+  const doubt = wants.find((f) => {
+    const v = pitchVerdict(prospect, pitch, f);
+    return v === 'thin' || v === 'hollow';
+  }) ?? [...wants].sort((a, b) => factorScore(prospect, pitch, a) - factorScore(prospect, pitch, b))[0];
+  return { success: false, ...(doubt ? { doubt } : {}) };
+}
 
 export interface Commitment {
   prospect: Prospect;
@@ -1799,28 +1937,49 @@ export function closeWeek(
     const second = inTheRunning[1]?.points ?? 0;
     const margin = (leader.points - second) / leader.points;
 
+    /*
+      A yes to a coach who asked this week is a commitment, whoever else is
+      in the room — that was the point of asking. The program still needs a
+      scholarship to give, which is what `inTheRunning` already checks.
+    */
+    const asked = Object.entries(prospect.askedBy ?? {})
+      .find(([t, a]) => a.success && a.week === recruits.week
+        && inTheRunning.some((e) => e.team === Number(t)));
+    const said = asked ? Number(asked[0]) : null;
+
     // Early weeks: only a recruit who has genuinely made up his mind. A clear
-    // leader and enough attention banked to mean something.
-    if (!finalWeek) {
-      // What it takes scales with what he is. A five star wants to be courted;
-      // a two star wants to be wanted.
+    // leader and enough attention banked to mean something — what it takes
+    // scales with what he is; a five star wants to be courted, a two star
+    // wants to be wanted — and then a readiness clock rather than a coin: the
+    // week it first happens, the week after, and then certainly. A man who
+    // waits for the season is settled by nobody before LATE_DECIDER_WEEK; a
+    // man who decides early settles on less and says so at once.
+    if (!finalWeek && said === null) {
+      const style = decisionStyle(prospect);
       const settled = margin > COMMIT_MARGIN
-        && leader.points > commitPointsFor(prospect.stars);
-      if (!settled || rng() > 0.45) continue;
+        && leader.points > commitPriceFor(prospect)
+        && (style !== 'late' || recruits.week >= LATE_DECIDER_WEEK);
+      if (!settled) { delete prospect.settledSince; continue; }
+      prospect.settledSince ??= recruits.week;
+      const ready = style === 'early'
+        ? 1
+        : READINESS[Math.max(0, Math.min(2, recruits.week - prospect.settledSince))]!;
+      if (rng() > ready) continue;
     }
 
     // On the last week a recruit still signs with whoever leads — but a top
     // recruit nobody has really worked simply goes elsewhere rather than
     // falling into the lap of whoever put a token point on him.
-    if (finalWeek && leader.points < commitPointsFor(prospect.stars) * 0.6) {
+    if (finalWeek && said === null && leader.points < commitPriceFor(prospect) * 0.6) {
       continue;
     }
 
-    prospect.signedBy = leader.team;
+    const winner = said ?? leader.team;
+    prospect.signedBy = winner;
     prospect.committedWeek = recruits.week;
-    taken.set(leader.team, (taken.get(leader.team) ?? 0) + 1);
+    taken.set(winner, (taken.get(winner) ?? 0) + 1);
     commits.push({
-      prospect, team: leader.team, margin,
+      prospect, team: winner, margin,
       contested: entries.map((e) => e.team),
     });
   }
