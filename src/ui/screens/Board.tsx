@@ -35,7 +35,7 @@ import {
   reportedOverall, reportedPotential, reportedTool, hintsFor,
   type Prospect, type RecruitingFactor, type RecruitMajorInput,
 } from '../../engine/recruiting.js';
-import { walkOnShortfall } from '../../engine/progression.js';
+import { walkOnShortfall, depthShortfall } from '../../engine/progression.js';
 import { pitchFor } from '../../engine/pitch.js';
 import { overallOf } from '../../engine/ratings.js';
 import { highSchoolLine } from '../../engine/scouting.js';
@@ -295,7 +295,7 @@ export function Board() {
   const networkFor = (p: Prospect): number => pipelineStrength(economy, p.state, homeState);
 
   const {
-    list, matches, targets, commits, spent, locked, shortfall, covered, leaving,
+    list, matches, targets, commits, spent, locked, shortfall, thin, covered, leaving,
   } = useMemo(() => {
     const all = season?.recruiting.prospects ?? [];
     // One gate, asked the same way everywhere on this screen: the program's
@@ -355,6 +355,10 @@ export function Board() {
     // the class the year roll receives is exactly the class on this screen.
     const classPlayers = signed.map((p) => p.player);
     const still = walkOnShortfall(survivors, classPlayers);
+    // The second tier: a starter with nobody who naturally covers him. An open
+    // hole already sits in the list above, so it is not said twice.
+    const thin = depthShortfall(survivors, classPlayers)
+      .filter((t) => !still.some((h) => h.pos === t.pos));
 
     const list = showAll ? ranked : ranked.slice(0, ROW_CAP);
 
@@ -379,6 +383,7 @@ export function Board() {
       locked: filters.reachOnly ? [] : shown.filter((p) => !reaches(p))
         .sort((a, b) => b.stars - a.stars).slice(0, 5),
       shortfall: still,
+      thin,
       covered: coveredSince(walkOnShortfall(survivors, []), still),
       leaving,
     };
@@ -583,7 +588,7 @@ export function Board() {
 
 
       {view === 'needs' ? (
-        <NeedsView short={shortfall} covered={covered} leaving={leaving} targeted={activeTargetCount} onPick={(pos) => {
+        <NeedsView short={shortfall} thin={thin} covered={covered} leaving={leaving} targeted={activeTargetCount} onPick={(pos) => {
           setFilters({ ...NO_FILTERS, pos });
           setView('recruits');
         }} />
@@ -959,9 +964,11 @@ function FilterToggle({ on, onClick, label, note }: {
  * there.
  */
 function NeedsView(
-  { short, covered, leaving, targeted, onPick }:
+  { short, thin, covered, leaving, targeted, onPick }:
   {
     short: readonly { pos: string; count: number }[];
+    /** A starter and nobody who naturally covers him — see `depthShortfall`. */
+    thin: readonly { pos: string; count: number }[];
     covered: readonly { pos: string; count: number }[];
     /** Seniors counted as gone in June, while the season is still on. */
     leaving: number;
@@ -984,7 +991,8 @@ function NeedsView(
         {(total === 0
           ? 'Every spot covered. The whole roster is men you went and got.'
           : `${total} walk-on${total === 1 ? '' : 's'} as it stands. Whoever turns `
-            + 'up is well below your level, and gone in a year.') + seniors}
+            + 'up is well below your level, and gone in a year.') + seniors
+          + (thin.length > 0 ? ` ${thin.length} spot${thin.length === 1 ? ' has' : 's have'} no natural backup.` : '')}
       </div>
 
       {short.length > 0 && (
@@ -1016,6 +1024,44 @@ function NeedsView(
             </button>
           ))}
         </div>
+      )}
+
+      {/* The second tier, asked for 2026-09-10: a starter with nobody who
+          naturally covers him is a need too — one injury from a stretch. */}
+      {thin.length > 0 && (
+        <>
+          <div className="label" style={{ marginTop: 16, marginBottom: 6 }}>
+            NO BACKUP
+          </div>
+          <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+            {thin.map((h) => (
+              <button
+                key={`thin-${h.pos}`}
+                onClick={() => onPick(h.pos)}
+                className="tap"
+                style={{
+                  width: '100%', textAlign: 'left',
+                  display: 'grid', gridTemplateColumns: '52px 1fr auto',
+                  gap: 10, alignItems: 'center',
+                  padding: '11px 11px', borderBottom: '1px solid var(--hairline)',
+                  background: 'transparent',
+                }}
+              >
+                <span style={{
+                  font: "700 calc(13px * var(--ts)) var(--mono)", letterSpacing: '.06em', color: 'var(--clay)',
+                }}>{h.pos}</span>
+                <span style={{ font: "400 calc(11.5px * var(--ts))/1.4 var(--body)", color: 'var(--dim)' }}>
+                  {targeted(h.pos) > 0
+                    ? `${targeted(h.pos)} active target${targeted(h.pos) === 1 ? '' : 's'} · a backup on the board`
+                    : h.pos === 'SP' ? 'Four starters and nobody behind them' : 'A starter and nobody who naturally covers him'}
+                </span>
+                <span style={{
+                  font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: 'var(--dim)',
+                }}>SHOW ME →</span>
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
       {/* What the class has already bought. A tab that only ever lists what is

@@ -11,7 +11,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  positionPenalty, secondaryPositions, fieldingAt, penaltyLabel,
+  positionPenalty, secondaryPositions, retrainablePositions, fieldingAt, penaltyLabel, coverTier,
 } from '../src/engine/positions.js';
 import { overallOf } from '../src/engine/ratings.js';
 import { createSeason } from '../src/engine/season.js';
@@ -28,15 +28,41 @@ describe('the spectrum', () => {
     for (const p of everyone) expect(positionPenalty(p, p.pos)).toBe(0);
   });
 
-  it('is free downhill and dear uphill', () => {
+  it('prices a natural cover as a rung, a stretch as a story, the deep end as a mistake', () => {
     // The rule the whole model rests on: a shortstop plays second tomorrow, a
-    // first baseman never plays short.
+    // second baseman stretches to short, a first baseman never plays short.
     const ss = at('SS');
+    const second = at('2B');
     const first = at('1B');
-    expect(positionPenalty(ss, '1B'), 'a shortstop was charged to stand at first').toBe(0);
-    expect(positionPenalty(ss, '2B'), 'a shortstop was charged to play second').toBe(0);
-    expect(positionPenalty(first, 'SS'), 'a first baseman played short for free')
-      .toBeGreaterThan(20);
+    expect(coverTier(ss, '2B')).toBe(1);
+    expect(positionPenalty(ss, '2B'), 'a shortstop at second is a rung').toBe(4.5);
+    expect(positionPenalty(ss, '1B'), 'a shortstop at first is a rung').toBe(4.5);
+    expect(coverTier(second, 'SS'), 'a second baseman at short is a stretch').toBe(2);
+    expect(positionPenalty(second, 'SS')).toBeGreaterThan(positionPenalty(ss, '2B'));
+    expect(coverTier(first, 'SS'), 'a first baseman at short is the deep end').toBe(3);
+    expect(positionPenalty(first, 'SS')).toBeGreaterThan(20);
+    // Until 2026-09-10 moving down a ladder was free, so a shortstop cost
+    // nothing anywhere and a bat outranked a glove almost everywhere.
+    expect(positionPenalty(ss, 'LF')).toBeGreaterThan(0);
+  });
+
+  it('reads the way a dugout does', () => {
+    const tier = (from: Position, to: Position): number => coverTier(at(from), to);
+    // Centre covers the corners; a corner stretches to centre.
+    expect(tier('CF', 'LF')).toBe(1);
+    expect(tier('LF', 'CF')).toBe(2);
+    // The corners cover each other and first.
+    expect(tier('LF', 'RF')).toBe(1);
+    expect(tier('RF', '1B')).toBe(1);
+    // Third covers first and second; a first baseman stretches to third.
+    expect(tier('3B', '1B')).toBe(1);
+    expect(tier('3B', '2B')).toBe(1);
+    expect(tier('1B', '3B')).toBe(2);
+    // An outfielder in the middle infield is out of his depth.
+    expect(tier('LF', 'SS')).toBe(3);
+    expect(tier('RF', '2B')).toBe(3);
+    // Nobody is out of position at the DH.
+    for (const pos of ['C', '1B', 'SS', 'CF'] as Position[]) expect(tier(pos, 'DH')).toBe(0);
   });
 
   it('treats catching as a trade rather than a hard position', () => {
@@ -66,8 +92,8 @@ describe('the spectrum', () => {
       base and left field.
     */
     const c = at('C');
-    expect(positionPenalty(c, '1B'), 'a catcher could not play first').toBe(0);
-    expect(positionPenalty(c, 'LF')).toBeLessThan(4.5);
+    expect(coverTier(c, '1B'), 'a catcher could not play first').toBe(1);
+    expect(coverTier(c, 'LF'), 'a catcher in left is a stretch, not the deep end').toBe(2);
     expect(positionPenalty(c, 'SS'), 'a catcher was free cover at short')
       .toBeGreaterThan(20);
     expect(positionPenalty(c, '2B')).toBeGreaterThan(15);
@@ -86,12 +112,16 @@ describe('the spectrum', () => {
 });
 
 describe('secondary positions', () => {
-  it('gives everybody somewhere else to stand, and nobody everywhere', () => {
+  it('gives everybody somewhere to be retrained, and nobody everywhere', () => {
     for (const p of everyone.slice(0, 300)) {
-      const also = secondaryPositions(p);
-      expect(also, `${p.pos} can play nowhere else`).not.toHaveLength(0);
+      const also = retrainablePositions(p);
+      expect(also, `${p.pos} can be taught nowhere else`).not.toHaveLength(0);
       expect(also, `${p.pos} can play everywhere`).not.toContain('DH');
       expect(also.includes(p.pos), 'listed his own position as a secondary').toBe(false);
+      // What he covers without a story is the front of that list.
+      const covers = secondaryPositions(p);
+      expect(also.slice(0, covers.length)).toEqual(covers);
+      for (const spot of covers) expect(coverTier(p, spot)).toBe(1);
     }
   });
 
@@ -107,11 +137,15 @@ describe('secondary positions', () => {
     const ss = secondaryPositions(at('SS'));
     expect(ss[0]).toBe('2B');
 
-    // And a first baseman gets exactly one rung up, which is left field and
-    // nothing beyond it. That is the model being honest rather than generous:
-    // the whole point of the ladder is that most men have one spare position,
-    // not a menu.
-    expect(secondaryPositions(at('1B'))).toEqual(['LF']);
+    // A first baseman covers nothing naturally; what he has are stretches, and
+    // only the retrain list carries those, hardest first. That is the model
+    // being honest rather than generous: the whole point of the matrix is that
+    // most men have a spare position or two, not a menu.
+    expect(secondaryPositions(at('1B'))).toEqual([]);
+    expect(retrainablePositions(at('1B'))).toEqual(['3B', 'RF', 'LF']);
+    // A shortstop covers the whole dirt and the grass, and has no stretches.
+    expect(secondaryPositions(at('SS'))).toEqual(['2B', 'CF', '3B', 'RF', 'LF', '1B']);
+    expect(retrainablePositions(at('SS'))).toEqual(secondaryPositions(at('SS')));
   });
 });
 

@@ -29,7 +29,7 @@ import { useDynasty } from '../../state/store.js';
 import { handles } from '../../state/depth.js';
 import { standing, WORDS_A_SEASON } from '../../engine/eligibility.js';
 import { canRedshirt, MAX_REDSHIRTS, redshirtCount } from '../../engine/redshirt.js';
-import { secondaryPositions } from '../../engine/positions.js';
+import { retrainablePositions } from '../../engine/positions.js';
 import { injuryClock } from '../../engine/season.js';
 import { isHurt, prognosis } from '../../engine/injury.js';
 import { legWeariness } from '../../engine/workload.js';
@@ -157,7 +157,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
     `secondaryPositions` already sorts hardest first, so the top of that list is
     the half worth printing: what he can do that is *not* obvious.
   */
-  const alsoPlays = (p.type === 'hitter' ? secondaryPositions(p as Hitter) : []).slice(0, 3);
+  const alsoPlays = (p.type === 'hitter' ? retrainablePositions(p as Hitter) : []).slice(0, 3);
 
   /** The word under the trigger, so the button says something before it opens. */
   const statusLabel = hurtNow ? 'HURT'

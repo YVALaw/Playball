@@ -32,7 +32,7 @@
 
 import type { Hitter, Player, PlayerId, Position, Team } from './types.js';
 import { overallOf } from './ratings.js';
-import { fieldingAt, positionPenalty } from './positions.js';
+import { fieldingAt, coverTier } from './positions.js';
 
 /** The nine spots a lineup card has to fill, in scorebook order. */
 export const SPOTS: readonly Position[] = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH'];
@@ -139,9 +139,9 @@ export function depthAt(team: Team, spot: Position): Hitter[] {
 
 /** What the screen shows against a name: his own spot, or what it costs him. */
 export function fitAt(p: Hitter, spot: Position): 'his own' | 'covers' | 'stretch' {
-  const cost = positionPenalty(p, spot);
-  if (cost === 0) return p.pos === spot ? 'his own' : 'covers';
-  return 'stretch';
+  const tier = coverTier(p, spot);
+  if (tier === 0) return p.pos === spot || spot === 'DH' ? 'his own' : 'covers';
+  return tier === 1 ? 'covers' : 'stretch';
 }
 
 /**
@@ -356,16 +356,16 @@ export function fitTheNine(
  *
  * This one picks from the whole squad. Hardest spot first — the order
  * `startersFrom` fills in, for the same reason — and each spot goes to the
- * best available man who can actually play it: his own spot or one he covers
- * (`positionPenalty` of nothing), ranked by what he would be there. Only when
- * nobody like that is left does a stretch get the spot, best stretch first.
- * The tiers matter more than they look: the penalty is a glove tax and the
- * glove is a small share of a man's overall, so ranked on overall alone an
- * eighty-rated first baseman took catcher off a thirty-four-rated catcher on
- * the first roster this was tried on. A coach's written order at a spot still
- * leads it; merit fills behind. A spot nobody available can take keeps
- * whoever stood there, hurt or not, because fielding eight is not a thing
- * that happens in baseball.
+ * best available man who can actually play it: his own spot or a natural
+ * cover (`coverTier` of one or less), ranked by what he would be there. Only
+ * when nobody like that is left does a stretch get the spot, and the deep end
+ * only when there is nobody at all. The tiers matter more than they look: the
+ * penalty is a glove tax and the glove is a small share of a man's overall,
+ * so ranked on overall alone an eighty-rated first baseman took catcher off a
+ * thirty-four-rated catcher on the first roster this was tried on. A coach's
+ * written order at a spot still leads it; merit fills behind. A spot nobody
+ * available can take keeps whoever stood there, hurt or not, because
+ * fielding eight is not a thing that happens in baseball.
  *
  * Draw-free and deterministic, like `autoBattingOrder`: ties go to the man
  * whose own spot it is, then to the incumbent nine, then to the name, so the
@@ -401,8 +401,13 @@ export function bestNine(
     const wrote = (written[spot] ?? [])
       .map((id) => free.find((m) => m.id === id))
       .find((m): m is Hitter => m !== undefined);
-    const fits = free.filter((m) => positionPenalty(home(m), spot) === 0);
-    const pick = wrote ?? (fits.length > 0 ? fits : free).sort(rank(spot))[0];
+    // His own or a natural cover first, then a stretch, and the deep end only
+    // when there is nobody else — the cover matrix in positions.ts.
+    const tierOf = (m: Hitter): number => coverTier(home(m), spot);
+    const fits = free.filter((m) => tierOf(m) <= 1);
+    const stretches = free.filter((m) => tierOf(m) === 2);
+    const pool = fits.length > 0 ? fits : stretches.length > 0 ? stretches : free;
+    const pick = wrote ?? pool.sort(rank(spot))[0];
     if (!pick) continue;
     taken.add(pick.id);
     picks.set(spot, pick);

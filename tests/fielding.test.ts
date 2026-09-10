@@ -508,10 +508,16 @@ describe('the pitcher as a fielder', () => {
   });
 
   it('boots them with bad hands, and is charged for it himself', () => {
-    const stony = defenceTrial(300, (r) => {
+    // Fifteen hundred games, not three hundred: a pitcher sees a chance or two a
+    // game and boots one in twenty, so three hundred games is twenty errors a
+    // side and the comparison was noise — it flipped when the cover matrix
+    // moved the draws under it. At fifteen hundred the gap is real (5.8% to
+    // 5.0% on the probe that found this), if smaller than the hands rating
+    // would suggest.
+    const stony = defenceTrial(1500, (r) => {
       for (const p of r) if (p.pos === 'P') p.hands = 10;
     });
-    const sure = defenceTrial(300, (r) => {
+    const sure = defenceTrial(1500, (r) => {
       for (const p of r) if (p.pos === 'P') p.hands = 90;
     });
     const mound = (t: Tally): number => (t.byPos.get('P') as { errors: number }).errors;

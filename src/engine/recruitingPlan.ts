@@ -3,7 +3,7 @@ import type { SeasonState, TeamRecord } from './season.js';
 import type { Region } from '../data/schools.js';
 import { actionInterest, weeklyPoints, weekActionCost, type Prospect } from './recruiting.js';
 import { recruitingDirectiveMultiplier, facilityEffects, FACILITIES, pipelineStrength, recruitingFacilityScore, type Economy } from './economy.js';
-import { holesFor } from './progression.js';
+import { holesFor, depthShortfall } from './progression.js';
 import type { Pitch } from './recruiting.js';
 import type { Player } from './types.js';
 
@@ -15,7 +15,8 @@ export function recruitingPlan(prospect: Prospect, pitch: Pitch, at: {
 }) {
   const p = prospect.player;
   const position = p.type === 'pitcher' ? p.role : p.pos;
-  const need = holesFor(at.roster ?? []).some((h) => h.pos === position && h.count > 0);
+  const need = holesFor(at.roster ?? []).some((h) => h.pos === position && h.count > 0)
+    || depthShortfall(at.roster ?? [], []).some((h) => h.pos === position);
   const multiplier = at.economy ? recruitingDirectiveMultiplier(at.economy, prospect.stars, need) : 1;
   const rp = at.actions + weekActionCost(prospect, at.team);
   const raw = rp > 0

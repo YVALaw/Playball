@@ -16,6 +16,7 @@ import {
 } from './draft.js';
 import { ageFor, makeHitter, makePitcher, releaseNames, reserveNames } from './players.js';
 import { adoptSpot } from './depthChart.js';
+import { coverTier } from './positions.js';
 import { prestigeStars } from './program.js';
 import { GENERATED_POTENTIAL_CAP } from './scouting.js';
 import { armValue, overallOf, clamp } from './ratings.js';
@@ -755,6 +756,37 @@ export function holesFor(survivors: readonly Player[]): { pos: string; count: nu
   const rp = arms.filter((p) => p.role === 'RP').length;
   if (sp < ROTATION_SIZE) out.push({ pos: 'SP', count: ROTATION_SIZE - sp });
   if (rp < BULLPEN_SIZE) out.push({ pos: 'RP', count: BULLPEN_SIZE - rp });
+  return out;
+}
+
+/**
+ * Where the roster is one injury from a stretch.
+ *
+ * `walkOnShortfall` and `holesFor` say which spots nobody can start at. This
+ * is the second tier of need, asked for on 2026-09-10: "the needs should still
+ * count the positions that don't have a backup as needs." A spot is thin when
+ * exactly one man on the roster and the signed class can play it as his own
+ * or as a natural cover (`coverTier` of one or less) — a starter and nobody
+ * behind him. A spot nobody can play at all is an open hole and belongs to
+ * the other list, so it is not repeated here. The rotation is thin without a
+ * fifth starter to lean on.
+ *
+ * Counted on the same men the walk-on projection reads, survivors plus the
+ * signed class, so the tab and June agree.
+ */
+export function depthShortfall(
+  survivors: readonly Player[], signed: readonly Player[],
+): { pos: string; count: number }[] {
+  const men = uniquePlayers([...survivors, ...signed]);
+  const hitters = men.filter((p): p is Hitter => p.type === 'hitter');
+  const out: { pos: string; count: number }[] = [];
+  for (const spot of LINEUP_SPOTS) {
+    if (spot === 'DH') continue;
+    const able = hitters.filter((h) => coverTier(h, spot) <= 1).length;
+    if (able === 1) out.push({ pos: spot, count: 1 });
+  }
+  const starters = men.filter(isArm).filter((p) => p.role === 'SP').length;
+  if (starters === ROTATION_SIZE) out.push({ pos: 'SP', count: 1 });
   return out;
 }
 

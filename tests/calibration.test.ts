@@ -22,7 +22,18 @@ import { ENGINES } from '../src/engine/engines.js';
 import type { Hitter, Pitcher } from '../src/engine/types.js';
 
 /**
- * Re-recorded 2026-08-25, when players started being *like* something.
+ * Re-recorded 2026-09-10, when the cover matrix replaced the position ladder.
+ *
+ * A man out of position pays by the pair now — a natural cover a rung, a
+ * stretch eleven, the deep end twenty-two — where the ladder charged nothing
+ * for any move down it. A sound nine is still the identity assignment and
+ * costs nothing; what moved is the reserve who rests a regular at a spot that
+ * is not his own, and the bench cover a pinch hitter leaves behind. Runs on
+ * the seed moved 6.744 to 6.730 (-0.2%), home runs -1.2%, errors -1%; on the
+ * eight-seed sweep every row is within 6% of target, walks still the one
+ * outside 5% as recorded below.
+ *
+ * Previously re-recorded 2026-08-25, when players started being *like* something.
  *
  * Repertoires, tendencies and badges (§18) all reach the plate appearance, so
  * every seeded number here moved and none of them could have survived it.
@@ -118,20 +129,20 @@ import type { Hitter, Pitcher } from '../src/engine/types.js';
  * philosophy.
  */
 const GOLDEN: Record<string, number> = {
-  'Runs per team per game': 6.7439583333333335,
-  'PA per team per game': 41.91041666666667,
-  'Batting average': 0.2759352101812572,
-  'On base percentage': 0.37768184782987535,
-  'Home runs per team per game': 1.0114583333333333,
-  'Strikeouts per team per game': 7.951041666666667,
-  'Walks per team per game': 4.58625,
-  'Pitches per plate appearance': 3.6958741363026295,
-  'Slugging': 0.43132442823919875,
+  'Runs per team per game': 6.729583333333333,
+  'PA per team per game': 41.933125,
+  'Batting average': 0.2753335126097581,
+  'On base percentage': 0.37772159710160796,
+  'Home runs per team per game': 0.999375,
+  'Strikeouts per team per game': 7.9783333333333335,
+  'Walks per team per game': 4.601458333333333,
+  'Pitches per plate appearance': 3.6960736092687263,
+  'Slugging': 0.4297723579136901,
 };
 
-const GOLDEN_SLUGGING = 0.43132442823919875;
-const GOLDEN_ERRORS = 1.1;
-const GOLDEN_SB_PCT = 0.7231974921630094;
+const GOLDEN_SLUGGING = 0.4297723579136901;
+const GOLDEN_ERRORS = 1.0897916666666667;
+const GOLDEN_SB_PCT = 0.7190887666928515;
 
 /**
  * Metrics still outside the 10% bar. The list is now empty, and keeping the

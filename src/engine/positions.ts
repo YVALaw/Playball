@@ -6,25 +6,27 @@
 // because nothing could ask it.
 //
 // ---------------------------------------------------------------------------
-// The spectrum is the model
+// The cover matrix is the model
 // ---------------------------------------------------------------------------
 //
-// Baseball already has the answer and has had it for fifty years. Positions sit
-// on a defensive spectrum from easiest to hardest, and the rule is that moving
-// *down* it is close to free while moving *up* it is expensive:
+// Who can stand where, the way a dugout actually treats it. The pair decides:
+// a man's own spot costs nothing; a NATURAL cover is the move a coach makes
+// without a second thought (the shortstop at second, the centre fielder in a
+// corner, the catcher at first when his knees go); a STRETCH is the move he
+// makes when he has to and expects to pay for (the second baseman at short,
+// the corner outfielder in centre, the first baseman at third); everything
+// else is OUT OF HIS DEPTH, and catching for anybody who is not a catcher is
+// the deepest water there is.
 //
-//     DH -- 1B -- LF -- RF -- 3B -- CF -- 2B -- SS -- C
+// Until 2026-09-10 this was a single ladder, DH to C, where moving down was
+// free. A shortstop cost nothing anywhere, a corner outfielder was a free
+// first baseman, and since the glove is a small share of overall, a bat
+// outranked a fielder almost everywhere the card looked — AUTO "picking
+// crazily", in the report. The ladder survives only as the order a card
+// prints in, hardest first.
 //
-// A shortstop can play second tomorrow. A first baseman cannot play short in
-// his career. So the penalty is a function of how far up the ladder you are
-// asking a man to climb, and it is zero in the other direction -- which is why
-// a coach moving an ageing shortstop to third is a sensible piece of management and
-// moving his first baseman to short is not.
-//
-// Catcher is deliberately not on the same scale as everything else. It is the
-// one position in the sport that is a separate trade rather than a harder
-// version of the same one, and asking an outfielder to catch should read on the
-// screen as the mistake it is.
+// Catcher is deliberately not a harder version of the same trade. Asking an
+// outfielder to catch should read on the screen as the mistake it is.
 //
 // ---------------------------------------------------------------------------
 // Nothing is stored, and that is the point
@@ -43,13 +45,10 @@
 import type { Hitter, Pitcher, Position } from './types.js';
 
 /**
- * The defensive spectrum, hardest last.
- *
- * Read as a ladder rather than as a score -- only the *gap* between two rungs
- * is ever used, so the absolute numbers mean nothing on their own and can be
- * respaced without anybody downstream caring.
+ * How hard each spot is to fill, for the order a card prints in. Only the
+ * order is read; the numbers mean nothing on their own.
  */
-const LADDER: Record<Position, number> = {
+const HARDNESS: Record<Position, number> = {
   DH: 0,
   '1B': 1,
   LF: 2,
@@ -62,80 +61,120 @@ const LADDER: Record<Position, number> = {
   P: 9,
 };
 
-/**
- * What one rung costs, in points off his defensive ratings.
- *
- * Judgement rather than arithmetic, and deliberately steep enough to be felt: a
- * corner outfielder in centre is a rung and a half and should look like a man
- * out of his depth, not like a rounding error.
- */
-const PER_RUNG = 4.5;
+/** Own, natural cover, a stretch, out of his depth. */
+export type CoverTier = 0 | 1 | 2 | 3;
 
 /**
- * The catcher surcharge, on top of the rungs.
+ * The cover a coach makes without a second thought, by the man's own spot.
  *
- * Catching is a trade. A man who has never done it does not do it passably
- * because he is athletic, and the number is large on purpose -- it is meant to
- * end the conversation rather than price it.
+ * The shortstop is the best athlete on the dirt and covers the whole infield
+ * and centre; the centre fielder covers both corners; the corners cover each
+ * other and first; the third baseman covers first, second and the corners;
+ * the second baseman covers third and first, but short is a stretch for him,
+ * because the arm is not there. The catcher covers first, which is where
+ * catchers go when their knees give up. A DH-labelled man is a first baseman
+ * by trade (see `naturalPos`), so first is his one natural spot.
  */
-const CATCHER_TAX = 22;
+const NATURAL: Record<Position, readonly Position[]> = {
+  C: ['1B'],
+  '1B': [],
+  '2B': ['3B', '1B'],
+  '3B': ['1B', '2B', 'LF', 'RF'],
+  SS: ['2B', '3B', 'CF', '1B', 'LF', 'RF'],
+  LF: ['RF', '1B'],
+  RF: ['LF', '1B'],
+  CF: ['LF', 'RF', '1B'],
+  DH: ['1B'],
+  P: [],
+};
+
+/** The move a coach makes when he has to, and pays for. */
+const STRETCH: Record<Position, readonly Position[]> = {
+  C: ['3B', 'LF', 'RF'],
+  '1B': ['3B', 'LF', 'RF'],
+  '2B': ['SS', 'CF', 'LF', 'RF'],
+  '3B': ['SS', 'CF'],
+  SS: [],
+  LF: ['CF', '3B'],
+  RF: ['CF', '3B'],
+  CF: ['2B', '3B', 'SS'],
+  DH: ['LF', 'RF', '3B'],
+  P: [],
+};
 
 /**
- * Where a man ranks when he is the one *leaving*, which for a catcher is not
- * where he ranks when somebody is arriving.
+ * What each tier costs, in points off his defensive ratings.
  *
- * Caught on screen: the chart offered a catcher as free cover at shortstop.
- * The arithmetic was right and the model was wrong. The spectrum puts catching
- * at the hard end because it is the hardest position to *fill*, not because
- * catchers are the best athletes on the field -- they are usually the slowest
- * men in the building. Read as a single ladder it says a catcher can play
- * anywhere, which is the opposite of true.
- *
- * So catching is off the ladder in both directions: dear to arrive at, and no
- * help at all on the way out. He moves to the corners, which is where catchers
- * actually go when their knees give up, and not to short.
+ * Judgement rather than arithmetic, and steep enough to be felt: a natural
+ * cover is a rung, a stretch should look like a man out of his depth rather
+ * than a rounding error, and the deep end should end the conversation.
  */
-const OUT_RANK: Record<Position, number> = { ...LADDER, C: 1.5 };
+const TIER_COST: Record<CoverTier, number> = { 0: 0, 1: 4.5, 2: 11, 3: 22 };
+
+/**
+ * The catcher surcharge. Catching is a trade: a man who has never done it does
+ * not do it passably because he is athletic, and the number is large on
+ * purpose — it is meant to end the conversation rather than price it.
+ */
+const CATCHER_TAX = 26;
 
 /** Whether this is a spot somebody actually stands in. */
 const isFieldable = (pos: Position): boolean => pos !== 'P';
 
 /**
- * What playing him here costs him, in rating points. Zero at his own position
- * and never negative -- moving down the spectrum is free rather than a bonus,
- * because a shortstop at first base is a shortstop standing at first base and
- * the sport does not pay him extra for it.
+ * Which tier a man plays a spot at. The DH is a lineup slot rather than a
+ * place on the grass, so nobody is out of position there — which is the whole
+ * reason a bat-first man ends up in it.
  */
-export function positionPenalty(p: Hitter | Pitcher, at: Position): number {
-  const settling = (p as { settling?: number }).settling ?? 0;
-  if (p.pos === at) return settling;
-  if (!isFieldable(at)) return 0;
-  // The DH is a lineup slot rather than a place on the grass. Nobody is out of
-  // position there, which is the whole reason a bat-first man ends up in it.
-  if (at === 'DH') return 0;
-
-  const climb = Math.max(0, LADDER[at] - OUT_RANK[p.pos]);
-  const tax = at === 'C' && p.pos !== 'C' ? CATCHER_TAX : 0;
-  return climb * PER_RUNG + tax + settling;
+export function coverTier(p: Hitter | Pitcher, at: Position): CoverTier {
+  if (p.pos === at) return 0;
+  if (!isFieldable(at) || at === 'DH') return 0;
+  if (NATURAL[p.pos].includes(at)) return 1;
+  if (STRETCH[p.pos].includes(at)) return 2;
+  return 3;
 }
 
 /**
- * Every spot he can be put without it being a story, his own included.
+ * What playing him here costs him, in rating points. Zero at his own position
+ * and at the DH, never negative, and the plate is the deep end for anybody
+ * who is not a catcher.
+ */
+export function positionPenalty(p: Hitter | Pitcher, at: Position): number {
+  const settling = (p as { settling?: number }).settling ?? 0;
+  const tier = coverTier(p, at);
+  if (tier === 0) return p.pos === at ? settling : 0;
+  const cost = at === 'C' ? CATCHER_TAX : TIER_COST[tier];
+  return cost + settling;
+}
+
+const hardestFirst = (a: Position, b: Position): number => HARDNESS[b] - HARDNESS[a];
+
+/**
+ * Every spot he can be put without it being a story: his natural covers,
+ * hardest first — so a card reads "2B · CF · 3B" for a shortstop and leads
+ * with the most flattering true thing about him. A first baseman has none,
+ * which is the model being honest rather than generous. Never the plate for a
+ * man who is not a catcher, and never the DH, which is a slot.
  *
- * Derived, so it costs no field on the save and no draw at generation. The
- * threshold is one rung: the positions immediately around him and everything
- * easier than he is.
+ * Derived, so it costs no field on the save and no draw at generation.
  */
 export function secondaryPositions(p: Hitter | Pitcher): Position[] {
   if (p.type === 'pitcher') return [];
-  const out: Position[] = [];
-  for (const pos of Object.keys(LADDER) as Position[]) {
-    if (pos === p.pos || !isFieldable(pos) || pos === 'DH') continue;
-    if (positionPenalty(p, pos) <= PER_RUNG) out.push(pos);
-  }
-  // Hardest first, so a card reads "SS, 2B, 3B" rather than in ladder order --
-  // the most flattering true thing about him, first.
-  return out.sort((a, b) => LADDER[b] - LADDER[a]);
+  return [...NATURAL[p.pos]].sort(hardestFirst).filter((pos) => pos !== p.pos);
+}
+
+/**
+ * Every spot a winter could retrain him into: the natural covers and then
+ * the stretches, each hardest first. A stretch is a real move (see
+ * `movePosition`) and settles harder, but a first baseman can be taught a
+ * corner, and this is the list the retrain action chooses from.
+ */
+export function retrainablePositions(p: Hitter | Pitcher): Position[] {
+  if (p.type === 'pitcher') return [];
+  return [
+    ...[...NATURAL[p.pos]].sort(hardestFirst),
+    ...[...STRETCH[p.pos]].sort(hardestFirst),
+  ].filter((pos) => pos !== p.pos);
 }
 
 /**
@@ -169,10 +208,10 @@ export function fieldingAt<T extends Hitter | Pitcher>(p: T, at: Position): T {
  * glove half of `overallOf` moving and nothing else.
  */
 export function penaltyLabel(p: Hitter | Pitcher, at: Position): string | null {
-  const cost = positionPenalty(p, at);
-  if (cost === 0) return null;
-  if (cost >= CATCHER_TAX) return 'out of his depth';
-  if (cost >= PER_RUNG * 2) return 'a stretch';
+  const tier = coverTier(p, at);
+  if (tier === 0) return null;
+  if (tier === 3) return 'out of his depth';
+  if (tier === 2) return 'a stretch';
   return 'passable';
 }
 
@@ -213,17 +252,18 @@ export const SETTLING_DECAY = 4.5;
 export function movePosition(p: Hitter, to: Position): boolean {
   if (p.pos === to) return false;
   const s = p as Hitter & Settling;
-  const climb = positionPenalty(p, to);
-  s.movedFrom = p.pos;
-  p.pos = to;
   /*
     Uphill moves settle harder.
 
     A shortstop moving to third has done this his whole life and is nearly
-    there already; a left fielder moving to short has a great deal to learn.
-    Charging the same for both would make the easy move feel punished and the
-    hard one free.
+    there already, so a natural cover settles at the flat cost; a left
+    fielder moving to short has a great deal to learn, and a stretch or the
+    deep end adds its own price on top. Charging the same for both would make
+    the easy move feel punished and the hard one free.
   */
+  const climb = coverTier(p, to) >= 2 ? positionPenalty(p, to) : 0;
+  s.movedFrom = p.pos;
+  p.pos = to;
   s.settling = SETTLING_COST + climb;
   return true;
 }
