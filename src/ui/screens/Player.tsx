@@ -41,6 +41,7 @@ import { available } from '../../engine/depthChart.js';
 import { isHurt } from '../../engine/injury.js';
 import { overallOf, platoonSplit, naturalPos } from '../../engine/ratings.js';
 import { secondaryPositions } from '../../engine/positions.js';
+import { RetrainModal } from '../RetrainModal.js';
 import { Avatar, teamColour } from '../Avatar.js';
 import { SewingPinIcon } from '@radix-ui/react-icons';
 import { captainOf } from '../../engine/captains.js';
@@ -622,6 +623,10 @@ function ProYears({ id }: { id: string }) {
  * and become the shape a card actually reads in.
  */
 function Overview({ p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: boolean }) {
+  // The POSITIONS row on every hitter's card opens the same sheet the moves
+  // panel does: where he could play, and the odds a winter makes him a
+  // natural there. Asked for 2026-09-10: "leave it there but open."
+  const [retrainOpen, setRetrainOpen] = useState(false);
   const season = useDynasty((s) => s.season);
   const isPitcher = p.type === 'pitcher';
   const inJune = { classYear: p.classYear, age: p.age + 1 };
@@ -703,8 +708,13 @@ function Overview({ p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: bo
         <FieldNote title={`Recruiting promise · ${promise.title}`} text={`${promise.detail} ${promise.term}.`} />
       )}
 
-      {secondaries.length > 0 && (
-        <p className="player-secondary-line"><b>ALSO PLAYS</b> {secondaries.join(' · ')}</p>
+      {!isPitcher && (
+        <button type="button" className="player-secondary-line tap" onClick={() => setRetrainOpen(true)}>
+          <b>POSITIONS</b> {secondaries.length > 0 ? `covers ${secondaries.join(' · ')}` : 'his own spot'} · where else he could play ›
+        </button>
+      )}
+      {retrainOpen && !isPitcher && (
+        <RetrainModal p={p as Hitter} canMove={isOurs} onClose={() => setRetrainOpen(false)} />
       )}
 
       {isOurs ? <BadgeChips p={p} /> : (

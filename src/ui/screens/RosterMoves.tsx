@@ -29,9 +29,8 @@ import { useDynasty } from '../../state/store.js';
 import { handles } from '../../state/depth.js';
 import { standing, WORDS_A_SEASON } from '../../engine/eligibility.js';
 import { canRedshirt, MAX_REDSHIRTS, redshirtCount } from '../../engine/redshirt.js';
-import { retrainablePositions, retrainOdds, coverTier, fieldingAt } from '../../engine/positions.js';
-import { overallOf } from '../../engine/ratings.js';
-import { Modal } from '../Modal.js';
+import { retrainablePositions } from '../../engine/positions.js';
+import { RetrainModal } from '../RetrainModal.js';
 import { injuryClock } from '../../engine/season.js';
 import { isHurt, prognosis } from '../../engine/injury.js';
 import { legWeariness } from '../../engine/workload.js';
@@ -131,7 +130,6 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
 
   const school = standing(p);
   const promise = !promiseSpent(p.recruitPromise) ? p.recruitPromise : undefined;
-  const promisedPos = promise?.kind === 'keepPosition' ? promise.promisedPos : undefined;
   const redshirtConflict = promise?.kind === 'noRedshirt';
   const sitting = (p as AnyPlayer & { redshirt?: boolean }).redshirt === true;
   const outUntil = (p as AnyPlayer & { outUntil?: number }).outUntil;
@@ -265,39 +263,7 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
                   onClick={() => setRetrainOpen(true)}
                 />
                 {retrainOpen && p.type === 'hitter' && (
-                  <Modal
-                    kicker="RETRAIN POSITION"
-                    title={`${p.name} · ${p.pos}`}
-                    lines={[winter
-                      ? 'A move is permanent. He spends the winter learning the spot and opens next season there, a step behind until it takes.'
-                      : 'Moves happen over the offseason. This is what a winter could make of him.']}
-                    body={(
-                      <div className="retrain-list">
-                        {alsoPlays.map((spot) => {
-                          const man = p as Hitter;
-                          const odds = retrainOdds(man, spot);
-                          const tier = coverTier(man, spot);
-                          const plays = overallOf(fieldingAt(man, spot));
-                          const breaks = promisedPos !== undefined && spot !== promisedPos;
-                          return (
-                            <div key={spot} className={`retrain-row${tier >= 2 ? ' is-stretch' : ''}`}>
-                              <span>
-                                <b>{spot}</b>
-                                <small>{tier === 1 ? 'natural cover' : 'a stretch'} · plays as {plays} today</small>
-                              </span>
-                              <strong>{Math.round(odds * 100)}%</strong>
-                              <button
-                                type="button" className="tap" disabled={!winter}
-                                onClick={() => { changePosition(p.id, spot); setRetrainOpen(false); }}
-                              >{breaks ? 'MOVE · BREAKS PROMISE' : 'MOVE'}</button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    action="CLOSE"
-                    onClose={() => setRetrainOpen(false)}
-                  />
+                  <RetrainModal p={p as Hitter} canMove onClose={() => setRetrainOpen(false)} />
                 )}
               </div>
             )}

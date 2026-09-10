@@ -2993,6 +2993,11 @@
 .retrain-row.is-stretch > strong { color: var(--alert); }
 .retrain-row > button { min-height: 36px; padding: 6px 10px; border: 1px solid var(--clay); background: var(--wash); color: var(--clay); font: 800 calc(8px * var(--ts)) var(--mono); letter-spacing: .06em; }
 .retrain-row > button:disabled { opacity: .45; }
+.retrain-row > i { display: block; }
+.retrain-row.is-own { border-left: 3px solid var(--clay); }
+.retrain-row.is-own > strong { color: var(--dim); }
+/* The profile's POSITIONS row is a door to that sheet, on every hitter's card. */
+button.player-secondary-line { display: block; width: 100%; padding: 6px 0; border: 0; background: transparent; text-align: left; }
 
 /* ---------------------------------------------------------------------------
    The action menus leave the way they arrive.
