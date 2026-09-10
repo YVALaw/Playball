@@ -59,7 +59,7 @@ import type { Departure } from '../../engine/progression.js';
 import { pct, seasonDate } from '../format.js';
 import { isTwoWay } from '../../engine/types.js';
 import type {
-  ClassYear, Hitter, Pitcher, PlayerId, Player as AnyPlayer,
+  ClassYear, Hitter, Pitcher, PlayerId, Position, Player as AnyPlayer,
 } from '../../engine/types.js';
 
 /** The record for one program, as the season carries it. */
@@ -322,11 +322,18 @@ export function Player() {
   const isPitcher = p.type === 'pitcher';
   const ovr = overallOf(p);
   // A DH's card names the position he actually plays — the DH is where the
-  // coach bats him, not what he is. See `naturalPos`.
-  const slot = isTwoWay(p)
-    ? `TWO-WAY · ${(p as unknown as Pitcher).role} · ${naturalPos(p as Hitter)}`
-    : isPitcher ? (p as Pitcher).role : naturalPos(p as Hitter);
+  // coach bats him, not what he is. See `naturalPos`. And a man AUTO or the
+  // chart has standing somewhere else is still named by his own spot, with
+  // the cover said beside it — reported 2026-09-10: "when we change a player
+  // from his position with auto it also changes his primary position in the
+  // profile, making it impossible to know where he was supposed to be."
+  const homePos = !isPitcher ? (p as Hitter & { homePos?: Position }).homePos : undefined;
+  const own: string = isPitcher
+    ? (p as Pitcher).role
+    : naturalPos(homePos ? { ...(p as Hitter), pos: homePos } : (p as Hitter));
+  const slot = isTwoWay(p) ? `TWO-WAY · ${(p as unknown as Pitcher).role} · ${own}` : own;
   const dhToday = !isPitcher && p.pos === 'DH';
+  const covering = homePos && p.pos !== homePos && p.pos !== 'DH' ? p.pos : null;
 
   // A tab that is not on offer must never be the one on screen. Cheap insurance
   // against a card that reopens on a tab the next man does not have.
@@ -341,6 +348,7 @@ export function Player() {
         ovr={ovr}
         slot={slot}
         dhToday={dhToday}
+        covering={covering}
       />
       {portalEntry && (
         <section className="portal-origin-strip">
@@ -412,10 +420,12 @@ export function Player() {
  * would be scouting the whole country for free.
  */
 function PlayerHero(
-  { p, owner, isOurs, ovr, slot, dhToday }:
+  { p, owner, isOurs, ovr, slot, dhToday, covering }:
   {
     p: AnyPlayer; owner: Owner; isOurs: boolean;
     ovr: number; slot: string; dhToday: boolean;
+    /** The spot AUTO or the chart has him standing at, when it is not his own. */
+    covering: string | null;
   },
 ) {
   const isPitcher = p.type === 'pitcher';
@@ -433,6 +443,7 @@ function PlayerHero(
           {slot} · {CLASS_NAME[p.classYear]} · AGE {p.age} · {p.bats}/{p.throws}
           {isPitcher && (p as Pitcher).sidearm ? ' · SIDEARM' : ''}
           {dhToday ? ' · BATS AS DH' : ''}
+          {covering ? ` · COVERING ${covering}` : ''}
         </p>
       </div>
       <div className="player-ovr">
