@@ -315,7 +315,7 @@ import {
   type PortalMan,
 } from '../engine/portal.js';
 import {
-  chartFor, depthAt, reorder, squad, available, promotions, SPOTS, fitTheNine, healPositions,
+  chartFor, depthAt, reorder, squad, available, promotions, SPOTS, bestNine, healPositions,
   adoptSpot, restoreHome, settleReturn, cardGaps, coverFor,
 } from '../engine/depthChart.js';
 import {
@@ -2138,11 +2138,12 @@ function recordFor(state: DynastyStore): SeasonRecord | null {
 function staffSetsTheCard(season: SeasonState, userTeam: number): void {
   const team = season.teams[userTeam]?.team;
   if (!team) return;
-  // The staff bench the unfit too — a casual career was the one place
-  // nobody was ever told and nobody ever moved.
-  const fit = fitTheNine(team, season.dayIndex);
-  team.lineup.splice(0, team.lineup.length, ...fit.lineup);
-  team.bench.splice(0, team.bench.length, ...fit.bench);
+  // The staff field the best nine they have, the unfit benched — a casual
+  // career was the one place nobody was ever told and nobody ever moved. The
+  // same call AUTO makes (`bestNine`), so the two cards stay one card.
+  const best = bestNine(team, season.dayIndex);
+  team.lineup.splice(0, team.lineup.length, ...best.lineup);
+  team.bench.splice(0, team.bench.length, ...best.bench);
   const dealt = autoBattingOrder(team.lineup);
   // Same nine or nothing, the same guard `autoLineup` holds at its own door.
   if (dealt.length !== team.lineup.length) return;
@@ -6455,13 +6456,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       Bench the men who cannot play, THEN order the card.
 
       Reported: "the auto button doesn't move hurt players out." It called a
-      helper whose contract is a pure reorder, so it never could. The fit pass
-      swaps every unavailable starter for the best available cover first.
+      helper whose contract is a pure reorder, so it never could, and a fit
+      pass went above it that swapped every unavailable starter out.
+
+      Then, 2026-09-10: "it kept two freshmen at 50 overall on the bench and
+      two juniors at 25 overall starting." The fit pass only ever moved a man
+      who could not play. `bestNine` picks the card from the whole squad by
+      merit, the unavailable skipped, so AUTO fields the best nine it has.
     */
     if (season) {
-      const fit = fitTheNine(team, season.dayIndex);
-      team.lineup.splice(0, team.lineup.length, ...fit.lineup);
-      team.bench.splice(0, team.bench.length, ...fit.bench);
+      const best = bestNine(team, season.dayIndex);
+      team.lineup.splice(0, team.lineup.length, ...best.lineup);
+      team.bench.splice(0, team.bench.length, ...best.bench);
     }
     // AUTO is the button that promises a sound card, so it repairs the set as
     // part of the deal — and it is the ONLY automation allowed to touch a

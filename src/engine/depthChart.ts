@@ -345,6 +345,89 @@ export function fitTheNine(
   return { lineup, bench, moved };
 }
 
+/**
+ * The best nine the squad can field today, which is what AUTO means.
+ *
+ * `fitTheNine` above is a repair: a man leaves the card only when he cannot
+ * play, so a card written in August kept its August starters all spring while
+ * better men sat. Reported from the phone on 2026-09-10: "it kept two freshmen
+ * at 50 overall on the bench and two juniors at 25 overall starting." AUTO
+ * promised a sound card and delivered a legal one.
+ *
+ * This one picks from the whole squad. Hardest spot first — the order
+ * `startersFrom` fills in, for the same reason — and each spot goes to the
+ * best available man who can actually play it: his own spot or one he covers
+ * (`positionPenalty` of nothing), ranked by what he would be there. Only when
+ * nobody like that is left does a stretch get the spot, best stretch first.
+ * The tiers matter more than they look: the penalty is a glove tax and the
+ * glove is a small share of a man's overall, so ranked on overall alone an
+ * eighty-rated first baseman took catcher off a thirty-four-rated catcher on
+ * the first roster this was tried on. A coach's written order at a spot still
+ * leads it; merit fills behind. A spot nobody available can take keeps
+ * whoever stood there, hurt or not, because fielding eight is not a thing
+ * that happens in baseball.
+ *
+ * Draw-free and deterministic, like `autoBattingOrder`: ties go to the man
+ * whose own spot it is, then to the incumbent nine, then to the name, so the
+ * same squad always produces the same card and pressing AUTO twice is
+ * pressing it once. Men who move adopt the spot they were picked for and
+ * remember their own; men sent down go home. Returns copies; the caller
+ * writes them back.
+ */
+export function bestNine(
+  team: Team, day: number,
+): { lineup: Hitter[]; bench: Hitter[] } {
+  const men = squad(team);
+  const asIs = { lineup: [...team.lineup], bench: [...team.bench] };
+  if (men.length < SPOTS.length) return asIs;
+
+  const written = (team as Team & { depth?: DepthChart }).depth ?? {};
+  const inNine = new Set(team.lineup.map((p) => p.id));
+  // Judged from home: a man covering catcher this week is still the first
+  // baseman he is when the card is rebuilt.
+  const home = (m: Hitter): Hitter => (m.homePos ? { ...m, pos: m.homePos } : m);
+  const merit = (m: Hitter, spot: Position): number => overallOf(fieldingAt(home(m), spot));
+  const rank = (spot: Position) => (a: Hitter, b: Hitter): number =>
+    merit(b, spot) - merit(a, spot)
+    || Number(home(b).pos === spot) - Number(home(a).pos === spot)
+    || Number(inNine.has(b.id)) - Number(inNine.has(a.id))
+    || a.name.localeCompare(b.name);
+
+  const order: Position[] = ['C', 'SS', '2B', 'CF', '3B', 'RF', 'LF', '1B', 'DH'];
+  const taken = new Set<PlayerId>();
+  const picks = new Map<Position, Hitter>();
+  for (const spot of order) {
+    const free = men.filter((m) => !taken.has(m.id) && available(m, day));
+    const wrote = (written[spot] ?? [])
+      .map((id) => free.find((m) => m.id === id))
+      .find((m): m is Hitter => m !== undefined);
+    const fits = free.filter((m) => positionPenalty(home(m), spot) === 0);
+    const pick = wrote ?? (fits.length > 0 ? fits : free).sort(rank(spot))[0];
+    if (!pick) continue;
+    taken.add(pick.id);
+    picks.set(spot, pick);
+  }
+  // A spot nobody fit can take: whoever stood there plays, then anybody.
+  for (const spot of order) {
+    if (picks.has(spot)) continue;
+    const stood = team.lineup.find((p) => p.pos === spot && !taken.has(p.id));
+    const man = stood ?? men.find((m) => !taken.has(m.id));
+    if (!man) return asIs;
+    taken.add(man.id);
+    picks.set(spot, man);
+  }
+
+  const lineup = SPOTS.map((spot) => picks.get(spot)!);
+  const bench = men.filter((m) => !taken.has(m.id));
+  for (const b of bench) restoreHome(b);
+  for (const spot of SPOTS) {
+    const man = picks.get(spot)!;
+    restoreHome(man);
+    adoptSpot(man, spot);
+  }
+  return { lineup, bench };
+}
+
 /** Relabel a man to a spot, remembering his own so the bench can undo it. */
 export function adoptSpot(man: Hitter, pos: Position): void {
   if (man.pos === pos) return;

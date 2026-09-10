@@ -158,25 +158,25 @@ describe('tutorials teach once and remember it', () => {
   });
 });
 
-describe('AUTO deals a valid batting order', () => {
-  it('same nine men, nobody duplicated, deterministic', () => {
+describe('AUTO deals a valid card', () => {
+  it('nine different men from the squad at nine different spots, deterministic', () => {
     useDynasty.getState().start(4242, 0);
     const s = useDynasty.getState();
     const team = s.season!.teams[s.userTeam]!.team;
     const before = [...team.lineup];
+    const everybody = new Set([...team.lineup, ...team.bench].map((p) => p.id));
 
     s.autoLineup();
     const first = [...team.lineup];
-    expect(first).toHaveLength(before.length);
-    expect(new Set(first.map((p) => p.id)).size).toBe(before.length);
-    expect([...first].sort((a, b) => a.id.localeCompare(b.id)))
-      .toEqual([...before].sort((a, b) => a.id.localeCompare(b.id)));
-    // Every man keeps his position — AUTO reorders the card, it does not
-    // reassign the field.
-    for (const p of first) {
-      const was = before.find((x) => x.id === p.id)!;
-      expect(p.pos).toBe(was.pos);
-    }
+    expect(first).toHaveLength(9);
+    expect(new Set(first.map((p) => p.id)).size).toBe(9);
+    for (const p of first) expect(everybody.has(p.id)).toBe(true);
+    // Until 2026-09-10 this asserted the same nine men at the same spots —
+    // AUTO was a reorder. It now fields the best nine the squad has (see
+    // `bestNine`), so the promise is a sound card: nine positions, and nobody
+    // on the card and the bench at once.
+    expect(new Set(first.map((p) => p.pos)).size).toBe(9);
+    for (const b of team.bench) expect(first.some((p) => p.id === b.id)).toBe(false);
 
     // Pressing it twice is pressing it once.
     useDynasty.getState().autoLineup();
