@@ -6965,6 +6965,7 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .hall-row .hall-chips { grid-column:2 / -1; margin-top:3px; }
 
 
+
 /* ---------------------------------------------------------------------------
    September 5 — navigation hardening + recruiting filters.
    --------------------------------------------------------------------------- */
@@ -8240,3 +8241,63 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .staff-focus-card.is-filled .staff-ratings i { background:rgba(var(--cream-rgb),.18); }
 .staff-focus-card.is-filled .staff-ratings em { background:var(--cream); }
 .staff-focus-card.is-filled .staff-ratings > span:nth-child(2) em { background:var(--cream-dim); }
+
+/* ---------------------------------------------------------------------------
+   September 10 — the staff room in the house style.
+   "Make it look more like the rest of the app, right now it feels out of
+   place." The outside pass drew it with radii, drop shadows, a coloured
+   band on the panel head, pill chips and twelve-pixel body copy. The app is
+   square paper cards, hairlines, mono uppercase labels and the display face
+   for headlines. Same markup, same anchors for the tour; the clothes change.
+   --------------------------------------------------------------------------- */
+.staff-focus-card { border:1px solid var(--line); border-left:3px solid var(--clay); background:var(--paper); color:var(--ink); }
+.staff-focus-card > header small { color:var(--clay); }
+.staff-focus-card > header strong { font-size:calc(20px * var(--ts)); }
+.staff-focus-card > header b { color:var(--ink); font:800 calc(12px * var(--ts)) var(--mono); }
+.staff-focus-card > p, .staff-vacancy-copy p, .staff-focus-card > em { color:var(--dim); }
+.staff-focus-card .staff-market-open { border:1px solid var(--line); background:var(--wash); color:var(--ink); font:800 calc(8px * var(--ts)) var(--mono); letter-spacing:.06em; text-transform:uppercase; }
+.staff-focus-card .staff-release { border:1px solid var(--line); background:transparent; color:var(--alert); font:800 calc(8px * var(--ts)) var(--mono); letter-spacing:.06em; text-transform:uppercase; }
+.staff-management-panel { border-radius:0; box-shadow:none; border:1px solid var(--line); }
+.staff-management-head { background:var(--wash); color:var(--ink); border-bottom:1px solid var(--line); }
+.staff-management-head small { color:var(--clay); }
+.staff-management-head strong { font:800 calc(14px * var(--ts))/1.05 var(--display); }
+.staff-management-head em { border-radius:0; border:1px solid var(--line); background:var(--paper); color:var(--dim); }
+.staff-directive-grid button { border-radius:0; background:var(--wash); font:800 calc(8px * var(--ts))/1.15 var(--body); }
+.staff-directive-grid button.active { background:var(--soft); color:var(--ink); }
+.staff-directive-effect { font:400 calc(8.5px * var(--ts))/1.4 var(--body); }
+.staff-project-card { border-radius:0; border:1px solid var(--line); background:var(--paper); }
+.staff-project-card > span small { color:var(--clay); }
+.staff-project-card > span strong { font:800 calc(13px * var(--ts))/1.1 var(--display); }
+.staff-project-progress i, .staff-project-progress i b { border-radius:0; }
+.staff-project-cancel { border-radius:0; font:800 calc(8px * var(--ts)) var(--mono); letter-spacing:.06em; text-transform:uppercase; }
+.staff-project-option { border-radius:0; background:var(--wash); padding:10px 11px; }
+.staff-project-option > strong { font:800 calc(13px * var(--ts))/1.15 var(--display); }
+.staff-project-option p, .staff-management-panel .staff-project-detail, .staff-result-card p { margin:6px 0; color:var(--dim); font:400 calc(9.5px * var(--ts))/1.45 var(--body); }
+.staff-project-option summary { min-height:34px; padding:5px 0; color:var(--clay); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.08em; text-transform:uppercase; }
+.staff-project-options .staff-project-option button { border:1px solid var(--clay); border-radius:0; background:var(--paper); color:var(--clay); font:800 calc(8px * var(--ts)) var(--mono); letter-spacing:.06em; text-transform:uppercase; }
+.staff-project-options .staff-project-option button:disabled { border-color:var(--line); color:var(--dim); }
+.staff-result-card { border-radius:0; border-left:3px solid var(--clay); }
+.staff-result-card > small { color:var(--clay); font:700 calc(6.7px * var(--ts)) var(--mono); letter-spacing:.09em; }
+.staff-result-card > strong { font:800 calc(14px * var(--ts))/1.15 var(--display); }
+.staff-result-card > div { font:400 calc(9.5px * var(--ts)) var(--body); }
+.staff-market-heading h3 { font-size:calc(16px * var(--ts)); }
+.staff-market-notice { font:400 calc(9.5px * var(--ts))/1.45 var(--body); }
+.staff-candidate-tile { border-radius:0; padding:10px; gap:5px; }
+.staff-candidate-initials { width:30px; height:30px; background:var(--clay); color:var(--paper); font-size:calc(11px * var(--ts)); }
+.staff-candidate-top > b { font-size:calc(20px * var(--ts)); }
+.staff-candidate-top > b > small { font-size:calc(6.5px * var(--ts)); letter-spacing:.06em; }
+.staff-candidate-tile > strong { font-size:calc(14px * var(--ts)); }
+.staff-candidate-specialty, .staff-candidate-state { color:var(--dim); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.06em; text-transform:uppercase; }
+.staff-candidate-price > b { font-size:calc(12px * var(--ts)); }
+.staff-candidate-price small, .staff-candidate-price > b > small { color:var(--dim); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.05em; text-transform:uppercase; }
+.staff-ratings small { color:var(--dim); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.06em; text-transform:uppercase; }
+.staff-ratings b { font-size:calc(12px * var(--ts)); }
+.staff-ratings i, .staff-ratings em { border-radius:0; }
+.staff-candidate-dialog { border-radius:0; box-shadow:none; }
+.staff-candidate-dialog > header > button { border-radius:0; font:800 calc(8px * var(--ts)) var(--mono); letter-spacing:.06em; text-transform:uppercase; }
+.staff-candidate-dialog > header > small { font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.09em; text-transform:uppercase; }
+.staff-candidate-meta, .staff-replacement-note, .staff-candidate-effects p, .staff-candidate-budget > span { font:400 calc(9.5px * var(--ts))/1.45 var(--body); }
+.staff-candidate-effects h3 { font:800 calc(12px * var(--ts))/1.2 var(--display); }
+.pipeline-state-picker select, .network-assignment select, .network-state-filter select { border-radius:0; font:700 calc(9px * var(--ts)) var(--body); }
+.network-state-filter { font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--dim); }
+.postseason-outcome, .postseason-map-tools button, .mailbox-mark-all { border-radius:0; }
