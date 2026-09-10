@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { createSeason, simSeason, nextSeason } from '../src/engine/season.js';
 import {
   advanceOffseason, departAndDevelop, fillRosters, walkOnShortfall,
-  walkOnClass, walkOnSeed, arcOf, arcReach, takenByPros, enrolling,
+  walkOnClass, walkOnSeed, arcOf, arcReach,
 } from '../src/engine/progression.js';
 import { coveredSince } from '../src/ui/screens/Board.js';
 import { AI_KEEP_SHARE } from '../src/engine/draft.js';
@@ -232,14 +232,9 @@ describe('a signed class actually arrives', () => {
     const me = 0;
     const signed = season.recruiting.prospects.slice(0, 8);
     for (const p of signed) { p.signedBy = me; p.committedWeek = 3; }
-    // Less the pros: the top of the board is exactly where a July draft
-    // room shops, and a signed kid they took must NOT arrive.
-    const arriving = signed.filter((p) => !takenByPros(p.player, season.recruiting.year));
-    const ids = new Set(arriving.map((p) => p.player.id));
-    const gone = new Set(
-      signed.filter((p) => takenByPros(p.player, season.recruiting.year))
-        .map((p) => p.player.id),
-    );
+    // All of them: the July high-school draft that used to thin a signed
+    // class went on 2026-09-10.
+    const ids = new Set(signed.map((p) => p.player.id));
 
     advanceOffseason(season, rng, { userTeam: me });
 
@@ -247,8 +242,7 @@ describe('a signed class actually arrives', () => {
     const roster = uniquePlayers([...t.lineup, ...t.bench, ...t.rotation, ...t.bullpen]);
     const landed = roster.filter((p) => ids.has(p.id));
 
-    expect(landed.length, 'signed recruits went missing').toBe(arriving.length);
-    expect(roster.some((p) => gone.has(p.id)), 'a drafted-away kid arrived anyway').toBe(false);
+    expect(landed.length, 'signed recruits went missing').toBe(signed.length);
     // And the roster is still a fieldable team.
     expect(t.lineup).toHaveLength(9);
     expect(t.rotation).toHaveLength(4);
@@ -578,13 +572,10 @@ describe('walk-ons', () => {
 
       const t = s.teams[0]!.team;
       const survivors = [...t.lineup, ...t.bench, ...t.rotation, ...t.bullpen];
-      // Through the same filter the screens use: the pros take their kids in
-      // July, before signing day renders, so the projection knows.
-      const signedClass = enrolling(
-        s.recruiting.prospects
-          .filter((p) => p.signedBy === 0).map((p) => p.player),
-        s.recruiting.year,
-      );
+      // The class the screens project: every signed man, since the July
+      // high-school draft went on 2026-09-10.
+      const signedClass = s.recruiting.prospects
+        .filter((p) => p.signedBy === 0).map((p) => p.player);
       const projected = walkOnShortfall(survivors, signedClass);
 
       const filled = fillRosters(s, s.rng, { userTeam: 0 });
@@ -619,13 +610,10 @@ describe('walk-ons', () => {
 
       const t = s.teams[0]!.team;
       const survivors = [...t.lineup, ...t.bench, ...t.rotation, ...t.bullpen];
-      // Through the same filter the screens use: the pros take their kids in
-      // July, before signing day renders, so the projection knows.
-      const signedClass = enrolling(
-        s.recruiting.prospects
-          .filter((p) => p.signedBy === 0).map((p) => p.player),
-        s.recruiting.year,
-      );
+      // The class the screens project: every signed man, since the July
+      // high-school draft went on 2026-09-10.
+      const signedClass = s.recruiting.prospects
+        .filter((p) => p.signedBy === 0).map((p) => p.player);
 
       // Exactly the call the class review makes.
       const shown = walkOnClass(
@@ -676,13 +664,10 @@ describe('walk-ons', () => {
 
       const t = s.teams[0]!.team;
       const survivors = [...t.lineup, ...t.bench, ...t.rotation, ...t.bullpen];
-      // Through the same filter the screens use: the pros take their kids in
-      // July, before signing day renders, so the projection knows.
-      const signedClass = enrolling(
-        s.recruiting.prospects
-          .filter((p) => p.signedBy === 0).map((p) => p.player),
-        s.recruiting.year,
-      );
+      // The class the screens project: every signed man, since the July
+      // high-school draft went on 2026-09-10.
+      const signedClass = s.recruiting.prospects
+        .filter((p) => p.signedBy === 0).map((p) => p.player);
 
       // The two things the tab draws: what is still open, and what the class
       // has already bought — the second being the difference between the two
@@ -949,46 +934,30 @@ describe('the arcs', () => {
 });
 
 /*
-  Stage 16: recruits drafted out of high school. Signed, then gone before
-  they play a game — cheap, and it stings in the right way.
+  The July high-school draft went on 2026-09-10. A signed kid always arrives;
+  the only draft door is the one on the roster, three years or twenty one.
 */
-describe('the pros get there first', () => {
-  it('is derived, rare, and aimed at the ceiling', () => {
-    const season = createSeason(makeRng(31), undefined, CONFERENCES.slice(0, 8));
-    let eligible = 0;
-    let gone = 0;
-    for (const rec of season.teams) {
-      for (const p of rosterOf(season, rec.index)) {
-        expect(takenByPros(p, 2030)).toBe(takenByPros(p, 2030));
-        if (p.potential >= 78) eligible++;
-        if (takenByPros(p, 2030)) {
-          gone++;
-          // Nobody below the pros' radar is ever taken.
-          expect(p.potential).toBeGreaterThanOrEqual(78);
-        }
-      }
-    }
-    // Rare: an event with a name on it, not a tax. (Rosters carry fewer high
-    // ceilings than a recruiting class, so the bound is loose on purpose.)
-    expect(gone).toBeLessThanOrEqual(Math.max(2, Math.ceil(eligible * 0.2)));
-  });
-
-  it('never lets a poached signing reach the roster', () => {
-    let season = createSeason(makeRng(47), undefined, SMALL);
+describe('a signed kid always arrives', () => {
+  it('puts the whole signed class on rosters, top of the board included', () => {
+    const season = createSeason(makeRng(47), undefined, SMALL);
     simSeason(season);
     signClasses(season);
-    departAndDevelop(season, season.rng, { userTeam: -1 });
-    const poachedIds = new Set(
-      season.recruiting.prospects
-        .filter((pr) => pr.signedBy !== null
-          && takenByPros(pr.player, season.recruiting.year))
-        .map((pr) => String(pr.player.id)),
-    );
-    fillRosters(season, season.rng, { userTeam: -1 });
-    for (const rec of season.teams) {
-      for (const p of rosterOf(season, rec.index)) {
-        expect(poachedIds.has(String(p.id))).toBe(false);
-      }
+    // Four programs sign five apiece off the top of the board — the exact
+    // kids the July draft used to take.
+    const board = season.recruiting.prospects;
+    for (let team = 0; team < 4; team++) {
+      for (const p of board.slice(team * 5, team * 5 + 5)) { p.signedBy = team; p.committedWeek = 3; }
     }
+    departAndDevelop(season, season.rng, { userTeam: -1 });
+    const signedIds = new Set(
+      board.filter((pr) => pr.signedBy !== null).map((pr) => String(pr.player.id)),
+    );
+    expect(signedIds.size).toBeGreaterThanOrEqual(20);
+    fillRosters(season, season.rng, { userTeam: -1 });
+    const onRosters = new Set<string>();
+    for (const rec of season.teams) {
+      for (const p of rosterOf(season, rec.index)) onRosters.add(String(p.id));
+    }
+    for (const id of signedIds) expect(onRosters.has(id), `${id} never arrived`).toBe(true);
   });
 });

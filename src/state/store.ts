@@ -4531,16 +4531,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       const updated = addPipelineSigning(rolledEconomy, signed.state, year + 1, signed.stars);
       rolledEconomy.pipelines = updated.pipelines;
     }
-    // The sting, by name. Rare on purpose -- see takenByPros.
-    for (const lost of filled.poached) {
-      get().post({
-        kind: 'season', year: get().year,
-        title: `${lost.name} never arrives`,
-        body: 'Coach — the pros called his name in July and he signed the '
-          + 'cheque instead of the housing form. The scholarship comes back; '
-          + 'the plan does not.',
-      });
-    }
     const report: OffseasonReport = {
       ...(get().lastOffseason ?? {
         graduated: [], drafted: [], recruits: 0, signed: [], walkOns: [],
@@ -4569,10 +4559,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         The draft was its own screen and its own night; a signed kid
         silently never arriving is the one roster fact nothing else showed.
       */
+      // The July high-school draft that used to write the one sting here
+      // went on 2026-09-10 — a signed kid always arrives now — so the list
+      // stays empty until the winter grows another surprise worth the opener.
       const lines: string[] = [];
-      for (const lost of filled.poached) {
-        lines.push(`${lost.name} (${lost.pos}) signed pro out of high school — he never arrives.`);
-      }
       /*
         The season opener — the reporter's design, from the phone: "the
         board is delighted notification could be something we need to

@@ -35,7 +35,7 @@ import {
   reportedOverall, reportedPotential, reportedTool, hintsFor,
   type Prospect, type RecruitingFactor, type RecruitMajorInput,
 } from '../../engine/recruiting.js';
-import { enrolling, walkOnShortfall } from '../../engine/progression.js';
+import { walkOnShortfall } from '../../engine/progression.js';
 import { pitchFor } from '../../engine/pitch.js';
 import { overallOf } from '../../engine/ratings.js';
 import { highSchoolLine } from '../../engine/scouting.js';
@@ -336,11 +336,9 @@ export function Board() {
     const roster: Player[] = team
       ? [...team.team.lineup, ...team.team.bench, ...team.team.rotation, ...team.team.bullpen]
       : [];
-    // Less the men the pros took in July -- they never arrive, and the
-    // projection has to know it the same way the year roll will.
-    const classPlayers = enrolling(
-      signed.map((p) => p.player), season?.recruiting.year ?? 0,
-    );
+    // Every signed man: the July high-school draft went on 2026-09-10, so
+    // the class the year roll receives is exactly the class on this screen.
+    const classPlayers = signed.map((p) => p.player);
     const still = walkOnShortfall(roster, classPlayers);
 
     const list = showAll ? ranked : ranked.slice(0, ROW_CAP);

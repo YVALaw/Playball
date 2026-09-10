@@ -6559,12 +6559,15 @@ it out of the wage bill. In passing, the tendency neutrality pin moved to
 sixty teams at ±0.008 — the cross products carry ~0.5% of real
 second-order structure and twenty teams had been passing on luck.
 
-**Recruits drafted out of high school** (`takenByPros`, `enrolling` —
-progression.ts). Derived off man and year, aimed at the ceiling (potential
-78 barely at risk, 92 a real one), one to three kids per national class.
-One `enrolling` filter feeds the year roll, the walk-on projection, the
-signing-day screen (the row wears DRAFTED BY THE PROS) and the tests, so
-every surface knows the same thing at the same time.
+**Recruits drafted out of high school** — removed 2026-09-10. `takenByPros`
+and `enrolling` (progression.ts) took one to three high-ceiling signed kids
+a year before they enrolled; a two-star with a hidden A ceiling went that
+way and the reporter read it as a rules bug against the draft's own rule.
+The only draft door now is the one on the roster (`draftEligible`: three
+years completed or twenty one), so a signed class arrives whole, the
+signing-day row no longer wears DRAFTED BY THE PROS, the two "never arrives"
+letters are gone, and the season opener's stings list stays empty until the
+winter grows another surprise.
 
 **The run-expectancy AI** (`buntEdge` — strategy.ts). The RE24 and
 scoring-probability matrices, scaled to the league's 5.30, replace the
