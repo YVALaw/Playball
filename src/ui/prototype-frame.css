@@ -2971,6 +2971,17 @@
   font-weight: 800;
 }
 
+/* Out of position, on the row: a natural cover in the dim ink, a stretch or
+   the deep end in the alert ink, with the overall he actually plays at there. */
+.player-name .row-fit {
+  display: block;
+  margin-top: 2px;
+  color: var(--dim);
+  font-size: calc(8px * var(--ts));
+  font-weight: 800;
+}
+.player-name .row-fit.is-bad { color: var(--alert); }
+
 /* ---------------------------------------------------------------------------
    The action menus leave the way they arrive.
 

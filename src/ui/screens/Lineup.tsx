@@ -33,6 +33,7 @@ import { captainOf } from '../../engine/captains.js';
 import { battingAverage, era, inningsPitched, injuryClock } from '../../engine/season.js';
 import { handles } from '../../state/depth.js';
 import { available, cardGaps } from '../../engine/depthChart.js';
+import { coverTier, fieldingAt, positionPenalty } from '../../engine/positions.js';
 import { useHold } from '../useLongPress.js';
 import type { PlayerId, Position } from '../../engine/types.js';
 import { CaptainC, DidButton, FieldNote, ModuleIntro, SectionHeading } from '../components/Kit.js';
@@ -501,6 +502,27 @@ export function Lineup() {
                   {!available(p, injuryClock(season)) && (
                     <small className="row-why">✚ {whyOut(p, injuryClock(season))}</small>
                   )}
+                  {/* Where he stands against what he is, and what he plays at
+                      there — asked for 2026-09-10: "how do we know visually
+                      when a player isn't in the right position? we should
+                      make it visible so they know he will not be performing
+                      at his best." His own spot says nothing; a natural
+                      cover is noted; a stretch or the deep end is in the
+                      alert ink, with the overall the glove tax leaves him. */}
+                  {(() => {
+                    const home = (p as typeof p & { homePos?: Position }).homePos ?? p.pos;
+                    const asHome = home === p.pos ? p : { ...p, pos: home };
+                    const tier = coverTier(asHome, p.pos);
+                    const settling = tier === 0 && positionPenalty(p, p.pos) > 0;
+                    if (tier === 0 && !settling) return null;
+                    const plays = overallOf(fieldingAt(asHome, p.pos));
+                    const word = settling ? 'SETTLING IN' : tier === 1 ? 'COVERS' : tier === 2 ? 'A STRETCH' : 'OUT OF HIS DEPTH';
+                    return (
+                      <small className={`row-fit${tier >= 2 ? ' is-bad' : ''}`}>
+                        ▲ {word} — {settling ? `new to ${p.pos}` : `a ${home} at ${p.pos}`} · plays as {plays} here
+                      </small>
+                    );
+                  })()}
                 </span>
                 {(() => {
                   const line = season?.batting.get(p.id);
