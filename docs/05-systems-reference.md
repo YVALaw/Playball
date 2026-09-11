@@ -9206,10 +9206,27 @@ the two halves of the showdown.
 Measured after: the postseason spans **twenty days instead of a hundred and
 six**, and every tournament in a stage opens on the same night.
 
-One thing it does not fix and should be looked at separately: the conference
-stage now opens the day after the last regular-season game, which is uniform
-and therefore fair, but tight. A real tournament gets a few days. That is a
-schedule decision rather than a bug.
+**Looked at separately the same day, and the note above was wrong in an
+instructive way.** The conference stage does not open the day after the last
+regular-season game: `firstPostseasonDay` has always added three, and measured
+at seed 4242 that is exactly right — ninety-five of ninety-six clubs have their
+Friday starter available on opening night, all ninety-six have the second and
+third, and the midweek arm who pitched last mostly does not. That is a real
+conference tournament.
+
+The gap that *was* wrong is the one after it, and it was worse than the thing
+§69.1 fixed. The regionals opened the day after the last conference game, and
+**not one of the thirty-two teams in the field had its number one or number two
+starter available** — zero of thirty-two on both slots. Every club in the
+country opened the biggest series of its season with a third starter, a fourth,
+or an emergency arm. Uniform rather than unfair, which is exactly why nothing
+caught it: everybody was equally unable to pitch.
+
+`STAGE_BREAK` is five days, because `recoveryGap` is five above ninety pitches,
+and it is taken between stages rather than before the first one. After it, every
+club that played a conference tournament has its whole rotation for the regional
+opener — 64 of 64 on all four slots at the same seed. June spans thirty-one days
+against the hundred and six it started at. Pinned in `audit-followups.test.ts`.
 
 ### 69.2 A protected seed was told its season was over
 
@@ -9391,6 +9408,78 @@ question about what the world does. The summary carries a count rather than a
 list, so a career started on anything but the standard world says so without
 being read. Each row's caption describes the **chosen** answer rather than the
 switch in the abstract.
+
+## 71. Nobody was measuring year five — **September 11 2026**
+
+Every calibration number this project has ever taken was from a world one day
+old. `calibration.ts` builds two fresh 50-quality teams and sims a pile of
+games between them, and `calibration.test.ts` checks the result against the
+NCAA reference table. That is the right way to ask whether the **engine** is
+calibrated. It cannot answer whether the **world** stays calibrated, and nothing
+else asked: a year-five league is whatever progression, the draft, the portal
+and five recruiting classes left behind.
+
+The 2026-09-11 audit noticed the edge of this — three consecutive seasons at
+6.86, 6.98 and 7.25 runs against a 6.73 target — and three points is not enough
+to tell a drift from a wobble. Measured properly, over ten seasons of two
+worlds:
+
+| | y1 | y3 | y4 | y6 | y10 |
+| --- | --- | --- | --- | --- | --- |
+| seed 4242 | 7.111 | 7.539 | 7.722 | 7.325 | 7.432 |
+| seed 909 | 6.934 | 7.885 | 7.744 | 7.347 | 7.329 |
+
+### 71.1 Three findings, not one
+
+**A fresh league already scores more than the harness says.** 6.93 to 7.11
+against the 6.73 the two-team measurement hits. Run scoring is convex in the gap
+between two clubs, and a real league has a spread of quality where the harness
+has none — so this is the harness being unrepresentative rather than the engine
+being wrong, and it is worth knowing which.
+
+**It climbs for three or four years and peaks 13-17% above target.** This is the
+one that looks like a defect. Both worlds do it, and they do it on the same
+schedule.
+
+**Then it settles and stays settled.** 7.3 to 7.4 from year five to year ten,
+flat. A new equilibrium rather than an unbounded drift, which is a much smaller
+problem than it first appears and is the reason this is a guard rather than an
+emergency.
+
+What the climb is made of is the useful part: **walks go 4.65 to 5.0-5.2 and OBP
+.386 to .395-.405, while home runs and strikeouts barely move.** It is patience,
+not power — something in the first few development cycles favours the bat over
+the arm. That is where a fix would start looking.
+
+### 71.2 What was built
+
+`leagueRates` in `calibration.ts` reduces one whole season of one whole league
+off the books it actually kept, read after the regular season and before the
+postseason — `season.batting` keeps counting through June the way NCAA totals
+do, and the targets describe a regular season.
+
+`tests/headlessYear.ts` is the offseason, the way the store runs it, minus the
+screens. It was not written for this: `climb-probe.ts` had it, and every comment
+in it is a scar from that probe — the run where prestige never moved because
+`runRivalYear` was not called, and the crash from refilling rosters before the
+portal emptied them. It moved out of the probe rather than being copied, because
+two offseasons would drift and the drift would be invisible: both would still
+run. It stays in `tests/` rather than `src/engine/` deliberately. The offseason
+belongs to the store — seven screens and a dozen decisions the engine does not
+make for the player — and shipping a second one beside it would invite somebody
+to call it instead.
+
+`tests/calibration-seasons.test.ts` plays six seasons at seed 4242 and checks
+seven rates against bands taken from the ten-season, two-world measurement, plus
+two statements about shape: that the league settles rather than running away
+(year six within 10% of year one), and that whatever climb there is arrives
+through on-base rather than through power. Six because the climb peaks in year
+three or four and the plateau is established by year five; years seven to ten
+said nothing year six had not, and cost thirty seconds a world.
+
+It fixes none of this. It pins what is true today, so that whoever does fix it
+can watch the numbers move, and so that a change made for some other reason
+cannot quietly make it worse.
 
 ## Appendix A: stale comments and vestigial code found while writing this
 

@@ -8,10 +8,10 @@
 // file; the ones that are were reproduced first.
 
 import { describe, it, expect } from 'vitest';
-import { createSeason, simSeason, currentDay } from '../src/engine/season.js';
+import { createSeason, simSeason, currentDay, pitcherReady } from '../src/engine/season.js';
 import {
   freezeRegularSeason, protectedTopFour, NATIONAL_BIDS, CONF_ADVANCE,
-  allConferenceTournaments, stageRegionals, stageNational,
+  allConferenceTournaments, stageRegionals, stageNational, STAGE_BREAK,
 } from '../src/engine/postseason.js';
 import { startDoubleElim } from '../src/engine/doubleElim.js';
 import { conferenceField } from '../src/engine/postseason.js';
@@ -218,6 +218,53 @@ describe('the postseason calendar', () => {
     const regionals = stageRegionals(s, cups);
     stageNational(s, cups, regionals);
     expect(currentDay(s) - open).toBeLessThan(45);
+  });
+
+  it('gives a staff its arms back between stages', () => {
+    /*
+      The first fix put every tournament of a stage on the same night. It did
+      not put a night between the stages, and the consequence was worse than
+      the thing it fixed: measured at this seed, the regionals opened the day
+      after the last conference game and **not one of the thirty-two teams in
+      the field had its number one or number two starter available**. Zero of
+      thirty-two, both slots. The biggest series of the year was pitched by
+      whoever happened to be left.
+
+      Uniform rather than unfair, which is exactly why nothing caught it.
+    */
+    const s = played();
+    const cups = allConferenceTournaments(s);
+    const cupLast = Math.max(...cups.flatMap((c) => c.games.map((g) => g.day)));
+
+    // Everybody who played a conference tournament, judged on the night the
+    // regionals will open.
+    const played96 = [...new Set(
+      cups.flatMap((c) => c.games.flatMap((g) => [g.home, g.away])),
+    )];
+    expect(played96.length).toBeGreaterThan(32);
+    const opens = currentDay(s) + STAGE_BREAK;
+    for (const i of played96) {
+      const rec = s.teams[i];
+      expect(rec).toBeDefined();
+      for (const [slot, arm] of rec!.team.rotation.slice(0, 2).entries()) {
+        expect(pitcherReady(s, arm, opens, opens), `${rec!.def.abbr} slot ${slot}`)
+          .toBe(true);
+      }
+    }
+
+    const regionals = stageRegionals(s, cups);
+    const regOpen = Math.min(...regionals.flatMap((r) => r.games.map((g) => g.day)));
+    expect(regOpen).toBe(opens);
+    // Five days is `recoveryGap` above ninety pitches, and the conference
+    // final is a day before the break starts.
+    expect(regOpen - cupLast).toBeGreaterThanOrEqual(STAGE_BREAK);
+
+    const regLast = Math.max(...regionals.flatMap((r) => r.games.map((g) => g.day)));
+    const nat = stageNational(s, cups, regionals);
+    const natOpen = Math.min(
+      ...nat.bracketA.games.map((g) => g.day), ...nat.bracketB.games.map((g) => g.day),
+    );
+    expect(natOpen - regLast).toBeGreaterThanOrEqual(STAGE_BREAK);
   });
 
   it('still plays every game it used to', () => {

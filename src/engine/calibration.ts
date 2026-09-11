@@ -114,6 +114,63 @@ export function runSeason(engine: EngineName, n: number, seed = 4242): Acc {
   return acc;
 }
 
+/**
+ * One season of one whole league, read off the books it actually kept.
+ *
+ * Everything above this measures `simGame` against two freshly generated 50
+ * quality teams, which is the right way to ask whether the *engine* is
+ * calibrated and the wrong way to ask whether the *world* still is. A year-five
+ * league is whatever progression, the draft, the portal and five recruiting
+ * classes left behind, and nothing measured that: the outside audit of
+ * 2026-09-11 put three consecutive seasons at 6.86, 6.98 and 7.25 runs against
+ * a 6.73 target and nothing in the suite would have noticed.
+ *
+ * Read after the regular season and before the postseason, so it is the same
+ * forty-five games a year the targets describe — `season.batting` keeps
+ * counting through June, deliberately, the way NCAA totals do.
+ */
+export interface LeagueRates {
+  /** Team-games behind the numbers, so a caller can tell a thin sample. */
+  teamGames: number;
+  runs: number;
+  avg: number;
+  obp: number;
+  slg: number;
+  hr: number;
+  k: number;
+  bb: number;
+}
+
+export function leagueRates(season: {
+  teams: readonly { rs: number; gp: number }[];
+  batting: ReadonlyMap<unknown, {
+    ab: number; h: number; d: number; t: number; hr: number;
+    bb: number; k: number; hbp: number; sf?: number;
+  }>;
+}): LeagueRates {
+  let teamGames = 0;
+  let runs = 0;
+  for (const t of season.teams) { teamGames += t.gp; runs += t.rs; }
+
+  let ab = 0, h = 0, d = 0, tr = 0, hr = 0, bb = 0, k = 0, hbp = 0, sf = 0;
+  for (const line of season.batting.values()) {
+    ab += line.ab; h += line.h; d += line.d; tr += line.t; hr += line.hr;
+    bb += line.bb; k += line.k; hbp += line.hbp; sf += line.sf ?? 0;
+  }
+  const g = Math.max(1, teamGames);
+  const tb = (h - d - tr - hr) + d * 2 + tr * 3 + hr * 4;
+  return {
+    teamGames,
+    runs: runs / g,
+    avg: h / Math.max(1, ab),
+    obp: (h + bb + hbp) / Math.max(1, ab + bb + hbp + sf),
+    slg: tb / Math.max(1, ab),
+    hr: hr / g,
+    k: k / g,
+    bb: bb / g,
+  };
+}
+
 export interface Metrics {
   rows: Record<string, number>;
   slugging: number;

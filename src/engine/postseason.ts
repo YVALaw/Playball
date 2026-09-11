@@ -582,6 +582,36 @@ export function deAsResult(
  * stage's own first night instead of wherever the previous one happened to
  * finish, and the stage hands the calendar on past the longest of them.
  */
+/**
+ * The days off between one stage of the postseason and the next.
+ *
+ * Five, because `recoveryGap` is five days above ninety pitches: a staff that
+ * threw its ace in a conference final on the Sunday has him for the regional
+ * opener, and that is the whole requirement. Fewer and the biggest series of
+ * the year is pitched by whoever happens to be left.
+ *
+ * Measured before it existed, at seed 4242: the regionals opened the day after
+ * the last conference game, and **not one of the thirty-two teams in the field
+ * had its number one or number two starter available.** Zero of thirty-two for
+ * both slots — the entire country opened its regionals with a third starter, a
+ * fourth, or an emergency arm. That was uniform rather than unfair, which is
+ * exactly why nothing caught it: every team was equally unable to pitch.
+ *
+ * It is also what the real calendar does. Regionals open the weekend after the
+ * conference championships for this reason and no other.
+ */
+export const STAGE_BREAK = 5;
+
+/**
+ * Close one stage and open the next, with the break in between.
+ *
+ * `currentDay` already sits on the night after the stage's last game, so this
+ * adds the days off rather than the gap.
+ */
+function afterTheBreak(season: SeasonState): void {
+  season.postseasonDay = currentDay(season) + STAGE_BREAK;
+}
+
 function onTheSameNights<T>(season: SeasonState, run: readonly (() => T)[]): T[] {
   const open = currentDay(season);
   let last = open;
@@ -747,8 +777,10 @@ export function regionalPairing(
 export function stageRegionals(
   season: SeasonState, cups: readonly ConferenceTournament[],
 ): RegionalSeries[] {
-  // Sixteen series, all of them opening on the same night. See
-  // `onTheSameNights`: run end to end they spanned six weeks.
+  // Sixteen series, all of them opening on the same night, once the
+  // conference tournaments have had their break. See `onTheSameNights`: run
+  // end to end they spanned six weeks, and `STAGE_BREAK` for why the wait.
+  afterTheBreak(season);
   return onTheSameNights(season, regionalPairing(season, cups).map((p) => () => {
     // The better regular season hosts the odd game, which is the last thing
     // those forty five games are still paying for at this stage.
@@ -921,6 +953,9 @@ export function stageNational(
 ): NationalResult {
   const field = selectNationalField(season, cups, regionals);
   seatProtected(field);
+  // Sixteen clubs arrive here off a championship series apiece. See
+  // `STAGE_BREAK`.
+  afterTheBreak(season);
   const { bracketA, bracketB } = splitShowdown(field.seeds);
   // The two halves are played at the same time, not one after the other.
   const halves = onTheSameNights(season, [

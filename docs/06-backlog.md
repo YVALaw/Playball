@@ -3249,6 +3249,18 @@ would matter to somebody playing.
   for the coached program (`state/store.ts:3571`), so a man who transfers in
   shows blank seasons for his years elsewhere. Career *totals* do exist.
   **Small to medium.**
+- **The league gains half a run in its first four years, and keeps it.**
+  *(Measured 2026-09-11 and now guarded — `05` §71,
+  `tests/calibration-seasons.test.ts`. The guard pins it; the fix is still
+  owed.)* Ten seasons of two worlds: a fresh league opens at 6.93–7.11 runs
+  against a 6.73 target, climbs to a 7.72–7.89 peak in year three or four, then
+  settles at 7.3–7.4 and stays flat to year ten. The climb is patience, not
+  power — walks 4.65 → 5.0–5.2 and OBP .386 → .395–.405 while home runs and
+  strikeouts barely move, so the first few development cycles favour the bat
+  over the arm. A settled equilibrium rather than a runaway, which is why it is
+  **medium** rather than urgent. Note also that the two-team harness is not a
+  league: run scoring is convex in the gap between two clubs, so 6.73 there and
+  7.0 across ninety-six programs are not in conflict.
 - **The batting-average tail runs hot.** The national leader hits .497–.523
   every season against a D1 record of .467. The mean is on target and every
   other rate is realistic; the lever is the spread of contact at the top of the
