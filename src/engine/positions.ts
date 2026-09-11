@@ -122,15 +122,47 @@ const CATCHER_TAX = 26;
 const isFieldable = (pos: Position): boolean => pos !== 'P';
 
 /**
+ * The position a man actually plays, which for a DH is not "DH".
+ *
+ * There is no such thing as a designated-hitter-shaped human: every DH in the
+ * real sport is a first baseman or a corner outfielder whose bat is worth more
+ * than his glove, and the DH is a lineup slot the coach spends on him, not a
+ * limb he was born without. The generator has always drawn "DH" players —
+ * changing that would move every random draw after it — so the identity is
+ * derived instead: read his own glove and give him the bat-first spot it fits.
+ * Pure arithmetic on ratings, no draws, so the same man answers the same way
+ * for ever. Lived in ratings.ts until 2026-09-10; it is a fact about positions.
+ */
+export function naturalPos(p: Hitter): Position {
+  if (p.pos !== 'DH') return p.pos;
+  // The three places a bat-first player hides. An arm is the one tool that
+  // picks right field; enough range picks left; the rest is a first baseman,
+  // which is where the profile the generator draws for a DH mostly lands.
+  if (p.arm >= 55 && p.arm >= p.range + 6) return 'RF';
+  if (p.range >= 48) return 'LF';
+  return '1B';
+}
+
+/**
+ * The spot the matrix judges him from: his label, except that a DH-labelled
+ * hitter is judged from the spot his glove says he is. Reported 2026-09-10 as
+ * "1B · COVERING 1B": a DH by label standing at first, taxed a rung for
+ * standing where he belongs.
+ */
+export const effectivePos = (p: Hitter | Pitcher): Position =>
+  p.type === 'hitter' && p.pos === 'DH' ? naturalPos(p as Hitter) : p.pos;
+
+/**
  * Which tier a man plays a spot at. The DH is a lineup slot rather than a
  * place on the grass, so nobody is out of position there — which is the whole
  * reason a bat-first man ends up in it.
  */
 export function coverTier(p: Hitter | Pitcher, at: Position): CoverTier {
-  if (p.pos === at) return 0;
+  const own = effectivePos(p);
+  if (own === at) return 0;
   if (!isFieldable(at) || at === 'DH') return 0;
-  if (NATURAL[p.pos].includes(at)) return 1;
-  if (STRETCH[p.pos].includes(at)) return 2;
+  if (NATURAL[own].includes(at)) return 1;
+  if (STRETCH[own].includes(at)) return 2;
   return 3;
 }
 
@@ -142,7 +174,7 @@ export function coverTier(p: Hitter | Pitcher, at: Position): CoverTier {
 export function positionPenalty(p: Hitter | Pitcher, at: Position): number {
   const settling = (p as { settling?: number }).settling ?? 0;
   const tier = coverTier(p, at);
-  if (tier === 0) return p.pos === at ? settling : 0;
+  if (tier === 0) return effectivePos(p) === at ? settling : 0;
   const cost = at === 'C' ? CATCHER_TAX : TIER_COST[tier];
   return cost + settling;
 }
@@ -160,7 +192,8 @@ const hardestFirst = (a: Position, b: Position): number => HARDNESS[b] - HARDNES
  */
 export function secondaryPositions(p: Hitter | Pitcher): Position[] {
   if (p.type === 'pitcher') return [];
-  return [...NATURAL[p.pos]].sort(hardestFirst).filter((pos) => pos !== p.pos);
+  const own = effectivePos(p);
+  return [...NATURAL[own]].sort(hardestFirst).filter((pos) => pos !== own);
 }
 
 /**
@@ -171,10 +204,11 @@ export function secondaryPositions(p: Hitter | Pitcher): Position[] {
  */
 export function retrainablePositions(p: Hitter | Pitcher): Position[] {
   if (p.type === 'pitcher') return [];
+  const own = effectivePos(p);
   return [
-    ...[...NATURAL[p.pos]].sort(hardestFirst),
-    ...[...STRETCH[p.pos]].sort(hardestFirst),
-  ].filter((pos) => pos !== p.pos);
+    ...[...NATURAL[own]].sort(hardestFirst),
+    ...[...STRETCH[own]].sort(hardestFirst),
+  ].filter((pos) => pos !== own);
 }
 
 /**

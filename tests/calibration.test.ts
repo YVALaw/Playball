@@ -31,7 +31,10 @@ import type { Hitter, Pitcher } from '../src/engine/types.js';
  * is not his own, and the bench cover a pinch hitter leaves behind. Runs on
  * the seed moved 6.744 to 6.730 (-0.2%), home runs -1.2%, errors -1%; on the
  * eight-seed sweep every row is within 6% of target, walks still the one
- * outside 5% as recorded below.
+ * outside 5% as recorded below. Re-recorded once more the same day when a
+ * DH-labelled man stopped paying a rung for standing at the first base or
+ * corner his glove says he plays: runs on the seed 6.730 to 6.758, back
+ * toward where the ladder had them.
  *
  * Previously re-recorded 2026-08-25, when players started being *like* something.
  *
@@ -129,20 +132,20 @@ import type { Hitter, Pitcher } from '../src/engine/types.js';
  * philosophy.
  */
 const GOLDEN: Record<string, number> = {
-  'Runs per team per game': 6.729583333333333,
-  'PA per team per game': 41.933125,
-  'Batting average': 0.2753335126097581,
-  'On base percentage': 0.37772159710160796,
-  'Home runs per team per game': 0.999375,
-  'Strikeouts per team per game': 7.9783333333333335,
-  'Walks per team per game': 4.601458333333333,
-  'Pitches per plate appearance': 3.6960736092687263,
-  'Slugging': 0.4297723579136901,
+  'Runs per team per game': 6.758125,
+  'PA per team per game': 41.99395833333333,
+  'Batting average': 0.2759170467619387,
+  'On base percentage': 0.378480849118483,
+  'Home runs per team per game': 0.9970833333333333,
+  'Strikeouts per team per game': 7.96875,
+  'Walks per team per game': 4.625,
+  'Pitches per plate appearance': 3.6963055201393056,
+  'Slugging': 0.43062798941768043,
 };
 
-const GOLDEN_SLUGGING = 0.4297723579136901;
-const GOLDEN_ERRORS = 1.0897916666666667;
-const GOLDEN_SB_PCT = 0.7190887666928515;
+const GOLDEN_SLUGGING = 0.43062798941768043;
+const GOLDEN_ERRORS = 1.08875;
+const GOLDEN_SB_PCT = 0.7164085718754888;
 
 /**
  * Metrics still outside the 10% bar. The list is now empty, and keeping the

@@ -794,12 +794,7 @@ export function armValue(p: Arm): number {
  * Pure arithmetic on ratings, no draws, so the same man answers the same way
  * for ever. Everyone else simply is what the roster says he is.
  */
-export function naturalPos(p: Hitter): Position {
-  if (p.pos !== 'DH') return p.pos;
-  // The three places a bat-first player hides. An arm is the one tool that
-  // picks right field; enough range picks left; the rest is a first baseman,
-  // which is where the profile the generator draws for a DH mostly lands.
-  if (p.arm >= 55 && p.arm >= p.range + 6) return 'RF';
-  if (p.range >= 48) return 'LF';
-  return '1B';
-}
+// Moved to positions.ts on 2026-09-10 — it is a fact about positions, and the
+// cover matrix needs it without importing this file. Re-exported so every
+// caller keeps its import.
+export { naturalPos } from "./positions.js";

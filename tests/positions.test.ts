@@ -12,7 +12,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   positionPenalty, secondaryPositions, retrainablePositions, fieldingAt, penaltyLabel, coverTier,
-  retrainOdds, movePosition, settleIn, RETRAIN_RESIDUAL,
+  retrainOdds, movePosition, settleIn, RETRAIN_RESIDUAL, naturalPos,
 } from '../src/engine/positions.js';
 import { overallOf } from '../src/engine/ratings.js';
 import { createSeason } from '../src/engine/season.js';
@@ -100,6 +100,17 @@ describe('the spectrum', () => {
     expect(positionPenalty(c, '2B')).toBeGreaterThan(15);
     expect(secondaryPositions(c), 'a catcher was offered the middle infield')
       .not.toContain('SS');
+  });
+
+  it('judges a DH by label from the spot his glove says he is', () => {
+    // Reported as "1B · COVERING 1B": a DH by label at first base was taxed a
+    // rung for standing where he belongs.
+    const dh = everyone.find((p) => p.pos === 'DH')!;
+    const real = naturalPos(dh);
+    expect(coverTier(dh, real)).toBe(0);
+    expect(positionPenalty(dh, real)).toBe(0);
+    expect(secondaryPositions(dh)).toEqual(secondaryPositions({ ...dh, pos: real }));
+    expect(retrainablePositions(dh)).toEqual(retrainablePositions({ ...dh, pos: real }));
   });
 
   it('never pays a man for standing somewhere easier', () => {

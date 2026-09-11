@@ -336,7 +336,9 @@ export function Player() {
     : naturalPos(homePos ? { ...(p as Hitter), pos: homePos } : (p as Hitter));
   const slot = isTwoWay(p) ? `TWO-WAY · ${(p as unknown as Pitcher).role} · ${own}` : own;
   const dhToday = !isPitcher && p.pos === 'DH';
-  const covering = homePos && p.pos !== homePos && p.pos !== 'DH' ? p.pos : null;
+  // Against what he IS, not his label: a DH by label standing at first base
+  // is at his own spot (reported as "1B · COVERING 1B").
+  const covering = !isPitcher && p.pos !== 'DH' && p.pos !== own ? p.pos : null;
 
   // A tab that is not on offer must never be the one on screen. Cheap insurance
   // against a card that reopens on a tab the next man does not have.

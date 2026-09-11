@@ -32,7 +32,7 @@
 
 import type { Hitter, Player, PlayerId, Position, Team } from './types.js';
 import { overallOf } from './ratings.js';
-import { fieldingAt, coverTier } from './positions.js';
+import { fieldingAt, coverTier, effectivePos } from './positions.js';
 
 /** The nine spots a lineup card has to fill, in scorebook order. */
 export const SPOTS: readonly Position[] = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH'];
@@ -399,8 +399,11 @@ export function bestNine(
     costs and less than any upgrade worth making.
   */
   const OWN_SPOT_EDGE = 3;
+  // His own spot as the matrix reads it: a DH by label is the first baseman
+  // or corner his glove says he is.
+  const own = (m: Hitter): Position => effectivePos(home(m));
   const merit = (m: Hitter, spot: Position): number =>
-    overallOf(fieldingAt(home(m), spot)) + (home(m).pos === spot ? OWN_SPOT_EDGE : 0);
+    overallOf(fieldingAt(home(m), spot)) + (own(m) === spot ? OWN_SPOT_EDGE : 0);
   const rank = (spot: Position) => (a: Hitter, b: Hitter): number =>
     merit(b, spot) - merit(a, spot)
     || Number(inNine.has(b.id)) - Number(inNine.has(a.id))
@@ -409,6 +412,8 @@ export function bestNine(
   const order: Position[] = ['C', 'SS', '2B', 'CF', '3B', 'RF', 'LF', '1B', 'DH'];
   const taken = new Set<PlayerId>();
   const picks = new Map<Position, Hitter>();
+  // Spots a coach's written order filled, which the unswap below leaves alone.
+  const wroteAt = new Set<Position>();
   for (const spot of order) {
     const free = men.filter((m) => !taken.has(m.id) && available(m, day));
     const wrote = (written[spot] ?? [])
@@ -422,6 +427,7 @@ export function bestNine(
     const pool = fits.length > 0 ? fits : stretches.length > 0 ? stretches : free;
     const pick = wrote ?? pool.sort(rank(spot))[0];
     if (!pick) continue;
+    if (wrote) wroteAt.add(spot);
     taken.add(pick.id);
     picks.set(spot, pick);
   }
@@ -433,6 +439,32 @@ export function bestNine(
     if (!man) return asIs;
     taken.add(man.id);
     picks.set(spot, man);
+  }
+
+  /*
+    A pure swap is never a gain. Two men standing in each other's own spots
+    both pay the cover tax, and the greedy fill cannot see it: at right it
+    takes the better bat off left, then left takes the right fielder.
+    Reported twice, the second time after the edge above — a bat six points
+    better clears three. Every such pair goes back where each belongs, which
+    strictly improves both spots.
+  */
+  let swapped = true;
+  while (swapped) {
+    swapped = false;
+    for (const a of order) {
+      for (const b of order) {
+        if (a === b || wroteAt.has(a) || wroteAt.has(b)) continue;
+        const ma = picks.get(a);
+        const mb = picks.get(b);
+        if (!ma || !mb) continue;
+        if (own(ma) === b && own(mb) === a) {
+          picks.set(a, mb);
+          picks.set(b, ma);
+          swapped = true;
+        }
+      }
+    }
   }
 
   const lineup = SPOTS.map((spot) => picks.get(spot)!);

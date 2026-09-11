@@ -8,6 +8,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { bestNine, fitAt, SPOTS, squad, type DepthChart } from '../src/engine/depthChart.js';
+import { naturalPos } from '../src/engine/positions.js';
 import { createSeason } from '../src/engine/season.js';
 import { makeRng } from '../src/engine/rng.js';
 import { CONFERENCES } from '../src/data/schools.js';
@@ -65,6 +66,29 @@ describe('the best nine', () => {
     expect(lineup.find((p) => p.id === rf.id)!.pos).toBe('RF');
   });
 
+  it('never trades two men into each other\'s spots, whatever the gap between their bats', () => {
+    // The second report: a left fielder six points better still swapped
+    // with the right fielder, both a rung worse. A pure swap is never a gain.
+    const team = fresh();
+    const lf = team.lineup.find((p) => p.pos === 'LF')!;
+    const rf = team.lineup.find((p) => p.pos === 'RF')!;
+    rate(lf, 56);
+    rate(rf, 44);
+    const { lineup } = bestNine(team, 0);
+    expect(lineup.find((p) => p.id === lf.id)!.pos).toBe('LF');
+    expect(lineup.find((p) => p.id === rf.id)!.pos).toBe('RF');
+  });
+
+  it('leaves a DH by label at first base without a tax', () => {
+    const team = fresh();
+    const dh = [...team.lineup, ...team.bench].find((p) => p.pos === 'DH');
+    if (!dh) return;
+    const real = naturalPos(dh);
+    const { lineup } = bestNine(team, 0);
+    const placed = lineup.find((p) => p.id === dh.id);
+    if (placed && placed.pos === real) expect(fitAt(placed, placed.pos)).toBe('his own');
+  });
+
   it('still moves a cover in when he is clearly the better man', () => {
     const team = fresh();
     const weak2b = team.lineup.find((p) => p.pos === '2B')!;
@@ -76,10 +100,12 @@ describe('the best nine', () => {
     rate(third, 70);
     rate(weak2b, 30);
     const { lineup } = bestNine(team, 0);
-    expect(lineup.find((p) => p.id === third.id)?.pos).toBe('2B');
-    // The passenger loses second. On a roster this thin he may still be the
-    // best bat left for the DH, which is the DH's job — but not second.
-    expect(lineup.find((p) => p.id === weak2b.id)?.pos).not.toBe('2B');
+    // He is in the nine, at second or — if the passenger was a better cover
+    // at third than the man there, so the pair went home — at his own third.
+    const placed = lineup.find((p) => p.id === third.id);
+    expect(placed).toBeDefined();
+    expect(['2B', '3B']).toContain(placed!.pos);
+    expect(fitAt(placed!, placed!.pos)).not.toBe('stretch');
   });
 
   it('does not put a big bat behind the plate', () => {
@@ -149,5 +175,27 @@ describe('AUTO on the lineup screen', () => {
     expect(team.lineup.map((p) => p.id)).toContain(kid.id);
     expect(team.bench.map((p) => p.id)).toContain(weak.id);
     expect(new Set(team.lineup.map((p) => p.pos)).size).toBe(9);
+  });
+
+  it('brings a better starter up from the pen, and sends the worst one down as a starter by trade', () => {
+    // Reported: "a lot of better freshman SP in the bullpen but they are not
+    // being brought to the starting position."
+    useDynasty.getState().start(4242, 0);
+    const state = useDynasty.getState();
+    const team = state.season!.teams[state.userTeam]!.team;
+    const arm = team.bullpen[0]!;
+    arm.role = 'SP';
+    delete arm.homeRole;
+    Object.assign(arm, { stuff: 85, movement: 85, control: 85, stamina: 80 });
+    const before = [...team.rotation];
+
+    useDynasty.getState().autoLineup();
+    expect(team.rotation.some((p) => p.id === arm.id)).toBe(true);
+    expect(team.rotation).toHaveLength(before.length);
+    const sentDown = before.find((p) => !team.rotation.some((r) => r.id === p.id))!;
+    expect(team.bullpen.some((p) => p.id === sentDown.id)).toBe(true);
+    // A starter by trade keeps the label in the pen; a reliever borrowed for
+    // Friday would go back to RP.
+    expect(sentDown.role).toBe('SP');
   });
 });

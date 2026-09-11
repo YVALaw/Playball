@@ -6582,13 +6582,31 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       Available arms first, so a hurt ace does not hold Friday from the bench.
     */
     const day = season?.dayIndex ?? 0;
-    team.rotation.sort((a, b) => {
-      const fitA = available(a, day) ? 1 : 0;
-      const fitB = available(b, day) ? 1 : 0;
-      if (fitA !== fitB) return fitB - fitA;
+    /*
+      Rebuilt from every arm, not reordered. Reported 2026-09-10: "I have a
+      lot of better freshman SP in the bullpen but they are not being brought
+      to the starting position." Available arms first, then starters by
+      trade — the role he was drawn with, or the one he keeps under a
+      borrowed label — then the better arm; relievers fill the back of the
+      rotation only when there are not four starters. The same labels
+      promoteArm writes, so a reliever who takes Friday is an SP tonight and
+      an RP again on the way back down, and a surplus starter in the pen
+      stays an SP by trade.
+    */
+    const arms = uniquePlayers([...team.rotation, ...team.bullpen]) as Arm[];
+    const trade = (a: Arm): 'SP' | 'RP' => a.homeRole ?? a.role;
+    const ranked = [...arms].sort((a, b) =>
+      (Number(available(b, day)) - Number(available(a, day)))
+      || (Number(trade(b) === 'SP') - Number(trade(a) === 'SP'))
       // armValue: a two-way man's slot in the rotation is his arm's.
-      return armValue(b) - armValue(a);
-    });
+      || armValue(b) - armValue(a));
+    const size = Math.max(1, team.rotation.length);
+    const rotation = ranked.slice(0, size);
+    const bullpen = ranked.slice(size);
+    for (const a of rotation) { a.homeRole = trade(a); a.role = 'SP'; settleReturn(a); }
+    for (const a of bullpen) { a.homeRole = trade(a); a.role = trade(a); }
+    team.rotation.splice(0, team.rotation.length, ...rotation);
+    team.bullpen.splice(0, team.bullpen.length, ...bullpen);
     set({ version: version + 1 });
     void get().saveNow();
   },
