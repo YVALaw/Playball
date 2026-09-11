@@ -11,6 +11,7 @@
 // design/Roster Tabletop/ is the design of record.
 
 import { leagueLabel } from '../engine/leagueNames.js';
+import { rulesOf } from '../engine/season.js';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Modal } from './Modal.js';
 import { uniquePlayers } from '../engine/types.js';
@@ -23,7 +24,7 @@ import {
   HomeIcon, IdCardIcon, StarIcon,
 } from '@radix-ui/react-icons';
 import {
-  PHASES, PHASE_LABEL, TABS, useDynasty, useUserTeam, nextNavInstant, blockingCardUp, openerShowing,
+  PHASES, PHASE_LABEL, stepsFor, TABS, useDynasty, useUserTeam, nextNavInstant, blockingCardUp, openerShowing,
   type ProgramSheet, type Tab,
 } from '../state/store.js';
 import { hasLayerToClose, Back, isNativeShell } from './backNav.js';
@@ -241,6 +242,10 @@ function AppBody(
   const live = useDynasty((s) => s.live);
   const selectedPlayer = useDynasty((s) => s.selectedPlayer);
   const furthestPhase = useDynasty((s) => s.furthestPhase);
+  // Both branches of `rulesOf` return a stable reference — the season's own
+  // object, or the module constant — so this selector never re-renders on
+  // identity alone.
+  const rules = useDynasty((s) => rulesOf(s.season));
   const goPhase = useDynasty((s) => s.goPhase);
   const jobSearch = useDynasty((s) => s.jobSearch);
   const loadError = useDynasty((s) => s.loadError);
@@ -959,12 +964,27 @@ function AppBody(
           <CoachMenuButton />
         </header>
         <SaveAlert />
-        <StepRail
-          steps={PHASES.map((p) => ({ key: p, label: PHASE_LABEL[p] }))}
-          at={PHASES.indexOf(phase)}
-          furthest={furthestPhase}
-          onGo={(k) => goPhase(k as Exclude<typeof phase, null>)}
-        />
+        {/*
+          The rail is the offseason this world actually runs, so a career
+          started without a portal never shows a PORTAL step it cannot open.
+          `furthestPhase` is an index into the canonical `PHASES` and stays
+          one — it is a number in a save file — so it is translated into the
+          rail's own shorter numbering here rather than stored twice.
+        */}
+        {(() => {
+          const steps = stepsFor(rules);
+          const furthest = steps.reduce(
+            (n, p, i) => (PHASES.indexOf(p) <= furthestPhase ? i : n), 0,
+          );
+          return (
+            <StepRail
+              steps={steps.map((p) => ({ key: p, label: PHASE_LABEL[p] }))}
+              at={steps.indexOf(phase)}
+              furthest={furthest}
+              onGo={(k) => goPhase(k as Exclude<typeof phase, null>)}
+            />
+          );
+        })()}
         <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
           flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
         }}>

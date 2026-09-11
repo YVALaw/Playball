@@ -8144,3 +8144,39 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .bracket-you-tag { color: var(--paper); }
 }
+
+/* The rules of the world, on the how-you-play step (05 §70).
+
+   A fold, because the defaults are the game: five switches met on the way to a
+   first job would be a toll on everybody to serve the few who want them. Built
+   on the god-mode toggle's frame a few hundred lines up so the two extra blocks
+   on that step read as one family.
+
+   The marker is suppressed and replaced, because the native triangle sits at a
+   different baseline in every engine and the summary here is a row rather than
+   a line of text. */
+.career-world-rules { margin: 12px 0 0; border: 1px solid var(--line); background: var(--paper); }
+.career-world-rules > summary { display: flex; align-items: center; gap: 10px; padding: 11px; list-style: none; cursor: pointer; }
+.career-world-rules > summary::-webkit-details-marker { display: none; }
+.career-world-rules > summary > span { flex: 1; min-width: 0; }
+.career-world-rules > summary small { display: block; color: var(--clay); font: 700 calc(6.5px * var(--ts)) var(--mono); letter-spacing: .12em; }
+.career-world-rules > summary strong { display: block; margin-top: 2px; font: 800 calc(13px * var(--ts)) var(--display); }
+.career-world-rules > summary b { flex: none; padding: 5px 9px; border: 1px solid var(--clay); color: var(--clay); font: 800 calc(7px * var(--ts)) var(--mono); }
+/* Open, the badge stops being an invitation and starts being a count. */
+.career-world-rules[open] > summary b { background: var(--command); color: var(--cream); }
+.career-rule-note { margin: 0; padding: 0 11px 9px; color: var(--dim); font: 500 calc(8.5px * var(--ts))/1.4 var(--body); }
+.career-rule-row { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-top: 1px solid var(--line); }
+.career-rule-head { flex: 1; min-width: 0; }
+.career-rule-head strong { display: block; font: 800 calc(11px * var(--ts)) var(--body); }
+/* The note under each label says what the CHOSEN answer does, so it changes
+   with the chips rather than describing the switch in the abstract. */
+.career-rule-head small { display: block; margin-top: 2px; color: var(--dim); font: 500 calc(8.5px * var(--ts))/1.35 var(--body); }
+.career-rule-chips { flex: none; display: flex; gap: 4px; }
+.career-rule-chips .career-chip { min-height: 30px; padding: 5px 8px; }
+/* The step's own scale rule sets .career-chip to 10px; these are three to a row
+   beside a label and want the smaller cut back. */
+.career-workspace .career-rule-chips .career-chip { font-size: calc(8px * var(--ts)); }
+@media (max-width: 360px) {
+  .career-rule-row { display: block; }
+  .career-rule-chips { margin-top: 7px; }
+}

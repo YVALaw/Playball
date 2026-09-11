@@ -19,7 +19,8 @@ import {
   createSeason, simNextDay, simSeason, seasonComplete, standings, nextSeason, rpi, rpiOrder,
   seasonLength, regularRecord, archiveSeason, recordSeasonMarks,
   recordCareerMarks, recordResult, restedFirst, closerFrom, seedTeams,
-  type SeasonState, type TeamRecord,
+  rulesOf, configForRules, DEFAULT_RULES,
+  type SeasonState, type TeamRecord, type SeasonRules,
 } from '../engine/season.js';
 import { activeIds, honoursByPlayer, inductees } from '../engine/hall.js';
 import {
@@ -631,6 +632,30 @@ export type Phase =
 export const PHASES: readonly Exclude<Phase, null>[] =
   ['awards', 'review', 'coach', 'draft', 'portal', 'signing'];
 
+/**
+ * Whether this world runs that step at all.
+ *
+ * `PHASES` stays the canonical list whatever the rules say, and its indices
+ * stay fixed — `furthestPhase` is a number in a save file and a dozen callers
+ * compare against `PHASES.indexOf`. A switched-off step is skipped on the way
+ * past and hidden on the rail; it is never removed from the list.
+ */
+export const liveStep = (step: Exclude<Phase, null>, rules: SeasonRules): boolean =>
+  step !== 'portal' || rules.portal;
+
+/** The offseason as this world actually walks it. */
+export const stepsFor = (rules: SeasonRules): Exclude<Phase, null>[] =>
+  PHASES.filter((p) => liveStep(p, rules));
+
+/** The step after this one, walking past anything the world turned off. */
+export function stepAfter(phase: Exclude<Phase, null>, rules: SeasonRules): Phase {
+  for (let at = PHASES.indexOf(phase) + 1; at < PHASES.length; at++) {
+    const step = PHASES[at];
+    if (step && liveStep(step, rules)) return step;
+  }
+  return null;
+}
+
 /** What each step is called on the rail across the top. */
 export const PHASE_LABEL: Record<Exclude<Phase, null>, string> = {
   awards: 'AWARDS',
@@ -1080,6 +1105,11 @@ export interface DynastyStore {
     made?: { skills: CoachSkills; badges: string[]; leans: Partial<Record<CultureEdge, number>> },
     /** A sandbox career. Chosen on the How-you-play step; never cleared. */
     godMode?: boolean,
+    /**
+     * The rules this world plays by — see `SeasonRules`. Set once, here, and
+     * never written again: they are what the record book is comparable across.
+     */
+    rules?: SeasonRules,
   ) => void;
   /** True before a job has been taken, so the app can show the setup screen. */
   needsTeam: boolean;
@@ -2698,8 +2728,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   lastWeek: null,
   phase: null,
 
-  start: (seed = WORLD_SEED, team?: number, profile?: CoachProfile, mode: DepthMode = 'full', made?: { skills: CoachSkills; badges: string[]; leans: Partial<Record<CultureEdge, number>> }, godMode = false) => {
-    const season = createSeason(makeRng(seed), undefined, CONFERENCES);
+  start: (seed = WORLD_SEED, team?: number, profile?: CoachProfile, mode: DepthMode = 'full', made?: { skills: CoachSkills; badges: string[]; leans: Partial<Record<CultureEdge, number>> }, godMode = false, rules: SeasonRules = DEFAULT_RULES) => {
+    // The schedule is part of the world, so the config has to be right before a
+    // single fixture is laid out. Nothing above this draws, so the ninety-six
+    // rosters are the rosters the offer screen previewed whatever the rules say.
+    const season = createSeason(makeRng(seed), configForRules(rules), CONFERENCES);
+    season.rules = rules;
     // Whose games to keep box scores for. A season is built before anybody has
     // taken a job, so the engine cannot know this on its own.
     season.captureBoxFor = team ?? defaultUserTeam(season);
@@ -3280,8 +3314,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // it is what commits them.
     set({ overlay: null, selectedPlayer: null, coachSeat: null, spentThisStep: {} });
 
-    const at = PHASES.indexOf(phase);
-    const next = PHASES[at + 1] ?? null;
+    const next = stepAfter(phase, rulesOf(season));
 
     if (next === 'review') get().settleSeason();
 
@@ -4092,7 +4125,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // the world rather than a trophy list disconnected from it.
     const staffPoaches = SEATS
       .map((seat) => ({ seat, man: get().economy.staff[seat] }))
-      .filter((x): x is { seat: StaffSeat; man: Assistant } => !!x.man && poached(x.man, year));
+      .filter((x): x is { seat: StaffSeat; man: Assistant } =>
+        !!x.man && rulesOf(season).poaching && poached(x.man, year));
     const extraFreeAgents: FreeAgent[] = staffPoaches.map(({ man }) => ({
       coach: coachFromAssistant(man, coach.prestige),
       from: -1,
@@ -4407,9 +4441,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         the scheduler needs. The user's chair is never the one relegated; it
         can absolutely be the one invited up.
       */
-      const move = realignmentFor(
-        String(next.seed ?? 0), year, next.teams, get().userTeam,
-      );
+      const move = rulesOf(season).realignment
+        ? realignmentFor(String(next.seed ?? 0), year, next.teams, get().userTeam)
+        : null;
       if (move) {
         const riser = next.teams[move.up]?.def;
         const faller = next.teams[move.down]?.def;
@@ -4484,7 +4518,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         walked through that step -- there is no such winter on the rail
         today, and this is what keeps a mood from being judged twice.
       */
-      const settled = season.moraleSettled === true || get().furthestPhase >= PHASES.indexOf('portal');
+      const settled = season.moraleSettled === true
+        // The belt, for a winter whose portal step wrote the flag before the
+        // flag existed. A world with the portal switched off never walks that
+        // step at all, so `furthestPhase` passing its index proves nothing and
+        // the settle has to happen here.
+        || (rulesOf(season).portal && get().furthestPhase >= PHASES.indexOf('portal'));
       const mineNow = rolled.teams[get().userTeam];
       if (mineNow) {
         // One body once: a two-way man's mood, grades and winter healing
@@ -4875,6 +4914,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   goPhase: (phase) => {
     const at = PHASES.indexOf(phase);
     if (at < 0 || at > get().furthestPhase) return;
+    // A step this world does not run is not reachable, however far the rail
+    // has got: skipping it pushes `furthestPhase` past its index.
+    if (!liveStep(phase, rulesOf(get().season))) return;
     navMark(false);
     set({
       phase, overlay: null, selectedPlayer: null, coachSeat: null, spentThisStep: {},

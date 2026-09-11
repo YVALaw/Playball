@@ -9297,6 +9297,101 @@ them would duplicate the label above and delete the only character on the card.
 false only at the 99 cap, and the true numbers print immediately before it. It
 says the gain now.
 
+## 70. The rules of the world — **September 11 2026**
+
+`06` §AC.2 called this "the highest-value thing on this page: the only way to
+turn off a system a player hates without abandoning the career." It had been
+designed, decided and never built — `state/depth.ts` carried fourteen keys and
+every one was a *depth* toggle, there was no `season.rules`, and NEW CAREER
+offered no season length or series format.
+
+### 70.1 Why they could not live in the depth catalogue
+
+`depth.ts` opens with the rule that makes the whole mode honest: **the engine
+always models everything, and the mode changes what the player is asked, never
+what the simulation does.** Casual does not turn the bullpen off; it has the
+pitching coach run it. That is what lets a casual career and a full career in
+the same world produce the same league, the same rankings, the same records and
+the same hall of fame — and the moment a mode reached into the simulation, every
+comparison in the game would become a lie.
+
+Its second rule follows: **anything that touches the whole league is not a
+preference**, and its own header names injuries and realignment as the
+counter-examples, "deliberately absent from the catalogue below however natural
+they might look on a settings screen."
+
+So this is the other thing, and it lives in the engine beside the season it
+changes. Five switches, every one of them applying to all ninety-six programs at
+once, **fixed for the life of a career**. Fixed because the record book is one
+continuous document: an era with injuries off is not comparable to the era
+before it, and the hall of fame, the national table and every school annal read
+across all of them. `start` stamps `season.rules` and nothing writes it again.
+
+### 70.2 The five
+
+| Rule | Answers | What moves |
+| --- | --- | --- |
+| Injuries | full / half / none | A scale on `hurtsToday`'s existing roll, at both exposure channels |
+| Transfer portal | on / off | The offseason step itself, skipped rather than emptied |
+| Realignment | on / off | `realignmentFor` at the year roll |
+| Poaching | on / off | The carousel's poach branch, and your own staff's departures |
+| Season | 45 / 34 games | `gamesPerSeries`, and the slot the midweek arm starts in |
+
+**Injuries** is a multiplier and not a second model, which matters: `off` is that
+multiplier at nought, and `hurtsToday` already returns null for a chance that
+never clears its threshold. Nothing about which injury, or how long, or the
+determinism of the hash is touched.
+
+**The portal** is the only one that changes the shape of the offseason, and it
+is skipped rather than removed. `PHASES` stays the canonical list with its
+indices fixed — `furthestPhase` is a number in save files and a dozen callers
+compare against `PHASES.indexOf` — so `stepAfter` walks past a switched-off step
+and `stepsFor` hides it on the rail. One consequence needed catching: the winter
+mood settle runs at the portal step, and the year roll's belt for an old save
+read "furthest phase is past the portal's index", which skipping makes true
+without the settle having happened. It now asks whether this world has a portal
+at all.
+
+**Season length** is the one that was constrained by the scheduler rather than
+by taste, and the constraint is worth writing down because it is permanent. Two
+things are not negotiable. The conference round robin — eleven series against an
+eleven team field — is what makes a standing mean anything, so dropping rounds
+would judge two programs on different opponents. The crossover games are not
+negotiable either, for `DEFAULT_SEASON`'s own reason: without them the eight
+leagues are sealed islands, every conference posts identical aggregate records,
+RPI has nothing to compare and there is no honest basis for an at-large field.
+
+What is left is the length of a weekend. A two-game series keeps the full round
+robin and every crossover game and cuts the year from forty-five to thirty-four.
+The cost is real and it is the point: **a two-game weekend plus a midweek is a
+three man rotation.** The midweek arm therefore starts in the slot after the
+weekend's rather than a hard-coded third — otherwise a short season would have
+idled the third starter and given the fourth every crossover game, which is a
+rotation with a hole in it rather than a shorter one.
+
+### 70.3 A standard world is bit-for-bit the world that was there
+
+The defaults are what the game has always done, and `configForRules` returns
+`DEFAULT_SEASON` itself rather than a copy of it, so the default schedule is not
+merely equal to the old one — it is the same object. Every calibration number
+ever taken still measures the league it was taken from.
+
+A save written before any of this existed has no `rules` and no
+`gamesPerSeries`; `rulesOf` answers "a standard world" for it and `seriesGames`
+answers three. Refusing to load a dynasty is the one thing a save file must
+never do, and neither field is ever read directly.
+
+### 70.4 Where they sit on the screen
+
+Folded, at the foot of the how-you-play step. Behind a fold because the defaults
+are the game and five switches on the way to a first job would be a toll on
+everybody to serve the few who want them; on *that* step because it is already
+the one about how much of the game reaches the desk, and this is the neighbouring
+question about what the world does. The summary carries a count rather than a
+list, so a career started on anything but the standard world says so without
+being read. Each row's caption describes the **chosen** answer rather than the
+switch in the abstract.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

@@ -56,10 +56,22 @@ import type {Arm, EngineName, FieldLine, HitLine, Hitter, PitchLine, Pitcher, Pl
 export interface SeasonConfig {
   /** Three game weekend series against a conference opponent. */
   seriesRounds: number;
+  /**
+   * How many games a weekend series is. Three, unless a world was opened on
+   * the short schedule — see `SEASON_SPANS`.
+   *
+   * Optional because a save written before the world had rules has none, and a
+   * missing field has to keep meaning what it always meant. Read it through
+   * `seriesGames`, never directly.
+   */
+  gamesPerSeries?: number;
   /** Single midweek games against a team from another conference. */
   nonConferenceGames: number;
   engine: EngineName;
 }
+
+/** How many games a weekend is, with the old three for a config that predates the question. */
+export const seriesGames = (config: SeasonConfig): number => config.gamesPerSeries ?? 3;
 
 /**
  * 45 games: eleven three-game conference series (33) plus twelve non-conference
@@ -99,7 +111,107 @@ export const DEFAULT_SEASON: SeasonConfig = {
  * was only correct on the final day.
  */
 export const seasonLength = (config: SeasonConfig): number =>
-  config.seriesRounds * 3 + config.nonConferenceGames;
+  config.seriesRounds * seriesGames(config) + config.nonConferenceGames;
+
+// ---------------------------------------------------------------------------
+// The rules of the world
+// ---------------------------------------------------------------------------
+
+/**
+ * The switches a coach sets when he takes his first job, and then lives with.
+ *
+ * These are **not** depth preferences and the distinction is the whole reason
+ * they live here rather than in `state/depth.ts`. That file's rule is that the
+ * engine always models everything and the mode only changes what the player is
+ * asked — which is what lets a casual career and a full career in the same
+ * world produce the same league, the same records and the same hall of fame.
+ * Its own header names injuries and realignment as the counter-example:
+ * "properties of the world, on for everybody or off for everybody", and
+ * deliberately absent from the catalogue there.
+ *
+ * So this is that other thing. Every rule below changes the simulation, for all
+ * ninety-six programs at once, and none of them could be a preference.
+ *
+ * **They are fixed for the life of a career.** A world whose rules moved would
+ * make its own record book meaningless — an era with injuries off is not
+ * comparable to the era before it, and the hall of fame, the national table and
+ * every school annal are one continuous book. `start` stamps them and nothing
+ * writes them again.
+ */
+export interface SeasonRules {
+  /**
+   * How much the trainer's room matters. `reduced` is a scale on the same roll,
+   * not a different model — and `off` is that scale at nought, which
+   * `hurtsToday` already handles, because a chance of nought never clears its
+   * threshold.
+   */
+  injuries: 'on' | 'reduced' | 'off';
+  /** Whether men transfer at all. Off skips the offseason step entirely. */
+  portal: boolean;
+  /** Whether the conferences trade programs between seasons. */
+  realignment: boolean;
+  /** Whether a rival can take an assistant off your staff. */
+  poaching: boolean;
+  /** How long the regular season is. See `SEASON_SPANS`. */
+  length: 'short' | 'standard';
+}
+
+/** Every rule at the value the game has always played by. */
+export const DEFAULT_RULES: SeasonRules = {
+  injuries: 'on',
+  portal: true,
+  realignment: true,
+  poaching: true,
+  length: 'standard',
+};
+
+/**
+ * The rules this world was opened under.
+ *
+ * Every career before the switches existed was played on the defaults, so a
+ * save with no rules is not missing information — it is a standard world, and
+ * saying so here is what keeps every reader from having to ask.
+ */
+export const rulesOf = (
+  season: { rules?: SeasonRules } | null | undefined,
+): SeasonRules => season?.rules ?? DEFAULT_RULES;
+
+const INJURY_SCALE: Record<SeasonRules['injuries'], number> = {
+  on: 1,
+  // Not a token cut. Half is the number that leaves a squad still needing a
+  // bench without the trainer's room being the season's main opponent.
+  reduced: 0.5,
+  off: 0,
+};
+
+/** What to multiply an injury roll by, for the world's setting. */
+export const injuryScale = (rules: SeasonRules): number => INJURY_SCALE[rules.injuries];
+
+/**
+ * The two schedules, and why there are only two.
+ *
+ * The conference round robin is not negotiable: eleven series against an eleven
+ * team field is what makes a conference standing mean something, and dropping
+ * rounds would leave two programs judged on different opponents. The
+ * non-conference games are not negotiable either, for the reason
+ * `DEFAULT_SEASON` gives — with none of them the eight leagues are sealed
+ * islands, RPI has nothing to compare, and there is no honest basis for an
+ * at-large national field.
+ *
+ * What is left is the length of a weekend. Two-game series keep the full round
+ * robin and every crossover game, and cut the year from forty-five to
+ * thirty-four. The cost is real and it is the point: a two-game weekend plus a
+ * midweek is a **three man rotation**, so the fourth arm a standard world
+ * carries has nowhere to start.
+ */
+export const SEASON_SPANS: Record<SeasonRules['length'], SeasonConfig> = {
+  standard: DEFAULT_SEASON,
+  short: { ...DEFAULT_SEASON, gamesPerSeries: 2 },
+};
+
+/** The schedule a world with these rules is built on. */
+export const configForRules = (rules: SeasonRules): SeasonConfig =>
+  SEASON_SPANS[rules.length];
 
 /** The record a board actually judges: regular season only. */
 /** One season of one player's college career, as the record book keeps it. */
@@ -693,6 +805,15 @@ export interface SeasonState {
   /** Morale and recruiting promises have been judged for this season. */
   moraleSettled?: boolean;
   config: SeasonConfig;
+  /**
+   * The rules this world was opened under — see `SeasonRules`.
+   *
+   * Optional in the type and only in the type: every career started before the
+   * switches existed was played on the defaults, and `rulesOf` says so for
+   * them. Refusing to load a dynasty is the one thing a save file must never
+   * do.
+   */
+  rules?: SeasonRules;
   rng: Rng;
   /**
    * The calendar year this season is being played in.
@@ -1196,7 +1317,12 @@ export function buildSchedule(
   world: WorldShape,
   rotation = 0,
 ): GameDay[] {
-  const seriesLabels = ['Series opener', 'Game two', 'Series finale'];
+  const per = seriesGames(config);
+  const GAME_WORD = ['two', 'three', 'four', 'five'];
+  const seriesLabel = (g: number): string =>
+    g === 0 ? 'Series opener'
+      : g === per - 1 ? 'Series finale'
+        : `Game ${GAME_WORD[g - 1] ?? g + 1}`;
   const confCount = world.conferences.length;
   const fixtures: Fixture[] = [];
 
@@ -1253,12 +1379,14 @@ export function buildSchedule(
   for (const f of placed) {
     if (f.kind === 'midweek') {
       dayFor(f.day, f.week, 'midweek', 'Midweek').games.push({
-        home: f.home, away: f.away, conference: false, slot: 3,
+        // The slot after the weekend's, so every arm the rotation lists has a
+        // night: three-game worlds start him fourth, two-game worlds third.
+        home: f.home, away: f.away, conference: false, slot: per,
       });
       continue;
     }
-    for (let g = 0; g < 3; g++) {
-      dayFor(f.day + g, f.week, 'series', seriesLabels[g] as string).games.push({
+    for (let g = 0; g < per; g++) {
+      dayFor(f.day + g, f.week, 'series', seriesLabel(g)).games.push({
         home: f.home, away: f.away, conference: true, slot: g,
       });
     }
@@ -1426,6 +1554,9 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
 
   return {
     config,
+    // The rules outlive the season the way the record book does. A world that
+    // forgot them in year two would start breaking men it had been told not to.
+    ...(prev.rules ? { rules: prev.rules } : {}),
     rng: prev.rng,
     // A year passes. The store keeps its own count and restamps this on load,
     // so the two cannot drift far; incrementing here is what keeps a season
@@ -1741,7 +1872,7 @@ export function rollHurtsFor(season: SeasonState, teamIndex: number): void {
     if (!available(p, clock)) continue;
     const going = hurtsToday(
       p, clock, season.seed ?? 0,
-      strainMultiplier(p) * (rec.injuryGuard ?? 1),
+      strainMultiplier(p) * (rec.injuryGuard ?? 1) * injuryScale(rulesOf(season)),
       season.year ?? 0,
     );
     if (!going) continue;
@@ -2222,7 +2353,8 @@ export function recordResult(
           const workloadStrain = 1 + Math.max(0, line.pitches - 20) / 55;
           const going = hurtsToday(
             line.player, clock, season.seed ?? 0,
-            workloadStrain * (rec.injuryGuard ?? 1) * (rec.armCare ?? 1),
+            workloadStrain * (rec.injuryGuard ?? 1) * (rec.armCare ?? 1)
+              * injuryScale(rulesOf(season)),
             season.year ?? 0,
           );
           if (going) {

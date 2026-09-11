@@ -66,7 +66,9 @@ import { InFrame } from '../Overlay.js';
 import {
   CoachPortrait, COACH_SKIN, COACH_HAIR, CUT_LABEL, BEARD_LABEL,
 } from '../CoachPortrait.js';
-import { createSeason, seasonLength } from '../../engine/season.js';
+import {
+  createSeason, seasonLength, DEFAULT_RULES, SEASON_SPANS, type SeasonRules,
+} from '../../engine/season.js';
 import { makeRng } from '../../engine/rng.js';
 import { SKILL_LABEL, type CoachSkills } from '../../engine/program.js';
 import { cultureOf, CULTURE_LABEL } from '../../data/cultures.js';
@@ -137,6 +139,16 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
   // The coach's pre-dugout background. Unlike the old interview, this is one
   // visible choice with a visible year-one stat shape.
   const [backgroundId, setBackgroundId] = useState<BackgroundId>('player');
+  /*
+    The rules of the world, held here with the rest of the answers.
+
+    Defaults, and behind a fold: nobody has to meet five switches on the way to
+    his first job, and the coach who wants his career without a portal in it
+    can find them in one tap. They are handed to `start` and never written
+    again — see `SeasonRules`, which explains why a world cannot change its
+    own rules halfway through its record book.
+  */
+  const [rules, setRules] = useState<SeasonRules>(DEFAULT_RULES);
 
   // Build the actual world, not an estimate of it. Generation is deterministic
   // from the seed and costs about 2ms, so the screen can simply read the
@@ -247,6 +259,8 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
         godOwned={godOwned}
         god={godMode}
         onGod={setGodMode}
+        rules={rules}
+        onRules={setRules}
         onBack={() => setStep(0)}
         onDone={() => setStep(2)}
       />
@@ -415,7 +429,7 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
                       skills: outcome.skills,
                       badges: outcome.badges,
                       leans: outcome.leans,
-                    }, godMode)}
+                    }, godMode, rules)}
                   >TAKE THE {picked.abbr} JOB</button>
                 ) : (
                   <div className="career-offer-gate offer-gate-modern">
@@ -637,14 +651,147 @@ const DESK_KEYS: readonly string[] = [
   'captains', 'recruiting', 'draftTalk', 'skillPoints',
 ];
 
+/**
+ * One switch, and the two or three answers it takes.
+ *
+ * Every row reads its numbers out of the engine rather than repeating them —
+ * the game counts come from `seasonLength` over the schedules themselves, so a
+ * screen and a season cannot disagree about how long a season is.
+ */
+interface RuleRow {
+  key: string;
+  label: string;
+  options: readonly { value: string; label: string; note: string }[];
+  at: (r: SeasonRules) => string;
+  set: (r: SeasonRules, v: string) => SeasonRules;
+}
+
+const RULE_ROWS: readonly RuleRow[] = [
+  {
+    key: 'injuries',
+    label: 'Injuries',
+    options: [
+      { value: 'on', label: 'FULL', note: 'The trainer decides a season or two' },
+      { value: 'reduced', label: 'HALF', note: 'Half as often, same injuries' },
+      { value: 'off', label: 'NONE', note: 'Nobody misses a game' },
+    ],
+    at: (r) => r.injuries,
+    set: (r, v) => ({ ...r, injuries: v as SeasonRules['injuries'] }),
+  },
+  {
+    key: 'portal',
+    label: 'Transfer portal',
+    options: [
+      { value: 'on', label: 'ON', note: 'Men leave, and men arrive' },
+      { value: 'off', label: 'OFF', note: 'Nobody transfers; the step is gone' },
+    ],
+    at: (r) => (r.portal ? 'on' : 'off'),
+    set: (r, v) => ({ ...r, portal: v === 'on' }),
+  },
+  {
+    key: 'realignment',
+    label: 'Realignment',
+    options: [
+      { value: 'on', label: 'ON', note: 'Conferences trade programs each winter' },
+      { value: 'off', label: 'OFF', note: 'The map you start with is the map' },
+    ],
+    at: (r) => (r.realignment ? 'on' : 'off'),
+    set: (r, v) => ({ ...r, realignment: v === 'on' }),
+  },
+  {
+    key: 'poaching',
+    label: 'Poaching',
+    options: [
+      { value: 'on', label: 'ON', note: 'A good assistant gets his own program' },
+      { value: 'off', label: 'OFF', note: 'Staffs stay where they are' },
+    ],
+    at: (r) => (r.poaching ? 'on' : 'off'),
+    set: (r, v) => ({ ...r, poaching: v === 'on' }),
+  },
+  {
+    key: 'length',
+    label: 'Season',
+    options: [
+      {
+        value: 'standard',
+        label: `${seasonLength(SEASON_SPANS.standard)} GAMES`,
+        note: 'Three-game weekends, four-man rotation',
+      },
+      {
+        value: 'short',
+        label: `${seasonLength(SEASON_SPANS.short)} GAMES`,
+        note: 'Two-game weekends, three-man rotation',
+      },
+    ],
+    at: (r) => r.length,
+    set: (r, v) => ({ ...r, length: v as SeasonRules['length'] }),
+  },
+];
+
+/**
+ * The rules of the world, folded away.
+ *
+ * Folded because the defaults are the game and almost nobody wants to argue
+ * with them on the way to a first job — and open in one tap because the coach
+ * who cannot stand one of these systems should not have to abandon a career to
+ * be rid of it. The summary carries a count rather than a list, so a career
+ * started on anything but the standard world says so without being read.
+ */
+function WorldRules(
+  { rules, onRules }: { rules: SeasonRules; onRules: (r: SeasonRules) => void },
+) {
+  const changed = RULE_ROWS.filter((row) => row.at(rules) !== row.at(DEFAULT_RULES)).length;
+  return (
+    <details className="career-world-rules">
+      <summary className="tap">
+        <span>
+          <small>THE RULES OF THE WORLD</small>
+          <strong>{changed === 0 ? 'Standard world' : `${changed} changed`}</strong>
+        </span>
+        <b>{changed === 0 ? 'EDIT' : String(changed)}</b>
+      </summary>
+      <p className="career-rule-note">
+        Chosen once, for the life of the career, and the same for all ninety-six
+        programs. They cannot be changed later — a record book has to be
+        comparable with itself.
+      </p>
+      {RULE_ROWS.map((row) => {
+        const at = row.at(rules);
+        const note = row.options.find((o) => o.value === at)?.note ?? '';
+        return (
+          <div className="career-rule-row" key={row.key}>
+            <div className="career-rule-head">
+              <strong>{row.label}</strong>
+              <small>{note}</small>
+            </div>
+            <div className="career-rule-chips">
+              {row.options.map((o) => (
+                <Chip
+                  key={o.value}
+                  label={o.label}
+                  on={o.value === at}
+                  onClick={() => onRules(row.set(rules, o.value))}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </details>
+  );
+}
+
 function DepthStep(
-  { chosen, onChoose, godOwned, god, onGod, onBack, onDone }: {
+  { chosen, onChoose, godOwned, god, onGod, rules, onRules, onBack, onDone }: {
     chosen: DepthMode;
     onChoose: (m: DepthMode) => void;
     /** The device owns god mode, so the sandbox toggle is offered. */
     godOwned: boolean;
     god: boolean;
     onGod: (on: boolean) => void;
+    /** The world's own switches, which are not a depth preference. See `SeasonRules`. */
+    rules: SeasonRules;
+    onRules: (r: SeasonRules) => void;
     onBack: () => void;
     onDone: () => void;
   },
@@ -745,6 +892,13 @@ function DepthStep(
             </>
           );
         })()}
+
+        {/*
+          Last, and folded. Everything above this decides what lands on the
+          desk; this decides what the world does, which is a different question
+          and `state/depth.ts` says so in its own header.
+        */}
+        <WorldRules rules={rules} onRules={onRules} />
       </main>
     </FixedHeader>
   );

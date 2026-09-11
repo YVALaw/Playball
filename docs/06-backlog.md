@@ -3261,13 +3261,14 @@ would matter to somebody playing.
 
 ### AC.2 Designed, decided, and never built
 
-- **The rules of the world.** Injuries, the portal, realignment, poaching and
-  season length as free switches — the stated counterweight to the paid
-  unlock. `state/depth.ts` carries fourteen keys and every one is a *depth*
-  toggle; there is no `season.rules` and `NewGame.tsx` offers no season length
-  or series format. **Medium to large**, and the highest-value thing on this
-  page: it is the only way to turn off a system a player hates without
-  abandoning the career.
+- ~~**The rules of the world.**~~ **Taken 2026-09-11, `05` §70.** All five, on
+  a fold at the foot of the how-you-play step, stamped once onto
+  `season.rules` and fixed for the life of the career. Injuries scale the
+  existing roll rather than running a second model; the portal is skipped as a
+  step rather than emptied, with `PHASES` and its save-file indices untouched;
+  season length is a two-game weekend, which keeps the full round robin and
+  every crossover game and costs the fourth starter his slot. A world with no
+  rules written on it is the world that was always there, object-identically.
 - **The mound-visit conversation.** `visitMound` is one button calling
   `moundVisit` (`engine/game.ts:2521`), which decrements a counter and restores
   confidence. The three registers, the pitcher's temperament and the cost of

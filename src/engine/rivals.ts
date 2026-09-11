@@ -53,6 +53,7 @@ import {
   type CoachSkills, type SeasonOutcome, type Verdict,
 } from './program.js';
 import { conferenceField, type PostseasonSummary } from './postseason.js';
+import { rulesOf } from './season.js';
 import type { SeasonState, TeamRecord } from './season.js';
 import { CULTURES, cultureFor, driftCulture } from '../data/cultures.js';
 import type { Assistant } from './economy.js';
@@ -531,7 +532,12 @@ export function runCarousel(
       // Only the last pass stops poaching. A cascade that is still running is
       // the interesting part — the blue blood takes the man from the four star,
       // and the four star takes the man from the two.
-      if (pass < CASCADE_PASSES - 1) {
+      //
+      // Unless the world was opened without poaching, in which case every chair
+      // is filled out of the free-agent pool and a coach stays where he is. The
+      // fallback below already handles an empty shortlist, so nothing here has
+      // to invent a man.
+      if (pass < CASCADE_PASSES - 1 && rulesOf(season).poaching) {
         for (const t of season.teams) {
           if (t.index === userTeam || !t.coach) continue;
           if (t.coach.tenure >= SETTLED_TENURE) continue;
