@@ -76,10 +76,16 @@ export const pairKey = (a: number, b: number): string =>
  * both on their Friday starter, and running the whole bracket off the host's
  * count meant they always were.
  */
-function play(bracket: Bracket, round: string, a: number, b: number): BracketGame {
+function play(
+  bracket: Bracket, round: string, a: number, b: number, hosts?: number,
+): BracketGame {
   const seedA = bracket.seedOf.get(a) ?? Number.MAX_SAFE_INTEGER;
   const seedB = bracket.seedOf.get(b) ?? Number.MAX_SAFE_INTEGER;
-  const [home, away] = seedA <= seedB ? [a, b] : [b, a];
+  // The seed hosts, unless a series has said whose turn it is. A one-off game
+  // in a bracket has no turns to take; a best-of does.
+  const [home, away] = hosts !== undefined
+    ? (hosts === a ? [a, b] : [b, a])
+    : (seedA <= seedB ? [a, b] : [b, a]);
 
   const homeUsed = bracket.appearances.get(home) ?? 0;
   const awayUsed = bracket.appearances.get(away) ?? 0;
@@ -437,7 +443,15 @@ export function singleElimination(
   return resultOf(state);
 }
 
-/** Best of N. Higher seed hosts every game, which is close enough at this scale. */
+/**
+ * Best of N, alternating from the better seed — four of seven, two of three.
+ *
+ * It handed the better seed every game until 2026-09-11, so the national
+ * championship series was played end to end in one town while the regionals
+ * below it had alternated all along through `hostOfGame`. Home is worth
+ * something real in this engine, and a seven-game series decided by seeding
+ * before anybody played is not a series.
+ */
 export function bestOf(
   season: SeasonState,
   n: number,
@@ -456,7 +470,10 @@ export function bestOf(
   let winsA = 0;
   let winsB = 0;
   while (winsA < needed && winsB < needed) {
-    const game = play(bracket, `${round} game ${winsA + winsB + 1}`, a, b);
+    const game = play(
+      bracket, `${round} game ${winsA + winsB + 1}`, a, b,
+      (winsA + winsB) % 2 === 0 ? a : b,
+    );
     if (game.winner === a) winsA += 1; else winsB += 1;
   }
 

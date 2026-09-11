@@ -3227,25 +3227,25 @@ would matter to somebody playing.
   injuries of the last, and the coached program always plays its own tournament
   last, fully healed. Interleaving a round a night is the design. **Medium**,
   and it moves the bracket tests and the soak. Already filed at `05` §62.7.
-- **No closer, and no leverage.** `restedFirst` (`engine/season.ts:1874`) sorts
+- ~~**No closer, and no leverage.**~~ **Taken 2026-09-11, `05` §67.5.** `restedFirst` (`engine/season.ts:1874`) sorts
   the pen by rest then quality, so the best arm throws 15.9% of relief outs
   against a flat 16.7%. The code says so itself. **Medium.**
-- **A rival's facilities and pipelines do not reach his recruiting.**
+- ~~**A rival's facilities and pipelines do not reach his recruiting.**~~ **Taken 2026-09-11, `05` §67.2.**
   `programRecruitingPitch` is handed `mine ? myEconomy : undefined`
   (`state/store.ts:3046`), so `pipelineStrength` scales the coached program's
   home state by 1.15 and all ninety-five others by 1.00. The user's board being
   unseeded is the deliberate thumb the other way (`seedRivalInterest`,
   `store.ts:161`); this one is not deliberate. **Small.**
-- **Minimum-bid spreading is still the dominant recruiting strategy.**
+- ~~**Minimum-bid spreading is still the dominant recruiting strategy.**~~ **Reshaped 2026-09-11, `05` §67.4 — now a trade rather than a dominant strategy; the multi-season signing measurement is still owed.**
   `actionInterest` (`engine/recruiting.ts:1375`) scales linearly with cost and
   has no anti-spread ramp, so a three-point pitch with no effort behind it pays
   full price: twenty targets at three points signs 6.3 a year against 3.9 for
   eight pushed properly. **Small.** Already filed at `05` §62.7.
-- **The computer's portal is a two-man stub.** `staffWorksPortal`
+- ~~**The computer's portal is a two-man stub.**~~ **Taken 2026-09-11 with rival retention, `05` §67.3.** `staffWorksPortal`
   (`engine/portal.ts:317`) sorts the pool by price ascending, skips anybody at
   or below the team's *weakest* hitter, and stops at two. There is no rival
   retention at all, where the draft has `rivalKeeps`. **Medium.**
-- **A transfer arrives with no history.** `archiveSeason` is only ever called
+- **A transfer arrives with no history.** *(Re-read 2026-09-11: this is a design change, not a small fix. `season.careers` is the coached program's book by decision, and `hall.ts` inducts every key in it, so writing rows league-wide would put strangers on the hall ballot. It wants a decision about scope first.)* `archiveSeason` is only ever called
   for the coached program (`state/store.ts:3571`), so a man who transfers in
   shows blank seasons for his years elsewhere. Career *totals* do exist.
   **Small to medium.**
@@ -3254,7 +3254,7 @@ would matter to somebody playing.
   other rate is realistic; the lever is the spread of contact at the top of the
   scale, not the qualification bar. **Medium**, and it is calibration work.
   Already filed at `05` §62.7.
-- **The national championship series is played at one park.** `bestOf`
+- ~~**The national championship series is played at one park.**~~ **Taken 2026-09-11, `05` §67.1.** `bestOf`
   (`engine/postseason.ts:441`) seeds a→0, b→1 and the lower seed hosts every
   game; `hostOfGame` already alternates for regionals. The docstring admits it.
   **Small.**

@@ -1875,6 +1875,19 @@ export function startableSlot(
   return best;
 }
 
+/**
+ * The best arm a pen has available tonight, for the ninth.
+ *
+ * Read off the same list restedFirst produces, so a man too tired or too
+ * hurt to answer the phone is not named closer either. Quality alone: the
+ * ninth of a one-run game is the one time a manager does not care who is
+ * rested, and the rest order below already spreads the ordinary innings.
+ */
+export function closerFrom(pen: readonly Arm[]): Arm | undefined {
+  if (pen.length < 2) return undefined;
+  return [...pen].sort((a, b) => armValue(b) - armValue(a))[0];
+}
+
 export function restedFirst(season: SeasonState, team: TeamRecord): Arm[] {
   const day = currentDay(season);
   const clock = injuryClock(season);
@@ -1988,6 +2001,13 @@ export function playGame(
   dayInTheLegs(home, homeLineup);
   dayInTheLegs(away, awayLineup);
 
+  // One pass each. The closer is read off the same rested list, so the two
+  // cannot disagree about who is even available tonight.
+  const homePen = restedFirst(season, home);
+  const awayPen = restedFirst(season, away);
+  const homeClose = closerFrom(homePen);
+  const awayClose = closerFrom(awayPen);
+
   const keepReplay = opts.capture === true
     || season.captureBoxFor === homeIndex || season.captureBoxFor === awayIndex;
   const result = simGame(home.team, away.team, season.rng, {
@@ -2000,8 +2020,12 @@ export function playGame(
     awayBench: fitBench(away.team, injuryClock(season)),
     homeStrategy: appliedStrategy(season, home, away),
     awayStrategy: appliedStrategy(season, away, home),
-    homeBullpen: restedFirst(season, home),
-    awayBullpen: restedFirst(season, away),
+    homeBullpen: homePen,
+    awayBullpen: awayPen,
+    // Held back for a save. Without one the best reliever is simply the first
+    // man called and throws the sixth of a blowout.
+    ...(homeClose ? { homeCloser: homeClose } : {}),
+    ...(awayClose ? { awayCloser: awayClose } : {}),
     // The coach-skill nudge, present only on the user's program. Passing it
     // here rather than in the store means simmed and managed games get it the
     // same way — one wiring, not two.

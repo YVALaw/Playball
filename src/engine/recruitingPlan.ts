@@ -29,9 +29,37 @@ export function recruitingPlan(prospect: Prospect, pitch: Pitch, at: {
 }
 
 /** Facilities, coach reputation and geography must match in the preview and settlement. */
+/**
+ * What a program without a budget screen has to show a recruit.
+ *
+ * Only the coached program carries an `Economy`: facilities and pipelines are
+ * bought on a screen ninety-five programs do not have. Passing `undefined` for
+ * the rest meant their plant and their reach were literally absent from the
+ * model — so a facility was a one-sided advantage, and the home-state edge
+ * `pipelineStrength` grants at sixty was the coached program's alone.
+ *
+ * Derived from prestige rather than persisted, because a program's plant is
+ * the most predictable thing about it: a ninety-prestige school has the
+ * complex, a twenty-prestige school has a cage and a hope. The range stops
+ * short of what a fully built department reaches, so a coach who actually
+ * spends the money is still buying something.
+ */
+function standingFor(record: TeamRecord): { facilities: number; devPitch: number } {
+  const p = Math.max(0, Math.min(100, record.prestige)) / 100;
+  return { facilities: 0.22 + p * 0.5, devPitch: p * 0.1 };
+}
+
 export function programRecruitingPitch(season: SeasonState, record: TeamRecord, region: Region, coachPrestige: number, economy?: Economy): Pitch {
-  const bonus = economy ? (FACILITIES[economy.facilities]?.devPitch ?? 0) + facilityEffects(economy).pitch : 0;
+  const standing = economy ? null : standingFor(record);
+  const bonus = economy
+    ? (FACILITIES[economy.facilities]?.devPitch ?? 0) + facilityEffects(economy).pitch
+    : standing!.devPitch;
+  // Everybody's own state reaches him: `pipelineStrength` returns sixty at home
+  // before a single pipeline is built, and a rival deserves the same sixty.
+  const reach = economy
+    ? (state: string) => pipelineStrength(economy, state, record.def.state)
+    : (state: string) => (state === record.def.state ? 60 : 0);
   return pitchFor(season, record, region, Math.min(1, developmentScore(record) + bonus),
-    economy ? (state) => pipelineStrength(economy, state, record.def.state) : undefined,
-    { coachPrestige, ...(economy ? { facilities: recruitingFacilityScore(economy) } : {}) });
+    reach,
+    { coachPrestige, facilities: economy ? recruitingFacilityScore(economy) : standing!.facilities });
 }

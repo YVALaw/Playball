@@ -33,7 +33,7 @@
 // Immediately eligible, for the same reason: sitting a year is true of some
 // cases and makes the whole feature slow and dull.
 
-import type { Player, PlayerId, Team } from './types.js';
+import type { Hitter, Player, PlayerId, Team } from './types.js';
 import type { TeamRecord } from './season.js';
 import { overallOf } from './ratings.js';
 import { isTwoWay, uniquePlayers } from './types.js';
@@ -323,21 +323,88 @@ export function signFromPortal(team: Team, man: PortalMan): void {
  * the budget goes furthest. Deliberately not clever: the point of casual is
  * that the decision is made competently and out of sight, not optimally.
  */
+/** How much better than the man he replaces a signing has to be. */
+export const PORTAL_EDGE = 3;
+
+/** Nobody rebuilds a roster in one winter, however deep the pocket. */
+export const PORTAL_TAKE = 4;
+
+/**
+ * A staff working the portal, which until 2026-09-11 meant reading the price
+ * list from the top.
+ *
+ * It sorted the pool by cost ascending, refused anybody at or below the team's
+ * single *weakest* hitter — a bar so low it excluded almost nobody — and
+ * stopped at two whatever the budget said. So the other ninety-five signed the
+ * cheapest two men available every winter, and a good player nobody wanted sat
+ * in the pool because he was not the cheapest.
+ *
+ * It shops on merit now, against the man he would actually replace: the
+ * weakest man at the position he plays, or the weakest arm for an arm. Value
+ * per dollar breaks ties, so a bargain still wins between two men who both
+ * help, and the budget is the limit rather than a count of two.
+ */
 export function staffWorksPortal(
   team: Team, pool: readonly PortalMan[], budget: number,
 ): PortalMan[] {
-  const weakest = [...team.lineup, ...team.bench]
-    .sort((a, b) => overallOf(a) - overallOf(b))[0];
-  const floor = weakest ? overallOf(weakest) : 0;
   const took: PortalMan[] = [];
   let left = budget;
-  for (const man of [...pool].sort((a, b) => a.cost - b.cost)) {
+
+  /** The man this signing would push down a place, by his own trade. */
+  const replaced = (p: Player): number => {
+    const group = p.type === 'pitcher'
+      ? [...team.rotation, ...team.bullpen]
+      : [...team.lineup, ...team.bench].filter((h) => h.pos === (p as Hitter).pos);
+    const pool2 = group.length > 0 ? group : [...team.lineup, ...team.bench];
+    const worst = [...pool2].sort((a, b) => overallOf(a) - overallOf(b))[0];
+    return worst ? overallOf(worst) : 0;
+  };
+
+  const ranked = [...pool].sort((a, b) => {
+    const ga = overallOf(a.player) - replaced(a.player);
+    const gb = overallOf(b.player) - replaced(b.player);
+    if (ga !== gb) return gb - ga;
+    // A bargain, between two men who help the same amount.
+    return a.cost - b.cost;
+  });
+
+  for (const man of ranked) {
+    if (took.length >= PORTAL_TAKE) break;
     if (man.cost > left) continue;
-    if (overallOf(man.player) <= floor) continue;
+    if (overallOf(man.player) < replaced(man.player) + PORTAL_EDGE) continue;
     signFromPortal(team, man);
     took.push(man);
     left -= man.cost;
-    if (took.length >= 2) break;
   }
   return took;
+}
+
+/**
+ * And a staff talking its own men out of leaving.
+ *
+ * The draft has had `rivalKeeps` since the ninety-five got their own
+ * decisions; the portal never grew the matching half, so a rival's best player
+ * walked every winter and nobody so much as rang him. Same shape as the draft:
+ * best men first, a price, a budget, and a bar under which nobody bothers.
+ *
+ * Returns the men held. The caller takes them out of the pool.
+ */
+export function rivalHolds(
+  team: Team, leaving: readonly PortalMan[], budget: number,
+): PortalMan[] {
+  const held: PortalMan[] = [];
+  let left = Math.max(0, budget);
+  // Best first: a program spends what it has on the man it can least afford
+  // to lose, which is the same order the draft keeps its juniors in.
+  for (const man of [...leaving].sort((a, b) => overallOf(b.player) - overallOf(a.player))) {
+    if (left <= 0) break;
+    const worth = overallOf(man.player);
+    // Nobody spends the winter's money on a man who was not playing anyway.
+    if (worth < STAR_LINE - 12) continue;
+    const price = man.cost;
+    if (price > left) continue;
+    held.push(man);
+    left -= price;
+  }
+  return held;
 }

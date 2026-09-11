@@ -1391,9 +1391,31 @@ export function actionInterest(prospect: Prospect, pitch: Pitch, team: number): 
     return cost * RAW_RATE * factorScore(prospect, pitch, f) * care * VERDICT_RATE[verdict];
   };
   let bonus = 0;
+  /*
+    And what it is worth is ramped by what stands behind it.
+
+    `weeklyPoints` has ramped its passive half over the first three actions
+    since the audit found a 56-point week spread one-per-man returning nearly
+    twice what one concentrated push returned. The action layer never got the
+    same treatment, so a three-point pitch and nothing else still paid full
+    price — and minimum-bid spreading stayed the dominant strategy the ramp
+    was added to kill: twenty targets at three points signs 6.3 a year against
+    3.9 for eight pushed properly (05 §62.7).
+
+    A bonus for concentration rather than a penalty for participation, and
+    the difference matters: an action must never be a worse use of a point
+    than raw effort is, or the computer — which reserves a fifth of its week
+    for actions — is handicapped by taking them. So a bare pitch is worth
+    exactly what it always was, and a week that puts a major move behind it is
+    worth half as much again. Concentration wins on the merits instead of
+    spreading losing on a technicality.
+  */
+  const spend = weekActionCost(prospect, team);
+  const committed = 1 + 0.6 * Math.min(1, Math.max(0, spend - PITCH_COST) / HARD_SELL_COST);
+
   if (action.pitch) bonus += worth(PITCH_COST, action.pitch, matters(action.pitch));
   const major = action.major;
-  if (!major) return bonus;
+  if (!major) return bonus * committed;
   if (major.kind === 'hardSell') {
     bonus += worth(HARD_SELL_COST, major.factor, 0.6 + priorities[major.factor] * 5);
   } else if (major.kind === 'visit') {
@@ -1416,7 +1438,7 @@ export function actionInterest(prospect: Prospect, pitch: Pitch, team: number): 
     // Day, when it has to be kept.
     bonus += PROMISE_COST[major.promise] * RAW_RATE * (0.4 + priorities[factor] * 4);
   }
-  return bonus;
+  return bonus * committed;
 }
 
 /** Attempt to change what matters to him. The attempt itself is the one Week-2 major move. */

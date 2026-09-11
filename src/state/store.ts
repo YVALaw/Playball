@@ -18,7 +18,7 @@ import {
   injuryClock, currentDay, startableSlot, dayInTheLegs, seasonInTheArm, fitBench,
   createSeason, simNextDay, simSeason, seasonComplete, standings, nextSeason, rpi, rpiOrder,
   seasonLength, regularRecord, archiveSeason, recordSeasonMarks,
-  recordCareerMarks, recordResult, restedFirst, seedTeams,
+  recordCareerMarks, recordResult, restedFirst, closerFrom, seedTeams,
   type SeasonState, type TeamRecord,
 } from '../engine/season.js';
 import { activeIds, honoursByPlayer, inductees } from '../engine/hall.js';
@@ -312,7 +312,7 @@ import type { Region } from '../data/schools.js';
 import type { CultureEdge } from '../data/cultures.js';
 import { note, earnedBadges, type HabitKey } from '../engine/habits.js';
 import {
-  openPortal, makeTheCase as portalCase, releaseFrom, signFromPortal, staffWorksPortal, STAR_LINE,
+  openPortal, makeTheCase as portalCase, releaseFrom, signFromPortal, staffWorksPortal, rivalHolds, STAR_LINE,
   type PortalMan,
 } from '../engine/portal.js';
 import {
@@ -3282,8 +3282,33 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // The season's verdict on every man, before the portal asks him.
       settleTheMoods(season, get().userTeam);
       const pool = openPortal(season.teams, { year: get().year, seed: season.seed ?? 0, batting: season.batting, pitching: season.pitching });
-      const mine = pool.filter((m) => m.from === get().userTeam);
-      const theirs = pool
+      /*
+        And the other ninety-five ring their own men before anybody else does.
+
+        The draft has had `rivalKeeps` since the ninety-five got decisions of
+        their own; the portal never grew the matching half, so a rival’s best
+        player walked every winter and nobody so much as asked him to stay. A
+        man who is held is simply not in the pool — he is still on the roster
+        he was always on. Half the winter’s flexible money, because the other
+        half is what the same staff shops with.
+      */
+      const held = new Set<PlayerId>();
+      for (const other of season.teams) {
+        if (other.index === get().userTeam) continue;
+        const leaving = pool.filter((m) => m.from === other.index);
+        if (leaving.length === 0) continue;
+        const keepBudget = flexibleOffseasonBudget(prestigeStars(other.prestige)) / 2;
+        for (const m of rivalHolds(other.team, leaving, keepBudget)) {
+          held.add(m.player.id);
+          // Onto the same one-pool ledger a signing goes onto, so what a staff
+          // spends holding a man is money it cannot also spend shopping.
+          (season.portalSpend ??= {})[other.index] =
+            (season.portalSpend[other.index] ?? 0) + m.cost;
+        }
+      }
+      const open = pool.filter((m) => !held.has(m.player.id));
+      const mine = open.filter((m) => m.from === get().userTeam);
+      const theirs = open
         .filter((m) => m.from !== get().userTeam)
         .sort((a, b) => overallOf(b.player) - overallOf(a.player));
 
@@ -3376,7 +3401,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           // one program, not the end of the queue behind it.
           if (going.length === 0) continue;
           const budget = flexibleOffseasonBudget(prestigeStars(other.prestige))
-            - (season.draft?.rivalSpend[other.index] ?? 0);
+            - (season.draft?.rivalSpend[other.index] ?? 0)
+            - (season.portalSpend?.[other.index] ?? 0);
           for (const m of staffWorksPortal(other.team, going, budget)) {
             taken.add(m.player.id);
             const from = season.teams[m.from];
@@ -5741,6 +5767,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         awayStrategy: appliedStrategy(season, away, home),
         homeBullpen: restedFirst(season, home),
         awayBullpen: restedFirst(season, away),
+        // The other dugout keeps a man for the ninth in a game you manage too.
+        ...(closerFrom(restedFirst(season, home)) ? { homeCloser: closerFrom(restedFirst(season, home)) } : {}),
+        ...(closerFrom(restedFirst(season, away)) ? { awayCloser: closerFrom(restedFirst(season, away)) } : {}),
         // And the coach-skill nudge, so a managed game and a simmed one play
         // to the same odds.
         ...(home.coachMods ? { homeCoachMods: home.coachMods } : {}),
@@ -6141,6 +6170,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       awayStrategy: appliedStrategy(season, away, home),
       homeBullpen: restedFirst(season, home),
       awayBullpen: restedFirst(season, away),
+      // The other dugout keeps a man for the ninth in a game you manage too.
+      ...(closerFrom(restedFirst(season, home)) ? { homeCloser: closerFrom(restedFirst(season, home)) } : {}),
+      ...(closerFrom(restedFirst(season, away)) ? { awayCloser: closerFrom(restedFirst(season, away)) } : {}),
       ...(home.coachMods ? { homeCoachMods: home.coachMods } : {}),
       ...(away.coachMods ? { awayCoachMods: away.coachMods } : {}),
     });
@@ -6289,6 +6321,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         awayStrategy: appliedStrategy(season, away, home),
         homeBullpen: restedFirst(season, home),
         awayBullpen: restedFirst(season, away),
+        // The other dugout keeps a man for the ninth in a game you manage too.
+        ...(closerFrom(restedFirst(season, home)) ? { homeCloser: closerFrom(restedFirst(season, home)) } : {}),
+        ...(closerFrom(restedFirst(season, away)) ? { awayCloser: closerFrom(restedFirst(season, away)) } : {}),
         // And the coach-skill nudge, so a managed game and a simmed one play
         // to the same odds.
         ...(home.coachMods ? { homeCoachMods: home.coachMods } : {}),

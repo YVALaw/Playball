@@ -132,6 +132,17 @@ export interface SimOptions {
   homeBullpen?: readonly Arm[];
   awayBullpen?: readonly Arm[];
   /**
+   * The arm held back for the end of a close game.
+   *
+   * A pen used strictly in order has no closer in it: the best reliever is
+   * simply the first man called, throws the sixth, and is long gone by the
+   * time the game is worth protecting. Named by the season (`restedFirst`),
+   * skipped by the ordinary walk down the list, and brought in when the game
+   * reaches a save situation.
+   */
+  homeCloser?: Arm;
+  awayCloser?: Arm;
+  /**
    * The batting order for this game only. Lets the season rest a regular
    * without mutating the roster, which is how a bench player gets a start.
    */
@@ -272,6 +283,8 @@ export class TeamState {
   readonly starter: Arm;
   /** Relief order for this game, most rested first. */
   readonly relief: readonly Arm[];
+  /** Held back for a save situation; see `SAVE_LEAD`. */
+  readonly closer?: Arm;
   /** Bench bats already used. Once a man is out he cannot return — NCAA rule. */
   readonly usedBench: Hitter[] = [];
   /**
@@ -331,6 +344,7 @@ export class TeamState {
     strategy: Strategy = DEFAULT_STRATEGY,
     coachMods?: { offense: number; defense: number },
     bench: readonly Hitter[] = team.bench,
+    closer?: Arm,
   ) {
     this.strategy = strategy;
     this.coachOffMult = 1 + ((coachMods?.offense ?? 20) - 20) * 0.0001;
@@ -351,6 +365,7 @@ export class TeamState {
     // An explicitly empty list means nobody is available tonight. Falling back
     // to the full bullpen resurrected exhausted/injured arms in season play.
     this.relief = relief;
+    this.closer = closer;
     /*
       Where each man actually stands, and what his glove is worth THERE.
 
@@ -669,11 +684,11 @@ export function simGame(
 
   const home = new TeamState(
     homeTeam, true, opts.homeStarter ?? 0, opts.homeBullpen, opts.homeLineup, opts.homeStrategy,
-    opts.homeCoachMods, opts.homeBench,
+    opts.homeCoachMods, opts.homeBench, opts.homeCloser,
   );
   const away = new TeamState(
     awayTeam, false, opts.awayStarter ?? 0, opts.awayBullpen, opts.awayLineup, opts.awayStrategy,
-    opts.awayCoachMods, opts.awayBench,
+    opts.awayCoachMods, opts.awayBench, opts.awayCloser,
   );
   if (opts.postseason) { home.postseason = true; away.postseason = true; }
   const playEvents: PlayEvent[] | null = opts.playEvents ? [] : null;
@@ -2563,6 +2578,18 @@ function maybeMoundVisit(fld: TeamState, runnersOn: boolean, say: Say): void {
   moundVisit(fld, say);
 }
 
+/**
+ * The lead a closer is sent out to protect: three runs or fewer, which is the
+ * save rule the sport actually uses.
+ */
+const SAVE_LEAD = 3;
+
+/** The ninth or later, ahead, and by little enough for it to matter. */
+function saveSituation(fld: TeamState, bat: TeamState): boolean {
+  const lead = fld.runs - bat.runs;
+  return fld.currentInning >= 9 && lead > 0 && lead <= SAVE_LEAD;
+}
+
 function maybeChangePitcher(fld: TeamState, bat: TeamState, bases: Bases, say: Say): void {
   const p = fld.pitcher;
   const budget = 30 + p.stamina * 0.85;
@@ -2588,15 +2615,49 @@ function maybeChangePitcher(fld: TeamState, bat: TeamState, bases: Bases, say: S
   const gassed = fld.pitcherPitches > budget + 4 + HOOK[fld.strategy.hook];
   const shelled = line.er >= 4 && fld.pitcherPitches > 30;
   const broken = fld.pitcherConfidence <= 0.28 && fld.pitcherPitches > 20;
+  /*
+    The one change a bench makes for the situation rather than for the man.
+
+    Everything above asks whether the pitcher is finished. A save is the other
+    question — the game is worth protecting and the best arm is still sitting
+    down — and it is why the whole concept of a closer exists. He comes in for
+    the ninth of a close game whether or not the man on the mound is tiring,
+    which is the only way a pen used strictly in order ever reaches him.
+  */
+  const save = saveSituation(fld, bat);
+  const closer = fld.closer;
+  const closerReady = closer !== undefined
+    && closer !== fld.pitcher
+    && !fld.usedPen.includes(closer);
+  if (save && closerReady) {
+    fld.usedPen.push(closer);
+    fld.pitcher = closer;
+    fld.noteReliefEntry(closer, fld.runs - bat.runs, bases.filter(Boolean).length);
+    fld.coverPitcher(closer);
+    fld.pitcherPitches = 0;
+    fld.pitcherConfidence = CONFIDENCE.relief;
+    fld.timesThrough.clear();
+    say(`   Pitching change: ${closer.name} (${closer.throws}HP) enters.`);
+    return;
+  }
+
   if (!gassed && !shelled && !broken) return;
   // Walk past anyone the manager already spent. In a fully automatic game the
   // pen is used strictly in order and this never skips; in a game handed to the
   // computer late, an arm the manager burned must not come back out.
+  //
+  // And past the closer, unless the game has actually reached him: he is the
+  // best arm in the pen, so without this he is simply the first man called.
   let next: Arm | undefined;
   while (fld.penIndex < fld.relief.length && !next) {
     const cand = fld.relief[fld.penIndex++];
-    if (cand && cand !== fld.pitcher && !fld.usedPen.includes(cand)) next = cand;
+    if (!cand || cand === fld.pitcher || fld.usedPen.includes(cand)) continue;
+    if (cand === closer && !save) continue;
+    next = cand;
   }
+  // Nobody but the man being saved for the ninth. A pen with one arm left is
+  // a pen with one arm left; he pitches rather than nobody pitching.
+  if (!next && closerReady) next = closer;
   if (!next) return;
   fld.usedPen.push(next);
   fld.pitcher = next;

@@ -8997,6 +8997,116 @@ retrain sheet's button reads MOVE · BREAKS PROMISE, the coach is told before he
 taps it, and the promise then breaks. That is honest, and it stays. The missing
 thing is the asking, which is a feature rather than a fix; it is staged.
 
+## 67. Five shallow systems, in one pass — **September 11 2026**
+
+`06` §AC.1 listed eight systems that existed but had no depth in them. Five
+went in one pass, chosen because none of them could move the same number: only
+the closer touches the run environment, so a calibration drift would have had
+exactly one possible cause. June's clock and the batting-average tail were held
+back for that reason, and the careers book turned out to be a design decision
+rather than a gap.
+
+### 67.1 The championship series was played in one town
+
+`hostOfGame` has alternated the host from the better seed for the regionals
+since they were built — four of seven, two of three — and `bestOf` never used
+it: it seeded a→0, b→1 and `play` gives the lower seed the home side, so the
+national final was played end to end in one park. `play` takes an optional
+host now, a bracket game without a series behind it keeps the seed rule, and a
+series says whose turn it is.
+
+### 67.2 A rival's plant and his home state were absent from the model
+
+Only the coached program carries an `Economy`: facilities and pipelines are
+bought on a screen ninety-five programs do not have, and `programRecruitingPitch`
+was handed `undefined` for the rest. So a facility was a one-sided advantage no
+rival could answer, and the home-state reach `pipelineStrength` grants at sixty
+before a single pipeline is built belonged to the coached program alone — a
+1.15 against everybody else's 1.00, undocumented anywhere a player could see.
+
+A rival's standing is derived from prestige rather than persisted, because a
+program's plant is the most predictable thing about it: a ninety-prestige
+school has the complex, a twenty-prestige school has a cage and a hope. The
+range stops short of what a fully built department reaches, so a coach who
+actually spends the money is still buying something, and every program now
+reaches its own state.
+
+### 67.3 The other ninety-five read the portal like a price list
+
+`staffWorksPortal` sorted the pool by cost ascending, refused anybody at or
+below the team's single *weakest* hitter — a bar that excluded almost nobody —
+and stopped at two whatever the budget said. The ninety-five signed the
+cheapest two men in the country every winter, and a good player nobody wanted
+sat in the pool because he was not the cheapest.
+
+It shops on merit now, against the man a signing would actually replace: the
+weakest man at his own position, or the weakest arm for an arm. Value per
+dollar breaks ties between two men who help equally, and the budget is the
+limit rather than a count of two, capped at four so that nobody rebuilds a
+roster in one winter.
+
+And the other half, which never existed at all: `rivalHolds`. The draft has had
+`rivalKeeps` since the ninety-five got decisions of their own, so a rival could
+talk his junior out of signing — but his best player could enter the portal and
+walk without anybody ringing him. Same shape as the draft: best men first, a
+price, a budget, and a bar under which nobody bothers. A man who is held is
+simply not in the pool; he is still on the roster he was always on. What a
+staff spends holding him goes onto the same one-pool ledger a signing goes
+onto, so it is money that staff cannot also spend shopping.
+
+### 67.4 Minimum-bid spreading
+
+`weeklyPoints` has ramped its passive half over the first three actions since
+the audit measured a 56-point week spread one-per-man returning nearly twice
+what one concentrated push returned. The action layer never got the same
+treatment, so a three-point pitch with nothing behind it paid full price.
+
+The first attempt scaled the action down by what stood behind it, and it broke
+a rule the merge review had already written down: **an action must never be a
+worse use of a point than raw effort is**, because the computer reserves a
+fifth of its week for actions and would be handicapped by taking them. The test
+that caught it is `recruiting-expansion.test.ts`, and it was right.
+
+So it is a bonus for concentration rather than a penalty for participation. A
+bare pitch is worth exactly what it always was; a week that puts a major move
+behind it is worth half as much again.
+
+Measured on a forty-point week against the same class: spreading thirteen bare
+pitches banks 99.8 points across thirteen men, best man 17.3, nobody past
+twenty. Five pushes bank far less in total and land two men past thirty-four —
+which is to say past the commit bar for a recruit at the top of the board.
+**That is a trade rather than a dominant strategy**, which is the point: spread
+for volume of cheap signings, push to land a particular man. Whether it moves
+the audit's 6.3-against-3.9 signings a year is a multi-season measurement that
+has not been run, and it stays on the measurement list.
+
+### 67.5 Nobody got the ball in the ninth
+
+`restedFirst` sorts the pen by rest, then by workload, then by quality, and the
+game walks that list strictly in order when the man on the mound is finished.
+A pen used that way has no closer in it: the best reliever is simply the first
+man called, throws the sixth of a blowout, and is long gone by the time a game
+is worth protecting. Measured before the change at 15.9% of relief outs to the
+best arm against a flat 16.7%.
+
+A closer is named off the same rested list — quality alone, because the ninth
+of a one-run game is the one time a manager does not care who is rested — and
+the ordinary walk down the pen skips him. `maybeChangePitcher` gained the one
+change a bench makes for the situation rather than for the man: the ninth or
+later, ahead by three or fewer, and the best arm still sitting down. He comes
+in whether or not the man on the mound is tiring, because that is the only way
+an in-order pen ever reaches him. If the pen empties before the ninth he
+pitches anyway; a pen with one arm left is a pen with one arm left.
+
+Both dugouts get one, in a simulated game and in a managed one.
+
+Measured over a full league season afterwards: a closer appears in 8.5 games,
+throws 9 innings and saves 6.4, where the rest of the pen averages 15.5 games
+and 32.9 innings. That is the shape the role has — an inning at a time, in the
+games that are worth it, and less work than the long men rather than more.
+
+Calibration held without re-recording a golden.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code
