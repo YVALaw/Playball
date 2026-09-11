@@ -69,7 +69,7 @@ an Android 16 emulator against `npm run apk`.
 The engine is calibrated multi-seed to the modern NCAA D1 environment —
 .280 / .384 / .438, a home run a game, 6.73 runs — since the September 5
 engine pass (`docs/05-systems-reference.md` §51) and re-fitted after the
-release audit's rules fixes (§62.2). **1,274 tests across 69 files**, including
+release audit's rules fixes (§62.2). **1,369 tests across 77 files**, including
 determinism goldens, calibration as a regression test, a
 baseball-correctness suite for the scorer's rules, and a concurrency suite
 pinning the store's double-press guards.

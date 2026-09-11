@@ -45,14 +45,17 @@ regular season, and a career an athletic director can end. Ships to Android.
 
 ## Where it stands
 
-**v0.7.4 plus five feature blocks, an audit pass, and an interface overhaul —
-the loop is closed and the screens have been through a war.** Take a job from a
-desk of genuine offers, play or simulate a season, manage a postseason run a
+**v0.8.0 — the loop is closed and the screens have been through a war.**
+Three hundred and fifty commits past the v0.7.4 line: five feature blocks, an
+audit pass, an interface overhaul, the guided first season, and the September
+10 program-and-staff pass.
+
+Take a job from a desk of genuine offers, play or simulate a season, manage a postseason run a
 game at a time on a full-screen field with a defense on it, hand out awards,
 spend coaching points, read a recruiting board that is honest about being
 vague, argue the draft out of taking your junior, and start again in February —
 against ninety-five rival programs run by men with careers of their own.
-Sixty-nine test files and 1,274 tests cover it, calibration among them, so
+Seventy-seven test files and 1,369 tests cover it, calibration among them, so
 the engine cannot drift without something failing.
 
 The August 2026 interface overhaul and its feedback pass are described in §20
