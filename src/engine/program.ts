@@ -2248,6 +2248,23 @@ export function startingOffers(
       // A little noise, deterministic per seed. Small enough that the good jobs
       // stay good and large enough that two careers differ.
       wobble: taste.rng ? taste.rng() * 8 - 4 : 0,
+      /*
+        And a second draw, in the units the wanting order actually sorts on.
+
+        Measured 2026-09-11 across ten careers: twenty distinct schools filled
+        fifty desk slots, and two of them rang on seven desks out of ten —
+        reported as "all the time we are getting what I feel are the same
+        schools". The prestige wobble could not fix it, because the wanting
+        order weights fit at six and prestige at four tenths, and fit is a
+        fixed property of a school and a background. So for a given answer to
+        the interview, the same programmes wanted you every single career.
+
+        This is noise on the fit itself, about a third of the range a genuine
+        agreement is worth. A school that shares your edge still ranks above
+        one that does not; which of the six or seven that do rings on any
+        given career is no longer decided before you press NEW.
+      */
+      charm: taste.rng ? taste.rng() * 1.4 - 0.7 : 0,
     }));
 
   /*
@@ -2269,7 +2286,8 @@ export function startingOffers(
     || a.t.def.abbr.localeCompare(b.t.def.abbr));
 
   const byWanting = [...eligible].sort((a, b) =>
-    (b.fit * 6 + b.t.prestige * 0.4 + b.wobble) - (a.fit * 6 + a.t.prestige * 0.4 + a.wobble)
+    ((b.fit + b.charm) * 6 + b.t.prestige * 0.4 + b.wobble)
+      - ((a.fit + a.charm) * 6 + a.t.prestige * 0.4 + a.wobble)
     || b.t.prestige - a.t.prestige
     || a.t.def.abbr.localeCompare(b.t.def.abbr));
 
@@ -2288,7 +2306,7 @@ export function startingOffers(
   */
   const byNeed = [...eligible].sort((a, b) =>
     (a.t.prestige + a.wobble) - (b.t.prestige + b.wobble)
-    || b.fit - a.fit
+    || (b.fit + b.charm) - (a.fit + a.charm)
     || a.t.def.abbr.localeCompare(b.t.def.abbr));
 
   // Rather more than half want you specifically. A desk that was mostly "the
@@ -2307,19 +2325,59 @@ export function startingOffers(
     hireable.push(row);
     return true;
   };
-  for (const row of byWanting) {
-    if (hireable.length >= wantedSlots) break;
-    take(row);
-  }
-  let rebuilds = 0;
-  for (const row of byNeed) {
-    if (rebuilds >= rebuildSlots || hireable.length >= limit) break;
-    if (take(row)) rebuilds += 1;
-  }
-  for (const row of byStanding) {
-    if (hireable.length >= limit) break;
-    take(row);
-  }
+  /*
+    Drawn from the top of an order rather than taken off it.
+
+    Measured 2026-09-11 across ten careers: twenty distinct schools filled
+    fifty desk slots and two of them rang on seven desks out of ten. Reported
+    as "all the time we are getting what I feel are the same schools", and it
+    was not a small effect — it was the whole desk.
+
+    The pool was never the problem. Sixty-seven of ninety-six programmes would
+    hire a rookie, and the same sixty-six of them every world. What collapsed
+    it was that all three orders were read strictly from the head: two of them
+    sort by prestige and the third weights it, so four of the five seats went
+    to whichever handful of eligible programmes stood highest — and prestige is
+    a fixed property of a school, so that handful never changed.
+
+    Drawing from a band fixes it without giving up what the orders are for. The
+    weights fall away as one over the rank, so the best job an order has to
+    offer is still much the likeliest call: it is simply no longer a certainty
+    decided before the player pressed NEW. With no rng — a caller that wants
+    the old deterministic desk — the head is taken exactly as before.
+  */
+  const pick = (pool: typeof eligible): typeof eligible[number] => {
+    if (!taste.rng || pool.length === 1) return pool[0]!;
+    const weights = pool.map((_, i) => 1 / (i + 2));
+    let r = taste.rng() * weights.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < pool.length; i++) {
+      r -= weights[i]!;
+      if (r <= 0) return pool[i]!;
+    }
+    return pool[pool.length - 1]!;
+  };
+
+  /** Fill up to `upTo` seats from one order, drawing within its top `band`. */
+  const fill = (order: typeof eligible, upTo: number, band: number): number => {
+    // A row `take` refuses — a third seat in one conference — must not be
+    // drawn again, or the loop spins on it.
+    const tried = new Set<number>();
+    let took = 0;
+    while (hireable.length < upTo) {
+      const pool = order
+        .filter((r) => !seen.has(r.t.index) && !tried.has(r.t.index))
+        .slice(0, band);
+      if (pool.length === 0) break;
+      const row = pick(pool);
+      tried.add(row.t.index);
+      if (take(row)) took += 1;
+    }
+    return took;
+  };
+
+  fill(byWanting, wantedSlots, 14);
+  if (rebuildSlots > 0) fill(byNeed, hireable.length + rebuildSlots, 8);
+  fill(byStanding, limit, 14);
 
   const out: number[] = hireable.map(({ t }) => t.index);
 

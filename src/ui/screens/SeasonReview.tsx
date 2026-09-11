@@ -170,10 +170,18 @@ export function SeasonReview() {
                   }
                 : null;
 
+  // A man the board has let go is not continuing to anything: leaving this
+  // page ends the tenure and puts him on the market. The word on the button
+  // says so rather than walking him into an offseason he has no job for.
+  const leaving = review?.fired === true;
+
   return (
     <FixedHeader
       header={<ModuleIntro kicker={`${team.def.school} · ${year}`} title="Season report" />}
-      action={<FloatingAction label="CONTINUE" onClick={() => void next('review')} />}
+      action={<FloatingAction
+        label={leaving ? 'CLEAR YOUR DESK' : 'CONTINUE'}
+        onClick={() => void next('review')}
+      />}
     >
       <FirstVisit id="review" />
       <main className="module-workspace offseason-review season-report-workspace">

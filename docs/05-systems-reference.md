@@ -9107,6 +9107,66 @@ games that are worth it, and less work than the long men rather than more.
 
 Calibration held without re-recording a golden.
 
+## 68. Two about the shape of a career — **September 11 2026**
+
+Reported from play, and neither was in any backlog: the desk you are offered
+when you start, and what happens to the job when the board has finished with
+you.
+
+### 68.1 "All the time we are getting what I feel are the same schools"
+
+Measured before touching anything, across ten careers on ten seeds: **twenty
+distinct programmes filled fifty desk seats, and two of them rang on seven
+desks out of ten.** The report was not an impression.
+
+The pool was never the problem. Sixty-seven of ninety-six programmes will hire
+a rookie, and the same sixty-six of them in every world — the eligibility gate
+is wide. What collapsed the desk was that all three orders it is built from
+were read strictly from the head. `byStanding` sorts on prestige, `byNeed`
+sorts on prestige, and `byWanting` weights it at four tenths against a fit term
+that is itself a fixed property of a school and a background. Prestige does not
+move between careers, so four of the five seats went to whichever handful of
+eligible programmes stood highest, every single time.
+
+The prestige wobble could not have fixed it and did not: ±4 against a band
+tens of points wide reorders neighbours and nothing else.
+
+So the desk draws from a band rather than taking the head. Each order is
+sampled with weights that fall away as one over the rank plus two, from its top
+fourteen (top eight for the rebuild seat) — the best job an order has to offer
+is still much the likeliest call, and is no longer a certainty settled before
+the player pressed NEW. A caller that hands in no draw gets the old
+deterministic desk exactly as before, which is what keeps the existing offer
+tests honest.
+
+After: **twenty-five distinct programmes across the same fifty seats, and the
+most frequent appears on four desks of ten** — against seven before, with the
+tail spread evenly rather than clustered on two names.
+
+### 68.2 A man the board had sacked kept coaching the school
+
+Reported: "if the university doesn't extend you, you can still keep going with
+the same university if you don't tap on the offers, when we should be
+completely blocked."
+
+`reviewSeason` was right about all of it — `fired` covers both being sacked and
+running out a deal nobody renews, and it was returning the right verdict at
+every contract year. The fault was where the verdict was *acted on*.
+`jobSearch` was raised in `rollYear`, and the roll is the far side of the whole
+offseason. So a man who had been told in the season report that he was finished
+went on to spend the programme's coaching points, work its draft, shop its
+portal and sign its next class — and only when the year finally turned did
+anybody mention clearing his desk.
+
+The verdict is the end of the tenure. Leaving the review turns the year over
+from there, and the roll builds the market it already built for him. The
+season report's button says `CLEAR YOUR DESK` instead of `CONTINUE` when that
+is what it does.
+
+Verified in the running game: the app drops to the job market with four open
+chairs, the navigation is gone, and `go()` cannot put the old dugout back on
+the screen — which is the "completely blocked" the report asked for.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

@@ -3258,6 +3258,27 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
     if (next === 'review') get().settleSeason();
 
+    /*
+      A sacked coach does not run the school’s winter.
+
+      Reported 2026-09-11: "if the university doesn’t extend you, you can still
+      keep going with the same university". `jobSearch` was only raised at the
+      year roll, and the roll is the far side of the whole offseason — so a man
+      the board had already let go spent the programme’s coaching points, worked
+      its draft, shopped its portal and signed its next class before anybody
+      told him to clear his desk.
+
+      The verdict is the end of the tenure. Leaving the review turns the year
+      over from here, and the roll builds the market it always built for him.
+      Sacked or simply not renewed: `fired` covers both, which is the thing
+      the report asked for.
+    */
+    if (phase === 'review' && get().lastReview?.fired) {
+      set({ phase: null });
+      await get().rollYear();
+      return;
+    }
+
     // Opening recruiting starts its clock — and every other program has already
     // been working the board.
     //
