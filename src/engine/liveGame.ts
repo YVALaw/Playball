@@ -380,7 +380,7 @@ export function createLiveGame(
     get result(): GameResult {
       const homeWon = home.runs > away.runs;
       const winnerIs = homeWon ? home : away;
-      const winner = winningPitcherFor(winnerIs, leadHolder === winnerIs ? creditTo : null);
+      const winner = winningPitcherFor(winnerIs, leadHolder === winnerIs ? creditTo : null, inning);
       return {
         home, away, innings: inning, log, playEvents: [...allEvents],
         winningPitcher: winner,

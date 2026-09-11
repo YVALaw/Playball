@@ -253,11 +253,54 @@ export function started(p: Player): void {
   m.starts = (m.starts ?? 0) + 1;
 }
 
-/** Where a man sits in his own squad, best first, for the promise. */
+/**
+ * Where a man sits in his own squad, best first, for the promise.
+ *
+ * Two rooms, because a pitcher is not competing with a shortstop for a place.
+ * Until 2026-09-11 this walked the lineup and the bench only, so every arm in
+ * the country fell through to the caller's default of twentieth and read as a
+ * man nobody had any use for — for life, whatever he did.
+ *
+ * The arms come back on the hitters' scale rather than their own, so one
+ * number means one thing everywhere it is read: the four who take the ball
+ * are the equivalent of an everyday nine, the next four of a bench, and the
+ * rest of a roster spot. A staff is ten men where a squad is thirty, and
+ * without the shift the eighth-best arm would have been asked to work like a
+ * number one.
+ */
 export function squadRanks(team: Team): Map<PlayerId, number> {
-  const all = [...team.lineup, ...team.bench];
-  const order = [...all].sort((a, b) => overallOf(b) - overallOf(a));
   const out = new Map<PlayerId, number>();
-  order.forEach((p, i) => out.set(p.id, i + 1));
+  const rank = (group: readonly Player[], scale: (at: number) => number): void => {
+    const order = [...group].sort((a, b) => overallOf(b) - overallOf(a));
+    order.forEach((p, i) => {
+      const at = scale(i + 1);
+      const had = out.get(p.id);
+      // A two-way man stands in both rooms, and is judged by the better of them.
+      if (had === undefined || at < had) out.set(p.id, at);
+    });
+  };
+  rank([...team.lineup, ...team.bench], (at) => at);
+  rank([...team.rotation, ...team.bullpen], (at) => (at <= 4 ? at : at + 4));
   return out;
+}
+
+/** True for a man whose season is measured in appearances, not starts. */
+export const isArm = (p: Player): boolean => p.type === 'pitcher';
+
+/**
+ * A pitcher's season in the terms the expectation model speaks.
+ *
+ * A hitter's share is starts over games his team played. An arm's cannot be:
+ * nobody pitches forty-five times, and a starter who takes every turn he is
+ * given has taken all there was to take. So he is measured against the
+ * busiest man on his own staff — which needs no invented constant, and asks
+ * the question he would actually ask, which is whether he is being used like
+ * the men around him.
+ */
+export function armShare(
+  p: Player, staff: readonly Player[], appearances: (id: PlayerId) => number,
+): { starts: number; games: number } {
+  let busiest = 0;
+  for (const a of staff) busiest = Math.max(busiest, appearances(a.id));
+  return { starts: appearances(p.id), games: Math.max(1, busiest) };
 }

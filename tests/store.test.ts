@@ -904,7 +904,10 @@ describe('the hall of fame meets when the draft settles', () => {
       greatYear(year - 2, 'JR', abbr, departed),
       greatYear(year - 1, 'SR', abbr, departed),
     ];
-    const kid = me.team.lineup.find((p) => p.classYear === 'FR') as Player;
+    // The bench included: every program fields its best nine now, so a
+    // freshman is not guaranteed a place in it.
+    const kid = [...me.team.lineup, ...me.team.bench]
+      .find((p) => p.classYear === 'FR') as Player;
     expect(kid).toBeDefined();
     season.careers[kid.id] = [
       greatYear(year - 1, 'FR', abbr, kid.name),

@@ -764,6 +764,23 @@ export function overallOf(p: Hitter | Pitcher): number {
 }
 
 /**
+ * A ceiling a man now stands above is not a ceiling.
+ *
+ * Scouts revise a projection upward when somebody outgrows it, and without
+ * this the number quietly turns into nonsense — a senior reading "overall 52,
+ * potential 46". Development has always done it at the end of a winter. It has
+ * to happen on a position change too, because `gloveScore` weights the glove
+ * by the spot: a rangy left fielder is worth more in centre, so the same man
+ * is a different overall the moment a card moves him, and a ceiling measured
+ * where he used to stand is measured on somebody else. Found 2026-09-11, when
+ * every program in the country began fielding a fitted nine.
+ */
+export function respectCeiling(p: Hitter | Pitcher): void {
+  const now = overallOf(p);
+  if (now > p.potential) p.potential = now;
+}
+
+/**
  * What the man is worth ON THE MOUND — for a Pitcher exactly `overallOf`,
  * for a two-way man the same arm formula read off his flattened arm fields.
  *

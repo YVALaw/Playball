@@ -394,7 +394,10 @@ describe('positions are yours to break, and the game remembers home', () => {
   it('the rail appointment inside the nine trades labels, and both remember', () => {
     useDynasty.getState().start(4242, 0);
     const t = useDynasty.getState().season!.teams[0]!.team;
-    const man = t.lineup[5]!;
+    // A man at his own spot, found by that spot: the order is dealt now, so a
+    // slot number is a different man from one world to the next, and a man
+    // already covering somewhere keeps the home he had rather than this one.
+    const man = t.lineup.find((p) => p.pos !== 'C' && p.homePos === undefined)!;
     const from = man.pos;
     const holder = t.lineup.find((p) => p.pos === 'C')!;
     expect(useDynasty.getState().assignPosition(man.id, 'C')).toBe(true);

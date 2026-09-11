@@ -370,9 +370,16 @@ August 2026 and are cheap relative to what they fix; 5 and 6 are the old stage
 
 ## Missing and unscheduled
 
-Nothing. Everything that used to sit here is in `07-v1-plan.md` —
+Nothing unscheduled. Everything that used to sit here is in `07-v1-plan.md` —
 injuries and season-long fatigue included (`engine/injury.ts`,
 `engine/workload.ts`, stage 16).
+
+**What is actually left before a release** is `06-backlog.md` §AC, which is the
+September 11 2026 documentation sweep: every standing claim in these files read
+against the source, about two hundred of two hundred and thirty items found
+already built, and what survived written down with a file and a size. Six
+faults were taken the same day (`05` §66). The one release risk on that page is
+the 3D field, which is the default and has never been measured on a phone.
 
 ## Deferred, and why
 

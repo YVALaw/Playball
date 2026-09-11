@@ -8898,6 +8898,105 @@ Pinned in `tests/backNav.test.ts`: the opener that stands down, the two cards
 that never do, the mark that outlives its restore, the dropped transition that
 lands anyway, and the overtaken one that does not.
 
+## 66. The documentation sweep, and the six it found — **September 11 2026**
+
+The docs had drifted about a week behind the code, so every standing claim in
+them was read against the source. Most did not survive: of roughly two hundred
+and thirty backlog items about two hundred were already built and the file had
+simply never been told. Six things did survive, and all six are met in ordinary
+play. What the sweep left unfixed is staged as `06` §AC.
+
+### 66.1 The catcher led off for ninety-five programs
+
+`makeTeam` builds a roster in positional order — C, 1B, 2B, 3B, SS, LF, CF, RF,
+DH — and `bestNine` and `autoBattingOrder` were only ever called through
+`staffSetsTheCard` and AUTO, both of which take the coached program's index.
+So no computer program in the world had ever fielded a merit-picked nine or
+batted anybody out of the order its roster was generated in.
+
+Recorded at §62.7 as a measured decision waiting on the reporter: 0.06 runs a
+game and a point of winning percentage, "but it is visible in every box score
+in the country". It was taken on 2026-09-11.
+
+`setTheCard(team, day)` in `depthChart.ts` is the pair of calls the lineup
+screen already made, now available to anybody. `createSeason` deals ninety-six
+cards on day one and `fillRosters` deals them again after every roll, skipping
+the coached program — his card is his, and the lineup screen or his own staff
+writes it. Neither call draws, so a league dealt this way is the same world it
+would otherwise have been.
+
+The calibration sweep held without re-recording, which the stage-8 note (`06`
+§L, "correct and ruinous") would not have predicted. It is the own-spot edge
+that makes the difference: `bestNine` moves a man only when a cover is clearly
+better, so what actually changed league-wide was the order, not the nine.
+
+### 66.2 A ceiling a move could put a man above
+
+Found by the change above, and the reason the offseason tests moved.
+`gloveScore` weights the glove by the spot, so a rangy left fielder is worth
+more in centre: the same man is a different overall the moment a card moves
+him. Development had always repaired a cleared ceiling at the end of a winter,
+but a position change could put a man above one afterwards, and did — a junior
+outfielder finished a roll at 47 against a projection of 46.
+
+`respectCeiling` in `ratings.ts` is that repair as one function, called at the
+end of `develop` where it always lived and now from `adoptSpot` as well, which
+is the funnel every card move goes through.
+
+### 66.3 PLAY FOR CONTACT made the run on third less likely
+
+`tacticMods('contact')` returned `sacFly: 0.58` against a default of 0.62
+(`BASERUNNING.sacFlyOnFly`). The one call in the game whose whole purpose is
+scoring the man on third made it *less* likely than doing nothing, under a
+comment that said "get the run home". It is 0.70 now: a man shortening up
+drives the medium fly that scores him.
+
+### 66.4 The counter-plan brought the infield in for a whole season
+
+AUTO's plan called INFIELD IN against fifty-one of ninety-six opponents, and
+the strategy audit measured it as the one positioning call that costs runs
+against every lineup shape tried — 0.316 a game, where BACK saves 0.245
+(`docs/15` §L). Playing in is a decision about one run with a man on third and
+fewer than two out, which the manager still has in the dugout. It is not a plan
+for a Tuesday in March, and the counter no longer makes it.
+
+### 66.5 The starter's win in a game the run rule cut short
+
+`winningPitcherFor` applied a flat fifteen-out gate. The run rule is on by
+default and ends a game at seven innings, where the book asks four rather than
+five — so a starter who went four of a rout had his win handed to a reliever
+who got three outs. It takes the game's length now and asks twelve outs of a
+shortened one.
+
+### 66.6 Every arm in the country read as buried
+
+Two halves of the same omission. `squadRanks` walked the lineup and the bench
+only, so every pitcher fell through to the caller's default of twentieth; and
+`dayInTheLegs` counts starts for hitters, so a pitcher's `starts` was zero for
+life. Between them, every arm in the league reported a playing-time expectation
+it had missed entirely, took a mood hit for it every February, and turned up in
+the portal for a reason that was bookkeeping rather than mood.
+
+`squadRanks` now ranks two rooms — a pitcher is not competing with a shortstop
+for a place — and returns the arms on the hitters' scale so one number means
+one thing everywhere it is read: the four who take the ball are the equivalent
+of an everyday nine, the next four of a bench, the rest of a roster spot.
+
+`armShare` is the other half. A hitter's share is starts over games his team
+played; nobody pitches forty-five times, so an arm is measured against the
+busiest man on his own staff. That needs no invented constant and asks the
+question he would actually ask, which is whether he is being used like the men
+around him. The portal reads it too, when the pitching book is to hand.
+
+### 66.7 One that was reported and is not a fault
+
+`06` §AB records that a keep-position promise is broken by any move, "so a man
+who *agreed* to move still counts as promised-and-broken", and names the fix as
+a flag on the proposal he accepts. There is no proposal and no acceptance: the
+retrain sheet's button reads MOVE · BREAKS PROMISE, the coach is told before he
+taps it, and the promise then breaks. That is honest, and it stays. The missing
+thing is the asking, which is a feature rather than a fix; it is staged.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

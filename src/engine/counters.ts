@@ -140,10 +140,17 @@ export function opponentPlan(
   const shift = alignment === 'shift' ? m.pullSide : 'none';
   const outfield = z('power') >= FAR ? 'deep'
     : z('power') <= -FAR && z('speed') >= 0 ? 'shallow' : 'normal';
-  const bunts = opp.strategy.bunt === 'often';
-  const runs = m.runners >= 3 || opp.strategy.steals === 'constant' || opp.strategy.running === 'aggressive';
-  const infield = bunts || (runs && z('speed') >= 0) ? 'in'
-    : z('power') >= FAR ? 'back' : 'normal';
+  /*
+    The infield does not come in for a whole season.
+
+    The counter called INFIELD IN against fifty-one of ninety-six opponents,
+    and the strategy audit measured it as the one positioning call that costs
+    runs against every lineup shape it was tried on — 0.316 a game, where BACK
+    saves 0.245 (docs/15 §L, 05 §62.7). Playing in is a decision about one run
+    with a man on third and fewer than two out, which is a call the manager
+    still has in the dugout; it is not a plan for a Tuesday in March.
+  */
+  const infield = z('power') >= FAR ? 'back' : 'normal';
 
   return { ...base, steals, running, bunt, hook, alignment, shift, outfield, infield };
 }

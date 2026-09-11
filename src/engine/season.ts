@@ -10,7 +10,7 @@
 import {
   largestDeficit, noFeats, noteGame, type SeasonFeats,
 } from './achievements.js';
-import { coverFor } from './depthChart.js';
+import { coverFor, setTheCard } from './depthChart.js';
 import { atRisk, failsThisWeek, suspend } from './eligibility.js';
 import { hurtsToday, hurt, healUp } from './injury.js';
 import { started } from './morale.js';
@@ -1307,6 +1307,10 @@ export function createSeason(
       });
     }
   }
+  // Day one, ninety-six cards. Nothing here draws, so the world is the same
+  // world it would have been; the nine men on each card are simply the nine
+  // the program would pick, in the order it would bat them.
+  for (const record of teams) setTheCard(record.team, 0);
 
   return {
     config,

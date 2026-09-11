@@ -39,8 +39,16 @@ export function tacticMods(tactic?: Tactic): TacticMods | undefined {
       // Runner moving means holes open, but a swing you have to take.
       return { events: { single: 1.06, homerun: 0.85, walk: 0.85 }, doublePlay: 0.05 };
     case 'contact':
-      // Shorten up: give away power to put it in play and get the run home.
-      return { events: { homerun: 0.80, single: 1.04, walk: 0.90 }, sacFly: 0.58 };
+      /*
+        Shorten up: give away power to put it in play and get the run home.
+
+        The rate was 0.58 against a default of 0.62 (`BASERUNNING.sacFlyOnFly`),
+        so the one call in the game whose whole purpose is the run on third
+        made the run *less* likely than doing nothing. Found 2026-09-11 reading
+        the table against the comment above it. Above the default now, because
+        a man shortening up drives the medium fly that scores him.
+      */
+      return { events: { homerun: 0.80, single: 1.04, walk: 0.90 }, sacFly: 0.70 };
     case 'groundball':
       // `doublePlay` is the rate the out resolver uses in place of the
       // default 0.36, not a multiplier: 0.20 here cut the double play the
@@ -598,12 +606,22 @@ export const RULES = {
   },
 };
 
-/** Apply the official five-inning starter-win gate to the pitcher of record. */
-export function winningPitcherFor(side: TeamState, candidate: Arm | null): Arm | null {
+/**
+ * Apply the official starter-win gate to the pitcher of record.
+ *
+ * Five innings in a nine-inning game, and four in one the run rule cut short —
+ * which is the rule, and which this asked for five of regardless until
+ * 2026-09-11. The run rule is on by default and ends a game at seven, so a
+ * starter who went four of a seven-inning rout had his win handed to a
+ * reliever who got three outs.
+ */
+export function winningPitcherFor(
+  side: TeamState, candidate: Arm | null, innings = 9,
+): Arm | null {
   if (!candidate) return null;
   if (candidate !== side.starter) return candidate;
   const starter = side.pitching.get(side.starter.id);
-  if ((starter?.outs ?? 0) >= 15) return candidate;
+  if ((starter?.outs ?? 0) >= (innings < 9 ? 12 : 15)) return candidate;
 
   // NCAA leaves the relief win to the scorer when the starter is ineligible.
   // Pick the most effective reliever rather than blindly the first man used:
@@ -703,7 +721,7 @@ export function simGame(
   const homeWon = home.runs > away.runs;
   const winnerIs = homeWon ? home : away;
   const rawWinner = leadHolder === winnerIs ? creditTo : null;
-  const winner = winningPitcherFor(winnerIs, rawWinner);
+  const winner = winningPitcherFor(winnerIs, rawWinner, inning - 1);
   return {
     home,
     away,

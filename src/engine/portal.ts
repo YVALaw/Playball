@@ -45,7 +45,10 @@ import { isTwoWay, uniquePlayers } from './types.js';
  * portal per five or six seasons.
  */
 const STAR_WANDER = 0.012;
-import { flightRisk, moodOf, expectationOf, squadRanks, UNHAPPY, explicitRecruitPromiseBroken } from './morale.js';
+import {
+  flightRisk, moodOf, expectationOf, squadRanks, UNHAPPY, explicitRecruitPromiseBroken,
+  armShare, isArm,
+} from './morale.js';
 import type { PromiseParticipation } from './morale.js';
 
 /** What the portal writes on a man. Sparse, so an older save has none. */
@@ -230,11 +233,17 @@ export function openPortal(
       override remains for a world that has not played.
     */
     const games = opts.games ?? (rec.w ?? 0) + (rec.l ?? 0);
+    // An arm against his own staff. Without the book there is nothing to read,
+    // and he falls back to the hitters' measure exactly as he used to.
+    const staff = [...rec.team.rotation, ...rec.team.bullpen];
+    const seen = opts.pitching;
     for (const p of men) {
-      const starts = (p as Player & { starts?: number }).starts ?? 0;
+      const arm = seen !== undefined && isArm(p)
+        ? armShare(p, staff, (id) => seen.get(id)?.g ?? 0) : null;
+      const starts = arm ? arm.starts : (p as Player & { starts?: number }).starts ?? 0;
       const squadRank = ranks.get(p.id) ?? 20;
       const at = {
-        squadRank, starts, games,
+        squadRank, starts, games: arm ? arm.games : games,
         battingGames: opts.batting ? opts.batting.get(p.id)?.g ?? 0 : undefined,
         pitchingGames: opts.pitching ? opts.pitching.get(p.id)?.g ?? 0 : undefined,
       };

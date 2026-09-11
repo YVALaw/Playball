@@ -231,12 +231,19 @@ describe('moving a man', () => {
   });
 
   it('settles out over two seasons and leaves nothing behind', () => {
-    const p = everyone().find((x) => x.pos === 'SS')!;
-    movePosition(p, '3B');
-    expect((p as { settling?: number }).settling).toBe(SETTLING_COST);
-    settleIn(p);
-    settleIn(p);
-    expect((p as { settling?: number }).settling, 'he never settled').toBeUndefined();
+    // A settle is a roll, and some men never take to it — which is the point
+    // of the mechanic and is measured by rate in positions.test.ts. This is
+    // about what a man who *does* take to it is left carrying, so it asks for
+    // one of those rather than for whichever shortstop happens to be listed
+    // first, which the dealt batting order changed.
+    const p = everyone().filter((x) => x.pos === 'SS').map((x) => {
+      const copy = { ...x };
+      movePosition(copy, '3B');
+      settleIn(copy);
+      settleIn(copy);
+      return copy;
+    }).find((copy) => (copy as { settling?: number }).settling === undefined)!;
+    expect(p, 'no shortstop in the league ever took to third').toBeDefined();
     expect((p as { movedFrom?: string }).movedFrom).toBeUndefined();
     expect(positionPenalty(p, '3B'), 'he is still paying for it').toBe(0);
   });

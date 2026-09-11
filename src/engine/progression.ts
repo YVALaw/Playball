@@ -15,11 +15,11 @@ import {
   type DraftBoard, type DraftedMan,
 } from './draft.js';
 import { ageFor, makeHitter, makePitcher, releaseNames, reserveNames } from './players.js';
-import { adoptSpot } from './depthChart.js';
+import { adoptSpot, setTheCard } from './depthChart.js';
 import { coverTier } from './positions.js';
 import { prestigeStars } from './program.js';
 import { GENERATED_POTENTIAL_CAP } from './scouting.js';
-import { armValue, overallOf, clamp } from './ratings.js';
+import { armValue, overallOf, clamp, respectCeiling } from './ratings.js';
 import { flexibleOffseasonBudget, windowBudget } from './recruiting.js';
 import type { Prospect } from './recruiting.js';
 import { gauss, makeRng } from './rng.js';
@@ -311,11 +311,20 @@ function develop(p: Player, rng: Rng, growthMult = 1): number {
     p.velocity = Math.round(clamp(p.velocity + delta * 0.08, 79, 103));
   }
 
-  // A ceiling a player has already cleared is not a ceiling. Scouts revise a
-  // projection upward when someone outgrows it, and without this the number
-  // quietly turns into nonsense — a senior reading "overall 52, potential 46".
+  /*
+    A ceiling a player has already cleared is not a ceiling. Scouts revise a
+    projection upward when someone outgrows it, and without this the number
+    quietly turns into nonsense — a senior reading "overall 52, potential 46".
+
+    Measured at his own position, not at the one he happened to be covering.
+    `overallOf` carries the glove tax for a man standing somewhere he does not
+    belong, so a ceiling raised while he was out of position was raised to a
+    number smaller than the player — and the moment a card put him back where
+    he belongs he stood above it. Found 2026-09-11, when every program in the
+    country started fielding a fitted nine and men went home in numbers.
+  */
   const after = overallOf(p);
-  if (after > p.potential) p.potential = after;
+  respectCeiling(p);
 
   return after - before;
 }
@@ -1262,6 +1271,20 @@ export function fillRosters(
       });
     }
   }
+  /*
+    And then every program picks its nine again.
+
+    A roll graduates a quarter of the country and lands a class on top of it,
+    so a card written last February is the one thing on the roster that is
+    certainly out of date. The coached program is left alone: his card is his,
+    and the lineup screen — or his staff, if he has delegated it — writes it
+    before the next day is played.
+  */
+  for (const record of season.teams) {
+    if (record.index === opts.userTeam) continue;
+    setTheCard(record.team, season.dayIndex);
+  }
+
   return { recruits, signed, walkOns };
 }
 

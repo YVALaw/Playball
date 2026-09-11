@@ -31,7 +31,8 @@
 // having to write it down.
 
 import type { Hitter, Player, PlayerId, Position, Team } from './types.js';
-import { overallOf } from './ratings.js';
+import { overallOf, respectCeiling } from './ratings.js';
+import { autoBattingOrder } from './strategy.js';
 import { fieldingAt, coverTier, effectivePos } from './positions.js';
 
 /** The nine spots a lineup card has to fill, in scorebook order. */
@@ -485,6 +486,9 @@ export function adoptSpot(man: Hitter, pos: Position): void {
   man.pos = pos;
   // Adopted back around to his own spot: the displacement is over.
   if (man.homePos === man.pos) delete man.homePos;
+  // The glove is weighted by the spot, so the move itself can put a man above
+  // a projection that was measured where he used to stand.
+  respectCeiling(man);
 }
 
 /** The bench is where a man is himself again. */
@@ -561,4 +565,31 @@ export function healPositions(lineup: readonly Hitter[]): number {
     moved += 1;
   }
   return moved;
+}
+
+/**
+ * The nine a program fields, and the order it bats them in — for anybody.
+ *
+ * `makeTeam` builds a roster in positional order (C, 1B, 2B, 3B, SS, LF, CF,
+ * RF, DH) and until 2026-09-11 nothing ever rewrote it for the ninety-five
+ * programs nobody coaches. `bestNine` and `autoBattingOrder` existed the whole
+ * time; only the coached program's staff ever called them. So the catcher led
+ * off in every box score in the country, forever, and a better man on the
+ * bench never took a spot — measured at 0.06 runs a game and a point of
+ * winning percentage (05 §62.7), and visible in every line anybody reads.
+ *
+ * Writes in place, takes no draw and reads no clock but the one it is handed,
+ * so a league dealt this way is as deterministic as one that was not. It is
+ * the same pair of calls the LINEUP screen's AUTO makes, which is the point:
+ * a program run by the computer and a program run by a delegated staff field
+ * their card the same way.
+ */
+export function setTheCard(team: Team, day: number): void {
+  const best = bestNine(team, day);
+  team.lineup.splice(0, team.lineup.length, ...best.lineup);
+  team.bench.splice(0, team.bench.length, ...best.bench);
+  const dealt = autoBattingOrder(team.lineup);
+  // Same nine or nothing, the guard `autoLineup` holds at its own door.
+  if (dealt.length !== team.lineup.length) return;
+  team.lineup.splice(0, team.lineup.length, ...dealt);
 }

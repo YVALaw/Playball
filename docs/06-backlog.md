@@ -3202,3 +3202,183 @@ and the game has players.
   unplayed. A recruit who redshirts his first year under a no-redshirt
   promise is judged broken at that roll, which is right; one whose
   two-way chance was blocked by injury is judged broken too, which is not.
+
+## AC. The September 11 documentation sweep — what it left
+
+Every standing claim in the docs was read against the source, because the
+writing had drifted about a week behind the code. Of roughly two hundred and
+thirty backlog items, about two hundred were already built and this file had
+simply never been told. What follows is only what survived that check: each
+line was confirmed in `src/` on 2026-09-11.
+
+Six faults were taken the same day and are described in `05` §66 — the
+ninety-five programs that never dealt a card, PLAY FOR CONTACT lowering the
+sacrifice fly, the counter-plan's standing INFIELD IN, the starter's win in a
+run-rule game, every arm in the country reading as buried, and the ceiling a
+position change could put a man above. These are the rest, in the order they
+would matter to somebody playing.
+
+### AC.1 Systems that are shallower than they look
+
+- **June runs on one clock.** `advancePostseasonDay` ticks a single shared
+  `postseasonDay` once per bracket game (`engine/season.ts:1702`), so the eight
+  conference tournaments and sixteen regionals play end to end: June spans 111
+  days against a 78-day regular season, the first cup carries nine times the
+  injuries of the last, and the coached program always plays its own tournament
+  last, fully healed. Interleaving a round a night is the design. **Medium**,
+  and it moves the bracket tests and the soak. Already filed at `05` §62.7.
+- **No closer, and no leverage.** `restedFirst` (`engine/season.ts:1874`) sorts
+  the pen by rest then quality, so the best arm throws 15.9% of relief outs
+  against a flat 16.7%. The code says so itself. **Medium.**
+- **A rival's facilities and pipelines do not reach his recruiting.**
+  `programRecruitingPitch` is handed `mine ? myEconomy : undefined`
+  (`state/store.ts:3046`), so `pipelineStrength` scales the coached program's
+  home state by 1.15 and all ninety-five others by 1.00. The user's board being
+  unseeded is the deliberate thumb the other way (`seedRivalInterest`,
+  `store.ts:161`); this one is not deliberate. **Small.**
+- **Minimum-bid spreading is still the dominant recruiting strategy.**
+  `actionInterest` (`engine/recruiting.ts:1375`) scales linearly with cost and
+  has no anti-spread ramp, so a three-point pitch with no effort behind it pays
+  full price: twenty targets at three points signs 6.3 a year against 3.9 for
+  eight pushed properly. **Small.** Already filed at `05` §62.7.
+- **The computer's portal is a two-man stub.** `staffWorksPortal`
+  (`engine/portal.ts:317`) sorts the pool by price ascending, skips anybody at
+  or below the team's *weakest* hitter, and stops at two. There is no rival
+  retention at all, where the draft has `rivalKeeps`. **Medium.**
+- **A transfer arrives with no history.** `archiveSeason` is only ever called
+  for the coached program (`state/store.ts:3571`), so a man who transfers in
+  shows blank seasons for his years elsewhere. Career *totals* do exist.
+  **Small to medium.**
+- **The batting-average tail runs hot.** The national leader hits .497–.523
+  every season against a D1 record of .467. The mean is on target and every
+  other rate is realistic; the lever is the spread of contact at the top of the
+  scale, not the qualification bar. **Medium**, and it is calibration work.
+  Already filed at `05` §62.7.
+- **The national championship series is played at one park.** `bestOf`
+  (`engine/postseason.ts:441`) seeds a→0, b→1 and the lower seed hosts every
+  game; `hostOfGame` already alternates for regionals. The docstring admits it.
+  **Small.**
+
+### AC.2 Designed, decided, and never built
+
+- **The rules of the world.** Injuries, the portal, realignment, poaching and
+  season length as free switches — the stated counterweight to the paid
+  unlock. `state/depth.ts` carries fourteen keys and every one is a *depth*
+  toggle; there is no `season.rules` and `NewGame.tsx` offers no season length
+  or series format. **Medium to large**, and the highest-value thing on this
+  page: it is the only way to turn off a system a player hates without
+  abandoning the career.
+- **The mound-visit conversation.** `visitMound` is one button calling
+  `moundVisit` (`engine/game.ts:2521`), which decrements a counter and restores
+  confidence. The three registers, the pitcher's temperament and the cost of
+  repeating yourself were designed at §K3 and never landed, and they are the
+  half that makes it a decision. **Medium.**
+- **The coach title carries no weight.** The twelve-rung ladder is real and
+  measured (`engine/program.ts:1456+`); the small boost each rung was meant to
+  earn is uncoded and still undesigned. **Small**, design owed first.
+- **Park effects as geometry.** No `parkEffect` anywhere, and `Field()` in
+  `ui/Diamond3D.tsx` is one park with the same wall at every distance, so all
+  ninety-six grounds play identically. Agreed as geometry rather than as a
+  modifier, which is what makes it worth doing and what makes it **medium**.
+- **A position change the man agreed to.** `explicitRecruitPromiseBroken`
+  (`engine/morale.ts:149`) compares `p.pos` to `promisedPos`, so any move
+  breaks a keep-position promise. The retrain sheet does warn — its button
+  reads MOVE · BREAKS PROMISE — so today's behaviour is honest rather than
+  wrong; what is missing is the *asking*, which is the feature §AB assumed.
+  **Small**, once the conversation exists.
+- **The creator kit**, and **accounts with a shared record book.** Stages 28
+  and 30. No file input and no network code exist for either. **Large**, and
+  both read as after the release rather than before it.
+
+### AC.3 The phone, which is the platform
+
+- **The 3D field is the default and has never been measured on a phone.**
+  `field: '3d'` in `state/devicePrefs.ts:104`; the release audit counts 119 to
+  193 meshes in the scene and there is no `InstancedMesh` anywhere; the lazy
+  chunk is about 900 KB. A WebGL boundary catches a device with no WebGL, but
+  nothing catches a device that is merely slow. **This is the one release risk
+  on the page**, and the first hour of work is a measurement, not a change.
+- **Rankings and statistics recompute on every render.** `rpiOrder` and
+  `leaders` are unmemoized in `Rankings.tsx:57`, `Stats.tsx:60`,
+  `TeamCard.tsx:108` and `SeasonReview.tsx:63`; measured at 4 ms and 7 ms a
+  call on a full season. **Small.**
+- **The sound pack downloads whatever the sound setting says.**
+  `preloadSfx` (`ui/sound.ts:113`) has no preference guard; the guard is only
+  on playback. About 750 KB. **Small.**
+- **Replay re-encodes about 900 KB on every autosave.** `compactReplayEvents`
+  landed and the follow-up — capping retained replays, or moving replay off the
+  box score — did not. **Medium.**
+
+### AC.4 Correctness, small
+
+- **The back gesture does not know about locally held sheets.** The box-score
+  sheet, the portal signing sheet and the profile command sheet are component
+  state, so `hasLayerToClose` cannot see them and one press closes a sheet
+  *and* navigates. **Medium**, and it wants a store-level sheet counter.
+- **Three store fields die on reload and leak between careers.**
+  `unseenTrophies`, `unseenRecords` and `portalArrivals` are in neither
+  `persistence.ts` nor `loadSlot`'s reset. **Small.**
+- **A walk-off run is not clamped on the bunt path.** `game.ts:1079` counts
+  every runner who scored; the plate-appearance path clamps correctly at 1313.
+  A trailing runner can score after the game is over. **Small**, and it is a
+  rulebook error.
+- **A run scoring on the third out is charged unearned.** `game.ts:809` reads
+  `virtualOuts < 3`, but `addOuts` runs before `bringHome`. **Small.**
+- **Innings pitched print in decimal thirds.** "12.7 IP" on leaderboards and
+  awards (`season.ts:3110`, `postseason.ts:1365`), against the box score's
+  correct X.Y notation everywhere else. **Small**, and it is the kind of wrong
+  a baseball reader sees immediately.
+- **The player-management button portals into the first overlay, not the top
+  one.** `document.querySelector('.full-overlay')` in `RosterMoves.tsx:180` and
+  `TeamCard.tsx:287`, so it is unreachable from a card opened off a team card.
+  **Small.**
+- **The develop and build mandates still require staying out of the cellar.**
+  `program.ts:615` keeps `notLast` as `required`, which at prestige 19 with the
+  worst roster in the country by construction is close to unpassable. The
+  `winningSeason` half of the same finding was moved to a bonus; this half was
+  not. **Small.**
+- **The high-school scouting line can be reverse-engineered.**
+  `scouting.ts:143` derives every prep number from true ratings plus a
+  deterministic noise salt and takes no scouting-skill argument. **Small.**
+- **Non-conference repeats are picked as whole rounds.** `season.ts:1163` sorts
+  entire round-robin matchings by total distance, so coast-to-coast opponents
+  meet twice while neighbours meet once. **Small.**
+- **AUTO's neutral positioning defaults are strictly dominated.** Against an
+  ordinary lineup `back` saves 0.245 runs a game and `situational` 0.248, and
+  nothing in the shipped defaults pays for them. Changing the default once is a
+  free permanent win, which is why it is a **balance decision** and not a fix.
+
+### AC.5 Interface polish
+
+Each of these is minutes rather than hours: the probable-pitcher buttons stay
+live and inert when a slot is empty (`Today.tsx:276`); `.coach-tree-list` and
+`.coach-tree-row` have no CSS at all, so the coaching tree renders as inline
+text (`Program.tsx:1087`); the board prints "Steady work buys another year"
+unconditionally every February (`program.ts:2056`); the roster's capacity strip
+passes `used` and `cap` the same value so it always reads full
+(`Roster.tsx:288`); the inbox prints a year on every row and groups by none
+(`Inbox.tsx:120`); the play-by-play has no `aria-live` and the 3D canvas no
+accessible name (`Manage.tsx`, `Diamond3D.tsx:1649`); tactic explanations exist
+only as a `title` tooltip no phone shows (`Manage.tsx:883`); the recruiting
+pitch buttons stay enabled with no budget and silently do nothing
+(`Board.tsx:1372`); Settings' radio pickers are announced as tabs
+(`Kit.tsx:175`); and **the app never shows its own version anywhere**, which
+will hurt the first time somebody reports a bug against a build.
+
+### AC.6 Not a feature, but a gate
+
+Seven of the eight files in `public/sfx/` carry unverified licences, and that
+directory's own credits file records why it matters: CC-BY needs the credit
+shipped, and a non-commercial licence cannot ride in an app with a paid
+in-app purchase. God mode is one. Verify or replace before anything is
+published.
+
+### AC.7 Measurements nobody has taken
+
+The league's caught-stealing rate since the situational layer landed; the error
+total and fielding percentage, where the eight-seed sweep carries no error row
+at all; the real-world frequency of each Coach of the Year category; the
+arm-injury channel, which unlike the pregame roll was never soaked; and the two
+the v1 plan still asks for — screen transition time, and 3D frame rate on a
+mid-range Android.
+

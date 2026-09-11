@@ -331,7 +331,7 @@ import { healUp, isHurt, prognosis } from '../engine/injury.js';
 import { resetWorkload, legWeariness } from '../engine/workload.js';
 import {
   settleMood, setMood, squadRanks, mood, moodOf, promiseOf, flightRisk,
-  explicitRecruitPromiseBroken, promiseSpent,
+  explicitRecruitPromiseBroken, promiseSpent, armShare, isArm,
 } from '../engine/morale.js';
 import { captainOf, candidates, roomsChoice, appoint, standDown, canLead } from '../engine/captains.js';
 import { MAX_BADGES, badgeOf } from '../data/badges.js';
@@ -1732,14 +1732,19 @@ function settleTheMoods(season: SeasonState, userTeam: number): void {
     const ranks = squadRanks(rec.team);
     const mine = rec.index === userTeam;
     const leader = mine ? captainOf(rec.team) : null;
+    // Nothing ever counted a pitcher playing, so every arm in the country took
+    // a playing-time hit every February for a season he had in fact worked.
+    const staff = [...rec.team.rotation, ...rec.team.bullpen];
+    const outings = (id: PlayerId): number => season.pitching.get(id)?.g ?? 0;
     for (const p of uniquePlayers([...squad(rec.team), ...rec.team.rotation, ...rec.team.bullpen])) {
+      const arm = isArm(p) ? armShare(p, staff, outings) : null;
       // A promise that has been judged for every season it covered comes off
       // him before this season is judged, so a one-year word is not held
       // against a junior.
       if (mine && promiseSpent(p.recruitPromise)) delete p.recruitPromise;
       setMood(p, settleMood(p, {
-        starts: (p as Player & { starts?: number }).starts ?? 0,
-        games: played,
+        starts: arm ? arm.starts : (p as Player & { starts?: number }).starts ?? 0,
+        games: arm ? arm.games : played,
         squadRank: ranks.get(p.id) ?? 20,
         winPct,
         ...(mine ? {
