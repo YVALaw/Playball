@@ -431,7 +431,7 @@ floors.
 | Our cross-checker moved a trip to go and see him. | B | S+ |
 | People who saw him in the summer have not stopped talking about it. | B | S+ |
 | There are people who believe he is the best in the state. | A | S+ |
-| There is talk he will be drafted out of high school. | A | S+ |
+| There is talk he will not be in college for long. | A | S+ |
 | Every program in the country has been through his gym. | A | S+ |
 | The area men have run out of comparisons. | A | S+ |
 | Nobody on this staff wants to be the one who passed. | A | S+ |
@@ -8809,6 +8809,94 @@ a clean cut" — and the dugout button no longer sits in the screen's corner
 over the call grid's last cell: `Manage` measures the grid with a
 ResizeObserver and holds the button ten pixels above it, at the foot of the
 play-by-play, whatever the grid's height tonight.
+
+## 65. The program-and-staff pass, and why the back gesture flicked — **MERGED September 10 2026**
+
+Two things arrived together: an outside pass on `Playball-main (8).zip` —
+"Program: direct cards for Staff, Facilities, Budget, and Network ... Projects:
+choose a skill and player, then review gains, success chance, and duration" —
+and one more report on the gesture: "when we do the back gesture by dragging
+the screen from left to right to go back it still glitches, even more when we
+go to another screen by pressing on a card ... it shows as if the card was
+still there and does a quick flick the screen. This happens globally."
+
+### 65.1 The pass
+
+Program's overview stops being four dashboard paragraphs and becomes a
+three-number pulse, four direct cards under RUN YOUR PROGRAM, and the career
+destinations — Board, Watchlist, Hall — under their own heading. The four cards
+address Budget's subpages directly, so `ProgramSheet` grew `staff`,
+`facilities` and `network` and `MoneySheet` reads the sheet instead of local
+state. They are real routes, which means the route trail and the scroll memory
+carry them for free.
+
+`ui/StaffWorkPanel.tsx` is new and is the seat's work: the focus chips, and
+either the running project (progress, weeks left, target, success chance,
+earned focus weeks) or the assignment — choose a skill, then choose a named
+player from a searchable list that prints each man's odds, then the gain, the
+chance and the duration before the button. Nothing is picked implicitly; the
+button says "Choose a player to continue" until one is. The coach profile
+splits into WORK and PROFILE & CONTRACT, and the contributions the candidate
+dialog used to spell out in sentences are the same tiles in both places
+(`StaffImpact`).
+
+The pass's own stylesheet, `ui/program.css`, is imported after
+`prototype-frame.css`. It is already in the house voice — square paper,
+hairlines, mono labels, the display face — so the September 10 override block
+written for the old staff room had nothing left to dress: those rules and their
+markup went together.
+
+### 65.2 The gesture, which was three faults
+
+**A card that was not on the screen was still answering the press.** The season
+opener stays in the store while you read the board it sent you to, so that
+leaving without taking the terms brings it back. `backRef` asked the store —
+`if (s.seasonOpener || ...) return` — so for the whole of that errand the
+gesture was swallowed, which is exactly the reported example. `openerShowing`
+and `blockingCardUp` in the store are now the single answer, shared by the
+card, the gesture and the tour's "do not talk over a modal" check.
+
+**A swallowed browser Back spent a history entry on nothing.** A `popstate`
+has already consumed a real entry by the time the handler runs; refusing the
+press without giving it back left history one layer shorter than the screen for
+the rest of the session, and every later press skipped a level. `backRef` now
+reports `peeled`, `swallowed` or `none`, and the browser bridge pushes the
+entry back on `swallowed`.
+
+**And the flick itself, which was two animations.** `nextNavInstant` already
+turned off the view transition on the back path, but `.screen-in` — the frame's
+260ms rise on every arriving screen — is a separate animation and kept playing
+after a finger had already dragged the page across. The store stamps
+`data-nav="back"` on the root and the stylesheet turns the rise off; the mark
+comes off at the next forward navigation rather than a frame later, because
+turning an animation back on is how you start it.
+
+### 65.3 The one underneath all of them
+
+Measured in Chrome the same night, with `startViewTransition` wrapped to log:
+two calls in one task print `start 0`, `start 1`, `callback-ran 0` — and then
+nothing. The second transition is dropped, **its update callback is never
+invoked**, and neither `updateCallbackDone` nor `finished` ever settles.
+
+Every navigation in the app did its work inside that callback, so a second
+navigation issued before the first had captured was silently thrown away while
+its history checkpoint had already been pushed underneath it. Two quick taps on
+the nav bar left the coach on the first screen with a spare entry below him;
+the next back press then walked somewhere nobody asked for. That is the
+"globally" in the report.
+
+`crossfade` no longer lets the decoration decide whether the app moved. It
+refuses to start a transition over a live one — taking the navigation plainly
+instead — applies the state exactly once through an `apply` guard whether the
+callback runs or not, and backs that with a 100ms timer outside the callback.
+The timer carries a generation number so an overtaken navigation stays dropped:
+without it, a transition whose screen had already been replaced by the next tap
+would have dragged the coach back to it a tenth of a second later, which is a
+worse glitch than the one being fixed.
+
+Pinned in `tests/backNav.test.ts`: the opener that stands down, the two cards
+that never do, the mark that outlives its restore, the dropped transition that
+lands anyway, and the overtaken one that does not.
 
 ## Appendix A: stale comments and vestigial code found while writing this
 

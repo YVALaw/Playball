@@ -11,14 +11,30 @@ import { useDialogFocus } from './dialogFocus.js';
 /** The two skills used by each role, displayed on the same 0–100 scale. */
 export function StaffRatings({ coach }: { coach: Assistant }) {
   const labels = coach.seat === 'recruiting' ? ['Relationships', 'Recruiting']
-    : coach.seat === 'pitching' ? ['Pitcher development', 'Pitching support']
-      : ['Batter development', 'Game offense'];
+    : coach.seat === 'pitching' ? ['Development', 'Pitching support']
+      : ['Development', 'Game offense'];
   return <span className="staff-ratings">
     {[winterCraft(coach), nightCraft(coach)].map((value, i) => <span key={labels[i]}>
       <span><small>{labels[i]}</small><b>{value}</b></span>
       <i aria-hidden="true"><em style={{ width: `${Math.max(0, Math.min(100, value))}%` }} /></i>
     </span>)}
   </span>;
+}
+
+/** Compact, actual contributions; shared by candidates and hired coaches. */
+export function StaffImpact({ coach, skills }: { coach: Assistant; skills: CoachSkills }) {
+  const staff = { [coach.seat]: coach };
+  const developed = devBonus(staff);
+  const combined = withStaff(skills, staff);
+  const bonus = coach.seat === 'hitting' ? combined.offense - skills.offense
+    : coach.seat === 'pitching' ? combined.defense - skills.defense
+      : combined.recruiting - skills.recruiting;
+  return <div className="staff-impact-grid" aria-label="Contribution to your program">
+    <span><b>+{bonus}</b><small>{coach.seat === 'hitting' ? 'Offense skill' : coach.seat === 'pitching' ? 'Defense skill' : 'Recruiting skill'}</small></span>
+    {coach.seat !== 'recruiting' && <span><b>+{coach.seat === 'hitting' ? developed.bat : developed.arm}</b><small>Offseason development</small></span>}
+    {coach.seat === 'pitching' && <span><b>−{Math.round((1 - armCareFor(staff)) * 100)}%</b><small>Pitcher workload buildup</small></span>}
+    {coach.seat === 'recruiting' && coach.pipelineState && <span><b>{coordinatorFamiliarity(coach)}<em>/100</em></b><small>{coach.pipelineState} familiarity</small></span>}
+  </div>;
 }
 
 export function StaffCandidateDialog({ candidate, incumbent, budgetLeft, skills, canManage, fit, projectActive, onClose, onHire }: {
@@ -40,12 +56,6 @@ export function StaffCandidateDialog({ candidate, incumbent, budgetLeft, skills,
   if (!frame) return null;
   const after = budgetLeft + (incumbent?.wage ?? 0) - candidate.wage;
   const affordable = after >= 0;
-  const staff = { [candidate.seat]: candidate };
-  const developed = devBonus(staff);
-  const combined = withStaff(skills, staff);
-  const bonus = candidate.seat === 'hitting' ? combined.offense - skills.offense
-    : candidate.seat === 'pitching' ? combined.defense - skills.defense
-      : combined.recruiting - skills.recruiting;
   const hireLabel = `${incumbent ? 'Replace' : 'Hire'} · ${dollars(candidate.wage)}/year`;
 
   return createPortal(<div className="modal-scrim staff-candidate-scrim fade-in" onClick={onClose}>
@@ -61,11 +71,8 @@ export function StaffCandidateDialog({ candidate, incumbent, budgetLeft, skills,
       <StaffRatings coach={candidate} />
       <section className="staff-candidate-effects" aria-label="Effect on your program">
         <h3>What they add</h3>
-        {candidate.seat !== 'recruiting' && <p><b>+{candidate.seat === 'hitting' ? developed.bat : developed.arm}</b> {candidate.seat === 'hitting' ? 'batter' : 'pitcher'} training in the offseason</p>}
-        <p><b>+{bonus}</b> {candidate.seat === 'hitting' ? 'offense' : candidate.seat === 'pitching' ? 'defense' : 'recruiting'} coaching skill with your current abilities</p>
-        {candidate.seat === 'pitching' && <p><b>{Math.round((1 - armCareFor(staff)) * 100)}% less</b> pitcher workload buildup</p>}
-        {candidate.seat === 'recruiting' && candidate.pipelineState && <p><b>{candidate.pipelineState} · {coordinatorFamiliarity(candidate)}/100</b> state familiarity; stronger existing relationships take priority</p>}
-        <p className="staff-candidate-fit">{fit}</p>
+        <StaffImpact coach={candidate} skills={skills} />
+        <details className="staff-fit-details"><summary>Fit with your program</summary><p>{fit}</p>{candidate.seat === 'recruiting' && <p>Stronger existing state relationships take priority.</p>}</details>
       </section>
       <div className="staff-candidate-budget">
         <span>Annual wage<strong>{dollars(candidate.wage)}</strong></span>

@@ -9,6 +9,7 @@ import './ui/tokens.css';
 // instead of a simulated phone. Order matters: the frame file overrides.
 import './ui/prototype.css';
 import './ui/prototype-frame.css';
+import './ui/program.css';
 
 /*
   Preferences before the first paint.

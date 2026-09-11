@@ -982,7 +982,7 @@ export const CEILING_LINES: readonly CeilingLine[] = [
   "The state tournament felt like his audition, and he knew it.",
   ]),
   ...POOL('A+', [
-  "There is talk he will be drafted out of high school.",
+  "There is talk he will not be in college for long.",
   "The pro men outnumber the college men at his games now.",
   "His coach has stopped returning calls about him.",
   "The argument is not the state anymore. It is the country.",
@@ -991,7 +991,7 @@ export const CEILING_LINES: readonly CeilingLine[] = [
   "Every board in the country has him. The argument is the round.",
   "You plan your visit around everyone else who will be there.",
   "He made a jaded room lean forward.",
-  "Losing him to the draft is the risk everybody prices in.",
+  "Everybody prices in three years of him, not four.",
   "His games get moved to bigger parks.",
   "The fence behind the plate is all radar guns and clipboards.",
   "He is the reason the showcase sold out.",

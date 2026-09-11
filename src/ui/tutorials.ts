@@ -79,14 +79,9 @@ export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
   ],
   "staff": [
     {
-      title: "Choose your staff",
-      body: "Coaches differ in strengths and annual wages.",
-      action: "Tap a candidate to compare skills and hire.",
-    },
-    {
-      title: "Focus and projects",
-      body: "Focus is ongoing. Projects train players or strengthen pipelines over recruiting weeks.",
-      action: "Choose a focus, then review a project’s targets and bonus.",
+      title: "Your coaching staff",
+      body: "Each coach has an ongoing focus and one project at a time.",
+      action: "Open a role to hire, assign work, or review the contract.",
     },
   ],
   "facilities": [

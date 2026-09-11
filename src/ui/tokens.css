@@ -665,6 +665,15 @@ html { view-transition-name: none; }
 :root[data-motion="full"] .tap  { transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 120ms ease; }
 :root[data-motion="full"] .tap:active { transform: scale(0.97); }
 
+/* A screen the back gesture brought back does not rise.
+
+   The finger has already dragged the page across; the 260ms rise on top of
+   that is the flick reported on 2026-09-10. Set by `nextNavInstant` in the
+   store and cleared by the next forward navigation — and placed after the
+   `data-motion="full"` block on purpose, because that block restores the rise
+   at the same specificity and would otherwise win by coming last. */
+:root[data-nav="back"] .screen-in { animation: none; }
+
 /* Keyboard focus, made visible. The app is built for thumbs, but it runs in a
    browser today and every interactive element is a bare button with its
    default outline stripped by use — a keyboard user had no way to see where

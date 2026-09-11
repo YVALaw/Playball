@@ -369,8 +369,12 @@ export type Overlay =
   'schedule' | 'standings' | 'rankings' | 'saves' | 'inbox' | 'program' | 'book'
   | 'settings' | 'captain' | 'jobs';
 
-/** The three tabs of the program page, which is addressable from the inbox. */
-export type ProgramSheet = 'overview' | 'board' | 'money' | 'watchlist' | 'coach' | 'hall';
+/**
+ * A page of the program room, addressable from the inbox and from the four
+ * direct cards on its own overview. `money`, `staff`, `facilities` and
+ * `network` are the everyday management rooms; the rest are the career ones.
+ */
+export type ProgramSheet = 'overview' | 'board' | 'money' | 'staff' | 'facilities' | 'network' | 'watchlist' | 'coach' | 'hall';
 
 /**
  * The offseason, as a sequence you are walked through rather than a set of tabs
@@ -454,10 +458,59 @@ function browserHistoryConsume(count = 1, route = false): void {
  * it is how the screen "resets and starts from the top".
  */
 let navInstant = false;
-export function nextNavInstant(): void { navInstant = true; }
+
+/**
+ * The mark the stylesheet reads, and the other half of the same fix.
+ *
+ * Turning off the view transition still left `.screen-in` — the frame's own
+ * 260ms rise on every arriving screen — to play after a swipe that had already
+ * carried the page across. Reported 2026-09-10, globally: the gesture "does a
+ * quick flick the screen".
+ *
+ * It comes off at the next forward navigation rather than a frame later,
+ * because turning an animation back on is how you start it: clearing the mark
+ * early would play the very rise it exists to prevent, on a screen that had
+ * already finished arriving.
+ */
+function navMark(back: boolean): void {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  if (back) root.dataset.nav = 'back';
+  else delete root.dataset.nav;
+}
+
+export function nextNavInstant(): void { navInstant = true; navMark(true); }
+
+/**
+ * Whether the browser is already capturing one of these.
+ *
+ * Measured in Chrome on 2026-09-10, with `startViewTransition` wrapped to log:
+ * two calls in the same task print `start 0`, `start 1`, `callback-ran 0` —
+ * and then nothing. The second transition is dropped, its update callback is
+ * never invoked, and neither `updateCallbackDone` nor `finished` ever settles.
+ *
+ * Everything this app does on navigation lived inside that callback, so the
+ * second navigation was silently thrown away while its history checkpoint had
+ * already been pushed: two quick taps left the coach on the first screen with
+ * a spare entry underneath him, and the next back press then walked somewhere
+ * nobody asked for. Reported as the app "glitching" on 2026-09-10, globally.
+ */
+let vtInFlight = false;
+
+/**
+ * Which navigation is the current one.
+ *
+ * The insurance below fires on a timer, and a timer that has been overtaken
+ * must not fire: a dropped transition whose screen was already replaced by the
+ * next tap would otherwise drag the coach back to it a tenth of a second
+ * later, which is a worse glitch than the one being fixed.
+ */
+let navGen = 0;
 
 function crossfade(run: () => void): void {
+  const gen = ++navGen;
   if (navInstant) { navInstant = false; run(); return; }
+  navMark(false);
   const doc = typeof document === 'undefined' ? null : document;
   const start = (doc as unknown as {
     startViewTransition?: (cb: () => Promise<void> | void) => unknown;
@@ -473,7 +526,9 @@ function crossfade(run: () => void): void {
   const stopped = motion === 'reduced'
     || (motion !== 'full' && typeof matchMedia === 'function'
       && matchMedia('(prefers-reduced-motion: reduce)').matches);
-  if (!start || !doc || stopped) { run(); return; }
+  // A second one over a live one is the dropped-callback case above: take the
+  // navigation without the decoration rather than risk losing it.
+  if (!start || !doc || stopped || vtInFlight) { run(); return; }
 
   /*
     `.screen-in` is the other half of this and must stand down while it runs.
@@ -485,10 +540,23 @@ function crossfade(run: () => void): void {
   */
   const root = doc.documentElement;
   root.dataset.vt = '1';
-  const done = (): void => { delete root.dataset.vt; };
+  vtInFlight = true;
+  const done = (): void => { vtInFlight = false; delete root.dataset.vt; };
+  /*
+    The navigation itself, exactly once and never later than a frame budget.
+    The transition may call this, or may never call anything at all; the state
+    change is the point and the animation is the decoration, so the decoration
+    does not get to decide whether the app moved.
+  */
+  let applied = false;
+  const apply = (): void => {
+    if (applied || navGen !== gen) return;
+    applied = true;
+    run();
+  };
 
   const t = start.call(doc, () => {
-    run();
+    apply();
     return new Promise<void>((resolve) => {
       let settled = false;
       const finish = (): void => { if (!settled) { settled = true; resolve(); } };
@@ -512,6 +580,9 @@ function crossfade(run: () => void): void {
   // a second navigation landing on top of this one, which is a thing a thumb
   // does. Either way the attribute comes off, and the timer covers the case
   // where neither ever settles.
+  // Outside the callback on purpose: the insurance inside it is no use when
+  // the callback is the thing that never runs.
+  setTimeout(apply, 100);
   if (t?.finished) void t.finished.then(done, done);
   /*
     And the other two promises are swallowed on purpose. A transition started
@@ -2556,6 +2627,29 @@ let saveTicket = 0;
 /** A double tap on FORK must still create one protected original and one sandbox. */
 let godForkInFlight = false;
 
+/**
+ * Is the season's opener actually drawn right now?
+ *
+ * Not the same question as "is there one pending". The card stands down while
+ * you are reading the board it sent you to, and it stays in the store the
+ * whole time so it can come back if you leave without taking the terms — so
+ * the store says "opener" for as long as that errand is open.
+ *
+ * The back gesture asked the store rather than the screen, and was therefore
+ * swallowed for the whole of it. Reported 2026-09-10: "if at the start of the
+ * year I hit go to the board and then try going back it glitches and shows as
+ * if the card was still there and does a quick flick the screen."
+ */
+export function openerShowing(s: DynastyStore): boolean {
+  return s.seasonOpener !== null && !s.live && s.phase === null
+    && s.screen !== 'records' && s.overlay !== 'program';
+}
+
+/** A card that answers the back press itself, rather than letting it through. */
+export function blockingCardUp(s: DynastyStore): boolean {
+  return s.playbookInvite !== null || s.bigMoment !== null || openerShowing(s);
+}
+
 export const useDynasty = create<DynastyStore>((set, get) => ({
   season: null,
   userTeam: 0,
@@ -2741,6 +2835,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   // moves through `go()` retain the broader transition.
   setScreen: (screen) => {
     if (get().screen !== screen) browserHistoryCheckpoint();
+    navMark(false);
     set({ selectedPlayer: null, coachSeat: null, focusPlayer: null, screen });
   },
 
@@ -4701,6 +4796,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   goPhase: (phase) => {
     const at = PHASES.indexOf(phase);
     if (at < 0 || at > get().furthestPhase) return;
+    navMark(false);
     set({
       phase, overlay: null, selectedPlayer: null, coachSeat: null, spentThisStep: {},
       version: get().version + 1,
@@ -5157,8 +5253,17 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   // the only state that needs to move.
   setProgramSheet: (s) => {
     const st = get();
+    /*
+      Only when the sheet is a real route. Opened as an overlay — from the
+      inbox, or from the board the season's opener sends you to — the sheets
+      are levels inside one layer rather than destinations of their own, and
+      the route trail cannot see them (`routeStop` keys on the tab and the
+      screen). Pushing an entry each time left one orphan per sheet the coach
+      looked at, and the next few back presses then walked the screen
+      underneath backwards. The gesture peels them instead; see App.tsx.
+    */
     if (st.programSheet !== s
-      && ((st.tab === 'program' && st.screen === 'records') || st.overlay === 'program')) {
+      && st.overlay !== 'program' && st.tab === 'program' && st.screen === 'records') {
       if (s === 'overview' && st.programSheet !== 'overview') browserHistoryConsume(1, true);
       else if (s !== 'overview') browserHistoryCheckpoint();
     }

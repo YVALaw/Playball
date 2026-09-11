@@ -23,7 +23,8 @@ import {
   HomeIcon, IdCardIcon, StarIcon,
 } from '@radix-ui/react-icons';
 import {
-  PHASES, PHASE_LABEL, TABS, useDynasty, useUserTeam, nextNavInstant, type ProgramSheet, type Tab,
+  PHASES, PHASE_LABEL, TABS, useDynasty, useUserTeam, nextNavInstant, blockingCardUp, openerShowing,
+  type ProgramSheet, type Tab,
 } from '../state/store.js';
 import { hasLayerToClose, Back, isNativeShell } from './backNav.js';
 import { initBilling } from '../state/billing.js';
@@ -422,9 +423,18 @@ function AppBody(
     }
   }, [atStart, loadedSlot, tab, screen, programSheet]);
 
-  const backRef = useRef<(guarded?: boolean) => void>(() => {});
+  /*
+    What one press did, because the browser needs to know.
+
+    'peeled' spent a layer that had a history entry of its own; 'swallowed'
+    means the press was refused and no entry was spent, so the one the pop
+    already took has to be handed back or history runs a layer short of the
+    screen for the rest of the session; 'none' is the root, where the press
+    belongs to the shell and leaving is the right answer.
+  */
+  const backRef = useRef<(guarded?: boolean) => 'peeled' | 'swallowed' | 'none'>(() => 'none');
   const lastBackCommit = useRef(0);
-  backRef.current = (guarded = true): void => {
+  backRef.current = (guarded = true): 'peeled' | 'swallowed' | 'none' => {
     const now = Date.now();
     /*
       Edge gestures can be reported twice by the native shell during the same
@@ -436,27 +446,33 @@ function AppBody(
       layers left two of them open and the app gone (05 §63.2). The browser
       reports one popstate per press and needs no guard.
     */
-    if (guarded && now - lastBackCommit.current < 350) return;
+    if (guarded && now - lastBackCommit.current < 350) return 'swallowed';
     lastBackCommit.current = now;
     const s = useDynasty.getState();
     // A blocking card is the screen while it lasts: the back press is
     // swallowed rather than obeyed. These are answered on their own terms —
-    // the opener on the board, the big moment by reading it.
-    if (s.seasonOpener || s.playbookInvite || s.bigMoment) return;
+    // the opener on the board, the big moment by reading it. Asked of the
+    // screen, not of the store: see `openerShowing`.
+    if (blockingCardUp(s)) return 'swallowed';
     // The god-mode sheet sits over the player card it may have been opened
     // from, so it goes first.
-    if (s.godStack.length > 0) { s.closeGod(); return; }
-    if (s.selectedPlayer !== null) { s.closePlayer(); return; }
-    if (s.coachSeat !== null) { s.closeCoach(); return; }
-    if (teamCardRef.current !== null) { setTeamCard(null); return; }
+    if (s.godStack.length > 0) { s.closeGod(); return 'peeled'; }
+    if (s.selectedPlayer !== null) { s.closePlayer(); return 'peeled'; }
+    if (s.coachSeat !== null) { s.closeCoach(); return 'peeled'; }
+    if (teamCardRef.current !== null) { setTeamCard(null); return 'peeled'; }
     if (s.overlay !== null) {
       // The physical gesture follows the same nested-page rule as the visible
       // Back bar. A Settings detail page goes to Settings first; it does not
       // throw the whole overlay away.
-      if (s.overlay === 'settings' && s.settingsPage !== 'index') { s.setSettingsPage('index'); return; }
-      if (s.overlay === 'program' && s.programSheet === 'coach') s.setProgramSheet('overview');
+      if (s.overlay === 'settings' && s.settingsPage !== 'index') { s.setSettingsPage('index'); return 'peeled'; }
+      // Program's sheets, opened this way, spend no history entry of their own,
+      // so peeling one hands the pop's entry straight back.
+      if (s.overlay === 'program' && s.programSheet !== 'overview') {
+        s.setProgramSheet('overview');
+        return 'swallowed';
+      }
       s.closeOverlay();
-      return;
+      return 'peeled';
     }
     // True route history comes before hierarchy. PROGRAM · BOARD therefore
     // returns to PROGRAM · OVERVIEW, and moving between arbitrary tabs/screens
@@ -478,23 +494,26 @@ function AppBody(
         routeTrail.current.push(previous);
         bumpRouteTrail();
         restoringRoute.current = null;
-        return;
+        return 'swallowed';
       }
       if (previous.tab === 'program' && previous.screen === 'records') after.setProgramSheet(previous.programSheet);
-      return;
+      return 'peeled';
     }
     // Fallback for an old/deep-linked state that did not build a trail in this
     // session: keep the safe hierarchy instead of making Back a no-op.
+    // Instant, for the same reason the trail above is: the gesture has already
+    // animated the swipe, and a transition on top of it is the reported flick.
     const first = TABS.find((t) => t.id === s.tab)?.screens[0]?.id;
-    if (first && s.screen !== first) { s.go(s.tab, first); return; }
-    if (s.tab !== 'home') { s.go('home'); return; }
+    if (first && s.screen !== first) { nextNavInstant(); s.go(s.tab, first); return 'peeled'; }
+    if (s.tab !== 'home') { nextNavInstant(); s.go('home'); return 'peeled'; }
     // Nothing left to close: nothing claims the press, and the shell leaves.
+    return 'none';
   };
   const teamCardRef = useRef(teamCard);
   teamCardRef.current = teamCard;
   const overlay = useDynasty((s) => s.overlay);
   const coachOpen = useDynasty((s) => s.coachSeat !== null);
-  const blocked = useDynasty((s) => Boolean(s.seasonOpener || s.playbookInvite || s.bigMoment));
+  const blocked = useDynasty(blockingCardUp);
   const godOpen = useDynasty((s) => s.godStack.length > 0);
   const hasLayer = hasLayerToClose({
     blocked, godOpen, playerOpen: selectedPlayer !== null, coachOpen, teamCardOpen: teamCard !== null,
@@ -584,7 +603,15 @@ function AppBody(
     const onPop = (): void => {
       if (browserSilentPop.current > 0) { browserSilentPop.current -= 1; return; }
       browserPopping.current = true;
-      backRef.current(false);
+      /*
+        A refused press spent a real history entry and peeled nothing, so the
+        entry goes back. Without this, one swipe answered by a modal — or by
+        the lineup gate — left history a layer shorter than the screen for the
+        rest of the session, and every later Back skipped a level.
+      */
+      if (backRef.current(false) === 'swallowed') {
+        try { history.pushState({ playball: true }, ''); } catch { /* private mode */ }
+      }
       // Store writes are synchronous. Keep the guard through the microtask so
       // a nested route setter cannot push a replacement entry mid-pop.
       queueMicrotask(() => { browserPopping.current = false; });
@@ -1541,15 +1568,13 @@ function PlaybookInvite() {
 
 function SeasonOpener() {
   const opener = useDynasty((s) => s.seasonOpener);
-  const live = useDynasty((s) => s.live);
-  const phase = useDynasty((s) => s.phase);
-  const screen = useDynasty((s) => s.screen);
-  const overlay = useDynasty((s) => s.overlay);
+  // Reading the board IS the errand — the card stands down while you are
+  // there. One predicate, shared with the back gesture, so the press and the
+  // card can never disagree about whether there is a card to answer.
+  const showing = useDynasty(openerShowing);
   const openOverlay = useDynasty((s) => s.openOverlay);
   const setSheet = useDynasty((s) => s.setProgramSheet);
-  if (!opener || live || phase !== null) return null;
-  // Reading the board IS the errand - the card stands down while you are there.
-  if (screen === 'records' || overlay === 'program') return null;
+  if (!opener || !showing) return null;
   const toBoard = (): void => { setSheet('board'); openOverlay('program'); };
   const moved = (label: string, b: number, a: number) => (
     <span className="opener-row" key={label}>

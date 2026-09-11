@@ -21,7 +21,7 @@ import { createPortal } from 'react-dom';
 import { assistantFor } from '../engine/program.js';
 import { facilityLevel, staffPlan } from '../engine/economy.js';
 import { readPrefs } from '../state/devicePrefs.js';
-import { useDynasty, useUserTeam } from '../state/store.js';
+import { blockingCardUp, useDynasty, useUserTeam } from '../state/store.js';
 import {
   activeGuideStep, dueGuideStamps, guideCard, guideSkipStamps, visibleGuideStep,
   guideProgress, guideStepStamps, type GuideCard, type GuideStep, type GuideView,
@@ -236,7 +236,7 @@ export function GuidedStretch() {
   // A modal the tour must not talk over: the season's opener, a big moment,
   // the resume prompt. A player's card is not one — the word errand is
   // taught on it.
-  const blocked = useDynasty((s) => Boolean(s.seasonOpener || s.playbookInvite || s.bigMoment || s.pendingGame));
+  const blocked = useDynasty((s) => s.pendingGame !== null || blockingCardUp(s));
   const user = useUserTeam();
   const version = useDynasty((s) => s.version);
 

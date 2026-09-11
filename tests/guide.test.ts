@@ -121,6 +121,16 @@ describe('the guided first stretch', () => {
     expect(by.build!.done!(at(money))).toBe(false);
   });
 
+  it('continues hiring and facility guidance through the direct Program destinations', () => {
+    const staff = { tab: 'program' as const, screen: 'records', programSheet: 'staff' as const };
+    expect(by.money!.done!(at(staff))).toBe(true);
+    expect(by.hire!.where(at(staff, ['seat-hitting']))).toBe(true);
+    expect(by.task!.where(at({ ...staff, hittingHired: true }, ['directive']))).toBe(true);
+    expect(by.facilities!.target?.[0]).toBe('overlay-back');
+    expect(by.build!.where(at({ ...staff, programSheet: 'facilities' }, ['facility-cta']))).toBe(true);
+    expect(by.hire!.where(at({ ...staff, programSheet: 'board' }, ['seat-hitting']))).toBe(false);
+  });
+
   it('teaches the lineup by the order and the positions actually changing', () => {
     const lineup = { tab: 'team' as const, screen: 'lineup' };
     expect(by['lineup-swap']!.where(at(lineup))).toBe(true);

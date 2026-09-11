@@ -453,7 +453,6 @@
   background: var(--alert);
 }
 
-
 /* Portraits are drawn, not photographed.
  *
  * The proposal fills `.portrait` with a background image of one stock player
@@ -1307,7 +1306,6 @@
 /* The auto-lineup button's report moved to DidButton, and is styled with the
    rest of the confirm grammar further down this file. */
 
-
 /* ---------------------------------------------------------------------------
    The captain list.
 
@@ -2135,7 +2133,6 @@
   color: var(--cream);
 }
 
-
 /* ---------------------------------------------------------------------------
    Dark-theme joins. The generated file paints the masthead with a literal
    translucent near-white; here it reads the theme. Everything else follows
@@ -2192,7 +2189,6 @@
    --------------------------------------------------------------------------- */
 .career-workspace .career-question { min-height: 128px; }
 .career-workspace .answer-list { min-height: 280px; }
-
 
 /* ---------------------------------------------------------------------------
    The call board, made of buttons.
@@ -2748,7 +2744,6 @@
 @media (prefers-reduced-motion: reduce) {
   .live-linescore.leverage .live-state span:first-child { animation: none; }
 }
-
 
 /* ---------------------------------------------------------------------------
    The September 1 phone batch.
@@ -4361,57 +4356,11 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
    Staff and facilities are selections, not vertical administrative lists.
    --------------------------------------------------------------------------- */
 .money-section-lead.compact { margin-bottom: 10px; }
-.staff-seat-switcher {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  margin: 10px 0;
-}
-.staff-seat-switcher button {
-  min-width: 0;
-  min-height: 76px;
-  padding: 9px 8px;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--ink);
-  text-align: left;
-}
-.staff-seat-switcher button.active {
-  border-color: var(--clay);
-  background: var(--soft);
-  box-shadow: inset 0 -3px var(--clay);
-}
-.staff-seat-switcher small,
-.staff-seat-switcher strong,
-.staff-seat-switcher span { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.staff-seat-switcher small { color: var(--dim); font: 700 calc(6.7px * var(--ts)) var(--mono); letter-spacing: .07em; }
-.staff-seat-switcher strong { margin-top: 5px; font: 800 calc(10px * var(--ts))/1.1 var(--body); }
-.staff-seat-switcher span { margin-top: 5px; color: var(--clay); font: 800 calc(8px * var(--ts)) var(--mono); }
 
-.staff-focus-card {
-  margin-top: 8px;
-  padding: 13px;
-  border: 1px solid var(--ink);
-  background: var(--band);
-  color: var(--cream);
-  overflow: hidden;
-}
-.staff-focus-card.is-open { background: var(--paper); color: var(--ink); border-color: var(--line); }
-.staff-focus-card > header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-.staff-focus-card > header small { display: block; color: var(--cream-dim); font: 700 calc(7px * var(--ts)) var(--mono); letter-spacing: .1em; }
-.staff-focus-card.is-open > header small { color: var(--dim); }
-.staff-focus-card > header strong { display: block; margin-top: 3px; font: 800 calc(23px * var(--ts))/.95 var(--display); }
-.staff-focus-card > header b { flex: none; font: 800 calc(14px * var(--ts)) var(--mono); }
 .staff-focus-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; margin-top: 12px; background: rgba(var(--cream-rgb), .18); }
 .staff-focus-stats span { padding: 9px; background: rgba(0,0,0,.10); }
 .staff-focus-stats small { display: block; color: var(--cream-dim); font: 700 calc(6.5px * var(--ts)) var(--mono); letter-spacing: .08em; }
 .staff-focus-stats strong { display: block; margin-top: 4px; font: 800 calc(18px * var(--ts)) var(--display); }
-.staff-focus-card > p, .staff-vacancy-copy p { margin: 10px 0 0; color: rgba(var(--cream-rgb), .85); font: 400 calc(9px * var(--ts))/1.4 var(--body); }
-.staff-focus-card.is-open > p, .staff-focus-card.is-open .staff-vacancy-copy p { color: var(--dim); }
-.staff-focus-card > em { display: block; margin-top: 8px; color: rgba(var(--cream-rgb), .85); font: 400 calc(8.5px * var(--ts))/1.35 var(--body); font-style: normal; }
-.staff-focus-card.is-open > em { color: var(--dim); }
-.staff-focus-card .staff-release { margin-top: 11px; border-color: rgba(var(--cream-rgb), .35); color: var(--cream); background: transparent; }
-.staff-vacancy-copy strong { display: block; margin-top: 9px; color: var(--clay); font-size: calc(9px * var(--ts)); }
 
 .decision-deck-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin: 15px 1px 7px; }
 .decision-deck-head small { display: block; color: var(--clay); font: 700 calc(7px * var(--ts)) var(--mono); letter-spacing: .11em; }
@@ -4832,15 +4781,7 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .coach-career-empty strong { display:block; margin-top:4px; font:800 calc(17px * var(--ts)) var(--display); text-transform:uppercase; }
 .coach-career-empty p { margin:5px 0 0; color:var(--dim); font:400 calc(9px * var(--ts))/1.4 var(--body); }
 
-.watchlist-summary,
-.watchlist-empty,
-.program-score div,
-.player-hero,
-.career-summary,
-.career-offer-detail,
-.season-verdict,
-.portal-command-center,
-.signing-class {
+.watchlist-summary, .watchlist-empty, .player-hero, .career-summary, .career-offer-detail, .season-verdict, .portal-command-center, .signing-class {
   background: var(--panel);
 }
 .coach-avatar,
@@ -5379,7 +5320,6 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
   .game-tool-options { gap: 6px; padding-inline: 10px; }
   .game-tool-options > button { padding-inline: 8px; }
 }
-
 
 /* ---------------------------------------------------------------------------
    September 5 refinement pass — front door, coach creation, modal motion and
@@ -6287,7 +6227,6 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
   border-color: rgba(var(--alert-rgb), .55) !important;
 }
 
-
 /* ===========================================================================
    September 5 — deep interaction pass
    Saves, coach creation, inbox, settings, postseason and offseason surfaces.
@@ -6560,7 +6499,6 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .prestige-next-rung span small { display:block; color:var(--dim); font:700 calc(5.8px * var(--ts)) var(--mono); letter-spacing:.08em; }
 .prestige-next-rung span strong { display:block; margin-top:2px; font:800 calc(11px * var(--ts)) var(--display); text-transform:uppercase; }
 .prestige-next-rung > em { color:var(--clay); font:800 calc(9px * var(--ts)) var(--mono); font-style:normal; white-space:nowrap; }
-
 
 /* Draft retention is a negotiation board, not the old scout-note + steppers. */
 .retention-call-modern { width:min(390px,calc(100% - 20px)); max-height:90%; padding:0 0 env(safe-area-inset-bottom) !important; overflow:auto; background:var(--paper); }
@@ -6892,35 +6830,13 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .june-standing-record small { display:block; color:var(--dim); font:700 calc(5px * var(--ts)) var(--mono); }
 .june-standing-record strong { display:block; margin-top:2px; font:800 calc(16px * var(--ts)) var(--display); }
 
-
 .segmented button { position:relative; }
 .segmented-alert { position:absolute; top:5px; right:6px; width:6px; height:6px; border-radius:50%; background:var(--alert); box-shadow:0 0 0 2px var(--paper); }
 /* The record book's rooms wear the same dot while one holds a mark not yet looked at. */
 .record-room-selector button.has-news { position:relative; }
 .record-room-selector button .room-dot { position:absolute; top:6px; right:6px; width:7px; height:7px; border-radius:50%; background:var(--alert); box-shadow:0 0 0 2px var(--paper); }
 
-/* ---------------------------------------------------------------------------
-   September 10 — the budget views and the hall, prose out.
-   "Remove all that text we have lying around there, and make these more
-   visually appealing." Chips where there were sentences; the hall folded by
-   induction class with one leaders table.
-   --------------------------------------------------------------------------- */
-.staff-tenure { display:flex; flex-wrap:wrap; gap:4px; margin:8px 0 0; }
-.staff-tenure span, .staff-tenure b { padding:3px 7px; border:1px solid var(--line); background:var(--paper); color:var(--dim); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.06em; }
-.staff-tenure b.up { border-color:var(--alert); color:var(--alert); }
-/* The coach's men, as chips; the one his project is about is lit. */
-.project-man-picker { margin:0 0 8px; }
-.project-man-picker > small { display:block; color:var(--dim); font:700 calc(6.7px * var(--ts)) var(--mono); letter-spacing:.09em; }
-.project-man-picker > div { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:5px; margin-top:5px; }
-.project-man-picker button { min-height:44px; padding:7px 9px; border:1px solid var(--line); background:var(--wash); color:var(--ink); text-align:left; }
-.project-man-picker button.active { border-color:var(--clay); background:var(--soft); box-shadow:inset 3px 0 var(--clay); }
-.project-man-picker button strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:800 calc(9px * var(--ts)) var(--body); }
-.project-man-picker button small { display:block; margin-top:2px; color:var(--dim); font:700 calc(6.5px * var(--ts)) var(--mono); letter-spacing:.05em; }
 /* A project with no building yet: the card is the way to the building. */
-.staff-project-gate { display:block; width:100%; padding:10px 11px; border:1px solid var(--clay); border-left:4px solid var(--clay); background:var(--wash); color:var(--ink); text-align:left; }
-.staff-project-gate small { display:block; color:var(--clay); font:700 calc(6.5px * var(--ts)) var(--mono); letter-spacing:.08em; }
-.staff-project-gate strong { display:block; margin-top:3px; font:800 calc(14px * var(--ts))/1.1 var(--display); }
-.staff-project-gate em { display:block; margin-top:3px; color:var(--dim); font:400 calc(8.5px * var(--ts))/1.4 var(--body); font-style:normal; }
 .network-legend { display:flex; flex-wrap:wrap; gap:4px; margin:8px 0 0; }
 .network-legend span { padding:3px 7px; border:1px solid var(--line); background:var(--paper); color:var(--dim); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.06em; }
 
@@ -6963,8 +6879,6 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .hall-row > .val { font:500 calc(11px * var(--ts)) var(--mono); text-align:right; }
 .hall-row > .meta { grid-column:2 / -1; margin-top:1px; color:var(--dim); font:400 calc(8.5px * var(--ts)) var(--mono); }
 .hall-row .hall-chips { grid-column:2 / -1; margin-top:3px; }
-
-
 
 /* ---------------------------------------------------------------------------
    September 5 — navigation hardening + recruiting filters.
@@ -7900,7 +7814,6 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
   :root:not([data-theme='light']) .god-bolt svg { color:inherit; stroke:currentColor; opacity:1; filter:none; }
 }
 
-
 /* September 7 — Club Pulse follows game night: one-card-width swipe rail. */
 .week-games {
   display:flex; gap:7px; overflow-x:auto; scroll-snap-type:x mandatory;
@@ -7918,7 +7831,6 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .bench-season-stat { min-width:0; text-align:center; }
 .bench-season-stat small { display:block; color:var(--dim); font:700 calc(6px * var(--ts)) var(--mono); }
 .bench-season-stat b { display:block; margin-top:2px; color:var(--ink); font:800 calc(8px * var(--ts)) var(--mono); }
-
 
 /* September 7 — portal cards must open above the offseason sheet they came from. */
 .offseason-frame .player-card-overlay { z-index:80; }
@@ -8011,71 +7923,13 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .draft-compact-head .metric-strip strong { font-size: calc(18px * var(--ts)) !important; }
 .draft-compact-head .segmented { margin-bottom: 0 !important; }
 
-/* An occupied staff seat is a working relationship, not a permanent hiring
-   carousel. The market only appears after an explicit replacement action. */
-.staff-focus-actions { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 7px; margin-top: 11px; }
-.staff-focus-card .staff-market-open,
-.staff-focus-card .staff-release { min-height: 38px; margin-top: 0; padding: 7px 9px; font-weight: 800; }
-.staff-focus-card .staff-market-open { border: 1px solid rgba(var(--cream-rgb),.45); background: rgba(var(--cream-rgb),.08); color: var(--cream); }
-.staff-focus-card .staff-release { width: auto; min-width: 88px; }
-@media (max-width: 390px) {
-  .staff-focus-actions { grid-template-columns: 1fr; }
-  .staff-focus-card .staff-release { width: 100%; }
-}
-
 /* Let a vertical drag that starts on Club Pulse keep scrolling the page. */
 .week-games { touch-action: pan-x pan-y; }
 
 /* September 7 — Staff is a management room now, not a hiring receipt. */
-.staff-management-panel {
-  margin: 10px 0 14px; overflow: hidden;
-  border: 1px solid var(--line); border-radius: 12px; background: var(--paper);
-  box-shadow: 0 8px 20px rgba(var(--ink-rgb), .06);
-}
-.staff-management-head {
-  display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; align-items: center;
-  padding: 11px 12px; background: var(--band); color: var(--cream);
-}
-.staff-management-head small,
-.staff-project-card small,
-.pipeline-state-picker small,
-.facility-staff-unlock small,
-.network-assignment small {
+.facility-staff-unlock small, .network-assignment small {
   display: block; font: 800 calc(6.5px * var(--ts))/1 var(--mono); letter-spacing: .1em;
 }
-.staff-management-head strong { display:block; margin-top:3px; font:800 calc(13px * var(--ts))/1.05 var(--body); }
-.staff-management-head em {
-  padding: 5px 7px; border: 1px solid rgba(var(--cream-rgb),.32); border-radius: 999px;
-  font: 800 calc(6.5px * var(--ts))/1 var(--mono); font-style: normal; letter-spacing:.07em; white-space:nowrap;
-}
-.staff-directive-grid {
-  display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:6px; padding:10px 10px 4px;
-}
-.staff-directive-grid button {
-  min-height: 39px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 9px;
-  background: var(--field); color: var(--ink); font: 750 calc(8px * var(--ts))/1.15 var(--body);
-  text-align:left;
-}
-.staff-directive-grid button.active {
-  border-color: var(--clay); background: var(--soft); box-shadow: inset 3px 0 var(--clay); color: var(--clay);
-}
-.staff-project-card { margin: 6px 10px 10px; padding: 11px; border:1px solid var(--line); border-radius:10px; background:var(--wash); }
-.staff-project-card > span strong { display:block; margin-top:3px; font:800 calc(12px * var(--ts))/1.1 var(--body); }
-.staff-project-card > p { margin:0; color:var(--dim); font:600 calc(9px * var(--ts))/1.45 var(--body); }
-.staff-project-progress { margin-top:9px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; }
-.staff-project-progress i { height:7px; overflow:hidden; border-radius:999px; background:var(--line); }
-.staff-project-progress i b { display:block; height:100%; min-width:2px; border-radius:inherit; background:var(--clay); }
-.staff-project-progress em { color:var(--dim); font:700 calc(7px * var(--ts))/1 var(--mono); font-style:normal; white-space:nowrap; }
-.staff-project-cancel { margin-top:9px; min-height:34px; padding:6px 9px; border:1px solid var(--line); border-radius:8px; background:transparent; color:var(--dim); font-weight:800; }
-.staff-project-options { display:grid; gap:6px; margin-top:8px; }
-.staff-project-options button {
-  display:grid; grid-template-columns:minmax(0,1fr); gap:2px; padding:9px 10px; min-height:50px;
-  border:1px solid var(--line); border-radius:9px; background:var(--paper); color:var(--ink); text-align:left;
-}
-.staff-project-options button strong { font:800 calc(10px * var(--ts))/1.1 var(--body); }
-.staff-project-options button small { color:var(--dim); font:600 calc(7.4px * var(--ts))/1.25 var(--body); letter-spacing:0; }
-.pipeline-state-picker { display:grid; grid-template-columns:minmax(0,1fr); gap:5px; }
-.pipeline-state-picker select,
 .network-assignment select {
   width:100%; min-height:38px; padding:7px 9px; border:1px solid var(--line); border-radius:8px;
   background:var(--paper); color:var(--ink); font:700 calc(9px * var(--ts)) var(--body);
@@ -8140,11 +7994,8 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .awards-summary-reveal { scroll-margin-top: 10px; }
 
 @media (max-width: 390px) {
-  .staff-management-head { grid-template-columns:1fr; }
-  .staff-management-head em { justify-self:start; }
-  .network-assignment > div { grid-template-columns:1fr; }
+      .network-assignment > div { grid-template-columns:1fr; }
 }
-.staff-directive-effect { margin:5px 11px 8px; color:var(--dim); font:600 calc(8px * var(--ts))/1.35 var(--body); }
 /* Follow-up clarity: readable outcomes and controls that fit narrow screens. */
 .postseason-map-tools { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:8px 12px; border-bottom:1px solid var(--line); }
 .postseason-map-tools button, .mailbox-mark-all { min-height:44px; padding:8px 12px; border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink); font:700 calc(12px * var(--ts))/1.3 var(--body); }
@@ -8154,12 +8005,7 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .postseason-outcome strong, .staff-result-card > strong { display:block; margin-top:4px; color:var(--ink); font:800 calc(15px * var(--ts))/1.3 var(--body); }
 .postseason-outcome p, .recruit-plan-summary { margin:6px 0 0; color:var(--ink); font:500 calc(12px * var(--ts))/1.5 var(--body); overflow-wrap:anywhere; }
 .mailbox-mark-all { margin:8px 12px 12px; }
-.staff-project-option { min-width:0; padding:12px; border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink); }
-.staff-project-option > strong { display:block; font:800 calc(14px * var(--ts))/1.3 var(--body); }
-.staff-project-option p, .staff-management-panel .staff-project-detail, .staff-result-card p { margin:8px 0; color:var(--ink); font:500 calc(12px * var(--ts))/1.5 var(--body); overflow-wrap:anywhere; }
-.staff-management-panel > .staff-project-detail { padding:0 10px; }
-.staff-project-option summary { cursor:pointer; padding:10px 0; min-height:44px; font:700 calc(12px * var(--ts))/1.4 var(--body); }
-.staff-project-options .staff-project-option button { width:100%; min-height:44px; margin-top:8px; font:700 calc(12px * var(--ts))/1.4 var(--body); }
+.staff-result-card p { margin:8px 0; color:var(--ink); font:500 calc(12px * var(--ts))/1.5 var(--body); overflow-wrap:anywhere; }
 .staff-result-card { padding:12px; margin:10px 0; border:1px solid var(--line); border-radius:10px; background:var(--paper); }
 .staff-result-card > div { display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:7px 0; border-top:1px solid var(--line); color:var(--ink); font:500 calc(12px * var(--ts))/1.4 var(--body); }
 .staff-result-card > div span { min-width:0; overflow-wrap:anywhere; }
@@ -8168,9 +8014,9 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .network-state-filter select { min-height:44px; width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink); font:inherit; }
 .network-panel .network-assignment > div { grid-template-columns:minmax(0,1fr); }
 .network-panel .network-assignment button, .network-panel .network-assignment select { min-height:44px; white-space:normal; font-size:calc(12px * var(--ts)); }
-.network-panel .network-assignment button:disabled, .staff-project-option button:disabled { opacity:.55; cursor:default; }
+.network-panel .network-assignment button:disabled { opacity:.55; cursor:default; }
 .pipeline-card > small { white-space:normal; overflow-wrap:anywhere; }
-.staff-project-option :focus-visible, .postseason-map-tools button:focus-visible, .mailbox-mark-all:focus-visible { outline:2px solid var(--clay); outline-offset:3px; }
+.postseason-map-tools button:focus-visible, .mailbox-mark-all:focus-visible { outline:2px solid var(--clay); outline-offset:3px; }
 
 /* Compact Home masthead keeps the next game and decisions close together. */
 .today-date-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px 12px; padding:0 0 4px; }
@@ -8236,12 +8082,6 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
   .staff-candidate-tile { padding:9px; }
 }
 
-.staff-focus-card.is-filled .staff-ratings small { color:var(--cream-dim); }
-.staff-focus-card.is-filled .staff-ratings b { color:var(--cream); }
-.staff-focus-card.is-filled .staff-ratings i { background:rgba(var(--cream-rgb),.18); }
-.staff-focus-card.is-filled .staff-ratings em { background:var(--cream); }
-.staff-focus-card.is-filled .staff-ratings > span:nth-child(2) em { background:var(--cream-dim); }
-
 /* ---------------------------------------------------------------------------
    September 10 — the staff room in the house style.
    "Make it look more like the rest of the app, right now it feels out of
@@ -8250,32 +8090,7 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
    square paper cards, hairlines, mono uppercase labels and the display face
    for headlines. Same markup, same anchors for the tour; the clothes change.
    --------------------------------------------------------------------------- */
-.staff-focus-card { border:1px solid var(--line); border-left:3px solid var(--clay); background:var(--paper); color:var(--ink); }
-.staff-focus-card > header small { color:var(--clay); }
-.staff-focus-card > header strong { font-size:calc(20px * var(--ts)); }
-.staff-focus-card > header b { color:var(--ink); font:800 calc(12px * var(--ts)) var(--mono); }
-.staff-focus-card > p, .staff-vacancy-copy p, .staff-focus-card > em { color:var(--dim); }
-.staff-focus-card .staff-market-open { border:1px solid var(--line); background:var(--wash); color:var(--ink); font:800 calc(8px * var(--ts)) var(--mono); letter-spacing:.06em; text-transform:uppercase; }
-.staff-focus-card .staff-release { border:1px solid var(--line); background:transparent; color:var(--alert); font:800 calc(8px * var(--ts)) var(--mono); letter-spacing:.06em; text-transform:uppercase; }
-.staff-management-panel { border-radius:0; box-shadow:none; border:1px solid var(--line); }
-.staff-management-head { background:var(--wash); color:var(--ink); border-bottom:1px solid var(--line); }
-.staff-management-head small { color:var(--clay); }
-.staff-management-head strong { font:800 calc(14px * var(--ts))/1.05 var(--display); }
-.staff-management-head em { border-radius:0; border:1px solid var(--line); background:var(--paper); color:var(--dim); }
-.staff-directive-grid button { border-radius:0; background:var(--wash); font:800 calc(8px * var(--ts))/1.15 var(--body); }
-.staff-directive-grid button.active { background:var(--soft); color:var(--ink); }
-.staff-directive-effect { font:400 calc(8.5px * var(--ts))/1.4 var(--body); }
-.staff-project-card { border-radius:0; border:1px solid var(--line); background:var(--paper); }
-.staff-project-card > span small { color:var(--clay); }
-.staff-project-card > span strong { font:800 calc(13px * var(--ts))/1.1 var(--display); }
-.staff-project-progress i, .staff-project-progress i b { border-radius:0; }
-.staff-project-cancel { border-radius:0; font:800 calc(8px * var(--ts)) var(--mono); letter-spacing:.06em; text-transform:uppercase; }
-.staff-project-option { border-radius:0; background:var(--wash); padding:10px 11px; }
-.staff-project-option > strong { font:800 calc(13px * var(--ts))/1.15 var(--display); }
-.staff-project-option p, .staff-management-panel .staff-project-detail, .staff-result-card p { margin:6px 0; color:var(--dim); font:400 calc(9.5px * var(--ts))/1.45 var(--body); }
-.staff-project-option summary { min-height:34px; padding:5px 0; color:var(--clay); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.08em; text-transform:uppercase; }
-.staff-project-options .staff-project-option button { border:1px solid var(--clay); border-radius:0; background:var(--paper); color:var(--clay); font:800 calc(8px * var(--ts)) var(--mono); letter-spacing:.06em; text-transform:uppercase; }
-.staff-project-options .staff-project-option button:disabled { border-color:var(--line); color:var(--dim); }
+.staff-result-card p { margin:6px 0; color:var(--dim); font:400 calc(9.5px * var(--ts))/1.45 var(--body); }
 .staff-result-card { border-radius:0; border-left:3px solid var(--clay); }
 .staff-result-card > small { color:var(--clay); font:700 calc(6.7px * var(--ts)) var(--mono); letter-spacing:.09em; }
 .staff-result-card > strong { font:800 calc(14px * var(--ts))/1.15 var(--display); }
@@ -8298,9 +8113,8 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .staff-candidate-dialog > header > small { font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.09em; text-transform:uppercase; }
 .staff-candidate-meta, .staff-replacement-note, .staff-candidate-effects p, .staff-candidate-budget > span { font:400 calc(9.5px * var(--ts))/1.45 var(--body); }
 .staff-candidate-effects h3 { font:800 calc(12px * var(--ts))/1.2 var(--display); }
-.pipeline-state-picker select, .network-assignment select, .network-state-filter select { border-radius:0; font:700 calc(9px * var(--ts)) var(--body); }
+.network-assignment select, .network-state-filter select { border-radius:0; font:700 calc(9px * var(--ts)) var(--body); }
 .network-state-filter { font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--dim); }
 .postseason-outcome, .postseason-map-tools button, .mailbox-mark-all { border-radius:0; }
 /* The coach profile: the seat's panel as a layer over the Budget, padded like a card. */
 .coach-overlay .overlay-scroll { padding: 8px 14px calc(env(safe-area-inset-bottom) + 90px); }
-.coach-overlay .staff-focus-card { margin-top: 4px; }

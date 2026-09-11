@@ -97,7 +97,7 @@ export interface GuideStep {
 const onScreen = (v: GuideView): boolean => !v.live && v.overlay === null && !v.playerOpen;
 const onField = (v: GuideView): boolean => v.live && v.screen === 'box';
 const onMoney = (v: GuideView): boolean =>
-  onScreen(v) && v.tab === 'program' && v.screen === 'records' && v.programSheet === 'money';
+  onScreen(v) && v.tab === 'program' && v.screen === 'records' && ['money', 'staff', 'facilities', 'network'].includes(v.programSheet);
 
 export const GUIDE_STEPS: readonly GuideStep[] = [
   {
@@ -302,10 +302,11 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     card: {
       title: "Your facilities",
       body: "Facilities improve development and unlock staff projects.",
-      action: "Open FACILITIES.",
+      action: "Open FACILITIES from the staff screen.",
     },
-    target: ['money-facilities', 'seg-facilities'],
+    target: ['overlay-back', 'money-facilities', 'seg-facilities'],
     caption: {
+      "overlay-back": "Back to Staff, then open FACILITIES.",
       "money-facilities": "Open FACILITIES.",
       "seg-facilities": "Open FACILITIES.",
     },
