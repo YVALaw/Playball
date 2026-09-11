@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 // Schedule.tsx
-// The 33 game calendar. Played games carry their result; the rest is what is
+// The forty-five game calendar. Played games carry their result; the rest is what is
 // coming. Weekend series are grouped, because that is how a college season is
 // actually experienced — three games against one opponent, then a week.
 

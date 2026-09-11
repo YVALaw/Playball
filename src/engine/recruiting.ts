@@ -321,6 +321,12 @@ export const flexibleOffseasonBudget = (stars: number): number =>
   Math.round(windowBudget(stars) * OFFSEASON_FLEX_SHARE);
 export const protectedRecruitingBudget = (stars: number): number =>
   windowBudget(stars) - flexibleOffseasonBudget(stars);
+/**
+ * What a shared pool would have left for the class. **The game does not use
+ * this.** `weeklyBudget` discards the offseason spend on purpose — the two
+ * pools were split so the draft and the portal cannot eat the class — and this
+ * is kept only as the record of the arithmetic that was replaced.
+ */
 export const recruitingWindowBudget = (stars: number, spentBeforeRecruiting: number): number =>
   protectedRecruitingBudget(stars)
     + Math.max(0, flexibleOffseasonBudget(stars) - Math.max(0, spentBeforeRecruiting));

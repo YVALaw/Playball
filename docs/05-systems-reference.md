@@ -9167,6 +9167,136 @@ Verified in the running game: the app drops to the job market with four open
 chairs, the navigation is gone, and `go()` cannot put the old dugout back on
 the screen — which is the "completely blocked" the report asked for.
 
+## 69. The outside audit, checked and acted on — **September 11 2026**
+
+An audit arrived covering twenty-three findings against commit `19e3a95`, four
+commits behind. Every claim in it was verified against the current source
+before anything was changed: three read-only passes over the logic, the copy
+and the styling, plus independent re-measurement of the numbers.
+
+**It holds up well.** Every figure that could be reproduced matched exactly —
+the bundle sizes to the kilobyte, the unused-symbol count, the calendar
+arithmetic, and all ninety-six school-colour contrast ratios including the same
+four outliers on white. What follows is what was taken, what was corrected, and
+what was declined.
+
+### 69.1 The postseason ran from April to August
+
+The audit's headline, and it understated the damage. Three call sites advance
+one shared counter — `doubleElim.ts`, `postseason.ts`'s `play`, and its series
+runner — and the stages were played end to end, so no two tournaments in a
+stage shared a single date. The first conference played days 81 to 86 and the
+last days 124 to 129; the championship landed on **6 August**.
+
+The dates were the visible half. Underneath, `pitcherReady` asks
+`day - lastPitched >= recoveryGap`, and a starter who threw over ninety pitches
+needs five days. So the first conference opened one day after the regular
+season ended, without its best arms, and the last opened **forty-four days**
+later with everybody available. `conferenceIds` walks the data file's order, so
+it was the same leagues carrying that handicap in every season of every career
+— a permanent structural bias, not a date label.
+
+`onTheSameNights` is the fix and it is deliberately not interleaving. The games
+keep the order they always had and so does every draw taken for them; each
+tournament simply opens on its stage's own first night instead of wherever the
+previous one finished, and the stage hands the calendar on past the longest of
+them. Applied to the eight conference tournaments, the sixteen regionals and
+the two halves of the showdown.
+
+Measured after: the postseason spans **twenty days instead of a hundred and
+six**, and every tournament in a stage opens on the same night.
+
+One thing it does not fix and should be looked at separately: the conference
+stage now opens the day after the last regular-season game, which is uniform
+and therefore fair, but tight. A real tournament gets a few days. That is a
+schedule decision rather than a bug.
+
+### 69.2 A protected seed was told its season was over
+
+`noteKnockout`'s conference branch decided everything from a top-four placing,
+where the regional branch beside it had always asked about protection.
+`selectNationalField` adds every protected top-four team whatever June did to
+it, so a seed whose place was already guaranteed was handed "The season is
+over" — and a test was asserting that behaviour.
+
+The fix adds a second question rather than redefining the first, which is what
+lets that assertion stand: `advanced` still means this tournament carries on
+with him in it, and a new `bid` says what the national field still owes him.
+Three answers, because there are three — `secure` for a protected seed,
+`awaiting` for a team inside the national table's bid range with the selection
+not yet made, and `none` for a team the table cannot reach. At-large seats come
+off `rpiOrder` after the regionals, so an early conference exit settles nothing
+for anybody in range, and the card and the letter now say so.
+
+### 69.3 A managed game started without its anchor
+
+`startManagedGame` and `manageBracketGame` both awaited `saveNow()` and ignored
+what it returned, though the comment above each explains that the file on disk
+has to hold the generator position the first pitch is drawn from. A storage
+failure let a coach manage nine innings whose recovery prerequisite had never
+been written.
+
+Worse, and the audit missed it: two paths awaited the save and then cleared the
+resume journal **unconditionally**, so a failed write destroyed the one record
+that could have offered the game back — the exact window the note beside them
+says they exist to close. Both are guarded now.
+
+### 69.4 A club's colour, where it is used as text
+
+The pregame card painted both names in the school's own hex. Measured across
+all ninety-six: every one falls below 4.5:1 on the dark theme's paper and
+eighty-seven fall below 3:1 — the deep navies and forest greens are not low
+contrast on that surface, they are gone. Four miss on white as well. The YOU
+badge carried cream on pale blue at 2.03:1.
+
+`teamInk` reuses the machinery `accentPalette` already had: keep the hue, walk
+the lightness until it clears the bar. It hands both cuts down as custom
+properties rather than returning one colour, because the theme is the
+stylesheet's business — an inline colour gives one theme the other's answer,
+which is the mistake `accent.ts` was written to avoid. All ninety-six now clear
+4.5:1 on both papers, worst case 4.60, with hue held inside twelve degrees.
+Pinned in `contrast.test.ts`.
+
+### 69.5 Two that were stale rather than wrong
+
+The Portal's sign dialog warned that those points "come out of the same
+offseason pool you take into recruiting". They do not: `weeklyBudget` takes the
+offseason spend and discards it, deliberately, and a test pins that it does.
+The same screen said the opposite twice further up, so whichever line a coach
+read last he had been told something untrue. `boardBudget`'s "one pool, three
+claims" comment was the same fossil, and it was passing a number nobody reads.
+
+The program's career rows kept a private five-key copy of the finish labels,
+so `conference` — the most common season outcome there is — printed as raw
+lowercase beside "National runner-up". `FINISH_LABEL` has covered all seven all
+along and HISTORY was already using it.
+
+### 69.6 What was declined, and why
+
+**F05, the save snapshot, would have been made worse by the recommended fix.**
+The ordering observation is right: `saveDynasty` awaits `db()` before calling
+`buildSaveFile`. But `buildSaveFile` is not a snapshot — `toPortable` is a
+shallow rest-spread, so the teams, the results and the stat maps stay live
+references either way. Hoisting it above the await would capture the generator
+position early while the roster was still cloned late, which is precisely the
+mismatch the managed-game anchor depends on. The real snapshot is the
+structured clone inside the database write, after the await, whatever order the
+arguments are evaluated in. Left alone; a correct fix means a real clone or a
+write queue, and wants measuring first.
+
+**Four writing findings were declined.** The audit scores strings in isolation
+rather than against the element they annotate. "Where the dirt four stand." and
+"The outfield's leash." are captions under plain titles whose mechanical
+tradeoff renders in its own element a few lines down; "A new world, and a chair
+to take." sits under NEW CAREER; "Second best in the country" follows a line
+that already says the team lost the national championship series. Stripping
+them would duplicate the label above and delete the only character on the card.
+"That has never happened." is a joke under a heading that states the fact.
+
+**One was overstated and fixed anyway.** "The matching focus made it three" is
+false only at the 99 cap, and the true numbers print immediately before it. It
+says the gain now.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

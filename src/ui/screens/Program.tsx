@@ -19,6 +19,7 @@ import {
   careerName, seasonLength, regularRecord, seasonComplete,
   type CareerYear, type SeasonState,
 } from '../../engine/season.js';
+import { FINISH_LABEL, type Finish } from '../../engine/postseason.js';
 import { honoursByPlayer, type Inductee } from '../../engine/hall.js';
 import { RECORDS, type RecordKey } from '../../engine/records.js';
 import { philosophyOf } from '../../engine/strategy.js';
@@ -1208,7 +1209,7 @@ function CareerView({ history, coach }: { history: SeasonRecord[]; coach: CoachS
                 <article className={row.finish === 'champion' ? 'champion' : ''} key={row.year}>
                   <strong>{row.year}</strong>
                   <b>{row.w}-{row.l}</b>
-                  <span>{FINISH_WORD[row.finish] ?? row.finish}{row.wonConference ? ' · conference champions' : ''}</span>
+                  <span>{FINISH_LABEL[row.finish as Finish] ?? row.finish}{row.wonConference ? ' · conference champions' : ''}</span>
                   <em>{row.finish === 'champion' ? 'TITLE' : ''}</em>
                 </article>
               ))}
@@ -1220,13 +1221,15 @@ function CareerView({ history, coach }: { history: SeasonRecord[]; coach: CoachS
   );
 }
 
-const FINISH_WORD: Record<string, string> = {
-  missed: 'Missed the tournament',
-  regional: 'Regional',
-  omaha: 'Omaha',
-  'runner-up': 'National runner-up',
-  champion: 'NATIONAL CHAMPION',
-};
+/*
+  The career rows read the engine's own labels.
+
+  This file kept a private copy with five of the seven `Finish` values in it,
+  so the two the engine assigns most often — `conference` for a season that
+  ended in the conference tournament, and `national` — fell through the
+  fallback and printed as raw lowercase beside "National runner-up".
+  `FINISH_LABEL` covers all seven and HISTORY has been using it all along.
+*/
 
 /** Best-effort colour lookup for a school named in an old career row. */
 function abbrOfSchool(school: string): string {

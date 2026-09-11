@@ -113,7 +113,7 @@ import {
   seasonAwards, allConference, coachOfTheYear,
   conferenceField, conferenceIds, conferenceTournament, singleElimination, REGIONS,
   recordSchoolAnnals,
-  selectNationalField, seatProtected, splitShowdown, bestOf,
+  selectNationalField, seatProtected, splitShowdown, bestOf, NATIONAL_BIDS,
   type SeriesBracket,
   type Finish, type PostseasonSummary, type ConferenceTournament,
   type RegionalSeries, type TournamentResult, type NationalField,
@@ -193,13 +193,18 @@ export function seedRivalInterest(season: SeasonState, userTeam: number): void {
  */
 /** This week's board budget. `extra` is god mode's standing grant, if any. */
 export function boardBudget(season: SeasonState | null, userTeam: number, extra = 0): number {
-  // One pool, three claims: June's draft spending and the portal's both
-  // come off the same window the class is signed from.
-  return weeklyBudget(
-    prestigeStars(season?.teams[userTeam]?.prestige ?? 50),
-    (season?.draft?.spent ?? 0)
-      + (season?.portalSpend?.[userTeam] ?? 0),
-  ) + Math.max(0, Math.round(extra ?? 0));
+  /*
+    Two pools, and they do not touch.
+
+    This passed June's draft and portal spending in and the comment said "one
+    pool, three claims" — but `weeklyBudget` takes that argument and throws it
+    away, and `recruiting-expansion.test.ts` pins that it does. The split was
+    deliberate: a protected share signs the class, a flexible share pays for
+    the draft and the portal. Passing a number nobody reads only made the next
+    reader believe the opposite of what runs.
+  */
+  return weeklyBudget(prestigeStars(season?.teams[userTeam]?.prestige ?? 50))
+    + Math.max(0, Math.round(extra ?? 0));
 }
 
 
@@ -761,11 +766,33 @@ export type MyBracket =
  * So the fact is stored rather than derived. It survives the bracket, the
  * unmount and a reload, which is what makes it possible to say so exactly once.
  */
+/**
+ * What the national field still owes a team that has just been knocked out.
+ *
+ * `secure` is a protected top-four seed: `selectNationalField` adds every one
+ * of them whatever June did to it, so the place is already his. `awaiting`
+ * is a team inside the national table's bid range with the selection not yet
+ * made — at-large bids come off `rpiOrder`, so losing a conference tournament
+ * early does not settle anything. `none` is a team the table cannot reach.
+ */
+export type KnockoutBid = 'secure' | 'awaiting' | 'none';
+
 export interface Knockout {
   year: number;
   kind: MyBracketKind;
   /** The round that ended it, already in words: "the losers final". */
   label: string;
+  /**
+   * Whether a national place survives this exit — which is a different
+   * question from whether the tournament does.
+   *
+   * Reported by audit on 2026-09-11: a protected team eliminated in its own
+   * conference tournament was handed "The season is over" while the national
+   * selector was still guaranteeing it a seat. The conference branch decided
+   * everything from a top-four placing and never asked about protection, and
+   * the regional branch beside it had asked all along.
+   */
+  bid?: KnockoutBid;
   /**
    * Whether June carries on without this tournament.
    *
@@ -5562,7 +5589,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         return;
       }
 
-      if (!advance) return;                 // the sixteen are on screen, waiting
+      if (!advance) return;                 // the twenty are on screen, waiting
       const next: NationalProgress = { ...nat2 };
       if (nat2.bracketA === null) next.bracketA = resultOfDE(runDoubleElim(season, bracketA));
       if (nat2.bracketB === null) next.bracketB = resultOfDE(runDoubleElim(season, bracketB));
@@ -5757,7 +5784,17 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (!handles(get().depth, 'lineups')) staffSetsTheCard(season, userTeam);
     set({ liveStarting: true });
     const rngState = season.rng.state?.() ?? 0;
-    await get().saveNow();
+    /*
+      No anchor, no game.
+
+      The point of awaiting this is that the file on disk has to hold the
+      generator position the first pitch will be drawn from. It awaited the
+      save and then ignored what it said, so a storage failure let a coach
+      manage nine innings whose recovery prerequisite had never been written.
+      `saveNow` sets `saveState: 'error'`, which the save banner is already
+      watching, so refusing here explains itself.
+    */
+    if (!await get().saveNow()) { set({ liveStarting: false }); return; }
     writeJournal({
       slot: get().loadedSlot ?? AUTOSAVE_SLOT, year: get().year, rngState,
       home: h, away: a, day: season.dayIndex,
@@ -5980,6 +6017,24 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       }
     }
     /*
+      And separately: what the national field still owes him.
+
+      `advanced` means this tournament carries on with him in it. It never
+      meant "the season continues", and the conference branch was reading it
+      that way — so a protected seed, whose place the selector guarantees
+      before a regional is played, was told the season was over.
+
+      Three answers, because there are three. Protection is certain. An
+      at-large bid is not: the selector fills the last seats off the national
+      table, so a team inside that range has not been decided about yet and
+      should not be told it has.
+    */
+    const bid: KnockoutBid = protectedTopFour(season).includes(userTeam)
+      ? 'secure'
+      : rpiOrder(season).findIndex((r) => r.team.index === userTeam) < NATIONAL_BIDS
+        ? 'awaiting'
+        : 'none';
+    /*
       And a letter, beside the card.
 
       The card is the moment and it fires once; this is the record, and it is
@@ -5999,11 +6054,17 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       ? `Coach — out of ${where}, and somehow that is fine: ${
         myBracket.kind === 'conference' ? 'a regional championship series is next'
           : 'the national field still has a place for us'}. Bus leaves early.`
-      : `Coach — ${me?.w ?? 0}-${me?.l ?? 0} on the year. I will start on `
-        + `next season's binder tonight.`;
+      : bid === 'secure'
+        ? `Coach — out of ${where}, and it costs us nothing: we are in the `
+          + 'national field on the strength of the regular season. Bus leaves early.'
+        : bid === 'awaiting'
+          ? `Coach — out of ${where}. The committee has not sat yet and we are `
+            + 'inside the numbers, so nobody is packing anything away tonight.'
+          : `Coach — ${me?.w ?? 0}-${me?.l ?? 0} on the year. I will start on `
+            + `next season's binder tonight.`;
     set({
       knockout: {
-        year, kind: myBracket.kind, label, advanced,
+        year, kind: myBracket.kind, label, advanced, bid,
         ...(placing > 0 ? { placing } : {}),
       },
       // Only the ending is worth a letter. STILL ALIVE was cut by the
@@ -6013,7 +6074,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       inbox: advanced ? get().inbox : push(get().inbox, newItem({
         year, kind: 'season',
         key: `knockout-${myBracket.kind}`,
-        title: 'The season is over',
+        title: bid === 'secure' ? 'Out of the tournament, into the field'
+          : bid === 'awaiting' ? 'Out of the tournament, awaiting the committee'
+            : 'The season is over',
         body,
       })),
     });
@@ -6312,7 +6375,17 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const awayBench = fitBench(away.team, clock);
     set({ liveStarting: true });
     const rngState = season.rng.state?.() ?? 0;
-    await get().saveNow();
+    /*
+      No anchor, no game.
+
+      The point of awaiting this is that the file on disk has to hold the
+      generator position the first pitch will be drawn from. It awaited the
+      save and then ignored what it said, so a storage failure let a coach
+      manage nine innings whose recovery prerequisite had never been written.
+      `saveNow` sets `saveState: 'error'`, which the save banner is already
+      watching, so refusing here explains itself.
+    */
+    if (!await get().saveNow()) { set({ liveStarting: false }); return; }
     writeJournal({
       slot: get().loadedSlot ?? AUTOSAVE_SLOT, year: get().year, rngState,
       home: g.home, away: g.away, day: day.day,
@@ -6488,9 +6561,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         pre-game anchor (05 §62.6). `closeMyBracket` saves when the
         tournament is over; otherwise this does.
       */
-      if (mb && mb.state.done) get().closeMyBracket();
-      else await get().saveNow();
-      clearJournal();
+      /*
+        And the journal only goes when the result it describes is safely on
+        disk. This saved and then cleared regardless, so a failed write threw
+        away the one record that could have offered the game back — the exact
+        window the note above says it exists to close.
+      */
+      if (mb && mb.state.done) { get().closeMyBracket(); clearJournal(); }
+      else if (await get().saveNow()) clearJournal();
       return;
     }
 
@@ -6518,9 +6596,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     set({ live: null, liveMeta: null, version: version + 1, screen: 'today' });
     get().noteSeasonNews();
     // The save first, then the journal: the other way round left a window in
-    // which a kill lost the game with no resume offer (05 §62.6).
-    await get().saveNow();
-    clearJournal();
+    // which a kill lost the game with no resume offer (05 §62.6). And only if
+    // the save actually landed — clearing it after a failed write reopens the
+    // same window from the other side.
+    if (await get().saveNow()) clearJournal();
   },
 
   setStrategy: (key, value) => {

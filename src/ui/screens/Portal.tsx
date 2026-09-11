@@ -351,7 +351,12 @@ function PortalSignSheet(
             <span><small>YOU HAVE</small><strong>{left}</strong><em>points</em></span>
             <span><small>AFTER SIGNING</small><strong>{Math.max(0, left - cost)}</strong><em>points</em></span>
           </section>
-          <p className="portal-sign-warning">Those points come out of the same offseason pool you take into recruiting.</p>
+          {/* It said "the same offseason pool you take into recruiting", which
+              is what the engine deliberately stopped doing: `weeklyBudget`
+              takes the offseason spend and discards it, and a test pins that.
+              The screen said the opposite twice further up, so whichever line
+              a coach read last, he had been told something untrue. */}
+          <p className="portal-sign-warning">Draft and Portal share this fund. Your recruiting weeks have their own allowance and are not touched by it.</p>
           <button className="primary-command tap" type="button" disabled={left < cost} onClick={onSign}>SIGN {p.name.toUpperCase()}</button>
           <button className="secondary-command tap" type="button" onClick={onClose}>KEEP LOOKING</button>
         </section>

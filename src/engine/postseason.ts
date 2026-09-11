@@ -7,7 +7,7 @@
 
 import {
   playGame, recordResult, onBase, slugging, era, inningsPitched, standings, rpiOrder,
-  advancePostseasonDay, seedTeams, regularRecord, rollHurtsFor, plateAppearances,
+  advancePostseasonDay, currentDay, seedTeams, regularRecord, rollHurtsFor, plateAppearances,
 } from './season.js';
 import type {
   BattingSeason, GameSummary, PitchingSeason, SeasonState, TeamRecord,
@@ -559,11 +559,49 @@ export function deAsResult(
 }
 
 /** Every conference crowns a champion. Eight of the country's banners a June. */
+/**
+ * Run the tournaments of one stage on the same nights.
+ *
+ * Every game in the postseason moves the one shared calendar, and the stages
+ * used to be played end to end — so the eight conference tournaments did not
+ * share a single date between them. Measured 2026-09-11: the first conference
+ * played days 81 to 86 and the last days 124 to 129, the regionals ran to day
+ * 171, and the championship landed on **6 August** in a game that frames its
+ * postseason as June.
+ *
+ * The dates were the visible half. The damage was underneath: `pitcherReady`
+ * asks `day - lastPitched >= recoveryGap`, and a starter who threw over ninety
+ * pitches needs five days. The first conference therefore opened one day after
+ * the regular season ended, without its best arms; the last opened forty-four
+ * days later with everybody available. Conference order is the data file's
+ * order and never changes, so the same leagues carried that handicap in every
+ * season of every career.
+ *
+ * The fix is not interleaving — the games keep the order they always had, and
+ * so does every draw taken for them. Each tournament simply opens on the
+ * stage's own first night instead of wherever the previous one happened to
+ * finish, and the stage hands the calendar on past the longest of them.
+ */
+function onTheSameNights<T>(season: SeasonState, run: readonly (() => T)[]): T[] {
+  const open = currentDay(season);
+  let last = open;
+  const out = run.map((one) => {
+    season.postseasonDay = open;
+    const result = one();
+    last = Math.max(last, currentDay(season));
+    return result;
+  });
+  season.postseasonDay = last;
+  return out;
+}
+
 export function allConferenceTournaments(
   season: SeasonState,
   size: number = CONF_FIELD,
 ): ConferenceTournament[] {
-  return conferenceIds(season).map((id) => conferenceTournament(season, id, size));
+  return onTheSameNights(season, conferenceIds(season).map(
+    (id) => () => conferenceTournament(season, id, size),
+  ));
 }
 
 // ---------------------------------------------------------------------------
@@ -709,7 +747,9 @@ export function regionalPairing(
 export function stageRegionals(
   season: SeasonState, cups: readonly ConferenceTournament[],
 ): RegionalSeries[] {
-  return regionalPairing(season, cups).map((p) => {
+  // Sixteen series, all of them opening on the same night. See
+  // `onTheSameNights`: run end to end they spanned six weeks.
+  return onTheSameNights(season, regionalPairing(season, cups).map((p) => () => {
     // The better regular season hosts the odd game, which is the last thing
     // those forty five games are still paying for at this stage.
     const seeds = seedByRecord(season, [p.a, p.b]);
@@ -720,7 +760,7 @@ export function stageRegionals(
       aLabel: p.aLabel,
       bLabel: p.bLabel,
     };
-  });
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -882,8 +922,13 @@ export function stageNational(
   const field = selectNationalField(season, cups, regionals);
   seatProtected(field);
   const { bracketA, bracketB } = splitShowdown(field.seeds);
-  const A = deAsResult(runDoubleElim(season, bracketA));
-  const B = deAsResult(runDoubleElim(season, bracketB));
+  // The two halves are played at the same time, not one after the other.
+  const halves = onTheSameNights(season, [
+    () => deAsResult(runDoubleElim(season, bracketA)),
+    () => deAsResult(runDoubleElim(season, bracketB)),
+  ]);
+  const A = halves[0]!;
+  const B = halves[1]!;
   const final = bestOf(season, SERIES.final, A.champion, B.champion, 'National championship');
   return { field, bracketA: A, bracketB: B, final, champion: final.champion };
 }

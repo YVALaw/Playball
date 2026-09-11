@@ -18,7 +18,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { accentPalette } from '../src/ui/accent.js';
+import { accentPalette, teamInk } from '../src/ui/accent.js';
 import { CONFERENCES } from '../src/data/schools.js';
 
 // ---------------------------------------------------------------------------
@@ -294,5 +294,65 @@ describe('the frame stylesheet follows the tokens', () => {
     // 06 §X item 30: a literal is a colour the dark theme cannot reach.
     const css = readFileSync(new URL('../src/ui/prototype-frame.css', import.meta.url), 'utf8');
     expect(css).not.toMatch(/#fff\b|#ffffff\b|rgba\(\s*255\s*,\s*255\s*,\s*255/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A club's own colour, where it is used as text
+// ---------------------------------------------------------------------------
+
+describe("a school's colour as text", () => {
+  const schools = CONFERENCES.flatMap((c) => c.schools);
+
+  it('was unusable raw on the dark paper, which is why teamInk exists', () => {
+    /*
+      The pregame card paints both club names in the school's own hex. Measured
+      2026-09-11 across all ninety six: every single one falls below 4.5:1 on
+      `--paper` in the dark theme, and eighty-seven fall below even 3:1 — the
+      deep navies and forest greens are not low contrast on that surface, they
+      are gone. Four miss on white as well. This half of the test records why
+      the helper is needed; the half below proves it works.
+    */
+    const raw = schools.filter((s) => contrast(s.color, '#1c231d') < 4.5);
+    expect(raw).toHaveLength(schools.length);
+  });
+
+  it('clears the bar on both papers once it has been walked into range', () => {
+    for (const s of schools) {
+      const ink = teamInk(s.color);
+      expect(ink, `${s.abbr} has no ink`).not.toBeNull();
+      expect(contrast(ink!.light, '#ffffff'), `${s.abbr} on white`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(ink!.dark, '#1c231d'), `${s.abbr} on dark paper`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('keeps the hue, so a club still looks like itself', () => {
+    // Lightness moves; the colour does not become somebody else's colour.
+    const hue = (hex: string): number => {
+      const n = parseInt(hex.slice(1), 16);
+      const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255) as [number, number, number];
+      const max = Math.max(r, g, b); const min = Math.min(r, g, b);
+      if (max === min) return -1;
+      const d = max - min;
+      const h = max === r ? ((g - b) / d + (g < b ? 6 : 0)) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      return h * 60;
+    };
+    for (const s of schools) {
+      const ink = teamInk(s.color)!;
+      const base = hue(s.color);
+      if (base < 0) continue;
+      for (const cut of [ink.light, ink.dark]) {
+        const moved = Math.abs(hue(cut) - base);
+        expect(Math.min(moved, 360 - moved), `${s.abbr} changed hue`).toBeLessThan(12);
+      }
+    }
+  });
+
+  it('gives the YOU badge a foreground the dark theme can read', () => {
+    // Cream on the dark theme's pale blue measured 2.03:1. The paper's own
+    // ink on the same badge is over seven, and it is the one label on a
+    // bracket card that says which row is yours.
+    expect(contrast('#8db3e0', '#f4f8f4')).toBeLessThan(3);
+    expect(contrast('#8db3e0', '#1c231d')).toBeGreaterThanOrEqual(4.5);
   });
 });

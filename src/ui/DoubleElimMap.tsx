@@ -1,9 +1,11 @@
 // DoubleElimMap.tsx
 // One double-elimination tournament, one view at a time.
 //
-// The winners bracket and the losers bracket are never on screen together —
-// that was the unreadable map that got double elimination thrown out of the
-// game the first time. Each view is an ordinary left-to-right column layout:
+// One view at a time here — but `OneMap` on the postseason screen stacks the
+// winners road and the losers road, which is what the coach's own tournament
+// gets. This component draws one road; the caller decides how many.
+//
+// Each view is an ordinary left-to-right column layout:
 // small matchup cards, seed numbers, the school's own colour down each row,
 // and the champion's card wearing the win. The container scrolls horizontally
 // on its own; the page never does.

@@ -162,7 +162,14 @@ export function projectResultText(result: StaffProjectResult): string {
     const c = result.changes[0];
     if (!c) return `${label} finished in week ${result.week}, but the man it was about is no longer on this roster.`;
     if (result.took === false) return `${label} finished in week ${result.week}. ${c.name} did not take to it; nothing changed.`;
-    return `${label} finished in week ${result.week}. ${c.name}: ${c.attribute} ${c.before} → ${c.after}.${result.focused ? ' The matching focus made it three.' : ''}`;
+    /*
+      The gain, not a claim about it. This said "the matching focus made it
+      three" whatever the numbers printed beside it were, and at the 99 cap a
+      focused project moves a man from 98 to 99 — so the sentence contradicted
+      the two figures immediately before it.
+    */
+    const moved = c.after - c.before;
+    return `${label} finished in week ${result.week}. ${c.name}: ${c.attribute} ${c.before} → ${c.after}.${result.focused ? ` The matching focus earned +${moved}.` : ''}`;
   }
   return `${label} finished in week ${result.week}. ${result.changes.length
     ? result.changes.map((c) => `${c.name}: ${c.attribute} ${c.before} → ${c.after}`).join('; ') + '.'

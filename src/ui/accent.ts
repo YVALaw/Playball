@@ -165,6 +165,40 @@ function untilLegible(
   return out;
 }
 
+/**
+ * A school's own colour, kept readable where it is used as TEXT.
+ *
+ * The pregame card paints both club names in `teamColour(...)` directly, and
+ * a brand palette is not a text palette: measured across all ninety six
+ * schools, every single one falls below 4.5:1 on the dark theme's paper and
+ * eighty-seven fall below 3:1 — deep navies and forest greens on `#1c231d`
+ * are not low-contrast, they are invisible. Four also miss on white.
+ *
+ * Same machinery the accent hooks use, pointed at a different surface: keep
+ * the hue, walk the lightness until it clears the bar against the paper it
+ * has to sit on. Returned as a pair rather than one value because the theme
+ * is the stylesheet's business — an inline colour would hand one theme the
+ * other's answer, which is the mistake this file was written to avoid.
+ */
+const PAPER_LIGHT = '#ffffff';
+const PAPER_DARK = '#1c231d';
+
+export function teamInk(colour: string): { light: string; dark: string } | null {
+  const base = rgb(colour);
+  if (!base) return null;
+  const paperL = rgb(PAPER_LIGHT)!;
+  const paperD = rgb(PAPER_DARK)!;
+  return {
+    // Downward on white, upward on the dark paper: in each case away from the
+    // surface. Starting from the school's own lightness keeps a colour that
+    // already passes almost exactly where it was.
+    light: hex(untilLegible(base, Math.min(toHsl(base)[2], 0.42), 0.26, -0.02,
+      (c) => ratio(c, paperL) >= 4.6)),
+    dark: hex(untilLegible(base, Math.max(toHsl(base)[2], 0.52), 0.30, 0.02,
+      (c) => ratio(c, paperD) >= 4.6)),
+  };
+}
+
 /** The custom properties this file owns, for a clean reset. */
 const HOOKS = [
   '--accent', '--accent-rgb', '--accent-deep', '--accent-soft',

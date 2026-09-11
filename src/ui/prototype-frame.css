@@ -8118,3 +8118,29 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .postseason-outcome, .postseason-map-tools button, .mailbox-mark-all { border-radius:0; }
 /* The coach profile: the seat's panel as a layer over the Budget, padded like a card. */
 .coach-overlay .overlay-scroll { padding: 8px 14px calc(env(safe-area-inset-bottom) + 90px); }
+
+/* ---------------------------------------------------------------------------
+   September 11 — a club's colour, where it is used as text.
+
+   The pregame card paints both names in the school's own hex. Measured across
+   all ninety six: every one falls below 4.5:1 on the dark theme's paper and
+   eighty-seven fall below 3:1, so the deep navies and forest greens are not
+   low-contrast on that surface, they are invisible. Four miss on white too.
+
+   `teamInk` in accent.ts keeps the hue and walks the lightness until it clears
+   the bar, and hands both cuts down as custom properties — the theme chooses,
+   which is the one thing an inline colour cannot do.
+   --------------------------------------------------------------------------- */
+.pregame-side strong { color: var(--team-ink, var(--ink)); }
+:root[data-theme='dark'] .pregame-side strong { color: var(--team-ink-dk, var(--ink)); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .pregame-side strong { color: var(--team-ink-dk, var(--ink)); }
+}
+
+/* The YOU badge carried cream on the dark theme's pale blue: 2.03:1. The same
+   badge with the paper's own ink on it is 7.4:1, and it is the one label on a
+   bracket card that says which row is yours. */
+:root[data-theme='dark'] .bracket-you-tag { color: var(--paper); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .bracket-you-tag { color: var(--paper); }
+}

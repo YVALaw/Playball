@@ -16,7 +16,7 @@
 // sits in the same place whatever tab is up.
 
 import { leagueLabel } from '../../engine/leagueNames.js';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { useDynasty, useUserTeam, type NationalProgress } from '../../state/store.js';
 import { FloatingAction } from '../Sticky.js';
 import { Modal } from '../Modal.js';
@@ -33,6 +33,19 @@ import { whyOut } from '../Needs.js';
 import { DoubleElimMap, type DECols } from '../DoubleElimMap.js';
 import { BoxScoreSheet } from './Schedule.js';
 import { teamColour } from '../Avatar.js';
+import { teamInk } from '../accent.js';
+
+/**
+ * A club's colour as TEXT, handed to the stylesheet as a light cut and a dark
+ * one so the theme picks. An inline `color` gave the dark theme the light
+ * theme's answer, and every school in the country measured under 4.5:1 on the
+ * dark paper — most of them under 3:1, which is not low contrast, it is gone.
+ */
+function inkStyle(abbr?: string): CSSProperties | undefined {
+  const ink = teamInk(teamColour(abbr));
+  if (!ink) return undefined;
+  return { ['--team-ink' as string]: ink.light, ['--team-ink-dk' as string]: ink.dark } as CSSProperties;
+}
 import {
   conferenceField, liveSeries, nextGameFor, hostOfGame, roundName, clincher,
   regionOf, REGIONS, CONF_FIELD, CONF_ADVANCE, NATIONAL_BIDS, protectedTopFour, splitShowdown, nationalBidReason, NATIONAL_BID_DETAIL,
@@ -475,6 +488,30 @@ export function Postseason() {
       };
     }
     if (kind === 'conference') {
+      /*
+        Out of the tournament is not out of the postseason, and this card said
+        it was. A protected top-four seed is in the national field whatever
+        June does to him, and a team inside the table's bid range has not been
+        decided about at all — the selector fills its last seats off that table
+        after the regionals. Three endings, because there are three.
+      */
+      const bid = knockout?.bid ?? 'none';
+      if (bid === 'secure') return {
+        good: true,
+        title: 'National bid secure',
+        lines: [
+          `${team.def.school} fall${where} of the ${leagueLabel(team.conference)} tournament.`,
+          'The regular season already earned a protected place in the national field. It is not affected by this.',
+        ],
+      };
+      if (bid === 'awaiting') return {
+        good: true,
+        title: 'Awaiting selection',
+        lines: [
+          `${team.def.school} fall${where} of the ${leagueLabel(team.conference)} tournament.`,
+          'The national field is picked after the regionals, and you are inside the numbers. Nothing is settled yet.',
+        ],
+      };
       return {
         good: false,
         title: 'Out in May',
@@ -1386,7 +1423,7 @@ function PregameShow(
         <div className="pregame-match">
           <div className="pregame-side">
             <Crest abbr={me.def.abbr} size={46} />
-            <strong style={{ color: teamColour(me.def.abbr) }}>{me.def.school}</strong>
+            <strong style={inkStyle(me.def.abbr)}>{me.def.school}</strong>
             <small className="pregame-tournament-record">TOURNAMENT {tournamentRecord(userTeam)}</small>
             <em>&nbsp;</em>
           </div>
@@ -1433,14 +1470,14 @@ function PregameShow(
       <div className="pregame-match">
         <div className="pregame-side">
           <Crest abbr={me.def.abbr} size={46} />
-          <strong style={{ color: teamColour(me.def.abbr) }}>{me.def.school}</strong>
+          <strong style={inkStyle(me.def.abbr)}>{me.def.school}</strong>
           <small className="pregame-tournament-record">TOURNAMENT {tournamentRecord(userTeam)}</small>
           <em>{armFor(userTeam)}</em>
         </div>
         <div className="pregame-vs">{home ? 'VS' : 'AT'}</div>
         <div className="pregame-side">
           <Crest abbr={abbr(opp)} size={46} />
-          <strong style={{ color: teamColour(abbr(opp)) }}>{name(opp)}</strong>
+          <strong style={inkStyle(abbr(opp))}>{name(opp)}</strong>
           <small className="pregame-tournament-record">TOURNAMENT {tournamentRecord(opp)}</small>
           <em>{armFor(opp)}</em>
         </div>
@@ -1564,8 +1601,8 @@ function ConferenceStage(
             </span>
           </div>
           {/* Your tournament is ONE map — both halves, the drop marked.
-              The other eleven leagues get the winners road and the final:
-              their losers brackets are reading material, and eleven more
+              The other seven leagues get the winners road and the final:
+              their losers brackets are reading material, and seven more
               stacked maps would bury yours. Tap into a cup's games as
               always; the seeds and scores carry the story. */}
           {r.you

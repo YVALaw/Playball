@@ -3220,7 +3220,7 @@ would matter to somebody playing.
 
 ### AC.1 Systems that are shallower than they look
 
-- **June runs on one clock.** `advancePostseasonDay` ticks a single shared
+- ~~**June runs on one clock.**~~ **Taken 2026-09-11, `05` §69.1 — and it was worse than this line said: the first conference opened on one day of rest and the last on forty-four, in the same data-file order every career.** `advancePostseasonDay` ticks a single shared
   `postseasonDay` once per bracket game (`engine/season.ts:1702`), so the eight
   conference tournaments and sixteen regionals play end to end: June spans 111
   days against a 78-day regular season, the first cup carries nine times the
