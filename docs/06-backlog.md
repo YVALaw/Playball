@@ -1212,7 +1212,7 @@ out of stage 10's money couples two economies that are cleaner apart; paying in
 prestige and reputation keeps them independent and reads truer — a good
 assistant takes the job because the program is going somewhere.
 
-### H2 · Alumni in the professional game — **SHIPPED, and repaired September 11 2026**
+### H2 · Alumni in the professional game — **SHIPPED, and repaired September 11 and 12 2026**
 
 *(`05` §74. Three of the four per-year rolls in `proCareer` were not rolls: the
 hash's high bits barely moved when the year did, so a man was stamped once for
@@ -1221,7 +1221,24 @@ seasons and the other 361 in none — and promoted every year he was eligible or
 never. Reaching the top level went 39% to 16.3% against a real world of about
 sixteen, an All-Star summer reads talent now, and a summer says which kind it
 was rather than calling a first-division regular and a twenty-sixth arm the same
-thing. The original entry follows.)*
+thing.
+
+**And three more on September 12.** (1) The climb took two summers. `proCareer`
+tracked `atLevel` and used it only for the flavour line, so the promotion roll
+never consulted it and a good enough man cleared a level a year, every year — a
+first rounder drafted in 2030 was in the big leagues in 2032. The roll is damped
+in his first summer at a level now and every round arrives a year later. The
+coupling is the actual work: wash-out is rolled once a summer, so slowing the
+promotions alone took the share who ever reach the top from 44.9% to 29.0%,
+silently re-answering the one number §74 had calibrated — so the base rate and
+the wash-out age term moved together and **the same men still arrive** (44.7%).
+`05` §79. (2) The independent-ball lines name real countries. (3) Some of them
+become coaches, which was half of a request whose other half had shipped alone:
+an undrafted senior takes his old high school at 8%, a professional whose
+playing days end is hired at `8 + level * 3` — 6.6% out of Rookie ball to 19.2%
+out of the majors, because the résumé is the qualification. `COACHING` is
+deliberately not a rung in `LEVELS`, and a career still carries exactly one
+`final` row. `05` §80.1. The original entry follows.)*
 
 Every departure is already recorded with a reason, a round and a year
 (`Departure`, `engine/progression.ts`), and career rows survive for as long as
@@ -2616,8 +2633,10 @@ commonest action on the screen would feel late to serve the rarest.
 
 - **Batch R, the rest of the regressions** — the swap/AUTO animation flicker,
   the fielder rims blinking when two men are close, the postseason box score
-  refusing to open, the mandate reading 17 on the opener and 23 on the board,
-  the dossier not scrolling.
+  refusing to open, ~~the mandate reading 17 on the opener and 23 on the
+  board~~ **(taken 2026-09-12, commit 54c43be — the opener reports the roll
+  that has happened, so both numbers come off one source)**, the dossier not
+  scrolling.
 - **Batch S, density** — the room the URL bar used to take: a bigger tonight
   card, larger text as the default, the draft's dead space, the recruiting
   board and class screen tightened, the manager sheet overflowing its edge,
@@ -2625,7 +2644,10 @@ commonest action on the screen would feel late to serve the rarest.
 - **Batch T, the deletions** — every red line.
 - **Batch U, behaviour** — AUTO that runs until the coach takes the game back;
   sim week stopping on an injury; the tonight card opening the opponent from
-  anywhere on it; records leaving the inbox for a trail of dots; no letter
+  anywhere on it; ~~records leaving the inbox for a trail of dots~~ **(taken
+  2026-09-12, commit ebbfe23 — records had left the inbox for `unseenRecords`
+  long before, but the dot never lit, so in play the behaviour did not exist)**;
+  no letter
   about a man you already had a word with; a confirmation on the captain; a
   way to refuse the board's terms; Hood Hans not signing pro every single time.
 - **Batch V, the dugout's missing motion** — a change-over animation for three
@@ -3298,10 +3320,19 @@ would matter to somebody playing.
   and it is §AC.1b immediately below. An earlier version of this line said half
   a run and blamed plate discipline; that was measured through a harness that
   signed nobody and every figure in it was void.)* Ten seasons of two worlds, one process per
-  seed: a fresh league opens at 6.93–7.11 runs against a 6.73 target and settles
-  at 8.6–9.1 from year five, flat to year ten. Every channel inflates and power
-  moves most — batting average .280 → .310, slugging .441 → .513, home runs 1.06
-  → 1.41 — while strikeouts FALL, 7.85 → 7.0. **Large**, and the highest-value
+  seed: a fresh league opens at 6.88–7.02 runs against a 6.73 target and settles
+  at 8.5–8.9 from year five, flat to year ten. Every channel inflates and power
+  moves most — batting average .278 → .311, slugging .435 → .508, home runs 1.02
+  → 1.39 — while strikeouts FALL, 7.90 → 7.07.
+
+  *(Re-recorded 2026-09-12, `05` §77.4. The recruiting-ladder change took the
+  plateau down about a fifth of a run — 8.77 → 8.55 on seed 4242 and 8.87 →
+  8.73 on 909 — and all fourteen bands from §71 still held without re-fitting.
+  **That fifth of a run is the finding, not the fix**: lowering the door by
+  three points of overall bought almost nothing, which says the climb is not
+  built out of where freshmen start but out of what four winters of `develop()`
+  do to them. Whoever takes this item should not spend more time on the
+  recruiting ladder — the lever is development.)* **Large**, and the highest-value
   calibration work on this page: it is the league a player actually plays in
   from his third season onward.
 - **The batting-average tail runs hot.** *(Read beside `05` §71: "the mean is on
@@ -3368,7 +3399,10 @@ would matter to somebody playing.
   existing roll rather than running a second model; the portal is skipped as a
   step rather than emptied, with `PHASES` and its save-file indices untouched;
   season length is a two-game weekend, which keeps the full round robin and
-  every crossover game and costs the fourth starter his slot. A world with no
+  every crossover game and costs the fourth starter his slot — and, since
+  2026-09-12 (`05` §76 onward), a four-game weekend that keeps the same round
+  robin and every crossover and costs a **fifth** starter, which is the
+  fifty-six Division I actually plays. A world with no
   rules written on it is the world that was always there, object-identically.
 - **The mound-visit conversation.** *(The prerequisite landed 2026-09-11, `05`
   §72.1: a delegated pitching coach now actually goes out. He never had — the
@@ -3510,7 +3544,9 @@ mid-range Android.
 
 ## AD. The September 11 and 12 build pass — what it opened
 
-Ten commits over two days, written up at `05` §66–§75. Most of what they did was
+Ten commits over two days, written up at `05` §66–§75 — and then fifteen more
+on September 12, which have a section of their own at §AE below. Most of what
+they did was
 close lines in §AC and those are struck above. The largest thing they opened is
 not in this section either, because it was filed where it was measured: the
 league's two runs a game and `makeTeam`'s unaged roster are at §AC.1b. What
@@ -3536,7 +3572,9 @@ standing after moving the ground under them.
   count was never the threshold's fault — `GENERATED_POTENTIAL_CAP` was a wall,
   9.9 men a class came out standing on exactly 94, and truncation is what makes
   a top dense — so raising the floor from 85 had bought almost nothing. With the
-  landing strip in, S is 5.5 a class against the 5 to 8 that was asked for, and
+  landing strip in, S is about 5.9 a class against the 5 to 8 that was asked
+  for (5.5 when this line was written; re-measured either side of the
+  recruiting ladder a day later at 5.7 → 5.9, `05` §77.4), and
   the band belongs to projects: the lowest overall carrying one is 30 (`05`
   §75.3, §75.4). So this is a decision to leave it alone rather than a job, and
   it stops being separate the moment the decision above is taken the other way,
@@ -3544,17 +3582,26 @@ standing after moving the ground under them.
 
 ### AD.2 What the rules of the world reach
 
-- **Nobody has played a thirty-four-game season, and the record book was seeded
-  for forty-five.** `05` §70 shipped season length as a career rule: a two-game
-  weekend keeps the full round robin and every crossover game, and costs the
-  fourth starter his slot. The book does not know. `engine/records.ts` seeds
+- **Nobody has played a thirty-four- or a fifty-six-game season, and the record
+  book was seeded for forty-five.** *(Widened 2026-09-12: the long season
+  shipped, so this item now has two directions rather than one. Still open —
+  the measurement is genuinely still owed.)* `05` §70 shipped season length as
+  a career rule: a two-game weekend keeps the full round robin and every
+  crossover game and costs the fourth starter his slot, and a four-game weekend
+  keeps the same and costs a fifth. The book does not know. `engine/records.ts` seeds
   twelve fixed marks that read nothing about season length, and `05` §13.3 set
   each one where a once-in-fifteen-to-twenty-years season falls **in a
   forty-five-game league** — Ventura's fifty-eight-game streak is the frozen row
   for exactly that reason, because no arrangement of a 45-game season produces
   one. Eleven games fewer and every counting mark is chased over three quarters
   of a year, while the rate marks move the other way, because the best of a
-  shorter sample sits further out. That is why it wants measuring rather than
+  shorter sample sits further out. **Eleven games more runs the whole argument
+  backwards** and is the half September 12 created: at fifty-six, a counting
+  mark has a quarter more season to be chased over, so the seeded rows get
+  easier rather than harder, while the rate marks tighten because the best of a
+  longer sample sits closer in. A seed that is a once-in-twenty-years season in
+  one world is a good year in another and out of reach in the third. That is
+  why it wants measuring rather than
   arithmetic: the same league-best probe that set them, run on a short world,
   and then a decision on whether a seed moves with the rules or whether the
   marks stay put because they are real and a short career is simply a harder
@@ -3589,3 +3636,76 @@ standing after moving the ground under them.
   is that anything reducing a world to a number should assert that its inputs
   reach it, and should be checked by moving an input and watching the output
   move. **Small**, and it is an afternoon over one directory.
+
+---
+
+## AE. The September 12 play-session pass — what twenty-six items opened
+
+Fifteen commits, written up at `05` §76–§80. They answer a report a player made
+from a session at the phone, and unlike §AD they are not mostly closures of
+lines on this page — **most of them had no backlog line at all**, because
+nobody had thought of them until somebody played for an afternoon. That is the
+finding worth keeping about the pass itself.
+
+Four of the twenty-six were systems rather than defects, and each is recorded
+where it was built. The rest were the sort of thing a session finds: a hurt
+pitcher showing no indicator, a sheet that would not scroll to its own button, a
+letter opening the wrong table, a board that did not say the year.
+
+### AE.1 What the pass proved about this page
+
+- **A row in a catalogue is a promise, and nothing checks that anybody kept
+  it.** `SYSTEMS` in `state/depth.ts` has carried a `recruiting` row reading
+  "Your coordinator works the board" since the depth model shipped, and
+  `handles` was never once asked about `recruiting` at any of its sixteen call
+  sites. So a coach who turned the row off did not delegate his recruiting, he
+  lost it: his board was read for whatever he had already put on it, which
+  after a week of not touching it was nothing (`05` §78.1). That is the third
+  dead switch of the week, after MOUND VISITS and the keep-position promise at
+  §72, and it is the same shape as §AC.1's "systems that are shallower than
+  they look". **If you add a row to that catalogue, grep for `handles(`.**
+- **A half-answered request looks answered.** The alumni ask was one sentence —
+  name the degree, *and* let some of them become coaches. The degree shipped,
+  the coaching did not, and nothing anywhere recorded that half a sentence had
+  been dropped. It was found by auditing the report item by item a day later,
+  not by playing (`05` §80.1).
+- **A single-sample assertion that passes is indistinguishable from a property
+  that holds.** Three test files broke on an unrelated change to the dice, and
+  all three were brittle the same way: a class draw pinned at one number, a
+  sixty-seed search for a game the top seed loses, and a pricing property
+  asserted on `prospects[0]`. The last was true for 42 of 60 prospects before
+  the change and 49 after — it had never been universal, and the fixture had
+  simply been lucky (`05` §77.5).
+- **Verify a balance change on the WEAKEST case.** Delegated recruiting passed
+  five unit tests on its handicap curve and was still badly broken: a one-star
+  programme signed three men where its peers averaged 6.85. Run against a
+  66-quality programme the same bug reads 6 against 8 and looks fine. The tail
+  of the league is where a missing head start actually bites (`05` §78.3–78.4).
+
+### AE.2 What it left open
+
+- **The two-second freeze has no verified cause.** Reported as part of the back
+  gesture: opener card → board → back froze for about two seconds. The
+  destination half of that report is genuinely fixed, but the `crossfade`
+  visibility guard written for the freeze is unreachable on the path described
+  — `crossfade` is called from exactly one place, inside `go()`, and that
+  gesture never calls it — and the guard only fires when the document is
+  hidden, which is not the condition of a coach watching his own phone. It may
+  simply have been the Program overview sheet rendering, which is no longer
+  where the gesture lands. **Small**, but it wants reproducing on a device
+  before anybody writes another fix for it (`05` §80.5).
+- **Back from a letter-opened board returns to the screen under the inbox**,
+  not to the inbox. `overlay` is a single value, so opening the board from a
+  letter forgets the inbox was ever there. The reported symptom — landing on
+  the wrong tab, with a stale modal — is fixed; this is the residue. Fixing it
+  properly means an overlay stack rather than a field. **Medium**, and it is
+  the same shape as §AD's "the back gesture does not know about locally held
+  sheets", which is still open above.
+- **A rate rolled per-year is not independent of how many years there are.**
+  Three separate instances in one week, which is enough to call it a pattern
+  rather than a coincidence: a weaker recruiting class moved how many men reach
+  an `overall < 52` gate (§77.5), a slower climb to the majors moved the share
+  who ever get there (§79.2), and a lost-cause filter assumed a seeding pass it
+  was paired with (§78.3). **Nothing to build** — it is a rule for whoever
+  changes a duration next: re-measure every per-year probability attached to
+  it, and state both numbers.

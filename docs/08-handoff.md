@@ -6,10 +6,20 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 12, 2026 · **Branch:** `main` · **development, the
-ceiling and the alumni** — headroom is a roll rather than a class-year
-constant, the S grade is rare and belongs to projects, and a professional
-career is rolled each year instead of stamped once (`05` §73, §74, §75).
+**Last session:** September 12, 2026 · **Branch:** `main` · **a play session's
+twenty-six items, and an audit of the answer to them** — a hurt arm that says
+so and a trainer's room at the foot of the card, Reliever of the Year, a
+fifty-six game schedule and the fifth arm it costs, one press per tier for a
+coach only watching, the star ladder and its thresholds brought down together,
+the recruiting board delegated to a coordinator, and the climb to the majors a
+summer longer (`05` §76–§79). Then every item was re-checked against the code
+and every DONE verdict handed to a second pass told to prove it wrong, which
+overturned two of them (§80).
+
+*Before that, September 12 morning:* development, the ceiling and the alumni —
+headroom is a roll rather than a class-year constant, the S grade is rare and
+belongs to projects, and a professional career is rolled each year instead of
+stamped once (`05` §73, §74, §75).
 
 **Open, and read it before you trust a number.** The league gains **two runs a
 game** over its first four seasons and then holds there — 6.9–7.1 in year one
@@ -82,7 +92,7 @@ nothing looks exactly like a harness measuring something reassuring** (`05`
 > season lost to the training room, and in the minors a level repeated instead
 > of another summer at Double-A (`05` §74).
 >
-> **86 files and 1,477 tests**, all passing, against 77 files and 1,369 at the
+> **88 files and 1,519 tests**, all passing, against 77 files and 1,369 at the
 > `v0.8.0` line a day earlier — the version was cut just after midnight on
 > September 11. `package.json` is still 0.8.0.
 
@@ -181,7 +191,7 @@ nothing looks exactly like a harness measuring something reassuring** (`05`
 > **The world has rules now** (`05` §70) — `06` §AC.2 called it the highest
 > value thing on that page, the only way to turn off a system a player hates
 > without abandoning the career. Five switches: injuries (full, half or none),
-> the transfer portal, realignment, poaching, and a season of 45 games or 34.
+> the transfer portal, realignment, poaching, and a season of 45 games, 34 or 56.
 > They are set at NEW CAREER and **fixed for the life of it**, because the
 > record book is one continuous document and an era with injuries off is not
 > comparable to the era before it. They live on `season.rules` in the engine
@@ -194,7 +204,14 @@ nothing looks exactly like a harness measuring something reassuring** (`05`
 > is what gives RPI something to compare — and pays for it out of the weekend
 > instead: **a two-game weekend plus a midweek is a three-man rotation**, so
 > the midweek arm starts in the slot after the weekend's rather than a
-> hard-coded third. A world with no rules written on it is object-identically
+> hard-coded third. *(September 12: a long season joined it on the same rule,
+> and the rule is what makes it work. Four-game weekends — eleven of them plus
+> the twelve crossovers — are the fifty-six Division I actually plays, and
+> because the midweek arm takes the slot AFTER the weekend's, a four-game
+> weekend puts him at slot four and a four-man staff would wrap `startableSlot`
+> straight back onto the Friday ace, five starts a week. `rotationSizeFor` is
+> `max(4, seriesGames + 1)`, and the floor is load bearing: it is what keeps
+> every world that existed before the long schedule byte-identical.)* A world with no rules written on it is object-identically
 > the world that was always there — `configForRules` returns `DEFAULT_SEASON`
 > itself — so every calibration number ever taken still measures the league it
 > was taken from.
@@ -941,7 +958,7 @@ nothing looks exactly like a harness measuring something reassuring** (`05`
 
 | File | What it is |
 |---|---|
-| `07-v1-plan.md` | **The route.** Twenty-six stages and one half-stage to v1.0. Twenty-three are done; 18b (Android 16), the rest of the §X batch, 24, 26's verdict, 17 (god mode) and 19 remain. |
+| `07-v1-plan.md` | **The route.** Twenty-six stages and one half-stage to v1.0. Twenty-six are done — 17 shipped September 6 and 18b was booked the same day; only 19, the ship, remains, and what is left of it is the listing and the keystore. |
 | `INTERACTION_DESIGN.md` | **The interface rulebook**, since September 5. Three kinds of screen and what a decision must show before it offers a verb. Read before adding any screen. |
 | `06-backlog.md` | The decisions and the argument behind each. §H is the agreed feature set, §I the pass that produced stages 3 and 4; *Decisions locked* holds the rules that bind every feature. |
 | `05-systems-reference.md` | What the game does **today**, including the hidden-mechanics index. A feature that shipped moves in here on the same commit. |
@@ -1180,7 +1197,7 @@ in god mode's calendar sheet — a paid power, not a test aid, and it ships. See
 ## How to work here
 
 ```bash
-npm run check      # typecheck + the whole suite (1,286 tests, 70 files)
+npm run check      # typecheck + the whole suite (1,519 tests, 88 files)
 npm run soak       # thirty seasons of structural audit
 npm run dev        # dev server, hot-reloading, on :5174
 npm run build      # typecheck + build into dist/ — builds only, serves nothing
@@ -1212,7 +1229,8 @@ and confirmed fixed by reading `getBoundingClientRect()` against the frame, not
 by looking at it.
 
 **Commit style:** narrative first line, prose body explaining the *why*, ending
-with the `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>` trailer.
+with the `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>` trailer — which
+is what every commit since 2026-09-12 carries.
 
 **Verifying in the Browser pane:** if the pane is hidden, animation frames
 do not run and the store's crossfade commits one event late — every

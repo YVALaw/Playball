@@ -1,11 +1,17 @@
-# 13 · The APK pass — screenshots held, list pending
+# 13 · The APK pass — screenshots held, list arrived and closed
 
 **September 4 2026.** The reporter's first run at the game as an
 installed Android app, on BlueStacks. He is still playing and will send
 the written list; these are the observations readable from the
 screenshots alone, recorded now so nothing is lost between the pictures
-and the list. **Nothing here is triaged or fixed yet** — it waits for
-his words, which are the authority on what he meant by each mark.
+and the list.
+
+**Closed.** The written list arrived the same day and was triaged into
+`14-apk-report-triage.md`, whose own heading records "The list is closed —
+September 5". Every observation below was answered there or superseded by it.
+This file is kept as the provenance — what the screenshots showed before
+anybody had the reporter's words for it — and not as a queue. Nothing here is
+waiting on anything.
 
 ## 1 · Recruiting board, filter sheet (5:06, Silverton, 2027)
 
@@ -63,11 +69,12 @@ his words, which are the authority on what he meant by each mark.
   out. The two `+0.0%` tiles above it already say this; the note is the
   language pass's own rule being broken (never restate the visual).
 
-## Still to come
+## The list arrived — September 4, closed September 5
 
-The reporter's written list. Everything above is provisional until it
-arrives — a mark on a screenshot says *where* he looked, not always
-*what* he wants done there.
+Triaged in `14-apk-report-triage.md`. Everything above was provisional until it
+came, because a mark on a screenshot says *where* he looked and not always
+*what* he wants done there — which is exactly why it was worth waiting for the
+words rather than acting on the pictures.
 
 ---
 

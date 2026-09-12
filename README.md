@@ -8,16 +8,17 @@ Mobile first, shipping to Android.
 ## Status
 
 **Version 0.8.0, through September 12 2026** (`docs/05-systems-reference.md`
-§66–§75). Twenty-six stages have shipped or closed — 1–18, 18b and 20–27, with
-27 in ahead of its turn; only 19, the ship, stands before a release, and what
+§66–§80). Twenty-six stages have shipped or closed — 1–18, 18b and 20–27,
+with 27 in ahead of its turn; only 19, the ship, stands before a release, and what
 is left of it is the listing and the keystore. Ninety-six programs in eight
-conferences of twelve, a forty-five game regular season, and the whole loop
-runs: pick a job
+conferences of twelve, a regular season of forty-five games — or thirty-four or
+fifty-six, if the world was opened that way — and the whole loop runs: pick a job
 through a background that shapes who rings you, play or simulate a season,
 manage games at bat by at bat, go through the postseason a game at a time, sit
 awards night, spend coaching points, work the transfer portal and a recruiting
-board that is honest about being vague, argue the MLB draft out of taking your
-junior, and start again the following February.
+board that is honest about being vague — or hand that board to your coordinator
+— argue the MLB draft out of taking your junior, and start again the following
+February.
 
 On top of that loop: **a budget** with three assistants, four rungs of
 facilities and a scouting desk that gates what you can see of an opponent; **a
@@ -39,15 +40,21 @@ staff system (§63).
 
 **The rules of the world** (§70). Five switches set at NEW CAREER and fixed for
 the life of the career: injuries (full, half or none), the transfer portal,
-realignment, poaching, and a season of forty-five games or thirty-four. They
+realignment, poaching, and a season of forty-five games, thirty-four or
+fifty-six. They
 live on `season.rules` in the engine and not in the depth catalogue, because
 they change the simulation for all ninety-six programs at once — `depth.ts`'s
 own header names them as the counter-example to everything in it. Folded at the
 foot of the how-you-play step, because the defaults are the game: a standard
-world is object-identically the world that was always there. The short season is
-two-game weekends, which keeps the full conference round robin and every
-crossover game and costs the fourth starter his slot. A two-game weekend plus a
-midweek is a three man rotation.
+world is object-identically the world that was always there. Both departures
+keep the full conference round robin and every crossover game; what moves is the
+weekend, and with it the staff. The short season is two-game weekends, which
+costs the fourth starter his slot — a two-game weekend plus a midweek is a three
+man rotation. The long one is four-game weekends, eleven of them plus the twelve
+crossovers, which is the fifty-six Division I actually plays and costs a fifth
+starter: `buildSchedule` starts the midweek arm in the slot after the weekend's,
+so with only four `startableSlot` wraps and hands the ball back to the Friday
+ace five times a week (`rotationSizeFor`, §76 onward).
 
 **June lasts a month again** (§69). Every tournament of a postseason stage now
 opens on the same night. They had been played end to end, so no two shared a
@@ -61,8 +68,8 @@ same audit: all ninety-six school colours fell below 4.5:1 as text on the dark
 theme's paper and eighty-seven below 3:1, the deep navies not dim but gone, so
 `teamInk` walks the lightness and keeps the hue.
 
-**Two switches that reached nothing** (§72). MOUND VISITS promises that your
-pitching coach decides when to go out. He never did: the engine gated the
+**Three switches that reached nothing** (§72, §78.1). MOUND VISITS promises
+that your pitching coach decides when to go out. He never did: the engine gated the
 automatic visit on the bullpen key, and the mound-visit key's only reader was a
 button, which it hid. Measured over sixty live games with the pen kept and the
 conversations delegated: 0.00 visits to the coached mound against 1.07 to the
@@ -70,7 +77,13 @@ opponent's. It ran the other way too, the engine holding conversations behind th
 back of a coach who had delegated only his pen. The other switch was a
 keep-position promise judged off `p.pos`, the card label AUTO overwrites when a
 man covers a spot: 14.4% of hitters wear one at any moment, so a shortstop
-filling in at second for an afternoon read as broken.
+filling in at second for an afternoon read as broken. The third was found on
+September 12 and was the largest: the `recruiting` row has read "Your
+coordinator works the board" since the depth model went in, and `handles` was
+never once asked about it at any of sixteen call sites — so a coach who turned
+it off did not delegate his recruiting, he lost it, and his class signed
+somewhere else. A row in that catalogue is a promise and nothing in the type
+system checks that anybody kept it.
 
 **Development means something** (§73, §75). Reported after fifteen seasons: an A
 potential grew 3 ovr just like a C potential each year. Headroom had been drawn
@@ -79,10 +92,25 @@ plus a constant and 72.6% of a class sat in two adjacent bands. Headroom is a
 roll now, its width set by how raw a man already is and its mean held exactly by
 construction, so league talent cannot move. Then two more asks: five-stars who
 are already finished go 2.2% to 10.6%, and the S grade is rare, 12.4 a class down
-to 5.5. The generation cap had been a wall — 9.9 men a class came out at exactly
+to about 5.9 (§77.4 re-measured it either side of the ladder below: 5.7, then
+5.9). The generation cap had been a wall — 9.9 men a class came out at exactly
 94, three quarters of every S, because truncation is what makes a top dense — and
 a landing strip replaced it. S mostly belongs to projects now: the lowest overall
 carrying one is 30, and a one-star holds one about once in twenty classes.
+
+**A star rating is two numbers** (§77). Reported from the same play session: one
+and two star recruits arrived too good — a two star averaged 45.0 against a three
+star's 51.2, and eighteen percent of them turned up at 50 or better, which is the
+three star median. The fix had to be made in two places at once, and that is the
+interesting part: stars are derived rather than stored, so the ladder in
+`generateClass` decides how many men are in a band and `starsFor`'s thresholds
+decide what the band is worth. Lowering the ladder alone would have made the
+country worse while leaving a two star exactly as good as he was. Both came down
+by matching amounts, graduated toward the bottom — 1★ 37.4 → 33.3, 2★ 45.0 →
+41.6, 3★ 51.2 → 49.9, four and five untouched, and two stars at 50+ from 18.2%
+to 6.3%. The outliers asked for in the same breath were not built: they already
+fall out of the ±26 projection error in `serviceScore`, which is what a steal
+**is**, and a second source would only blur the one that works.
 
 **Alumni in the majors** (§74). Three of the four per-year rolls in `proCareer`
 were not rolls — the hash's high bits barely moved when the year did, so a man
@@ -93,16 +121,30 @@ about sixteen; the All-Star coin reads talent now, so 11.2% of big-leaguers ever
 make a team, at 1.18 summers apiece; and a summer says what it was, from MVP
 voting down to a roster spot hung on to and a level repeated in the minors.
 
+**And the climb takes a summer longer** (§79, §80.1). `proCareer` tracked how
+many summers a man had stood at a level and consulted it only for the flavour
+line, so a good enough man cleared a level a year, every year: drafted in 2030,
+in the big leagues in 2032. The roll is damped in his first summer somewhere
+now, and every round arrives a year later — a first rounder takes three summers
+rather than two. The coupling is the actual work: washing out is rolled once a
+summer, so a longer climb is also more chances for it to end, and slowing the
+promotions alone took the share who ever reach the top from 44.9% to 29.0%.
+Base rate and wash-out age term moved together, so everybody arrives later and
+**the same men arrive** — 44.7%. Some of them then stay in the game: an
+undrafted senior takes his old high school at 8%, and a professional whose
+playing days end is hired at 6.6% out of Rookie ball rising to 19.2% out of the
+majors, because the résumé is the qualification.
+
 The engine is calibrated multi-seed to the modern NCAA D1 environment — .280 /
-.384 / .438, a home run a game, 6.73 runs — and **1,477 tests across 86 files**,
+.384 / .438, a home run a game, 6.73 runs — and **1,519 tests across 88 files**,
 from 1,369 across 77 at the 0.8.0 line, guard it: determinism goldens,
 calibration as a regression test, a baseball-correctness suite for the scorer's
 rules, and a concurrency suite pinning the store's double-press guards.
 
 **And one thing is measured and not fixed** (§71). Nothing had ever measured
 year five. The league gains two runs a game over its first four seasons and then
-holds there — 6.9–7.1 in year one, 8.6–9.1 from year five, batting average .280
-to .310 and slugging .441 to .513 — because `makeTeam` never ages the roster it
+holds there — 6.9–7.0 in year one, 8.5–8.9 from year five, batting average .278
+to .311 and slugging .435 to .508 — because `makeTeam` never ages the roster it
 generates, so a generated senior is no better than a freshman and the engine is
 calibrated against a population that exists on day one of a career and never
 again. Guarded by `tests/calibration-seasons.test.ts` and filed at `06` §AC.1b
@@ -111,6 +153,30 @@ version of that guard measured a league of walk-ons, because its harness was cut
 from the lines directly above a block headed "KNOWN WRONG — do not read numbers
 off this file yet"; a harness measuring nothing looks exactly like a harness
 measuring something reassuring.
+
+**A play session produced twenty-six items, and an audit of it produced three
+more** (§76–§80). Most were what a play session finds: injured pitchers showing
+no indicator in the rotation and bullpen lists, a staff sheet that would not
+scroll to its own button, a letter that opened the wrong table, a board that did
+not say the year. Four were systems. Relievers were eligible for every honour
+and could win none of them, because every pitching award ranks on a number
+linear in innings — Reliever of the Year now has a floor of half a team's games
+and prices a save at half a run. The recruiting board can be handed to your
+coordinator, a switch that had promised exactly that since the depth model went
+in and reached nothing. One- and two-star recruits arrived too good, which
+turned out to need two changes at once — the ladder decides how many men are in
+a band and the thresholds decide what the band is worth. And a coach who missed
+the postseason had it all decided for him in a single press.
+
+**The audit is the part worth recording.** Every item was re-checked against the
+code and every DONE verdict handed to a second pass told to prove it wrong. It
+overturned two, both of them things a commit message had already called
+finished: the alumni request was one sentence asking for a degree *and* for some
+of them to become coaches, and only the degree had shipped; and the tonight card
+had stopped jumping by 28.4px while the band beside it went on jumping by 35.3.
+Two items are recorded at §80.5 as open rather than quietly closed — a
+two-second freeze whose cause is still unverified, and a back press from a
+letter-opened board that lands under the inbox rather than on it.
 
 **It installs.** `npm run apk` builds a real Android package — Capacitor over
 the same bundle the browser runs, no server, offline. The toolchain lives
@@ -154,7 +220,10 @@ good.
 | [12-test-triage-september.md](docs/12-test-triage-september.md) | The September phone report, sorted into batch P and stages 20–24 |
 | [13-phone-report-pending.md](docs/13-phone-report-pending.md), [14-apk-report-triage.md](docs/14-apk-report-triage.md) | The APK report: the screenshots with their marks, and the thirty-eight items, all closed |
 | [INTERACTION_DESIGN.md](docs/INTERACTION_DESIGN.md) | **The interface rulebook.** Three kinds of screen, and what a decision must show before it offers a verb. Read before adding any screen |
-| [TESTING_SHORTCUTS.md](docs/TESTING_SHORTCUTS.md) | The three test aids in the build, and the rule that they leave together |
+| [15-v1-release-audit.md](docs/15-v1-release-audit.md) | The release audit: what a v1.0 build has to answer before it ships |
+| [16-store-listing.md](docs/16-store-listing.md) | The store copy, and every App-content answer the console asks for |
+| [privacy.md](docs/privacy.md) | The privacy policy the listing points at |
+| [TESTING_SHORTCUTS.md](docs/TESTING_SHORTCUTS.md) | The three test aids that **used** to be in the build, why they left on September 8, and the one flag still standing |
 | [AUDIT_IMPLEMENTATION.md](AUDIT_IMPLEMENTATION.md), [VISUAL_POLISH_PASS.md](docs/VISUAL_POLISH_PASS.md), [REFINEMENT_PASS_2026-09-05.md](docs/REFINEMENT_PASS_2026-09-05.md), [SEASON_FLOW_REDESIGN_2026-09-05.md](docs/SEASON_FLOW_REDESIGN_2026-09-05.md), [PORTAL_CREATION_RECRUITING_FIX_PASS.md](docs/PORTAL_CREATION_RECRUITING_FIX_PASS.md) | The interface pass's own notes, in the order they were written. `05` §50 is what actually reached the code |
 
 ## Run it
@@ -236,7 +305,7 @@ sim.ts        the headless CLI, kept forever
 | `src/engine/game.ts` | Nine innings, baserunning, steals, errors, fielders, box score |
 | `src/engine/season.ts` | Schedule, standings, RPI, season statistics, tiebreakers, the career ledger |
 | `src/engine/postseason.ts` | Conference tournaments, selection, regionals, Omaha, awards |
-| `src/engine/recruiting.ts` | The three week window, scouting reports, priorities, commitments |
+| `src/engine/recruiting.ts` | The twelve week window, scouting reports, priorities, commitments |
 | `src/engine/progression.ts` | Offseason development, departures, walk-ons, roster turnover |
 | `src/engine/draft.ts` | Eligibility, what the clubs can see, the round, talking him out of it |
 | `src/engine/program.ts` | Prestige, coach skills, the board, job offers, getting fired |

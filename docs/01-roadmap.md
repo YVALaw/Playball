@@ -6,7 +6,9 @@ interface (`05` §50), the engine (§51) and prestige (§52) · **17 is god mode
 now, not the store**, and it closed September 6 with 18b, 24 and 26 · **stage
 27, the rules of the world, shipped September 11**, ahead of the ship rather
 than after it · **an outside audit of twenty-three findings checked and acted
-on September 11** (`05` §69)
+on September 11** (`05` §69) · **a play session's twenty-six items answered
+September 12, and an audit of that pass found three of them only half done**
+(`05` §76–§80)
 **Supersedes:** v3, which by the end was wrong about most of what it claimed
 **Companion docs:** `05-systems-reference.md` for what the game does today,
 `06-backlog.md` for what it is going to do and why, `02-sim-engine-spec.md` for
@@ -43,23 +45,28 @@ You are the head coach of a college baseball program. Recruit high schoolers,
 develop them, survive the MLB draft stealing your best arms every June, and chase
 a national title. Games resolve at bat by at bat with text play by play over a 3D
 diamond. Ninety-six programs in eight conferences of twelve, a forty-five game
-regular season — thirty-four if you set the world that way — and a career an
+regular season — thirty-four or fifty-six if you set the world that way — and a career an
 athletic director can end. Ships to Android.
 
 ## Where it stands
 
-**v0.8.0, and ten commits past it.** The version was cut September 11, three
+**v0.8.0, and twenty-six commits past it.** The version was cut September 11, three
 hundred and fifty commits past the v0.7.4 line: five feature blocks, an audit
 pass, an interface overhaul, the guided first season, and the September 10
-program-and-staff pass. September 11 and 12 went on an outside audit, the rules
-of the world, and measuring things nobody had measured.
+program-and-staff pass. September 11 went on an outside audit, the rules of the
+world, and measuring things nobody had measured. September 12 went on a
+twenty-six item report off a play session — the star ladder and its thresholds
+brought down together, the recruiting board delegated to a coordinator, a hurt
+arm that says so, a trainer's room, Reliever of the Year, a fifty-six game
+schedule and the fifth arm it costs — and then on auditing that pass item by
+item, which found three of the twenty-six only half done (`05` §80).
 
 Take a job from a desk of genuine offers, play or simulate a season, manage a postseason run a
 game at a time on a full-screen field with a defense on it, hand out awards,
 spend coaching points, read a recruiting board that is honest about being
 vague, argue the draft out of taking your junior, and start again in February —
 against ninety-five rival programs run by men with careers of their own.
-Eighty-six test files and 1,477 tests cover it, calibration among them and
+Eighty-eight test files and 1,519 tests cover it, calibration among them and
 since September 11 a five-season guard on what the league scores, so the engine
 cannot drift without something failing.
 
@@ -85,17 +92,27 @@ lightness, and all ninety-six clear the bar on both papers.
 **The rules of the world shipped** — stage 27, which the September 6 money talk
 had booked for after the ship (§70). Five switches set at NEW CAREER and fixed
 for the life of the career: injuries full, half or none; the transfer portal;
-realignment; poaching; and a season of forty-five games or thirty-four. They
+realignment; poaching; and a season of forty-five games, thirty-four or
+fifty-six. They
 live on `season.rules` in the engine rather than in the depth catalogue,
 because they change the simulation for all ninety-six programs at once, which
 is the one thing a depth toggle may never do — `depth.ts`'s own header names
 them as the counter-example to everything in it. Folded at the foot of the
 how-you-play step. A world with no rules written on it is object-identically
-the world that was always there. The short season is two-game weekends: it
-keeps the full conference round robin and every crossover game, and costs the
-fourth starter his slot.
+the world that was always there. Both departures keep the full conference round
+robin and every crossover game; what moves is the weekend, and with it the
+staff. The short season is two-game weekends and costs the fourth starter his
+slot. The long one is four-game weekends — eleven of them plus the twelve
+crossovers, the fifty-six Division I actually plays — and costs a **fifth**
+starter, because `buildSchedule` starts the midweek arm in the slot after the
+weekend's and with only four `startableSlot` wraps back onto the Friday ace
+(`rotationSizeFor`, September 12).
 
-**Two switches reached nothing** (§72). MOUND VISITS promises that your
+**Three switches reached nothing** (§72, and the third found September 12 at
+§78.1 — the `recruiting` row has read "Your coordinator works the board" since
+the depth model went in, and `handles` was never once asked about it at any of
+sixteen call sites, so a coach who turned it off did not delegate his
+recruiting, he lost it). MOUND VISITS promises that your
 pitching coach decides when to go out. He never did — the engine gated the
 automatic visit on the bullpen key, and the mound-visit key's only reader was a
 button it hides. Measured over sixty live games: 0.00 visits to the coached
@@ -129,6 +146,16 @@ sixteen in the real world; All-Star now reads talent, so 11.2% of big-leaguers
 ever make a team, at 1.18 summers apiece; and a summer says what it was, from
 MVP voting down to hanging on to a roster spot, a season lost to the training
 room, or a level repeated in the minors.
+
+Two more things landed on it September 12. The climb takes a summer longer:
+`proCareer` tracked how many summers a man had stood at a level and never
+consulted it, so a first rounder reached the big leagues in two — three now,
+and every round a year later, with the wash-out age term moved in step so that
+**the same men still arrive** (44.9% to 44.7% over four thousand careers). And
+some of them stay in the game, which was the half of the original request that
+had been dropped: an undrafted senior takes his old high school at 8%, a
+professional whose playing days end is hired at 6.6% out of Rookie ball rising
+to 19.2% out of the majors (§79, §80.1).
 
 **One thing the two days measured and did not fix**, and it is the largest
 known open item: the league gains two runs a game over its first four seasons
@@ -213,7 +240,9 @@ Ticked means opened and checked, August 2026. Detail on any line is in
 **The season and the world** — §8
 
 - [x] Ninety-six programs, eight conferences of twelve, forty-five games — or
-      thirty-four, on two-game weekends, in a career whose rules say so (§70)
+      thirty-four on two-game weekends, or fifty-six on four-game weekends with
+      a five-man rotation, in a career whose rules say so (§70, and the third
+      length added September 12)
 - [x] Schedule generator, day-by-day loop, standings, leaderboards, RPI
 - [x] Conference tournaments, regionals, a national final, and awards decided by
       how loud the story was rather than by a precedence list — §7
@@ -465,10 +494,16 @@ faults were taken the same day (`05` §66), five shallow systems on September 11
 (§67) and the rules of the world with them (§70).
 
 **The largest open item on that page is the run environment, and it is measured
-rather than suspected.** A fresh league opens at 6.9–7.1 runs a game against an
-NCAA Division I target of 6.73, gains two runs over four seasons and holds
-there — 8.6–9.1 from year five, flat to year ten, on both seeds measured. Every
-rate inflates with it: batting average .280 to .310, slugging .441 to .513. The
+rather than suspected.** A fresh league opens at 6.9–7.0 runs a game against an
+NCAA Division I target of 6.73, gains nearly two runs over four seasons and
+holds there — 8.5–8.9 from year five, flat to year ten, on both seeds measured.
+Every rate inflates with it: batting average .278 to .311, slugging .435 to
+.508. (Re-recorded September 12: the recruiting ladder took about a fifth of a
+run off the plateau — 8.77 → 8.55 on one seed, 8.87 → 8.73 on the other — and
+all fourteen calibration bands still held without re-fitting. Which is itself
+the finding: **the climb is not built out of where freshmen start, it is built
+out of what four winters of `develop()` do to them**, so whoever recalibrates
+should not spend more time on the recruiting ladder. `05` §77.4.) The
 cause is that `makeTeam` never ages the roster it generates, so a generated
 senior is no better than a freshman and the engine is calibrated against a
 population that exists on day one of a career and never again. It is guarded by
@@ -572,6 +607,8 @@ live in `05-systems-reference.md` §§37–42. In brief:
 | — | Sep 5 | **The interface pass** — every screen onto one interaction language; Program as a dashboard, Budget as a workspace, Decisions sheets, the offseason roadmap, the postseason frame; assistants develop, a coaching tree, pipelines, facility levels, replay. `05` §50, `06` §X |
 | 27 | Sep 11 | **The rules of the world**, ahead of the ship rather than after it — five switches at NEW CAREER, stamped on `season.rules` and fixed for the career. `05` §70 |
 | — | Sep 11–12 | **The audit, and the measurement days** — the outside audit checked and acted on, June given its month back, the best arm pitching the ninth, two switches that reached nothing, headroom made a roll, S made rare, a professional career rolled year by year instead of stamped once. `05` §66–§75 |
+| — | Sep 12 | **The report of twenty-six** — a play session's list, answered. A hurt arm says so and the trainer's room sits at the foot of the card; Reliever of the Year, because a reliever was eligible for every honour and could win none; a fifty-six game schedule and the fifth arm it costs; one press per tier for a coach only watching; NEEDS counting the men who are leaving; the star ladder and its thresholds brought down together; the board delegated to a coordinator; the climb to the majors a summer longer. `05` §76–§79 |
+| — | Sep 12 | **The audit of that pass** — every item re-checked against the code and every DONE verdict handed to a second pass told to prove it wrong. It overturned two: a request that asked for a degree *and* for some alumni to become coaches had shipped only the degree, and the tonight card had stopped jumping by 28.4px while the band beside it went on jumping by 35.3. Two items recorded as open rather than quietly closed. `05` §80 |
 
 **What remains, in execution order:** ~~**18b**~~ shipped September 6 —
 the emulator showed the back gesture leaving the app from any depth, and

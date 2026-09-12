@@ -76,7 +76,21 @@ export interface SystemDef {
    * Only two are false today, and that is not timidity — it is the honest
    * answer to "which of the things this game currently asks you to do would a
    * real head coach delegate?" A bench coach fills out a card and a pitching
-   * coach runs a bullpen. Nobody delegates their recruiting board.
+   * coach runs a bullpen.
+   *
+   * This used to end "Nobody delegates their recruiting board", and that
+   * sentence outlived its truth. `recruiting` is still `casual: true` — no
+   * preset hands the board over, so the claim about the DEFAULT stands — but
+   * since 2026-09-12 (`05` §78) a coach can turn the row off and his
+   * coordinator actually works it, at `delegateEffort` of the week he would
+   * have had. Before that the row was decoration: `handles` was never once
+   * asked about `recruiting` at any of sixteen call sites, so turning it off
+   * did not delegate his recruiting, it deleted it.
+   *
+   * Which is the warning worth leaving here rather than the note: a row in
+   * this catalogue is a promise, and nothing in the type system checks that
+   * anybody kept it. If you add one, grep for `handles(` and make sure your
+   * key is in the list.
    */
   casual: boolean;
   /**
