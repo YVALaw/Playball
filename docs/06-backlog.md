@@ -3284,8 +3284,11 @@ would matter to somebody playing.
   five-star a safe bet; the alternative is a pure forecast, where an A may be a
   raw 40 with thirty points of room. Those are different games. **Decision
   owed, then medium.**
-- **S is not rare and the comment said it was.** *(Measured 2026-09-11,
-  `05` §73.5. Comment corrected; threshold left alone.)* `potentialGrade`
+- ~~**S is not rare and the comment said it was.**~~ **Taken 2026-09-12,
+  `05` §75** — 12.4 a class to 5.5, and the cap pile-up from 9.9 to 0.2. The
+  threshold was never the problem: the cap was a wall, and truncation is what
+  makes a top dense. Original note below. *(Measured 2026-09-11,
+  `05` §73.5.)* `potentialGrade`
   claimed the 92 floor was "two or three men in the entire country in a year".
   It was 8.4 before the headroom change and is 12.4 after — the same nine that
   moving the floor from 85 was meant to fix. The cause is

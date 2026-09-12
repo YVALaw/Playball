@@ -58,6 +58,65 @@ const REACH_RAW = 3.0;
 const REACH_FINISHED = 1.6;
 
 /**
+ * The finished ones — the bust.
+ *
+ * Reported: *"not all 5 star recruits are supposed to be high potential... Just
+ * like in real life there are players projected to be 1 pick overall and end up
+ * not paying out and never developing."* A literal five-star with a D ceiling
+ * cannot exist — he averages 68 overall and a ceiling below current ability is
+ * not a ceiling — so the faithful reading is the one a scout would recognise:
+ * sold as elite, and already finished.
+ *
+ * `reach` alone cannot make him, and that is why the two asks read as
+ * opposites. It is one knob welded to two effects: the roof of a man's headroom
+ * is `room * reach`, and the exponent shaping his roll is `reach - 1`. At 1.6
+ * that exponent is 0.6, which skews his roll toward the TOP of its range, so
+ * eleven points of growth arrived whoever he was and 2.4% of five-stars came
+ * out finished. Raising the reach to bend that also raises his roof, which
+ * pushes more polished men past 92 and makes the S grade commoner.
+ *
+ * Split the roll into two lobes and the roof and the shape come apart. `BUST`
+ * of the finished men roll on a lobe topping out at `BUST_TOP` of the roof —
+ * nought to two and a half points for a freshman — and the rest roll on the old
+ * power curve with its exponent solved so the mean still comes out at `room`
+ * exactly. **The roof never moves.**
+ *
+ * `polish * polish` keeps the lobe off the raw kids. A forty-overall freshman
+ * with a forty ceiling is not a story about a prospect, it is a bug.
+ */
+const BUST = 0.19;
+const BUST_TOP = 0.15;
+
+/**
+ * The top of the scale is a landing strip, not a wall.
+ *
+ * `GENERATED_POTENTIAL_CAP` was a wall, and a wall is what made the best grade
+ * in the game common. Measured: **9.9 men a class came out at exactly 94** —
+ * three quarters of every S — because a distribution reaching past 110 was
+ * being folded flat onto one number. Truncation is what makes a top dense, and
+ * no threshold underneath it can be raised far enough to thin that out without
+ * deleting the band; raising the S floor from 85 to 92 bought almost nothing
+ * for exactly this reason.
+ *
+ * So the last nine points are spent smoothly instead. Below 85 a ceiling is
+ * untouched. From there the distance left to the cap is spent exponentially: an
+ * uncapped 88 lands at 87.6, a 92 at 89.9, a 94 at 90.7, a 100 at 92.3, a 110
+ * at 93.4, and nothing ever arrives. Strictly increasing, which is the point —
+ * the wall said a generational arm and a merely excellent one were the same
+ * number, and this says which is which.
+ *
+ * Read off the cap rather than written down, so moving the cap moves the strip
+ * with it and the two can never disagree.
+ */
+const SOFT_LANDING = 9;
+
+function land(ceiling: number): number {
+  const from = GENERATED_POTENTIAL_CAP - SOFT_LANDING;
+  if (ceiling <= from) return ceiling;
+  return from + SOFT_LANDING * (1 - Math.exp((from - ceiling) / SOFT_LANDING));
+}
+
+/**
  * How much room a player has left to grow. Freshmen carry the most and are the
  * whole reason to recruit rather than just keep upperclassmen — a raw 45 with a
  * 62 ceiling is worth more to a program than a finished 52.
@@ -78,8 +137,24 @@ function projectPotential(rng: Rng, overall: number, cls: ClassYear): number {
   const room = ROOM[cls];
   const polish = Math.max(0, Math.min(1, (overall - RAW_AT) / (FINISHED_AT - RAW_AT)));
   const reach = REACH_RAW + (REACH_FINISHED - REACH_RAW) * polish;
+  const done = polish * polish;
+  const bust = BUST * done;
+  const lid = BUST_TOP * done;
+  /*
+    The exponent that holds E[headroom] = room EXACTLY, whatever the roof and
+    the bust lobe are: the two-lobe generalisation of E[R * u^k] = R/(k+1).
+
+    Solve E[f] = 1/reach for f the two-piece shape below, and this falls out.
+    At bust = lid = 0 it is `reach - 1` to the digit, which is the line this
+    replaces — so a raw man's roll is untouched, and the mean-neutrality that
+    lets any of this be shipped against an already-hot run environment is
+    preserved by construction rather than by tuning.
+  */
+  const shape = (1 - bust) * (1 - lid) / (1 / reach - lid * (1 - bust / 2)) - 1;
   const u = 1 / (1 + Math.exp(-1.702 * gauss(rng)));
-  const headroom = room * reach * Math.pow(u, reach - 1);
+  const headroom = room * reach * (u < bust
+    ? lid * (u / bust)
+    : lid + (1 - lid) * Math.pow((u - bust) / (1 - bust), shape));
 
   /**
    * The raw ones.
@@ -119,7 +194,10 @@ function projectPotential(rng: Rng, overall: number, cls: ClassYear): number {
   // and nowhere else. A store player is built by computing his ceiling without
   // this clamp; see GENERATED_POTENTIAL_CAP for why the number is reserved
   // rather than the letter.
-  return Math.min(GENERATED_POTENTIAL_CAP, Math.round(overall + headroom + raw));
+  // The `Math.min` stays although `land` never reaches the cap: this is the
+  // single funnel every generated player passes through, and the note above
+  // GENERATED_POTENTIAL_CAP is the thing that says so.
+  return Math.min(GENERATED_POTENTIAL_CAP, Math.round(land(overall + headroom + raw)));
 }
 
 /**

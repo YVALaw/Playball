@@ -47,14 +47,19 @@ const ratingOf = (p: Player): number =>
 const mean = (xs: number[]): number => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 
 /**
- * Four winters of three worlds, which is enough men for the S band to mean
+ * Four winters of six worlds, which is enough men for the S band to mean
  * something. One world gives about twenty S-grade man-winters and a standard
  * error of ±2 on a gain of 11 — wide enough to reverse the ladder by accident,
  * which is exactly the mistake this file exists to stop somebody repeating.
+ *
+ * It was three worlds until the landing strip landed (`05` §75). Making the S
+ * grade rare — which is what it was for — halved that band, so the sample had
+ * to be bought back rather than the threshold lowered. A guard against reading
+ * noise is worthless the moment it is relaxed to accommodate noise.
  */
 interface Step { grade: string; gap: number; gain: number }
 const steps: Step[] = [];
-for (const seed of [4242, 909, 1717]) {
+for (const seed of [4242, 909, 1717, 2103, 31337, 77]) {
   const season = createSeason(makeRng(seed), undefined, CONFERENCES);
   const everybody = (): Player[] => season.teams.flatMap((t) =>
     [...t.team.lineup, ...t.team.bench, ...t.team.rotation, ...t.team.bullpen] as Player[]);
@@ -149,6 +154,71 @@ describe('a recruiting class', () => {
     expect(bigRoom(3)).toBeGreaterThan(0.20);
     expect(bigRoom(5)).toBeLessThan(0.06);
     expect(bigRoom(3)).toBeGreaterThan(bigRoom(5) * 4);
+  });
+
+  it('sells some of its best recruits as elite and delivers a finished man', () => {
+    /*
+      Reported: *"not all 5 star recruits are supposed to be high potential,
+      there should be some that could be 5 star recruits but still be D. Just
+      like in real life there are players projected to be 1 pick overall and
+      end up not paying out and never developing."*
+
+      A literal five-star with a D ceiling cannot exist — he averages 68
+      overall and a ceiling below current ability is not a ceiling — so what is
+      asserted is the faithful version: sold as elite, and already finished.
+      2.2% before the bust lobe, 10.6% after.
+    */
+    const five = potentials.filter((r) => r.stars === 5);
+    expect(five.length).toBeGreaterThan(200);
+    const finished = five.filter((r) => gapOf(r) <= 2).length / five.length;
+    expect(finished, `${(100 * finished).toFixed(1)}% of five-stars were finished`)
+      .toBeGreaterThan(0.06);
+    expect(finished).toBeLessThan(0.20);
+    // And the ladder still slopes: a one-star is likelier to be finished than
+    // a five-star, or the bust lobe has eaten the thing it was meant to spice.
+    const shareAt = (s: number) => {
+      const set = potentials.filter((r) => r.stars === s);
+      return set.filter((r) => gapOf(r) <= 2).length / Math.max(1, set.length);
+    };
+    expect(shareAt(1)).toBeGreaterThan(shareAt(5));
+  });
+
+  it('keeps the best grade in the game rare', () => {
+    /*
+      Reported: *"About S, it should be rare, I've noticed it appears a lot, I
+      was expecting like 5 to 10 per class and 10 being too many."* It was
+      12.4 a national class; it is 5.5.
+
+      The cause was never the threshold. `GENERATED_POTENTIAL_CAP` was a wall,
+      and a distribution reaching past 110 folded flat onto one number put 9.9
+      men a class at exactly 94 — three quarters of every S. Truncation is what
+      makes a top dense.
+    */
+    const classes = 6;
+    const S = potentials.filter((r) => r.pot >= 92).length / classes;
+    expect(S, `${S.toFixed(1)} S-grade men a class`).toBeGreaterThan(3);
+    expect(S, `${S.toFixed(1)} S-grade men a class`).toBeLessThan(9);
+    // The wall is gone, which is the part a threshold could never have fixed.
+    const atCap = potentials.filter((r) => r.pot === 94).length / classes;
+    expect(atCap, `${atCap.toFixed(1)} men a class pinned at the cap`).toBeLessThan(1.5);
+  });
+
+  it('lets a raw man carry the best ceiling in the country', () => {
+    /*
+      Reported: *"those S potential do not have to be 5 star recruits, it could
+      even be a 25 ovr 1 star that becomes a superstar."* Before this, not one
+      man under 55 overall and not a single one-star in ten classes carried an
+      S ceiling — the top of the board was the only place it lived.
+    */
+    const S = potentials.filter((r) => r.pot >= 92);
+    expect(S.length).toBeGreaterThan(10);
+    // Most of them are projects, not finished articles.
+    const raw = S.filter((r) => r.ovr < 55).length / S.length;
+    expect(raw, `only ${(100 * raw).toFixed(0)}% of S men are raw`).toBeGreaterThan(0.5);
+    // And the floor reaches a long way down.
+    expect(Math.min(...S.map((r) => r.ovr))).toBeLessThan(45);
+    // A five-star does not own the grade.
+    expect(S.filter((r) => r.stars === 5).length / S.length).toBeLessThan(0.4);
   });
 
   it('keeps the ceiling a forecast rather than a restatement of ability', () => {

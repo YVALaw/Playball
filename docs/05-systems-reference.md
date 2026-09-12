@@ -9805,6 +9805,103 @@ summer reading *"Another summer at Double-A."* Pinned in `pro-career.test.ts`,
 which asserts among other things that **nobody has an entire career of All-Star
 summers**.
 
+## 75. The bust lobe and the landing strip — **September 12 2026**
+
+Two asks that read as opposites, and were not.
+
+> *"not all 5 star recruits are supposed to be high potential, there should be
+> some that could be 5 star recruits but still be D. Just like in real life
+> there are players projected to be 1 pick overall and end up not paying out and
+> never developing."*
+
+> *"About S, it should be rare, I've noticed it appears a lot, I was expecting
+> like 5 to 10 per class and 10 being too many."*
+
+And a third, arriving late:
+
+> *"those S potential do not have to be 5 star recruits, it could even be a 25
+> ovr 1 star that becomes a superstar."*
+
+### 75.1 Why they looked like opposites
+
+`reach` is one knob welded to two effects. The roof of a man's headroom is
+`room * reach`; the exponent shaping his roll is `reach - 1`. At the polished
+end, reach 1.6 gives an exponent of 0.6, which skews a five-star's roll toward
+the **top** of its range — eleven points of growth arrived whoever he was, and
+only 2.2% of five-stars came out finished.
+
+Raising reach to bend that also raises his roof, which pushes more polished men
+past 92 and makes the S grade commoner. So the first ask appeared to cost the
+second.
+
+### 75.2 The bust lobe: shape without roof
+
+Split the roll into two lobes and the two effects come apart. `BUST` (0.19) of
+the finished men roll on a lobe topping out at `BUST_TOP` (0.15) of the roof —
+nought to two and a half points for a freshman — and the rest roll on the old
+power curve with its exponent **solved** so the mean still comes out at `room`
+exactly:
+
+```
+shape = (1 - bust)(1 - lid) / (1/reach - lid(1 - bust/2)) - 1
+```
+
+That is the two-lobe generalisation of `E[R·u^k] = R/(k+1)`, and at
+`bust = lid = 0` it is `reach - 1` to the digit — so a raw man's roll is
+untouched and the mean-neutrality that lets any of this ship against an already
+hot run environment survives by construction rather than by tuning. **The roof
+never moves.** `polish²` keeps the lobe off the raw kids: a forty-overall
+freshman with a forty ceiling is not a story about a prospect, it is a bug.
+
+### 75.3 The landing strip: the cap was a wall
+
+`GENERATED_POTENTIAL_CAP` clamped, and a clamp is what made the best grade in
+the game common. Measured: **9.9 men a class came out at exactly 94** — three
+quarters of every S — because a distribution reaching past 110 was being folded
+flat onto one number. Truncation is what makes a top dense, and no threshold
+underneath it can be raised far enough to thin that without deleting the band.
+Raising the S floor from 85 to 92 bought almost nothing for exactly this reason
+(§72's correction to `potentialGrade`).
+
+So the last nine points are spent smoothly. Below 85 a ceiling is untouched;
+above it the distance left is spent exponentially. An uncapped 88 lands at 87.6,
+a 92 at 89.9, a 94 at 90.7, a 100 at 92.3, a 110 at 93.4, and nothing ever
+arrives. Strictly increasing, which is the point — the wall said a generational
+arm and a merely excellent one were the same number, and this says which is
+which. Read off the cap rather than written down, so the two can never disagree.
+
+### 75.4 Measured, twenty national classes
+
+| | before | after | wanted |
+| --- | --- | --- | --- |
+| S grade per class | 12.4 | **5.5** | 5–8 |
+| men at exactly the cap | 9.9 | **0.2** | gone |
+| five-stars already finished | 2.2% | **10.6%** | 8–15% |
+| mean headroom | 12.93 | **12.85** | unmoved |
+| three-star gems, 20+ room | 30.2% | **29.8%** | above 20% |
+
+The finished ladder still slopes the right way — 1★ 35.3%, 2★ 22.5%, 3★ 13.3%,
+4★ 11.5%, 5★ 10.6% — so a star still buys a man who is good **today**. It no
+longer buys one who is better **later**, which is the trade the first ask asked
+for in as many words.
+
+And the third ask, which the design work was not told about and which the fix
+happened to serve: S men by star are now **1★ 1, 2★ 12, 3★ 48, 4★ 33, 5★ 15**,
+the lowest overall carrying an S ceiling is **30**, and 75 of 109 are under 50
+overall. Before, no one-star in ten classes held one. The grade belongs to
+projects now rather than to the top of the board.
+
+### 75.5 What it cost
+
+One test moved and it was the test: `potential-forecast.test.ts`'s guard that
+the S band holds enough men to assert about. Making S rare halved that band, so
+the sample was bought back with three more worlds rather than the threshold
+lowered — **a guard against reading noise is worthless the moment it is relaxed
+to accommodate noise.**
+
+No golden was re-recorded. The change spends the same single `gauss` in the same
+slot, so draw order is untouched.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code
