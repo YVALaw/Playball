@@ -1462,6 +1462,45 @@ export function seasonAwards(season: SeasonState): Award[] {
       `${s.w}-${s.l} / ${era(s).toFixed(2)} ERA / ${s.k} K / ${inningsPitched(s).toFixed(1)} IP`);
   }
 
+  /*
+    Reliever of the Year.
+
+    Reported 2026-09-12: "in awards we also have to add a reliever of the year,
+    right now being an RP does not have any award." Measured, and he is right in
+    a stronger sense than he put it: nothing filters on role anywhere, so a
+    reliever is ELIGIBLE for every honour in the game and can win none of them.
+    Player of the Year excludes pitchers outright; every pitching honour —
+    Pitcher of the Year, the three All-Conference arms, the pitching half of
+    Freshman of the Year — ranks on `pitcherValue`, which is linear in innings,
+    and a bullpen ceiling of forty-odd innings cannot out-score a rotation's
+    eighty. The Season Review's own MVP gates at thirty innings and scores wins.
+
+    Eligibility is `gs === 0` — he never started — and half a team's games in
+    innings, with no bypass. Measured over 1,152 reliever seasons in two worlds:
+    the median bullpen arm throws 31 innings, the ninetieth percentile 42 and
+    the busiest 64. A floor of `gp * 0.5` is 22.5 innings in a forty-five game
+    year, which keeps the great majority of real relievers and excludes the
+    low-usage arm who happened to be on the mound for eleven ninth innings. An
+    earlier draft let eight saves bypass the floor and promptly crowned men with
+    10.3 and 14.3 innings.
+
+    Scored in the same currency as every other pitching honour, `pitcherValue`,
+    plus half a run per save. The weight is stated here rather than buried
+    because it decides the whole character of the award: `pitcherValue` for a
+    good 31-inning reliever is about 11, so at a full run a save the fifteen-save
+    man simply wins every year and a 3.54 ERA was enough to take it. At a half it
+    is worth about seven — real weight, and still answerable by a fireman who
+    threw twice the innings.
+  */
+  const relievers = [...season.pitching.entries()].filter(([, s]) =>
+    s.gs === 0 && inningsPitched(s) >= gp * 0.5);
+  const roy = best(relievers, (s) => pitcherValue(s) + s.sv * 0.5);
+  if (roy) {
+    const [id, s] = roy;
+    make('Reliever of the Year', id,
+      `${s.sv} SV / ${era(s).toFixed(2)} ERA / ${s.k} K / ${inningsPitched(s).toFixed(1)} IP`);
+  }
+
   const freshHitters = hitters.filter(([id]) => roster.get(id)?.classYear === 'FR');
   const freshPitchers = pitchers.filter(([id]) => roster.get(id)?.classYear === 'FR');
   const bestFreshHitter = best(freshHitters, ops);

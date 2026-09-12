@@ -266,6 +266,16 @@ export function honourRuns(titles: readonly string[]): number {
     // cannot collide with a player today — ids come off the generator's stream
     // position — and naming the two awards means it never can.
     else if (t === 'Player of the Year' || t === 'Pitcher of the Year') runs += 12;
+    /*
+      Eight, between the freshman's five and the two big twelves.
+
+      A title this table has never heard of scores nothing, so a new award has
+      to be priced here or a career spent winning it counts for nought on the
+      ballot. Eight rather than twelve because the season behind it is forty
+      innings rather than eighty, and rather than five because — unlike
+      Freshman of the Year — a man can win it four times.
+    */
+    else if (t === 'Reliever of the Year') runs += 8;
   }
   return runs;
 }

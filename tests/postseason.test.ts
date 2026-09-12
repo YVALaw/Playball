@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   createSeason, simSeason, standings, seasonLength, nextSeason, DEFAULT_SEASON,
-  recordCareerMarks, archiveSeason,
+  recordCareerMarks, archiveSeason, seasonComplete, inningsPitched, era,
 } from '../src/engine/season.js';
 import { departAndDevelop, fillRosters } from '../src/engine/progression.js';
 import { CONFERENCES } from '../src/data/schools.js';
@@ -268,6 +268,47 @@ describe('the whole postseason', () => {
   it('sends the conference count on: eight champions, four per league advance', () => {
     void CONF_ADVANCE;
     expect(result.conferenceChampions).toHaveLength(8);
+  });
+});
+
+describe('Reliever of the Year', () => {
+  /*
+    Reported 2026-09-12: "in awards we also have to add a reliever of the year,
+    right now being an RP does not have any award." Measured, and true in a
+    stronger sense: nothing filters on role anywhere, so a reliever is eligible
+    for every honour and can win none. Player of the Year excludes pitchers
+    outright, and every pitching honour ranks on `pitcherValue`, which is linear
+    in innings — a bullpen ceiling of forty-odd innings cannot out-score a
+    rotation's eighty.
+  */
+  it('goes to a reliever with a real season, and never to a starter', () => {
+    for (const seed of [4242, 909, 1717]) {
+      const season = createSeason(makeRng(seed), undefined, CONFERENCES);
+      while (!seasonComplete(season)) simSeason(season);
+      const awards = seasonAwards(season);
+      const roy = awards.find((a) => a.title === 'Reliever of the Year');
+      expect(roy, `seed ${seed}: no relief award`).toBeDefined();
+      const line = season.pitching.get(roy!.id)!;
+      expect(line.gs, `seed ${seed}: a starter won it`).toBe(0);
+      // The floor: half a team's games in innings. An earlier draft let eight
+      // saves bypass it and crowned men with ten innings.
+      const gp = Math.max(...season.teams.map((t) => t.gp), 1);
+      expect(inningsPitched(line)).toBeGreaterThanOrEqual(gp * 0.5);
+      // And he is not simply the man with the most saves regardless of how he
+      // pitched: at a full run a save that produced a 3.54 ERA winner.
+      expect(era(line), `seed ${seed}`).toBeLessThan(3.0);
+    }
+  });
+
+  it('does not hand the same man two pitching awards', () => {
+    const season = createSeason(makeRng(4242), undefined, CONFERENCES);
+    while (!seasonComplete(season)) simSeason(season);
+    const awards = seasonAwards(season);
+    const roy = awards.find((a) => a.title === 'Reliever of the Year');
+    const poy = awards.find((a) => a.title === 'Pitcher of the Year');
+    expect(roy).toBeDefined();
+    expect(poy).toBeDefined();
+    expect(roy!.id).not.toBe(poy!.id);
   });
 });
 

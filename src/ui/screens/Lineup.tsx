@@ -627,9 +627,20 @@ export function Lineup() {
           {team.team.rotation.map((p, i) => {
             const line = season.pitching.get(p.id);
             const on = pickedArm === i;
+            /*
+              Reported 2026-09-12: "when pitchers are injured, there is not
+              indication, no icons or anything." The nine and the bench have
+              asked this since stage 9 and printed the reason beside the man;
+              the two arm lists never asked it once, so a hurt ace sat in the
+              rotation looking exactly like a healthy one.
+
+              The slot stays tappable — a coach has to be able to move a hurt
+              starter out of it, which is the whole errand.
+            */
+            const hurt = !available(p, injuryClock(season));
             return (
               <button
-                className={`${on ? 'is-selected' : pickedPen !== null ? 'is-live' : ''}${holdingId === p.id ? ' is-holding' : ''}`.trim()}
+                className={`${on ? 'is-selected' : pickedPen !== null ? 'is-live' : ''}${holdingId === p.id ? ' is-holding' : ''}${hurt ? ' is-unavailable' : ''}`.trim()}
                 key={p.id}
                 type="button"
                 aria-pressed={on}
@@ -644,6 +655,7 @@ export function Lineup() {
                 <small>
                   {armValue(p)} OVR
                   {line && line.outs > 0 ? ` · ${era(line).toFixed(2)}` : ''}
+                  {hurt && <b className="bench-out"> · ✚ {whyOut(p, injuryClock(season))}</b>}
                 </small>
                 <i className="drag">{on ? <SewingPinIcon /> : null}</i>
               </button>
@@ -683,15 +695,19 @@ export function Lineup() {
           {team.team.bullpen.map((p) => {
             const line = season.pitching.get(p.id);
             const ip = line ? inningsPitched(line) : 0;
-            const canTake = pickedArm !== null;
+            const hurt = !available(p, injuryClock(season));
+            // Guarded on this side, the way the bench is: promoting a man who
+            // cannot pitch into the rotation is not a move worth offering.
+            const canTake = pickedArm !== null && !hurt;
             return (
               <button
                 key={p.id}
                 type="button"
-                className={`${pickedPen === p.id ? 'is-selected' : canTake ? 'is-live' : ''}${holdingId === p.id ? ' is-holding' : ''}`.trim()}
+                className={`${pickedPen === p.id ? 'is-selected' : canTake ? 'is-live' : ''}${holdingId === p.id ? ' is-holding' : ''}${hurt ? ' is-unavailable' : ''}`.trim()}
                 aria-pressed={pickedPen === p.id}
+                aria-disabled={hurt}
                 {...holdStats(p.id)}
-                onClick={() => { if (consumed()) return; tapPen(p.id); }}
+                onClick={() => { if (consumed() || hurt) return; tapPen(p.id); }}
               >
                 <span>{p.role}</span>
                 <strong>{p.name}</strong>
@@ -700,6 +716,7 @@ export function Lineup() {
                   {line && line.outs > 0
                     ? ` · ${era(line).toFixed(2)} · ${ip.toFixed(0)} IP`
                     : ''}
+                  {hurt && <b className="bench-out"> · ✚ {whyOut(p, injuryClock(season))}</b>}
                 </small>
                 <i className="drag">{canTake ? <SewingPinIcon /> : null}</i>
               </button>
