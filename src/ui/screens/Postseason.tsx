@@ -200,6 +200,12 @@ export function Postseason() {
   const stageKey = bracket?.stage ?? '';
 
   const stillIn = myBracket !== null && !knockedOut;
+  /*
+    Whether the coach's own programme is in the tournament being LOOKED AT,
+    which is a different question from whether he is still alive in his own.
+    FIND MY TEAM has to be able to answer no.
+  */
+  const [notHere, setNotHere] = useState(false);
   const mySeed = season && team
     ? conferenceField(season, team.conference).field.indexOf(userTeam) + 1
     : 0;
@@ -320,6 +326,22 @@ export function Postseason() {
   const rung = bracket?.stage === 'conference' ? 0
     : bracket?.stage === 'regional' ? 1 : 2;
   const shown = reviewing ?? rung;
+  /*
+    Whether the coach's own programme is in the tournament being LOOKED AT.
+
+    Not the same as `stillIn`, which asks about his own run, and not the same
+    as `inTheField`, which only knows about his conference. A coach browsing
+    the regionals he did not reach needs FIND MY TEAM to say so rather than
+    scroll nowhere.
+  */
+  const inShownStage = shown === 0
+    ? inTheField
+    : shown === 1
+      ? (bracket?.regionals ?? []).some((r) => r.seeds.includes(userTeam))
+      : (bracket?.national?.field.seeds.includes(userTeam) ?? false);
+  // A different tournament on screen is a different question, so the answer
+  // does not survive the reader moving.
+  useEffect(() => { setNotHere(false); }, [shown, juneTab, natHalf]);
 
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const lookingAt = `${juneTab}:${natHalf ?? ''}`;
@@ -648,16 +670,27 @@ export function Postseason() {
                 : 'SIM TO THE CHAMPIONSHIP')
             : 'SIM TO MY NEXT GAME',
           run: () => sim(iAmOut ? 'rest' : 'mine'),
-          secondary: iAmOut
-            ? { label: 'VIEW THE BRACKET', onClick: () => setJuneTab('bracket') }
-            : {
-                label: (() => {
-                  const round = myBracket.format === 'double'
-                    ? nextRoundName(myBracket.state) : null;
-                  return round ? `SIM THE ${round.toUpperCase()}` : 'SIM THE NEXT ROUND';
-                })(),
-                onClick: () => sim('round'),
-              },
+          /*
+            The round is offered whether or not he is still in it.
+
+            Reported 2026-09-12: "when your team doesn't make the post season it
+            automatically decides all once I hit play postseason, not giving the
+            players the opportunity to either simulate full post season or sim
+            by round." A coach who has been knocked out got SIM TO THE
+            CHAMPIONSHIP and, beside it, VIEW THE BRACKET — which is the same
+            destination as the BRACKET tab sitting two rows above it, so the
+            pair was really one button. `sim('round')` steps the bracket's own
+            round index and never asks whose games are in it, so it was correct
+            for a spectator all along and simply was not offered.
+          */
+          secondary: {
+            label: (() => {
+              const round = myBracket.format === 'double'
+                ? nextRoundName(myBracket.state) : null;
+              return round ? `SIM THE ${round.toUpperCase()}` : 'SIM THE NEXT ROUND';
+            })(),
+            onClick: () => sim('round'),
+          },
         }
       : stagePlayed
         ? {
@@ -821,9 +854,36 @@ export function Postseason() {
               const halves = splitShowdown(nat?.field.seeds ?? []);
               const half = halves.bracketA.includes(userTeam) ? 'A' : halves.bracketB.includes(userTeam) ? 'B' : null;
               if (shown === 2 && half) setNatHalf(half);
+              /*
+                And it says so when he is not in the one on screen.
+
+                Reported 2026-09-12: "the find my team button, if I didn't make
+                it to the postseason tournament that I press it on, should
+                simply tell me I didn't make it, instead it does a weird screen
+                switch." It was a silent no-op: the scroll effect looks for
+                `[data-you]`, which is only written on a card holding your
+                team, finds none, and returns without moving or saying
+                anything. The one thing the press DID do was set `followTeam`,
+                which unmounts the note below — and in a wrapping flex row that
+                note is its own line, so the map jumped as the row collapsed.
+                That twitch was the whole of the "weird screen switch".
+              */
+              setNotHere(!inShownStage);
               setFollowTeam(true); setFindTeam((n) => n + 1);
             }}>Find my team</button>
-            {!followTeam && <small>Following paused while you browse</small>}
+            {/*
+              Rendered unconditionally, and never empty, so the row cannot
+              change height under a thumb — the collapse was half the reported
+              fault ("it does a weird screen switch"). Measured: rendering the
+              element but letting it hold '' still collapsed it and the row went
+              61px to 89px on the press, because `.postseason-map-tools` wraps
+              and this note is its own line. A non-breaking space reserves it.
+            */}
+            <small>
+              {notHere
+                ? `${team.def.school} did not reach this one.`
+                : !followTeam ? 'Following paused while you browse' : '\u00a0'}
+            </small>
           </div>
         )}
         <div ref={scrollerRef} onWheel={() => setFollowTeam(false)} onTouchMove={() => setFollowTeam(false)} className="postseason-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
