@@ -36,7 +36,7 @@ import {
   reportedOverall, reportedPotential, reportedTool, hintsFor,
   type Prospect, type RecruitingFactor, type RecruitMajorInput,
 } from '../../engine/recruiting.js';
-import { walkOnShortfall, depthShortfall } from '../../engine/progression.js';
+import { walkOnShortfall, depthShortfall, departureOdds } from '../../engine/progression.js';
 import { pitchFor } from '../../engine/pitch.js';
 import { overallOf } from '../../engine/ratings.js';
 import { highSchoolLine } from '../../engine/scouting.js';
@@ -349,8 +349,24 @@ export function Board() {
       departure, and the men the draft takes cannot be known in March. From
       the draft step on the roster standing here is already the survivors.
     */
+    /*
+      And the men the draft is likely to take, which the note above said could
+      not be known. The WHO cannot: `departure` spends a random draw on it. The
+      ODDS can, and they are the same arithmetic the draw is made against —
+      `departureOdds`, which is `draftChance(overall)` discounted by how much
+      leverage his class year still gives him. Reported 2026-09-12: "as well
+      the players likely to get drafted."
+
+      A half is the line, and it is the honest one rather than a tuned one: at
+      better than even money he is likelier gone than not, so a board planning
+      a class should already be covering his spot. Below it he is a maybe, and
+      a NEEDS tab that shouted about every maybe would be as useless as one
+      that shouted about none.
+    */
     const departed = phase !== null && PHASES.indexOf(phase) >= PHASES.indexOf('draft');
-    const survivors = departed ? roster : roster.filter((p) => p.classYear !== 'SR');
+    const survivors = departed
+      ? roster
+      : roster.filter((p) => p.classYear !== 'SR' && departureOdds(p) < 0.5);
     const leaving = roster.length - survivors.length;
     // Every signed man: the July high-school draft went on 2026-09-10, so
     // the class the year roll receives is exactly the class on this screen.

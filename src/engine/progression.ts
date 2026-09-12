@@ -170,6 +170,26 @@ export function draftChance(overall: number): number {
  */
 const LEVERAGE_DISCOUNT: Record<number, number> = { 0: 0.6, 1: 1, 2: 0.35, 3: 0.15 };
 
+/**
+ * The odds this man is gone in June, before the draw that decides it.
+ *
+ * `departure` spends an `rng()` on exactly this number, so a March board
+ * cannot know WHO goes — but it can know who is likely to, and it is the same
+ * arithmetic rather than a second opinion about it. Reported 2026-09-12: "the
+ * needs in recruitment should also take into account the sr year who are about
+ * to graduate so we get ready and cover those positions as well the players
+ * likely to get drafted."
+ *
+ * A senior is certain whatever this returns — he graduates if nobody calls —
+ * so callers handle him separately and this speaks only about the men who have
+ * a choice. Draws nothing, so a screen may call it as often as it likes.
+ */
+export function departureOdds(p: Player): number {
+  if (!draftEligible(p)) return 0;
+  const leverage = yearsOfLeverage(p.classYear);
+  return draftChance(overallOf(p)) * (LEVERAGE_DISCOUNT[leverage] ?? 1);
+}
+
 /** Does this player leave the program this offseason? */
 function departure(p: Player, rng: Rng): DepartureReason | null {
   const leverage = yearsOfLeverage(p.classYear);
