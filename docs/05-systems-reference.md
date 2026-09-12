@@ -9721,6 +9721,90 @@ compressed into the six points beneath it. Widening headroom took it to 12.4. Th
 comment now says what is true; the threshold was left alone, because moving a
 grade boundary changes the letter on every card in every save.
 
+## 74. Three of the four rolls in a professional career were not rolls — **September 11 2026**
+
+Reported: *"the alumni, I've noticed that many of them end up becoming all stars
+in the majors, we have to adjust and expand what they are actually up to in the
+majors cause not that many people end up being all stars."*
+
+Both halves of that were true, and the cause was one line of arithmetic that had
+nothing to do with either.
+
+### 74.1 A man was stamped once, not rolled each year
+
+`proCareer` derives a life year by year and takes four independent answers out
+of four byte ranges of a single hash: wash out at `h % 100`, promotion at
+`(h >> 8)`, an All-Star summer at `(h >> 16)`, retirement at `(h >> 24)`. The
+hash was `h = h * 31 + c` — a polynomial hash whose high bits barely move when
+`:pro:2031` becomes `:pro:2032`.
+
+Measured over three hundred men and twenty seasons each, distinct values a man
+saw in his entire career out of twenty:
+
+| roll | read | distinct values | men frozen for life |
+| --- | --- | --- | --- |
+| wash out | `h % 100` | 20.0 | 0 of 300 |
+| promotion | `(h >> 8) % 100` | 1.2 | **226 of 300** |
+| All-Star | `(h >> 16) % 100` | 1.0 | **300 of 300** |
+| retirement | `(h >> 24) % 100` | 1.0 | **300 of 300** |
+
+So a man was an All-Star **every single summer or never one** — thirty-nine men
+in four hundred were All-Stars in all twenty seasons and the other three hundred
+and sixty-one in none — and he was promoted every year he was eligible or never.
+Nobody spent three years at Double-A and then got the call.
+
+That is the whole of the report. The aggregate rate was fine at 9% of
+big-league summers; what was wrong was that those summers all belonged to the
+same men. A player who had one had 4.9 of them out of 6.9 seasons up there.
+
+FNV-1a with an avalanche finalizer now, **masked to thirty-one bits** — not
+cosmetic, because the callers read it with a signed shift and a value above
+2^31 shifts negative, at which point `negative % 100 < pct` passes every roll.
+The old `Math.abs` was what kept that safe, and dropping it in the first version
+of this fix sent every man up the ladder instantly.
+
+### 74.2 The ladder had to be re-tuned once its rungs were real
+
+`movePct` was `min(72, 34 + talent)`, which looked generous because it was never
+actually rolled. With the roll working it sent **7.7%** of drafted men to the
+top level; frozen, it had sent **39%**. The real world is about sixteen.
+
+`min(80, 56 + talent)` puts it at **16.3%**, and the gradient by round reads the
+way it should: 75% of the first two rounds, 83% of rounds three to five, 30% of
+six to ten, 10% of the rest.
+
+### 74.3 The All-Star coin now reads the man
+
+It was a flat 9% that consulted nothing, while every other roll in the career
+reads `talent`. A fifteenth-rounder scraping onto a roster had exactly the same
+claim on an All-Star summer as a first-round bat.
+
+Measured against the engine's own draft class — which matters, because a
+synthetic one is far more top-heavy than what the game actually deals: talent
+mean −3.1, ninetieth percentile 11 — the rate is now **11.2% of men who reach
+the top level ever make an All-Star team** against a real-world eight to ten, at
+**1.18 summers apiece**. By round: 100% of the first two (on three men), 25% of
+rounds three to five, 5.3% of six to ten, 1.9% of the rest.
+
+### 74.4 And a summer says what it was
+
+*"A full season in the big leagues"* described a first-division regular and a man
+carried as a twenty-sixth arm in the same words. The vocabulary now separates,
+with rates set against the real thing per player-season:
+
+| | real | here |
+| --- | --- | --- |
+| MVP or Cy Young | 4 of ~1200 | the elite only, rarely |
+| All-Star | 64 of ~1200 | 0% to 26% by talent |
+| Gold Glove | 36 of ~1200 | the good, occasionally |
+| lost to injury | ~1 man in 11 | flat: it happens to everybody |
+
+plus the everyday player, the man in and out of the lineup, and the man hanging
+on to a roster spot — and in the minors, a level repeated rather than every
+summer reading *"Another summer at Double-A."* Pinned in `pro-career.test.ts`,
+which asserts among other things that **nobody has an entire career of All-Star
+summers**.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

@@ -148,11 +148,116 @@ export interface ProYear {
 
 const LEVELS = ['ROOKIE BALL', 'SINGLE-A', 'DOUBLE-A', 'TRIPLE-A', 'THE SHOW'] as const;
 
-/** The same stable string hash everything derived uses. */
+/**
+ * The same stable string hash everything derived uses — mixed, which the old
+ * one was not.
+ *
+ * It was `h = h * 31 + c`, and the loop below reads four different byte ranges
+ * out of one hash to get four independent per-year answers. A polynomial hash
+ * with a small multiplier does not give you that: appending ":pro:2031" versus
+ * ":pro:2032" changes the LOW bits and barely disturbs the high ones, so every
+ * shifted read came back the same number year after year.
+ *
+ * Measured 2026-09-11 over three hundred men and twenty seasons each — distinct
+ * values a man saw in his career, out of twenty:
+ *
+ *   washPct   h % 100        20.0     nobody frozen
+ *   movePct   (h >> 8) % 100  1.2     226 of 300 frozen for life
+ *   allStar   (h >> 16) % 100 1.0     300 of 300 frozen for life
+ *   retire    (h >> 24) % 100 1.0     300 of 300 frozen for life
+ *
+ * Three of the four rolls were not rolls. A man was stamped once and lived the
+ * same summer over and over: an All-Star every single season or never one
+ * (39 men of 400 were All-Stars in all twenty years and the other 361 in none),
+ * promoted every year he was eligible or never, and retiring on a threshold
+ * rather than a chance. It is also why 39% of drafted men reached the top level
+ * against a real-world sixteen or so.
+ *
+ * FNV-1a with an avalanche finalizer, the same shape `progression.ts` uses for
+ * its arcs. Every bit of the output now depends on every bit of the input.
+ */
 function hash(s: string): number {
-  let h = 7919;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619) >>> 0;
+  // Avalanche. Without this the top bytes of an FNV hash still carry less of
+  // the late input than the bottom ones, which is exactly the fault above.
+  h ^= h >>> 16;
+  h = Math.imul(h, 2246822507) >>> 0;
+  h ^= h >>> 13;
+  h = Math.imul(h, 3266489909) >>> 0;
+  // Masked to thirty-one bits, and that is not cosmetic. The callers read this
+  // with a SIGNED shift (`h >> 8`), so a value above 2^31 shifts negative, and
+  // `negative % 100 < pct` is true for every pct — the roll would always pass.
+  // The old hash returned `Math.abs`, which is what kept that safe.
+  return ((h ^ (h >>> 16)) >>> 0) & 0x7fffffff;
+}
+
+/**
+ * What a summer in the big leagues was.
+ *
+ * It used to be one coin: nine percent an All-Star, otherwise "A full season in
+ * the big leagues." Two things wrong with that, and the first is the one a
+ * player reported — *"many of them end up becoming all stars in the majors"*.
+ *
+ * The coin did not read `talent`, though every other roll in the career does,
+ * so a fifteenth-rounder scraping onto a roster had exactly the same claim on
+ * an All-Star summer as a first-round bat. And the hash it read was frozen for
+ * life (see `hash`), so a man was an All-Star every season or never one.
+ * Between them: 4.9 All-Star summers apiece out of 6.9 seasons up there, for
+ * one man in eight.
+ *
+ * The rates below are set against the real thing, per player-season, and are
+ * deliberately gated on talent so they concentrate where they do in life:
+ *
+ *   MVP or Cy Young   4 of about 1200 men       — here, the elite only, rarely
+ *   All-Star         64 of about 1200 men       — here, 0% to 26% by talent
+ *   Gold Glove etc   36 of about 1200 men       — here, the good, occasionally
+ *   hurt most of it  roughly one man in eleven  — here, flat: it happens to all
+ *
+ * Everybody else gets a season described for what it was, because "a full
+ * season in the big leagues" said the same thing about a first-division
+ * regular and a man carried as a twenty-sixth arm.
+ */
+function bigLeagueSummer(flavour: number, talent: number, proYears: number): string {
+  // Hurt. Independent of quality, which is the point of it.
+  if (flavour % 100 < 9) {
+    return proYears <= 2
+      ? 'Lost most of the summer to an injury. A hard way to start.'
+      : 'Most of the season went to the training room.';
+  }
+  // The two awards a college coach would frame. The gate is severe on purpose:
+  // this is four men in the sport in a year.
+  if (talent >= 26 && (flavour >> 7) % 100 < 6) {
+    return 'Finished top three in the MVP voting. They still show the tape at home.';
+  }
+  const starPct = Math.max(0, Math.min(26, Math.round(talent - 9)));
+  if ((flavour >> 13) % 100 < starPct) {
+    return 'An All-Star summer. The kind of year a program frames.';
+  }
+  if (talent >= 14 && (flavour >> 19) % 100 < 8) {
+    return 'Took home a Gold Glove. The defence was never the question.';
+  }
+  if (talent >= 12) {
+    return (flavour >> 25) % 2 === 0
+      ? 'An everyday player all summer, in the middle of the order.'
+      : 'A full season in the big leagues, and a regular in the lineup.';
+  }
+  if (talent >= 4) {
+    return (flavour >> 25) % 2 === 0
+      ? 'In and out of the lineup, and on the roster all year.'
+      : 'A useful season in a part-time role.';
+  }
+  return (flavour >> 25) % 2 === 0
+    ? 'Up and down all year, and hung on to the roster spot.'
+    : 'A bench summer. Being there at all is the achievement.';
+}
+
+/** And a summer that was not in the big leagues. */
+function minorSummer(level: string, yearsThere: number): string {
+  const where = level.toLowerCase().replace('-a', '-A');
+  if (yearsThere >= 3) return `A third year at ${where}. The clock is loud now.`;
+  if (yearsThere === 2) return `Repeated ${where}. Not everybody moves every year.`;
+  return `Another summer at ${where}.`;
 }
 
 /**
@@ -183,6 +288,8 @@ export function proCareer(id: string, note: AlumnusNote, throughYear: number): P
   const round = note.round ?? 10;
   let level = round <= 2 ? 2 : round <= 5 ? 1 : 0;
   const talent = note.overall - 55 + (3 - Math.min(3, round)) * 4;
+  /** Summers at the level he is standing on, so a repeat reads as one. */
+  let atLevel = 1;
   const rows: ProYear[] = [];
 
   for (let y = note.year + 1; y <= throughYear; y++) {
@@ -225,9 +332,26 @@ export function proCareer(id: string, note: AlumnusNote, throughYear: number): P
       });
       return rows;
     }
-    const movePct = Math.min(72, 34 + talent);
+    /*
+      Re-tuned 2026-09-11, when `hash` started mixing.
+
+      This was `min(72, 34 + talent)`, and it looked generous because it was
+      never actually rolled: `(h >> 8) % 100` was frozen for life for 226 men
+      in 300, so a man with a favourable number climbed a level EVERY year and
+      the rest never climbed at all. Four levels in four years, for anybody
+      whose stamp happened to be low. That is why 39% of drafted men reached
+      the top level against a real world sixteen.
+
+      With the roll working, 34 + talent sent 7.7% of them up — a genuine
+      four-promotion gauntlet with wash-out firing every year in between. 56
+      puts it at 16.3%, which is the real number, and the gradient by round
+      reads the way it should: 75% of the first two rounds, 30% of rounds six
+      to ten, 10% of the rest.
+    */
+  const movePct = Math.min(80, 56 + talent);
     if (level < LEVELS.length - 1 && (h >> 8) % 100 < movePct) {
       level++;
+      atLevel = 1;
       const called = level === LEVELS.length - 1;
       rows.push({
         year: y,
@@ -238,15 +362,17 @@ export function proCareer(id: string, note: AlumnusNote, throughYear: number): P
         ...(called ? { debut: true } : {}),
       });
     } else {
-      const star = level === LEVELS.length - 1 && (h >> 16) % 100 < 9;
+      atLevel++;
+      // Its own hash rather than another slice of `h`: four byte ranges are
+      // already spoken for above, and a fifth read of the same number is how
+      // the frozen-roll fault got in.
+      const flavour = hash(`${id}:pro:${y}:summer`);
       rows.push({
         year: y,
         level: LEVELS[level]!,
-        line: star
-          ? 'An All-Star summer. The kind of year a program frames.'
-          : level === LEVELS.length - 1
-            ? 'A full season in the big leagues.'
-            : `Another summer at ${LEVELS[level]!.toLowerCase().replace('-a', '-A')}.`,
+        line: level === LEVELS.length - 1
+          ? bigLeagueSummer(flavour, talent, age)
+          : minorSummer(LEVELS[level]!, atLevel),
       });
     }
   }
