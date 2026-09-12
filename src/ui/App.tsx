@@ -490,7 +490,13 @@ function AppBody(
     // swallowed rather than obeyed. These are answered on their own terms —
     // the opener on the board, the big moment by reading it. Asked of the
     // screen, not of the store: see `openerShowing`.
-    if (blockingCardUp(s)) return 'swallowed';
+    if (blockingCardUp(s)) {
+      // Refused, and visibly so. The press is still swallowed — the card is
+      // the screen while it lasts — but the card answers it with a shake
+      // instead of with nothing. See `cardNudge`.
+      s.nudgeCard();
+      return 'swallowed';
+    }
     // The god-mode sheet sits over the player card it may have been opened
     // from, so it goes first.
     if (s.godStack.length > 0) { s.closeGod(); return 'peeled'; }
@@ -643,8 +649,20 @@ function AppBody(
         The count is the caller's, and `browserSilentPop` counts the pops it
         will cause so the handler below ignores exactly those.
       */
-      browserSilentPop.current += count;
-      try { history.go(-count); } catch { browserSilentPop.current = Math.max(0, browserSilentPop.current - count); }
+      /*
+        ONE, however many entries are being given back.
+
+        `history.go(-n)` is a single traversal and fires a single `popstate`,
+        so `onPop` below decrements once no matter how far it went — booking
+        `count` here left `count - 1` on the counter for ever. The only caller
+        that passes more than one is God Mode's CLOSE ALL (`closeGodAll`), so
+        after closing four sheets the next three real back presses were eaten
+        silently: the exact fault this block's own comment says it fixed, in
+        the opposite direction. Found by audit 2026-09-12, not by use, which
+        is what a counter that only drifts under one caller looks like.
+      */
+      browserSilentPop.current += 1;
+      try { history.go(-count); } catch { browserSilentPop.current = Math.max(0, browserSilentPop.current - 1); }
     };
     const onPop = (): void => {
       if (browserSilentPop.current > 0) { browserSilentPop.current -= 1; return; }
@@ -1579,6 +1597,7 @@ const OPENER_TITLES = [
  */
 function PlaybookInvite() {
   const invite = useDynasty((s) => s.playbookInvite);
+  const nudge = useDynasty((s) => s.cardNudge);
   const dismiss = useDynasty((s) => s.dismissPlaybookInvite);
   const go = useDynasty((s) => s.go);
   const setFocus = useDynasty((s) => s.setPlaybookFocus);
@@ -1591,6 +1610,7 @@ function PlaybookInvite() {
   const runDiff = opponent ? opponent.rs - opponent.ra : 0;
   return (
     <Modal
+      nudge={nudge}
       kicker="SCOUTING REPORT READY"
       title={`${school} report is ready`}
       lines={[
@@ -1629,6 +1649,7 @@ function PlaybookInvite() {
 
 function SeasonOpener() {
   const opener = useDynasty((s) => s.seasonOpener);
+  const nudge = useDynasty((s) => s.cardNudge);
   // Reading the board IS the errand — the card stands down while you are
   // there. One predicate, shared with the back gesture, so the press and the
   // card can never disagree about whether there is a card to answer.
@@ -1647,6 +1668,7 @@ function SeasonOpener() {
   );
   return (
     <Modal
+      nudge={nudge}
       kicker={`${opener.year} · BEFORE FIRST PITCH`}
       title={OPENER_TITLES[opener.year % OPENER_TITLES.length]!}
       tone={opener.schoolAfter >= opener.schoolBefore ? 'win' : 'clay'}

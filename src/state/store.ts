@@ -1337,6 +1337,24 @@ export interface DynastyStore {
    */
   /** The takeover on screen, if one is owed. Transient, like `live`. */
   bigMoment: BigMoment | null;
+  /**
+   * How many back presses a blocking card has refused. A counter, not a flag.
+   *
+   * Reported 2026-09-12, of the season opener: "the back gesture didn't work
+   * from there either." It did not, and it was not supposed to — a blocking
+   * card is the screen while it lasts and the press is swallowed by design
+   * (see `blockingCardUp`). But *invisibly* swallowed is indistinguishable
+   * from broken, and the coach had just watched the same gesture misbehave
+   * twice on the way in, so "nothing happened" read as the third fault rather
+   * than as a rule.
+   *
+   * A counter rather than a boolean because the card has to be able to answer
+   * the second press as well as the first, and a flag that is already true
+   * cannot. Transient: never persisted, never part of a save.
+   */
+  cardNudge: number;
+  /** Tell the blocking card a press was refused, so it can say so. */
+  nudgeCard: () => void;
   /** Offer a moment; a bigger one already showing keeps the screen. */
   offerBigMoment: (m: BigMoment) => void;
   clearBigMoment: () => void;
@@ -2964,6 +2982,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   /** Who arrived through the portal this window; one letter at its close. */
   portalArrivals: [],
   seasonOpener: null,
+  nudgeCard: () => set((s) => ({ cardNudge: s.cardNudge + 1 })),
+
   dismissSeasonOpener: () => {
     set({ seasonOpener: null });
     void get().saveNow();
@@ -6507,6 +6527,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   pendingGame: null,
 
   bigMoment: null,
+  cardNudge: 0,
   offerBigMoment: (m) => {
     const cur = get().bigMoment;
     if (cur && MOMENT_RANK[cur.kind] >= MOMENT_RANK[m.kind]) return;

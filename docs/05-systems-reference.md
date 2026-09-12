@@ -10369,3 +10369,124 @@ independent of how many summers there are. §77 found the same shape (a gate on
 it again (a lost-cause filter that assumes the seeding pass it was paired with).
 Changing how long something takes changes every per-year probability attached to
 it, and none of those were re-derived by the change that moved the clock.
+
+---
+
+## 80. Auditing the twenty-six, and the three that were only half done — **September 12 2026**
+
+Asked at the end of the pass: *"What are we missing now? All the comments I made
+are taken care of?"* Rather than answer from memory, every item in the
+twenty-six-item report was checked against the repo by a fan-out of agents, and
+then **every DONE verdict was handed to a second agent told to prove it wrong**.
+
+That second pass is the whole value of the exercise. It overturned two verdicts
+the first pass had marked DONE — both of them mine, both of them things I had
+reported as finished in a commit message. The failure mode it was built to catch
+is the one that actually occurred: **a half-answered request looks answered**.
+
+Twenty-three of twenty-six stood. Three did not.
+
+### 80.1 The alumni who were never going to coach (§22 of the report)
+
+Asked as one sentence: the men who went home should name a degree, *"and some of
+them become coaches."* The degree shipped. The coaching did not, and nothing
+recorded that half of the sentence had been dropped — so the game had a country
+full of coaches in which no alumnus had ever become one, on the one screen built
+to tell you what happened to your men.
+
+Two roads now lead there. An undrafted senior takes his old high school at 8%;
+a professional whose playing career ends is hired at `8 + level * 3`, which is
+6.6% out of Rookie ball and 19.2% out of the big leagues — **the résumé is the
+qualification**, so the man who reached Triple-A gets offered a job in the
+organisation and the man who washed out goes home to the travel team.
+
+Two things that are easy to get wrong and are asserted in the tests:
+
+- **`COACHING` is not in `LEVELS`.** That array is the climb, indexed by it, and
+  `level === LEVELS.length - 1` is how this engine asks "did he reach the big
+  leagues". Appending to it would make every one of those questions answer
+  wrong. It is a label on a row, the way `MEXICO` and `JAPAN` already are.
+- **A career has exactly one `final` row.** The coaching row takes the flag off
+  the release above it and carries it, because `History`'s `last` and the card's
+  timeline both stop at the first one, and the thing that happened last is the
+  coaching job.
+
+`History`'s HIGHEST LEVEL also had to learn to skip it, or a man who never left
+Rookie ball and then took his old high school would have read **HIGHEST LEVEL:
+COACHING**.
+
+### 80.2 A back press that was refused invisibly (§5 of the report)
+
+Three of the four back-gesture fixes were real, shipped and reachable. The
+reported symptom *"the back gesture didn't work from there either"* was not
+addressed, and the audit reproduced it on the exact path.
+
+It is not a navigation bug. A blocking card **is** the screen while it lasts and
+the press is swallowed on purpose (`blockingCardUp`); the season opener is a
+gateway to a real decision — take the season, or put a case against the terms —
+so letting back dismiss it would be wrong. The defect is that the refusal was
+*invisible*, and the coach had just watched the same gesture misbehave twice on
+the way in, so "nothing happened" read as a third fault rather than as a rule.
+
+So the press is still refused, and the card now says so: a 260ms lateral shake,
+a single brightness flash under `prefers-reduced-motion`. Two details worth
+keeping:
+
+- **A counter, not a flag.** The second press has to shake as well as the first,
+  and a boolean that is already true cannot. Verified in the browser: the
+  animation is in `playState: 'running'` again after the second press.
+- **The restart is done on the DOM** — remove the class, read `offsetWidth`, add
+  it — because React will not re-run an animation for a class that never
+  changed, and keying a remount would take focus out of the dialog with it.
+
+`Modal` takes it as a prop rather than reading the store, because it is the one
+dialog every screen shares and it has never imported the store.
+
+### 80.3 A counter that drifted under exactly one caller
+
+Found in the same audit, not by use. `silentPop` books the pops it is about to
+cause so the handler can ignore them, and it booked `count` of them — but
+`history.go(-n)` is a **single traversal firing a single `popstate`**, so the
+handler decremented once and `count - 1` stayed on the counter for ever.
+
+The only caller that passes more than one is God Mode's CLOSE ALL, so after
+closing four sheets the next three real back presses were eaten in silence. The
+block's own comment describes fixing this exact fault in the opposite direction
+(05 §63.2), which is how it survived: it reads as already handled.
+
+### 80.4 The tonight card was still jumping, by more than it had stopped (§2)
+
+The stake line reserves its 28.4px and genuinely holds. It is one of **two**
+conditionally-mounted rows on that card, and the other is bigger: `.match-warnings`
+measured 35.3px live. Its trigger fires mid-sim — `held` is `musts > 0`, and a
+must arrives the moment a man in the nine goes unavailable and clears the moment
+somebody covers him — so the band was appearing and vanishing under the coach's
+thumb on every day advance.
+
+It cannot reserve its height the way the stake line does: it holds one, two or
+three warnings, and reserving the tallest would leave about seventy pixels of
+dead red on most nights. So the slot animates `grid-template-rows: 0fr → 1fr`,
+which grows to whatever the content is without anybody knowing it in advance.
+
+**The part of that technique nobody writes down:** `0fr` sizes the grid *row*,
+and the item's own padding and border are added outside that height rather than
+squeezed by it. Measured in the browser, the "closed" band was still **18px** —
+8 + 9 of padding and the 1px rule — so the card lost only 17 of the 35 it was
+jumping by. The padding and border have to collapse with the row, on the same
+curve. Measured after: 402.8px open, 367.5px closed, band 0px, the whole 35.3
+animated.
+
+### 80.5 What is still open, stated rather than quietly closed
+
+- **The two-second freeze has no verified cause.** The `crossfade` visibility
+  guard written for it is unreachable on the reported path: `crossfade` is
+  called from exactly one place, inside `go()`, and the opener→board→back
+  sequence never calls it. The guard also only fires when the document is
+  hidden, which is not the condition of a coach watching his own phone. The
+  destination half of that report is genuinely fixed, and the freeze may well
+  have been the Program overview sheet rendering — which is no longer where the
+  gesture lands — but that is a hypothesis and it is recorded as one.
+- **Back from a letter-opened board returns to the screen under the inbox**,
+  not to the inbox. `overlay` is a single value, so opening the board from a
+  letter forgets the inbox was ever there. Fixing it properly means an overlay
+  stack, which is a bigger change than this pass.

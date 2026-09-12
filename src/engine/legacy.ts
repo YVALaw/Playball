@@ -305,11 +305,96 @@ const ABROAD: readonly { level: string; line: string }[] = [
  * It exists so the man who stops playing has an ending of his own rather than
  * the same sentence as every other man who stopped.
  */
+/**
+ * Where a man goes when the playing stops but the game does not.
+ *
+ * Asked for 2026-09-12, in the same sentence as the degree: the alumni who
+ * "went home" should name a major, "and some of them become coaches." The
+ * degree shipped and this did not, which made the request half answered in a
+ * way that reads worse than not answering it — every man who stopped either
+ * finished a degree or hung them up, and nobody in a country full of coaches
+ * ever became one.
+ *
+ * **Not a level, and it must never be added to `LEVELS`.** That array is the
+ * climb, indexed by it, and `level === LEVELS.length - 1` is how the rest of
+ * this file asks "did he reach the big leagues" — appending to it would make
+ * every one of those questions answer wrong. This is a label on a row, the
+ * same way `ABROAD` puts `MEXICO` or `JAPAN` there.
+ */
+export const COACHING_LEVEL = 'COACHING';
+
+/**
+ * What he does once he is the one teaching it.
+ *
+ * Split by how far he got, because that is what somebody is hiring: the man
+ * who reached Triple-A gets a professional job offered to him, and the man who
+ * washed out of Rookie ball goes home and takes the high school. Both are real
+ * and the second is much the commoner, which is why the rate below climbs.
+ */
+const COACHING_LINES: readonly { minLevel: number; lines: readonly string[] }[] = [
+  { minLevel: 3, lines: [
+    'Took a coaching job in the organisation that drafted him.',
+    'Stayed in the game as a minor league hitting coach.',
+    'Signed on to coach in a big league system.',
+  ] },
+  { minLevel: 1, lines: [
+    'Went back to the college game as an assistant.',
+    'Took a job coaching at a junior college.',
+    'Came home and joined a college staff.',
+  ] },
+  { minLevel: 0, lines: [
+    'Took over the baseball programme at his old high school.',
+    'Went home and started coaching high school ball.',
+    'Coaches the local travel team now, and half the town turns out.',
+  ] },
+];
+
+/** One coaching line for a man, chosen off his id and how far he climbed. */
+function coachingLine(id: string, level: number): string {
+  const band = COACHING_LINES.find((b) => level >= b.minLevel) ?? COACHING_LINES[2]!;
+  return band.lines[hash(`${id}:coachline`) % band.lines.length]!;
+}
+
+/**
+ * The odds a man who has stopped playing stays in the game as a coach.
+ *
+ * Climbing with the level he reached, because the résumé is the qualification:
+ * 8% out of Rookie ball to 20% out of the big leagues. An undrafted senior is
+ * read at level 0 and gets the same 8% — he has a degree and four years of
+ * college ball, which is exactly who ends up running a high school programme.
+ */
+const coachingPct = (level: number): number => 8 + level * 3;
+
 const MAJORS: readonly string[] = [
   'business', 'kinesiology', 'communications', 'criminal justice', 'history',
   'marketing', 'sports management', 'agriculture', 'education', 'finance',
   'psychology', 'engineering', 'nursing', 'economics', 'sociology',
 ];
+
+/**
+ * The last row of a professional career, once the playing part of it is over.
+ *
+ * Some of them stay in the game. The coaching row takes the `final` flag off
+ * the row above it and carries it itself, because a consumer that stops at the
+ * first `final` row — `History`'s `last`, the card's timeline — has to end on
+ * the thing that actually happened last, and a career with two final rows is a
+ * career that reads differently depending on who is reading it.
+ *
+ * It lands the year AFTER the release, which is how it works: a man is let go
+ * in the spring and somebody hires him for the following season.
+ */
+function closeOut(rows: ProYear[], id: string, level: number, endedYear: number): ProYear[] {
+  if (hash(`${id}:coach`) % 100 >= coachingPct(level)) return rows;
+  const last = rows[rows.length - 1];
+  if (last) delete last.final;
+  rows.push({
+    year: endedYear + 1,
+    level: COACHING_LEVEL,
+    line: coachingLine(id, level),
+    final: true,
+  });
+  return rows;
+}
 
 export function proCareer(id: string, note: AlumnusNote, throughYear: number): ProYear[] {
   if (note.reason !== 'drafted') {
@@ -318,6 +403,20 @@ export function proCareer(id: string, note: AlumnusNote, throughYear: number): P
     const indie = hash(`${id}:indie`) % 100 < 18;
     const where = ABROAD[hash(`${id}:abroad`) % ABROAD.length]!;
     const major = MAJORS[hash(`${id}:major`) % MAJORS.length]!;
+    // Checked after the independent-ball roll and off its own salt, so the two
+    // are independent: a man can have a summer in Mexico and still come back
+    // to coach, which is a real career and was not reachable before.
+    const coaches = hash(`${id}:coach`) % 100 < coachingPct(0);
+    if (coaches) {
+      return [{
+        year: note.year + 1,
+        level: COACHING_LEVEL,
+        line: indie
+          ? `${where.line} Then he came home to coach.`
+          : `The baseball ended in June, and the ${major} degree with it. ${coachingLine(id, 0)}`,
+        final: true,
+      }];
+    }
     return [{
       year: note.year + 1,
       level: indie ? where.level : 'HOME',
@@ -361,7 +460,7 @@ export function proCareer(id: string, note: AlumnusNote, throughYear: number): P
           : `Released after ${age} seasons. Further than most ever get.`,
         final: true,
       });
-      return rows;
+      return closeOut(rows, id, level, y);
     }
     /*
       And then it ends.
@@ -384,7 +483,7 @@ export function proCareer(id: string, note: AlumnusNote, throughYear: number): P
           : "Hung them up after " + proYears + " years in the minors.",
         final: true,
       });
-      return rows;
+      return closeOut(rows, id, level, y);
     }
     /*
       Re-tuned 2026-09-11, when `hash` started mixing.

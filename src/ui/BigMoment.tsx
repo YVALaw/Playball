@@ -45,6 +45,7 @@ const BUTTON: Record<string, string> = {
 export function BigMomentCard() {
   const moment = useDynasty((s) => s.bigMoment);
   const clear = useDynasty((s) => s.clearBigMoment);
+  const nudge = useDynasty((s) => s.cardNudge);
   const season = useDynasty((s) => s.season);
   const host = useRef<HTMLDivElement>(null);
 
@@ -54,6 +55,22 @@ export function BigMomentCard() {
   // A blocking card is a dialog: focus lands on its one button, Escape
   // dismisses it, and nothing behind it can be tabbed to (05 §62.6).
   useDialogFocus(host, clear, { active: moment !== null });
+
+  /*
+    The refused back press, made visible — the same contract `Modal` carries,
+    written out here because this card has its own markup rather than using it.
+    See `cardNudge` in the store for why the press is refused at all.
+  */
+  const nudgedAt = useRef(nudge);
+  useEffect(() => {
+    if (nudge === nudgedAt.current) return;
+    nudgedAt.current = nudge;
+    const el = host.current;
+    if (!el) return;
+    el.classList.remove('is-nudged');
+    void el.offsetWidth;
+    el.classList.add('is-nudged');
+  }, [nudge]);
 
   /*
     The celebration happens exactly once, on mount. Confetti in the school's

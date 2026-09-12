@@ -10,11 +10,11 @@
 // Dismissable by tapping anywhere, because a modal you have to aim at is a
 // modal that has outstayed its welcome.
 
-import { useRef, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useDialogFocus } from './dialogFocus.js';
 
 export function Modal(
-  { kicker, title, lines, body, tone = 'ink', action, onClose, cancel }:
+  { kicker, title, lines, body, tone = 'ink', action, onClose, cancel, nudge }:
   {
     kicker: string;
     title: string;
@@ -37,6 +37,15 @@ export function Modal(
      * and the action is only ever the button itself.
      */
     cancel?: { label: string; onClick: () => void };
+    /**
+     * A counter of back presses this card has refused.
+     *
+     * Passed in rather than read from the store, because this file is the one
+     * dialog every screen shares and it has never imported the store. Only the
+     * three cards that actually block the gesture pass it; for everything else
+     * it is undefined and the effect below never runs.
+     */
+    nudge?: number;
   },
 ) {
 
@@ -53,6 +62,30 @@ export function Modal(
   const firstButton = useRef<HTMLButtonElement | null>(null);
   const card = useRef<HTMLElement | null>(null);
   useDialogFocus(card, dismiss, { initial: firstButton });
+
+  /*
+    The refused back press, made visible.
+
+    Driven off the DOM rather than off a class in the render, because the whole
+    point is that the SECOND press has to shake as well as the first and React
+    will not re-run an animation for a class that never changed. Remove, force
+    a reflow by reading `offsetWidth`, add: the standard restart, and the only
+    one that works without remounting the card and taking focus with it.
+
+    `nudge` starts at whatever the counter already was when the card mounted,
+    so the effect's first run is skipped — a card that opens after some earlier
+    card refused a press must not open mid-shake.
+  */
+  const nudgedAt = useRef(nudge);
+  useEffect(() => {
+    if (nudge === undefined || nudge === nudgedAt.current) return;
+    nudgedAt.current = nudge;
+    const el = card.current;
+    if (!el) return;
+    el.classList.remove('is-nudged');
+    void el.offsetWidth;
+    el.classList.add('is-nudged');
+  }, [nudge]);
 
   return (
     <div

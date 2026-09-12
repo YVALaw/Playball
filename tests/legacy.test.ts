@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  noteMoments, proCareer, type AlumnusNote, type Moment,
+  noteMoments, proCareer, COACHING_LEVEL, type AlumnusNote, type Moment,
 } from '../src/engine/legacy.js';
 
 const bat = (over: Partial<{ ab: number; h: number; hr: number; rbi: number }>) =>
@@ -119,5 +119,135 @@ describe('the professional game', () => {
     const rows = proCareer('g1', note({ reason: 'graduated', round: undefined }), 2035);
     expect(rows).toHaveLength(1);
     expect(rows[0]!.final).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Some of them stay in the game
+// ---------------------------------------------------------------------------
+//
+// Asked for 2026-09-12 in the same sentence as the college major: the alumni
+// who went home should name a degree, **"and some of them become coaches."**
+// The degree shipped and this did not, which is a worse failure than not
+// answering at all — it left a country full of coaches in which no alumnus had
+// ever become one, on a screen built to tell you what happened to your men.
+//
+// Found by auditing the report item by item rather than by playing, which is
+// the point of doing that: a half-answered request looks answered.
+
+describe('the ones who stay in the game', () => {
+  // Its own, because the one above is scoped to that describe.
+  const note = (over: Partial<AlumnusNote> = {}): AlumnusNote => ({
+    name: 'T. Cole', teamAbbr: 'PSC', year: 2030, reason: 'drafted',
+    round: 2, overall: 78, classYear: 'JR', ...over,
+  });
+
+  const survey = () => {
+    const undrafted = { n: 0, coach: 0 };
+    const drafted = { n: 0, coach: 0 };
+    const byEnd = new Map<string, { n: number; coach: number }>();
+    const lines = new Set<string>();
+    for (let i = 0; i < 3000; i++) {
+      const u = proCareer(`u-${i}`, note({ reason: 'graduated', round: undefined }), 2060);
+      undrafted.n += 1;
+      if (u.some((r) => r.level === COACHING_LEVEL)) {
+        undrafted.coach += 1;
+        lines.add(u[u.length - 1]!.line);
+      }
+      const p = proCareer(
+        `p-${i}`,
+        note({ reason: 'drafted', round: 1 + (i % 20), overall: 52 + ((i * 7) % 26) }),
+        2060,
+      );
+      drafted.n += 1;
+      const played = [...p].reverse().find((r) => r.level !== COACHING_LEVEL);
+      const key = played?.level ?? '?';
+      if (!byEnd.has(key)) byEnd.set(key, { n: 0, coach: 0 });
+      const b = byEnd.get(key)!;
+      b.n += 1;
+      if (p.some((r) => r.level === COACHING_LEVEL)) {
+        b.coach += 1;
+        drafted.coach += 1;
+        lines.add(p[p.length - 1]!.line);
+      }
+    }
+    return { undrafted, drafted, byEnd, lines };
+  };
+
+  const s = survey();
+
+  it('sends some of them into coaching, and not most of them', () => {
+    // Measured 7.9% of undrafted seniors and 15.1% of drafted men. Banded
+    // widely — the point is that it happens and stays a minority, not the
+    // digit.
+    const uShare = s.undrafted.coach / s.undrafted.n;
+    const dShare = s.drafted.coach / s.drafted.n;
+    expect(uShare, `undrafted ${(uShare * 100).toFixed(1)}%`).toBeGreaterThan(0.03);
+    expect(uShare).toBeLessThan(0.15);
+    expect(dShare, `drafted ${(dShare * 100).toFixed(1)}%`).toBeGreaterThan(0.08);
+    expect(dShare).toBeLessThan(0.25);
+  });
+
+  it('hires the men who got further, more often', () => {
+    /*
+      The résumé is the qualification, and this is the assertion that says the
+      rate is a model rather than a constant with a coat on. Measured: 6.6% out
+      of Rookie ball, 12.0% Single-A, 13.1% Double-A, 16.8% Triple-A, 19.2% out
+      of the big leagues.
+    */
+    const at = (k: string): number => {
+      const b = s.byEnd.get(k);
+      return b && b.n > 50 ? b.coach / b.n : NaN;
+    };
+    expect(at('THE SHOW')).toBeGreaterThan(at('DOUBLE-A'));
+    expect(at('DOUBLE-A')).toBeGreaterThan(at('ROOKIE BALL'));
+  });
+
+  it('ends the career on the coaching row and only on it', () => {
+    /*
+      The invariant a second `final` row would break. `History`'s `last` and
+      the card's timeline both stop at the first one, so a career carrying two
+      would read differently depending on who read it — and the thing that
+      happened last is the coaching job, not the release before it.
+    */
+    for (let i = 0; i < 400; i++) {
+      const rows = proCareer(`f-${i}`, note({ reason: 'drafted', round: 1 + (i % 20) }), 2060);
+      const finals = rows.filter((r) => r.final);
+      expect(finals.length, `career f-${i} had ${finals.length} final rows`).toBe(1);
+      if (rows.some((r) => r.level === COACHING_LEVEL)) {
+        expect(rows[rows.length - 1]!.level).toBe(COACHING_LEVEL);
+        expect(rows[rows.length - 1]!.final).toBe(true);
+      }
+    }
+  });
+
+  it('says more than one thing, and says the right kind of thing', () => {
+    // A single sentence repeated for every alumnus in the book is the failure
+    // this whole file's `ABROAD` list was written to avoid.
+    expect(s.lines.size).toBeGreaterThan(5);
+    for (const line of s.lines) expect(line.length).toBeGreaterThan(20);
+  });
+
+  it('is not a rung on the ladder', () => {
+    /*
+      `LEVELS` is the climb and is indexed by it; `level === LEVELS.length - 1`
+      is how this engine asks "did he reach the big leagues". Coaching is a
+      label on a row, like MEXICO or JAPAN, and adding it to that array would
+      make every one of those questions answer wrong.
+
+      Asserted as the property rather than by reaching for the array: a
+      coaching row is only ever the LAST row of a career, so no man can be
+      standing on it and be promoted off it.
+    */
+    let sawCoaching = 0;
+    for (let i = 0; i < 600; i++) {
+      const rows = proCareer(`l-${i}`, note({ reason: 'drafted', round: 1 + (i % 20) }), 2060);
+      rows.forEach((r, at) => {
+        if (r.level !== COACHING_LEVEL) return;
+        sawCoaching += 1;
+        expect(at, 'a coaching row that is not the last one').toBe(rows.length - 1);
+      });
+    }
+    expect(sawCoaching, 'the survey saw no coaching at all').toBeGreaterThan(20);
   });
 });

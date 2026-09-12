@@ -8239,3 +8239,71 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
    not grow a fourth vocabulary for "here is why there is nothing to press". */
 .recruit-decision-note.is-delegated { border-left-color: var(--dim); }
 .recruit-decision-note.is-delegated small { color: var(--dim); }
+
+/* A back press a blocking card refused (05 §80).
+
+   The card IS the screen while it lasts, so the press is swallowed by design —
+   but an invisibly swallowed press is indistinguishable from a broken gesture,
+   which is exactly how it was reported ("the back gesture didn't work from
+   there either"). A short lateral shake says "still here, answer me" without
+   pretending the press did something it did not.
+
+   Short and small on purpose: 260ms and six pixels reads as a refusal. Any
+   longer and it reads as an animation the card is playing at you. */
+@keyframes card-nudge {
+  0%, 100% { transform: translateX(0); }
+  18% { transform: translateX(-6px); }
+  42% { transform: translateX(5px); }
+  68% { transform: translateX(-3px); }
+  88% { transform: translateX(1px); }
+}
+.modal-card.is-nudged,
+.big-moment.is-nudged { animation: card-nudge 260ms ease-out; }
+
+/* A coach who has asked for less motion still needs to know the press landed,
+   so the shake becomes a single flash of the card's own rule instead. */
+@media (prefers-reduced-motion: reduce) {
+  .modal-card.is-nudged,
+  .big-moment.is-nudged { animation: card-nudge-quiet 260ms steps(2, end); }
+  @keyframes card-nudge-quiet {
+    0%, 100% { filter: none; }
+    50% { filter: brightness(1.18); }
+  }
+}
+
+/* The tonight card's warning band, opened rather than inserted (05 §80).
+
+   `grid-template-rows: 0fr -> 1fr` is the one transition that animates to a
+   height nobody has to know in advance, which is the whole problem here: the
+   band carries one, two or three warnings and reserving its tallest state
+   would sit seventy pixels of empty red on most nights. The child needs
+   `min-height: 0` or the grid refuses to shrink it below its content, and
+   `overflow: hidden` or the text spills out of the closed slot. */
+.match-warnings-slot {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 220ms ease;
+}
+.match-warnings-slot.is-open { grid-template-rows: 1fr; }
+.match-warnings-slot > .match-warnings {
+  overflow: hidden; min-height: 0;
+  transition: padding-top 220ms ease, padding-bottom 220ms ease,
+              border-top-width 220ms ease;
+}
+/*
+  The row goes to 0fr and the band is STILL eighteen pixels tall, which is the
+  part of this technique nobody writes down: `0fr` sizes the grid row, and the
+  item's own padding and border are added outside that height rather than
+  squeezed by it. Measured in the browser at 18px — 8 + 9 of padding and the
+  1px rule — so the card only lost 17 of the 35 it was jumping by. They have to
+  collapse with the row, and on the same curve, or the band lands early and the
+  padding follows it.
+*/
+.match-warnings-slot:not(.is-open) > .match-warnings {
+  padding-top: 0; padding-bottom: 0; border-top-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .match-warnings-slot,
+  .match-warnings-slot > .match-warnings { transition: none; }
+}

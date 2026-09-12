@@ -13,7 +13,7 @@ import { RecordBook } from './RecordBook.js';
 import { FINISH_LABEL, type Finish } from '../../engine/postseason.js';
 import type { SchoolSeason } from '../../engine/season.js';
 import type { PlayerId } from '../../engine/types.js';
-import { proCareer, type AlumnusNote } from '../../engine/legacy.js';
+import { proCareer, COACHING_LEVEL, type AlumnusNote } from '../../engine/legacy.js';
 import { ChevronRightIcon } from '@radix-ui/react-icons';
 
 const FINISH_COLOR: Record<Finish, string> = {
@@ -173,7 +173,12 @@ function Alumni({ notes, teamAbbr }: { notes: Record<string, AlumnusNote>; teamA
         : pro.some((r) => r.level === 'TRIPLE-A') ? 'TRIPLE-A'
           : pro.some((r) => r.level === 'DOUBLE-A') ? 'DOUBLE-A'
             : pro.some((r) => r.level === 'SINGLE-A') ? 'SINGLE-A'
-              : pro[pro.length - 1]?.level ?? (note.reason === 'drafted' ? 'SIGNED' : 'HOME');
+              // The fallback is the last row he PLAYED. Coaching is a row on
+              // the same timeline and not a rung on the ladder, so a man who
+              // never got out of Rookie ball and then took his old high school
+              // would otherwise have read HIGHEST LEVEL: COACHING.
+              : [...pro].reverse().find((r) => r.level !== COACHING_LEVEL)?.level
+                ?? (note.reason === 'drafted' ? 'SIGNED' : 'HOME');
       const last = pro[pro.length - 1];
       return { id, note, pro, showYears, highest, last };
     })

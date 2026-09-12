@@ -305,7 +305,31 @@ export function Today() {
               is a warning rather than a fact now shares the one band, and the
               band only exists on a night that has one.
             */}
-            {(opponent.def.abbr === team.def.rival || held || formerAssistant) && (
+            {/*
+              Always mounted, and opened rather than inserted.
+
+              The stake line above reserves its own 28.4px because it is always
+              exactly one line. This band cannot do that — it holds one, two or
+              three warnings — so reserving its tallest state would leave about
+              seventy pixels of dead red nothing on the great majority of
+              nights. Instead the slot is a grid that animates from 0fr to 1fr,
+              which grows to whatever the content actually is without anybody
+              having to know its height in advance.
+
+              It matters because the trigger fires mid-sim. `held` is
+              `musts > 0`, and a must arrives the moment a man in the nine goes
+              unavailable and clears the moment somebody covers him — so on a
+              day advance this band was appearing and vanishing under the
+              coach's thumb, 35.3px at a time, which is the larger half of the
+              report the stake line answered: "the tonight card changes its
+              size when text comes in and it is not supposed to; nothing in the
+              app should make those quick resizings." A jump is now a reveal.
+            */}
+            <div
+              className={`match-warnings-slot${
+                opponent.def.abbr === team.def.rival || held || formerAssistant ? ' is-open' : ''
+              }`}
+            >
               <div className="match-warnings">
                 {opponent.def.abbr === team.def.rival && (
                   <p>
@@ -330,7 +354,7 @@ export function Today() {
                   </p>
                 )}
               </div>
-            )}
+            </div>
             <button
               className={`match-prep tap${activePlaybook ? ' is-active' : ''}`}
               type="button"
