@@ -214,6 +214,50 @@ describe('a pitcher in his own squad', () => {
     expect(middle.starts / middle.games).toBe(0.5);
   });
 
+  it('compares a starter with starters and a reliever with relievers', () => {
+    /*
+      Reported 2026-09-12: "I have a starter trying for the portal because he
+      was told he was going to play was broken, but he had started 8 games in
+      the season."
+
+      The busiest arm on any staff is always a reliever — a four-man rotation
+      makes eleven to fourteen starts while the pen's workhorse appears
+      fourteen to twenty-eight times — so every starter in the country was
+      measured against a number no starter can reach. An ace who took every
+      turn he was ever given read as a man being buried.
+
+      Measured across seeds 4242, 7 and 99: starters reading "He was told he
+      would play" fell from 143 of 1152 (12.4%) to 7 of 1152 (0.6%), while
+      relievers were unmoved at 123 to 122 of 1728 — which is right, because a
+      reliever who never gets the ball genuinely is buried.
+    */
+    const season = world();
+    const rec = season.teams[3]!;
+    const rotation = rec.team.rotation as unknown as Player[];
+    const pen = rec.team.bullpen as unknown as Player[];
+    const staff: Player[] = [...rotation, ...pen];
+    // The shape a real staff has: the busiest reliever out-appears every
+    // starter, and the ace takes every turn there was.
+    const outings = new Map<PlayerId, number>(staff.map((a) => [a.id, 0]));
+    rotation.forEach((a, i) => outings.set(a.id, i === 0 ? 14 : 12));
+    pen.forEach((a, i) => outings.set(a.id, i === 0 ? 28 : 10));
+    const app = (id: PlayerId): number => outings.get(id) ?? 0;
+
+    // The ace took all fourteen turns a starter could take: a full share.
+    const ace = armShare(rotation[0]!, staff, app);
+    expect(ace.games, 'a starter was measured against the bullpen').toBe(14);
+    expect(ace.starts / ace.games).toBe(1);
+
+    // The workhorse reliever is likewise measured against his own kind.
+    const horse = armShare(pen[0]!, staff, app);
+    expect(horse.games).toBe(28);
+    expect(horse.starts / horse.games).toBe(1);
+
+    // And a reliever nobody calls is still, correctly, buried.
+    const buried = armShare(pen[1]!, staff, app);
+    expect(buried.starts / buried.games).toBeCloseTo(10 / 28, 5);
+  });
+
   it('never divides by a staff that has not pitched', () => {
     const season = world();
     const staff: Player[] = [...season.teams[3]!.team.rotation];

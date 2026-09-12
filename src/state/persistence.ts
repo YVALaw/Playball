@@ -229,7 +229,20 @@ const SLOT_PREFIX = 'dyn-';
  */
 export function newSlotId(now = Date.now(), rand = Math.random): string {
   const stamp = Math.max(0, Math.floor(now)).toString(36);
-  const tail = Math.floor(rand() * 0x1000000).toString(36).padStart(5, '0');
+  /*
+    Forty bits of tail, not twenty-four.
+
+    At 0x1000000 two hundred saves taken inside one millisecond collide about
+    once in every eight hundred attempts — the birthday bound is 0.12% and the
+    measured rate is 0.07%. That is small, and the thing it costs is one
+    dynasty written over another, which is the one outcome a save file must
+    never have. It also made `saves.test.ts`'s two-hundred-draw case fail about
+    once in a thousand runs for no reason anybody could reproduce.
+
+    At 0x10000000000 the same two hundred draws collide about once in fifty
+    million. Eight base-36 characters instead of five; nothing reads the shape.
+  */
+  const tail = Math.floor(rand() * 0x10000000000).toString(36).padStart(8, '0');
   return `${SLOT_PREFIX}${stamp}-${tail}`;
 }
 

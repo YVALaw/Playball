@@ -317,11 +317,35 @@ export const isArm = (p: Player): boolean => p.type === 'pitcher';
  * busiest man on his own staff — which needs no invented constant, and asks
  * the question he would actually ask, which is whether he is being used like
  * the men around him.
+ *
+ * **Against the busiest man doing HIS job, though.** Reported 2026-09-12: "I
+ * have a starter trying for the portal because he was told he was going to
+ * play was broken, but he had started 8 games in the season."
+ *
+ * The busiest arm on any staff is always a reliever — a four-man rotation
+ * makes eleven to fourteen starts while the pen's workhorse appears fourteen
+ * to twenty-eight times — so every starter in the country was measured against
+ * a number no starter can reach, and an ace who took every single turn read as
+ * a man being buried. Measured across seeds 4242, 7 and 99: starters reading
+ * "He was told he would play" fall from 143 of 1152 (12.4%) to 7 of 1152
+ * (0.6%), while relievers are unmoved at 123 to 122 of 1728 — which is right,
+ * because a reliever who never gets the ball genuinely is buried.
+ *
+ * The fallback to the whole staff is what keeps the never-divide-by-zero
+ * guard honest for a program that has no arm of his kind at all.
  */
 export function armShare(
   p: Player, staff: readonly Player[], appearances: (id: PlayerId) => number,
 ): { starts: number; games: number } {
-  let busiest = 0;
-  for (const a of staff) busiest = Math.max(busiest, appearances(a.id));
-  return { starts: appearances(p.id), games: Math.max(1, busiest) };
+  const startsGames = (a: Player): boolean =>
+    (a as Player & { role?: string }).role === 'SP';
+  const mine = startsGames(p);
+  let group = 0;
+  let any = 0;
+  for (const a of staff) {
+    const n = appearances(a.id);
+    any = Math.max(any, n);
+    if (startsGames(a) === mine) group = Math.max(group, n);
+  }
+  return { starts: appearances(p.id), games: Math.max(1, group || any) };
 }

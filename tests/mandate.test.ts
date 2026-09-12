@@ -26,6 +26,62 @@ describe('the board asks for one number', () => {
     expect(s.seasonOpener?.targetWins).toBe(s.boardAsk?.targetWins);
   });
 
+  it('carries the NEW ask, in a world where the ask actually changes', async () => {
+    /*
+      The case above asserted the right equality and passed for months while
+      the bug was live, because seed 4242's ask happens not to move between
+      its first two seasons — so "the same number in both places" was true of
+      two copies of the same stale number.
+
+      The cause: `done` — the closure that commits the roll and stamps the new
+      `boardAsk` — was called THIRTY LINES BELOW the block that builds the
+      opener, while the comment above that block said it had already run. The
+      opener therefore carried the previous season's target, summary and
+      detail, so a mandate that had just changed was described to the coach in
+      the old mandate's words. Reported 2026-09-12: "the start of the season
+      banner card says the team is looking for x wins but then we press go to
+      the board and they are asking for a different number."
+
+      This one sweeps seeds until it finds a world whose ask genuinely moves,
+      and fails if it cannot find one — a test that cannot tell a stale number
+      from a fresh one is the thing that let this through.
+    */
+    let moved = 0;
+    for (const seed of [4242, 909, 1717, 2103, 31337, 77, 55, 8]) {
+      useDynasty.getState().start(seed, 0);
+      const before = useDynasty.getState().boardAsk?.targetWins;
+      expect(before).toBeDefined();
+      useDynasty.getState().settleSeason();
+      await useDynasty.getState().rollYear();
+
+      const s = useDynasty.getState();
+      expect(s.seasonOpener, `seed ${seed}`).not.toBeNull();
+      expect(s.boardAsk, `seed ${seed}`).not.toBeNull();
+      // The one number, in both places the coach can read it.
+      expect(s.seasonOpener?.targetWins, `seed ${seed}: opener against board`)
+        .toBe(s.boardAsk?.targetWins);
+      // And the words, which drifted with it and were never checked at all.
+      expect(s.seasonOpener?.askSummary, `seed ${seed}`).toBe(s.boardAsk?.summary);
+      expect(s.seasonOpener?.askDetail, `seed ${seed}`).toBe(s.boardAsk?.detail);
+      if (s.boardAsk?.targetWins !== before) moved++;
+    }
+    // The guard on the guard: if no world's ask moved, every equality above
+    // was satisfied by two copies of one number and proved nothing.
+    expect(moved, 'no seed changed its ask, so this test proved nothing').toBeGreaterThan(0);
+  });
+
+  it('gives a second career its own letter rather than the last one', async () => {
+    // `acceptOffer` has cleared the opener since the two-number mandate was
+    // first reported; `start` never did, so a second career begun in the same
+    // session opened on the previous school's terms.
+    useDynasty.getState().start(4242, 0);
+    useDynasty.getState().settleSeason();
+    await useDynasty.getState().rollYear();
+    expect(useDynasty.getState().seasonOpener).not.toBeNull();
+    useDynasty.getState().start(909, 3);
+    expect(useDynasty.getState().seasonOpener).toBeNull();
+  });
+
   it('does not leave the old board\'s letter standing after a move', async () => {
     useDynasty.getState().start(4242, 0);
     useDynasty.getState().settleSeason();

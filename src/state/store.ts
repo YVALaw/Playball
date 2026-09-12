@@ -2817,6 +2817,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       season,
       userTeam: seat,
       boardAsk: boardAskFor(season, seat),
+      // And no letter from the board that hired somebody else. `acceptOffer`
+      // has cleared this since the two-number mandate was first reported;
+      // `start` never did, so a second career begun in one session opened on
+      // the previous school's terms.
+      seasonOpener: null,
       needsTeam: false,
       year: START_YEAR,
       version: 1,
@@ -4949,6 +4954,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // went on 2026-09-10 — a signed kid always arrives now — so the list
       // stays empty until the winter grows another surprise worth the opener.
       const lines: string[] = [];
+      // The roll is finished and committed here, so everything the opener
+      // reads below — the ask, the year — is the new season's.
+      done(season, report);
       /*
         The season opener — the reporter's design, from the phone: "the
         board is delighted notification could be something we need to
@@ -4956,11 +4964,22 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         expectations also showing there," and "the winter letter should
         open like a modal once the offseason ends." One modal at the top of
         the new season: last year's verdict in the board's own words, what
-        it did to both names, the NEW asks, and the winter's stings. The
-        boardAsk read here is the fresh stamp — the roll set it above,
-        before this runs.
+        it did to both names, the NEW asks, and the winter's stings.
+
+        `done` is called above this now, and the comment that used to sit
+        here said it already was — "the boardAsk read here is the fresh
+        stamp — the roll set it above, before this runs" — while the call
+        sat thirty lines BELOW. So the opener carried the PREVIOUS season's
+        ask: last year's target, last year's summary and detail, so a mandate
+        that had just changed was described in the old mandate's words.
+        Reported 2026-09-12: "the start of the season banner card says the
+        team is looking for x wins but then we press go to the board and they
+        are asking for a different number."
+
+        `review` is the outer binding captured before the roll, not a fresh
+        read — `done` nulls `lastReview` on its way through, and that is
+        exactly why it could not be called first before.
       */
-      const review = get().lastReview;
       const ask = get().boardAsk;
       if (review && ask) {
         set({
@@ -4980,7 +4999,6 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         });
       }
     }
-    done(season, report);
     } catch (e) {
       set({ busy: false, progress: null, simError: e instanceof Error ? e.message : String(e) });
     }
