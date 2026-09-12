@@ -715,7 +715,12 @@ const RULE_ROWS: readonly RuleRow[] = [
       {
         value: 'short',
         label: `${seasonLength(SEASON_SPANS.short)} GAMES`,
-        note: 'Two-game weekends, three-man rotation',
+        // Three men START in a week — two weekend and a midweek — but the
+        // staff is still four, because `rotationSizeFor` floors it there and
+        // the fourth man becomes depth rather than the world becoming thinner.
+        // Saying "three-man rotation" flatly contradicted the LINEUP screen,
+        // which counts the staff and now labels that fourth chip DEPTH.
+        note: 'Two-game weekends, three starters and a spare',
       },
       {
         value: 'standard',

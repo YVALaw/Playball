@@ -30,7 +30,9 @@ import { Modal } from '../Modal.js';
 import { armValue, overallOf } from '../../engine/ratings.js';
 import { isTwoWay, uniquePlayers } from '../../engine/types.js';
 import { captainOf } from '../../engine/captains.js';
-import { battingAverage, era, inningsPitched, injuryClock } from '../../engine/season.js';
+import {
+  battingAverage, era, inningsPitched, injuryClock, seriesGames,
+} from '../../engine/season.js';
 import { handles } from '../../state/depth.js';
 import { available, cardGaps } from '../../engine/depthChart.js';
 import { coverTier, fieldingAt, positionPenalty } from '../../engine/positions.js';
@@ -38,8 +40,30 @@ import { useHold } from '../useLongPress.js';
 import type { Arm, Hitter, Player, PlayerId, Position } from '../../engine/types.js';
 import { CaptainC, DidButton, FieldNote, ModuleIntro, SectionHeading } from '../components/Kit.js';
 
-/** Friday, Saturday, Sunday, then the midweek arm. */
-const SLOTS = ['FRI', 'SAT', 'SUN', 'MID'];
+/**
+ * What each rotation slot is called, for a weekend of `weekend` games.
+ *
+ * This was `['FRI', 'SAT', 'SUN', 'MID']` — correct for the only schedule that
+ * existed when it was written and wrong for both of the others since. On a
+ * fifty-six game world the rotation is five arms and the array has four, so
+ * the fifth row drew an EMPTY chip; on a thirty-four game world the two-game
+ * weekend is Saturday and Sunday and the rows still said Friday.
+ *
+ * Derived from the config now, which is the same thing `rotationSizeFor` does
+ * for the size of the staff. The weekend takes the LAST `weekend` days of a
+ * Thursday-to-Sunday block, because a four-game series adds a Thursday rather
+ * than playing into Monday. The midweek arm follows it — he starts in the slot
+ * after the weekend's, which is the whole reason a four-game weekend needs a
+ * fifth man — and anything past that is the depth a short season keeps rather
+ * than the thinner staff it could have had.
+ */
+const WEEKEND_DAYS = ['THU', 'FRI', 'SAT', 'SUN'];
+export const slotNames = (weekend: number, size: number): string[] => {
+  const days = WEEKEND_DAYS.slice(Math.max(0, WEEKEND_DAYS.length - weekend));
+  const out = [...days, 'MID'];
+  while (out.length < size) out.push('DEPTH');
+  return out.slice(0, Math.max(size, out.length));
+};
 
 /** The rail, in the order the proposal draws it: outfield down to the plate. */
 const POSITIONS = ['CF', 'RF', 'LF', '2B', 'SS', '3B', '1B', 'C', 'DH'] as const;
@@ -625,6 +649,7 @@ export function Lineup() {
         <SectionHeading kicker="ROTATION" title={`${team.team.rotation.length} starters`} />
         <section className="rotation-list">
           {team.team.rotation.map((p, i) => {
+            const slots = slotNames(seriesGames(season.config), team.team.rotation.length);
             const line = season.pitching.get(p.id);
             const on = pickedArm === i;
             /*
@@ -647,7 +672,7 @@ export function Lineup() {
                 {...holdStats(p.id)}
                 onClick={() => { if (consumed()) return; tapArm(i); }}
               >
-                <span>{SLOTS[i]}</span>
+                <span>{slots[i] ?? 'DEPTH'}</span>
                 <strong>
                   {p.name}
                   {captainOf(team.team)?.id === p.id && <CaptainC />}
