@@ -154,3 +154,122 @@ describe('a drafted man', () => {
     expect(a).toBe(b);
   });
 });
+
+// ---------------------------------------------------------------------------
+// How long the climb takes
+// ---------------------------------------------------------------------------
+//
+// Reported 2026-09-12: **"the alumni are called up to the majors too fast."**
+// They were. `atLevel` was tracked in `proCareer` for the flavour line and
+// never consulted, so a good enough man cleared a level a year, every year: a
+// first rounder starts at Double-A, needs two promotions, and at a 79% roll
+// took two summers to arrive.
+//
+// The fix damps the promotion roll in a man's first summer at a level. What
+// makes it more than a one-line change is the coupling, and that is what these
+// tests are really guarding: **washing out is rolled once a summer**, so a
+// longer climb is also more chances for the climb to end. Slowing the
+// promotions alone dropped the share of drafted men who ever reach the top
+// level from 44.9% to 29.0% — silently re-answering the one number in
+// `legacy.ts` that `05` §74 had deliberately calibrated against a real-world
+// figure. So the wash-out age term moved with it, and the assertion that
+// matters below is not the pacing one, it is the share one.
+
+describe('how long it takes to get there', () => {
+  /** Four thousand synthetic careers, bucketed by draft round. */
+  const survey = () => {
+    const bucket = (r: number): string =>
+      r <= 2 ? '1-2' : r <= 5 ? '3-5' : r <= 10 ? '6-10' : '11+';
+    const rounds = new Map<string, { n: number; reached: number; years: number[] }>();
+    const every: number[] = [];
+    let reached = 0;
+    const N = 4000;
+    for (let i = 0; i < N; i++) {
+      const round = 1 + (i % 20);
+      const note: AlumnusNote = {
+        name: 'A Man', teamAbbr: 'BIL', year: 2030, reason: 'drafted',
+        round, overall: 52 + ((i * 7) % 26), classYear: 'SR',
+      };
+      const rows = proCareer(`man-${i}`, note, 2030 + 25);
+      const key = bucket(round);
+      if (!rounds.has(key)) rounds.set(key, { n: 0, reached: 0, years: [] });
+      const b = rounds.get(key)!;
+      b.n += 1;
+      const show = rows.find((r) => r.level === 'THE SHOW');
+      if (!show) continue;
+      b.reached += 1;
+      reached += 1;
+      b.years.push(show.year - 2030);
+      every.push(show.year - 2030);
+    }
+    return { rounds, every, share: reached / N, n: N };
+  };
+
+  const median = (xs: readonly number[]): number =>
+    [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] ?? 0;
+
+  const survey1 = survey();
+
+  it('surveyed enough careers to say anything', () => {
+    expect(survey1.n).toBe(4000);
+    expect(survey1.every.length).toBeGreaterThan(1000);
+  });
+
+  it('does not put a first rounder in the big leagues in two summers', () => {
+    /*
+      THE reported symptom. Measured 2 before and 3 after, mean 2.71 → 3.37.
+      Asserted as a floor rather than an equality because it is a median over a
+      derived-not-drawn process and a nudge anywhere upstream can move it by
+      one; what must not come back is the two.
+    */
+    const top = survey1.rounds.get('1-2')!;
+    expect(median(top.years), `1-2 round median = ${median(top.years)}`)
+      .toBeGreaterThanOrEqual(3);
+  });
+
+  it('leaves nobody arriving absurdly early, and keeps the prodigy possible', () => {
+    // Damped, not barred. Two-year call-ups fell from 10% of arrivals to 4% —
+    // a rule that forbade them outright would have deleted the genuine
+    // prodigy along with the complaint, so both bounds are asserted.
+    const fast = survey1.every.filter((y) => y <= 2).length / survey1.every.length;
+    expect(fast, `${(fast * 100).toFixed(1)}% arrived within two years`)
+      .toBeLessThan(0.07);
+    expect(fast, 'somebody still gets there fast').toBeGreaterThan(0.005);
+  });
+
+  it('makes every round wait longer, not just the top of the draft', () => {
+    // 3 / 5 / 6 / 6 measured, against 2 / 4 / 5 / 5 before.
+    const floors: Record<string, number> = { '1-2': 3, '3-5': 4, '6-10': 5, '11+': 5 };
+    for (const [key, floor] of Object.entries(floors)) {
+      const b = survey1.rounds.get(key)!;
+      expect(median(b.years), `${key} median = ${median(b.years)}`)
+        .toBeGreaterThanOrEqual(floor);
+    }
+  });
+
+  it('and the same men still get there, which is the whole constraint', () => {
+    /*
+      The assertion this file exists for. 44.9% before the pacing change and
+      44.7% after — the wash-out age term came down from 5 to 3.2 to pay for
+      the extra summers. Banded at ±5 points: wide enough that the arithmetic
+      of a longer career does not trip it, far too narrow to let the 29.0% a
+      naive slowdown produces back in.
+    */
+    expect(survey1.share, `${(survey1.share * 100).toFixed(1)}% ever reached`)
+      .toBeGreaterThan(0.40);
+    expect(survey1.share, `${(survey1.share * 100).toFixed(1)}% ever reached`)
+      .toBeLessThan(0.50);
+  });
+
+  it('still reads as a draft: the early rounds get there more often', () => {
+    // The gradient, which a change to either knob could flatten without
+    // moving the headline share at all.
+    const at = (k: string): number => {
+      const b = survey1.rounds.get(k)!;
+      return b.reached / b.n;
+    };
+    expect(at('1-2')).toBeGreaterThan(at('3-5'));
+    expect(at('3-5')).toBeGreaterThan(at('6-10'));
+    expect(at('1-2')).toBeGreaterThan(0.7);
+  });
+});

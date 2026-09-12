@@ -10317,3 +10317,55 @@ offer pips are replaced by a note that **names the man**, because "your staff
 handles it" is the kind of line that makes a player wonder whether anything is
 happening at all, and his coordinator is somebody he hired, pays and can
 replace.
+
+---
+
+## 79. The climb to the big leagues took two summers — **September 12 2026**
+
+Reported in the list of twenty-six: **"the alumni are called up to the majors
+too fast."**
+
+They were, and the cause is one line that was written and never read.
+`proCareer` tracks `atLevel` — summers at the level a man is standing on — and
+used it only for the flavour text, so a repeat summer would read as one. The
+promotion roll never consulted it. A good enough man therefore cleared a level a
+year, every year: a first rounder starts at Double-A, needs two promotions, and
+at a 79% roll took two summers. **Drafted in 2030, in the big leagues in 2032.**
+
+### 79.1 Damped, not barred
+
+The roll is cut to 0.6 in a man's first summer somewhere and full from his
+second. Damped rather than barred deliberately: two-year call-ups fell from 10%
+of arrivals to 4%, and a rule that forbade them outright would have deleted the
+genuine prodigy along with the complaint.
+
+### 79.2 The coupling, which is the whole of the work
+
+Washing out is rolled **once a summer**. So a longer climb is also more chances
+for the climb to end, and slowing the promotions on their own dropped the share
+of drafted men who ever reach the top level from **44.9% to 29.0%** — silently
+re-answering the one number in `legacy.ts` that §74 had deliberately calibrated
+against a real-world figure.
+
+Two knobs had to move together: the base promotion rate 56 → 60, and the
+wash-out age term **5 → 3.2**. Measured over four thousand careers:
+
+| round | median years to the show | share who ever get there |
+|---|---|---|
+| 1-2 | 2 → **3** | 86.0% → 84.8% |
+| 3-5 | 4 → **5** | 54.8% → 58.5% |
+| 6-10 | 5 → **6** | 37.9% → 37.1% |
+| 11+ | 5 → **6** | 37.2% → 36.3% |
+| **all** | 4 → **5** | **44.9% → 44.7%** |
+
+Everybody arrives a year later and the same men arrive. That was the
+constraint, and it is the assertion `tests/pro-career.test.ts` leads with — the
+pacing medians are the reported symptom, but the share is the thing a careless
+fix breaks.
+
+**The general lesson, third time this week:** a rate rolled per-summer is not
+independent of how many summers there are. §77 found the same shape (a gate on
+`overall < 52` that more men reached once the class got weaker), and §78 found
+it again (a lost-cause filter that assumes the seeding pass it was paired with).
+Changing how long something takes changes every per-year probability attached to
+it, and none of those were re-derived by the change that moved the clock.

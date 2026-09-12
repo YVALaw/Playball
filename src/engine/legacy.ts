@@ -340,7 +340,18 @@ export function proCareer(id: string, note: AlumnusNote, throughYear: number): P
     const h = hash(`${id}:pro:${y}`);
     // Washing out gets likelier every year a man is not advancing, and the
     // middle of the pyramid is where it happens.
-    const washPct = Math.max(4, 16 + age * 5 - talent - level * 4);
+    /*
+      The age term is 3.2 and used to be 5, and it moved because the climb
+      below got longer rather than because anybody thought it was wrong.
+
+      Washing out is rolled once a summer, so stretching a career by two years
+      is also handing it two more chances to end. Slowing the promotions alone
+      dropped the share of drafted men who ever reach the top level from 44.9%
+      to 29.0% — a change nobody asked for, made by accident, to the one number
+      in this file that had been deliberately calibrated (`05` §74). The two
+      knobs are coupled and have to move together. See `settled`.
+    */
+    const washPct = Math.max(4, 16 + age * 3.2 - talent - level * 4);
     if (h % 100 < washPct) {
       rows.push({
         year: y,
@@ -391,7 +402,41 @@ export function proCareer(id: string, note: AlumnusNote, throughYear: number): P
       reads the way it should: 75% of the first two rounds, 30% of rounds six
       to ten, 10% of the rest.
     */
-  const movePct = Math.min(80, 56 + talent);
+    /*
+      A first summer at a level is not a full audition.
+
+      Reported 2026-09-12: "the alumni are called up to the majors too fast."
+      They were, and the cause was that nothing in this loop knew how long a
+      man had been standing where he was. `atLevel` was tracked — for the
+      flavour line, so a repeat summer reads as one — and never once consulted,
+      so a good enough man cleared a level a year, every year. A first rounder
+      starts at Double-A and needs two promotions, which at a 79% roll is two
+      summers: drafted in 2030, in the big leagues in 2032, and that is what a
+      coach kept watching happen.
+
+      So the roll is damped in a man's first summer somewhere and full from his
+      second. Damped rather than barred: the jump still exists, it is just
+      uncommon now — two-year call-ups fell from 10% of arrivals to 4% — and a
+      rule that forbade it outright would have deleted the genuine prodigy
+      along with the complaint.
+
+      Measured over four thousand careers, before → after. The base rate went
+      56 → 60 and the wash-out age term 5 → 3.2 at the same time, and the whole
+      point of those two is the last column:
+
+        round    median years to the show    share who ever get there
+        1-2         2 → 3                       86.0% → 84.8%
+        3-5         4 → 5                       54.8% → 58.5%
+        6-10        5 → 6                       37.9% → 37.1%
+        11+         5 → 6                       37.2% → 36.3%
+        ALL         4 → 5                       44.9% → 44.7%
+
+      Everybody arrives a year later and **the same men arrive**. That was the
+      constraint: §74 tuned who reaches the top level against a real-world
+      figure, and a pacing change is not licence to quietly re-answer it.
+    */
+    const settled = atLevel > 1 ? 1 : 0.6;
+    const movePct = Math.min(80, 60 + talent) * settled;
     if (level < LEVELS.length - 1 && (h >> 8) % 100 < movePct) {
       level++;
       atLevel = 1;
