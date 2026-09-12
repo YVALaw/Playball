@@ -34,8 +34,15 @@
 // ---------------------------------------------------------------------------
 //
 // Ten seasons, two worlds, one node process per seed (see SEASONS below for why
-// that matters). Runs per team per game, against an NCAA D1 target of 6.73:
+// that matters). Runs per team per game, against an NCAA D1 target of 6.73.
+// Re-recorded 2026-09-11 after `projectPotential` made headroom a roll (`05`
+// §73) — **year one is identical to the digit on both seeds**, which is the
+// measurement that proves that change spent no extra random draw:
 //
+//   seed 4242  7.111  7.430  8.109  8.536  8.816  8.955  8.941  8.735  8.594  8.624
+//   seed 909   6.934  7.551  8.246  8.731  8.922  8.888  8.924  9.050  8.873  8.781
+//
+//   before it, for comparison — the climb is very slightly gentler now:
 //   seed 4242  7.111  7.543  8.107  8.670  9.072  9.017  8.775  8.859  8.804  8.744
 //   seed 909   6.934  7.718  8.362  8.761  8.830  8.889  8.807  8.635  8.744  8.802
 //

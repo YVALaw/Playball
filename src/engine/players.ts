@@ -20,16 +20,66 @@ const POSITIONS: readonly Position[] = ['C','1B','2B','3B','SS','LF','CF','RF','
 const CLASSES: readonly ClassYear[] = ['FR','SO','JR','SR'];
 
 /**
+ * Where a man stops being raw.
+ *
+ * Below 44 he is as unformed as the fiction says; by 64 he is a finished
+ * college player. The same boundary the `raw` channel's `overall < 52` gate
+ * already draws, moved up and given a ramp under it, and here for the reason it
+ * exists there: a polished kid's ceiling leaks into his star rating through the
+ * projection term, so a widening that reaches him fattens the five-star shelf
+ * instead of hiding gems.
+ */
+const RAW_AT = 44;
+const FINISHED_AT = 64;
+
+/**
+ * What a man of this class year has left ON AVERAGE — the same numbers the old
+ * bands carried, to the digit. This is the only place class year appears now.
+ */
+const ROOM: Record<ClassYear, number> = { FR: 11, SO: 7, JR: 4, SR: 2 };
+
+/**
+ * And how wide the roll around it is, which is the whole change.
+ *
+ * `reach` is the ceiling of a man's headroom as a multiple of his class mean,
+ * and `reach - 1` is the exponent that shapes it. `E[R * u^k] = R / (k + 1)`
+ * for uniform u, so with the roof at `room * reach` and the exponent at
+ * `reach - 1` the mean is exactly `room` at every reach — the shape can change
+ * as violently as it likes and the league's total room does not move. That is
+ * why there are no calibrated constants here to go stale, and why this needed
+ * no bisection to hold the run environment.
+ *
+ * A raw eighteen-year-old rolls against a roof of three times his class mean: a
+ * freshman at 33 points, a tenth percentile of almost nothing and a ninetieth
+ * of 27. A finished one rolls against 1.6 times it — 6 to 17, very nearly the
+ * normal(11, 4) band he had before.
+ */
+const REACH_RAW = 3.0;
+const REACH_FINISHED = 1.6;
+
+/**
  * How much room a player has left to grow. Freshmen carry the most and are the
  * whole reason to recruit rather than just keep upperclassmen — a raw 45 with a
  * 62 ceiling is worth more to a program than a finished 52.
+ *
+ * **Headroom is the roll now, and it used to be very nearly a constant.** A
+ * freshman got eleven give or take four whoever he was, so potential was
+ * current ability plus a class-year number, the letter on his card largely
+ * restated how good he already was, and most men carried much the same gap and
+ * therefore grew at much the same rate. Reported after fifteen seasons, in
+ * these words: *"an A potential grew 3 ovr just like a C potential each year."*
+ *
+ * One `gauss`, spent exactly where `normal` spent one — see the file header on
+ * draw order. The logistic is the standard approximation to the normal CDF
+ * (1.702, max error under 0.01), used to turn that gauss into a uniform without
+ * a second draw.
  */
 function projectPotential(rng: Rng, overall: number, cls: ClassYear): number {
-  const headroom =
-    cls === 'FR' ? normal(rng, 11, 4, 2, 20)
-    : cls === 'SO' ? normal(rng, 7, 3, 1, 15)
-    : cls === 'JR' ? normal(rng, 4, 2.5, 0, 10)
-    : normal(rng, 2, 1.5, 0, 6);
+  const room = ROOM[cls];
+  const polish = Math.max(0, Math.min(1, (overall - RAW_AT) / (FINISHED_AT - RAW_AT)));
+  const reach = REACH_RAW + (REACH_FINISHED - REACH_RAW) * polish;
+  const u = 1 / (1 + Math.exp(-1.702 * gauss(rng)));
+  const headroom = room * reach * Math.pow(u, reach - 1);
 
   /**
    * The raw ones.

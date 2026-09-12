@@ -85,11 +85,24 @@ export function potentialGrade(potential: number): PotentialGrade {
   // The top of the ladder is cut far tighter than that spacing suggests, and
   // that is the point of it. S began at 85 and arrived nine times in a national
   // class of seven hundred and twenty — often enough that the best grade in the
-  // game was a thing you waited for rather than a thing you found. It starts at
-  // 92 now, which is two or three men in the entire country in a year. A+ took
-  // over the band S vacated, so the population of players who are visibly
-  // special is exactly what it always was; only the name of its top sliver
-  // moved, and only that sliver got rare.
+  // game was a thing you waited for rather than a thing you found. A+ took over
+  // the band S vacated, so the population of players who are visibly special is
+  // exactly what it always was; only the name of its top sliver moved.
+  //
+  // **The sliver did not actually get rare, and this comment claimed it had.**
+  // It said 92 "is two or three men in the entire country in a year". Measured
+  // 2026-09-11 over ten national classes: **8.4**, which is the nine the move
+  // was made to fix. Raising the floor from 85 to 92 bought almost nothing,
+  // because `GENERATED_POTENTIAL_CAP` is 94 and the top of the ceiling
+  // distribution is compressed into the six points beneath it — 21.4 men a
+  // class sit at 88 or above and only half of them are filtered by seven points
+  // of threshold.
+  //
+  // Widening the headroom roll (`players.ts`, `projectPotential`) took it to
+  // 12.4. Left at 12.4 deliberately: moving a grade boundary changes the letter
+  // on every player card in every save, and the honest first step is to stop the
+  // comment being wrong. Filed at `06` §AC.1b with the rest of the ceiling
+  // calibration.
   if (potential >= S_PLUS_FLOOR) return 'S+';
   if (potential >= 92) return 'S';
   if (potential >= 85) return 'A+';

@@ -9605,6 +9605,122 @@ The backlog line for this (`06` §AC.2, "A position change the man agreed to")
 described the consent half — a move the coach asks about and the man agrees to.
 That half is still owed and wants a design decision: whether a man can refuse.
 
+## 73. The ceiling on a card was a restatement, not a forecast — **September 11 2026**
+
+Reported after fifteen seasons: *"they all progress or develop at similar rates
+when actually depending on their potential and boom/boost etc it should feel
+different. An A potential grew 3 ovr just like a C potential each year."*
+
+### 73.1 The development engine was never the problem
+
+Growth tracks the gap between a man's ceiling and his current rating, and it
+does so almost exactly. Measured across 18,331 man-winters in six worlds, gain
+divided by gap runs **0.385 / 0.382 / 0.384 / 0.367 / 0.344 / 0.333** from S down
+to D. The engine does not know what letter a man wears and does not behave as if
+it did — which is the property that lets a coach read a man's remaining room off
+the two numbers on his card, and which any fix had to preserve.
+
+The arcs work too: boom +3.66 a year, steady +2.60, bust +1.00.
+
+### 73.2 The ceiling was current ability plus a class-year constant
+
+`projectPotential` drew headroom from class year and **nothing about the
+player** — a freshman got eleven give or take four whoever he was. So potential
+was overall plus a constant, and the letter grade largely restated how good a man
+already was. The consequence, measured over ten national classes: gap bands 6-10
+and 11-15 held **72.6%** of every class between them, at mean star ratings of 2.48
+and 2.56 — indistinguishable. Most of the country had the same room and therefore
+grew at the same rate.
+
+The file half-knew. The `raw` channel — a 14% chance for a sub-52 freshman to
+draw 24±9 extra — exists because *"a ceiling can never be far from what he
+already does, and that quietly made hidden gems impossible."* It was the sole
+exception, it only fires for freshmen, and on a roster three quarters
+upperclassmen it reaches about 1.8% of men against 8% of a recruiting class.
+
+### 73.3 Headroom is the roll now, and its width is how raw he is
+
+```
+headroom = room × reach × u^(reach − 1)     u = Φ(gauss)
+room   = { FR 11, SO 7, JR 4, SR 2 }        (the old band means, unchanged)
+reach  = 3.0 → 1.6 as overall runs 44 → 64
+```
+
+`E[u^k] = 1/(k+1)` for uniform `u`, so with the roof at `room × reach` and the
+exponent at `reach − 1` the mean is **exactly `room` at every reach**. The shape
+can change as violently as it likes and the league's total talent does not move
+— which is why there are no calibrated constants here to go stale, and why this
+needed no bisection to hold a run environment that is already a third over
+target. It is bounded rather than truncated, so nothing needs a tail correction.
+
+One `gauss`, spent in the slot `normal` spent one. **Draw order is untouched and
+no golden was re-recorded** — proven by the run-scoring series, where year one is
+identical to the digit on both documented seeds.
+
+The taper is what stops it fattening the top of the board. A raw eighteen-year-old
+rolls against three times his class mean; a finished one against 1.6 times it,
+which is very nearly the band he had before. A polished kid's ceiling leaks into
+his star rating through the projection term, so a widening that reached him would
+have refattened the five-star shelf instead of hiding gems — the documented prior
+failure recorded in the `raw` comment.
+
+### 73.4 What it actually bought
+
+Six worlds, ~18,350 man-winters each, before and after:
+
+| grade | old gain | new gain | old n | new n |
+| --- | --- | --- | --- | --- |
+| S | +10.72 | **+11.41** | 72 | **122** |
+| A+ | +6.91 | **+7.28** | 204 | 207 |
+| A | +4.87 | **+5.36** | 1127 | **1403** |
+| B | +3.44 | **+4.00** | 2697 | 2860 |
+| C | +2.42 | **+2.70** | 5518 | 5005 |
+| D | +1.80 | **+1.29** | 8743 | 8734 |
+
+**The ladder was monotone before and still is.** An earlier note in this session
+claimed A+ grew slower than A and called it a bug; that was read off a
+single-world sample of twenty-three men with a standard error of ±1.5, and it was
+noise. The correction is the reason `potential-forecast.test.ts` opens by
+asserting its own sample size.
+
+What moved is the **spread** — S-over-D goes 5.96× to **8.84×** — and it moved
+mostly at the bottom, because a finished man now correctly has almost nothing
+left. And more men with real ceilings reach a roster at all: S man-winters up
+69%, A up 24%.
+
+In a recruiting class: no gap band now holds more than 32% where two held 72.6%;
+three-star recruits carrying 20+ points of room go 11.7% → **30.2%** while
+five-stars stay at 1.8%, so *stars buy certainty and gems are what scouting buys*
+is arithmetic rather than assertion; and the correlation between current overall
+and ceiling falls **0.751 → 0.636**. A breakout winter — the thing a coach would
+actually notice — goes from 1.8% of man-winters to **4.5%**.
+
+Run scoring is unmoved to slightly gentler: year five 8.816 / 8.922 against
+9.072 / 8.830, inside every band of the five-season guard.
+
+### 73.5 What it does not do, and the decision left standing
+
+**It does not separate A from C**, which is the exact comparison the report
+named: 2.20 points a year before, 2.17 after. The A band still contains finished
+men who are graded A for already being good, and while grade stays correlated
+with current ability it always will.
+
+That correlation is deliberate here, and reversing it is a design decision rather
+than a fix. Today an A means *a good player who will get better*, which is what
+makes a five-star a safe bet. The alternative is a pure forecast — an A might be
+a raw 40-overall freshman with thirty points of room, and a polished 70 might be
+a B because he is nearly finished — which would make scouting enormously more
+important and a five-star no longer reliably the better player. Those are
+different games, and the choice is not the engine's to make.
+
+One thing this exposed on the way past: `potentialGrade`'s comment claimed the S
+floor at 92 was *"two or three men in the entire country in a year."* It was
+**8.4** before any of this, which is the nine the move from 85 was made to fix,
+because `GENERATED_POTENTIAL_CAP` is 94 and the top of the distribution is
+compressed into the six points beneath it. Widening headroom took it to 12.4. The
+comment now says what is true; the threshold was left alone, because moving a
+grade boundary changes the letter on every card in every save.
+
 ## Appendix A: stale comments and vestigial code found while writing this
 
 These are places where a comment or a symbol no longer describes what the code

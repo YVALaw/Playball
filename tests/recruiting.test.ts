@@ -810,12 +810,31 @@ describe('the AI works off the same week the user does', () => {
   });
 
   it('keeps spring weekly RP separate from June Draft and Portal spending', () => {
-    // Recruiting is now a regular-season budget. Draft/Portal still use RP,
-    // but spending that offseason reserve cannot shrink a later spring week.
+    /*
+      Recruiting is a regular-season budget. Draft and Portal still use RP, but
+      spending that offseason reserve cannot shrink a later spring week.
+
+      **The board is built once and asked twice.** This used to call `weekFor`
+      twice, which generates a fresh class each time — and `uniqueName` in
+      `players.ts` is module-level mutable state, so the second class in a
+      process is not the first one. Measured 2026-09-11: three consecutive
+      `weekFor(5)` calls with June spending held at NOUGHT throughout return
+      17, 16, 17. The assertion was comparing call order, not the argument it
+      names, and it had been passing on the coincidence that the two happened
+      to agree. `calibration.ts` records the same hazard as load bearing for
+      the same reason.
+
+      One class, two calls, one difference. On that footing the two sides agree
+      exactly, which is the invariant this was always meant to state.
+    */
     const june = flexibleOffseasonBudget(5);
-    const before = total(weekFor(5));
-    const after = total(weekFor(5, june));
-    expect(after).toBe(before);
+    const rng = makeRng(77);
+    const recruits = generateClass(2027, 16, rng);
+    recruits.week = 1;
+    const ask = (spentInJune: number) => total(aiTargets(
+      0, program(0.8), 45, recruits.prospects, 8, makeRng(5), {}, spentInJune,
+    ));
+    expect(ask(june)).toBe(ask(0));
     expect(weeklyBudget(5, june)).toBe(weeklyBudget(5, 0));
   });
 

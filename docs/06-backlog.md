@@ -3273,6 +3273,27 @@ would matter to somebody playing.
 
 ### AC.1b The cause, which is a decision rather than a fix
 
+- **The ceiling grade is still half a restatement of current ability.**
+  *(Partly taken 2026-09-11, `05` §73 — headroom is a roll now and the S-over-D
+  growth spread went 5.96x to 8.84x. What is left is the decision.)* Reported
+  from a fifteen-season career: "an A potential grew 3 ovr just like a C
+  potential each year." Fixed for the tails and for the shape of a recruiting
+  class; **not** fixed for A versus C, which went 2.20 points a year to 2.17,
+  because the A band still holds finished men graded A for already being good.
+  Today an A means a good player who will get better, which is what makes a
+  five-star a safe bet; the alternative is a pure forecast, where an A may be a
+  raw 40 with thirty points of room. Those are different games. **Decision
+  owed, then medium.**
+- **S is not rare and the comment said it was.** *(Measured 2026-09-11,
+  `05` §73.5. Comment corrected; threshold left alone.)* `potentialGrade`
+  claimed the 92 floor was "two or three men in the entire country in a year".
+  It was 8.4 before the headroom change and is 12.4 after — the same nine that
+  moving the floor from 85 was meant to fix. The cause is
+  `GENERATED_POTENTIAL_CAP` at 94 compressing the whole top of the ceiling
+  distribution into six points. Moving the boundary changes the letter on every
+  player card in every save, so it wants deciding rather than doing. **Small
+  once decided.**
+
 - **`makeTeam` never ages the roster it generates.** *(Measured 2026-09-11,
   `05` §71.4.)* Census by class year, league-wide: in a generated world the bats
   read FR 40.8, SO 41.3, JR 40.3, SR 41.8 and the arms FR 45.6, SO 45.2, JR 45.0,
