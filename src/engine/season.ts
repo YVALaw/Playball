@@ -153,7 +153,7 @@ export interface SeasonRules {
   /** Whether a rival can take an assistant off your staff. */
   poaching: boolean;
   /** How long the regular season is. See `SEASON_SPANS`. */
-  length: 'short' | 'standard';
+  length: 'short' | 'standard' | 'long';
 }
 
 /** Every rule at the value the game has always played by. */
@@ -207,7 +207,34 @@ export const injuryScale = (rules: SeasonRules): number => INJURY_SCALE[rules.in
 export const SEASON_SPANS: Record<SeasonRules['length'], SeasonConfig> = {
   standard: DEFAULT_SEASON,
   short: { ...DEFAULT_SEASON, gamesPerSeries: 2 },
+  /*
+    Fifty-six, which is what Division I actually plays.
+
+    Eleven four-game weekends and twelve crossovers, so the round robin and
+    every crossover game survive exactly as they do at forty-five. It costs a
+    fifth starter, and that is not a detail: `buildSchedule` starts the midweek
+    arm in the slot after the weekend's, so a four-game weekend puts him at slot
+    four — and with only four arms `startableSlot` wraps modulo the rotation and
+    hands the ball back to the Friday ace, five starts a week. See
+    `rotationSizeFor`.
+  */
+  long: { ...DEFAULT_SEASON, gamesPerSeries: 4 },
 };
+
+/**
+ * How many starters a world's schedule needs.
+ *
+ * One more than the weekend, because the midweek arm takes the slot after it.
+ * Never fewer than four: a two-game weekend leaves the fourth man as depth,
+ * which is what a short season should cost rather than a thinner staff.
+ *
+ * The floor is what keeps every world that existed before the long schedule
+ * byte-identical — `makeTeam` draws exactly the arms it is asked for, so a
+ * fifth would move every calibration figure in the project if it were handed
+ * out everywhere.
+ */
+export const rotationSizeFor = (config: SeasonConfig): number =>
+  Math.max(4, seriesGames(config) + 1);
 
 /** The schedule a world with these rules is built on. */
 export const configForRules = (rules: SeasonRules): SeasonConfig =>
@@ -1429,7 +1456,7 @@ export function createSeason(
         conference: conf.id,
         strategy: strategyFor(teams.length),
         prestige: initialPrestige(def.prestige),
-        team: makeTeam(rng, `${def.school} ${def.nickname}`, def.quality),
+        team: makeTeam(rng, `${def.school} ${def.nickname}`, def.quality, rotationSizeFor(config)),
         w: 0, l: 0, cw: 0, cl: 0, rs: 0, ra: 0, gp: 0, streak: 0,
         opponents: [],
       });

@@ -651,12 +651,21 @@ export function makeTwoWay(rng: Rng, quality = 50): TwoWay {
 
 const LINEUP_POSITIONS: readonly Position[] = ['C','1B','2B','3B','SS','LF','CF','RF','DH'];
 
-export function makeTeam(rng: Rng, name: string, quality = 50): Team {
+/**
+ * `starters` defaults to four, and the default is load bearing.
+ *
+ * Every arm is a draw, so asking for a fifth moves every random number after it
+ * — which is fine in a world built to want one and unacceptable everywhere
+ * else. Only the fifty-six game schedule passes anything but four, so every
+ * calibration figure taken before it stands untouched. See `rotationSizeFor`.
+ */
+export function makeTeam(rng: Rng, name: string, quality = 50, starters = 4): Team {
   const lineup: Hitter[] = [];
   for (const pos of LINEUP_POSITIONS) {
     lineup.push(makeHitter(rng, quality + gauss(rng) * 4, { pos }));
   }
-  const rotation = [0, 1, 2, 3].map(() => makePitcher(rng, quality + 3, { role: 'SP' }));
+  const rotation = Array.from({ length: Math.max(1, starters) },
+    () => makePitcher(rng, quality + 3, { role: 'SP' }));
   const bullpen = [0, 1, 2, 3, 4, 5].map(() => makePitcher(rng, quality, { role: 'RP' }));
   const bench = [0, 1, 2, 3].map(() => makeHitter(rng, quality - 6));
   return { name, lineup, rotation, bullpen, bench, quality };

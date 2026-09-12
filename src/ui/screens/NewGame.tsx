@@ -713,14 +713,19 @@ const RULE_ROWS: readonly RuleRow[] = [
     label: 'Season',
     options: [
       {
+        value: 'short',
+        label: `${seasonLength(SEASON_SPANS.short)} GAMES`,
+        note: 'Two-game weekends, three-man rotation',
+      },
+      {
         value: 'standard',
         label: `${seasonLength(SEASON_SPANS.standard)} GAMES`,
         note: 'Three-game weekends, four-man rotation',
       },
       {
-        value: 'short',
-        label: `${seasonLength(SEASON_SPANS.short)} GAMES`,
-        note: 'Two-game weekends, three-man rotation',
+        value: 'long',
+        label: `${seasonLength(SEASON_SPANS.long)} GAMES`,
+        note: 'Four-game weekends, five-man rotation',
       },
     ],
     at: (r) => r.length,

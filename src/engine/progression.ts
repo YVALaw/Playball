@@ -25,6 +25,10 @@ import type { Prospect } from './recruiting.js';
 import { gauss, makeRng } from './rng.js';
 import { cultureFor } from '../data/cultures.js';
 import { bankRedshirt } from './redshirt.js';
+// Value import, and safe: `season.ts` imports nothing from this file, so
+// there is no loop to close. The rotation rule belongs beside the schedule
+// that sets it rather than being restated here.
+import { rotationSizeFor } from './season.js';
 import type { SeasonState } from './season.js';
 import { isTwoWay, uniquePlayers } from './types.js';
 import type {
@@ -44,6 +48,15 @@ const NEXT_CLASS: Record<ClassYear, ClassYear | null> = {
 };
 
 const LINEUP_SPOTS: readonly Position[] = ['C','1B','2B','3B','SS','LF','CF','RF','DH'];
+
+/**
+ * The default staff, and the number every world but one is rebuilt to.
+ *
+ * A fifty-six game schedule carries five starters — see `rotationSizeFor` — so
+ * the rebuild has to be told, or the fifth man is quietly dropped at the first
+ * winter and the world spends its second season handing the midweek back to the
+ * Friday ace.
+ */
 const ROTATION_SIZE = 4;
 const BULLPEN_SIZE = 6;
 const BENCH_SIZE = 4;
@@ -380,6 +393,7 @@ const byArm = <T extends Arm>(xs: T[]): T[] =>
 function refill(
   team: Team, survivors: Player[], rng: Rng, signed: Player[] = [],
   collect?: Player[], walkOns: readonly Player[] = [],
+  rotationSize = ROTATION_SIZE,
 ): number {
   const bodies = uniquePlayers(survivors);
   const hitters = byOverall(bodies.filter((p): p is Hitter => p.type === 'hitter'));
@@ -490,8 +504,8 @@ function refill(
   const starters = arms.filter((p) => p.role === 'SP');
   const relievers = arms.filter((p) => p.role === 'RP');
 
-  const rotation: Arm[] = starters.splice(0, ROTATION_SIZE);
-  while (rotation.length < ROTATION_SIZE) rotation.push(freshArm('SP'));
+  const rotation: Arm[] = starters.splice(0, rotationSize);
+  while (rotation.length < rotationSize) rotation.push(freshArm('SP'));
 
   // Starters who did not make the rotation slide to the bullpen, exactly as they
   // would in a real program.
@@ -631,6 +645,7 @@ export function walkOnClass(
  */
 export function walkOnShortfall(
   survivors: readonly Player[], signed: readonly Player[],
+  rotationSize = ROTATION_SIZE,
 ): { pos: string; count: number }[] {
   const roster = uniquePlayers(survivors);
   const classIn = uniquePlayers(signed);
@@ -679,8 +694,8 @@ export function walkOnShortfall(
 
   const starters = arms.filter((p) => p.role === 'SP');
   const relievers = arms.filter((p) => p.role === 'RP');
-  let rotation = starters.splice(0, ROTATION_SIZE).length;
-  while (rotation < ROTATION_SIZE) { takeArm('SP'); rotation += 1; }
+  let rotation = starters.splice(0, rotationSize).length;
+  while (rotation < rotationSize) { takeArm('SP'); rotation += 1; }
 
   let bullpen = Math.min(BULLPEN_SIZE, relievers.length + starters.length);
   while (bullpen < BULLPEN_SIZE) { takeArm('RP'); bullpen += 1; }
@@ -761,7 +776,9 @@ function evidenceFor(season: SeasonState, id: PlayerId): BadgeEvidence {
  * on the bench, four starters, six in the pen — so it says "you are two arms
  * and a catcher short" rather than "you lost six players".
  */
-export function holesFor(survivors: readonly Player[]): { pos: string; count: number }[] {
+export function holesFor(
+  survivors: readonly Player[], rotationSize = ROTATION_SIZE,
+): { pos: string; count: number }[] {
   const one = uniquePlayers(survivors);
   const hitters = one.filter((p): p is Hitter => p.type === 'hitter');
   const arms = one.filter(isArm);
@@ -783,7 +800,7 @@ export function holesFor(survivors: readonly Player[]): { pos: string; count: nu
 
   const sp = arms.filter((p) => p.role === 'SP').length;
   const rp = arms.filter((p) => p.role === 'RP').length;
-  if (sp < ROTATION_SIZE) out.push({ pos: 'SP', count: ROTATION_SIZE - sp });
+  if (sp < rotationSize) out.push({ pos: 'SP', count: rotationSize - sp });
   if (rp < BULLPEN_SIZE) out.push({ pos: 'RP', count: BULLPEN_SIZE - rp });
   return out;
 }
@@ -1282,6 +1299,9 @@ export function fillRosters(
       team, survivors, rng, signedHere,
       record.index === reportFor ? collected : undefined,
       bodies,
+      // Read off the schedule, so a fifty-six game world keeps the fifth
+      // starter it was built with instead of losing him at its first winter.
+      rotationSizeFor(season.config),
     );
     for (const p of collected) {
       walkOns.push({
