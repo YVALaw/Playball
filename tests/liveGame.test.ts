@@ -660,6 +660,83 @@ describe('when the staff has the pitching', () => {
   });
 });
 
+/*
+  The conversations are a separate switch from the pen, and for a while only one
+  of them reached the engine.
+
+  Reported 2026-09-11. `createHalfInning` gated the automatic mound visit on
+  `manualDefense`, which is derived from the BULLPEN key — while the mound-visit
+  key's only reader in the whole program was a button on the dugout screen. So a
+  coach who kept his bullpen and delegated the conversations had nobody going out
+  at all: not him, because the button was hidden, and not his staff, because the
+  engine thought he was handling it.
+
+  That pairing is not exotic. `Manage.tsx` documents it as supported in so many
+  words — "somebody can want the bullpen and not the conversations, or the other
+  way round" — and the settings row promises "Your pitching coach decides when to
+  go out."
+*/
+describe('when the pitching coach has the conversations', () => {
+  /** A full game from one dugout, counting who went out to which mound. */
+  type Switches = { autoPitching: boolean; autoVisits: boolean };
+  const played = (seed: number, opts: Switches) => {
+    const { bats, field } = twoTeams(seed);
+    const live = createLiveGame(field, bats, makeRng(seed), {
+      managing: 'home', engine: 'log5', ...opts,
+    });
+    for (let i = 0; i < 2000 && !live.over && live.pending; i++) live.submit('swing');
+    live.finish();
+    // `moundVisitsUsed` counts visits made to that side's own pitcher, so home
+    // is the coached mound and away is the computer's.
+    return { mine: live.result.home.moundVisitsUsed, theirs: live.result.away.moundVisitsUsed };
+  };
+
+  const over = (opts: Switches) => {
+    let mine = 0;
+    let theirs = 0;
+    for (const seed of [4242, 909, 77, 1717, 2103, 31337]) {
+      const one = played(seed, opts);
+      mine += one.mine;
+      theirs += one.theirs;
+    }
+    return { mine, theirs };
+  };
+
+  it('goes out to your mound when you delegated the conversations', () => {
+    // Measured before the fix, over sixty games: 0.00 to your own mound against
+    // 1.07 to the opponent's. Both dugouts are run by the same code and should
+    // visit at broadly the same rate.
+    const { mine, theirs } = over({ autoPitching: false, autoVisits: true });
+    expect(theirs).toBeGreaterThan(0);
+    expect(mine, 'nobody went out to the coached mound').toBeGreaterThan(0);
+    expect(mine).toBeGreaterThan(theirs * 0.4);
+  });
+
+  it('and stays on the bench when you kept them', () => {
+    // The other half of the contract: a coach who wants the call gets to make
+    // it, and the engine does not make it behind him.
+    const { mine, theirs } = over({ autoPitching: false, autoVisits: false });
+    expect(mine).toBe(0);
+    expect(theirs).toBeGreaterThan(0);
+  });
+
+  it('does not decide it off the bullpen switch any more', () => {
+    // The defect in one assertion: with the pen delegated and the conversations
+    // kept, the staff must not go out either. Before the fix these two were one
+    // boolean and this case was indistinguishable from the one above it.
+    const { mine } = over({ autoPitching: true, autoVisits: false });
+    expect(mine).toBe(0);
+  });
+
+  it('leaves a fully delegated game exactly as it was', () => {
+    // Both off is what every caller that never heard of this switch gets, and
+    // `manualVisits` defaults to `manualDefense` so that stays true.
+    const both = over({ autoPitching: true, autoVisits: true });
+    expect(both.mine).toBeGreaterThan(0);
+    expect(both.theirs).toBeGreaterThan(0);
+  });
+});
+
 describe('where the game is, for the screen that draws it', () => {
   it('exposes the half and inning whoever is up, and they agree with the decision', () => {
     // Reported from the emulator: the fielders wore the coach's colours after a

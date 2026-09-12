@@ -145,6 +145,15 @@ export interface LiveOptions extends SimOptions {
    * layer's business.
    */
   autoPitching?: boolean;
+  /**
+   * And let the pitching coach decide when to go out, while you keep the rest.
+   *
+   * Separate from `autoPitching` because they are separate switches on the
+   * settings sheet and somebody can want either without the other — see
+   * `createHalfInning`'s `manualVisits` for what went wrong while they were
+   * one. The engine has no idea *why* it was asked, exactly as above.
+   */
+  autoVisits?: boolean;
 }
 
 /**
@@ -294,6 +303,7 @@ export function createLiveGame(
       half === 'bottom' && inning >= 9, events, onScore,
       !auto && bat() === mine,
       !auto && fld() === mine && !opts.autoPitching,
+      !auto && fld() === mine && !opts.autoVisits,
     );
   };
 

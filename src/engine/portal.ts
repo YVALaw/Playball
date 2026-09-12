@@ -188,7 +188,11 @@ export function reasonFor(
   if (promise?.kind === 'twoWayOpportunity' && explicitRecruitPromiseBroken(p, opts)) {
     return 'He was promised a chance to both hit and pitch, but did not get enough appearances in both roles.';
   }
-  if (promise?.kind === 'keepPosition' && promise.promisedPos !== undefined && p.pos !== promise.promisedPos) {
+  // Through the judge, exactly as the line above already does for the two-way
+  // promise. It was re-implemented here and the copy read the card label rather
+  // than the man's home, so the reason printed could name a promise the risk
+  // charged at `promiseRisk` had never counted.
+  if (promise?.kind === 'keepPosition' && explicitRecruitPromiseBroken(p, opts)) {
     return 'He was promised he could stay at his position.';
   }
   if (promise?.kind === 'noRedshirt' && (p as Player & { redshirt?: boolean }).redshirt === true) {

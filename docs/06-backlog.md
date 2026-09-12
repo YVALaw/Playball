@@ -3249,18 +3249,18 @@ would matter to somebody playing.
   for the coached program (`state/store.ts:3571`), so a man who transfers in
   shows blank seasons for his years elsewhere. Career *totals* do exist.
   **Small to medium.**
-- **The league gains half a run in its first four years, and keeps it.**
-  *(Measured 2026-09-11 and now guarded — `05` §71,
-  `tests/calibration-seasons.test.ts`. The guard pins it; the fix is still
-  owed.)* Ten seasons of two worlds: a fresh league opens at 6.93–7.11 runs
-  against a 6.73 target, climbs to a 7.72–7.89 peak in year three or four, then
-  settles at 7.3–7.4 and stays flat to year ten. The climb is patience, not
-  power — walks 4.65 → 5.0–5.2 and OBP .386 → .395–.405 while home runs and
-  strikeouts barely move, so the first few development cycles favour the bat
-  over the arm. A settled equilibrium rather than a runaway, which is why it is
-  **medium** rather than urgent. Note also that the two-team harness is not a
-  league: run scoring is convex in the gap between two clubs, so 6.73 there and
-  7.0 across ninety-six programs are not in conflict.
+- **The league gains TWO runs a game in its first four years, and keeps them.**
+  *(Measured 2026-09-11 and guarded — `05` §71,
+  `tests/calibration-seasons.test.ts`. The guard pins it; the fix is a project,
+  see §AD below. An earlier version of this line said half a run and blamed
+  plate discipline; that was measured through a harness that signed nobody and
+  every figure in it was void.)* Ten seasons of two worlds, one process per
+  seed: a fresh league opens at 6.93–7.11 runs against a 6.73 target and settles
+  at 8.6–9.1 from year five, flat to year ten. Every channel inflates and power
+  moves most — batting average .280 → .310, slugging .441 → .513, home runs 1.06
+  → 1.41 — while strikeouts FALL, 7.85 → 7.0. **Large**, and the highest-value
+  calibration work on this page: it is the league a player actually plays in
+  from his third season onward.
 - **The batting-average tail runs hot.** The national leader hits .497–.523
   every season against a D1 record of .467. The mean is on target and every
   other rate is realistic; the lever is the spread of contact at the top of the
@@ -3270,6 +3270,25 @@ would matter to somebody playing.
   (`engine/postseason.ts:441`) seeds a→0, b→1 and the lower seed hosts every
   game; `hostOfGame` already alternates for regionals. The docstring admits it.
   **Small.**
+
+### AC.1b The cause, which is a decision rather than a fix
+
+- **`makeTeam` never ages the roster it generates.** *(Measured 2026-09-11,
+  `05` §71.4.)* Census by class year, league-wide: in a generated world the bats
+  read FR 40.8, SO 41.3, JR 40.3, SR 41.8 and the arms FR 45.6, SO 45.2, JR 45.0,
+  SR 44.4 — **a senior is no better than a freshman.** After four years of the
+  world running its own development the ladder is real: bats FR 45.1, SO 54.3,
+  JR 56.5, and arms FR 41.5, SO 55.4, JR 58.1.
+
+  So the engine is calibrated against a population that exists on day one of a
+  career and never again, and both ends are wrong differently. The opening world
+  is too raw — every upperclassman a new coach meets is as green as a freshman.
+  The developed world is too strong — .310 and 8.8 runs is not college baseball.
+
+  There is a decision inside this and it should be made deliberately: age the
+  generated world so day one looks like the steady state, recalibrate the engine
+  against the developed population, or both. Any of the three moves every golden
+  in the suite, so it wants its own pass and its own measurement. **Large.**
 
 ### AC.2 Designed, decided, and never built
 

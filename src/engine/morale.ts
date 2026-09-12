@@ -30,7 +30,7 @@
 // unhappy, rather than everybody at zero.
 
 import type { RecruitPromise } from './types.js';
-import type { Player, PlayerId, Team } from './types.js';
+import type { Player, PlayerId, Position, Team } from './types.js';
 import { overallOf } from './ratings.js';
 
 /** What a man carries. Sparse, so an older save has none of it. */
@@ -126,10 +126,15 @@ export function recruitPromiseProgress(p: Player, at: PromiseParticipation & { s
     title: 'Two-way opportunity', term,
     detail: `Batting appearances: ${at.battingGames ?? 0}/${TWO_WAY_BATTING_GAMES}. Pitching appearances: ${at.pitchingGames ?? 0}/${TWO_WAY_PITCHING_GAMES}. Both totals must be met by season end.`,
   };
-  if (promise.kind === 'keepPosition') return {
-    title: 'Keep position', term,
-    detail: `Promised position: ${promise.promisedPos ?? p.pos}. Current position: ${p.pos}. A permanent position change can break this promise.`,
-  };
+  if (promise.kind === 'keepPosition') {
+    // The same home the judge reads, or the sheet would report a broken
+    // promise about a man covering second base for one afternoon.
+    const home = (p as Player & { homePos?: Position }).homePos ?? p.pos;
+    return {
+      title: 'Keep position', term,
+      detail: `Promised position: ${promise.promisedPos ?? home}. Current position: ${home}. A permanent position change can break this promise.`,
+    };
+  }
   if (promise.kind === 'noRedshirt') return {
     title: 'No redshirt', term,
     detail: (p as Player & { redshirt?: boolean }).redshirt ? 'Currently redshirted. This conflicts with the promise.' : 'Not redshirted. Keep him eligible to play this season.',
@@ -146,7 +151,23 @@ export function explicitRecruitPromiseBroken(
 ): boolean {
   const promise = p.recruitPromise;
   if (!promise) return false;
-  if (promise.kind === 'keepPosition') return promise.promisedPos !== undefined && p.pos !== promise.promisedPos;
+  if (promise.kind === 'keepPosition') {
+    /*
+      Judged from where he lives, not from what the card says tonight.
+
+      `p.pos` is the lineup-card label and `adoptSpot` overwrites it whenever a
+      man covers a spot that is not his, stashing the real one in `homePos` for
+      `restoreHome` to put back. So a shortstop filling in at second for an
+      afternoon was reading as a broken promise, and `bestNine` relabels the
+      whole country's nine every time a card is dealt.
+
+      Measured 2026-09-11, seed 4242: 180 of 1248 hitters — 14.4% — are wearing
+      a cover label at any moment, and every one of the 180 is a pure relabel
+      with `homePos` intact. Nobody had been moved anywhere.
+    */
+    const home = (p as Player & { homePos?: Position }).homePos ?? p.pos;
+    return promise.promisedPos !== undefined && home !== promise.promisedPos;
+  }
   if (promise.kind === 'noRedshirt') return (p as Player & { redshirt?: boolean }).redshirt === true;
   if (promise.kind === 'twoWayOpportunity') {
     // Unknown participation is not evidence of a broken promise. Season callers

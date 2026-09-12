@@ -9409,77 +9409,201 @@ list, so a career started on anything but the standard world says so without
 being read. Each row's caption describes the **chosen** answer rather than the
 switch in the abstract.
 
-## 71. Nobody was measuring year five — **September 11 2026**
+## 71. Nobody was measuring year five, and then the first attempt measured a world nobody plays — **September 11 2026**
 
-Every calibration number this project has ever taken was from a world one day
-old. `calibration.ts` builds two fresh 50-quality teams and sims a pile of
-games between them, and `calibration.test.ts` checks the result against the
-NCAA reference table. That is the right way to ask whether the **engine** is
+Two findings, and the second one corrects the first. This section replaces the
+version written earlier the same day; every number in that version was an
+artefact and is not preserved, because a wrong measurement left standing beside a
+right one is worse than no record at all.
+
+### 71.1 The gap that was real
+
+Every calibration number this project had ever taken was from a world one day
+old. `calibration.ts` builds two fresh 50-quality teams and sims a pile of games
+between them, and `calibration.test.ts` checks the result against the NCAA
+reference table. That is the right way to ask whether the **engine** is
 calibrated. It cannot answer whether the **world** stays calibrated, and nothing
-else asked: a year-five league is whatever progression, the draft, the portal
-and five recruiting classes left behind.
+else asked.
 
-The 2026-09-11 audit noticed the edge of this — three consecutive seasons at
-6.86, 6.98 and 7.25 runs against a 6.73 target — and three points is not enough
-to tell a drift from a wobble. Measured properly, over ten seasons of two
-worlds:
+### 71.2 The first answer was fiction, and how
 
-| | y1 | y3 | y4 | y6 | y10 |
+`tests/headlessYear.ts` was cut out of `climb-probe.ts` — specifically, out of
+the lines immediately above a block headed **"KNOWN WRONG — do not read numbers
+off this file yet"**. That block was not read.
+
+Its point: the engine has no recruiting driver. `aiTargets` and `closeWeek` live
+in `state/store.ts` and nothing in `src/engine` calls them, so a harness
+assembled out of engine parts signs **nobody**. `fillRosters` then falls through
+to `walkOnHitter`/`walkOnArm` at quality minus thirteen for every hole in the
+country, walk-ons are released after one season, and from year five not one man
+in the league has ever been through `develop()`.
+
+It produced a tidy, plausible, entirely fictional result — a climb to 7.7 runs
+peaking in year three and settling at 7.3, "patience, not power" — and it was
+written into this document and shipped as a guard. Nothing about it looked
+broken. **That is the lesson worth keeping: a harness measuring nothing looks
+exactly like a harness measuring something reassuring.**
+
+`climb-probe.ts` had already written down the check that catches this class of
+mistake, and it is now quoted in `headlessYear`'s own header: **change an input
+and confirm the output moves.** Raising `PIPELINE_EDGE` by eighty percent moved
+not one digit of the old probe, which is only possible if the thing you believe
+you are measuring is not running. Fixing the harness moved the year-five figure
+by two runs a game.
+
+### 71.3 What the world actually does
+
+Recruiting is in `headlessYear` now, driven the way `carousel-probe.ts` and
+`hall.test.ts` already drove it; six hundred and forty to six hundred and
+sixty-five men sign each winter out of a class of seven hundred and twenty. Ten
+seasons, two worlds, one node process per seed:
+
+| seed | y1 | y2 | y3 | y4 | y5 | y6 | y7 | y8 | y9 | y10 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4242 | 7.111 | 7.543 | 8.107 | 8.670 | 9.072 | 9.017 | 8.775 | 8.859 | 8.804 | 8.744 |
+| 909 | 6.934 | 7.718 | 8.362 | 8.761 | 8.830 | 8.889 | 8.807 | 8.635 | 8.744 | 8.802 |
+
+**The league gains two runs a game over four years and then holds there, a third
+above the 6.73 target.** And it is not one channel:
+
+| | year 1 | plateau | D1 target |
+| --- | --- | --- | --- |
+| batting average | .279–.282 | .308–.314 | .280 |
+| on base | .384–.387 | .416–.426 | .384 |
+| slugging | .437–.445 | .507–.519 | .438 |
+| home runs | 1.04–1.08 | 1.38–1.44 | 1.03 |
+| walks | 4.65–4.66 | 5.39–5.66 | 4.70 |
+| strikeouts | 7.81–7.89 | 6.83–7.15 | 8.01 |
+
+The plateau is genuine — years five to ten are flat to within 3% — so this is an
+equilibrium the game settles into, not a runaway.
+
+### 71.4 The cause, which is a defect rather than a curve
+
+Census by class year, league-wide, mean overall:
+
+| | | FR | SO | JR | SR |
 | --- | --- | --- | --- | --- | --- |
-| seed 4242 | 7.111 | 7.539 | 7.722 | 7.325 | 7.432 |
-| seed 909 | 6.934 | 7.885 | 7.744 | 7.347 | 7.329 |
+| **year 1, generated** | bats | 40.8 | 41.3 | 40.3 | 41.8 |
+| | arms | 45.6 | 45.2 | 45.0 | 44.4 |
+| **year 5, recruited** | bats | 45.1 | 54.3 | 56.5 | 54.8 |
+| | arms | 41.5 | 55.4 | 58.1 | 53.8 |
 
-### 71.1 Three findings, not one
+**`makeTeam` never ages the roster it generates.** In the opening world a senior
+is no better than a freshman: all four classes are drawn flat from one
+distribution. A world that has run its own development for four years has a real
+ladder — a junior eleven to sixteen points above a freshman — and a league mean
+of 52 against the generated 41.
 
-**A fresh league already scores more than the harness says.** 6.93 to 7.11
-against the 6.73 the two-team measurement hits. Run scoring is convex in the gap
-between two clubs, and a real league has a spread of quality where the harness
-has none — so this is the harness being unrepresentative rather than the engine
-being wrong, and it is worth knowing which.
+So the engine is calibrated against a population that exists on day one of a
+career and never again. **Both ends are wrong, and they are wrong differently.**
+The opening world is too raw: every upperclassman in a new career is as green as
+a freshman, which is a fact about the game a player meets in his first season.
+The developed world is too strong: .310 and 8.8 runs is not college baseball.
 
-**It climbs for three or four years and peaks 13-17% above target.** This is the
-one that looks like a defect. Both worlds do it, and they do it on the same
-schedule.
+One more thing the census settles. Arms open 4.1 points above bats and end 1.5
+points below — a 5.6-point relative swing toward the bats — which is why scoring
+moves further than either side alone would explain, and why strikeouts fall while
+everything else rises.
 
-**Then it settles and stays settled.** 7.3 to 7.4 from year five to year ten,
-flat. A new equilibrium rather than an unbounded drift, which is a much smaller
-problem than it first appears and is the reason this is a guard rather than an
-emergency.
-
-What the climb is made of is the useful part: **walks go 4.65 to 5.0-5.2 and OBP
-.386 to .395-.405, while home runs and strikeouts barely move.** It is patience,
-not power — something in the first few development cycles favours the bat over
-the arm. That is where a fix would start looking.
-
-### 71.2 What was built
+### 71.5 What was built, and what was deliberately not
 
 `leagueRates` in `calibration.ts` reduces one whole season of one whole league
-off the books it actually kept, read after the regular season and before the
-postseason — `season.batting` keeps counting through June the way NCAA totals
-do, and the targets describe a regular season.
+off the books it kept, read after the regular season and before the postseason.
 
-`tests/headlessYear.ts` is the offseason, the way the store runs it, minus the
-screens. It was not written for this: `climb-probe.ts` had it, and every comment
-in it is a scar from that probe — the run where prestige never moved because
-`runRivalYear` was not called, and the crash from refilling rosters before the
-portal emptied them. It moved out of the probe rather than being copied, because
-two offseasons would drift and the drift would be invisible: both would still
-run. It stays in `tests/` rather than `src/engine/` deliberately. The offseason
-belongs to the store — seven screens and a dozen decisions the engine does not
-make for the player — and shipping a second one beside it would invite somebody
-to call it instead.
+`tests/headlessYear.ts` is the offseason as the store runs it, minus the screens,
+now including the recruiting window. It stays in `tests/` rather than
+`src/engine/` deliberately: the offseason belongs to the store, and shipping a
+second one beside it would invite somebody to call it instead.
 
-`tests/calibration-seasons.test.ts` plays six seasons at seed 4242 and checks
-seven rates against bands taken from the ten-season, two-world measurement, plus
-two statements about shape: that the league settles rather than running away
-(year six within 10% of year one), and that whatever climb there is arrives
-through on-base rather than through power. Six because the climb peaks in year
-three or four and the plateau is established by year five; years seven to ten
-said nothing year six had not, and cost thirty seconds a world.
+`tests/calibration-seasons.test.ts` plays five seasons and checks two
+checkpoints — the opening world and the settled one — against per-phase bands,
+because a single band wide enough to hold both 6.9 and 9.1 would catch nothing.
+Its first assertion is that men signed, and that assertion exists because of
+§71.2.
 
-It fixes none of this. It pins what is true today, so that whoever does fix it
-can watch the numbers move, and so that a change made for some other reason
-cannot quietly make it worse.
+**No calibration was changed.** The fix is a real project with a decision in it —
+whether to age the generated world, to recalibrate against the developed
+population, or both — and it would move every golden in the suite. Guarded and
+filed at `06` §AC.1b rather than attempted on the same day it was found.
+
+
+## 72. Two switches that reached nothing — **September 11 2026**
+
+Both found while scoping larger features, and both the same shape: a setting the
+screen describes in plain words, wired to nothing, judged off the wrong field.
+
+### 72.1 The pitching coach never went out
+
+`state/depth.ts` offers MOUND VISITS as its own row, and its `whenOff` line
+promises **"Your pitching coach decides when to go out."** `Manage.tsx` documents
+the pairing in its own comment: *"Separate from the pen on purpose: somebody can
+want the bullpen and not the conversations, or the other way round."*
+
+He did not. The engine's automatic visit was gated on `manualDefense`
+(`game.ts`, the half-inning), which is derived from `autoPitching`, which is
+`!handles(depth, 'bullpen')` — the **bullpen** key. Meanwhile the mound-visit
+key's only functional reader in the whole program was `Manage.tsx:65`, which
+hides a button.
+
+So the switch did exactly one thing: it took the coach's button away. Measured
+over sixty live games with the pen kept and the conversations delegated: **0.00
+visits to the coached mound against 1.07 to the opponent's**, in a league where
+every other program averages about one a game.
+
+And it ran the other way too, which was not in the report and is arguably worse.
+A coach who delegated his **bullpen** but kept the conversations had the engine
+making them for him — ten visits across six games in the test that now pins it.
+Both halves of the depth contract were broken by the same missing boolean.
+
+`createHalfInning` takes `manualVisits` now, defaulting to `manualDefense` so
+that every caller which has never heard of the question — `simGame` included —
+keeps the behaviour it had. `LiveOptions` carries `autoVisits`, the store reads
+it beside the pen at both doors, and the live journal records it: it changes
+which decisions the engine makes and therefore the sequence of draws, so a game
+backgrounded under one setting and resumed under another would replay into a
+different game. A journal written before the switch existed falls back to
+`autoPitching`, which is what those games were actually played on.
+
+This was scoped as a prerequisite for K3, the mound-visit conversation, and it
+is one: three registers are meaningless if the delegated staff never goes out.
+K3 itself is still owed.
+
+### 72.2 A promise broken by the lineup card
+
+`explicitRecruitPromiseBroken` judged a keep-position promise by comparing
+`p.pos` to the promised spot. `p.pos` is the **card label**, and `adoptSpot`
+overwrites it whenever a man covers a spot that is not his, stashing the real one
+in `homePos` for `restoreHome` to put back.
+
+So a shortstop filling in at second base for one afternoon read as a broken
+promise. Measured, seed 4242: **180 of 1248 hitters — 14.4% — are wearing a
+cover label at any moment, and all 180 are pure relabels with `homePos`
+intact.** Nobody had been moved anywhere. It got sharply worse the same week,
+when AUTO started dealing the best nine league-wide: `bestNine` relabels all
+ninety-six cards at world creation and the ninety-five rivals' at every
+offseason.
+
+Three edits, and the third is what makes the first safe:
+
+- The judge reads `homePos ?? pos` — where the man lives, not where he stood on
+  Tuesday. The promise sheet reads the same field, or it would report a broken
+  promise about a man covering second for an afternoon.
+- `portal.ts`'s `reasonFor` had re-implemented the comparison inline instead of
+  calling the judge, exactly as the line above it already does for the two-way
+  promise. So the reason printed on a departure could name a promise the risk
+  charged at `promiseRisk` had never counted. One judge now.
+- `movePosition` writes `homePos` — the same line `godMode.ts` already keeps
+  beside its own position edit, with the same comment. Without it a deliberate
+  winter retrain is walked back by the next `restoreHome`, **and** a real move
+  judged against a stale home reads as unbroken, which is the original defect
+  pointing the other way. `keep-position.test.ts` pins that ordering
+  specifically: retrain a man to third, let AUTO borrow him back at short, and
+  the broken promise must not heal.
+
+The backlog line for this (`06` §AC.2, "A position change the man agreed to")
+described the consent half — a move the coach asks about and the man agrees to.
+That half is still owed and wants a design decision: whether a man can refuse.
 
 ## Appendix A: stale comments and vestigial code found while writing this
 

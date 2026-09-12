@@ -5823,6 +5823,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // What this coach has said he wants to be asked. Read once, here, so
     // the journal and the game it anchors can never disagree about it.
     const autoPen = !handles(get().depth, 'bullpen');
+    // Its own key, not the pen's. They are two rows on the settings sheet and
+    // somebody can want either without the other; while the engine read only
+    // the pen's, a coach who kept his bullpen and delegated the conversations
+    // had nobody visiting his mound at all (05 §72).
+    const autoVisits = !handles(get().depth, 'moundVisits');
     if (!handles(get().depth, 'lineups')) staffSetsTheCard(season, userTeam);
     set({ liveStarting: true });
     const rngState = season.rng.state?.() ?? 0;
@@ -5843,6 +5848,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       homeStarter, awayStarter,
       managing: h === userTeam ? 'home' : 'away',
       autoPitching: autoPen,
+      autoVisits,
       postseason: true,
       conference: false,
       actions: [],
@@ -5853,6 +5859,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       live: createLiveGame(home.team, away.team, season.rng, {
         managing: h === userTeam ? 'home' : 'away',
         autoPitching: autoPen,
+        autoVisits,
         engine: season.config.engine,
         postseason: true,
         homeStarter,
@@ -6284,6 +6291,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // Off the journal, not off today's settings: the replay has to rebuild
       // the game that was interrupted, not the one this coach would start now.
       autoPitching: j.autoPitching === true,
+      // Absent in a journal written before the conversations had their own
+      // switch. Those games were played with the visit gated on the pen, which
+      // is what `autoPitching` alone reproduces — so the fallback is the pen's
+      // answer rather than a default, and an old game resumes into itself.
+      autoVisits: j.autoVisits ?? (j.autoPitching === true),
       engine: season.config.engine,
       ...(j.postseason ? { postseason: true } : {}),
       homeStarter: j.homeStarter,
@@ -6400,6 +6412,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // What this coach has said he wants to be asked. Read once, here, so
     // the journal and the game it anchors can never disagree about it.
     const autoPen = !handles(get().depth, 'bullpen');
+    // Its own key, not the pen's. They are two rows on the settings sheet and
+    // somebody can want either without the other; while the engine read only
+    // the pen's, a coach who kept his bullpen and delegated the conversations
+    // had nobody visiting his mound at all (05 §72).
+    const autoVisits = !handles(get().depth, 'moundVisits');
     if (!handles(get().depth, 'lineups')) staffSetsTheCard(season, userTeam);
     /*
       The card and the arms, exactly as the day sim would field them: injured
@@ -6434,6 +6451,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       homeStarter, awayStarter,
       managing: g.home === userTeam ? 'home' : 'away',
       autoPitching: autoPen,
+      autoVisits,
       postseason: false,
       conference: g.conference,
       actions: [],
@@ -6444,6 +6462,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       live: createLiveGame(home.team, away.team, season.rng, {
         managing: g.home === userTeam ? 'home' : 'away',
         autoPitching: autoPen,
+        autoVisits,
         engine: season.config.engine,
         homeStarter,
         awayStarter,

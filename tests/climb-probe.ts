@@ -120,18 +120,26 @@ console.log(`  never made a regional in thirty years: ${never}/${WORLDS}`);
 
 /*
   ---------------------------------------------------------------------------
-  KNOWN WRONG — do not read numbers off this file yet
+  WAS KNOWN WRONG — fixed 2026-09-11, and the history is the valuable part
   ---------------------------------------------------------------------------
 
-  This harness walks the engine's offseason directly, and the engine has no
+  This harness walked the engine's offseason directly, and the engine has no
   recruiting driver: `aiTargets` and `closeWeek` live in `state/store.ts` and
-  nothing else calls them. So no prospect is ever signed here, `fillRosters`
-  refills every roster in the country with walk-ons, and every programme plays
-  out thirty seasons with the same replacement-level squad.
+  nothing in `src/engine` calls them. So no prospect was ever signed here,
+  `fillRosters` refilled every roster in the country with walk-ons, and every
+  programme played out thirty seasons with the same replacement-level squad.
 
   Everything that produced: fourteen wins a year for ever, a prestige line that
-  converges to 34 and stops, nobody reaching Omaha. All of it is this bug and
-  none of it is a fact about the game.
+  converges to 34 and stops, nobody reaching Omaha. All of it was this bug and
+  none of it was a fact about the game.
+
+  The year roll now lives in `tests/headlessYear.ts` and runs the recruiting
+  window itself, so this file signs classes like everybody else. The warning is
+  kept rather than deleted because it caught the same mistake a second time:
+  `headlessYear` was cut out of the lines directly above this block, by somebody
+  who did not read it, and a calibration guard was built on the result. See `05`
+  §71.2. Re-run the numbers below before quoting them — they were taken on the
+  broken harness.
 
   The proof, and the check worth stealing: raising `PIPELINE_EDGE` from 0.25 to
   0.45 changed not one digit of the output. An input that cannot move the output

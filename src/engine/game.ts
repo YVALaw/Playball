@@ -787,6 +787,27 @@ export function createHalfInning(
    */
   manualOffense = false,
   manualDefense = false,
+  /**
+   * And separately: whether the human is making the mound-visit calls.
+   *
+   * Defaults to `manualDefense` because for every caller that does not care,
+   * that is what it has always meant — but they are two different questions and
+   * `state/depth.ts` offers them as two different switches.
+   *
+   * Reported 2026-09-11. The visit used to be gated on `manualDefense` alone,
+   * which is derived from the BULLPEN key, while the mound-visit key's only
+   * reader in the whole program was a button on the dugout screen. So a coach
+   * who kept his bullpen and delegated the conversations — the exact pairing
+   * `Manage.tsx` documents as supported, and the one the settings row promises
+   * "your pitching coach decides when to go out" — had nobody going out at all.
+   * Measured over sixty live games: 0.00 visits to his own mound against 1.07 to
+   * the opponent's, in a league where everybody else averages about one a game.
+   *
+   * That is the depth contract broken rather than bent. Its rule is that the
+   * mode changes what the player is ASKED and never what the simulation does,
+   * and every row promises by name who answers instead.
+   */
+  manualVisits = manualDefense,
 ): HalfInning {
   bat.currentInning = inning;
   fld.currentInning = inning;
@@ -970,7 +991,11 @@ export function createHalfInning(
     if (!manualDefense) maybeChangePitcher(fld, bat, bases, say);
     // The visit goes before the hook on purpose: a bench that has a settled man
     // available should try talking to him before it burns a reliever.
-    if (!manualDefense) maybeMoundVisit(fld, bases.some(Boolean), say);
+    //
+    // On its own switch, not the pen's: a coach can keep the bullpen and hand
+    // the conversations to his pitching coach, and then this is the only
+    // automatic thing left in his half of the inning.
+    if (!manualVisits) maybeMoundVisit(fld, bases.some(Boolean), say);
     if (!manualOffense) maybePinchHit(bat, fld, inning, rng, say);
     if (!manualOffense && resolveSteal(false)) { finished = true; return true; }
 

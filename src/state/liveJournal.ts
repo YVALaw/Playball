@@ -107,6 +107,13 @@ export interface LiveJournal {
    * as though it were the one he left.
    */
   autoPitching?: boolean;
+  /**
+   * And whether the pitching coach was making the visits. Carried for the same
+   * reason as the line above: it changes which decisions the engine makes and
+   * therefore the sequence of draws, so a coach who flipped the switch between
+   * backgrounding a game and resuming it would replay into a different one.
+   */
+  autoVisits?: boolean;
   /** Bracket games rebuild through a different door. */
   postseason: boolean;
   /**

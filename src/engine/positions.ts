@@ -300,6 +300,18 @@ export function movePosition(p: Hitter, to: Position): boolean {
   const climb = coverTier(p, to) >= 2 ? positionPenalty(p, to) : 0;
   s.movedFrom = p.pos;
   p.pos = to;
+  /*
+    Home too, or the position memory reads the move as a coach's stretch — the
+    same line `godMode.ts` keeps beside its own position edit, and for the same
+    reason.
+
+    Two things go wrong without it. `restoreHome` walks a deliberate winter
+    retrain straight back the next time `bestNine`, `autoLineup` or a manual
+    swap deals the card. And once the keep-position promise is judged from home
+    rather than from the card, a real move judged against a stale home reads as
+    unbroken — the same defect as before, pointing the other way.
+  */
+  (p as Hitter & { homePos?: Position }).homePos = to;
   s.settling = SETTLING_COST + climb;
   return true;
 }
