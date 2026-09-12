@@ -324,12 +324,30 @@ function AppBody(
     out of a card the front door will not let you leave either.
   */
   type RouteStop = { tab: Tab; screen: string; programSheet: ProgramSheet };
+  /*
+    Read here rather than reusing the declaration further down, because the
+    trail effect below closes over this function and must see the overlay as it
+    is now. The duplicate subscription costs nothing — zustand hands back the
+    same slice.
+  */
+  const overlayForRoute = useDynasty((s) => s.overlay);
   const routeStop = (t: Tab, sc: string, sheet: ProgramSheet): RouteStop => ({
     tab: t,
     screen: sc,
-    // Program sheets only exist on PROGRAM · OVERVIEW. Keeping stale sheet
-    // values out of every other route prevents a sheet reset from creating a
-    // fake history entry while the coach is somewhere else.
+    /*
+      Program sheets only exist on PROGRAM · OVERVIEW. Keeping stale sheet
+      values out of every other route prevents a sheet reset from creating a
+      fake history entry while the coach is somewhere else.
+
+      And they only exist there when nothing is stacked on top. A sheet shown
+      inside an overlay — which is what an inbox letter's OPEN BOARD does — is a
+      level within that overlay, and recording it as a route stop is how the
+      gesture came to walk the coach FORWARD into the board he was trying to
+      leave. Reported 2026-09-12; measured at three history entries for one
+      visible layer, one of the five presses moving the wrong way. This half of
+      it is not browser-only: the trail is the same ref the Android plugin path
+      reads, so the walk-forward happened in the APK too.
+    */
     programSheet: t === 'program' && sc === 'records' ? sheet : 'overview',
   });
   const routeKey = (r: RouteStop): string => `${r.tab}|${r.screen}|${r.programSheet}`;
@@ -385,6 +403,20 @@ function AppBody(
   useLayoutEffect(() => {
     const next = routeStop(tab, screen, programSheet);
     const nextKey = routeKey(next);
+    /*
+      A sheet changed inside an overlay is a level within that overlay, not a
+      route the coach visited — and recording it is how the gesture came to
+      walk him FORWARD into the board he was trying to leave. Measured
+      2026-09-12: five back presses to undo one tap, one of them moving the
+      wrong way.
+
+      The ref is still advanced, so closing the overlay on the same sheet does
+      not then read as a move. `overlay` is deliberately NOT a dependency: this
+      must not re-run when the overlay closes, only when something that is
+      genuinely part of a route changes. This half is not browser-only — the
+      trail is the same ref the Android plugin path reads.
+    */
+    if (overlayForRoute !== null) { currentRoute.current = next; return; }
     if (restoringRoute.current !== null) {
       currentRoute.current = next;
       if (restoringRoute.current === nextKey) restoringRoute.current = null;
@@ -470,10 +502,19 @@ function AppBody(
       // Back bar. A Settings detail page goes to Settings first; it does not
       // throw the whole overlay away.
       if (s.overlay === 'settings' && s.settingsPage !== 'index') { s.setSettingsPage('index'); return 'peeled'; }
-      // Program's sheets, opened this way, spend no history entry of their own,
-      // so peeling one hands the pop's entry straight back.
-      if (s.overlay === 'program' && s.programSheet !== 'overview') {
-        s.setProgramSheet('overview');
+      /*
+        Program's sheets, opened this way, spend no history entry of their own,
+        so peeling one hands the pop's entry straight back.
+
+        Against the sheet the overlay was OPENED at, not against 'overview'. A
+        coach who opened Program on its overview and walked into Money gets the
+        overview back first; a coach sent straight to the board by an opener
+        card or an inbox letter has nothing behind it, and peeling to an
+        overview he never asked for spent a press and left him somewhere he did
+        not choose.
+      */
+      if (s.overlay === 'program' && s.programSheet !== s.overlayEntrySheet) {
+        s.setProgramSheet(s.overlayEntrySheet);
         return 'swallowed';
       }
       s.closeOverlay();

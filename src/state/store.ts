@@ -532,9 +532,27 @@ function crossfade(run: () => void): void {
   const stopped = motion === 'reduced'
     || (motion !== 'full' && typeof matchMedia === 'function'
       && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  /*
+    And a document that is not painting cannot finish one at all.
+
+    A view transition suspends rendering of the whole page until its update
+    callback's promise settles; the last painted frame stays on screen and
+    nothing repaints. The insurance below is a 100ms timer — but the very
+    condition it was written for, a WebView that has stopped serving animation
+    frames, is also the condition under which a browser throttles timers to
+    one a second. Measured 2026-09-12 on a non-rendering page: eight
+    consecutive `setTimeout(…, 100)` fired at 781, 995, 1011, 993, 1009, 995,
+    999 and 991ms, and `requestAnimationFrame` never fired at all.
+
+    That is the two-second freeze reported the same day — "it got like frozen
+    for 2 seconds and then took me to the program overview". So a navigation
+    on a page that is not visible takes the plain path. There is nothing to
+    decorate on a page nobody is looking at.
+  */
+  const unseen = !!doc && doc.visibilityState !== undefined && doc.visibilityState !== 'visible';
   // A second one over a live one is the dropped-callback case above: take the
   // navigation without the decoration rather than risk losing it.
-  if (!start || !doc || stopped || vtInFlight) { run(); return; }
+  if (!start || !doc || stopped || unseen || vtInFlight) { run(); return; }
 
   /*
     `.screen-in` is the other half of this and must stand down while it runs.
@@ -565,8 +583,21 @@ function crossfade(run: () => void): void {
     apply();
     return new Promise<void>((resolve) => {
       let settled = false;
-      const finish = (): void => { if (!settled) { settled = true; resolve(); } };
+      const finish = (): void => {
+        if (settled) return;
+        settled = true;
+        doc.removeEventListener('visibilitychange', finish);
+        resolve();
+      };
       requestAnimationFrame(() => requestAnimationFrame(finish));
+      /*
+        The third exit, for a transition that begins visible and is occluded
+        before it ends — a notification shade, a task switch, the screen going
+        off. Both of the others are frame- or timer-driven and both stop being
+        served at exactly that moment, so without this the page stays frozen on
+        its last frame until the coach comes back and the throttle lifts.
+      */
+      doc.addEventListener('visibilitychange', finish);
       /*
         A frame budget's worth of insurance, and it is not theoretical: a hidden
         or backgrounded WebView stops serving animation frames entirely. Found
@@ -1329,6 +1360,16 @@ export interface DynastyStore {
    * notification that is tappable on Tuesdays.
    */
   overlay: Overlay | null;
+  /**
+   * The program sheet that was showing when the current overlay opened.
+   *
+   * The back press peels a Program sheet back to this rather than to
+   * 'overview': a coach sent straight to the board by an opener card or an
+   * inbox letter has no overview behind him, and peeling to one costs a press
+   * and lands him somewhere he never chose. Session state — it describes a
+   * layer that is open right now and never reaches a save file.
+   */
+  overlayEntrySheet: ProgramSheet;
   /**
    * Programmes approached this season, and the ones that bit.
    *
@@ -2838,6 +2879,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     }
     const def = TABS.find((t) => t.id === tab);
     const nextScreen = screen ?? def?.screens[0]?.id ?? 'today';
+    /*
+      The card being dropped had an entry of its own, and this is where it is
+      spent. `openPlayer` and `openCoach` each checkpoint; `closePlayer` and
+      `closeCoach` each consume. Navigating away closes the card too — the
+      `set` below nulls both — and used to walk off without paying, leaving one
+      orphan entry per card the coach had ever opened before changing tab.
+    */
+    if (get().selectedPlayer !== null || get().coachSeat !== null) browserHistoryConsume();
     if (get().tab !== tab || get().screen !== nextScreen) browserHistoryCheckpoint();
     crossfade(() => set({
       tab,
@@ -2900,6 +2949,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   // path synchronous removes the artificial delay globally while primary-tab
   // moves through `go()` retain the broader transition.
   setScreen: (screen) => {
+    // Same as `go`: the card this drops had an entry, and it is spent here.
+    if (get().selectedPlayer !== null || get().coachSeat !== null) browserHistoryConsume();
     if (get().screen !== screen) browserHistoryCheckpoint();
     navMark(false);
     set({ selectedPlayer: null, coachSeat: null, focusPlayer: null, screen });
@@ -5353,10 +5404,37 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         }
       }
     }
-    if (st.overlay !== o) browserHistoryCheckpoint();
-    set(o === 'settings' ? { overlay: o, settingsPage: 'index' } : { overlay: o });
+    /*
+      One visible layer, one history entry.
+
+      `overlay` is a single value and not a stack, so opening the board from an
+      inbox letter REPLACES the inbox: one layer before, one layer after. This
+      checkpointed on any change, which minted a second entry for the swap and
+      orphaned the inbox's own — and the orphan is what the gesture walked into
+      afterwards. Reported 2026-09-12: "it gets crazy and makes me go to
+      different tabs as well". Measured from PROGRAM · OVERVIEW before the fix:
+      three entries for one layer, and five back presses to undo one tap.
+    */
+    if (st.overlay === null) browserHistoryCheckpoint();
+    /*
+      And which sheet it was opened AT, because the back press needs to know.
+
+      A coach who opens PROGRAM on its overview and descends into Money should
+      get the overview back before the overlay closes. A coach sent straight to
+      the BOARD — by a season opener's card, or an inbox letter — has no
+      overview behind him, and peeling to one parks him on a page nobody named
+      and costs him a press. Reported 2026-09-12: "it took me back to the card
+      saying take me to the board... and then took me to the program overview".
+
+      Session state, never saved: it describes a layer that is open right now.
+    */
+    set(o === 'settings'
+      ? { overlay: o, settingsPage: 'index', overlayEntrySheet: get().programSheet }
+      : { overlay: o, overlayEntrySheet: get().programSheet });
   },
   closeOverlay: () => { if (get().overlay !== null) browserHistoryConsume(); set({ overlay: null }); },
+  /** The program sheet showing when the current overlay was opened. See `openOverlay`. */
+  overlayEntrySheet: 'overview',
   settingsPage: 'index',
   setSettingsPage: (p) => {
     const old = get().settingsPage;
@@ -5383,8 +5461,17 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       looked at, and the next few back presses then walked the screen
       underneath backwards. The gesture peels them instead; see App.tsx.
     */
+    /*
+      `st.overlay === null`, not `!== 'program'`.
+
+      A program sheet shown inside ANY overlay is a level within that overlay,
+      not a stop on the route underneath it — and the inbox path proved it: the
+      board is opened from a letter while `overlay` is still 'inbox', so the
+      old test passed and pushed an entry for a sheet that was about to be
+      displayed inside an overlay anyway.
+    */
     if (st.programSheet !== s
-      && st.overlay !== 'program' && st.tab === 'program' && st.screen === 'records') {
+      && st.overlay === null && st.tab === 'program' && st.screen === 'records') {
       if (s === 'overview' && st.programSheet !== 'overview') browserHistoryConsume(1, true);
       else if (s !== 'overview') browserHistoryCheckpoint();
     }
