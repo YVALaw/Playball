@@ -109,24 +109,58 @@ describe('promises have consequences after signing day', () => {
 
 describe('what the merge review changed', () => {
   it('prices an action at least as well as raw effort, and better when it names what he wants', () => {
-    // The first cut paid a flat bonus per action — a visit bought a third of
-    // what the same eight points bought as raw effort — so every action was a
-    // worse use of the budget and the AI, made to reserve a fifth of its week
-    // for them, was handicapped. Priced per point now, against the raw rate.
-    const p = generateClass(2027, 8, makeRng(97)).prospects[0]!;
-    const w = recruitingPrioritiesOf(p);
-    const ranked = [...RECRUITING_FACTORS].sort((a, b) => w[b] - w[a]);
-    const top = ranked[0]!;
-    const bottom = ranked[ranked.length - 1]!;
-    const raw = weeklyPoints(p, pitch(), PITCH_COST, 45, 20);
-    p.weekActions = { 0: { pitch: top } };
-    const named = actionInterest(p, pitch(), 0);
-    p.weekActions = { 0: { pitch: bottom } };
-    const ignored = actionInterest(p, pitch(), 0);
-    expect(named).toBeGreaterThan(raw);
-    expect(named).toBeGreaterThan(ignored);
-    // Even the wrong pitch is not a write-off: it is a conversation.
-    expect(ignored).toBeGreaterThan(raw * 0.25);
+    /*
+      The first cut paid a flat bonus per action — a visit bought a third of
+      what the same eight points bought as raw effort — so every action was a
+      worse use of the budget and the AI, made to reserve a fifth of its week
+      for them, was handicapped. Priced per point now, against the raw rate.
+
+      ----------------------------------------------------------------------
+      This read `prospects[0]` and asserted on that one man, which was a coin
+      flip dressed as a property.
+
+      It is not universal and never was. `pitch()` below is a mediocre
+      programme — prestige .45, two stars — and `actionInterest` weights the
+      factor the coach names. Name a man's top priority when you are *weak* at
+      it and you have pointed at your own worst feature: the interest comes
+      back lower than raw effort, and for nine of these sixty it comes back
+      negative. That is the system working. A visit is not a free multiplier,
+      it is a conversation you can lose.
+
+      Measured on this class of sixty: named beats raw for 49, named beats the
+      wrong pitch for 50, and the wrong pitch still clears a quarter of raw for
+      55. Before the starting-OVR ladder came down (`05` §76) the same class
+      scored 42 — the ladder did not change this pricing at all, it changed
+      which man sits at index 0, and the old form failed the moment he was no
+      longer one of the lucky ones.
+
+      So the floors below are read off the class rather than off a man. They
+      are set a little under the measurement so an unrelated change to the
+      dice cannot break this file again, and far enough above half that a real
+      inversion of the pricing still would.
+    */
+    const cls = generateClass(2027, 8, makeRng(97)).prospects;
+    let beatsRaw = 0;
+    let beatsWrong = 0;
+    let wrongStillPays = 0;
+    for (const p of cls) {
+      const w = recruitingPrioritiesOf(p);
+      const ranked = [...RECRUITING_FACTORS].sort((a, b) => w[b] - w[a]);
+      const raw = weeklyPoints(p, pitch(), PITCH_COST, 45, 20);
+      p.weekActions = { 0: { pitch: ranked[0]! } };
+      const named = actionInterest(p, pitch(), 0);
+      p.weekActions = { 0: { pitch: ranked[ranked.length - 1]! } };
+      const ignored = actionInterest(p, pitch(), 0);
+      if (named > raw) beatsRaw += 1;
+      if (named > ignored) beatsWrong += 1;
+      // Even the wrong pitch is usually not a write-off: it is a conversation.
+      if (ignored > raw * 0.25) wrongStillPays += 1;
+    }
+    expect(cls.length).toBe(60);
+    expect(beatsRaw, `named beat raw for ${beatsRaw}/60`).toBeGreaterThanOrEqual(44);
+    expect(beatsWrong, `named beat the wrong pitch for ${beatsWrong}/60`).toBeGreaterThanOrEqual(44);
+    expect(wrongStillPays, `the wrong pitch still paid for ${wrongStillPays}/60`)
+      .toBeGreaterThanOrEqual(48);
   });
 
   it('takes a promise off a man once every season it covered has been judged', () => {

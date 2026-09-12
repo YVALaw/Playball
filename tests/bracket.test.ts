@@ -368,12 +368,28 @@ describe('the end of your run', () => {
   ) => {
     const host = hostOfGame(series as never, 0);
     const guest = host === series.a ? (series.b as number) : (series.a as number);
-    for (let seed = 1; seed < 60; seed++) {
+    /*
+      Six hundred seeds, not sixty.
+
+      Sixty was enough until the recruiting ladder moved (`05` §76), which
+      shifted the season's dice and therefore who the top seed draws. It drew a
+      66 quality programme against a 40 in `world(2102)`, and the first game
+      that side lost was seed 68 — so a fixture that scanned to 59 threw, in a
+      test that has nothing to do with recruiting.
+
+      Nothing was wrong with the baseball: 17 losses in 599 sampled games is
+      what a 26 point gap looks like. The cap was the bug, and a cap chosen so
+      the common matchup clears it is a cap that fails on the uncommon one. The
+      comment above already said a test of elimination that only runs when the
+      dice agree is a test of the dice; this is that sentence applied to
+      itself.
+    */
+    for (let seed = 1; seed < 600; seed++) {
       const g = simGame(s.teams[host]!.team, s.teams[guest]!.team, makeRng(seed * 977), {});
       const won = g.home.runs > g.away.runs ? host : guest;
       if (won !== loser) return g;
     }
-    throw new Error('sixty games and the loser never lost one');
+    throw new Error('six hundred games and the loser never lost one');
   };
 
   it('remembers a loss in the last round, after the bracket is gone', async () => {

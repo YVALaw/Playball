@@ -417,12 +417,26 @@ export function serviceScore(p: Player): number {
   return overallOf(p) * 0.74 + (p.potential + miss) * 0.26;
 }
 
+/**
+ * Where the services cut the score into stars.
+ *
+ * **These lines are what a star is worth.** Not the ladder in `generateClass`
+ * — that only decides how many men there are. Move one without the other and
+ * you change the shape of the country while leaving every band meaning exactly
+ * what it meant before, which is the mistake this comment exists to prevent.
+ *
+ * The bottom three came down with the ladder on 2026-09-12 (three 52 → 50, two
+ * 44 → 40) so that a weaker class still divides into roughly the shares it
+ * used to: 26% one star, 31% two, 26% three, 12% four, 7% five. Four and five
+ * were left where they were, because nobody complained about them and a five
+ * star ought to keep meaning the thing it has always meant.
+ */
 export function starsFor(p: Player): number {
   const score = serviceScore(p);
   if (score >= 68) return 5;
   if (score >= 60) return 4;
-  if (score >= 52) return 3;
-  if (score >= 44) return 2;
+  if (score >= 50) return 3;
+  if (score >= 40) return 2;
   return 1;
 }
 
@@ -622,13 +636,53 @@ export function generateClass(year: number, teams: number, rng: Rng): RecruitCla
   let twoWayLeft = 3;
 
   for (let i = 0; i < size; i++) {
+    /*
+      The ladder the class is drawn from, and the bottom of it is deliberate.
+
+      Reported 2026-09-12: "starting ovr is too high for 1 and 2 stars." It was
+      — a two star averaged 45.0 and eighteen percent of them turned up at 50
+      or better, which is a three star's median. Signing one felt like nothing.
+
+      The fix has to be made in **two places at once** and that is the only
+      interesting thing about it. Stars are not stored, they are derived:
+      `starsFor` cuts `serviceScore` at fixed lines, so lowering this ladder
+      alone would not lower what a two star is worth by a single point — it
+      would only move men down into bands whose meaning had not changed, and
+      the country would have fewer three stars who were exactly as good as
+      before. What a band *means* lives in `starsFor`'s thresholds. So both
+      come down together, and by matching amounts, which lowers the rating each
+      band carries while leaving roughly the same share of the country in it.
+
+      Graduated, because the complaint was about the bottom: five and four star
+      draws are untouched, three comes down two, and the bottom two bands come
+      down five and four. Measured over ten classes of 720, before → after:
+
+        1 star  37.4 → 33.3      4 star  58.0 → 58.2
+        2 star  45.0 → 41.6      5 star  67.8 → 68.6
+        3 star  51.2 → 49.9
+
+      The outliers asked for in the same breath — "of course there has to be
+      outliers but not a lot of them" — are not built here and must not be.
+      They already fall out of the `miss` term in `serviceScore`, which is
+      ±26 on the projection half on purpose: a polished man whose ceiling the
+      services read low is filed a band beneath where his bat says he belongs.
+      That is what a steal *is*, and adding a second source of them here would
+      only blur the one that already works. It survives the change intact — a
+      one star can still arrive at 46 and a two star at 56 — and it is thin:
+      16 of 1834 one stars reach 45, and the share of two stars at 50 or better
+      fell from 18.2% to 6.3%. See `tests/recruit-ladder.test.ts`.
+
+      The league pays about a fifth of a run a game for this and no more; see
+      the header of `tests/calibration-seasons.test.ts` for why the plateau
+      barely notices.
+    */
     const roll = rng();
     const quality =
       roll > 0.97 ? 66 + rng() * 10
       : roll > 0.88 ? 58 + rng() * 8
-      : roll > 0.65 ? 50 + rng() * 8
-      : roll > 0.30 ? 42 + rng() * 8
-      : 34 + rng() * 8;
+      : roll > 0.65 ? 48 + rng() * 8
+      : roll > 0.30 ? 38 + rng() * 8
+      : 29 + rng() * 8;
 
     const slot = CLASS_SHAPE[i % CLASS_SHAPE.length] as Position | 'SP' | 'RP';
     const goesBothWays = slot === 'SP' && twoWayLeft > 0 && rng() < 0.015;

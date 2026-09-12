@@ -10011,3 +10011,134 @@ Things this document could not settle from the code, and must not guess at.
     a property of the star rating rather than of a draw and therefore has no
     rate to measure at all; what is still measured, over twenty four classes, is
     what the rule leaves open at the top of the board.
+
+---
+
+## 76. A star rating is two numbers, and only one of them was the complaint — **September 12 2026**
+
+Reported in a list of twenty-six: **"starting ovr is too high for 1 and 2
+stars."** It was. Measured over ten national classes, 7,200 men:
+
+| stars | mean OVR | share of class | share at 50+ OVR |
+|---|---|---|---|
+| 1 | 37.4 | 25.8% | 0.2% |
+| 2 | 45.0 | 26.6% | **18.2%** |
+| 3 | 51.2 | 25.5% | 63.1% |
+| 4 | 58.0 | 14.4% | 94.7% |
+| 5 | 67.8 | 7.7% | 100% |
+
+A three star's median was 51. Nearly a fifth of two stars cleared it. The label
+on the card was not describing anything you could see.
+
+### 76.1 Why the obvious fix does nothing
+
+The obvious fix is to draw the bottom of the class lower — `generateClass` has a
+five-band quality ladder and the bottom two bands are 65% of the country. That
+change on its own moves **nothing**, and the reason is worth writing down
+because it is not visible from the ladder.
+
+**Stars are not stored. They are derived.** `starsFor` cuts `serviceScore` at
+fixed lines — 68 / 60 / 52 / 44 — and `serviceScore` is 74% current ability. So
+the thresholds, not the ladder, are what fixes the OVR range a band can hold.
+Lower the ladder alone and men slide *down* into bands whose meaning has not
+changed: you get more one stars, fewer three stars, and a two star who is
+exactly as good as he was yesterday. The class gets worse and the complaint
+survives intact.
+
+The ladder decides **how many men** are in a band. The thresholds decide **what
+the band is worth**. The report was about the second one.
+
+### 76.2 Both, by matching amounts, graduated toward the bottom
+
+So both moved together. Matching amounts, so the share of the country in each
+band stays roughly where it was; graduated, because the complaint named the
+bottom and a five star ought to keep meaning what it has always meant.
+
+| | ladder band | → | threshold | → |
+|---|---|---|---|---|
+| 5 | 66 + u·10 | unchanged | ≥ 68 | unchanged |
+| 4 | 58 + u·8 | unchanged | ≥ 60 | unchanged |
+| 3 | 50 + u·8 | **48 + u·8** | ≥ 52 | **≥ 50** |
+| 2 | 42 + u·8 | **38 + u·8** | ≥ 44 | **≥ 40** |
+| 1 | 34 + u·8 | **29 + u·8** | — | — |
+
+Result, same measurement:
+
+| stars | mean OVR | before | share of class | share at 50+ |
+|---|---|---|---|---|
+| 1 | **33.3** | 37.4 | 25.5% | 0.0% |
+| 2 | **41.6** | 45.0 | 30.8% | **6.3%** |
+| 3 | **49.9** | 51.2 | 25.6% | 53.1% |
+| 4 | 58.2 | 58.0 | 11.5% | 94.7% |
+| 5 | 68.6 | 67.8 | 6.7% | 100% |
+
+Adjacent bands are now eight points apart instead of six, the two/three overlap
+is a third of what it was, and the four and five star draws were not touched.
+
+### 76.3 The outliers were already there and must not be built twice
+
+The same sentence that asked for this asked for the other half: *"of course
+there has to be outliers but not a lot of them."*
+
+Nothing was added for them, deliberately. They already fall out of the `miss`
+term in `serviceScore` — ±26 on the projection half, on purpose since §2 — which
+is how a polished man whose ceiling the services read low gets filed a band
+beneath what his bat says. **That is what a steal is**, and a second source of
+outliers manufactured at the ladder would only blur the one that already works.
+
+It survives the change and stays thin. A one star can still arrive at 46, a two
+star at 56; 16 of 1834 one stars reach 45, and the two-stars-at-50 rate fell
+18.2% → 6.3%. `tests/recruit-ladder.test.ts` pins the tail from **both** sides,
+because a tail is as easy to lose by clamping as it is to lose control of.
+
+### 76.4 Three checks that mattered more than the change
+
+**Year one moved and no year-one talent did.** The 10-season climb probe showed
+year one going 7.111 → 7.015 runs, which should have been impossible — no
+recruit exists yet. `createSeason` builds its teams and *then* draws the class
+off the same generator, so a ladder spending a different count of numbers moves
+every game afterwards without touching a rating. Checked rather than assumed:
+2,208 men at mean overall 42.8012, hash for hash identical on both sides. Dice.
+
+**The plateau barely noticed, and that is the finding.** The league's runs
+plateau came down about a fifth of a run — 8.77 → 8.55 on seed 4242, 8.87 → 8.73
+on 909 — against a 6.73 target. All fourteen calibration bands from §71 still
+hold without re-fitting. The lesson for whoever recalibrates: **the climb is not
+built out of where freshmen start, it is built out of what four winters of
+`develop()` do to them.** Lowering the door by three points buys almost nothing.
+Do not spend more time on the recruiting ladder; the lever is development.
+
+**The superstars did not go with it.** Potential is projected off current
+overall, so lowering the class lowers every ceiling in it, and the S rarity
+settled two days ago could have been halved here silently. It was not: 5.7
+S-or-better per class before, 5.9 after — and they did not retreat up the star
+ladder either, with nine of fifty-nine going to two stars against six to five
+stars.
+
+### 76.5 Three tests that were reading the dice
+
+The rng stream shift broke three files, none of which were about recruiting, and
+all three were brittle in the same way — they had sampled once and believed it.
+
+- **`identity.test.ts`** pinned a class at 2466 draws; now 2468. The
+  projectable-freshman gate is `overall < 52` and short-circuits, so only a man
+  under the line pays for the roll. Two more of sixty went under it. No draw was
+  added to anybody; more men qualified to be asked.
+- **`bracket.test.ts`** scanned 60 seeds for a game its top seed loses, and the
+  new dice drew a 66-quality programme against a 40 whose first loss was at seed
+  68. Nothing was wrong with the baseball — 17 losses in 599 games is what a
+  26-point gap looks like. The cap was the bug; it is 600 now. The fixture's own
+  comment already said *a test of elimination that only runs when the dice agree
+  is a test of the dice*.
+- **`recruiting-expansion.test.ts`** asserted on `prospects[0]`, one man, that
+  naming a recruit's top priority beats raw effort. It is not universal and
+  never was — 42 of 60 before this change, 49 after. The fixture pitch is a
+  mediocre programme, and naming a man's top priority when you are *weak* at it
+  points at your own worst feature, so the interest comes back lower and for
+  nine of sixty comes back negative. **That is the system working**; a visit is
+  a conversation you can lose. The assertion now reads the class instead of a
+  man, with floors under the measurement.
+
+The pattern is one worth naming: a single-sample assertion that passes is
+indistinguishable from a property that holds, right up until something unrelated
+moves the dice.

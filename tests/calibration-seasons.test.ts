@@ -35,27 +35,42 @@
 //
 // Ten seasons, two worlds, one node process per seed (see SEASONS below for why
 // that matters). Runs per team per game, against an NCAA D1 target of 6.73.
-// Re-recorded 2026-09-11 after `projectPotential` made headroom a roll (`05`
-// §73) — **year one is identical to the digit on both seeds**, which is the
-// measurement that proves that change spent no extra random draw:
 //
+// Re-recorded 2026-09-12 after the starting-OVR ladder came down (`05` §76):
+//
+//   seed 4242  7.015  7.337  8.101  8.426  8.637  8.458  8.537  8.616  8.533  8.541
+//   seed 909   6.880  7.686  8.375  8.948  8.907  8.626  8.679  8.678  8.810  8.692
+//
+//   before it, for comparison:
 //   seed 4242  7.111  7.430  8.109  8.536  8.816  8.955  8.941  8.735  8.594  8.624
 //   seed 909   6.934  7.551  8.246  8.731  8.922  8.888  8.924  9.050  8.873  8.781
 //
-//   before it, for comparison — the climb is very slightly gentler now:
-//   seed 4242  7.111  7.543  8.107  8.670  9.072  9.017  8.775  8.859  8.804  8.744
-//   seed 909   6.934  7.718  8.362  8.761  8.830  8.889  8.807  8.635  8.744  8.802
+// **Year one moved and no year-one talent did.** `createSeason` builds its
+// teams and *then* draws the recruiting class off the same generator, so a
+// ladder that spends a different number of numbers moves every game played
+// afterwards without touching a single rating. Checked rather than assumed:
+// the year-one league is 2208 men at mean overall 42.8012 on both sides of the
+// change, hash for hash. The 7.111 → 7.015 is dice.
 //
-// The league gains **two runs a game** over four years and then holds there, a
-// third above target. And it is not one channel — every rate inflates together:
+// The plateau came down with the ladder — about a fifth of a run, 8.77 → 8.55
+// on 4242 and 8.87 → 8.73 on 909 — which is the right direction and nowhere
+// near far enough. Worth knowing **why** it is only a fifth of a run: the
+// climb is not built out of where freshmen start, it is built out of what four
+// winters of `develop()` do to them. Lowering the door by three points buys
+// almost nothing at the plateau, so whoever recalibrates should not spend any
+// more time on the recruiting ladder — the lever is development.
 //
-//                        year 1        plateau       D1 target
-//   batting average      .279-.282     .308-.314     .280
-//   on base              .384-.387     .416-.426     .384
-//   slugging             .437-.445     .507-.519     .438
-//   home runs            1.04-1.08     1.38-1.44     1.03
-//   walks                4.65-4.66     5.39-5.66     4.70
-//   strikeouts           7.81-7.89     6.83-7.15     8.01
+// The league still gains **two runs a game** over four years and then holds
+// there, a fifth above target. And it is not one channel — every rate inflates
+// together (year 5 and year 10 are the two measured checkpoints; both seeds):
+//
+//                        year 1        year 5        year 10       D1 target
+//   batting average      .278-.282     .307-.311     .305-.308     .280
+//   on base              .381-.385     .418-.422     .415-.419     .384
+//   slugging             .435-.444     .501-.508     .498-.506     .438
+//   home runs            1.02-1.07     1.36-1.39     1.35-1.39     1.03
+//   walks                4.57-4.57     5.46-5.61     5.42-5.50     4.70
+//   strikeouts           7.86-7.90     7.07-7.16     7.08-7.22     8.01
 //
 // ---------------------------------------------------------------------------
 // The cause, which is a defect and not a curve
@@ -65,8 +80,14 @@
 //
 //   YEAR 1, generated   BATS  FR 40.8  SO 41.3  JR 40.3  SR 41.8
 //                       ARMS  FR 45.6  SO 45.2  JR 45.0  SR 44.4
-//   YEAR 5, recruited   BATS  FR 45.1  SO 54.3  JR 56.5  SR 54.8
-//                       ARMS  FR 41.5  SO 55.4  JR 58.1  SR 53.8
+//   YEAR 5, recruited   BATS  FR 41.9  SO 50.4  JR 52.0  SR 50.2
+//                       ARMS  FR 40.0  SO 52.2  JR 56.0  SR 53.1
+//
+//   (seed 4242. Before the ladder came down the year-five line read BATS FR
+//   45.1 SO 54.3 JR 56.5 SR 54.8 / ARMS FR 41.5 SO 55.4 JR 58.1 SR 53.8. The
+//   freshman row is the one the ladder was aimed at and it moved most — bats
+//   45.1 → 41.9 — which is the change doing exactly what it says. The upper
+//   classes came down about two, all of it inherited from a weaker door.)
 //
 // **`makeTeam` never ages the roster it generates.** In the opening world a
 // senior is no better than a freshman — all four classes are drawn flat from one
@@ -121,23 +142,27 @@ const SEASONS = 5;
  * 9.1 would not catch anything.
  */
 const OPENING: Record<keyof Omit<LeagueRates, 'teamGames'>, [number, number]> = {
-  runs: [6.6, 7.4],     // measured 6.934, 7.111
-  avg: [0.270, 0.290],  // measured .2787, .2819
-  obp: [0.375, 0.396],  // measured .3841, .3865
-  slg: [0.425, 0.455],  // measured .4374, .4447
-  hr: [0.95, 1.18],     // measured 1.039, 1.082
-  k: [7.4, 8.3],        // measured 7.81, 7.89
-  bb: [4.4, 5.0],       // measured 4.65, 4.66
+  runs: [6.6, 7.4],     // measured 6.880, 7.015
+  avg: [0.270, 0.290],  // measured .2777, .2819
+  obp: [0.375, 0.396],  // measured .3809, .3848
+  slg: [0.425, 0.455],  // measured .4346, .4441
+  hr: [0.95, 1.18],     // measured 1.020, 1.069
+  k: [7.4, 8.3],        // measured 7.86, 7.90
+  bb: [4.4, 5.0],       // measured 4.57, 4.57
 };
 
 const PLATEAU: Record<keyof Omit<LeagueRates, 'teamGames'>, [number, number]> = {
-  runs: [8.3, 9.5],     // measured 8.635 - 9.072 across years 5-10
-  avg: [0.295, 0.325],  // measured .3076 - .3142
-  obp: [0.405, 0.435],  // measured .4159 - .4261
-  slg: [0.490, 0.535],  // measured .5066 - .5189
-  hr: [1.28, 1.55],     // measured 1.378 - 1.444
-  k: [6.5, 7.5],        // measured 6.83 - 7.15
-  bb: [5.1, 6.0],       // measured 5.39 - 5.66
+  // Spans are years 5 and 10 on both seeds, which are the two checkpoints the
+  // probe records. The bands themselves are unchanged and were not re-fitted:
+  // every one of these fourteen figures already sat inside the band drawn for
+  // the old ladder, which is the reassuring half of the result.
+  runs: [8.3, 9.5],     // measured 8.458 - 8.948 across years 5-10
+  avg: [0.295, 0.325],  // measured .3050 - .3109
+  obp: [0.405, 0.435],  // measured .4150 - .4222
+  slg: [0.490, 0.535],  // measured .4980 - .5081
+  hr: [1.28, 1.55],     // measured 1.350 - 1.389
+  k: [6.5, 7.5],        // measured 7.07 - 7.22
+  bb: [5.1, 6.0],       // measured 5.42 - 5.61
 };
 
 /** One world, played forward, measured after each regular season. */
@@ -195,8 +220,10 @@ describe('a league five years old', () => {
   });
 
   it('and by year five is playing a different sport', () => {
-    // Not a metaphor: .310 and 8.8 runs against a .280, 6.73 target. This is
-    // the defect, pinned rather than fixed — see the header and `05` §71.
+    // Not a metaphor: .307 and 8.6 runs against a .280, 6.73 target. This is
+    // the defect, pinned rather than fixed — see the header and `05` §71. The
+    // recruiting ladder took a fifth of a run off it and that is all it had to
+    // give; the rest is development, which nothing has touched yet.
     check(rates[rates.length - 1]!, PLATEAU, 'year 5');
   });
 
