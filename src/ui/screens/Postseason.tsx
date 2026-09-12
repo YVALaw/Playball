@@ -710,7 +710,14 @@ export function Postseason() {
                 : 'PLAY THE CHAMPIONSHIP',
               run: advance,
             }
-          : { label: 'CONTINUE', run: advance };
+          // A spectator's tier, not yet played. This used to be unreachable —
+          // the tier resolved on arrival — so it fell to a bare CONTINUE.
+          : {
+              label: bracket.stage === 'conference'
+                ? 'PLAY THE CONFERENCE TOURNAMENTS'
+                : 'PLAY THE REGIONALS',
+              run: advance,
+            };
 
   return (
     <>

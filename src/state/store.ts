@@ -1237,8 +1237,13 @@ export interface DynastyStore {
   bracket: PostseasonProgress | null;
   /** Leave a finished stage for the next one. */
   advanceBracket: () => void;
-  /** Open whatever stage the bracket is on. Called on arrival, not by a press. */
-  openStage: () => void;
+  /**
+   * Open whatever stage the bracket is on.
+   *
+   * Called on arrival with no argument, which draws the stage and stops. Called
+   * with `true` by a press, which plays a tier the coach has no team in.
+   */
+  openStage: (advance?: boolean) => void;
   /**
    * The national stage's own sub-steps: field, opening, showdown, final.
    *
@@ -5610,10 +5615,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
    * stage *is* the instruction to open it, so the bracket is on screen the
    * moment you get there, with your first game already named.
    *
-   * A stage you are not in is played out immediately for the same reason: there
-   * is nothing for you to decide, so there is nothing to press.
+   * A stage you are not in used to be played out immediately for the same
+   * reason — there is nothing for you to decide, so there is nothing to press.
+   * That was wrong, and reported 2026-09-12: "when your team doesn't make the
+   * post season it automatically decides all once I hit play postseason, not
+   * giving the players the opportunity to either simulate full post season or
+   * sim by round." Eight conference tournaments resolved inside the effect that
+   * merely opens the screen, before it had drawn a frame. Watching is not the
+   * same as not caring, and one press per tier is what was asked for.
    */
-  openStage: () => {
+  openStage: (advance = false) => {
     const { season, bracket, userTeam, version } = get();
     if (!season || !bracket || get().myBracket) return;
 
@@ -5649,6 +5660,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         });
         return;
       }
+      // Nothing of his is in it, so it plays on a press and not on arrival.
+      if (!advance) return;
       set({
         bracket: { ...bracket, cups: stageConferenceTournaments(season) },
         version: version + 1,
@@ -5697,6 +5710,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         return;
       }
       if (bracket.regionals.length < pairings.length) {
+        // Same as the conference tier above: a press, not an arrival.
+        if (!advance) return;
         set({
           bracket: { ...bracket, regionals: stageRegionals(season, bracket.cups) },
           version: version + 1,
@@ -5869,10 +5884,27 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // conference → regional → national in one gesture, staging the national
     // round off an empty regional list.
     if (get().myBracket) return;
+    /*
+      A tier that has not been played yet is played by this press rather than
+      refused by it. The two guards below exist to stop a double tap walking
+      conference → regional → national in one gesture off an empty list, and
+      they used to be unreachable for a spectator because `openStage` had
+      already resolved his tier on arrival. Now that it waits, the first press
+      lands here with nothing on the books — so it stages, and the NEXT press
+      leaves.
+    */
     if (bracket.stage === 'conference'
-      && bracket.cups.length < conferenceIds(season).length) return;
+      && bracket.cups.length < conferenceIds(season).length) {
+      get().openStage(true);
+      void get().saveNow();
+      return;
+    }
     if (bracket.stage === 'regional'
-      && bracket.regionals.length < regionalPairing(season, bracket.cups).length) return;
+      && bracket.regionals.length < regionalPairing(season, bracket.cups).length) {
+      get().openStage(true);
+      void get().saveNow();
+      return;
+    }
 
     if (bracket.stage === 'conference') {
       set({ bracket: { ...bracket, stage: 'regional' }, version: version + 1 });
