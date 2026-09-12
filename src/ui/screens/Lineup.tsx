@@ -28,14 +28,14 @@ import { FirstVisit } from '../Tutorial.js';
 import { returnPending, whyOut } from '../Needs.js';
 import { Modal } from '../Modal.js';
 import { armValue, overallOf } from '../../engine/ratings.js';
-import { isTwoWay } from '../../engine/types.js';
+import { isTwoWay, uniquePlayers } from '../../engine/types.js';
 import { captainOf } from '../../engine/captains.js';
 import { battingAverage, era, inningsPitched, injuryClock } from '../../engine/season.js';
 import { handles } from '../../state/depth.js';
 import { available, cardGaps } from '../../engine/depthChart.js';
 import { coverTier, fieldingAt, positionPenalty } from '../../engine/positions.js';
 import { useHold } from '../useLongPress.js';
-import type { PlayerId, Position } from '../../engine/types.js';
+import type { Arm, Hitter, Player, PlayerId, Position } from '../../engine/types.js';
 import { CaptainC, DidButton, FieldNote, ModuleIntro, SectionHeading } from '../components/Kit.js';
 
 /** Friday, Saturday, Sunday, then the midweek arm. */
@@ -723,6 +723,61 @@ export function Lineup() {
             );
           })}
         </section>
+
+        {/*
+          THE TRAINER'S ROOM.
+
+          Asked for 2026-09-12 alongside the missing indicator: "I'm also
+          thinking we should add a section in the lineup tab called injured so
+          all injured players go there when we take them out of the
+          lineup/rotation."
+
+          Read rather than held: this is every man on the roster the clock says
+          cannot play, gathered from the four lists above rather than moved out
+          of them. That matters — a hurt starter has to stay in his rotation
+          slot so the coach can move him OUT of it, and a hurt regular stays on
+          the card until somebody covers him, which is the errand NEEDS sends
+          him on. Taking them out of their lists would delete the very decision
+          this screen exists for. So the section is a summary, and the row above
+          is still where the work happens.
+
+          It hides itself when nobody is hurt rather than saying "nobody is
+          hurt", because an empty section on a screen this dense is a line a
+          coach has to read to learn nothing.
+        */}
+        {(() => {
+          const clock = injuryClock(season);
+          const hurt = uniquePlayers([
+            ...team.team.lineup, ...team.team.bench,
+            ...team.team.rotation, ...team.team.bullpen,
+          ] as Player[]).filter((p) => !available(p, clock));
+          if (hurt.length === 0) return null;
+          return (
+            <>
+              <SectionHeading
+                kicker="THE TRAINER'S ROOM"
+                title={hurt.length === 1 ? 'One man out' : `${hurt.length} men out`}
+              />
+              <section className="rotation-list injured-list">
+                {hurt.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="is-unavailable"
+                    onClick={() => { if (!consumed()) openPlayer(p.id); }}
+                  >
+                    <span>{p.type === 'pitcher' ? (p as Arm).role : (p as Hitter).pos}</span>
+                    <strong>{p.name}</strong>
+                    <small>
+                      <b className="bench-out">✚ {whyOut(p, clock)}</b>
+                    </small>
+                    <i className="drag" />
+                  </button>
+                ))}
+              </section>
+            </>
+          );
+        })()}
 
         <FirstVisit id="lineup" />
       </main>

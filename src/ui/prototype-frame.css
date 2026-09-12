@@ -8224,3 +8224,10 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
    label rather than as a second competing number. */
 .repertoire-list div { grid-template-columns: 66px 49px 1fr 36px; }
 .repertoire-list small { color: var(--dim); font-weight: 800; text-align: right; font-size: calc(7.5px * var(--ts)); }
+
+/* The trainer's room is a summary, not a roster the coach works in: every man
+   in it is also still in the list he came from, because moving a hurt starter
+   OUT of his slot is the decision this screen exists for (05 §76). So the rows
+   read rather than invite — no pin column, and the whole section dimmed. */
+.injured-list button { cursor: pointer; }
+.injured-list .drag { visibility: hidden; }
