@@ -8216,3 +8216,11 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
    errand. */
 .rotation-list button.is-unavailable { opacity: .58; }
 .rotation-list button.is-unavailable:active { transform: none; }
+
+/* The repertoire row grew a fourth cell: the usage share the bar is drawn from
+   (05 §76). The three-column grid is generated in prototype.css, so the widened
+   one belongs here. Dim and right-aligned, the way the tool table's own caption
+   is, so the mph stays the row's headline and the percentage reads as the bar's
+   label rather than as a second competing number. */
+.repertoire-list div { grid-template-columns: 66px 49px 1fr 36px; }
+.repertoire-list small { color: var(--dim); font-weight: 800; text-align: right; font-size: calc(7.5px * var(--ts)); }

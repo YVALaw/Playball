@@ -2637,7 +2637,10 @@ function seasonNews(store: DynastyStore): void {
         title: at === 1 ? 'Number one in the country' : `Into the top ${at}`,
         body: `Coach — ${won}-${played.length - won}, and the country has `
           + 'noticed. I bought a paper just to read it out loud.',
-        link: { to: 'program', sheet: 'board' },
+        // A letter about where the programme sits in the COUNTRY opens the
+        // national table. It pointed at the board room, which had nothing to do
+        // with it and was simply the nearest door `InboxLink` offered.
+        link: { to: 'rankings' },
       });
     }
   }
@@ -2672,7 +2675,14 @@ function seasonNews(store: DynastyStore): void {
       body: `Coach — ${w}-${half - w} at the turn puts us on for `
         + `${Math.round((w / half) * games)} wins, against the ${want.targetWins} `
         + 'upstairs asked for.',
-      link: { to: 'program', sheet: 'board' },
+      /*
+        And this one opens the league table. Reported 2026-09-12: "in cases like
+        coach we are x-x, instead of taking the player to the board should take
+        them to the season menu to see their standings." The board room holds
+        the mandate, which this letter quotes — but what a coach wants after
+        reading "we are 12-9" is the table he is 12-9 in.
+      */
+      link: { to: 'standings' },
     });
   }
 }

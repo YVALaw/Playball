@@ -66,7 +66,18 @@ export type InboxLink =
   | { to: 'team'; index: number }
   | { to: 'program'; sheet: 'board' | 'coach' | 'hall' }
   | { to: 'book' }
-  | { to: 'schedule' };
+  | { to: 'schedule' }
+  /*
+    Added 2026-09-12. Two letters open "Coach — we are X-Y" and both pointed at
+    the board room, not because that was right but because it was the nearest
+    door this list had: a letter about where the programme sits in its league
+    had nowhere to send anybody. Reported: "in cases like coach we are x-x,
+    instead of taking the player to the board should take them to the season
+    menu to see their standings."
+  */
+  | { to: 'standings' }
+  /* And one about where it sits in the country. */
+  | { to: 'rankings' };
 
 export interface InboxItem {
   /** Unique, and stable across a reload so React keys do not shuffle. */
@@ -185,6 +196,8 @@ function validLink(saved: unknown): saved is InboxLink {
     case 'program':
       return l.sheet === 'board' || l.sheet === 'coach' || l.sheet === 'hall';
     case 'book':
+    case 'standings':
+    case 'rankings':
     case 'schedule': return true;
     default: return false;
   }

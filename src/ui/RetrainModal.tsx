@@ -32,7 +32,7 @@ export function RetrainModal(
       lines={[canMove
         ? (winter
           ? 'A move is permanent. He spends the winter learning the spot and opens next season there, a step behind until it takes.'
-          : 'Moves happen over the offseason. This is what a winter could make of him.')
+          : 'Position moves are made on the offseason rail, after the season ends. This is what a winter could make of him.')
         : 'What a winter could make of him, if he were yours to move.']}
       body={(
         <div className="retrain-list">
@@ -57,7 +57,20 @@ export function RetrainModal(
                   <button
                     type="button" className="tap" disabled={!winter}
                     onClick={() => { changePosition(p.id, spot); onClose(); }}
-                  >{breaks ? 'MOVE · BREAKS PROMISE' : 'MOVE'}</button>
+                  >
+                    {/*
+                      A disabled control says what it is waiting for. Reported
+                      2026-09-12: "how does the retrain position work? When you
+                      tap on it it shows the available and likely but the move
+                      button is grayed out." The gate is real and deliberate —
+                      `changePosition` refuses outside the winter because the
+                      move is settled once, by the year roll's `settleIn` — and
+                      the sheet already says so at the top. It said nothing at
+                      the control, which is where somebody with his thumb on it
+                      is looking.
+                    */}
+                    {!winter ? 'IN THE WINTER' : breaks ? 'MOVE · BREAKS PROMISE' : 'MOVE'}
+                  </button>
                 ) : <i />}
               </div>
             );

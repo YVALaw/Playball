@@ -947,6 +947,21 @@ function Repertoire({ p }: { p: Pitcher }) {
     <>
       <SectionHeading kicker="REPERTOIRE" title={`${(p as Pitcher).velocity} mph fastball`} />
       <section className="repertoire-list">
+        {/*
+          The percentage is printed because the bar is drawn from it.
+
+          Reported 2026-09-12: "the ratings bars don't really make sense and
+          mostly in pitchers, I mean like a pitcher who throws 99 fastball but
+          the bar is not even half full." The bar was never the mph — it is the
+          usage share — but the row printed the SPEED as its number and then
+          drew the SHARE as its bar, two different facts in one line, in the
+          same 6px clay track the rating rows below it use, under a heading that
+          reads "99 mph fastball". Nothing said so, so the only reading
+          available was that the bar was the velocity and it was wrong.
+
+          The mph keeps its place as the headline — it is what a coach came to
+          read — and the share gets the number it was always being drawn from.
+        */}
         {rep.map((o) => (
           <div key={o.id}>
             <span>{PITCHES[o.id].name.toUpperCase()}</span>
@@ -957,6 +972,7 @@ function Repertoire({ p }: { p: Pitcher }) {
                 background: PITCHES[o.id].family === 'fastball' ? 'var(--clay)' : 'var(--ink)',
               }} />
             </i>
+            <small>{Math.round(o.usage * 100)}%</small>
           </div>
         ))}
       </section>

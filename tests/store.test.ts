@@ -1131,10 +1131,22 @@ describe('the inbox during a season', () => {
     useDynasty.getState().settleSeason();
 
     const inbox = useDynasty.getState().inbox;
-    // The verdict letter retired; the halfway card is the season's board
-    // letter now, and it points the same place the verdict used to.
+    /*
+      The verdict letter retired; the halfway card is the season's board letter
+      now. It used to point at the board room, which it inherited from the
+      verdict — and which was never right for it. Reported 2026-09-12: "in
+      cases like coach we are x-x, instead of taking the player to the board
+      should take them to the season menu to see their standings." The board
+      room holds the mandate this letter quotes; the table is what a coach
+      wants after reading "we are 12-9". `InboxLink` had no standings door at
+      all until then, which is the whole reason it pointed at the board.
+
+      What this case is really for is below: that the letter has a link at all,
+      that links survive a reload, and that a target this build does not know
+      is dropped rather than reaching the screen as a dead tappable card.
+    */
     const verdict = inbox.find((i) => i.kind === 'board');
-    expect(verdict?.link).toEqual({ to: 'program', sheet: 'board' });
+    expect(verdict?.link).toEqual({ to: 'standings' });
 
     // And the destinations survive a reload, which is the only place a link can
     // quietly become undefined.

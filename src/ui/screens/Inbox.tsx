@@ -34,6 +34,8 @@ function useOpen(): (link: InboxLink) => void {
       case 'team': openTeam(link.index); return;
       case 'program': setProgramSheet(link.sheet); openOverlay('program'); return;
       case 'book': openOverlay('book'); return;
+      case 'standings': openOverlay('standings'); return;
+      case 'rankings': openOverlay('rankings'); return;
       case 'schedule': openOverlay('schedule'); return;
     }
   };
@@ -44,6 +46,8 @@ function ctaLabel(link: InboxLink): string {
     case 'player': return 'OPEN PLAYER';
     case 'team': return 'OPEN PROGRAM';
     case 'book': return 'OPEN THE BOOK';
+    case 'standings': return 'OPEN STANDINGS';
+    case 'rankings': return 'OPEN THE RANKINGS';
     case 'schedule': return 'OPEN SCHEDULE';
     case 'program': return link.sheet === 'board' ? 'OPEN BOARD'
       : link.sheet === 'hall' ? 'OPEN HALL OF FAME' : 'OPEN PROGRAM';
