@@ -4401,7 +4401,27 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
    transitions. This feels much closer to a native tabbed app than snapshotting
    the masthead and bottom navigation on every move. */
 .app-content { view-transition-name: playball-page; }
-.screen-surface { min-height: 100%; animation: pageSoftIn 170ms cubic-bezier(.2,.8,.3,1) both; }
+/* `backwards`, not `both`, and the difference is not cosmetic.
+
+   A filled animation whose last keyframe says `transform: none` does not compute
+   to `none` — it computes to the identity matrix, `matrix(1,0,0,1,0,0)`, and any
+   transform value other than `none` makes the element a containing block for its
+   absolutely positioned descendants. Measured 2026-09-12 on a probe of this exact
+   rule: with `both`, a finished animation left `matrix(1,0,0,1,0,0)` and an
+   `inset:0` child resolved against the 900px SURFACE; with `backwards` it left
+   `none` and the same child resolved against the 300px frame, which is right.
+
+   So every `.full-overlay` — the player card, the team card, the god sheet, the
+   coach panel — was sized against the screen's whole scroll height rather than
+   the phone frame, and hung off the bottom of the window by however far the
+   screen ran on. Reported 2026-09-12: "in staff, selecting a project, we can not
+   scroll down all the way, there is some content like the start project button
+   that stays out of the screen and I can not reach it."
+
+   The `to` keyframe is `opacity:1; transform:none`, which is identical to this
+   element's own base style, so `forwards` was buying nothing visually and paying
+   for it with the containing block. */
+.screen-surface { min-height: 100%; animation: pageSoftIn 170ms cubic-bezier(.2,.8,.3,1) backwards; }
 :root[data-vt] .screen-surface { animation: none; }
 :root[data-motion="reduced"] .screen-surface { animation: none; }
 @media (prefers-reduced-motion: reduce) { .screen-surface { animation: none; } }
