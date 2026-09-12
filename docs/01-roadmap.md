@@ -1,10 +1,12 @@
 # Roadmap
 
-**Last updated:** September 6, 2026 · stages 1–16, 18, 20–23 and 25 shipped ·
+**Last updated:** September 12, 2026 · stages 1–18 and 20–27 shipped or closed ·
 the APK report closed · **three outside passes merged September 5** — the
-interface (`05` §50), the engine (§51) and prestige (§52) · 24 part-built,
-26 awaiting a verdict · **17 is god mode now, not the store**, and **18b
-(Android 16) shipped September 6**
+interface (`05` §50), the engine (§51) and prestige (§52) · **17 is god mode
+now, not the store**, and it closed September 6 with 18b, 24 and 26 · **stage
+27, the rules of the world, shipped September 11**, ahead of the ship rather
+than after it · **an outside audit of twenty-three findings checked and acted
+on September 11** (`05` §69)
 **Supersedes:** v3, which by the end was wrong about most of what it claimed
 **Companion docs:** `05-systems-reference.md` for what the game does today,
 `06-backlog.md` for what it is going to do and why, `02-sim-engine-spec.md` for
@@ -41,22 +43,96 @@ You are the head coach of a college baseball program. Recruit high schoolers,
 develop them, survive the MLB draft stealing your best arms every June, and chase
 a national title. Games resolve at bat by at bat with text play by play over a 3D
 diamond. Ninety-six programs in eight conferences of twelve, a forty-five game
-regular season, and a career an athletic director can end. Ships to Android.
+regular season — thirty-four if you set the world that way — and a career an
+athletic director can end. Ships to Android.
 
 ## Where it stands
 
-**v0.8.0 — the loop is closed and the screens have been through a war.**
-Three hundred and fifty commits past the v0.7.4 line: five feature blocks, an
-audit pass, an interface overhaul, the guided first season, and the September
-10 program-and-staff pass.
+**v0.8.0, and ten commits past it.** The version was cut September 11, three
+hundred and fifty commits past the v0.7.4 line: five feature blocks, an audit
+pass, an interface overhaul, the guided first season, and the September 10
+program-and-staff pass. September 11 and 12 went on an outside audit, the rules
+of the world, and measuring things nobody had measured.
 
 Take a job from a desk of genuine offers, play or simulate a season, manage a postseason run a
 game at a time on a full-screen field with a defense on it, hand out awards,
 spend coaching points, read a recruiting board that is honest about being
 vague, argue the draft out of taking your junior, and start again in February —
 against ninety-five rival programs run by men with careers of their own.
-Seventy-seven test files and 1,369 tests cover it, calibration among them, so
-the engine cannot drift without something failing.
+Eighty-six test files and 1,477 tests cover it, calibration among them and
+since September 11 a five-season guard on what the league scores, so the engine
+cannot drift without something failing.
+
+**The audit, checked and acted on** (`05` §69). Twenty-three findings arrived
+against a commit four behind, and every claim was verified against the source
+before anything was changed; every figure that could be reproduced matched.
+Its headline was the calendar, and it understated the damage. The postseason
+stages were played end to end, so no two tournaments in a stage ever shared a
+date: in the data file's fixed order, every season of every career, the first
+conference tournament played days 81 to 86 and the last days 124 to 129. The
+gap that did the real harm was the one after it — the regionals
+opened the day after the last conference game, and not one of the thirty-two
+teams in the field had its number one or number two starter available. Every
+tournament in a stage opens on the same night now, a five-day break sits
+between stages, every club that played a conference tournament has its whole
+rotation for the regional opener — 64 of 64 on all four slots — and the
+postseason spans thirty-one days against a hundred and six. The same pass
+measured every school colour where it is used as text: all
+ninety-six fell below 4.5:1 on the dark theme's paper and eighty-seven below
+3:1, which is not dim but gone. `teamInk` keeps the hue and walks the
+lightness, and all ninety-six clear the bar on both papers.
+
+**The rules of the world shipped** — stage 27, which the September 6 money talk
+had booked for after the ship (§70). Five switches set at NEW CAREER and fixed
+for the life of the career: injuries full, half or none; the transfer portal;
+realignment; poaching; and a season of forty-five games or thirty-four. They
+live on `season.rules` in the engine rather than in the depth catalogue,
+because they change the simulation for all ninety-six programs at once, which
+is the one thing a depth toggle may never do — `depth.ts`'s own header names
+them as the counter-example to everything in it. Folded at the foot of the
+how-you-play step. A world with no rules written on it is object-identically
+the world that was always there. The short season is two-game weekends: it
+keeps the full conference round robin and every crossover game, and costs the
+fourth starter his slot.
+
+**Two switches reached nothing** (§72). MOUND VISITS promises that your
+pitching coach decides when to go out. He never did — the engine gated the
+automatic visit on the bullpen key, and the mound-visit key's only reader was a
+button it hides. Measured over sixty live games: 0.00 visits to the coached
+mound against 1.07 to the opponent's. It ran the other way too, so a coach who
+delegated the pen and kept the conversations had them made behind his back.
+Separately, a keep-position promise was judged off `p.pos`, the card label AUTO
+overwrites when a man covers a spot, so a shortstop filling in at second for an
+afternoon read as a broken promise; 14.4% of hitters wear a cover label at any
+moment.
+
+**Development means something** (§73, §75). Reported after fifteen seasons: "an
+A potential grew 3 ovr just like a C potential each year." Headroom had been
+drawn from class year and nothing about the player, so a ceiling was current
+ability plus a constant and 72.6% of a class sat in two adjacent bands. It is a
+roll now, its width set by how raw a man already is and its mean held exactly
+by construction, so league talent cannot move. Two further asks landed with it:
+five-stars who are already finished go 2.2% to 10.6%, and the S grade is rare,
+12.4 a class to 5.5. The generation cap had been a wall — 9.9 men a class came
+out at exactly 94, three quarters of every S, because truncation is what makes
+a top dense — and it is a landing strip now. S mostly belongs to projects: the
+lowest overall carrying one is 30, and a one-star holds one about once in
+twenty classes.
+
+**And a professional career is rolled rather than stamped** (§74). Reported:
+too many alumni end up All-Stars. Three of the four per-year rolls in
+`proCareer` were not rolls — the hash's high bits barely moved when the year
+did, so a man was stamped once for life, an All-Star every summer or never one:
+thirty-nine men of four hundred in all twenty seasons, the other three hundred
+and sixty-one in none. Reaching the majors went 39% to 16.3%, against about
+sixteen in the real world; All-Star now reads talent, so 11.2% of big-leaguers
+ever make a team, at 1.18 summers apiece; and a summer says what it was, from
+MVP voting down to hanging on to a roster spot, a season lost to the training
+room, or a level repeated in the minors.
+
+**One thing the two days measured and did not fix**, and it is the largest
+known open item: the league gains two runs a game over its first four seasons
+and holds there. It is in *Missing and unscheduled* below, with its numbers.
 
 The August 2026 interface overhaul and its feedback pass are described in §20
 of the systems reference: first-visit tutorials that persist, the wire as a
@@ -71,9 +147,10 @@ merged pass moved every screen onto a single interaction language (data
 surfaces dense, decision surfaces showing state, tradeoff and consequence
 before a verb, narrative surfaces leading with the result), and brought
 assistants that develop, a coaching tree, recruiting pipelines, facility
-levels and replay with it. `05` §50 is the account. What is missing now is
-the tail: the store, the keystore and listing, the guided tutorial, the
-art, and the test aids coming out.
+levels and replay with it. `05` §50 is the account. The tail has since got
+shorter: the guided first stretch shipped September 9 (`05` §64) and the
+test aids came out September 8. What is left is the store — the keystore,
+the listing — and the art.
 
 ## The stack
 
@@ -135,7 +212,8 @@ Ticked means opened and checked, August 2026. Detail on any line is in
 
 **The season and the world** — §8
 
-- [x] Ninety-six programs, eight conferences of twelve, forty-five games
+- [x] Ninety-six programs, eight conferences of twelve, forty-five games — or
+      thirty-four, on two-game weekends, in a career whose rules say so (§70)
 - [x] Schedule generator, day-by-day loop, standings, leaderboards, RPI
 - [x] Conference tournaments, regionals, a national final, and awards decided by
       how loud the story was rather than by a precedence list — §7
@@ -258,9 +336,14 @@ get sacked and get poached). What genuinely remains part-done:
 - [~] **Accessibility.** Reduced motion is honoured throughout; every modal
       and sheet has dialog semantics, Escape, a focus trap and focus
       restoration through one hook (`05` §57); the alert dots have names;
-      text scaling lives in Settings. Focus states elsewhere are not done
-- [~] **SIM SEASON.** On the dashboard for testing, scheduled to leave before
-      v1.0
+      text scaling lives in Settings; and since September 11 every school
+      colour used as text clears 4.5:1 on both themes, where all ninety-six
+      had failed it on the dark one (`05` §69.4). Focus states elsewhere are
+      not done
+- [x] **SIM SEASON.** Gone September 8 with the other two test aids
+      (`docs/TESTING_SHORTCUTS.md`). A season is played, not skipped; SIM WEEK
+      on the Board is the fast route that ships, and the one inside god mode's
+      calendar sheet is a power somebody paid for
 
 ---
 
@@ -378,8 +461,32 @@ injuries and season-long fatigue included (`engine/injury.ts`,
 September 11 2026 documentation sweep: every standing claim in these files read
 against the source, about two hundred of two hundred and thirty items found
 already built, and what survived written down with a file and a size. Six
-faults were taken the same day (`05` §66). The one release risk on that page is
-the 3D field, which is the default and has never been measured on a phone.
+faults were taken the same day (`05` §66), five shallow systems on September 11
+(§67) and the rules of the world with them (§70).
+
+**The largest open item on that page is the run environment, and it is measured
+rather than suspected.** A fresh league opens at 6.9–7.1 runs a game against an
+NCAA Division I target of 6.73, gains two runs over four seasons and holds
+there — 8.6–9.1 from year five, flat to year ten, on both seeds measured. Every
+rate inflates with it: batting average .280 to .310, slugging .441 to .513. The
+cause is that `makeTeam` never ages the roster it generates, so a generated
+senior is no better than a freshman and the engine is calibrated against a
+population that exists on day one of a career and never again. It is guarded by
+`tests/calibration-seasons.test.ts` and filed at `06` §AC.1b rather than fixed:
+any of the three ways out moves every golden in the suite and wants its own
+pass. It is the league a player actually plays in from his third season onward
+(`05` §71).
+
+Worth keeping beside it: the first version of that guard measured a league of
+**walk-ons** and shipped. `tests/headlessYear.ts` was cut out of
+`climb-probe.ts` from the lines directly above a block headed "KNOWN WRONG — do
+not read numbers off this file yet"; the engine has no recruiting driver, so
+the harness signed nobody and every figure it produced was fiction. It was
+caught and corrected the same day (§71.2). A harness measuring nothing looks
+exactly like a harness measuring something reassuring.
+
+The other release risk is the 3D field, which is the default and has never been
+measured on a phone.
 
 ## Deferred, and why
 
@@ -435,8 +542,9 @@ drafted players at all.
 
 ## Where the stages stand
 
-**Twenty-two of twenty-six shipped, through September 6 2026** — 1–16, 18,
-20–23 and 25. Four stages were added September 3 from the phone report, 24
+**Twenty-six stages have shipped or closed, through September 12 2026** — 1–18
+and 20–27. Only 19, the ship, stands before a release; 28 and 29 are booked
+after it. Four stages were added September 3 from the phone report, 24
 on September 4, 25 and 26 on September 5, and the half-stage 18b on
 September 6. The three outside passes of September 5 were not stages: they
 cut across the plan rather than following it. The order, and what
@@ -462,6 +570,8 @@ live in `05-systems-reference.md` §§37–42. In brief:
 | P, 20–23 | Sep 4 | **The September run** — the polish batch, the opener in sections, the two-way corrected to the rulebook, playbooks, the lineup gate |
 | 18 | Sep 4 | **The shell, pulled forward** — manifest, launcher icon, Capacitor, `npm run apk`, the back gesture. Then the APK report's thirty-eight items, closed by Sep 5 (`14-apk-report-triage.md`) |
 | — | Sep 5 | **The interface pass** — every screen onto one interaction language; Program as a dashboard, Budget as a workspace, Decisions sheets, the offseason roadmap, the postseason frame; assistants develop, a coaching tree, pipelines, facility levels, replay. `05` §50, `06` §X |
+| 27 | Sep 11 | **The rules of the world**, ahead of the ship rather than after it — five switches at NEW CAREER, stamped on `season.rules` and fixed for the career. `05` §70 |
+| — | Sep 11–12 | **The audit, and the measurement days** — the outside audit checked and acted on, June given its month back, the best arm pitching the ninth, two switches that reached nothing, headroom made a roll, S made rare, a professional career rolled year by year instead of stamped once. `05` §66–§75 |
 
 **What remains, in execution order:** ~~**18b**~~ shipped September 6 —
 the emulator showed the back gesture leaving the app from any depth, and
@@ -478,10 +588,11 @@ offseason split is the budget) · then
 reporter designed it, a sandbox, finished the same night — the fork,
 health, league names, moves, recruits, the coach, presets — re-shaped on
 his verdict from the phone as a bolt beside every thing it edits, and
-merged to `main` on his approval that evening (`05` §61) — and **19** (ship). After the ship, planned September 6 with the
-money decided: **27**, the rules of the world, free · **28**, the creator
-kit, the second purchase · **29**, the majors, the expansion. **20b** and
-**25** were confirmed shipped on September 5. The reporter tests on an
+merged to `main` on his approval that evening (`05` §61) — and **19** (ship). Of the three planned September 6 for
+after the ship with the money decided, ~~**27**, the rules of the world,
+free~~ **shipped September 11 instead, before the ship** (`05` §70); **28**,
+the creator kit, the second purchase and **29**, the majors, the expansion,
+still sit after it. **20b** and **25** were confirmed shipped on September 5. The reporter tests on an
 Android emulator.
 
 **The money is decided** (`06` *Decisions locked* — "The money", September
@@ -577,8 +688,9 @@ and which did.
 **Done:** P → 20 → 21 → 22 → 23 → 18 → the APK list → **the interface
 pass**.
 **Next:** the rest of the §X batch (its bugs went the same evening) → the
-rest of 24 → 17 → 19. Stage 26 waits on the reporter's verdict, not on a
-build; 20b and 25 were confirmed shipped on September 5.
+rest of 24 → 17 → 19. 20b and 25 were confirmed shipped on September 5.
+*(Written before September 6, when 17, 18b, 24 and 26 all closed. Kept for
+the record of what the order looked like at the time.)*
 
 **The pass re-opened one thing on purpose:** the test aids are back
 (`docs/TESTING_SHORTCUTS.md`) so the new screens can be played a season at

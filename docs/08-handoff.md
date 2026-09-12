@@ -6,10 +6,243 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 7, 2026 · **Branch:** `main` · **the v1.0 release
-audit** — eighteen domain audits, the blocking findings fixed and tested,
-the balance decisions set down for the reporter (`05` §62,
-`docs/15-v1-release-audit.md`).
+**Last session:** September 12, 2026 · **Branch:** `main` · **development, the
+ceiling and the alumni** — headroom is a roll rather than a class-year
+constant, the S grade is rare and belongs to projects, and a professional
+career is rolled each year instead of stamped once (`05` §73, §74, §75).
+
+**Open, and read it before you trust a number.** The league gains **two runs a
+game** over its first four seasons and then holds there — 6.9–7.1 in year one
+against 8.6–9.1 from year five, a third above the 6.73 D1 target, with every
+rate inflating behind it (batting average .280 to .310, slugging .441 to
+.513). The cause is measured and it is a defect: **`makeTeam` never ages the
+roster it generates**, so a generated senior is no better than a freshman and
+the engine is calibrated against a population that exists on day one of a
+career and never again. It is guarded by `tests/calibration-seasons.test.ts`
+and **filed rather than fixed** — it would move every golden in the suite and
+wants its own pass (`05` §71.4, `06` §AC.1b). And the first version of that
+guard shipped measuring a league of walk-ons, because `tests/headlessYear.ts`
+was cut out of `climb-probe.ts` from the lines directly above a block headed
+"KNOWN WRONG — do not read numbers off this file yet". It was caught and
+corrected the same day and the lesson is in the file: **a harness measuring
+nothing looks exactly like a harness measuring something reassuring** (`05`
+§71.2).
+
+> **September 11, night into the 12th — development means something, and an
+> alumnus is rolled each year.**
+>
+> Reported after fifteen seasons: *"an A potential grew 3 ovr just like a C
+> potential each year."* The development engine was not the fault — measured
+> across 18,331 man-winters, gain over gap runs 0.385 down to 0.333 from S to
+> D, and the arcs are boom +3.66 a year, steady +2.60, bust +1.00. The ceiling
+> was. `projectPotential` drew headroom from class year and **nothing about
+> the player**, so potential was current ability plus a constant, the letter
+> grade largely restated how good a man already was, and two adjacent gap
+> bands held **72.6%** of every class at mean star ratings of 2.48 and 2.56 —
+> indistinguishable. Headroom is a roll now, its width set by how raw a man
+> already is, with the mean held exactly at the old band mean by construction,
+> so league talent cannot move, nothing here can go stale, and no golden was
+> re-recorded (`05` §73). S-over-D spread goes 5.96× to **8.84×**, three-star
+> recruits carrying twenty points of room 11.7% to **30.2%**, a breakout winter
+> 1.8% to **4.5%**. It does *not* separate A from C — 2.20 points a year
+> before, 2.17 after — because the A band still holds finished men who are
+> graded A for already being good. Reversing that is a design decision about
+> what a star buys, and §73.5 sets out both games rather than choosing.
+>
+> **Then two asks that read as opposites and were not** (`05` §75): five-stars
+> who never pay out, and an S grade that appears far too often. One knob was
+> welded to both, so the first ask appeared to cost the second. They come apart
+> once the roll is split into two lobes — a bust lobe changes the shape of a
+> polished man's draw without touching his roof, and five-stars already
+> finished go 2.2% to **10.6%**. The other half was the generation cap, where a
+> clamp is what made the best grade in the game common: **9.9 men a class came
+> out at exactly 94**, three quarters of every S, because truncation is what
+> makes a top dense and no threshold underneath it could thin that without
+> deleting the band. The last nine points are spent smoothly now — an uncapped
+> 94 lands at 90.7 and a 110 at 93.4 — so S per class goes 12.4 to **5.5** and
+> men at exactly the cap 9.9 to **0.2**. The grade belongs to projects: the
+> lowest overall carrying one is **30**, 75 of 109 are under 50 overall, and a
+> one-star holds one about once in twenty classes, where before no one-star in
+> ten classes held any.
+>
+> **And the alumni.** Reported: *"many of them end up becoming all stars in the
+> majors."* Three of the four per-year rolls in `proCareer` were not rolls: the
+> polynomial hash's high bits barely move when `:pro:2031` becomes `:pro:2032`,
+> so a man was stamped once for life. **An All-Star every summer or never one**
+> — thirty-nine men of four hundred in all twenty seasons and the other three
+> hundred and sixty-one in none — and promoted every year he was eligible or
+> never, so nobody ever spent three years at Double-A and then got the call.
+> FNV-1a with an avalanche, masked to thirty-one bits because the callers read
+> it with a signed shift; dropping the old `Math.abs` in the first attempt sent
+> every man up the ladder at once. Reaching the top level goes 39% to **16.3%**
+> against a real world of about sixteen. The All-Star coin reads talent now
+> rather than nothing, so 11.2% of big-leaguers ever make a team, at 1.18
+> summers apiece. And a summer says what it was — MVP voting, a Gold Glove, an
+> everyday player, in and out of the lineup, hanging on to a roster spot, a
+> season lost to the training room, and in the minors a level repeated instead
+> of another summer at Double-A (`05` §74).
+>
+> **86 files and 1,477 tests**, all passing, against 77 files and 1,369 at the
+> `v0.8.0` line a day earlier — the version was cut just after midnight on
+> September 11. `package.json` is still 0.8.0.
+
+> **September 11 — the sweep, the outside audit, the rules of the world, and a
+> harness that was measuring nothing.**
+>
+> **The docs had drifted about a week behind the code**, so every standing
+> claim in them was read against the source: of roughly two hundred and thirty
+> backlog items about two hundred were already built and the file had simply
+> never been told. Six survived, and all six are met in ordinary play (`05`
+> §66). The catcher led off for ninety-five programs — `bestNine` and
+> `autoBattingOrder` were only ever reached through the coached program's
+> index, so no computer program in the world had ever fielded a merit-picked
+> nine or batted a man out of the order his roster was generated in. All
+> ninety-six are dealt a card now, and the calibration held without
+> re-recording. PLAY FOR CONTACT, whose whole purpose is scoring the man on
+> third, made it *less* likely than doing nothing: `sacFly` 0.58 against a 0.62
+> default, now 0.70. AUTO's counter-plan brought the infield in against
+> fifty-one of ninety-six opponents — the one positioning call the strategy
+> audit measured as costing runs against every lineup shape tried, 0.316 a game
+> where BACK saves 0.245. A starter who went four of a run-rule rout lost his
+> win to a flat fifteen-out gate. And every arm in the country read as buried,
+> because `squadRanks` walked the lineup and the bench only and `dayInTheLegs`
+> counts starts for hitters: a playing-time expectation every pitcher had
+> missed entirely, a mood hit for it every February, and a portal exit for a
+> reason that was bookkeeping rather than mood.
+>
+> **Then five systems that existed with no depth in them** (`05` §67), picked
+> so that only one of them could move the run environment and a drift would
+> have had exactly one possible cause. Nobody got the ball in the ninth: the
+> pen is walked strictly by rest, so the best reliever threw the sixth of a
+> blowout — 15.9% of relief outs to the best arm against a flat 16.7%. There is
+> a closer now, named on quality alone and skipped by the ordinary walk: 8.5
+> games, 9 innings, 6.4 saves, where the rest of the pen averages 15.5 games
+> and 32.9 innings. The national final was played end to end in one park,
+> because `bestOf` never used the host alternation the regionals have had since
+> they were built. A rival had no plant and no home state —
+> `programRecruitingPitch` was handed `undefined` for the ninety-five — so a
+> facility was an advantage nobody could answer, and the coached program alone
+> carried a 1.15 reach into its own state against everybody else's 1.00. The
+> ninety-five read the portal as a price list and signed the two cheapest men
+> in the country every winter; they shop on merit now, against the man a
+> signing would actually replace, and `rivalHolds` lets a staff ring its own
+> junior before he walks. And a recruiting week that puts a major move behind a
+> pitch is worth half as much again — a bonus for concentration, never a
+> penalty for participation, because an action must never be a worse use of a
+> point than raw effort is.
+>
+> **Two more came from play** (`05` §68). *"All the time we are getting what I
+> feel are the same schools"* was not an impression: **twenty distinct programs
+> filled fifty desk seats and two of them rang on seven desks out of ten.** The
+> pool was never the problem — sixty-seven of ninety-six will hire a rookie —
+> but all three orders the desk is built from read strictly from the head, and
+> prestige does not move between careers, so four of the five seats were
+> settled before the player pressed NEW. Each order samples a band now:
+> twenty-five programs across the same fifty seats, the most frequent on four
+> desks of ten. And a man the board had sacked kept coaching the school.
+> `reviewSeason` returned the right verdict at every contract year; `jobSearch`
+> was raised in `rollYear`, on the far side of the whole offseason, so a
+> finished coach went on to spend the program's points, work its draft, shop
+> its portal and sign its next class. The verdict ends the tenure now, and the
+> season report's button says CLEAR YOUR DESK.
+>
+> **An outside audit arrived**, twenty-three findings against `19e3a95`, four
+> commits behind. Every claim was verified against the current source before
+> anything moved, and every figure that could be reproduced matched exactly
+> (`05` §69). Its headline understated the damage: three call sites advance one
+> shared day counter and the postseason stages played end to end, so no two
+> tournaments in a stage ever shared a date — the first conference played days
+> 81 to 86, the last 124 to 129, and the championship landed on **6 August**.
+> `onTheSameNights` opens every tournament of a stage on that stage's own first
+> night, without interleaving a game or moving a draw. Looked at again the same
+> day, the conference opening turned out to have been right all along —
+> `firstPostseasonDay` adds three, and ninety-five of ninety-six clubs have
+> their Friday starter — and the gap that was wrong was the next one. The
+> regionals opened the day after the last conference game with **not one club
+> in the field holding its number one or number two starter**: every program in
+> the country opened the biggest series of its season with a third starter, a
+> fourth or an emergency arm. Uniform rather than unfair, which is exactly why
+> nothing caught it. `STAGE_BREAK` is five days between stages now, 64 of 64
+> clubs have all four slots for the regional opener, and June spans **31 days
+> against 106**. Three more from the same audit: a protected seed whose place
+> in the national field was already guaranteed was told "The season is over",
+> and `bid` answers that question separately now; two managed-game doors
+> awaited `saveNow()` and ignored what it returned, and — worse, and the audit
+> missed it — cleared the resume journal unconditionally, so a failed write
+> destroyed the one record that could have offered the game back; and a club's
+> colour, painted as text on the pregame card, could not be read. **All
+> ninety-six school colours fall below 4.5:1 on the dark theme's paper and
+> eighty-seven below 3:1** — the deep navies were not dim, they were gone.
+> `teamInk` keeps the hue and walks the lightness, and all ninety-six clear the
+> bar on both papers, worst case 4.60. Two lines of copy were stale rather than
+> wrong. Five findings were declined with the reasons written down (`05` §69.6),
+> including a save-snapshot fix that would have made the mismatch worse.
+>
+> **The world has rules now** (`05` §70) — `06` §AC.2 called it the highest
+> value thing on that page, the only way to turn off a system a player hates
+> without abandoning the career. Five switches: injuries (full, half or none),
+> the transfer portal, realignment, poaching, and a season of 45 games or 34.
+> They are set at NEW CAREER and **fixed for the life of it**, because the
+> record book is one continuous document and an era with injuries off is not
+> comparable to the era before it. They live on `season.rules` in the engine
+> and not in the depth catalogue, and `depth.ts`'s own header is why: a mode
+> changes what the player is asked and never what the simulation does, and
+> these change the simulation for all ninety-six programs at once. Folded at
+> the foot of the how-you-play step, with a count rather than a list in the
+> summary. The short season keeps the full conference round robin and every
+> crossover game — the first is what makes a standing mean anything, the second
+> is what gives RPI something to compare — and pays for it out of the weekend
+> instead: **a two-game weekend plus a midweek is a three-man rotation**, so
+> the midweek arm starts in the slot after the weekend's rather than a
+> hard-coded third. A world with no rules written on it is object-identically
+> the world that was always there — `configForRules` returns `DEFAULT_SEASON`
+> itself — so every calibration number ever taken still measures the league it
+> was taken from.
+>
+> **Nobody had ever measured year five**, and the first attempt measured a
+> world nobody plays (`05` §71). Every calibration number this project has
+> taken came from a world one day old: `calibration.ts` sims two fresh
+> 50-quality teams, which is the right way to ask whether the *engine* is
+> calibrated and cannot ask whether the *world* stays calibrated. The harness
+> written to ask it signed **nobody** — the engine has no recruiting driver, so
+> `fillRosters` filled every hole in the country with walk-ons at quality minus
+> thirteen, and from year five not one man in the league had been through
+> `develop()`. It produced a tidy, plausible, entirely fictional climb, and
+> that was written into `05` and shipped as a guard. What caught it is the
+> check `climb-probe.ts` had already written down and `headlessYear`'s header
+> now quotes: **change an input and confirm the output moves.** Raising
+> `PIPELINE_EDGE` by eighty percent moved not one digit of the old probe.
+> Fixing the harness moved year five by two runs a game. With recruiting in it
+> — six hundred and forty to six hundred and sixty-five men signing out of a
+> class of seven hundred and twenty — the league climbs from 6.9–7.1 to 8.6–9.1
+> and stays flat to within 3% through year ten. That is the open finding at the
+> top of this file, and `tests/calibration-seasons.test.ts` guards it at two
+> checkpoints, the opening world and the settled one, with its first assertion
+> being that men signed.
+>
+> **And two switches that reached nothing** (`05` §72), both found while
+> scoping larger features. MOUND VISITS promises *"Your pitching coach decides
+> when to go out."* He never did: the engine gated the automatic visit on the
+> **bullpen** key, and the mound-visit key's only functional reader in the whole
+> program was the line that hides a button. Measured over sixty live games with
+> the pen kept and the conversations delegated: **0.00 visits to the coached
+> mound against 1.07 to the opponent's.** It ran the other way too, which was
+> not in the report and is arguably worse — delegate the pen, keep the
+> conversations, and the engine made them behind the coach's back, ten visits
+> across six games. The setting rides the live journal now, because it changes
+> which decisions the engine makes and therefore the sequence of draws. The
+> other switch was a promise broken by the lineup card: a keep-position promise
+> was judged off `p.pos`, which is the card label `adoptSpot` overwrites
+> whenever a man covers a spot, so a shortstop filling in at second for one
+> afternoon read as broken. **180 of 1248 hitters — 14.4% — wear a cover label
+> at any moment, and all 180 are pure relabels with `homePos` intact.** It got
+> sharply worse the same week, when AUTO started dealing the best nine
+> league-wide. The judge reads `homePos ?? pos` now, `portal.ts` stopped
+> re-implementing the comparison inline so a departure cannot name a promise
+> the risk never counted, and `movePosition` writes `homePos` so a deliberate
+> winter retrain is not walked back by the next `restoreHome`. The consent half
+> of both — asking a man before he moves, and the mound-visit conversation
+> itself — is still owed.
 
 > **September 7, night — the merged systems verified.** The outside pass
 > shipped with no tests, so its four systems were read and measured

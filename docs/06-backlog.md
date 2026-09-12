@@ -1212,7 +1212,16 @@ out of stage 10's money couples two economies that are cleaner apart; paying in
 prestige and reputation keeps them independent and reads truer — a good
 assistant takes the job because the program is going somewhere.
 
-### H2 · Alumni in the professional game
+### H2 · Alumni in the professional game — **SHIPPED, and repaired September 11 2026**
+
+*(`05` §74. Three of the four per-year rolls in `proCareer` were not rolls: the
+hash's high bits barely moved when the year did, so a man was stamped once for
+life. He was an All-Star every summer or never one — 39 men of 400 in all twenty
+seasons and the other 361 in none — and promoted every year he was eligible or
+never. Reaching the top level went 39% to 16.3% against a real world of about
+sixteen, an All-Star summer reads talent now, and a summer says which kind it
+was rather than calling a first-division regular and a twenty-sixth arm the same
+thing. The original entry follows.)*
 
 Every departure is already recorded with a reason, a round and a year
 (`Departure`, `engine/progression.ts`), and career rows survive for as long as
@@ -1659,7 +1668,14 @@ same man does less, a third may irritate him. And the **count is real**.
 
 **Moved again, to stage 15 — the ballpark.** It is a sheet in the dugout rather
 than a coach system, and stage 15 now owns the dugout's presentation entirely.
-The badges it wants will exist by then either way. Original reasoning below,
+The badges it wants will exist by then either way.
+
+**Its prerequisite landed September 11** (`05` §72.1). A coach who delegates his
+pitching staff now has one that actually goes out: the automatic visit had been
+gated on the bullpen key and measured at 0.00 visits to the coached mound
+against 1.07 to the opponent's, so every register below would have been written
+for a conversation that only ever happened when the coach pressed the button
+himself. The sheet is the whole of what is left. Original reasoning below,
 which still holds for *why it waited*:
 
 The half that makes it a decision is
@@ -3055,7 +3071,7 @@ and the frames are built from it, so it cannot go without a second source
 for the text; capping retained replays to the last ten games would cost
 181 KB now and reads honestly as "recent games keep their film".
 
-### §X item 24 — the home-state recruiting edge. **Measured; it is real and it is one line.**
+### §X item 24 — the home-state recruiting edge. ~~**Measured; it is real and it is one line.**~~ **Closed 2026-09-11, `05` §67.2 — see the decision immediately below.**
 
 Still exactly as the September 5 reading described, and confirmed in the
 code rather than from the note:
@@ -3095,7 +3111,17 @@ where the climb is measured and gone at the top.
 for a rival's own state and gets the same `PIPELINE_REACH_BONUS` the user
 gets from clearing 60. Only `fit` reads the number.
 
-### The decision — **kept as it is, September 6 2026**
+### The decision — ~~**kept as it is, September 6 2026**~~ **superseded September 11 2026**
+
+`05` §67.2 took a third option that was not on the table below: a rival's plant
+and pipelines are **derived from prestige** rather than persisted, so a
+ninety-prestige school has the complex and a twenty-prestige school has a cage,
+and every program reaches its own state. The undocumented 1.15-against-1.00 floor
+is gone. The half this decision existed to protect survives intact — the derived
+range stops short of what a fully built department reaches, so a coach who
+actually spends the money is still buying something, and the *earned* pipeline
+stays the system only a player can play. The two options below were declined for
+reasons that still hold; what changed is that a third one costs neither of them.
 
 Two changes were on the table and both were declined.
 
@@ -3122,6 +3148,12 @@ decision so the numbers are not left stale:
 |---|---|---|---|
 | §O's original entry (August 28) | 5/10, median year 13 | 0/10 | 0/10 |
 | September 6, edge kept | **5/10, median year 6** | 0/10 | 0/10 |
+
+*(Both rows, and the four at `05` §54.4, were taken before the probe signed
+anybody: it reassembled the offseason out of engine parts and the engine has no
+recruiting driver, so it refilled the country with walk-ons every winter — `05`
+§71.2. It runs the real recruiting window since 2026-09-11, and the warning block
+kept at the foot of the file says to re-run before quoting. §AD.3.)*
 
 The rate is identical and the floor is still a floor: nobody wins. What
 moved is the speed — the median Omaha year halved — and that is not the
@@ -3152,6 +3184,11 @@ The S+ machinery is **kept**, not deleted: the grade, the generation cap
 short of it, the reserved recruiting tier and the badge-budget exemption
 all become the definition of an authored player. The cap keeps its
 meaning — S+ still cannot be reached by playing.
+
+*(September 12: the cap is a landing strip rather than a clamp now, `05` §75.3,
+and that strengthens this rather than weakening it. Nothing generated arrives at
+94 at all — an uncapped 110 lands at 93.4 — and the 9.9 men a class who used to
+come out standing on the cap are 0.2.)*
 
 ### Later, and genuinely later: the call to the majors
 
@@ -3186,7 +3223,13 @@ and the game has players.
   §16.4 local-board retention figures under the nine-factor fit, and a
   look at coach reputation, which leans on the name because big programs
   hire big names.
-- **Keep-position judges any move.** `movedFrom` is set by every position
+- ~~**Keep-position judges any move.**~~ **Half taken 2026-09-11, `05` §72.2 —
+  and the fix this line named was the wrong one.** The judge read `p.pos`, the
+  card label, so 14.4% of hitters wore a broken promise for covering a spot for
+  an afternoon; it reads `homePos ?? pos` now. There is no flag to hang on a
+  proposal because there is no proposal and no acceptance (`05` §66.7). The
+  asking is a feature, and it is split out at §AC.2 with the question inside it.
+  `movedFrom` is set by every position
   change, willing or not, and the keep-position promise reads
   `p.pos !== promisedPos`, so a man who *agreed* to move still counts as
   promised-and-broken. The morale roll already approximates "moved
@@ -3252,16 +3295,19 @@ would matter to somebody playing.
 - **The league gains TWO runs a game in its first four years, and keeps them.**
   *(Measured 2026-09-11 and guarded — `05` §71,
   `tests/calibration-seasons.test.ts`. The guard pins it; the fix is a project,
-  see §AD below. An earlier version of this line said half a run and blamed
-  plate discipline; that was measured through a harness that signed nobody and
-  every figure in it was void.)* Ten seasons of two worlds, one process per
+  and it is §AC.1b immediately below. An earlier version of this line said half
+  a run and blamed plate discipline; that was measured through a harness that
+  signed nobody and every figure in it was void.)* Ten seasons of two worlds, one process per
   seed: a fresh league opens at 6.93–7.11 runs against a 6.73 target and settles
   at 8.6–9.1 from year five, flat to year ten. Every channel inflates and power
   moves most — batting average .280 → .310, slugging .441 → .513, home runs 1.06
   → 1.41 — while strikeouts FALL, 7.85 → 7.0. **Large**, and the highest-value
   calibration work on this page: it is the league a player actually plays in
   from his third season onward.
-- **The batting-average tail runs hot.** The national leader hits .497–.523
+- **The batting-average tail runs hot.** *(Read beside `05` §71: "the mean is on
+  target" is a fact about a world one day old. From year five the league hits
+  .308–.314, so by then this and the item above may be one finding, and nobody
+  has separated them.)* The national leader hits .497–.523
   every season against a D1 record of .467. The mean is on target and every
   other rate is realistic; the lever is the spread of contact at the top of the
   scale, not the qualification bar. **Medium**, and it is calibration work.
@@ -3324,11 +3370,19 @@ would matter to somebody playing.
   season length is a two-game weekend, which keeps the full round robin and
   every crossover game and costs the fourth starter his slot. A world with no
   rules written on it is the world that was always there, object-identically.
-- **The mound-visit conversation.** `visitMound` is one button calling
+- **The mound-visit conversation.** *(The prerequisite landed 2026-09-11, `05`
+  §72.1: a delegated pitching coach now actually goes out. He never had — the
+  automatic visit was gated on the bullpen key and the mound-visit key's only
+  reader in the program hid a button, measured at 0.00 visits to the coached
+  mound against 1.07 to the opponent's over sixty games. Three registers are
+  worth nothing if the delegated staff never goes out, which is why this was
+  scoped first.)* `visitMound` is one button calling
   `moundVisit` (`engine/game.ts:2521`), which decrements a counter and restores
   confidence. The three registers, the pitcher's temperament and the cost of
   repeating yourself were designed at §K3 and never landed, and they are the
-  half that makes it a decision. **Medium.**
+  half that makes it a decision. What is left is the sheet: the button, the
+  count and the confidence plumbing are all in place either way. **Medium**, and
+  it sits in stage 15 with the rest of the dugout.
 - **The coach title carries no weight.** The twelve-rung ladder is real and
   measured (`engine/program.ts:1456+`); the small boost each rung was meant to
   earn is uncoded and still undesigned. **Small**, design owed first.
@@ -3336,12 +3390,27 @@ would matter to somebody playing.
   `ui/Diamond3D.tsx` is one park with the same wall at every distance, so all
   ninety-six grounds play identically. Agreed as geometry rather than as a
   modifier, which is what makes it worth doing and what makes it **medium**.
-- **A position change the man agreed to.** `explicitRecruitPromiseBroken`
-  (`engine/morale.ts:149`) compares `p.pos` to `promisedPos`, so any move
-  breaks a keep-position promise. The retrain sheet does warn — its button
-  reads MOVE · BREAKS PROMISE — so today's behaviour is honest rather than
-  wrong; what is missing is the *asking*, which is the feature §AB assumed.
-  **Small**, once the conversation exists.
+- ~~**A position change the man agreed to — the judge underneath it.**~~
+  **Taken 2026-09-11, `05` §72.2.** `explicitRecruitPromiseBroken`
+  (`engine/morale.ts:149`) compared `p.pos` — the card label AUTO overwrites
+  when a man covers a spot — to `promisedPos`, so 180 of 1248 hitters, 14.4%,
+  were wearing a broken promise nobody had earned, every one of them a pure
+  relabel. It reads `homePos ?? pos` now, the portal's departure reason calls
+  the judge instead of re-implementing it, and `movePosition` writes `homePos`
+  so a deliberate retrain cannot be healed by the next `restoreHome`.
+- **A position change the man agreed to — the asking.** Still owed, and it is
+  the feature §AB assumed already existed. Today the coach is warned and then
+  moves him: the retrain sheet's button reads MOVE · BREAKS PROMISE and the
+  promise duly breaks, which is honest rather than wrong (`05` §66.7). What
+  does not exist is the coach *proposing* a move, the man answering, and a flag
+  on that answer for the judge to read. **The design question is whether he can
+  refuse**, and it is the whole of the feature rather than a detail. If he
+  cannot, the asking is a formality and the flag is all there is to build. If he
+  can, a refusal has to cost the coach something real — otherwise asking
+  dominates moving, and the honest warning that exists today is never read
+  again. Competence at the new spot, morale and the promise itself are all
+  already modelled; the decision is which of them a refusal reads and which of
+  them it moves. **Small** to build, once that is settled.
 - **The creator kit**, and **accounts with a shared record book.** Stages 28
   and 30. No file input and no network code exist for either. **Large**, and
   both read as after the release rather than before it.
@@ -3438,3 +3507,85 @@ arm-injury channel, which unlike the pregame roll was never soaked; and the two
 the v1 plan still asks for — screen transition time, and 3D frame rate on a
 mid-range Android.
 
+
+## AD. The September 11 and 12 build pass — what it opened
+
+Ten commits over two days, written up at `05` §66–§75. Most of what they did was
+close lines in §AC and those are struck above. The largest thing they opened is
+not in this section either, because it was filed where it was measured: the
+league's two runs a game and `makeTeam`'s unaged roster are at §AC.1b. What
+follows is the rest — the questions the two days created, and the ones they left
+standing after moving the ground under them.
+
+### AD.1 Two decisions about the ceiling grade, which are one decision
+
+- **Whether the potential grade becomes a forecast.** Owed at §AC.1b, stated at
+  `05` §73.5, and the second day did not answer it: A against C is still the
+  comparison the original report named, 2.20 points a year before the headroom
+  roll and 2.17 after, because the A band still holds finished men graded A for
+  already being good. Today an A means a good player who will get better. The
+  alternative is a pure forecast — an A may be a raw 40 with thirty points of
+  room, and a polished 70 a B because he is nearly finished — which separates A
+  from C properly and costs the five-star its reliability. What changed on the
+  second day is the price of that: **10.6% of five-stars now come out already
+  finished against 2.2% before** (`05` §75.4), so part of the reliability the
+  correlation was being kept to protect has already been spent on purpose.
+  Read §73.5 and §75.4 together rather than either alone. **Decision owed, then
+  medium**, and it re-letters every card in every save.
+- **The S floor at 92, left standing.** It now has no number pushing it. The
+  count was never the threshold's fault — `GENERATED_POTENTIAL_CAP` was a wall,
+  9.9 men a class came out standing on exactly 94, and truncation is what makes
+  a top dense — so raising the floor from 85 had bought almost nothing. With the
+  landing strip in, S is 5.5 a class against the 5 to 8 that was asked for, and
+  the band belongs to projects: the lowest overall carrying one is 30 (`05`
+  §75.3, §75.4). So this is a decision to leave it alone rather than a job, and
+  it stops being separate the moment the decision above is taken the other way,
+  because every boundary is re-cut with it. **Nothing to build.**
+
+### AD.2 What the rules of the world reach
+
+- **Nobody has played a thirty-four-game season, and the record book was seeded
+  for forty-five.** `05` §70 shipped season length as a career rule: a two-game
+  weekend keeps the full round robin and every crossover game, and costs the
+  fourth starter his slot. The book does not know. `engine/records.ts` seeds
+  twelve fixed marks that read nothing about season length, and `05` §13.3 set
+  each one where a once-in-fifteen-to-twenty-years season falls **in a
+  forty-five-game league** — Ventura's fifty-eight-game streak is the frozen row
+  for exactly that reason, because no arrangement of a 45-game season produces
+  one. Eleven games fewer and every counting mark is chased over three quarters
+  of a year, while the rate marks move the other way, because the best of a
+  shorter sample sits further out. That is why it wants measuring rather than
+  arithmetic: the same league-best probe that set them, run on a short world,
+  and then a decision on whether a seed moves with the rules or whether the
+  marks stay put because they are real and a short career is simply a harder
+  one. **Small to measure**, and the decision after it is small too.
+
+### AD.3 Left open on purpose, with the reason written down
+
+- **The save file is not a snapshot.** Declined from the outside audit, and the
+  reasoning is the useful part (`05` §69.6): `buildSaveFile` is a shallow
+  rest-spread, so the teams, the results and the stat maps stay live references
+  whichever side of the `db()` await it is built on. The recommended hoist would
+  have captured the generator position early while the roster was still cloned
+  late, which is precisely the mismatch the managed-game anchor depends on (`05`
+  §69.3), so taking the audit's fix would have made this worse. A correct fix is
+  a real clone or a write queue, and neither is worth its cost until somebody
+  measures how open the window actually is. **Measure first.**
+- **Every climb figure came off a probe that signed nobody.**
+  `tests/climb-probe.ts` reassembled the offseason out of engine parts, and the
+  engine has no recruiting driver — `aiTargets` and `closeWeek` live in
+  `state/store.ts` — so it refilled the country with walk-ons every winter
+  (`05` §71.2). It runs the real recruiting window now. §O's table is retracted
+  already; §AA's September 6 rows and the four at `05` §54.4 are not, and the
+  warning block kept at the foot of the probe says to re-run before quoting.
+  It is one command and a wait. **Small**, and worth doing before anybody
+  reopens the floor question.
+- **Two files carry the guard that catches this, out of a whole directory.**
+  `tests/calibration-seasons.test.ts` opens by asserting that men signed, and
+  `climb-store-probe.ts` prints its signings a year so the measurement voids
+  itself if they ever stop (§P). Nothing else in `tests/` does. The lesson is
+  `05` §71.2's in one line — a harness measuring nothing looks exactly like a
+  harness measuring something reassuring — and the cheap version of acting on it
+  is that anything reducing a world to a number should assert that its inputs
+  reach it, and should be checked by moving an input and watching the output
+  move. **Small**, and it is an afternoon over one directory.

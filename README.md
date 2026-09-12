@@ -7,113 +7,134 @@ Mobile first, shipping to Android.
 
 ## Status
 
-**Twenty-five of twenty-six stages shipped, through September 6 2026, the
-interface rebuilt whole on September 5, and the build through its release
-audit on September 7** (`docs/05-systems-reference.md` §62,
-`docs/15-v1-release-audit.md`). Stages 1–17, 18, 18b and 20–26; 19 (ship)
-is what is left. Ninety-six
-programs in eight conferences of twelve, a forty-five game regular season, and
-the whole loop runs: pick a job through a background that shapes who rings you,
-play or simulate a season, manage games at bat by at bat, go through the
-postseason a game at a time, sit awards night, spend coaching points, work the
-transfer portal and a recruiting board that is honest about being vague, argue
-the MLB draft out of taking your junior, and start again the following February.
+**Version 0.8.0, through September 12 2026** (`docs/05-systems-reference.md`
+§66–§75). Twenty-six stages have shipped or closed — 1–18, 18b and 20–27, with
+27 in ahead of its turn; only 19, the ship, stands before a release, and what
+is left of it is the listing and the keystore. Ninety-six programs in eight
+conferences of twelve, a forty-five game regular season, and the whole loop
+runs: pick a job
+through a background that shapes who rings you, play or simulate a season,
+manage games at bat by at bat, go through the postseason a game at a time, sit
+awards night, spend coaching points, work the transfer portal and a recruiting
+board that is honest about being vague, argue the MLB draft out of taking your
+junior, and start again the following February.
 
 On top of that loop: **a budget** with three assistants, four rungs of
 facilities and a scouting desk that gates what you can see of an opponent; **a
 world that moves** — a career rivalry ledger, and realignment that trades one
 programme for another about one winter in three; **a dynasty that remembers** —
 signature moments on a man's card, and alumni whose professional careers play
-out and end; and **a broadcast** — sound, haptics, ninety-six procedural
-crests, full-screen cards for walk-offs and titles, and a scoreboard that
-changes tone during a no-hitter.
+out and end; and **a broadcast** — sound, haptics, ninety-six procedural crests,
+and a scoreboard that changes tone during a no-hitter. Rival programs are run by
+ninety-five named men with careers of their own, and the pecking order genuinely
+moves: measured over thirty seasons, six of the top twelve programmes turn over.
 
-Rival programs are run by ninety-five named men with careers of their own, and
-the pecking order genuinely moves: measured over thirty seasons, six of the top
-twelve programmes turn over.
+**The interface follows one written rulebook** (`docs/INTERACTION_DESIGN.md`): a
+decision shows what is true, why it is being asked, what it trades, what is left
+after, and then a verb (§50), and the first season teaches itself — a card that
+titles the errand, then a glow path through doing it (§64). Under that, from
+earlier this month: the scorer's rules corrected (§51), prestige floors so a
+small programme climbs (§52), recruiting 1.0 (§54), god mode, and the hybrid
+staff system (§63).
 
-**The interface, since September 5**, follows one written rulebook
-(`docs/INTERACTION_DESIGN.md`): lists stay dense where the job is scanning;
-a decision shows what is true, why it is being asked, what it trades, what
-is left after, and then a verb; a story leads with the result. Program is a
-dashboard with four doors, Budget a planning workspace, the player card four
-sheets, and every action launcher a Decisions sheet that opens on state
-before offering anything. With it came assistants who develop over winters,
-a coaching tree, recruiting pipelines as program assets, three levels per
-building, and replay off the real event stream. `docs/05-systems-reference.md`
-§50 is the account.
+**The rules of the world** (§70). Five switches set at NEW CAREER and fixed for
+the life of the career: injuries (full, half or none), the transfer portal,
+realignment, poaching, and a season of forty-five games or thirty-four. They
+live on `season.rules` in the engine and not in the depth catalogue, because
+they change the simulation for all ninety-six programs at once — `depth.ts`'s
+own header names them as the counter-example to everything in it. Folded at the
+foot of the how-you-play step, because the defaults are the game: a standard
+world is object-identically the world that was always there. The short season is
+two-game weekends, which keeps the full conference round robin and every
+crossover game and costs the fourth starter his slot. A two-game weekend plus a
+midweek is a three man rotation.
 
-**The engine and the ladder both moved on September 5**, in two more
-outside passes merged the same night. The engine pass corrected the
-scorer's rules — the force chain, earned runs reconstructed through
-virtual outs, wild pitch split from passed ball, the win and the save by
-the book, team mound visits, recovery by pitches thrown — and recalibrated
-the league to the modern game (§51). The prestige pass gave the ladder
-floors, so a small program that does its job actually climbs: a cleared
-board is worth a point, a conference tournament berth is a milestone that
-gets remembered, coach reputation is judged against the mandate he
-accepted, and contracts run seven years at one star (§52).
+**June lasts a month again** (§69). Every tournament of a postseason stage now
+opens on the same night. They had been played end to end, so no two shared a
+date: the first conference played days 81 to 86 and the last days 124 to 129, in
+the data file's fixed order, every season of every career. The join between the
+stages was worse — the regionals opened the day after the last conference game
+with not one of the thirty-two teams in the field holding its number one or
+number two starter. Five days of `STAGE_BREAK` later all sixty-four rotations
+are ready, and June spans thirty-one days against a hundred and six. From the
+same audit: all ninety-six school colours fell below 4.5:1 as text on the dark
+theme's paper and eighty-seven below 3:1, the deep navies not dim but gone, so
+`teamInk` walks the lightness and keeps the hue.
 
-What is missing is **the tail**: ship (the keystore, the listing, the
-guided tutorial, the test aids coming out). **Android 16 is done** (stage
-18b, September 6): the emulator showed the back gesture leaving the app
-from any depth, because nothing native ever handed it to the page; a
-twenty-five-line plugin the page arms only while it has a layer to close
-fixed it, with the predictive exit preview kept at HOME. Arguing the
-board's terms and the art are in. **Recruiting 1.0** landed the same day
-(§54): nine things a recruit weighs, a pitch and a major move a week,
-binding promises that follow him onto the roster, and one offseason
-economy with a protected reserve for the freshman class. Testing runs on
-an Android 16 emulator against `npm run apk`.
+**Two switches that reached nothing** (§72). MOUND VISITS promises that your
+pitching coach decides when to go out. He never did: the engine gated the
+automatic visit on the bullpen key, and the mound-visit key's only reader was a
+button, which it hid. Measured over sixty live games with the pen kept and the
+conversations delegated: 0.00 visits to the coached mound against 1.07 to the
+opponent's. It ran the other way too, the engine holding conversations behind the
+back of a coach who had delegated only his pen. The other switch was a
+keep-position promise judged off `p.pos`, the card label AUTO overwrites when a
+man covers a spot: 14.4% of hitters wear one at any moment, so a shortstop
+filling in at second for an afternoon read as broken.
 
-The engine is calibrated multi-seed to the modern NCAA D1 environment —
-.280 / .384 / .438, a home run a game, 6.73 runs — since the September 5
-engine pass (`docs/05-systems-reference.md` §51) and re-fitted after the
-release audit's rules fixes (§62.2). **1,369 tests across 77 files**, including
-determinism goldens, calibration as a regression test, a
-baseball-correctness suite for the scorer's rules, and a concurrency suite
-pinning the store's double-press guards.
+**Development means something** (§73, §75). Reported after fifteen seasons: an A
+potential grew 3 ovr just like a C potential each year. Headroom had been drawn
+from class year and nothing about the player, so a ceiling was current ability
+plus a constant and 72.6% of a class sat in two adjacent bands. Headroom is a
+roll now, its width set by how raw a man already is and its mean held exactly by
+construction, so league talent cannot move. Then two more asks: five-stars who
+are already finished go 2.2% to 10.6%, and the S grade is rare, 12.4 a class down
+to 5.5. The generation cap had been a wall — 9.9 men a class came out at exactly
+94, three quarters of every S, because truncation is what makes a top dense — and
+a landing strip replaced it. S mostly belongs to projects now: the lowest overall
+carrying one is 30, and a one-star holds one about once in twenty classes.
+
+**Alumni in the majors** (§74). Three of the four per-year rolls in `proCareer`
+were not rolls — the hash's high bits barely moved when the year did, so a man
+was stamped once for life: an All-Star every summer or never one, thirty-nine
+men of four hundred in all twenty seasons and the other three hundred and
+sixty-one in none. Reaching the majors went 39% to 16.3%, where the real world is
+about sixteen; the All-Star coin reads talent now, so 11.2% of big-leaguers ever
+make a team, at 1.18 summers apiece; and a summer says what it was, from MVP
+voting down to a roster spot hung on to and a level repeated in the minors.
+
+The engine is calibrated multi-seed to the modern NCAA D1 environment — .280 /
+.384 / .438, a home run a game, 6.73 runs — and **1,477 tests across 86 files**,
+from 1,369 across 77 at the 0.8.0 line, guard it: determinism goldens,
+calibration as a regression test, a baseball-correctness suite for the scorer's
+rules, and a concurrency suite pinning the store's double-press guards.
+
+**And one thing is measured and not fixed** (§71). Nothing had ever measured
+year five. The league gains two runs a game over its first four seasons and then
+holds there — 6.9–7.1 in year one, 8.6–9.1 from year five, batting average .280
+to .310 and slugging .441 to .513 — because `makeTeam` never ages the roster it
+generates, so a generated senior is no better than a freshman and the engine is
+calibrated against a population that exists on day one of a career and never
+again. Guarded by `tests/calibration-seasons.test.ts` and filed at `06` §AC.1b
+rather than fixed: it would move every golden and wants its own pass. The first
+version of that guard measured a league of walk-ons, because its harness was cut
+from the lines directly above a block headed "KNOWN WRONG — do not read numbers
+off this file yet"; a harness measuring nothing looks exactly like a harness
+measuring something reassuring.
 
 **It installs.** `npm run apk` builds a real Android package — Capacitor over
 the same bundle the browser runs, no server, offline. The toolchain lives
-outside the repo and outside PATH; the script supplies it. `npm run apk --
-release` builds the unsigned release, and the keystore is stage 19's job and
-the one thing that must never be lost.
+outside the repo and outside PATH; the script supplies it. `npm run aab` builds
+the signed bundle the store wants, from the keys named in
+`android/keystore.properties`, which is the one thing that must never be lost.
+Testing runs on an Android 16 emulator.
 
 | Not built yet | |
 |---|---|
-| Onboarding | the guided tutorial — a titled card, then a glow path through doing it (stage 19) |
-| The rules of the world | injuries, the portal, realignment, poaching and season length as free switches on How you play (stage 27) |
+| The listing | the keystore backed up, screenshots, privacy policy, content rating, a closed beta and then an open one (stage 19) |
 | The creator kit | name, logo and roster packs a player builds and imports locally, careers as files — the second purchase (stage 28) |
 | The majors | the expansion, after v1.0 (stage 29) |
-
-**Merged September 7, afternoon** (`docs/05-systems-reference.md` §63):
-the reporter's outside pass — god mode as a control center, back as a real
-navigation history, the hybrid staff system (directives, multi-week
-projects, facilities that power them, pipelines built by projects), and
-recruiting moved to twelve regular-season weeks off the offseason rail.
-
-Shipped since: god mode (September 6 — a per-career sandbox reached by a
-bolt beside whatever it edits: players, programs, the leagues' names,
-recruits, the coach, the staff, the money, the schedule and the season, with
-any career forkable into it), the two-way whole and corrected to the rulebook, playbooks,
-the lineup gate, the season opener, the Android shell — package, launcher
-icon, and a back gesture that peels one layer per press — the APK report's
-thirty-eight items, and then the interface pass: the background
-picker that replaced the interview, Program as a dashboard, the Budget workspace, Decisions sheets,
-the offseason roadmap, the postseason frame, hold feedback on the lineup,
-and REPLAY, which the table above used to promise.
 
 **The gesture rule, for anyone touching a list:** tap selects, tap again puts
 down, **hold** reads the man. Never double-tap — allowing it taxes every tap,
 because none can act until the window for a second has passed.
 
-**Test aids are behind a build flag** (`docs/TESTING_SHORTCUTS.md`):
-`npm run dev` and `npm run apk:test` carry SIM THE SEASON on Today, the
-guaranteed Pascagoula Tech offer and its five 99-rated starters; `npm run
-build` and `npm run apk` drop them as dead code, and Vitest never sees them.
-Hans Hood, the 99-potential third baseman injected into every class, is gone
-for good — `ensureHoodHans` no longer exists.
+**One test aid is left, behind a build flag** (`docs/TESTING_SHORTCUTS.md`): the
+Settings UNLOCK button that stands in for the god mode purchase. It is in on
+`npm run dev` and `npm run apk:test`, dead code in `npm run build` and `npm run
+apk`, and Vitest never sees it. SIM THE SEASON, the guaranteed Pascagoula Tech
+offer and its five 99-rated starters went on September 8; Hans Hood is gone for
+good.
 
 ## Docs
 
