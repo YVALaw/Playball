@@ -10014,7 +10014,80 @@ Things this document could not settle from the code, and must not guess at.
 
 ---
 
-## 76. A star rating is two numbers, and only one of them was the complaint — **September 12 2026**
+## 76. A hurt arm said nothing, and a reliever could win nothing — **September 12 2026**
+
+Two from the same play session, joined here because the first one turned out to
+be about a screen rather than about injuries.
+
+### 76.1 The rotation and the bullpen never asked
+
+Reported: **"when pitchers are injured, there is not indication, no icons or
+anything."**
+
+The nine and the bench have asked `available()` and printed the reason beside
+the man since stage 9. The rotation and the bullpen lists never asked it once —
+so an ace with a torn elbow sat in his slot looking exactly like a healthy one,
+and the only way to find out was to play him. Both lists carry the indicator
+now, the same dimmed row and red ✚ the bench already uses.
+
+The bullpen row also loses its press while the man is hurt: promoting somebody
+who cannot pitch into the rotation is not a move worth offering. **The rotation
+slot stays live on purpose** — moving a hurt starter *out* of it is the whole
+errand, and a screen that disabled the row would have disabled the fix.
+
+### 76.2 The trainer's room, at the foot of the card
+
+Asked for in the same breath: *"I'm also thinking we should add a section in the
+lineup tab called injured so all injured players go there when we take them out
+of the lineup/rotation."*
+
+Built as a **summary rather than a fifth list**, and the difference is the whole
+design of the screen. Every man in it is still in the list he came from: a hurt
+starter stays in his rotation slot so the coach can move him out of it, and a
+hurt regular stays on the card until somebody covers him, which is the errand
+NEEDS sends him on. Moving them into a room of their own would delete the very
+decision the screen exists for.
+
+So the section gathers and the rows above still do the work. The rows here read
+rather than invite — no pin column, the dimming the bench already uses, and a
+tap opens the man's card. It hides itself when nobody is hurt rather than saying
+"nobody is hurt": an empty section on a screen this dense is a line a coach has
+to read to learn nothing. Two-way men fold once, through `uniquePlayers`.
+
+### 76.3 A reliever was eligible for everything and could win none of it
+
+Reported: **"in awards we also have to add a reliever of the year, right now
+being an RP does not have any award."** True in a stronger sense than reported —
+nothing in the game filters on role, so a reliever is eligible for every honour
+and can win none. Player of the Year excludes pitchers outright; every pitching
+honour ranks on `pitcherValue`, which is linear in innings, and a bullpen
+ceiling of forty-odd innings cannot out-score a rotation's eighty.
+
+Two drafts, both worth recording because both were wrong in ways only
+measurement showed.
+
+**The first let eight saves bypass the innings floor.** It crowned men with 10.3
+and 14.3 innings. Across 1,152 seasons in two worlds the median reliever throws
+31, the ninetieth percentile 42, the busiest 64 — so the floor is half a team's
+games in innings, with no bypass.
+
+**The first also priced a save at a full run.** `pitcherValue` for a good
+31-inning reliever is about 11, so fifteen saves simply won and a 3.54 ERA took
+the award. At half a run a save is worth about seven: real weight, still
+answerable by a fireman who threw twice the innings. Measured after: winners at
+39.7 IP / 2.27, 36.3 / 1.49, 28.0 / 0.64 and 33.0 / 0.55 — four genuine relief
+seasons instead of three save collectors.
+
+The weight on a save is a **taste rather than a fact**, and it is stated in the
+code where somebody can find it. On the hall ballot it is priced at eight runs,
+between the freshman's five and the two big twelves: the season behind it is
+forty innings rather than eighty, but unlike Freshman of the Year a man can win
+it four times. A title the hall has never heard of scores nothing, so a new
+award has to be priced there or a career spent winning it counts for nought.
+
+---
+
+## 77. A star rating is two numbers, and only one of them was the complaint — **September 12 2026**
 
 Reported in a list of twenty-six: **"starting ovr is too high for 1 and 2
 stars."** It was. Measured over ten national classes, 7,200 men:
@@ -10142,3 +10215,105 @@ all three were brittle in the same way — they had sampled once and believed it
 The pattern is one worth naming: a single-sample assertion that passes is
 indistinguishable from a property that holds, right up until something unrelated
 moves the dice.
+
+---
+
+## 78. Handing the board to your coordinator, and the rule that came in a pair — **September 12 2026**
+
+Last of the list of twenty-six: **"we should also add automated or delegated
+recruiting as an option."** Asked what it should feel like, the brief came back
+as one sentence: *"a bit worse than a user would do it plus depending on their
+stats they get a bit better."*
+
+### 78.1 The switch already existed and reached nothing
+
+`SYSTEMS` in `state/depth.ts` has carried a `recruiting` row since the depth
+model went in, reading **"Your coordinator works the board."** `handles` was
+never once asked about it — sixteen call sites, not one for `recruiting`.
+
+So a coach who turned the row off did not delegate his recruiting, **he lost
+it**. His board was read for whatever he had already put on it, which after a
+week of not touching it was nothing, and his class signed somewhere else. A row
+that lies about what it does is worse than no row.
+
+### 78.2 The handicap is the size of the week, and nothing else
+
+A delegated week is worked by the same routine the other ninety five use —
+`aiTargets` to choose the board, `planAiRecruitActions` to spend the rest — with
+the coached programme's own pitch, prestige, facilities and pipelines.
+**Delegating does not make your programme worse. It makes your week worse.**
+
+The whole of the handicap is `aiTargets`' new `effort` dial, defaulting to 1 so
+every rival's week is identical to the digit. Not the quality of the reading,
+not the odds a recruit says yes, not what a point converts into. That is
+deliberate: a handicap applied to *judgement* — a staff that picks worse men, or
+forgets somebody — is indistinguishable from a bug when you watch it, and the
+player who delegates is exactly the player who will not be watching closely
+enough to tell. A staff that simply gets through less is legible.
+
+| | board craft | share of the week |
+|---|---|---|
+| nobody in the chair | 0 | 0.72 |
+| a network builder, rating 80 | 8 | 0.75 |
+| a rounded man, rating 60 | 30 | 0.83 |
+| a recruiting specialist | 60+ | 0.94 |
+
+The lever is `nightCraft` — his rating less whatever he spends on winter
+relationships — so the same wage buys two genuinely different things and the
+shape of the man decides which, which is the decision the staff screen already
+exists to pose. **And it never reaches 1.** The answer to "am I better off doing
+this myself" is always yes, which is the first half of the brief.
+
+### 78.3 The defect the unit tests could not see
+
+Every unit test passed and the feature was still broken. Found by playing it in
+the browser, on a real save: a delegated one-star programme finished a window
+with **three** signed men while the thirty three rivals within four quality
+points of it averaged **6.85**. "A bit worse" is not half a class.
+
+The handicap was not the cause. **`seedRivalInterest` and `aiTargets`' lost-cause
+filter are a pair, and the delegate had been given one of them.** Two seeding
+passes run before week one and every rival gets them; the coached programme is
+skipped, correctly, because a human coach's board is his own to build. But
+`aiTargets` is written for a staff that *has* been seeded — it walks away from
+anyone another programme already leads — so a staff opening on an empty board
+walks away from nearly everybody and never starts.
+
+A board the coordinator works is seeded the way his rivals' boards are now. The
+handicap stays where it was documented to be.
+
+### 78.4 The measurement, and why the obvious test would have passed
+
+Reproduced in a probe, twelve weeks driven through the store:
+
+| programme | unseeded (the bug) | seeded (the fix) | peer average |
+|---|---|---|---|
+| team 0, quality 66 | 6 | 7 | 8.00 / 7.60 |
+| team 95, quality 24 | **2** | **5** | 4.85 / 5.15 |
+
+**The elite programme barely notices.** It may chase most of the class and takes
+a lead from a cold start anyway. The collapse belongs to the bottom of the
+league, where the pool `canPursue` leaves is thin and an unseeded board is
+crowded out of all of it — 0.41× its peers against 0.97× after.
+
+So `tests/delegated-recruiting.test.ts` runs its end-to-end case on **team 95**,
+and the choice is the whole test. Written against team 0 it would have passed on
+the bug, which is precisely what the five tests above it did: a handicap you can
+read off a curve is easy to assert and was never the part that was wrong.
+
+### 78.5 Two smaller things
+
+The seeding call in `start` reads the depth it is **about to install**, not the
+one the store is still holding from the previous career. Both presets work their
+own board today so the answer is the same either way; the day somebody flips
+`recruiting`'s `casual` flag it would not be, and the failure would be a class
+quietly missing from year one of every casual career.
+
+On screen the board stays fully readable — every card, every commitment, every
+rival's interest. A delegated system the player cannot watch is one he has to
+take on faith, and the reason to hand recruiting over is to stop doing the work,
+not to stop seeing the class. What goes is the controls: the pitch room and the
+offer pips are replaced by a note that **names the man**, because "your staff
+handles it" is the kind of line that makes a player wonder whether anything is
+happening at all, and his coordinator is somebody he hired, pays and can
+replace.

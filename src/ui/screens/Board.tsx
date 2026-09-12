@@ -50,6 +50,7 @@ import { FixedHeader, FloatingAction } from '../Sticky.js';
 import { MixerHorizontalIcon } from '@radix-ui/react-icons';
 import { withStaff, pipelineStrength, pipelineLabel, PIPELINE_MIN } from '../../engine/economy.js';
 import { FieldNote, Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
+import { handles } from '../../state/depth.js';
 import { isTwoWay } from '../../engine/types.js';
 import type { Hitter, Pitcher, Player, Position } from '../../engine/types.js';
 
@@ -173,7 +174,11 @@ export type PinnedKind = 'close-filter' | 'end-week' | 'signing-day' | null;
  * than assembled at two branches of the JSX.
  */
 export function pinnedAction(
-  s: { filtersOpen: boolean; live: boolean; week: number; matches: number; shown: number },
+  s: {
+    filtersOpen: boolean; live: boolean; week: number; matches: number; shown: number;
+    /** False when the coordinator has the board. Defaults true for callers that predate it. */
+    byHand?: boolean;
+  },
 ): { kind: PinnedKind; label: string } {
   if (s.filtersOpen) {
     return {
@@ -188,7 +193,12 @@ export function pinnedAction(
   if (!s.live) return { kind: null, label: '' };
   return s.week >= RECRUITING_WEEKS
     ? { kind: 'signing-day', label: 'SIGNING DAY' }
-    : { kind: 'end-week', label: `END WEEK ${s.week}` };
+    // A delegated week is not a week the coach ends, it is one he watches go
+    // by, and a button reading END WEEK over a board he cannot touch is the
+    // screen telling him he did something he did not do.
+    : { kind: 'end-week', label: s.byHand === false
+        ? `YOUR COORDINATOR WORKS WEEK ${s.week}`
+        : `END WEEK ${s.week}` };
 }
 
 /**
@@ -255,6 +265,17 @@ export function Board() {
   const recruitPitch = useDynasty((s) => s.recruitPitch);
   const recruitMajor = useDynasty((s) => s.recruitMajor);
   const advanceWeek = useDynasty((s) => s.advanceRecruitingWeek);
+  /*
+    Whether he is working his own board, or watching his coordinator work it.
+
+    The board stays readable either way, deliberately. A delegated system the
+    player cannot watch is a system he has to take on faith, and the whole
+    reason to hand recruiting over is to stop doing the work — not to stop
+    seeing the class. Every card, every commitment and every rival's interest
+    reads exactly as it does for a coach doing it himself; the only things that
+    go are the controls he is no longer allowed to touch.
+  */
+  const worksBoard = useDynasty((s) => handles(s.depth, 'recruiting'));
   const economy = useDynasty((s) => s.economy);
   const phase = useDynasty((s) => s.phase);
   const nextPhase = useDynasty((s) => s.nextPhase);
@@ -426,7 +447,10 @@ export function Board() {
   const seasonMode = phase === null;
   const full = commits.length >= SCHOLARSHIPS;
   const activeFilters = anyFilter(filters);
-  const pinned = pinnedAction({ filtersOpen, live: live && !seasonMode, week, matches, shown: list.length });
+  const pinned = pinnedAction({
+    filtersOpen, live: live && !seasonMode, week, matches, shown: list.length,
+    byHand: worksBoard,
+  });
   const activeTargetCount = (pos: string): number => targets.filter((p) => {
     if (p.signedBy !== null) return false;
     if (pos === 'BENCH') return p.player.type === 'hitter';
@@ -454,7 +478,10 @@ export function Board() {
           onClick={() => {
             if (pinned.kind === 'close-filter') setFiltersOpen(false);
             else if (pinned.kind === 'signing-day') { advanceWeek(); void nextPhase('recruiting'); }
-            else if (pinned.kind === 'end-week' && week === 1 && uncoveredBoardNeeds.length > 0) setWarnHoles(true);
+            // Not when the staff picked the board: the warning exists to stop a
+            // coach ending week one with nothing on it, and his coordinator
+            // cannot make that mistake.
+            else if (pinned.kind === 'end-week' && worksBoard && week === 1 && uncoveredBoardNeeds.length > 0) setWarnHoles(true);
             else advanceWeek();
           }}
           secondary={pinned.kind === 'close-filter' && activeFilters
@@ -1296,6 +1323,10 @@ function Overview({
   const askReason = askRolled ? null : askBlocked(prospect, userTeam, week, full);
   // Same arithmetic the week close will use, including the active pitch/move.
   const economy = useDynasty((s) => s.economy);
+  const worksBoard = useDynasty((s) => handles(s.depth, 'recruiting'));
+  // Optional all the way down: a save from before the staff screen has no
+  // `staff` object at all, and a sheet that throws is a save that will not open.
+  const coordinator = economy?.staff?.recruiting;
   const team = useDynasty((s) => s.season?.teams[userTeam]?.team);
   const plan = recruitingPlan(prospect, pitch, {
     team: userTeam, actions: spent, prestige: coachPrestige, skill: recruitingSkill, economy,
@@ -1360,7 +1391,7 @@ function Overview({
         })}
       </section>
 
-      {reachable && live && !full && (
+      {reachable && live && !full && worksBoard && (
         <section className="recruit-pitch-room">
           <header>
             <span><small>YOUR CASE</small><strong>Spend on what is actually true here</strong></span>
@@ -1484,7 +1515,32 @@ function Overview({
         </section>
       )}
 
-      {reachable && live && !full && (
+      {reachable && live && !full && !worksBoard && (
+        /*
+          What the board looks like once it is somebody else's job.
+
+          It reads the same as the blocked and full notes above rather than
+          inventing a fourth shape, because it is the same kind of sentence:
+          here is why there is nothing to press. Naming the man is the point —
+          "your staff handles it" is the sort of line that makes a player
+          wonder whether anything is happening at all, and his coordinator is
+          somebody he hired, pays, and can replace.
+        */
+        <section className="recruit-decision-note is-delegated">
+          <small>DELEGATED</small>
+          <strong>
+            {coordinator ? `${coordinator.name} works this board.` : 'Your staff works this board.'}
+          </strong>
+          <p>
+            {coordinator
+              ? 'He picks the targets and spends the week. He gets through a little less of it than you would, and the better he is at working a board the closer he comes.'
+              : 'With nobody in the coordinator chair it is handled by whoever is free, and it shows. Hiring one is the difference.'}
+            {' '}Turn the recruiting board back on in settings to work it yourself.
+          </p>
+        </section>
+      )}
+
+      {reachable && live && !full && worksBoard && (
         <section className="prospect-offer">
           <div className="prospect-offer-head">
             <span>

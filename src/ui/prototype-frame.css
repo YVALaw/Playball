@@ -8231,3 +8231,11 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
    read rather than invite — no pin column, and the whole section dimmed. */
 .injured-list button { cursor: pointer; }
 .injured-list .drag { visibility: hidden; }
+
+/* A board somebody else is working (05 §78). Muted rather than alarmed: the
+   blocked note uses --alert because something is wrong, and nothing is wrong
+   here — the coach chose this, and the only news is that the controls belong to
+   his coordinator this career. Same shape as its two siblings so the sheet does
+   not grow a fourth vocabulary for "here is why there is nothing to press". */
+.recruit-decision-note.is-delegated { border-left-color: var(--dim); }
+.recruit-decision-note.is-delegated small { color: var(--dim); }

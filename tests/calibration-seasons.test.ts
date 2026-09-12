@@ -36,7 +36,7 @@
 // Ten seasons, two worlds, one node process per seed (see SEASONS below for why
 // that matters). Runs per team per game, against an NCAA D1 target of 6.73.
 //
-// Re-recorded 2026-09-12 after the starting-OVR ladder came down (`05` §76):
+// Re-recorded 2026-09-12 after the starting-OVR ladder came down (`05` §77):
 //
 //   seed 4242  7.015  7.337  8.101  8.426  8.637  8.458  8.537  8.616  8.533  8.541
 //   seed 909   6.880  7.686  8.375  8.948  8.907  8.626  8.679  8.678  8.810  8.692

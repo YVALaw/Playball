@@ -129,7 +129,7 @@ describe('what the merge review changed', () => {
 
       Measured on this class of sixty: named beats raw for 49, named beats the
       wrong pitch for 50, and the wrong pitch still clears a quarter of raw for
-      55. Before the starting-OVR ladder came down (`05` §76) the same class
+      55. Before the starting-OVR ladder came down (`05` §77) the same class
       scored 42 — the ladder did not change this pricing at all, it changed
       which man sits at index 0, and the old form failed the moment he was no
       longer one of the lucky ones.

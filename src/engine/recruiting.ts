@@ -1663,6 +1663,19 @@ export function aiTargets(
   atWeekStart: Record<string, number> = {},
   spentOnTheDraft = 0,
   weekNo = 0,
+  /**
+   * How much of the week actually gets worked. One for the ninety five, who
+   * are not delegating to anybody — they *are* the staff.
+   *
+   * Below one only for a coach who has handed his own board to his
+   * coordinator, and the default is what keeps every rival's week identical to
+   * the digit. It scales the pool the targets are funded from and nothing
+   * else: the board is still chosen the same way, by the same reading of the
+   * same class. A delegated staff is not stupid, it is **thinner** — which is
+   * the honest shape of the complaint it answers, and also the only shape that
+   * does not make the feature a punishment for using it. See `delegateEffort`.
+   */
+  effort = 1,
 ): { prospect: Prospect; actions: number }[] {
   void coachPrestige;
 
@@ -1808,7 +1821,7 @@ export function aiTargets(
   const week = weeklyBudget(pitch.stars, spentOnTheDraft);
   // Reserve part of the same budget for the expanded recruiting actions. The
   // AI pays for its pitches/visits too rather than receiving them for free.
-  const rawWeek = Math.max(1, Math.floor(week * (weekNo >= 1 ? 0.82 : 1)));
+  const rawWeek = Math.max(1, Math.floor(week * (weekNo >= 1 ? 0.82 : 1) * effort));
 
   const out: { prospect: Prospect; actions: number }[] = [];
   let left = rawWeek;

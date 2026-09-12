@@ -371,7 +371,7 @@ describe('the end of your run', () => {
     /*
       Six hundred seeds, not sixty.
 
-      Sixty was enough until the recruiting ladder moved (`05` §76), which
+      Sixty was enough until the recruiting ladder moved (`05` §77), which
       shifted the season's dice and therefore who the top seed draws. It drew a
       66 quality programme against a 40 in `world(2102)`, and the first game
       that side lost was seed 68 — so a fixture that scanned to 59 threw, in a

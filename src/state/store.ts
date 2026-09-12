@@ -1,5 +1,5 @@
 import { newStaffProject, progressStaffProjects, projectResultText, projectCandidates, PROJECT_FOCUS } from '../engine/staffProjects.js';
-import { recruitingPlan, programRecruitingPitch } from '../engine/recruitingPlan.js';
+import { recruitingPlan, programRecruitingPitch, delegateEffort } from '../engine/recruitingPlan.js';
 // store.ts
 // The app's state. Thin on purpose: the engine owns the simulation, this owns
 // what the player is currently looking at.
@@ -147,7 +147,32 @@ import { pitchFor, developmentScore } from '../engine/pitch.js';
  * Exported for the tests, which hold the seeded board to a coverage standard:
  * a top prospect with nobody on him at the open is the bug this exists to fix.
  */
-export function seedRivalInterest(season: SeasonState, userTeam: number): void {
+export function seedRivalInterest(
+  season: SeasonState, userTeam: number,
+  /**
+   * Whether the coached programme is seeded too. True only when its board has
+   * been handed to its coordinator.
+   *
+   * Measured 2026-09-12, in the app, on a real save: a delegated one-star
+   * programme signed **three** men while the thirty three rivals within four
+   * quality points of it averaged **6.85**. That is not "a bit worse", it is
+   * broken, and the cause was here rather than in the handicap.
+   *
+   * These two passes run before the window opens and every rival gets them.
+   * The coached programme is skipped, correctly, because a human coach's board
+   * is his own to build and starting him with interest he did not earn would
+   * hand him a week he never worked. But `aiTargets` is written for a staff
+   * that HAS been seeded: its lost-causes filter walks away from any recruit
+   * somebody else already leads, so a staff that opens on an empty board walks
+   * away from nearly everybody and never starts. The two rules are a pair, and
+   * giving a delegated coach one without the other is what produced the three.
+   *
+   * So a board the coordinator works is seeded the way his rivals' boards are,
+   * and the handicap that makes him worse than his coach stays where it was
+   * documented to be — in the size of his week, and nowhere else.
+   */
+  alsoSeedUser = false,
+): void {
   // Two passes, not one. A single pass leaves the top of the class half
   // covered — every board is picked against an empty field, so the elite
   // programs all converge on the same handful of names and the rest of the
@@ -158,7 +183,7 @@ export function seedRivalInterest(season: SeasonState, userTeam: number): void {
   for (const scale of [0.5, 0.25]) {
     const snapshot = leadersAtWeekStart(season.recruiting);
     for (const record of season.teams) {
-      if (record.index === userTeam) continue;
+      if (record.index === userTeam && !alsoSeedUser) continue;
       const conf = CONFERENCES.find((c) => c.id === record.conference);
       const pitch = pitchFor(season, record, conf?.region ?? 'Gulf', developmentScore(record));
       // His own coach, where the world has been seated with them: a program run
@@ -2826,7 +2851,19 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     applyPhilosophy(season, seat, coach);
     // Recruiting now runs with the spring. The class opens already contested,
     // so week one reads like a national market rather than an empty spreadsheet.
-    seedRivalInterest(season, seat);
+    /*
+      The depth this career is about to be given, not the one the store is
+      still holding from whatever was open before it.
+
+      `start` installs `{ mode, overrides: {} }` thirty lines below, so
+      `get().depth` here is the previous career's — and reading it would seed
+      this world off a setting that is about to be thrown away. Today both
+      presets work their own board (`recruiting` is `casual: true`) so the
+      answer is the same either way and nothing is visibly wrong; the day
+      somebody flips that flag it would not be, and the failure would be a
+      recruiting class quietly missing from year one of every casual career.
+    */
+    seedRivalInterest(season, seat, !handles({ mode, overrides: {} }, 'recruiting'));
 
     set({
       season,
@@ -3175,8 +3212,31 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
     const myEconomy = get().economy;
     const effSkills = withStaff(coach.skills, myEconomy.staff);
+
+    /*
+      Whether the coach is working his own board this week.
+
+      The switch has existed on the settings sheet since the depth model went
+      in — "Your coordinator works the board" — and until now it reached
+      nothing at all: `handles` was never once asked about `recruiting`, so a
+      coach who turned it off simply lost his recruiting. His board was read
+      for whatever he had already put on it, which after a week of not touching
+      it was nothing, and the class signed itself somewhere else. That is worse
+      than not having the row.
+
+      Delegating now means his week is worked by the same routine the other
+      ninety five get, with his own pitch and his own programme behind it, at
+      `delegateEffort` of the size he would have had. See the note above
+      `delegateEffort` for why the handicap lives in the size of the week and
+      in nothing else.
+    */
+    const worksOwnBoard = handles(get().depth, 'recruiting');
+    const myEffort = worksOwnBoard ? 1 : delegateEffort(myEconomy);
+
     for (const record of season.teams) {
       const mine = record.index === userTeam;
+      // His own board only while he is actually working it.
+      const byHand = mine && worksOwnBoard;
       // Your facilities are part of your pitch: a development lab is the one
       // thing on the tour a recruit's father asks about.
       const staff = record.coach;
@@ -3187,19 +3247,26 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         ? (season.draft?.spent ?? 0) + (season.portalSpend?.[userTeam] ?? 0)
         : (season.draft?.rivalSpend[record.index] ?? 0)
           + (season.portalSpend?.[record.index] ?? 0);
-      const spends: { prospect: typeof recruits.prospects[number]; actions: number }[] = mine
+      const spends: { prospect: typeof recruits.prospects[number]; actions: number }[] = byHand
         ? recruits.prospects
             .filter((p) => (p.spent[userTeam] ?? 0) > 0 || weekActionCost(p, userTeam) > 0)
             .map((p) => ({ prospect: p, actions: p.spent[userTeam] ?? 0 }))
         : aiTargets(
-            record.index, pitch, staff?.prestige ?? 45, recruits.prospects,
+            record.index, pitch, mine ? coach.prestige : (staff?.prestige ?? 45),
+            recruits.prospects,
             holesFor(record), season.rng, atWeekStart, priorSpend, recruits.week,
+            mine ? myEffort : 1,
           );
-      if (!mine) {
+      if (!byHand) {
         planAiRecruitActions(
           record.index, pitch, spends,
-          weeklyBudget(pitch.stars, priorSpend), recruits.week,
-          staff?.prestige ?? 45, staff?.skills.recruiting ?? 20, season.rng,
+          // The same week, scaled the same way, so the points the staff spends
+          // on visits and pitches are thinned exactly as the raw effort was.
+          Math.max(1, Math.round(weeklyBudget(pitch.stars, priorSpend) * (mine ? myEffort : 1))),
+          recruits.week,
+          mine ? coach.prestige : (staff?.prestige ?? 45),
+          mine ? effSkills.recruiting : (staff?.skills.recruiting ?? 20),
+          season.rng,
         );
       }
 
@@ -4571,7 +4638,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       }
 
       const rolled = nextSeason(next);
-      seedRivalInterest(rolled, get().userTeam);
+      seedRivalInterest(rolled, get().userTeam, !handles(get().depth, 'recruiting'));
 
       /*
         The winter, stamped for the paper — stage 14. The inbox already told
@@ -8265,7 +8332,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       if (s && s.recruiting.week === 0 && s.recruiting.prospects.length > 0) {
         const untouched = !s.recruiting.prospects
           .some((p) => Object.values(p.points).some((v) => v > 0));
-        if (untouched) seedRivalInterest(s, get().userTeam);
+        if (untouched) seedRivalInterest(s, get().userTeam, !handles(get().depth, 'recruiting'));
         s.recruiting.week = 1;
         if (get().phase === null) {
           get().syncRecruitingCalendar();

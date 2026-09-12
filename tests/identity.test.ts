@@ -389,7 +389,7 @@ describe('determinism', () => {
       // Still fixed, which is the property this test exists to hold. 2466
       // after stage 16's two-way quota: every SP slot rolls the gate.
       //
-      // 2468 after the starting-OVR ladder came down (`05` §76). The gate
+      // 2468 after the starting-OVR ladder came down (`05` §77). The gate
       // quoted above is `overall < 52` and it short-circuits, so only a man
       // under the line ever pays for the roll. Drawing the bottom two bands
       // lower moved two more of these sixty under it, and they each cost a
