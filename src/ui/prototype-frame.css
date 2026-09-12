@@ -8180,3 +8180,9 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
   .career-rule-row { display: block; }
   .career-rule-chips { margin-top: 7px; }
 }
+
+/* The stake row is always in the card, so the card does not resize when the
+   series starts saying something (05 §76). `visibility` rather than a height:
+   the box is reserved at whatever `--ts` the coach chose, and an empty row
+   stays out of the accessibility tree. */
+.stake-line.is-empty { visibility: hidden; }

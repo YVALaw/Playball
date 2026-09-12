@@ -3734,6 +3734,24 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       archiveSeason(season, get().userTeam, year);
       recordSeasonMarks(season, year);
       recordCareerMarks(season, year);
+      /*
+        And then look at what those three just wrote.
+
+        Reported 2026-09-12: "the records notification red dot isn't working —
+        my team got a record but I never got notified." The dot's whole chain
+        is intact; what was missing is a scan at the moment the marks exist.
+        `unseenRecords` is filled only by `seasonNews`, and every one of that
+        function's callers is an in-season sim action — while the season, team
+        and career marks are all written here, at the draft step, after the
+        last of them has run. Nothing ever looked.
+
+        Safe here and nowhere earlier: `season.results` is still populated and
+        `get().year` has not rolled, so every guard inside `seasonNews` holds.
+        Every writer in it is keyed and idempotent, which `store.test.ts` pins
+        ("does not repeat itself when the scan runs again"), so the rail
+        walking back to the draft and forward again costs nothing.
+      */
+      get().noteSeasonNews();
       const chair = season.teams[get().userTeam];
       // Every career in the country, not only yours. It was yours alone for as
       // long as a rival bench was a strategy and a prestige number; now each of
@@ -4343,8 +4361,19 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         poachNews ??= { name: man.name, seat };
         get().post({
           kind: 'season', year: year + 1,
-          title: `${man.name} gets the ${landing.def.school} job`,
-          body: `Coach — your ${SEAT_LABEL[seat].toLowerCase()} has his own program now. He spent ${Math.max(1, year - (man.joinedYear ?? year) + 1)} years on your staff. The seat is open.`,
+          /*
+            The subject names the ROLE and the body carries the school.
+
+            Reported 2026-09-12: "right now I got 'x got x university jo'".
+            Two faults in that — the subject never contained the words 'head
+            coach' at all, and the mailbox clips a subject to one line, so a
+            long school name lost its own last syllable. The wire has said it
+            properly all along ("lose their pitching coach to a head job");
+            the inbox was the odd one out. The link already opens his new
+            program, so nothing is lost by moving the school down a line.
+          */
+          title: `${man.name} is a head coach now`,
+          body: `Coach — ${landing.def.school} have made your ${SEAT_LABEL[seat].toLowerCase()} their head coach. He spent ${Math.max(1, year - (man.joinedYear ?? year) + 1)} years on your staff. The seat is open.`,
           link: { to: 'team' as const, index: landing.index },
         });
       } else if (man.until !== undefined && man.until <= year) {
@@ -5205,13 +5234,23 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   */
   noteSeasonNews: () => {
     const before = get().inbox;
+    const marksBefore = get().unseenRecords.length;
     // classroomNews / trainerNews / recoveryNews lived here until the 15.5
     // noise cut — see the note where they were defined.
     seasonNews(get());
-    // One version bump for the whole scan rather than one per card, and none at
-    // all when there was nothing to say — every caller is already re-rendering
-    // for its own reasons and a scan that finds nothing must not add a frame.
-    if (get().inbox !== before) set({ version: get().version + 1 });
+    /*
+      One version bump for the whole scan rather than one per card, and none at
+      all when there was nothing to say — every caller is already re-rendering
+      for its own reasons and a scan that finds nothing must not add a frame.
+
+      `unseenRecords` is counted as well as the inbox, and it has to be: the
+      scan pushes onto that array on the live state object rather than through
+      `set`, so a scan that found a record and no letter changed nothing React
+      was watching and the dot stayed dark until the next unrelated repaint.
+    */
+    if (get().inbox !== before || get().unseenRecords.length !== marksBefore) {
+      set({ version: get().version + 1 });
+    }
   },
   markInboxRead: (id) => {
     const inbox = get().inbox;

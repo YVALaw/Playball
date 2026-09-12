@@ -451,7 +451,9 @@ export function Board() {
       <div className="screen-title-row">
         <GodIntroRow target={{ kind: 'recruits' }} label="Edit the class in god mode">
           <ModuleIntro
-            kicker={`RECRUITING · ${live ? `WEEK ${week} OF ${RECRUITING_WEEKS}` : 'CLASS CLOSED'}`}
+            // The year, because this screen is reached in-season from PROGRAM
+            // and the frame around it names the club but never the season.
+            kicker={`RECRUITING · ${year} · ${live ? `WEEK ${week} OF ${RECRUITING_WEEKS}` : 'CLASS CLOSED'}`}
             title="The board"
           />
         </GodIntroRow>
@@ -1218,7 +1220,16 @@ function ProspectSheet({
             />
           </div>
 
-          <div className="prospect-sheet-body">
+          {/*
+            Keyed on the tab, so each one mounts fresh at the top.
+
+            The four tabs share one scroller and switching swapped only the
+            children, so the div kept whatever scrollTop the Overview left —
+            and the Overview is much the tallest. Reported 2026-09-12: "tap on
+            one prospect and then scroll down and then go to school offers, it
+            would show nothing or would show it cut in half."
+          */}
+          <div className="prospect-sheet-body" key={tab}>
             {tab === 'overview' && (
               <Overview
                 prospect={prospect} pitch={pitch} reachable={reachable}

@@ -270,17 +270,60 @@ function minorSummer(level: string, yearsThere: number): string {
  * is what makes the man who reaches the show worth the card that remembers
  * where he came from.
  */
+/**
+ * Where a man who was not drafted goes on playing, if he does.
+ *
+ * Countries, never leagues: the places an undrafted American college senior
+ * can plausibly get a summer or a winter of professional ball. Naming a real
+ * league would be naming somebody's trademark, and the country is the part a
+ * coach would actually remember anyway.
+ *
+ * The independent club stays first and stays the commonest, because it is the
+ * likeliest thing to happen to him.
+ */
+const ABROAD: readonly { level: string; line: string }[] = [
+  { level: 'INDEPENDENT BALL', line: 'Signed on with an independent club for a summer.' },
+  { level: 'INDEPENDENT BALL', line: 'Caught on with an independent club and hit the bus leagues.' },
+  { level: 'MEXICO', line: 'Signed with a club in Mexico.' },
+  { level: 'THE DOMINICAN', line: 'Went down for the winter league in the Dominican Republic.' },
+  { level: 'VENEZUELA', line: 'Took a winter contract in Venezuela.' },
+  { level: 'PUERTO RICO', line: 'Played the winter in Puerto Rico.' },
+  { level: 'COLOMBIA', line: 'Signed on for a winter in Colombia.' },
+  { level: 'AUSTRALIA', line: 'Went to Australia for their summer, which is our winter.' },
+  { level: 'JAPAN', line: 'Signed with a club in Japan.' },
+  { level: 'KOREA', line: 'Took a contract in Korea.' },
+  { level: 'TAIWAN', line: 'Signed on in Taiwan.' },
+  { level: 'ITALY', line: 'Spent a summer playing in Italy.' },
+  { level: 'THE NETHERLANDS', line: 'Signed with a club in the Netherlands.' },
+];
+
+/**
+ * What he read while he was here.
+ *
+ * Derived off the id like everything else in this file — no field on the
+ * player, no migration, and the same man carries the same degree for life.
+ * It exists so the man who stops playing has an ending of his own rather than
+ * the same sentence as every other man who stopped.
+ */
+const MAJORS: readonly string[] = [
+  'business', 'kinesiology', 'communications', 'criminal justice', 'history',
+  'marketing', 'sports management', 'agriculture', 'education', 'finance',
+  'psychology', 'engineering', 'nursing', 'economics', 'sociology',
+];
+
 export function proCareer(id: string, note: AlumnusNote, throughYear: number): ProYear[] {
   if (note.reason !== 'drafted') {
     // The undrafted senior's one line. A few sign somewhere small anyway.
     if (throughYear <= note.year) return [];
     const indie = hash(`${id}:indie`) % 100 < 18;
+    const where = ABROAD[hash(`${id}:abroad`) % ABROAD.length]!;
+    const major = MAJORS[hash(`${id}:major`) % MAJORS.length]!;
     return [{
       year: note.year + 1,
-      level: indie ? 'INDEPENDENT BALL' : 'HOME',
+      level: indie ? where.level : 'HOME',
       line: indie
-        ? 'Signed on with an independent club for a summer, then hung them up.'
-        : 'The baseball ended in June. The degree did not.',
+        ? `${where.line} Then he hung them up.`
+        : `The baseball ended in June. He finished the ${major} degree.`,
       final: true,
     }];
   }

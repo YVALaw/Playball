@@ -331,14 +331,31 @@ export function Player() {
   // from his position with auto it also changes his primary position in the
   // profile, making it impossible to know where he was supposed to be."
   const homePos = !isPitcher ? (p as Hitter & { homePos?: Position }).homePos : undefined;
+  /*
+    And the same courtesy for an arm, which this never had.
+
+    Reported 2026-09-12: "I had an RP placed in a starting position and when I
+    go into his profile, instead of it showing me it is an RP covering SP, it
+    simply changed to SP." The state was always right — `promoteArm` writes
+    `homeRole` before it writes `role`, and `Pitcher.homeRole` exists for
+    exactly this — but the hero line read `role`, which is the chair he is
+    sitting in tonight rather than his trade. The hitter branch two lines up
+    had been taught this on 2026-09-10 and the pitcher branch was not.
+  */
+  const homeRole = isPitcher || isTwoWay(p)
+    ? (p as Pitcher & { homeRole?: string }).homeRole : undefined;
   const own: string = isPitcher
-    ? (p as Pitcher).role
+    ? (homeRole ?? (p as Pitcher).role)
     : naturalPos(homePos ? { ...(p as Hitter), pos: homePos } : (p as Hitter));
-  const slot = isTwoWay(p) ? `TWO-WAY · ${(p as unknown as Pitcher).role} · ${own}` : own;
+  const slot = isTwoWay(p)
+    ? `TWO-WAY · ${homeRole ?? (p as unknown as Pitcher).role} · ${own}`
+    : own;
   const dhToday = !isPitcher && p.pos === 'DH';
   // Against what he IS, not his label: a DH by label standing at first base
   // is at his own spot (reported as "1B · COVERING 1B").
-  const covering = !isPitcher && p.pos !== 'DH' && p.pos !== own ? p.pos : null;
+  const covering = isPitcher
+    ? ((p as Pitcher).role !== own ? (p as Pitcher).role : null)
+    : (p.pos !== 'DH' && p.pos !== own ? p.pos : null);
 
   // A tab that is not on offer must never be the one on screen. Cheap insurance
   // against a card that reopens on a tab the next man does not have.

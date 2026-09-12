@@ -281,9 +281,22 @@ export function Today() {
                 <small>THEIR PROBABLE</small><strong>{armShort(theirArm)}</strong>
               </button>
             </div>
-            {stake && (
-              <p className="stake-line"><SewingPinIcon /> {stake}</p>
-            )}
+            {/*
+              Always rendered, hidden when there is nothing to say.
+
+              `seriesStake` is deliberately silent on game one, on game two
+              after a loss, and on every midweek — so the row appeared and
+              vanished as each night resolved, and the whole card jumped
+              28.4px under the coach's thumb. Reported 2026-09-12: "the tonight
+              card changes its size when text comes in and it is not supposed
+              to; nothing in the app should make those quick resizings."
+              `visibility` rather than a height, so the box is reserved at
+              whatever `--ts` the coach has chosen and the empty row stays out
+              of the accessibility tree.
+            */}
+            <p className={`stake-line${stake ? '' : ' is-empty'}`}>
+              <SewingPinIcon /> {stake ?? '\u00a0'}
+            </p>
             {/*
               The warnings, in one red strip where the pitchers' line used to
               be — asked for in the same report: "the warnings make them more

@@ -23,7 +23,9 @@ const FOCUSES: Record<StaffSeat, StaffDirective[]> = {
 };
 const FOCUS_HINT: Record<StaffDirective, string> = {
   balanced: 'General support', contact: 'Contact projects', power: 'Power projects',
-  discipline: 'Discipline projects', command: 'Control projects', velocity: 'Stuff projects',
+  // Hand-written rather than read off PROJECT_ATTRIBUTE, so it has to be
+  // renamed in step with it or the two lines disagree on one screen.
+  discipline: 'Discipline projects', command: 'Control projects', velocity: 'K/9 projects',
   armCare: 'Stamina projects', pipeline: '+4% recruiting interest', stars: '4–5★ prospects',
   sleepers: '1–3★ prospects', needs: 'Missing positions',
 };

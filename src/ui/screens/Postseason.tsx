@@ -1354,6 +1354,29 @@ function PregameShow(
     advanceSecondary: { label: string; onClick: () => void } | null;
   },
 ) {
+  /*
+    The same beat the Today card takes, and for the same reason.
+
+    Reported 2026-09-12: "the postseason simulate game button doesn't have a
+    delay like the tonight's card so you can just double press." It did not —
+    `simBracket` is fully synchronous with no busy flag, and the guarded copy
+    of this label lives in the pinned command bar, which this card replaces.
+    Two presses inside one frame played two nights.
+  */
+  const [thinking, setThinking] = useState<'play' | 'sim' | 'advance' | null>(null);
+  const thinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const think = (which: 'play' | 'sim' | 'advance', run: () => void): void => {
+    if (thinking !== null) return;
+    setThinking(which);
+    thinkTimer.current = setTimeout(() => {
+      thinkTimer.current = null;
+      setThinking(null);
+      run();
+    }, 800);
+  };
+  // A beat must not land on a screen that has gone — the bracket closes.
+  useEffect(() => () => { if (thinkTimer.current) clearTimeout(thinkTimer.current); }, []);
+
   // Who tonight is against, and what it is worth — or null between rounds.
   let opp: number | null = null;
   let home = false;
@@ -1501,11 +1524,21 @@ function PregameShow(
         </>
       ) : (
         <>
-          <button className="primary-command tap" type="button" onClick={onPlay}>
-            PLAY THIS GAME
+          <button
+            className="primary-command tap"
+            type="button"
+            disabled={thinking !== null}
+            onClick={() => think('play', onPlay)}
+          >
+            {thinking === 'play' ? <span className="spinner" /> : 'PLAY THIS GAME'}
           </button>
-          <button className="secondary-command tap" type="button" onClick={onSim}>
-            SIMULATE THIS GAME
+          <button
+            className="secondary-command tap"
+            type="button"
+            disabled={thinking !== null}
+            onClick={() => think('sim', onSim)}
+          >
+            {thinking === 'sim' ? <span className="spinner" /> : 'SIMULATE THIS GAME'}
           </button>
         </>
       )}
