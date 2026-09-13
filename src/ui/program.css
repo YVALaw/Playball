@@ -1,11 +1,5 @@
 /* Program and staff use the existing paper, square cards, school accent and
    condensed headings. Labels stay secondary; current work leads each card. */
-.program-pulse { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); border:1px solid var(--line); background:var(--paper); margin-bottom:18px; }
-.program-pulse > div { padding:11px; border-right:1px solid var(--line); min-width:0; }
-.program-pulse > div:last-child { border:0; }
-.program-pulse small { display:block; color:var(--dim); font:700 calc(8px * var(--ts))/1.3 var(--mono); }
-.program-pulse strong { display:block; margin-top:4px; font:800 calc(27px * var(--ts))/1 var(--display); }
-.program-pulse strong span { font:500 calc(10px * var(--ts)) var(--mono); color:var(--dim); margin-left:3px; }
 .program-launch-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:8px 0 20px; }
 .program-launch { position:relative; display:grid; grid-template-columns:22px minmax(0,1fr); gap:8px; padding:13px 12px; min-width:0; border:1px solid var(--line); background:var(--paper); color:var(--ink); text-align:left; }
 .program-launch > svg:first-child { width:19px; height:19px; color:var(--clay); align-self:center; }
@@ -159,10 +153,159 @@
 .staff-workspace button:focus-visible, .staff-contract-actions button:focus-visible { outline:2px solid var(--clay); outline-offset:3px; }
 @media (max-width:360px) {
   .program-launch { padding:11px 9px; }
-  .program-pulse > div { padding:10px 8px; }
   .staff-work-section, .staff-profile-section { padding:10px; }
   .staff-project-picker { gap:4px; }
   .staff-project-picker button { padding:9px 6px; }
   .staff-profile-summary { gap:8px; }
   .staff-roster-card .staff-ratings { gap:10px; }
 }
+
+/* ---------------------------------------------------------------------------
+   The archive, the hub's identity block, and the shared folds — 2026-09-13.
+   Square cards on paper, a 1px rule for an edge and a 3px left rule for
+   emphasis. Chips and coloured numbers where a sentence used to be.
+   --------------------------------------------------------------------------- */
+
+/* One fold for the whole program menu. The marker is a mono glyph rather than
+   a chevron, so a collapsed row reads as a row and not as a button. */
+.season-card-detail > summary, .facility-all-levels > summary,
+.staff-work-details > summary, .network-explainer > summary,
+.alumnus-fold > summary {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  min-height:44px; padding:9px 11px; cursor:pointer; list-style:none;
+  color:var(--clay); font:700 calc(8px * var(--ts))/1.4 var(--mono); letter-spacing:.09em;
+}
+.season-card-detail > summary::after, .facility-all-levels > summary::after,
+.staff-work-details > summary::after, .network-explainer > summary::after,
+.alumnus-fold > summary::after { content:"+"; flex:none; font:600 calc(16px * var(--ts)) var(--mono); color:var(--clay); }
+.season-card-detail[open] > summary::after, .facility-all-levels[open] > summary::after,
+.staff-work-details[open] > summary::after, .network-explainer[open] > summary::after,
+.alumnus-fold[open] > summary::after { content:"\2212"; }
+.season-card-detail > summary::-webkit-details-marker, .facility-all-levels > summary::-webkit-details-marker,
+.staff-work-details > summary::-webkit-details-marker, .network-explainer > summary::-webkit-details-marker,
+.alumnus-fold > summary::-webkit-details-marker { display:none; }
+.season-card-detail > summary:focus-visible, .facility-all-levels > summary:focus-visible,
+.staff-work-details > summary:focus-visible, .network-explainer > summary:focus-visible,
+.alumnus-fold > summary:focus-visible { outline:2px solid var(--clay); outline-offset:-2px; }
+
+/* A chip row. Empty rows take no space, so a card without honours is not a
+   card with a gap in it. */
+.season-card-chips, .alumni-chips, .alumnus-chips { display:flex; flex-wrap:wrap; align-items:center; gap:4px; }
+.season-card-chips:empty, .alumni-chips:empty, .alumnus-chips:empty { display:none; }
+.season-card-chips i, .alumni-chips i, .alumnus-chips i {
+  padding:3px 6px; border:1px solid rgba(var(--clay-rgb), .4); background:var(--soft);
+  color:var(--clay); font:700 calc(7px * var(--ts)) var(--mono); font-style:normal; letter-spacing:.06em;
+  text-transform:uppercase;
+}
+.season-card-chips i.quiet, .alumni-chips i.quiet, .alumnus-chips i.quiet {
+  border-color:var(--line); background:var(--wash); color:var(--dim);
+}
+.season-card-chips { padding:9px 11px 0; }
+.alumni-chips { padding:9px 11px 0; }
+
+/* A labelled figure on its own line: the label reads, the number answers. */
+.program-record-line {
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;
+  padding:10px 11px; border-top:1px solid var(--line);
+  color:var(--dim); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.09em;
+}
+.program-record-line strong { color:var(--ink); font:800 calc(13px * var(--ts)) var(--display); letter-spacing:0; }
+.program-shelf { margin-top:12px; border:1px solid var(--line); background:var(--paper); }
+.program-shelf > .program-record-line:first-child { border-top:0; }
+
+.program-best-season {
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:12px 11px; border-top:1px solid var(--line); border-left:3px solid var(--clay);
+  background:var(--soft); color:var(--ink);
+}
+.program-best-season small { display:block; color:var(--dim); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.09em; }
+.program-best-season strong { display:block; margin-top:4px; font:800 calc(26px * var(--ts))/1 var(--display); }
+.program-best-season > span:last-child { text-align:right; min-width:0; }
+.program-best-season b { display:block; margin-bottom:4px; font:800 calc(9px * var(--ts))/1.3 var(--body); text-transform:uppercase; }
+
+/* Six seasons of win percentage. A true 0-100 scale: college baseball lives
+   between .400 and .750 and a fitted axis would turn one win into a cliff. */
+.program-trend { margin-top:14px; padding:11px; border:1px solid var(--line); background:var(--paper); }
+.program-trend-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
+.program-trend-head small { color:var(--clay); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.11em; }
+.program-trend-head em { color:var(--dim); font:700 calc(6.7px * var(--ts)) var(--mono); font-style:normal; letter-spacing:.1em; }
+.program-trend-bars { display:flex; align-items:flex-end; gap:6px; }
+.program-trend-bars > div { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; }
+.program-trend-bars strong { font:800 calc(10px * var(--ts)) var(--display); color:var(--dim); }
+.program-trend-bars small { margin-top:4px; color:var(--dim); font:500 calc(7px * var(--ts)) var(--mono); }
+.program-trend-bars > div > span {
+  display:flex; align-items:flex-end; width:100%; height:calc(52px * var(--ts));
+  margin-top:4px; background:var(--wash); border-bottom:1px solid var(--line);
+}
+.program-trend-bars i { display:block; width:100%; background:rgba(var(--clay-rgb), .55); }
+.program-trend-bars .champion i { background:var(--clay); }
+.program-trend-bars .champion strong, .program-trend-bars .champion small { color:var(--clay); }
+
+/* The coach whose seasons these were, once per run rather than once per card. */
+.season-era {
+  display:flex; align-items:center; gap:8px; margin:14px 0 7px;
+  color:var(--clay); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.11em;
+}
+.season-era::after { content:""; flex:1; height:1px; background:var(--line); }
+.season-yearbook > div:first-child > .season-era { margin-top:0; }
+.season-card-detail { border-top:1px solid var(--line); }
+.season-card-detail .season-card-awards { border-top:1px solid var(--line); }
+
+/* --- The hub ------------------------------------------------------------- */
+/* The school's own crest hero, borrowed from the college profile so the menu
+   opens on the program rather than on the word PROGRAM. All of it already
+   exists as .team-profile-hero; only the strip below needs a nudge. */
+.module-workspace > .team-profile-head { margin-bottom: 14px; }
+.module-workspace > .team-profile-head .metric-strip { margin: 0; border-left: 0; border-right: 0; }
+
+/* One thing wants you, at most, and it is always the most urgent one. */
+.program-attention {
+  display:flex; width:100%; align-items:center; gap:10px; margin-bottom:14px; padding:11px;
+  border:1px solid color-mix(in srgb, var(--alert) 42%, var(--line));
+  border-left:4px solid var(--alert);
+  background:color-mix(in srgb, var(--alert) 7%, var(--paper)); color:var(--ink); text-align:left;
+}
+.program-attention > span { flex:1; min-width:0; }
+.program-attention small { display:block; color:var(--alert); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.1em; }
+.program-attention strong { display:block; margin-top:4px; font:700 calc(11px * var(--ts))/1.35 var(--body); }
+.program-attention > svg { width:14px; flex:none; color:var(--clay); }
+
+/* Three squares per building, filled to the level it has reached. */
+.program-level-track { display:inline-flex; align-items:center; gap:3px; }
+.program-level-track i { display:block; width:14px; height:4px; background:var(--line); }
+.program-level-track i.on { background:var(--clay); }
+.program-launch-levels { grid-column:1/-1; display:flex; flex-wrap:wrap; gap:4px 10px; margin-top:7px; }
+.program-launch-levels > span { display:flex; align-items:center; gap:5px; color:var(--dim); font:700 calc(7px * var(--ts)) var(--mono); }
+.program-launch-levels .program-level-track i { width:9px; }
+
+/* The head coach reads as a person, so his row carries his face. */
+.program-career-row.is-coach { background:var(--soft); }
+.program-career-row.is-coach > svg:first-of-type,
+.program-career-row.is-coach > span:first-child { flex:none; }
+.program-career-row .coach-portrait { flex:none; }
+
+/* --- Facilities ---------------------------------------------------------- */
+/* A drafting elevation per specialty, drawn in the accent so it follows the
+   school's colour. Capped, because three of them share one row at 375px. */
+.facility-art { display:block; width:100%; height:auto; max-height:calc(46px * var(--ts)); color:var(--clay); margin-bottom:6px; }
+.facility-specialty-tile.active .facility-art { opacity:1; }
+.facility-specialty-tile .facility-art { opacity:.8; }
+
+/* Now against next: the only question the panel is really asking. */
+.facility-compare { padding:2px 11px 6px; }
+.facility-compare > div {
+  display:grid; grid-template-columns:minmax(0,1fr) 46px 62px; gap:8px; align-items:center;
+  min-height:38px; border-bottom:1px solid var(--line);
+}
+.facility-compare.is-maxed > div { grid-template-columns:minmax(0,1fr) 46px; }
+.facility-compare > div:last-child { border-bottom:0; }
+.facility-compare small { color:var(--dim); font:700 calc(6.7px * var(--ts)) var(--mono); letter-spacing:.09em; }
+.facility-compare small:not(:first-child), .facility-compare b, .facility-compare strong { text-align:right; }
+.facility-compare span { min-width:0; color:var(--ink); font:600 calc(8.5px * var(--ts))/1.3 var(--body); }
+.facility-compare b { color:var(--dim); font:700 calc(10px * var(--ts)) var(--mono); }
+.facility-compare strong { color:var(--clay); font:800 calc(14px * var(--ts)) var(--display); }
+
+/* Reference material, below the decision and closed until asked for. */
+.facility-all-levels { border-top:1px solid var(--line); }
+.facility-all-levels > summary { padding:9px 11px; }
+.facility-blueprint-blurb { margin:0; padding:0 11px 10px; color:var(--dim); font:400 calc(8.5px * var(--ts))/1.45 var(--body); }

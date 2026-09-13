@@ -4975,7 +4975,7 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 }
 .facility-specialty-tile {
   min-width: 0; min-height: 112px; padding: 10px 9px 9px;
-  border: 1px solid var(--line); border-radius: 12px;
+  border: 1px solid var(--line);
   background: var(--paper); color: var(--ink); text-align: left;
   transition: border-color 150ms ease, transform 150ms ease, background 150ms ease;
 }
@@ -4985,7 +4985,7 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 }
 .facility-specialty-mark {
   display: inline-grid; place-items: center; min-width: 34px; height: 22px;
-  padding: 0 5px; border-radius: 7px; background: var(--panel); color: var(--cream);
+  padding: 0 5px; background: var(--panel); color: var(--cream);
   font: 800 calc(6.5px * var(--ts)) var(--mono); letter-spacing: .08em;
 }
 .facility-specialty-tile strong {
@@ -5000,12 +5000,12 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .facility-specialty-tile > i {
   display: grid; grid-template-columns: repeat(3,1fr); gap: 3px; margin-top: 9px;
 }
-.facility-specialty-tile > i em { height: 4px; border-radius: 99px; background: var(--line); }
+.facility-specialty-tile > i em { height: 4px; background: var(--line); }
 .facility-specialty-tile > i em.on { background: var(--clay); }
 
 .facility-blueprint {
-  overflow: hidden; border: 1px solid var(--ink); border-radius: 15px;
-  background: var(--paper); box-shadow: 0 8px 22px rgba(20,24,20,.08);
+  overflow: hidden; border: 1px solid var(--ink);
+  background: var(--paper);
 }
 .facility-blueprint > header {
   display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 12px;
@@ -5044,13 +5044,15 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
   display: grid; grid-template-columns: minmax(0,1fr) minmax(126px, .72fr); gap: 10px;
   align-items: stretch; padding: 11px; border-top: 1px solid var(--line);
 }
+.facility-budget-decision > div { display: grid; }
+.facility-budget-decision .facility-invest-cta { width: 100%; }
 .facility-budget-decision > span { min-width: 0; padding: 5px 3px; }
 .facility-budget-decision > span small { display: block; color: var(--dim); font: 700 calc(6.7px * var(--ts)) var(--mono); letter-spacing: .09em; }
 .facility-budget-decision > span strong { display: block; margin-top: 3px; font: 800 calc(15px * var(--ts)) var(--display); }
 .facility-budget-decision > span em { display: block; margin-top: 4px; color: var(--dim); font: 400 calc(7.8px * var(--ts))/1.35 var(--body); font-style: normal; }
 .facility-invest-cta {
   min-width: 0; min-height: 58px; padding: 9px 10px;
-  border: 1px solid var(--clay); border-radius: 11px; background: var(--command); color: var(--cream);
+  border: 1px solid var(--clay); background: var(--command); color: var(--cream);
   text-align: left; font: 800 calc(9.5px * var(--ts))/1.15 var(--body);
 }
 .facility-invest-cta small { display: block; margin-top: 4px; color: rgba(var(--cream-rgb), .76); font: 700 calc(7px * var(--ts)) var(--mono); }
@@ -5156,7 +5158,7 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .history-workspace > .segmented { margin-bottom: 10px; }
 .history-empty {
   margin-top: 12px; padding: 24px 18px; border: 1px dashed var(--line);
-  border-radius: 14px; background: var(--paper); text-align: center;
+  background: var(--paper); text-align: center;
 }
 .history-empty small { color: var(--clay); font: 700 calc(7px * var(--ts)) var(--mono); letter-spacing: .11em; }
 .history-empty strong { display: block; margin-top: 6px; font: 800 calc(20px * var(--ts))/.98 var(--display); }
@@ -5172,11 +5174,13 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .season-yearbook-head em { color: var(--dim); font: 700 calc(6.7px * var(--ts)) var(--mono); letter-spacing: .1em; font-style: normal; }
 .season-yearbook { display: grid; gap: 9px; }
 .season-card {
-  overflow: hidden; border: 1px solid var(--line); border-radius: 13px;
-  background: var(--paper);
+  overflow: hidden; border: 1px solid var(--line); background: var(--paper);
 }
-.season-card.deep-run { border-color: rgba(var(--clay-rgb), .48); }
-.season-card.champion { border-color: var(--clay); box-shadow: 0 7px 18px rgba(var(--clay-rgb), .12); }
+/* Emphasis is the house's left rule, not a halo: a deep run gets a faint one,
+   a title gets the accent itself. Both read down a column of years. */
+.season-card.deep-run { border-left: 3px solid rgba(var(--clay-rgb), .5); }
+.season-card.champion { border-left: 3px solid var(--clay); }
+.season-card.champion > header > span > strong { color: var(--clay); }
 .season-card > header {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
   padding: 11px 12px; background: var(--wash); border-bottom: 1px solid var(--line);
@@ -5254,18 +5258,23 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .alumni-year > .alumni-grid { margin: 0; padding: 9px; }
 .alumni-card {
   position: relative; width: 100%; min-width: 0; padding: 0; overflow: hidden;
-  border: 1px solid var(--line); border-radius: 13px; background: var(--paper);
+  border: 1px solid var(--line); background: var(--paper);
   color: var(--ink); text-align: left;
 }
-.alumni-card.reached-show { border-color: rgba(var(--clay-rgb), .55); }
+.alumni-card.reached-show { border-left: 3px solid rgba(var(--clay-rgb), .55); }
+.alumni-card.is-legend { border-left: 3px solid var(--clay); }
 .alumni-card:disabled { opacity: 1; }
-.alumni-card > header { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; padding: 10px 11px; background: var(--wash); }
+.alumni-card > header { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 10px; padding: 10px 11px; background: var(--wash); }
 .alumni-card.reached-show > header { background: rgba(var(--clay-rgb), .09); }
 .alumni-card > header span { min-width: 0; }
+/* The archive keeps no jersey number, so the portrait does not print one. */
+.alumni-card > header .avatar { flex: none; background: var(--paper); }
+.alumni-card > header .avatar text { display: none; }
 .alumni-card > header small { display: block; color: var(--clay); font: 700 calc(6.5px * var(--ts)) var(--mono); letter-spacing: .08em; }
 .alumni-card > header strong { display: block; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 800 calc(16px * var(--ts)) var(--display); }
+.alumni-card > header > span > em { display: block; margin-top: 2px; color: var(--dim); font: 500 calc(7.5px * var(--ts)) var(--mono); font-style: normal; }
 .alumni-card > header > b { color: var(--dim); font: 800 calc(9px * var(--ts)) var(--mono); }
-.alumni-status-grid { display: grid; grid-template-columns: 1.3fr .7fr; gap: 1px; background: var(--line); }
+.alumni-status-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1px; background: var(--line); }
 .alumni-status-grid span { padding: 8px 10px; background: var(--paper); }
 .alumni-status-grid small { display: block; color: var(--dim); font: 700 calc(6.2px * var(--ts)) var(--mono); letter-spacing: .07em; }
 .alumni-status-grid strong { display: block; margin-top: 3px; font: 800 calc(11px * var(--ts)) var(--body); }
@@ -5909,16 +5918,14 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .facility-specialty-tile {
   min-height: 96px;
   border: 1px solid var(--line) !important;
-  box-shadow: 0 8px 18px rgba(0,0,0,.04);
 }
 .facility-specialty-tile.active {
   border-color: var(--clay) !important;
-  box-shadow: inset 0 -3px var(--clay), 0 12px 22px rgba(var(--clay-rgb),.08) !important;
+  box-shadow: inset 0 -3px var(--clay) !important;
 }
 .facility-blueprint {
   overflow: hidden;
   border-top: 4px solid var(--clay) !important;
-  box-shadow: 0 16px 30px rgba(0,0,0,.07);
 }
 .facility-blueprint-levels {
   position: relative;
@@ -5944,14 +5951,12 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
   border: 1px solid var(--line);
   background: var(--paper) !important;
   opacity: .62;
-  box-shadow: 0 6px 14px rgba(0,0,0,.035);
 }
 .facility-blueprint-levels article.reached { opacity: 1; border-top: 3px solid var(--win); }
 .facility-blueprint-levels article.next {
   opacity: 1;
   border-color: var(--clay);
   border-top: 3px solid var(--clay);
-  box-shadow: 0 8px 18px rgba(var(--clay-rgb),.10) !important;
 }
 .facility-blueprint-levels article > span::before {
   content: '';
@@ -6028,9 +6033,7 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
   color: var(--clay);
   font: 700 calc(7px * var(--ts)) var(--mono);
 }
-.record-group-card,
-.season-card,
-.alumni-card {
+.record-group-card {
   box-shadow: 0 8px 18px rgba(0,0,0,.045);
 }
 
@@ -6703,16 +6706,6 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
   position:absolute; top:7px; right:8px; width:6px; height:6px;
   border-radius:50%; background:var(--alert); box-shadow:0 0 0 2px var(--paper);
 }
-.program-new-alert {
-  display:grid; grid-template-columns:minmax(0,1fr) auto 16px; gap:9px; align-items:center;
-  width:100%; padding:10px 11px; border:1px solid color-mix(in srgb,var(--alert) 42%,var(--line));
-  border-left:4px solid var(--alert); background:color-mix(in srgb,var(--alert) 7%,var(--paper)); color:var(--ink); text-align:left;
-}
-.program-new-alert span { min-width:0; }
-.program-new-alert small,.program-new-alert strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.program-new-alert small { color:var(--alert); font:700 calc(6.5px * var(--ts)) var(--mono); letter-spacing:.1em; }
-.program-new-alert strong { margin-top:3px; font:800 calc(12px * var(--ts)) var(--body); }
-.program-new-alert em { color:var(--dim); font:600 calc(7px * var(--ts)) var(--mono); font-style:normal; white-space:nowrap; }
 .account-menu-profile { position:relative; }
 .account-profile-alert { position:absolute; right:31px; top:13px; width:7px; height:7px; border-radius:50%; background:var(--alert); box-shadow:0 0 0 2px var(--paper); }
 

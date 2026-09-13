@@ -6,10 +6,11 @@ import { RECRUITING_WEEKS } from '../../engine/recruiting.js';
 // Overview groups everyday management separately from career destinations. The coach profile remains a focused subpage, while season-by-season
 // history stays in the adjacent History screen so there is only one record book.
 import { leagueLabel } from '../../engine/leagueNames.js';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { ACHIEVEMENTS, ACHIEVEMENT_IDS } from '../../engine/achievements.js';
 import {
-  useDynasty, useUserTeam, useConferenceTable, type SeasonRecord, type ProgramSheet,
+  useDynasty, useUserTeam, useConferenceTable,
+  type SeasonRecord, type ProgramSheet, type ArchiveSheet,
 } from '../../state/store.js';
 import {
   expectationFor, prestigeStars, rosterStrength, objectiveMet, coachStanding,
@@ -31,7 +32,7 @@ import { teamColour } from '../Avatar.js';
 import { Crest } from '../Crest.js';
 import { ArrowLeftIcon, ChevronRightIcon, StarIcon, PersonIcon, HomeIcon, GlobeIcon, BarChartIcon } from '@radix-ui/react-icons';
 import { GodBolt } from '../god/GodBolt.js';
-import { ModuleIntro, SectionHeading, Segmented, Confirmable } from '../components/Kit.js';
+import { Metric, MetricStrip, ModuleIntro, SectionHeading, Segmented, Confirmable } from '../components/Kit.js';
 import {
   annualBudget, dollars, marketFor, remaining, wageBill,
   SCOUT_COST, SCOUT_DAYS, SEATS, SEAT_LABEL,
@@ -45,6 +46,8 @@ import { Modal } from '../Modal.js';
 import { Overlay } from '../Overlay.js';
 import { StaffCandidateDialog, StaffImpact, StaffRatings } from '../StaffCandidateDialog.js';
 import { pct } from '../format.js';
+import { SeasonTrend } from './History.js';
+import { FacilityArt, LevelTrack } from '../ProgramBits.js';
 
 /** The record for one program, as the season carries it. */
 type Owner = SeasonState['teams'][number];
@@ -74,11 +77,31 @@ export function Program() {
   const setSheet = useDynasty((s) => s.setProgramSheet);
   const economy = useDynasty((s) => s.economy);
   const coach = useDynasty((s) => s.coach);
+  const alumni = useDynasty((s) => s.alumni);
+  const phase = useDynasty((s) => s.phase);
+  const setScreen = useDynasty((s) => s.setScreen);
+  const setHistorySheet = useDynasty((s) => s.setHistorySheet);
+  const table = useConferenceTable();
+  // Alumni can grow into the hundreds over a long dynasty and the hub is the
+  // most-visited screen in the tab, so the count is memoised rather than
+  // scanned on every render — the same discipline History already keeps.
+  const alumniCount = useMemo(() => {
+    const abbr = team?.def.abbr;
+    if (!abbr) return 0;
+    let n = 0;
+    for (const note of Object.values(alumni)) if (note.teamAbbr === abbr) n += 1;
+    return n;
+  }, [alumni, team?.def.abbr]);
   useEffect(() => {
     if (sheet === 'coach') clearUnseenTrophies();
   }, [sheet, clearUnseenTrophies]);
 
   if (!season || !team) return null;
+
+  // HISTORY is a screen beside OVERVIEW in the program strip, not a sheet
+  // inside it. The hub's doors aim it and hand it over, so there is one
+  // archive, one back gesture, and a strip that still says where you are.
+  const openArchive = (page: ArchiveSheet) => { setHistorySheet(page); setScreen('history'); };
 
   if (sheet === 'coach') {
     return (
@@ -103,6 +126,24 @@ export function Program() {
   const security = coach.security >= 75 ? 'Very secure'
     : coach.security >= 55 ? 'Secure'
       : coach.security >= 35 ? 'Under review' : 'In danger';
+  const annals = team.annals ?? [];
+  const titles = annals.filter((s) => s.finish === 'champion').length;
+  const record = regularRecord(team);
+  // A table sorted on zero results is not a standing. TeamCard already prints
+  // a dash until the games have been played; the hub does the same rather than
+  // opening February on a meaningless #7.
+  const rank = team.gp === 0 ? 0 : table.findIndex((t) => t.index === team.index) + 1;
+  /*
+    Only in the offseason. A contract is stamped `until = year + 2` and dropped
+    at the roll, so `until <= year` is true for the whole of its final season —
+    while Renew is gated on `phase !== null` and phase is null all spring. Read
+    it live and the hub burns a red card for a season pointing at a room where
+    nothing can be done about it.
+  */
+  const expiring = phase !== null ? SEATS.filter((seat) => {
+    const man = economy.staff[seat];
+    return man?.until !== undefined && man.until <= year;
+  }).length : 0;
 
   if (sheet !== 'overview') {
     return (
@@ -128,35 +169,76 @@ export function Program() {
 
   return (
     <main className="module-workspace">
-      <ModuleIntro
-        kicker={`${leagueLabel(team.conference)} · ${year}`}
-        title={team.def.school}
-      />
+      {/* Who you are, how the year is going, where you stand. The hub used to
+          open on a title and three grey cells and never once said which school
+          this was. This is the same crest hero every college profile already
+          wears, turned on your own program — so the menu opens on the school
+          rather than on the word PROGRAM. */}
+      <div
+        className="team-card-head team-profile-head"
+        style={{ '--program-accent': teamColour(team.def.abbr) } as CSSProperties}
+      >
+        <section className="team-profile-hero" aria-label="Program identity">
+          <div className="team-profile-crest"><Crest abbr={team.def.abbr} size={66} /></div>
+          <div className="team-profile-copy">
+            <small>{leagueLabel(team.conference)} · {year} · {'★'.repeat(prestigeStars(team.prestige))}</small>
+            <h2>{team.def.school}</h2>
+            <p>{team.def.nickname}</p>
+          </div>
+          <div className="team-profile-rank">
+            <small>IN CONF</small>
+            <strong>{rank > 0 ? `#${rank}` : '—'}</strong>
+          </div>
+        </section>
+        <MetricStrip>
+          {/* regularRecord, not team.w–team.l: the same number the Board reads
+              and the same one a rival's profile prints, so three screens agree. */}
+          <Metric label="REG SEASON" value={`${record.w}-${record.l}`} note="RECORD" />
+          <Metric label="PRESTIGE" value={String(team.prestige)} note="/100" />
+          <Metric label="JOB SECURITY" value={String(coach.security)} note="/100" />
+        </MetricStrip>
+      </div>
 
-      {unseenTrophies > 0 && (
-        <button className="program-new-alert tap" type="button" onClick={() => setSheet('coach')}>
-          <span><small>NEW IN YOUR CAREER</small><strong>{unseenTrophies === 1 ? 'Coach achievement unlocked' : `${unseenTrophies} coach achievements unlocked`}</strong></span>
-          <em>Open your coach profile</em>
-          <ChevronRightIcon />
+      {/* One card, the most urgent thing, in order. A board review outranks an
+          expiring contract, which outranks an achievement you have not opened —
+          so there is never more than one red thing and the red keeps meaning
+          something. An expiring assistant had no hub surface at all before. */}
+      {(waiting || expiring > 0 || unseenTrophies > 0) && (
+        <button
+          className="program-attention tap" type="button"
+          onClick={() => setSheet(waiting ? 'board' : expiring > 0 ? 'staff' : 'coach')}
+        >
+          <span>
+            <small>NEEDS YOUR ATTENTION</small>
+            <strong>{waiting ? (review !== null ? 'The board has a review waiting' : 'A job offer is waiting')
+              : expiring > 0 ? `${expiring} staff contract${expiring === 1 ? '' : 's'} end this season`
+                : unseenTrophies === 1 ? 'Coach achievement unlocked' : `${unseenTrophies} coach achievements unlocked`}</strong>
+          </span>
+          <ChevronRightIcon aria-hidden="true" />
         </button>
       )}
 
       <FirstVisit id="program-overview" />
-      <section className="program-pulse" aria-label="Program status">
-        <div><small>PRESTIGE</small><strong>{team.prestige}<span>/100</span></strong></div>
-        <div><small>RECORD</small><strong>{team.w}–{team.l}</strong></div>
-        <div><small>JOB SECURITY</small><strong>{coach.security}<span>/100</span></strong></div>
-      </section>
 
-      <SectionHeading title="Run your program" />
+      <SectionHeading title="Around the program" />
       <section className="program-launch-grid" aria-label="Program management">
         <button className="program-launch tap" type="button" onClick={() => setSheet('staff')}>
           <PersonIcon aria-hidden="true" /><strong>Staff</strong><b>{staffCount}<span> / 3 hired</span></b>
-          <small>{activeProjects ? `${activeProjects} active project${activeProjects === 1 ? '' : 's'}` : 'Focus & player development'}</small><ChevronRightIcon aria-hidden="true" />
+          <small>{activeProjects ? `${activeProjects} project${activeProjects === 1 ? '' : 's'} underway`
+            : staffCount < 3 ? `${3 - staffCount} seat${staffCount === 2 ? '' : 's'} open` : 'Choose the next assignment'}</small><ChevronRightIcon aria-hidden="true" />
         </button>
         <button className="program-launch tap" type="button" onClick={() => setSheet('facilities')}>
           <HomeIcon aria-hidden="true" /><strong>Facilities</strong><b>{facilities}<span> / 3 built</span></b>
-          <small>Buildings & upgrades</small><ChevronRightIcon aria-hidden="true" />
+          {/* Three pip tracks say cage 2, pen 1, clubhouse 0. The sentence they
+              replace said "Buildings & upgrades", which is the tile's own name. */}
+          <span className="program-launch-levels">
+            {BUILDINGS.map((b) => (
+              <span key={b.key}>
+                {b.key === 'cage' ? 'BAT' : b.key === 'pen' ? 'ARM' : 'CLUB'}
+                <LevelTrack label={b.label} level={facilityLevel(economy, b.key)} />
+              </span>
+            ))}
+          </span><ChevronRightIcon aria-hidden="true" />
         </button>
         <button className="program-launch tap" type="button" data-guide="budget" onClick={() => setSheet('money')}>
           <BarChartIcon aria-hidden="true" /><strong>Budget</strong><b>{dollars(budgetLeft)}</b>
@@ -168,19 +250,40 @@ export function Program() {
         </button>
       </section>
 
+      {/* What the program has built. The archive is a screen of its own beside
+          OVERVIEW in the strip, so these doors send you there on the right page
+          rather than opening a second copy of it inside this one. */}
+      <SectionHeading title="The program's legacy" />
+      <div className="program-career-grid">
+        <button className="program-career-row tap" type="button" onClick={() => openArchive('seasons')}>
+          <span><strong>History</strong><small>{annals.length} season{annals.length === 1 ? '' : 's'} · {titles} national title{titles === 1 ? '' : 's'}</small></span><ChevronRightIcon aria-hidden="true" />
+        </button>
+        <button className="program-career-row tap" type="button" onClick={() => openArchive('alumni')}>
+          <span><strong>Alumni</strong><small>{alumniCount} former player{alumniCount === 1 ? '' : 's'}</small></span><ChevronRightIcon aria-hidden="true" />
+        </button>
+      </div>
+      <button className="program-career-row tap" type="button" onClick={() => setSheet('hall')}>
+        <span><strong>Hall of Fame</strong><small>{hallCount} inductee{hallCount === 1 ? '' : 's'} · Records</small></span><ChevronRightIcon aria-hidden="true" />
+      </button>
+      <SeasonTrend seasons={annals} />
+
       <SectionHeading title="Your career" />
       <button className={`program-career-row tap${waiting ? ' needs-attention' : ''}`} type="button" onClick={() => setSheet('board')}>
         <span><strong>Board</strong><small>{waiting ? 'Review waiting' : security} · {coach.contractYears}y contract</small></span>
         <ChevronRightIcon aria-hidden="true" />
       </button>
-      <div className="program-career-grid">
-        <button className="program-career-row tap" type="button" onClick={() => setSheet('watchlist')}>
-          <span><strong>Watchlist</strong><small>{watch.programs.length} programs · {watch.jobs.length} jobs</small></span><ChevronRightIcon aria-hidden="true" />
-        </button>
-        <button className="program-career-row tap" type="button" onClick={() => setSheet('hall')}>
-          <span><strong>Hall of Fame</strong><small>{hallCount} inductees · Records</small></span><ChevronRightIcon aria-hidden="true" />
-        </button>
-      </div>
+      <button
+        className={`program-career-row is-coach tap${unseenTrophies > 0 && waiting ? ' needs-attention' : ''}`}
+        type="button" onClick={() => setSheet('coach')}
+      >
+        <CoachPortrait look={coach.look} size={38} />
+        <span><strong>{coach.name}</strong><small>Head coach · {unseenTrophies > 0 && waiting
+          ? `${unseenTrophies} new achievement${unseenTrophies === 1 ? '' : 's'}` : security}</small></span>
+        <ChevronRightIcon aria-hidden="true" />
+      </button>
+      <button className="program-career-row tap" type="button" onClick={() => setSheet('watchlist')}>
+        <span><strong>Watchlist</strong><small>{watch.programs.length} programs · {watch.jobs.length} jobs</small></span><ChevronRightIcon aria-hidden="true" />
+      </button>
     </main>
   );
 }
@@ -229,14 +332,61 @@ function staffMarketKey(m: Assistant, year: number, seat: StaffSeat): number {
   return h >>> 0;
 }
 
+/*
+  The four benefits a building can carry, read off the engine and nothing else.
+
+  One list, two readers: `facilityImpactLine` writes the sentence the level
+  timeline uses and `FacilityComparison` lays the same rows out as now-versus-
+  next. They used to be two thresholds answering one question, which is how a
+  fourth building would have made the two halves of this screen disagree.
+*/
+type FacilityRow = {
+  label: string;
+  short: string;
+  of: (fx: ReturnType<typeof facilityEffectAt>) => number;
+  live: (fx: ReturnType<typeof facilityEffectAt>) => boolean;
+  unit: '' | '%';
+};
+const FACILITY_ROWS: FacilityRow[] = [
+  { label: 'bat development', short: 'Hitting development', of: (fx) => Math.round(fx.bat), live: (fx) => fx.bat >= 1, unit: '' },
+  { label: 'arm development', short: 'Pitching development', of: (fx) => Math.round(fx.arm), live: (fx) => fx.arm >= 1, unit: '' },
+  { label: 'less arm strain', short: 'Less arm strain', of: (fx) => Math.round((1 - fx.guard) * 100), live: (fx) => fx.guard < 0.995, unit: '%' },
+  { label: 'development pitch', short: 'Recruiting pitch', of: (fx) => Math.round(fx.pitch * 100), live: (fx) => fx.pitch >= 0.01, unit: '%' },
+];
+
 function facilityImpactLine(which: Building, level: number): string {
   const fx = facilityEffectAt(which, level);
-  const parts: string[] = [];
-  if (fx.bat >= 1) parts.push(`+${Math.round(fx.bat)} bat development`);
-  if (fx.arm >= 1) parts.push(`+${Math.round(fx.arm)} arm development`);
-  if (fx.guard < 0.995) parts.push(`${Math.round((1 - fx.guard) * 100)}% less arm strain`);
-  if (fx.pitch >= 0.01) parts.push(`+${Math.round(fx.pitch * 100)}% development pitch`);
-  return parts.join(' · ');
+  return FACILITY_ROWS.filter((r) => r.live(fx))
+    .map((r) => `+${r.of(fx)}${r.unit} ${r.label}`)
+    .join(' · ');
+}
+
+/**
+ * What this level does, and what the next one would do instead.
+ *
+ * The whole decision on this screen is "is the next level worth the money", and
+ * it used to be three prose lines you had to subtract yourself. A maxed
+ * building drops the second column rather than printing a fake upgrade.
+ */
+function FacilityComparison(
+  { kind, level, next, maxed }: { kind: Building; level: number; next: number; maxed: boolean },
+) {
+  const current = facilityEffectAt(kind, level);
+  const after = facilityEffectAt(kind, next);
+  const rows = FACILITY_ROWS.filter((r) => r.live(current) || r.live(after));
+  if (rows.length === 0) return null;
+  return (
+    <div className={`facility-compare${maxed ? ' is-maxed' : ''}`}>
+      <div><small>PROGRAM BENEFIT</small><small>NOW</small>{!maxed && <small>LEVEL {next}</small>}</div>
+      {rows.map((r) => (
+        <div key={r.label}>
+          <span>{r.short}</span>
+          <b>{r.live(current) ? `+${r.of(current)}${r.unit}` : '—'}</b>
+          {!maxed && <strong>+{r.of(after)}{r.unit}</strong>}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function MoneySheet({ team }: { team: Owner }) {
@@ -517,6 +667,9 @@ function MoneySheet({ team }: { team: Owner }) {
                   aria-current={active ? 'page' : undefined}
                   onClick={() => setFacilityFocus(b.key)}
                 >
+                  <FacilityArt kind={b.key} />
+                  {/* The chip stays. The drawing is aria-hidden, so deleting it
+                      would leave the specialty with no short name to read. */}
                   <span className="facility-specialty-mark" aria-hidden>{b.key === 'cage' ? 'BAT' : b.key === 'pen' ? 'ARM' : 'CLUB'}</span>
                   <strong>{b.label}</strong>
                   <small>{level > 0 ? `LEVEL ${level}` : 'NOT BUILT'}</small>
@@ -536,9 +689,16 @@ function MoneySheet({ team }: { team: Owner }) {
             return (
               <section className="facility-blueprint">
                 <header>
-                  <span><small>{level > 0 ? `LEVEL ${level} OF ${FACILITY_MAX_LEVEL}` : 'NEW PROJECT'}</small><strong>{b.label}</strong><p>{b.blurb}</p></span>
+                  <span><small>{level > 0 ? `LEVEL ${level} OF ${FACILITY_MAX_LEVEL}` : 'NEW PROJECT'}</small><strong>{b.label}</strong></span>
+                  {/* The price stays in the header: on a delegated career the
+                      CTA below is never rendered, and this is the only place
+                      the cost of the next project appears at all. */}
                   <b>{maxed ? 'MAX' : dollars(cost)}</b>
                 </header>
+
+                {/* The question this screen exists to answer, as two columns of
+                    numbers rather than three sentences you subtract yourself. */}
+                <FacilityComparison kind={b.key} level={level} next={nextLevel} maxed={maxed} />
 
                 <div className="facility-staff-unlock">
                   <small>STAFF CAPABILITY</small>
@@ -550,20 +710,6 @@ function MoneySheet({ team }: { team: Owner }) {
                   })()}</p>
                 </div>
 
-                <div className="facility-blueprint-levels" aria-label={`${b.label} progression`}>
-                  {Array.from({ length: FACILITY_MAX_LEVEL }, (_, i) => {
-                    const step = i + 1;
-                    const reached = step <= level;
-                    const next = step === nextLevel && !maxed;
-                    return (
-                      <article key={step} className={`${reached ? ' reached' : ''}${next ? ' next' : ''}`}>
-                        <span><small>LEVEL {step}</small><strong>{reached ? 'ACTIVE' : next ? 'NEXT' : 'LOCKED'}</strong></span>
-                        <p>{facilityImpactLine(b.key, step)}</p>
-                      </article>
-                    );
-                  })}
-                </div>
-
                 <div className="facility-budget-decision">
                   <span>
                     <small>{maxed ? 'STATUS' : 'AFTER PROJECT'}</small>
@@ -571,18 +717,43 @@ function MoneySheet({ team }: { team: Owner }) {
                     {maxed && <em>This specialty has reached its ceiling.</em>}
                   </span>
                   {runsFacilities && !maxed && (
-                    <button
-                      className="facility-invest-cta tap"
-                      type="button"
-                      data-guide={b.key === 'cage' ? (affordable ? 'facility-cta' : 'facility-blocked') : undefined}
-                      disabled={!affordable}
-                      onClick={() => level === 0 ? build(b.key) : upgradeFacility(b.key)}
-                    >
-                      {affordable ? (level === 0 ? `Build ${b.label}` : `Upgrade to level ${nextLevel}`) : 'Not enough room'}
-                      <small>{dollars(cost)}</small>
-                    </button>
+                    /* The guide lights the wrapper: Confirmable forwards no
+                       data-guide of its own, and GuidedStretch falls through to
+                       the focusable child, so the spotlight still lands on the
+                       button. */
+                    <div data-guide={b.key === 'cage' ? (affordable ? 'facility-cta' : 'facility-blocked') : undefined}>
+                      <Confirmable
+                        key={`${b.key}-${level}`}
+                        className="facility-invest-cta tap"
+                        disabled={!affordable}
+                        idle={<>{affordable ? (level === 0 ? `Build ${b.label}` : `Upgrade to level ${nextLevel}`) : `Need ${dollars(cost - left)} more`}<small>{dollars(cost)}</small></>}
+                        armed={<>Confirm · {dollars(cost)}<small>{dollars(left - cost)} left after</small></>}
+                        failed={<>Project not approved<small>{dollars(cost)}</small></>}
+                        onConfirm={() => (level === 0 ? build(b.key) : upgradeFacility(b.key))}
+                      />
+                    </div>
                   )}
                 </div>
+
+                {/* Reference, not decision — so it sits below the control the
+                    thumb is aimed at and opens only when asked. */}
+                <details className="facility-all-levels">
+                  <summary>ALL {FACILITY_MAX_LEVEL} LEVELS &amp; BENEFITS</summary>
+                  <p className="facility-blueprint-blurb">{b.blurb}</p>
+                  <div className="facility-blueprint-levels" aria-label={`${b.label} progression`}>
+                    {Array.from({ length: FACILITY_MAX_LEVEL }, (_, i) => {
+                      const step = i + 1;
+                      const reached = step <= level;
+                      const next = step === nextLevel && !maxed;
+                      return (
+                        <article key={step} className={`${reached ? ' reached' : ''}${next ? ' next' : ''}`}>
+                          <span><small>LEVEL {step}</small><strong>{reached ? 'ACTIVE' : next ? 'NEXT' : 'LOCKED'}</strong></span>
+                          <p>{facilityImpactLine(b.key, step)}</p>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </details>
               </section>
             );
           })()}

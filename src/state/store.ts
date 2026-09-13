@@ -408,6 +408,15 @@ export type Overlay =
 export type ProgramSheet = 'overview' | 'board' | 'money' | 'staff' | 'facilities' | 'network' | 'watchlist' | 'coach' | 'hall';
 
 /**
+ * A page of the program archive. HISTORY is already a screen of its own beside
+ * OVERVIEW in the program strip, so the hub's two legacy doors send you there
+ * rather than growing a second copy of the archive inside a program sheet —
+ * one record book, one back button, and the strip keeps telling the truth
+ * about where you are.
+ */
+export type ArchiveSheet = 'seasons' | 'book' | 'alumni';
+
+/**
  * The offseason, as a sequence you are walked through rather than a set of tabs
  * you can wander into.
  *
@@ -1465,6 +1474,10 @@ export interface DynastyStore {
    */
   programSheet: ProgramSheet;
   setProgramSheet: (s: ProgramSheet) => void;
+
+  /** Which page of the archive HISTORY opens on, so the hub can aim its doors. */
+  historySheet: ArchiveSheet;
+  setHistorySheet: (s: ArchiveSheet) => void;
 
   /** Whose card is open. Cleared when you navigate away. */
   selectedPlayer: PlayerId | null;
@@ -5636,6 +5649,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     }
     set({ programSheet: s });
   },
+
+  // Plain UI state, like `programSheet`: the archive's own tab strip writes it
+  // and the Program hub's legacy doors preset it. No history entry of its own —
+  // HISTORY is a screen, and `setScreen` already keeps that stop.
+  historySheet: 'seasons',
+  setHistorySheet: (s) => set({ historySheet: s }),
 
   openPlayer: (id, section = 'overview') => {
     if (get().selectedPlayer !== id) browserHistoryCheckpoint();
